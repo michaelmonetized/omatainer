@@ -144,13 +144,14 @@ mod tests {
             Command::Xfader(0.1),
             Command::Xfader(0.8),
             Command::LiveNoteOn {
+                source: 0,
                 ch: 0,
                 note: 60,
                 vel: 100,
             },
             Command::Xfader(0.3),
             Command::Xfader(0.4),
-            Command::LiveNoteOff { ch: 0, note: 60 },
+            Command::LiveNoteOff { source: 0, ch: 0, note: 60 },
             Command::DeckPitch {
                 deck: 0,
                 value: 0.2,
