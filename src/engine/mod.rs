@@ -4,6 +4,9 @@ mod arp_tests;
 #[cfg(test)]
 mod test_alloc;
 pub mod audio;
+mod control;
+#[cfg(test)]
+mod control_tests;
 pub mod dsp;
 pub mod fx;
 pub mod midi;
@@ -257,6 +260,7 @@ pub struct RtEngine {
     pub selected_deck: usize,
     pub library_sel: usize,
     pub cmd_rx: crossbeam_channel::Receiver<Command>,
+    pub command_stats: control::CommandStats,
     pub snap: Arc<Mutex<Snapshot>>,
     clock_accum: f64,
     cpu_acc: f32,
@@ -345,6 +349,7 @@ pub struct Snapshot {
     pub decks: Vec<DeckSnap>,
     pub midi: Vec<String>,
     pub cpu: f32,
+    pub commands: control::CommandStats,
     pub fx_wet: [f32; 3],
     pub metronome: bool,
     pub quant: f32,
@@ -377,6 +382,7 @@ impl Default for Snapshot {
             decks: Vec::new(),
             midi: Vec::new(),
             cpu: 0.0,
+            commands: control::CommandStats::default(),
             fx_wet: [0.0; 3],
             metronome: false,
             quant: 1.0,
@@ -525,6 +531,7 @@ impl RtEngine {
             selected_deck: 0,
             library_sel: 0,
             cmd_rx,
+            command_stats: control::CommandStats::default(),
             snap,
             clock_accum: 0.0,
             cpu_acc: 0.0,
@@ -688,8 +695,10 @@ impl RtEngine {
     }
 
     pub fn process(&mut self, out: &mut [f32]) {
-        while let Ok(c) = self.cmd_rx.try_recv() {
-            self.apply(c);
+        let batch = control::CommandBatch::receive(&self.cmd_rx);
+        self.command_stats.record(&batch);
+        for command in batch.commands.into_iter().flatten() {
+            self.apply(command);
         }
         let t0 = Instant::now();
         let frames = out.len() / 2;
@@ -1747,6 +1756,7 @@ impl RtEngine {
             decks,
             midi,
             cpu: self.cpu_acc,
+            commands: self.command_stats,
             fx_wet: self.fx_wet,
             metronome: self.metronome,
             quant: self.quant,
