@@ -23,7 +23,7 @@ fn late_loop(rt: &mut RtEngine, deck: u8, audio: Arc<Sample>) {
     rt.apply(Command::DeckLoop { deck, beats: 1.0 });
     assert!(rt.decks[deck as usize].loop_start > 4_800.0);
     assert!(rt.decks[deck as usize].loop_len > 4_800.0);
-    rt.publish();
+    rt.publish_for_test();
     assert!(rt.snap.lock().decks[deck as usize].loop_on);
 }
 
@@ -34,7 +34,7 @@ fn assert_reset(rt: &mut RtEngine, deck: usize, frames: usize, title: &str) {
     assert_eq!(d.loop_len, 0.0);
     assert_eq!(d.pos, 0.0);
     assert!(!d.playing);
-    rt.publish();
+    rt.publish_for_test();
     let snap = rt.snap.lock();
     let d = &snap.decks[deck];
     assert!(!d.loop_on);

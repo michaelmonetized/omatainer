@@ -9,11 +9,11 @@ fn gains(eq: &ThreeBand) -> [f32; 3] {
     [eq.low_g, eq.mid_g, eq.high_g]
 }
 
-fn assert_gains(rt: &RtEngine, deck: usize, expected: [f32; 3]) {
+fn assert_gains(rt: &mut RtEngine, deck: usize, expected: [f32; 3]) {
     for channel in &rt.decks[deck].eq {
         assert_eq!(gains(channel), expected);
     }
-    rt.publish();
+    rt.publish_for_test();
     assert_eq!(rt.snap.lock().decks[deck].eq, expected);
 }
 
@@ -200,7 +200,7 @@ fn deck_eq_gain_cut_and_solo_commands_update_both_channels() {
                 value: 0.2 + band as f32 * 0.2,
             });
             expected[band] = eq_gain(0.2 + band as f32 * 0.2);
-            assert_gains(&rt, deck, expected);
+            assert_gains(&mut rt, deck, expected);
         }
         for band in 0..3 {
             rt.apply(Command::DeckEqCut {
@@ -208,19 +208,19 @@ fn deck_eq_gain_cut_and_solo_commands_update_both_channels() {
                 band: band as u8,
             });
             expected[band] = 0.0;
-            assert_gains(&rt, deck, expected);
+            assert_gains(&mut rt, deck, expected);
             rt.apply(Command::DeckEq {
                 deck: deck as u8,
                 band: band as u8,
                 value: 0.7,
             });
-            assert_gains(&rt, deck, expected);
+            assert_gains(&mut rt, deck, expected);
             rt.apply(Command::DeckEqCut {
                 deck: deck as u8,
                 band: band as u8,
             });
             expected[band] = eq_gain(0.7);
-            assert_gains(&rt, deck, expected);
+            assert_gains(&mut rt, deck, expected);
         }
         for band in 0..3 {
             rt.apply(Command::DeckEqSolo {
@@ -229,7 +229,7 @@ fn deck_eq_gain_cut_and_solo_commands_update_both_channels() {
             });
             let mut solo = [0.0; 3];
             solo[band] = expected[band];
-            assert_gains(&rt, deck, solo);
+            assert_gains(&mut rt, deck, solo);
             let muted_band = (band + 1) % 3;
             rt.apply(Command::DeckEq {
                 deck: deck as u8,
@@ -237,23 +237,23 @@ fn deck_eq_gain_cut_and_solo_commands_update_both_channels() {
                 value: 0.3,
             });
             expected[muted_band] = eq_gain(0.3);
-            assert_gains(&rt, deck, solo);
+            assert_gains(&mut rt, deck, solo);
             rt.apply(Command::DeckEqSolo {
                 deck: deck as u8,
                 band: band as u8,
             });
-            assert_gains(&rt, deck, expected);
+            assert_gains(&mut rt, deck, expected);
         }
         rt.apply(Command::DeckEqSolo {
             deck: deck as u8,
             band: 3,
         });
-        assert_gains(&rt, deck, expected);
+        assert_gains(&mut rt, deck, expected);
         rt.apply(Command::DeckEqSolo {
             deck: deck as u8,
             band: 3,
         });
-        assert_gains(&rt, deck, expected);
+        assert_gains(&mut rt, deck, expected);
         rt.apply(Command::DeckGain {
             deck: deck as u8,
             value: 1.2,
@@ -273,8 +273,8 @@ fn deck_eq_gain_cut_and_solo_commands_update_both_channels() {
             band: 3,
         });
         assert_eq!(rt.decks[deck].gain, 1.3);
-        assert_gains(&rt, deck, expected);
-        assert_gains(&rt, 1 - deck, other);
+        assert_gains(&mut rt, deck, expected);
+        assert_gains(&mut rt, 1 - deck, other);
     }
 }
 
@@ -300,7 +300,7 @@ fn deck_sample_rate_change_resets_both_histories_and_preserves_controls() {
         }
         rt.set_sample_rate(sr);
         for deck in 0..DECKS {
-            assert_gains(&rt, deck, before);
+            assert_gains(&mut rt, deck, before);
             assert!(rt.decks[deck].eq_cut[1]);
             assert_eq!(rt.decks[deck].filter_amt, 0.2);
             for channel in 0..2 {

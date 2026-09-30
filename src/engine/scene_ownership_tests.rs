@@ -22,7 +22,7 @@ fn every_scene_panel_owns_its_settings_and_publishes_only_its_own_slots() {
     let mut rt = fixture();
     for scene in 0..SCENES {
         rt.apply(Command::OpenFxScene(scene as u8));
-        rt.publish();
+        rt.publish_for_test();
         assert!(rt.snap.lock().fx_slots.is_empty());
         rt.apply(Command::FxAdd(scene as u8));
         rt.apply(Command::FxMix {
@@ -38,7 +38,7 @@ fn every_scene_panel_owns_its_settings_and_publishes_only_its_own_slots() {
     for scene in (0..SCENES).rev() {
         rt.apply(Command::CloseFx);
         rt.apply(Command::OpenFxScene(scene as u8));
-        rt.publish();
+        rt.publish_for_test();
         let slots = rt.snap.lock().fx_slots.clone();
         assert_eq!(slots.len(), 1);
         assert_eq!(slots[0].0, fx::FxId::all()[scene].name());

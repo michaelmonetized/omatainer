@@ -115,7 +115,7 @@ fn quantized_sample_boundaries_cover_tempos_grids_instruments_and_complete_one_s
                         }
                         let distance = (start - initial_beat) / increment;
                         assert_eq!(pending_frames, (distance + 1e-7).floor() as usize);
-                        rt.publish();
+                        rt.publish_for_test();
                         let pending = rt.snap.lock().tracks[TRACK].clone();
                         assert!(pending.clip_pending);
                         assert_eq!(pending.clip_progress, 0.0);
@@ -126,7 +126,7 @@ fn quantized_sample_boundaries_cover_tempos_grids_instruments_and_complete_one_s
                             "first boundary: sr={sr}, bpm={bpm}, quant={quant}, instrument={instrument:?}"
                         );
                         assert!(rt.tracks[TRACK].playing.is_some());
-                        rt.publish();
+                        rt.publish_for_test();
                         assert!(!rt.snap.lock().tracks[TRACK].clip_pending);
                         // The initial event must not retrigger on the next sample.
                         render_one(&mut rt);
@@ -161,7 +161,7 @@ fn quantized_sample_boundaries_cover_tempos_grids_instruments_and_complete_one_s
                             );
                         } else {
                             assert!(rt.tracks[TRACK].playing.is_none());
-                            rt.publish();
+                            rt.publish_for_test();
                             let stopped = rt.snap.lock().tracks[TRACK].clone();
                             assert!(!stopped.clip_pending);
                             assert_eq!(stopped.playing_scene, -1);

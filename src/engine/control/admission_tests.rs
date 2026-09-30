@@ -140,7 +140,7 @@ fn saturated_queue_preserves_fifo_gate_releases_and_all_nine_stop_lanes() {
     assert_eq!(stats.accepted, 256);
     assert_eq!(stats.coalesced, 4);
     assert_eq!(stats.rejected, 1);
-    rt.publish();
+    rt.publish_for_test();
     assert_eq!(rt.snap.lock().submissions.accepted, 256);
 }
 
