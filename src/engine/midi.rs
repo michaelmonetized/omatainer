@@ -86,7 +86,7 @@ pub struct MidiHub {
 }
 
 impl MidiHub {
-    pub fn start(cmd: crossbeam_channel::Sender<Command>) -> Self {
+    pub fn start(cmd: super::CommandPort) -> Self {
         let devices = Arc::new(Mutex::new(Vec::new()));
         let log = Arc::new(Mutex::new(Vec::new()));
         let learn = Arc::new(Mutex::new(None));
@@ -196,7 +196,7 @@ impl MidiHub {
 fn handle_msg(
     msg: &[u8],
     map: &MidiMap,
-    cmd: &crossbeam_channel::Sender<Command>,
+    cmd: &super::CommandPort,
     log: &Arc<Mutex<Vec<String>>>,
     learn: &Arc<Mutex<Option<String>>>,
     shift: &Arc<Mutex<[bool; 4]>>,
@@ -288,7 +288,7 @@ fn dispatch(
     status: u8,
     d2: u8,
     msg: &[u8],
-    cmd: &crossbeam_channel::Sender<Command>,
+    cmd: &super::CommandPort,
     shift: &Arc<Mutex<[bool; 4]>>,
 ) {
     let pressed = status == 0x90 && d2 > 0;

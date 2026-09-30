@@ -4,24 +4,150 @@ use super::Command;
 use crossbeam_channel::Receiver;
 use serde::Serialize;
 
+#[cfg(test)]
+mod admission_tests;
+
 pub const COMMANDS_PER_BLOCK: usize = 32;
 
-/// A producer handle deliberately contains no renderer or renderer lock.
+/// A producer handle contains no renderer or renderer lock. Its short mutex
+/// serializes admission bookkeeping only; the audio consumer never acquires it.
 #[derive(Clone)]
 pub struct CommandPort {
     sender: crossbeam_channel::Sender<Command>,
+    shared: std::sync::Arc<AdmissionShared>,
+    admission: std::sync::Arc<parking_lot::Mutex<Admission>>,
+    capacity: usize,
+}
+
+const STOP_LANES: usize = super::TRACKS + 1;
+const MAX_COMMANDS: usize = 256;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GateKey {
+    Live { ch: u8, note: u8 },
+    Pad(u8),
+    Touch(u8),
+}
+
+struct Admission {
+    gates: [Option<GateKey>; MAX_COMMANDS],
+    held: usize,
+    pending_stops: [u64; STOP_LANES],
+    next_ticket: u64,
+}
+
+struct AdmissionShared {
+    completed_stops: [std::sync::atomic::AtomicU64; STOP_LANES],
+    connected: std::sync::atomic::AtomicBool,
+    accepted: std::sync::atomic::AtomicU64,
+    coalesced: std::sync::atomic::AtomicU64,
+    rejected: std::sync::atomic::AtomicU64,
+    last_error: std::sync::atomic::AtomicU8,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize)]
+pub struct SubmissionStats {
+    pub accepted: u64,
+    pub coalesced: u64,
+    pub rejected: u64,
+    pub last_error: Option<SubmissionError>,
+}
+
+impl AdmissionShared {
+    fn stats(&self) -> SubmissionStats {
+        use std::sync::atomic::Ordering::Relaxed;
+        SubmissionStats {
+            accepted: self.accepted.load(Relaxed),
+            coalesced: self.coalesced.load(Relaxed),
+            rejected: self.rejected.load(Relaxed),
+            last_error: match self.last_error.load(Relaxed) {
+                1 => Some(SubmissionError::Full),
+                2 => Some(SubmissionError::StopPending),
+                3 => Some(SubmissionError::Disconnected),
+                _ => None,
+            },
+        }
+    }
+}
+
+/// Receiver ownership stays with the callback. Completion is a fixed atomic
+/// store, never a producer-mutex operation or a blocking acknowledgment send.
+pub struct CommandReceiver {
+    receiver: crossbeam_channel::Receiver<Command>,
+    shared: Option<std::sync::Arc<AdmissionShared>>,
+}
+
+impl std::ops::Deref for CommandReceiver {
+    type Target = crossbeam_channel::Receiver<Command>;
+    fn deref(&self) -> &Self::Target {
+        &self.receiver
+    }
+}
+
+impl From<crossbeam_channel::Receiver<Command>> for CommandReceiver {
+    fn from(receiver: crossbeam_channel::Receiver<Command>) -> Self {
+        Self {
+            receiver,
+            shared: None,
+        }
+    }
+}
+
+impl Drop for CommandReceiver {
+    fn drop(&mut self) {
+        if let Some(shared) = &self.shared {
+            shared
+                .connected
+                .store(false, std::sync::atomic::Ordering::Release);
+        }
+    }
+}
+
+impl CommandReceiver {
+    pub(super) fn complete_stop(&self, lane: usize, ticket: u64) {
+        if let Some(shared) = &self.shared {
+            if let Some(completed) = shared.completed_stops.get(lane) {
+                completed.store(ticket, std::sync::atomic::Ordering::Release);
+            }
+        }
+    }
+
+    pub(super) fn submissions(&self) -> SubmissionStats {
+        self.shared
+            .as_ref()
+            .map(|shared| shared.stats())
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubmissionOutcome {
+    Accepted,
+    Coalesced,
+}
+
+impl SubmissionOutcome {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Coalesced => "coalesced",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SubmissionError {
     Full,
+    StopPending,
     Disconnected,
 }
 
 impl std::fmt::Display for SubmissionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::Full => "The control queue is full. Retry the action.",
+            Self::Full => "The control queue is full. Releases remain reserved. Wait for playback to catch up, then retry the action.",
+            Self::StopPending => "A stop is still pending for this target. Retry the start after the stop has completed.",
             Self::Disconnected => "Audio has disconnected. Restart Omatainer before retrying.",
         })
     }
@@ -30,18 +156,187 @@ impl std::fmt::Display for SubmissionError {
 impl std::error::Error for SubmissionError {}
 
 impl CommandPort {
-    pub fn new(sender: crossbeam_channel::Sender<Command>) -> Self {
-        Self { sender }
+    pub fn channel(capacity: usize) -> (Self, CommandReceiver) {
+        assert!(
+            capacity > STOP_LANES + 1,
+            "queue must fit dedicated stops and a gate pair"
+        );
+        assert!(
+            capacity <= MAX_COMMANDS,
+            "queue exceeds fixed reservation storage"
+        );
+        let (sender, receiver) = crossbeam_channel::bounded(capacity);
+        let shared = std::sync::Arc::new(AdmissionShared {
+            completed_stops: std::array::from_fn(|_| std::sync::atomic::AtomicU64::new(0)),
+            connected: std::sync::atomic::AtomicBool::new(true),
+            accepted: std::sync::atomic::AtomicU64::new(0),
+            coalesced: std::sync::atomic::AtomicU64::new(0),
+            rejected: std::sync::atomic::AtomicU64::new(0),
+            last_error: std::sync::atomic::AtomicU8::new(0),
+        });
+        let port = Self {
+            sender,
+            shared: shared.clone(),
+            admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
+                gates: [None; MAX_COMMANDS],
+                held: 0,
+                pending_stops: [0; STOP_LANES],
+                next_ticket: 1,
+            })),
+            capacity,
+        };
+        (
+            port,
+            CommandReceiver {
+                receiver,
+                shared: Some(shared),
+            },
+        )
     }
 
-    /// Success means queued for a subsequent audio block, not executed yet.
-    /// The producer receives failures immediately; it never waits on audio.
-    pub fn send(&self, command: Command) -> Result<(), SubmissionError> {
-        self.sender.try_send(command).map_err(|error| match error {
-            crossbeam_channel::TrySendError::Full(_) => SubmissionError::Full,
-            crossbeam_channel::TrySendError::Disconnected(_) => SubmissionError::Disconnected,
-        })
+    pub fn len(&self) -> usize {
+        self.sender.len()
     }
+    pub fn stats(&self) -> SubmissionStats {
+        self.shared.stats()
+    }
+
+    /// Accepted means queued, not executed. Coalesced means an equivalent
+    /// release is already ordered and no intervening accepted onset exists.
+    /// No producer waits for queue capacity; only the small admission section
+    /// serializes producers. Construct media/instruments before calling here.
+    pub fn send(&self, mut command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+        use std::sync::atomic::Ordering::{Acquire, Relaxed};
+        let mut state = self.admission.lock();
+        let fail = |error| {
+            self.shared.last_error.store(
+                match error {
+                    SubmissionError::Full => 1,
+                    SubmissionError::StopPending => 2,
+                    SubmissionError::Disconnected => 3,
+                },
+                Relaxed,
+            );
+            self.shared.rejected.fetch_add(1, Relaxed);
+            Err(error)
+        };
+        if !self.shared.connected.load(Acquire) {
+            return fail(SubmissionError::Disconnected);
+        }
+        for lane in 0..STOP_LANES {
+            if state.pending_stops[lane] != 0
+                && self.shared.completed_stops[lane].load(Acquire) == state.pending_stops[lane]
+            {
+                state.pending_stops[lane] = 0;
+            }
+        }
+        let stop_lane = match command {
+            Command::Stop => Some(0),
+            Command::StopTrack { track } if (track as usize) < super::TRACKS => {
+                Some(track as usize + 1)
+            }
+            _ => None,
+        };
+        let gate = gate_change(&command);
+        let existing_gate =
+            gate.and_then(|(key, _)| state.gates.iter().position(|entry| *entry == Some(key)));
+        if stop_lane.is_some_and(|lane| state.pending_stops[lane] != 0)
+            || gate.is_some_and(|(_, down)| !down && existing_gate.is_none())
+        {
+            self.shared.coalesced.fetch_add(1, Relaxed);
+            return Ok(SubmissionOutcome::Coalesced);
+        }
+        if blocked_by_stop(&command, &state.pending_stops) {
+            return fail(SubmissionError::StopPending);
+        }
+        let releasing = gate.is_some_and(|(_, down)| !down);
+        let reserves_new_gate = gate.is_some_and(|(_, down)| down && existing_gate.is_none());
+        if stop_lane.is_none()
+            && !releasing
+            && self.sender.len() + state.held + STOP_LANES + 1 + usize::from(reserves_new_gate)
+                > self.capacity
+        {
+            return fail(SubmissionError::Full);
+        }
+        let ticket = state.next_ticket;
+        if let Some(lane) = stop_lane {
+            command = Command::ReservedStop {
+                lane: lane as u8,
+                ticket,
+            };
+        }
+        match self.sender.try_send(command) {
+            Ok(()) => {
+                if let Some(lane) = stop_lane {
+                    state.pending_stops[lane] = ticket;
+                    state.next_ticket = ticket.wrapping_add(1).max(1);
+                }
+                if let Some((key, _)) = gate {
+                    if reserves_new_gate {
+                        let empty = state
+                            .gates
+                            .iter()
+                            .position(Option::is_none)
+                            .expect("admitted gate has reserved capacity");
+                        state.gates[empty] = Some(key);
+                        state.held += 1;
+                    }
+                    if releasing {
+                        state.gates[existing_gate.unwrap()] = None;
+                        state.held -= 1;
+                    }
+                }
+                self.shared.accepted.fetch_add(1, Relaxed);
+                Ok(SubmissionOutcome::Accepted)
+            }
+            Err(error) => {
+                // Drop rejected command payloads only after releasing the
+                // producer mutex (large clips/media must not extend contention).
+                drop(state);
+                let reason = match &error {
+                    crossbeam_channel::TrySendError::Full(_) => SubmissionError::Full,
+                    crossbeam_channel::TrySendError::Disconnected(_) => {
+                        SubmissionError::Disconnected
+                    }
+                };
+                drop(error);
+                fail(reason)
+            }
+        }
+    }
+}
+
+fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
+    match *command {
+        Command::LiveNoteOn { ch, note, .. } => Some((GateKey::Live { ch: ch & 15, note }, true)),
+        Command::LiveNoteOff { ch, note } => Some((GateKey::Live { ch: ch & 15, note }, false)),
+        Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
+        Command::DeckTouch { deck, on } => Some((GateKey::Touch(deck % super::DECKS as u8), on)),
+        _ => None,
+    }
+}
+
+fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
+    let clip_track = match *command {
+        Command::LaunchClip { track, .. } | Command::FireClip { track, .. } => Some(track as usize),
+        _ => None,
+    };
+    let scene_start = matches!(
+        command,
+        Command::LaunchScene { .. }
+            | Command::RestartScene { .. }
+            | Command::AddScene { .. }
+            | Command::ToggleScene { .. }
+    );
+    let transport_start = matches!(
+        command,
+        Command::Play | Command::TogglePlay | Command::Record
+    );
+    (pending[0] != 0 && (clip_track.is_some() || scene_start || transport_start))
+        || clip_track.is_some_and(|track| track < super::TRACKS && pending[track + 1] != 0)
+        || (scene_start && pending[1..].iter().any(|ticket| *ticket != 0))
+        || (matches!(command, Command::TogglePlay)
+            && pending[1..].iter().any(|ticket| *ticket != 0))
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize)]

@@ -1,15 +1,15 @@
 use super::*;
 use crate::engine::dsp::Sample;
 use crate::engine::{Command, Snapshot};
-use crate::engine::{CommandPort, SubmissionError};
+use crate::engine::{CommandPort, SubmissionError, SubmissionOutcome};
 use parking_lot::Mutex;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
-fn fixture() -> (OutputCallback, crossbeam_channel::Sender<Command>) {
-    let (tx, rx) = crossbeam_channel::bounded(256);
+fn fixture() -> (OutputCallback, CommandPort) {
+    let (tx, rx) = CommandPort::channel(256);
     let snap = Arc::new(Mutex::new(Snapshot::default()));
     let mut rt = RtEngine::new(48_000.0, rx, snap);
     rt.apply(Command::DeckAudio {
@@ -33,16 +33,37 @@ fn fixture() -> (OutputCallback, crossbeam_channel::Sender<Command>) {
 
 #[test]
 fn control_port_reports_queue_acceptance_full_and_disconnected() {
-    let (tx, rx) = crossbeam_channel::bounded(1);
-    let commands = CommandPort::new(tx);
-    assert_eq!(commands.send(Command::Play), Ok(()));
-    assert_eq!(commands.send(Command::Stop), Err(SubmissionError::Full));
-    assert!(matches!(rx.try_recv(), Ok(Command::Play)));
-    assert_eq!(commands.send(Command::Stop), Ok(()));
-    assert!(matches!(rx.try_recv(), Ok(Command::Stop)));
+    let (commands, rx) = CommandPort::channel(12);
+    for _ in 0..3 {
+        assert_eq!(
+            commands.send(Command::Play),
+            Ok(SubmissionOutcome::Accepted)
+        );
+    }
+    assert_eq!(commands.send(Command::Play), Err(SubmissionError::Full));
+    // Dedicated capacity still accepts Stop when ordinary admission is full.
+    assert_eq!(
+        commands.send(Command::Stop),
+        Ok(SubmissionOutcome::Accepted)
+    );
+    assert_eq!(
+        commands.send(Command::Stop),
+        Ok(SubmissionOutcome::Coalesced)
+    );
+    for _ in 0..3 {
+        assert!(matches!(rx.try_recv(), Ok(Command::Play)));
+    }
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(Command::ReservedStop { lane: 0, .. })
+    ));
     drop(rx);
     assert_eq!(
-        commands.send(Command::Play),
+        commands.send(Command::Stop),
+        Err(SubmissionError::Disconnected)
+    );
+    assert_eq!(
+        commands.send(Command::LiveNoteOff { ch: 0, note: 60 }),
         Err(SubmissionError::Disconnected)
     );
 }
@@ -50,7 +71,7 @@ fn control_port_reports_queue_acceptance_full_and_disconnected() {
 #[test]
 fn production_callback_keeps_rendering_during_delayed_gui_and_ipc_work() {
     let (mut callback, tx) = fixture();
-    let commands = CommandPort::new(tx.clone());
+    let commands = tx.clone();
     let snap = callback.rt.snap.clone();
     let mut warm = [0.0f32; 1024];
     callback.render(&mut warm);
