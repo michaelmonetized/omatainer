@@ -230,6 +230,7 @@ fn handle_client(
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
             "midi": s.midi,
+            "commands": s.commands,
             "deckA": s.decks.first().map(|d| d.title.clone()).unwrap_or_default(),
             "deckB": s.decks.get(1).map(|d| d.title.clone()).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),
