@@ -27,7 +27,7 @@ fn command_backlog_defers_note_off_without_reordering_or_dropping_it() {
         .any(|v| v.note == 60 && (1..=3).contains(&v.env.stage)));
     assert_eq!(engine.command_stats.backlog, 1);
     assert_eq!(engine.command_stats.applied_last_block, 2);
-    engine.publish();
+    engine.publish_for_test();
     assert_eq!(snap.lock().commands.budget_exhaustions, 1);
     engine.process(&mut out);
     assert!(!engine.tracks[1]

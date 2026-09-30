@@ -25,6 +25,7 @@ mod midi_schedule;
 mod midi_schedule_tests;
 #[cfg(test)]
 mod sample_rate_tests;
+mod snapshot;
 #[cfg(test)]
 mod scene_stereo_tests;
 #[cfg(test)]
@@ -418,6 +419,7 @@ pub struct RtEngine {
     pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
     pub snap: Arc<Mutex<Snapshot>>,
+    publisher: snapshot::Publisher,
     clock_accum: f64,
     cpu_acc: f32,
     frames_done: u64,
@@ -474,7 +476,7 @@ pub struct DeckSnap {
     pub pitch_range: u8,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct TrackSnap {
     pub name: String,
     pub gain: f32,
@@ -490,7 +492,7 @@ pub struct TrackSnap {
     pub clips: Vec<ClipSnap>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct ClipSnap {
     pub kind: u8,
     pub name: String,
@@ -706,6 +708,7 @@ impl RtEngine {
             library_sel: 0,
             cmd_rx: cmd_rx.into(),
             command_stats: control::CommandStats::default(),
+            publisher: snapshot::Publisher::new(snap.clone()),
             snap,
             clock_accum: 0.0,
             cpu_acc: 0.0,
@@ -741,7 +744,7 @@ impl RtEngine {
             deck: 1,
             audio: stem_b,
         });
-        e.publish();
+        e.publish_initial();
         e
     }
 
@@ -1974,133 +1977,6 @@ impl RtEngine {
         } else {
             &mut self.scene_fx[0]
         }
-    }
-
-    pub fn publish(&self) {
-        // Readers may keep an older snapshot; rendering must never wait for
-        // them. Allocation/retirement of a successful publication is separate
-        // work from removing reader contention from the callback.
-        let Some(mut snapshot) = self.snap.try_lock() else { return };
-        let mut tracks = Vec::with_capacity(TRACKS);
-        for t in &self.tracks {
-            tracks.push(TrackSnap {
-                name: t.name.clone(),
-                gain: t.gain,
-                pan: t.pan,
-                mute: t.mute,
-                solo: t.solo,
-                armed: t.armed,
-                meter: t.meter,
-                playing_scene: t.playing.map(|p| p.scene as i8).unwrap_or(-1),
-                clip_pending: t.playing.is_some_and(|p| p.last_beat < 0.0),
-                clip_progress: t.playing.map(|p| {
-                    if p.last_beat < 0.0 {
-                        return 0.0;
-                    }
-                    let len = (t.clips[p.scene as usize].bars.max(0.25) * 4.0) as f64;
-                    (p.last_beat.rem_euclid(len) / len) as f32
-                }).unwrap_or(0.0),
-                clip_looping: t.playing.map(|p| p.looping).unwrap_or(false),
-                clips: t
-                    .clips
-                    .iter()
-                    .map(|c| ClipSnap {
-                        kind: match c.kind {
-                            ClipKind::Empty => 0,
-                            ClipKind::Midi => 1,
-                            ClipKind::Audio => 2,
-                        },
-                        name: c.name.clone(),
-                        bars: c.bars,
-                    })
-                    .collect(),
-            });
-        }
-        let decks = self
-            .decks
-            .iter()
-            .map(|d| DeckSnap {
-                title: d.title.clone(),
-                playing: d.playing,
-                pos: d.pos,
-                frames: d.audio.as_ref().map(|a| a.frames() as f64).unwrap_or(0.0),
-                bpm: d.bpm,
-                pitch: d.pitch,
-                gain: d.gain,
-                eq: [d.eq[0].low_g, d.eq[0].mid_g, d.eq[0].high_g],
-                filter: d.filter_amt,
-                vinyl: d.vinyl,
-                sync: d.sync,
-                keylock: d.keylock,
-                pfl: d.pfl,
-                loop_on: d.loop_on,
-                hotcues: std::array::from_fn(|i| d.hotcues[i].set),
-                meter: d.meter,
-                peaks: std::sync::Arc::new(
-                    d.audio.as_ref().map(|a| a.peaks.clone()).unwrap_or_default(),
-                ),
-                duration: d.audio.as_ref().map(|a| {
-                    if a.sr == 0 {
-                        0.0
-                    } else {
-                        a.frames() as f32 / a.sr as f32
-                    }
-                }).unwrap_or(0.0),
-                eq_cut: d.eq_cut,
-                eq_solo: d.eq_solo,
-                pitch_range: d.pitch_range,
-            })
-            .collect();
-        let bar = (self.beat / 4.0).floor() as u32 + 1;
-        let midi = std::mem::take(&mut snapshot.midi);
-        *snapshot = Snapshot {
-            playing: self.playing,
-            recording: self.recording,
-            bpm: self.bpm,
-            beat: self.beat,
-            bar,
-            beat_in_bar: (self.beat % 4.0) as f32,
-            master: self.master,
-            xfader: self.xfader,
-            cue_mix: self.cue_mix,
-            view: match self.view {
-                View::Session => 0,
-                View::Arrange => 1,
-                View::Compose => 2,
-            },
-            selected_track: self.selected_track,
-            selected_scene: self.selected_scene,
-            selected_deck: self.selected_deck,
-            tracks,
-            decks,
-            midi,
-            cpu: self.cpu_acc,
-            commands: self.command_stats,
-            submissions: self.cmd_rx.submissions(),
-            fx_wet: self.fx_wet,
-            metronome: self.metronome,
-            quant: self.quant,
-            quantize: self.quantize,
-            sampler_bank: self.sampler_bank,
-            sampler_inst: self.sampler_inst,
-            sampler_oct: self.sampler_oct,
-            sampler_banks: self.sampler_banks.clone(),
-            fx_view: self.fx_view,
-            fx_slots: {
-                let chain = if self.fx_view >= 0 && self.fx_view < TRACKS as i16 {
-                    &self.tracks[self.fx_view as usize].fx
-                } else {
-                    &self.scene_fx[if self.fx_view >= 100 {
-                        (self.fx_view as usize - 100).min(SCENES - 1)
-                    } else { 0 }]
-                };
-                chain
-                    .slots
-                    .iter()
-                    .map(|s| (s.id().name().to_string(), s.on, s.mix, s.p))
-                    .collect()
-            },
-        };
     }
 
     pub fn process_interleaved(&mut self, data: &mut [f32], ch: usize) {
