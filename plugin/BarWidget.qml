@@ -56,7 +56,7 @@ BarWidget {
     text: root.liveLabel
     foreground: root.liveColor
     useActiveColor: false
-    tooltipText: root.running
+    tooltipText: root.error ? root.error : root.running
       ? ("omatainer  " + Math.round(root.bpm) + " bpm" + (root.deckA ? "\nA  " + root.deckA : "") + (root.deckB ? "\nB  " + root.deckB : ""))
       : (root.error || "omatainer idle — click to launch")
     horizontalMargin: 8.75
@@ -123,6 +123,16 @@ BarWidget {
         wrapMode: Text.WordWrap
         text: "A  " + (root.deckA || "empty") + "\nB  " + (root.deckB || "empty")
         color: Color.popups.text
+        font.family: Style.font.family
+        font.pixelSize: Style.font.caption
+      }
+
+      Text {
+        width: parent.width
+        visible: root.error !== ""
+        text: root.error
+        wrapMode: Text.WordWrap
+        color: Color.urgent
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
       }
