@@ -11,6 +11,8 @@ mod test_alloc;
 pub mod audio;
 mod control;
 pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
+pub(crate) mod ui_requests;
+pub(crate) mod media_source;
 #[cfg(test)]
 mod control_tests;
 #[cfg(test)]
@@ -1617,8 +1619,9 @@ impl RtEngine {
                 d.cue_pos = d.pos;
             }
             Command::DeckLoadSelected { deck } => {
-                let _ = deck;
-                // UI resolves the path and sends DeckAudio
+                // Producers capture selection before routing to the GUI.
+                // A raw renderer call without that capture must fail visibly.
+                self.cmd_rx.forward_ui_load(deck);
             }
             Command::Xfader(v) => self.xfader = v.clamp(0.0, 1.0),
             Command::Master(v) => self.master = v.clamp(0.0, 1.5),
@@ -2202,6 +2205,7 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
 
 pub struct Engine {
     pub cmd: CommandPort,
+    pub ui_requests: ui_requests::Receiver,
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
     // Production always owns a live stream. Only the test constructor below
@@ -2213,6 +2217,7 @@ pub struct Engine {
 impl Engine {
     pub fn start() -> anyhow::Result<Self> {
         let (tx, rx) = CommandPort::channel(256);
+        let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(48000.0, rx, snap.clone());
         let audio = audio::start(rt)?;
@@ -2220,6 +2225,7 @@ impl Engine {
         let midi = midi::MidiHub::start(tx.clone());
         Ok(Self {
             cmd: tx,
+            ui_requests,
             snap,
             midi,
             _audio: Some(audio),
@@ -2230,11 +2236,13 @@ impl Engine {
     #[cfg(test)]
     pub(crate) fn headless_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
         let (cmd, rx) = CommandPort::channel(capacity);
+        let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
         (
             Self {
                 cmd,
+                ui_requests,
                 snap,
                 midi: midi::MidiHub::without_devices(),
                 _audio: None,
