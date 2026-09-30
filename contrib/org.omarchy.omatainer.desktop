@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Omatainer
+GenericName=DAW and DJ
+Comment=Sequencer, arranger, composer, and dual-deck DJ — Omarchy native
+Exec=omatainer
+Icon=org.omarchy.omatainer
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Sequencer;Player;
+StartupWMClass=org.omarchy.omatainer
+StartupNotify=true
+Keywords=daw;dj;ableton;serato;midi;omarchy;deck;platter;session;

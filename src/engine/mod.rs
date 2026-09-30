@@ -1,0 +1,2266 @@
+pub mod audio;
+pub mod dsp;
+pub mod fx;
+pub mod midi;
+
+use crate::engine::dsp::{
+    detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
+    Sample, Svf, ThreeBand,
+};
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+pub const TRACKS: usize = 8;
+pub const SCENES: usize = 8;
+pub const DECKS: usize = 2;
+pub const HOTCUES: usize = 8;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum View {
+    Session,
+    Arrange,
+    Compose,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClipKind {
+    Empty,
+    Midi,
+    Audio,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MidiNote {
+    pub pitch: u8,
+    pub start: f32,
+    pub len: f32,
+    pub vel: u8,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Clip {
+    pub kind: ClipKind,
+    pub name: String,
+    pub bars: f32,
+    pub notes: Vec<MidiNote>,
+    pub gain: f32,
+    #[serde(skip)]
+    pub audio: Option<Arc<Sample>>,
+}
+
+impl Clip {
+    pub fn empty() -> Self {
+        Self {
+            kind: ClipKind::Empty,
+            name: String::new(),
+            bars: 1.0,
+            notes: Vec::new(),
+            gain: 1.0,
+            audio: None,
+        }
+    }
+    pub fn occupied(&self) -> bool {
+        self.kind != ClipKind::Empty
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PlayingClip {
+    pub scene: u8,
+    pub start_beat: f64,
+    pub last_beat: f64,
+    pub looping: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct TrackRt {
+    pub name: String,
+    pub clips: [Clip; SCENES],
+    pub playing: Option<PlayingClip>,
+    pub gain: f32,
+    pub pan: f32,
+    pub mute: bool,
+    pub solo: bool,
+    pub armed: bool,
+    pub kind: u8, // 0 drums 1 bass 2 keys 3 pad 4 audio
+    pub poly: Poly,
+    pub eq: ThreeBand,
+    pub meter: f32,
+    pub drum_samples: [Arc<Sample>; 6],
+    pub drum_pos: [Option<(usize, f64)>; 16],
+    pub fx: fx::FxChain,
+    pub arp_note: Option<u8>,
+}
+
+#[derive(Clone, Debug)]
+pub struct HotCue {
+    pub set: bool,
+    pub pos: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct DeckRt {
+    pub audio: Option<Arc<Sample>>,
+    pub pos: f64,
+    pub rate: f32,
+    pub target_rate: f32,
+    pub pitch: f32, // -1..1 mapped around 1.0
+    pub playing: bool,
+    pub cue_pos: f64,
+    pub touching: bool,
+    pub vinyl: bool,
+    pub keylock: bool,
+    pub sync: bool,
+    pub gain: f32,
+    pub eq: ThreeBand,
+    pub filter: Svf,
+    pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
+    pub filter_amt: f32,   // 0.5 = noon
+    pub pfl: bool,
+    pub hotcues: [HotCue; HOTCUES],
+    pub loop_on: bool,
+    pub loop_start: f64,
+    pub loop_len: f64,
+    pub bpm: f32,
+    pub meter: f32,
+    pub title: String,
+    pub scratch: f32,
+    pub eq_cut: [bool; 4],
+    pub eq_solo: i8,
+    pub eq_store: [f32; 4],
+    pub pitch_range: u8,
+    pub sync_bpm: f32,
+    pub grain_i: f32,
+    pub grain_origin: f64,
+    pub prev_origin: f64,
+}
+
+impl DeckRt {
+    fn new(sr: f32) -> Self {
+        Self {
+            audio: None,
+            pos: 0.0,
+            rate: 1.0,
+            target_rate: 1.0,
+            pitch: 0.5,
+            playing: false,
+            cue_pos: 0.0,
+            touching: false,
+            vinyl: true,
+            keylock: false,
+            sync: false,
+            gain: 0.85,
+            eq: ThreeBand::new(sr),
+            filter: Svf::default(),
+            filter_morph: 0.5,
+            filter_amt: 0.5,
+            pfl: false,
+            hotcues: std::array::from_fn(|_| HotCue {
+                set: false,
+                pos: 0.0,
+            }),
+            loop_on: false,
+            loop_start: 0.0,
+            loop_len: 0.0,
+            bpm: 124.0,
+            meter: 0.0,
+            title: String::new(),
+            scratch: 0.0,
+            eq_cut: [false; 4],
+            eq_solo: -1,
+            eq_store: [1.0, 1.0, 1.0, 0.85],
+            pitch_range: 0,
+            sync_bpm: 124.0,
+            grain_i: 0.0,
+            grain_origin: 0.0,
+            prev_origin: 0.0,
+        }
+    }
+
+    fn pitch_rate(&self) -> f32 {
+        let span = match self.pitch_range {
+            1 => 0.16,
+            2 => 0.50,
+            _ => 0.08,
+        };
+        1.0 + (self.pitch - 0.5) * 2.0 * span
+    }
+
+    fn play_rate(&self) -> f32 {
+        if self.playing || self.touching {
+            self.pitch_rate()
+        } else {
+            0.0
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FxKind {
+    Echo,
+    Reverb,
+    Filter,
+}
+
+pub struct RtEngine {
+    pub sr: f32,
+    pub playing: bool,
+    pub recording: bool,
+    pub bpm: f32,
+    pub beat: f64,
+    pub quant: f32,
+    pub view: View,
+    pub xfader: f32,
+    pub xfader_curve: f32,
+    pub master: f32,
+    pub cue_mix: f32,
+    pub tracks: Vec<TrackRt>,
+    pub decks: [DeckRt; DECKS],
+    pub delay: Delay,
+    pub reverb: Reverb,
+    pub fx_kind: [FxKind; 3],
+    pub fx_wet: [f32; 3],
+    pub tap: Vec<Instant>,
+    pub selected_track: usize,
+    pub selected_scene: usize,
+    pub selected_deck: usize,
+    pub library_sel: usize,
+    pub cmd_rx: crossbeam_channel::Receiver<Command>,
+    pub snap: Arc<Mutex<Snapshot>>,
+    clock_accum: f64,
+    cpu_acc: f32,
+    frames_done: u64,
+    metronome: bool,
+    metro_phase: u8,
+    scratch: Vec<f32>,
+    pub quantize: bool,
+    pub sampler_bank: usize,
+    pub sampler_inst: i8,
+    pub sampler_oct: i8,
+    pub sampler_poly: Poly,
+    pub sampler_banks: Vec<String>,
+    pub pad_banks: Vec<[Arc<Sample>; 16]>,
+    pub pad_voices: [Option<(Arc<Sample>, f64, f32)>; 16],
+    pub builtin: [Option<Arc<Sample>>; 2],
+    pub fx_view: i16,
+    pub scene_fx: fx::FxChain,
+    pub compose_armed: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct DeckSnap {
+    pub title: String,
+    pub playing: bool,
+    pub pos: f64,
+    pub frames: f64,
+    pub bpm: f32,
+    pub pitch: f32,
+    pub gain: f32,
+    pub eq: [f32; 3],
+    pub filter: f32,
+    pub vinyl: bool,
+    pub sync: bool,
+    pub keylock: bool,
+    pub pfl: bool,
+    pub loop_on: bool,
+    pub hotcues: [bool; HOTCUES],
+    pub meter: f32,
+    #[serde(skip)]
+    pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
+    pub duration: f32,
+    pub eq_cut: [bool; 4],
+    pub eq_solo: i8,
+    pub pitch_range: u8,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct TrackSnap {
+    pub name: String,
+    pub gain: f32,
+    pub pan: f32,
+    pub mute: bool,
+    pub solo: bool,
+    pub armed: bool,
+    pub meter: f32,
+    pub playing_scene: i8,
+    pub clip_progress: f32,
+    pub clip_looping: bool,
+    pub clips: Vec<ClipSnap>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ClipSnap {
+    pub kind: u8,
+    pub name: String,
+    pub bars: f32,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Snapshot {
+    pub playing: bool,
+    pub recording: bool,
+    pub bpm: f32,
+    pub beat: f64,
+    pub bar: u32,
+    pub beat_in_bar: f32,
+    pub master: f32,
+    pub xfader: f32,
+    pub cue_mix: f32,
+    pub view: u8,
+    pub selected_track: usize,
+    pub selected_scene: usize,
+    pub selected_deck: usize,
+    pub tracks: Vec<TrackSnap>,
+    pub decks: Vec<DeckSnap>,
+    pub midi: Vec<String>,
+    pub cpu: f32,
+    pub fx_wet: [f32; 3],
+    pub metronome: bool,
+    pub quant: f32,
+    pub quantize: bool,
+    pub sampler_bank: usize,
+    pub sampler_inst: i8,
+    pub sampler_oct: i8,
+    pub sampler_banks: Vec<String>,
+    pub fx_view: i16,
+    pub fx_slots: Vec<(String, bool, f32, [f32; 4])>,
+}
+
+impl Default for Snapshot {
+    fn default() -> Self {
+        Self {
+            playing: false,
+            recording: false,
+            bpm: 124.0,
+            beat: 0.0,
+            bar: 1,
+            beat_in_bar: 0.0,
+            master: 0.85,
+            xfader: 0.5,
+            cue_mix: 0.0,
+            view: 0,
+            selected_track: 0,
+            selected_scene: 0,
+            selected_deck: 0,
+            tracks: Vec::new(),
+            decks: Vec::new(),
+            midi: Vec::new(),
+            cpu: 0.0,
+            fx_wet: [0.0; 3],
+            metronome: false,
+            quant: 1.0,
+            quantize: true,
+            sampler_bank: 0,
+            sampler_inst: -1,
+            sampler_oct: 3,
+            sampler_banks: vec!["Kit".into()],
+            fx_view: -1,
+            fx_slots: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Command {
+    Play,
+    Stop,
+    TogglePlay,
+    Record,
+    Tap(Instant),
+    SetBpm(f32),
+    LaunchClip { track: u8, scene: u8 },
+    LaunchScene { scene: u8 },
+    StopTrack { track: u8 },
+    DeckPlay { deck: u8 },
+    DeckCue { deck: u8 },
+    DeckSync { deck: u8 },
+    DeckJog { deck: u8, delta: f32 },
+    DeckTouch { deck: u8, on: bool },
+    DeckPitch { deck: u8, value: f32 },
+    DeckGain { deck: u8, value: f32 },
+    DeckEq { deck: u8, band: u8, value: f32 },
+    DeckFilter { deck: u8, value: f32 },
+    DeckPfl { deck: u8 },
+    DeckHotCue { deck: u8, pad: u8, del: bool },
+    DeckLoop { deck: u8, beats: f32 },
+    DeckLoopIn { deck: u8 },
+    DeckLoopOut { deck: u8 },
+    DeckLoadSelected { deck: u8 },
+    DeckVinyl { deck: u8 },
+    DeckKeylock { deck: u8 },
+    DeckAudio { deck: u8, audio: Arc<Sample> },
+    DeckSeek { deck: u8, frac: f32 },
+    DeckUnload { deck: u8 },
+    LoadBuiltin { deck: u8, stem: u8 },
+    Xfader(f32),
+    Master(f32),
+    CueMix(f32),
+    TrackGain { track: u8, value: f32 },
+    TrackPan { track: u8, value: f32 },
+    Mute { track: u8 },
+    Solo { track: u8 },
+    Arm { track: u8 },
+    Browse(f32),
+    Select { track: usize, scene: usize },
+    SelectDeck(usize),
+    SetView(View),
+    LiveNoteOn { ch: u8, note: u8, vel: u8 },
+    LiveNoteOff { ch: u8, note: u8 },
+    SetNotes { track: u8, scene: u8, notes: Vec<MidiNote> },
+    FxWet { slot: u8, value: f32 },
+    FxSelect { slot: u8 },
+    Quant(f32),
+    Metronome,
+    LearnCapture { param: String, ch: u8, d1: u8, d2: u8, status: u8 },
+    NudgeBpm(f32),
+    ToggleQuant,
+    DeckLoopDouble { deck: u8 },
+    DeckLoopHalf { deck: u8 },
+    DeckReloop { deck: u8 },
+    DeckMatch,
+    DeckEqCut { deck: u8, band: u8 },
+    DeckEqSolo { deck: u8, band: u8 },
+    DeckPitchRange { deck: u8 },
+    FireClip { track: u8, scene: u8, looping: bool },
+    ToggleScene { scene: u8 },
+    RestartScene { scene: u8 },
+    AddScene { scene: u8 },
+    SamplerPad { pad: u8, on: bool },
+    SamplerBank(usize),
+    SamplerInst(i8),
+    SamplerOct(i8),
+    OpenFxTrack(u8),
+    OpenFxScene(u8),
+    CloseFx,
+    FxAdd(u8),
+    FxToggle(usize),
+    FxMix { slot: usize, value: f32 },
+    FxParam { slot: usize, p: u8, value: f32 },
+}
+
+impl RtEngine {
+    pub fn new(
+        sr: f32,
+        cmd_rx: crossbeam_channel::Receiver<Command>,
+        snap: Arc<Mutex<Snapshot>>,
+    ) -> Self {
+        let drums = build_kit(sr as u32);
+        let names = [
+            "Drums", "Bass", "Keys", "Pad", "Perc", "Vocal", "FX", "Spare",
+        ];
+        let kinds = [0u8, 1, 2, 3, 0, 4, 3, 1];
+        let tracks = (0..TRACKS)
+            .map(|i| TrackRt {
+                name: names[i].into(),
+                clips: std::array::from_fn(|_| Clip::empty()),
+                playing: None,
+                gain: 0.8,
+                pan: 0.0,
+                mute: false,
+                solo: false,
+                armed: false,
+                kind: kinds[i],
+                poly: Poly::new(sr, kinds[i].min(2), 8),
+                eq: ThreeBand::new(sr),
+                meter: 0.0,
+                drum_samples: drums.clone(),
+                drum_pos: [None; 16],
+                fx: fx::FxChain::new(sr),
+                arp_note: None,
+            })
+            .collect();
+        let mut e = Self {
+            sr,
+            playing: false,
+            recording: false,
+            bpm: 124.0,
+            beat: 0.0,
+            quant: 1.0,
+            view: View::Session,
+            xfader: 0.5,
+            xfader_curve: 0.35,
+            master: 0.85,
+            cue_mix: 0.0,
+            tracks,
+            decks: [DeckRt::new(sr), DeckRt::new(sr)],
+            delay: Delay::new((sr * 2.0) as usize),
+            reverb: Reverb::new(),
+            fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
+            fx_wet: [0.0, 0.0, 0.0],
+            tap: Vec::new(),
+            selected_track: 0,
+            selected_scene: 0,
+            selected_deck: 0,
+            library_sel: 0,
+            cmd_rx,
+            snap,
+            clock_accum: 0.0,
+            cpu_acc: 0.0,
+            frames_done: 0,
+            metronome: false,
+            metro_phase: 0,
+            scratch: Vec::new(),
+            quantize: true,
+            sampler_bank: 0,
+            sampler_inst: -1,
+            sampler_oct: 3,
+            sampler_poly: Poly::new(sr, 1, 8),
+            sampler_banks: vec!["Kit".into(), "Perc".into(), "Hits".into()],
+            pad_banks: build_pad_banks(sr as u32),
+            pad_voices: std::array::from_fn(|_| None),
+            builtin: [None, None],
+            fx_view: -1,
+            scene_fx: fx::FxChain::new(sr),
+            compose_armed: false,
+        };
+        e.seed_demo();
+        let (stem_a, stem_b) = demo_stems(sr as u32, e.bpm);
+        e.builtin = [Some(stem_a.clone()), Some(stem_b.clone())];
+        e.apply(Command::DeckAudio {
+            deck: 0,
+            audio: stem_a,
+        });
+        e.apply(Command::DeckAudio {
+            deck: 1,
+            audio: stem_b,
+        });
+        e.publish();
+        e
+    }
+
+    pub fn set_sample_rate(&mut self, sr: u32) {
+        if (sr as f32 - self.sr).abs() < 1.0 {
+            return;
+        }
+        self.sr = sr as f32;
+        self.delay = Delay::new((sr as f32 * 2.0) as usize);
+        let drums = build_kit(sr);
+        self.pad_banks = build_pad_banks(sr);
+        for t in &mut self.tracks {
+            t.poly = Poly::new(self.sr, t.kind.min(2), 8);
+            t.eq = ThreeBand::new(self.sr);
+            t.drum_samples = drums.clone();
+        }
+        for d in &mut self.decks {
+            d.eq = ThreeBand::new(self.sr);
+        }
+    }
+
+    fn seed_demo(&mut self) {
+        // House drums: kick every beat, snare 2/4, hats 8ths.
+        let mut drums = Vec::new();
+        for b in 0..4 {
+            drums.push(MidiNote {
+                pitch: 36,
+                start: b as f32,
+                len: 0.25,
+                vel: if b % 2 == 0 { 110 } else { 96 },
+            });
+            drums.push(MidiNote {
+                pitch: 42,
+                start: b as f32,
+                len: 0.12,
+                vel: 70,
+            });
+            drums.push(MidiNote {
+                pitch: 42,
+                start: b as f32 + 0.5,
+                len: 0.12,
+                vel: 88,
+            });
+        }
+        drums.push(MidiNote {
+            pitch: 38,
+            start: 1.0,
+            len: 0.25,
+            vel: 108,
+        });
+        drums.push(MidiNote {
+            pitch: 38,
+            start: 3.0,
+            len: 0.25,
+            vel: 108,
+        });
+        drums.push(MidiNote {
+            pitch: 39,
+            start: 3.5,
+            len: 0.2,
+            vel: 90,
+        });
+        self.tracks[0].clips[0] = Clip {
+            kind: ClipKind::Midi,
+            name: "House Kit".into(),
+            bars: 1.0,
+            notes: drums,
+            gain: 1.0,
+            audio: None,
+        };
+        self.tracks[1].clips[0] = Clip {
+            kind: ClipKind::Midi,
+            name: "Bassline".into(),
+            bars: 1.0,
+            notes: vec![
+                MidiNote { pitch: 36, start: 0.0, len: 0.7, vel: 100 },
+                MidiNote { pitch: 36, start: 0.75, len: 0.2, vel: 80 },
+                MidiNote { pitch: 43, start: 1.5, len: 0.45, vel: 96 },
+                MidiNote { pitch: 41, start: 2.5, len: 0.45, vel: 90 },
+                MidiNote { pitch: 36, start: 3.0, len: 0.4, vel: 100 },
+                MidiNote { pitch: 38, start: 3.5, len: 0.4, vel: 86 },
+            ],
+            gain: 0.95,
+            audio: None,
+        };
+        self.tracks[2].clips[0] = Clip {
+            kind: ClipKind::Midi,
+            name: "Stab".into(),
+            bars: 2.0,
+            notes: vec![
+                MidiNote { pitch: 60, start: 0.0, len: 0.45, vel: 78 },
+                MidiNote { pitch: 64, start: 0.0, len: 0.45, vel: 70 },
+                MidiNote { pitch: 67, start: 0.0, len: 0.45, vel: 70 },
+                MidiNote { pitch: 62, start: 4.0, len: 0.45, vel: 74 },
+                MidiNote { pitch: 65, start: 4.0, len: 0.45, vel: 68 },
+                MidiNote { pitch: 69, start: 4.0, len: 0.45, vel: 68 },
+            ],
+            gain: 0.7,
+            audio: None,
+        };
+        self.tracks[3].clips[0] = Clip {
+            kind: ClipKind::Midi,
+            name: "Pad".into(),
+            bars: 2.0,
+            notes: vec![
+                MidiNote { pitch: 48, start: 0.0, len: 7.5, vel: 64 },
+                MidiNote { pitch: 55, start: 0.0, len: 7.5, vel: 52 },
+                MidiNote { pitch: 60, start: 0.0, len: 7.5, vel: 48 },
+            ],
+            gain: 0.55,
+            audio: None,
+        };
+        // scene 2 variation
+        let mut d2 = self.tracks[0].clips[0].notes.clone();
+        d2.push(MidiNote {
+            pitch: 46,
+            start: 1.75,
+            len: 0.3,
+            vel: 80,
+        });
+        self.tracks[0].clips[1] = Clip {
+            kind: ClipKind::Midi,
+            name: "Fill".into(),
+            bars: 1.0,
+            notes: d2,
+            gain: 1.0,
+            audio: None,
+        };
+    }
+
+    pub fn process(&mut self, out: &mut [f32]) {
+        while let Ok(c) = self.cmd_rx.try_recv() {
+            self.apply(c);
+        }
+        let t0 = Instant::now();
+        let frames = out.len() / 2;
+        let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
+        self.delay.time_samples = (spb * 0.75) as f32;
+        self.delay.mix = self.fx_wet[0];
+        self.reverb.mix = self.fx_wet[1];
+
+        let any_solo = self.tracks.iter().any(|t| t.solo);
+
+        for i in 0..frames {
+            if self.playing {
+                self.beat += 1.0 / spb;
+            }
+            let mut l = 0.0f32;
+            let mut r = 0.0f32;
+            let mut cue_l = 0.0f32;
+            let mut cue_r = 0.0f32;
+
+            for ti in 0..self.tracks.len() {
+                let (tl, tr, pfl) = self.render_track(ti, any_solo);
+                if pfl {
+                    cue_l += tl;
+                    cue_r += tr;
+                }
+                l += tl;
+                r += tr;
+            }
+            if !self.scene_fx.slots.is_empty() {
+                let (sl, sr) = self.scene_fx.tick_stereo(0.5 * (l + r), self.sr);
+                l = sl;
+                r = sr;
+            }
+
+            let (al, ar) = self.render_deck(0);
+            let (bl, br) = self.render_deck(1);
+            let (ga, gb) = xfader_gains(self.xfader, self.xfader_curve);
+            let dl = al * ga + bl * gb;
+            let dr = ar * ga + br * gb;
+            let sp = self.sampler_poly.tick(self.sr);
+            let (pl, pr) = self.tick_pads();
+            l += dl + sp + pl;
+            r += dr + sp + pr;
+            if self.decks[0].pfl {
+                cue_l += al;
+                cue_r += ar;
+            }
+            if self.decks[1].pfl {
+                cue_l += bl;
+                cue_r += br;
+            }
+
+            if self.metronome && self.playing {
+                let bi = self.beat.fract();
+                let beat_i = self.beat.floor() as i64;
+                if beat_i as u8 != self.metro_phase && bi < 0.02 {
+                    self.metro_phase = beat_i as u8;
+                    let hz = if beat_i % 4 == 0 { 1200.0 } else { 800.0 };
+                    let click = (i as f32 * hz / self.sr).sin() * 0.15;
+                    l += click;
+                    r += click;
+                }
+            }
+
+            l = self.delay.tick(l);
+            r = self.delay.tick(r);
+            l = self.reverb.tick(l);
+            r = self.reverb.tick(r);
+
+            let cm = self.cue_mix;
+            l = l * (1.0 - cm) + cue_l * cm;
+            r = r * (1.0 - cm) + cue_r * cm;
+            l = limiter(l * self.master);
+            r = limiter(r * self.master);
+            out[i * 2] = l;
+            out[i * 2 + 1] = r;
+        }
+        let dt = t0.elapsed().as_secs_f32();
+        let budget = frames as f32 / self.sr;
+        self.cpu_acc = self.cpu_acc * 0.9 + (dt / budget.max(1e-6)) * 0.1;
+        self.frames_done += frames as u64;
+        if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
+            self.publish();
+        }
+    }
+
+    fn render_track(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
+        let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
+        let playing = self.tracks[ti].playing;
+        if let Some(p) = playing {
+            let scene = p.scene as usize;
+            let clip_bars = self.tracks[ti].clips[scene].bars.max(0.25) as f64;
+            let clip_beats = clip_bars * 4.0;
+            let local = (self.beat - p.start_beat).rem_euclid(clip_beats);
+            let prev = self.tracks[ti]
+                .playing
+                .map(|x| x.last_beat)
+                .unwrap_or(local);
+            // trigger notes that crossed
+            if self.tracks[ti].clips[scene].kind == ClipKind::Midi && !silent {
+                let notes = self.tracks[ti].clips[scene].notes.clone();
+                let kind = self.tracks[ti].kind;
+                let arp = self.tracks[ti]
+                    .fx
+                    .slots
+                    .iter()
+                    .any(|s| s.id == fx::FxId::Arp && s.on);
+                if arp {
+                    let mut chord: Vec<u8> = notes
+                        .iter()
+                        .filter(|n| {
+                            local >= n.start as f64 && local < (n.start + n.len) as f64
+                        })
+                        .map(|n| n.pitch)
+                        .collect();
+                    chord.sort_unstable();
+                    chord.dedup();
+                    let step = (local * 4.0).floor() as i64;
+                    let prev_step = (prev * 4.0).floor() as i64;
+                    if step != prev_step {
+                        if let Some(old) = self.tracks[ti].arp_note.take() {
+                            self.tracks[ti].poly.note_off(old);
+                        }
+                        if !chord.is_empty() {
+                            let pitch = chord[step.rem_euclid(chord.len() as i64) as usize];
+                            if kind == 0 {
+                                self.trig_drum(ti, pitch, 1.0);
+                            } else {
+                                self.tracks[ti].poly.note_on(pitch, 0.9);
+                            }
+                            self.tracks[ti].arp_note = Some(pitch);
+                        }
+                    }
+                } else {
+                    for n in notes {
+                        if crossed(prev, local, n.start as f64, clip_beats) {
+                            if kind == 0 {
+                                self.trig_drum(ti, n.pitch, n.vel as f32 / 127.0);
+                            } else {
+                                self.tracks[ti]
+                                    .poly
+                                    .note_on(n.pitch, n.vel as f32 / 127.0);
+                            }
+                        }
+                        let end = n.start as f64 + n.len as f64;
+                        if kind != 0 && crossed(prev, local, end, clip_beats) {
+                            self.tracks[ti].poly.note_off(n.pitch);
+                        }
+                    }
+                }
+            }
+            if let Some(p) = self.tracks[ti].playing.as_mut() {
+                let wrapped = local + 0.0001 < p.last_beat;
+                p.last_beat = local;
+                if wrapped && !p.looping {
+                    self.tracks[ti].playing = None;
+                }
+            }
+        }
+        let mut s = 0.0f32;
+        if !silent {
+            if self.tracks[ti].kind == 0 {
+                s += self.tick_drums(ti);
+            } else {
+                s += self.tracks[ti].poly.tick(self.sr);
+            }
+            s = self.tracks[ti].eq.tick(s);
+            let (fl, fr) = self.tracks[ti].fx.tick_stereo(s, self.sr);
+            let g = self.tracks[ti].gain;
+            let pan = self.tracks[ti].pan;
+            let gl = (1.0 - pan.max(0.0)).sqrt() * g;
+            let gr = (1.0 + pan.min(0.0)).sqrt() * g;
+            self.tracks[ti].meter = self.tracks[ti].meter * 0.93 + s.abs() * 0.07;
+            return (fl * gl, fr * gr, false);
+        } else if self.tracks[ti].kind != 0 {
+            let _ = self.tracks[ti].poly.tick(self.sr);
+        }
+        let pan = self.tracks[ti].pan;
+        let gl = (1.0 - pan.max(0.0)).sqrt();
+        let gr = (1.0 + pan.min(0.0)).sqrt();
+        self.tracks[ti].meter = self.tracks[ti].meter * 0.93 + s.abs() * 0.07;
+        (s * gl, s * gr, false)
+    }
+
+    fn trig_drum(&mut self, ti: usize, pitch: u8, vel: f32) {
+        let idx = match pitch {
+            36 | 35 => 0, // kick
+            38 | 40 => 1, // snare
+            42 | 44 => 2, // closed hat
+            39 | 37 => 3, // clap
+            46 => 4,      // open hat
+            _ => 5,       // tom
+        };
+        let slots = &mut self.tracks[ti].drum_pos;
+        if let Some(slot) = slots.iter_mut().find(|s| s.is_none()) {
+            *slot = Some((idx, 0.0));
+        } else if let Some(slot) = slots.first_mut() {
+            *slot = Some((idx, 0.0));
+        }
+        let _ = vel;
+    }
+
+    fn tick_drums(&mut self, ti: usize) -> f32 {
+        let mut s = 0.0;
+        let samples = self.tracks[ti].drum_samples.clone();
+        let sr = self.sr as f64;
+        for slot in self.tracks[ti].drum_pos.iter_mut() {
+            if let Some((idx, pos)) = slot {
+                let samp = &samples[*idx];
+                let (l, _) = samp.at(*pos);
+                s += l;
+                *pos += samp.sr as f64 / sr;
+                if *pos >= samp.frames() as f64 {
+                    *slot = None;
+                }
+            }
+        }
+        s
+    }
+
+    fn render_deck(&mut self, di: usize) -> (f32, f32) {
+        let sr = self.sr as f64;
+        {
+            let d = &mut self.decks[di];
+            if d.sync {
+                if let Some(a) = &d.audio {
+                    if a.bpm > 1.0 {
+                        d.target_rate = d.sync_bpm / a.bpm;
+                    }
+                }
+            } else {
+                d.target_rate = d.play_rate();
+            }
+            if d.touching {
+                d.rate = d.scratch;
+            } else {
+                d.rate += (d.target_rate - d.rate) * 0.08;
+                d.scratch *= 0.85;
+            }
+            if d.playing || d.touching {
+                d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr);
+            }
+            if d.loop_on && d.loop_len > 1.0 {
+                if d.pos >= d.loop_start + d.loop_len {
+                    d.pos = d.loop_start + (d.pos - d.loop_start) % d.loop_len;
+                }
+                if d.pos < d.loop_start {
+                    d.pos = d.loop_start;
+                }
+            }
+            if let Some(a) = &d.audio {
+                if d.pos >= a.frames() as f64 {
+                    d.pos = 0.0;
+                    if !d.loop_on {
+                        d.playing = false;
+                    }
+                }
+                if d.pos < 0.0 {
+                    d.pos = 0.0;
+                }
+            }
+        }
+        let keylock = self.decks[di].keylock;
+        let (mut l, mut r) = if keylock {
+            self.deck_grain(di, sr)
+        } else if let Some(a) = &self.decks[di].audio {
+            a.at(self.decks[di].pos)
+        } else {
+            (0.0, 0.0)
+        };
+        let g = self.decks[di].gain;
+        l *= g;
+        r *= g;
+        l = self.decks[di].eq.tick(l);
+        r = self.decks[di].eq.tick(r);
+        let f = self.decks[di].filter_amt;
+        if (f - 0.5).abs() > 0.03 {
+            let morph = if f < 0.5 { 0.0 } else { 1.0 };
+            let amt = (f - 0.5).abs() * 2.0;
+            let cut = 200.0 + amt * 8000.0;
+            l = self.decks[di].filter.process(l, cut, 0.4, self.sr, morph);
+            r = self.decks[di].filter.process(r, cut, 0.4, self.sr, morph);
+        }
+        self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
+        (l, r)
+    }
+
+    fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
+        const G: f32 = 1024.0;
+        const HOP: f32 = 512.0;
+        let Some(a) = self.decks[di].audio.clone() else {
+            return (0.0, 0.0);
+        };
+        let asr = a.sr as f64 / sr;
+        let d = &mut self.decks[di];
+        if !d.playing && !d.touching {
+            return a.at(d.pos);
+        }
+        let gi = d.grain_i;
+        let (l0, r0) = a.at(d.grain_origin + gi as f64 * asr);
+        let (l1, r1) = a.at(d.prev_origin + (gi + HOP) as f64 * asr);
+        let w0 = 0.5 - 0.5 * (std::f32::consts::TAU * (gi / G)).cos();
+        let w1 = 0.5 - 0.5 * (std::f32::consts::TAU * ((gi + HOP) / G)).cos();
+        d.grain_i += 1.0;
+        if d.grain_i >= HOP {
+            d.prev_origin = d.grain_origin;
+            d.grain_origin = d.pos;
+            d.grain_i -= HOP;
+        }
+        (l0 * w0 + l1 * w1, r0 * w0 + r1 * w1)
+    }
+
+    fn tick_pads(&mut self) -> (f32, f32) {
+        let mut l = 0.0;
+        let mut r = 0.0;
+        let sr = self.sr as f64;
+        for slot in self.pad_voices.iter_mut() {
+            if let Some((samp, pos, rate)) = slot {
+                let (a, b) = samp.at(*pos);
+                l += a;
+                r += b;
+                *pos += (*rate as f64) * samp.sr as f64 / sr;
+                if *pos >= samp.frames() as f64 {
+                    *slot = None;
+                }
+            }
+        }
+        (l, r)
+    }
+
+    pub fn apply(&mut self, c: Command) {
+        match c {
+            Command::Play => {
+                self.playing = true;
+            }
+            Command::Stop => {
+                self.playing = false;
+                self.recording = false;
+                for t in &mut self.tracks {
+                    t.playing = None;
+                    for v in &mut t.poly.voices {
+                        v.env.off();
+                    }
+                }
+            }
+            Command::TogglePlay => {
+                if self.playing {
+                    self.apply(Command::Stop);
+                } else {
+                    self.playing = true;
+                    // launch scene 0 if nothing running
+                    if self.tracks.iter().all(|t| t.playing.is_none()) {
+                        self.apply(Command::LaunchScene { scene: 0 });
+                    }
+                }
+            }
+            Command::Record => self.recording = !self.recording,
+            Command::Tap(t) => {
+                self.tap.push(t);
+                self.tap.retain(|x| t.duration_since(*x) < Duration::from_secs(3));
+                if self.tap.len() >= 2 {
+                    let dts: Vec<f32> = self.tap.windows(2).map(|w| w[1].duration_since(w[0]).as_secs_f32()).collect();
+                    let avg = dts.iter().sum::<f32>() / dts.len() as f32;
+                    if avg > 0.2 && avg < 1.5 {
+                        self.bpm = (60.0 / avg).clamp(60.0, 200.0);
+                    }
+                }
+            }
+            Command::SetBpm(b) => self.bpm = b.clamp(40.0, 240.0),
+            Command::NudgeBpm(d) => self.bpm = (self.bpm + d).clamp(40.0, 240.0),
+            Command::LaunchClip { track, scene } => {
+                let t = track as usize;
+                let s = scene as usize;
+                if t < self.tracks.len() && s < SCENES {
+                    if !self.tracks[t].clips[s].occupied() {
+                        self.tracks[t].playing = None;
+                    } else {
+                        let q = self.quant.max(0.0) as f64;
+                        let start = if q <= 0.0 || !self.playing {
+                            self.beat
+                        } else {
+                            (self.beat / q).ceil() * q
+                        };
+                        self.tracks[t].playing = Some(PlayingClip {
+                            scene,
+                            start_beat: start,
+                            last_beat: -0.0001,
+                            looping: true,
+                        });
+                        self.playing = true;
+                        self.selected_track = t;
+                        self.selected_scene = s;
+                    }
+                }
+            }
+            Command::LaunchScene { scene } => {
+                for t in 0..self.tracks.len() {
+                    if self.tracks[t].clips[scene as usize].occupied() {
+                        self.apply(Command::LaunchClip {
+                            track: t as u8,
+                            scene,
+                        });
+                    } else {
+                        self.tracks[t].playing = None;
+                    }
+                }
+            }
+            Command::StopTrack { track } => {
+                if (track as usize) < self.tracks.len() {
+                    self.tracks[track as usize].playing = None;
+                }
+            }
+            Command::DeckPlay { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.audio.is_none() {
+                    return;
+                }
+                d.playing = !d.playing;
+                if d.playing && d.pos < 1.0 {
+                    d.pos = d.cue_pos;
+                }
+                d.grain_origin = d.pos;
+                d.prev_origin = d.pos;
+                d.grain_i = 0.0;
+            }
+            Command::DeckCue { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.playing {
+                    d.playing = false;
+                    d.pos = d.cue_pos;
+                } else {
+                    d.cue_pos = d.pos;
+                }
+            }
+            Command::DeckSync { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.sync = !d.sync;
+            }
+            Command::DeckJog { deck, delta } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.touching || !d.playing {
+                    d.pos += delta as f64 * 400.0;
+                    d.scratch = delta * 18.0;
+                } else {
+                    d.rate = (d.target_rate + delta * 0.15).clamp(0.0, 4.0);
+                }
+            }
+            Command::DeckTouch { deck, on } => {
+                self.decks[deck as usize % DECKS].touching = on;
+                if !on {
+                    self.decks[deck as usize % DECKS].scratch = 0.0;
+                }
+            }
+            Command::DeckPitch { deck, value } => {
+                self.decks[deck as usize % DECKS].pitch = value.clamp(0.0, 1.0);
+            }
+            Command::DeckGain { deck, value } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.eq_store[3] = value.clamp(0.0, 1.5);
+                if !d.eq_cut[3] {
+                    d.gain = d.eq_store[3];
+                }
+            }
+            Command::DeckEq { deck, band, value } => {
+                let g = eq_gain(value);
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.eq_store[band as usize % 4] = g;
+                if !d.eq_cut[band as usize % 4] && (d.eq_solo < 0 || d.eq_solo == band as i8) {
+                    match band {
+                        0 => d.eq.low_g = g,
+                        1 => d.eq.mid_g = g,
+                        _ => d.eq.high_g = g,
+                    }
+                }
+            }
+            Command::DeckFilter { deck, value } => {
+                self.decks[deck as usize % DECKS].filter_amt = value.clamp(0.0, 1.0);
+            }
+            Command::DeckPfl { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.pfl = !d.pfl;
+            }
+            Command::DeckHotCue { deck, pad, del } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                let i = pad as usize % HOTCUES;
+                if del {
+                    d.hotcues[i].set = false;
+                } else if d.hotcues[i].set {
+                    d.pos = d.hotcues[i].pos;
+                    d.playing = true;
+                } else {
+                    d.hotcues[i] = HotCue {
+                        set: true,
+                        pos: d.pos,
+                    };
+                }
+            }
+            Command::DeckLoop { deck, beats } => {
+                let spb = self.decks[deck as usize % DECKS]
+                    .audio
+                    .as_ref()
+                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
+                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.loop_on {
+                    d.loop_on = false;
+                } else {
+                    d.loop_on = true;
+                    d.loop_start = d.pos;
+                    d.loop_len = beats as f64 * spb;
+                }
+            }
+            Command::DeckLoopIn { deck } => {
+                let spb = self.decks[deck as usize % DECKS]
+                    .audio
+                    .as_ref()
+                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
+                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
+                let q = self.quantize;
+                let d = &mut self.decks[deck as usize % DECKS];
+                let mut pos = d.pos;
+                if q {
+                    pos = (pos / spb).round() * spb;
+                }
+                d.loop_start = pos;
+            }
+            Command::DeckLoopOut { deck } => {
+                let spb = self.decks[deck as usize % DECKS]
+                    .audio
+                    .as_ref()
+                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
+                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
+                let q = self.quantize;
+                let d = &mut self.decks[deck as usize % DECKS];
+                let mut pos = d.pos;
+                if q {
+                    pos = (pos / spb).round() * spb;
+                }
+                d.loop_len = (pos - d.loop_start).abs().max(64.0);
+                d.loop_on = true;
+            }
+            Command::DeckVinyl { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.vinyl = !d.vinyl;
+            }
+            Command::DeckKeylock { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.keylock = !d.keylock;
+                d.grain_origin = d.pos;
+                d.prev_origin = d.pos;
+                d.grain_i = 0.0;
+            }
+            Command::DeckAudio { deck, audio } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.title = audio.name.clone();
+                d.bpm = audio.bpm;
+                d.pos = 0.0;
+                d.cue_pos = 0.0;
+                d.playing = false;
+                d.hotcues = std::array::from_fn(|_| HotCue {
+                    set: false,
+                    pos: 0.0,
+                });
+                d.audio = Some(audio);
+            }
+            Command::DeckUnload { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.audio = None;
+                d.title.clear();
+                d.playing = false;
+                d.pos = 0.0;
+                d.cue_pos = 0.0;
+                d.loop_on = false;
+                d.hotcues = std::array::from_fn(|_| HotCue {
+                    set: false,
+                    pos: 0.0,
+                });
+            }
+            Command::DeckSeek { deck, frac } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                let frames = d.audio.as_ref().map(|a| a.frames() as f64).unwrap_or(0.0);
+                d.pos = (frac.clamp(0.0, 1.0) as f64 * frames).max(0.0);
+                d.cue_pos = d.pos;
+            }
+            Command::DeckLoadSelected { deck } => {
+                let _ = deck;
+                // UI resolves the path and sends DeckAudio
+            }
+            Command::Xfader(v) => self.xfader = v.clamp(0.0, 1.0),
+            Command::Master(v) => self.master = v.clamp(0.0, 1.5),
+            Command::CueMix(v) => self.cue_mix = v.clamp(0.0, 1.0),
+            Command::TrackGain { track, value } => {
+                if (track as usize) < self.tracks.len() {
+                    self.tracks[track as usize].gain = value.clamp(0.0, 1.5);
+                }
+            }
+            Command::TrackPan { track, value } => {
+                if (track as usize) < self.tracks.len() {
+                    self.tracks[track as usize].pan = (value * 2.0 - 1.0).clamp(-1.0, 1.0);
+                }
+            }
+            Command::Mute { track } => {
+                if (track as usize) < self.tracks.len() {
+                    self.tracks[track as usize].mute = !self.tracks[track as usize].mute;
+                }
+            }
+            Command::Solo { track } => {
+                if (track as usize) < self.tracks.len() {
+                    self.tracks[track as usize].solo = !self.tracks[track as usize].solo;
+                }
+            }
+            Command::Arm { track } => {
+                if (track as usize) < self.tracks.len() {
+                    self.tracks[track as usize].armed = !self.tracks[track as usize].armed;
+                }
+            }
+            Command::Browse(v) => {
+                if v > 0.55 {
+                    self.library_sel = self.library_sel.saturating_add(1);
+                } else if v < 0.45 {
+                    self.library_sel = self.library_sel.saturating_sub(1);
+                }
+            }
+            Command::Select { track, scene } => {
+                self.selected_track = track.min(TRACKS - 1);
+                self.selected_scene = scene.min(SCENES - 1);
+                self.compose_armed = true;
+                let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
+                if clip.kind == ClipKind::Empty {
+                    clip.kind = ClipKind::Midi;
+                    clip.name = "Clip".into();
+                    clip.bars = 1.0;
+                }
+            }
+            Command::SelectDeck(d) => self.selected_deck = d.min(DECKS - 1),
+            Command::SetView(v) => self.view = v,
+            Command::LiveNoteOn { note, vel, .. } => {
+                let t = self.selected_track;
+                if self.tracks[t].kind == 0 {
+                    self.trig_drum(t, note, vel as f32 / 127.0);
+                } else {
+                    self.tracks[t].poly.note_on(note, vel as f32 / 127.0);
+                }
+                if self.recording && self.playing {
+                    let scene = self.selected_scene;
+                    if self.tracks[t].clips[scene].kind == ClipKind::Empty {
+                        self.tracks[t].clips[scene] = Clip {
+                            kind: ClipKind::Midi,
+                            name: "Take".into(),
+                            bars: 1.0,
+                            notes: Vec::new(),
+                            gain: 1.0,
+                            audio: None,
+                        };
+                    }
+                    if self.tracks[t].clips[scene].kind == ClipKind::Midi {
+                        let start = self.beat.fract() as f32
+                            + (self.beat.floor() as i64 % 4) as f32;
+                        self.tracks[t].clips[scene].notes.push(MidiNote {
+                            pitch: note,
+                            start,
+                            len: 0.25,
+                            vel,
+                        });
+                    }
+                }
+            }
+            Command::LiveNoteOff { note, .. } => {
+                let t = self.selected_track;
+                self.tracks[t].poly.note_off(note);
+            }
+            Command::SetNotes { track, scene, notes } => {
+                let t = track as usize;
+                let s = scene as usize;
+                if t < TRACKS && s < SCENES {
+                    if self.tracks[t].clips[s].kind == ClipKind::Empty {
+                        self.tracks[t].clips[s].kind = ClipKind::Midi;
+                        self.tracks[t].clips[s].name = "Clip".into();
+                        self.tracks[t].clips[s].bars = 1.0;
+                    }
+                    self.tracks[t].clips[s].notes = notes;
+                }
+            }
+            Command::FxWet { slot, value } => {
+                self.fx_wet[slot as usize % 3] = value.clamp(0.0, 1.0);
+            }
+            Command::FxSelect { slot } => {
+                let i = slot as usize % 3;
+                self.fx_kind[i] = match self.fx_kind[i] {
+                    FxKind::Echo => FxKind::Reverb,
+                    FxKind::Reverb => FxKind::Filter,
+                    FxKind::Filter => FxKind::Echo,
+                };
+            }
+            Command::Quant(q) => self.quant = q,
+            Command::Metronome => self.metronome = !self.metronome,
+            Command::LearnCapture { .. } => {}
+            Command::ToggleQuant => {
+                self.quantize = !self.quantize;
+                self.quant = if self.quantize { 1.0 } else { 0.0 };
+            }
+            Command::DeckLoopDouble { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.loop_on {
+                    d.loop_len *= 2.0;
+                }
+            }
+            Command::DeckLoopHalf { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.loop_on {
+                    d.loop_len = (d.loop_len * 0.5).max(64.0);
+                }
+            }
+            Command::DeckReloop { deck } => {
+                let spb = self.decks[deck as usize % DECKS]
+                    .audio
+                    .as_ref()
+                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
+                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
+                let q = self.quantize;
+                let d = &mut self.decks[deck as usize % DECKS];
+                let mut pos = d.pos;
+                if q {
+                    pos = (pos / spb).round() * spb;
+                }
+                d.loop_start = pos;
+                d.loop_len = 4.0 * 4.0 * spb;
+                d.loop_on = true;
+            }
+            Command::DeckMatch => {
+                let fav = if self.xfader <= 0.5 { 0 } else { 1 };
+                let oth = 1 - fav;
+                let Some(af) = self.decks[fav].audio.clone() else {
+                    return;
+                };
+                let target_bpm = af.bpm.max(1.0) * self.decks[fav].pitch_rate();
+                self.decks[oth].sync = true;
+                self.decks[oth].sync_bpm = target_bpm;
+                if self.decks[fav].playing && self.decks[oth].playing {
+                    if let Some(ao) = self.decks[oth].audio.clone() {
+                        let spb_f = af.sr as f64 * 60.0 / af.bpm.max(1.0) as f64;
+                        let spb_o = ao.sr as f64 * 60.0 / ao.bpm.max(1.0) as f64;
+                        let phase = self.decks[fav].pos.rem_euclid(spb_f) / spb_f;
+                        let bar = (self.decks[oth].pos / spb_o).floor();
+                        self.decks[oth].pos = (bar + phase) * spb_o;
+                    }
+                }
+            }
+            Command::DeckEqCut { deck, band } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                let b = band as usize % 4;
+                d.eq_cut[b] = !d.eq_cut[b];
+                if b < 3 {
+                    let g = if d.eq_cut[b] { 0.0 } else { d.eq_store[b] };
+                    match b {
+                        0 => d.eq.low_g = g,
+                        1 => d.eq.mid_g = g,
+                        _ => d.eq.high_g = g,
+                    }
+                } else {
+                    d.gain = if d.eq_cut[3] { 0.0 } else { d.eq_store[3] };
+                }
+            }
+            Command::DeckEqSolo { deck, band } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                let b = band as i8;
+                if d.eq_solo == b {
+                    d.eq_solo = -1;
+                    d.eq.low_g = if d.eq_cut[0] { 0.0 } else { d.eq_store[0] };
+                    d.eq.mid_g = if d.eq_cut[1] { 0.0 } else { d.eq_store[1] };
+                    d.eq.high_g = if d.eq_cut[2] { 0.0 } else { d.eq_store[2] };
+                } else {
+                    d.eq_solo = b;
+                    d.eq.low_g = if b == 0 { d.eq_store[0] } else { 0.0 };
+                    d.eq.mid_g = if b == 1 { d.eq_store[1] } else { 0.0 };
+                    d.eq.high_g = if b == 2 { d.eq_store[2] } else { 0.0 };
+                    if b == 3 {
+                        d.eq.low_g = d.eq_store[0];
+                        d.eq.mid_g = d.eq_store[1];
+                        d.eq.high_g = d.eq_store[2];
+                    }
+                }
+            }
+            Command::DeckPitchRange { deck } => {
+                let d = &mut self.decks[deck as usize % DECKS];
+                d.pitch_range = (d.pitch_range + 1) % 3;
+            }
+            Command::FireClip { track, scene, looping } => {
+                self.apply(Command::LaunchClip { track, scene });
+                if let Some(p) = self.tracks.get_mut(track as usize).and_then(|t| t.playing.as_mut()) {
+                    p.looping = looping;
+                }
+            }
+            Command::ToggleScene { scene } => {
+                let active = self.tracks.iter().any(|t| t.playing.map(|p| p.scene) == Some(scene));
+                if active {
+                    for t in &mut self.tracks {
+                        if t.playing.map(|p| p.scene) == Some(scene) {
+                            t.playing = None;
+                        }
+                    }
+                } else {
+                    self.apply(Command::LaunchScene { scene });
+                }
+            }
+            Command::RestartScene { scene } => {
+                self.apply(Command::LaunchScene { scene });
+            }
+            Command::AddScene { scene } => {
+                for t in 0..self.tracks.len() {
+                    if self.tracks[t].clips[scene as usize].occupied() {
+                        self.apply(Command::LaunchClip {
+                            track: t as u8,
+                            scene,
+                        });
+                    }
+                }
+            }
+            Command::LoadBuiltin { deck, stem } => {
+                if let Some(a) = self.builtin.get(stem as usize).and_then(|s| s.clone()) {
+                    self.apply(Command::DeckAudio { deck, audio: a });
+                }
+            }
+            Command::SamplerPad { pad, on } => {
+                let pitch = sampler_pitch(self.sampler_inst, self.sampler_oct, pad);
+                if on {
+                    if self.sampler_inst < 0 {
+                        if let Some(bank) = self.pad_banks.get(self.sampler_bank) {
+                            let samp = bank[pad as usize % 16].clone();
+                            let rate = 2f32.powi((self.sampler_oct - 3) as i32);
+                            self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate));
+                        }
+                    } else {
+                        self.sampler_poly.note_on(pitch, 0.9);
+                        self.tracks[self.selected_track].poly.note_on(pitch, 0.9);
+                    }
+                    if self.compose_armed || self.recording {
+                        let start = (self.beat % 4.0) as f32;
+                        let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
+                        if clip.kind == ClipKind::Empty {
+                            clip.kind = ClipKind::Midi;
+                            clip.name = "Pad".into();
+                            clip.bars = 1.0;
+                        }
+                        if clip.kind == ClipKind::Midi {
+                            clip.notes.push(MidiNote {
+                                pitch,
+                                start,
+                                len: 0.25,
+                                vel: 110,
+                            });
+                        }
+                    }
+                } else {
+                    self.sampler_poly.note_off(pitch);
+                    self.tracks[self.selected_track].poly.note_off(pitch);
+                }
+            }
+            Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
+            Command::SamplerInst(i) => {
+                self.sampler_inst = i;
+                let kind = if i < 0 { 0 } else { i.min(2) as u8 };
+                self.sampler_poly = Poly::new(self.sr, kind, 8);
+            }
+            Command::SamplerOct(d) => {
+                let old = self.sampler_oct;
+                self.sampler_oct = (self.sampler_oct + d).clamp(1, 7);
+                let dn = (self.sampler_oct - old) * 12;
+                if dn != 0 {
+                    let bump = |voices: &mut [crate::engine::dsp::Voice]| {
+                        for v in voices {
+                            if v.env.active() {
+                                v.note = (v.note as i16 + dn as i16).clamp(0, 127) as u8;
+                            }
+                        }
+                    };
+                    bump(&mut self.sampler_poly.voices);
+                    bump(&mut self.tracks[self.selected_track].poly.voices);
+                    let rate = 2f32.powi((self.sampler_oct - 3) as i32);
+                    for slot in &mut self.pad_voices {
+                        if let Some((_, _, r)) = slot {
+                            *r = rate;
+                        }
+                    }
+                }
+            }
+            Command::OpenFxTrack(t) => {
+                self.fx_view = if self.fx_view == t as i16 { -1 } else { t as i16 };
+            }
+            Command::OpenFxScene(s) => {
+                let id = 100 + s as i16;
+                self.fx_view = if self.fx_view == id { -1 } else { id };
+            }
+            Command::CloseFx => self.fx_view = -1,
+            Command::FxAdd(kind) => {
+                let id = *fx::FxId::all().get(kind as usize).unwrap_or(&fx::FxId::Delay);
+                self.active_chain().slots.push(fx::FxSlot::new(id));
+            }
+            Command::FxToggle(slot) => {
+                let c = self.active_chain();
+                if let Some(s) = c.slots.get_mut(slot) {
+                    s.on = !s.on;
+                }
+            }
+            Command::FxMix { slot, value } => {
+                let c = self.active_chain();
+                if let Some(s) = c.slots.get_mut(slot) {
+                    s.mix = value.clamp(0.0, 1.0);
+                }
+            }
+            Command::FxParam { slot, p, value } => {
+                let c = self.active_chain();
+                if let Some(s) = c.slots.get_mut(slot) {
+                    s.p[p as usize % 4] = value.clamp(0.0, 1.0);
+                }
+            }
+        }
+    }
+
+    fn active_chain(&mut self) -> &mut fx::FxChain {
+        if self.fx_view >= 100 {
+            &mut self.scene_fx
+        } else if self.fx_view >= 0 {
+            &mut self.tracks[self.fx_view as usize % TRACKS].fx
+        } else {
+            &mut self.scene_fx
+        }
+    }
+
+    pub fn publish(&self) {
+        let mut tracks = Vec::with_capacity(TRACKS);
+        for t in &self.tracks {
+            tracks.push(TrackSnap {
+                name: t.name.clone(),
+                gain: t.gain,
+                pan: t.pan,
+                mute: t.mute,
+                solo: t.solo,
+                armed: t.armed,
+                meter: t.meter,
+                playing_scene: t.playing.map(|p| p.scene as i8).unwrap_or(-1),
+                clip_progress: t.playing.map(|p| {
+                    let len = (t.clips[p.scene as usize].bars.max(0.25) * 4.0) as f64;
+                    ((self.beat - p.start_beat).rem_euclid(len) / len) as f32
+                }).unwrap_or(0.0),
+                clip_looping: t.playing.map(|p| p.looping).unwrap_or(false),
+                clips: t
+                    .clips
+                    .iter()
+                    .map(|c| ClipSnap {
+                        kind: match c.kind {
+                            ClipKind::Empty => 0,
+                            ClipKind::Midi => 1,
+                            ClipKind::Audio => 2,
+                        },
+                        name: c.name.clone(),
+                        bars: c.bars,
+                    })
+                    .collect(),
+            });
+        }
+        let decks = self
+            .decks
+            .iter()
+            .map(|d| DeckSnap {
+                title: d.title.clone(),
+                playing: d.playing,
+                pos: d.pos,
+                frames: d.audio.as_ref().map(|a| a.frames() as f64).unwrap_or(0.0),
+                bpm: d.bpm,
+                pitch: d.pitch,
+                gain: d.gain,
+                eq: [d.eq.low_g, d.eq.mid_g, d.eq.high_g],
+                filter: d.filter_amt,
+                vinyl: d.vinyl,
+                sync: d.sync,
+                keylock: d.keylock,
+                pfl: d.pfl,
+                loop_on: d.loop_on,
+                hotcues: std::array::from_fn(|i| d.hotcues[i].set),
+                meter: d.meter,
+                peaks: std::sync::Arc::new(
+                    d.audio.as_ref().map(|a| a.peaks.clone()).unwrap_or_default(),
+                ),
+                duration: d.audio.as_ref().map(|a| {
+                    if a.sr == 0 {
+                        0.0
+                    } else {
+                        a.frames() as f32 / a.sr as f32
+                    }
+                }).unwrap_or(0.0),
+                eq_cut: d.eq_cut,
+                eq_solo: d.eq_solo,
+                pitch_range: d.pitch_range,
+            })
+            .collect();
+        let bar = (self.beat / 4.0).floor() as u32 + 1;
+        let midi = self.snap.lock().midi.clone();
+        *self.snap.lock() = Snapshot {
+            playing: self.playing,
+            recording: self.recording,
+            bpm: self.bpm,
+            beat: self.beat,
+            bar,
+            beat_in_bar: (self.beat % 4.0) as f32,
+            master: self.master,
+            xfader: self.xfader,
+            cue_mix: self.cue_mix,
+            view: match self.view {
+                View::Session => 0,
+                View::Arrange => 1,
+                View::Compose => 2,
+            },
+            selected_track: self.selected_track,
+            selected_scene: self.selected_scene,
+            selected_deck: self.selected_deck,
+            tracks,
+            decks,
+            midi,
+            cpu: self.cpu_acc,
+            fx_wet: self.fx_wet,
+            metronome: self.metronome,
+            quant: self.quant,
+            quantize: self.quantize,
+            sampler_bank: self.sampler_bank,
+            sampler_inst: self.sampler_inst,
+            sampler_oct: self.sampler_oct,
+            sampler_banks: self.sampler_banks.clone(),
+            fx_view: self.fx_view,
+            fx_slots: {
+                let chain = if self.fx_view >= 0 && self.fx_view < TRACKS as i16 {
+                    &self.tracks[self.fx_view as usize].fx
+                } else {
+                    &self.scene_fx
+                };
+                chain
+                    .slots
+                    .iter()
+                    .map(|s| (s.id.name().to_string(), s.on, s.mix, s.p))
+                    .collect()
+            },
+        };
+    }
+
+    pub fn process_interleaved(&mut self, data: &mut [f32], ch: usize) {
+        let ch = ch.max(1);
+        let frames = data.len() / ch;
+        let need = frames * 2;
+        let mut tmp = std::mem::take(&mut self.scratch);
+        if tmp.len() < need {
+            tmp.resize(need, 0.0);
+        }
+        tmp[..need].fill(0.0);
+        self.process(&mut tmp[..need]);
+        for i in 0..frames {
+            let l = tmp[i * 2];
+            let r = tmp[i * 2 + 1];
+            if ch == 1 {
+                data[i] = 0.5 * (l + r);
+            } else {
+                data[i * ch] = l;
+                data[i * ch + 1] = r;
+                for c in 2..ch {
+                    data[i * ch + c] = 0.0;
+                }
+            }
+        }
+        self.scratch = tmp;
+    }
+}
+
+fn crossed(prev: f64, now: f64, t: f64, len: f64) -> bool {
+    if len <= 0.0 {
+        return false;
+    }
+    let t = t.rem_euclid(len);
+    if now >= prev {
+        prev <= t && t < now
+    } else {
+        // wrapped
+        prev <= t || t < now
+    }
+}
+
+fn sampler_pitch(inst: i8, oct: i8, pad: u8) -> u8 {
+    let pad = pad.min(15);
+    let col = (pad % 8) as usize;
+    let sharp = pad >= 8;
+    let bottom = [0, 2, 3, 5, 7, 8, 10, 12];
+    let has_sharp = [true, false, true, true, false, true, true, false];
+    let base = 21 + oct as i32 * 12;
+    let mut n = base + bottom[col];
+    if sharp && has_sharp[col] {
+        n += 1;
+    }
+    if inst >= 0 {
+        n = n.clamp(0, 127);
+    }
+    n as u8
+}
+
+fn eq_gain(v: f32) -> f32 {
+    // 0 = kill, 0.5 = unity, 1 = +12dB-ish
+    if v <= 0.5 {
+        (v * 2.0).powf(1.4)
+    } else {
+        1.0 + (v - 0.5) * 2.4
+    }
+}
+
+fn splat(buf: &mut [f32], at: usize, samp: &Sample, vel: f32) {
+    let n = samp.frames();
+    for i in 0..n {
+        let dst = at + i;
+        if dst * 2 + 1 >= buf.len() {
+            break;
+        }
+        let (l, r) = samp.at(i as f64);
+        buf[dst * 2] += l * vel;
+        buf[dst * 2 + 1] += r * vel;
+    }
+}
+
+fn demo_stems(sr: u32, bpm: f32) -> (Arc<Sample>, Arc<Sample>) {
+    let spb = sr as f64 * 60.0 / bpm.max(1.0) as f64;
+    let frames = (spb * 16.0) as usize;
+    let kit = build_kit(sr);
+    let mut drums = vec![0.0f32; frames * 2];
+    let mut harm = vec![0.0f32; frames * 2];
+    for b in 0..16 {
+        let t = b as f64;
+        splat(&mut drums, (t * spb) as usize, &kit[0], if b % 2 == 0 { 1.0 } else { 0.86 });
+        splat(&mut drums, (t * spb) as usize, &kit[2], 0.5);
+        splat(&mut drums, ((t + 0.5) * spb) as usize, &kit[2], 0.68);
+        if b % 4 == 1 || b % 4 == 3 {
+            splat(&mut drums, (t * spb) as usize, &kit[1], 0.95);
+        }
+    }
+    splat(&mut drums, (14.5 * spb) as usize, &kit[3], 0.8);
+    splat(&mut drums, (15.0 * spb) as usize, &kit[4], 0.55);
+
+    let bass = [
+        (0.0f32, 36u8, 0.7f32, 100u8),
+        (0.75, 36, 0.2, 80),
+        (1.5, 43, 0.45, 96),
+        (2.5, 41, 0.45, 90),
+        (3.0, 36, 0.4, 100),
+        (3.5, 38, 0.4, 86),
+    ];
+    let mut events: Vec<(usize, bool, u8, f32)> = Vec::new();
+    for bar in 0..4 {
+        for (st, pitch, len, vel) in bass {
+            let on = ((bar as f64 * 4.0 + st as f64) * spb) as usize;
+            let off = on + (len as f64 * spb) as usize;
+            events.push((on, true, pitch, vel as f32 / 127.0));
+            events.push((off.min(frames.saturating_sub(1)), false, pitch, 0.0));
+        }
+        let pad_on = (bar as f64 * 4.0 * spb) as usize;
+        events.push((pad_on, true, 48, 0.35));
+        events.push((pad_on, true, 55, 0.28));
+        events.push((
+            (((bar as f64 * 4.0 + 3.9) * spb) as usize).min(frames.saturating_sub(1)),
+            false,
+            48,
+            0.0,
+        ));
+        events.push((
+            (((bar as f64 * 4.0 + 3.9) * spb) as usize).min(frames.saturating_sub(1)),
+            false,
+            55,
+            0.0,
+        ));
+    }
+    events.sort_by_key(|e| e.0);
+    let mut bass_poly = Poly::new(sr as f32, 0, 8);
+    let mut pad_poly = Poly::new(sr as f32, 2, 4);
+    let mut ei = 0;
+    for i in 0..frames {
+        while ei < events.len() && events[ei].0 == i {
+            let (_f, on, pitch, vel) = events[ei];
+            if on {
+                if pitch < 45 {
+                    bass_poly.note_on(pitch, vel);
+                } else {
+                    pad_poly.note_on(pitch, vel);
+                }
+            } else if pitch < 45 {
+                bass_poly.note_off(pitch);
+            } else {
+                pad_poly.note_off(pitch);
+            }
+            ei += 1;
+        }
+        let s = bass_poly.tick(sr as f32) * 1.1 + pad_poly.tick(sr as f32) * 0.7;
+        harm[i * 2] += s;
+        harm[i * 2 + 1] += s;
+    }
+
+    let mk = |name: &str, data: Vec<f32>| {
+        let peaks = peaks_3band(&data, 2, 2048);
+        Arc::new(Sample {
+            name: name.into(),
+            sr,
+            ch: 2,
+            bpm,
+            peaks,
+            path: format!("builtin:{name}"),
+            data,
+        })
+    };
+    (mk("Drums (session)", drums), mk("Harmony (session)", harm))
+}
+
+fn mk_samp(name: &str, sr: u32, data: Vec<f32>) -> Arc<Sample> {
+    let peaks = peaks_3band(&data, 1, 64);
+    Arc::new(Sample {
+        name: name.into(),
+        sr,
+        ch: 1,
+        bpm: 120.0,
+        peaks,
+        path: format!("builtin:{name}"),
+        data,
+    })
+}
+
+fn build_pad_banks(sr: u32) -> Vec<[Arc<Sample>; 16]> {
+    let kit_kinds = [0u8, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3];
+    let kit_pitch = [
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.84, 1.12, 1.26, 0.9, 0.75, 1.2, 0.7, 1.35, 1.5, 0.62,
+    ];
+    let perc_kinds = [5u8, 5, 3, 3, 2, 4, 5, 2, 3, 4, 5, 2, 4, 3, 5, 2];
+    let perc_pitch = [
+        0.7, 0.85, 1.0, 1.2, 1.4, 0.8, 1.1, 1.6, 0.65, 0.95, 1.3, 1.8, 0.55, 1.15, 0.78, 1.45,
+    ];
+    let hit_kinds = [4u8, 3, 1, 0, 4, 3, 1, 5, 4, 0, 3, 1, 4, 5, 0, 2];
+    let hit_pitch = [
+        0.5, 0.7, 0.9, 0.6, 0.8, 1.1, 1.3, 0.75, 0.45, 1.0, 1.25, 0.85, 0.55, 1.4, 0.95, 1.7,
+    ];
+    let mk_bank = |kinds: [u8; 16], pitch: [f32; 16], prefix: &str| {
+        std::array::from_fn(|i| {
+            let raw = synth_drum(kinds[i], sr);
+            let data = resample_mono(&raw, pitch[i]);
+            mk_samp(&format!("{prefix}-{i}"), sr, data)
+        })
+    };
+    vec![
+        mk_bank(kit_kinds, kit_pitch, "kit"),
+        mk_bank(perc_kinds, perc_pitch, "perc"),
+        mk_bank(hit_kinds, hit_pitch, "hit"),
+    ]
+}
+
+fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
+    let names = ["Kick", "Snare", "Hat", "Clap", "OpenHat", "Tom"];
+    std::array::from_fn(|i| {
+        let data = synth_drum(i as u8, sr);
+        let peaks = peaks_3band(&data, 1, 128);
+        Arc::new(Sample {
+            name: names[i].into(),
+            sr,
+            ch: 1,
+            bpm: detect_bpm(&data, 1, sr),
+            peaks,
+            path: format!("builtin:{names}", names = names[i]),
+            data,
+        })
+    })
+}
+
+pub struct Engine {
+    pub cmd: crossbeam_channel::Sender<Command>,
+    pub snap: Arc<Mutex<Snapshot>>,
+    pub midi: midi::MidiHub,
+    _audio: audio::AudioOut,
+    pub rt: Arc<Mutex<RtEngine>>,
+}
+
+impl Engine {
+    pub fn start() -> anyhow::Result<Self> {
+        let (tx, rx) = crossbeam_channel::bounded(256);
+        let snap = Arc::new(Mutex::new(Snapshot::default()));
+        let rt = Arc::new(Mutex::new(RtEngine::new(48000.0, rx, snap.clone())));
+        let audio = audio::start(rt.clone())?;
+        let midi = midi::MidiHub::start(tx.clone());
+        Ok(Self {
+            cmd: tx,
+            snap,
+            midi,
+            _audio: audio,
+            rt,
+        })
+    }
+
+    pub fn send(&self, c: Command) {
+        if let Some(mut rt) = self.rt.try_lock() {
+            rt.apply(c);
+            rt.publish();
+        } else {
+            let _ = self.cmd.try_send(c);
+        }
+    }
+
+    pub fn snapshot(&self) -> Snapshot {
+        let mut s = self.snap.lock().clone();
+        s.midi = self
+            .midi
+            .devices
+            .lock()
+            .iter()
+            .map(|d| format!("{} · {}", d.name, d.map))
+            .collect();
+        s
+    }
+
+    pub fn notes(&self, track: usize, scene: usize) -> Vec<MidiNote> {
+        self.rt
+            .lock()
+            .tracks
+            .get(track)
+            .and_then(|t| t.clips.get(scene))
+            .map(|c| c.notes.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn sr(&self) -> u32 {
+        self._audio.sr
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn demo_makes_sound() {
+        let (tx, rx) = crossbeam_channel::bounded(16);
+        let snap = Arc::new(Mutex::new(Snapshot::default()));
+        let mut rt = RtEngine::new(48000.0, rx, snap);
+        drop(tx);
+        rt.apply(Command::LaunchScene { scene: 0 });
+        rt.playing = true;
+        let mut buf = vec![0.0f32; 48000 * 2];
+        rt.process(&mut buf);
+        let energy: f32 = buf.iter().map(|x| x * x).sum();
+        assert!(energy > 10.0, "expected audible demo, energy={energy}");
+    }
+
+    #[test]
+    fn xfader_extremes() {
+        let (a, b) = xfader_gains(0.0, 0.35);
+        assert!(a > 0.9 && b < 0.05);
+        let (a, b) = xfader_gains(1.0, 0.35);
+        assert!(b > 0.9 && a < 0.05);
+    }
+
+    #[test]
+    fn demo_stems_are_audible() {
+        let (a, b) = demo_stems(48000, 124.0);
+        let ea: f32 = a.data.iter().map(|x| x * x).sum();
+        let eb: f32 = b.data.iter().map(|x| x * x).sum();
+        assert!(ea > 10.0, "drum stem silent {ea}");
+        assert!(eb > 1.0, "harmony stem silent {eb}");
+        assert!(!a.peaks.is_empty());
+    }
+
+    fn engine() -> RtEngine {
+        let (_tx, rx) = crossbeam_channel::bounded(8);
+        RtEngine::new(48000.0, rx, Arc::new(Mutex::new(Snapshot::default())))
+    }
+
+    fn zcr(buf: &[f32]) -> f32 {
+        buf.chunks(2)
+            .zip(buf.chunks(2).skip(1))
+            .filter(|(a, b)| a[0] * b[0] < 0.0)
+            .count() as f32
+    }
+
+    fn deck_b_at(lock: bool, pitch: f32) -> Vec<f32> {
+        let mut rt = engine();
+        rt.xfader = 1.0;
+        rt.decks[0].playing = false;
+        rt.decks[1].playing = true;
+        rt.decks[1].keylock = lock;
+        rt.decks[1].pitch_range = 2;
+        rt.decks[1].pitch = pitch;
+        rt.decks[1].grain_origin = rt.decks[1].pos;
+        rt.decks[1].prev_origin = rt.decks[1].pos;
+        rt.decks[1].grain_i = 0.0;
+        let mut buf = vec![0.0f32; 48000];
+        rt.process(&mut buf);
+        buf
+    }
+
+    /// C1: keylock at two fader rates keeps zero-crossing rate closer than unlocked.
+    #[test]
+    fn contract_pitch_lock_preserves_pitch() {
+        let u_lo = zcr(&deck_b_at(false, 0.15));
+        let u_hi = zcr(&deck_b_at(false, 0.85));
+        let l_lo = zcr(&deck_b_at(true, 0.15));
+        let l_hi = zcr(&deck_b_at(true, 0.85));
+        let unlocked_ratio = (u_lo / u_hi.max(1.0) - 1.0).abs();
+        let locked_ratio = (l_lo / l_hi.max(1.0) - 1.0).abs();
+        assert!(
+            locked_ratio < unlocked_ratio * 0.7 || locked_ratio < 0.12,
+            "keylock should keep pitch closer: lock={locked_ratio} free={unlocked_ratio} zcr lock={l_lo}/{l_hi} free={u_lo}/{u_hi}"
+        );
+        assert!(l_lo > 20.0 && l_hi > 20.0, "keylock produced silence zcr={l_lo}/{l_hi}");
+    }
+
+    /// C2: match arms unfavored rate to favored pitched BPM and does not jump favored pos.
+    #[test]
+    fn contract_match_follows_favored_bpm() {
+        let mut rt = engine();
+        rt.xfader = 0.2;
+        rt.decks[0].playing = true;
+        rt.decks[0].pitch_range = 2;
+        rt.decks[0].pitch = 0.7;
+        rt.decks[1].playing = true;
+        let fav_pos = rt.decks[0].pos;
+        let fav_bpm = rt.decks[0].audio.as_ref().unwrap().bpm * rt.decks[0].pitch_rate();
+        rt.apply(Command::DeckMatch);
+        assert!(rt.decks[1].sync);
+        assert!(
+            (rt.decks[1].sync_bpm - fav_bpm).abs() < 0.5,
+            "sync_bpm={} favored pitched={}",
+            rt.decks[1].sync_bpm,
+            fav_bpm
+        );
+        assert!((rt.decks[0].pos - fav_pos).abs() < 1.0, "favored playhead jumped");
+        rt.xfader = 0.8;
+        rt.apply(Command::DeckMatch);
+        let fav_b = rt.decks[1].audio.as_ref().unwrap().bpm * rt.decks[1].pitch_rate();
+        assert!((rt.decks[0].sync_bpm - fav_b).abs() < 0.5);
+    }
+
+    /// C3: three banks of 16 distinct samples; switching banks changes pad 0's buffer.
+    #[test]
+    fn contract_banks_sixteen_distinct() {
+        let banks = build_pad_banks(22050);
+        assert_eq!(banks.len(), 3);
+        assert!(banks[0][0].name.starts_with("kit"));
+        assert!(banks[1][0].name.starts_with("perc"));
+        assert!(banks[2][0].name.starts_with("hit"));
+        for (bi, bank) in banks.iter().enumerate() {
+            assert_eq!(bank.len(), 16);
+            let e0: f32 = bank[0].data.iter().map(|x| x * x).sum();
+            let e7: f32 = bank[7].data.iter().map(|x| x * x).sum();
+            assert!(e0 > 0.1 && e7 > 0.1, "bank {bi} silent");
+            assert!(
+                (bank[0].data.len() as i32 - bank[7].data.len() as i32).abs() > 10,
+                "bank {bi} pads 0 and 7 look like the same buffer"
+            );
+        }
+        let mut rt = engine();
+        rt.apply(Command::SamplerPad { pad: 0, on: true });
+        let kit = rt.pad_voices[0].as_ref().unwrap().0.name.clone();
+        rt.apply(Command::SamplerPad { pad: 0, on: false });
+        rt.pad_voices[0] = None;
+        rt.apply(Command::SamplerBank(1));
+        rt.apply(Command::SamplerPad { pad: 0, on: true });
+        let perc = rt.pad_voices[0].as_ref().unwrap().0.name.clone();
+        assert_ne!(kit, perc, "bank switch must change pad 0 sample ({kit} vs {perc})");
+    }
+
+    /// C4: down=on / up=off; octave doubles sample rate and transposes held notes.
+    #[test]
+    fn contract_held_pads_and_octave() {
+        let mut rt = engine();
+        rt.apply(Command::SamplerPad { pad: 0, on: true });
+        assert!(rt.pad_voices[0].is_some(), "sample pad down must start a voice");
+        let r0 = rt.pad_voices[0].as_ref().unwrap().2;
+        rt.apply(Command::SamplerPad { pad: 0, on: false });
+        assert!(rt.pad_voices[0].is_some(), "one-shot may ring after release");
+        rt.apply(Command::SamplerOct(1));
+        assert!((rt.pad_voices[0].as_ref().unwrap().2 / r0 - 2.0).abs() < 1e-4);
+
+        let mut rt = engine();
+        rt.apply(Command::SamplerInst(1));
+        rt.apply(Command::SamplerPad { pad: 3, on: true });
+        assert!(
+            rt.sampler_poly.voices.iter().any(|v| matches!(v.env.stage, 1 | 2 | 3)),
+            "instrument pad down must hold a voice"
+        );
+        let note = rt
+            .sampler_poly
+            .voices
+            .iter()
+            .find(|v| matches!(v.env.stage, 1 | 2 | 3))
+            .unwrap()
+            .note;
+        rt.apply(Command::SamplerOct(1));
+        let note2 = rt
+            .sampler_poly
+            .voices
+            .iter()
+            .find(|v| v.env.active())
+            .unwrap()
+            .note;
+        assert_eq!(note2, note + 12);
+        rt.apply(Command::SamplerPad { pad: 3, on: false });
+        assert!(
+            rt.sampler_poly
+                .voices
+                .iter()
+                .all(|v| v.env.stage == 0 || v.env.stage == 4),
+            "instrument pad up must release, not stay gated"
+        );
+    }
+
+    /// C5: shift-click (Select) arms compose; pads write into that empty cell.
+    #[test]
+    fn contract_pad_writes_empty_clip() {
+        let mut rt = engine();
+        assert!(!rt.tracks[4].clips[3].occupied());
+        rt.apply(Command::SamplerPad { pad: 0, on: true });
+        assert!(
+            !rt.tracks[4].clips[3].occupied(),
+            "pads must not scribble until compose is armed"
+        );
+        rt.apply(Command::Select { track: 4, scene: 3 });
+        assert_eq!(rt.tracks[4].clips[3].kind, ClipKind::Midi);
+        rt.apply(Command::SamplerPad { pad: 2, on: true });
+        assert!(!rt.tracks[4].clips[3].notes.is_empty());
+    }
+
+    /// C6: spread makes L != R; balance at 0 is left-heavy; EQ3/5/8 differ; arp steps a chord.
+    #[test]
+    fn contract_spread_and_balance_are_stereo() {
+        let mut chain = fx::FxChain::new(48000.0);
+        chain.slots.push(fx::FxSlot::new(fx::FxId::Spread));
+        chain.slots[0].p[0] = 1.0;
+        chain.slots[0].mix = 1.0;
+        let (l, r) = chain.tick_stereo(0.8, 48000.0);
+        assert!((l - r).abs() > 1e-6, "spread should decorrelate L/R");
+        let mut chain = fx::FxChain::new(48000.0);
+        chain.slots.push(fx::FxSlot::new(fx::FxId::Balance));
+        chain.slots[0].p[0] = 0.0;
+        chain.slots[0].mix = 1.0;
+        let (l, r) = chain.tick_stereo(0.8, 48000.0);
+        assert!(l > r, "balance 0 should be left-heavy, got L={l} R={r}");
+    }
+
+    #[test]
+    fn contract_eq_bands_differ() {
+        fn energy(id: fx::FxId, hz: f32) -> f32 {
+            let mut chain = fx::FxChain::new(48000.0);
+            let mut slot = fx::FxSlot::new(id);
+            slot.p = [1.0, 0.0, 1.0, 0.5];
+            slot.mix = 1.0;
+            chain.slots.push(slot);
+            let mut acc = 0.0f32;
+            for n in 0..2048 {
+                let x = (n as f32 * hz / 48000.0 * std::f32::consts::TAU).sin();
+                let y = chain.tick(x, 48000.0);
+                acc += y * y;
+            }
+            acc
+        }
+        let e3 = energy(fx::FxId::Eq3, 2000.0);
+        let e5 = energy(fx::FxId::Eq5, 2000.0);
+        let e8 = energy(fx::FxId::Eq8, 2000.0);
+        assert!(
+            (e3 - e5).abs() > 1.0 && (e5 - e8).abs() > 1.0,
+            "EQ3/5/8 must differ at 2kHz: {e3} {e5} {e8}"
+        );
+    }
+
+    #[test]
+    fn contract_arp_steps_chord() {
+        let mut rt = engine();
+        rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp));
+        rt.apply(Command::LaunchClip { track: 2, scene: 0 });
+        let mut seen = std::collections::BTreeSet::new();
+        let sixteenth = (rt.sr as f64 * 60.0 / rt.bpm as f64 / 4.0) as usize;
+        for _ in 0..6 {
+            let mut buf = vec![0.0f32; sixteenth.max(64) * 2];
+            rt.process(&mut buf);
+            if let Some(n) = rt.tracks[2].arp_note {
+                seen.insert(n);
+            }
+        }
+        assert!(
+            seen.len() >= 2,
+            "arp should step overlapping chord notes, got {seen:?}"
+        );
+    }
+
+    /// C7: builtin crate reloads a stem onto a deck, including when already loaded.
+    #[test]
+    fn contract_builtin_reload() {
+        let mut rt = engine();
+        rt.apply(Command::DeckUnload { deck: 0 });
+        assert!(rt.decks[0].audio.is_none());
+        rt.apply(Command::LoadBuiltin { deck: 0, stem: 0 });
+        assert!(rt.decks[0].audio.is_some());
+        assert!(rt.decks[0].title.contains("Drums"));
+        rt.decks[0].pos = 9999.0;
+        rt.apply(Command::LoadBuiltin { deck: 0, stem: 0 });
+        assert!(rt.decks[0].pos < 1.0, "reload must re-seek the stem");
+        rt.apply(Command::LoadBuiltin { deck: 1, stem: 1 });
+        assert!(rt.decks[1].title.contains("Harmony"));
+    }
+}

@@ -1,0 +1,720 @@
+//! USB-MIDI class-compliant I/O, hardware maps, learn, and clock.
+
+use crate::engine::{Command, DECKS, HOTCUES, SCENES, TRACKS};
+use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use parking_lot::Mutex;
+use std::sync::Arc;
+use std::time::Instant;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MsgKind {
+    Note,
+    Cc,
+    CcRel,
+    Pitch,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Binding {
+    pub kind: MsgKind,
+    pub ch: u8, // 0-15, 0xFF = any
+    pub data: u8,
+    pub action: Action,
+    pub deck: u8,
+    pub extra: u8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Action {
+    DeckPlay,
+    DeckCue,
+    DeckSync,
+    DeckJog,
+    DeckJogTouch,
+    DeckPitch,
+    DeckGain,
+    DeckEqHi,
+    DeckEqMid,
+    DeckEqLow,
+    DeckFilter,
+    DeckPfl,
+    DeckHotCue,
+    DeckLoop4,
+    DeckLoopIn,
+    DeckLoopOut,
+    DeckLoad,
+    DeckVinyl,
+    Xfader,
+    Master,
+    CueMix,
+    Browse,
+    LoadA,
+    LoadB,
+    Scene,
+    Clip,
+    TrackFader,
+    TrackMute,
+    Play,
+    Stop,
+    Record,
+    Tap,
+    Shift,
+    FxWet,
+    FxSelect,
+}
+
+#[derive(Clone, Debug)]
+pub struct MidiMap {
+    pub name: String,
+    pub matchers: Vec<String>,
+    pub bindings: Vec<Binding>,
+}
+
+#[derive(Clone, Debug)]
+pub struct MidiDevice {
+    pub name: String,
+    pub map: String,
+}
+
+pub struct MidiHub {
+    _ins: Vec<MidiInputConnection<()>>,
+    outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
+    pub devices: Arc<Mutex<Vec<MidiDevice>>>,
+    pub log: Arc<Mutex<Vec<String>>>,
+    pub learn: Arc<Mutex<Option<String>>>,
+    shift: Arc<Mutex<[bool; 4]>>,
+}
+
+impl MidiHub {
+    pub fn start(cmd: crossbeam_channel::Sender<Command>) -> Self {
+        let devices = Arc::new(Mutex::new(Vec::new()));
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let learn = Arc::new(Mutex::new(None));
+        let shift = Arc::new(Mutex::new([false; 4]));
+        let outs = Arc::new(Mutex::new(Vec::new()));
+        let maps = builtin_maps();
+        let mut ins = Vec::new();
+
+        let in_ports: Vec<(String, midir::MidiInputPort)> = match MidiInput::new("omatainer") {
+            Ok(probe) => probe
+                .ports()
+                .into_iter()
+                .filter_map(|p| probe.port_name(&p).ok().map(|n| (n, p)))
+                .collect(),
+            Err(_) => Vec::new(),
+        };
+        for (idx, (name, port)) in in_ports.into_iter().enumerate() {
+            if name.to_lowercase().contains("through") {
+                continue;
+            }
+            let Ok(mut midi_in) = MidiInput::new(&format!("omatainer-in-{idx}")) else {
+                break;
+            };
+            midi_in.ignore(Ignore::None);
+            let map = pick_map(&maps, &name);
+            devices.lock().push(MidiDevice {
+                name: name.clone(),
+                map: map.name.clone(),
+            });
+            let map_b = map.clone();
+            let cmd_c = cmd.clone();
+            let log_c = log.clone();
+            let learn_c = learn.clone();
+            let shift_c = shift.clone();
+            let nm = name.clone();
+            match midi_in.connect(
+                &port,
+                &format!("omatainer-in-{name}"),
+                move |_t, msg, _| {
+                    handle_msg(msg, &map_b, &cmd_c, &log_c, &learn_c, &shift_c, &nm);
+                },
+                (),
+            ) {
+                Ok(conn) => ins.push(conn),
+                Err(e) => {
+                    log.lock().push(format!("in fail {name}: {e}"));
+                }
+            }
+        }
+
+        if let Ok(probe) = MidiOutput::new("omatainer") {
+            let out_ports: Vec<(String, midir::MidiOutputPort)> = probe
+                .ports()
+                .into_iter()
+                .filter_map(|p| probe.port_name(&p).ok().map(|n| (n, p)))
+                .collect();
+            drop(probe);
+            for (name, port) in out_ports {
+                if name.to_lowercase().contains("through") {
+                    continue;
+                }
+                if let Ok(midi_out) = MidiOutput::new("omatainer") {
+                    if let Ok(c) = midi_out.connect(&port, &format!("omatainer-out-{name}")) {
+                        outs.lock().push(c);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if devices.lock().is_empty() {
+            devices.lock().push(MidiDevice {
+                name: "keyboard + mouse".into(),
+                map: "built-in".into(),
+            });
+        }
+
+        Self {
+            _ins: ins,
+            outs,
+            devices,
+            log,
+            learn,
+            shift,
+        }
+    }
+
+    pub fn send_clock_tick(&self) {
+        if let Some(out) = self.outs.lock().first_mut() {
+            let _ = out.send(&[0xF8]);
+        }
+    }
+
+    pub fn send_clock_start(&self, start: bool) {
+        if let Some(out) = self.outs.lock().first_mut() {
+            let _ = out.send(&[if start { 0xFA } else { 0xFC }]);
+        }
+    }
+
+    pub fn note_led(&self, ch: u8, note: u8, vel: u8) {
+        if let Some(out) = self.outs.lock().first_mut() {
+            let _ = out.send(&[0x90 | (ch & 0x0F), note, vel]);
+        }
+    }
+}
+
+fn handle_msg(
+    msg: &[u8],
+    map: &MidiMap,
+    cmd: &crossbeam_channel::Sender<Command>,
+    log: &Arc<Mutex<Vec<String>>>,
+    learn: &Arc<Mutex<Option<String>>>,
+    shift: &Arc<Mutex<[bool; 4]>>,
+    dev: &str,
+) {
+    if msg.len() < 2 {
+        return;
+    }
+    let st = msg[0];
+    let kind_hi = st & 0xF0;
+    let ch = st & 0x0F;
+    let d1 = msg[1];
+    let d2 = if msg.len() > 2 { msg[2] } else { 0 };
+
+    {
+        let mut l = log.lock();
+        l.push(format!(
+            "{dev} ch{} {kind_hi:02X} {d1} {d2}",
+            ch + 1
+        ));
+        if l.len() > 64 {
+            let n = l.len() - 64;
+            l.drain(0..n);
+        }
+    }
+
+    if let Some(param) = learn.lock().as_ref() {
+        let _ = cmd.send(Command::LearnCapture {
+            param: param.clone(),
+            ch,
+            d1,
+            d2,
+            status: kind_hi,
+        });
+        return;
+    }
+
+    if kind_hi == 0xF0 {
+        match st {
+            0xFA => {
+                let _ = cmd.send(Command::Play);
+            }
+            0xFC => {
+                let _ = cmd.send(Command::Stop);
+            }
+            0xF8 => { /* clock in: optional tap */ }
+            _ => {}
+        }
+        return;
+    }
+
+    let mut matched = false;
+    for b in &map.bindings {
+        if b.ch != 0xFF && b.ch != ch {
+            continue;
+        }
+        let hit = match b.kind {
+            MsgKind::Note => kind_hi == 0x90 || kind_hi == 0x80,
+            MsgKind::Cc | MsgKind::CcRel => kind_hi == 0xB0,
+            MsgKind::Pitch => kind_hi == 0xE0,
+        };
+        if !hit {
+            continue;
+        }
+        if b.kind != MsgKind::Pitch && b.data != d1 {
+            continue;
+        }
+        matched = true;
+        dispatch(b, kind_hi, d2, msg, cmd, shift);
+    }
+
+    // Live MIDI notes onto the selected track when no map consumed a note
+    // (generic class-compliant keyboards / Akai MPK keys).
+    if !matched {
+        if kind_hi == 0x90 && d2 > 0 {
+            let _ = cmd.send(Command::LiveNoteOn {
+                ch,
+                note: d1,
+                vel: d2,
+            });
+        } else if kind_hi == 0x80 || (kind_hi == 0x90 && d2 == 0) {
+            let _ = cmd.send(Command::LiveNoteOff { ch, note: d1 });
+        }
+    }
+}
+
+fn dispatch(
+    b: &Binding,
+    status: u8,
+    d2: u8,
+    msg: &[u8],
+    cmd: &crossbeam_channel::Sender<Command>,
+    shift: &Arc<Mutex<[bool; 4]>>,
+) {
+    let pressed = status == 0x90 && d2 > 0;
+    let rel = match b.kind {
+        MsgKind::CcRel => {
+            if d2 >= 0x40 {
+                (d2 as i8 - 0x40) as f32
+            } else {
+                d2 as i8 as f32
+            }
+        }
+        MsgKind::Pitch => {
+            let v = if msg.len() >= 3 {
+                (msg[1] as u16) | ((msg[2] as u16) << 7)
+            } else {
+                8192
+            };
+            (v as f32 - 8192.0) / 8192.0
+        }
+        _ => d2 as f32 / 127.0,
+    };
+    let deck = b.deck.min((DECKS - 1) as u8);
+    match b.action {
+        Action::Shift => shift.lock()[deck as usize] = pressed,
+        Action::DeckPlay if pressed => {
+            let _ = cmd.send(Command::DeckPlay { deck });
+        }
+        Action::DeckCue if pressed => {
+            let _ = cmd.send(Command::DeckCue { deck });
+        }
+        Action::DeckSync if pressed => {
+            let _ = cmd.send(Command::DeckSync { deck });
+        }
+        Action::DeckJog => {
+            let _ = cmd.send(Command::DeckJog {
+                deck,
+                delta: rel * 0.35,
+            });
+        }
+        Action::DeckJogTouch => {
+            let _ = cmd.send(Command::DeckTouch {
+                deck,
+                on: pressed,
+            });
+        }
+        Action::DeckPitch => {
+            let _ = cmd.send(Command::DeckPitch { deck, value: rel });
+        }
+        Action::DeckGain => {
+            let _ = cmd.send(Command::DeckGain { deck, value: rel });
+        }
+        Action::DeckEqHi => {
+            let _ = cmd.send(Command::DeckEq {
+                deck,
+                band: 2,
+                value: rel,
+            });
+        }
+        Action::DeckEqMid => {
+            let _ = cmd.send(Command::DeckEq {
+                deck,
+                band: 1,
+                value: rel,
+            });
+        }
+        Action::DeckEqLow => {
+            let _ = cmd.send(Command::DeckEq {
+                deck,
+                band: 0,
+                value: rel,
+            });
+        }
+        Action::DeckFilter => {
+            let _ = cmd.send(Command::DeckFilter { deck, value: rel });
+        }
+        Action::DeckPfl if pressed => {
+            let _ = cmd.send(Command::DeckPfl { deck });
+        }
+        Action::DeckHotCue if pressed => {
+            let _ = cmd.send(Command::DeckHotCue {
+                deck,
+                pad: b.extra.min((HOTCUES - 1) as u8),
+                del: shift.lock()[deck as usize],
+            });
+        }
+        Action::DeckLoop4 if pressed => {
+            let _ = cmd.send(Command::DeckLoop { deck, beats: 4.0 });
+        }
+        Action::DeckLoopIn if pressed => {
+            let _ = cmd.send(Command::DeckLoopIn { deck });
+        }
+        Action::DeckLoopOut if pressed => {
+            let _ = cmd.send(Command::DeckLoopOut { deck });
+        }
+        Action::DeckLoad if pressed => {
+            let _ = cmd.send(Command::DeckLoadSelected { deck });
+        }
+        Action::DeckVinyl if pressed => {
+            let _ = cmd.send(Command::DeckVinyl { deck });
+        }
+        Action::Xfader => {
+            let _ = cmd.send(Command::Xfader(rel));
+        }
+        Action::Master => {
+            let _ = cmd.send(Command::Master(rel));
+        }
+        Action::CueMix => {
+            let _ = cmd.send(Command::CueMix(rel));
+        }
+        Action::Browse => {
+            let _ = cmd.send(Command::Browse(rel));
+        }
+        Action::LoadA if pressed => {
+            let _ = cmd.send(Command::DeckLoadSelected { deck: 0 });
+        }
+        Action::LoadB if pressed => {
+            let _ = cmd.send(Command::DeckLoadSelected { deck: 1 });
+        }
+        Action::Scene if pressed => {
+            let _ = cmd.send(Command::LaunchScene {
+                scene: b.extra.min((SCENES - 1) as u8),
+            });
+        }
+        Action::Clip if pressed => {
+            let _ = cmd.send(Command::LaunchClip {
+                track: b.deck.min((TRACKS - 1) as u8),
+                scene: b.extra.min((SCENES - 1) as u8),
+            });
+        }
+        Action::TrackFader => {
+            let _ = cmd.send(Command::TrackGain {
+                track: b.extra.min((TRACKS - 1) as u8),
+                value: rel,
+            });
+        }
+        Action::TrackMute if pressed => {
+            let _ = cmd.send(Command::Mute {
+                track: b.extra.min((TRACKS - 1) as u8),
+            });
+        }
+        Action::Play if pressed => {
+            let _ = cmd.send(Command::TogglePlay);
+        }
+        Action::Stop if pressed => {
+            let _ = cmd.send(Command::Stop);
+        }
+        Action::Record if pressed => {
+            let _ = cmd.send(Command::Record);
+        }
+        Action::Tap if pressed => {
+            let _ = cmd.send(Command::Tap(Instant::now()));
+        }
+        Action::FxWet => {
+            let _ = cmd.send(Command::FxWet {
+                slot: b.extra,
+                value: rel,
+            });
+        }
+        Action::FxSelect if pressed => {
+            let _ = cmd.send(Command::FxSelect { slot: b.extra });
+        }
+        _ => {}
+    }
+}
+
+fn pick_map(maps: &[MidiMap], name: &str) -> MidiMap {
+    let n = name.to_lowercase();
+    for m in maps {
+        for pat in &m.matchers {
+            if n.contains(&pat.to_lowercase()) {
+                return m.clone();
+            }
+        }
+    }
+    maps.iter()
+        .find(|m| m.name == "Class-compliant MIDI")
+        .cloned()
+        .unwrap_or_else(|| maps[0].clone())
+}
+
+fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
+    Binding {
+        kind: MsgKind::Note,
+        ch,
+        data: note,
+        action,
+        deck,
+        extra,
+    }
+}
+fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
+    Binding {
+        kind: MsgKind::Cc,
+        ch,
+        data: cc,
+        action,
+        deck,
+        extra,
+    }
+}
+fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
+    Binding {
+        kind: MsgKind::CcRel,
+        ch,
+        data: cc,
+        action,
+        deck,
+        extra,
+    }
+}
+
+pub fn builtin_maps() -> Vec<MidiMap> {
+    let mut maps = Vec::new();
+    maps.push(pioneer_ddj_fx());
+    maps.push(numark_ns7(true));
+    maps.push(numark_ns7(false));
+    maps.push(akai_apc_mini());
+    maps.push(akai_apc40());
+    maps.push(akai_mpk());
+    maps.push(class_compliant());
+    maps
+}
+
+/// Pioneer DDJ-FLX / DDJ-400 / DDJ-SB3 family ("DDJ-FX").
+fn pioneer_ddj_fx() -> MidiMap {
+    let mut b = Vec::new();
+    for deck in 0..2u8 {
+        let ch = deck;
+        b.push(nbind(ch, 0x0B, Action::DeckPlay, deck, 0));
+        b.push(nbind(ch, 0x0C, Action::DeckCue, deck, 0));
+        b.push(nbind(ch, 0x58, Action::DeckSync, deck, 0));
+        b.push(nbind(ch, 0x3F, Action::Shift, deck, 0));
+        b.push(nbind(ch, 0x36, Action::DeckJogTouch, deck, 0));
+        b.push(nbind(ch, 0x10, Action::DeckLoopIn, deck, 0));
+        b.push(nbind(ch, 0x11, Action::DeckLoopOut, deck, 0));
+        b.push(nbind(ch, 0x0D, Action::DeckLoop4, deck, 0));
+        b.push(nbind(ch, 0x54, Action::DeckPfl, deck, 0));
+        b.push(nbind(ch, 0x02, Action::DeckLoad, deck, 0));
+        b.push(nbind(ch, 0x17, Action::DeckVinyl, deck, 0));
+        b.push(rbind(ch, 0x21, Action::DeckJog, deck, 0));
+        b.push(rbind(ch, 0x22, Action::DeckJog, deck, 0));
+        b.push(rbind(ch, 0x23, Action::DeckJog, deck, 0));
+        b.push(cbind(ch, 0x00, Action::DeckPitch, deck, 0));
+        b.push(cbind(ch, 0x13, Action::DeckGain, deck, 0));
+        b.push(cbind(ch, 0x10, Action::DeckEqHi, deck, 0));
+        b.push(cbind(ch, 0x0E, Action::DeckEqMid, deck, 0));
+        b.push(cbind(ch, 0x0C, Action::DeckEqLow, deck, 0));
+        b.push(cbind(ch, 0x17, Action::DeckFilter, deck, 0));
+        // performance pads — hot cue mode on ch 7 / 9 (0-index 6 / 8)
+        let pad_ch = if deck == 0 { 6 } else { 8 };
+        for pad in 0..8u8 {
+            b.push(nbind(pad_ch, pad, Action::DeckHotCue, deck, pad));
+        }
+    }
+    b.push(cbind(6, 0x1F, Action::Xfader, 0, 0));
+    b.push(cbind(0, 0x1F, Action::Xfader, 0, 0));
+    b.push(cbind(5, 0x10, Action::FxWet, 0, 0));
+    MidiMap {
+        name: "Pioneer DDJ-FX / FLX".into(),
+        matchers: vec![
+            "ddj".into(),
+            "ddj-flx".into(),
+            "ddj-sb".into(),
+            "ddj-sz".into(),
+            "ddj-400".into(),
+            "ddj-200".into(),
+            "pioneer".into(),
+            "alphaTheta".into(),
+        ],
+        bindings: b,
+    }
+}
+
+/// Original NS7 + NS7FX. Platters may arrive as pitch-bend or CC; motor CCs included.
+fn numark_ns7(fx: bool) -> MidiMap {
+    let mut b = Vec::new();
+    for deck in 0..2u8 {
+        let ch = deck;
+        b.push(nbind(ch, 0x0C, Action::DeckPlay, deck, 0));
+        b.push(nbind(ch, 0x0D, Action::DeckCue, deck, 0));
+        b.push(nbind(ch, 0x0E, Action::DeckSync, deck, 0));
+        b.push(nbind(ch, 0x1B, Action::DeckPfl, deck, 0));
+        b.push(nbind(ch, 0x17, Action::DeckVinyl, deck, 0));
+        b.push(cbind(ch, 0x13, Action::DeckGain, deck, 0));
+        b.push(cbind(ch, 0x10, Action::DeckEqHi, deck, 0));
+        b.push(cbind(ch, 0x0E, Action::DeckEqMid, deck, 0));
+        b.push(cbind(ch, 0x0C, Action::DeckEqLow, deck, 0));
+        b.push(cbind(ch, 0x15, Action::DeckFilter, deck, 0));
+        b.push(cbind(ch, 0x09, Action::DeckPitch, deck, 0));
+        b.push(rbind(ch, 0x21, Action::DeckJog, deck, 0));
+        b.push(Binding {
+            kind: MsgKind::Pitch,
+            ch,
+            data: 0,
+            action: Action::DeckJog,
+            deck,
+            extra: 0,
+        });
+        for pad in 0..8u8 {
+            b.push(nbind(ch, 0x2E + pad, Action::DeckHotCue, deck, pad));
+        }
+        b.push(nbind(ch, 0x10, Action::DeckLoopIn, deck, 0));
+        b.push(nbind(ch, 0x11, Action::DeckLoopOut, deck, 0));
+    }
+    b.push(cbind(0, 0x1F, Action::Xfader, 0, 0));
+    b.push(cbind(0, 0x07, Action::Master, 0, 0));
+    if fx {
+        b.push(cbind(0, 0x30, Action::FxWet, 0, 0));
+        b.push(cbind(0, 0x31, Action::FxWet, 0, 1));
+        b.push(cbind(0, 0x32, Action::FxWet, 0, 2));
+        b.push(nbind(0, 0x3A, Action::FxSelect, 0, 0));
+        b.push(nbind(0, 0x3B, Action::FxSelect, 0, 1));
+        b.push(nbind(0, 0x3C, Action::FxSelect, 0, 2));
+    }
+    MidiMap {
+        name: if fx {
+            "Numark NS7FX".into()
+        } else {
+            "Numark NS7".into()
+        },
+        matchers: if fx {
+            vec!["ns7fx".into(), "ns7-fx".into(), "ns7 fx".into()]
+        } else {
+            vec!["ns7".into(), "numark ns7".into()]
+        },
+        bindings: b,
+    }
+}
+
+fn akai_apc_mini() -> MidiMap {
+    let mut b = Vec::new();
+    // 8x8 clip grid notes 0-63, row-major from bottom: note = row*8+col
+    // We treat rows as scenes, cols as tracks.
+    for scene in 0..8u8 {
+        for track in 0..8u8 {
+            let note = scene * 8 + track;
+            b.push(nbind(0, note, Action::Clip, track, scene));
+        }
+        b.push(nbind(0, 82 + scene, Action::Scene, 0, scene));
+    }
+    for t in 0..8u8 {
+        b.push(cbind(0, 48 + t, Action::TrackFader, 0, t));
+        b.push(nbind(0, 64 + t, Action::TrackMute, 0, t));
+    }
+    b.push(cbind(0, 56, Action::Master, 0, 0));
+    b.push(nbind(0, 98, Action::Shift, 0, 0));
+    MidiMap {
+        name: "Akai APC Mini".into(),
+        matchers: vec!["apc mini".into(), "apc-mini".into(), "apcmini".into()],
+        bindings: b,
+    }
+}
+
+fn akai_apc40() -> MidiMap {
+    let mut b = Vec::new();
+    for scene in 0..5u8 {
+        for track in 0..8u8 {
+            let note = scene * 8 + track;
+            b.push(nbind(0, note, Action::Clip, track, scene));
+        }
+        b.push(nbind(0, 82 + scene, Action::Scene, 0, scene));
+    }
+    for t in 0..8u8 {
+        b.push(cbind(0, 7, Action::TrackFader, t, t)); // ch per track on mk2; also bind extra
+        b.push(cbind(t, 7, Action::TrackFader, 0, t));
+        b.push(nbind(t, 48, Action::TrackMute, 0, t));
+        b.push(nbind(t, 51, Action::DeckPlay, t.min(1), 0));
+    }
+    b.push(cbind(0, 14, Action::Master, 0, 0));
+    MidiMap {
+        name: "Akai APC40".into(),
+        matchers: vec!["apc40".into(), "apc 40".into(), "apc-40".into()],
+        bindings: b,
+    }
+}
+
+fn akai_mpk() -> MidiMap {
+    let mut b = Vec::new();
+    // pads typically C1 (36) upward — treat as drum / hotcues
+    for i in 0..8u8 {
+        b.push(nbind(9, 36 + i, Action::DeckHotCue, 0, i));
+        b.push(cbind(0, 1 + i, Action::FxWet, 0, i.min(2)));
+    }
+    b.push(cbind(0, 1, Action::DeckFilter, 0, 0));
+    MidiMap {
+        name: "Akai MPK / MPC / LPD".into(),
+        matchers: vec![
+            "mpk".into(),
+            "mpc".into(),
+            "lpd".into(),
+            "mpd".into(),
+            "akai".into(),
+        ],
+        bindings: b,
+    }
+}
+
+fn class_compliant() -> MidiMap {
+    MidiMap {
+        name: "Class-compliant MIDI".into(),
+        matchers: vec!["midi".into(), "usb".into()],
+        bindings: vec![
+            cbind(0, 7, Action::Master, 0, 0),
+            cbind(0, 1, Action::DeckFilter, 0, 0),
+            cbind(0, 10, Action::Xfader, 0, 0),
+        ],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn map_for(name: &str) -> String {
+        let maps = builtin_maps();
+        pick_map(&maps, name).name
+    }
+
+    #[test]
+    fn maps_bind_named_hardware() {
+        assert!(map_for("Pioneer DDJ-FLX4").contains("DDJ"));
+        assert!(map_for("DDJ-400").contains("DDJ"));
+        assert_eq!(map_for("Numark NS7FX"), "Numark NS7FX");
+        assert_eq!(map_for("Numark NS7"), "Numark NS7");
+        assert!(map_for("APC Mini mk2").contains("APC Mini"));
+        assert!(map_for("Akai APC40 mk2").contains("APC40"));
+        assert!(map_for("MPK Mini Plus").contains("Akai"));
+    }
+}
