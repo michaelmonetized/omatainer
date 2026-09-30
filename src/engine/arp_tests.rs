@@ -184,7 +184,7 @@ fn arp_set_notes_between_steps_invalidates_only_the_playing_scene() {
 }
 
 #[test]
-fn arp_record_and_compose_additions_update_the_next_step() {
+fn arp_record_and_compose_additions_preserve_existing_chord_while_monitored() {
     for compose in [false, true] {
         let mut rt = fixture(vec![
             note(60, 0.0, 4.0),
@@ -218,10 +218,10 @@ fn arp_record_and_compose_additions_update_the_next_step() {
         );
         assert_eq!(
             render_at(&mut rt, 0.25),
-            Some(60),
-            "added pitch did not enter the ordered chord"
+            Some(64),
+            "captured input must not become a second arpeggiated monitor"
         );
-        // The short added note expires before the next step.
+        // Unrelated chord notes continue their normal step order.
         assert_eq!(render_at(&mut rt, 0.5), Some(67));
     }
 }

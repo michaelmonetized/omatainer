@@ -201,10 +201,9 @@ fn midi_edits_chase_active_notes_once_and_note_additions_keep_existing_gates() {
         let mut rt = fixture(vec![note(60, 0.0, 3.0)]);
         render(&mut rt, 2400, 256);
         rt.tracks[2].midi_schedule.trace = Some(Vec::new());
-        let pitch = if compose {
+        if compose {
             rt.compose_armed = true;
             rt.apply(Command::SamplerPad { pad: 0, on: true });
-            sampler_pitch(rt.sampler_inst, rt.sampler_oct, 0)
         } else {
             rt.recording = true;
             rt.apply(Command::LiveNoteOn {
@@ -213,18 +212,28 @@ fn midi_edits_chase_active_notes_once_and_note_additions_keep_existing_gates() {
                 note: 65,
                 vel: 100,
             });
-            65
-        };
+        }
         render(&mut rt, 7000, 512);
-        let events = trace(&mut rt, 2);
-        assert_eq!(
-            events.len(),
-            2,
-            "existing held note was retriggered: {events:?}"
+        assert!(
+            trace(&mut rt, 2).is_empty(),
+            "capture created clip monitoring gates"
         );
-        assert_eq!(events[0].0, 2400);
-        assert!(matches!(events[0].1, Gate::On(p, _) if p == pitch));
-        assert_eq!(events[1].1, Gate::Off(pitch));
+        assert!(
+            rt.tracks[2]
+                .poly
+                .voices
+                .iter()
+                .any(|voice| voice.owner == dsp::VoiceOwner::Clip
+                    && voice.note == 60
+                    && matches!(voice.env.stage, 1..=3))
+        );
+        // Ordinary edits still chase their active notes; recording suppression
+        // remains attached only to the captured index through later rebuilds.
+        rt.tracks[2].midi_schedule.trace = Some(Vec::new());
+        rt.tracks[2].clips[0].notes.push(note(73, 0.0, 1.0));
+        rt.tracks[2].clip_notes_changed(0, rt.beat);
+        render(&mut rt, 1, 1);
+        assert_eq!(trace(&mut rt, 2), [(9400, Gate::On(73, 100))]);
     }
 }
 
@@ -233,15 +242,10 @@ fn midi_multiple_edits_at_an_exact_boundary_preserve_pending_gates() {
     let mut rt = fixture(vec![note(60, 0.0, 0.5), note(60, 0.5, 0.5)]);
     render(&mut rt, 12_000, 256);
     rt.beat = 0.5;
-    rt.recording = true;
     rt.tracks[2].midi_schedule.trace = Some(Vec::new());
     for pitch in [65, 67] {
-        rt.apply(Command::LiveNoteOn {
-            source: 0,
-            ch: 0,
-            note: pitch,
-            vel: 100,
-        });
+        rt.tracks[2].clips[0].notes.push(note(pitch, 0.5, 0.25));
+        rt.tracks[2].clip_notes_changed(0, rt.beat);
     }
     render(&mut rt, 1, 1);
     assert_eq!(
@@ -274,12 +278,14 @@ fn midi_pending_launch_waits_for_grid_and_one_shot_keeps_full_length() {
     });
     rt.tracks[2].midi_schedule.trace = Some(Vec::new());
     render(&mut rt, 12_000, 127);
-    assert!(rt.tracks[2]
-        .midi_schedule
-        .trace
-        .as_ref()
-        .unwrap()
-        .is_empty());
+    assert!(
+        rt.tracks[2]
+            .midi_schedule
+            .trace
+            .as_ref()
+            .unwrap()
+            .is_empty()
+    );
     assert!(rt.tracks[2].playing.unwrap().last_beat < 0.0);
     render(&mut rt, 24_000, 257);
     assert!(
@@ -288,12 +294,14 @@ fn midi_pending_launch_waits_for_grid_and_one_shot_keeps_full_length() {
     );
     render(&mut rt, 1, 1);
     assert!(rt.tracks[2].playing.is_none());
-    assert!(rt.tracks[2]
-        .poly
-        .voices
-        .iter()
-        .filter(|voice| voice.owner == dsp::VoiceOwner::Clip)
-        .all(|voice| voice.env.stage == 0 || voice.env.stage == 4));
+    assert!(
+        rt.tracks[2]
+            .poly
+            .voices
+            .iter()
+            .filter(|voice| voice.owner == dsp::VoiceOwner::Clip)
+            .all(|voice| voice.env.stage == 0 || voice.env.stage == 4)
+    );
     let on_count = rt.tracks[2]
         .midi_schedule
         .trace
@@ -320,10 +328,11 @@ fn midi_invalid_ranges_do_not_schedule_or_spin() {
         4.0,
         None,
         true,
+        &[],
     );
     assert_eq!(schedule.next_due(100.0, true), None);
     assert_eq!(schedule.events_visited, 0);
-    schedule.rebuild(&[note(255, -1.0, 0.25)], 4.0, None, true);
+    schedule.rebuild(&[note(255, -1.0, 0.25)], 4.0, None, true, &[]);
     assert_eq!(schedule.next_due(f64::INFINITY, true), None);
     assert_eq!(schedule.next_due(f64::NAN, true), None);
     assert_eq!(schedule.next_due(3.001, true), Some(Gate::On(255, 100)));
