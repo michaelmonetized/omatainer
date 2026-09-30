@@ -15,6 +15,9 @@ pub mod fx;
 pub mod midi;
 #[cfg(test)]
 mod master_stereo_tests;
+mod midi_schedule;
+#[cfg(test)]
+mod midi_schedule_tests;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
@@ -123,12 +126,29 @@ pub struct TrackRt {
     pub fx: fx::FxChain,
     pub arp_note: Option<u8>,
     arp_cache: arp::ChordCache,
+    midi_schedule: midi_schedule::MidiSchedule,
 }
 
 impl TrackRt {
-    fn invalidate_arp_for_scene(&mut self, scene: usize) {
+    fn clip_notes_changed(&mut self, scene: usize, beat: f64) {
         if self.playing.is_some_and(|p| p.scene as usize == scene) {
             self.arp_cache.invalidate();
+            let arp_active = self.midi_schedule.paused;
+            self.rebuild_midi_schedule(beat);
+            self.midi_schedule.paused = arp_active;
+        }
+    }
+
+    fn rebuild_midi_schedule(&mut self, beat: f64) {
+        if let Some(playing) = self.playing {
+            let clip = &self.clips[playing.scene as usize];
+            let elapsed = (playing.last_beat >= 0.0).then_some(beat - playing.start_beat);
+            self.midi_schedule.rebuild(
+                &clip.notes,
+                clip.bars.max(0.25) as f64 * 4.0,
+                elapsed,
+                playing.looping,
+            );
         }
     }
 
@@ -136,6 +156,7 @@ impl TrackRt {
         self.poly.release_clip();
         self.arp_note = None;
         self.arp_cache.invalidate();
+        self.midi_schedule.reset();
     }
 
     fn stop_clip(&mut self) {
@@ -611,6 +632,7 @@ impl RtEngine {
                 fx: fx::FxChain::new(sr),
                 arp_note: None,
                 arp_cache: arp::ChordCache::default(),
+                midi_schedule: midi_schedule::MidiSchedule::default(),
             })
             .collect();
         let mut e = Self {
@@ -910,79 +932,87 @@ impl RtEngine {
             self.tracks[ti].arp_cache.invalidate();
         }
         let playing = self.tracks[ti].playing;
-        if let Some(p) = playing {
+        // Pending launches do not emit or advance clip-local state. The
+        // engine beat denotes the end of this output sample's beat interval.
+        if let Some(p) = playing.filter(|p| self.beat > p.start_beat + midi_schedule::BEAT_EPSILON)
+        {
             let scene = p.scene as usize;
-            let clip_bars = self.tracks[ti].clips[scene].bars.max(0.25) as f64;
-            let clip_beats = clip_bars * 4.0;
-            let local = (self.beat - p.start_beat).rem_euclid(clip_beats);
-            let prev = self.tracks[ti]
-                .playing
-                .map(|x| x.last_beat)
-                .unwrap_or(local);
-            // trigger notes that crossed
-            if self.tracks[ti].clips[scene].kind == ClipKind::Midi && !silent {
-                let kind = self.tracks[ti].kind;
-                let arp = self.tracks[ti]
-                    .fx
-                    .slots
-                    .iter()
-                    .any(|s| s.id() == fx::FxId::Arp && s.on);
-                if arp {
-                    let track = &mut self.tracks[ti];
-                    track.arp_cache.refresh(
-                        &track.clips[scene].notes,
-                        local,
-                        prev,
-                        clip_beats,
-                    );
-                    let step = (local * 4.0).floor() as i64;
-                    let prev_step = (prev * 4.0).floor() as i64;
-                    let advance = step != prev_step || local < prev;
-                    // A rest or an edit removing the current pitch ends its gate
-                    // immediately, without retriggering between sixteenths.
-                    if advance || track.arp_note.is_some_and(|n| !track.arp_cache.contains(n)) {
+            let clip_beats = self.tracks[ti].clips[scene].bars.max(0.25) as f64 * 4.0;
+            let elapsed = self.beat - p.start_beat;
+            if !p.looping && elapsed > clip_beats + midi_schedule::BEAT_EPSILON {
+                self.tracks[ti].stop_clip();
+            } else {
+                let local = elapsed.rem_euclid(clip_beats);
+                let prev = p.last_beat;
+                if self.tracks[ti].clips[scene].kind == ClipKind::Midi && !silent {
+                    let kind = self.tracks[ti].kind;
+                    let arp = self.tracks[ti]
+                        .fx
+                        .slots
+                        .iter()
+                        .any(|s| s.id() == fx::FxId::Arp && s.on);
+                    if arp {
+                        let track = &mut self.tracks[ti];
+                        if !track.midi_schedule.paused {
+                            track.poly.release_clip();
+                            track.midi_schedule.reset();
+                            track.midi_schedule.paused = true;
+                        }
+                        track
+                            .arp_cache
+                            .refresh(&track.clips[scene].notes, local, prev, clip_beats);
+                        let step = (local * 4.0).floor() as i64;
+                        let prev_step = (prev * 4.0).floor() as i64;
+                        let advance = step != prev_step || local < prev;
+                        // A rest or an edit removing the current pitch ends its gate
+                        // immediately, without retriggering between sixteenths.
+                        if advance || track.arp_note.is_some_and(|n| !track.arp_cache.contains(n)) {
+                            if let Some(old) = track.arp_note.take() {
+                                track.poly.note_off_clip(old);
+                            }
+                        }
+                        let pitch = advance.then(|| track.arp_cache.pitch(step)).flatten();
+                        if let Some(pitch) = pitch {
+                            if kind == 0 {
+                                self.trig_drum(ti, pitch, 1.0);
+                            } else {
+                                self.tracks[ti].poly.note_on_clip(pitch, 0.9);
+                            }
+                            self.tracks[ti].arp_note = Some(pitch);
+                        }
+                    } else {
+                        let previous_sample = self.beat - self.bpm as f64 / 60.0 / self.sr as f64;
+                        let track = &mut self.tracks[ti];
+                        track.arp_cache.invalidate();
                         if let Some(old) = track.arp_note.take() {
                             track.poly.note_off_clip(old);
                         }
-                    }
-                    let pitch = advance.then(|| track.arp_cache.pitch(step)).flatten();
-                    if let Some(pitch) = pitch {
-                        if kind == 0 {
-                            self.trig_drum(ti, pitch, 1.0);
-                        } else {
-                            self.tracks[ti].poly.note_on_clip(pitch, 0.9);
+                        if track.midi_schedule.paused || !track.midi_schedule.has_length(clip_beats)
+                        {
+                            track.rebuild_midi_schedule(previous_sample);
                         }
-                        self.tracks[ti].arp_note = Some(pitch);
-                    }
-                } else {
-                    let track = &mut self.tracks[ti];
-                    track.arp_cache.invalidate();
-                    if let Some(old) = track.arp_note.take() {
-                        track.poly.note_off_clip(old);
-                    }
-                    let notes = track.clips[scene].notes.clone();
-                    for n in notes {
-                        if crossed(prev, local, n.start as f64, clip_beats) {
-                            if kind == 0 {
-                                self.trig_drum(ti, n.pitch, n.vel as f32 / 127.0);
-                            } else {
-                                self.tracks[ti]
-                                    .poly
-                                    .note_on_clip(n.pitch, n.vel as f32 / 127.0);
+                        while let Some(gate) =
+                            self.tracks[ti].midi_schedule.next_due(elapsed, p.looping)
+                        {
+                            match gate {
+                                midi_schedule::Gate::On(pitch, velocity) if kind == 0 => {
+                                    self.trig_drum(ti, pitch, velocity as f32 / 127.0);
+                                }
+                                midi_schedule::Gate::On(pitch, velocity) => {
+                                    self.tracks[ti]
+                                        .poly
+                                        .note_on_clip(pitch, velocity as f32 / 127.0);
+                                }
+                                midi_schedule::Gate::Off(pitch) if kind != 0 => {
+                                    self.tracks[ti].poly.note_off_clip(pitch);
+                                }
+                                midi_schedule::Gate::Off(_) => {}
                             }
-                        }
-                        let end = n.start as f64 + n.len as f64;
-                        if kind != 0 && crossed(prev, local, end, clip_beats) {
-                            self.tracks[ti].poly.note_off_clip(n.pitch);
                         }
                     }
                 }
-            }
-            if let Some(p) = self.tracks[ti].playing.as_mut() {
-                let wrapped = local + 0.0001 < p.last_beat;
-                p.last_beat = local;
-                if wrapped && !p.looping {
-                    self.tracks[ti].stop_clip();
+                if let Some(playing) = self.tracks[ti].playing.as_mut() {
+                    playing.last_beat = local;
                 }
             }
         }
@@ -1243,6 +1273,7 @@ impl RtEngine {
                             last_beat: -0.0001,
                             looping: true,
                         });
+                        self.tracks[t].rebuild_midi_schedule(self.beat);
                         self.playing = true;
                         self.selected_track = t;
                         self.selected_scene = s;
@@ -1524,7 +1555,7 @@ impl RtEngine {
                             len: 0.25,
                             vel,
                         });
-                        self.tracks[t].invalidate_arp_for_scene(scene);
+                        self.tracks[t].clip_notes_changed(scene, self.beat);
                     }
                 }
             }
@@ -1545,7 +1576,7 @@ impl RtEngine {
                         self.tracks[t].clips[s].bars = 1.0;
                     }
                     self.tracks[t].clips[s].notes = notes;
-                    self.tracks[t].invalidate_arp_for_scene(s);
+                    self.tracks[t].clip_notes_changed(s, self.beat);
                 }
             }
             Command::FxWet { slot, value } => {
@@ -1726,7 +1757,7 @@ impl RtEngine {
                                 vel: 110,
                             });
                             self.tracks[self.selected_track]
-                                .invalidate_arp_for_scene(self.selected_scene);
+                                .clip_notes_changed(self.selected_scene, self.beat);
                         }
                     }
                 } else {
@@ -1951,19 +1982,6 @@ impl RtEngine {
             }
         }
         self.scratch = tmp;
-    }
-}
-
-fn crossed(prev: f64, now: f64, t: f64, len: f64) -> bool {
-    if len <= 0.0 {
-        return false;
-    }
-    let t = t.rem_euclid(len);
-    if now >= prev {
-        prev <= t && t < now
-    } else {
-        // wrapped
-        prev <= t || t < now
     }
 }
 
