@@ -206,9 +206,16 @@ impl Env {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VoiceOwner {
+    Live,
+    Clip,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Voice {
     pub note: u8,
+    pub owner: VoiceOwner,
     pub vel: f32,
     pub phase: f32,
     pub phase2: f32,
@@ -226,6 +233,7 @@ impl Voice {
         };
         Self {
             note: 0,
+            owner: VoiceOwner::Live,
             vel: 0.0,
             phase: 0.0,
             phase2: 0.0,
@@ -280,11 +288,18 @@ impl Poly {
         }
     }
     pub fn note_on(&mut self, note: u8, vel: f32) {
+        self.note_on_owned(note, vel, VoiceOwner::Live);
+    }
+    pub fn note_on_clip(&mut self, note: u8, vel: f32) {
+        self.note_on_owned(note, vel, VoiceOwner::Clip);
+    }
+    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner) {
         if let Some(v) = self
             .voices
             .iter_mut()
-            .find(|v| !v.env.active() || v.note == note)
+            .find(|v| !v.env.active() || (v.note == note && v.owner == owner))
         {
+            v.owner = owner;
             v.trig(note, vel);
             return;
         }
@@ -295,11 +310,25 @@ impl Poly {
             .min_by(|a, b| a.1.env.level.partial_cmp(&b.1.env.level).unwrap())
             .map(|(i, _)| i)
             .unwrap_or(0);
+        self.voices[i].owner = owner;
         self.voices[i].trig(note, vel);
     }
     pub fn note_off(&mut self, note: u8) {
+        self.note_off_owned(note, VoiceOwner::Live);
+    }
+    pub fn note_off_clip(&mut self, note: u8) {
+        self.note_off_owned(note, VoiceOwner::Clip);
+    }
+    fn note_off_owned(&mut self, note: u8, owner: VoiceOwner) {
         for v in &mut self.voices {
-            if v.note == note && v.env.stage != 0 && v.env.stage != 4 {
+            if v.note == note && v.owner == owner && matches!(v.env.stage, 1..=3) {
+                v.env.off();
+            }
+        }
+    }
+    pub fn release_clip(&mut self) {
+        for v in &mut self.voices {
+            if v.owner == VoiceOwner::Clip && matches!(v.env.stage, 1..=3) {
                 v.env.off();
             }
         }
