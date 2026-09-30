@@ -991,6 +991,29 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        // Validate before any command can launch, select, or alter another scene.
+        // In particular, FireClip must not change a previous clip's looping flag
+        // after an invalid LaunchClip, and Select must not clamp into a real cell.
+        let scene = match &c {
+            Command::LaunchClip { scene, .. }
+            | Command::LaunchScene { scene }
+            | Command::SetNotes { scene, .. }
+            | Command::FireClip { scene, .. }
+            | Command::ToggleScene { scene }
+            | Command::RestartScene { scene }
+            | Command::AddScene { scene }
+            | Command::OpenFxScene(scene) => Some(*scene as usize),
+            Command::Select { track, scene } => {
+                if *track >= self.tracks.len() {
+                    return;
+                }
+                Some(*scene)
+            }
+            _ => None,
+        };
+        if scene.is_some_and(|scene| scene >= SCENES) {
+            return;
+        }
         match c {
             Command::Play => {
                 self.playing = true;
@@ -1284,8 +1307,8 @@ impl RtEngine {
                 }
             }
             Command::Select { track, scene } => {
-                self.selected_track = track.min(TRACKS - 1);
-                self.selected_scene = scene.min(SCENES - 1);
+                self.selected_track = track;
+                self.selected_scene = scene;
                 self.compose_armed = true;
                 let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
                 if clip.kind == ClipKind::Empty {
