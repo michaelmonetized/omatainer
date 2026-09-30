@@ -63,7 +63,11 @@ fn control_port_reports_queue_acceptance_full_and_disconnected() {
         Err(SubmissionError::Disconnected)
     );
     assert_eq!(
-        commands.send(Command::LiveNoteOff { ch: 0, note: 60 }),
+        commands.send(Command::LiveNoteOff {
+            source: 0,
+            ch: 0,
+            note: 60
+        }),
         Err(SubmissionError::Disconnected)
     );
 }

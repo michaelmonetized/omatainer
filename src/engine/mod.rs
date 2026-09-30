@@ -29,10 +29,12 @@ mod deck_loop_tests;
 mod deck_stereo_tests;
 #[cfg(test)]
 mod deck_transition_tests;
+#[cfg(test)]
+mod input_ownership_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
-    Sample, Svf, ThreeBand,
+    InputKey, Sample, Svf, ThreeBand,
 };
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -402,10 +404,17 @@ pub struct RtEngine {
     pub sampler_banks: Vec<String>,
     pub pad_banks: Vec<[Arc<Sample>; 16]>,
     pub pad_voices: [Option<(Arc<Sample>, f64, f32)>; 16],
+    pad_targets: [Option<PadTarget>; 16],
     pub builtin: [Option<Arc<Sample>>; 2],
     pub fx_view: i16,
     pub scene_fx: fx::FxChain,
     pub compose_armed: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PadTarget {
+    track: usize,
+    pitch: u8,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -570,8 +579,8 @@ pub enum Command {
     Select { track: usize, scene: usize },
     SelectDeck(usize),
     SetView(View),
-    LiveNoteOn { ch: u8, note: u8, vel: u8 },
-    LiveNoteOff { ch: u8, note: u8 },
+    LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
+    LiveNoteOff { source: u64, ch: u8, note: u8 },
     SetNotes { track: u8, scene: u8, notes: Vec<MidiNote> },
     FxWet { slot: u8, value: f32 },
     FxSelect { slot: u8 },
@@ -677,6 +686,7 @@ impl RtEngine {
             sampler_banks: vec!["Kit".into(), "Perc".into(), "Hits".into()],
             pad_banks: build_pad_banks(sr as u32),
             pad_voices: std::array::from_fn(|_| None),
+            pad_targets: [None; 16],
             builtin: [None, None],
             fx_view: -1,
             scene_fx: fx::FxChain::new(sr),
@@ -1182,6 +1192,15 @@ impl RtEngine {
         (l, r)
     }
 
+    fn release_input(&mut self, input: InputKey) {
+        // Voice pools are bounded; their exact gate metadata is the routing
+        // record even after selection changes or a voice is stolen.
+        for track in &mut self.tracks {
+            track.poly.note_off_input(input);
+        }
+        self.sampler_poly.note_off_input(input);
+    }
+
     pub fn apply(&mut self, c: Command) {
         // Validate before any command can launch, select, or alter another scene.
         // In particular, FireClip must not change a previous clip's looping flag
@@ -1519,12 +1538,17 @@ impl RtEngine {
             }
             Command::SelectDeck(d) => self.selected_deck = d.min(DECKS - 1),
             Command::SetView(v) => self.view = v,
-            Command::LiveNoteOn { note, vel, .. } => {
+            Command::LiveNoteOn { source, ch, note, vel } => {
+                let input = InputKey::Midi { source, ch: ch & 15, note };
+                self.release_input(input);
+                if vel == 0 {
+                    return;
+                }
                 let t = self.selected_track;
                 if self.tracks[t].kind == 0 {
                     self.trig_drum(t, note, vel as f32 / 127.0);
                 } else {
-                    self.tracks[t].poly.note_on(note, vel as f32 / 127.0);
+                    self.tracks[t].poly.note_on_input(note, vel as f32 / 127.0, input);
                 }
                 if self.recording && self.playing {
                     let scene = self.selected_scene;
@@ -1551,9 +1575,8 @@ impl RtEngine {
                     }
                 }
             }
-            Command::LiveNoteOff { note, .. } => {
-                let t = self.selected_track;
-                self.tracks[t].poly.note_off(note);
+            Command::LiveNoteOff { source, ch, note } => {
+                self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::SetNotes { track, scene, notes } => {
                 let t = track as usize;
@@ -1721,8 +1744,12 @@ impl RtEngine {
                 }
             }
             Command::SamplerPad { pad, on } => {
+                let pad = pad % 16;
+                let input = InputKey::Pad(pad);
                 let pitch = sampler_pitch(self.sampler_inst, self.sampler_oct, pad);
                 if on {
+                    self.release_input(input);
+                    self.pad_targets[pad as usize] = None;
                     if self.sampler_inst < 0 {
                         if let Some(bank) = self.pad_banks.get(self.sampler_bank) {
                             let samp = bank[pad as usize % 16].clone();
@@ -1730,8 +1757,12 @@ impl RtEngine {
                             self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate));
                         }
                     } else {
-                        self.sampler_poly.note_on(pitch, 0.9);
-                        self.tracks[self.selected_track].poly.note_on(pitch, 0.9);
+                        self.sampler_poly.note_on_input(pitch, 0.9, input);
+                        self.tracks[self.selected_track].poly.note_on_input(pitch, 0.9, input);
+                        self.pad_targets[pad as usize] = Some(PadTarget {
+                            track: self.selected_track,
+                            pitch,
+                        });
                     }
                     if self.compose_armed || self.recording {
                         let start = (self.beat % 4.0) as f32;
@@ -1753,8 +1784,12 @@ impl RtEngine {
                         }
                     }
                 } else {
-                    self.sampler_poly.note_off(pitch);
-                    self.tracks[self.selected_track].poly.note_off(pitch);
+                    self.sampler_poly.note_off_input(input);
+                    if let Some(target) = self.pad_targets[pad as usize].take() {
+                        if let Some(track) = self.tracks.get_mut(target.track) {
+                            track.poly.note_off_input(input);
+                        }
+                    }
                 }
             }
             Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
@@ -1765,18 +1800,19 @@ impl RtEngine {
             }
             Command::SamplerOct(d) => {
                 let old = self.sampler_oct;
-                self.sampler_oct = (self.sampler_oct + d).clamp(1, 7);
+                self.sampler_oct = (self.sampler_oct as i16 + d as i16).clamp(1, 7) as i8;
                 let dn = (self.sampler_oct - old) * 12;
                 if dn != 0 {
-                    let bump = |voices: &mut [crate::engine::dsp::Voice]| {
-                        for v in voices {
-                            if v.env.active() {
-                                v.note = (v.note as i16 + dn as i16).clamp(0, 127) as u8;
+                    for (pad, target) in self.pad_targets.iter_mut().enumerate() {
+                        if let Some(target) = target {
+                            target.pitch = (target.pitch as i16 + dn as i16).clamp(0, 127) as u8;
+                            let input = InputKey::Pad(pad as u8);
+                            self.sampler_poly.transpose_input(input, dn);
+                            if let Some(track) = self.tracks.get_mut(target.track) {
+                                track.poly.transpose_input(input, dn);
                             }
                         }
-                    };
-                    bump(&mut self.sampler_poly.voices);
-                    bump(&mut self.tracks[self.selected_track].poly.voices);
+                    }
                     let rate = 2f32.powi((self.sampler_oct - 3) as i32);
                     for slot in &mut self.pad_voices {
                         if let Some((_, _, r)) = slot {

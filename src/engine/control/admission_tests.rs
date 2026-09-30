@@ -39,10 +39,53 @@ fn held(rt: &RtEngine) -> bool {
 }
 
 #[test]
+fn equal_pitch_devices_reserve_independent_releases_including_zero_velocity() {
+    let (port, mut rt) = engine();
+    for source in [11, 22] {
+        assert_eq!(
+            port.send(Command::LiveNoteOn {
+                source,
+                ch: 3,
+                note: 60,
+                vel: 100,
+            }),
+            Ok(SubmissionOutcome::Accepted)
+        );
+    }
+    assert_eq!(port.admission.lock().held, 2);
+    tick(&mut rt);
+    while port.send(Command::Master(0.8)).is_ok() {}
+    assert_eq!(
+        port.send(Command::LiveNoteOn {
+            source: 11,
+            ch: 3,
+            note: 60,
+            vel: 0,
+        }),
+        Ok(SubmissionOutcome::Accepted)
+    );
+    assert_eq!(port.admission.lock().held, 1);
+    assert_eq!(
+        port.send(Command::LiveNoteOff {
+            source: 22,
+            ch: 3,
+            note: 60,
+        }),
+        Ok(SubmissionOutcome::Accepted)
+    );
+    assert_eq!(port.admission.lock().held, 0);
+    for _ in 0..8 {
+        tick(&mut rt);
+    }
+    assert!(!held(&rt));
+}
+
+#[test]
 fn saturated_queue_preserves_fifo_gate_releases_and_all_nine_stop_lanes() {
     let (port, mut rt) = engine();
     for command in [
         Command::LiveNoteOn {
+            source: 0,
             ch: 0,
             note: 60,
             vel: 100,
@@ -55,7 +98,11 @@ fn saturated_queue_preserves_fifo_gate_releases_and_all_nine_stop_lanes() {
     while port.send(Command::Master(0.8)).is_ok() {}
     assert_eq!(port.len(), 244); // Three held releases + nine stops reserved.
     for release in [
-        Command::LiveNoteOff { ch: 0, note: 60 },
+        Command::LiveNoteOff {
+            source: 0,
+            ch: 0,
+            note: 60,
+        },
         Command::SamplerPad { pad: 3, on: false },
         Command::DeckTouch { deck: 0, on: false },
     ] {
@@ -103,6 +150,7 @@ fn all_accepted_distinct_onsets_reserve_their_release_even_without_a_consumer() 
     let mut pitches = Vec::new();
     for note in 0..=255 {
         match port.send(Command::LiveNoteOn {
+            source: 0,
             ch: 0,
             note,
             vel: 100,
@@ -115,7 +163,11 @@ fn all_accepted_distinct_onsets_reserve_their_release_even_without_a_consumer() 
     assert_eq!(pitches.len(), 123);
     for note in pitches {
         assert_eq!(
-            port.send(Command::LiveNoteOff { ch: 0, note }),
+            port.send(Command::LiveNoteOff {
+                source: 0,
+                ch: 0,
+                note
+            }),
             Ok(SubmissionOutcome::Accepted)
         );
     }
@@ -137,11 +189,16 @@ fn all_accepted_distinct_onsets_reserve_their_release_even_without_a_consumer() 
 fn redundant_release_never_coalesces_across_an_accepted_retrigger() {
     let (port, mut rt) = engine();
     let on = Command::LiveNoteOn {
+        source: 0,
         ch: 0,
         note: 60,
         vel: 100,
     };
-    let off = Command::LiveNoteOff { ch: 0, note: 60 };
+    let off = Command::LiveNoteOff {
+        source: 0,
+        ch: 0,
+        note: 60,
+    };
     assert_eq!(port.send(off.clone()), Ok(SubmissionOutcome::Coalesced));
     for _ in 0..3 {
         assert_eq!(port.send(on.clone()), Ok(SubmissionOutcome::Accepted));
@@ -239,11 +296,16 @@ fn concurrent_producers_cannot_consume_another_gates_release_reservation() {
         producers.push(std::thread::spawn(move || {
             let note = 60 + worker;
             let on = Command::LiveNoteOn {
+                source: 0,
                 ch: 0,
                 note,
                 vel: 100,
             };
-            let off = Command::LiveNoteOff { ch: 0, note };
+            let off = Command::LiveNoteOff {
+                source: 0,
+                ch: 0,
+                note,
+            };
             commands.send(on.clone()).unwrap();
             for _ in 0..70 {
                 let _ = commands.send(Command::Master(0.8));

@@ -54,6 +54,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     rt.apply(Command::LaunchClip { track: 1, scene: 0 });
     for note in [60, 64, 67] {
         rt.apply(Command::LiveNoteOn {
+            source: 0,
             note,
             vel: 100,
             ch: 0,

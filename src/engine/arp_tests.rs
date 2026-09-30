@@ -200,6 +200,7 @@ fn arp_record_and_compose_additions_update_the_next_step() {
         } else {
             rt.recording = true;
             rt.apply(Command::LiveNoteOn {
+                source: 0,
                 ch: 0,
                 note: 59,
                 vel: 100,
