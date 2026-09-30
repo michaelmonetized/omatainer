@@ -1,6 +1,6 @@
 //! Per-track / per-scene FX chain. Slots are stackable; order is the chain.
 
-use crate::engine::dsp::{Delay, OnePole, Reverb, Svf};
+use crate::engine::dsp::{rate_blend, Delay, OnePole, Reverb, Svf};
 
 #[cfg(test)]
 mod tests;
@@ -68,13 +68,14 @@ pub struct FxSlot {
     pub on: bool,
     pub mix: f32,
     pub p: [f32; 4],
+    sample_rate: f32,
     state: FxState,
 }
 
 #[derive(Clone, Debug)]
 enum FxState {
     None,
-    Envelope(f32),
+    Envelope { level: f32, blend: f32 },
     Spread([Delay; 2]),
     Reverb([Reverb; 2]),
     Chorus { delays: [Delay; 2], phase: f32 },
@@ -101,11 +102,14 @@ impl FxSlot {
             FxId::Eq3 | FxId::Eq5 | FxId::Eq8 => [0.5, 0.5, 0.5, 0.5],
         };
         let state = match id {
-            FxId::Comp | FxId::Gate => FxState::Envelope(0.0),
+            FxId::Comp | FxId::Gate => FxState::Envelope {
+                level: 0.0,
+                blend: rate_blend(if id == FxId::Comp { 0.005 } else { 0.02 }, sr),
+            },
             FxId::Spread => {
                 FxState::Spread(std::array::from_fn(|_| Delay::new((sr * 0.02) as usize)))
             }
-            FxId::Reverb => FxState::Reverb(std::array::from_fn(|_| Reverb::new())),
+            FxId::Reverb => FxState::Reverb(std::array::from_fn(|_| Reverb::at_sample_rate(sr))),
             FxId::Chorus => FxState::Chorus {
                 delays: std::array::from_fn(|_| {
                     let mut delay = Delay::new((sr * 0.05) as usize);
@@ -114,7 +118,11 @@ impl FxSlot {
                 }),
                 phase: 0.0,
             },
-            FxId::Delay => FxState::Delay(std::array::from_fn(|_| Delay::new((sr * 2.0) as usize))),
+            FxId::Delay => FxState::Delay(std::array::from_fn(|_| {
+                let mut delay = Delay::new((sr * 2.0) as usize);
+                delay.time_samples = sr * 0.25;
+                delay
+            })),
             FxId::Filter => FxState::Filter([Svf::default(); 2]),
             FxId::Eq3 | FxId::Eq5 | FxId::Eq8 => FxState::Eq([eq_filters(sr); 2]),
             FxId::Balance | FxId::Arp | FxId::Dist => FxState::None,
@@ -124,6 +132,7 @@ impl FxSlot {
             on: true,
             mix: 0.5,
             p,
+            sample_rate: sr,
             state,
         }
     }
@@ -132,17 +141,26 @@ impl FxSlot {
         self.id
     }
 
+    /// Output must be stopped. Reallocate only this slot's processor storage,
+    /// discard its tail, and preserve effect order, bypass and all controls.
+    pub fn set_sample_rate(&mut self, sr: f32) {
+        if self.sample_rate != sr {
+            self.state = Self::new(self.id, sr).state;
+            self.sample_rate = sr;
+        }
+    }
+
     fn tick_stereo(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
         if !self.on {
             return input;
         }
         let wet = match &mut self.state {
-            FxState::Envelope(env) => {
+            FxState::Envelope { level: env, blend } => {
                 // Link the two channels' gain reduction without sharing the
                 // detector with another compressor or gate in the rack.
                 let level = input[0].abs().max(input[1].abs());
+                *env = *env * (1.0 - *blend) + level * *blend;
                 let gain = if self.id == FxId::Comp {
-                    *env = *env * 0.995 + level * 0.005;
                     let threshold = 0.05 + self.p[0] * 0.4;
                     let reduction = if *env > threshold {
                         threshold / env.max(1e-6)
@@ -151,7 +169,6 @@ impl FxSlot {
                     };
                     1.0 - self.p[1] + self.p[1] * reduction
                 } else {
-                    *env = *env * 0.98 + level * 0.02;
                     if *env < self.p[0] {
                         0.05
                     } else {
@@ -250,6 +267,12 @@ pub struct FxChain {
 impl FxChain {
     pub fn new(_sr: f32) -> Self {
         Self { slots: Vec::new() }
+    }
+
+    pub fn set_sample_rate(&mut self, sr: f32) {
+        for slot in &mut self.slots {
+            slot.set_sample_rate(sr);
+        }
     }
 
     pub fn tick(&mut self, x: f32, sr: f32) -> f32 {

@@ -23,6 +23,8 @@ mod master_stereo_tests;
 mod midi_schedule;
 #[cfg(test)]
 mod midi_schedule_tests;
+#[cfg(test)]
+mod sample_rate_tests;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
@@ -218,6 +220,8 @@ pub struct DeckRt {
     pub pitch_range: u8,
     pub sync_bpm: f32,
     pub grain_i: f32,
+    grain_frames: f32,
+    rate_smoothing: f32,
     pub grain_origin: f64,
     pub prev_origin: f64,
     last_output: [f32; 2],
@@ -269,6 +273,8 @@ impl DeckRt {
             pitch_range: 0,
             sync_bpm: 124.0,
             grain_i: 0.0,
+            grain_frames: 2.0 * (GRAIN_HOP * sr / 48_000.0).round().max(1.0),
+            rate_smoothing: dsp::rate_blend(0.08, sr),
             grain_origin: 0.0,
             prev_origin: 0.0,
             last_output: [0.0; 2],
@@ -289,7 +295,7 @@ impl DeckRt {
         self.grain_origin = pos;
         // The previous window starts half a grain earlier, so its first
         // full-weight sample is at the new position, not 512 frames ahead.
-        self.prev_origin = pos - GRAIN_HOP as f64 * source_rate as f64 / sr as f64;
+        self.prev_origin = pos - self.grain_frames as f64 * 0.5 * source_rate as f64 / sr as f64;
         self.grain_i = 0.0;
         match transition {
             DeckTransition::Jump => {
@@ -719,8 +725,15 @@ impl RtEngine {
         e
     }
 
+    /// Prepare a stopped/unowned renderer before constructing its output
+    /// callback. This allocates effect buffers and generated samples and must
+    /// never be called from `process` or a running device callback.
+    ///
+    /// Changed rates discard voices/tails/filter history, preserving musical
+    /// positions and controls. Ordinary clips chase their current notes on the
+    /// next sample; arpeggiators resume at the next step. Equal rates are a no-op.
     pub fn set_sample_rate(&mut self, sr: u32) {
-        if (sr as f32 - self.sr).abs() < 1.0 {
+        if sr == 0 || sr as f32 == self.sr {
             return;
         }
         self.sr = sr as f32;
@@ -730,19 +743,29 @@ impl RtEngine {
         self.reverb = std::array::from_fn(|_| Reverb::at_sample_rate(sr as f32));
         let drums = build_kit(sr);
         self.pad_banks = build_pad_banks(sr);
+        self.pad_voices.fill(None);
+        self.sampler_poly.set_sample_rate(self.sr);
+        self.scene_fx.set_sample_rate(self.sr);
         for t in &mut self.tracks {
-            t.poly = Poly::new(self.sr, t.kind.min(2), 8);
-            t.eq = ThreeBand::new(self.sr);
+            t.poly.set_sample_rate(self.sr);
+            t.eq.set_sample_rate(self.sr);
+            t.fx.set_sample_rate(self.sr);
             t.drum_samples = drums.clone();
+            t.drum_pos.fill(None);
+            t.release_clip_notes();
+            t.rebuild_midi_schedule(self.beat);
+            t.meter = 0.0;
         }
         for d in &mut self.decks {
             for eq in &mut d.eq {
-                let gains = [eq.low_g, eq.mid_g, eq.high_g];
-                *eq = ThreeBand::new(self.sr);
-                [eq.low_g, eq.mid_g, eq.high_g] = gains;
+                eq.set_sample_rate(self.sr);
             }
             d.filter = [Svf::default(); 2];
+            d.grain_frames = 2.0 * (GRAIN_HOP * self.sr / 48_000.0).round().max(1.0);
+            d.rate_smoothing = dsp::rate_blend(0.08, self.sr);
+            d.last_output = [0.0; 2];
             d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+            d.meter = 0.0;
         }
     }
 
@@ -1115,7 +1138,7 @@ impl RtEngine {
             if d.touching {
                 d.rate = d.scratch;
             } else {
-                d.rate += (d.target_rate - d.rate) * 0.08;
+                d.rate += (d.target_rate - d.rate) * d.rate_smoothing;
                 d.scratch *= 0.85;
             }
             if d.playing || d.touching {
@@ -1189,15 +1212,16 @@ impl RtEngine {
             return (0.0, 0.0);
         }
         let gi = d.grain_i;
+        let hop = d.grain_frames * 0.5;
         let (l0, r0) = d.sample_at(d.grain_origin + gi as f64 * asr);
-        let (l1, r1) = d.sample_at(d.prev_origin + (gi + GRAIN_HOP) as f64 * asr);
-        let w0 = 0.5 - 0.5 * (std::f32::consts::TAU * (gi / GRAIN_FRAMES)).cos();
-        let w1 = 0.5 - 0.5 * (std::f32::consts::TAU * ((gi + GRAIN_HOP) / GRAIN_FRAMES)).cos();
+        let (l1, r1) = d.sample_at(d.prev_origin + (gi + hop) as f64 * asr);
+        let w0 = 0.5 - 0.5 * (std::f32::consts::TAU * (gi / d.grain_frames)).cos();
+        let w1 = 0.5 - 0.5 * (std::f32::consts::TAU * ((gi + hop) / d.grain_frames)).cos();
         d.grain_i += 1.0;
-        if d.grain_i >= GRAIN_HOP {
+        if d.grain_i >= hop {
             d.prev_origin = d.grain_origin;
             d.grain_origin = d.pos;
-            d.grain_i -= GRAIN_HOP;
+            d.grain_i -= hop;
         }
         (l0 * w0 + l1 * w1, r0 * w0 + r1 * w1)
     }

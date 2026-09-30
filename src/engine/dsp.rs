@@ -1,5 +1,16 @@
 //! Real-time-safe DSP primitives used by the mixer, decks, and instruments.
 
+/// Rescale a one-pole blend defined at 48 kHz to the same time constant.
+/// Call during preparation, not per output frame. Preserve the 48 kHz value
+/// exactly so existing neutral-rate behavior remains unchanged.
+pub fn rate_blend(blend: f32, sr: f32) -> f32 {
+    if sr == 48_000.0 {
+        blend
+    } else {
+        1.0 - (1.0 - blend).powf(48_000.0 / sr)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct OnePole {
     pub a: f32,
@@ -26,7 +37,14 @@ pub struct Svf {
 
 impl Svf {
     pub fn process(&mut self, x: f32, cutoff: f32, res: f32, sr: f32, morph: f32) -> f32 {
-        let f = (std::f32::consts::PI * cutoff / sr).clamp(0.0001, 0.45).tan();
+        // Keep the original 48 kHz cutoff limits in Hz at every output rate.
+        // A fixed normalized clamp would change the audible upper cutoff when
+        // opening the same project at 44.1 or 96 kHz. Retain Nyquist headroom.
+        let scale = 48_000.0 / sr;
+        let ceiling = (0.45 * scale).min(std::f32::consts::PI * 0.45);
+        let f = (std::f32::consts::PI * cutoff / sr)
+            .clamp((0.0001 * scale).min(ceiling), ceiling)
+            .tan();
         let g = f;
         let k = 2.0 - res.clamp(0.0, 0.95) * 1.8;
         let a1 = 1.0 / (1.0 + g * (g + k));
@@ -75,6 +93,12 @@ impl ThreeBand {
         let h = x - h_lp;
         let m = h_lp - l;
         l * self.low_g + m * self.mid_g + h * self.high_g
+    }
+
+    /// Rebuild coefficients and discard history without changing EQ controls.
+    pub fn set_sample_rate(&mut self, sr: f32) {
+        self.low = OnePole::lpf(sr, 250.0);
+        self.high = OnePole::lpf(sr, 3200.0);
     }
 }
 
@@ -304,6 +328,14 @@ impl Poly {
             note_on_events: 0,
         }
     }
+    /// Called while output is stopped: discard held/releasing voices and
+    /// rebuild their ADSRs. Instrument, cutoff and voice capacity are retained.
+    pub fn set_sample_rate(&mut self, sr: f32) {
+        for voice in &mut self.voices {
+            *voice = Voice::new(sr, self.kind);
+        }
+        self.filters.fill(Svf::default());
+    }
     pub fn note_on(&mut self, note: u8, vel: f32) {
         self.note_on_owned(note, vel, VoiceOwner::Live, None);
     }
@@ -512,12 +544,13 @@ pub fn synth_drum(kind: u8, sr: u32) -> Vec<f32> {
             // closed hat
             let mut seed = 7u32;
             let mut lp = 0.0;
+            let blend = rate_blend(0.35, sr as f32);
             for (i, s) in o.iter_mut().enumerate() {
                 seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
                 let nse = (seed as f32 / u32::MAX as f32) * 2.0 - 1.0;
                 let t = i as f32 / sr as f32;
                 let env = (-t * 55.0).exp();
-                lp = lp + 0.35 * (nse - lp);
+                lp = lp + blend * (nse - lp);
                 *s = (nse - lp) * env * 0.55;
             }
             o.truncate((sr as f32 * 0.09) as usize);
@@ -544,12 +577,13 @@ pub fn synth_drum(kind: u8, sr: u32) -> Vec<f32> {
             // open hat
             let mut seed = 11u32;
             let mut lp = 0.0;
+            let blend = rate_blend(0.25, sr as f32);
             for (i, s) in o.iter_mut().enumerate() {
                 seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
                 let nse = (seed as f32 / u32::MAX as f32) * 2.0 - 1.0;
                 let t = i as f32 / sr as f32;
                 let env = (-t * 8.0).exp();
-                lp = lp + 0.25 * (nse - lp);
+                lp = lp + blend * (nse - lp);
                 *s = (nse - lp) * env * 0.4;
             }
         }
