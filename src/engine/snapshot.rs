@@ -259,6 +259,7 @@ impl Frame {
             self.samples[index] = deck.audio.clone();
         }
         target.playing = rt.playing;
+        target.midi_clock = rt.midi_clock;
         target.recording = rt.recording;
         target.bpm = rt.bpm;
         target.beat = rt.beat;

@@ -243,6 +243,7 @@ fn handle_client(
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
             "midi": s.midi,
+            "midi_clock": s.midi_clock,
             "commands": s.commands,
             "submissions": commands.stats(),
             "deckA": s.decks.first().map(|d| d.title.clone()).unwrap_or_default(),
