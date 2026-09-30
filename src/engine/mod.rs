@@ -13,6 +13,8 @@ pub mod midi;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
+#[cfg(test)]
+mod deck_loop_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -170,6 +172,12 @@ pub struct DeckRt {
 }
 
 impl DeckRt {
+    fn clear_loop(&mut self) {
+        self.loop_on = false;
+        self.loop_start = 0.0;
+        self.loop_len = 0.0;
+    }
+
     fn new(sr: f32) -> Self {
         Self {
             audio: None,
@@ -1283,6 +1291,7 @@ impl RtEngine {
             }
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.clear_loop();
                 d.title = audio.name.clone();
                 d.bpm = audio.bpm;
                 d.pos = 0.0;
@@ -1301,7 +1310,7 @@ impl RtEngine {
                 d.playing = false;
                 d.pos = 0.0;
                 d.cue_pos = 0.0;
-                d.loop_on = false;
+                d.clear_loop();
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
