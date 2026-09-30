@@ -1,4 +1,5 @@
 mod arp;
+mod recording;
 #[cfg(test)]
 mod arp_tests;
 #[cfg(test)]
@@ -37,6 +38,8 @@ mod input_ownership_tests;
 mod stopped_deck_tests;
 #[cfg(test)]
 mod recording_position_tests;
+#[cfg(test)]
+mod recording_duration_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -399,6 +402,7 @@ pub struct RtEngine {
     clock_accum: f64,
     cpu_acc: f32,
     frames_done: u64,
+    note_recording: recording::Recording,
     metronome: bool,
     metro_phase: u8,
     scratch: Vec<f32>,
@@ -682,6 +686,7 @@ impl RtEngine {
             clock_accum: 0.0,
             cpu_acc: 0.0,
             frames_done: 0,
+            note_recording: recording::Recording::default(),
             metronome: false,
             metro_phase: 0,
             scratch: Vec::new(),
@@ -868,6 +873,9 @@ impl RtEngine {
         let any_solo = self.tracks.iter().any(|t| t.solo);
 
         for i in 0..frames {
+            // Compose holds still have a musical duration with the transport
+            // stopped. This clock integrates actual tempo and never loops.
+            self.note_recording.clock += 1.0 / spb;
             if self.playing {
                 self.beat += 1.0 / spb;
             }
@@ -954,6 +962,7 @@ impl RtEngine {
             let clip_beats = self.tracks[ti].clips[scene].bars.max(0.25) as f64 * 4.0;
             let elapsed = self.beat - p.start_beat;
             if !p.looping && elapsed > clip_beats + midi_schedule::BEAT_EPSILON {
+                self.finish_recording_track(ti);
                 self.tracks[ti].stop_clip();
             } else {
                 // Match the event heap's half-open sample interval. An exact
@@ -1212,6 +1221,7 @@ impl RtEngine {
     }
 
     fn release_input(&mut self, input: InputKey) {
+        self.finish_recording_input(input);
         // Voice pools are bounded; their exact gate metadata is the routing
         // record even after selection changes or a voice is stolen.
         for track in &mut self.tracks {
@@ -1238,6 +1248,7 @@ impl RtEngine {
         if track >= self.tracks.len() || scene_index >= SCENES {
             return;
         }
+        self.finish_recording_track(track);
         self.tracks[track].stop_clip();
         if self.tracks[track].clips[scene_index].occupied() {
             self.tracks[track].playing = Some(PlayingClip {
@@ -1287,6 +1298,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
+                self.finish_recording_all();
                 self.playing = false;
                 self.recording = false;
                 for t in &mut self.tracks {
@@ -1304,7 +1316,12 @@ impl RtEngine {
                     }
                 }
             }
-            Command::Record => self.recording = !self.recording,
+            Command::Record => {
+                if self.recording {
+                    self.finish_recording_all();
+                }
+                self.recording = !self.recording;
+            }
             Command::Tap(t) => {
                 self.tap.push(t);
                 self.tap.retain(|x| t.duration_since(*x) < Duration::from_secs(3));
@@ -1330,6 +1347,7 @@ impl RtEngine {
             }
             Command::StopTrack { track } => {
                 if (track as usize) < self.tracks.len() {
+                    self.finish_recording_track(track as usize);
                     self.tracks[track as usize].stop_clip();
                 }
             }
@@ -1577,7 +1595,7 @@ impl RtEngine {
                 }
                 if self.recording && self.playing {
                     let scene = self.selected_scene;
-                    let Some(start) = self.recording_position(t, scene) else { return };
+                    if self.recording_position(t, scene).is_none() { return; }
                     if self.tracks[t].clips[scene].kind == ClipKind::Empty {
                         self.tracks[t].clips[scene] = Clip {
                             kind: ClipKind::Midi,
@@ -1588,15 +1606,7 @@ impl RtEngine {
                             audio: None,
                         };
                     }
-                    if self.tracks[t].clips[scene].kind == ClipKind::Midi {
-                        self.tracks[t].clips[scene].notes.push(MidiNote {
-                            pitch: note,
-                            start,
-                            len: 0.25,
-                            vel,
-                        });
-                        self.tracks[t].clip_notes_changed(scene, self.beat);
-                    }
+                    self.begin_recording_note(input, t, scene, note, vel);
                 }
             }
             Command::LiveNoteOff { source, ch, note } => {
@@ -1606,6 +1616,9 @@ impl RtEngine {
                 let t = track as usize;
                 let s = scene as usize;
                 if t < TRACKS && s < SCENES {
+                    // Replacing the note list cancels captures into that list;
+                    // a later physical release must not alter the replacement.
+                    self.cancel_recording_clip(t, s);
                     if self.tracks[t].playing.map(|p| p.scene) == Some(scene) {
                         self.tracks[t].release_clip_notes();
                     }
@@ -1740,9 +1753,10 @@ impl RtEngine {
             Command::ToggleScene { scene } => {
                 let active = self.tracks.iter().any(|t| t.playing.map(|p| p.scene) == Some(scene));
                 if active {
-                    for t in &mut self.tracks {
-                        if t.playing.map(|p| p.scene) == Some(scene) {
-                            t.stop_clip();
+                    for t in 0..self.tracks.len() {
+                        if self.tracks[t].playing.map(|p| p.scene) == Some(scene) {
+                            self.finish_recording_track(t);
+                            self.tracks[t].stop_clip();
                         }
                     }
                 } else {
@@ -1787,27 +1801,21 @@ impl RtEngine {
                         });
                     }
                     if self.compose_armed || self.recording {
-                        let Some(start) = self.recording_position(
+                        if self.recording_position(
                             self.selected_track, self.selected_scene,
-                        ) else { return };
+                        ).is_none() { return; }
                         let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
                         if clip.kind == ClipKind::Empty {
                             clip.kind = ClipKind::Midi;
                             clip.name = "Pad".into();
                             clip.bars = 1.0;
                         }
-                        if clip.kind == ClipKind::Midi {
-                            clip.notes.push(MidiNote {
-                                pitch,
-                                start,
-                                len: 0.25,
-                                vel: 110,
-                            });
-                            self.tracks[self.selected_track]
-                                .clip_notes_changed(self.selected_scene, self.beat);
-                        }
+                        self.begin_recording_note(
+                            input, self.selected_track, self.selected_scene, pitch, 110,
+                        );
                     }
                 } else {
+                    self.finish_recording_input(input);
                     self.sampler_poly.note_off_input(input);
                     if let Some(target) = self.pad_targets[pad as usize].take() {
                         if let Some(track) = self.tracks.get_mut(target.track) {
