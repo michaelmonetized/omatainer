@@ -5,10 +5,12 @@ use eframe::egui::{
     self, Align, Color32, FontId, Key, PointerButton, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2,
 };
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::time::{Instant, SystemTime};
-use walkdir::WalkDir;
+mod library_scan;
+use library_scan::LibraryScan;
 
 #[cfg(test)]
 mod test_support;
@@ -19,7 +21,11 @@ pub struct App {
     engine: Engine,
     theme: Theme,
     fonts_set: bool,
-    library: Vec<LibItem>,
+    library: Arc<Vec<LibItem>>,
+    library_scan: LibraryScan,
+    // History can change while a worker holds the immutable crate baseline.
+    // Keep those small edits separate from the full library allocation.
+    last_played: HashMap<LibSource, SystemTime>,
     lib_filter: String,
     lib_sel: usize,
     keys_open: bool,
@@ -35,6 +41,7 @@ pub struct App {
     pad_held: [bool; 16],
 }
 
+#[derive(Clone)]
 struct LibItem {
     title: String,
     artist: String,
@@ -98,7 +105,9 @@ impl App {
             engine,
             theme,
             fonts_set: true,
-            library: Vec::new(),
+            library: Arc::new(builtin_crate_items()),
+            library_scan: LibraryScan::default(),
+            last_played: HashMap::new(),
             lib_filter: String::new(),
             lib_sel: 0,
             keys_open: false,
@@ -117,33 +126,26 @@ impl App {
 
     fn scan_library(&mut self) {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-        let mut items = builtin_crate_items();
-        for root in [PathBuf::from(&home).join("Music"), PathBuf::from(&home).join("music")] {
-            if !root.exists() {
-                continue;
-            }
-            for e in WalkDir::new(&root).max_depth(6).into_iter().flatten() {
-                let p = e.path();
-                let ext = p.extension().and_then(|x| x.to_str()).unwrap_or("").to_lowercase();
-                if !matches!(ext.as_str(), "wav" | "mp3" | "flac" | "ogg" | "aiff" | "aif" | "m4a" | "aac") {
-                    continue;
-                }
-                let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("track");
-                let (artist, title) = split_artist_title(stem);
-                let (bpm, key) = parse_tags(stem);
-                items.push(LibItem {
-                    title,
-                    artist,
-                    bpm,
-                    key,
-                    length: 0.0,
-                    last_play: None,
-                    source: LibSource::File(p.to_path_buf()),
-                });
-            }
-        }
-        sort_crate(&mut items);
-        self.library = items;
+        self.library_scan.start(
+            vec![PathBuf::from(&home).join("Music"), PathBuf::from(&home).join("music")],
+            self.library.clone(),
+        );
+    }
+
+    fn poll_library_scan(&mut self) {
+        let Some(publication) = self.library_scan.poll() else { return };
+        let selected = self.filtered().get(self.lib_sel).map(|item| item.source.clone());
+        let last_played = self.filtered().get(self.last_play_idx).map(|item| item.source.clone());
+        publication.publish(&mut self.library);
+        let visible = self.filtered();
+        self.lib_sel = selected.and_then(|source| visible.iter().position(|item| item.source == source))
+            .unwrap_or_else(|| self.lib_sel.min(visible.len().saturating_sub(1)));
+        self.last_play_idx = last_played.and_then(|source| self.filtered().iter().position(|item| item.source == source))
+            .unwrap_or(0);
+    }
+
+    fn item_last_play(&self, item: &LibItem) -> Option<SystemTime> {
+        self.last_played.get(&item.source).copied().or(item.last_play)
     }
 
     fn send(&self, c: Command) {
@@ -164,9 +166,7 @@ impl App {
         let picked = self.filtered().get(self.lib_sel).map(|i| (i.title.clone(), i.source.clone()));
         if let Some((name, source)) = picked {
             self.last_play_idx = self.lib_sel;
-            if let Some(it) = self.filtered_get_mut(self.lib_sel) {
-                it.last_play = Some(SystemTime::now());
-            }
+            self.last_played.insert(source.clone(), SystemTime::now());
             match source {
                 LibSource::Builtin(stem) => {
                     if self.submit(Command::LoadBuiltin { deck, stem: stem.index() }) {
@@ -249,11 +249,6 @@ impl App {
             })
             .collect()
     }
-
-    fn filtered_get_mut(&mut self, i: usize) -> Option<&mut LibItem> {
-        let source = self.filtered().get(i)?.source.clone();
-        self.library.iter_mut().find(|x| x.source == source)
-    }
 }
 
 fn builtin_crate_items() -> Vec<LibItem> {
@@ -281,6 +276,13 @@ fn builtin_crate_items() -> Vec<LibItem> {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.update_frame(ctx);
+    }
+}
+
+impl App {
+    fn update_frame(&mut self, ctx: &egui::Context) {
+        self.poll_library_scan();
         let submissions = self.engine.cmd.stats();
         if submissions.rejected > self.seen_submission_failures {
             self.seen_submission_failures = submissions.rejected;
@@ -667,8 +669,11 @@ impl App {
             ui.horizontal(|ui| {
                 ui.label(RichText::new("crate").size(11.0).color(t.fg_dim));
                 ui.add(egui::TextEdit::singleline(&mut self.lib_filter).hint_text("search").desired_width(180.0));
-                if ui.button("scan").clicked() {
+                if ui.add_enabled(!self.library_scan.active(), egui::Button::new("scan")).clicked() {
                     self.scan_library();
+                }
+                if self.library_scan.active() && ui.button("cancel scan").clicked() {
+                    self.library_scan.cancel();
                 }
                 if ui.button("→ A").clicked() {
                     self.load_sel(0);
@@ -677,6 +682,9 @@ impl App {
                     self.load_sel(1);
                 }
                 ui.label(RichText::new("↓ bpm up   ↑ bpm down   same bpm → key → name").size(10.0).color(t.muted));
+                let progress = self.library_scan.label();
+                ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
+                    .on_hover_text(progress);
             });
             let header = ["song", "bpm", "key", "length", "last play", "artist"];
             let col_w = [280.0, 56.0, 48.0, 64.0, 140.0, 180.0];
@@ -696,7 +704,7 @@ impl App {
                         if it.bpm > 1.0 { format!("{:.1}", it.bpm) } else { "—".into() },
                         it.key.clone(),
                         fmt_len(it.length),
-                        fmt_play(it.last_play),
+                        fmt_play(self.item_last_play(it)),
                         it.artist.clone(),
                     )
                 })

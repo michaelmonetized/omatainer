@@ -19,7 +19,7 @@ impl Fixture {
         let (load_tx, decoder_jobs) = mpsc::channel();
         let (decoder_results, load_rx) = mpsc::channel();
         let mut app = App::with_loader(engine, Theme::default(), load_tx, load_rx);
-        app.library = builtin_crate_items();
+        app.library = Arc::new(builtin_crate_items());
         Self {
             app,
             rt,
