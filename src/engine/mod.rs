@@ -15,6 +15,7 @@ pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
 mod control_tests;
 #[cfg(test)]
 mod quantized_launch_tests;
+pub mod decode;
 pub mod dsp;
 pub mod fx;
 pub mod midi;
