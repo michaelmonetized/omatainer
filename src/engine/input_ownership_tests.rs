@@ -142,7 +142,8 @@ fn held_pads_keep_original_destination_pitch_and_release_after_control_changes()
     rt.apply(Command::SamplerOct(1));
     assert_eq!(rt.pad_targets[0].unwrap().track, 1);
     assert_eq!(rt.pad_targets[0].unwrap().pitch, original + 12);
-    assert_eq!(held(&rt.tracks[1].poly, InputKey::Pad(0)), [original + 12]);
+    assert!(held(&rt.tracks[1].poly, InputKey::Pad(0)).is_empty());
+    assert_eq!(rt.pad_destinations[0], 1);
     assert_eq!(held(&rt.sampler_poly, InputKey::Pad(0)), [original + 12]);
     assert_eq!(held(&rt.tracks[1].poly, midi(9, 0, original)), [original]);
     assert!(rt.tracks[1]
@@ -150,15 +151,16 @@ fn held_pads_keep_original_destination_pitch_and_release_after_control_changes()
         .voices
         .iter()
         .any(|v| v.owner == VoiceOwner::Clip && v.note == original));
-    // Changing the global sampler instrument retains the original track gate;
-    // the release must not target this newly selected track or recompute pitch.
+    // Instrument changes reset the source pool as before; an old release must
+    // not target this newly selected track or a different physical pad.
     rt.apply(Command::SamplerInst(2));
     rt.apply(Command::SamplerPad { pad: 1, on: true });
     let other = rt.pad_targets[1].unwrap().pitch;
     rt.apply(Command::SamplerPad { pad: 0, on: false });
     assert!(held(&rt.tracks[1].poly, InputKey::Pad(0)).is_empty());
     assert!(held(&rt.sampler_poly, InputKey::Pad(0)).is_empty());
-    assert_eq!(held(&rt.tracks[2].poly, InputKey::Pad(1)), [other]);
+    assert!(held(&rt.tracks[2].poly, InputKey::Pad(1)).is_empty());
+    assert_eq!(rt.pad_destinations[1], 2);
     assert_eq!(held(&rt.sampler_poly, InputKey::Pad(1)), [other]);
     assert_eq!(held(&rt.tracks[1].poly, midi(9, 0, original)), [original]);
     rt.apply(Command::SamplerPad { pad: 1, on: false });
@@ -176,7 +178,8 @@ fn equal_pitch_pad_gates_are_independent_and_one_shots_keep_their_tails() {
     rt.apply(Command::SamplerPad { pad: 9, on: true });
     let pitch = rt.pad_targets[9].unwrap().pitch;
     rt.apply(Command::SamplerPad { pad: 1, on: false });
-    assert_eq!(held(&rt.tracks[1].poly, InputKey::Pad(9)), [pitch]);
+    assert!(held(&rt.tracks[1].poly, InputKey::Pad(9)).is_empty());
+    assert_eq!(rt.pad_destinations[9], 1);
     assert_eq!(held(&rt.sampler_poly, InputKey::Pad(9)), [pitch]);
     rt.apply(Command::SamplerInst(-1));
     rt.apply(Command::Select { track: 3, scene: 5 });

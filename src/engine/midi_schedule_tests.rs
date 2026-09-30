@@ -320,10 +320,11 @@ fn midi_invalid_ranges_do_not_schedule_or_spin() {
         4.0,
         None,
         true,
+        &[],
     );
     assert_eq!(schedule.next_due(100.0, true), None);
     assert_eq!(schedule.events_visited, 0);
-    schedule.rebuild(&[note(255, -1.0, 0.25)], 4.0, None, true);
+    schedule.rebuild(&[note(255, -1.0, 0.25)], 4.0, None, true, &[]);
     assert_eq!(schedule.next_due(f64::INFINITY, true), None);
     assert_eq!(schedule.next_due(f64::NAN, true), None);
     assert_eq!(schedule.next_due(3.001, true), Some(Gate::On(255, 100)));
