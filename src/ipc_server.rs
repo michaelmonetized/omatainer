@@ -24,6 +24,7 @@ struct OwnedEndpoint {
     path: PathBuf,
     device: u64,
     inode: u64,
+    owner: u32,
 }
 
 impl OwnedEndpoint {
@@ -32,10 +33,17 @@ impl OwnedEndpoint {
         if !metadata.file_type().is_socket() {
             return Err(io::Error::other("new IPC endpoint is no longer a socket"));
         }
+        if metadata.uid() != crate::instance::effective_uid() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "new IPC endpoint does not belong to the effective user",
+            ));
+        }
         Ok(Self {
             path: path.into(),
             device: metadata.dev(),
             inode: metadata.ino(),
+            owner: metadata.uid(),
         })
     }
 }
@@ -46,6 +54,8 @@ impl Drop for OwnedEndpoint {
             metadata.file_type().is_socket()
                 && metadata.dev() == self.device
                 && metadata.ino() == self.inode
+                && metadata.uid() == self.owner
+                && self.owner == crate::instance::effective_uid()
         }) {
             let _ = std::fs::remove_file(&self.path);
         }
@@ -104,7 +114,7 @@ pub fn has_listener(path: &Path) -> bool {
 }
 
 pub fn start(commands: CommandPort, snapshot: Arc<Mutex<Snapshot>>) -> anyhow::Result<IpcServer> {
-    let path = crate::theme::socket_path();
+    let path = crate::theme::socket_path()?;
     start_at(&path, commands, snapshot)
 }
 

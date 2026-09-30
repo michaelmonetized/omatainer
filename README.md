@@ -66,6 +66,13 @@ Not Ableton plus Serato with a bridge — one document. Decks are extra mixer bu
 | Plugin | `~/.config/omarchy/plugins/omatainer/` |
 | Theme | `~/.local/state/omarchy/current/theme/colors.toml` |
 
+The runtime directory must belong to the effective user, have mode `0700`, and
+have trusted directory ancestors without symlinks. If `XDG_RUNTIME_DIR` is unset,
+the app and CLI use `${TMPDIR:-/tmp}/omatainer-<effective-UID>/omatainer.sock` in a
+private `0700` directory and print a warning. Invalid directories or endpoint
+collisions fail without changing their owners, permissions, or contents. The old
+shared `/tmp/omatainer.sock` endpoint is never used or removed.
+
 ```bash
 omatainer ctl status
 omatainer ctl togglePlay
