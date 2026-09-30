@@ -143,8 +143,8 @@ fn load_sel_sends_real_files_only_to_decoder_then_applies_decoded_audio() {
             format!("loading real WAV → {}", (b'A' + deck) as char)
         );
         let sample = crate::engine::dsp::decode_audio(&path).unwrap();
-        assert_eq!(sample.frames(), 4800);
-        assert!(sample.data.iter().any(|x| x.abs() > 0.1));
+        assert_eq!(sample.sample.frames(), 4800);
+        assert!(sample.sample.data.iter().any(|x| x.abs() > 0.1));
         fixture.decoder_results.send((deck, Ok(sample))).unwrap();
         fixture.app.poll_loads();
         let command = fixture.rt.cmd_rx.try_recv().unwrap();
@@ -215,6 +215,86 @@ fn file_load_reports_unavailable_decoder_and_empty_selection_is_inert() {
     fixture.app.load_sel(1);
     assert_eq!(fixture.app.status, "unchanged");
     assert!(fixture.rt.cmd_rx.is_empty());
+}
+
+#[test]
+fn incomplete_decode_leaves_loaded_decks_untouched_and_surfaces_the_reason() {
+    let wave = WaveFile::new();
+    let bytes = std::fs::read(&wave.0).unwrap();
+    std::fs::write(&wave.0, &bytes[..bytes.len() - 1000]).unwrap();
+    let mut fixture = Fixture::new(16);
+    let before: Vec<_> = fixture
+        .rt
+        .decks
+        .iter()
+        .map(|deck| deck.audio.clone().unwrap())
+        .collect();
+    for deck in 0..2 {
+        let result = crate::engine::dsp::decode_audio(&wave.0);
+        assert_eq!(
+            result.as_ref().unwrap_err().kind,
+            crate::engine::decode::DecodeFailureKind::Incomplete
+        );
+        fixture.decoder_results.send((deck, result)).unwrap();
+        fixture.app.poll_loads();
+        assert!(fixture.rt.cmd_rx.is_empty());
+        assert!(fixture.app.status.contains("Incomplete audio"));
+        assert!(fixture.app.status.contains("media was not loaded"));
+        assert_load_status_is_painted(&fixture.app, "Incomplete audio");
+        assert!(Arc::ptr_eq(
+            fixture.rt.decks[deck as usize].audio.as_ref().unwrap(),
+            &before[deck as usize]
+        ));
+    }
+}
+
+#[test]
+fn uncertain_length_warning_survives_worker_result_and_deck_admission() {
+    let directory = WaveFile::new();
+    let path = directory.0.with_extension("mp3");
+    std::fs::write(
+        &path,
+        include_bytes!("../../tests/fixtures/audio/tone-estimated.mp3"),
+    )
+    .unwrap();
+    let mut fixture = Fixture::new(16);
+    let report = crate::engine::dsp::decode_audio(&path).unwrap();
+    assert!(report.diagnostics.warning().is_some());
+    fixture.decoder_results.send((0, Ok(report))).unwrap();
+    fixture.app.poll_loads();
+    assert!(fixture.app.status.contains("length unverified"));
+    assert!(fixture
+        .app
+        .status
+        .contains("incomplete media cannot be ruled out"));
+    assert_load_status_is_painted(&fixture.app, "length unverified");
+    let command = fixture.rt.cmd_rx.try_recv().unwrap();
+    assert!(matches!(&command, Command::DeckAudio { deck: 0, .. }));
+    fixture.rt.apply(command);
+    assert_eq!(
+        fixture.rt.decks[0].audio.as_ref().unwrap().path,
+        path.to_string_lossy()
+    );
+}
+
+fn assert_load_status_is_painted(app: &App, expected: &str) {
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(860.0, 640.0))),
+            ..Default::default()
+        },
+        |ctx| app.load_status(ctx),
+    );
+    assert!(
+        output.shapes.iter().any(|shape| match &shape.shape {
+            egui::epaint::Shape::Text(text) =>
+                text.galley.text().contains(expected)
+                    && text.visual_bounding_rect().intersects(ctx.screen_rect()),
+            _ => false,
+        }),
+        "load status was not painted: {expected}"
+    );
 }
 
 #[test]
