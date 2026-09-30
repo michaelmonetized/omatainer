@@ -47,7 +47,7 @@ fn assert_grains_reset(rt: &RtEngine, deck: usize) {
     let ratio = d.audio.as_ref().map_or(rt.sr, |audio| audio.sr as f32) as f64 / rt.sr as f64;
     assert_eq!(d.grain_i, 0.0);
     assert_eq!(d.grain_origin, d.pos);
-    assert_eq!(d.prev_origin, d.pos - GRAIN_HOP as f64 * ratio);
+    assert_eq!(d.prev_origin, d.pos - d.grain_frames as f64 * 0.5 * ratio);
     assert_eq!(d.transition_remaining, (rt.sr as u32).div_ceil(500));
 }
 
