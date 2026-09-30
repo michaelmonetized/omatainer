@@ -15,6 +15,8 @@ pub mod fx;
 pub mod midi;
 #[cfg(test)]
 mod master_stereo_tests;
+#[cfg(test)]
+mod scene_stereo_tests;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
@@ -845,9 +847,7 @@ impl RtEngine {
                 r += tr;
             }
             if !self.scene_fx.slots.is_empty() {
-                let (sl, sr) = self.scene_fx.tick_stereo(0.5 * (l + r), self.sr);
-                l = sl;
-                r = sr;
+                [l, r] = self.scene_fx.process_stereo([l, r], self.sr);
             }
 
             let (al, ar) = self.render_deck(0);
