@@ -13,6 +13,8 @@ mod control_tests;
 pub mod dsp;
 pub mod fx;
 pub mod midi;
+#[cfg(test)]
+mod master_stereo_tests;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
@@ -350,8 +352,9 @@ pub struct RtEngine {
     pub cue_mix: f32,
     pub tracks: Vec<TrackRt>,
     pub decks: [DeckRt; DECKS],
-    pub delay: Delay,
-    pub reverb: Reverb,
+    // Independent histories: one DSP tick per channel per output frame.
+    pub delay: [Delay; 2],
+    pub reverb: [Reverb; 2],
     pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub tap: Vec<Instant>,
@@ -624,8 +627,8 @@ impl RtEngine {
             cue_mix: 0.0,
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
-            delay: Delay::new((sr * 2.0) as usize),
-            reverb: Reverb::new(),
+            delay: std::array::from_fn(|_| Delay::new((sr * 2.0) as usize)),
+            reverb: std::array::from_fn(|_| Reverb::at_sample_rate(sr)),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0, 0.0, 0.0],
             tap: Vec::new(),
@@ -675,7 +678,10 @@ impl RtEngine {
             return;
         }
         self.sr = sr as f32;
-        self.delay = Delay::new((sr as f32 * 2.0) as usize);
+        // Rate changes reset master tails on both channels together. Controls
+        // are reapplied from fx_wet at the next block, as for the delay before.
+        self.delay = std::array::from_fn(|_| Delay::new((sr as f32 * 2.0) as usize));
+        self.reverb = std::array::from_fn(|_| Reverb::at_sample_rate(sr as f32));
         let drums = build_kit(sr);
         self.pad_banks = build_pad_banks(sr);
         for t in &mut self.tracks {
@@ -812,9 +818,11 @@ impl RtEngine {
         let t0 = Instant::now();
         let frames = out.len() / 2;
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
-        self.delay.time_samples = (spb * 0.75) as f32;
-        self.delay.mix = self.fx_wet[0];
-        self.reverb.mix = self.fx_wet[1];
+        for channel in 0..2 {
+            self.delay[channel].time_samples = (spb * 0.75) as f32;
+            self.delay[channel].mix = self.fx_wet[0];
+            self.reverb[channel].mix = self.fx_wet[1];
+        }
 
         let any_solo = self.tracks.iter().any(|t| t.solo);
 
@@ -872,10 +880,10 @@ impl RtEngine {
                 }
             }
 
-            l = self.delay.tick(l);
-            r = self.delay.tick(r);
-            l = self.reverb.tick(l);
-            r = self.reverb.tick(r);
+            // Dual mono master effects preserve stereo separation; crossfeed
+            // is not implicit in either processor's shared control values.
+            l = self.reverb[0].tick(self.delay[0].tick(l));
+            r = self.reverb[1].tick(self.delay[1].tick(r));
 
             let cm = self.cue_mix;
             l = l * (1.0 - cm) + cue_l * cm;

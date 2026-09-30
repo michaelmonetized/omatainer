@@ -120,21 +120,24 @@ pub struct Reverb {
 
 impl Reverb {
     pub fn new() -> Self {
-        let mut d = [
-            Delay::new(3011),
-            Delay::new(4057),
-            Delay::new(5059),
-            Delay::new(2333),
-        ];
-        d[0].time_samples = 1307.0;
-        d[1].time_samples = 1637.0;
-        d[2].time_samples = 1999.0;
-        d[3].time_samples = 887.0;
-        for x in &mut d {
-            x.fb = 0.72;
-            x.mix = 1.0;
-        }
-        Self { delays: d, mix: 0.0 }
+        Self::at_sample_rate(48_000.0)
+    }
+
+    /// Preserve the original 48 kHz comb durations at the output sample rate.
+    /// Arrival times are rounded to the closest audio frame (at most half a
+    /// frame of timing error); each instance owns one channel's history.
+    pub fn at_sample_rate(sr: f32) -> Self {
+        let scale = sr / 48_000.0;
+        let capacities = [3011.0, 4057.0, 5059.0, 2333.0];
+        let times = [1307.0, 1637.0, 1999.0, 887.0];
+        let delays = std::array::from_fn(|i| {
+            let mut delay = Delay::new((capacities[i] * scale).round() as usize);
+            delay.time_samples = (times[i] * scale).round().max(1.0);
+            delay.fb = 0.72;
+            delay.mix = 1.0;
+            delay
+        });
+        Self { delays, mix: 0.0 }
     }
     pub fn tick(&mut self, x: f32) -> f32 {
         let mut y = 0.0;
