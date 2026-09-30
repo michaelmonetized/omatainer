@@ -101,3 +101,18 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - The transport beat stored during rendering is the end of the current sample
   interval: an event exactly at that endpoint belongs to the following sample.
   A tiny beat tolerance absorbs clock accumulation error at exact grids.
+
+## Scene FX ownership and routing
+
+- Each scene owns its device settings and processor histories. Opening another
+  scene panel changes only the edit target, never the audio route.
+- A track enters its clip's scene bus when that clip actually starts. Pending
+  launches keep the previous bus; stopped tracks retain their last bus for
+  release envelopes, live input and track FX tails. New sessions use scene 1.
+- Added scenes can play on different tracks at once. Each scene processes its
+  own stereo sum, and those outputs are combined before decks and master FX.
+- Starting another clip moves that track's complete output to the new scene,
+  including any remaining track-level release tail. The old scene FX history
+  stays on its original bus and continues receiving zero if no track remains.
+  It decays according to its own feedback settings; changing panels/scenes
+  never copies or clears it. Device bypass retains the existing freeze policy.

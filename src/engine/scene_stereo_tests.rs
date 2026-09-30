@@ -48,7 +48,7 @@ fn enabled_scene_processors_do_not_feed_a_panned_source_into_the_empty_channel()
         let mut rt = fixture(false);
         let mut slot = fx::FxSlot::new(*id, rt.sr);
         slot.mix = 1.0;
-        rt.scene_fx.slots.push(slot);
+        rt.scene_fx[0].slots.push(slot);
         let mut output = vec![0.0; 48_000 * 2];
         rt.process(&mut output);
         assert!(
@@ -67,15 +67,14 @@ fn explicitly_selected_zero_width_is_mono_and_center_width_preserves_stereo() {
     let mut mono = fixture(true);
     let mut slot = fx::FxSlot::new(fx::FxId::Spread, mono.sr);
     slot.p[0] = 0.0;
-    mono.scene_fx.slots.push(slot);
+    mono.scene_fx[0].slots.push(slot);
     let mut output = vec![0.0; 4096];
     mono.process(&mut output);
     assert!(output.iter().any(|x| x.abs() > 0.01));
     assert!(output.chunks_exact(2).all(|frame| frame[0] == frame[1]));
 
     let mut center = fixture(true);
-    center
-        .scene_fx
+    center.scene_fx[0]
         .slots
         .push(fx::FxSlot::new(fx::FxId::Spread, center.sr));
     let mut reference = fixture(true);

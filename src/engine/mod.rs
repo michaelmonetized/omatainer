@@ -24,6 +24,8 @@ mod midi_schedule;
 mod midi_schedule_tests;
 #[cfg(test)]
 mod scene_stereo_tests;
+#[cfg(test)]
+mod scene_ownership_tests;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
@@ -122,6 +124,8 @@ pub struct TrackRt {
     pub name: String,
     pub clips: [Clip; SCENES],
     pub playing: Option<PlayingClip>,
+    // The bus stays selected through stops/tails until a new clip starts.
+    pub scene_bus: usize,
     pub gain: f32,
     pub pan: f32,
     pub mute: bool,
@@ -413,7 +417,7 @@ pub struct RtEngine {
     pad_targets: [Option<PadTarget>; 16],
     pub builtin: [Option<Arc<Sample>>; 2],
     pub fx_view: i16,
-    pub scene_fx: fx::FxChain,
+    pub scene_fx: [fx::FxChain; SCENES],
     pub compose_armed: bool,
 }
 
@@ -636,6 +640,7 @@ impl RtEngine {
                 name: names[i].into(),
                 clips: std::array::from_fn(|_| Clip::empty()),
                 playing: None,
+                scene_bus: 0,
                 gain: 0.8,
                 pan: 0.0,
                 mute: false,
@@ -696,7 +701,7 @@ impl RtEngine {
             pad_targets: [None; 16],
             builtin: [None, None],
             fx_view: -1,
-            scene_fx: fx::FxChain::new(sr),
+            scene_fx: std::array::from_fn(|_| fx::FxChain::new(sr)),
             compose_armed: false,
         };
         e.seed_demo();
@@ -876,17 +881,23 @@ impl RtEngine {
             let mut cue_l = 0.0f32;
             let mut cue_r = 0.0f32;
 
+            let mut scene_inputs = [[0.0_f32; 2]; SCENES];
             for ti in 0..self.tracks.len() {
                 let (tl, tr, pfl) = self.render_track(ti, any_solo);
                 if pfl {
                     cue_l += tl;
                     cue_r += tr;
                 }
-                l += tl;
-                r += tr;
+                let bus = self.tracks[ti].scene_bus;
+                scene_inputs[bus][0] += tl;
+                scene_inputs[bus][1] += tr;
             }
-            if !self.scene_fx.slots.is_empty() {
-                [l, r] = self.scene_fx.process_stereo([l, r], self.sr);
+            // Keep every scene's own history advancing, including zero-input
+            // tails after all of its tracks have stopped or moved elsewhere.
+            for (chain, input) in self.scene_fx.iter_mut().zip(scene_inputs) {
+                let [sl, sr] = chain.process_stereo(input, self.sr);
+                l += sl;
+                r += sr;
             }
 
             let (al, ar) = self.render_deck(0);
@@ -949,6 +960,7 @@ impl RtEngine {
         if let Some(p) = playing.filter(|p| self.beat > p.start_beat + midi_schedule::BEAT_EPSILON)
         {
             let scene = p.scene as usize;
+            self.tracks[ti].scene_bus = scene;
             let clip_beats = self.tracks[ti].clips[scene].bars.max(0.25) as f64 * 4.0;
             let elapsed = self.beat - p.start_beat;
             if !p.looping && elapsed > clip_beats + midi_schedule::BEAT_EPSILON {
@@ -1878,11 +1890,11 @@ impl RtEngine {
 
     fn active_chain(&mut self) -> &mut fx::FxChain {
         if self.fx_view >= 100 {
-            &mut self.scene_fx
+            &mut self.scene_fx[(self.fx_view as usize - 100).min(SCENES - 1)]
         } else if self.fx_view >= 0 {
             &mut self.tracks[self.fx_view as usize % TRACKS].fx
         } else {
-            &mut self.scene_fx
+            &mut self.scene_fx[0]
         }
     }
 
@@ -2000,7 +2012,9 @@ impl RtEngine {
                 let chain = if self.fx_view >= 0 && self.fx_view < TRACKS as i16 {
                     &self.tracks[self.fx_view as usize].fx
                 } else {
-                    &self.scene_fx
+                    &self.scene_fx[if self.fx_view >= 100 {
+                        (self.fx_view as usize - 100).min(SCENES - 1)
+                    } else { 0 }]
                 };
                 chain
                     .slots
