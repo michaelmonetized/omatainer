@@ -10,6 +10,11 @@ use std::sync::mpsc;
 use std::time::{Instant, SystemTime};
 use walkdir::WalkDir;
 
+#[cfg(test)]
+mod test_support;
+#[cfg(test)]
+mod tests;
+
 pub struct App {
     engine: Engine,
     theme: Theme,
@@ -37,7 +42,28 @@ struct LibItem {
     key: String,
     length: f32,
     last_play: Option<SystemTime>,
-    path: PathBuf,
+    source: LibSource,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum LibSource {
+    Builtin(BuiltinStem),
+    File(PathBuf),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum BuiltinStem {
+    Drums,
+    Harmony,
+}
+
+impl BuiltinStem {
+    fn index(self) -> u8 {
+        match self {
+            Self::Drums => 0,
+            Self::Harmony => 1,
+        }
+    }
 }
 
 impl App {
@@ -56,7 +82,19 @@ impl App {
                 }
             })
             .ok();
-        let mut app = Self {
+        let mut app = Self::with_loader(engine, theme, tx, rx_done);
+        app.scan_library();
+        app
+    }
+
+    fn with_loader(
+        engine: Engine,
+        theme: Theme,
+        load_tx: mpsc::Sender<(u8, PathBuf)>,
+        load_rx: mpsc::Receiver<(u8, Result<crate::engine::dsp::Sample, String>)>,
+    ) -> Self {
+        let snap = engine.snapshot();
+        Self {
             engine,
             theme,
             fonts_set: true,
@@ -69,39 +107,17 @@ impl App {
             submission_error: Cell::new(None),
             seen_submission_failures: 0,
             last_theme_check: Instant::now(),
-            load_tx: tx,
-            load_rx: rx_done,
-            snap: Snapshot::default(),
+            load_tx,
+            load_rx,
+            snap,
             last_play_idx: 0,
             pad_held: [false; 16],
-        };
-        app.scan_library();
-        app.snap = app.engine.snapshot();
-        app
+        }
     }
 
     fn scan_library(&mut self) {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-        let mut items = vec![
-            LibItem {
-                title: "Drums (session)".into(),
-                artist: "omatainer".into(),
-                bpm: 124.0,
-                key: "C".into(),
-                length: 16.0 * 60.0 / 124.0,
-                last_play: None,
-                path: PathBuf::from("builtin:drums"),
-            },
-            LibItem {
-                title: "Harmony (session)".into(),
-                artist: "omatainer".into(),
-                bpm: 124.0,
-                key: "C".into(),
-                length: 16.0 * 60.0 / 124.0,
-                last_play: None,
-                path: PathBuf::from("builtin:harmony"),
-            },
-        ];
+        let mut items = builtin_crate_items();
         for root in [PathBuf::from(&home).join("Music"), PathBuf::from(&home).join("music")] {
             if !root.exists() {
                 continue;
@@ -122,7 +138,7 @@ impl App {
                     key,
                     length: 0.0,
                     last_play: None,
-                    path: p.to_path_buf(),
+                    source: LibSource::File(p.to_path_buf()),
                 });
             }
         }
@@ -145,23 +161,46 @@ impl App {
     }
 
     fn load_sel(&mut self, deck: u8) {
-        let picked = self.filtered().get(self.lib_sel).map(|i| (i.title.clone(), i.path.clone()));
-        if let Some((name, path)) = picked {
+        let picked = self.filtered().get(self.lib_sel).map(|i| (i.title.clone(), i.source.clone()));
+        if let Some((name, source)) = picked {
             self.last_play_idx = self.lib_sel;
             if let Some(it) = self.filtered_get_mut(self.lib_sel) {
                 it.last_play = Some(SystemTime::now());
             }
-            if path.starts_with("builtin:") {
-                let stem = if path.to_string_lossy().contains("harmony") { 1u8 } else { 0 };
-                if self.submit(Command::LoadBuiltin { deck, stem }) {
-                    self.status = format!("queued {name} → {}", (b'A' + deck) as char);
-                } else {
-                    self.status = "Load was not accepted".into();
+            match source {
+                LibSource::Builtin(stem) => {
+                    if self.submit(Command::LoadBuiltin { deck, stem: stem.index() }) {
+                        self.status = format!("queued {name} → {}", (b'A' + deck) as char);
+                    } else {
+                        self.status = "Load was not accepted".into();
+                    }
                 }
-                return;
+                LibSource::File(path) => {
+                    self.status = match self.load_tx.send((deck, path)) {
+                        Ok(()) => format!("loading {name} → {}", (b'A' + deck) as char),
+                        Err(_) => "load failed: decoder is unavailable".into(),
+                    };
+                }
             }
-            self.status = format!("loading {name} → {}", (b'A' + deck) as char);
-            let _ = self.load_tx.send((deck, path));
+        }
+    }
+
+    fn poll_loads(&mut self) {
+        while let Ok((deck, res)) = self.load_rx.try_recv() {
+            match res {
+                Ok(s) => {
+                    let queued = format!("queued {}  {:.1} bpm", s.name, s.bpm);
+                    self.status = if self.submit(Command::DeckAudio {
+                        deck,
+                        audio: std::sync::Arc::new(s),
+                    }) {
+                        queued
+                    } else {
+                        "Load was not accepted".into()
+                    };
+                }
+                Err(e) => self.status = format!("load failed: {e}"),
+            }
         }
     }
 
@@ -198,9 +237,32 @@ impl App {
     }
 
     fn filtered_get_mut(&mut self, i: usize) -> Option<&mut LibItem> {
-        let path = self.filtered().get(i)?.path.clone();
-        self.library.iter_mut().find(|x| x.path == path)
+        let source = self.filtered().get(i)?.source.clone();
+        self.library.iter_mut().find(|x| x.source == source)
     }
+}
+
+fn builtin_crate_items() -> Vec<LibItem> {
+    vec![
+        LibItem {
+            title: "Drums (session)".into(),
+            artist: "omatainer".into(),
+            bpm: 124.0,
+            key: "C".into(),
+            length: 16.0 * 60.0 / 124.0,
+            last_play: None,
+            source: LibSource::Builtin(BuiltinStem::Drums),
+        },
+        LibItem {
+            title: "Harmony (session)".into(),
+            artist: "omatainer".into(),
+            bpm: 124.0,
+            key: "C".into(),
+            length: 16.0 * 60.0 / 124.0,
+            last_play: None,
+            source: LibSource::Builtin(BuiltinStem::Harmony),
+        },
+    ]
 }
 
 impl eframe::App for App {
@@ -220,22 +282,7 @@ impl eframe::App for App {
             Theme::install_fonts(ctx);
             self.fonts_set = true;
         }
-        while let Ok((deck, res)) = self.load_rx.try_recv() {
-            match res {
-                Ok(s) => {
-                    let queued = format!("queued {}  {:.1} bpm", s.name, s.bpm);
-                    self.status = if self.submit(Command::DeckAudio {
-                        deck,
-                        audio: std::sync::Arc::new(s),
-                    }) {
-                        queued
-                    } else {
-                        "Load was not accepted".into()
-                    };
-                }
-                Err(e) => self.status = format!("load failed: {e}"),
-            }
-        }
+        self.poll_loads();
         self.snap = self.engine.snapshot();
         self.handle_keys(ctx);
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
