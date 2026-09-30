@@ -1,6 +1,7 @@
 mod engine;
 mod theme;
 mod ui;
+mod ipc_server;
 
 #[cfg(test)]
 mod scene_index_tests;
@@ -14,7 +15,7 @@ use crate::theme::socket_path;
 use anyhow::Context;
 use eframe::egui;
 use std::io::{BufRead, BufReader, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 const STATUS_REQUEST: &str = r#"{"op":"status"}"#;
@@ -30,7 +31,8 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     let engine = engine::Engine::start().context("audio engine")?;
-    start_ipc(engine.cmd.clone(), engine.snap.clone());
+    let _ipc = ipc_server::start(engine.cmd.clone(), engine.snap.clone())
+        .context("could not start the local control service; check the reported socket path and permissions")?;
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -46,28 +48,13 @@ fn main() -> anyhow::Result<()> {
         Box::new(|cc| Ok(Box::new(ui::App::new(cc, engine)))),
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
-    let _ = std::fs::remove_file(socket_path());
     Ok(())
 }
 
 fn single_instance_running() -> bool {
-    let p = socket_path();
-    if !p.exists() {
-        return false;
-    }
-    UnixStream::connect(&p)
-        .and_then(|mut s| {
-            s.set_read_timeout(Some(Duration::from_millis(200)))?;
-            writeln!(s, r#"{{"op":"ping"}}"#)?;
-            let mut r = BufReader::new(s);
-            let mut line = String::new();
-            r.read_line(&mut line)?;
-            Ok(line.contains("ok"))
-        })
-        .unwrap_or_else(|_| {
-            let _ = std::fs::remove_file(&p);
-            false
-        })
+    // Successful connection proves a listener exists even if it is slow. A
+    // failed probe never authorizes deleting an endpoint owned by another run.
+    ipc_server::has_listener(&socket_path())
 }
 
 fn focus_existing() {
@@ -190,32 +177,6 @@ fn ipc_deck_index(request: &serde_json::Value) -> anyhow::Result<u8> {
     }
 }
 
-fn start_ipc(
-    commands: engine::CommandPort,
-    snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
-) {
-    std::thread::Builder::new()
-        .name("omatainer-ipc".into())
-        .spawn(move || {
-            let path = socket_path();
-            let _ = std::fs::remove_file(&path);
-            let listener = match UnixListener::bind(&path) {
-                Ok(l) => l,
-                Err(e) => {
-                    eprintln!("omatainer ipc: {e}");
-                    return;
-                }
-            };
-            for stream in listener.incoming().flatten() {
-                let commands = commands.clone();
-                let snap = snap.clone();
-                std::thread::spawn(move || {
-                    let _ = handle_client(stream, commands, snap);
-                });
-            }
-        })
-        .ok();
-}
 
 fn ipc_command(v: &serde_json::Value) -> anyhow::Result<Option<Command>> {
     let op = v.get("op").and_then(|x| x.as_str()).unwrap_or("");
