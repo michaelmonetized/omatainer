@@ -717,10 +717,11 @@ impl App {
                     for sc in 0..SCENES {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
-                            let on = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i8);
+                            let on = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i8 && !tr.clip_pending);
+                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i8 && tr.clip_pending);
                             let (hr, hresp) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::click());
                             ui.painter().rect_filled(hr, 4.0, if on { t.accent.gamma_multiply(0.45) } else { t.bg_dark });
-                            ui.painter().rect_stroke(hr, 4.0, st(1.0, if on { t.accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
+                            ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued { t.accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
                             ui.painter().text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{}", sc + 1), FontId::proportional(11.0), t.fg);
                             if hresp.clicked() {
                                 if ui.input(|i| i.modifiers.shift) {
@@ -737,7 +738,8 @@ impl App {
                             for tr in 0..TRACKS {
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
-                                let playing = self.snap.tracks.get(tr).map(|x| x.playing_scene == sc as i8).unwrap_or(false);
+                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i8 && x.clip_pending);
+                                let playing = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i8 && !x.clip_pending);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);
                                 let color = t.track_color(tr);
                                 let (rect, resp) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::click());
@@ -752,15 +754,18 @@ impl App {
                                 ui.painter().rect_stroke(
                                     rect,
                                     4.0,
-                                    st(if looping && playing { 2.0 } else { 1.0 }, color.gamma_multiply(0.65)),
+                                    st(if queued || (looping && playing) { 2.0 } else { 1.0 }, color.gamma_multiply(0.65)),
                                     egui::StrokeKind::Inside,
                                 );
                                 if filled {
                                     let fs = (row_h * 0.38).clamp(10.0, 13.0);
+                                    let name = clip.map(|c| c.name.as_str()).unwrap_or("");
+                                    let queued_name = queued.then(|| format!("{name} · queued"));
+                                    let label = queued_name.as_deref().unwrap_or(name);
                                     ui.painter().text(
                                         rect.center(),
                                         egui::Align2::CENTER_CENTER,
-                                        clip.map(|c| c.name.as_str()).unwrap_or(""),
+                                        label,
                                         FontId::proportional(fs),
                                         t.fg,
                                     );

@@ -87,3 +87,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   frozen hit. Notes whose release occurred while muted cannot remain held.
 - Unmuting restores the sound at the current musical position, including any
   still-current natural effect tail. It does not replay elapsed material.
+
+## Quantized clip launches
+
+- A queued clip starts on the next selected beat grid while transport runs;
+  launching from stopped transport starts immediately. Every clip in one scene
+  launch shares the same scheduled start.
+- Before that start, the incoming clip emits no events. The sequencer shows it
+  as queued with zero progress. Existing release envelopes, finite drum hits,
+  effect tails, and unrelated live input retain the stop/tail policy above.
+- The first event fires once, and a one-shot gets its complete clip length from
+  that scheduled start. Loops and retriggers use the same sample boundary rule.
+- The transport beat stored during rendering is the end of the current sample
+  interval: an event exactly at that endpoint belongs to the following sample.
+  A tiny beat tolerance absorbs clock accumulation error at exact grids.
