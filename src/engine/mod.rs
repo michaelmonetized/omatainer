@@ -2196,7 +2196,10 @@ pub struct Engine {
     pub cmd: CommandPort,
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
-    _audio: audio::AudioOut,
+    // Production always owns a live stream. Only the test constructor below
+    // omits hardware while retaining the real command and snapshot paths.
+    _audio: Option<audio::AudioOut>,
+    sample_rate: u32,
 }
 
 impl Engine {
@@ -2205,13 +2208,32 @@ impl Engine {
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(48000.0, rx, snap.clone());
         let audio = audio::start(rt)?;
+        let sample_rate = audio.sr;
         let midi = midi::MidiHub::start(tx.clone());
         Ok(Self {
             cmd: tx,
             snap,
             midi,
-            _audio: audio,
+            _audio: Some(audio),
+            sample_rate,
         })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn headless_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
+        let (cmd, rx) = CommandPort::channel(capacity);
+        let snap = Arc::new(Mutex::new(Snapshot::default()));
+        let rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        (
+            Self {
+                cmd,
+                snap,
+                midi: midi::MidiHub::without_devices(),
+                _audio: None,
+                sample_rate,
+            },
+            rt,
+        )
     }
 
     pub fn send(&self, c: Command) -> Result<SubmissionOutcome, SubmissionError> {
@@ -2231,7 +2253,7 @@ impl Engine {
     }
 
     pub fn sr(&self) -> u32 {
-        self._audio.sr
+        self.sample_rate
     }
 }
 

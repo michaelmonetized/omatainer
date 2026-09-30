@@ -93,6 +93,18 @@ pub struct MidiHub {
 }
 
 impl MidiHub {
+    #[cfg(test)]
+    pub(super) fn without_devices() -> Self {
+        Self {
+            _ins: Vec::new(),
+            outs: Arc::new(Mutex::new(Vec::new())),
+            devices: Arc::new(Mutex::new(Vec::new())),
+            log: Arc::new(Mutex::new(Vec::new())),
+            learn: Arc::new(Mutex::new(None)),
+            shift: Arc::new(Mutex::new([false; 4])),
+        }
+    }
+
     pub fn start(cmd: super::CommandPort) -> Self {
         let devices = Arc::new(Mutex::new(Vec::new()));
         let log = Arc::new(Mutex::new(Vec::new()));
