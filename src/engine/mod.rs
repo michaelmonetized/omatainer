@@ -35,6 +35,8 @@ mod deck_transition_tests;
 mod input_ownership_tests;
 #[cfg(test)]
 mod stopped_deck_tests;
+#[cfg(test)]
+mod recording_position_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -1575,6 +1577,7 @@ impl RtEngine {
                 }
                 if self.recording && self.playing {
                     let scene = self.selected_scene;
+                    let Some(start) = self.recording_position(t, scene) else { return };
                     if self.tracks[t].clips[scene].kind == ClipKind::Empty {
                         self.tracks[t].clips[scene] = Clip {
                             kind: ClipKind::Midi,
@@ -1586,8 +1589,6 @@ impl RtEngine {
                         };
                     }
                     if self.tracks[t].clips[scene].kind == ClipKind::Midi {
-                        let start = self.beat.fract() as f32
-                            + (self.beat.floor() as i64 % 4) as f32;
                         self.tracks[t].clips[scene].notes.push(MidiNote {
                             pitch: note,
                             start,
@@ -1786,7 +1787,9 @@ impl RtEngine {
                         });
                     }
                     if self.compose_armed || self.recording {
-                        let start = (self.beat % 4.0) as f32;
+                        let Some(start) = self.recording_position(
+                            self.selected_track, self.selected_scene,
+                        ) else { return };
                         let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
                         if clip.kind == ClipKind::Empty {
                             clip.kind = ClipKind::Midi;
@@ -1873,6 +1876,19 @@ impl RtEngine {
                     s.p[p as usize % 4] = value.clamp(0.0, 1.0);
                 }
             }
+        }
+    }
+
+    // Playing targets use their own launch origin. An unlaunched target has
+    // an explicit compose cursor at zero; pending targets are monitor-only.
+    fn recording_position(&self, track: usize, scene: usize) -> Option<f32> {
+        let t = self.tracks.get(track)?;
+        let clip = t.clips.get(scene)?;
+        match t.playing.filter(|p| p.scene as usize == scene) {
+            Some(p) if self.beat < p.start_beat => None,
+            Some(p) => Some((self.beat - p.start_beat)
+                .rem_euclid(clip.bars.max(0.25) as f64 * 4.0) as f32),
+            None => Some(0.0),
         }
     }
 
