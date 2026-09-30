@@ -31,6 +31,8 @@ mod deck_stereo_tests;
 mod deck_transition_tests;
 #[cfg(test)]
 mod input_ownership_tests;
+#[cfg(test)]
+mod stopped_deck_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -1125,6 +1127,14 @@ impl RtEngine {
                 d.transition_to(position, self.sr, DeckTransition::Jump);
             }
         }
+        if !self.decks[di].playing && !self.decks[di].touching {
+            // Retire the last output through the bounded transition envelope.
+            // A paused source must never be read repeatedly as a DC signal.
+            let d = &mut self.decks[di];
+            let [l, r] = d.transition_output([0.0; 2]);
+            d.meter = d.meter * 0.9 + (l.abs() + r.abs()) * 0.05;
+            return (l, r);
+        }
         // Vinyl contact follows the hand directly; OLA resumes from the
         // release position rather than replaying grains from before the jog.
         let keylock = self.decks[di].keylock && !self.decks[di].touching;
@@ -1158,7 +1168,7 @@ impl RtEngine {
         };
         let asr = a.sr as f64 / sr;
         if !d.playing && !d.touching {
-            return d.sample_at(d.pos);
+            return (0.0, 0.0);
         }
         let gi = d.grain_i;
         let (l0, r0) = d.sample_at(d.grain_origin + gi as f64 * asr);
