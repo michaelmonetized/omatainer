@@ -163,7 +163,14 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
     // Loading during traversal changes history, without cloning the shared
     // baseline or allowing the later result to overwrite the new timestamp.
     fixture.app.load_sel(0);
-    assert_eq!(fixture.decoder_jobs.try_recv().unwrap().1, selected);
+    assert_eq!(
+        fixture
+            .decoder_jobs
+            .recv_timeout(Duration::from_secs(3))
+            .unwrap()
+            .1,
+        selected
+    );
     let latest = fixture.app.last_played[&LibSource::File(selected.clone())];
     assert!(Arc::ptr_eq(&before, &fixture.app.library));
     finish(&mut fixture.app);

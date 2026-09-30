@@ -1,10 +1,12 @@
-//! Real GUI state, command admission, renderer and load channels, with only the
-//! external audio/MIDI device connections and decode thread left unopened.
+//! Real GUI state, command admission, renderer and bounded decoder worker.
+//! External audio/MIDI devices stay unopened; tests control decoder replies.
 use super::*;
 use crate::engine::{
     decode::{DecodeFailure, DecodedAudio},
     RtEngine,
 };
+use std::sync::mpsc;
+use std::time::Duration;
 
 pub(super) struct Fixture {
     pub app: App,
@@ -17,8 +19,21 @@ impl Fixture {
     pub fn new(capacity: usize) -> Self {
         let (engine, rt) = Engine::headless_for_test(48_000, capacity);
         let (load_tx, decoder_jobs) = mpsc::channel();
-        let (decoder_results, load_rx) = mpsc::channel();
-        let mut app = App::with_loader(engine, Theme::default(), load_tx, load_rx);
+        let (decoder_results, load_rx) =
+            mpsc::channel::<(u8, Result<DecodedAudio, DecodeFailure>)>();
+        let loader = Loader::with_decoder(move |path, token| {
+            load_tx
+                .send((token.deck, path.to_path_buf()))
+                .map_err(|_| failed_decoder())?;
+            let (deck, report) = load_rx.recv().map_err(|_| failed_decoder())?;
+            assert_eq!(
+                deck, token.deck,
+                "fixture decoder result must match its active job"
+            );
+            report
+        })
+        .unwrap();
+        let mut app = App::with_loader(engine, Theme::default(), Some(loader));
         app.library = Arc::new(builtin_crate_items());
         Self {
             app,
@@ -26,6 +41,25 @@ impl Fixture {
             decoder_jobs,
             decoder_results,
         }
+    }
+
+    pub fn poll_loads(&mut self) {
+        let before = self.app.status.clone();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while self.app.status == before {
+            self.app.poll_loads();
+            assert!(Instant::now() < deadline, "no visible decoder result");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+}
+
+fn failed_decoder() -> DecodeFailure {
+    DecodeFailure {
+        kind: crate::engine::decode::DecodeFailureKind::Io,
+        stage: crate::engine::decode::DecodeStage::Open,
+        diagnostics: Default::default(),
+        detail: "decoder is unavailable".into(),
     }
 }
 
