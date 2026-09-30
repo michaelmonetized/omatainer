@@ -24,7 +24,7 @@ pub struct App {
     seen_submission_failures: u64,
     last_theme_check: Instant,
     load_tx: mpsc::Sender<(u8, PathBuf)>,
-    load_rx: mpsc::Receiver<(u8, Result<crate::engine::dsp::Sample, String>)>,
+    load_rx: mpsc::Receiver<(u8, Result<crate::engine::decode::DecodedAudio, crate::engine::decode::DecodeFailure>)>,
     snap: Snapshot,
     last_play_idx: usize,
     pad_held: [bool; 16],
@@ -51,7 +51,7 @@ impl App {
             .name("omatainer-decode".into())
             .spawn(move || {
                 while let Ok((deck, path)) = rx_paths.recv() {
-                    let r = crate::engine::dsp::decode_audio(&path).map_err(|e| e.to_string());
+                    let r = crate::engine::dsp::decode_audio(&path);
                     let _ = tx_done.send((deck, r));
                 }
             })
@@ -222,8 +222,13 @@ impl eframe::App for App {
         }
         while let Ok((deck, res)) = self.load_rx.try_recv() {
             match res {
-                Ok(s) => {
-                    let queued = format!("queued {}  {:.1} bpm", s.name, s.bpm);
+                Ok(report) => {
+                    let warning = report.diagnostics.warning();
+                    let s = report.sample;
+                    let mut queued = format!("queued {}  {:.1} bpm", s.name, s.bpm);
+                    if let Some(warning) = warning {
+                        queued.push_str(&format!(" · {warning}"));
+                    }
                     self.status = if self.submit(Command::DeckAudio {
                         deck,
                         audio: std::sync::Arc::new(s),
