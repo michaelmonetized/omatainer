@@ -289,6 +289,8 @@ pub struct Poly {
     pub filters: Vec<Svf>,
     pub kind: u8,
     pub cutoff: f32,
+    #[cfg(test)]
+    pub note_on_events: u64,
 }
 
 impl Poly {
@@ -298,6 +300,8 @@ impl Poly {
             filters: vec![Svf::default(); n],
             kind,
             cutoff: if kind == 0 { 700.0 } else { 1800.0 },
+            #[cfg(test)]
+            note_on_events: 0,
         }
     }
     pub fn note_on(&mut self, note: u8, vel: f32) {
@@ -310,6 +314,8 @@ impl Poly {
         self.note_on_owned(note, vel, VoiceOwner::Live, Some(input));
     }
     fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>) {
+        #[cfg(test)]
+        { self.note_on_events += 1; }
         // Prefer a gate's existing voice over an earlier free slot. A repeat
         // note-on from that gate retriggers it rather than leaving duplicates.
         let available = self
