@@ -11,12 +11,13 @@ fn command_backlog_defers_note_off_without_reordering_or_dropping_it() {
         tx.send(Command::Master(0.8)).unwrap();
     }
     tx.send(Command::LiveNoteOn {
+        source: 0,
         ch: 0,
         note: 60,
         vel: 100,
     })
     .unwrap();
-    tx.send(Command::LiveNoteOff { ch: 0, note: 60 }).unwrap();
+    tx.send(Command::LiveNoteOff { source: 0, ch: 0, note: 60 }).unwrap();
     let mut out = [0.0; 128];
     engine.process(&mut out);
     assert!(engine.tracks[1]
@@ -60,17 +61,18 @@ fn sustained_concurrent_producers_cannot_extend_the_callback_command_budget() {
             // admission by blocking only this synthetic producer thread.
             let command = match i % 4 {
                 0 => Command::LiveNoteOn {
+                    source: 0,
                     ch: 0,
                     note: 60,
                     vel: 100,
                 },
                 1 => Command::Master(0.6),
                 2 => Command::Master(0.8),
-                _ => Command::LiveNoteOff { ch: 0, note: 60 },
+                _ => Command::LiveNoteOff { source: 0, ch: 0, note: 60 },
             };
             tx.send(command).unwrap();
         }
-        tx.send(Command::LiveNoteOff { ch: 0, note: 60 }).unwrap();
+        tx.send(Command::LiveNoteOff { source: 0, ch: 0, note: 60 }).unwrap();
         worker_finished.store(true, Ordering::Release);
         8193_u64
     });

@@ -24,7 +24,7 @@ const MAX_COMMANDS: usize = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GateKey {
-    Live { ch: u8, note: u8 },
+    Live { source: u64, ch: u8, note: u8 },
     Pad(u8),
     Touch(u8),
 }
@@ -308,8 +308,8 @@ impl CommandPort {
 
 fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
     match *command {
-        Command::LiveNoteOn { ch, note, .. } => Some((GateKey::Live { ch: ch & 15, note }, true)),
-        Command::LiveNoteOff { ch, note } => Some((GateKey::Live { ch: ch & 15, note }, false)),
+        Command::LiveNoteOn { source, ch, note, vel } => Some((GateKey::Live { source, ch: ch & 15, note }, vel != 0)),
+        Command::LiveNoteOff { source, ch, note } => Some((GateKey::Live { source, ch: ch & 15, note }, false)),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
         Command::DeckTouch { deck, on } => Some((GateKey::Touch(deck % super::DECKS as u8), on)),
         _ => None,
@@ -439,13 +439,14 @@ mod tests {
             Command::Xfader(0.1),
             Command::Xfader(0.8),
             Command::LiveNoteOn {
+                source: 0,
                 ch: 0,
                 note: 60,
                 vel: 100,
             },
             Command::Xfader(0.3),
             Command::Xfader(0.4),
-            Command::LiveNoteOff { ch: 0, note: 60 },
+            Command::LiveNoteOff { source: 0, ch: 0, note: 60 },
             Command::DeckPitch {
                 deck: 0,
                 value: 0.2,

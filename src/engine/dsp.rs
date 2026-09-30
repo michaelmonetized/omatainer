@@ -215,10 +215,19 @@ pub enum VoiceOwner {
     Clip,
 }
 
+/// The physical gate that owns a live voice. Pitch can change while a gate is
+/// held; this key remains stable until its matching release arrives.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InputKey {
+    Midi { source: u64, ch: u8, note: u8 },
+    Pad(u8),
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Voice {
     pub note: u8,
     pub owner: VoiceOwner,
+    pub input: Option<InputKey>,
     pub vel: f32,
     pub phase: f32,
     pub phase2: f32,
@@ -237,6 +246,7 @@ impl Voice {
         Self {
             note: 0,
             owner: VoiceOwner::Live,
+            input: None,
             vel: 0.0,
             phase: 0.0,
             phase2: 0.0,
@@ -291,18 +301,27 @@ impl Poly {
         }
     }
     pub fn note_on(&mut self, note: u8, vel: f32) {
-        self.note_on_owned(note, vel, VoiceOwner::Live);
+        self.note_on_owned(note, vel, VoiceOwner::Live, None);
     }
     pub fn note_on_clip(&mut self, note: u8, vel: f32) {
-        self.note_on_owned(note, vel, VoiceOwner::Clip);
+        self.note_on_owned(note, vel, VoiceOwner::Clip, None);
     }
-    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner) {
-        if let Some(v) = self
+    pub fn note_on_input(&mut self, note: u8, vel: f32, input: InputKey) {
+        self.note_on_owned(note, vel, VoiceOwner::Live, Some(input));
+    }
+    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>) {
+        // Prefer a gate's existing voice over an earlier free slot. A repeat
+        // note-on from that gate retriggers it rather than leaving duplicates.
+        let available = self
             .voices
-            .iter_mut()
-            .find(|v| !v.env.active() || (v.note == note && v.owner == owner))
-        {
+            .iter()
+            .position(|v| v.owner == owner && v.input == input
+                && (input.is_some() || v.note == note))
+            .or_else(|| self.voices.iter().position(|v| !v.env.active()));
+        if let Some(i) = available {
+            let v = &mut self.voices[i];
             v.owner = owner;
+            v.input = input;
             v.trig(note, vel);
             return;
         }
@@ -314,6 +333,7 @@ impl Poly {
             .map(|(i, _)| i)
             .unwrap_or(0);
         self.voices[i].owner = owner;
+        self.voices[i].input = input;
         self.voices[i].trig(note, vel);
     }
     pub fn note_off(&mut self, note: u8) {
@@ -324,8 +344,22 @@ impl Poly {
     }
     fn note_off_owned(&mut self, note: u8, owner: VoiceOwner) {
         for v in &mut self.voices {
-            if v.note == note && v.owner == owner && matches!(v.env.stage, 1..=3) {
+            if v.note == note && v.owner == owner && v.input.is_none() && matches!(v.env.stage, 1..=3) {
                 v.env.off();
+            }
+        }
+    }
+    pub fn note_off_input(&mut self, input: InputKey) {
+        for v in &mut self.voices {
+            if v.input == Some(input) && matches!(v.env.stage, 1..=3) {
+                v.env.off();
+            }
+        }
+    }
+    pub fn transpose_input(&mut self, input: InputKey, semitones: i8) {
+        for v in &mut self.voices {
+            if v.input == Some(input) && v.env.active() {
+                v.note = (v.note as i16 + semitones as i16).clamp(0, 127) as u8;
             }
         }
     }

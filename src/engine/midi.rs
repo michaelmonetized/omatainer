@@ -4,7 +4,14 @@ use crate::engine::{Command, DECKS, HOTCUES, SCENES, TRACKS};
 use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
 use parking_lot::Mutex;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
+
+static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
+
+fn next_source_id() -> u64 {
+    NEXT_SOURCE.fetch_add(1, Ordering::Relaxed)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MsgKind {
@@ -122,11 +129,14 @@ impl MidiHub {
             let learn_c = learn.clone();
             let shift_c = shift.clone();
             let nm = name.clone();
+            // Names and channels are not identities: two identical keyboards
+            // can use the same channel and pitch simultaneously.
+            let source = next_source_id();
             match midi_in.connect(
                 &port,
                 &format!("omatainer-in-{name}"),
                 move |_t, msg, _| {
-                    handle_msg(msg, &map_b, &cmd_c, &log_c, &learn_c, &shift_c, &nm);
+                    handle_msg(msg, source, &map_b, &cmd_c, &log_c, &learn_c, &shift_c, &nm);
                 },
                 (),
             ) {
@@ -195,6 +205,7 @@ impl MidiHub {
 
 fn handle_msg(
     msg: &[u8],
+    source: u64,
     map: &MidiMap,
     cmd: &super::CommandPort,
     log: &Arc<Mutex<Vec<String>>>,
@@ -273,12 +284,13 @@ fn handle_msg(
     if !matched {
         if kind_hi == 0x90 && d2 > 0 {
             let _ = cmd.send(Command::LiveNoteOn {
+                source,
                 ch,
                 note: d1,
                 vel: d2,
             });
         } else if kind_hi == 0x80 || (kind_hi == 0x90 && d2 == 0) {
-            let _ = cmd.send(Command::LiveNoteOff { ch, note: d1 });
+            let _ = cmd.send(Command::LiveNoteOff { source, ch, note: d1 });
         }
     }
 }
@@ -716,5 +728,37 @@ mod tests {
         assert!(map_for("APC Mini mk2").contains("APC Mini"));
         assert!(map_for("Akai APC40 mk2").contains("APC40"));
         assert!(map_for("MPK Mini Plus").contains("Akai"));
+    }
+
+    #[test]
+    fn identical_named_connections_preserve_source_channel_and_zero_velocity_release() {
+        let first = next_source_id();
+        let second = next_source_id();
+        assert_ne!(first, second);
+        let (tx, rx) = crate::engine::CommandPort::channel(16);
+        let snapshot = Arc::new(Mutex::new(super::super::Snapshot::default()));
+        let mut rt = super::super::RtEngine::new(48_000.0, rx, snapshot);
+        let map = class_compliant();
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let learn = Arc::new(Mutex::new(None));
+        let shift = Arc::new(Mutex::new([false; 4]));
+        rt.selected_track = 1;
+        handle_msg(&[0x93, 60, 100], first, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        rt.process(&mut []);
+        rt.selected_track = 2;
+        handle_msg(&[0x93, 60, 100], second, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        rt.process(&mut []);
+        let first_key = super::super::dsp::InputKey::Midi { source: first, ch: 3, note: 60 };
+        let second_key = super::super::dsp::InputKey::Midi { source: second, ch: 3, note: 60 };
+        assert!(rt.tracks[1].poly.voices.iter().any(|voice| voice.input == Some(first_key) && voice.env.stage == 1));
+        assert!(rt.tracks[2].poly.voices.iter().any(|voice| voice.input == Some(second_key) && voice.env.stage == 1));
+        handle_msg(&[0x83, 60, 0], first, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        rt.process(&mut []);
+        assert!(rt.tracks[1].poly.voices.iter().filter(|voice| voice.input == Some(first_key)).all(|voice| voice.env.stage == 4));
+        assert!(rt.tracks[2].poly.voices.iter().any(|voice| voice.input == Some(second_key) && voice.env.stage == 1));
+        rt.selected_track = 3;
+        handle_msg(&[0x93, 60, 0], second, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        rt.process(&mut []);
+        assert!(rt.tracks[2].poly.voices.iter().filter(|voice| voice.input == Some(second_key)).all(|voice| voice.env.stage == 4));
     }
 }

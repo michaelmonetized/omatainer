@@ -208,6 +208,7 @@ fn midi_edits_chase_active_notes_once_and_note_additions_keep_existing_gates() {
         } else {
             rt.recording = true;
             rt.apply(Command::LiveNoteOn {
+                source: 0,
                 ch: 0,
                 note: 65,
                 vel: 100,
@@ -236,6 +237,7 @@ fn midi_multiple_edits_at_an_exact_boundary_preserve_pending_gates() {
     rt.tracks[2].midi_schedule.trace = Some(Vec::new());
     for pitch in [65, 67] {
         rt.apply(Command::LiveNoteOn {
+            source: 0,
             ch: 0,
             note: pitch,
             vel: 100,
