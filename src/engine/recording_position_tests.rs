@@ -71,7 +71,12 @@ fn pending_targets_monitor_without_writing_and_stopped_targets_use_zero_cursor()
         assert!(start > rt.beat);
         capture(&mut rt, pad);
         assert!(rt.tracks[1].clips[2].notes.is_empty());
-        assert!(rt.tracks[1].poly.voices.iter().any(|v| v.env.stage == 4));
+        let monitor = if pad {
+            &rt.sampler_poly
+        } else {
+            &rt.tracks[1].poly
+        };
+        assert!(monitor.voices.iter().any(|v| v.env.stage == 4));
         rt.beat = start;
         capture(&mut rt, pad);
         assert_eq!(rt.tracks[1].clips[2].notes[0].start, 0.0);

@@ -37,6 +37,8 @@ mod deck_transition_tests;
 #[cfg(test)]
 mod input_ownership_tests;
 #[cfg(test)]
+mod pad_routing_tests;
+#[cfg(test)]
 mod stopped_deck_tests;
 #[cfg(test)]
 mod recording_position_tests;
@@ -135,6 +137,7 @@ pub struct TrackRt {
     pub kind: u8, // 0 drums 1 bass 2 keys 3 pad 4 audio
     pub poly: Poly,
     pub eq: ThreeBand,
+    eq_right: ThreeBand,
     pub meter: f32,
     pub drum_samples: [Arc<Sample>; 6],
     pub drum_pos: [Option<(usize, f64)>; 16],
@@ -142,6 +145,8 @@ pub struct TrackRt {
     pub arp_note: Option<u8>,
     arp_cache: arp::ChordCache,
     midi_schedule: midi_schedule::MidiSchedule,
+    // Capture playback policy belongs only to the current launch.
+    recorded_playback: Vec<Option<recording::RecordedPlayback>>,
 }
 
 impl TrackRt {
@@ -163,6 +168,7 @@ impl TrackRt {
                 clip.bars.max(0.25) as f64 * 4.0,
                 elapsed,
                 playing.looping,
+                &self.recorded_playback,
             );
         }
     }
@@ -172,6 +178,7 @@ impl TrackRt {
         self.arp_note = None;
         self.arp_cache.invalidate();
         self.midi_schedule.reset();
+        self.recorded_playback.clear();
     }
 
     fn stop_clip(&mut self) {
@@ -419,7 +426,9 @@ pub struct RtEngine {
     pub sampler_poly: Poly,
     pub sampler_banks: Vec<String>,
     pub pad_banks: Vec<[Arc<Sample>; 16]>,
-    pub pad_voices: [Option<(Arc<Sample>, f64, f32)>; 16],
+    pub pad_voices: [Option<(Arc<Sample>, f64, f32, usize)>; 16],
+    pad_destinations: [usize; 16],
+    pad_output: [[f32; 2]; TRACKS],
     pad_targets: [Option<PadTarget>; 16],
     pub builtin: [Option<Arc<Sample>>; 2],
     pub fx_view: i16,
@@ -654,6 +663,7 @@ impl RtEngine {
                 kind: kinds[i],
                 poly: Poly::new(sr, kinds[i].min(2), 8),
                 eq: ThreeBand::new(sr),
+                eq_right: ThreeBand::new(sr),
                 meter: 0.0,
                 drum_samples: drums.clone(),
                 drum_pos: [None; 16],
@@ -661,6 +671,7 @@ impl RtEngine {
                 arp_note: None,
                 arp_cache: arp::ChordCache::default(),
                 midi_schedule: midi_schedule::MidiSchedule::default(),
+                recorded_playback: Vec::new(),
             })
             .collect();
         let mut e = Self {
@@ -704,6 +715,8 @@ impl RtEngine {
             sampler_banks: vec!["Kit".into(), "Perc".into(), "Hits".into()],
             pad_banks: build_pad_banks(sr as u32),
             pad_voices: std::array::from_fn(|_| None),
+            pad_destinations: [0; 16],
+            pad_output: [[0.0; 2]; TRACKS],
             pad_targets: [None; 16],
             builtin: [None, None],
             fx_view: -1,
@@ -744,11 +757,13 @@ impl RtEngine {
         let drums = build_kit(sr);
         self.pad_banks = build_pad_banks(sr);
         self.pad_voices.fill(None);
+        self.pad_output.fill([0.0; 2]);
         self.sampler_poly.set_sample_rate(self.sr);
         self.scene_fx.set_sample_rate(self.sr);
         for t in &mut self.tracks {
             t.poly.set_sample_rate(self.sr);
             t.eq.set_sample_rate(self.sr);
+            t.eq_right.set_sample_rate(self.sr);
             t.fx.set_sample_rate(self.sr);
             t.drum_samples = drums.clone();
             t.drum_pos.fill(None);
@@ -907,6 +922,7 @@ impl RtEngine {
             let mut cue_l = 0.0f32;
             let mut cue_r = 0.0f32;
 
+            self.pad_output = self.tick_pad_sources();
             for ti in 0..self.tracks.len() {
                 let (tl, tr, pfl) = self.render_track(ti, any_solo);
                 if pfl {
@@ -927,10 +943,8 @@ impl RtEngine {
             let (ga, gb) = xfader_gains(self.xfader, self.xfader_curve);
             let dl = al * ga + bl * gb;
             let dr = ar * ga + br * gb;
-            let sp = self.sampler_poly.tick(self.sr);
-            let (pl, pr) = self.tick_pads();
-            l += dl + sp + pl;
-            r += dr + sp + pr;
+            l += dl;
+            r += dr;
             if self.decks[0].pfl {
                 cue_l += al;
                 cue_r += ar;
@@ -1008,9 +1022,17 @@ impl RtEngine {
                             track.midi_schedule.reset();
                             track.midi_schedule.paused = true;
                         }
-                        track
-                            .arp_cache
-                            .refresh(&track.clips[scene].notes, local, prev, clip_beats);
+                        let notes = &track.clips[scene].notes;
+                        let recorded = &track.recorded_playback;
+                        let loop_origin = ((elapsed - midi_schedule::BEAT_EPSILON) / clip_beats)
+                            .floor() * clip_beats;
+                        track.arp_cache.refresh_visible(notes, local, prev, clip_beats, |index| {
+                            recorded.get(index).and_then(Option::as_ref).is_none_or(|policy| {
+                                policy.first_onset(notes[index].start as f64, clip_beats, p.looping)
+                                    .is_some_and(|first| loop_origin + notes[index].start as f64
+                                        >= first - midi_schedule::BEAT_EPSILON)
+                            })
+                        });
                         let step = (local * 4.0).floor() as i64;
                         let prev_step = (prev * 4.0).floor() as i64;
                         let advance = step != prev_step || local < prev;
@@ -1073,10 +1095,15 @@ impl RtEngine {
         } else {
             self.tracks[ti].poly.tick(self.sr)
         };
+        let [pad_l, pad_r] = std::mem::take(&mut self.pad_output[ti]);
         let track = &mut self.tracks[ti];
-        let s = track.eq.tick(s);
-        let (fl, fr) = track.fx.tick_stereo(s, self.sr);
-        track.meter = track.meter * 0.93 + if silent { 0.0 } else { s.abs() * 0.07 };
+        track.eq_right.low_g = track.eq.low_g;
+        track.eq_right.mid_g = track.eq.mid_g;
+        track.eq_right.high_g = track.eq.high_g;
+        let l = track.eq.tick(s + pad_l);
+        let r = track.eq_right.tick(s + pad_r);
+        let [fl, fr] = track.fx.process_stereo([l, r], self.sr);
+        track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
         if silent {
             (0.0, 0.0, false)
         } else {
@@ -1226,22 +1253,32 @@ impl RtEngine {
         (l0 * w0 + l1 * w1, r0 * w0 + r1 * w1)
     }
 
-    fn tick_pads(&mut self) -> (f32, f32) {
-        let mut l = 0.0;
-        let mut r = 0.0;
-        let sr = self.sr as f64;
-        for slot in self.pad_voices.iter_mut() {
-            if let Some((samp, pos, rate)) = slot {
-                let (a, b) = samp.at(*pos);
-                l += a;
-                r += b;
-                *pos += (*rate as f64) * samp.sr as f64 / sr;
-                if *pos >= samp.frames() as f64 {
+    fn tick_pad_sources(&mut self) -> [[f32; 2]; TRACKS] {
+        // Every source advances once, even when its destination is muted.
+        // Routes outlive gate release so release envelopes keep their mixer.
+        let mut buses = [[0.0; 2]; TRACKS];
+        for (voice, filter) in self.sampler_poly.voices.iter_mut()
+            .zip(self.sampler_poly.filters.iter_mut())
+        {
+            let sample = voice.tick(self.sr, self.sampler_poly.cutoff, filter);
+            if let Some(InputKey::Pad(pad)) = voice.input {
+                let bus = &mut buses[self.pad_destinations[pad as usize % 16]];
+                bus[0] += sample;
+                bus[1] += sample;
+            }
+        }
+        for slot in &mut self.pad_voices {
+            if let Some((sample, position, rate, destination)) = slot {
+                let (l, r) = sample.at(*position);
+                buses[*destination][0] += l;
+                buses[*destination][1] += r;
+                *position += *rate as f64 * sample.sr as f64 / self.sr as f64;
+                if *position >= sample.frames() as f64 {
                     *slot = None;
                 }
             }
         }
-        (l, r)
+        buses
     }
 
     fn release_input(&mut self, input: InputKey) {
@@ -1250,6 +1287,7 @@ impl RtEngine {
         // record even after selection changes or a voice is stolen.
         for track in &mut self.tracks {
             track.poly.note_off_input(input);
+            track.recorded_input_released(input, self.beat);
         }
         self.sampler_poly.note_off_input(input);
     }
@@ -1814,15 +1852,13 @@ impl RtEngine {
                         if let Some(bank) = self.pad_banks.get(self.sampler_bank) {
                             let samp = bank[pad as usize % 16].clone();
                             let rate = 2f32.powi((self.sampler_oct - 3) as i32);
-                            self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate));
+                            self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate, self.selected_track));
                         }
                     } else {
                         self.sampler_poly.note_on_input(pitch, 0.9, input);
-                        self.tracks[self.selected_track].poly.note_on_input(pitch, 0.9, input);
-                        self.pad_targets[pad as usize] = Some(PadTarget {
-                            track: self.selected_track,
-                            pitch,
-                        });
+                        let target = PadTarget { track: self.selected_track, pitch };
+                        self.pad_destinations[pad as usize] = target.track;
+                        self.pad_targets[pad as usize] = Some(target);
                     }
                     if self.compose_armed || self.recording {
                         if self.recording_position(
@@ -1839,13 +1875,8 @@ impl RtEngine {
                         );
                     }
                 } else {
-                    self.finish_recording_input(input);
-                    self.sampler_poly.note_off_input(input);
-                    if let Some(target) = self.pad_targets[pad as usize].take() {
-                        if let Some(track) = self.tracks.get_mut(target.track) {
-                            track.poly.note_off_input(input);
-                        }
-                    }
+                    self.release_input(input);
+                    self.pad_targets[pad as usize] = None;
                 }
             }
             Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
@@ -1864,14 +1895,11 @@ impl RtEngine {
                             target.pitch = (target.pitch as i16 + dn as i16).clamp(0, 127) as u8;
                             let input = InputKey::Pad(pad as u8);
                             self.sampler_poly.transpose_input(input, dn);
-                            if let Some(track) = self.tracks.get_mut(target.track) {
-                                track.poly.transpose_input(input, dn);
-                            }
                         }
                     }
                     let rate = 2f32.powi((self.sampler_oct - 3) as i32);
                     for slot in &mut self.pad_voices {
-                        if let Some((_, _, r)) = slot {
+                        if let Some((_, _, r, _)) = slot {
                             *r = rate;
                         }
                     }

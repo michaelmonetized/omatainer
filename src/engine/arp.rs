@@ -35,6 +35,17 @@ impl ChordCache {
     }
 
     pub fn refresh(&mut self, notes: &[MidiNote], local: f64, prev: f64, clip_beats: f64) {
+        self.refresh_visible(notes, local, prev, clip_beats, |_| true);
+    }
+
+    pub fn refresh_visible(
+        &mut self,
+        notes: &[MidiNote],
+        local: f64,
+        prev: f64,
+        clip_beats: f64,
+        visible: impl Fn(usize) -> bool,
+    ) {
         if !self.dirty
             && prev >= 0.0
             && local >= prev
@@ -46,7 +57,10 @@ impl ChordCache {
 
         let mut present = [false; 256];
         self.next_change = clip_beats;
-        for note in notes {
+        for (index, note) in notes.iter().enumerate() {
+            if !visible(index) {
+                continue;
+            }
             let start = note.start as f64;
             let end = (note.start + note.len) as f64;
             if local >= start && local < end {

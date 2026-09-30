@@ -101,3 +101,19 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - The transport beat stored during rendering is the end of the current sample
   interval: an event exactly at that endpoint belongs to the following sample.
   A tiny beat tolerance absorbs clock accumulation error at exact grids.
+
+## Pad monitoring and recorded playback
+
+- Each pad press captures one destination track. The selected sampler instrument
+  or sample bank supplies one source voice, which passes through that track's
+  stereo EQ/FX, gain, pan, mute, and solo gate. Selection changes do not move a
+  held voice or its release/one-shot tail to another track.
+- Recording/composition writes the visible note immediately while the physical
+  input supplies monitoring. That new note does not create a second clip voice
+  in its initial pass or while the physical gate remains held, even after Record
+  is switched off.
+- After release, a captured note joins a later loop at its next eligible onset;
+  a one-shot capture plays on a subsequent launch. Stored pitch, velocity, start,
+  and duration remain unchanged. Other clip notes, including the same pitch,
+  continue playing normally. Explicit note-list replacement or relaunch starts
+  normal playback of the resulting clip.
