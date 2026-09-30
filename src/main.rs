@@ -2,6 +2,9 @@ mod engine;
 mod theme;
 mod ui;
 
+#[cfg(test)]
+mod scene_index_tests;
+
 use crate::engine::Command;
 use crate::theme::socket_path;
 use anyhow::Context;
@@ -99,8 +102,7 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
         "tap" => r#"{"op":"tap"}"#,
         "status" => r#"{"op":"status"}"#,
         "scene" => {
-            let n = args.get(1).and_then(|s| s.parse::<u8>().ok()).unwrap_or(1);
-            let s = format!(r#"{{"op":"scene","n":{}}}"#, n.saturating_sub(1));
+            let s = scene_payload(args)?;
             println!("{}", send_op(&s)?);
             return Ok(());
         }
@@ -113,6 +115,25 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
     };
     println!("{}", send_op(payload)?);
     Ok(())
+}
+
+fn scene_payload(args: &[String]) -> anyhow::Result<String> {
+    let usage = format!("usage: omatainer ctl scene <1-{}>", engine::SCENES);
+    anyhow::ensure!(args.len() == 2, "{usage}");
+    let n = args[1].parse::<usize>().with_context(|| usage.clone())?;
+    anyhow::ensure!((1..=engine::SCENES).contains(&n), "{usage}");
+    Ok(serde_json::json!({"op": "scene", "n": n - 1}).to_string())
+}
+
+fn ipc_scene_index(v: &serde_json::Value) -> anyhow::Result<u8> {
+    let n = v.get("n").and_then(serde_json::Value::as_u64);
+    match n {
+        Some(n) if n < engine::SCENES as u64 => Ok(u8::try_from(n)?),
+        _ => anyhow::bail!(
+            "scene n must be a zero-based integer from 0 through {}",
+            engine::SCENES - 1
+        ),
+    }
 }
 
 fn send_op(payload: &str) -> anyhow::Result<String> {
@@ -175,10 +196,18 @@ fn handle_client(
             "togglePlay" => apply_now(&rt, Command::TogglePlay),
             "record" => apply_now(&rt, Command::Record),
             "tap" => apply_now(&rt, Command::Tap(std::time::Instant::now())),
-            "scene" => {
-                let n = v.get("n").and_then(|x| x.as_u64()).unwrap_or(0) as u8;
-                apply_now(&rt, Command::LaunchScene { scene: n });
-            }
+            "scene" => match ipc_scene_index(&v) {
+                Ok(scene) => apply_now(&rt, Command::LaunchScene { scene }),
+                Err(error) => {
+                    writeln!(
+                        writer,
+                        "{}",
+                        serde_json::json!({"ok": false, "error": error.to_string()})
+                    )?;
+                    line.clear();
+                    continue;
+                }
+            },
             "deckPlay" => {
                 let d = v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8;
                 apply_now(&rt, Command::DeckPlay { deck: d });
