@@ -332,7 +332,7 @@ fn sample_rate_filters_keep_cutoff_hz_and_controls() {
         for eq in rt
             .tracks
             .iter()
-            .map(|t| &t.eq)
+            .flat_map(|t| [&t.eq, &t.eq_right])
             .chain(rt.decks.iter().flat_map(|d| &d.eq))
         {
             for (mut filter, hz) in [(eq.low, 250.0), (eq.high, 3200.0)] {
@@ -428,7 +428,7 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     rt.process(&mut [0.0; 2048]);
     rt.trig_drum(0, 36, 1.0);
-    rt.pad_voices[0] = Some((rt.pad_banks[0][0].clone(), 12.0, 1.0));
+    rt.pad_voices[0] = Some((rt.pad_banks[0][0].clone(), 12.0, 1.0, 0));
     let beat = rt.beat;
     let start = rt.tracks[2].playing.unwrap().start_beat;
     let sample = rt.decks[0].audio.clone().unwrap();

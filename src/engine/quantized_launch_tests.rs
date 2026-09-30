@@ -40,6 +40,7 @@ fn prepare(rt: &mut RtEngine, bpm: f32, quant: f32, instrument: Instrument) {
     let track = &mut rt.tracks[TRACK];
     track.poly = Poly::new(rt.sr, 1, 16);
     track.eq = ThreeBand::new(rt.sr);
+    track.eq_right = ThreeBand::new(rt.sr);
     track.drum_pos.fill(None);
     track.fx.slots.clear();
     track.kind = if matches!(instrument, Instrument::Drums) {

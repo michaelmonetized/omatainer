@@ -2,6 +2,7 @@
 //! head; edits rebuild the schedule once, without copying notes in the renderer.
 
 use super::MidiNote;
+use super::recording::RecordedPlayback;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 
@@ -98,6 +99,7 @@ impl MidiSchedule {
         loop_beats: f64,
         elapsed: Option<f64>,
         looping: bool,
+        recorded: &[Option<RecordedPlayback>],
     ) {
         // Edits arrive between output samples. Keep boundary gates and edit
         // reconciliations which have been scheduled but not rendered yet.
@@ -137,6 +139,14 @@ impl MidiSchedule {
                 continue;
             }
             let start = (note.start as f64).rem_euclid(loop_beats);
+            let start = if let Some(policy) = recorded.get(index).and_then(Option::as_ref) {
+                let Some(first) = policy.first_onset(start, loop_beats, looping) else {
+                    continue;
+                };
+                first
+            } else {
+                start
+            };
             let end = start + note.len as f64;
             let mut on = start;
             let mut off = end;
