@@ -6,6 +6,8 @@ mod ui;
 mod scene_index_tests;
 #[cfg(test)]
 mod ipc_control_tests;
+#[cfg(test)]
+mod ipc_error_tests;
 
 use crate::engine::Command;
 use crate::theme::socket_path;
@@ -141,13 +143,51 @@ fn ipc_scene_index(v: &serde_json::Value) -> anyhow::Result<u8> {
 }
 
 fn send_op(payload: &str) -> anyhow::Result<String> {
-    let mut s = UnixStream::connect(socket_path()).context("omatainer is not running")?;
-    s.set_read_timeout(Some(Duration::from_millis(800)))?;
-    writeln!(s, "{payload}")?;
-    let mut r = BufReader::new(s);
+    let stream = UnixStream::connect(socket_path()).context("omatainer is not running")?;
+    exchange_request(stream, payload)
+}
+
+fn exchange_request(mut stream: UnixStream, payload: &str) -> anyhow::Result<String> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT_REQUEST: AtomicU64 = AtomicU64::new(1);
+    let mut request: serde_json::Value = serde_json::from_str(payload)?;
+    let object = request.as_object_mut().context("IPC request must be an object")?;
+    let id = serde_json::Value::String(format!(
+        "{}-{}", std::process::id(), NEXT_REQUEST.fetch_add(1, Ordering::Relaxed),
+    ));
+    object.insert("id".into(), id.clone());
+    stream.set_read_timeout(Some(Duration::from_millis(800)))?;
+    writeln!(stream, "{request}")?;
+    let mut reader = BufReader::new(stream);
     let mut line = String::new();
-    r.read_line(&mut line)?;
-    Ok(line.trim().to_string())
+    anyhow::ensure!(reader.read_line(&mut line)? > 0, "empty IPC response");
+    let response: serde_json::Value = serde_json::from_str(&line)
+        .context("malformed IPC response")?;
+    anyhow::ensure!(response.get("id") == Some(&id), "IPC response request id mismatch");
+    match response.get("ok").and_then(serde_json::Value::as_bool) {
+        Some(true) => Ok(line.trim().to_string()),
+        Some(false) => anyhow::bail!("IPC request rejected: {}",
+            response.get("error").and_then(serde_json::Value::as_str)
+                .unwrap_or("server returned ok:false")),
+        None => anyhow::bail!("IPC response is missing a boolean ok field"),
+    }
+}
+
+fn ipc_request_id(request: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    use serde_json::Value;
+    match request.get("id") {
+        None | Some(Value::Null) => Ok(Value::Null),
+        Some(Value::String(id)) if id.len() <= 128 => Ok(Value::String(id.clone())),
+        Some(Value::Number(id)) if id.is_u64() || id.is_i64() => Ok(Value::Number(id.clone())),
+        _ => anyhow::bail!("request id must be an integer or a string of at most 128 bytes"),
+    }
+}
+
+fn ipc_deck_index(request: &serde_json::Value) -> anyhow::Result<u8> {
+    match request.get("deck").and_then(serde_json::Value::as_u64) {
+        Some(deck) if deck < engine::DECKS as u64 => Ok(deck as u8),
+        _ => anyhow::bail!("deck must be an integer from 0 through {}", engine::DECKS - 1),
+    }
 }
 
 fn start_ipc(
@@ -187,13 +227,13 @@ fn ipc_command(v: &serde_json::Value) -> anyhow::Result<Option<Command>> {
         "tap" => Command::Tap(std::time::Instant::now()),
         "scene" => Command::LaunchScene { scene: ipc_scene_index(v)? },
         "deckPlay" => Command::DeckPlay {
-            deck: v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+            deck: ipc_deck_index(v)?,
         },
         "deckCue" => Command::DeckCue {
-            deck: v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+            deck: ipc_deck_index(v)?,
         },
         "ping" | "status" => return Ok(None),
-        _ => anyhow::bail!("unknown IPC operation {op:?}"),
+        _ => anyhow::bail!("missing or unsupported IPC operation {:?}", op.chars().take(64).collect::<String>()),
     }))
 }
 
@@ -206,21 +246,26 @@ fn handle_client(
     let mut writer = stream;
     let mut line = String::new();
     while reader.read_line(&mut line)? > 0 {
-        let submission = serde_json::from_str::<serde_json::Value>(line.trim())
-            .map_err(anyhow::Error::from)
-            .and_then(|request| ipc_command(&request))
-            .and_then(|command| match command {
-                Some(command) => {
-                    let outcome = commands.send(command)?;
-                    Ok(Some(outcome.name()))
-                }
+        let mut request_id = serde_json::Value::Null;
+        let submission: Result<Option<&str>, (&str, anyhow::Error)> = (|| {
+            let request: serde_json::Value = serde_json::from_str(line.trim())
+                .map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
+            request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
+            let command = ipc_command(&request).map_err(|error| ("invalid_operation", error))?;
+            match command {
+                Some(command) => commands.send(command)
+                    .map(|outcome| Some(outcome.name()))
+                    .map_err(|error| ("submission_rejected", anyhow::Error::from(error))),
                 None => Ok(None),
-            });
+            }
+        })();
         let command_status = match submission {
             Ok(status) => status,
-            Err(error) => {
+            Err((code, error)) => {
                 writeln!(writer, "{}", serde_json::json!({
                     "ok": false,
+                    "id": request_id,
+                    "error_code": code,
                     "accepted": false,
                     "command_status": "rejected",
                     "error": error.to_string(),
@@ -232,6 +277,7 @@ fn handle_client(
         let s = snap.lock().clone();
         let out = serde_json::json!({
             "ok": true,
+            "id": request_id,
             // A queued command may not be reflected in this snapshot yet.
             "accepted": command_status.map(|_| true),
             "command_status": command_status,
