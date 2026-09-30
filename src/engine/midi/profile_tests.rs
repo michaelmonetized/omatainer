@@ -41,7 +41,7 @@ fn validation_rejects_duplicates_conflicts_wildcards_and_decoder_aliases() {
         cbind(0, 7, Action::TrackFader, 0, 1),
         cbind(0, 7, Action::Master, 0, 0),
         cbind(0xff, 7, Action::TrackFader, 0, 0),
-        rbind(0, 7, Action::DeckJog, 0, 0),
+        rbind(0, 7, Action::DeckJog, 0, 0, RelativeSpec::PIONEER_JOG),
     ] {
         for bindings in [vec![first, conflict], vec![conflict, first]] {
             let error = with_bindings(bindings).validate().unwrap_err().to_string();
@@ -56,14 +56,17 @@ fn validation_rejects_duplicates_conflicts_wildcards_and_decoder_aliases() {
         action: Action::DeckJog,
         deck: 1,
         extra: 0,
+        relative: None,
     };
     let mut second = pitch;
     second.data = 127; // Dispatch ignores data1 for pitch bend.
     assert!(with_bindings(vec![pitch, second]).validate().is_err());
     let note = nbind(0xff, 60, Action::Clip, 0, 0);
-    assert!(with_bindings(vec![note, nbind(3, 60, Action::Scene, 0, 0)])
-        .validate()
-        .is_err());
+    assert!(
+        with_bindings(vec![note, nbind(3, 60, Action::Scene, 0, 0)])
+            .validate()
+            .is_err()
+    );
 }
 
 #[test]
@@ -81,11 +84,13 @@ fn validation_accepts_distinct_addresses_and_rejects_invalid_midi_bytes() {
         cbind(16, 7, Action::Master, 0, 0),
         cbind(0, 128, Action::Master, 0, 0),
     ] {
-        assert!(with_bindings(vec![binding])
-            .validate()
-            .unwrap_err()
-            .to_string()
-            .contains("invalid"));
+        assert!(
+            with_bindings(vec![binding])
+                .validate()
+                .unwrap_err()
+                .to_string()
+                .contains("invalid")
+        );
     }
 }
 
