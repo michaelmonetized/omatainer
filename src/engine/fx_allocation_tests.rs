@@ -101,9 +101,8 @@ fn bypass_does_no_dsp_and_resumes_the_same_tail_without_heap_work() {
 
 #[test]
 fn queued_fx_edits_take_effect_at_block_boundaries_and_warm_processing_stays_bounded() {
-    let (tx, rx) = crossbeam_channel::bounded(256);
+    let (tx, rx) = control::CommandPort::channel(256);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
-    let tx = control::CommandPort::new(tx);
     tx.send(Command::OpenFxTrack(1)).unwrap();
     tx.send(Command::FxAdd(5)).unwrap(); // Delay
     tx.send(Command::FxMix {

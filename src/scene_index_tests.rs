@@ -194,8 +194,8 @@ pub(super) fn check_valid_scene_operations() {
 }
 
 pub(super) fn check_ipc_scene_requests() {
-    let (tx, rx) = crossbeam_channel::bounded(16);
-    let commands = engine::CommandPort::new(tx.clone());
+    let (tx, rx) = engine::CommandPort::channel(16);
+    let commands = tx.clone();
     let snap = Arc::new(Mutex::new(Snapshot::default()));
     let mut rt = RtEngine::new(48000.0, rx, snap.clone());
     rt.apply(Command::LaunchScene { scene: 0 });

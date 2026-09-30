@@ -13,8 +13,8 @@ fn request(client: &mut BufReader<UnixStream>, request: &str) -> Value {
 
 #[test]
 fn ipc_reports_accepted_full_disconnected_and_query_states_truthfully() {
-    let (tx, rx) = crossbeam_channel::bounded(1);
-    let commands = CommandPort::new(tx.clone());
+    let (tx, rx) = CommandPort::channel(12);
+    let commands = tx.clone();
     let snapshot = Arc::new(Mutex::new(engine::Snapshot::default()));
     let (client, server) = UnixStream::pair().unwrap();
     client
@@ -33,7 +33,9 @@ fn ipc_reports_accepted_full_disconnected_and_query_states_truthfully() {
     );
     assert_eq!(tx.len(), 1);
 
-    let response = request(&mut client, r#"{"op":"stop"}"#);
+    tx.send(Command::Master(0.5)).unwrap();
+    tx.send(Command::Master(0.6)).unwrap();
+    let response = request(&mut client, r#"{"op":"play"}"#);
     assert_eq!(response["ok"], false);
     assert_eq!(response["accepted"], false);
     assert_eq!(response["command_status"], "rejected");
@@ -41,7 +43,7 @@ fn ipc_reports_accepted_full_disconnected_and_query_states_truthfully() {
         .as_str()
         .unwrap()
         .contains("queue is full"));
-    assert_eq!(tx.len(), 1);
+    assert_eq!(tx.len(), 3);
 
     // ctl follow and ordinary status share this exact wire payload.
     assert!(ipc_command(&serde_json::from_str(STATUS_REQUEST).unwrap())
@@ -51,12 +53,20 @@ fn ipc_reports_accepted_full_disconnected_and_query_states_truthfully() {
     assert_eq!(response["ok"], true);
     assert_eq!(response["accepted"], Value::Null);
     assert_eq!(response["command_status"], Value::Null);
-    assert_eq!(tx.len(), 1);
+    assert_eq!(tx.len(), 3);
 
     assert!(matches!(rx.try_recv(), Ok(Command::Play)));
+    rx.try_recv().unwrap();
+    rx.try_recv().unwrap();
     let response = request(&mut client, r#"{"op":"stop"}"#);
     assert_eq!(response["accepted"], true);
-    assert!(matches!(rx.try_recv(), Ok(Command::Stop)));
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(Command::ReservedStop { lane: 0, .. })
+    ));
+    let response = request(&mut client, r#"{"op":"stop"}"#);
+    assert_eq!(response["accepted"], true);
+    assert_eq!(response["command_status"], "coalesced");
     drop(rx);
     let response = request(&mut client, r#"{"op":"play"}"#);
     assert_eq!(response["ok"], false);

@@ -211,8 +211,8 @@ fn handle_client(
             .and_then(|request| ipc_command(&request))
             .and_then(|command| match command {
                 Some(command) => {
-                    commands.send(command)?;
-                    Ok(Some("accepted"))
+                    let outcome = commands.send(command)?;
+                    Ok(Some(outcome.name()))
                 }
                 None => Ok(None),
             });
@@ -244,6 +244,7 @@ fn handle_client(
             "xfader": s.xfader,
             "midi": s.midi,
             "commands": s.commands,
+            "submissions": commands.stats(),
             "deckA": s.decks.first().map(|d| d.title.clone()).unwrap_or_default(),
             "deckB": s.decks.get(1).map(|d| d.title.clone()).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),

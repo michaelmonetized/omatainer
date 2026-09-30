@@ -21,6 +21,7 @@ pub struct App {
     midi_open: bool,
     status: String,
     submission_error: Cell<Option<crate::engine::SubmissionError>>,
+    seen_submission_failures: u64,
     last_theme_check: Instant,
     load_tx: mpsc::Sender<(u8, PathBuf)>,
     load_rx: mpsc::Receiver<(u8, Result<crate::engine::dsp::Sample, String>)>,
@@ -66,6 +67,7 @@ impl App {
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
             submission_error: Cell::new(None),
+            seen_submission_failures: 0,
             last_theme_check: Instant::now(),
             load_tx: tx,
             load_rx: rx_done,
@@ -134,7 +136,7 @@ impl App {
 
     fn submit(&self, c: Command) -> bool {
         match self.engine.send(c) {
-            Ok(()) => true,
+            Ok(_) => true,
             Err(error) => {
                 self.submission_error.set(Some(error));
                 false
@@ -203,6 +205,11 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let submissions = self.engine.cmd.stats();
+        if submissions.rejected > self.seen_submission_failures {
+            self.seen_submission_failures = submissions.rejected;
+            self.submission_error.set(submissions.last_error);
+        }
         if self.last_theme_check.elapsed().as_millis() > 800 {
             if self.theme.maybe_reload() {
                 self.theme.apply(ctx);
