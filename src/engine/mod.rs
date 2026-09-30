@@ -15,6 +15,8 @@ pub mod midi;
 mod clip_lifecycle_tests;
 #[cfg(test)]
 mod deck_loop_tests;
+#[cfg(test)]
+mod deck_stereo_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -148,8 +150,8 @@ pub struct DeckRt {
     pub keylock: bool,
     pub sync: bool,
     pub gain: f32,
-    pub eq: ThreeBand,
-    pub filter: Svf,
+    pub eq: [ThreeBand; 2],
+    pub filter: [Svf; 2],
     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
     pub filter_amt: f32,   // 0.5 = noon
     pub pfl: bool,
@@ -192,8 +194,8 @@ impl DeckRt {
             keylock: false,
             sync: false,
             gain: 0.85,
-            eq: ThreeBand::new(sr),
-            filter: Svf::default(),
+            eq: [ThreeBand::new(sr); 2],
+            filter: [Svf::default(); 2],
             filter_morph: 0.5,
             filter_amt: 0.5,
             pfl: false,
@@ -589,7 +591,12 @@ impl RtEngine {
             t.drum_samples = drums.clone();
         }
         for d in &mut self.decks {
-            d.eq = ThreeBand::new(self.sr);
+            for eq in &mut d.eq {
+                let gains = [eq.low_g, eq.mid_g, eq.high_g];
+                *eq = ThreeBand::new(self.sr);
+                [eq.low_g, eq.mid_g, eq.high_g] = gains;
+            }
+            d.filter = [Svf::default(); 2];
         }
     }
 
@@ -991,15 +998,15 @@ impl RtEngine {
         let g = self.decks[di].gain;
         l *= g;
         r *= g;
-        l = self.decks[di].eq.tick(l);
-        r = self.decks[di].eq.tick(r);
+        l = self.decks[di].eq[0].tick(l);
+        r = self.decks[di].eq[1].tick(r);
         let f = self.decks[di].filter_amt;
         if (f - 0.5).abs() > 0.03 {
             let morph = if f < 0.5 { 0.0 } else { 1.0 };
             let amt = (f - 0.5).abs() * 2.0;
             let cut = 200.0 + amt * 8000.0;
-            l = self.decks[di].filter.process(l, cut, 0.4, self.sr, morph);
-            r = self.decks[di].filter.process(r, cut, 0.4, self.sr, morph);
+            l = self.decks[di].filter[0].process(l, cut, 0.4, self.sr, morph);
+            r = self.decks[di].filter[1].process(r, cut, 0.4, self.sr, morph);
         }
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
         (l, r)
@@ -1205,10 +1212,12 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.eq_store[band as usize % 4] = g;
                 if !d.eq_cut[band as usize % 4] && (d.eq_solo < 0 || d.eq_solo == band as i8) {
-                    match band {
-                        0 => d.eq.low_g = g,
-                        1 => d.eq.mid_g = g,
-                        _ => d.eq.high_g = g,
+                    for eq in &mut d.eq {
+                        match band {
+                            0 => eq.low_g = g,
+                            1 => eq.mid_g = g,
+                            _ => eq.high_g = g,
+                        }
                     }
                 }
             }
@@ -1497,10 +1506,12 @@ impl RtEngine {
                 d.eq_cut[b] = !d.eq_cut[b];
                 if b < 3 {
                     let g = if d.eq_cut[b] { 0.0 } else { d.eq_store[b] };
-                    match b {
-                        0 => d.eq.low_g = g,
-                        1 => d.eq.mid_g = g,
-                        _ => d.eq.high_g = g,
+                    for eq in &mut d.eq {
+                        match b {
+                            0 => eq.low_g = g,
+                            1 => eq.mid_g = g,
+                            _ => eq.high_g = g,
+                        }
                     }
                 } else {
                     d.gain = if d.eq_cut[3] { 0.0 } else { d.eq_store[3] };
@@ -1511,18 +1522,22 @@ impl RtEngine {
                 let b = band as i8;
                 if d.eq_solo == b {
                     d.eq_solo = -1;
-                    d.eq.low_g = if d.eq_cut[0] { 0.0 } else { d.eq_store[0] };
-                    d.eq.mid_g = if d.eq_cut[1] { 0.0 } else { d.eq_store[1] };
-                    d.eq.high_g = if d.eq_cut[2] { 0.0 } else { d.eq_store[2] };
+                    for eq in &mut d.eq {
+                        eq.low_g = if d.eq_cut[0] { 0.0 } else { d.eq_store[0] };
+                        eq.mid_g = if d.eq_cut[1] { 0.0 } else { d.eq_store[1] };
+                        eq.high_g = if d.eq_cut[2] { 0.0 } else { d.eq_store[2] };
+                    }
                 } else {
                     d.eq_solo = b;
-                    d.eq.low_g = if b == 0 { d.eq_store[0] } else { 0.0 };
-                    d.eq.mid_g = if b == 1 { d.eq_store[1] } else { 0.0 };
-                    d.eq.high_g = if b == 2 { d.eq_store[2] } else { 0.0 };
-                    if b == 3 {
-                        d.eq.low_g = d.eq_store[0];
-                        d.eq.mid_g = d.eq_store[1];
-                        d.eq.high_g = d.eq_store[2];
+                    for eq in &mut d.eq {
+                        eq.low_g = if b == 0 { d.eq_store[0] } else { 0.0 };
+                        eq.mid_g = if b == 1 { d.eq_store[1] } else { 0.0 };
+                        eq.high_g = if b == 2 { d.eq_store[2] } else { 0.0 };
+                        if b == 3 {
+                            eq.low_g = d.eq_store[0];
+                            eq.mid_g = d.eq_store[1];
+                            eq.high_g = d.eq_store[2];
+                        }
                     }
                 }
             }
@@ -1717,7 +1732,7 @@ impl RtEngine {
                 bpm: d.bpm,
                 pitch: d.pitch,
                 gain: d.gain,
-                eq: [d.eq.low_g, d.eq.mid_g, d.eq.high_g],
+                eq: [d.eq[0].low_g, d.eq[0].mid_g, d.eq[0].high_g],
                 filter: d.filter_amt,
                 vinyl: d.vinyl,
                 sync: d.sync,
