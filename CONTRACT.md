@@ -145,3 +145,14 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   stays on its original bus and continues receiving zero if no track remains.
   It decays according to its own feedback settings; changing panels/scenes
   never copies or clears it. Device bypass retains the existing freeze policy.
+
+## Media load replacement and cancellation
+
+- Each deck's new file selection receives a unique increasing request identity.
+  Unload and built-in replacement invalidate older pending, active, completed
+  and already-queued file results. Obsolete errors cannot replace newer status.
+- One decoder worker has at most one active job and one pending/result slot per
+  deck. Pending work coalesces to the latest selection; decks dispatch fairly.
+- Token validity is checked at decoder boundaries, UI publication and renderer
+  application. Cancellation does not interrupt a filesystem syscall in progress;
+  it takes effect at the next safe boundary without blocking UI teardown.
