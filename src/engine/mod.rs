@@ -4,6 +4,8 @@ mod arp_tests;
 #[cfg(test)]
 mod fx_allocation_tests;
 #[cfg(test)]
+mod mute_lifecycle_tests;
+#[cfg(test)]
 mod test_alloc;
 pub mod audio;
 mod control;
@@ -926,11 +928,6 @@ impl RtEngine {
 
     fn render_track(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
-        if silent {
-            // last_beat still advances below. A skipped loop boundary must
-            // not leave the previous loop's chord cached when this track is audible.
-            self.tracks[ti].arp_cache.invalidate();
-        }
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
         // engine beat denotes the end of this output sample's beat interval.
@@ -944,7 +941,7 @@ impl RtEngine {
             } else {
                 let local = elapsed.rem_euclid(clip_beats);
                 let prev = p.last_beat;
-                if self.tracks[ti].clips[scene].kind == ClipKind::Midi && !silent {
+                if self.tracks[ti].clips[scene].kind == ClipKind::Midi {
                     let kind = self.tracks[ti].kind;
                     let arp = self.tracks[ti]
                         .fx
@@ -1016,29 +1013,24 @@ impl RtEngine {
                 }
             }
         }
-        let mut s = 0.0f32;
-        if !silent {
-            if self.tracks[ti].kind == 0 {
-                s += self.tick_drums(ti);
-            } else {
-                s += self.tracks[ti].poly.tick(self.sr);
-            }
-            s = self.tracks[ti].eq.tick(s);
-            let (fl, fr) = self.tracks[ti].fx.tick_stereo(s, self.sr);
-            let g = self.tracks[ti].gain;
-            let pan = self.tracks[ti].pan;
-            let gl = (1.0 - pan.max(0.0)).sqrt() * g;
-            let gr = (1.0 + pan.min(0.0)).sqrt() * g;
-            self.tracks[ti].meter = self.tracks[ti].meter * 0.93 + s.abs() * 0.07;
-            return (fl * gl, fr * gr, false);
-        } else if self.tracks[ti].kind != 0 {
-            let _ = self.tracks[ti].poly.tick(self.sr);
+        // Mute/solo gates the output, never the musical clock or DSP history.
+        // Drum one-shots, synth releases and effect tails advance naturally.
+        let s = if self.tracks[ti].kind == 0 {
+            self.tick_drums(ti)
+        } else {
+            self.tracks[ti].poly.tick(self.sr)
+        };
+        let track = &mut self.tracks[ti];
+        let s = track.eq.tick(s);
+        let (fl, fr) = track.fx.tick_stereo(s, self.sr);
+        track.meter = track.meter * 0.93 + if silent { 0.0 } else { s.abs() * 0.07 };
+        if silent {
+            (0.0, 0.0, false)
+        } else {
+            let gl = (1.0 - track.pan.max(0.0)).sqrt() * track.gain;
+            let gr = (1.0 + track.pan.min(0.0)).sqrt() * track.gain;
+            (fl * gl, fr * gr, false)
         }
-        let pan = self.tracks[ti].pan;
-        let gl = (1.0 - pan.max(0.0)).sqrt();
-        let gr = (1.0 + pan.min(0.0)).sqrt();
-        self.tracks[ti].meter = self.tracks[ti].meter * 0.93 + s.abs() * 0.07;
-        (s * gl, s * gr, false)
     }
 
     fn trig_drum(&mut self, ti: usize, pitch: u8, vel: f32) {

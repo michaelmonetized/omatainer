@@ -78,3 +78,12 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Live notes are separate from clip notes, including at the same pitch. Clip
   note-offs and stops preserve live notes and unaffected tracks; live note-offs
   preserve clip notes.
+
+## Mute and solo
+
+- Mute and exclusion by solo silence a track's output. Its note scheduling,
+  synth envelopes, one-shot sample positions and FX histories keep advancing.
+- A muted drum hit finishes naturally in silence; unmuting never resumes a
+  frozen hit. Notes whose release occurred while muted cannot remain held.
+- Unmuting restores the sound at the current musical position, including any
+  still-current natural effect tail. It does not replay elapsed material.
