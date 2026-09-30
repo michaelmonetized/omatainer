@@ -2,6 +2,7 @@ mod engine;
 mod theme;
 mod ui;
 mod ipc_server;
+mod ipc_transport;
 
 #[cfg(test)]
 mod scene_index_tests;
@@ -14,7 +15,9 @@ use crate::engine::Command;
 use crate::theme::socket_path;
 use anyhow::Context;
 use eframe::egui;
-use std::io::{BufRead, BufReader, Write};
+#[cfg(test)]
+use std::io::BufRead;
+use std::io::{BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
@@ -143,12 +146,16 @@ fn exchange_request(mut stream: UnixStream, payload: &str) -> anyhow::Result<Str
         "{}-{}", std::process::id(), NEXT_REQUEST.fetch_add(1, Ordering::Relaxed),
     ));
     object.insert("id".into(), id.clone());
-    stream.set_read_timeout(Some(Duration::from_millis(800)))?;
-    writeln!(stream, "{request}")?;
-    let mut reader = BufReader::new(stream);
-    let mut line = String::new();
-    anyhow::ensure!(reader.read_line(&mut line)? > 0, "empty IPC response");
-    let response: serde_json::Value = serde_json::from_str(&line)
+    let payload = format!("{request}\n");
+    anyhow::ensure!(payload.len() - 1 <= ipc_transport::REQUEST_BYTES, "IPC request exceeds byte limit");
+    ipc_transport::write_all(&mut stream, payload.as_bytes(), Duration::from_millis(800))?;
+    let mut reader = BufReader::with_capacity(ipc_transport::RESPONSE_BYTES, stream);
+    let mut line = [0; ipc_transport::RESPONSE_BYTES];
+    let size = ipc_transport::read_line(&mut reader, &mut line,
+        Duration::from_millis(800), Duration::from_millis(800))?
+        .context("empty IPC response")?;
+    let line = std::str::from_utf8(&line[..size]).context("malformed IPC response")?;
+    let response: serde_json::Value = serde_json::from_str(line)
         .context("malformed IPC response")?;
     anyhow::ensure!(response.get("id") == Some(&id), "IPC response request id mismatch");
     match response.get("ok").and_then(serde_json::Value::as_bool) {
@@ -198,18 +205,37 @@ fn ipc_command(v: &serde_json::Value) -> anyhow::Result<Option<Command>> {
     }))
 }
 
+#[cfg(test)]
 fn handle_client(
     stream: UnixStream,
     commands: engine::CommandPort,
     snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
 ) -> anyhow::Result<()> {
-    let mut reader = BufReader::new(stream.try_clone()?);
+    handle_client_with_limits(stream, commands, snap, ipc_transport::Limits::default())
+}
+
+fn handle_client_with_limits(
+    stream: UnixStream,
+    commands: engine::CommandPort,
+    snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
+    limits: ipc_transport::Limits,
+) -> anyhow::Result<()> {
+    let mut reader = BufReader::with_capacity(ipc_transport::REQUEST_BYTES, stream.try_clone()?);
     let mut writer = stream;
-    let mut line = String::new();
-    while reader.read_line(&mut line)? > 0 {
+    let mut line = [0; ipc_transport::REQUEST_BYTES];
+    for _ in 0..limits.requests {
+        let size = match ipc_transport::read_line(&mut reader, &mut line, limits.idle, limits.read) {
+            Ok(Some(size)) => size,
+            Ok(None) => return Ok(()),
+            Err(error) => {
+                let _ = ipc_transport::reject(&mut writer, serde_json::Value::Null,
+                    error.code(), &error.to_string(), limits.write);
+                return Ok(());
+            }
+        };
         let mut request_id = serde_json::Value::Null;
         let submission: Result<Option<&str>, (&str, anyhow::Error)> = (|| {
-            let request: serde_json::Value = serde_json::from_str(line.trim())
+            let request: serde_json::Value = serde_json::from_slice(&line[..size])
                 .map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
             request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
             let command = ipc_command(&request).map_err(|error| ("invalid_operation", error))?;
@@ -223,19 +249,23 @@ fn handle_client(
         let command_status = match submission {
             Ok(status) => status,
             Err((code, error)) => {
-                writeln!(writer, "{}", serde_json::json!({
-                    "ok": false,
-                    "id": request_id,
-                    "error_code": code,
-                    "accepted": false,
-                    "command_status": "rejected",
-                    "error": error.to_string(),
-                }))?;
-                line.clear();
+                ipc_transport::reject(&mut writer, request_id, code, &error.to_string(), limits.write)?;
                 continue;
             }
         };
-        let s = snap.lock().clone();
+        let Some(s) = snap.try_lock_for(limits.snapshot) else {
+            if let Some(status) = command_status {
+                ipc_transport::reply(&mut writer, &serde_json::json!({
+                    "ok": true, "id": request_id, "accepted": true,
+                    "command_status": status, "event": "receipt", "state_available": false,
+                    "warning": "command accepted; snapshot temporarily unavailable",
+                }), limits.write)?;
+            } else {
+                ipc_transport::reject(&mut writer, request_id, "snapshot_unavailable",
+                    "snapshot temporarily unavailable", limits.write)?;
+            }
+            continue;
+        };
         let out = serde_json::json!({
             "ok": true,
             "id": request_id,
@@ -243,22 +273,25 @@ fn handle_client(
             "accepted": command_status.map(|_| true),
             "command_status": command_status,
             "event": "state",
+            "state_available": true,
             "playing": s.playing,
             "recording": s.recording,
             "bpm": s.bpm,
             "bar": s.bar,
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
-            "midi": s.midi,
+            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, 64)).collect::<Vec<_>>(),
+            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > 64)
+                || s.decks.iter().take(2).any(|deck| deck.title.len() > 256),
             "commands": s.commands,
             "submissions": commands.stats(),
-            "deckA": s.decks.first().map(|d| d.title.clone()).unwrap_or_default(),
-            "deckB": s.decks.get(1).map(|d| d.title.clone()).unwrap_or_default(),
+            "deckA": s.decks.first().map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
+            "deckB": s.decks.get(1).map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),
             "deckBPlaying": s.decks.get(1).map(|d| d.playing).unwrap_or(false),
         });
-        writeln!(writer, "{out}")?;
-        line.clear();
+        drop(s);
+        ipc_transport::reply(&mut writer, &out, limits.write)?;
     }
     Ok(())
 }

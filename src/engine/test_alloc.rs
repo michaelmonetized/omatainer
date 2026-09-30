@@ -4,7 +4,7 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) struct Counts {
+pub(crate) struct Counts {
     pub allocations: usize,
     pub frees: usize,
     pub bytes: usize,
@@ -53,7 +53,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
 #[global_allocator]
 static ALLOCATOR: CountingAllocator = CountingAllocator;
 
-pub(super) fn measure(f: impl FnOnce()) -> Counts {
+pub(crate) fn measure(f: impl FnOnce()) -> Counts {
     struct Reset;
     impl Drop for Reset {
         fn drop(&mut self) {

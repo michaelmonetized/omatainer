@@ -101,3 +101,18 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - The transport beat stored during rendering is the end of the current sample
   interval: an event exactly at that endpoint belongs to the following sample.
   A tiny beat tolerance absorbs clock accumulation error at exact grids.
+
+## Local control connection limits
+
+- A request may contain at most 4096 bytes before its newline. Idle reads expire
+  after 500 ms, and each complete line has a 2-second total read budget.
+- At most eight clients are handled concurrently; excess connections receive a
+  bounded `server_busy` rejection where possible. A connection closes after 32
+  requests. Responses are at most 8192 bytes before their newline and have a
+  200 ms total write budget.
+- Diagnostics do not echo request bodies. Status metadata is capped, with
+  `state_truncated` indicating omitted text or device entries. If a snapshot is
+  unavailable after 50 ms, an accepted command still receives its receipt;
+  a status query receives a temporary-unavailability rejection.
+- Violations and disconnects release the client slot. Server shutdown interrupts
+  and joins client workers before removing its owned endpoint.
