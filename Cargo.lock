@@ -2475,6 +2475,7 @@ dependencies = [
  "crossbeam-channel",
  "eframe",
  "egui",
+ "libc",
  "midir",
  "parking_lot",
  "rtrb",
