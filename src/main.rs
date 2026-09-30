@@ -4,6 +4,8 @@ mod ui;
 
 #[cfg(test)]
 mod scene_index_tests;
+#[cfg(test)]
+mod ipc_control_tests;
 
 use crate::engine::Command;
 use crate::theme::socket_path;
@@ -12,6 +14,8 @@ use eframe::egui;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::time::Duration;
+
+const STATUS_REQUEST: &str = r#"{"op":"status"}"#;
 
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -24,7 +28,7 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     let engine = engine::Engine::start().context("audio engine")?;
-    start_ipc(engine.rt.clone(), engine.snap.clone());
+    start_ipc(engine.cmd.clone(), engine.snap.clone());
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -78,7 +82,7 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
     let op = args.first().map(|s| s.as_str()).unwrap_or("status");
     if op == "follow" {
         loop {
-            match send_op("status") {
+            match send_op(STATUS_REQUEST) {
                 Ok(s) => {
                     println!("{s}");
                     let _ = std::io::stdout().flush();
@@ -100,7 +104,7 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
         "togglePlay" | "toggle" | "toggle-play" => r#"{"op":"togglePlay"}"#,
         "record" => r#"{"op":"record"}"#,
         "tap" => r#"{"op":"tap"}"#,
-        "status" => r#"{"op":"status"}"#,
+        "status" => STATUS_REQUEST,
         "scene" => {
             let s = scene_payload(args)?;
             println!("{}", send_op(&s)?);
@@ -110,7 +114,7 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
         "deckB" => r#"{"op":"deckPlay","deck":1}"#,
         "cueA" => r#"{"op":"deckCue","deck":0}"#,
         "cueB" => r#"{"op":"deckCue","deck":1}"#,
-        "reload-theme" => r#"{"op":"status"}"#,
+        "reload-theme" => STATUS_REQUEST,
         other => anyhow::bail!("unknown ctl op {other}"),
     };
     println!("{}", send_op(payload)?);
@@ -147,7 +151,7 @@ fn send_op(payload: &str) -> anyhow::Result<String> {
 }
 
 fn start_ipc(
-    rt: std::sync::Arc<parking_lot::Mutex<engine::RtEngine>>,
+    commands: engine::CommandPort,
     snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
 ) {
     std::thread::Builder::new()
@@ -163,65 +167,74 @@ fn start_ipc(
                 }
             };
             for stream in listener.incoming().flatten() {
-                let rt = rt.clone();
+                let commands = commands.clone();
                 let snap = snap.clone();
                 std::thread::spawn(move || {
-                    let _ = handle_client(stream, rt, snap);
+                    let _ = handle_client(stream, commands, snap);
                 });
             }
         })
         .ok();
 }
 
-fn apply_now(rt: &std::sync::Arc<parking_lot::Mutex<engine::RtEngine>>, c: Command) {
-    let mut e = rt.lock();
-    e.apply(c);
-    e.publish();
+fn ipc_command(v: &serde_json::Value) -> anyhow::Result<Option<Command>> {
+    let op = v.get("op").and_then(|x| x.as_str()).unwrap_or("");
+    Ok(Some(match op {
+        "play" => Command::Play,
+        "stop" => Command::Stop,
+        "togglePlay" => Command::TogglePlay,
+        "record" => Command::Record,
+        "tap" => Command::Tap(std::time::Instant::now()),
+        "scene" => Command::LaunchScene { scene: ipc_scene_index(v)? },
+        "deckPlay" => Command::DeckPlay {
+            deck: v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+        },
+        "deckCue" => Command::DeckCue {
+            deck: v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+        },
+        "ping" | "status" => return Ok(None),
+        _ => anyhow::bail!("unknown IPC operation {op:?}"),
+    }))
 }
 
 fn handle_client(
     stream: UnixStream,
-    rt: std::sync::Arc<parking_lot::Mutex<engine::RtEngine>>,
+    commands: engine::CommandPort,
     snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
 ) -> anyhow::Result<()> {
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut writer = stream;
     let mut line = String::new();
     while reader.read_line(&mut line)? > 0 {
-        let v: serde_json::Value = serde_json::from_str(line.trim()).unwrap_or(serde_json::json!({}));
-        let op = v.get("op").and_then(|x| x.as_str()).unwrap_or("");
-        match op {
-            "play" => apply_now(&rt, Command::Play),
-            "stop" => apply_now(&rt, Command::Stop),
-            "togglePlay" => apply_now(&rt, Command::TogglePlay),
-            "record" => apply_now(&rt, Command::Record),
-            "tap" => apply_now(&rt, Command::Tap(std::time::Instant::now())),
-            "scene" => match ipc_scene_index(&v) {
-                Ok(scene) => apply_now(&rt, Command::LaunchScene { scene }),
-                Err(error) => {
-                    writeln!(
-                        writer,
-                        "{}",
-                        serde_json::json!({"ok": false, "error": error.to_string()})
-                    )?;
-                    line.clear();
-                    continue;
+        let submission = serde_json::from_str::<serde_json::Value>(line.trim())
+            .map_err(anyhow::Error::from)
+            .and_then(|request| ipc_command(&request))
+            .and_then(|command| match command {
+                Some(command) => {
+                    commands.send(command)?;
+                    Ok(Some("accepted"))
                 }
-            },
-            "deckPlay" => {
-                let d = v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8;
-                apply_now(&rt, Command::DeckPlay { deck: d });
+                None => Ok(None),
+            });
+        let command_status = match submission {
+            Ok(status) => status,
+            Err(error) => {
+                writeln!(writer, "{}", serde_json::json!({
+                    "ok": false,
+                    "accepted": false,
+                    "command_status": "rejected",
+                    "error": error.to_string(),
+                }))?;
+                line.clear();
+                continue;
             }
-            "deckCue" => {
-                let d = v.get("deck").and_then(|x| x.as_u64()).unwrap_or(0) as u8;
-                apply_now(&rt, Command::DeckCue { deck: d });
-            }
-            "ping" | "status" => {}
-            _ => {}
-        }
+        };
         let s = snap.lock().clone();
         let out = serde_json::json!({
             "ok": true,
+            // A queued command may not be reflected in this snapshot yet.
+            "accepted": command_status.map(|_| true),
+            "command_status": command_status,
             "event": "state",
             "playing": s.playing,
             "recording": s.recording,

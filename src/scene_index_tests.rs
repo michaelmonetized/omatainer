@@ -194,17 +194,18 @@ pub(super) fn check_valid_scene_operations() {
 }
 
 pub(super) fn check_ipc_scene_requests() {
-    let rt = Arc::new(Mutex::new(engine()));
-    rt.lock().apply(Command::LaunchScene { scene: 0 });
-    let snap = rt.lock().snap.clone();
+    let (tx, rx) = crossbeam_channel::bounded(16);
+    let commands = engine::CommandPort::new(tx.clone());
+    let snap = Arc::new(Mutex::new(Snapshot::default()));
+    let mut rt = RtEngine::new(48000.0, rx, snap.clone());
+    rt.apply(Command::LaunchScene { scene: 0 });
     let (client, server) = UnixStream::pair().unwrap();
     client
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
-    let server_rt = rt.clone();
-    let server_thread = std::thread::spawn(move || handle_client(server, server_rt, snap));
+    let server_thread = std::thread::spawn(move || handle_client(server, commands, snap));
     let mut client = BufReader::new(client);
-    let before = scene_state(&rt.lock());
+    let before = scene_state(&rt);
     let mut invalid = vec![json!({"op": "scene"})];
     for n in [
         json!(8),
@@ -237,24 +238,28 @@ pub(super) fn check_ipc_scene_requests() {
             .as_str()
             .unwrap()
             .contains("zero-based integer"));
-        assert_eq!(scene_state(&rt.lock()), before, "{request}");
+        assert_eq!(scene_state(&rt), before, "{request}");
+        assert_eq!(tx.len(), 0, "invalid scene was enqueued: {request}");
     }
     for scene in 0..SCENES {
         // Ensure both documented endpoints and every intervening scene still
         // work on the same connection after invalid messages.
-        for track in &mut rt.lock().tracks {
+        for track in &mut rt.tracks {
             track.clips[scene].kind = ClipKind::Midi;
         }
         let request = scene_payload(&["scene".into(), (scene + 1).to_string()]).unwrap();
         writeln!(client.get_mut(), "{request}").unwrap();
         let mut response = String::new();
         assert!(client.read_line(&mut response).unwrap() > 0);
-        assert_eq!(
-            serde_json::from_str::<Value>(&response).unwrap()["ok"],
-            true
-        );
+        let response: Value = serde_json::from_str(&response).unwrap();
+        assert_eq!(response["ok"], true);
+        assert_eq!(response["accepted"], true);
+        assert_eq!(response["command_status"], "accepted");
+        assert_eq!(tx.len(), 1, "acknowledgment must mean queued, not executed");
+        // Only the renderer applies the accepted command, at its next block.
+        rt.process(&mut []);
+        assert_eq!(tx.len(), 0);
         assert!(rt
-            .lock()
             .tracks
             .iter()
             .all(|track| track.playing.unwrap().scene as usize == scene));
