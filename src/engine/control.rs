@@ -37,6 +37,7 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    ui_requests: super::ui_requests::Mailbox,
     completed_stops: [std::sync::atomic::AtomicU64; STOP_LANES],
     connected: std::sync::atomic::AtomicBool,
     accepted: std::sync::atomic::AtomicU64,
@@ -64,6 +65,10 @@ impl AdmissionShared {
                 1 => Some(SubmissionError::Full),
                 2 => Some(SubmissionError::StopPending),
                 3 => Some(SubmissionError::Disconnected),
+                4 => Some(SubmissionError::InvalidTarget),
+                5 => Some(SubmissionError::UiUnavailable),
+                6 => Some(SubmissionError::UiFull),
+                7 => Some(SubmissionError::UncapturedSelection),
                 _ => None,
             },
         }
@@ -104,6 +109,17 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub(super) fn forward_ui_load(&self, deck: u8) {
+        if let Some(shared) = &self.shared {
+            let _ = deck;
+            // A raw audio-side command has no captured GUI selection. Report
+            // failure using atomics; never acquire/drop media Arcs here or
+            // silently resolve a different, later selection.
+            shared.ui_requests.reject_uncaptured();
+            let _ = shared.reject(SubmissionError::UncapturedSelection);
+        }
+    }
+
     pub(super) fn complete_stop(&self, lane: usize, ticket: u64) {
         if let Some(shared) = &self.shared {
             if let Some(completed) = shared.completed_stops.get(lane) {
@@ -141,6 +157,10 @@ pub enum SubmissionError {
     Full,
     StopPending,
     Disconnected,
+    InvalidTarget,
+    UiUnavailable,
+    UiFull,
+    UncapturedSelection,
 }
 
 impl std::fmt::Display for SubmissionError {
@@ -149,11 +169,50 @@ impl std::fmt::Display for SubmissionError {
             Self::Full => "The control queue is full. Releases remain reserved. Wait for playback to catch up, then retry the action.",
             Self::StopPending => "A stop is still pending for this target. Retry the start after the stop has completed.",
             Self::Disconnected => "Audio has disconnected. Restart Omatainer before retrying.",
+            Self::InvalidTarget => "The requested control target does not exist.",
+            Self::UiUnavailable => "Library control is unavailable. Reopen Omatainer before retrying.",
+            Self::UiFull => "The library request queue is full. Wait for the interface to catch up, then retry loading.",
+            Self::UncapturedSelection => "Load failed because the request did not capture a library selection. Retry using the controller or crate load button.",
         })
     }
 }
 
 impl std::error::Error for SubmissionError {}
+
+impl AdmissionShared {
+    fn reject(&self, error: SubmissionError) -> Result<SubmissionOutcome, SubmissionError> {
+        use std::sync::atomic::Ordering::Relaxed;
+        self.last_error.store(
+            match error {
+                SubmissionError::Full => 1,
+                SubmissionError::StopPending => 2,
+                SubmissionError::Disconnected => 3,
+                SubmissionError::InvalidTarget => 4,
+                SubmissionError::UiUnavailable => 5,
+                SubmissionError::UiFull => 6,
+                SubmissionError::UncapturedSelection => 7,
+            },
+            Relaxed,
+        );
+        self.rejected.fetch_add(1, Relaxed);
+        Err(error)
+    }
+
+    fn submit_ui_load(&self, deck: u8) -> Result<SubmissionOutcome, SubmissionError> {
+        use std::sync::atomic::Ordering::Relaxed;
+        match self.ui_requests.load(deck) {
+            Ok(outcome) => {
+                match outcome {
+                    SubmissionOutcome::Accepted => &self.accepted,
+                    SubmissionOutcome::Coalesced => &self.coalesced,
+                }
+                .fetch_add(1, Relaxed);
+                Ok(outcome)
+            }
+            Err(error) => self.reject(error),
+        }
+    }
+}
 
 impl CommandPort {
     pub fn channel(capacity: usize) -> (Self, CommandReceiver) {
@@ -167,6 +226,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            ui_requests: super::ui_requests::Mailbox::default(),
             completed_stops: std::array::from_fn(|_| std::sync::atomic::AtomicU64::new(0)),
             connected: std::sync::atomic::AtomicBool::new(true),
             accepted: std::sync::atomic::AtomicU64::new(0),
@@ -201,25 +261,30 @@ impl CommandPort {
         self.shared.stats()
     }
 
+    pub(crate) fn take_ui_receiver(&self) -> Option<super::ui_requests::Receiver> {
+        self.shared.ui_requests.receiver()
+    }
+
+    pub fn ui_request_stats(&self) -> super::ui_requests::Stats {
+        self.shared.ui_requests.stats()
+    }
+
     /// Accepted means queued, not executed. Coalesced means an equivalent
     /// release is already ordered and no intervening accepted onset exists.
     /// No producer waits for queue capacity; only the small admission section
     /// serializes producers. Construct media/instruments before calling here.
     pub fn send(&self, mut command: Command) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::{Acquire, Relaxed};
+        let fail = |error| self.shared.reject(error);
+        if !self.shared.connected.load(Acquire) {
+            return fail(SubmissionError::Disconnected);
+        }
+        if let Command::DeckLoadSelected { deck } = command {
+            return self.shared.submit_ui_load(deck);
+        }
         let mut state = self.admission.lock();
-        let fail = |error| {
-            self.shared.last_error.store(
-                match error {
-                    SubmissionError::Full => 1,
-                    SubmissionError::StopPending => 2,
-                    SubmissionError::Disconnected => 3,
-                },
-                Relaxed,
-            );
-            self.shared.rejected.fetch_add(1, Relaxed);
-            Err(error)
-        };
+        // The receiver may have disconnected while this producer waited for
+        // another producer's bookkeeping. Never coalesce against dead audio.
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
@@ -306,10 +371,65 @@ impl CommandPort {
     }
 }
 
+#[cfg(test)]
+mod gui_routing_tests {
+    use super::*;
+    use crate::engine::media_source::{BuiltinStem, LibSource, Selection};
+    use std::sync::{mpsc, Arc};
+    use std::time::Duration;
+
+    #[test]
+    fn library_handoff_does_not_wait_for_audio_producer_admission() {
+        let (commands, _audio) = CommandPort::channel(32);
+        let gui = commands.take_ui_receiver().unwrap();
+        gui.publish_selection(Some(Arc::new(Selection {
+            source: LibSource::Builtin(BuiltinStem::Harmony),
+            title: "Harmony".into(),
+        })));
+        let locked = commands.admission.lock();
+        let producer = commands.clone();
+        let (done, received) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            done.send(producer.send(Command::DeckLoadSelected { deck: 1 }))
+                .unwrap();
+        });
+        let result = received.recv_timeout(Duration::from_secs(1));
+        drop(locked);
+        worker.join().unwrap();
+        assert_eq!(result.unwrap(), Ok(SubmissionOutcome::Accepted));
+        let request = gui.take_loads()[0].take().unwrap();
+        assert_eq!(request.deck, 1);
+        assert_eq!(
+            request.selection.unwrap().source,
+            LibSource::Builtin(BuiltinStem::Harmony)
+        );
+        assert_eq!(commands.len(), 0);
+    }
+}
+
 fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
     match *command {
-        Command::LiveNoteOn { source, ch, note, vel } => Some((GateKey::Live { source, ch: ch & 15, note }, vel != 0)),
-        Command::LiveNoteOff { source, ch, note } => Some((GateKey::Live { source, ch: ch & 15, note }, false)),
+        Command::LiveNoteOn {
+            source,
+            ch,
+            note,
+            vel,
+        } => Some((
+            GateKey::Live {
+                source,
+                ch: ch & 15,
+                note,
+            },
+            vel != 0,
+        )),
+        Command::LiveNoteOff { source, ch, note } => Some((
+            GateKey::Live {
+                source,
+                ch: ch & 15,
+                note,
+            },
+            false,
+        )),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
         Command::DeckTouch { deck, on } => Some((GateKey::Touch(deck % super::DECKS as u8), on)),
         _ => None,
@@ -446,7 +566,11 @@ mod tests {
             },
             Command::Xfader(0.3),
             Command::Xfader(0.4),
-            Command::LiveNoteOff { source: 0, ch: 0, note: 60 },
+            Command::LiveNoteOff {
+                source: 0,
+                ch: 0,
+                note: 60,
+            },
             Command::DeckPitch {
                 deck: 0,
                 value: 0.2,
