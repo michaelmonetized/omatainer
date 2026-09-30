@@ -825,7 +825,7 @@ impl RtEngine {
                     .fx
                     .slots
                     .iter()
-                    .any(|s| s.id == fx::FxId::Arp && s.on);
+                    .any(|s| s.id() == fx::FxId::Arp && s.on);
                 if arp {
                     let track = &mut self.tracks[ti];
                     track.arp_cache.refresh(
@@ -1657,7 +1657,8 @@ impl RtEngine {
             Command::CloseFx => self.fx_view = -1,
             Command::FxAdd(kind) => {
                 let id = *fx::FxId::all().get(kind as usize).unwrap_or(&fx::FxId::Delay);
-                self.active_chain().slots.push(fx::FxSlot::new(id));
+                let slot = fx::FxSlot::new(id, self.sr);
+                self.active_chain().slots.push(slot);
             }
             Command::FxToggle(slot) => {
                 let c = self.active_chain();
@@ -1804,7 +1805,7 @@ impl RtEngine {
                 chain
                     .slots
                     .iter()
-                    .map(|s| (s.id.name().to_string(), s.on, s.mix, s.p))
+                    .map(|s| (s.id().name().to_string(), s.on, s.mix, s.p))
                     .collect()
             },
         };
@@ -2279,13 +2280,13 @@ mod tests {
     #[test]
     fn contract_spread_and_balance_are_stereo() {
         let mut chain = fx::FxChain::new(48000.0);
-        chain.slots.push(fx::FxSlot::new(fx::FxId::Spread));
+        chain.slots.push(fx::FxSlot::new(fx::FxId::Spread, 48000.0));
         chain.slots[0].p[0] = 1.0;
         chain.slots[0].mix = 1.0;
         let (l, r) = chain.tick_stereo(0.8, 48000.0);
         assert!((l - r).abs() > 1e-6, "spread should decorrelate L/R");
         let mut chain = fx::FxChain::new(48000.0);
-        chain.slots.push(fx::FxSlot::new(fx::FxId::Balance));
+        chain.slots.push(fx::FxSlot::new(fx::FxId::Balance, 48000.0));
         chain.slots[0].p[0] = 0.0;
         chain.slots[0].mix = 1.0;
         let (l, r) = chain.tick_stereo(0.8, 48000.0);
@@ -2296,7 +2297,7 @@ mod tests {
     fn contract_eq_bands_differ() {
         fn energy(id: fx::FxId, hz: f32) -> f32 {
             let mut chain = fx::FxChain::new(48000.0);
-            let mut slot = fx::FxSlot::new(id);
+            let mut slot = fx::FxSlot::new(id, 48000.0);
             slot.p = [1.0, 0.0, 1.0, 0.5];
             slot.mix = 1.0;
             chain.slots.push(slot);
@@ -2320,7 +2321,7 @@ mod tests {
     #[test]
     fn contract_arp_steps_chord() {
         let mut rt = engine();
-        rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp));
+        rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
         rt.apply(Command::LaunchClip { track: 2, scene: 0 });
         let mut seen = std::collections::BTreeSet::new();
         let sixteenth = (rt.sr as f64 * 60.0 / rt.bpm as f64 / 4.0) as usize;

@@ -24,7 +24,7 @@ fn fixture(notes: Vec<MidiNote>) -> RtEngine {
         scene: 0,
         notes,
     });
-    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp));
+    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     rt
 }
@@ -119,7 +119,7 @@ fn arp_emitted_sequence_deduplicates_and_releases_rests_across_loops() {
 #[test]
 fn arp_existing_chord_fixture_matches_reference_steps_for_three_loops() {
     let mut rt = engine();
-    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp));
+    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     for step in 0..96 {
         // The built-in fixture holds C/E/G at 0..0.45 and D/F/A at 4..4.45.
@@ -260,7 +260,7 @@ fn arp_renderer_and_full_process_block_allocate_nothing() {
     );
     let mut rt = engine();
     rt.bpm = 120.0;
-    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp));
+    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     let mut out = [0.0; 2048];
     rt.process(&mut out);
