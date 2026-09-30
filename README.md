@@ -63,5 +63,11 @@ Not Ableton plus Serato with a bridge — one document. Decks are extra mixer bu
 ```bash
 omatainer ctl status
 omatainer ctl togglePlay
+omatainer ctl scene 1 # scene numbers are 1 through 8
 omarchy-shell -q omatainer togglePlay
 ```
+
+`ctl scene` requires exactly one integer from 1 through 8. The control socket's
+JSON scene operation uses zero-based indexes instead: `{"op":"scene","n":0}`
+launches scene 1, and `n` must be an integer from 0 through 7. Invalid scene
+requests return `{"ok":false,"error":"..."}` without changing the session.
