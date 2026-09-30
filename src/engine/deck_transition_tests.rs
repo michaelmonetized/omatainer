@@ -117,6 +117,11 @@ fn seek_cue_and_hotcue_use_new_region_after_two_milliseconds() {
                 assert_ne!(rt.decks[0].pos, old_pos);
                 assert_eq!(rt.decks[0].pos, TARGET as f64);
                 assert_grains_reset(&rt, 0);
+                if action == 1 {
+                    assert_transition(&mut rt, 0.0);
+                    rt.apply(Command::DeckPlay { deck: 0 });
+                    assert_grains_reset(&rt, 0);
+                }
                 assert_transition(&mut rt, -0.5);
             }
         }
@@ -133,7 +138,7 @@ fn replacement_and_unload_retire_old_source_with_bounded_envelope() {
         });
         assert!(!rt.decks[0].playing);
         assert_grains_reset(&rt, 0);
-        assert_transition(&mut rt, -0.75);
+        assert_transition(&mut rt, 0.0);
         rt.apply(Command::DeckPlay { deck: 0 });
         assert_grains_reset(&rt, 0);
         assert_transition(&mut rt, -0.75);
@@ -340,5 +345,5 @@ fn transitions_clear_old_channel_filter_history_and_end_of_file_grains() {
     for _ in 0..96 {
         rt.render_deck(0);
     }
-    assert!((rt.render_deck(0).0 - 0.25).abs() < 1e-6);
+    assert_eq!(rt.render_deck(0), (0.0, 0.0));
 }
