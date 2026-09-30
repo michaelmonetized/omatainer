@@ -20,6 +20,8 @@ mod clip_lifecycle_tests;
 mod deck_loop_tests;
 #[cfg(test)]
 mod deck_stereo_tests;
+#[cfg(test)]
+mod deck_transition_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -34,6 +36,14 @@ pub const TRACKS: usize = 8;
 pub const SCENES: usize = 8;
 pub const DECKS: usize = 2;
 pub const HOTCUES: usize = 8;
+const GRAIN_FRAMES: f32 = 1024.0;
+const GRAIN_HOP: f32 = GRAIN_FRAMES / 2.0;
+
+#[derive(Clone, Copy)]
+enum DeckTransition {
+    Jump,
+    Jog,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum View {
@@ -174,6 +184,10 @@ pub struct DeckRt {
     pub grain_i: f32,
     pub grain_origin: f64,
     pub prev_origin: f64,
+    last_output: [f32; 2],
+    transition_from: [f32; 2],
+    transition_remaining: u32,
+    transition_frames: u32,
 }
 
 impl DeckRt {
@@ -221,7 +235,80 @@ impl DeckRt {
             grain_i: 0.0,
             grain_origin: 0.0,
             prev_origin: 0.0,
+            last_output: [0.0; 2],
+            transition_from: [0.0; 2],
+            transition_remaining: 0,
+            transition_frames: 0,
         }
+    }
+
+    /// All playhead jumps and source-mode changes reset the overlap history.
+    /// Jumps blend from the last emitted frame for ceil(2 ms * output rate)
+    /// frames while playback timing advances normally. Jogging is a continuous
+    /// performance gesture: update its source immediately without restarting a
+    /// fade or clearing its filter history for every controller message.
+    fn transition_to(&mut self, pos: f64, sr: f32, transition: DeckTransition) {
+        self.pos = pos;
+        let source_rate = self.audio.as_ref().map_or(sr, |audio| audio.sr as f32);
+        self.grain_origin = pos;
+        // The previous window starts half a grain earlier, so its first
+        // full-weight sample is at the new position, not 512 frames ahead.
+        self.prev_origin = pos - GRAIN_HOP as f64 * source_rate as f64 / sr as f64;
+        self.grain_i = 0.0;
+        match transition {
+            DeckTransition::Jump => {
+                self.transition_from = self.last_output;
+                self.transition_frames = (sr as f64 * 0.002).ceil().max(2.0) as u32;
+                self.transition_remaining = self.transition_frames;
+                for eq in &mut self.eq {
+                    eq.low.z = 0.0;
+                    eq.high.z = 0.0;
+                }
+                self.filter = [Svf::default(); 2];
+            }
+            DeckTransition::Jog => self.transition_remaining = 0,
+        }
+    }
+
+    fn sample_at(&self, pos: f64) -> (f32, f32) {
+        let Some(audio) = &self.audio else { return (0.0, 0.0) };
+        if !(self.loop_on && self.loop_len > 1.0) {
+            return audio.at(pos);
+        }
+        let pos = self.loop_start + (pos - self.loop_start).rem_euclid(self.loop_len);
+        let next = pos.floor() + 1.0;
+        if next < self.loop_start + self.loop_len {
+            return audio.at(pos);
+        }
+        // Interpolation itself must cross back to the loop start rather than
+        // reading the neighboring out-of-loop sample. Read the left frame
+        // directly so loops ending at the file boundary retain their last frame.
+        let frame = pos.floor() as usize;
+        if pos < 0.0 || frame >= audio.frames() {
+            return (0.0, 0.0);
+        }
+        let channels = audio.ch as usize;
+        let left = audio.data[frame * channels];
+        let right = audio.data[frame * channels + usize::from(channels > 1)];
+        let wrapped = self.loop_start + (next - self.loop_start).rem_euclid(self.loop_len);
+        let (next_left, next_right) = audio.at(wrapped);
+        let mix = pos.fract() as f32;
+        (left + (next_left - left) * mix, right + (next_right - right) * mix)
+    }
+
+    fn transition_output(&mut self, input: [f32; 2]) -> [f32; 2] {
+        let mut output = input;
+        if self.transition_remaining > 0 {
+            let mix = (self.transition_frames - self.transition_remaining) as f32
+                / (self.transition_frames - 1) as f32;
+            for channel in 0..2 {
+                output[channel] = self.transition_from[channel] * (1.0 - mix)
+                    + input[channel] * mix;
+            }
+            self.transition_remaining -= 1;
+        }
+        self.last_output = output;
+        output
     }
 
     fn pitch_rate(&self) -> f32 {
@@ -603,6 +690,7 @@ impl RtEngine {
                 [eq.low_g, eq.mid_g, eq.high_g] = gains;
             }
             d.filter = [Svf::default(); 2];
+            d.transition_to(d.pos, self.sr, DeckTransition::Jump);
         }
     }
 
@@ -973,33 +1061,37 @@ impl RtEngine {
             if d.playing || d.touching {
                 d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr);
             }
+            let mut position = d.pos;
             if d.loop_on && d.loop_len > 1.0 {
-                if d.pos >= d.loop_start + d.loop_len {
-                    d.pos = d.loop_start + (d.pos - d.loop_start) % d.loop_len;
+                if position >= d.loop_start + d.loop_len {
+                    position = d.loop_start + (position - d.loop_start) % d.loop_len;
                 }
-                if d.pos < d.loop_start {
-                    d.pos = d.loop_start;
+                if position < d.loop_start {
+                    position = d.loop_start;
                 }
             }
             if let Some(a) = &d.audio {
-                if d.pos >= a.frames() as f64 {
-                    d.pos = 0.0;
+                if position >= a.frames() as f64 {
+                    position = 0.0;
                     if !d.loop_on {
                         d.playing = false;
                     }
                 }
-                if d.pos < 0.0 {
-                    d.pos = 0.0;
+                if position < 0.0 {
+                    position = 0.0;
                 }
             }
+            if position != d.pos {
+                d.transition_to(position, self.sr, DeckTransition::Jump);
+            }
         }
-        let keylock = self.decks[di].keylock;
+        // Vinyl contact follows the hand directly; OLA resumes from the
+        // release position rather than replaying grains from before the jog.
+        let keylock = self.decks[di].keylock && !self.decks[di].touching;
         let (mut l, mut r) = if keylock {
             self.deck_grain(di, sr)
-        } else if let Some(a) = &self.decks[di].audio {
-            a.at(self.decks[di].pos)
         } else {
-            (0.0, 0.0)
+            self.decks[di].sample_at(self.decks[di].pos)
         };
         let g = self.decks[di].gain;
         l *= g;
@@ -1014,31 +1106,30 @@ impl RtEngine {
             l = self.decks[di].filter[0].process(l, cut, 0.4, self.sr, morph);
             r = self.decks[di].filter[1].process(r, cut, 0.4, self.sr, morph);
         }
+        [l, r] = self.decks[di].transition_output([l, r]);
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
         (l, r)
     }
 
     fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
-        const G: f32 = 1024.0;
-        const HOP: f32 = 512.0;
-        let Some(a) = self.decks[di].audio.clone() else {
+        let d = &mut self.decks[di];
+        let Some(a) = &d.audio else {
             return (0.0, 0.0);
         };
         let asr = a.sr as f64 / sr;
-        let d = &mut self.decks[di];
         if !d.playing && !d.touching {
-            return a.at(d.pos);
+            return d.sample_at(d.pos);
         }
         let gi = d.grain_i;
-        let (l0, r0) = a.at(d.grain_origin + gi as f64 * asr);
-        let (l1, r1) = a.at(d.prev_origin + (gi + HOP) as f64 * asr);
-        let w0 = 0.5 - 0.5 * (std::f32::consts::TAU * (gi / G)).cos();
-        let w1 = 0.5 - 0.5 * (std::f32::consts::TAU * ((gi + HOP) / G)).cos();
+        let (l0, r0) = d.sample_at(d.grain_origin + gi as f64 * asr);
+        let (l1, r1) = d.sample_at(d.prev_origin + (gi + GRAIN_HOP) as f64 * asr);
+        let w0 = 0.5 - 0.5 * (std::f32::consts::TAU * (gi / GRAIN_FRAMES)).cos();
+        let w1 = 0.5 - 0.5 * (std::f32::consts::TAU * ((gi + GRAIN_HOP) / GRAIN_FRAMES)).cos();
         d.grain_i += 1.0;
-        if d.grain_i >= HOP {
+        if d.grain_i >= GRAIN_HOP {
             d.prev_origin = d.grain_origin;
             d.grain_origin = d.pos;
-            d.grain_i -= HOP;
+            d.grain_i -= GRAIN_HOP;
         }
         (l0 * w0 + l1 * w1, r0 * w0 + r1 * w1)
     }
@@ -1173,18 +1264,14 @@ impl RtEngine {
                     return;
                 }
                 d.playing = !d.playing;
-                if d.playing && d.pos < 1.0 {
-                    d.pos = d.cue_pos;
-                }
-                d.grain_origin = d.pos;
-                d.prev_origin = d.pos;
-                d.grain_i = 0.0;
+                let pos = if d.playing && d.pos < 1.0 { d.cue_pos } else { d.pos };
+                d.transition_to(pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckCue { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.playing {
                     d.playing = false;
-                    d.pos = d.cue_pos;
+                    d.transition_to(d.cue_pos, self.sr, DeckTransition::Jump);
                 } else {
                     d.cue_pos = d.pos;
                 }
@@ -1196,16 +1283,20 @@ impl RtEngine {
             Command::DeckJog { deck, delta } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.touching || !d.playing {
-                    d.pos += delta as f64 * 400.0;
+                    d.transition_to(d.pos + delta as f64 * 400.0, self.sr, DeckTransition::Jog);
                     d.scratch = delta * 18.0;
                 } else {
                     d.rate = (d.target_rate + delta * 0.15).clamp(0.0, 4.0);
                 }
             }
             Command::DeckTouch { deck, on } => {
-                self.decks[deck as usize % DECKS].touching = on;
+                let d = &mut self.decks[deck as usize % DECKS];
+                if d.touching != on {
+                    d.touching = on;
+                    d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+                }
                 if !on {
-                    self.decks[deck as usize % DECKS].scratch = 0.0;
+                    d.scratch = 0.0;
                 }
             }
             Command::DeckPitch { deck, value } => {
@@ -1245,7 +1336,7 @@ impl RtEngine {
                 if del {
                     d.hotcues[i].set = false;
                 } else if d.hotcues[i].set {
-                    d.pos = d.hotcues[i].pos;
+                    d.transition_to(d.hotcues[i].pos, self.sr, DeckTransition::Jump);
                     d.playing = true;
                 } else {
                     d.hotcues[i] = HotCue {
@@ -1268,6 +1359,7 @@ impl RtEngine {
                     d.loop_start = d.pos;
                     d.loop_len = beats as f64 * spb;
                 }
+                d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckLoopIn { deck } => {
                 let spb = self.decks[deck as usize % DECKS]
@@ -1282,6 +1374,9 @@ impl RtEngine {
                     pos = (pos / spb).round() * spb;
                 }
                 d.loop_start = pos;
+                if d.loop_on {
+                    d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+                }
             }
             Command::DeckLoopOut { deck } => {
                 let spb = self.decks[deck as usize % DECKS]
@@ -1297,6 +1392,7 @@ impl RtEngine {
                 }
                 d.loop_len = (pos - d.loop_start).abs().max(64.0);
                 d.loop_on = true;
+                d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckVinyl { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
@@ -1305,16 +1401,13 @@ impl RtEngine {
             Command::DeckKeylock { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.keylock = !d.keylock;
-                d.grain_origin = d.pos;
-                d.prev_origin = d.pos;
-                d.grain_i = 0.0;
+                d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.clear_loop();
                 d.title = audio.name.clone();
                 d.bpm = audio.bpm;
-                d.pos = 0.0;
                 d.cue_pos = 0.0;
                 d.playing = false;
                 d.hotcues = std::array::from_fn(|_| HotCue {
@@ -1322,24 +1415,25 @@ impl RtEngine {
                     pos: 0.0,
                 });
                 d.audio = Some(audio);
+                d.transition_to(0.0, self.sr, DeckTransition::Jump);
             }
             Command::DeckUnload { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.audio = None;
                 d.title.clear();
                 d.playing = false;
-                d.pos = 0.0;
                 d.cue_pos = 0.0;
                 d.clear_loop();
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
                 });
+                d.transition_to(0.0, self.sr, DeckTransition::Jump);
             }
             Command::DeckSeek { deck, frac } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 let frames = d.audio.as_ref().map(|a| a.frames() as f64).unwrap_or(0.0);
-                d.pos = (frac.clamp(0.0, 1.0) as f64 * frames).max(0.0);
+                d.transition_to((frac.clamp(0.0, 1.0) as f64 * frames).max(0.0), self.sr, DeckTransition::Jump);
                 d.cue_pos = d.pos;
             }
             Command::DeckLoadSelected { deck } => {
@@ -1468,12 +1562,14 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_len *= 2.0;
+                    d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckLoopHalf { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_len = (d.loop_len * 0.5).max(64.0);
+                    d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckReloop { deck } => {
@@ -1491,6 +1587,7 @@ impl RtEngine {
                 d.loop_start = pos;
                 d.loop_len = 4.0 * 4.0 * spb;
                 d.loop_on = true;
+                d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckMatch => {
                 let fav = if self.xfader <= 0.5 { 0 } else { 1 };
@@ -1507,7 +1604,7 @@ impl RtEngine {
                         let spb_o = ao.sr as f64 * 60.0 / ao.bpm.max(1.0) as f64;
                         let phase = self.decks[fav].pos.rem_euclid(spb_f) / spb_f;
                         let bar = (self.decks[oth].pos / spb_o).floor();
-                        self.decks[oth].pos = (bar + phase) * spb_o;
+                        self.decks[oth].transition_to((bar + phase) * spb_o, self.sr, DeckTransition::Jump);
                     }
                 }
             }
@@ -2144,12 +2241,11 @@ mod tests {
         rt.xfader = 1.0;
         rt.decks[0].playing = false;
         rt.decks[1].playing = true;
-        rt.decks[1].keylock = lock;
         rt.decks[1].pitch_range = 2;
         rt.decks[1].pitch = pitch;
-        rt.decks[1].grain_origin = rt.decks[1].pos;
-        rt.decks[1].prev_origin = rt.decks[1].pos;
-        rt.decks[1].grain_i = 0.0;
+        if lock {
+            rt.apply(Command::DeckKeylock { deck: 1 });
+        }
         let mut buf = vec![0.0f32; 48000];
         rt.process(&mut buf);
         buf
