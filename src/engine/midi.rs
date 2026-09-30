@@ -94,6 +94,12 @@ pub struct MidiHub {
 
 impl MidiHub {
     #[cfg(test)]
+    pub(crate) fn receive_for_test(&self, cmd: &super::CommandPort, source: u64, device: &str, message: &[u8]) {
+        let map = pick_map(&builtin_maps(), device);
+        handle_msg(message, source, &map, cmd, &self.log, &self.learn, &self.shift, device);
+    }
+
+    #[cfg(test)]
     pub(super) fn without_devices() -> Self {
         Self {
             _ins: Vec::new(),
