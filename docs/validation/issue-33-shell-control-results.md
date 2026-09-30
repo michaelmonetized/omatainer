@@ -1,0 +1,15 @@
+# Issue 33: serialized shell controls and observable results
+
+`Service.send` now appends to a 64-request FIFO and returns JSON with a unique local `requestId` and `status: "queued"`. It never terminates an earlier command to start a later one. Full queues return an explicit `rejected` receipt. One tracked CLI process runs at a time; its stdout, stderr, exit code and exit status determine the result. A missing executable, malformed/empty response, engine rejection, nonzero exit, crash or ten-second timeout is reported as a failure, then the next queued command runs. An ambiguous failure does not claim the engine rejected or applied a request, and commands are never automatically retried.
+
+A valid CLI response acknowledging engine `accepted` or `coalesced` admission produces `status: "accepted"`. This is not proof of audio application: `applied` remains null, and the existing follow stream reports observed transport state separately. Failures persist across follow updates and appear in the bar tooltip and popup; a later accepted control clears the control error.
+
+The shell IPC `result(requestId)` method returns queued/in-flight state or one of the latest 64 completed results; expired/unknown identifiers return `unknown`. `status()` includes `pendingCommands` and `lastCommandResult`. The QML `commandFinished` signal exposes each completion. Existing control method names remain available, but their immediate return is a queued/rejected JSON receipt instead of the old unconditional `ok`.
+
+Run `python3 scripts/check-shell-controls.py`. It copies the real service into a private fixture and runs the installed Quickshell runtime (locally 0.3.1) with Qt's offscreen platform. The delayed/failing fake CLI is a real child process. Assertions cover no premature acceptance during the delayed first command, ordered correlated completion, errors and exit status, malformed/empty output, process crash, missing-executable recovery, a real ten-second deadline, later stop execution, persistent error after a follow update, and all 64 accepted stop commands plus explicit overflow rejection. Both fixtures pass. No mocked JavaScript/QML runtime is used.
+
+This validates the service with actual Quickshell Process, parser and IPC-handler types, without modifying or restarting the user's running shell. The popup change is a small binding to the service error; live desktop visual placement and physical control/latency QA are not claimed.
+
+Process lifecycle behavior was checked against the installed Qt type metadata and the official [Quickshell Process documentation](https://quickshell.org/docs/v0.2.1/types/Quickshell.Io/Process/) and [implementation](https://github.com/quickshell-mirror/quickshell/blob/master/src/io/process.cpp). In particular, FailedToStart emits `runningChanged` without `exited`, so the service explicitly handles that path.
+
+The fixture uses the actual wire labels `accepted`/`coalesced`; shell `queued` is the immediate local receipt only. Passing `--cli /path/to/omatainer` adds a real Service → native CLI → private IPC fixture round trip, including correlation and both acceptance labels.
