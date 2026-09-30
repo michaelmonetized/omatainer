@@ -4,6 +4,7 @@ use crate::theme::Theme;
 use eframe::egui::{
     self, Align, Color32, FontId, Key, PointerButton, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2,
 };
+use std::cell::Cell;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Instant, SystemTime};
@@ -19,6 +20,7 @@ pub struct App {
     keys_open: bool,
     midi_open: bool,
     status: String,
+    submission_error: Cell<Option<crate::engine::SubmissionError>>,
     last_theme_check: Instant,
     load_tx: mpsc::Sender<(u8, PathBuf)>,
     load_rx: mpsc::Receiver<(u8, Result<crate::engine::dsp::Sample, String>)>,
@@ -63,6 +65,7 @@ impl App {
             keys_open: false,
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
+            submission_error: Cell::new(None),
             last_theme_check: Instant::now(),
             load_tx: tx,
             load_rx: rx_done,
@@ -126,7 +129,17 @@ impl App {
     }
 
     fn send(&self, c: Command) {
-        self.engine.send(c);
+        self.submit(c);
+    }
+
+    fn submit(&self, c: Command) -> bool {
+        match self.engine.send(c) {
+            Ok(()) => true,
+            Err(error) => {
+                self.submission_error.set(Some(error));
+                false
+            }
+        }
     }
 
     fn load_sel(&mut self, deck: u8) {
@@ -138,8 +151,11 @@ impl App {
             }
             if path.starts_with("builtin:") {
                 let stem = if path.to_string_lossy().contains("harmony") { 1u8 } else { 0 };
-                self.send(Command::LoadBuiltin { deck, stem });
-                self.status = format!("loaded {name} → {}", (b'A' + deck) as char);
+                if self.submit(Command::LoadBuiltin { deck, stem }) {
+                    self.status = format!("queued {name} → {}", (b'A' + deck) as char);
+                } else {
+                    self.status = "Load was not accepted".into();
+                }
                 return;
             }
             self.status = format!("loading {name} → {}", (b'A' + deck) as char);
@@ -200,11 +216,15 @@ impl eframe::App for App {
         while let Ok((deck, res)) = self.load_rx.try_recv() {
             match res {
                 Ok(s) => {
-                    self.status = format!("loaded {}  {:.1} bpm", s.name, s.bpm);
-                    self.send(Command::DeckAudio {
+                    let queued = format!("queued {}  {:.1} bpm", s.name, s.bpm);
+                    self.status = if self.submit(Command::DeckAudio {
                         deck,
                         audio: std::sync::Arc::new(s),
-                    });
+                    }) {
+                        queued
+                    } else {
+                        "Load was not accepted".into()
+                    };
                 }
                 Err(e) => self.status = format!("load failed: {e}"),
             }
@@ -252,6 +272,17 @@ impl eframe::App for App {
                 }
             });
 
+        if let Some(error) = self.submission_error.get() {
+            egui::Window::new("Action was not accepted")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label(error.to_string());
+                    if ui.button("Dismiss").clicked() {
+                        self.submission_error.set(None);
+                    }
+                });
+        }
         if self.keys_open {
             egui::Window::new("keys").show(ctx, |ui| {
                 ui.monospace(KEYS);

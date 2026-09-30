@@ -6,6 +6,44 @@ use serde::Serialize;
 
 pub const COMMANDS_PER_BLOCK: usize = 32;
 
+/// A producer handle deliberately contains no renderer or renderer lock.
+#[derive(Clone)]
+pub struct CommandPort {
+    sender: crossbeam_channel::Sender<Command>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubmissionError {
+    Full,
+    Disconnected,
+}
+
+impl std::fmt::Display for SubmissionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Full => "The control queue is full. Retry the action.",
+            Self::Disconnected => "Audio has disconnected. Restart Omatainer before retrying.",
+        })
+    }
+}
+
+impl std::error::Error for SubmissionError {}
+
+impl CommandPort {
+    pub fn new(sender: crossbeam_channel::Sender<Command>) -> Self {
+        Self { sender }
+    }
+
+    /// Success means queued for a subsequent audio block, not executed yet.
+    /// The producer receives failures immediately; it never waits on audio.
+    pub fn send(&self, command: Command) -> Result<(), SubmissionError> {
+        self.sender.try_send(command).map_err(|error| match error {
+            crossbeam_channel::TrySendError::Full(_) => SubmissionError::Full,
+            crossbeam_channel::TrySendError::Disconnected(_) => SubmissionError::Disconnected,
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct CommandStats {
     pub received: u64,
