@@ -10,6 +10,8 @@ mod control;
 pub use control::{CommandPort, SubmissionError};
 #[cfg(test)]
 mod control_tests;
+#[cfg(test)]
+mod quantized_launch_tests;
 pub mod dsp;
 pub mod fx;
 pub mod midi;
@@ -332,6 +334,7 @@ pub struct TrackSnap {
     pub meter: f32,
     pub playing_scene: i8,
     pub clip_progress: f32,
+    pub clip_pending: bool,
     pub clip_looping: bool,
     pub clips: Vec<ClipSnap>,
 }
@@ -1058,6 +1061,39 @@ impl RtEngine {
         (l, r)
     }
 
+    fn launch_start(&self) -> f64 {
+        let quant = self.quant.max(0.0) as f64;
+        if quant <= 0.0 || !self.playing {
+            return self.beat;
+        }
+        let nearest = (self.beat / quant).round() * quant;
+        if (self.beat - nearest).abs() <= midi_schedule::BEAT_EPSILON {
+            nearest
+        } else {
+            (self.beat / quant).ceil() * quant
+        }
+    }
+
+    fn launch_clip(&mut self, track: usize, scene: u8, start: f64) {
+        let scene_index = scene as usize;
+        if track >= self.tracks.len() || scene_index >= SCENES {
+            return;
+        }
+        self.tracks[track].stop_clip();
+        if self.tracks[track].clips[scene_index].occupied() {
+            self.tracks[track].playing = Some(PlayingClip {
+                scene,
+                start_beat: start,
+                last_beat: -0.0001,
+                looping: true,
+            });
+            self.tracks[track].rebuild_midi_schedule(self.beat);
+            self.playing = true;
+            self.selected_track = track;
+            self.selected_scene = scene_index;
+        }
+    }
+
     pub fn apply(&mut self, c: Command) {
         // Validate before any command can launch, select, or alter another scene.
         // In particular, FireClip must not change a previous clip's looping flag
@@ -1119,39 +1155,13 @@ impl RtEngine {
             Command::SetBpm(b) => self.bpm = b.clamp(40.0, 240.0),
             Command::NudgeBpm(d) => self.bpm = (self.bpm + d).clamp(40.0, 240.0),
             Command::LaunchClip { track, scene } => {
-                let t = track as usize;
-                let s = scene as usize;
-                if t < self.tracks.len() && s < SCENES {
-                    self.tracks[t].stop_clip();
-                    if self.tracks[t].clips[s].occupied() {
-                        let q = self.quant.max(0.0) as f64;
-                        let start = if q <= 0.0 || !self.playing {
-                            self.beat
-                        } else {
-                            (self.beat / q).ceil() * q
-                        };
-                        self.tracks[t].playing = Some(PlayingClip {
-                            scene,
-                            start_beat: start,
-                            last_beat: -0.0001,
-                            looping: true,
-                        });
-                        self.playing = true;
-                        self.selected_track = t;
-                        self.selected_scene = s;
-                    }
-                }
+                self.launch_clip(track as usize, scene, self.launch_start());
             }
             Command::LaunchScene { scene } => {
+                // Capture before the first launch starts a stopped transport.
+                let start = self.launch_start();
                 for t in 0..self.tracks.len() {
-                    if self.tracks[t].clips[scene as usize].occupied() {
-                        self.apply(Command::LaunchClip {
-                            track: t as u8,
-                            scene,
-                        });
-                    } else {
-                        self.tracks[t].stop_clip();
-                    }
+                    self.launch_clip(t, scene, start);
                 }
             }
             Command::StopTrack { track } => {
@@ -1570,12 +1580,10 @@ impl RtEngine {
                 self.apply(Command::LaunchScene { scene });
             }
             Command::AddScene { scene } => {
+                let start = self.launch_start();
                 for t in 0..self.tracks.len() {
                     if self.tracks[t].clips[scene as usize].occupied() {
-                        self.apply(Command::LaunchClip {
-                            track: t as u8,
-                            scene,
-                        });
+                        self.launch_clip(t, scene, start);
                     }
                 }
             }
@@ -1709,9 +1717,10 @@ impl RtEngine {
                 armed: t.armed,
                 meter: t.meter,
                 playing_scene: t.playing.map(|p| p.scene as i8).unwrap_or(-1),
+                clip_pending: t.playing.is_some_and(|p| p.last_beat < 0.0),
                 clip_progress: t.playing.map(|p| {
                     let len = (t.clips[p.scene as usize].bars.max(0.25) * 4.0) as f64;
-                    ((self.beat - p.start_beat).rem_euclid(len) / len) as f32
+                    ((self.beat - p.start_beat).max(0.0).rem_euclid(len) / len) as f32
                 }).unwrap_or(0.0),
                 clip_looping: t.playing.map(|p| p.looping).unwrap_or(false),
                 clips: t
