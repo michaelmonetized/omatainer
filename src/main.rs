@@ -2,6 +2,7 @@ mod engine;
 mod theme;
 mod ui;
 mod ipc_server;
+mod runtime;
 
 #[cfg(test)]
 mod scene_index_tests;
@@ -26,7 +27,7 @@ fn main() -> anyhow::Result<()> {
         args.remove(0);
         return ctl(&args);
     }
-    if single_instance_running() {
+    if single_instance_running()? {
         focus_existing();
         return Ok(());
     }
@@ -51,10 +52,10 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn single_instance_running() -> bool {
+fn single_instance_running() -> std::io::Result<bool> {
     // Successful connection proves a listener exists even if it is slow. A
     // failed probe never authorizes deleting an endpoint owned by another run.
-    ipc_server::has_listener(&socket_path())
+    Ok(ipc_server::has_listener(&socket_path()?))
 }
 
 fn focus_existing() {
@@ -130,7 +131,7 @@ fn ipc_scene_index(v: &serde_json::Value) -> anyhow::Result<u8> {
 }
 
 fn send_op(payload: &str) -> anyhow::Result<String> {
-    let stream = UnixStream::connect(socket_path()).context("omatainer is not running")?;
+    let stream = UnixStream::connect(socket_path()?).context("omatainer is not running")?;
     exchange_request(stream, payload)
 }
 

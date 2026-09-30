@@ -17,6 +17,7 @@ crossbeam-channel = "0.5"
 eframe = { version = "0.32", default-features = true }
 egui = "0.32"
 midir = "0.10"
+libc = "0.2"
 parking_lot = "0.12"
 rtrb = "0.3"
 serde = { version = "1", features = ["derive"] }

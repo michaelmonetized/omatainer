@@ -69,7 +69,7 @@ pub fn has_listener(path: &Path) -> bool {
 }
 
 pub fn start(commands: CommandPort, snapshot: Arc<Mutex<Snapshot>>) -> anyhow::Result<IpcServer> {
-    let path = crate::theme::socket_path();
+    let path = crate::theme::socket_path()?;
     start_at_with(
         &path,
         commands,

@@ -262,14 +262,6 @@ pub fn config_dir() -> PathBuf {
     Path::new(&home).join(".config/omatainer")
 }
 
-pub fn runtime_dir() -> PathBuf {
-    if let Ok(d) = std::env::var("XDG_RUNTIME_DIR") {
-        PathBuf::from(d)
-    } else {
-        PathBuf::from("/tmp")
-    }
-}
-
-pub fn socket_path() -> PathBuf {
-    runtime_dir().join("omatainer.sock")
+pub fn socket_path() -> std::io::Result<PathBuf> {
+    crate::runtime::socket_path()
 }
