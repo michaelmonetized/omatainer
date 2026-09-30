@@ -126,7 +126,7 @@ impl Drop for WaveFile {
 fn load_sel_sends_real_files_only_to_decoder_then_applies_decoded_audio() {
     let wave = WaveFile::new();
     let mut fixture = Fixture::new(16);
-    fixture.app.library.push(wave.item());
+    Arc::make_mut(&mut fixture.app.library).push(wave.item());
     fixture.app.lib_filter = "real WAV".into();
     for deck in 0..2 {
         fixture.app.load_sel(deck);
@@ -205,7 +205,7 @@ fn builtin_load_rejection_is_reported_without_decoder_fallback() {
 fn file_load_reports_unavailable_decoder_and_empty_selection_is_inert() {
     let wave = WaveFile::new();
     let mut fixture = Fixture::new(16);
-    fixture.app.library = vec![wave.item()];
+    fixture.app.library = Arc::new(vec![wave.item()]);
     drop(fixture.decoder_jobs);
     fixture.app.load_sel(0);
     assert_eq!(fixture.app.status, "load failed: decoder is unavailable");

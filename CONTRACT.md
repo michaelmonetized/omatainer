@@ -102,6 +102,19 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   interval: an event exactly at that endpoint belongs to the following sample.
   A tiny beat tolerance absorbs clock accumulation error at exact grids.
 
+## Library scanning
+
+- Startup presents the built-in crate immediately. Filesystem discovery,
+  metadata reconciliation, and sorting run on one background worker.
+- Scan shows entry/file progress and an explicit completion or failure state.
+  Cancel keeps the existing crate; another scan starts only after the current
+  worker has acknowledged cancellation. Filesystem calls already in progress
+  finish before cancellation can be observed.
+- A completed crate replaces the old one atomically. Selection follows the
+  same typed media source, valid cached metadata survives unchanged files, and
+  play-history edits made during a scan remain visible. A scan error preserves
+  the existing crate and selection rather than exposing a partial result.
+
 ## Pad monitoring and recorded playback
 
 - Each pad press captures one destination track. The selected sampler instrument
