@@ -8,6 +8,9 @@ pub mod dsp;
 pub mod fx;
 pub mod midi;
 
+#[cfg(test)]
+mod clip_lifecycle_tests;
+
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
     Sample, Svf, ThreeBand,
@@ -105,6 +108,18 @@ impl TrackRt {
         if self.playing.is_some_and(|p| p.scene as usize == scene) {
             self.arp_cache.invalidate();
         }
+    }
+
+    fn release_clip_notes(&mut self) {
+        self.poly.release_clip();
+        self.arp_note = None;
+        self.arp_cache.invalidate();
+    }
+
+    fn stop_clip(&mut self) {
+        self.playing = None;
+        self.release_clip_notes();
+        // Drum samples are finite one-shots and keep their natural tails.
     }
 }
 
@@ -801,7 +816,7 @@ impl RtEngine {
                     // immediately, without retriggering between sixteenths.
                     if advance || track.arp_note.is_some_and(|n| !track.arp_cache.contains(n)) {
                         if let Some(old) = track.arp_note.take() {
-                            track.poly.note_off(old);
+                            track.poly.note_off_clip(old);
                         }
                     }
                     let pitch = advance.then(|| track.arp_cache.pitch(step)).flatten();
@@ -809,7 +824,7 @@ impl RtEngine {
                         if kind == 0 {
                             self.trig_drum(ti, pitch, 1.0);
                         } else {
-                            self.tracks[ti].poly.note_on(pitch, 0.9);
+                            self.tracks[ti].poly.note_on_clip(pitch, 0.9);
                         }
                         self.tracks[ti].arp_note = Some(pitch);
                     }
@@ -817,7 +832,7 @@ impl RtEngine {
                     let track = &mut self.tracks[ti];
                     track.arp_cache.invalidate();
                     if let Some(old) = track.arp_note.take() {
-                        track.poly.note_off(old);
+                        track.poly.note_off_clip(old);
                     }
                     let notes = track.clips[scene].notes.clone();
                     for n in notes {
@@ -827,12 +842,12 @@ impl RtEngine {
                             } else {
                                 self.tracks[ti]
                                     .poly
-                                    .note_on(n.pitch, n.vel as f32 / 127.0);
+                                    .note_on_clip(n.pitch, n.vel as f32 / 127.0);
                             }
                         }
                         let end = n.start as f64 + n.len as f64;
                         if kind != 0 && crossed(prev, local, end, clip_beats) {
-                            self.tracks[ti].poly.note_off(n.pitch);
+                            self.tracks[ti].poly.note_off_clip(n.pitch);
                         }
                     }
                 }
@@ -841,7 +856,7 @@ impl RtEngine {
                 let wrapped = local + 0.0001 < p.last_beat;
                 p.last_beat = local;
                 if wrapped && !p.looping {
-                    self.tracks[ti].playing = None;
+                    self.tracks[ti].stop_clip();
                 }
             }
         }
@@ -1048,10 +1063,7 @@ impl RtEngine {
                 self.playing = false;
                 self.recording = false;
                 for t in &mut self.tracks {
-                    t.playing = None;
-                    for v in &mut t.poly.voices {
-                        v.env.off();
-                    }
+                    t.stop_clip();
                 }
             }
             Command::TogglePlay => {
@@ -1083,9 +1095,8 @@ impl RtEngine {
                 let t = track as usize;
                 let s = scene as usize;
                 if t < self.tracks.len() && s < SCENES {
-                    if !self.tracks[t].clips[s].occupied() {
-                        self.tracks[t].playing = None;
-                    } else {
+                    self.tracks[t].stop_clip();
+                    if self.tracks[t].clips[s].occupied() {
                         let q = self.quant.max(0.0) as f64;
                         let start = if q <= 0.0 || !self.playing {
                             self.beat
@@ -1112,13 +1123,13 @@ impl RtEngine {
                             scene,
                         });
                     } else {
-                        self.tracks[t].playing = None;
+                        self.tracks[t].stop_clip();
                     }
                 }
             }
             Command::StopTrack { track } => {
                 if (track as usize) < self.tracks.len() {
-                    self.tracks[track as usize].playing = None;
+                    self.tracks[track as usize].stop_clip();
                 }
             }
             Command::DeckPlay { deck } => {
@@ -1385,6 +1396,9 @@ impl RtEngine {
                 let t = track as usize;
                 let s = scene as usize;
                 if t < TRACKS && s < SCENES {
+                    if self.tracks[t].playing.map(|p| p.scene) == Some(scene) {
+                        self.tracks[t].release_clip_notes();
+                    }
                     if self.tracks[t].clips[s].kind == ClipKind::Empty {
                         self.tracks[t].clips[s].kind = ClipKind::Midi;
                         self.tracks[t].clips[s].name = "Clip".into();
@@ -1509,7 +1523,7 @@ impl RtEngine {
                 if active {
                     for t in &mut self.tracks {
                         if t.playing.map(|p| p.scene) == Some(scene) {
-                            t.playing = None;
+                            t.stop_clip();
                         }
                     }
                 } else {

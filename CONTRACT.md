@@ -66,3 +66,15 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 - “Drums (session)” / “Harmony (session)” load that stem onto the chosen deck
   (→A / →B / double-click), including when it is already on a deck.
+
+## Clip stop and voice tails
+
+- Stopping or replacing a clip releases that clip's synth notes, including its
+  arpeggiator. This also applies to scene/transport stop, single-shot completion,
+  and replacing the note list of a playing clip.
+- Synth voices finish their envelope release instead of being cut off. Finite
+  drum one-shots and effect tails may finish naturally; no stopped clip may keep
+  a synth voice held indefinitely.
+- Live notes are separate from clip notes, including at the same pitch. Clip
+  note-offs and stops preserve live notes and unaffected tracks; live note-offs
+  preserve clip notes.
