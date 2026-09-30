@@ -5,6 +5,7 @@ mod arp_tests;
 mod test_alloc;
 pub mod audio;
 mod control;
+pub use control::{CommandPort, SubmissionError};
 #[cfg(test)]
 mod control_tests;
 pub mod dsp;
@@ -1690,6 +1691,10 @@ impl RtEngine {
     }
 
     pub fn publish(&self) {
+        // Readers may keep an older snapshot; rendering must never wait for
+        // them. Allocation/retirement of a successful publication is separate
+        // work from removing reader contention from the callback.
+        let Some(mut snapshot) = self.snap.try_lock() else { return };
         let mut tracks = Vec::with_capacity(TRACKS);
         for t in &self.tracks {
             tracks.push(TrackSnap {
@@ -1757,8 +1762,8 @@ impl RtEngine {
             })
             .collect();
         let bar = (self.beat / 4.0).floor() as u32 + 1;
-        let midi = self.snap.lock().midi.clone();
-        *self.snap.lock() = Snapshot {
+        let midi = std::mem::take(&mut snapshot.midi);
+        *snapshot = Snapshot {
             playing: self.playing,
             recording: self.recording,
             bpm: self.bpm,
@@ -2032,36 +2037,29 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
 }
 
 pub struct Engine {
-    pub cmd: crossbeam_channel::Sender<Command>,
+    pub cmd: CommandPort,
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
     _audio: audio::AudioOut,
-    pub rt: Arc<Mutex<RtEngine>>,
 }
 
 impl Engine {
     pub fn start() -> anyhow::Result<Self> {
         let (tx, rx) = crossbeam_channel::bounded(256);
         let snap = Arc::new(Mutex::new(Snapshot::default()));
-        let rt = Arc::new(Mutex::new(RtEngine::new(48000.0, rx, snap.clone())));
-        let audio = audio::start(rt.clone())?;
+        let rt = RtEngine::new(48000.0, rx, snap.clone());
+        let audio = audio::start(rt)?;
         let midi = midi::MidiHub::start(tx.clone());
         Ok(Self {
-            cmd: tx,
+            cmd: CommandPort::new(tx),
             snap,
             midi,
             _audio: audio,
-            rt,
         })
     }
 
-    pub fn send(&self, c: Command) {
-        if let Some(mut rt) = self.rt.try_lock() {
-            rt.apply(c);
-            rt.publish();
-        } else {
-            let _ = self.cmd.try_send(c);
-        }
+    pub fn send(&self, c: Command) -> Result<(), SubmissionError> {
+        self.cmd.send(c)
     }
 
     pub fn snapshot(&self) -> Snapshot {
@@ -2074,16 +2072,6 @@ impl Engine {
             .map(|d| format!("{} · {}", d.name, d.map))
             .collect();
         s
-    }
-
-    pub fn notes(&self, track: usize, scene: usize) -> Vec<MidiNote> {
-        self.rt
-            .lock()
-            .tracks
-            .get(track)
-            .and_then(|t| t.clips.get(scene))
-            .map(|c| c.notes.clone())
-            .unwrap_or_default()
     }
 
     pub fn sr(&self) -> u32 {
