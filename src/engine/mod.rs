@@ -2,6 +2,8 @@ mod arp;
 #[cfg(test)]
 mod arp_tests;
 #[cfg(test)]
+mod fx_allocation_tests;
+#[cfg(test)]
 mod test_alloc;
 pub mod audio;
 mod control;
