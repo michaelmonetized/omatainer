@@ -19,18 +19,110 @@ Item {
   property bool deckAPlaying: false
   property bool deckBPlaying: false
   property var midi: []
-  property string error: ""
+  property string stateError: ""
+  property string commandError: ""
+  readonly property string error: commandError || stateError
+  property var commandQueue: []
+  property var activeCommand: null
+  property var commandResults: []
+  property var lastCommandResult: null
+  property int nextRequestId: 1
+  readonly property int queueLimit: 64
+  readonly property int pendingCommands: commandQueue.length + (activeCommand ? 1 : 0)
+  property string commandOutput: ""
+  property string commandStderr: ""
+  property bool outputOverflow: false
+  property bool commandTimedOut: false
+  signal commandFinished(var result)
 
-  readonly property string bin: {
+  property string bin: {
     var home = Quickshell.env("HOME") || ""
     return home + "/.local/bin/omatainer"
   }
 
+  // Queued here is distinct from accepted by the engine. Neither proves that
+  // an audio callback has applied the command; follow is the observed state.
   function send(op) {
-    ctl.command = [root.bin, "ctl", op]
-    ctl.running = false
+    var request = { requestId: String(nextRequestId++), operation: op, status: "queued", applied: null }
+    if (pendingCommands >= queueLimit) {
+      request.status = "rejected"
+      request.accepted = false
+      request.error = "Shell command queue is full"
+      commandError = request.error
+      rememberResult(request)
+      return JSON.stringify(request)
+    }
+    commandQueue = commandQueue.concat([request])
+    Qt.callLater(startNextCommand)
+    return JSON.stringify(request)
+  }
+
+  function startNextCommand() {
+    if (activeCommand || ctl.running || commandQueue.length === 0)
+      return
+    activeCommand = commandQueue[0]
+    commandQueue = commandQueue.slice(1)
+    commandOutput = ""
+    commandStderr = ""
+    outputOverflow = false
+    commandTimedOut = false
+    ctl.command = [root.bin, "ctl", activeCommand.operation]
     ctl.running = true
-    return "ok"
+    commandDeadline.restart()
+  }
+
+  function rememberResult(result) {
+    lastCommandResult = result
+    commandResults = commandResults.concat([result]).slice(-64)
+    commandFinished(result)
+  }
+
+  function commandResult(requestId) {
+    if (activeCommand && activeCommand.requestId === requestId)
+      return JSON.stringify({requestId: requestId, status: "in_flight", applied: null})
+    for (var i = 0; i < commandQueue.length; ++i)
+      if (commandQueue[i].requestId === requestId)
+        return JSON.stringify(commandQueue[i])
+    for (var j = commandResults.length - 1; j >= 0; --j)
+      if (commandResults[j].requestId === requestId)
+        return JSON.stringify(commandResults[j])
+    return JSON.stringify({requestId: requestId, status: "unknown"})
+  }
+
+  function finishCommand(exitCode, exitStatus, startError) {
+    if (!activeCommand)
+      return
+    commandDeadline.stop()
+    var result = {
+      requestId: activeCommand.requestId, operation: activeCommand.operation,
+      status: "failed", exitCode: exitCode, exitStatus: exitStatus,
+      accepted: null, applied: null, stderr: commandStderr
+    }
+    var payload = null
+    try { payload = JSON.parse(commandOutput) } catch (e) {}
+    if (payload && payload.accepted === false)
+      result.accepted = false
+    if (commandTimedOut) {
+      result.error = "Control command timed out; application state is unknown"
+    } else if (startError) {
+      result.error = startError
+    } else if (exitCode !== 0 || exitStatus !== 0) {
+      result.error = commandStderr.trim() || (payload && payload.error) || "Control process failed"
+    } else if (outputOverflow || !payload || payload.ok !== true) {
+      result.error = (payload && payload.error) || "Invalid control response"
+    } else if (payload.accepted !== true || (payload.command_status !== "accepted" && payload.command_status !== "coalesced")) {
+      result.error = "Control response did not acknowledge command acceptance"
+    } else {
+      result.status = "accepted"
+      result.accepted = true
+      result.engineStatus = payload.command_status
+      result.engineRequestId = payload.id
+    }
+    commandError = result.error || ""
+    activeCommand = null
+    rememberResult(result)
+    // Wait until Process has finished emitting its previous lifecycle signals.
+    Qt.callLater(startNextCommand)
   }
 
   function togglePlay() { return send("togglePlay") }
@@ -56,7 +148,7 @@ Item {
     deckAPlaying = payload.deckAPlaying === true
     deckBPlaying = payload.deckBPlaying === true
     midi = Array.isArray(payload.midi) ? payload.midi : []
-    error = payload.error ? String(payload.error) : ""
+    stateError = payload.error ? String(payload.error) : ""
   }
 
   function statusJson() {
@@ -69,7 +161,9 @@ Item {
       beat: beat,
       deckA: deckA,
       deckB: deckB,
-      error: error
+      error: error,
+      pendingCommands: pendingCommands,
+      lastCommandResult: lastCommandResult
     })
   }
 
@@ -103,7 +197,39 @@ Item {
   Process {
     id: ctl
     running: false
-    command: [root.bin, "ctl", "status"]
+    stdout: SplitParser {
+      onRead: function(line) {
+        if (root.commandOutput.length + line.length + 1 <= 65536)
+          root.commandOutput += line + "\n"
+        else
+          root.outputOverflow = true
+      }
+    }
+    stderr: SplitParser {
+      onRead: function(line) {
+        root.commandStderr = (root.commandStderr + line + "\n").slice(-4096)
+      }
+    }
+    onExited: function(exitCode, exitStatus) { root.finishCommand(exitCode, exitStatus, "") }
+    // FailedToStart has no exited signal in Quickshell's Process API.
+    onRunningChanged: {
+      if (!running && root.activeCommand) {
+        var requestId = root.activeCommand.requestId
+        Qt.callLater(function() {
+          if (!ctl.running && root.activeCommand && root.activeCommand.requestId === requestId)
+            root.finishCommand(null, null, "Could not start control process: " + root.bin)
+        })
+      }
+    }
+  }
+
+  Timer {
+    id: commandDeadline
+    interval: 10000
+    onTriggered: {
+      root.commandTimedOut = true
+      ctl.signal(9)
+    }
   }
 
   Timer {
@@ -128,5 +254,6 @@ Item {
     function deckB(): string { return root.deckBPlay() }
     function launch(): string { root.launch(); return "ok" }
     function status(): string { return root.statusJson() }
+    function result(requestId: string): string { return root.commandResult(requestId) }
   }
 }
