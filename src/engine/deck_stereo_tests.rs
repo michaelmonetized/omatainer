@@ -52,6 +52,9 @@ fn load_fixture(rt: &mut RtEngine, deck: usize, samples: &[[f32; 2]], mono: bool
     });
     rt.decks[deck].playing = true;
     rt.decks[deck].rate = 1.0;
+    // These references isolate the EQ/filter response after the source
+    // transition. The transition envelope has its own marked-region tests.
+    rt.decks[deck].transition_remaining = 0;
 }
 
 fn configure(rt: &mut RtEngine, deck: usize, eq: [f32; 3], filter: f32) {
