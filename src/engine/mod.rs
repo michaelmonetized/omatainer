@@ -7,7 +7,7 @@ mod fx_allocation_tests;
 mod test_alloc;
 pub mod audio;
 mod control;
-pub use control::{CommandPort, SubmissionError};
+pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
 #[cfg(test)]
 mod control_tests;
 pub mod dsp;
@@ -272,7 +272,7 @@ pub struct RtEngine {
     pub selected_scene: usize,
     pub selected_deck: usize,
     pub library_sel: usize,
-    pub cmd_rx: crossbeam_channel::Receiver<Command>,
+    pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
     pub snap: Arc<Mutex<Snapshot>>,
     clock_accum: f64,
@@ -363,6 +363,7 @@ pub struct Snapshot {
     pub midi: Vec<String>,
     pub cpu: f32,
     pub commands: control::CommandStats,
+    pub submissions: control::SubmissionStats,
     pub fx_wet: [f32; 3],
     pub metronome: bool,
     pub quant: f32,
@@ -396,6 +397,7 @@ impl Default for Snapshot {
             midi: Vec::new(),
             cpu: 0.0,
             commands: control::CommandStats::default(),
+            submissions: control::SubmissionStats::default(),
             fx_wet: [0.0; 3],
             metronome: false,
             quant: 1.0,
@@ -412,6 +414,7 @@ impl Default for Snapshot {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    ReservedStop { lane: u8, ticket: u64 },
     Play,
     Stop,
     TogglePlay,
@@ -491,7 +494,7 @@ pub enum Command {
 impl RtEngine {
     pub fn new(
         sr: f32,
-        cmd_rx: crossbeam_channel::Receiver<Command>,
+        cmd_rx: impl Into<control::CommandReceiver>,
         snap: Arc<Mutex<Snapshot>>,
     ) -> Self {
         let drums = build_kit(sr as u32);
@@ -543,7 +546,7 @@ impl RtEngine {
             selected_scene: 0,
             selected_deck: 0,
             library_sel: 0,
-            cmd_rx,
+            cmd_rx: cmd_rx.into(),
             command_stats: control::CommandStats::default(),
             snap,
             clock_accum: 0.0,
@@ -1083,6 +1086,11 @@ impl RtEngine {
             return;
         }
         match c {
+            Command::ReservedStop { lane, ticket } => {
+                if lane == 0 { self.apply(Command::Stop); }
+                else { self.apply(Command::StopTrack { track: lane - 1 }); }
+                self.cmd_rx.complete_stop(lane as usize, ticket);
+            }
             Command::Play => {
                 self.playing = true;
             }
@@ -1789,6 +1797,7 @@ impl RtEngine {
             midi,
             cpu: self.cpu_acc,
             commands: self.command_stats,
+            submissions: self.cmd_rx.submissions(),
             fx_wet: self.fx_wet,
             metronome: self.metronome,
             quant: self.quant,
@@ -2048,20 +2057,20 @@ pub struct Engine {
 
 impl Engine {
     pub fn start() -> anyhow::Result<Self> {
-        let (tx, rx) = crossbeam_channel::bounded(256);
+        let (tx, rx) = CommandPort::channel(256);
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(48000.0, rx, snap.clone());
         let audio = audio::start(rt)?;
         let midi = midi::MidiHub::start(tx.clone());
         Ok(Self {
-            cmd: CommandPort::new(tx),
+            cmd: tx,
             snap,
             midi,
             _audio: audio,
         })
     }
 
-    pub fn send(&self, c: Command) -> Result<(), SubmissionError> {
+    pub fn send(&self, c: Command) -> Result<SubmissionOutcome, SubmissionError> {
         self.cmd.send(c)
     }
 
