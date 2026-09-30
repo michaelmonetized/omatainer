@@ -19,6 +19,12 @@ It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors
 
 Then `SUPER+O` launches or focuses it. Right-click the bar chip to play/stop without opening the window.
 
+The installer stages and validates the complete integration before publishing it.
+Failed publication or desktop validation restores the prior files. Each successful
+install prints a recovery journal under `~/.local/state/omatainer/installations`;
+restore its saved state with `scripts/install-omarchy.sh --recover /path/to/journal.json`.
+Running app instances retain their executable until you close and relaunch them.
+
 ## Play without files
 
 The default session is a four-clip house sketch (drums, bass, keys, pad). Press **space**. Scenes **1** and **2** are filled.
