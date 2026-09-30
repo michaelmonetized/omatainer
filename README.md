@@ -46,6 +46,13 @@ Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F**
 
 MIDI clock in/out and live notes from any class-compliant USB device hit the selected track. APC grids launch clips. Pioneer / Numark jog wheels scratch the platters.
 
+The APC40 original and mkII use separate protocol-based input profiles for eight
+track faders, the master fader, clip grid and five scene buttons. Other APC40
+buttons are ignored; record-arm and track-select do not operate unrelated
+controls. Device-name selection and synthetic MIDI tests do not establish
+physical compatibility. Controller QA remains pending; see the
+[APC40 mapping evidence](docs/validation/issue-38-apc40-profiles.md).
+
 ## Layout
 
 ```

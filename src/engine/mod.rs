@@ -2217,7 +2217,7 @@ impl Engine {
         let rt = RtEngine::new(48000.0, rx, snap.clone());
         let audio = audio::start(rt)?;
         let sample_rate = audio.sr;
-        let midi = midi::MidiHub::start(tx.clone());
+        let midi = midi::MidiHub::start(tx.clone())?;
         Ok(Self {
             cmd: tx,
             snap,
