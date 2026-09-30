@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 mod profile;
+mod handoff;
+pub use handoff::InputStats;
 #[cfg(test)]
 mod profile_tests;
 
@@ -96,11 +98,13 @@ pub struct MidiDevice {
 
 pub struct MidiHub {
     _ins: Vec<MidiInputConnection<()>>,
+    // Connections close before worker guards join, ending callback ownership.
+    _workers: Vec<handoff::InputGuard>,
+    input_counters: Arc<handoff::InputCounters>,
     outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
     pub devices: Arc<Mutex<Vec<MidiDevice>>>,
     pub log: Arc<Mutex<Vec<String>>>,
     pub learn: Arc<Mutex<Option<String>>>,
-    shift: Arc<Mutex<[bool; 4]>>,
 }
 
 impl MidiHub {
@@ -108,11 +112,12 @@ impl MidiHub {
     pub(super) fn without_devices() -> Self {
         Self {
             _ins: Vec::new(),
+            _workers: Vec::new(),
+            input_counters: Arc::new(handoff::InputCounters::default()),
             outs: Arc::new(Mutex::new(Vec::new())),
             devices: Arc::new(Mutex::new(Vec::new())),
             log: Arc::new(Mutex::new(Vec::new())),
             learn: Arc::new(Mutex::new(None)),
-            shift: Arc::new(Mutex::new([false; 4])),
         }
     }
 
@@ -122,9 +127,10 @@ impl MidiHub {
         let devices = Arc::new(Mutex::new(Vec::new()));
         let log = Arc::new(Mutex::new(Vec::new()));
         let learn = Arc::new(Mutex::new(None));
-        let shift = Arc::new(Mutex::new([false; 4]));
+        let input_counters = Arc::new(handoff::InputCounters::default());
         let outs = Arc::new(Mutex::new(Vec::new()));
         let mut ins = Vec::new();
+        let mut workers = Vec::new();
 
         let in_ports: Vec<(String, midir::MidiInputPort)> = match MidiInput::new("omatainer") {
             Ok(probe) => probe
@@ -147,24 +153,23 @@ impl MidiHub {
                 name: name.clone(),
                 map: map.name.clone(),
             });
-            let map_b = map.clone();
-            let cmd_c = cmd.clone();
-            let log_c = log.clone();
-            let learn_c = learn.clone();
-            let shift_c = shift.clone();
-            let nm = name.clone();
             // Names and channels are not identities: two identical keyboards
             // can use the same channel and pitch simultaneously.
             let source = next_source_id();
+            let (mut input, worker) = handoff::start(source, map, cmd.clone(),
+                log.clone(), learn.clone(), name.clone(), input_counters.clone())?;
             match midi_in.connect(
                 &port,
                 &format!("omatainer-in-{name}"),
                 move |_t, msg, _| {
-                    handle_msg(msg, source, &map_b, &cmd_c, &log_c, &learn_c, &shift_c, &nm);
+                    input.push(msg);
                 },
                 (),
             ) {
-                Ok(conn) => ins.push(conn),
+                Ok(conn) => {
+                    ins.push(conn);
+                    workers.push(worker);
+                }
                 Err(e) => {
                     log.lock().push(format!("in fail {name}: {e}"));
                 }
@@ -200,12 +205,17 @@ impl MidiHub {
 
         Ok(Self {
             _ins: ins,
+            _workers: workers,
+            input_counters,
             outs,
             devices,
             log,
             learn,
-            shift,
         })
+    }
+
+    pub fn input_stats(&self) -> InputStats {
+        self.input_counters.snapshot()
     }
 
     pub fn send_clock_tick(&self) {
@@ -300,7 +310,7 @@ fn handle_msg(
             continue;
         }
         matched = true;
-        dispatch(b, kind_hi, d2, msg, cmd, shift);
+        dispatch(b, source, kind_hi, d2, msg, cmd, shift);
     }
 
     // Live MIDI notes onto the selected track when no map consumed a note
@@ -321,6 +331,7 @@ fn handle_msg(
 
 fn dispatch(
     b: &Binding,
+    source: u64,
     status: u8,
     d2: u8,
     msg: &[u8],
@@ -365,7 +376,8 @@ fn dispatch(
             });
         }
         Action::DeckJogTouch => {
-            let _ = cmd.send(Command::DeckTouch {
+            let _ = cmd.send(Command::MidiDeckTouch {
+                source,
                 deck,
                 on: pressed,
             });
