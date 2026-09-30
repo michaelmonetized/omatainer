@@ -1,13 +1,16 @@
 //! Real GUI state, command admission, renderer and load channels, with only the
 //! external audio/MIDI device connections and decode thread left unopened.
 use super::*;
-use crate::engine::{dsp::Sample, RtEngine};
+use crate::engine::{
+    decode::{DecodeFailure, DecodedAudio},
+    RtEngine,
+};
 
 pub(super) struct Fixture {
     pub app: App,
     pub rt: RtEngine,
     pub decoder_jobs: mpsc::Receiver<(u8, PathBuf)>,
-    pub decoder_results: mpsc::Sender<(u8, Result<Sample, String>)>,
+    pub decoder_results: mpsc::Sender<(u8, Result<DecodedAudio, DecodeFailure>)>,
 }
 
 impl Fixture {
