@@ -159,10 +159,20 @@ fn production_callback_keeps_rendering_during_delayed_gui_and_ipc_work() {
     assert_eq!(response["ok"], true);
     assert_eq!(response["accepted"], true);
     assert_eq!(response["command_status"], "accepted");
-    // After releasing the reader, IPC and the snapshot worker may acquire the
-    // mutex in either order. The acknowledgment carries whichever real
-    // snapshot has been published, separately from queue acceptance.
-    assert!(response["playing"].is_boolean());
+    // The reader can outlast the bounded snapshot wait. A truthful receipt
+    // still acknowledges admission; state is included only when available.
+    match response["state_available"].as_bool() {
+        Some(true) => {
+            assert_eq!(response["event"], "state");
+            assert!(response["playing"].is_boolean());
+        }
+        Some(false) => {
+            assert_eq!(response["event"], "receipt");
+            assert!(response["playing"].is_null());
+            assert!(response["warning"].as_str().is_some_and(|text| !text.is_empty()));
+        }
+        None => panic!("IPC acknowledgment omitted state availability: {response}"),
+    }
 
     // After the slow reader leaves, a later normal publication catches up.
     for _ in 0..12 {

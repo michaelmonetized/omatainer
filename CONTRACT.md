@@ -132,3 +132,18 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   stays on its original bus and continues receiving zero if no track remains.
   It decays according to its own feedback settings; changing panels/scenes
   never copies or clears it. Device bypass retains the existing freeze policy.
+
+## Local control connection limits
+
+- A request may contain at most 4096 bytes before its newline. Idle reads expire
+  after 500 ms, and each complete line has a 2-second total read budget.
+- At most eight clients are handled concurrently; excess connections receive a
+  bounded `server_busy` rejection where possible. A connection closes after 32
+  requests. Responses are at most 8192 bytes before their newline and have a
+  200 ms total write budget.
+- Diagnostics do not echo request bodies. Status metadata is capped, with
+  `state_truncated` indicating omitted text or device entries. If a snapshot is
+  unavailable after 50 ms, an accepted command still receives its receipt;
+  a status query receives a temporary-unavailability rejection.
+- Violations and disconnects release the client slot. Server shutdown interrupts
+  and joins client workers before removing its owned endpoint.
