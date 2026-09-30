@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Exercise the actual Service.qml in an isolated, real Quickshell process."""
+import argparse
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import socket
+import threading
 import tempfile
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--cli", type=Path, help="also exercise the production CLI through a private IPC fixture")
+args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix="omatainer-shell-check-") as folder:
     fixture = Path(folder)
@@ -24,7 +30,7 @@ with open(os.environ["OMATAINER_TEST_LOG"], "a") as f:
     f.write(json.dumps({"op": op, "event": "start", "time": time.monotonic()}) + "\\n")
 if op == "play": time.sleep(.25)
 if op == "hang": time.sleep(30)
-response = {"ok": True, "accepted": True, "command_status": "queued", "id": "engine-" + op}
+response = {"ok": True, "accepted": True, "command_status": "coalesced" if op == "stop" else "accepted", "id": "engine-" + op}
 if op == "tap":
     print("deliberate rejection", file=sys.stderr)
     sys.exit(7)
@@ -113,6 +119,7 @@ ShellRoot {
     assert data["inFlight"] and data["followKeptError"], data
     assert [x["status"] for x in results] == ["accepted"] + ["failed"] * 6 + ["accepted", "failed", "accepted", "failed", "accepted"], data
     assert all(x["applied"] is None for x in results), data
+    assert results[0]["engineStatus"] == "accepted" and results[7]["engineStatus"] == "coalesced", data
     assert results[1]["exitCode"] == 7 and "deliberate rejection" in results[1]["error"], data
     assert results[2]["error"] == "engine rejected record", data
     assert results[5]["exitCode"] == 9 and results[6]["exitStatus"] != 0, data
@@ -163,3 +170,78 @@ ShellRoot {
     assert [x["requestId"] for x in data["results"][1:]] == [str(i) for i in range(1, 65)], data
     assert data["results"][0]["requestId"] == "65" and data["pending"] == 0, data
     print("PASS: real Quickshell queue saturation explicitly rejects overflow and completes all 64 admitted stop commands in order")
+
+    if args.cli:
+        native_cli = args.cli.resolve(strict=True)
+        endpoint = fixture / "omatainer.sock"
+        listener = socket.socket(socket.AF_UNIX)
+        listener.bind(str(endpoint))
+        listener.listen(8)
+        listener.settimeout(.1)
+        stop = threading.Event()
+        requests = []
+        server_errors = []
+
+        def serve():
+            while not stop.is_set():
+                try:
+                    connection, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+                try:
+                    with connection:
+                        connection.settimeout(1)
+                        with connection.makefile("rb") as stream:
+                            request = json.loads(stream.readline(4096))
+                        requests.append(request)
+                        op = request["op"]
+                        status = None if op == "status" else ("coalesced" if op == "stop" else "accepted")
+                        response = {"ok": True, "id": request["id"], "accepted": True if status else None,
+                                    "command_status": status, "playing": False, "event": "state"}
+                        connection.sendall((json.dumps(response) + "\n").encode())
+                except Exception as error:
+                    server_errors.append(str(error))
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        (fixture / "native.qml").write_text('''import QtQuick
+import Quickshell
+ShellRoot {
+  id: test
+  property var receipts: []
+  property var results: []
+  Service {
+    id: svc
+    bin: Quickshell.env("OMATAINER_NATIVE_CLI")
+    onCommandFinished: function(result) {
+      test.results = test.results.concat([result])
+      if (test.results.length === 2) {
+        console.log("SHELL_NATIVE_RESULT " + JSON.stringify({receipts: test.receipts, results: test.results}))
+        Qt.quit()
+      }
+    }
+  }
+  Component.onCompleted: test.receipts = [JSON.parse(svc.play()), JSON.parse(svc.stop())]
+}
+''')
+        try:
+            run = subprocess.run(["qs", "-p", str(fixture / "native.qml"), "--no-color"],
+                                 env=dict(env, OMATAINER_NATIVE_CLI=str(native_cli)), text=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=10)
+        finally:
+            stop.set()
+            listener.close()
+            thread.join(timeout=2)
+        assert not thread.is_alive() and not server_errors, server_errors
+        marker = "SHELL_NATIVE_RESULT "
+        lines = [line.split(marker, 1)[1] for line in run.stdout.splitlines() if marker in line]
+        assert run.returncode == 0 and len(lines) == 1, run.stdout
+        data = json.loads(lines[0])
+        assert [x["status"] for x in data["receipts"]] == ["queued", "queued"], data
+        assert [x["status"] for x in data["results"]] == ["accepted", "accepted"], data
+        assert [x["engineStatus"] for x in data["results"]] == ["accepted", "coalesced"], data
+        assert [x["op"] for x in requests if x["op"] != "status"] == ["play", "stop"], requests
+        assert all(x["engineRequestId"] and x["applied"] is None for x in data["results"]), data
+        print("PASS: real Service -> native CLI -> private IPC bridge, with actual accepted/coalesced labels and request IDs")

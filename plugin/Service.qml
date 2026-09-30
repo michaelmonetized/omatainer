@@ -110,7 +110,7 @@ Item {
       result.error = commandStderr.trim() || (payload && payload.error) || "Control process failed"
     } else if (outputOverflow || !payload || payload.ok !== true) {
       result.error = (payload && payload.error) || "Invalid control response"
-    } else if (payload.accepted !== true || (payload.command_status !== "queued" && payload.command_status !== "coalesced")) {
+    } else if (payload.accepted !== true || (payload.command_status !== "accepted" && payload.command_status !== "coalesced")) {
       result.error = "Control response did not acknowledge command acceptance"
     } else {
       result.status = "accepted"
