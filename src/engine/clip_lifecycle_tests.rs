@@ -48,7 +48,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     };
     rt.tracks[2].clips[2] = chord();
     if arp {
-        rt.tracks[1].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp));
+        rt.tracks[1].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     }
     rt.apply(Command::LaunchClip { track: 2, scene: 2 });
     rt.apply(Command::LaunchClip { track: 1, scene: 0 });
