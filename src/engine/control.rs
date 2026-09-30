@@ -20,13 +20,13 @@ pub struct CommandPort {
 }
 
 const STOP_LANES: usize = super::TRACKS + 1;
-const MAX_COMMANDS: usize = 256;
+pub(super) const MAX_COMMANDS: usize = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GateKey {
     Live { source: u64, ch: u8, note: u8 },
     Pad(u8),
-    Touch(u8),
+    Touch { source: u64, deck: u8 },
 }
 
 struct Admission {
@@ -201,6 +201,29 @@ impl CommandPort {
         self.shared.stats()
     }
 
+    #[cfg(test)]
+    pub(super) fn with_admission_held_for_test(&self, test: impl FnOnce()) {
+        let _guard = self.admission.lock();
+        test();
+    }
+
+    /// Used only by the off-callback MIDI worker. Each accepted onset reserves
+    /// its release, so input overflow can retire exactly that source's gates
+    /// even while ordinary engine queue capacity is exhausted.
+    pub(super) fn release_midi_source(&self, source: u64) {
+        let gates = self.admission.lock().gates;
+        for gate in gates.into_iter().flatten() {
+            let command = match gate {
+                GateKey::Live { source: owner, ch, note } if owner == source =>
+                    Command::LiveNoteOff { source, ch, note },
+                GateKey::Touch { source: owner, deck } if owner == source =>
+                    Command::MidiDeckTouch { source, deck, on: false },
+                _ => continue,
+            };
+            let _ = self.send(command);
+        }
+    }
+
     /// Accepted means queued, not executed. Coalesced means an equivalent
     /// release is already ordered and no intervening accepted onset exists.
     /// No producer waits for queue capacity; only the small admission section
@@ -311,7 +334,8 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
         Command::LiveNoteOn { source, ch, note, vel } => Some((GateKey::Live { source, ch: ch & 15, note }, vel != 0)),
         Command::LiveNoteOff { source, ch, note } => Some((GateKey::Live { source, ch: ch & 15, note }, false)),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
-        Command::DeckTouch { deck, on } => Some((GateKey::Touch(deck % super::DECKS as u8), on)),
+        Command::DeckTouch { deck, on } => Some((GateKey::Touch { source: 0, deck: deck % super::DECKS as u8 }, on)),
+        Command::MidiDeckTouch { source, deck, on } => Some((GateKey::Touch { source, deck: deck % super::DECKS as u8 }, on)),
         _ => None,
     }
 }
