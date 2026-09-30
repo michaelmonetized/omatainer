@@ -105,7 +105,7 @@ fn sample_rate_rebuilds_every_track_and_scene_slot_preserving_controls() {
             .tracks
             .iter_mut()
             .map(|track| &mut track.fx)
-            .chain([&mut rt.scene_fx])
+            .chain(rt.scene_fx.iter_mut())
         {
             *chain = rack(48_000.0);
             for slot in &mut chain.slots {
@@ -123,7 +123,7 @@ fn sample_rate_rebuilds_every_track_and_scene_slot_preserving_controls() {
             .tracks
             .iter_mut()
             .map(|track| &mut track.fx)
-            .chain([&mut rt.scene_fx])
+            .chain(rt.scene_fx.iter_mut())
         {
             let mut reference = rack(sr as f32);
             for (actual, expected) in chain.slots.iter_mut().zip(&mut reference.slots) {
@@ -397,9 +397,9 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
     let mut rt = engine();
     rt.sampler_poly.note_on(72, 1.0);
     rt.sampler_poly.tick(rt.sr);
-    rt.scene_fx = rack(rt.sr);
-    rt.scene_fx.process_stereo([0.5, -0.2], rt.sr);
-    let mut reference = rt.scene_fx.clone();
+    rt.scene_fx[0] = rack(rt.sr);
+    rt.scene_fx[0].process_stereo([0.5, -0.2], rt.sr);
+    let mut reference = rt.scene_fx[0].clone();
     let phase = rt.sampler_poly.voices[0].phase;
     let level = rt.sampler_poly.voices[0].env.level;
     let counts = test_alloc::measure(|| {
@@ -410,7 +410,7 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
     assert_eq!(rt.sampler_poly.voices[0].phase, phase);
     assert_eq!(rt.sampler_poly.voices[0].env.level, level);
     assert_eq!(
-        rt.scene_fx.process_stereo([0.0; 2], rt.sr),
+        rt.scene_fx[0].process_stereo([0.0; 2], rt.sr),
         reference.process_stereo([0.0; 2], rt.sr)
     );
 
@@ -467,7 +467,7 @@ fn sample_rate_preparation_allocates_before_callback_and_keeps_deck_time_constan
     for sr in [44_100, 96_000] {
         let mut rt = engine();
         rt.tracks[2].fx = rack(rt.sr);
-        rt.scene_fx = rack(rt.sr);
+        rt.scene_fx[0] = rack(rt.sr);
         rt.apply(Command::LaunchScene { scene: 0 });
         let counts = test_alloc::measure(|| rt.set_sample_rate(sr));
         assert!(
