@@ -7,7 +7,7 @@ mod fx_allocation_tests;
 #[cfg(test)]
 mod mute_lifecycle_tests;
 #[cfg(test)]
-mod test_alloc;
+pub(crate) mod test_alloc;
 pub mod audio;
 mod control;
 pub use control::{CommandPort, SubmissionError, SubmissionOutcome};

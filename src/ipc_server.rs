@@ -1,15 +1,19 @@
 use crate::engine::{CommandPort, Snapshot};
+use crate::ipc_transport::{self, Limits};
 use anyhow::Context;
 use parking_lot::Mutex;
 use std::io;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::os::unix::net::UnixListener;
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
+#[cfg(test)]
+#[path = "ipc_limits_tests.rs"]
+mod limits_tests;
 #[cfg(test)]
 #[path = "ipc_startup_tests.rs"]
 mod tests;
@@ -48,10 +52,38 @@ impl Drop for OwnedEndpoint {
     }
 }
 
+#[derive(Default)]
+struct ClientStats {
+    active: AtomicUsize,
+    peak: AtomicUsize,
+    rejected: AtomicUsize,
+}
+
+struct ClientPermit(Arc<ClientStats>);
+impl ClientPermit {
+    fn new(stats: Arc<ClientStats>) -> Self {
+        let active = stats.active.fetch_add(1, Ordering::AcqRel) + 1;
+        stats.peak.fetch_max(active, Ordering::Relaxed);
+        Self(stats)
+    }
+}
+impl Drop for ClientPermit {
+    fn drop(&mut self) {
+        self.0.active.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+struct ClientWorker {
+    connection: UnixStream,
+    worker: JoinHandle<()>,
+}
+
 pub struct IpcServer {
     stop: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
     _endpoint: OwnedEndpoint,
+    #[cfg_attr(not(test), allow(dead_code))]
+    clients: Arc<ClientStats>,
 }
 
 impl Drop for IpcServer {
@@ -91,6 +123,17 @@ fn start_at_with(
     bind: impl FnOnce(&Path) -> io::Result<UnixListener>,
     spawn: impl FnOnce(Worker) -> io::Result<JoinHandle<()>>,
 ) -> io::Result<IpcServer> {
+    start_at_with_limits(path, commands, snapshot, bind, spawn, Limits::default())
+}
+
+fn start_at_with_limits(
+    path: &Path,
+    commands: CommandPort,
+    snapshot: Arc<Mutex<Snapshot>>,
+    bind: impl FnOnce(&Path) -> io::Result<UnixListener>,
+    spawn: impl FnOnce(Worker) -> io::Result<JoinHandle<()>>,
+    limits: Limits,
+) -> io::Result<IpcServer> {
     // Binding and spawning are synchronous prerequisites for GUI startup. In
     // particular, a bind conflict never gives us ownership of the old path.
     let listener = bind(path)?;
@@ -98,35 +141,91 @@ fn start_at_with(
     listener.set_nonblocking(true)?;
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = stop.clone();
+    let clients = Arc::new(ClientStats::default());
+    let worker_clients = clients.clone();
     let worker = spawn(Box::new(move || {
+        let mut handlers: Vec<ClientWorker> = Vec::with_capacity(ipc_transport::CLIENTS);
+        let mut last_error = None;
         while !worker_stop.load(Ordering::Acquire) {
+            let mut index = 0;
+            while index < handlers.len() {
+                if handlers[index].worker.is_finished() {
+                    let handler = handlers.swap_remove(index);
+                    let _ = handler.worker.join();
+                } else {
+                    index += 1;
+                }
+            }
             match listener.accept() {
-                Ok((stream, _)) => {
+                Ok((mut stream, _)) => {
+                    if handlers.len() == ipc_transport::CLIENTS {
+                        worker_clients.rejected.fetch_add(1, Ordering::Relaxed);
+                        let _ = ipc_transport::reject(
+                            &mut stream,
+                            serde_json::Value::Null,
+                            "server_busy",
+                            "IPC client limit reached; retry after a connection closes",
+                            limits.write,
+                        );
+                        continue;
+                    }
+                    let Ok(connection) = stream.try_clone() else {
+                        continue;
+                    };
                     let commands = commands.clone();
                     let snapshot = snapshot.clone();
-                    if let Err(error) = std::thread::Builder::new()
+                    let permit = ClientPermit::new(worker_clients.clone());
+                    match std::thread::Builder::new()
                         .name("omatainer-ipc-client".into())
                         .spawn(move || {
-                            let _ = crate::handle_client(stream, commands, snapshot);
-                        })
-                    {
-                        eprintln!("omatainer IPC client startup failed: {error}");
+                            let _permit = permit;
+                            let _ = crate::handle_client_with_limits(
+                                stream, commands, snapshot, limits,
+                            );
+                        }) {
+                        Ok(worker) => handlers.push(ClientWorker { connection, worker }),
+                        Err(error) => {
+                            // A failed spawn drops the captured permit/stream.
+                            worker_clients.rejected.fetch_add(1, Ordering::Relaxed);
+                            if last_error.is_none_or(|last: Instant| {
+                                last.elapsed() >= Duration::from_secs(1)
+                            }) {
+                                eprintln!("omatainer IPC client startup failed: {error}");
+                                last_error = Some(Instant::now());
+                            }
+                        }
                     }
                 }
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
-                    std::thread::park_timeout(Duration::from_millis(20));
+                    std::thread::park_timeout(Duration::from_millis(10));
                 }
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
                 Err(error) => {
-                    eprintln!("omatainer IPC listener failed: {error}");
-                    break;
+                    // Resource pressure is recoverable; do not permanently lose
+                    // control service because one accept temporarily fails.
+                    if last_error
+                        .is_none_or(|last: Instant| last.elapsed() >= Duration::from_secs(1))
+                    {
+                        eprintln!("omatainer IPC accept failed (retrying): {error}");
+                        last_error = Some(Instant::now());
+                    }
+                    std::thread::park_timeout(Duration::from_millis(10));
                 }
             }
+        }
+        // Interrupt blocked readers/writers before joining. Client threads and
+        // their CommandPort/Snapshot references cannot outlive the server guard.
+        for handler in &handlers {
+            let _ = handler.connection.shutdown(std::net::Shutdown::Both);
+        }
+        for handler in handlers {
+            let _ = handler.worker.join();
         }
     }))?;
     Ok(IpcServer {
         stop,
         worker: Some(worker),
         _endpoint: endpoint,
+        clients,
     })
 }
