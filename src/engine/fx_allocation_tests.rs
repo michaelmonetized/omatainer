@@ -53,7 +53,7 @@ fn stopped_track_fx_fixture_has_no_per_frame_slot_allocations() {
                 chain(mode)
             };
         }
-        rt.scene_fx = FxChain::new(rt.sr);
+        rt.scene_fx = std::array::from_fn(|_| FxChain::new(rt.sr));
         rt.process(&mut buffer);
         // Snapshot building is separately tracked by #25/#59. Match the
         // original 1024-frame fixture without crossing a publication boundary.
