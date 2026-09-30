@@ -4,7 +4,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOME="${HOME:-/home/michael}"
 BIN="$HOME/.local/bin"
 APP="$HOME/.local/share/applications"
 ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
@@ -15,7 +14,7 @@ echo "==> building omatainer (release)"
 cargo build --release --manifest-path "$ROOT/Cargo.toml"
 
 echo "==> installing binary + desktop"
-install -Dm755 "$ROOT/target/release/omatainer" "$BIN/omatainer"
+python3 "$ROOT/scripts/install-executable.py" "$ROOT/target/release/omatainer" "$BIN/omatainer"
 install -Dm644 "$ROOT/contrib/org.omarchy.omatainer.desktop" "$APP/org.omarchy.omatainer.desktop"
 install -Dm644 "$ROOT/contrib/org.omarchy.omatainer.svg" "$ICON_DIR/org.omarchy.omatainer.svg"
 mkdir -p "$HOME/.config/omatainer"
