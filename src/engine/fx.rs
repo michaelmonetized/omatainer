@@ -131,8 +131,9 @@ impl FxChain {
 
     pub fn tick(&mut self, x: f32, sr: f32) -> f32 {
         let mut y = x;
-        let slots = self.slots.clone();
-        for s in &slots {
+        // Slots and DSP state are disjoint fields; borrow the controls in
+        // place so an arp slot does not allocate once per output sample.
+        for s in &self.slots {
             if !s.on {
                 continue;
             }
