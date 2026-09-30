@@ -7,7 +7,8 @@ use eframe::egui::{
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
+use crate::engine::media_load::Loader;
 use std::time::{Instant, SystemTime};
 mod library_scan;
 use library_scan::LibraryScan;
@@ -34,8 +35,7 @@ pub struct App {
     submission_error: Cell<Option<crate::engine::SubmissionError>>,
     seen_submission_failures: u64,
     last_theme_check: Instant,
-    load_tx: mpsc::Sender<(u8, PathBuf)>,
-    load_rx: mpsc::Receiver<(u8, Result<crate::engine::decode::DecodedAudio, crate::engine::decode::DecodeFailure>)>,
+    loader: Option<Loader>,
     snap: Snapshot,
     last_play_idx: usize,
     pad_held: [bool; 16],
@@ -78,18 +78,10 @@ impl App {
         Theme::install_fonts(&cc.egui_ctx);
         let theme = Theme::load();
         theme.apply(&cc.egui_ctx);
-        let (tx, rx_paths) = mpsc::channel::<(u8, PathBuf)>();
-        let (tx_done, rx_done) = mpsc::channel();
-        std::thread::Builder::new()
-            .name("omatainer-decode".into())
-            .spawn(move || {
-                while let Ok((deck, path)) = rx_paths.recv() {
-                    let r = crate::engine::dsp::decode_audio(&path);
-                    let _ = tx_done.send((deck, r));
-                }
-            })
-            .ok();
-        let mut app = Self::with_loader(engine, theme, tx, rx_done);
+        let loader = Loader::start();
+        let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));
+        let mut app = Self::with_loader(engine, theme, loader.ok());
+        if let Some(failure) = failure { app.status = failure; }
         app.scan_library();
         app
     }
@@ -97,8 +89,7 @@ impl App {
     fn with_loader(
         engine: Engine,
         theme: Theme,
-        load_tx: mpsc::Sender<(u8, PathBuf)>,
-        load_rx: mpsc::Receiver<(u8, Result<crate::engine::decode::DecodedAudio, crate::engine::decode::DecodeFailure>)>,
+        loader: Option<Loader>,
     ) -> Self {
         let snap = engine.snapshot();
         Self {
@@ -116,8 +107,7 @@ impl App {
             submission_error: Cell::new(None),
             seen_submission_failures: 0,
             last_theme_check: Instant::now(),
-            load_tx,
-            load_rx,
+            loader,
             snap,
             last_play_idx: 0,
             pad_held: [false; 16],
@@ -153,6 +143,13 @@ impl App {
     }
 
     fn submit(&self, c: Command) -> bool {
+        // Replacing or unloading a deck invalidates even a completion that has
+        // already entered the audio command queue. The renderer rechecks it.
+        if let Command::DeckUnload { deck } | Command::LoadBuiltin { deck, .. } | Command::DeckAudio { deck, .. } = &c {
+            if self.loader.as_ref().is_some_and(|loader| loader.invalidate(*deck).is_err()) {
+                return false;
+            }
+        }
         match self.engine.send(c) {
             Ok(_) => true,
             Err(error) => {
@@ -163,6 +160,7 @@ impl App {
     }
 
     fn load_sel(&mut self, deck: u8) {
+        if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         let picked = self.filtered().get(self.lib_sel).map(|i| (i.title.clone(), i.source.clone()));
         if let Some((name, source)) = picked {
             self.last_play_idx = self.lib_sel;
@@ -176,35 +174,36 @@ impl App {
                     }
                 }
                 LibSource::File(path) => {
-                    self.status = match self.load_tx.send((deck, path)) {
-                        Ok(()) => format!("loading {name} → {}", (b'A' + deck) as char),
-                        Err(_) => "load failed: decoder is unavailable".into(),
-                    };
+                    self.load_file(deck, path, &name);
                 }
             }
         }
     }
 
+    fn load_file(&mut self, deck: u8, path: PathBuf, name: &str) {
+        self.status = match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
+            .and_then(|loader| loader.request(deck, path)) {
+            Ok(_) => format!("loading {name} → {}", (b'A' + deck) as char),
+            Err(error) => format!("load failed: {error}"),
+        };
+    }
+
     fn poll_loads(&mut self) {
-        while let Ok((deck, res)) = self.load_rx.try_recv() {
-            match res {
+        let Some(loader) = &self.loader else { return };
+        for completion in loader.take_ready().into_iter().flatten() {
+            if !completion.token.is_current() { continue; }
+            match completion.result {
                 Ok(report) => {
                     let warning = report.diagnostics.warning();
-                    let s = report.sample;
-                    let mut queued = format!("queued {}  {:.1} bpm", s.name, s.bpm);
-                    if let Some(warning) = warning {
-                        queued.push_str(&format!(" · {warning}"));
-                    }
-                    self.status = if self.submit(Command::DeckAudio {
-                        deck,
-                        audio: std::sync::Arc::new(s),
-                    }) {
-                        queued
-                    } else {
-                        "Load was not accepted".into()
-                    };
+                    let sample = report.sample;
+                    let mut queued = format!("queued {} → {}  {:.1} bpm", sample.name, (b'A' + completion.token.deck) as char, sample.bpm);
+                    if let Some(warning) = warning { queued.push_str(&format!(" · {warning}")); }
+                    self.status = if self.submit(Command::DeckDecoded {
+                        request: completion.token,
+                        audio: Arc::new(sample),
+                    }) { queued } else { "Load was not accepted".into() };
                 }
-                Err(e) => self.status = format!("load failed: {e}"),
+                Err(error) => self.status = format!("load failed on {}: {error}", (b'A' + completion.token.deck) as char),
             }
         }
     }
@@ -307,7 +306,8 @@ impl App {
         }) {
             let x = ctx.input(|i| i.pointer.latest_pos().map(|p| p.x)).unwrap_or(0.0);
             let deck = if x > ctx.screen_rect().center().x { 1u8 } else { 0 };
-            let _ = self.load_tx.send((deck, p));
+            let name = p.file_stem().and_then(|name| name.to_str()).unwrap_or("track").to_string();
+            self.load_file(deck, p, &name);
         }
 
         self.load_status(ctx);
@@ -540,7 +540,9 @@ impl App {
                 self.send(Command::DeckJog { deck: d as u8, delta });
             });
             if hit.shift_click {
-                self.send(Command::DeckUnload { deck: d as u8 });
+                self.status = if self.submit(Command::DeckUnload { deck: d as u8 }) {
+                    format!("queued unload → {}", (b'A' + d as u8) as char)
+                } else { "Unload was not accepted".into() };
             } else if hit.right_click {
                 self.send(Command::DeckCue { deck: d as u8 });
             } else if hit.click {

@@ -17,6 +17,7 @@ mod control_tests;
 mod quantized_launch_tests;
 pub mod decode;
 pub mod dsp;
+pub mod media_load;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
@@ -599,6 +600,7 @@ pub enum Command {
     DeckVinyl { deck: u8 },
     DeckKeylock { deck: u8 },
     DeckAudio { deck: u8, audio: Arc<Sample> },
+    DeckDecoded { request: media_load::LoadToken, audio: Arc<Sample> },
     DeckSeek { deck: u8, frac: f32 },
     DeckUnload { deck: u8 },
     LoadBuiltin { deck: u8, stem: u8 },
@@ -1575,6 +1577,11 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.keylock = !d.keylock;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+            }
+            Command::DeckDecoded { request, audio } => {
+                if (request.deck as usize) < DECKS && request.is_current() {
+                    self.apply(Command::DeckAudio { deck: request.deck, audio });
+                }
             }
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
