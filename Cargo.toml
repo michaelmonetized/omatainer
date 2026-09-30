@@ -16,6 +16,7 @@ cpal = "0.15"
 crossbeam-channel = "0.5"
 eframe = { version = "0.32", default-features = true }
 egui = "0.32"
+libc = "0.2"
 midir = "0.10"
 parking_lot = "0.12"
 rtrb = "0.3"

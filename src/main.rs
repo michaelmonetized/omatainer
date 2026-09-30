@@ -3,6 +3,7 @@ mod theme;
 mod ui;
 mod ipc_server;
 mod ipc_transport;
+mod instance;
 
 #[cfg(test)]
 mod scene_index_tests;
@@ -29,12 +30,20 @@ fn main() -> anyhow::Result<()> {
         args.remove(0);
         return ctl(&args);
     }
-    if single_instance_running() {
-        focus_existing();
-        return Ok(());
-    }
+    let socket = socket_path();
+    // Ownership is established before opening audio/MIDI or constructing a
+    // window. Keep it until the later IPC guard and GUI have both shut down.
+    let _instance = match instance::acquire(&socket)
+        .with_context(|| format!("single-instance ownership at {}", socket.display()))?
+    {
+        instance::Acquisition::Owner(guard) => guard,
+        instance::Acquisition::Existing => {
+            focus_existing();
+            return Ok(());
+        }
+    };
     let engine = engine::Engine::start().context("audio engine")?;
-    let _ipc = ipc_server::start(engine.cmd.clone(), engine.snap.clone())
+    let _ipc = ipc_server::start_at(&socket, engine.cmd.clone(), engine.snap.clone())
         .context("could not start the local control service; check the reported socket path and permissions")?;
 
     let options = eframe::NativeOptions {
@@ -52,12 +61,6 @@ fn main() -> anyhow::Result<()> {
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(())
-}
-
-fn single_instance_running() -> bool {
-    // Successful connection proves a listener exists even if it is slow. A
-    // failed probe never authorizes deleting an endpoint owned by another run.
-    ipc_server::has_listener(&socket_path())
 }
 
 fn focus_existing() {

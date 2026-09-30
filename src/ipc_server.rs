@@ -97,13 +97,24 @@ impl Drop for IpcServer {
 }
 
 pub fn has_listener(path: &Path) -> bool {
-    std::os::unix::net::UnixStream::connect(path).is_ok()
+    matches!(
+        crate::instance::probe(path),
+        Ok(crate::instance::EndpointState::Connected | crate::instance::EndpointState::Busy)
+    )
 }
 
 pub fn start(commands: CommandPort, snapshot: Arc<Mutex<Snapshot>>) -> anyhow::Result<IpcServer> {
     let path = crate::theme::socket_path();
+    start_at(&path, commands, snapshot)
+}
+
+pub fn start_at(
+    path: &Path,
+    commands: CommandPort,
+    snapshot: Arc<Mutex<Snapshot>>,
+) -> anyhow::Result<IpcServer> {
     start_at_with(
-        &path,
+        path,
         commands,
         snapshot,
         |path| UnixListener::bind(path),
