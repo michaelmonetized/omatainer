@@ -1,3 +1,8 @@
+mod arp;
+#[cfg(test)]
+mod arp_tests;
+#[cfg(test)]
+mod test_alloc;
 pub mod audio;
 pub mod dsp;
 pub mod fx;
@@ -92,6 +97,15 @@ pub struct TrackRt {
     pub drum_pos: [Option<(usize, f64)>; 16],
     pub fx: fx::FxChain,
     pub arp_note: Option<u8>,
+    arp_cache: arp::ChordCache,
+}
+
+impl TrackRt {
+    fn invalidate_arp_for_scene(&mut self, scene: usize) {
+        if self.playing.is_some_and(|p| p.scene as usize == scene) {
+            self.arp_cache.invalidate();
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -469,6 +483,7 @@ impl RtEngine {
                 drum_pos: [None; 16],
                 fx: fx::FxChain::new(sr),
                 arp_note: None,
+                arp_cache: arp::ChordCache::default(),
             })
             .collect();
         let mut e = Self {
@@ -748,6 +763,11 @@ impl RtEngine {
 
     fn render_track(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
+        if silent {
+            // last_beat still advances below. A skipped loop boundary must
+            // not leave the previous loop's chord cached when this track is audible.
+            self.tracks[ti].arp_cache.invalidate();
+        }
         let playing = self.tracks[ti].playing;
         if let Some(p) = playing {
             let scene = p.scene as usize;
@@ -760,7 +780,6 @@ impl RtEngine {
                 .unwrap_or(local);
             // trigger notes that crossed
             if self.tracks[ti].clips[scene].kind == ClipKind::Midi && !silent {
-                let notes = self.tracks[ti].clips[scene].notes.clone();
                 let kind = self.tracks[ti].kind;
                 let arp = self.tracks[ti]
                     .fx
@@ -768,32 +787,39 @@ impl RtEngine {
                     .iter()
                     .any(|s| s.id == fx::FxId::Arp && s.on);
                 if arp {
-                    let mut chord: Vec<u8> = notes
-                        .iter()
-                        .filter(|n| {
-                            local >= n.start as f64 && local < (n.start + n.len) as f64
-                        })
-                        .map(|n| n.pitch)
-                        .collect();
-                    chord.sort_unstable();
-                    chord.dedup();
+                    let track = &mut self.tracks[ti];
+                    track.arp_cache.refresh(
+                        &track.clips[scene].notes,
+                        local,
+                        prev,
+                        clip_beats,
+                    );
                     let step = (local * 4.0).floor() as i64;
                     let prev_step = (prev * 4.0).floor() as i64;
-                    if step != prev_step {
-                        if let Some(old) = self.tracks[ti].arp_note.take() {
-                            self.tracks[ti].poly.note_off(old);
-                        }
-                        if !chord.is_empty() {
-                            let pitch = chord[step.rem_euclid(chord.len() as i64) as usize];
-                            if kind == 0 {
-                                self.trig_drum(ti, pitch, 1.0);
-                            } else {
-                                self.tracks[ti].poly.note_on(pitch, 0.9);
-                            }
-                            self.tracks[ti].arp_note = Some(pitch);
+                    let advance = step != prev_step || local < prev;
+                    // A rest or an edit removing the current pitch ends its gate
+                    // immediately, without retriggering between sixteenths.
+                    if advance || track.arp_note.is_some_and(|n| !track.arp_cache.contains(n)) {
+                        if let Some(old) = track.arp_note.take() {
+                            track.poly.note_off(old);
                         }
                     }
+                    let pitch = advance.then(|| track.arp_cache.pitch(step)).flatten();
+                    if let Some(pitch) = pitch {
+                        if kind == 0 {
+                            self.trig_drum(ti, pitch, 1.0);
+                        } else {
+                            self.tracks[ti].poly.note_on(pitch, 0.9);
+                        }
+                        self.tracks[ti].arp_note = Some(pitch);
+                    }
                 } else {
+                    let track = &mut self.tracks[ti];
+                    track.arp_cache.invalidate();
+                    if let Some(old) = track.arp_note.take() {
+                        track.poly.note_off(old);
+                    }
+                    let notes = track.clips[scene].notes.clone();
                     for n in notes {
                         if crossed(prev, local, n.start as f64, clip_beats) {
                             if kind == 0 {
@@ -1347,6 +1373,7 @@ impl RtEngine {
                             len: 0.25,
                             vel,
                         });
+                        self.tracks[t].invalidate_arp_for_scene(scene);
                     }
                 }
             }
@@ -1364,6 +1391,7 @@ impl RtEngine {
                         self.tracks[t].clips[s].bars = 1.0;
                     }
                     self.tracks[t].clips[s].notes = notes;
+                    self.tracks[t].invalidate_arp_for_scene(s);
                 }
             }
             Command::FxWet { slot, value } => {
@@ -1534,6 +1562,8 @@ impl RtEngine {
                                 len: 0.25,
                                 vel: 110,
                             });
+                            self.tracks[self.selected_track]
+                                .invalidate_arp_for_scene(self.selected_scene);
                         }
                     }
                 } else {
@@ -2258,8 +2288,10 @@ mod tests {
         rt.apply(Command::LaunchClip { track: 2, scene: 0 });
         let mut seen = std::collections::BTreeSet::new();
         let sixteenth = (rt.sr as f64 * 60.0 / rt.bpm as f64 / 4.0) as usize;
-        for _ in 0..6 {
-            let mut buf = vec![0.0f32; sixteenth.max(64) * 2];
+        // Observe within each step as well as at its end: the chord's
+        // 0.45-beat gate ends before the second sixteenth finishes.
+        let mut buf = [0.0f32; 128];
+        for _ in 0..(sixteenth * 6).div_ceil(64) {
             rt.process(&mut buf);
             if let Some(n) = rt.tracks[2].arp_note {
                 seen.insert(n);
