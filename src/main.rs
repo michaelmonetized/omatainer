@@ -4,6 +4,7 @@ mod ui;
 mod ipc_server;
 mod ipc_transport;
 mod instance;
+mod runtime;
 
 #[cfg(test)]
 mod scene_index_tests;
@@ -30,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         args.remove(0);
         return ctl(&args);
     }
-    let socket = socket_path();
+    let socket = socket_path()?;
     // Ownership is established before opening audio/MIDI or constructing a
     // window. Keep it until the later IPC guard and GUI have both shut down.
     let _instance = match instance::acquire(&socket)
@@ -136,7 +137,7 @@ fn ipc_scene_index(v: &serde_json::Value) -> anyhow::Result<u8> {
 }
 
 fn send_op(payload: &str) -> anyhow::Result<String> {
-    let stream = UnixStream::connect(socket_path()).context("omatainer is not running")?;
+    let stream = UnixStream::connect(socket_path()?).context("omatainer is not running")?;
     exchange_request(stream, payload)
 }
 

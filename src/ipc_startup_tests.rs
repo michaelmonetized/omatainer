@@ -164,3 +164,19 @@ fn connected_listener_is_preserved_without_requiring_a_prompt_reply() {
         "connection refusal must not authorize unlinking"
     );
 }
+
+#[test]
+fn endpoint_cleanup_requires_matching_effective_owner_as_well_as_inode() {
+    let directory = Directory::new();
+    let path = directory.socket();
+    let listener = UnixListener::bind(&path).unwrap();
+    let inode = std::fs::symlink_metadata(&path).unwrap().ino();
+    let mut endpoint = OwnedEndpoint::capture(&path).unwrap();
+    // Inject an ownership mismatch without privileged chown or changing this
+    // process's credentials. The same path/inode must still be preserved.
+    endpoint.owner = crate::instance::effective_uid() + 1;
+    drop(endpoint);
+    assert_eq!(std::fs::symlink_metadata(&path).unwrap().ino(), inode);
+    assert!(UnixStream::connect(&path).is_ok());
+    drop(listener);
+}
