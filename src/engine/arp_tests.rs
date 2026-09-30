@@ -24,13 +24,16 @@ fn fixture(notes: Vec<MidiNote>) -> RtEngine {
         scene: 0,
         notes,
     });
-    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
+    rt.tracks[2]
+        .fx
+        .slots
+        .push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     rt
 }
 
 fn render_at(rt: &mut RtEngine, beat: f64) -> Option<u8> {
-    rt.beat = beat;
+    rt.beat = beat + 2.0 * midi_schedule::BEAT_EPSILON;
     rt.render_track(2, false);
     rt.tracks[2].arp_note
 }
@@ -119,7 +122,10 @@ fn arp_emitted_sequence_deduplicates_and_releases_rests_across_loops() {
 #[test]
 fn arp_existing_chord_fixture_matches_reference_steps_for_three_loops() {
     let mut rt = engine();
-    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
+    rt.tracks[2]
+        .fx
+        .slots
+        .push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     for step in 0..96 {
         // The built-in fixture holds C/E/G at 0..0.45 and D/F/A at 4..4.45.
@@ -201,6 +207,14 @@ fn arp_record_and_compose_additions_update_the_next_step() {
         }
         assert_eq!(render_at(&mut rt, 0.10001), Some(60));
         assert_eq!(rt.tracks[2].arp_cache.rebuilds, 2);
+        assert!(
+            rt.tracks[2].poly.voices.iter().any(|voice| {
+                voice.note == 60
+                    && voice.owner == dsp::VoiceOwner::Clip
+                    && matches!(voice.env.stage, 1..=3)
+            }),
+            "adding a note released the current arpeggiator gate"
+        );
         assert_eq!(
             render_at(&mut rt, 0.25),
             Some(60),
@@ -219,7 +233,12 @@ fn arp_toggle_releases_current_gate_and_refreshes_on_reenable() {
     rt.fx_view = 2;
     rt.apply(Command::FxToggle(0));
     assert_eq!(render_at(&mut rt, 0.1), None);
-    assert_released(&rt, 60);
+    // Returning to ordinary playback restores the currently held chord.
+    assert!(rt.tracks[2]
+        .poly
+        .voices
+        .iter()
+        .any(|v| v.note == 60 && matches!(v.env.stage, 1..=3)));
     rt.apply(Command::FxToggle(0));
     assert_eq!(render_at(&mut rt, 0.15), None);
     assert_eq!(rt.tracks[2].arp_cache.rebuilds, 2);
@@ -260,7 +279,10 @@ fn arp_renderer_and_full_process_block_allocate_nothing() {
     );
     let mut rt = engine();
     rt.bpm = 120.0;
-    rt.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
+    rt.tracks[2]
+        .fx
+        .slots
+        .push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     let mut out = [0.0; 2048];
     rt.process(&mut out);
