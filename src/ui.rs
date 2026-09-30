@@ -858,7 +858,17 @@ impl App {
                     }
                     for pi in 0..3 {
                         let mut v = p[pi];
-                        if ui.add(egui::Slider::new(&mut v, 0.0..=1.0)).changed() {
+                        let mut slider = egui::Slider::new(&mut v, 0.0..=1.0);
+                        if name == "spread" && pi == 0 {
+                            slider = slider.text("width");
+                        }
+                        let response = ui.add(slider);
+                        let response = if name == "spread" && pi == 0 {
+                            response.on_hover_text("0: mono; 0.5: original stereo; 1: Haas spread")
+                        } else {
+                            response
+                        };
+                        if response.changed() {
                             self.send(Command::FxParam { slot: i, p: pi as u8, value: v });
                         }
                     }
