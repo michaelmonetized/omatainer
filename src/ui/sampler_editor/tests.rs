@@ -1087,3 +1087,5 @@ fn applied_source_proof_allows_real_relocation_and_reopened_definition_recovers_
         expected
     );
 }
+
+mod offline;
