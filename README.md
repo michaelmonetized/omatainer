@@ -100,6 +100,11 @@ Sample pads **1–8** occupy the bottom row and **9–16** the top row, preservi
 piano layout's natural/accidental positions. Number N triggers bank slot N−1.
 Hover a pad for its slot or piano MIDI note; blank piano positions are inactive.
 
+Theme colors, shell base font size, and fontconfig's current monospace font
+reload in a background worker, including font-only edits. The next valid update
+replaces the applied style; incomplete writes retain the last valid settings.
+See the [theme reload validation](docs/validation/issue-78-theme-reload.md).
+
 ## Layout
 
 ```

@@ -10,6 +10,7 @@ keywords = ["daw", "dj", "midi", "omarchy", "audio"]
 categories = ["multimedia::audio"]
 
 [dependencies]
+ab_glyph = "0.2"
 anyhow = "1"
 arc-swap = "1.7"
 cpal = "0.15"
