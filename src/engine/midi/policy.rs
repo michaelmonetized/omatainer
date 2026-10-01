@@ -188,7 +188,8 @@ impl Control {
         self.published.load_full()
     }
     pub fn unavailable(&self) {
-        let _current = self.current.lock();
+        let mut current = self.current.lock();
+        *current = Arc::new(Request { generation: current.generation, policy: current.policy.clone(), permit: None });
         let old = self.published.load();
         self.published.store(Arc::new(PolicyStatus {
             error: Some(Arc::from(PolicyError::Unavailable.to_string())),

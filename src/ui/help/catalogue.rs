@@ -29,7 +29,7 @@ impl Topic {
             Self::Mixing => "Mix a session",
             Self::Dj => "Prepare a DJ deck",
             Self::Controllers => "Connect a controller",
-            Self::Emergency => "Stop and recover",
+            Self::Emergency => "Enable performance mode to protect playing/touched deck replacement, destructive edits and project/device changes across GUI, MIDI and IPC. Continuous mixing, live composition/recording, stopped-deck loads and Save remain available; optional scans/imports/analysis/theme/export work is refused or deferred. Safe stop deliberately stops the session and both decks, finalizes held captures and releases input notes; finite sample and effect tails continue naturally. Emergency silence additionally fades output to latched mute over 2 ms. Wait for renderer acknowledgment: request acceptance is not silence. Release physical keys, pads and touches, then explicitly acknowledge input recovery. This is your report, not a hardware health check. Emergency mute remains until a deliberate stopped DSP reset through the audio owner; a two-second −80 dBFS tail observation cannot prove bypassed/delayed history is empty. Failed reset keeps mute; you can acknowledge inputs and remain muted to Save and deliberately leave protection or close. No action automatically resumes playback. Ordinary Session Stop retains its narrower session-only behavior. Read Diagnostics queue/reset counters and explicit failures before recovery; physical hardware QA remains separate.",
             Self::Projects => "Save and reopen",
         }
     }

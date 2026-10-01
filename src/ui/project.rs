@@ -371,7 +371,11 @@ impl App {
                     Action::Open(path) => Some(path),
                     _ => None,
                 };
-                let cancel = Arc::new(AtomicBool::new(false));
+                let work = match self.engine.cmd.performance().optional_work() {
+                    Ok(work) => work,
+                    Err(error) => { self.project.message = Some(error.to_string()); return; }
+                };
+                let cancel = work.cancel();
                 let (commit, receiver) = bounded(1);
                 self.begin_project_job(
                     Operation::Prepare {
@@ -380,6 +384,7 @@ impl App {
                         committing: false,
                     },
                     Job::Prepare {
+                        _work: work,
                         path,
                         cancel: cancel.clone(),
                         commit: receiver,

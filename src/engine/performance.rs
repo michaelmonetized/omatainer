@@ -12,7 +12,11 @@ const RECOVERY: u64 = 2;
 const STOPPED: u64 = 4;
 const EXCLUSIVE: u64 = 8;
 const WRITER: u64 = 1 << 8;
-const FLAGS: u64 = WRITER - 1;
+// Low flags, 24 bits of producer leases, then a safety generation. The
+// generation prevents a complete stop/ack cycle from recreating an old CAS
+// word while the renderer is trying to reopen recovery admission.
+const SAFETY_GENERATION: u64 = 1 << 32;
+const WRITERS: u64 = (SAFETY_GENERATION - 1) & !(WRITER - 1);
 const OPTIONAL_SLOTS: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -46,7 +50,7 @@ pub enum Safety {
     Silence = 2,
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Status {
     pub protected: bool,
     pub recovery: bool,
@@ -138,18 +142,33 @@ impl Drop for ExclusivePermit {
 pub struct WorkPermit {
     handle: Handle,
     slot: usize,
+    generation: u64,
 }
 impl WorkPermit {
     /// Worker/UI publication boundary. Winning this claim keeps mode entry out
     /// until commit acknowledgement completes; losing to protection cancels the
     /// optional publication without pretending an already committed write lost.
     pub fn commit(&self) -> Result<ExclusivePermit, Error> {
-        if self.handle.0.work[self.slot].load(Ordering::Acquire) {
+        self.commit_after_check(|| {})
+    }
+    fn commit_after_check(&self, after_check: impl FnOnce()) -> Result<ExclusivePermit, Error> {
+        if self.cancelled() {
             return Err(self.handle.reject(Error::Protected));
         }
-        self.handle.project_change()
+        after_check();
+        let permit = self.handle.project_change()?;
+        // A quick protect/unprotect can finish between the first cancellation
+        // read and acquiring the commit guard. That old job remains cancelled.
+        if self.cancelled() {
+            return Err(self.handle.reject(Error::Protected));
+        }
+        Ok(permit)
     }
 
+    fn cancelled(&self) -> bool {
+        self.handle.0.work[self.slot].load(Ordering::Acquire)
+            || self.handle.0.admission.load(Ordering::Acquire) / SAFETY_GENERATION != self.generation
+    }
     pub fn cancel(&self) -> Arc<AtomicBool> {
         self.handle.0.work[self.slot].clone()
     }
@@ -219,7 +238,7 @@ impl Handle {
                 return Err(self.reject(Error::Recovery));
             }
             let next = if enabled {
-                previous | PROTECTED
+                previous.wrapping_add(SAFETY_GENERATION) | PROTECTED
             } else {
                 previous & !PROTECTED
             };
@@ -277,9 +296,11 @@ impl Handle {
         }
     }
     pub fn optional_work(&self) -> Result<WorkPermit, Error> {
-        if self.protected() {
+        let admission = self.0.admission.load(Ordering::Acquire);
+        if admission & (PROTECTED | RECOVERY) != 0 {
             return Err(self.reject(Error::Protected));
         }
+        let generation = admission / SAFETY_GENERATION;
         for slot in 0..OPTIONAL_SLOTS {
             if Arc::strong_count(&self.0.work[slot]) != 1 {
                 continue;
@@ -292,8 +313,9 @@ impl Handle {
             let permit = WorkPermit {
                 handle: self.clone(),
                 slot,
+                generation,
             };
-            if self.protected() {
+            if self.protected() || permit.cancelled() {
                 self.0.work[slot].store(true, Ordering::Release);
                 return Err(self.reject(Error::Protected));
             }
@@ -303,10 +325,11 @@ impl Handle {
     }
     pub(crate) fn input_epoch(&self) -> u64 { self.0.input_epoch.load(Ordering::Acquire) }
     pub fn request_safety(&self, safety: Safety) {
+        let _writer = self.writer();
         self.0
             .admission
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |state| {
-                Some((state | RECOVERY) & !STOPPED)
+                Some((state.wrapping_add(SAFETY_GENERATION) | RECOVERY) & !STOPPED)
             })
             .unwrap();
         self.0.input_epoch.fetch_add(1, Ordering::AcqRel);
@@ -366,7 +389,7 @@ impl Handle {
     pub(super) fn try_recover(&self, drained: impl FnOnce() -> bool) -> bool {
         let state = self.0.admission.load(Ordering::Acquire);
         let request = self.0.safety.load(Ordering::Acquire);
-        if state & !FLAGS != 0
+        if state & WRITERS != 0
             || state & EXCLUSIVE != 0
             || state & (RECOVERY | STOPPED) != RECOVERY | STOPPED
             || self.0.recover.load(Ordering::Acquire) != request

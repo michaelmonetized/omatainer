@@ -190,3 +190,58 @@ fn exclusive_jobs_and_optional_cancellation_close_mode_entry_races() {
     assert!(handle.try_recover(|| true));
     assert!(handle.status().protected);
 }
+
+#[test]
+fn safety_mailbox_bypasses_full_owned_queue_and_retires_rejected_payloads_off_audio() {
+    let (engine, mut rt) = fixture();
+    let original = rt.decks[0].audio.clone().unwrap();
+    let replacement = Arc::new(Sample { name: "rejected owned media".into(), path: String::new(), sr: 48_000, ch: 2, data: vec![0.5; 65_536], peaks: Arc::new(vec![[0.5; 3]; 512]), bpm: 120.0 });
+    let weak = Arc::downgrade(&replacement);
+    engine.send(Command::DeckAudio { deck: 0, audio: replacement }).unwrap();
+    engine.send(Command::SetNotes { track: 2, scene: 7, notes: vec![MidiNote { pitch: 62, start: 0.0, len: 1.0, vel: 80 }; 128] }).unwrap();
+    engine.send(Command::Gesture { id: 24, command: Box::new(Command::Master(0.1)) }).unwrap();
+    while engine.send(Command::Tap(std::time::Instant::now())).is_ok() {}
+    assert!(engine.cmd.len() > crate::engine::control::COMMANDS_PER_BLOCK);
+    engine.send(Command::SafetyStop(Safety::Silence)).unwrap();
+    let counts = test_alloc::measure(|| rt.process(&mut [0.0; 256]));
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    assert!(engine.cmd.performance().status().stopped);
+    assert!(engine.cmd.performance().status().output_muted);
+    assert!(Arc::ptr_eq(&original, rt.decks[0].audio.as_ref().unwrap()));
+    assert!(rt.tracks[2].clips[7].notes.is_empty());
+    while !rt.cmd_rx.is_empty() {
+        let counts = test_alloc::measure(|| rt.process(&mut [0.0; 256]));
+        assert_eq!((counts.allocations, counts.frees), (0, 0));
+    }
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while weak.strong_count() != 0 { assert!(std::time::Instant::now() < deadline); std::thread::yield_now(); }
+}
+
+#[test]
+fn optional_publication_rechecks_cancel_after_commit_claim() {
+    let handle = Handle::default();
+    let work = handle.optional_work().unwrap();
+    let result = work.commit_after_check(|| {
+        handle.set_enabled(true).unwrap();
+        handle.set_enabled(false).unwrap();
+    });
+    assert!(matches!(result, Err(Error::Protected)));
+    assert!(!handle.status().changing);
+    assert!(matches!(work.commit(), Err(Error::Protected)));
+}
+
+#[test]
+fn new_safety_request_cannot_reuse_old_recovery_cas_state() {
+    let handle = Handle::default();
+    handle.request_safety(Safety::Stop);
+    handle.stopped(handle.safety_request().unwrap().0);
+    handle.acknowledge_inputs_released().unwrap();
+    assert!(!handle.try_recover(|| {
+        handle.request_safety(Safety::Silence);
+        handle.stopped(handle.safety_request().unwrap().0);
+        handle.acknowledge_inputs_released().unwrap();
+        true
+    }));
+    assert!(handle.status().recovery);
+    assert!(handle.try_recover(|| true));
+}

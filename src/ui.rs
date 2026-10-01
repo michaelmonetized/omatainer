@@ -636,7 +636,9 @@ impl App {
             egui::Window::new("midi").show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
                 if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
-                    let _ = self.engine.midi.retry_connections();
+                    if matches!(self.engine.midi.retry_connections(), crate::engine::midi::Retry::Protected) {
+                        self.submission_error.set(Some(crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Protected)));
+                    }
                 }
                 if busy {
                     ui.label("Checking MIDI connections…");

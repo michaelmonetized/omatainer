@@ -551,6 +551,9 @@ impl CommandPort {
         let fail = |error| self.shared.reject(error);
         // These explicit operator requests use bounded atomic mailboxes, so
         // they remain available even when ordinary payload/command slots fill.
+        if !self.shared.connected.load(Acquire) {
+            return fail(SubmissionError::Disconnected);
+        }
         let control = match command {
             Command::PerformanceMode(enabled) => Some(self.shared.performance.set_enabled(enabled)),
             Command::SafetyStop(safety) => { self.shared.performance.request_safety(safety); Some(Ok(())) },
