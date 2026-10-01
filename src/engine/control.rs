@@ -166,6 +166,10 @@ impl CommandReceiver {
         }
     }
 
+    pub(super) fn pending_project_ui_requests(&self) -> bool {
+        self.shared.as_ref().is_some_and(|shared| shared.ui_requests.stats().pending != 0)
+    }
+
     pub(super) fn telemetry(&self) -> std::sync::Arc<super::audio_metrics::Telemetry> {
         self.shared.as_ref().map(|shared| shared.telemetry.clone()).unwrap_or_default()
     }

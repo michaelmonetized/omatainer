@@ -454,6 +454,8 @@ impl FxKind {
 pub struct RtEngine {
     pub project: project::Handle,
     project_pending: Option<Box<project::Task>>,
+    project_waiting: Option<Box<project::Task>>,
+    project_sealed: bool,
     pub sr: f32,
     pub playing: bool,
     pub recording: bool,
@@ -803,6 +805,8 @@ impl RtEngine {
         let mut e = Self {
             project: project::Handle::new(),
             project_pending: None,
+            project_waiting: None,
+            project_sealed: false,
             sr,
             playing: false,
             recording: false,

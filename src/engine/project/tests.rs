@@ -311,3 +311,54 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
     let mut rejected = capture::Frame::new(); rejected.capture(&live);
     assert_eq!(rejected.error, Some("project exceeds 65536 notes"));
 }
+
+#[test]
+fn close_seal_rejects_late_edits_and_drop_reopens_without_blocking_releases() {
+    let (engine, mut live) = Engine::headless_for_test(48000, 256);
+    let revision = engine.project.revision();
+    engine.send(Command::TrackGain { track: 0, value: 0.42 }).unwrap();
+    let handle = engine.project.clone();
+    let changed = drive(&mut live, move || handle.seal_for_close(Some(revision), &AtomicBool::new(false)));
+    assert!(matches!(changed, Err(Error::Conflict)));
+    let revision = engine.project.revision(); let handle = engine.project.clone();
+    let guard = drive(&mut live, move || handle.seal_for_close(Some(revision), &AtomicBool::new(false))).unwrap();
+    assert_eq!(engine.send(Command::TrackGain { track: 0, value: 0.91 }), Err(SubmissionError::ProjectChanging));
+    assert!(engine.send(Command::LiveNoteOff { source: 1, ch: 0, note: 64 }).is_ok());
+    live.process(&mut []); assert_eq!(live.tracks[0].gain, 0.42);
+    drop(guard); live.process(&mut []);
+    assert!(engine.send(Command::TrackGain { track: 0, value: 0.91 }).is_ok());
+    live.process(&mut []); assert_eq!(live.tracks[0].gain, 0.91);
+}
+
+#[test]
+fn explicit_discard_can_seal_a_held_recording_but_clean_close_cannot() {
+    let mut live = rt();
+    live.apply(Command::ComposeArm { track: 7, scene: 7 });
+    live.apply(Command::SamplerPad { pad: 3, on: true });
+    let handle = live.project.clone(); let revision = handle.revision();
+    assert!(matches!(drive(&mut live, move || handle.seal_for_close(Some(revision), &AtomicBool::new(false))), Err(Error::Conflict)));
+    let handle = live.project.clone();
+    let guard = drive(&mut live, move || handle.seal_for_close(None, &AtomicBool::new(false))).unwrap();
+    assert!(live.project_sealed);
+    drop(guard); live.process(&mut []); assert!(!live.project_sealed);
+}
+
+#[test]
+fn deferred_controller_loads_remain_on_old_project_when_install_or_clean_close_conflicts() {
+    let (engine, mut live) = Engine::headless_for_test(48000, 256);
+    engine.ui_requests.publish_selection(Some(Arc::new(media_source::Selection {
+        source: media_source::LibSource::Builtin(media_source::BuiltinStem::Drums), title: "Drums".into(),
+    })));
+    engine.send(Command::DeckLoadSelected { deck: 1 }).unwrap();
+    let handle = engine.project.clone(); let revision = handle.revision();
+    assert!(matches!(drive(&mut live, move || handle.install(Prepared::empty(48000).unwrap(), revision, &AtomicBool::new(false))), Err(Error::Conflict)));
+    assert!(live.tracks[0].clips[0].occupied());
+    assert_eq!(engine.cmd.ui_request_stats().pending, 1);
+    let handle = engine.project.clone(); let revision = handle.revision();
+    assert!(matches!(drive(&mut live, move || handle.seal_for_close(Some(revision), &AtomicBool::new(false))), Err(Error::Conflict)));
+    assert_eq!(engine.cmd.ui_request_stats().pending, 1);
+    let requests = engine.ui_requests.take_requests();
+    assert!(matches!(&requests[0], Some(ui_requests::Request::Load(request)) if request.deck == 1));
+    let handle = engine.project.clone(); let revision = handle.revision();
+    assert!(drive(&mut live, move || handle.install(Prepared::empty(48000).unwrap(), revision, &AtomicBool::new(false))).is_ok());
+}
