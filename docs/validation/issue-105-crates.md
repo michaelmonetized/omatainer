@@ -77,6 +77,37 @@ catalog refresh preserving the captured viewport anchor. Manual regeneration
 and source inventory checks passed. Only a trailing blank line was removed
 after that suite; the final release build binds the refreshed inventory.
 
-Final release qualification is recorded after execution. No physical controller,
-human screen-reader, listening or hardware storage result is inferred from these
-software fixtures.
+## Final release qualification
+
+The source-bound release gate passed on 2026-10-01 from
+12:39:23.400195 to 12:43:28.807809 UTC, with all eight workload groups
+passing three repetitions under the unchanged performance policy. Its fresh
+native workflow passed 150 actions, 243 visited nodes and
+1319 App frames, including the named-crate workflow. The native action
+capacity remained 160 and the deadline remained 70 seconds.
+
+Worst repeated callback wall p99 / maximum in milliseconds were producer
+0.783628 / 1.392088, composer 0.830711 / 0.959128, live DJ
+0.097417 / 0.211418 and hybrid 0.866211 / 1.004253. All four measured
+callback groups had zero callback-wall or render-CPU deadline exceedances,
+allocations, frees and rejected commands. Measured MIDI drops were zero.
+Large-crate frame p99 was 3.088635 ms; multi-controller frame p99 was
+5.389018 ms, IPC round-trip p99 8.606696 ms and MIDI dispatch p99
+3.196970 ms. These are local software workloads, not physical-device latency.
+
+Independent evidence verification, package creation and package verification
+passed on the unchanged release executable. All seven CLI protocol cases,
+six follow-protocol groups, five runtime-isolation groups and safe-startup
+checks passed. Local evidence is preserved as `issue-105-final-performance.*`
+and `issue-105-final-package` in the work evidence directory.
+
+SHA-256 bindings:
+
+- Production executable: `94706c9142d1c6ce2d189c151242c601f74e95fafa2507a54ddcc7af401d830e`.
+- Release test executable: `c206cba833142c821ed56099415c75da36f3cab457c947ec3d3cc4a8c5210a43`.
+- Source inventory: `76f1854ca87d24b7bf6262ace1d3e02b7fac55066cc34b7dfd0b652425b83ac9`.
+- Final performance report: `750e9d926e5dabbdb070096429c38ee10db90218b0caf9c0176e05ce0aeb1675`.
+
+No physical controller, human screen-reader, listening or hardware storage
+result is inferred from these software fixtures. Final producer, composer and
+live-DJ hardware acceptance remains with the user.
