@@ -177,3 +177,98 @@ impl super::DeckRt {
         } else { snapped }
     }
 }
+
+#[cfg(test)]
+mod renderer_tests {
+    use super::*;
+    use crate::engine::{load_receipt::{Media, Receipt}, test_alloc, Command, Engine};
+
+    #[test]
+    fn grid_edit_reset_undo_and_reload_preserve_absolute_cues_without_callback_heap_traffic() {
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let receipt = engine.initial_playback[0].clone();
+        rt.decks[0].pos = 12_000.0;
+        rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
+        rt.clear_undo_for_test();
+        let grid = Grid::new(1.25, 127.5).unwrap();
+        let command = Command::DeckGrid { deck: 0, grid: Some(grid), receipt: receipt.clone() };
+        assert_eq!(test_alloc::measure(|| rt.apply(command)), test_alloc::Counts::default());
+        assert_eq!(rt.decks[0].grid, Some(grid));
+        assert_eq!(receipt.preparation().unwrap().1.grid, Some(grid));
+        assert_eq!(rt.decks[0].hotcues[0].pos, 12_000.0);
+        assert_eq!(receipt.preparation().unwrap().1.hotcues[0], Some(0.25));
+        assert_eq!(test_alloc::measure(|| rt.apply(Command::Undo)), test_alloc::Counts::default());
+        assert_eq!(rt.decks[0].grid, None);
+        assert_eq!(receipt.preparation().unwrap().1.grid, None);
+        rt.apply(Command::Redo);
+        let loaded = Receipt::with_preparation(Some(receipt.preparation().unwrap().1));
+        rt.apply(Command::DeckLoadRequested { deck: 1, media: Media::Builtin(0), receipt: loaded.clone() });
+        assert_eq!(rt.decks[1].grid, Some(grid));
+        assert_eq!(rt.decks[1].hotcues[0].pos, 12_000.0);
+        assert!(!rt.decks[1].playing);
+        rt.apply(Command::DeckGrid { deck: 0, grid: None, receipt: receipt.clone() });
+        assert_eq!(rt.decks[0].grid, None);
+        assert_eq!(rt.decks[0].hotcues[0].pos, 12_000.0);
+        rt.apply(Command::Undo);
+        assert_eq!(rt.decks[0].grid, Some(grid));
+        let before = engine.undo.checkpoint();
+        let same = Command::DeckGrid { deck: 0, grid: Some(grid), receipt: receipt.clone() };
+        assert_eq!(test_alloc::measure(|| rt.apply(same)), test_alloc::Counts::default());
+        assert_eq!(engine.undo.checkpoint(), before);
+        let commands = [
+            Command::DeckGrid { deck: 255, grid: None, receipt: receipt.clone() },
+            Command::DeckGrid { deck: 0, grid: None, receipt: Receipt::new() },
+            Command::DeckGrid { deck: 0, grid: None, receipt: loaded },
+        ];
+        assert_eq!(test_alloc::measure(|| { for command in commands { rt.apply(command); } }), test_alloc::Counts::default());
+        assert_eq!(engine.undo.checkpoint(), before);
+        assert_eq!(rt.decks[0].grid, Some(grid));
+        rt.apply(Command::DeckUnload { deck: 0 });
+        let before = engine.undo.checkpoint();
+        rt.apply(Command::DeckGrid { deck: 0, grid: Some(grid), receipt });
+        assert_eq!(engine.undo.checkpoint(), before);
+        assert_eq!(rt.decks[0].grid, None);
+    }
+
+    #[test]
+    fn match_and_quantized_loops_follow_each_manual_downbeat_and_tempo() {
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let a = Grid::new(1.25, 120.0).unwrap();
+        let b = Grid::new(0.375, 90.0).unwrap();
+        for (deck, grid) in [(0, a), (1, b)] {
+            rt.apply(Command::DeckGrid { deck, grid: Some(grid), receipt: engine.initial_playback[deck as usize].clone() });
+        }
+        rt.decks[0].pos = a.seconds_at(3.25).unwrap() * 48_000.0;
+        rt.decks[1].pos = b.seconds_at(5.8).unwrap() * 48_000.0;
+        rt.decks[0].playing = true;
+        rt.decks[1].playing = true;
+        rt.xfader = 0.25;
+        let favorite = rt.decks[0].pos;
+        assert_eq!(test_alloc::measure(|| rt.apply(Command::DeckMatch)), test_alloc::Counts::default());
+        assert_eq!(rt.decks[0].pos, favorite);
+        assert!((b.beat_at(rt.decks[1].pos / 48_000.0).unwrap() - 5.25).abs() < 1e-10);
+        assert_eq!(rt.decks[1].sync_bpm, 120.0);
+        rt.process_interleaved(&mut [0.0; 2], 2);
+        assert!((rt.decks[1].target_rate - 120.0 / 90.0).abs() < 1e-6);
+        rt.quantize = true;
+        rt.decks[0].pos = a.seconds_at(2.2).unwrap() * 48_000.0;
+        rt.apply(Command::DeckLoopIn { deck: 0 });
+        assert!((rt.decks[0].loop_start - a.seconds_at(2.0).unwrap() * 48_000.0).abs() < 1e-8);
+        rt.decks[0].pos = a.seconds_at(6.4).unwrap() * 48_000.0;
+        rt.apply(Command::DeckLoopOut { deck: 0 });
+        assert!((rt.decks[0].loop_len - 4.0 * a.period() * 48_000.0).abs() < 1e-8);
+        rt.decks[0].loop_on = false;
+        rt.decks[0].pos = a.seconds_at(3.2).unwrap() * 48_000.0;
+        rt.apply(Command::DeckLoop { deck: 0, beats: 8.0 });
+        assert!((rt.decks[0].loop_start - a.seconds_at(3.0).unwrap() * 48_000.0).abs() < 1e-8);
+        assert!((rt.decks[0].loop_len - 8.0 * a.period() * 48_000.0).abs() < 1e-8);
+        rt.decks[0].pos = a.seconds_at(-0.6).unwrap() * 48_000.0;
+        rt.apply(Command::DeckReloop { deck: 0 });
+        assert!((a.beat_at(rt.decks[0].loop_start / 48_000.0).unwrap() + 1.0).abs() < 1e-10);
+        let before = rt.decks[0].loop_start;
+        rt.quantize = false;
+        rt.decks[0].pos = before + 123.0;
+        rt.apply(Command::DeckLoopIn { deck: 0 });
+        assert_eq!(rt.decks[0].loop_start, before + 123.0);
+    }
+}
