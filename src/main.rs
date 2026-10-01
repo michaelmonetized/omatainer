@@ -287,6 +287,7 @@ fn handle_client_with_limits(
             "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, 64)).collect::<Vec<_>>(),
             "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > 64)
                 || s.decks.iter().take(2).any(|deck| deck.title.len() > 256),
+            "midi_clock": s.midi_clock,
             "commands": s.commands,
             "submissions": commands.stats(),
             "deckA": s.decks.first().map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),

@@ -428,7 +428,7 @@ pub struct RtEngine {
     pub command_stats: control::CommandStats,
     pub snap: Arc<Mutex<Snapshot>>,
     publisher: snapshot::Publisher,
-    clock_accum: f64,
+    pub midi_clock: MidiClockInput,
     cpu_acc: f32,
     frames_done: u64,
     note_recording: recording::Recording,
@@ -507,6 +507,21 @@ pub struct ClipSnap {
     pub bars: f32,
 }
 
+/// Observable clock-consumer hook. Counting accepted ticks is deliberately
+/// separate from the future tempo/phase synchronization policy.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+pub struct MidiClockInput {
+    pub ticks: u64,
+    pub last_source: Option<u64>,
+}
+
+impl MidiClockInput {
+    fn receive_tick(&mut self, source: u64) {
+        self.ticks = self.ticks.saturating_add(1);
+        self.last_source = Some(source);
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
     pub playing: bool,
@@ -525,6 +540,7 @@ pub struct Snapshot {
     pub tracks: Vec<TrackSnap>,
     pub decks: Vec<DeckSnap>,
     pub midi: Vec<String>,
+    pub midi_clock: MidiClockInput,
     pub cpu: f32,
     pub commands: control::CommandStats,
     pub submissions: control::SubmissionStats,
@@ -559,6 +575,7 @@ impl Default for Snapshot {
             tracks: Vec::new(),
             decks: Vec::new(),
             midi: Vec::new(),
+            midi_clock: MidiClockInput::default(),
             cpu: 0.0,
             commands: control::CommandStats::default(),
             submissions: control::SubmissionStats::default(),
@@ -584,6 +601,7 @@ pub enum Command {
     TogglePlay,
     Record,
     Tap(Instant),
+    MidiClock { source: u64 },
     SetBpm(f32),
     LaunchClip { track: u8, scene: u8 },
     LaunchScene { scene: u8 },
@@ -720,7 +738,7 @@ impl RtEngine {
             command_stats: control::CommandStats::default(),
             publisher: snapshot::Publisher::new(snap.clone()),
             snap,
-            clock_accum: 0.0,
+            midi_clock: MidiClockInput::default(),
             cpu_acc: 0.0,
             frames_done: 0,
             note_recording: recording::Recording::default(),
@@ -1403,6 +1421,7 @@ impl RtEngine {
                 else { self.apply(Command::StopTrack { track: lane - 1 }); }
                 self.cmd_rx.complete_stop(lane as usize, ticket);
             }
+            Command::MidiClock { source } => self.midi_clock.receive_tick(source),
             Command::Play => {
                 self.playing = true;
             }

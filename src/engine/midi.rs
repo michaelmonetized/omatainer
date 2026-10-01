@@ -9,9 +9,12 @@ use std::time::Instant;
 
 mod profile;
 mod handoff;
+mod framing;
 pub use handoff::InputStats;
 #[cfg(test)]
 mod profile_tests;
+#[cfg(test)]
+mod realtime_tests;
 
 static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
 
@@ -266,14 +269,43 @@ fn handle_msg(
     shift: &Arc<Mutex<[bool; 4]>>,
     dev: &str,
 ) {
-    if msg.len() < 2 {
-        return;
+    for message in framing::messages(msg) {
+        match message {
+            framing::Message::Realtime(status) => {
+                // These status-only messages bypass channel data access and
+                // learn capture, including when interleaved in a frame.
+                let command = match status {
+                    0xfa => Some(Command::Play),
+                    0xfc => Some(Command::Stop),
+                    0xf8 => Some(Command::MidiClock { source }),
+                    _ => None, // Continue/sensing/reset/reserved: no handler yet.
+                };
+                if let Some(command) = command {
+                    let _ = cmd.send(command);
+                }
+            }
+            framing::Message::Channel(frame) => {
+                handle_channel(&frame, source, map, cmd, log, learn, shift, dev);
+            }
+        }
     }
+}
+
+fn handle_channel(
+    msg: &[u8; 3],
+    source: u64,
+    map: &MidiMap,
+    cmd: &super::CommandPort,
+    log: &Arc<Mutex<Vec<String>>>,
+    learn: &Arc<Mutex<Option<String>>>,
+    shift: &Arc<Mutex<[bool; 4]>>,
+    dev: &str,
+) {
     let st = msg[0];
     let kind_hi = st & 0xF0;
     let ch = st & 0x0F;
     let d1 = msg[1];
-    let d2 = if msg.len() > 2 { msg[2] } else { 0 };
+    let d2 = msg[2];
 
     {
         let mut l = log.lock();
@@ -295,20 +327,6 @@ fn handle_msg(
             d2,
             status: kind_hi,
         });
-        return;
-    }
-
-    if kind_hi == 0xF0 {
-        match st {
-            0xFA => {
-                let _ = cmd.send(Command::Play);
-            }
-            0xFC => {
-                let _ = cmd.send(Command::Stop);
-            }
-            0xF8 => { /* clock in: optional tap */ }
-            _ => {}
-        }
         return;
     }
 
@@ -353,7 +371,7 @@ fn dispatch(
     source: u64,
     status: u8,
     d2: u8,
-    msg: &[u8],
+    msg: &[u8; 3],
     cmd: &super::CommandPort,
     shift: &Arc<Mutex<[bool; 4]>>,
 ) {
@@ -367,11 +385,7 @@ fn dispatch(
             }
         }
         MsgKind::Pitch => {
-            let v = if msg.len() >= 3 {
-                (msg[1] as u16) | ((msg[2] as u16) << 7)
-            } else {
-                8192
-            };
+            let v = (msg[1] as u16) | ((msg[2] as u16) << 7);
             (v as f32 - 8192.0) / 8192.0
         }
         _ => d2 as f32 / 127.0,

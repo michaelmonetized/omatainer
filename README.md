@@ -53,6 +53,10 @@ controls. Device-name selection and synthetic MIDI tests do not establish
 physical compatibility. Controller QA remains pending; see the
 [APC40 mapping evidence](docs/validation/issue-38-apc40-profiles.md).
 
+MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
+their accepted count and last source in `midi_clock` status; this reception hook
+does not synchronize tempo or phase. See the [MIDI framing validation](docs/validation/issue-41-midi-realtime.md).
+
 ## Layout
 
 ```
