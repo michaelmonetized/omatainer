@@ -161,8 +161,8 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
         &mut fixture.app,
         vec![directory.0.clone(), directory.0.clone()],
     );
-    // Loading during traversal changes history, without cloning the shared
-    // baseline or allowing the later result to overwrite the new timestamp.
+    // Actual playback during traversal changes history without cloning the
+    // shared baseline or allowing publication to overwrite the timestamp.
     fixture.app.load_sel(0);
     assert_eq!(
         fixture
@@ -172,7 +172,19 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
             .1,
         selected
     );
-    let latest = fixture.app.last_played[&LibSource::File(selected.clone())];
+    fixture.decoder_results.send((0, Ok(crate::engine::decode::DecodedAudio {
+        sample: crate::engine::dsp::Sample {
+            name: "history fixture".into(), sr: 48_000, ch: 1,
+            data: vec![0.25; 1024], peaks: vec![[0.25; 3]; 8].into(), bpm: 120.0,
+            path: selected.to_string_lossy().into(),
+        }, diagnostics: Default::default(),
+    }))).unwrap();
+    fixture.poll_loads();
+    fixture.rt.process(&mut []);
+    fixture.rt.apply(crate::engine::Command::DeckPlay { deck: 0 });
+    fixture.rt.process(&mut [0.0; 128]);
+    fixture.app.poll_play_history();
+    let latest = fixture.app.item_last_play(&fixture.app.library[2]).unwrap();
     assert!(Arc::ptr_eq(&before, &fixture.app.library));
     finish(&mut fixture.app);
     assert_eq!(

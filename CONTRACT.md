@@ -288,3 +288,22 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Muted/solo-excluded tracks still advance ramps. The stopped sample-rate reset
   establishes current target gains directly at the next callback. Initial
   controls also start at their exact target without an unnecessary fade-in.
+
+## Play history
+
+- A deck earns one last-play update when its current, successfully loaded source
+  first renders a valid frame while Play is active. A rendered pause or EOF ends
+  that episode; resume earns a new update. Continuous playback and loop wraps do
+  not repeatedly update it. Initial built-in decks follow the same rule.
+- This records source playback before deck gain and crossfader routing: valid
+  silence and a deck mixed out still count. Paused scratching, retained transition
+  tails, browsing, load admission, loaded-but-paused media, failed loads and
+  cancelled unapplied requests do not count.
+- The renderer stamps the event on the load's application receipt. Dismissing its
+  status or replacing/unloading the deck before a GUI poll cannot lose a playback
+  that already occurred. Filtering and later selections cannot retarget history.
+- File history belongs to a typed pathname plus the verified decode fingerprint;
+  replacement content at the same path and moved paths do not inherit it. Files
+  whose identity changed during decoding receive no unverified path-only credit.
+  Built-in stems have stable typed identity. History remains an in-session overlay;
+  unchanged identities can reappear after a scan without losing their timestamp.

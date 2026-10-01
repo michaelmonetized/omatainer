@@ -104,6 +104,12 @@ impl App {
                 .filter(|_| view.last_played_index == self.last_play_idx)
                 .and_then(find)
                 .unwrap_or(0);
+            // A hidden last-played source keeps its identity. Returning it to
+            // the filter must not inherit the temporary row-zero fallback.
+            if let Some(identity) = self.last_played.latest_identity() {
+                self.last_play_idx = view.indices.iter()
+                    .position(|&i| identity.matches(&self.library[i])).unwrap_or(0);
+            }
             let stride = view.stride.max(18.0);
             view.pending_offset = Some(if query_changed {
                 self.lib_sel as f32 * stride

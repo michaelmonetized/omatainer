@@ -72,6 +72,7 @@ impl App {
     /// Called even when no decode finishes: application and replacement are
     /// renderer events, not decoder events or title comparisons.
     pub(super) fn poll_load_receipts(&mut self) {
+        self.poll_play_history();
         for (deck, load) in self.loads.iter_mut().enumerate() {
             let Some(load) = load else { continue };
             // Decoder cancellation prevents future application; it cannot undo
