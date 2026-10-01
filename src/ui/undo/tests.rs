@@ -208,3 +208,47 @@ fn rejected_admission_keeps_history_and_reports_failure_in_actual_gui() {
     assert_eq!(gui.app.engine.undo.checkpoint(), before);
     assert!(gui.app.undo_history.queued.is_none());
 }
+
+#[test]
+fn renderer_rejected_note_edit_is_visible_without_altering_history_or_notes() {
+    let mut gui = Gui::new();
+    gui.refresh();
+    let original = gui.rt.tracks[0].clips[0].notes.clone();
+    let before = gui.app.engine.undo.checkpoint();
+    gui.app.send(Command::SetNotes {
+        track: 0,
+        scene: 0,
+        notes: vec![
+            crate::engine::MidiNote {
+                pitch: 60,
+                start: 0.0,
+                len: 0.25,
+                vel: 100
+            };
+            8193
+        ],
+    });
+    gui.refresh();
+    assert_eq!(gui.rt.tracks[0].clips[0].notes.len(), original.len());
+    for (current, old) in gui.rt.tracks[0].clips[0].notes.iter().zip(original) {
+        assert_eq!(
+            (current.pitch, current.start, current.len, current.vel),
+            (old.pitch, old.start, old.len, old.vel)
+        );
+    }
+    assert_eq!(gui.app.engine.undo.checkpoint(), before);
+    let error = gui
+        .app
+        .undo_history
+        .failure
+        .clone()
+        .expect("renderer rejection is retained");
+    assert!(error.contains("8192"));
+    assert!(
+        !gui.app.undo_history.open,
+        "automatic error display does not alter saved panel view"
+    );
+    gui.click("Dismiss history error");
+    assert!(gui.app.undo_history.failure.is_none());
+    assert!(!gui.app.undo_history.open);
+}

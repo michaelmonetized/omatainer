@@ -133,7 +133,7 @@ impl App {
             }
         }
     }
-    fn history_action(&mut self, redo: bool) {
+    pub(super) fn history_action(&mut self, redo: bool) {
         self.undo_history.gesture.set(None);
         self.undo_history.keyboard_gesture = None;
         if self.submit(if redo { Command::Redo } else { Command::Undo }) {
@@ -219,32 +219,6 @@ impl App {
         self.undo_history.open &= open;
         if !open {
             self.undo_history.failure = None;
-        }
-    }
-    pub(super) fn undo_shortcut(&mut self, ctx: &egui::Context) -> bool {
-        let action = ctx.input(|input| {
-            input.events.iter().find_map(|event| match event {
-                egui::Event::Key {
-                    key,
-                    pressed: true,
-                    repeat: false,
-                    modifiers,
-                    ..
-                } if modifiers.ctrl && !modifiers.alt && !modifiers.mac_cmd => {
-                    match (key, modifiers.shift) {
-                        (Key::Z, false) => Some(false),
-                        (Key::Z, true) | (Key::Y, false) => Some(true),
-                        _ => None,
-                    }
-                }
-                _ => None,
-            })
-        });
-        if let Some(redo) = action {
-            self.history_action(redo);
-            true
-        } else {
-            false
         }
     }
 }

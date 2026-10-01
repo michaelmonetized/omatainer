@@ -589,7 +589,6 @@ impl App {
         if !self.shortcut_focus.globals_allowed(ctx) {
             return;
         }
-        if self.undo_shortcut(ctx) { return; }
         ctx.input(|i| {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
