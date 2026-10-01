@@ -324,10 +324,22 @@ fn parameter_edits_keep_history_and_bypass_freezes_only_the_selected_slot() {
                 reference.mix = mix;
             }
             let input = signal(frame);
-            let expected = if (1_000..2_000).contains(&frame) {
+            // The first slot fades for exactly 240 samples at 48 kHz;
+            // its primitive history freezes only at the dry endpoint.
+            let level = if (1_000..1_240).contains(&frame) {
+                1.0 - (frame - 999) as f32 / 240.0
+            } else if (1_240..2_000).contains(&frame) {
+                0.0
+            } else if (2_000..2_240).contains(&frame) {
+                (frame - 1_999) as f32 / 240.0
+            } else {
+                1.0
+            };
+            let expected = if level == 0.0 {
                 input
             } else {
-                reference.process(input)
+                let wet = reference.process(input);
+                std::array::from_fn(|channel| input[channel] * (1.0-level) + wet[channel] * level)
             };
             let expected = unaffected.process(expected);
             assert_frame(chain.process_stereo(input, SR), expected, id.name(), frame);

@@ -1,5 +1,9 @@
 //! Per-track / per-scene FX chain. Slots are stackable; order is the chain.
 
+mod bypass;
+#[cfg(test)]
+mod neutral_tests;
+
 use crate::engine::dsp::{rate_blend, Delay, OnePole, Reverb, Svf};
 
 #[cfg(test)]
@@ -60,7 +64,8 @@ impl FxId {
 }
 
 /// A slot owns its processor history. Parameter edits keep that history; bypass
-/// freezes it and emits dry input, so re-enabling resumes only this slot's tail.
+/// fades to dry over 5 ms, then freezes it. Re-enabling fades the retained
+/// tail back in over 5 ms. A reversal continues from the current fade level.
 /// Delete or replace the slot to discard its history. Effect type is immutable.
 #[derive(Clone, Debug)]
 pub struct FxSlot {
@@ -70,6 +75,7 @@ pub struct FxSlot {
     pub p: [f32; 4],
     sample_rate: f32,
     state: FxState,
+    bypass: bypass::Bypass,
 }
 
 #[derive(Clone, Debug)]
@@ -134,6 +140,7 @@ impl FxSlot {
             p,
             sample_rate: sr,
             state,
+            bypass: bypass::Bypass::default(),
         }
     }
 
@@ -147,13 +154,26 @@ impl FxSlot {
         if self.sample_rate != sr {
             self.state = Self::new(self.id, sr).state;
             self.sample_rate = sr;
+            self.bypass = bypass::Bypass::default();
         }
     }
 
     fn tick_stereo(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
-        if !self.on {
+        let level = self.bypass.next(self.on, sr);
+        if level == 0.0 {
             return input;
         }
+        let processed = self.process_enabled(input, sr);
+        if level == 1.0 || processed == input {
+            processed
+        } else {
+            std::array::from_fn(|channel| {
+                input[channel] * (1.0 - level) + processed[channel] * level
+            })
+        }
+    }
+
+    fn process_enabled(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
         let wet = match &mut self.state {
             FxState::Envelope { level: env, blend } => {
                 // Link the two channels' gain reduction without sharing the
@@ -179,6 +199,11 @@ impl FxSlot {
             }
             FxState::Spread(delays) => {
                 let width = self.p[0];
+                if width == 0.5 {
+                    // A neutral spread never touches a delay tap (including
+                    // Delay's minimum one-sample delay) or advances its buffers.
+                    return input;
+                }
                 let delayed: [f32; 2] = std::array::from_fn(|channel| {
                     let delay = &mut delays[channel];
                     delay.time_samples = (width - 0.5).abs() * sr * 0.012;
@@ -231,9 +256,12 @@ impl FxSlot {
                     FxId::Eq5 => 5,
                     _ => 8,
                 };
-                std::array::from_fn(|channel| {
+                let filtered = std::array::from_fn(|channel| {
                     eq_n(&mut filters[channel], input[channel], self.p, bands)
-                })
+                });
+                // Keep histories warm while flat, but avoid cancellation and
+                // recombination roundoff at the neutral EQ setting.
+                if self.p[..3] == [0.5; 3] { input } else { filtered }
             }
             FxState::None => match self.id {
                 FxId::Balance => {
@@ -250,7 +278,13 @@ impl FxSlot {
         };
         // Preserve the pre-existing time-effect wet law here; correcting its
         // second interpolation is tracked separately by issue #54.
-        std::array::from_fn(|channel| input[channel] * (1.0 - self.mix) + wet[channel] * self.mix)
+        if self.mix == 0.0 || wet == input {
+            input
+        } else if self.mix == 1.0 {
+            wet
+        } else {
+            std::array::from_fn(|channel| input[channel] * (1.0 - self.mix) + wet[channel] * self.mix)
+        }
     }
 }
 
