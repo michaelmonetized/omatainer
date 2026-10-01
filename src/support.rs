@@ -2,6 +2,7 @@
 //! Collection and persistence run outside real-time callbacks; callback evidence
 //! comes from the engine's existing fixed atomic counters.
 mod model;
+pub mod operations;
 pub mod storage;
 pub mod worker;
 pub use model::*;

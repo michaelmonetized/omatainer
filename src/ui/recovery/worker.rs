@@ -33,6 +33,8 @@ pub(super) struct Status {
     pub message: String,
     pub durable: Option<Durable>,
     pub usage_bytes: Option<u64>,
+    pub write_failures: u64,
+    pub last_write_failure: Option<crate::support::FailureClass>,
 }
 #[derive(Clone)]
 pub(super) struct Durable {
@@ -328,6 +330,8 @@ impl Worker {
                             next = Instant::now();
                         }
                         Err(error) => {
+                            current.write_failures=current.write_failures.saturating_add(1);
+                            current.last_write_failure=Some(error.class);
                             current.warning = true;
                             current.message =
                                 format!("Recovery has not saved newer edits: {error}");
@@ -496,6 +500,19 @@ impl Sessions {
         Ok(warning)
     }
 }
+struct CaptureError { message:String, class:crate::support::FailureClass }
+impl From<String> for CaptureError {fn from(message:String)->Self {Self{message,class:crate::support::FailureClass::Unknown}}}
+impl From<crate::recovery::Error> for CaptureError {
+    fn from(error:crate::recovery::Error)->Self {
+        let class=match &error {
+            crate::recovery::Error::Cancelled=>crate::support::FailureClass::Cancelled,
+            crate::recovery::Error::Invalid(_)=>crate::support::FailureClass::Invalid,
+            crate::recovery::Error::Io{source,..}=>crate::support::FailureClass::from_io(source),
+        };
+        Self {message:error.to_string(),class}
+    }
+}
+impl std::fmt::Display for CaptureError {fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result {f.write_str(&self.message)}}
 fn capture_and_append(
     handle: &crate::engine::project::Handle,
     update: &Update,
@@ -503,7 +520,7 @@ fn capture_and_append(
     cancel: &AtomicBool,
     capture_active: &AtomicBool,
     #[cfg(test)] hooks: &Hooks,
-) -> Result<(crate::recovery::Commit, u64, u64), String> {
+) -> Result<(crate::recovery::Commit, u64, u64), CaptureError> {
     // SC ordering pairs GUI cancellation with its subsequent fence observation:
     // either it waits for this claim or this claim observes cancellation before
     // entering the engine's single capture exchange.
@@ -517,7 +534,7 @@ fn capture_and_append(
     capture_active.store(false, Ordering::SeqCst);
     let captured = captured.map_err(|e| e.to_string())?;
     if captured.checkpoint.epoch != update.epoch {
-        return Err("Document epoch changed; stale UI state was not journaled".into());
+        return Err("Document epoch changed; stale UI state was not journaled".to_owned().into());
     }
     let mut view = update.view.clone();
     view.deck_identities = std::array::from_fn(|deck| {
@@ -564,7 +581,7 @@ fn capture_and_append(
             if needs_new_session {
                 sessions.restart_session();
             }
-            return Err(error.to_string());
+            return Err(error.into());
         }
     };
     if commit.durable {

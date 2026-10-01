@@ -287,6 +287,10 @@ pub(super) fn show_help_with(ui: &mut Ui, profile: &crate::preferences::Profile)
 
 impl App {
     pub(super) fn dispatch_shortcut(&mut self, action: Action) {
+        if self.engine.safe_mode() && !matches!(action,Action::Help|Action::Midi) {
+            self.status="Safe mode keeps engine controls offline. Use Project Open/recovery/Save, or Restart normally.".into();
+            return;
+        }
         match action {
             Action::Transport => self.send(Command::TogglePlay),
             Action::Play(deck) => self.send(Command::DeckPlay { deck }),

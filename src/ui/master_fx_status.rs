@@ -3,6 +3,7 @@ use super::*;
 impl App {
     pub(super) fn master_fx_status(&self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("master-fx-status").resizable(false).show(ctx, |ui| {
+            if self.engine.safe_mode() {ui.disable();}
             ui.horizontal_wrapped(|ui| {
                 ui.label("Master FX");
                 for slot in 0..3 {

@@ -283,6 +283,23 @@ impl App {
             }
         }
     }
+    #[cfg(test)]
+    pub(super) fn force_support_recovery_test(&self) {self.recovery.worker.as_ref().unwrap().force();}
+    #[cfg(test)]
+    pub(super) fn stop_support_recovery_test(&mut self) {if let Some(worker)=self.recovery.worker.take(){worker.stop_for_test();}}
+    pub(super) fn support_recovery_failure(&self)->Option<(u64,crate::support::FailureClass)> {let status=self.recovery.worker.as_ref()?.status();Some((status.write_failures,status.last_write_failure?))}
+    pub(super) fn support_recovery_root(&self)->Option<PathBuf> {self.recovery.root.clone()}
+    pub(super) fn support_recovery_reference(&self)->Option<crate::support::RecoveryRef> {
+        let durable=self.recovery.worker.as_ref()?.status().durable.clone()?;
+        Some(crate::support::RecoveryRef{session:durable.session,epoch:durable.epoch,sequence:durable.sequence,revision:durable.revision,view_revision:durable.view_revision,captured_unix_ms:durable.captured_unix_ms,committed_unix_ms:durable.committed_unix_ms})
+    }
+    pub(super) fn preview_support_recovery(&mut self,candidate:crate::recovery::Candidate) {
+        self.recovery.open=true;
+        match self.engine.cmd.performance().optional_work() {
+            Ok(work)=>self.recovery.request(Job::Inspect(candidate,work)),
+            Err(error)=>self.recovery.message=Some(format!("Recovery preview not accepted: {error}")),
+        }
+    }
     fn refresh_recovery(&mut self) {
         match self.engine.cmd.performance().optional_work() {
             Ok(work) => self.recovery.request(Job::List(work)),

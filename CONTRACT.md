@@ -913,3 +913,30 @@ publication. Preferences persist startup protection only, not emergency state.
 - Performance protection rejects every grid edit at producer admission and again
   at consumption. Already-admitted rejected payloads acknowledge rejection and
   retire off the callback, without allocation/free in the warmed render path.
+
+
+## Local support evidence and safe startup
+
+- Support export is a typed allowlist, capped at 4 MiB, 512 structured events,
+  120 numeric counter samples and eight exact durable recovery references.
+  Media/project contents, paths/titles, port/device names, raw error/panic text,
+  environment, credentials and core dumps are excluded. No upload or audio
+  plugin host exists. Linked crate versions are distinct from unavailable
+  runtime driver versions and hardware latency/XRUN measurements.
+- A 256-observation nonblocking producer lane feeds a worker; JSON, filesystem
+  work and retirement never run in the audio callback. Collection loss and
+  confirmed persistence time are explicit. Eight inactive runs / 40 MiB logical
+  storage are bounded, and unknown/corrupt entries are preserved on refusal.
+- Private startup markers distinguish confirmed clean/startup failure, an
+  observed Rust panic, and unexplained unclean termination. The panic hook uses
+  a preopened descriptor and fixed byte only, without payload serialization or
+  fsync; abrupt failure may leave only unclean evidence. Marker ownership stays
+  locked through the last logical hook owner, independent of raw duplicated FDs.
+- Support lookup matches full opaque session digest, epoch and sequence plus
+  confirmed metadata; it never selects a newer record implicitly. Existing
+  recovery validation, unsaved decisions and stopped untitled restoration apply.
+- Safe mode opens no CPAL/MIDI backend and applies no startup preferences,
+  external themes/catalog or automatic recovery discovery. Real stopped project
+  capture/install supports Open, recovery and Save. Existing offline admission
+  rejects engine controls. Normal restart is explicit and occurs only after
+  successful close coordination, including Save/Discard/Cancel.
