@@ -152,8 +152,18 @@ impl Store {
         let mut ids = Vec::with_capacity(bundle.media.len());
         self.assets
             .retain(|_, asset| asset.sample.strong_count() != 0);
+        let mut metadata_bytes = state_bytes.len() as u64;
         for sample in &bundle.media {
             ids.push(self.asset(sample, reserve, config, cancel, &mut hook)?);
+            let asset = &self.assets[&(Arc::as_ptr(sample) as usize)];
+            let encoded_metadata = asset
+                .identity
+                .2
+                .checked_sub(sample.data.len() as u64 * 4 + project_file::CONTAINER_OVERHEAD)
+                .ok_or_else(|| Error::invalid("invalid recovery sidecar size"))?;
+            metadata_bytes = metadata_bytes.checked_add(encoded_metadata)
+                .filter(|bytes| *bytes <= project_file::DEFAULT_METADATA_LIMIT as u64)
+                .ok_or_else(|| Error::invalid("combined recovery metadata exceeds native project limit; prior checkpoint preserved"))?;
         }
         let sequence = self
             .sequence
@@ -331,19 +341,26 @@ impl Store {
                 .upgrade()
                 .is_some_and(|old| Arc::ptr_eq(&old, sample))
         }) {
-            let file = files::open(
+            let file = match files::open(
                 &self.path.join("assets").join(format!("{}.omat", asset.id)),
                 false,
                 false,
-            )?;
+            ) {
+                Ok(file) => file,
+                Err(error) => {
+                    self.poisoned = true;
+                    return Err(error);
+                }
+            };
             if files::identity(
                 &file
                     .metadata()
                     .map_err(|e| Error::io("inspect cached media", e))?,
             ) != asset.identity
             {
+                self.poisoned = true;
                 return Err(Error::invalid(
-                    "cached recovery media changed; previous checkpoint preserved",
+                    "cached recovery media changed; open a new session before writing again",
                 ));
             }
             return Ok(asset.id.clone());
@@ -413,6 +430,7 @@ impl Store {
         let cutoff = segments.len().saturating_sub(config.retention as usize);
         let mut retained = HashSet::new();
         let mut verified = HashSet::new();
+        let mut hash_budget = MAX_STORAGE_BYTES;
         // Verify the generations and sidecars that will remain before removing
         // any older fallback. An externally damaged middle checkpoint must not
         // turn a new successful write into destruction of the last good prior one.
@@ -424,7 +442,13 @@ impl Store {
                 ));
             }
             for record in read.records {
-                verify_assets(&self.path, &record.body.media, cancel, &mut verified)?;
+                verify_assets(
+                    &self.path,
+                    &record.body.media,
+                    cancel,
+                    &mut verified,
+                    &mut hash_budget,
+                )?;
                 retained.extend(record.body.media);
             }
         }
@@ -559,6 +583,7 @@ fn verify_assets(
     ids: &[String],
     cancel: &AtomicBool,
     verified: &mut HashSet<String>,
+    remaining_bytes: &mut u64,
 ) -> Result<(), Error> {
     for id in ids {
         check(cancel)?;
@@ -566,7 +591,18 @@ fn verify_assets(
             continue;
         }
         let asset = path.join("assets").join(format!("{id}.omat"));
-        if files::hex(&files::digest(&asset, ASSET_LIMIT, cancel)?) != *id {
+        let mut file = files::open(&asset, false, false)?;
+        let size = file
+            .metadata()
+            .map_err(|e| Error::io("inspect verification input", e))?
+            .len();
+        // Charge an attempt before hashing, including malformed sidecars and
+        // one byte needed to detect growth. Shared callers cannot multiply the
+        // per-file limit by every session/record in a private corrupted store.
+        *remaining_bytes = remaining_bytes.checked_sub(size.saturating_add(1))
+            .filter(|_| size <= ASSET_LIMIT)
+            .ok_or_else(|| Error::invalid("aggregate recovery verification byte budget exhausted; remaining data preserved"))?;
+        if files::hex(&files::digest_file(&mut file, size, cancel)?) != *id {
             return Err(Error::invalid(format!(
                 "media sidecar {id} has a SHA256 mismatch"
             )));
@@ -576,6 +612,13 @@ fn verify_assets(
     Ok(())
 }
 pub fn discover(root: &Path, cancel: &AtomicBool) -> Result<Inventory, Error> {
+    discover_with_budget(root, cancel, MAX_STORAGE_BYTES)
+}
+fn discover_with_budget(
+    root: &Path,
+    cancel: &AtomicBool,
+    mut hash_budget: u64,
+) -> Result<Inventory, Error> {
     check(cancel)?;
     if !root.exists() {
         return Ok(Inventory::default());
@@ -686,7 +729,13 @@ pub fn discover(root: &Path, cancel: &AtomicBool) -> Result<Inventory, Error> {
                 report(&mut warnings, warning);
             }
             for record in read.records.into_iter().rev() {
-                match verify_assets(&path, &record.body.media, cancel, &mut verified) {
+                match verify_assets(
+                    &path,
+                    &record.body.media,
+                    cancel,
+                    &mut verified,
+                    &mut hash_budget,
+                ) {
                     Ok(()) => {
                         chosen = Some(Candidate {
                             root: root.into(),
@@ -753,20 +802,44 @@ fn exact_record(
         .ok_or_else(|| {
             Error::invalid("recovery candidate changed or disappeared; discover it again")
         })?;
-    verify_assets(path, &record.body.media, cancel, &mut HashSet::new())?;
+    let mut hash_budget = project_file::DEFAULT_PCM_LIMIT
+        + project_file::DEFAULT_METADATA_LIMIT as u64
+        + (project_file::CONTAINER_OVERHEAD + 1) * project_file::DEFAULT_MEDIA_LIMIT as u64;
+    verify_assets(
+        path,
+        &record.body.media,
+        cancel,
+        &mut HashSet::new(),
+        &mut hash_budget,
+    )?;
     Ok(record)
 }
 pub fn recover<T: DeserializeOwned>(
     candidate: &Candidate,
     cancel: &AtomicBool,
 ) -> Result<Recovered<T>, Error> {
+    recover_with_limits(candidate, cancel, Limits::default())
+}
+fn recover_with_limits<T: DeserializeOwned>(
+    candidate: &Candidate,
+    cancel: &AtomicBool,
+    mut remaining: Limits,
+) -> Result<Recovered<T>, Error> {
     check(cancel)?;
     let (path, _lock) = session_lock(&candidate.root, &candidate.session)?
         .ok_or_else(|| Error::invalid("recovery session is active in another process"))?;
     let record = exact_record(candidate, &path, cancel)?;
+    if record.body.media.len() > remaining.max_media {
+        return Err(Error::invalid(
+            "combined recovery asset count exceeds native project limit",
+        ));
+    }
+    remaining.max_metadata_bytes = remaining
+        .max_metadata_bytes
+        .checked_sub(journal::json(&record.body.state)?.len())
+        .ok_or_else(|| Error::invalid("combined recovery metadata exceeds native project limit"))?;
     let mut media = Vec::with_capacity(record.body.media.len());
     let mut report_rows = candidate.report.clone();
-    let mut total = 0u64;
     for id in record.body.media {
         check(cancel)?;
         let asset_path = path.join("assets").join(format!("{id}.omat"));
@@ -779,10 +852,10 @@ pub fn recover<T: DeserializeOwned>(
         let before = files::digest_file(&mut file, ASSET_LIMIT, cancel)?;
         file.seek(SeekFrom::Start(0))
             .map_err(|e| Error::io("rewind verified media", e))?;
-        let asset: Bundle<()> = project_file::load_from_file(
+        let (asset, metadata_bytes): (Bundle<()>, _) = project_file::load_from_file_measured(
             file.try_clone()
                 .map_err(|e| Error::io("retain verified media inode", e))?,
-            &Limits::default(),
+            &remaining,
             cancel,
         )?;
         if asset.media.len() != 1
@@ -800,10 +873,10 @@ pub fn recover<T: DeserializeOwned>(
             ));
         }
         let sample = asset.media.into_iter().next().unwrap();
-        total = total
-            .checked_add(sample.data.len() as u64 * 4)
-            .filter(|total| *total <= project_file::DEFAULT_PCM_LIMIT)
-            .ok_or_else(|| Error::invalid("combined recovered PCM exceeds native project limit"))?;
+        // The codec rejects each header against the remaining budgets before
+        // allocating its metadata/PCM, including repeated references to one ID.
+        remaining.max_pcm_bytes -= sample.data.len() as u64 * 4;
+        remaining.max_metadata_bytes -= metadata_bytes;
         if Path::new(&sample.path).is_absolute() && !Path::new(&sample.path).is_file() {
             report(&mut report_rows,format!("Original external media is unavailable: {}; verified embedded recovery media was restored",sample.path));
         }

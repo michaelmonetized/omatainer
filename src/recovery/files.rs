@@ -135,8 +135,12 @@ pub(super) fn digest_file(
     let mut total = 0u64;
     loop {
         check(cancel)?;
+        let allowed = limit
+            .saturating_sub(total)
+            .saturating_add(1)
+            .min(IO_CHUNK as u64) as usize;
         let count = file
-            .read(&mut bytes)
+            .read(&mut bytes[..allowed])
             .map_err(|e| Error::io("hash recovery file", e))?;
         if count == 0 {
             break;

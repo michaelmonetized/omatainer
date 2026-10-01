@@ -27,7 +27,6 @@ pub(super) struct Record {
 pub(super) struct ReadResult {
     pub records: Vec<Record>,
     pub warning: Option<String>,
-    pub bytes: u64,
 }
 struct Bounded(Vec<u8>);
 impl Write for Bounded {
@@ -84,7 +83,6 @@ pub(super) fn read(path: &Path, cancel: &AtomicBool) -> Result<ReadResult, Error
     let mut result = ReadResult {
         records: Vec::new(),
         warning: None,
-        bytes: len,
     };
     while result.records.len() < RECORDS_LIMIT as usize {
         check(cancel)?;
