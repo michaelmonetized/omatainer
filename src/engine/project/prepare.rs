@@ -28,10 +28,9 @@ impl Prepared {
             track.clips = saved.clips.map(|c| Clip { kind: c.kind, name: c.name, bars: c.bars,
                 notes: c.notes, gain: c.gain, audio: c.audio.map(|index| media[index].clone()) });
             // Prepare the note heap off audio, then hold the launch until Play.
-            track.playing = saved.launch.map(|p| PlayingClip { scene: p.scene,
-                start_beat: p.start_beat, last_beat: 0.0, looping: p.looping });
+            track.project_resume = saved.launch.map(|p| PlayingClip { scene: p.scene,
+                start_beat: p.start_beat, last_beat: -0.0001, looping: p.looping });
             track.rebuild_midi_schedule(state.beat);
-            rt.project_resume[i] = track.playing.take();
         }
         for (i, saved) in state.decks.into_iter().enumerate() {
             let deck = &mut rt.decks[i];
@@ -81,7 +80,7 @@ impl Prepared {
             selected_scene, selected_deck, note_recording, metronome, metro, quantize,
             sampler_bank, sampler_inst, sampler_oct, sampler_poly, sampler_banks, pad_banks,
             pad_voices, pad_destinations, pad_output, pad_targets, builtin, fx_view, scene_fx,
-            compose_target, project_resume);
+            compose_target);
     }
 }
 

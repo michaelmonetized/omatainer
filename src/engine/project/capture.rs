@@ -103,7 +103,7 @@ impl Frame {
             let out = &mut target.tracks[i];
             copy_string(&mut out.name, &track.name);
             out.scene_bus = track.scene_bus;
-            out.launch = track.playing.or(rt.project_resume[i]).map(|p| Launch { scene: p.scene, start_beat: p.start_beat, looping: p.looping });
+            out.launch = track.playing.or(track.project_resume).map(|p| Launch { scene: p.scene, start_beat: p.start_beat, looping: p.looping });
             out.gain = track.gain; out.pan = track.pan; out.mute = track.mute;
             out.solo = track.solo; out.armed = track.armed; out.kind = track.kind;
             out.synth = synth(&track.poly); out.eq = eq(&track.eq);

@@ -100,3 +100,151 @@ fn validation_rejects_new_schema_bad_floats_indices_notes_and_limits() {
     let mut json = serde_json::to_value(&saved.state).unwrap(); json["future_automation"] = serde_json::json!([1,2]);
     assert!(serde_json::from_value::<State>(json).is_err());
 }
+
+fn wait_until(mut predicate: impl FnMut() -> bool) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !predicate() { assert!(Instant::now() < deadline, "worker stalled"); std::thread::sleep(Duration::from_millis(1)); }
+}
+fn drive<T: Send + 'static>(rt: &mut RtEngine, work: impl FnOnce() -> T + Send + 'static) -> T {
+    let worker = std::thread::spawn(work);
+    wait_until(|| { rt.process(&mut []); worker.is_finished() });
+    worker.join().unwrap()
+}
+
+#[test]
+fn real_worker_handoff_captures_and_conflicts_after_older_queued_edits() {
+    let (engine, mut live) = Engine::headless_for_test(48000, 256);
+    let handle = engine.project.clone();
+    let saved = drive(&mut live, move || handle.capture(&AtomicBool::new(false))).unwrap();
+    let before = saved.revision;
+    let prepared = Prepared::from_state(saved.state, saved.media, 48000).unwrap();
+    engine.send(Command::TrackGain { track: 3, value: 0.23 }).unwrap();
+    let handle = engine.project.clone();
+    let rejected = drive(&mut live, move || handle.install(prepared, before, &AtomicBool::new(false)));
+    assert!(matches!(rejected, Err(Error::Conflict)));
+    assert_eq!(live.tracks[3].gain, 0.23);
+    let revision = engine.project.revision();
+    let handle = engine.project.clone();
+    let applied = drive(&mut live, move || handle.install(Prepared::empty(48000).unwrap(), revision, &AtomicBool::new(false))).unwrap();
+    assert!(applied.revision > revision);
+    assert!(live.tracks.iter().all(|t| t.clips.iter().all(|c| !c.occupied())));
+    assert!(live.decks.iter().all(|d| d.audio.is_none()));
+}
+
+#[test]
+fn cancellation_and_busy_handoffs_cannot_steal_results_or_replace_project() {
+    let mut live = rt();
+    let handle = live.project.clone();
+    let revision = handle.revision();
+    let cancel = Arc::new(AtomicBool::new(false));
+    let cancel_worker = cancel.clone();
+    let worker_handle = handle.clone();
+    let worker = std::thread::spawn(move || worker_handle.install(Prepared::empty(48000).unwrap(), revision, &cancel_worker));
+    wait_until(|| !handle.shared.incoming.is_empty());
+    assert!(matches!(handle.capture(&AtomicBool::new(false)), Err(Error::Busy)));
+    cancel.store(true, Ordering::Release);
+    wait_until(|| worker.is_finished());
+    assert!(matches!(worker.join().unwrap(), Err(Error::Cancelled)));
+    live.process(&mut []); // Retire the cancelled payload; it must not install.
+    assert_eq!(handle.revision(), revision);
+    assert!(live.tracks[0].clips[0].occupied());
+    let next = handle.clone();
+    assert!(drive(&mut live, move || next.capture(&AtomicBool::new(false))).is_ok());
+}
+
+#[test]
+fn opening_resets_physical_gates_and_resumes_saved_clips_only_on_play() {
+    let mut original = rt();
+    original.apply(Command::LaunchScene { scene: 0 });
+    original.process(&mut [0.0; 1024]);
+    let saved = captured(&original);
+    let expected = serde_json::to_value(&saved.state).unwrap();
+    let mut prepared = Prepared::from_state(saved.state, saved.media, 48000).unwrap();
+    let mut live = rt();
+    live.apply(Command::Select { track: 2, scene: 0 });
+    live.apply(Command::LiveNoteOn { source: 99, ch: 0, note: 64, vel: 100 });
+    live.apply(Command::DeckTouch { deck: 0, on: true });
+    prepared.swap_into(&mut live);
+    let mut out = [0.0; 1024]; live.process(&mut out);
+    assert!(out.iter().all(|v| *v == 0.0), "opened project emitted audio before Play");
+    assert_eq!(serde_json::to_value(&captured(&live).state).unwrap(), expected);
+    live.apply(Command::Play); live.process(&mut out);
+    assert!(out.iter().any(|v| v.abs() > 0.0001));
+    assert!(live.tracks.iter().any(|t| t.playing.is_some()));
+    live.apply(Command::LiveNoteOff { source: 99, ch: 0, note: 64 });
+    live.apply(Command::DeckTouch { deck: 0, on: false });
+    live.process(&mut out);
+    assert!(out.iter().any(|v| v.abs() > 0.0001), "old physical release silenced restored clip");
+}
+
+#[test]
+fn canonical_reopen_render_matches_reference_across_block_sizes_and_output_rates() {
+    let source = populated();
+    for sr in [44100, 48000, 96000] {
+        let a = captured(&source); let b = captured(&source);
+        let mut first = Prepared::from_state(a.state, a.media, sr).unwrap();
+        // Exercise the actual serde state boundary, not a clone-only oracle.
+        let encoded = serde_json::to_vec(&b.state).unwrap();
+        let decoded: State = serde_json::from_slice(&encoded).unwrap();
+        let mut second = Prepared::from_state(decoded, b.media, sr).unwrap();
+        for live in [&mut first.rt, &mut second.rt] {
+            live.apply(Command::LaunchScene { scene: 0 });
+            live.decks[0].playing = true; live.decks[1].playing = true;
+        }
+        let mut expected = vec![0.0; 16384]; let mut actual = vec![0.0; 16384];
+        first.rt.process(&mut expected);
+        for block in actual.chunks_mut(254) { second.rt.process(block); }
+        assert_eq!(expected, actual, "reopened reference render changed at {sr} Hz");
+    }
+}
+
+#[test]
+fn dirty_revision_ignores_performance_gates_but_tracks_note_recording_and_controls() {
+    let mut live = rt(); let initial = live.project.revision();
+    live.apply(Command::Play); live.apply(Command::LiveNoteOn { source: 3, ch: 0, note: 55, vel: 90 });
+    live.apply(Command::LiveNoteOff { source: 3, ch: 0, note: 55 });
+    live.apply(Command::MidiClock { source: 3 }); live.apply(Command::Stop);
+    assert_eq!(live.project.revision(), initial);
+    live.apply(Command::ComposeArm { track: 7, scene: 7 });
+    let armed = live.project.revision(); assert!(armed > initial);
+    live.apply(Command::SamplerPad { pad: 3, on: true });
+    assert!(live.project.revision() > armed);
+    live.process(&mut vec![0.0; 24000]);
+    let note = &captured(&live).state.tracks[7].clips[7].notes[0];
+    assert!(note.len > 0.25, "save must capture held duration at its block boundary");
+    let held = live.project.revision(); live.apply(Command::SamplerPad { pad: 3, on: false });
+    assert!(live.project.revision() > held);
+    let recorded = live.project.revision(); live.apply(Command::TrackGain { track: 2, value: 0.33 });
+    assert!(live.project.revision() > recorded);
+}
+
+#[test]
+fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
+    for arp in [false, true] {
+        let mut source = rt();
+        source.tracks[2].clips[0].notes = vec![MidiNote { pitch: 60, start: 0.0, len: 2.0, vel: 100 }];
+        if arp { source.tracks[2].fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, 48000.0)); }
+        source.apply(Command::LaunchClip { track: 2, scene: 0 });
+        let saved = captured(&source);
+        let mut opened = Prepared::from_state(saved.state, saved.media, 48000).unwrap();
+        opened.rt.apply(Command::SetNotes { track: 2, scene: 0,
+            notes: vec![MidiNote { pitch: 72, start: 0.0, len: 2.0, vel: 100 }] });
+        opened.rt.apply(Command::Play); opened.rt.process(&mut [0.0; 8]);
+        let notes: Vec<_> = opened.rt.tracks[2].poly.voices.iter().filter(|v| v.env.stage > 0).map(|v| v.note()).collect();
+        assert!(notes.contains(&72), "new first-step pitch did not sound (arp={arp}): {notes:?}");
+        assert!(!notes.contains(&60), "old saved pitch survived edit (arp={arp}): {notes:?}");
+    }
+}
+
+#[test]
+fn view_edits_and_continuing_held_notes_cannot_appear_saved() {
+    let mut live = rt(); let first = live.project.revision();
+    live.apply(Command::SelectDeck(1)); assert!(live.project.revision() > first);
+    live.apply(Command::ComposeArm { track: 7, scene: 7 });
+    live.apply(Command::SamplerPad { pad: 3, on: true });
+    let saved = captured(&live);
+    live.process(&mut [0.0; 256]);
+    assert!(live.project.revision() > saved.revision, "ongoing held recording appeared clean after Save");
+    let later = captured(&live);
+    assert!(later.state.tracks[7].clips[7].notes[0].len > saved.state.tracks[7].clips[7].notes[0].len);
+}
