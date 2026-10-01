@@ -243,11 +243,18 @@ def verify(report, manifest, binary_sha256, manifest_sha256, notices_sha256):
     if report.get('build',{}).get('test_exit_code') != 0: failures.append(f'benchmark process exited {report.get("build",{}).get("test_exit_code")}')
     if report['summary'] != summary or report['failures'] != failures or report['status'] != ('fail' if failures else 'pass'):
         fail('benchmark summary does not match independently recomputed raw evidence')
-    keys(report['host'], ('execution','system','architecture','kernel','cpu_model','logical_cpus','affinity','memory_bytes','governors'), 'host')
+    keys(report['host'], ('execution','system','architecture','kernel','cpu_model','logical_cpus','affinity','memory_bytes','governors','load_average_before_workload','load_average_after_workload','process_nice','scheduler_policy'), 'host')
     if report['host']['execution'] != 'local' or report['host']['system'] != 'Linux': fail('benchmark must run locally on documented Linux hardware')
     for name in ('architecture','kernel','cpu_model'): text(report['host'][name], name)
     integer(report['host']['logical_cpus'], 'logical CPUs', 1, 4096)
     integer(report['host']['memory_bytes'], 'memory', 1)
+    integer(report['host']['process_nice'], 'process nice', -20, 19)
+    integer(report['host']['scheduler_policy'], 'scheduler policy', 0, 6)
+    for name in ('load_average_before_workload','load_average_after_workload'):
+        values=report['host'][name]
+        if type(values) is not list or len(values)!=3: fail('missing workload load averages')
+        for value in values:
+            if number(value, name)<0: fail('negative host load average')
     if type(report['host']['affinity']) is not list or not report['host']['affinity'] or len(report['host']['affinity']) > 4096: fail('missing CPU affinity')
     for cpu in report['host']['affinity']: integer(cpu, 'CPU ID', 0, 4095)
     if type(report['host']['governors']) is not list or len(report['host']['governors']) > 64: fail('invalid governor inventory')
@@ -348,7 +355,9 @@ def host():
         except OSError: governors.add('unavailable')
     return {'execution':'local','system':'Linux','architecture':platform.machine(),'kernel':platform.release(),
             'cpu_model':model,'logical_cpus':os.cpu_count(),'affinity':sorted(os.sched_getaffinity(0)),
-            'memory_bytes':memory,'governors':sorted(governors)}
+            'memory_bytes':memory,'governors':sorted(governors),
+            'load_average_before_workload':list(os.getloadavg()),'load_average_after_workload':list(os.getloadavg()),
+            'process_nice':os.getpriority(os.PRIO_PROCESS,0),'scheduler_policy':os.sched_getscheduler(0)}
 
 def artifact(compiled, test):
     if compiled.returncode: fail('controlled release compilation failed; report remains incomplete')
@@ -400,7 +409,9 @@ def run(root, binary, destination):
             build['native_accessibility']={'exit_code':0,'report':parse(native.stdout)}
             native_evidence(build['native_accessibility'])
             command=[str(test_binary),rules['test'],'--ignored','--exact','--test-threads=1']
+            machine['load_average_before_workload']=list(os.getloadavg())
             result=execute(command,timeout=rules['timeout_seconds'],limit=16*1024*1024,env=environment,log=log,cwd=root)
+            machine['load_average_after_workload']=list(os.getloadavg())
             build['test_exit_code']=result.returncode
             if digest(test_binary)!=build['test_binary_sha256']: fail('test executable changed during benchmark')
         raw_bytes=regular(raw_path)

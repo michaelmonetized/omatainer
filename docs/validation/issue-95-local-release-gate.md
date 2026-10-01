@@ -84,7 +84,9 @@ waits and GPU/compositor presentation. Long recording uses real renderer blocks
 in accelerated virtual time. These are local work budgets, not proof of physical
 audio deadlines, XRUN freedom, converter latency, FPS, audible quality or the
 user's Pioneer/Numark/Akai hardware behavior. The report retains these limits
-and host CPU, kernel, memory, affinity and governor information.
+and host CPU, kernel, memory, affinity, governor, process priority/scheduler and
+before/after workload load averages. Run qualification after stopping concurrent
+compilation and unrelated test suites; any budget miss still rejects the report.
 
 ## Retention and resource bounds
 
@@ -128,3 +130,62 @@ while older release tails remained. Saturated voice pools now prefer released ta
 before active holds. A fixed-pool regression verifies independent sources plus clip
 onsets and exact releases without heap work. These fixes preserve the workload's
 original zero-allocation and zero-rejection requirements.
+
+The first assembled release attempt passed all functional/audio state checks but
+failed composer wall-time limits during a concurrent local Rust test suite. Its
+maximum reached 17.773 ms against the unchanged 10.667 ms budget; one repetition's
+p99 reached 5.481 ms against 5.333 ms. That attempt remains failing evidence and is
+not qualified. Follow-up qualification pauses our other build/test jobs, records
+load and keeps all allocation, deadline, jitter and UI limits unchanged. This
+separates controlled host capacity from a guarantee under arbitrary competing work.
+
+## Qualified assembled run
+
+The complete ordered stack passes **673 ordinary Rust tests** (12 opt-in fixtures
+ignored by that command). The controlled release gate then passed its required
+private native AT-SPI preflight and all eight workload groups, each with three
+fresh sessions. Workload execution took 131.81 seconds.
+
+Host: Apple MacBook Pro 16-inch M1 Pro (2021), Linux aarch64, kernel
+`7.1.13-3-2-ARCH`, 10 logical CPUs, 16,141,549,568 bytes RAM, `schedutil`,
+affinity CPUs 0–9, ordinary scheduler policy 0 / nice 0. Our other builds and
+test suites were paused. One-minute host load was 2.681 before workloads and
+1.645 afterward; this is a controlled local capacity run.
+
+Worst p99 and maximum across the three sessions, in milliseconds:
+
+| Workload | Timed path | p99 | Maximum |
+| --- | --- | ---: | ---: |
+| callback_producer | callback_wall | 2.292 | 6.063 |
+| callback_producer | render_cpu | 0.681 | 0.705 |
+| callback_composer | callback_wall | 2.502 | 6.939 |
+| callback_composer | render_cpu | 0.690 | 0.733 |
+| callback_live_dj | callback_wall | 0.462 | 1.035 |
+| callback_live_dj | render_cpu | 0.060 | 0.072 |
+| callback_hybrid | callback_wall | 2.829 | 3.180 |
+| callback_hybrid | render_cpu | 0.698 | 0.711 |
+| large_crate_ui | frame_wall | 3.492 | 4.953 |
+| multi_controller_ipc | frame_wall | 4.654 | 6.656 |
+| multi_controller_ipc | ipc_roundtrip | 9.460 | 10.178 |
+| multi_controller_ipc | midi_dispatch | 3.176 | 5.342 |
+| project_roundtrip | frame_wall | 3.704 | 3.704 |
+| long_note_recording | frame_wall | 6.942 | 6.942 |
+| long_note_recording | renderer_wall | 2.389 | 3.937 |
+
+Callback wall budgets retain p99 within one block and maximum within two blocks;
+render CPU p99 remains below 75% of the block duration. The 128-frame DJ block
+and 256-frame other blocks are at 48 kHz. All callback and long-recorder measured
+allocations/frees are zero. No workload rejected a command or lost a MIDI event.
+
+The release preflight visited 230 native nodes, persisted UI scale 1.25 and saved/
+reopened the recorded project note. It drove the production App via native APIs,
+without opening an audio device, desktop window or physical controller.
+
+Both standalone package verification and the independent source-bound report
+check passed against the production release binary. Validator, package and
+installer regression suites passed 6, 8 and 21 groups respectively. Packages
+retain the full raw samples, recomputed summaries and conditions at the documented
+validation path. The passing report does not convert the prior contention failure
+into a pass or establish physical audio/hardware performance.
+
+Production binary SHA-256: `79b4fa29f4fe436134f8ef301b6d6c1ea235f99213e1a768858bfc0a3ad48548`.

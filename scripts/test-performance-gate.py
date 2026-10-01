@@ -63,7 +63,9 @@ class PerformanceTests(unittest.TestCase):
                            lambda v:v['build'].__setitem__('native_accessibility',{'exit_code':1,'report':{}}),
                            lambda v:v['build']['native_accessibility']['report'].__setitem__('actions',[{'action':'Click'}]),
                            lambda v:v['build'].__setitem__('test_binary_sha256','z'*64),
-                           lambda v:v['host'].__setitem__('execution','github-actions')]:
+                           lambda v:v['host'].__setitem__('execution','github-actions'),
+                           lambda v:v['host'].__setitem__('load_average_before_workload',[-1,0,0]),
+                           lambda v:v['host'].__setitem__('scheduler_policy',True)]:
                 altered=copy.deepcopy(good);mutate(altered)
                 with self.assertRaises(gate.GateError):verify(altered)
     def test_subprocess_output_deadlines_descendants_and_cancellation_are_bounded(self):

@@ -37,7 +37,7 @@ def report(root,binary):
     (root/'licenses/manifest.json').write_bytes(gate.encode(manifest))
     sample=raw(policy,manifest);summary,failures=gate.evaluate(sample,policy,target,manifest)
     result={'schema':1,'status':'pass','started_utc':'2026-10-01T00:00:00+00:00','finished_utc':'2026-10-01T00:00:01+00:00',
-            'host':{'execution':'local','system':'Linux','architecture':arch,'kernel':'fixture','cpu_model':'SYNTHETIC TEST FIXTURE','logical_cpus':1,'affinity':[0],'memory_bytes':1,'governors':[]},
+            'host':{'execution':'local','system':'Linux','architecture':arch,'kernel':'fixture','cpu_model':'SYNTHETIC TEST FIXTURE','logical_cpus':1,'affinity':[0],'memory_bytes':1,'governors':[],'load_average_before_workload':[0,0,0],'load_average_after_workload':[0,0,0],'process_nice':0,'scheduler_policy':0},
             'build':{'profile':'release','cargo':'fixture','binary_info':{'schema':1,'debug_assertions':False,'pkg_version':manifest['application'],'arch':arch,'os':'linux'},
                      'environment':{},'test_exit_code':0,'test_binary_sha256':'0'*64,'native_accessibility':{'exit_code':0,'report':{'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':1,'frames':5,'pitch_role':'slider','pitch_range':[-8,8],'pitch_renderer_after_native_setvalue':.25,'persisted_notes':1,'reopened_notes':1,'preferences_saved_scale':1.25,'actions':[{'action':action} for action in ('Focus','SetValue','Click')],'scope':'SYNTHETIC validator fixture; not native evidence'}}},
             'bindings':gate.bindings(root,Path(binary),manifest),'policy_text':policy_text,'raw':sample,'summary':summary,'failures':failures}
