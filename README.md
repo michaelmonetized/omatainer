@@ -61,6 +61,34 @@ connections and DSP tails are transient. Default limits are 8 MiB metadata,
 256 embedded media entries and 1 GiB PCM; unsupported or corrupt projects are
 rejected without replacement. See the [project workflow evidence](docs/validation/issue-82-ui.md)
 and [file format and atomic save rules](docs/validation/issue-82-codec.md).
+## DJ library
+
+Tracks discovered by Scan or successfully loaded from a dropped file are stored
+in `$XDG_DATA_HOME/omatainer/library.json` (normally
+`~/.local/share/omatainer/library.json`). Stable track IDs, metadata, tempo
+provenance, duration, playback history, cues and loop preparation survive restart.
+This catalog is independent of DAW projects. Its saving/error status appears
+below the crate controls; row tooltips include track ID and typed location.
+
+**library… → Import catalog** imports an Omatainer catalog JSON on the background
+worker. Version 2 is the current format; the documented flat version 1 layout
+migrates without changing IDs or preparation. Conflicting identities or unknown
+fields/formats are rejected rather than discarded. Removable-volume and provider
+references stay distinct, but loading them is explicitly unavailable until a
+resolver is implemented. No provider/network media is fetched.
+
+The main cue, eight hot cues and saved loop range/arming state return on a later
+load; playback stays paused. Replaced file bytes keep their location's ID but get
+fresh preparation, with old fingerprint versions preserved in the catalog. A
+moved path is a new location. The current engine has no editable beat-grid model;
+only its implemented tempo analysis and cue/loop preparation are persisted.
+
+Saves publish atomically and retain `library.backup.json`. A malformed or newer
+store is never reset to an empty library. Repair/restore it while the app is
+closed, then restart; errors remain visible. Normal close waits without blocking
+the UI for earlier deck edits and the background save. **Close without saving**
+explicitly accepts any uncommitted changes being lost. See the
+[storage schema, recovery policy and validation](docs/validation/issue-85-dj-library.md).
 
 ## Keybinds (also under `?`)
 
