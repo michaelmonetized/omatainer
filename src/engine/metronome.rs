@@ -195,7 +195,7 @@ mod tests {
         rt.apply(Command::Play);
         rt.process(&mut silence);
         assert!(silence.iter().any(|sample| sample.abs() > 1e-6));
-        rt.set_sample_rate(96_000);
+        rt.set_sample_rate(96_000).unwrap();
         assert_eq!(rt.metro.length, 1920);
         assert_eq!(rt.metro.age, rt.metro.length);
         let mut click = Click::new(48_000.0);

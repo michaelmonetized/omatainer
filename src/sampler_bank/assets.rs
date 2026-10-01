@@ -124,6 +124,7 @@ impl Registry {
                 banks: Vec::with_capacity(limits.banks),
                 settings: Vec::with_capacity(limits.settings),
                 samples: Vec::with_capacity(limits.samples),
+                factories: Vec::with_capacity(96),
             }),
             wake: Condvar::new(),
             #[cfg(test)]
@@ -151,6 +152,7 @@ struct State {
     banks: Vec<(Arc<Data>, u64)>,
     settings: Vec<(Arc<Settings>, u64)>,
     samples: Vec<(Arc<Sample>, u64, u64)>,
+    factories: Vec<(super::Factory, u32, Weak<Data>)>,
 }
 impl State {
     fn used(&self) -> Budget {
@@ -237,6 +239,8 @@ impl State {
             .retain(|(settings, _)| Arc::strong_count(settings) != 1);
         self.samples
             .retain(|(sample, _, _)| Arc::strong_count(sample) != 1);
+        self.factories
+            .retain(|(_, _, bank)| bank.strong_count() != 0);
     }
     fn empty(&self) -> bool {
         self.banks.is_empty()
@@ -389,6 +393,50 @@ impl Owner {
     pub fn owns(&self, bank: &Bank) -> bool {
         self.0.shared.id == bank.owner
     }
+    pub fn same_owner(&self, other: &Self) -> bool {
+        self.0.shared.id == other.0.shared.id
+    }
+    /// Factory PCM is immutable and reusable across simultaneously prepared
+    /// graphs at the same output rate. Cache entries are weak, never extra pins.
+    pub fn factory(&self, factory: super::Factory, rate: u32) -> Result<Option<Bank>, Error> {
+        let state = self.0.shared.state();
+        self.0.shared.check()?;
+        Ok(state
+            .factories
+            .iter()
+            .find(|(f, r, _)| *f == factory && *r == rate)
+            .and_then(|(_, _, data)| data.upgrade())
+            .map(|data| Bank {
+                data,
+                owner: self.0.shared.id,
+            }))
+    }
+    pub fn pin_factory(
+        &self,
+        factory: super::Factory,
+        rate: u32,
+        data: Data,
+    ) -> Result<Bank, Error> {
+        if let Some(bank) = self.factory(factory, rate)? {
+            return Ok(bank);
+        }
+        let bank = self.pin(data)?;
+        let mut state = self.0.shared.state();
+        state
+            .factories
+            .retain(|(_, _, bank)| bank.strong_count() != 0);
+        if state.factories.len() < 96
+            && !state
+                .factories
+                .iter()
+                .any(|(f, r, _)| *f == factory && *r == rate)
+        {
+            state
+                .factories
+                .push((factory, rate, Arc::downgrade(&bank.data)));
+        }
+        Ok(bank)
+    }
 }
 
 pub(crate) struct Reservation {
@@ -442,6 +490,14 @@ impl Deref for Bank {
     type Target = Data;
     fn deref(&self) -> &Data {
         &self.data
+    }
+}
+impl Bank {
+    pub fn metadata_bytes(&self) -> usize {
+        (bank_bytes(&self.data) + settings_bytes(&self.settings)) as usize
+    }
+    pub fn same_data(&self, other: &Self) -> bool {
+        self.owner == other.owner && Arc::ptr_eq(&self.data, &other.data)
     }
 }
 

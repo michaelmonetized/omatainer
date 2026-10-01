@@ -37,7 +37,7 @@ fn sample_rate_updates_all_instrument_and_sampler_adsrs_and_oscillator_hz() {
         let mut rt = engine();
         rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Pad)));
         rt.sampler_poly.cutoff = 2700.0;
-        rt.set_sample_rate(sr);
+        rt.set_sample_rate(sr).unwrap();
         for poly in rt
             .tracks
             .iter()
@@ -78,7 +78,7 @@ fn sample_rate_updates_all_instrument_and_sampler_adsrs_and_oscillator_hz() {
         for sample in rt.tracks[0]
             .drum_samples
             .iter()
-            .chain(rt.pad_banks.iter().flatten())
+            .chain(rt.sampler_banks.iter().flat_map(|bank| bank.data.audio.iter().flatten()))
         {
             assert_eq!(sample.sr, sr);
         }
@@ -118,7 +118,7 @@ fn sample_rate_rebuilds_every_track_and_scene_slot_preserving_controls() {
                 slot.on = index % 3 != 0;
             }
         }
-        rt.set_sample_rate(sr);
+        rt.set_sample_rate(sr).unwrap();
         for chain in rt
             .tracks
             .iter_mut()
@@ -195,7 +195,7 @@ fn sample_rate_delay_reverb_and_haas_arrivals_keep_their_durations() {
 
         // The master uses tempo duration rather than the slot's fixed 250 ms.
         let mut rt = engine();
-        rt.set_sample_rate(sr);
+        rt.set_sample_rate(sr).unwrap();
         rt.bpm = 120.0;
         rt.fx_wet = [1.0, 1.0, 0.0];
         rt.process(&mut []);
@@ -319,7 +319,7 @@ fn sample_rate_filters_keep_cutoff_hz_and_controls() {
         rt.tracks[2].eq.mid_g = 1.7;
         rt.tracks[2].eq.high_g = 0.6;
         rt.decks[0].eq[0].low_g = 0.4;
-        rt.set_sample_rate(sr);
+        rt.set_sample_rate(sr).unwrap();
         assert_eq!(
             [
                 rt.tracks[2].eq.low_g,
@@ -403,8 +403,8 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
     let phase = rt.sampler_poly.voices[0].phase;
     let level = rt.sampler_poly.voices[0].env.level;
     let counts = test_alloc::measure(|| {
-        rt.set_sample_rate(48_000);
-        rt.set_sample_rate(0);
+        rt.set_sample_rate(48_000).unwrap();
+        rt.set_sample_rate(0).unwrap();
     });
     assert_eq!(counts, test_alloc::Counts::default());
     assert_eq!(rt.sampler_poly.voices[0].phase, phase);
@@ -428,12 +428,13 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
     rt.apply(Command::LaunchClip { track: 2, scene: 0 });
     rt.process(&mut [0.0; 2048]);
     rt.trig_drum(0, 36, 1.0);
-    rt.pad_voices[0] = Some((rt.pad_banks[0][0].clone(), 12.0, 1.0, 0));
+    rt.apply(Command::SamplerPad { pad: 0, on: true });
+    rt.pad_voices[0].as_mut().unwrap().position = 12.0;
     let beat = rt.beat;
     let start = rt.tracks[2].playing.unwrap().start_beat;
     let sample = rt.decks[0].audio.clone().unwrap();
     let position = rt.decks[0].pos;
-    rt.set_sample_rate(96_000);
+    rt.set_sample_rate(96_000).unwrap();
     assert_eq!(rt.beat, beat);
     assert_eq!(rt.tracks[2].playing.unwrap().start_beat, start);
     assert_eq!(rt.decks[0].pos, position);
@@ -469,7 +470,7 @@ fn sample_rate_preparation_allocates_before_callback_and_keeps_deck_time_constan
         rt.tracks[2].fx = rack(rt.sr);
         rt.scene_fx[0] = rack(rt.sr);
         rt.apply(Command::LaunchScene { scene: 0 });
-        let counts = test_alloc::measure(|| rt.set_sample_rate(sr));
+        let counts = test_alloc::measure(|| rt.set_sample_rate(sr).unwrap());
         assert!(
             counts.allocations > 0,
             "preparation should allocate effect/sample buffers"

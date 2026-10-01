@@ -174,7 +174,7 @@ fn reset_grain_starts_at_target_without_skipping_half_a_window() {
     }
     assert!((rt.decks[0].last_output[0] + 0.5).abs() < 1e-6);
 
-    rt.set_sample_rate(48_000);
+    rt.set_sample_rate(48_000).unwrap();
     assert_grains_reset(&rt, 0);
     assert_eq!(rt.decks[0].transition_frames, 96);
 }

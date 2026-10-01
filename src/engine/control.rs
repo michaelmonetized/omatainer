@@ -539,7 +539,10 @@ impl CommandPort {
         self.shared.performance.check(command, None)
     }
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
-        self.send_after_preflight(command, || {})
+        let sampler_ack = super::sampler::admission_ack(&command);
+        let result = self.send_after_preflight(command, || {});
+        if result.is_err() { if let Some(ack) = sampler_ack { ack.reject(); } }
+        result
     }
 
     fn send_after_preflight(
@@ -747,6 +750,10 @@ impl AdmissionShared {
 fn owned_payload_bytes(command: &Command) -> usize {
     use std::mem::size_of;
     match command {
+        Command::SamplerEdit(edit) => edit.bank.data.metadata_bytes() + edit.bank.data.audio.iter().flatten().map(|audio| {
+            size_of::<super::dsp::Sample>() + 4 * size_of::<usize>() + size_of::<Vec<[f32; 3]>>()
+                + audio.data.capacity() * size_of::<f32>() + audio.name.capacity() + audio.path.capacity() + audio.peaks.capacity() * size_of::<[f32; 3]>()
+        }).sum::<usize>(),
         Command::Gesture { command, .. } => {
             size_of::<Command>().saturating_add(owned_payload_bytes(command))
         }

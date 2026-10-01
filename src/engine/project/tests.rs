@@ -1,5 +1,6 @@
 use super::model::*;
 use super::*;
+mod sampler_tests;
 
 fn rt() -> RtEngine {
     let (_, receiver) = crossbeam_channel::bounded(4);
@@ -522,8 +523,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
     for deck in &mut live.decks {
         deck.title = "d".repeat(MAX_TEXT_BYTES);
     }
-    live.sampler_banks = (0..MAX_BANKS).map(|_| "b".repeat(MAX_TEXT_BYTES)).collect();
-    live.pad_banks = (0..MAX_BANKS).map(|_| live.pad_banks[0].clone()).collect();
+    live.sampler_banks = (0..MAX_BANKS).map(|_| sampler::test_bank(&live, "b".repeat(MAX_TEXT_BYTES), live.sampler_banks[0].data.audio.clone())).collect();
     let mut micros = Vec::new();
     for _ in 0..9 {
         let mut frame = capture::Frame::new();
@@ -717,6 +717,7 @@ fn version_one_projects_migrate_empty_cue_names_and_colors_and_unknown_versions_
     let captured = captured(&original);
     let mut json = serde_json::to_value(&captured.state).unwrap();
     json["version"] = serde_json::json!(1);
+    for bank in json["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); }
     for deck in json["decks"].as_array_mut().unwrap() {
         deck.as_object_mut().unwrap().remove("cue_styles");
         deck.as_object_mut().unwrap().remove("grid");
@@ -739,6 +740,7 @@ fn version_two_projects_keep_cue_metadata_with_no_invented_manual_grid() {
     let captured = captured(&original);
     let mut json = serde_json::to_value(&captured.state).unwrap();
     json["version"] = serde_json::json!(2);
+    for bank in json["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); }
     for deck in json["decks"].as_array_mut().unwrap() { deck.as_object_mut().unwrap().remove("grid"); }
     let legacy: State = serde_json::from_value(json).unwrap();
     legacy.validate(&captured.media).unwrap();

@@ -235,7 +235,10 @@ impl<B: Backend> Owner<B> {
             .graph
             .take()
             .ok_or("Renderer ownership has not returned")?;
-        graph.set_sample_rate(plan.rate);
+        if let Err(error) = graph.set_sample_rate(plan.rate) {
+            self.graph = Some(graph);
+            return Err(error);
+        }
         let (returned, receiver) = bounded(1);
         let enabled = Arc::new(AtomicBool::new(false));
         let fault = Arc::new(AtomicBool::new(false));
@@ -1047,7 +1050,7 @@ pub(crate) mod tests {
             let before = rt.tracks[1].poly.note_on_events;
             assert!(before > 0);
             rt.stop_for_audio();
-            rt.set_sample_rate(48000);
+            rt.set_sample_rate(48000).unwrap();
             rt.process(&mut out);
             assert!(out.iter().all(|sample| *sample == 0.0));
             assert_eq!(rt.tracks[1].poly.note_on_events, before);

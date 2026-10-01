@@ -244,7 +244,7 @@ fn selection_resets_tails_without_allocation_and_rate_changes_preserve_controls(
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     let kinds = rt.fx_kind;
     let wet = rt.fx_wet;
-    rt.set_sample_rate(96000);
+    rt.set_sample_rate(96000).unwrap();
     assert_eq!(rt.fx_kind, kinds);
     assert_eq!(rt.fx_wet, wet);
     rt.process(&mut [0.0; 128]);

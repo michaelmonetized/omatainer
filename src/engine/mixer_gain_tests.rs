@@ -205,7 +205,7 @@ fn control_sweeps_are_block_partition_invariant_and_warmed_rendering_stays_alloc
     assert_eq!(allocations, test_alloc::Counts::default());
     // Stopped rate reset discards an old-rate transition and establishes the
     // exact current controls at the first new-rate callback.
-    whole.set_sample_rate(96_000);
+    whole.set_sample_rate(96_000).unwrap();
     whole.process(&mut output[..2]);
     assert_eq!(
         whole.xfader_gain.tick(),

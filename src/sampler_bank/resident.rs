@@ -1,5 +1,5 @@
 //! Immutable working-bank payloads, prepared outside the renderer.
-use super::{BankId, Controls, Definition, Slot, Source, MAX_NAME_BYTES, SLOTS};
+use super::{BankId, Controls, Definition, Slot, Source, SLOTS};
 use crate::engine::dsp::Sample;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -31,11 +31,12 @@ impl Settings {
     }
     pub fn validate(&self) -> Result<(), String> {
         if self.name.trim().is_empty()
-            || self.name.len() > MAX_NAME_BYTES
+            || self.name.len() > 4096
             || self.name.chars().any(char::is_control)
         {
             return Err(
-                "bank name must contain 1–128 UTF-8 bytes without control characters".into(),
+                "working bank name must contain 1–4096 UTF-8 bytes without control characters"
+                    .into(),
             );
         }
         for slot in &self.slots {
@@ -165,6 +166,7 @@ pub(crate) fn validate_sample(sample: &Sample) -> Result<(), String> {
 
 /// An onset's immutable source-time range and gain. The active voice owns its
 /// source independently of later slot edits, selection, Undo, or replacement.
+#[derive(Clone, Debug)]
 pub(crate) struct Voice {
     pub audio: Arc<Sample>,
     pub position: f64,

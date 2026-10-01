@@ -93,7 +93,7 @@ fn idle_and_active_drum_rendering_have_no_heap_activity_and_rate_replacement_ret
             .iter()
             .all(|sample| Arc::strong_count(sample) == 1));
     }
-    rt.set_sample_rate(44_100);
+    rt.set_sample_rate(44_100).unwrap();
     assert!(old.upgrade().is_none());
     assert!(rt.tracks[0].drum_pos.iter().all(Option::is_none));
     assert_eq!(rt.tick_drums(0), 0.0);
