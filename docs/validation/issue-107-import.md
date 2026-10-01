@@ -113,9 +113,85 @@ No policy ceilings, audio goldens or scheduling priorities were changed.
 
 ## Final qualification
 
-Pending corrected full ordinary regression and unchanged source-bound local
-release, native, show and package checks. This checkpoint makes no completed PR
-claim.
+The corrected source f37fa87 passed 1,037 ordinary tests with 25 opt-ins ignored
+in 110.22 seconds (`issue-107-final-full-v2.log`). The three real block-filesystem
+opt-ins passed again in 0.49 seconds (`issue-107-final-local-block-v2.log`).
+The pending-scan regression now uses the actual private persistent catalog writer
+and confirms the root bookmark after returning from protection to Studio.
+
+The first corrected native attempt reached the existing 70-second consumer
+bound near the final recovery controls. Its incomplete report and failure log
+remain as `issue-107-checkpoint-performance-v2.*`. No timeout was extended.
+
+The unchanged source-bound release gate passed all eight groups × three runs
+from 2026-10-01 19:00:13.097321 to 19:02:53.368395 UTC, with CPU affinity [6],
+nice 0 and SCHED_OTHER. Native validation passed 158 actions, 244 visited nodes
+and 568 App frames under the original bounds. This is a private D-Bus App/renderer
+adapter, without a desktop window, physical controllers or Orca certification.
+
+| Mode | Callback wall p99 / maximum, ms | Renderer CPU p99, ms |
+| --- | --- | --- |
+| producer | 0.807206 / 4.415862 | 0.676083 |
+| composer | 0.912748 / 4.564988 | 0.692582 |
+| live DJ | 0.214333 / 1.736245 | 0.157917 |
+| hybrid | 1.200789 / 5.059446 | 0.908417 |
+
+Audio/state goldens passed, with zero measured callback allocations, frees and
+rejected commands. The local host was an M1 Pro, aarch64 Linux 7.1.13-3-2-ARCH,
+with ten logical CPUs and load average 14.14 before / 13.64 after the workload.
+No user processes, scheduling priorities or policy limits were changed. The
+recorded affinity is a qualification condition, not proof that arbitrary busy
+host scheduling meets every deadline.
+
+Release SHA-256: `ea123b88d3eb69fe7ad80bbcdb829ce497749998ac0dd21c9aaaf5053a13efb9`.
+Release-test SHA-256: `24fd89455db9ff353ec42840a58e2b26dd3a7f017b40cdd9614dd0a5ef6d96f6`.
+
+The first active-history attempt on CPU 6 failed an unchanged maximum-wall check
+at 44.1 kHz / 256 frames / 1.50×: p99 1.272331 ms, maximum 18.164307 ms versus
+11.609976 ms. Its log and host binding remain as
+`issue-107-checkpoint-active-history.log` and `issue-107-checkpoint-timing-host.json`.
+A subsequent three-second read-only CPU observation found all performance cores
+about 60–63% busy; it does not establish the cause of the individual outlier.
+The next fixed matrix uses CPU 7, capacity 1024, with unchanged source, limits,
+nice level and scheduler. It also failed at 48 kHz / 256 frames / 0.84×: p99
+1.831332 ms, maximum 11.304995 ms versus 10.666666 ms. Its log and host binding
+remain as `issue-107-checkpoint-core7-active-history.log` and
+`issue-107-checkpoint-core7-timing-host.json`.
+
+The complete additional keylock matrix ran all 18 configurations × three
+repetitions on CPU 7. Audio/state goldens, repeated audio hashes and zero
+heap/rejected-command checks passed; seven callback-wall maxima exceeded their
+unchanged ceilings. At 96 kHz / 128 frames, maxima ranged up to 3.833419 ms
+versus 2.666666 ms; one 96 kHz / 256-frame case reached 6.688588 ms versus
+5.333332 ms. This is a failed timing gate, retained in
+`target/keylock-quality/issue-107-final-show-v1/{verified-showload.json,raw.json,execution.log}`
+and `issue-107-final-keylock-show.log`.
+
+The four-source persistence-worker probe also failed its third repetition's
+wall maximum: p99 0.731083 ms, maximum 2.850085 ms versus 2.666666 ms at
+96 kHz / 128 frames (`issue-107-final-worker-history.log`). A third active-history
+attempt failed at 96 kHz / 128 frames / 0.50×: p99 0.789334 ms, maximum
+3.556753 ms versus 2.666666 ms (`issue-107-final-active-history.log`). Neither
+aborted matrix is represented as a complete pass. Host bindings are retained in
+`issue-107-final-timing-host.json`; aggregate results in
+`issue-107-final-post-results.json`. OBS was observed consuming about six CPUs;
+that observation does not prove the cause of any particular callback outlier.
+
+Independent verification of the passed eight-group release record succeeded.
+The immutable `issue-107-final-package` binds committed source f37fa87, exact
+executable/license records and the passed standard workload receipt; independent
+package verification passed. Seven CLI protocol groups, six follow groups, five
+runtime-isolation groups and real headless safe startup passed against the same
+final executable. Logs: `issue-107-final-{gate-check,package,package-verify,cli,follow,runtime,safe-start}.log`.
+The final source-bound standard evidence is retained as
+`issue-107-final-performance.{json,raw.json,log}` and `issue-107-final-native.json`.
+
+The functional import change and standard release gate are reviewable. Additional
+history/show timing qualification remains outstanding: repeat those unchanged
+probes in the coordinated quiet host window required by
+[the show workload contract](issue-100-showload.md). Their failed maxima cannot
+be treated as passes or replaced by CPU p99 figures. No final performance,
+physical-driver, listening or zero-XRUN acceptance is claimed.
 
 ## Remaining user QA
 
