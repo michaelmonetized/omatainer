@@ -47,6 +47,7 @@ pub mod dsp;
 #[cfg(test)]
 mod svf_tests;
 pub mod media_load;
+pub(crate) mod media_analysis;
 pub(crate) mod load_receipt;
 pub(crate) mod preparation;
 pub(crate) mod cue_metadata;
