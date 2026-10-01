@@ -102,7 +102,8 @@ pub(super) struct Metadata {
     analysis_result: Option<AnalysisReceipt>,
     analysis_active: Option<u64>,
     inspection_result: Option<AnalysisInspected>,
-    inspection_active: Option<(u64, crate::sampler_bank::SourceRef)>,
+    inspection_active: Option<(u64, crate::sampler_bank::SourceRef, Arc<WorkPermit>, Arc<std::sync::atomic::AtomicBool>)>,
+    worker_closed: bool,
     relocation_result: Option<RelocationResult>,
     qualification_pending: bool,
     performance: Handle,
@@ -376,6 +377,7 @@ impl Metadata {
             analysis_active: None,
             inspection_result: None,
             inspection_active: None,
+            worker_closed: false,
             relocation_result: None,
             qualification_pending: false,
             performance: Handle::default(),
@@ -405,21 +407,22 @@ impl Metadata {
     /// Bounded handoff: one pending result, plus the worker's one in-flight job.
     pub fn save_analysis(&mut self, completion: crate::engine::media_load::AnalysisCompletion)
         -> std::result::Result<(), crate::engine::media_load::AnalysisCompletion> {
-        if self.analysis_active.is_some() || self.inspection_active.is_some() { return Err(completion); }
+        if self.worker_closed || self.analysis_active.is_some() || self.inspection_active.is_some() { return Err(completion); }
         self.analysis_active = Some(completion.token.id);
         self.analysis = Some(completion);
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
         Ok(())
     }
+    pub fn analysis_worker_available(&self) -> bool { !self.worker_closed }
     pub fn take_analysis_result(&mut self) -> Option<AnalysisReceipt> {
         let result = self.analysis_result.take();
         if result.is_some() { self.analysis_active = None; }
         result
     }
     pub fn inspect_analysis(&mut self, request: AnalysisInspect) -> std::result::Result<(), AnalysisInspect> {
-        if self.analysis_active.is_some() || self.inspection_active.is_some() { return Err(request); }
-        self.inspection_active = Some((request.id, request.reference.clone()));
+        if self.worker_closed || self.analysis_active.is_some() || self.inspection_active.is_some() { return Err(request); }
+        self.inspection_active = Some((request.id, request.reference.clone(), request.work.clone(), request.cancel.clone()));
         self.inspection = Some(request);
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -431,7 +434,7 @@ impl Metadata {
         result
     }
     pub fn retire_analysis_inspection(&mut self, result: AnalysisInspected) -> std::result::Result<(), AnalysisInspected> {
-        if self.retired_analysis_inspections.len() >= 2 { return Err(result); }
+        if self.worker_closed || self.retired_analysis_inspections.len() >= 2 { return Err(result); }
         self.retired_analysis_inspections.push(result);
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -441,7 +444,7 @@ impl Metadata {
     /// The caller retains ownership and retries if the two retirement slots fill.
     pub fn retire_analysis_rows(&mut self, rows: Arc<Vec<LibItem>>, indices: Arc<Vec<usize>>)
         -> std::result::Result<(), (Arc<Vec<LibItem>>, Arc<Vec<usize>>)> {
-        if self.retired_analysis_indices.len() >= 2 { return Err((rows, indices)); }
+        if self.worker_closed || self.retired_analysis_indices.len() >= 2 { return Err((rows, indices)); }
         self.retired_candidates.push(rows);
         self.retired_analysis_indices.push(indices);
         self.revision = self.revision.wrapping_add(1);
@@ -624,7 +627,29 @@ impl Metadata {
             self.dirty = true;
             self.revision = self.revision.wrapping_add(1);
         }
-        if let Ok(result) = self.results.try_recv() {
+        let received = self.results.try_recv();
+        if matches!(received, Err(mpsc::TryRecvError::Disconnected)) {
+            self.worker_closed = true;
+            self.in_flight = false;
+            self.dirty = false;
+            let error = "DJ library worker unavailable; pending save outcome is unconfirmed";
+            self.storage_error = Some(error.into());
+            self.durable = false;
+            if self.analysis_result.is_none() {
+                if let Some(id) = self.analysis_active {
+                    self.analysis_result = Some(AnalysisReceipt { id, committed: false,
+                        outcome: Err(crate::engine::media_load::AnalysisFailure::Failed(error.into())) });
+                }
+            }
+            if self.inspection_result.is_none() {
+                if let Some((id, reference, work, cancel)) = &self.inspection_active {
+                    self.inspection_result = Some(AnalysisInspected { id: *id, reference: reference.clone(),
+                        work: work.clone(), cancel: cancel.clone(), outcome: Err(error.into()) });
+                }
+            }
+            return Err(error);
+        }
+        if let Ok(result) = received {
             if let Some(analysis) = result.analysis { self.analysis_result = Some(analysis); }
             if let Some(inspection) = result.inspection { self.inspection_result = Some(inspection); }
             if let Some(relocation) = result.relocation { self.relocation_result = Some(relocation); }
