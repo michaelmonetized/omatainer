@@ -11217,7 +11217,7 @@
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/manual.md": "4d9efb00463b31e7fae4e49f6980804efc9fda33618602cc0470c4f369fbc5e4",
+    "docs/manual.md": "07b8fbe120fdf7486aa9c423c421bedb6eb38d881f13e3c72f403dda57dabe17",
     "licenses/assets.json": "a0f9cd9710d065f5f204b37cc124e287a5623e99a0fd2b68baccb44dceff273d",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "887d16395b89b432322fc7562b75a3b35e83c4a30c78c6bc38bdc17c52d5652d",

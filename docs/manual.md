@@ -181,6 +181,7 @@ Explicit exit from safe mode
 Safe mode opens no audio or MIDI devices and leaves startup settings unapplied. Save, discard or cancel unsaved work before restarting. Only a completed close starts normal device setup; playback does not resume automatically.
 
 Workflow: Stop and recover.
+
 ### Close analysis panel
 
 Hide the window only
