@@ -282,6 +282,14 @@ impl Metadata {
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
     }
+    /// A preference change invalidates pending scans from the old root set.
+    /// Existing visible rows remain until the new scan succeeds; retirement and
+    /// metadata overlays still belong to this worker.
+    pub fn cancel_scan(&mut self) {
+        if let Some(candidate) = self.staged.take() { self.retired_candidates.push(candidate); }
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+    }
     #[cfg(test)]
     pub fn rebase(&mut self) {
         self.dirty = true;
