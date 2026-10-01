@@ -26,3 +26,33 @@ pub(crate) struct Selection {
     pub source: LibSource,
     pub title: String,
 }
+
+/// Identity of the bytes inspected by a scan/decode, not just their pathname.
+/// This is cache invalidation metadata, not a cryptographic content identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct FileFingerprint {
+    device: u64,
+    inode: u64,
+    length: u64,
+    modified: (i64, i64),
+    changed: (i64, i64),
+}
+
+impl FileFingerprint {
+    pub fn from_metadata(metadata: &std::fs::Metadata) -> Self {
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            device: metadata.dev(),
+            inode: metadata.ino(),
+            length: metadata.len(),
+            modified: (metadata.mtime(), metadata.mtime_nsec()),
+            changed: (metadata.ctime(), metadata.ctime_nsec()),
+        }
+    }
+    pub fn read(path: &std::path::Path) -> Option<Self> {
+        std::fs::metadata(path)
+            .ok()
+            .filter(|m| m.is_file())
+            .map(|m| Self::from_metadata(&m))
+    }
+}

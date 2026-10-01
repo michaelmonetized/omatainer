@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
-use std::time::SystemTime;
+use super::{Bpm, FileFingerprint};
 use walkdir::WalkDir;
 
 #[cfg(test)]
@@ -269,11 +269,7 @@ impl Drop for LibraryScan {
     }
 }
 
-#[derive(PartialEq, Eq)]
-struct Fingerprint {
-    length: u64,
-    modified: Option<SystemTime>,
-}
+type Fingerprint = FileFingerprint;
 
 enum ScanFailure {
     Cancelled,
@@ -347,17 +343,15 @@ fn scan(
                 continue;
             }
             let metadata = entry.metadata().map_err(|error| io_error(path, error))?;
-            let fingerprint = Fingerprint {
-                length: metadata.len(),
-                modified: metadata.modified().ok(),
-            };
+            let fingerprint = FileFingerprint::from_metadata(&metadata);
             let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("track");
             let (artist, title) = split_artist_title(stem);
             let (bpm, key) = parse_tags(stem);
             let mut item = LibItem {
                 title,
                 artist,
-                bpm,
+                bpm: Bpm::hint(bpm),
+                fingerprint: Some(fingerprint),
                 key,
                 length: 0.0,
                 last_play: None,
@@ -390,9 +384,7 @@ fn preserve_metadata(item: &mut LibItem, old: &LibItem) {
     if !old.artist.is_empty() {
         item.artist.clone_from(&old.artist);
     }
-    if old.bpm.is_finite() && old.bpm > 1.0 {
-        item.bpm = old.bpm;
-    }
+    if old.fingerprint == item.fingerprint { item.bpm = old.bpm; }
     if !old.key.is_empty() && old.key != "—" {
         item.key.clone_from(&old.key);
     }

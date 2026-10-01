@@ -12,7 +12,8 @@ fn items(count: usize) -> Vec<LibItem> {
             } else {
                 "Odd Artist".into()
             },
-            bpm: 100.0 + index as f32 / 1000.0,
+            bpm: Bpm::hint(100.0 + index as f32 / 1000.0),
+            fingerprint: None,
             key: "C".into(),
             length: 123.0 + index as f32,
             last_play: None,
