@@ -1,10 +1,11 @@
 use super::*;
 
 impl App {
-    pub(super) fn audio_status(&self, ctx: &egui::Context) {
+    pub(super) fn audio_status(&mut self, ctx: &egui::Context) {
         let metrics = self.snap.audio;
         egui::TopBottomPanel::top("audio-status").resizable(false).show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
+                if ui.button("Diagnostics").clicked() { self.diagnostics.open = true; }
                 if let Some(sample) = metrics.last_callback {
                     let cpu = sample.render_cpu_fraction().map(|value| format!("{:.1}%", value * 100.0))
                         .unwrap_or_else(|| "unavailable".into());
@@ -38,6 +39,7 @@ mod tests {
                 budget_ns: 10_000_000,
                 render_cpu_ns: Some(1_000_000),
                 overrun_ns: 10_000_000,
+                ..Default::default()
             }),
             deadline_overruns: 3,
             backend_errors: 1,

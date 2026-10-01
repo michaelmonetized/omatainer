@@ -180,7 +180,7 @@ impl FxSlot {
         }
     }
 
-    fn tick_stereo(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
+    pub(super) fn tick_stereo(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
         let level = self.bypass.next(self.on, sr);
         if level == 0.0 {
             return input;
