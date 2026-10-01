@@ -54,3 +54,7 @@ checks with three existing opt-in benchmark/native-soak tests ignored. The
 production `cargo build --offline`, targeted rustfmt checks and `git diff --check`
 also passed. The ignored tests are the unrelated dense-polyphony timing probe,
 130-second native follow soak and offscreen Quickshell scene fixture.
+
+On the final #83 stack, all **538 ordinary Rust tests passed**, with six explicit
+opt-in entries ignored, and the production build passed. This includes native
+project preference round-tripping and the selected-deck regression checks.
