@@ -26,6 +26,7 @@ mod load_status;
 mod play_history;
 mod play_time;
 mod project;
+mod undo;
 mod audio_status;
 mod diagnostics;
 mod master_fx_status;
@@ -69,6 +70,7 @@ pub struct App {
     diagnostics: diagnostics::Diagnostics,
     engine: Engine,
     project: project::Projects,
+    undo_history: undo::History,
     theme: Theme,
     deck_selection: deck_selection::Selection,
 
@@ -141,6 +143,7 @@ impl App {
             diagnostics: diagnostics::Diagnostics::default(),
             engine,
             project,
+            undo_history: undo::History::default(),
             theme,
             deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
 
@@ -204,7 +207,7 @@ impl App {
                 return false;
             }
         }
-        match self.engine.send(c) {
+        match self.engine.send(self.undo_history.wrap(c)) {
             Ok(_) => true,
             Err(error) => {
                 self.submission_error.set(Some(error));
@@ -460,6 +463,7 @@ impl App {
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
+        self.undo_history.begin_frame(ctx, &self.engine.undo);
         if !self.project.committing() {
             self.poll_ui_requests();
             self.poll_library_scan();
@@ -473,6 +477,7 @@ impl App {
         if !self.project.committing() { self.poll_loads(); }
         self.snap = self.engine.snapshot();
         self.confirm_project_snapshot();
+        self.poll_undo();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
@@ -563,8 +568,10 @@ impl App {
         }
         self.diagnostics_panel(ctx);
         self.clip_gain_editor(ctx);
+        self.undo_panel(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
+        self.undo_history.end_frame(ctx);
         // Resolve terminal project outcomes after this frame's Cancel/input.
         self.poll_projects(ctx);
         if animating {

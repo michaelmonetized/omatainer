@@ -127,6 +127,7 @@ impl RtEngine {
             minimum,
         });
         self.tracks[track].recorded_note_started(scene, index, input, self.beat);
+        self.history_record_changed(track,scene);
     }
 
     pub(super) fn finish_recording_input(&mut self, input: InputKey) {
@@ -140,6 +141,8 @@ impl RtEngine {
     pub(super) fn finish_recording_pads(&mut self) {
         self.finish_recording_where(|held| matches!(held.input, InputKey::Pad(_)));
     }
+
+    pub(super) fn finish_recording_clip(&mut self,track:usize,scene:usize) {self.finish_recording_where(|held|held.track==track && held.scene==scene);}
 
     pub(super) fn finish_recording_all(&mut self) {
         self.finish_recording_where(|_| true);
@@ -157,6 +160,7 @@ impl RtEngine {
                     self.project.edited();
                     note.len = duration as f32;
                     self.tracks[held.track].clip_notes_changed(held.scene, self.beat);
+                    self.history_record_changed(held.track,held.scene);
                 }
             }
         }
@@ -181,4 +185,8 @@ impl RtEngine {
             }
         }
     }
+}
+
+impl Recording {
+    pub(super) fn held_targets(&self)->u64 {self.held.iter().flatten().fold(0,|mask,h|mask | 1u64 << (h.track*8+h.scene))}
 }

@@ -4,6 +4,7 @@ pub(super) struct Frame {
     pub state: State,
     pub media: Vec<Arc<Sample>>,
     pub revision: u64,
+    pub checkpoint: undo::Checkpoint,
     pub playback_receipts: [Option<load_receipt::Receipt>; DECKS],
     pub complete: bool,
     pub error: Option<&'static str>,
@@ -27,6 +28,7 @@ impl Frame {
         Self {
             state: State::blank(),
             media: Vec::with_capacity(MAX_MEDIA_REFS),
+            checkpoint: undo::Checkpoint::default(),
             revision: 0,
             playback_receipts: [None, None],
             complete: false,
@@ -236,6 +238,7 @@ impl Frame {
         rt.capture_held_durations(target);
         self.playback_receipts = std::array::from_fn(|i| rt.decks[i].load_receipt.clone());
         self.revision = rt.project.revision();
+        self.checkpoint = rt.undo.checkpoint();
         self.complete = true;
     }
 }

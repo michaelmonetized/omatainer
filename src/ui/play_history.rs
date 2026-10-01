@@ -120,7 +120,8 @@ impl App {
                     }
                 }
             }
-            connected && !matches!(state, State::Superseded | State::Unavailable)
+            connected && (!matches!(state, State::Superseded | State::Unavailable)
+                || watch.receipt.retained_by_history())
         });
         if let Some(identity) = latest {
             self.refresh_library_view();

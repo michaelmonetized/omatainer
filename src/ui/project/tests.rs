@@ -4,6 +4,176 @@ use crate::project_file::Limits;
 use std::sync::atomic::AtomicU64;
 use std::time::Duration;
 
+fn history_key(gui: &mut Gui, redo: bool) {
+    // Closing a text/path dialog owns its closing frame's keys. Start the
+    // shortcut only after the normal next-frame focus guard has settled.
+    gui.frame(vec![]);
+    gui.frame(vec![]);
+    let modifiers = if redo {
+        egui::Modifiers::CTRL | egui::Modifiers::SHIFT
+    } else {
+        egui::Modifiers::CTRL
+    };
+    for pressed in [true, false] {
+        gui.frame(vec![egui::Event::Key {
+            key: Key::Z,
+            physical_key: Some(Key::Z),
+            pressed,
+            repeat: false,
+            modifiers,
+        }]);
+    }
+}
+
+#[test]
+fn undo_returns_to_saved_content_but_navigation_and_redo_remain_dirty() {
+    let files = Files::new();
+    let mut gui = Gui::new();
+    gui.edited();
+    gui.save_as_ui(&files.path("history.omat"));
+    let saved_master = gui.rt.master;
+    let saved_revision = gui.app.engine.project.revision();
+    gui.app.send(Command::Master(0.43));
+    gui.rt.process(&mut []);
+    assert!(gui.app.project_dirty());
+    history_key(&mut gui, false);
+    assert_eq!(gui.rt.master, saved_master);
+    assert!(gui.app.engine.project.revision() > saved_revision);
+    assert!(
+        !gui.app.project_dirty(),
+        "undo to saved content uses the captured checkpoint, not monotonic admission revision"
+    );
+    history_key(&mut gui, true);
+    assert_eq!(gui.rt.master, 0.43);
+    assert!(gui.app.project_dirty());
+    gui.app.send(Command::SelectDeck(1));
+    gui.rt.process(&mut []);
+    history_key(&mut gui, false);
+    assert_eq!(gui.rt.master, saved_master);
+    assert!(
+        gui.app.project_dirty(),
+        "persistent nonhistory selection was not reverted by undo"
+    );
+}
+
+#[test]
+fn save_during_one_gesture_cannot_mark_later_grouped_values_clean() {
+    let files = Files::new();
+    let path = files.path("mid-gesture.omat");
+    let mut gui = Gui::new();
+    let id = gui.app.engine.undo.gesture();
+    gui.app
+        .engine
+        .send(Command::Gesture {
+            id,
+            command: Box::new(Command::Master(0.23)),
+        })
+        .unwrap();
+    gui.rt.process(&mut []);
+    let captured_checkpoint = gui.app.engine.undo.checkpoint();
+    let (entered, resume) = gui
+        .app
+        .project
+        .worker
+        .as_ref()
+        .unwrap()
+        .pause_next(worker::Stage::Captured);
+    gui.app
+        .begin_project_save(SaveKind::As, None, path.clone(), false);
+    let end = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+    }
+    gui.app
+        .engine
+        .send(Command::Gesture {
+            id,
+            command: Box::new(Command::Master(0.73)),
+        })
+        .unwrap();
+    gui.rt.process(&mut []);
+    assert_ne!(gui.app.engine.undo.checkpoint(), captured_checkpoint);
+    assert_eq!(
+        gui.app.engine.undo.view().cursor,
+        1,
+        "the drag remains one history entry"
+    );
+    resume.send(()).unwrap();
+    gui.settle();
+    assert!(gui.app.project_dirty());
+    let saved =
+        crate::project_file::load::<Document>(&path, &Limits::default(), &AtomicBool::new(false))
+            .unwrap();
+    assert_eq!(saved.state.engine.master, 0.23);
+    assert_eq!(gui.rt.master, 0.73);
+}
+
+#[test]
+fn undo_to_same_content_during_open_still_invalidates_prior_discard_authorization() {
+    let files = Files::new();
+    let path = files.path("reopen.omat");
+    let mut gui = Gui::new();
+    gui.save_as_ui(&path);
+    let (entered, resume) = gui
+        .app
+        .project
+        .worker
+        .as_ref()
+        .unwrap()
+        .pause_next(worker::Stage::Prepared);
+    gui.app.begin_project_action(Action::Open(path));
+    let end = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+    }
+    gui.app.send(Command::Master(0.35));
+    gui.rt.process(&mut []);
+    gui.app.send(Command::Undo);
+    gui.rt.process(&mut []);
+    assert!(!gui.app.project_dirty());
+    let epoch = gui.app.engine.undo.checkpoint().epoch;
+    resume.send(()).unwrap();
+    gui.settle();
+    assert_eq!(gui.app.engine.undo.checkpoint().epoch, epoch);
+    assert!(gui
+        .app
+        .project
+        .message
+        .as_ref()
+        .unwrap()
+        .contains("current session changed"));
+}
+
+#[test]
+fn new_and_open_reset_old_history_and_preserve_only_the_history_panel_view() {
+    let files = Files::new();
+    let path = files.path("history-view.omat");
+    let mut gui = Gui::new();
+    gui.edited();
+    gui.app.undo_history.open = true;
+    gui.save_as_ui(&path);
+    let old_epoch = gui.app.engine.undo.checkpoint().epoch;
+    gui.menu("New project");
+    gui.settle();
+    assert_ne!(gui.app.engine.undo.checkpoint().epoch, old_epoch);
+    assert_eq!(gui.app.engine.undo.view().cursor, 0);
+    assert!(gui.app.engine.undo.view().items.iter().all(Option::is_none));
+    assert!(!gui.app.undo_history.open);
+    gui.menu("Open project…");
+    gui.enter_path(&path);
+    gui.click_label("Open");
+    gui.settle();
+    assert!(gui.app.undo_history.open);
+    assert!(gui.app.engine.undo.view().items.iter().all(Option::is_none));
+    history_key(&mut gui, false);
+    assert_eq!(
+        gui.rt.tracks[0].clips[0].notes[0].pitch, 61,
+        "a prior project's history cannot undo reopened content"
+    );
+}
+
 struct Files(PathBuf);
 impl Files {
     fn new() -> Self {

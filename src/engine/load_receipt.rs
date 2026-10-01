@@ -12,6 +12,7 @@ pub struct Receipt(Arc<Inner>);
 #[derive(Debug)]
 struct Inner {
     state: AtomicU8,
+    history_pins: AtomicU64,
     last_play: AtomicU64,
     // Capture civil time before callback ownership; only monotonic elapsed
     // time is queried at an actual playback onset, never for every sample.
@@ -38,6 +39,7 @@ impl Receipt {
             .min(u64::MAX as u128) as u64;
         Self(Arc::new(Inner {
             state: AtomicU8::new(State::Pending as u8),
+            history_pins: AtomicU64::new(0),
             last_play: AtomicU64::new(0),
             wall_origin,
             clock_origin: std::time::Instant::now(),
@@ -54,6 +56,17 @@ impl Receipt {
             4 => State::Applying,
             _ => State::Superseded,
         }
+    }
+    pub(crate) fn retained_by_history(&self) -> bool {
+        self.0.history_pins.load(Ordering::Acquire) != 0
+    }
+    pub(super) fn pin_history(&self) { self.0.history_pins.fetch_add(1, Ordering::Release); }
+    pub(super) fn unpin_history(&self) { self.0.history_pins.fetch_sub(1, Ordering::Release); }
+    /// Only the renderer can restore an identity already owned by an inverse
+    /// media patch. Pending/rejected decode requests cannot use this transition.
+    pub(super) fn restore_from_history(&self) {
+        let _ = self.0.state.compare_exchange(State::Superseded as u8, State::Current as u8,
+            Ordering::AcqRel, Ordering::Acquire);
     }
     pub fn last_play(&self) -> Option<std::time::SystemTime> {
         let nanos = self.0.last_play.load(Ordering::Acquire);

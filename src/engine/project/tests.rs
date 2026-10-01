@@ -14,6 +14,7 @@ fn captured(rt: &RtEngine) -> Captured {
             frame.state.deduplicate(&mut frame.media);
             frame.state.validate(&frame.media).unwrap();
             return Captured {
+                checkpoint: frame.checkpoint,
                 state: frame.state,
                 media: frame.media,
                 revision: frame.revision,

@@ -1,15 +1,18 @@
 //! Bounded dequeue work. Musical events stay FIFO; only adjacent assignments to
 //! the same absolute parameter may be replaced by their latest value.
 use super::Command;
-use crossbeam_channel::Receiver;
 use serde::Serialize;
 
 #[cfg(test)]
 mod admission_tests;
 #[cfg(test)]
+mod payload_tests;
+#[cfg(test)]
 mod project_gate_tests;
 
 pub const COMMANDS_PER_BLOCK: usize = 32;
+/// Variable owned payload in the incoming queue, independently of undo storage.
+pub const MAX_QUEUED_PAYLOAD_BYTES: usize = 256 * 1024 * 1024;
 
 /// A producer handle contains no renderer or renderer lock. Its short mutex
 /// serializes admission bookkeeping only; the audio consumer never acquires it.
@@ -30,11 +33,12 @@ const PROJECT_CLOSED: u64 = 1 << 63;
 struct ProjectLease<'a>(&'a std::sync::atomic::AtomicU64);
 impl<'a> ProjectLease<'a> {
     fn acquire(word: &'a std::sync::atomic::AtomicU64, release: bool) -> Option<Self> {
-        use std::sync::atomic::Ordering::{Acquire, AcqRel};
+        use std::sync::atomic::Ordering::{AcqRel, Acquire};
         let mut state = word.load(Acquire);
         loop {
             if (state & PROJECT_CLOSED != 0 && !release)
-                || state & !PROJECT_CLOSED == PROJECT_CLOSED - 1 {
+                || state & !PROJECT_CLOSED == PROJECT_CLOSED - 1
+            {
                 return None;
             }
             match word.compare_exchange_weak(state, state + 1, AcqRel, Acquire) {
@@ -66,6 +70,9 @@ struct Admission {
 
 struct AdmissionShared {
     project_writers: std::sync::atomic::AtomicU64,
+    queued_payload_bytes: std::sync::atomic::AtomicUsize,
+    payload_limit: usize,
+    history_available: std::sync::atomic::AtomicBool,
     telemetry: std::sync::Arc<super::audio_metrics::Telemetry>,
     ui_requests: super::ui_requests::Mailbox,
     completed_stops: [std::sync::atomic::AtomicU64; STOP_LANES],
@@ -103,6 +110,8 @@ impl AdmissionShared {
                 6 => Some(SubmissionError::UiFull),
                 7 => Some(SubmissionError::UncapturedSelection),
                 8 => Some(SubmissionError::ProjectChanging),
+                9 => Some(SubmissionError::HistoryBusy),
+                10 => Some(SubmissionError::PayloadFull),
                 _ => None,
             },
         }
@@ -114,13 +123,6 @@ impl AdmissionShared {
 pub struct CommandReceiver {
     receiver: crossbeam_channel::Receiver<Command>,
     shared: Option<std::sync::Arc<AdmissionShared>>,
-}
-
-impl std::ops::Deref for CommandReceiver {
-    type Target = crossbeam_channel::Receiver<Command>;
-    fn deref(&self) -> &Self::Target {
-        &self.receiver
-    }
 }
 
 impl From<crossbeam_channel::Receiver<Command>> for CommandReceiver {
@@ -143,6 +145,45 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub fn len(&self) -> usize {
+        self.receiver.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.receiver.is_empty()
+    }
+
+    /// Single-command consumers release credit on dequeue. The renderer batch
+    /// holds all credits until its bounded receive loop has finished instead.
+    pub fn try_recv(&self) -> Result<Command, crossbeam_channel::TryRecvError> {
+        self.receiver
+            .try_recv()
+            .inspect(|command| self.release_payload(owned_payload_bytes(command)))
+    }
+
+    #[cfg(test)]
+    pub fn try_iter(&self) -> impl Iterator<Item = Command> + '_ {
+        std::iter::from_fn(|| self.try_recv().ok())
+    }
+
+    fn release_payload(&self, bytes: usize) {
+        if bytes != 0 {
+            if let Some(shared) = &self.shared {
+                let before = shared
+                    .queued_payload_bytes
+                    .fetch_sub(bytes, std::sync::atomic::Ordering::AcqRel);
+                debug_assert!(before >= bytes, "payload reservation underflow");
+            }
+        }
+    }
+
+    pub(super) fn set_history_available(&self, available: bool) {
+        if let Some(shared) = &self.shared {
+            shared
+                .history_available
+                .store(available, std::sync::atomic::Ordering::Release);
+        }
+    }
+
     /// Close creative command admission before inspecting/draining the queue for a
     /// project install. False means a previously admitted producer is still
     /// finishing; keep admission closed and retry on a later audio block. This
@@ -151,10 +192,11 @@ impl CommandReceiver {
     /// are safe on a stopped replacement, and must not get lost if install aborts.
     pub(super) fn begin_project_install(&self) -> bool {
         self.shared.as_ref().is_none_or(|shared| {
-            shared.project_writers.fetch_or(
-                PROJECT_CLOSED,
-                std::sync::atomic::Ordering::AcqRel,
-            ) & !PROJECT_CLOSED == 0
+            shared
+                .project_writers
+                .fetch_or(PROJECT_CLOSED, std::sync::atomic::Ordering::AcqRel)
+                & !PROJECT_CLOSED
+                == 0
         })
     }
 
@@ -162,19 +204,23 @@ impl CommandReceiver {
     /// until earlier leases have retired and their accepted commands drained.
     pub(super) fn end_project_install(&self) {
         if let Some(shared) = &self.shared {
-            shared.project_writers.fetch_and(
-                !PROJECT_CLOSED,
-                std::sync::atomic::Ordering::Release,
-            );
+            shared
+                .project_writers
+                .fetch_and(!PROJECT_CLOSED, std::sync::atomic::Ordering::Release);
         }
     }
 
     pub(super) fn pending_project_ui_requests(&self) -> bool {
-        self.shared.as_ref().is_some_and(|shared| shared.ui_requests.stats().pending != 0)
+        self.shared
+            .as_ref()
+            .is_some_and(|shared| shared.ui_requests.stats().pending != 0)
     }
 
     pub(super) fn telemetry(&self) -> std::sync::Arc<super::audio_metrics::Telemetry> {
-        self.shared.as_ref().map(|shared| shared.telemetry.clone()).unwrap_or_default()
+        self.shared
+            .as_ref()
+            .map(|shared| shared.telemetry.clone())
+            .unwrap_or_default()
     }
 
     pub(super) fn reject_uncaptured_ui_load(&self) {
@@ -229,11 +275,14 @@ pub enum SubmissionError {
     UiFull,
     UncapturedSelection,
     ProjectChanging,
+    HistoryBusy,
+    PayloadFull,
 }
 
 impl std::fmt::Display for SubmissionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
+            Self::PayloadFull => "The control queue has reached its media and edit memory limit. Wait for playback to catch up, then retry with a smaller edit or media file.",
             Self::Full => "The control queue is full. Releases remain reserved. Wait for playback to catch up, then retry the action.",
             Self::StopPending => "A stop is still pending for this target. Retry the start after the stop has completed.",
             Self::Disconnected => "Audio has disconnected. Restart Omatainer before retrying.",
@@ -241,6 +290,7 @@ impl std::fmt::Display for SubmissionError {
             Self::UiUnavailable => "Library control is unavailable. Reopen Omatainer before retrying.",
             Self::UiFull => "The library request queue is full. Wait for the interface to catch up, then retry browsing or loading.",
             Self::UncapturedSelection => "Library request could not resolve the visible selection. Select an available crate item, then retry.",
+            Self::HistoryBusy => "Undo storage is busy. This edit was not accepted; wait for the history worker and retry.",
             Self::ProjectChanging => "A project is being installed. This action was not accepted; retry after the project operation finishes.",
         })
     }
@@ -251,7 +301,9 @@ impl std::error::Error for SubmissionError {}
 impl AdmissionShared {
     fn reject(&self, error: SubmissionError) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::Relaxed;
-        if error == SubmissionError::Full { self.full_rejections.fetch_add(1, Relaxed); }
+        if error == SubmissionError::Full {
+            self.full_rejections.fetch_add(1, Relaxed);
+        }
         self.last_error.store(
             match error {
                 SubmissionError::Full => 1,
@@ -262,6 +314,8 @@ impl AdmissionShared {
                 SubmissionError::UiFull => 6,
                 SubmissionError::UncapturedSelection => 7,
                 SubmissionError::ProjectChanging => 8,
+                SubmissionError::HistoryBusy => 9,
+                SubmissionError::PayloadFull => 10,
             },
             Relaxed,
         );
@@ -269,7 +323,10 @@ impl AdmissionShared {
         Err(error)
     }
 
-    fn submit_ui(&self, result: Result<SubmissionOutcome, SubmissionError>) -> Result<SubmissionOutcome, SubmissionError> {
+    fn submit_ui(
+        &self,
+        result: Result<SubmissionOutcome, SubmissionError>,
+    ) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::Relaxed;
         match result {
             Ok(outcome) => {
@@ -300,23 +357,45 @@ pub struct QueuePressure {
 impl CommandPort {
     pub fn queue_pressure(&self) -> QueuePressure {
         use std::sync::atomic::Ordering::Relaxed;
-        QueuePressure { pending: self.sender.len(), capacity: self.capacity,
+        QueuePressure {
+            pending: self.sender.len(),
+            capacity: self.capacity,
             observed_high_water: self.shared.observed_high_water.load(Relaxed),
             reserved_releases: self.shared.reserved_releases.load(Relaxed),
             full_rejections: self.shared.full_rejections.load(Relaxed),
             rejected: self.shared.rejected.load(Relaxed),
             accepted: self.shared.accepted.load(Relaxed),
-            coalesced: self.shared.coalesced.load(Relaxed) }
+            coalesced: self.shared.coalesced.load(Relaxed),
+        }
     }
-    pub fn set_profiling(&self, enabled: bool) { self.shared.telemetry.profiler.enabled.store(enabled, std::sync::atomic::Ordering::Relaxed); }
-    pub fn load_profile(&self) -> Option<super::diagnostics::Profile> { self.shared.telemetry.profiler.read() }
-    pub fn audio_metrics(&self) -> super::audio_metrics::AudioMetrics { self.shared.telemetry.read() }
+    pub fn set_profiling(&self, enabled: bool) {
+        self.shared
+            .telemetry
+            .profiler
+            .enabled
+            .store(enabled, std::sync::atomic::Ordering::Relaxed);
+    }
+    pub fn load_profile(&self) -> Option<super::diagnostics::Profile> {
+        self.shared.telemetry.profiler.read()
+    }
+    pub fn audio_metrics(&self) -> super::audio_metrics::AudioMetrics {
+        self.shared.telemetry.read()
+    }
 
     pub(crate) fn is_connected(&self) -> bool {
-        self.shared.connected.load(std::sync::atomic::Ordering::Acquire)
+        self.shared
+            .connected
+            .load(std::sync::atomic::Ordering::Acquire)
     }
 
     pub fn channel(capacity: usize) -> (Self, CommandReceiver) {
+        Self::channel_with_payload_limit(capacity, MAX_QUEUED_PAYLOAD_BYTES)
+    }
+
+    fn channel_with_payload_limit(
+        capacity: usize,
+        payload_limit: usize,
+    ) -> (Self, CommandReceiver) {
         assert!(
             capacity > STOP_LANES + 1,
             "queue must fit dedicated stops and a gate pair"
@@ -328,6 +407,9 @@ impl CommandPort {
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
             project_writers: std::sync::atomic::AtomicU64::new(0),
+            queued_payload_bytes: std::sync::atomic::AtomicUsize::new(0),
+            payload_limit,
+            history_available: std::sync::atomic::AtomicBool::new(true),
             telemetry: std::sync::Arc::new(super::audio_metrics::Telemetry::default()),
             ui_requests: super::ui_requests::Mailbox::default(),
             completed_stops: std::array::from_fn(|_| std::sync::atomic::AtomicU64::new(0)),
@@ -411,19 +493,34 @@ impl CommandPort {
     /// release is already ordered and no intervening accepted onset exists.
     /// No producer waits for queue capacity; only the small admission section
     /// serializes producers. Construct media/instruments before calling here.
-    pub fn send(&self, mut command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+    pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+        self.send_after_preflight(command, || {})
+    }
+
+    fn send_after_preflight(
+        &self,
+        mut command: Command,
+        after_preflight: impl FnOnce(),
+    ) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::{Acquire, Relaxed};
         let fail = |error| self.shared.reject(error);
         // Covers every route, including GUI browse/load and early failures.
         // Closing admission races this atomic claim, never the producer mutex.
-        let Some(_project_lease) = ProjectLease::acquire(
-            &self.shared.project_writers,
-            project_release(&command),
-        ) else {
+        let Some(_project_lease) =
+            ProjectLease::acquire(&self.shared.project_writers, project_release(&command))
+        else {
             return fail(SubmissionError::ProjectChanging);
         };
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
+        }
+        if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {
+            return fail(SubmissionError::HistoryBusy);
+        }
+        if let Command::Gesture { command: inner, .. } = &command {
+            if !super::undo::is_gesture_edit(inner) {
+                return fail(SubmissionError::InvalidTarget);
+            }
         }
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
@@ -431,14 +528,22 @@ impl CommandPort {
         if let Command::Browse(steps) = command {
             return self.shared.submit_ui(self.shared.ui_requests.browse(steps));
         }
-        if matches!(&command, Command::FxSelect { slot } | Command::FxWet { slot, .. } if *slot >= 3) {
+        if matches!(&command, Command::FxSelect { slot } | Command::FxWet { slot, .. } if *slot >= 3)
+        {
             return fail(SubmissionError::InvalidTarget);
         }
+        after_preflight();
         let mut state = self.admission.lock();
         // The receiver may have disconnected while this producer waited for
         // another producer's bookkeeping. Never coalesce against dead audio.
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
+        }
+        // A producer may have passed preflight before waiting on this mutex.
+        // Recycler backpressure must also cover that waiting producer, so the
+        // renderer only inherits payloads already admitted before it closed.
+        if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {
+            return fail(SubmissionError::HistoryBusy);
         }
         for lane in 0..STOP_LANES {
             if state.pending_stops[lane] != 0
@@ -482,6 +587,10 @@ impl CommandPort {
                 ticket,
             };
         }
+        let payload_bytes = owned_payload_bytes(&command);
+        if !self.shared.reserve_payload(payload_bytes) {
+            return fail(SubmissionError::PayloadFull);
+        }
         match self.sender.try_send(command) {
             Ok(()) => {
                 if let Some(lane) = stop_lane {
@@ -503,12 +612,19 @@ impl CommandPort {
                         state.held -= 1;
                     }
                 }
-                self.shared.observed_high_water.fetch_max(self.sender.len() as u64, Relaxed);
-                self.shared.reserved_releases.store(state.held as u64, Relaxed);
+                self.shared
+                    .observed_high_water
+                    .fetch_max(self.sender.len() as u64, Relaxed);
+                self.shared
+                    .reserved_releases
+                    .store(state.held as u64, Relaxed);
                 self.shared.accepted.fetch_add(1, Relaxed);
                 Ok(SubmissionOutcome::Accepted)
             }
             Err(error) => {
+                self.shared
+                    .queued_payload_bytes
+                    .fetch_sub(payload_bytes, std::sync::atomic::Ordering::AcqRel);
                 // Drop rejected command payloads only after releasing the
                 // producer mutex (large clips/media must not extend contention).
                 drop(state);
@@ -525,12 +641,64 @@ impl CommandPort {
     }
 }
 
+impl AdmissionShared {
+    fn reserve_payload(&self, bytes: usize) -> bool {
+        use std::sync::atomic::Ordering::{AcqRel, Acquire};
+        if bytes == 0 {
+            return true;
+        }
+        self.queued_payload_bytes
+            .fetch_update(AcqRel, Acquire, |used| {
+                used.checked_add(bytes)
+                    .filter(|total| *total <= self.payload_limit)
+            })
+            .is_ok()
+    }
+}
+
+/// Counts allocated capacity rather than logical lengths, without traversing
+/// PCM or notes. Immutable shared samples are conservatively charged once per
+/// queued reference. Fixed-size receipt/token Arcs have a separate bound from
+/// the maximum number of queued commands; sample Arc headers are included here.
+fn owned_payload_bytes(command: &Command) -> usize {
+    use std::mem::size_of;
+    match command {
+        Command::Gesture { command, .. } => {
+            size_of::<Command>().saturating_add(owned_payload_bytes(command))
+        }
+        Command::SetNotes { notes, .. } => notes
+            .capacity()
+            .saturating_mul(size_of::<super::MidiNote>()),
+        Command::LearnCapture { param, .. } => param.capacity(),
+        Command::DeckAudio { audio, .. }
+        | Command::DeckDecoded { audio, .. }
+        | Command::DeckLoadRequested {
+            media: super::load_receipt::Media::Decoded { audio, .. },
+            ..
+        } => {
+            size_of::<super::dsp::Sample>()
+                .saturating_add(4 * size_of::<usize>()) // Sample and peaks Arc counters.
+                .saturating_add(size_of::<Vec<[f32; 3]>>())
+                .saturating_add(audio.data.capacity().saturating_mul(size_of::<f32>()))
+                .saturating_add(audio.name.capacity())
+                .saturating_add(audio.path.capacity())
+                .saturating_add(audio.peaks.capacity().saturating_mul(size_of::<[f32; 3]>()))
+        }
+        _ => 0,
+    }
+}
+
 fn project_release(command: &Command) -> bool {
-    matches!(command,
-        Command::LiveNoteOff { .. } | Command::LiveNoteOn { vel: 0, .. }
-        | Command::SamplerPad { on: false, .. }
-        | Command::DeckTouch { on: false, .. } | Command::MidiDeckTouch { on: false, .. }
-        | Command::Stop | Command::StopTrack { .. } | Command::ReservedStop { .. }
+    matches!(
+        command,
+        Command::LiveNoteOff { .. }
+            | Command::LiveNoteOn { vel: 0, .. }
+            | Command::SamplerPad { on: false, .. }
+            | Command::DeckTouch { on: false, .. }
+            | Command::MidiDeckTouch { on: false, .. }
+            | Command::Stop
+            | Command::StopTrack { .. }
+            | Command::ReservedStop { .. }
     )
 }
 
@@ -560,7 +728,11 @@ mod gui_routing_tests {
         drop(locked);
         worker.join().unwrap();
         assert_eq!(result.unwrap(), Ok(SubmissionOutcome::Accepted));
-        let super::super::ui_requests::Request::Load(request) = gui.take_requests()[0].take().unwrap() else { panic!("expected load") };
+        let super::super::ui_requests::Request::Load(request) =
+            gui.take_requests()[0].take().unwrap()
+        else {
+            panic!("expected load")
+        };
         assert_eq!(request.deck, 1);
         assert_eq!(
             request.selection.source,
@@ -648,6 +820,7 @@ pub struct CommandStats {
 }
 
 pub struct CommandBatch {
+    pub discarded: [Option<Command>; COMMANDS_PER_BLOCK],
     pub commands: [Option<Command>; COMMANDS_PER_BLOCK],
     pub received: usize,
     pub applied: usize,
@@ -656,30 +829,45 @@ pub struct CommandBatch {
 }
 
 impl CommandBatch {
-    pub fn receive(rx: &Receiver<Command>) -> Self {
+    pub fn receive(rx: &CommandReceiver) -> Self {
+        Self::receive_with(rx, || {})
+    }
+
+    fn receive_with(rx: &CommandReceiver, mut after_pop: impl FnMut()) -> Self {
         let mut batch = Self {
+            discarded: std::array::from_fn(|_| None),
             commands: std::array::from_fn(|_| None),
             received: 0,
             applied: 0,
             backlog: 0,
             queue_depth: rx.len(),
         };
+        let mut payload_bytes = 0usize;
         for _ in 0..COMMANDS_PER_BLOCK {
-            let Ok(command) = rx.try_recv() else { break };
+            let Ok(command) = rx.receiver.try_recv() else {
+                break;
+            };
+            payload_bytes = payload_bytes.saturating_add(owned_payload_bytes(&command));
+            after_pop();
             batch.received += 1;
             // Do not reorder even apparently independent assignments: later
             // controls may acquire coupled semantics. Events are always barriers.
             let duplicate = batch.applied > 0
-                && parameter_key(&command).is_some()
-                && parameter_key(&command)
-                    == batch.commands[batch.applied - 1]
-                        .as_ref()
-                        .and_then(parameter_key);
+                && batch.commands[batch.applied - 1]
+                    .as_ref()
+                    .is_some_and(|previous| same_parameter(previous, &command));
             if !duplicate {
                 batch.applied += 1;
             }
-            batch.commands[batch.applied - 1] = Some(command);
+            let old = batch.commands[batch.applied - 1].replace(command);
+            if duplicate {
+                batch.discarded[batch.received - 1] = old;
+            }
         }
+        // Releasing credit after each pop would let producers refill a full
+        // 256 MiB between every pop, retaining 32 queues' worth in this batch.
+        // Holding credits through receipt caps the entire batch at one queue.
+        rx.release_payload(payload_bytes);
         batch.backlog = rx.len();
         batch
     }
@@ -732,6 +920,7 @@ mod tests {
     #[test]
     fn parameter_updates_coalesce_without_crossing_event_or_target_boundaries() {
         let (tx, rx) = crossbeam_channel::bounded(32);
+        let rx = CommandReceiver::from(rx);
         for command in [
             Command::Xfader(0.1),
             Command::Xfader(0.8),
@@ -743,7 +932,11 @@ mod tests {
             },
             Command::Xfader(0.3),
             Command::Xfader(0.4),
-            Command::LiveNoteOff { source: 0, ch: 0, note: 60 },
+            Command::LiveNoteOff {
+                source: 0,
+                ch: 0,
+                note: 60,
+            },
             Command::DeckPitch {
                 deck: 0,
                 value: 0.2,
@@ -791,6 +984,7 @@ mod tests {
     #[test]
     fn dequeue_budget_counts_received_commands_even_when_all_coalesce() {
         let (tx, rx) = crossbeam_channel::bounded(256);
+        let rx = CommandReceiver::from(rx);
         for i in 0..256 {
             tx.send(Command::Master(i as f32 / 256.0)).unwrap();
         }
@@ -811,5 +1005,32 @@ mod tests {
         stats.record(&CommandBatch::receive(&rx));
         assert_eq!(stats.received_last_block, 0);
         assert_eq!(stats.applied_last_block, 0);
+    }
+}
+
+fn history_monitoring(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::LiveNoteOn { .. }
+            | Command::LiveNoteOff { .. }
+            | Command::SamplerPad { .. }
+            | Command::DeckTouch { .. }
+            | Command::MidiDeckTouch { .. }
+            | Command::Stop
+            | Command::StopTrack { .. }
+            | Command::ReservedStop { .. }
+            | Command::Play
+            | Command::TogglePlay
+            | Command::MidiClock { .. }
+    )
+}
+
+fn same_parameter(a: &Command, b: &Command) -> bool {
+    match (a, b) {
+        (Command::Gesture { id: a, command: ac }, Command::Gesture { id: b, command: bc }) => {
+            a == b && parameter_key(ac).is_some() && parameter_key(ac) == parameter_key(bc)
+        }
+        (Command::Gesture { .. }, _) | (_, Command::Gesture { .. }) => false,
+        _ => parameter_key(a).is_some() && parameter_key(a) == parameter_key(b),
     }
 }
