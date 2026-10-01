@@ -91,21 +91,20 @@ fn render_and_compare(
         channel.mid_g = eq_gains[1];
         channel.high_g = eq_gains[2];
     }
-    let mut filters = [Svf::default(); 2];
+    let mut filters = [deck_filter::ChannelFilter::default(); 2];
+    let mut position = rt.decks[deck].filter_position;
     let filter = rt.decks[deck].filter_amt;
     load_fixture(rt, deck, samples, mono);
     let mut output = Vec::with_capacity(samples.len());
     for (frame, input) in samples.iter().enumerate() {
+        position = deck_filter::slew(position, filter, sr);
+        let curve = deck_filter::Curve::at(position, sr);
         let actual = rt.render_deck(deck);
         let actual = [actual.0, actual.1];
         for channel in 0..2 {
             let source = input[if mono { 0 } else { channel }];
             let mut expected = eq[channel].tick(source * gain);
-            if (filter - 0.5).abs() > 0.03 {
-                let cutoff = 200.0 + (filter - 0.5).abs() * 2.0 * 8000.0;
-                let morph = if filter < 0.5 { 0.0 } else { 1.0 };
-                expected = filters[channel].process(expected, cutoff, 0.4, sr, morph);
-            }
+            expected = filters[channel].process(expected, curve);
             assert!(actual[channel].is_finite());
             assert!(
                 (actual[channel] - expected).abs() < 1e-6,
@@ -293,9 +292,9 @@ fn deck_sample_rate_change_resets_both_histories_and_preserves_controls() {
         for deck in &mut rt.decks {
             for channel in 0..2 {
                 deck.eq[channel].tick(0.4 + channel as f32 * 0.2);
-                deck.filter[channel].process(0.3, 1400.0, 0.4, rt.sr, 0.0);
+                deck.filter[channel].process(0.3, deck_filter::Curve::at(0.2, rt.sr));
                 assert!(deck.eq[channel].low.z != 0.0);
-                assert!(deck.filter[channel].ic1eq != 0.0);
+                assert!(deck.filter[channel].history[0] != 0.0);
             }
         }
         rt.set_sample_rate(sr);
@@ -309,7 +308,7 @@ fn deck_sample_rate_change_resets_both_histories_and_preserves_controls() {
                 assert_eq!((eq.low.z, eq.high.z), (0.0, 0.0));
                 assert_eq!((eq.low.a, eq.high.a), (fresh.low.a, fresh.high.a));
                 let filter = &rt.decks[deck].filter[channel];
-                assert_eq!((filter.ic1eq, filter.ic2eq), (0.0, 0.0));
+                assert_eq!((filter.history[0], filter.history[1]), (0.0, 0.0));
             }
             let samples: Vec<_> = sweep(sr)
                 .into_iter()
