@@ -84,8 +84,13 @@ production build. The prepared project integration passes 183 GUI tests with
 one native child fixture ignored by the ordinary runner; that child passes when
 invoked through the private native harness. The shortcut window has bounded,
 scrollable geometry so its expanded content does not cover the project menu.
-The final assembled full suite passes 587 tests with 7 opt-in fixtures ignored;
+The final assembled full suite passes 588 tests with 7 opt-in fixtures ignored;
 `cargo build --offline` passes. The native fixture passes again on that exact
 stack, traversing 227 nodes and returning 45 native actions. The saved/reopened
 note remains present. License records were refreshed for the new source and
 feature graph, and packaging verifies the built executable's embedded records.
+
+A later real workflow regression fixes percentage rounding in the clip-gain
+editor: setting 53% and rendering twenty idle frames now creates exactly one
+history entry. One Undo restores 100%, and Redo restores 53%. Idle decimal
+normalization cannot enqueue the unchanged gain repeatedly.

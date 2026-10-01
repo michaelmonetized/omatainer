@@ -11070,7 +11070,7 @@
     "src/ui/atspi_tests.rs": "cd2ebc25928799b87291f882ab85b2a72b6531b32a15674c317f6d8a8d51fb6f",
     "src/ui/audio_status.rs": "38cda13aa966d55b8f46d5357a0fc7319ef7d2961b639306e65fd6997865799a",
     "src/ui/bpm.rs": "0b024e90b41d8d6db6e44be20a7490cbb49f548b15486a70f32a8f2287ec30ac",
-    "src/ui/clip_gain.rs": "91d2998c2997a995feaeb2e25176d2c1d1f50d3b9fe85b910964a94994dab49c",
+    "src/ui/clip_gain.rs": "8ddf0546457e47501ab094f6d3ad75c742bed53d99dc718dbe50e1b859ac4519",
     "src/ui/compose_tests.rs": "019af725537cab11db3db7c901877e73652d10f113f67063abedffc096aa73d2",
     "src/ui/controller_browse_tests.rs": "4dfe048b46aa687e5b8f260075dea93cd9c2a6997af9b0722fe5d567ae2d0c6a",
     "src/ui/controller_load_tests.rs": "8fdfe5ce9ac78d7872aeab8b17cd6455f4efb700e59c35c4facfc16a9607c9cf",
