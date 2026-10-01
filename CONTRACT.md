@@ -184,3 +184,11 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   visible failures. An uncaptured legacy renderer request fails explicitly;
   it cannot infer a later GUI selection. File loading uses the existing pending,
   result and diagnostic status, with request-token cancellation rules above.
+
+## Time-effect slot mix
+
+- Delay, Reverb and Chorus produce fully wet processor output. The slot applies
+  one linear dry/wet interpolation: dry × (1 − mix) + wet × mix.
+- Zero mix emits dry input while processor history keeps advancing; full mix
+  emits only the time-effect signal. Intermediate mix changes do not scale the
+  stored feedback history or apply the wet coefficient a second time.

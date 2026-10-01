@@ -72,17 +72,17 @@ impl Reference {
                 FxId::Comp | FxId::Gate => x * gain,
                 FxId::Delay => {
                     self.delay[channel].fb = self.p[1];
-                    self.delay[channel].mix = self.mix;
+                    self.delay[channel].mix = 1.0;
                     self.delay[channel].tick(x)
                 }
                 FxId::Reverb => {
-                    self.reverb[channel].mix = self.mix;
+                    self.reverb[channel].mix = 1.0;
                     self.reverb[channel].tick(x)
                 }
                 FxId::Chorus => {
                     self.chorus[channel].time_samples =
                         SR * (0.008 + 0.006 * (self.phase * std::f32::consts::TAU).sin());
-                    self.chorus[channel].mix = self.mix;
+                    self.chorus[channel].mix = 1.0;
                     self.chorus[channel].tick(x)
                 }
                 FxId::Filter => {
