@@ -16,9 +16,10 @@ use std::{
 };
 
 mod content;
+mod analysis;
 pub(crate) use content::Relocate;
 
-const SCHEMA: u32 = 4;
+const SCHEMA: u32 = 5;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -44,6 +45,8 @@ pub(crate) struct Version {
     pub preparation: Preparation,
     #[serde(default)]
     pub content_hash: Option<[u8; 32]>,
+    #[serde(default)]
+    pub analysis: Option<crate::track_analysis::Record>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -164,6 +167,8 @@ impl Catalog {
                 let m = &version.metadata;
                 if !fingerprints.insert(version.fingerprint)
                     || !version.preparation.valid()
+                    || version.analysis.as_ref().is_some_and(|record|
+                        !record.valid() || version.fingerprint.is_none() || version.content_hash.is_none())
                     || [&m.title, &m.artist, &m.key]
                         .into_iter()
                         .any(|s| s.len() > 4096)
@@ -235,6 +240,7 @@ impl Catalog {
                 metadata: metadata.clone(),
                 preparation: Preparation::default(),
                 content_hash: None,
+                analysis: None,
             });
             track.versions.len() - 1
         };
@@ -242,10 +248,15 @@ impl Catalog {
         let version = &mut track.versions[index];
         // Rescanning filename hints cannot erase decoded analysis/user values.
         let old = &version.metadata;
-        let bpm = if old.bpm.origin == Origin::User
-            || (matches!(metadata.bpm.origin, Origin::Unknown | Origin::FilenameHint)
-                && matches!(old.bpm.origin, Origin::Heuristic | Origin::User))
-        {
+        let analyzed = version.analysis.as_ref();
+        let bpm = if old.bpm.origin == Origin::User {
+            old.bpm
+        } else if metadata.bpm.origin == Origin::User {
+            metadata.bpm
+        } else if let Some(measured) = analyzed.and_then(|record| record.bpm.as_ref()) {
+            measured.value.map_or(Bpm::UNKNOWN, |value| Bpm::new(value, Origin::Heuristic))
+        } else if matches!(metadata.bpm.origin, Origin::Unknown | Origin::FilenameHint)
+            && old.bpm.origin == Origin::Heuristic {
             old.bpm
         } else {
             metadata.bpm
@@ -267,7 +278,8 @@ impl Catalog {
                 old.key.clone()
             },
             bpm,
-            duration: metadata.duration.or(old.duration),
+            duration: analyzed.and_then(|record| record.duration.as_ref()).map(|measured| measured.value)
+                .or(metadata.duration).or(old.duration),
             last_play: metadata.last_play.max(old.last_play),
             ..metadata
         };
@@ -378,7 +390,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
-        Some(2 | 3 | 4) => {
+        Some(2 | 3 | 4 | 5) => {
             let mut current: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             current.schema = SCHEMA;
             current
@@ -403,6 +415,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
                             metadata: track.metadata,
                             preparation: track.preparation,
                             content_hash: None,
+                            analysis: None,
                         }],
                     })
                     .collect(),
@@ -439,6 +452,7 @@ pub(crate) struct Store {
     identity: Option<FileFingerprint>,
     pub catalog: Catalog,
     saved: Vec<u8>,
+    last_save_replaced: bool,
 }
 impl Drop for Store {
     fn drop(&mut self) {
@@ -484,7 +498,13 @@ impl Store {
             _lock: lock,
             catalog,
             saved: vec![],
+            last_save_replaced: false,
         })
+    }
+    pub(crate) fn last_save_replaced(&self) -> bool { self.last_save_replaced }
+    #[cfg(test)]
+    pub(crate) fn save_for_test(&mut self, checkpoint: impl FnMut(u8) -> Result<(), String>) -> Result<(), String> {
+        self.save_with(checkpoint)
     }
     pub fn save(&mut self) -> Result<(), String> {
         self.save_with(|_| Ok(()))
@@ -493,6 +513,7 @@ impl Store {
         &mut self,
         mut checkpoint: impl FnMut(u8) -> Result<(), String>,
     ) -> Result<(), String> {
+        self.last_save_replaced = false;
         self.catalog.validate()?;
         let bytes = serde_json::to_vec(&self.catalog).map_err(|e| e.to_string())?;
         if bytes.len() as u64 > MAX_BYTES {
@@ -580,6 +601,7 @@ impl Store {
                 return Err("temporary DJ library changed before commit; preserved".into());
             }
             fs::rename(&temp, &self.path).map_err(|e| e.to_string())?;
+            self.last_save_replaced = true;
             let committed = file.metadata().map_err(|e| format!("replacement committed; identity unavailable: {e}"))?;
             if !same_content_identity(&written, &committed) {
                 return Err("replacement committed but externally modified; durability unconfirmed".into());

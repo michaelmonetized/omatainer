@@ -119,6 +119,23 @@ rejected without replacement. See the [project workflow evidence](docs/validatio
 and [file format and atomic save rules](docs/validation/issue-82-codec.md).
 ## DJ library
 
+Use **analyze…** beside the crate search to prepare BPM, duration and a bounded
+waveform for selected local files. **Analyze selected row** captures one source;
+**Analyze filtered crate** captures the current filtered order, up to 4,096 rows.
+Later filtering or scanning does not retarget that queue. Choose individual
+fields and **Force selected fields** to reanalyze them; manual BPM and locked
+preparation remain authoritative. Key detection is unavailable.
+
+The shared media worker hashes and decodes one source at a time. Explicit deck
+or sampler loads preempt background analysis; **Retry current analysis** resumes
+the captured source. Cancel stops remaining work at safe boundaries, while a
+publication already claimed reports its actual outcome. Prepared progress is
+separate from catalog persistence. **Inspect selected cache** verifies stored
+values and the waveform without starting a source decode. Missing/corrupt cache
+or changed source versions remain explicit. Closing the panel leaves its queue
+running. Optional analysis is unavailable during Performance protection.
+
+
 Tracks discovered by Scan or successfully loaded from a dropped file are stored
 in `$XDG_DATA_HOME/omatainer/library.json` (normally
 `~/.local/share/omatainer/library.json`). Stable track IDs, metadata, tempo
@@ -127,8 +144,9 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 3 is the current format; versions 1 and 2 migrate without changing
-IDs or preparation. Conflicting identities or unknown
+worker. Version 5 is the current format; versions 1–4 migrate without changing
+IDs or preparation. Source-qualified analysis results and their algorithm versions
+are retained in the catalog; bounded waveform blobs live in the private cache. Conflicting identities or unknown
 fields/formats are rejected rather than discarded. Removable-volume and provider
 references stay distinct, but loading them is explicitly unavailable until a
 resolver is implemented. No provider/network media is fetched.

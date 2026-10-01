@@ -159,7 +159,7 @@ fn migration_preserves_every_v1_field_and_backs_up_original() {
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&fs::read(dir.store()).unwrap()).unwrap()
             ["schema"],
-        4
+        SCHEMA
     );
 }
 #[test]
@@ -753,5 +753,171 @@ fn schema_three_cue_metadata_migrates_without_an_invented_beatgrid() {
     assert_eq!(fs::read(dir.store()).unwrap(), bytes);
     store.save().unwrap();
     assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
-    assert_eq!(read(&dir.store()).unwrap().schema, 4);
+    assert_eq!(read(&dir.store()).unwrap().schema, SCHEMA);
+}
+
+
+#[test]
+fn background_analysis_selective_fields_preserve_user_preparation_and_restart() {
+    use crate::track_analysis::{Fields, Patch, WaveformRef};
+    let dir = Dir::new();
+    let path = dir.0.join("analyzed.wav");
+    fs::write(&path, b"source-qualified analysis fixture bytes").unwrap();
+    let source = LibSource::File(path.clone());
+    let fingerprint = FileFingerprint::read(&path).unwrap();
+    let hash = content::hash_file(&path, fingerprint, || true).unwrap();
+    let mut store = Store::open(dir.store()).unwrap();
+    let version = store.catalog.upsert(source.clone(), Some(fingerprint), metadata()).unwrap();
+    version.preparation = preparation();
+    version.preparation.grid = Some(crate::engine::beatgrid::Grid::new(0.25, 127.5).unwrap());
+    let original = version.clone();
+    let reference = crate::sampler_bank::SourceRef {
+        track: store.catalog.track(&source).unwrap().id.clone(), source: source.clone(),
+        fingerprint, content_hash: Some(hash),
+    };
+    let wave = WaveformRef { sha256: [7; 32], bytes: 16000, frames: 480_000,
+        sample_rate: 48_000, channels: 2, bins: 2048 };
+    let mut patch = Patch { reference, fields: Fields::ALL, at_unix_ms: 1000,
+        bpm: Some(140.0), duration: 10.0, waveform: Some(wave.clone()) };
+    store.catalog.apply_analysis(&patch).unwrap();
+    let analyzed = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
+    assert_eq!(analyzed.preparation, original.preparation);
+    assert_eq!(analyzed.metadata.bpm, original.metadata.bpm);
+    assert_eq!(analyzed.metadata.title, original.metadata.title);
+    assert_eq!(analyzed.metadata.key, original.metadata.key);
+    assert_eq!(analyzed.metadata.last_play, original.metadata.last_play);
+    assert_eq!(analyzed.metadata.duration, Some(10.0));
+    assert!(analyzed.analysis.as_ref().unwrap().contains(Fields::ALL));
+    patch.fields = Fields { bpm: true, duration: false, waveform: false };
+    patch.at_unix_ms = 2000;
+    patch.bpm = None;
+    patch.waveform = None;
+    store.catalog.apply_analysis(&patch).unwrap();
+    let selected = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
+    let cached = selected.analysis.as_ref().unwrap();
+    assert_eq!(cached.bpm.as_ref().unwrap().value, None);
+    assert_eq!(cached.bpm.as_ref().unwrap().at_unix_ms, 2000);
+    assert_eq!(cached.duration, analyzed.analysis.as_ref().unwrap().duration);
+    assert_eq!(cached.waveform, analyzed.analysis.as_ref().unwrap().waveform);
+    assert_eq!(selected.metadata.bpm, original.metadata.bpm);
+    assert_eq!(selected.preparation, original.preparation);
+    store.save().unwrap();
+    drop(store);
+    let reopened = Store::open(dir.store()).unwrap();
+    assert_eq!(reopened.catalog.version(&source, Some(fingerprint)), Some(&selected));
+}
+
+#[test]
+fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() {
+    use crate::track_analysis::{Fields, Patch};
+    let dir = Dir::new();
+    let path = dir.0.join("version.wav");
+    fs::write(&path, b"original bytes").unwrap();
+    let source = LibSource::File(path.clone());
+    let fingerprint = FileFingerprint::read(&path).unwrap();
+    let hash = content::hash_file(&path, fingerprint, || true).unwrap();
+    let mut catalog = Catalog::default();
+    let mut automatic = metadata(); automatic.bpm = Bpm::hint(120.0);
+    catalog.upsert(source.clone(), Some(fingerprint), automatic).unwrap();
+    let reference = crate::sampler_bank::SourceRef {
+        track: catalog.track(&source).unwrap().id.clone(), source: source.clone(),
+        fingerprint, content_hash: Some(hash),
+    };
+    fs::write(&path, b"replacement version with a different duration").unwrap();
+    let replaced = FileFingerprint::read(&path).unwrap();
+    catalog.upsert(source.clone(), Some(replaced), metadata()).unwrap();
+    let replacement = catalog.version(&source, Some(replaced)).unwrap().clone();
+    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false },
+        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None };
+    catalog.apply_analysis(&patch).unwrap();
+    let measured = catalog.version(&source, Some(fingerprint)).unwrap();
+    assert_eq!(measured.metadata.bpm, Bpm::new(136.0, Origin::Heuristic));
+    assert_eq!(catalog.version(&source, Some(replaced)), Some(&replacement));
+    assert_eq!(catalog.track(&source).unwrap().versions[catalog.track(&source).unwrap().current].fingerprint, Some(replaced));
+    let before = catalog.tracks.clone();
+    let mut invalid = patch.clone(); invalid.reference.track = TrackId("f".repeat(32));
+    assert!(catalog.apply_analysis(&invalid).is_err());
+    invalid = patch.clone(); invalid.reference.content_hash = Some([9; 32]);
+    assert!(catalog.apply_analysis(&invalid).is_err());
+    invalid = patch.clone(); invalid.reference.source = LibSource::File(dir.0.join("wrong.wav"));
+    assert!(catalog.apply_analysis(&invalid).is_err());
+    invalid = patch.clone(); invalid.duration = f64::NAN;
+    assert!(catalog.apply_analysis(&invalid).is_err());
+    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false };
+    assert!(catalog.apply_analysis(&invalid).is_err());
+    assert_eq!(catalog.tracks, before);
+}
+
+#[test]
+fn schema_four_migrates_without_inventing_cached_analysis_or_modifying_original() {
+    let dir = Dir::new();
+    let original = mixed(&dir);
+    let mut old = serde_json::to_value(&original).unwrap();
+    old["schema"] = 4.into();
+    for track in old["tracks"].as_array_mut().unwrap() {
+        for version in track["versions"].as_array_mut().unwrap() {
+            version.as_object_mut().unwrap().remove("analysis");
+        }
+    }
+    let bytes = serde_json::to_vec(&old).unwrap();
+    fs::write(dir.store(), &bytes).unwrap();
+    let mut store = Store::open(dir.store()).unwrap();
+    assert_eq!(store.catalog.schema, 5);
+    assert_eq!(store.catalog.tracks, original.tracks);
+    assert!(store.catalog.tracks.iter().all(|t| t.versions.iter().all(|v| v.analysis.is_none())));
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    store.save().unwrap();
+    assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
+    assert_eq!(read(&dir.store()).unwrap().schema, 5);
+}
+
+#[test]
+fn analysis_store_receipts_distinguish_precommit_failure_postrename_and_noop() {
+    for checkpoint in [0, 1, 2, 3, 4] {
+        let dir = Dir::new();
+        let mut store = Store::open(dir.store()).unwrap();
+        store.catalog = mixed(&dir);
+        store.save().unwrap();
+        assert!(store.last_save_replaced());
+        store.save().unwrap();
+        assert!(
+            !store.last_save_replaced(),
+            "no-op inherited a previous replacement flag"
+        );
+        let previous = read(&dir.store()).unwrap().tracks;
+        store.catalog.tracks[0].versions[0].preparation.cue = 81.25;
+        let expected = store.catalog.tracks.clone();
+        let failure = store
+            .save_with(|at| {
+                if at == checkpoint {
+                    Err("controlled catalog write failure".into())
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap_err();
+        assert_eq!(store.last_save_replaced(), checkpoint == 3);
+        assert_eq!(
+            read(&dir.store()).unwrap().tracks,
+            if checkpoint == 3 {
+                expected.clone()
+            } else {
+                previous
+            }
+        );
+        if checkpoint == 3 {
+            assert!(failure.contains("replacement committed"));
+        }
+        // Every new save call resets the receipt even if validation rejects
+        // before touching the filesystem; no prior committed flag may leak.
+        store.catalog.schema = 99;
+        assert!(store.save().is_err());
+        assert!(!store.last_save_replaced());
+        store.catalog.schema = SCHEMA;
+        store.save().unwrap();
+        assert!(store.last_save_replaced());
+        assert_eq!(read(&dir.store()).unwrap().tracks, expected);
+        store.save().unwrap();
+        assert!(!store.last_save_replaced());
+    }
 }

@@ -6,6 +6,7 @@ mod licenses;
 mod engine;
 mod library;
 mod sampler_bank;
+mod track_analysis;
 mod preferences;
 mod theme;
 mod ui;

@@ -23,7 +23,7 @@ impl LibItem {
             last_play: self.last_play,
         }
     }
-    fn from_stored(source: LibSource, version: &crate::library::Version) -> Self {
+    pub(super) fn from_stored(source: LibSource, version: &crate::library::Version) -> Self {
         let m = &version.metadata;
         Self {
             source,
@@ -356,7 +356,9 @@ pub(super) enum CloseState {
 impl App {
     /// GUI-free progress API for the project/library close coordinator. A Ready
     /// result follows a renderer FIFO fence and the durable worker receipt.
+    pub(super) fn library_closing(&self) -> bool { self.library_close.requested || self.library_close.allow }
     pub(super) fn prepare_library_close(&mut self) -> CloseState {
+        if !self.stop_analysis_for_close() { return CloseState::Pending; }
         use std::sync::atomic::{AtomicBool, Ordering};
         if self.library_metadata.storage.is_none() {
             return CloseState::Ready;
@@ -400,6 +402,7 @@ impl App {
     }
     pub(super) fn request_library_close(&mut self, ctx: &egui::Context) {
         self.library_close.requested = true;
+        self.stop_analysis_for_close();
         if self.library_metadata.storage.is_none() {
             self.library_close.allow = true;
             self.allow_project_close(ctx);

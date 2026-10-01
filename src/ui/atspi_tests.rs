@@ -121,7 +121,7 @@ fn private_atspi_bridge_child() {
             actions.push(serde_json::json!({"action":format!("{:?}",request.action),"label":label,"data":format!("{:?}",request.data)}));
             events.push(egui::Event::AccessKitActionRequest(request));
         }
-        assert!(actions.len() <= 128, "unbounded fixture action stream");
+        assert!(actions.len() <= 160, "unbounded fixture action stream");
         tree = frame(&mut app, events);
         *initial.lock().unwrap() = tree.clone();
         adapter.update_if_active(|| tree.clone());
@@ -165,6 +165,7 @@ fn private_atspi_bridge_child() {
             "grid":rt.decks[0].grid,"grid_editor":app.grid_editor.as_ref().map(grid_editor::Editor::evidence),
             "hotcue_1":rt.decks[0].hotcues[0].set,"cue_slots":rt.decks[0].hotcues.iter().map(|cue|cue.set).collect::<Vec<_>>(),"cue_editor_open":app.cue_editor.editor.is_some(),"pad_held":app.pad_held[0],"focus":focus,
             "sampler_editor":app.sampler_editor.evidence(),
+            "analysis":app.library_analysis.evidence(),
             "sampler_banks":rt.sampler_banks.iter().map(|b|serde_json::json!({"id":b.id,"name":b.name(),"gain":b.data.settings.slots[0].controls.gain,"frames":b.data.audio[0].as_ref().map(|s|s.frames())})).collect::<Vec<_>>(),
             "sampler_fixture_row":app.library_view.indices.iter().position(|&i|app.library[i].source==sampler_source).map(|i|i+1),
             "sampler_instrument":rt.sampler_inst.label(),"held_pad_voices":held_pad_voices,

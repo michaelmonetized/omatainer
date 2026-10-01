@@ -182,6 +182,86 @@ Safe mode opens no audio or MIDI devices and leaves startup settings unapplied. 
 
 Workflow: Stop and recover.
 
+### Close analysis panel
+
+Hide the window only
+
+Close the inspector while an admitted queue continues. Use Cancel analysis queue to stop remaining work; hiding the window never relabels a committed result.
+
+Workflow: Prepare a DJ deck.
+
+### Background track analysis
+
+Local source/version cache
+
+Open the bounded background analysis queue. Opening this panel neither decodes nor changes playback. Key detection is unavailable; existing filename hints and manual keys are not analysis results.
+
+Workflow: Prepare a DJ deck.
+
+### Analysis fields
+
+BPM / duration / waveform
+
+Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM.
+
+Workflow: Prepare a DJ deck.
+
+### Force selected fields
+
+Reanalysis of chosen fields only
+
+Recompute the chosen fields even if verified cache entries exist. Unselected analysis fields and manual preparation remain unchanged. A missing or corrupt waveform is recomputed without trusting that cached blob.
+
+Workflow: Prepare a DJ deck.
+
+### Analyze selected row
+
+One captured local source
+
+Capture the selected row's identity and prepare missing chosen fields on the shared media worker. A deck or sampler load preempts background decoding. Ready means prepared, not persisted; wait for the catalog receipt.
+
+Workflow: Prepare a DJ deck.
+
+### Analyze filtered crate
+
+1–4096 captured rows
+
+Capture the current filtered view without cloning the crate. Process one source at a time and wait for each actual save result before advancing. Later sorting, filtering, scanning or selection does not retarget the queue. Narrow larger crates; no silent truncation.
+
+Workflow: Prepare a DJ deck.
+
+### Inspect selected cache
+
+Verified cached record and waveform
+
+Read the selected source/version's saved record and verify the waveform on the metadata worker. Missing fields are reported; inspection alone never starts source decoding. A changed source cannot inherit another version's result.
+
+Workflow: Prepare a DJ deck.
+
+### Retry current analysis
+
+Explicit resume after failure or preemption
+
+Retry the captured current source after a foreground load, protection or storage failure. This preserves earlier commits and never silently substitutes the currently selected row. Optional work is refused while performance protection is active.
+
+Workflow: Prepare a DJ deck.
+
+### Skip current analysis
+
+Advance the captured queue
+
+Leave this source's saved values unchanged and proceed to the next captured row. Earlier results remain saved; source files are never edited by analysis.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel analysis queue
+
+Cooperative cancellation
+
+Stop remaining work and request cancellation at safe decode, hash and publication boundaries. An OS read may still finish. A save whose publication claim already won reports its actual committed result instead of being relabeled cancelled.
+
+Workflow: Prepare a DJ deck.
+
 ### Help and lessons
 
 Offline reference

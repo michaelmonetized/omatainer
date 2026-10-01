@@ -6,6 +6,8 @@ use crate::engine::performance::{Handle, WorkPermit};
 use std::sync::{mpsc, Weak};
 
 const SAMPLER_PROOF_LIMIT: usize = 256;
+mod analysis;
+pub(super) use analysis::{Receipt as AnalysisReceipt, Inspect as AnalysisInspect, Inspected as AnalysisInspected, Cached as AnalysisCached};
 
 #[cfg(test)]
 mod tests;
@@ -63,8 +65,14 @@ struct Job {
     import: Option<Import>,
     relocation: Option<Relocation>,
     qualification_work: Option<WorkPermit>,
+    analysis: Option<crate::engine::media_load::AnalysisCompletion>,
+    inspection: Option<AnalysisInspect>,
+    retired_analysis_indices: Vec<Arc<Vec<usize>>>,
+    retired_analysis_inspections: Vec<AnalysisInspected>,
 }
 struct Result {
+    analysis: Option<AnalysisReceipt>,
+    inspection: Option<AnalysisInspected>,
     relocation: Option<RelocationResult>,
     qualification_pending: bool,
     base: Weak<Vec<LibItem>>,
@@ -87,6 +95,15 @@ struct RelocationResult {
 }
 
 pub(super) struct Metadata {
+    analysis: Option<crate::engine::media_load::AnalysisCompletion>,
+    inspection: Option<AnalysisInspect>,
+    retired_analysis_indices: Vec<Arc<Vec<usize>>>,
+    retired_analysis_inspections: Vec<AnalysisInspected>,
+    analysis_result: Option<AnalysisReceipt>,
+    analysis_active: Option<u64>,
+    inspection_result: Option<AnalysisInspected>,
+    inspection_active: Option<(u64, crate::sampler_bank::SourceRef, Arc<WorkPermit>, Arc<std::sync::atomic::AtomicBool>)>,
+    worker_closed: bool,
     relocation_result: Option<RelocationResult>,
     qualification_pending: bool,
     performance: Handle,
@@ -132,6 +149,7 @@ impl Metadata {
         let _ = std::thread::Builder::new()
             .name("omatainer-metadata".into())
             .spawn(move || {
+                let mut analysis_disk = path.as_deref().map(analysis::Disk::new);
                 let mut store = path.map(crate::library::Store::open);
                 let mut cache = HashMap::<LibSource, Patch>::new();
                 // Latest captured file identity per source only. Protection can
@@ -141,7 +159,7 @@ impl Metadata {
                 // A stale optional result must not hide an essential capture on
                 // the next protected rebase. This cache is bounded by base rows.
                 let mut essential = HashMap::<LibSource, super::library_store::Capture>::new();
-                while let Ok(job) = work.recv() {
+                while let Ok(mut job) = work.recv() {
                     before_job();
                     for capture in &job.captures {
                         // Excess tracks retain their essential cues and can be
@@ -209,6 +227,9 @@ impl Metadata {
                     let mut durable = false;
                     let mut qualification_pending = false;
                     let mut relocation_outcome = None;
+                    let mut analysis_result = None;
+                    let mut inspection_result = None;
+                    let mut analysis_committed = false;
                     let catalog = if let Some(store) = &mut store {
                         match store {
                             Ok(store) => {
@@ -246,6 +267,30 @@ impl Metadata {
                                     status.push_str("; sampler content proof rejected: ");
                                     status.push_str(&error);
                                 }
+                                if let Some(completion) = job.analysis.take() {
+                                    let receipt = if durable {
+                                        analysis::save(store, analysis_disk.as_mut().unwrap(), completion)
+                                    } else {
+                                        AnalysisReceipt::refused(completion, "Analysis was not saved: essential catalog persistence failed".into())
+                                    };
+                                    analysis_committed = receipt.committed;
+                                    if receipt.committed && receipt.outcome.is_err() {
+                                        durable = false;
+                                        storage = Some(format!("Analysis replacement committed; durability unconfirmed: {}", receipt.outcome.as_ref().unwrap_err()));
+                                    }
+                                    if analysis_committed {
+                                        items = store.catalog.tracks.iter().map(|track|
+                                            LibItem::from_stored(track.source.clone(), &track.versions[track.current])).collect();
+                                    }
+                                    analysis_result = Some(receipt);
+                                }
+                                if let Some(request) = job.inspection.take() {
+                                    inspection_result = Some(if durable {
+                                        analysis::inspect(store, analysis_disk.as_mut().unwrap(), request)
+                                    } else {
+                                        AnalysisInspected::refused(request, "Analysis inspection requires a confirmed catalog save".into())
+                                    });
+                                }
                                 Arc::new(store.catalog.clone())
                             }
                             Err(error) => {
@@ -258,13 +303,21 @@ impl Metadata {
                     } else {
                         Arc::new(crate::library::Catalog::default())
                     };
+                    if let Some(completion) = job.analysis.take() {
+                        analysis_result = Some(AnalysisReceipt::refused(completion,
+                            "Analysis was not saved: persistent DJ library is unavailable".into()));
+                    }
+                    if let Some(request) = job.inspection.take() {
+                        inspection_result = Some(AnalysisInspected::refused(request,
+                            "Analysis inspection requires a persistent DJ library".into()));
+                    }
                     if durable && !qualification_pending { qualifications.clear(); }
                     sort_crate(&mut items);
                     // Prepare a second immutable view on the worker. It keeps
                     // prior visible identities and their essential saved metadata,
                     // never optional scan/import changes, even for the same path.
                     let visible: std::collections::HashSet<_> = job.base.iter().map(|item| &item.source).collect();
-                    let optional = job.restricted || job.scan_work.is_some() || job.import.is_some() || job.relocation.is_some()
+                    let optional = analysis_committed || job.restricted || job.scan_work.is_some() || job.import.is_some() || job.relocation.is_some()
                         || items.iter().any(|item| !visible.contains(&item.source));
                     let restricted = optional.then(|| {
                         let mut rows = if persistent { super::library_store::restricted_rows(&fallback, &essential.values().cloned().collect::<Vec<_>>()) }
@@ -289,6 +342,8 @@ impl Metadata {
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
+                            analysis: analysis_result,
+                            inspection: inspection_result,
                             relocation,
                             qualification_pending,
                             base: Arc::downgrade(&job.base),
@@ -314,6 +369,15 @@ impl Metadata {
                 }
             });
         Self {
+            analysis: None,
+            inspection: None,
+            retired_analysis_indices: Vec::new(),
+            retired_analysis_inspections: Vec::new(),
+            analysis_result: None,
+            analysis_active: None,
+            inspection_result: None,
+            inspection_active: None,
+            worker_closed: false,
             relocation_result: None,
             qualification_pending: false,
             performance: Handle::default(),
@@ -340,6 +404,53 @@ impl Metadata {
 }
 
 impl Metadata {
+    /// Bounded handoff: one pending result, plus the worker's one in-flight job.
+    pub fn save_analysis(&mut self, completion: crate::engine::media_load::AnalysisCompletion)
+        -> std::result::Result<(), crate::engine::media_load::AnalysisCompletion> {
+        if self.worker_closed || self.analysis_active.is_some() || self.inspection_active.is_some() { return Err(completion); }
+        self.analysis_active = Some(completion.token.id);
+        self.analysis = Some(completion);
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        Ok(())
+    }
+    pub fn analysis_worker_available(&self) -> bool { !self.worker_closed }
+    pub fn take_analysis_result(&mut self) -> Option<AnalysisReceipt> {
+        let result = self.analysis_result.take();
+        if result.is_some() { self.analysis_active = None; }
+        result
+    }
+    pub fn inspect_analysis(&mut self, request: AnalysisInspect) -> std::result::Result<(), AnalysisInspect> {
+        if self.worker_closed || self.analysis_active.is_some() || self.inspection_active.is_some() { return Err(request); }
+        self.inspection_active = Some((request.id, request.reference.clone(), request.work.clone(), request.cancel.clone()));
+        self.inspection = Some(request);
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        Ok(())
+    }
+    pub fn take_analysis_inspection(&mut self) -> Option<AnalysisInspected> {
+        let result = self.inspection_result.take();
+        if result.is_some() { self.inspection_active = None; }
+        result
+    }
+    pub fn retire_analysis_inspection(&mut self, result: AnalysisInspected) -> std::result::Result<(), AnalysisInspected> {
+        if self.worker_closed || self.retired_analysis_inspections.len() >= 2 { return Err(result); }
+        self.retired_analysis_inspections.push(result);
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        Ok(())
+    }
+    /// Return a completed queue's captured large views to the metadata worker.
+    /// The caller retains ownership and retries if the two retirement slots fill.
+    pub fn retire_analysis_rows(&mut self, rows: Arc<Vec<LibItem>>, indices: Arc<Vec<usize>>)
+        -> std::result::Result<(), (Arc<Vec<LibItem>>, Arc<Vec<usize>>)> {
+        if self.worker_closed || self.retired_analysis_indices.len() >= 2 { return Err((rows, indices)); }
+        self.retired_candidates.push(rows);
+        self.retired_analysis_indices.push(indices);
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        Ok(())
+    }
     /// Enqueue only fresh hash/decode proofs from an Applied sampler request.
     /// A project/definition SourceRef by itself is not a measured content proof.
     /// At most 256 proofs wait here and one 256-proof job can be in flight.
@@ -516,7 +627,31 @@ impl Metadata {
             self.dirty = true;
             self.revision = self.revision.wrapping_add(1);
         }
-        if let Ok(result) = self.results.try_recv() {
+        let received = self.results.try_recv();
+        if matches!(received, Err(mpsc::TryRecvError::Disconnected)) {
+            self.worker_closed = true;
+            self.in_flight = false;
+            self.dirty = false;
+            let error = "DJ library worker unavailable; pending save outcome is unconfirmed";
+            self.storage_error = Some(error.into());
+            self.durable = false;
+            if self.analysis_result.is_none() {
+                if let Some(id) = self.analysis_active {
+                    self.analysis_result = Some(AnalysisReceipt { id, committed: false,
+                        outcome: Err(crate::engine::media_load::AnalysisFailure::Failed(error.into())) });
+                }
+            }
+            if self.inspection_result.is_none() {
+                if let Some((id, reference, work, cancel)) = &self.inspection_active {
+                    self.inspection_result = Some(AnalysisInspected { id: *id, reference: reference.clone(),
+                        work: work.clone(), cancel: cancel.clone(), outcome: Err(error.into()) });
+                }
+            }
+            return Err(error);
+        }
+        if let Ok(result) = received {
+            if let Some(analysis) = result.analysis { self.analysis_result = Some(analysis); }
+            if let Some(inspection) = result.inspection { self.inspection_result = Some(inspection); }
             if let Some(relocation) = result.relocation { self.relocation_result = Some(relocation); }
             self.qualification_pending = result.qualification_pending;
             self.in_flight = false;
@@ -591,6 +726,10 @@ impl Metadata {
                 import: self.import.take(),
                 relocation: self.relocation.take(),
                 qualification_work: self.performance.optional_work().ok(),
+                analysis: self.analysis.take(),
+                inspection: self.inspection.take(),
+                retired_analysis_indices: std::mem::take(&mut self.retired_analysis_indices),
+                retired_analysis_inspections: std::mem::take(&mut self.retired_analysis_inspections),
             };
             match self.jobs.try_send(job) {
                 Ok(()) => {
@@ -598,6 +737,10 @@ impl Metadata {
                     self.in_flight = true;
                 }
                 Err(mpsc::TrySendError::Full(job) | mpsc::TrySendError::Disconnected(job)) => {
+                    self.analysis = job.analysis;
+                    self.inspection = job.inspection;
+                    self.retired_analysis_indices = job.retired_analysis_indices;
+                    self.retired_analysis_inspections = job.retired_analysis_inspections;
                     self.pending = job.updates;
                     self.captures = job.captures;
                     self.sampler_sources = job.sampler_sources;
