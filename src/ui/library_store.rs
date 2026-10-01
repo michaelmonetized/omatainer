@@ -205,15 +205,21 @@ impl App {
             if self.project.committing() { ui.disable(); }
             ui.label("Import a version 1 or 2 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
             ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
-            ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
-            if ui.button("Import catalog").clicked() {
+            let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
+            path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "DJ library import path"));
+            help::annotate(ui, &path, help::Control::LibraryImportPath);
+            let response = ui.button("Import catalog");
+            help::annotate(ui, &response, help::Control::LibraryImport);
+            if response.clicked() {
                 if self.library_import_path.trim().is_empty() { self.status = "Choose a catalog path".into(); }
                 else if self.library_metadata.import(PathBuf::from(self.library_import_path.trim())) {
                     self.status = "DJ library import queued".into();
                 } else { self.status = "DJ library import unavailable or already pending".into(); }
             }
             ui.label(self.library_metadata.label());
-            if ui.button("Retry library save").clicked() { self.library_metadata.retry_save(); }
+            let response = ui.button("Retry library save");
+            help::annotate(ui, &response, help::Control::LibraryRetry);
+            if response.clicked() { self.library_metadata.retry_save(); }
         });
         self.library_import_open = open;
     }
@@ -314,12 +320,15 @@ impl App {
                             );
                         }
                     }
-                    if ui.button("Retry library save").clicked() {
-                        self.library_metadata.retry_save();
-                    }
+                    let retry = ui.button("Retry library save");
+                    help::annotate(ui, &retry, help::Control::LibraryRetry);
+                    if retry.clicked() { self.library_metadata.retry_save(); }
                     let keep = ui.button("Keep working");
+                    help::annotate(ui, &keep, help::Control::LibraryKeepWorking);
                     keep_working = keep.clicked() || keep.is_pointer_button_down_on();
-                    discard = ui.button("Close without saving").clicked();
+                    let close = ui.button("Close without saving");
+                    help::annotate(ui, &close, help::Control::LibraryCloseWithoutSaving);
+                    discard = close.clicked();
                 });
         }
         if keep_working {

@@ -149,11 +149,13 @@ impl App {
                             if failed && load.selection.is_some() {
                                 let response = ui.button("Retry");
                                 accessibility::button(ui, &response, &format!("Deck {}: Retry media load", (b'A' + deck as u8) as char), None);
+                                help::annotate(ui, &response, help::Control::LoadRetry);
                                 if response.clicked() { retry = Some((deck as u8, load.selection.clone())); }
                             }
                             if !matches!(load.phase, Phase::Loading | Phase::Queued) {
                                 let response = ui.button("Dismiss");
                                 accessibility::button(ui, &response, &format!("Deck {}: Dismiss load status", (b'A' + deck as u8) as char), None);
+                                help::annotate(ui, &response, help::Control::LoadDismiss);
                                 if response.clicked() { dismiss = Some(deck); }
                             }
                         });

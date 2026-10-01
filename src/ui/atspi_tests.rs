@@ -158,6 +158,8 @@ fn private_atspi_bridge_child() {
             "compose_armed":rt.compose_target.is_some(),"saved_notes":saved_notes,
             "all_pad_inputs_clear":app.pad_inputs.iter().all(|v| *v==0),
             "project_file":saved_project.display().to_string(),
+            "help_open":app.keys_open,"help_lesson":app.help.evidence(),
+            "lesson_notes":rt.tracks[0].clips[2].notes.len(),
             "preferences_open":app.settings.open,"preferences_busy":app.settings.busy(),
             "preferences_scale":app.settings.profile().appearance.scale,
             "preferences_draft_scale":app.settings.draft.current().unwrap().appearance.scale,

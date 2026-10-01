@@ -33,6 +33,7 @@ impl App {
                 let response = ui.add(
                     egui::Slider::new(&mut percent, 0.0..=150.0).text("clip gain").suffix("%").max_decimals(1));
                 let alternate = accessibility::numeric(ui, &response, &format!("Clip track {} scene {}: Gain", edit.track + 1, edit.scene + 1), original, 0.0, 150.0, 1.0, "%");
+                help::annotate(ui, &response, HelpControl::ClipGain);
                 if let Some(value) = alternate { percent = value; }
                 edit.value = percent / 100.0;
                 // Display rounding can change 52.999996% to 53% on an idle
@@ -42,12 +43,14 @@ impl App {
                 ui.horizontal(|ui| {
                     let zero = ui.button("zero");
                     accessibility::button(ui, &zero, "Set clip gain to zero", None);
+                    help::annotate(ui, &zero, HelpControl::ClipGain);
                     if zero.clicked() {
                         edit.value = 0.0;
                         changed = true;
                     }
                     let unity = ui.button("unity");
                     accessibility::button(ui, &unity, "Set clip gain to unity", None);
+                    help::annotate(ui, &unity, HelpControl::ClipGain);
                     if unity.clicked() {
                         edit.value = 1.0;
                         changed = true;

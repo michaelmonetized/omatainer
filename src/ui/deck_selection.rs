@@ -67,7 +67,7 @@ impl App {
         ui.label(if queued { "load target (queued)" } else { "load target" });
         for deck in 0..DECKS {
             if ui.selectable_label(self.load_target() == deck, format!("Deck {}", (b'A' + deck as u8) as char))
-                .on_hover_text("Select the destination for crate double-click and F; deck pointer presses also select")
+                .help(ui, HelpControl::DeckSelect)
                 .clicked() {
                 self.select_deck(deck);
             }

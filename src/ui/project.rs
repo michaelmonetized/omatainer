@@ -756,6 +756,11 @@ impl App {
         }
     }
 
+    /// Read-only observations for the guided native project workflow.
+    pub(super) fn project_help_state(&mut self) -> (Option<PathBuf>, bool, bool) {
+        (self.project.current_path.clone(), self.project_dirty(), self.project.busy() || self.project.committing())
+    }
+
     pub(super) fn project_toolbar(&mut self, ctx: &egui::Context) {
         let dirty = self.project_dirty();
         let name = self
@@ -780,16 +785,20 @@ impl App {
                         && self.project.dialog.is_none(),
                     |ui| {
                         self.undo_menu(ui);
-                        ui.menu_button("Project", |ui| {
-                            if ui.button("New project").clicked() {
+                        let menu = ui.menu_button("Project", |ui| {
+                            let response = ui.button("New project");
+                            help::annotate(ui, &response, help::Control::ProjectNew);
+                            if response.clicked() {
                                 action = Some(Action::New);
                                 ui.close();
                             }
-                            if ui.button("Open project…").clicked() {
+                            let response = ui.button("Open project…");
+                            help::annotate(ui, &response, help::Control::ProjectOpen);
+                            if response.clicked() {
                                 action = Some(Action::OpenDialog);
                                 ui.close();
                             }
-                            ui.menu_button("Open recent", |ui| {
+                            let recent = ui.menu_button("Open recent", |ui| {
                                 if let Some(warning) = &self.project.recent_warning {
                                     ui.label(warning);
                                 }
@@ -797,24 +806,34 @@ impl App {
                                     ui.label("No recent projects");
                                 }
                                 for path in &self.project.recent {
-                                    if ui.button(path.display().to_string()).clicked() {
+                                    let response = ui.button(path.display().to_string());
+                                    help::annotate(ui, &response, help::Control::ProjectRecent);
+                                    if response.clicked() {
                                         action = Some(Action::Open(path.clone()));
                                         ui.close();
                                     }
                                 }
                             });
+                            help::annotate(ui, &recent.response, help::Control::ProjectRecent);
                             ui.separator();
                             for (label, kind) in [
                                 ("Save project", SaveKind::Save),
                                 ("Save project as…", SaveKind::As),
                                 ("Save project copy…", SaveKind::Copy),
                             ] {
-                                if ui.button(label).clicked() {
+                                let response = ui.button(label);
+                                help::annotate(ui, &response, match kind {
+                                    SaveKind::Save => help::Control::ProjectSave,
+                                    SaveKind::As => help::Control::ProjectSaveAs,
+                                    SaveKind::Copy => help::Control::ProjectSaveCopy,
+                                });
+                                if response.clicked() {
                                     save = Some(kind);
                                     ui.close();
                                 }
                             }
                         });
+                        help::annotate(ui, &menu.response, help::Control::ProjectMenu);
                     },
                 );
                 ui.label(format!(
@@ -840,6 +859,7 @@ impl App {
                         Operation::CloseCheck { .. } => "Checking pending edits…",
                     });
                     let cancel = ui.button("Cancel project operation");
+                    help::annotate(ui, &cancel, help::Control::ProjectCancel);
                     if cancel.clicked() || cancel.is_pointer_button_down_on() {
                         active.cancel.store(true, Ordering::Release);
                     }
@@ -875,9 +895,15 @@ impl App {
                     ui.heading("Unsaved project changes");
                     ui.label("Save the current project before continuing?");
                     ui.horizontal(|ui| {
-                        if ui.button("Save changes").clicked() { save = Some((SaveKind::Save, Some(next.clone()))); retain = false; }
-                        if ui.button("Discard changes").clicked() { action = Some(next.clone()); retain = false; }
-                        if ui.button("Cancel").clicked() { retain = false; }
+                        let response = ui.button("Save changes");
+                        help::annotate(ui, &response, help::Control::ProjectSave);
+                        if response.clicked() { save = Some((SaveKind::Save, Some(next.clone()))); retain = false; }
+                        let response = ui.button("Discard changes");
+                        help::annotate(ui, &response, help::Control::ProjectDiscard);
+                        if response.clicked() { action = Some(next.clone()); retain = false; }
+                        let response = ui.button("Cancel");
+                        help::annotate(ui, &response, help::Control::ProjectCancel);
+                        if response.clicked() { retain = false; }
                     });
                 }
                 Dialog::Path { kind, text, replace } => {
@@ -886,9 +912,18 @@ impl App {
                     ui.label("Project path (.omat). Relative paths use the application working directory.");
                     let path_field = ui.add(egui::TextEdit::singleline(text).desired_width(440.0).hint_text("/path/to/session.omat"));
                     path_field.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Project file path"));
-                    if !opening { ui.checkbox(replace, "Replace an existing file at this path"); }
+                    help::annotate(ui, &path_field, help::Control::ProjectPath);
+                    if !opening {
+                        let response = ui.checkbox(replace, "Replace an existing file at this path");
+                        help::annotate(ui, &response, help::Control::ProjectReplace);
+                    }
                     ui.horizontal(|ui| {
-                        if ui.add_enabled(!text.trim().is_empty(), egui::Button::new(if opening { "Open" } else { "Save" })).clicked() {
+                        let response = ui.add_enabled(!text.trim().is_empty(), egui::Button::new(if opening { "Open" } else { "Save" }));
+                        help::annotate(ui, &response, if opening { help::Control::ProjectOpen } else {
+                            match kind { PathKind::Save(SaveKind::As, _) => help::Control::ProjectSaveAs,
+                                PathKind::Save(SaveKind::Copy, _) => help::Control::ProjectSaveCopy, _ => help::Control::ProjectSave }
+                        });
+                        if response.clicked() {
                             let path = PathBuf::from(text.trim());
                             match kind { PathKind::Open(before) => {
                                 if before.matches(&self.project_baseline()) { action = Some(Action::Open(path)); }
@@ -898,7 +933,9 @@ impl App {
                             } }
                             retain = false;
                         }
-                        if ui.button("Cancel").clicked() { retain = false; }
+                        let response = ui.button("Cancel");
+                        help::annotate(ui, &response, help::Control::ProjectCancel);
+                        if response.clicked() { retain = false; }
                     });
                 }
             }
@@ -934,3 +971,144 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod contextual_help_tests {
+    use super::*;
+    use crate::ui::help::Control;
+    use egui::accesskit;
+
+    fn frame(ctx: &egui::Context, app: &mut App) -> Vec<(accesskit::NodeId, accesskit::Node)> {
+        let mut output = None;
+        for _ in 0..3 {
+            output = Some(ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1600.0, 1200.0))),
+                    ..Default::default()
+                },
+                |ctx| app.update_frame(ctx),
+            ));
+        }
+        output
+            .unwrap()
+            .platform_output
+            .accesskit_update
+            .unwrap()
+            .nodes
+    }
+    fn described(
+        nodes: &[(accesskit::NodeId, accesskit::Node)],
+        control: Control,
+    ) -> &accesskit::Node {
+        nodes
+            .iter()
+            .map(|(_, node)| node)
+            .find(|node| {
+                node.description()
+                    .is_some_and(|description| description.contains(control.definition().purpose))
+            })
+            .unwrap_or_else(|| panic!("Missing actual dialog help for {control:?}"))
+    }
+    fn setup() -> (test_support::Fixture, egui::Context) {
+        let mut fixture = test_support::Fixture::new(64);
+        fixture.rt.publish_for_test();
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        (fixture, ctx)
+    }
+
+    #[test]
+    fn project_path_and_unsaved_decisions_expose_specific_help_even_when_save_disabled() {
+        let (mut fixture, ctx) = setup();
+        fixture.app.project.dialog = Some(Dialog::Path {
+            kind: PathKind::Save(SaveKind::Copy, None),
+            text: String::new(),
+            replace: false,
+        });
+        let before = fixture.app.engine.project.revision();
+        let nodes = frame(&ctx, &mut fixture.app);
+        assert_eq!(
+            described(&nodes, Control::ProjectPath).role(),
+            accesskit::Role::TextInput
+        );
+        assert_eq!(
+            described(&nodes, Control::ProjectReplace).role(),
+            accesskit::Role::CheckBox
+        );
+        assert!(described(&nodes, Control::ProjectSaveCopy).is_disabled());
+        described(&nodes, Control::ProjectCancel);
+        fixture.app.project.dialog = Some(Dialog::Unsaved(Action::New));
+        let nodes = frame(&ctx, &mut fixture.app);
+        for control in [
+            Control::ProjectSave,
+            Control::ProjectDiscard,
+            Control::ProjectCancel,
+        ] {
+            described(&nodes, control);
+        }
+        assert_eq!(
+            fixture.app.engine.project.revision(),
+            before,
+            "help must not edit a document"
+        );
+    }
+
+    #[test]
+    fn history_diagnostics_and_library_controls_expose_reference_in_actual_app() {
+        let (mut fixture, ctx) = setup();
+        fixture.app.undo_history.open = true;
+        let nodes = frame(&ctx, &mut fixture.app);
+        assert!(described(&nodes, Control::Undo).is_disabled());
+        assert!(described(&nodes, Control::Redo).is_disabled());
+        fixture.app.undo_history.open = false;
+        fixture.app.diagnostics.open = true;
+        let nodes = frame(&ctx, &mut fixture.app);
+        for control in [
+            Control::DiagnosticCapture,
+            Control::DiagnosticStop,
+            Control::DiagnosticCancel,
+            Control::DiagnosticPath,
+            Control::DiagnosticExport,
+            Control::DiagnosticReopen,
+            Control::DiagnosticFileCancel,
+        ] {
+            described(&nodes, control);
+        }
+        assert!(described(&nodes, Control::DiagnosticExport).is_disabled());
+        fixture.app.diagnostics.open = false;
+        fixture.app.library_import_open = true;
+        let nodes = frame(&ctx, &mut fixture.app);
+        for control in [
+            Control::LibraryImportPath,
+            Control::LibraryImport,
+            Control::LibraryRetry,
+        ] {
+            described(&nodes, control);
+        }
+        assert_eq!(
+            described(&nodes, Control::LibraryImportPath).label(),
+            Some("DJ library import path")
+        );
+    }
+
+    #[test]
+    fn load_help_preserves_original_deck_specific_accessible_names() {
+        let (mut fixture, ctx) = setup();
+        fixture.app.loads[1] = Some(load_status::LoadState::new(
+            Some(Selection {
+                source: LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums),
+                title: "Test source".into(),
+            }),
+            load_status::Phase::Failed("Fixture failure".into()),
+        ));
+        let nodes = frame(&ctx, &mut fixture.app);
+        assert_eq!(
+            described(&nodes, Control::LoadRetry).label(),
+            Some("Deck B: Retry media load")
+        );
+        assert_eq!(
+            described(&nodes, Control::LoadDismiss).label(),
+            Some("Deck B: Dismiss load status")
+        );
+    }
+}

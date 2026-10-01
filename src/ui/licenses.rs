@@ -64,7 +64,9 @@ impl App {
         let mut close_requested = ctx.input(|input| input.key_pressed(egui::Key::Escape));
         egui::Window::new("Content & licenses").id(egui::Id::new("licenses-window"))
             .open(&mut open).default_size(egui::vec2(840.0, 580.0)).show(ctx, |ui| {
-            if ui.button("Close license viewer").clicked() { close_requested = true; }
+            let response = ui.button("Close license viewer");
+            help::annotate(ui, &response, help::Control::ClosePanel);
+            if response.clicked() { close_requested = true; }
             if let Some(error) = &self.licenses.error {
                 ui.label(error);
                 ui.label("No license permission can be inferred from an unavailable record. Reinstall a verified package.");
@@ -81,11 +83,13 @@ impl App {
             ui.label(format!("{} Cargo components · {} integration files · rustc {}",
                 catalog.manifest.cargo.as_array().map_or(0, Vec::len), catalog.manifest.package.len(),
                 catalog.manifest.toolchain["release"].as_str().unwrap_or("recorded version")));
-            egui::CollapsingHeader::new("External media and content not shipped").show(ui, |ui| {
+            let external = egui::CollapsingHeader::new("External media and content not shipped").show(ui, |ui| {
                 for text in catalog.manifest.external.iter().chain(&catalog.manifest.absent) { ui.label(text); }
             });
+            help::annotate(ui, &external.header_response, help::Control::License);
             let label = ui.label("Find content");
-            ui.add(egui::TextEdit::singleline(&mut self.licenses.query).hint_text("Asset ID, font or component")).labelled_by(label.id);
+            let search = ui.add(egui::TextEdit::singleline(&mut self.licenses.query).hint_text("Asset ID, font or component")).labelled_by(label.id);
+            help::annotate(ui, &search, help::Control::LicenseSearch);
             let query = self.licenses.query.to_lowercase();
             let matches: Vec<_> = catalog.manifest.entries.iter().enumerate().filter(|(_, entry)| {
                 entry.id.to_lowercase().contains(&query) || entry.name.to_lowercase().contains(&query)
@@ -95,7 +99,9 @@ impl App {
                 for row in rows {
                     let index = matches[row];
                     let entry = &catalog.manifest.entries[index];
-                    if ui.selectable_label(self.licenses.selected == index, format!("{} — {}", entry.id, entry.name)).clicked() {
+                    let response = ui.selectable_label(self.licenses.selected == index, format!("{} — {}", entry.id, entry.name));
+                    help::annotate(ui, &response, help::Control::LicenseEntry);
+                    if response.clicked() {
                         self.licenses.selected = index;
                     }
                 }
@@ -111,13 +117,16 @@ impl App {
                 ui.label(&entry.redistribution);
                 if !entry.members.is_empty() { ui.label(format!("Content identities: {}", entry.members.join(", "))); }
                 for record in &entry.sources {
-                    if record.location.starts_with("https://") { ui.hyperlink_to("Source record", &record.location); }
+                    if record.location.starts_with("https://") {
+                        let response = ui.hyperlink_to("Source record", &record.location);
+                        help::annotate(ui, &response, help::Control::LicenseSource);
+                    }
                     else { ui.monospace(&record.location); }
                     let hash = record.sha256.as_ref().or_else(|| catalog.manifest.source_files.get(record.location.split('#').next().unwrap_or("")));
                     if let Some(hash) = hash { ui.monospace(format!("SHA-256: {hash}")); }
                 }
                 for (index, record) in entry.notices.iter().enumerate() {
-                    egui::CollapsingHeader::new(format!("Full notice {}", index + 1)).id_salt((&entry.id, index)).show(ui, |ui| {
+                    let notice = egui::CollapsingHeader::new(format!("Full notice {}", index + 1)).id_salt((&entry.id, index)).show(ui, |ui| {
                         ui.label(&record.location);
                         let id = record.sha256.as_ref().unwrap();
                         let text = &catalog.notices[id];
@@ -130,6 +139,7 @@ impl App {
                                 }
                             });
                     });
+                    help::annotate(ui, &notice.header_response, help::Control::LicenseNotice);
                 }
             });
             ui.label("Offline records are embedded in this executable. Installed releases also retain manifest.json, notices.json and release.json under ~/.local/share/omatainer/licenses.");
@@ -140,3 +150,64 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod contextual_help_tests {
+    use super::*;
+    use crate::ui::help::Control;
+
+    #[test]
+    fn actual_offline_license_viewer_describes_search_selection_source_and_notice_controls() {
+        let mut fixture = test_support::Fixture::new(64);
+        let catalog = Catalog::parse(crate::licenses::MANIFEST, crate::licenses::NOTICES).unwrap();
+        let selected = catalog
+            .manifest
+            .entries
+            .iter()
+            .position(|entry| entry.id == "font:ubuntu")
+            .unwrap();
+        fixture.app.licenses.catalog = Some(catalog);
+        fixture.app.licenses.selected = selected;
+        fixture.app.licenses.query = "font:ubuntu".into();
+        fixture.app.licenses.open = true;
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        let mut output = None;
+        for _ in 0..3 {
+            output = Some(ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1500.0, 1200.0))),
+                    ..Default::default()
+                },
+                |ctx| fixture.app.update_frame(ctx),
+            ));
+        }
+        let nodes = output
+            .unwrap()
+            .platform_output
+            .accesskit_update
+            .unwrap()
+            .nodes;
+        for control in [
+            Control::ClosePanel,
+            Control::License,
+            Control::LicenseSearch,
+            Control::LicenseEntry,
+            Control::LicenseSource,
+            Control::LicenseNotice,
+        ] {
+            assert!(
+                nodes.iter().any(|(_, node)| node
+                    .description()
+                    .is_some_and(|text| text.contains(control.definition().purpose))),
+                "Missing actual license help for {control:?}"
+            );
+        }
+        assert_eq!(fixture.app.licenses.selected, selected);
+        assert!(fixture.app.licenses.pending.is_none());
+        assert!(
+            fixture.decoder_jobs.try_recv().is_err(),
+            "reading help must not request media"
+        );
+    }
+}

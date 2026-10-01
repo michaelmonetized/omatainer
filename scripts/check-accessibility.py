@@ -254,6 +254,39 @@ def private(binary):
         assert not state()['preferences_follow_theme']
         action(named('Cancel changes'),'click')
         wait_for(lambda:not state()['preferences_open'],'native preferences cancel closes editor')
+        # The same native tree describes the control and drives the observed
+        # lesson, including the held/released distinction. All work is inside
+        # this fixture's private document, not the user's running application.
+        pitch=named('Deck A: Pitch')
+        pitch_description=pitch.get_description()
+        assert 'Percent' in pitch_description and 'F2' in pitch_description,pitch_description
+        action(named('Help'),'click')
+        wait_for(lambda:state()['help_open'],'offline help opened')
+        action(named('Record a held note'),'click')
+        action(named('Start this lesson'),'click')
+        wait_for(lambda:state()['help_lesson'] is not None,'lesson started')
+        empty=wait_for(lambda:next((node for name,node in tree_nodes()[0].items()
+                                  if name.startswith('Clip track 1 scene 3:')),None),'empty lesson cell')
+        alternate(empty,'Arm compose')
+        def lesson_next(step):
+            wait_for(lambda:state()['help_lesson'][0]==step and state()['help_lesson'][1],f'lesson step {step} observed')
+            action(named('Next lesson step'),'click')
+            wait_for(lambda:state()['help_lesson'][0]==step+1,f'lesson next {step}')
+        lesson_next(0)
+        action(named('Sampler instrument'),'click');action(named('keys'),'click')
+        wait_for(lambda:state()['sampler_instrument']=='keys','lesson keys instrument')
+        lesson_pad=named('Sampler: Pad 1: A MIDI note 57')
+        alternate(lesson_pad,'Press pad')
+        lesson_next(1)
+        assert not state()['help_lesson'][1],'held input falsely passed release step'
+        alternate(lesson_pad,'Release pad');lesson_next(2)
+        action(named('Disarm compose'),'click');lesson_next(3)
+        recorded=wait_for(lambda:next((node for name,node in tree_nodes()[0].items()
+                                  if name.startswith('Clip track 1 scene 3:')),None),'recorded lesson cell')
+        alternate(recorded,'Launch once');lesson_next(4)
+        assert state()['help_lesson'][2] and state()['lesson_notes']==1
+        action(named('Cancel lesson'),'click')
+        wait_for(lambda:state()['help_lesson'] is None,'cancel guide only')
         result=state()
         expected={'Focus','SetValue','Click'}
         assert expected.issubset({a['action'] for a in result['actions']}),result
@@ -264,7 +297,7 @@ def private(binary):
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
                           'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
-                          'preferences_saved_scale':result['preferences_scale'],
+                          'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',

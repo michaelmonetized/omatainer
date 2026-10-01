@@ -217,7 +217,8 @@ fn focused_search_owns_modifiers_selection_cursor_and_deletion_keys() {
     );
     let before = gui.command_count();
     // Every combination of physical/logical modifier flags: none may turn a
-    // focused typing gesture into transport, deck, help or MIDI-window actions.
+    // focused typing gesture into transport, deck, punctuation-help or MIDI-window actions.
+    // Bound F1 is the deliberate contextual-help exception, tested in help/tests.rs.
     for bits in 0..32 {
         let modifiers = egui::Modifiers {
             alt: bits & 1 != 0,
@@ -234,7 +235,6 @@ fn focused_search_owns_modifiers_selection_cursor_and_deletion_keys() {
             Key::M,
             Key::Space,
             Key::Slash,
-            Key::F1,
         ] {
             gui.stroke(pressed, modifiers, None);
             assert_eq!(gui.fixture.app.lib_filter, "editable text");

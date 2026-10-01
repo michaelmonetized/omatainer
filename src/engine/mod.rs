@@ -581,6 +581,9 @@ pub struct TrackSnap {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct ClipSnap {
+    /// Renderer-confirmed note data; lesson/UI observers never inspect live Vecs.
+    pub note_count: usize,
+    pub recording_held: bool,
     pub kind: u8,
     pub name: String,
     pub bars: f32,

@@ -6,17 +6,19 @@ impl App {
         egui::TopBottomPanel::top("audio-status").resizable(false).show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 accessibility::action_button(ui);
-                if ui.button("Preferences").clicked() { self.settings.open = true; }
+                if ui.button("Help").help(ui, HelpControl::Help).clicked() { self.keys_open = true; }
+                if ui.button("MIDI").help(ui, HelpControl::Midi).clicked() { self.midi_open = true; }
+                if ui.button("Diagnostics").help(ui, HelpControl::Diagnostics).clicked() { self.diagnostics.open = true; }
+                if ui.button("Content & licenses").help(ui, HelpControl::License).clicked() { self.licenses.open = true; }
+                if ui.button("Preferences").help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; }
                 if !self.settings.open && !self.settings.message.is_empty() {
                     let label = if self.settings.message.starts_with("Preferences failed") { "Preferences failed" } else { "Preferences update" };
-                    if ui.button(label).on_hover_text(&self.settings.message).clicked() { self.settings.open = true; }
+                    if ui.button(label).help_detail(ui, HelpControl::Preferences, &self.settings.message).clicked() { self.settings.open = true; }
                 }
                 if self.settings.pending_restart() { ui.label("Audio settings pending restart"); }
                 if let Some(notice) = &self.settings.startup_notice {
-                    if ui.button("Setup notice").on_hover_text(notice).clicked() { self.settings.open = true; }
+                    if ui.button("Setup notice").help_detail(ui, HelpControl::Preferences, notice).clicked() { self.settings.open = true; }
                 }
-                if ui.button("Diagnostics").clicked() { self.diagnostics.open = true; }
-                if ui.button("Content & licenses").clicked() { self.licenses.open = true; }
                 if let Some(sample) = metrics.last_callback {
                     let cpu = sample.render_cpu_fraction().map(|value| format!("{:.1}%", value * 100.0))
                         .unwrap_or_else(|| "unavailable".into());

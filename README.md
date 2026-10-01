@@ -2,12 +2,11 @@
 
 Omarchy-native DAW + live DJ surface. One clock, one mixer, one window:
 
-- **Session** clip grid (Ableton-style launcher)
-- **Arrange** timeline
-- **Compose** piano roll
+- **Session** clip grid with quantized scene and clip launches
+- **Compose** explicitly armed pad-note capture, with held durations and undo
 - **Two decks** with spinning platters, Serato-style waveforms, hot cues, loops, vinyl jog, sync, EQ, filter, and a crossfader
 
-Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Anything else is MIDI-learnable and still plays from the keyboard.
+Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; this build has no editable MIDI-learn mapping UI. Keyboard and pointer controls remain available.
 
 It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`) and font, registers in the keybind menu, and drops a Quickshell bar chip next to the rest of the shell.
 
@@ -53,6 +52,12 @@ Preview and Apply. **Export draft** writes a new private file without overwritin
 an existing one. It includes device names and library paths, but no credentials
 or runtime handles. Invalid/newer files are preserved; recovery offers an explicit
 backup-and-reset operation instead of silently replacing them.
+
+## Offline help and guided workflows
+
+Use **Help** or the active **F1** binding for focused-control explanations, accessible input, effective shortcuts and guided lessons. Hovered or focused controls include purpose and units; F1 remains available while editing text when it is bound to Help. Lessons observe renderer-confirmed steps and never replace a project or start audio automatically. Cancel lesson closes the guide only. Physical listening/controller checks are explicitly self-reported.
+
+The [offline manual](docs/manual.md) is generated from the same catalogue. This build has no Arrange timeline, piano-roll note editor, external audio recording, warp editor, automation lanes or plugin host. Native projects, pad-note capture, clip gain, history, mixer/FX and DJ preparation are implemented workflows.
 
 ## Play without files
 
@@ -145,8 +150,8 @@ Omarchy desktop bindings: `SUPER+O` launches/focuses the app;
 | `[` | Crossfader fully to A |
 | `]` | Crossfader fully to B |
 | `F` | Load selected crate item onto selected deck |
-| `? (Shift+/)` | Show / hide shortcut help |
-| `F1` | Show / hide shortcut help |
+| `? (Shift+/)` | Show / hide contextual help and lessons |
+| `F1` | Show / hide contextual help and lessons |
 | `Ctrl+M` | Show / hide MIDI window |
 | `Escape` | Close effect chain |
 | `Ctrl+Z` | Undo last creative edit |
@@ -190,7 +195,7 @@ the native tree. The automated private-bus fixture verifies real AT-SPI queries
 and actions; Orca and human workflow qualification remain to be performed.
 See [accessibility validation](docs/validation/issue-87-accessibility.md).
 
-MIDI clock in/out and live notes from any class-compliant USB device hit the selected track. APC grids launch clips. Pioneer relative jog bindings decode forward and reverse movement using their documented centered value. NS7 wheel input is deliberately unmapped: its absolute-position protocol cannot use the old guessed relative-CC/pitch-bend bindings. See the [jog decoder evidence and hardware limits](docs/validation/issue-42-relative-jog.md).
+Unmapped live musical notes route to their captured selected track where the profile allows. MIDI clock reception reports ticks; tempo synchronization and clock output are not implemented. APC grids launch clips. Pioneer relative jog bindings decode forward and reverse movement using their documented centered value. NS7 wheel input is deliberately unmapped: its absolute-position protocol cannot use the old guessed relative-CC/pitch-bend bindings. See the [jog decoder evidence and hardware limits](docs/validation/issue-42-relative-jog.md).
 
 The APC40 original and mkII use separate protocol-based input profiles for eight
 track faders, the master fader, clip grid and five scene buttons. Other APC40
@@ -233,9 +238,11 @@ See the [selected-font and glyph validation](docs/validation/issue-79-selected-f
 ## Layout
 
 ```
-transport · bpm · scene · midi
-browser | session / arrange / compose | deck A platter + waveform
-        | mixer + xfader              | deck B platter + waveform
+Project / Edit · Preferences · Help · MIDI · diagnostics
+deck A controls | waveforms + crossfader | deck B controls
+sampler instruments, banks and held pads
+searchable crate and explicit deck load targets
+session clip grid + track gains, or selected effect rack
 ```
 
 Not Ableton plus Serato with a bridge — one document. Decks are extra mixer buses that stay live while clips launch.
