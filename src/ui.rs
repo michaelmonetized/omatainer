@@ -30,6 +30,7 @@ use crate::engine::load_receipt::{Media, Receipt};
 #[cfg(test)]
 mod load_status_tests;
 mod keyboard;
+mod shortcuts;
 use library_scan::LibraryScan;
 
 #[cfg(test)]
@@ -482,7 +483,9 @@ impl App {
         }
         if self.keys_open {
             egui::Window::new("keys").show(ctx, |ui| {
-                ui.monospace(KEYS);
+                shortcuts::show_help(ui);
+                ui.separator();
+                ui.monospace(POINTER_HELP);
             });
         }
         if self.midi_open {
@@ -527,20 +530,8 @@ impl App {
         ctx.input(|i| {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
-                    if *repeat {
-                        continue;
-                    }
-                    match key {
-                        Key::Space if mods.is_none() => self.send(Command::TogglePlay),
-                        Key::Q if mods.is_none() => self.send(Command::DeckPlay { deck: 0 }),
-                        Key::P if mods.is_none() => self.send(Command::DeckPlay { deck: 1 }),
-                        Key::A if mods.is_none() => self.send(Command::DeckCue { deck: 0 }),
-                        Key::L if mods.is_none() => self.send(Command::DeckCue { deck: 1 }),
-                        Key::Slash if mods.matches_exact(egui::Modifiers::SHIFT) => self.keys_open = !self.keys_open,
-                        Key::F1 if mods.is_none() => self.keys_open = !self.keys_open,
-                        Key::M if mods.matches_exact(egui::Modifiers::CTRL) => self.midi_open = !self.midi_open,
-                        Key::Escape if mods.is_none() => self.send(Command::CloseFx),
-                        _ => {}
+                    if let Some(action) = shortcuts::lookup(*key, *mods, *repeat) {
+                        self.dispatch_shortcut(action);
                     }
                 }
             }
@@ -1490,14 +1481,13 @@ fn eq_to_knob(g: f32) -> f32 {
     }
 }
 
-const KEYS: &str = "\
-SPACE session play/stop   F1 keys   CTRL+M midi
+const POINTER_HELP: &str = "\
 platter click = play   right-click = cue   shift-click = unload
 platter shows playing BPM + time remaining
-Q quant   I/O loop in / right-click out   ×2 ½ ↻ reloop ⇄ match
+buttons: Q quantize · I/O loop in / right-click out · ×2 ½ ↻ reloop ⇄ match
 cues 1-8   bass/mid/treb/gain click=cut  rclick=solo
 pitch L lock + 8/16/50 range
-pads fill width · instrument mode A-G piano
+pads: hold to play the selected sample or instrument
 crate: ↓ bpm up. load →A / →B
 seq: scene head launch/stop, rclick restart, shift add
 track head mute / rclick solo
