@@ -17,6 +17,7 @@ import stat
 import selectors
 import signal
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 import sys
@@ -113,17 +114,18 @@ class Run:
         guard.private_directory(self.path)
         self.binary = binary.resolve(strict=True); self.tests = test_binary.resolve(strict=True)
         self.stages = []
-        for name in ('t', 'runtime', 'config', 'data', 'state', 'cache', 'document'):
+        for name in ('runtime', 'config', 'data', 'state', 'cache', 'document'):
             (self.path/name).mkdir(mode=0o700)
-        self.environment = dict(os.environ, TMPDIR=str(self.path/'t'),
+        self.environment = dict(os.environ,
             XDG_RUNTIME_DIR=str(self.path/'runtime'), XDG_CONFIG_HOME=str(self.path/'config'),
             XDG_DATA_HOME=str(self.path/'data'), XDG_STATE_HOME=str(self.path/'state'),
             XDG_CACHE_HOME=str(self.path/'cache'), OMATAINER_OFFLINE_CHILD='1',
             OMATAINER_OFFLINE_SENTINEL='OMATAINER_OFFLINE_CREDENTIAL_SENTINEL_7e31')
         self.environment['OMATAINER_OFFLINE_DIR'] = str(self.path/'document')
 
-    def bounded(self):
-        size = sum(file.stat().st_size for file in self.path.rglob('*') if file.is_file())
+    def bounded(self, temporary=None):
+        roots = [self.path] + ([Path(temporary)] if temporary is not None else [])
+        size = sum(file.stat().st_size for root in roots for file in root.rglob('*') if file.is_file())
         if size > CAP: raise ValueError('offline evidence exceeded its fixed 128 MiB limit')
         return size
 
@@ -132,16 +134,29 @@ class Run:
         folder = self.path/f'{len(self.stages):02}-{name}'; folder.mkdir(mode=0o700)
         receipt = folder/'guard.json'
         write(folder/'attempt.json',dict(name=name,timeout_seconds=timeout,output_limit=limit))
-        with (folder/'stream.log').open('xb') as log:
-            os.fchmod(log.fileno(),0o600)
-            completed = execute_private([sys.executable, str(REPO/'scripts/offline_guard.py'),
-                '--receipt', str(receipt), '--', *map(str, command)], timeout=timeout,
-                limit=limit, env=dict(self.environment, **(env or {})), cwd=REPO,log=log)
+        # Rust's unchanged benchmark adds its own long unique directory name.
+        # A TMPDIR beneath the evidence path can exceed Linux sun_path even
+        # when the evidence path is short enough for the guard's own endpoint.
+        # This owned, mode-0700 directory is removed only after execute_private
+        # has terminated/reaped the complete child group, including on failure.
+        with tempfile.TemporaryDirectory(prefix='o103-', dir='/tmp') as temporary:
+            guard.private_directory(temporary)
+            child_env = dict(self.environment, **(env or {}))
+            child_env['TMPDIR'] = temporary
+            with (folder/'stream.log').open('xb') as log:
+                os.fchmod(log.fileno(),0o600)
+                completed = execute_private([sys.executable, str(REPO/'scripts/offline_guard.py'),
+                    '--receipt', str(receipt), '--', *map(str, command)], timeout=timeout,
+                    limit=limit, env=child_env, cwd=REPO,log=log)
+            # Moving temporary storage does not relax the evidence byte cap.
+            self.bounded(temporary)
+            temporary_bytes = sum(file.stat().st_size for file in Path(temporary).rglob('*') if file.is_file())
         write(folder/'output.json', dict(exit_code=completed.returncode,
             stdout=completed.stdout.decode(errors='replace'), stderr=completed.stderr.decode(errors='replace')))
         proof = gate.parse(gate.regular(receipt, 16*1024)); guard_receipt(proof)
         self.stages.append(dict(name=name, guard=str(receipt.relative_to(self.path)),
             guard_sha256=digest(receipt), exit_code=completed.returncode,
+            temporary_bytes=temporary_bytes,
             output=str((folder/'output.json').relative_to(self.path))))
         self.bounded()
         if completed.returncode: raise ValueError(f'{name} failed; see retained output.json')
@@ -235,7 +250,7 @@ def main():
     parser.add_argument('action',choices=('functional','performance','all'))
     parser.add_argument('--binary',required=True,type=Path)
     parser.add_argument('--test-binary',required=True,type=Path)
-    parser.add_argument('--out',required=True,type=Path,help='Fresh private directory; choose a short path for Unix IPC')
+    parser.add_argument('--out',required=True,type=Path,help='Fresh private directory; choose a short path for fixture XDG/guard Unix IPC')
     args = parser.parse_args()
     run = None
     try:
