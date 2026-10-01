@@ -283,8 +283,8 @@ impl App {
                 ui.add_enabled_ui(!busy,|ui|{
                     if ui.checkbox(&mut self.support.consent,"I reviewed this report and want to export it locally").help(ui,HelpControl::SupportConsent).changed(){self.support.consent_identity=self.support.consent.then_some(identity);}
                     if ui.add_enabled(self.support.consent&&self.support.consent_identity==Some(identity)&&!self.support.path.trim().is_empty(),egui::Button::new("Export reviewed support report")).help(ui,HelpControl::SupportExport).clicked(){job=Some(Job::Export(PathBuf::from(self.support.path.trim()),preview.report.clone()));}
-                    for reference in &preview.report.recovery {
-                        ui.push_id(("support-recovery-reference",reference.session,reference.epoch,reference.sequence),|ui| {
+                    for (reference_index,reference) in preview.report.recovery.iter().enumerate() {
+                        ui.push_id(("support-recovery-reference",reference_index,reference.session,reference.epoch,reference.sequence),|ui| {
                         if ui.button(format!("Find exact recovery record {}",reference.sequence)).help(ui,HelpControl::SupportRecovery).clicked(){
                             if let Some(root)=&recovery_root {job=Some(Job::Recovery(root.clone(),reference.clone()));}
                             else {self.support.message="Recovery storage is unavailable; no original project was opened.".into();}
