@@ -257,39 +257,39 @@ impl App {
         egui::Window::new("Audio devices and latency").id(egui::Id::new("audio-devices-window")).open(&mut open).default_width(730.0).default_height(650.0).vscroll(true).show(ctx,|ui|{
             ui.label(format!("Saved profile: {profile}. Save edits in Preferences before previewing."));
             if let Some(handle)=&panel.handle {
-                let status=handle.status();ui.label(&status.message);
+                let status=handle.status();ui.label(&status.message).help(ui, HelpControl::AudioNotice);
                 if let Some(active)=&status.active {
-                    ui.label(format!("Backend-accepted logical output: {} / {} · {} Hz · {} · {} channels · buffer {}",active.backend,active.plan.device,active.plan.rate,active.format,active.plan.channels,active.plan.buffer.map(|n|n.to_string()).unwrap_or("backend default".into())));
+                    ui.label(format!("Backend-accepted logical output: {} / {} · {} Hz · {} · {} channels · buffer {}",active.backend,active.plan.device,active.plan.rate,active.format,active.plan.channels,active.plan.buffer.map(|n|n.to_string()).unwrap_or("backend default".into()))).help(ui, HelpControl::AudioActive);
                     ui.label(active.plan.route());
                     if let Some(measured)=metrics.last_callback.filter(|_|status.phase==owner::Phase::Running && metrics.callbacks>status.callback_floor) {
-                        ui.label(format!("Observed output callback: {} frames ({:.3} ms at logical rate)",measured.frames,measured.frames as f64*1000.0/measured.sample_rate.max(1) as f64));
-                        ui.label(measured.output_latency_ns.map(|ns|format!("Backend output scheduling estimate: {:.3} ms",ns as f64/1e6)).unwrap_or("Backend output scheduling estimate unavailable".into()));
+                        ui.label(format!("Observed output callback: {} frames ({:.3} ms at logical rate)",measured.frames,measured.frames as f64*1000.0/measured.sample_rate.max(1) as f64)).help(ui, HelpControl::AudioTiming);
+                        ui.label(measured.output_latency_ns.map(|ns|format!("Backend output scheduling estimate: {:.3} ms",ns as f64/1e6)).unwrap_or("Backend output scheduling estimate unavailable".into())).help(ui, HelpControl::AudioTiming);
                     } else {ui.label("Waiting for output callback observations for this stream");}
                 }else{ui.colored_label(Color32::YELLOW,"No active output. Session retained; Save, New/Open and Close remain available.");}
                 ui.label("Physical negotiated sample rate, converter latency and exact driver roundtrip are unavailable through this backend API.");
                 if let Some(evidence)=status.measurement.as_ref().filter(|e|!panel.busy() && e.identity.profile==profile && panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok())==Some(&e.identity)) {
                     let m=&evidence.measured;
-                    ui.label(format!("Measured host callback-to-callback loopback return: {:.3} ms · nominal callback resolution {:.3} ms · repeat spread {:.3} ms",m.host_return_ns as f64/1e6,m.callback_resolution_ns as f64/1e6,m.spread().as_secs_f64()*1000.0));
+                    ui.label(format!("Measured host callback-to-callback loopback return: {:.3} ms · nominal callback resolution {:.3} ms · repeat spread {:.3} ms",m.host_return_ns as f64/1e6,m.callback_resolution_ns as f64/1e6,m.spread().as_secs_f64()*1000.0)).help(ui, HelpControl::AudioMeasurement);
                     ui.label(format!("Measured route: {} input {} ← {} output {}; profile {}",evidence.identity.input.device,evidence.identity.input_channel+1,evidence.identity.output.device,evidence.identity.output_channel+1,evidence.identity.profile));
-                } else {ui.label("Measured loopback return unavailable for the current preview; no physical measurement is inferred.");}
+                } else {ui.label("Measured loopback return unavailable for the current preview; no physical measurement is inferred.").help(ui, HelpControl::AudioMeasurement);}
             }else{ui.label("No audio owner in this session");}
-            ui.label(&panel.message);
-            if !panel.busy() && !panel.message.is_empty() && ui.button("Dismiss audio notice").clicked(){panel.message.clear();}
-            if panel.busy(){if ui.button("Cancel audio operation").clicked(){panel.worker.as_ref().unwrap().cancel();}}
+            ui.label(&panel.message).help(ui, HelpControl::AudioNotice);
+            if !panel.busy() && !panel.message.is_empty() && ui.button("Dismiss audio notice").help(ui, HelpControl::AudioNotice).clicked(){panel.message.clear();}
+            if panel.busy(){if ui.button("Cancel audio operation").help(ui, HelpControl::AudioCancel).clicked(){panel.worker.as_ref().unwrap().cancel();}}
             let allowed=!panel.busy()&&!self.project.committing()&&self.project.dialog_is_closed();
             ui.add_enabled_ui(allowed,|ui|{
-                if ui.button("Preview saved audio").clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
+                if ui.button("Preview saved audio").help(ui, HelpControl::AudioPreview).clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
                 if let Some(preview)=panel.preview.clone(){
                     match &preview.output {Ok(plan)=>{ui.label(format!("Proposed output: {} / {} · {} Hz · {} · {} channels · {}",plan.backend,plan.device,plan.rate,plan.format,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},Err(error)=>{ui.colored_label(Color32::YELLOW,error);}}
-                    if ui.add_enabled(preview.output.is_ok(),egui::Button::new("Use saved audio now")).clicked(){panel.confirm=Some(Confirm::Switch);}
+                    if ui.add_enabled(preview.output.is_ok(),egui::Button::new("Use saved audio now")).help(ui, HelpControl::AudioUse).clicked(){panel.confirm=Some(Confirm::Switch);}
                     match &preview.calibration {
                         Ok(request)=>{
                             ui.label(format!("Calibration input: {} · {} Hz · {} · {} channels",request.input.device,request.input.rate,request.input.format,request.input.channels));
-                            if let (Some(input),Some(output))=(request.input.buffer,request.output.buffer){ui.label(format!("Roundtrip buffer estimate: {:.3} ms (requested buffers only; driver and converter time excluded)",(input as f64+output as f64)*1000.0/request.output.rate as f64));}else{ui.label("Roundtrip buffer estimate unavailable: one or both buffer sizes are backend-selected");}
+                            if let (Some(input),Some(output))=(request.input.buffer,request.output.buffer){ui.label(format!("Roundtrip buffer estimate: {:.3} ms (requested buffers only; driver and converter time excluded)",(input as f64+output as f64)*1000.0/request.output.rate as f64)).help(ui, HelpControl::AudioBufferEstimate);}else{ui.label("Roundtrip buffer estimate unavailable: one or both buffer sizes are backend-selected").help(ui, HelpControl::AudioBufferEstimate);}
                         },Err(error)=>{ui.label(format!("Calibration unavailable: {error}"));}
                     }
-                    if ui.add_enabled(preview.calibration.is_ok(),egui::Button::new("Measure loopback")).clicked(){panel.confirm=Some(Confirm::Calibrate);}
-                    ui.collapsing("Advertised input and output capabilities",|ui|{capabilities(ui,&preview.inventory);});
+                    if ui.add_enabled(preview.calibration.is_ok(),egui::Button::new("Measure loopback")).help(ui, HelpControl::AudioMeasure).clicked(){panel.confirm=Some(Confirm::Calibrate);}
+                    ui.collapsing("Advertised input and output capabilities",|ui|{capabilities(ui,&preview.inventory);}).header_response.help(ui, HelpControl::AudioCapabilities);
                 }
                 if let Some(confirm)=panel.confirm {
                     ui.separator();
@@ -298,8 +298,8 @@ impl App {
                         Confirm::Calibrate=>{ui.label("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback.");if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label(format!("Confirm route: {} output {} → {} input {}; level {} dBFS",request.output.device,request.output_channel+1,request.input.device,request.input_channel+1,request.level_db));}},
                     }
                     ui.horizontal(|ui|{
-                        if ui.button(match confirm{Confirm::Switch=>"Stop and change output",Confirm::Calibrate=>"Cable ready: stop and measure"}).clicked(){if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch=>Job::Apply(preview),Confirm::Calibrate=>Job::Calibrate(preview)});}panel.confirm=None;}
-                        if ui.button("Keep current audio").clicked(){panel.confirm=None;}
+                        if ui.button(match confirm{Confirm::Switch=>"Stop and change output",Confirm::Calibrate=>"Cable ready: stop and measure"}).help(ui,match confirm{Confirm::Switch=>HelpControl::AudioConfirm,Confirm::Calibrate=>HelpControl::AudioProbeConfirm}).clicked(){if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch=>Job::Apply(preview),Confirm::Calibrate=>Job::Calibrate(preview)});}panel.confirm=None;}
+                        if ui.button("Keep current audio").help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
                     });
                 }
             });
@@ -348,12 +348,12 @@ fn capabilities(ui: &mut egui::Ui, inventory: &config::Inventory) {
                                         r.buffer
                                             .map(|(min, max)| format!("{min}–{max} frames"))
                                             .unwrap_or("limits unavailable".into())
-                                    ));
+                                    )).help(ui, HelpControl::AudioCapabilities);
                                 }
                             },
                         );
                     },
-                );
+                ).header_response.help(ui, HelpControl::AudioCapabilities);
             });
         }
     }
@@ -373,14 +373,14 @@ pub(super) fn edit_profile(
     egui::ComboBox::from_label("Audio backend")
         .selected_text(audio.backend.as_deref().unwrap_or("System backend"))
         .show_ui(ui, |ui| {
-            ui.selectable_value(&mut audio.backend, None, "System backend");
+            ui.selectable_value(&mut audio.backend, None, "System backend").help(ui, HelpControl::AudioBackend);
             ui.selectable_value(
                 &mut audio.backend,
                 Some(inventory.backend.clone()),
                 &inventory.backend,
-            );
-        });
-    device(ui, "Output device", &mut audio.device, &inventory.devices);
+            ).help(ui, HelpControl::AudioBackend);
+        }).response.help(ui, HelpControl::AudioBackend);
+    device(ui, "Output device", &mut audio.device, &inventory.devices, HelpControl::PreferenceAudioDevice);
     let found = inventory.devices.iter().find(|device| {
         audio
             .device
@@ -408,7 +408,7 @@ pub(super) fn edit_profile(
     }
     rates.sort();
     rates.dedup();
-    choice(ui, "Sample rate Hz", &mut audio.sample_rate, &rates);
+    choice(ui, "Sample rate Hz", &mut audio.sample_rate, &rates, HelpControl::PreferenceAudioRate);
     layout(
         ui,
         found,
@@ -417,6 +417,7 @@ pub(super) fn edit_profile(
         &mut audio.format,
         &mut audio.buffer_frames,
         "Output",
+        [HelpControl::PreferenceAudioChannels, HelpControl::AudioOutputFormat, HelpControl::PreferenceAudioBuffer],
     );
     ui.label("Main left/right use outputs 1/2 (mono sums both); additional outputs are silent. Independent cue routing is not available.");
     ui.heading("Optional loopback calibration input");
@@ -425,6 +426,7 @@ pub(super) fn edit_profile(
         "Calibration input device",
         &mut audio.calibration.device,
         &inventory.inputs,
+        HelpControl::AudioInputDevice,
     );
     let found = inventory.inputs.iter().find(|device| {
         audio
@@ -442,6 +444,7 @@ pub(super) fn edit_profile(
         &mut audio.calibration.format,
         &mut audio.calibration.buffer_frames,
         "Input",
+        [HelpControl::AudioInputChannels, HelpControl::AudioInputFormat, HelpControl::AudioInputBuffer],
     );
     let mut input = audio.calibration.channel as f32 + 1.0;
     let mut output = audio.calibration.output_channel as f32 + 1.0;
@@ -453,8 +456,9 @@ pub(super) fn edit_profile(
         64.0,
         1.0,
         "",
+        HelpControl::AudioInputChannel,
     );
-    preferences::float_control(ui, "Probe output channel", &mut output, 1.0, 64.0, 1.0, "");
+    preferences::float_control(ui, "Probe output channel", &mut output, 1.0, 64.0, 1.0, "", HelpControl::AudioOutputChannel);
     audio.calibration.channel = input.round() as u16 - 1;
     audio.calibration.output_channel = output.round() as u16 - 1;
     preferences::float_control(
@@ -465,24 +469,26 @@ pub(super) fn edit_profile(
         -24.0,
         1.0,
         " dBFS",
+        HelpControl::AudioProbeLevel,
     );
     ui.label("Calibration always uses the active output's logical rate. Preview validates both selected channel numbers before a probe can run.");
 }
-fn device(ui: &mut egui::Ui, label: &str, value: &mut Option<String>, devices: &[config::Device]) {
+fn device(ui: &mut egui::Ui, label: &str, value: &mut Option<String>, devices: &[config::Device], control: HelpControl) {
     egui::ComboBox::from_label(label)
         .selected_text(value.as_deref().unwrap_or("System default"))
         .show_ui(ui, |ui| {
-            ui.selectable_value(value, None, "System default");
+            ui.selectable_value(value, None, "System default").help(ui, control);
             for device in devices {
-                ui.selectable_value(value, Some(device.name.clone()), &device.name);
+                ui.selectable_value(value, Some(device.name.clone()), &device.name).help(ui, control);
             }
-        });
+        }).response.help(ui, control);
 }
 fn choice<T: Copy + PartialEq + std::fmt::Display>(
     ui: &mut egui::Ui,
     label: &str,
     value: &mut Option<T>,
     values: &[T],
+    control: HelpControl,
 ) {
     egui::ComboBox::from_label(label)
         .selected_text(
@@ -491,11 +497,11 @@ fn choice<T: Copy + PartialEq + std::fmt::Display>(
                 .unwrap_or("Device default".into()),
         )
         .show_ui(ui, |ui| {
-            ui.selectable_value(value, None, "Device default");
+            ui.selectable_value(value, None, "Device default").help(ui, control);
             for n in values {
-                ui.selectable_value(value, Some(*n), n.to_string());
+                ui.selectable_value(value, Some(*n), n.to_string()).help(ui, control);
             }
-        });
+        }).response.help(ui, control);
 }
 fn layout(
     ui: &mut egui::Ui,
@@ -505,6 +511,7 @@ fn layout(
     format: &mut Option<AudioFormat>,
     buffer: &mut Option<u32>,
     direction: &str,
+    controls: [HelpControl; 3],
 ) {
     let ranges = device.map(|device| device.ranges.as_slice()).unwrap_or(&[]);
     let mut counts = ranges
@@ -515,7 +522,7 @@ fn layout(
         .collect::<Vec<_>>();
     counts.sort();
     counts.dedup();
-    choice(ui, &format!("{direction} channels"), channels, &counts);
+    choice(ui, &format!("{direction} channels"), channels, &counts, controls[0]);
     egui::ComboBox::from_label(format!("{direction} sample format"))
         .selected_text(
             format
@@ -523,17 +530,17 @@ fn layout(
                 .unwrap_or("Device default".into()),
         )
         .show_ui(ui, |ui| {
-            ui.selectable_value(format, None, "Device default");
+            ui.selectable_value(format, None, "Device default").help(ui, controls[1]);
             for f in AudioFormat::ALL {
                 if ranges.iter().any(|r| {
                     r.format == f.cpal()
                         && channels.is_none_or(|n| n == r.channels)
                         && rate.is_none_or(|n| (r.min_rate..=r.max_rate).contains(&n))
                 }) {
-                    ui.selectable_value(format, Some(f), f.cpal().to_string());
+                    ui.selectable_value(format, Some(f), f.cpal().to_string()).help(ui, controls[1]);
                 }
             }
-        });
+        }).response.help(ui, controls[1]);
     let mut sizes = vec![32, 64, 128, 256, 512, 1024, 2048, 4096, 8192];
     for range in ranges {
         if let Some((min, max)) = range.buffer {
@@ -551,7 +558,7 @@ fn layout(
                     && r.buffer.is_some_and(|(min, max)| (min..=max).contains(n))
             })
     });
-    choice(ui, &format!("{direction} buffer frames"), buffer, &sizes);
+    choice(ui, &format!("{direction} buffer frames"), buffer, &sizes, controls[2]);
     if ranges.iter().any(|r| r.buffer.is_none()) {
         ui.label(format!("{direction} buffer limits are not advertised for some configurations; Device default is available."));
     }

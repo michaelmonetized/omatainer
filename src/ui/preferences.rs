@@ -268,7 +268,7 @@ impl App {
             .open(&mut open).default_width(680.0).default_height(620.0).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.label("Apply saves preferences. MIDI, folders, appearance and shortcuts follow that save. Audio can be applied explicitly in Audio devices, or after restart.");
-                if ui.button("Audio devices and latency").clicked() { self.audio_settings.open = true; }
+                if ui.button("Audio devices and latency").help(ui, HelpControl::AudioDevices).clicked() { self.audio_settings.open = true; }
                 if let Some(path) = &state.path { ui.label(format!("Preferences file: {}", path.display())); }
                 if let Some(info) = self.engine.output_info() {
                     ui.label(format!("Running: {} · {} Hz · {} · {}", info.plan.device, info.plan.rate, info.format, info.plan.route()));
@@ -391,7 +391,7 @@ impl App {
                             if preview == &state.draft {
                                 ui.heading(format!("Preview: {}",preview.active));
                                 match plan {
-                                    Ok(plan)=> {ui.label(format!("After restart: {} · {} Hz · {} channels · {}",plan.device,plan.rate,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},
+                                    Ok(plan)=> {ui.label(format!("Saved output proposal: {} · {} Hz · {} channels · {}",plan.device,plan.rate,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},
                                     Err(error)=> {ui.colored_label(Color32::YELLOW,format!("Audio unavailable: {error}"));},
                                 }
                                 let midi = &preview.current().unwrap().midi_inputs;

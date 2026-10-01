@@ -4,11 +4,11 @@ Generated from the in-app help catalogue. Hardware observations remain separate 
 
 ## Audio setup
 
-Start with the output quiet. Preferences reports the actual running device, sample rate, output channels and fixed main route. Main uses outputs 1/2, mono sums them, and additional outputs are silent. Settings profiles separate saved preferences from running audio: changed audio device, sample rate, channels or buffer preferences require restart. This build has one stereo main bus; the cue blend does not provide a separate headphone output. Load a built-in stem, play it, then verify sound at your physical output. Connection and meter evidence cannot prove that speakers or headphones are audible.
+Start with the output quiet. Audio devices and latency reports the backend-accepted logical output, observed callback sizes and fixed main route; physical negotiated rate and converter latency are unavailable through CPAL. Main uses outputs 1/2, mono sums them, and additional outputs are silent. Settings profiles separate saved preferences from running audio: Apply and save persists audio choices without changing the stream. Preview saved audio, Use saved audio now, then Stop and change output explicitly stops performance and changes the stream, or restart to use the saved setup. A failed change restores the prior output when possible; if rollback also fails, the retained session can still Save, New/Open and Close. Playback never resumes automatically. Optional Measure loopback requires a suitable line-level cable/interface route and explicit confirmation; it reports qualified host callback-to-callback return timing only after three reliable probes, not physical converter roundtrip. Cancellation, missing loopback and corrupt evidence produce no current measurement. This build has one stereo main bus; the cue blend does not provide a separate headphone output. Load a built-in stem, play it, then verify sound at your physical output. Connection and meter evidence cannot prove that speakers or headphones are audible.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
-1. Inspect the running output in Preferences, then open Diagnostics and wait for a completed audio callback. Restart first if audio changes are pending; a saved profile is not the running output.
+1. Inspect the running output in Preferences, then open Diagnostics and wait for a completed audio callback. If saved audio changes are pending, preview and explicitly confirm them in Audio devices and latency, or restart. A saved profile is not the running output.
 2. Load Drums (session) or Harmony (session) onto a deck and play it. Wait for renderer-confirmed playback of that accepted load.
 3. At a quiet level, verify the sound at your physical speakers/headphones. Mark only your own listening observation; the app cannot measure it.
 
@@ -165,7 +165,7 @@ Workflow: Audio setup.
 
 Saved versus running configuration
 
-Edit a profile, preview resolved changes, then Apply and save. Draft changes do not affect playback. Audio changes require restart; live MIDI policy has its own requested/applied result.
+Edit a profile, preview resolved changes, then Apply and save. Draft changes do not affect playback. Saving audio choices does not switch the running stream. Use the separate Audio devices confirmation or restart; live MIDI policy has its own requested/applied result.
 
 Workflow: Audio setup.
 
@@ -181,7 +181,7 @@ Workflow: Audio setup.
 
 Selected preference profile
 
-Choose the profile intended for activation on Apply and save. Audio differences remain pending restart; MIDI and appearance report actual application separately.
+Choose the profile intended for activation on Apply and save. Audio differences remain saved intent until explicit device confirmation or restart; MIDI and appearance report actual application separately.
 
 Workflow: Audio setup.
 
@@ -205,15 +205,15 @@ Workflow: Audio setup.
 
 System default or exact device name
 
-Choose the output device for the next start. Preview resolves availability; Apply saves the choice but does not move a running audio stream.
+Save the exact output device name, or follow the system default. Preview resolves availability and rejects ambiguous names. Apply saves the choice; a separate Audio devices confirmation or restart changes the stream.
 
 Workflow: Audio setup.
 
 ### Requested sample rate
 
-8000–384000 Hz; checkbox off selects device default
+8000–384000 Hz; advertised options or device default
 
-Request a supported output sample rate at next start. Preview reports unsupported combinations instead of silently replacing them.
+Save an advertised output rate. The common 44.1/48/96/192 kHz choices appear only when advertised. Preview validates the whole configuration; saved intent and backend-accepted logical settings are distinct from physical negotiation.
 
 Workflow: Audio setup.
 
@@ -221,7 +221,191 @@ Workflow: Audio setup.
 
 16–32768 frames; optional device default
 
-Request a supported buffer size for next start. Buffer duration and backend-reported output latency differ; smaller requests do not prove fewer dropouts.
+Save an advertised output buffer request, or let the backend choose. Apply saves it without switching audio. Requested buffer duration, observed callback size and backend scheduling estimates differ; smaller requests do not prove fewer dropouts.
+
+Workflow: Audio setup.
+
+### Audio devices and latency
+
+Saved intent / active stream / observed timing
+
+Inspect the active output and preview saved choices. Opening this window neither changes devices nor emits a probe. Save edits in Preferences before previewing them here.
+
+Workflow: Audio setup.
+
+### Audio backend
+
+System backend or advertised backend name
+
+Save the backend used to resolve input and output device names. An unavailable saved backend fails visibly rather than silently choosing another route.
+
+Workflow: Audio setup.
+
+### Output sample format
+
+Advertised integer or floating-point PCM
+
+Save a format supported by the selected output layout and rate. Device default lets the backend select; unsupported combinations fail preview instead of silently falling back.
+
+Workflow: Audio setup.
+
+### Calibration input device
+
+System default or exact input name
+
+Save the input used only for explicit loopback calibration. This does not enable input monitoring or general external-audio recording. Calibration uses the currently active output's logical rate.
+
+Workflow: Audio setup.
+
+### Calibration input channels
+
+1–64 advertised interleaved channels
+
+Save the temporary input stream's channel count. Select the actual capture channel separately; all channel numbers are interleaved positions, not verified connector labels.
+
+Workflow: Audio setup.
+
+### Calibration input sample format
+
+Advertised integer or floating-point PCM
+
+Save the temporary input format. Preview checks it against the active output rate and chosen input layout before any probe can run.
+
+Workflow: Audio setup.
+
+### Calibration input buffer
+
+16–32768 advertised frames or device default
+
+Save the temporary input buffer request. Together with an explicit output buffer this permits a buffer-only estimate; driver and converter time are excluded.
+
+Workflow: Audio setup.
+
+### Calibration capture channel
+
+One-based channel 1–64
+
+Choose which input channel captures the loopback probe. Preview rejects a channel outside the selected input stream. No captured input is monitored to output.
+
+Workflow: Audio setup.
+
+### Loopback probe output channel
+
+One-based channel 1–64
+
+Choose which active output channel emits the probe. Other probe-stream channels are silent. Preview rejects channels outside the active output stream; verify the physical route yourself.
+
+Workflow: Audio setup.
+
+### Loopback probe level
+
+−60 to −24 dBFS
+
+Set the digital level of three short coded probes. This does not control external amplifier volume. Use a suitable line-level route, disable monitoring and turn down speakers before explicit confirmation.
+
+Workflow: Audio setup.
+
+### Preview saved audio
+
+Read-only device discovery
+
+Resolve the saved profile against current input/output capabilities and the active calibration route. Preview changes no stream and plays no probe. Save draft preference edits first.
+
+Workflow: Audio setup.
+
+### Use saved audio now
+
+Opens disruptive-change confirmation
+
+Review the proposed output before choosing Stop and change output. This first button alone does not stop playback or activate the device.
+
+Workflow: Audio setup.
+
+### Stop and change output
+
+Explicit disruptive operation
+
+Stop decks, clips, recording and held notes, then activate the previewed output. Failure attempts the previous output; double failure retains the session for Save, New/Open and Close. Playback remains stopped even after success or rollback.
+
+Workflow: Audio setup.
+
+### Keep current audio
+
+Dismiss confirmation
+
+Dismiss the device-change or probe confirmation without submitting it. Saved preferences remain saved; the current output is unchanged.
+
+Workflow: Audio setup.
+
+### Measure loopback
+
+Opens physical-route confirmation
+
+Review the chosen input, active output, channel numbers and probe level. This button alone emits no sound. A suitable physical cable or interface loopback is required.
+
+Workflow: Audio setup.
+
+### Cable ready: stop and measure
+
+Explicit line-level loopback probe
+
+Confirm your chosen route, disable input monitoring and turn down external speakers. Stop performance, emit three low-level probes, capture up to three seconds, then restore output without resuming. Missing, noisy, clipped, ambiguous or inconsistent evidence produces no measurement.
+
+Workflow: Audio setup.
+
+### Cancel audio operation
+
+Cooperative cancellation
+
+Request cancellation at safe worker boundaries; operating-system calls may still finish. Cancellation before output activation restores the prior route; a change already committed is reported honestly. Cancelled calibration produces no current measurement.
+
+Workflow: Audio setup.
+
+### Audio operation status
+
+Pending / applied / rollback / offline
+
+Read the operation's actual result. Dismiss hides only the notice. An offline retained session still supports Save, New/Open and Close; queue acceptance is not proof that an output is running.
+
+Workflow: Audio setup.
+
+### Advertised device capabilities
+
+Backend ranges; not physical qualification
+
+Expand input/output device ranges for formats, channels, rates and buffers. Exact names are not portable serial identities; duplicates are rejected. Discovery errors and truncation are explicit, and unknown buffer limits are not invented.
+
+Workflow: Audio setup.
+
+### Backend-accepted output
+
+Logical device configuration
+
+Read the configuration accepted by the backend. CPAL does not report the physical negotiated sample rate or converter latency; these logical settings are not a physical hardware measurement.
+
+Workflow: Audio setup.
+
+### Observed callback timing
+
+Frames / milliseconds
+
+Read completed callbacks for the current stream. Callback duration uses its logical sample rate; backend output scheduling estimates are separate from driver/converter roundtrip and measured dropouts.
+
+Workflow: Audio setup.
+
+### Roundtrip buffer estimate
+
+Requested input plus output frames / logical rate
+
+Estimate only the sum of explicitly requested buffers. Driver and converter time are excluded. If either buffer is backend-selected this estimate is unavailable.
+
+Workflow: Audio setup.
+
+### Measured loopback return
+
+Host callback-to-callback timing / resolution / repeat spread
+
+Read a result matched to the exact current profile and preview. Three reliable recorded probes establish host callback-to-callback return timing, not converter-only physical roundtrip. Old, cancelled or unrelated measurements are not shown as current.
 
 Workflow: Audio setup.
 
@@ -267,9 +451,9 @@ Workflow: Audio setup.
 
 ### Requested output channels
 
-1–64 channels; checkbox off selects device default
+1–64 advertised channels or device default
 
-Request the device stream's channel count for next start. This does not create extra mixer buses.
+Save an advertised output stream channel count. Main uses channels 1/2, mono sums them and additional channels are silent; this does not create extra mixer or headphone buses.
 
 Workflow: Audio setup.
 
@@ -357,7 +541,7 @@ Workflow: Audio setup.
 
 Validated atomic local file
 
-Persist the validated draft before applying appearance/library/MIDI changes. Audio choices are pending restart. Failure keeps running preferences unchanged.
+Persist the validated draft before applying appearance/library/MIDI changes. Audio choices remain saved intent until the separate Audio devices confirmation or restart. Failure keeps running preferences unchanged.
 
 Workflow: Audio setup.
 

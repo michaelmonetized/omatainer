@@ -109,3 +109,25 @@ controller test, native-window assistive-technology session or human listening Q
 is claimed. The user's final producer/composer/live-DJ hardware qualification remains
 separate. Issue 96's performance permit can wrap destructive worker admission and
 `seal_for_audio`; preview remains nondestructive.
+
+## Assembled contextual help
+
+The issue 89 catalogue now supplies the audio preference editors, preview and
+confirmation actions, cancellation, capability expanders and timing surfaces.
+Output settings describe saved intent separately from live confirmation. Input
+calibration controls specify one-based channels, dBFS level and the active output
+rate; measured results retain the host-timing qualification. The setup lesson and
+generated offline manual use the same supported workflow.
+
+On assembled base `e6a5702`, all **668 standard tests passed; 10 opt-in tests were
+ignored**. Eight audio UI groups include all 13 preference editors' AccessKit
+purpose/units, popup choices, cancellation and Focus → F1 on the real probe
+confirmation without starting an operation. The manual/catalogue synchronization
+check passed. Production `cargo build` and `git diff --check` passed.
+
+The private Linux AT-SPI harness passed against the fresh test binary, including
+native Preferences scale access, project Save/New/Open, Undo/Redo, cue and pad
+workflows (230 native nodes in this run). Evidence is in
+`/tmp/issue94-help-full.log`, `/tmp/issue94-help-build.log` and
+`/tmp/issue94-help-native.log`. This is actual App/renderer plus native API evidence;
+no native window, Orca, desktop configuration or physical audio device was exercised.
