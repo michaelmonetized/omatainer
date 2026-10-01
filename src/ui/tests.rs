@@ -109,7 +109,8 @@ impl WaveFile {
         LibItem {
             title: "real WAV".into(),
             artist: String::new(),
-            bpm: 0.0,
+            bpm: Bpm::UNKNOWN,
+            fingerprint: None,
             key: String::new(),
             length: 0.0,
             last_play: None,
