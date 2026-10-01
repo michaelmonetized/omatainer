@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import stat
 import subprocess
@@ -61,7 +62,7 @@ class InstallerTransactionTests(unittest.TestCase):
         self.commands.mkdir()
         self.log = self.base / "commands.jsonl"
         stub = '''#!{python}
-import json, os, pathlib, sys
+import json, os, pathlib, sys, time
 name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 if name == 'cargo' and args[:1] == ['metadata']:
@@ -70,6 +71,21 @@ if name == 'cargo' and args[:1] == ['metadata']:
 log = pathlib.Path(os.environ["OMATAINER_TEST_LOG"])
 old = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
 with log.open("a") as stream: stream.write(json.dumps([name, *args]) + "\\n")
+if name == "hyprctl":
+    responses = json.loads(os.environ.get("OMATAINER_TEST_HYPR_RESPONSES", "{{}}"))
+    sequence = responses.get(args[0], [])
+    index = old.count([name, *args])
+    if index < len(sequence):
+        response = sequence[index]
+        if "ready" in response:
+            pathlib.Path(response["ready"]).touch()
+            deadline = time.monotonic() + 10
+            while not pathlib.Path(response["wait_for"]).exists():
+                if time.monotonic() >= deadline: sys.exit(98)
+                time.sleep(0.01)
+        print(response.get("stdout", ""), end="")
+        print(response.get("stderr", ""), end="", file=sys.stderr)
+        sys.exit(response.get("status", 0))
 failure = os.environ.get("OMATAINER_TEST_FAILURE", "")
 if (failure == "build" and name == "cargo") or (failure == "plugin" and name == "omarchy"):
     print("injected external validation failure", file=sys.stderr); sys.exit(23)
@@ -88,6 +104,8 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
             "PATH": str(self.commands) + os.pathsep + os.environ["PATH"],
             "OMATAINER_TEST_LOG": str(self.log),
             "OMATAINER_TEST_FAILURE": "",
+            "OMATAINER_TEST_HYPR_RESPONSES": "{}",
+            "PYTHONUNBUFFERED": "1",
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -350,6 +368,176 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
                         self.install()
                 self.assertEqual(self.tree(), original)
                 self.assertEqual(list(self.state.glob("install-*")), [])
+
+    def shell_install(self, *extra):
+        return subprocess.run([
+            "bash", str(REPOSITORY / "scripts/install-omarchy.sh"),
+            "--user-root", str(self.root), "--source-root", str(self.source),
+            "--state-root", str(self.state), *map(str, extra),
+        ], text=True, capture_output=True)
+
+    def hypr_calls(self):
+        return [call[1] for line in self.log.read_text().splitlines()
+                if (call := json.loads(line))[0] == "hyprctl"]
+
+    def test_hyprctl_error_output_on_either_stream_rejects_both_exit_statuses(self):
+        self.prior_install()
+        original = self.tree()
+        for status in (0, 17):
+            for stream in ("stdout", "stderr", "both"):
+                response = {"status": status}
+                if stream in ("stdout", "both"):
+                    response["stdout"] = "fixture invalid binding on stdout\n"
+                if stream in ("stderr", "both"):
+                    response["stderr"] = "fixture invalid rule on stderr\n"
+                with self.subTest(status=status, stream=stream), patch.dict(os.environ, {
+                    "OMATAINER_TEST_HYPR_RESPONSES": json.dumps({"configerrors": [{}, response, {}]}),
+                }):
+                    self.log.unlink(missing_ok=True)
+                    result = self.shell_install()
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    self.assertIn("hyprctl configerrors", result.stderr)
+                    self.assertIn("installed desktop", result.stderr)
+                    for name in ("stdout", "stderr"):
+                        if name in response:
+                            self.assertIn(response[name].strip(), result.stderr)
+                    self.assertIn("prior files restored", result.stderr)
+                    self.assertNotIn("Installed Omatainer", result.stdout)
+                    self.assertNotIn("Restored prior files; recovery journal", result.stdout)
+                    self.assertEqual(self.hypr_calls(), ["configerrors", "reload", "configerrors", "reload", "configerrors"])
+                    self.assertEqual(self.tree(), original)
+                    self.assertEqual(list(self.state.glob("install-*")), [])
+
+    def test_hyprctl_reload_exit_failure_preserves_both_diagnostic_streams(self):
+        self.prior_install()
+        original = self.tree()
+        with patch.dict(os.environ, {"OMATAINER_TEST_HYPR_RESPONSES": json.dumps({
+            "reload": [{"status": 19, "stdout": "fixture reload rejected\n", "stderr": "fixture IPC unavailable\n"}, {}],
+        })}):
+            result = self.shell_install()
+        self.assertNotEqual(result.returncode, 0)
+        for message in ("hyprctl reload", "exited 19", "fixture reload rejected", "fixture IPC unavailable", "prior files restored"):
+            self.assertIn(message, result.stderr)
+        self.assertNotIn("Installed Omatainer", result.stdout)
+        self.assertEqual(self.hypr_calls(), ["configerrors", "reload", "reload", "configerrors"])
+        self.assertEqual(self.tree(), original)
+        self.assertEqual(list(self.state.glob("install-*")), [])
+
+    def test_hyprctl_preexisting_stderr_error_fails_before_any_publication(self):
+        original = self.tree()
+        with patch.dict(os.environ, {"OMATAINER_TEST_HYPR_RESPONSES": json.dumps({
+            "configerrors": [{"stderr": "fixture existing desktop error\n"}],
+        })}):
+            result = self.shell_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("current desktop", result.stderr)
+        self.assertIn("fixture existing desktop error", result.stderr)
+        self.assertNotIn("Installed Omatainer", result.stdout)
+        self.assertEqual(self.hypr_calls(), ["configerrors"])
+        self.assertEqual(self.tree(), original)
+        self.assertEqual(list(self.state.glob("install-*")), [])
+
+    def test_hyprctl_nonzero_empty_output_still_rejects_and_restores(self):
+        original = self.tree()
+        with patch.dict(os.environ, {"OMATAINER_TEST_HYPR_RESPONSES": json.dumps({
+            "configerrors": [{}, {"status": 23}, {}],
+        })}):
+            result = self.shell_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("hyprctl configerrors exited 23", result.stderr)
+        self.assertIn("then retry", result.stderr)
+        self.assertNotIn("Installed Omatainer", result.stdout)
+        self.assertEqual(self.tree(), original)
+        self.assertEqual(list(self.state.glob("install-*")), [])
+
+    def test_hyprctl_failed_restored_validation_retains_journal_until_recovery_passes(self):
+        # Exercise existing release records as well as executable/config backups.
+        spaced = self.base / "user root with spaces"
+        self.root.rename(spaced)
+        self.root = spaced
+        self.prior_install()
+        self.install()
+        original = self.tree()
+        self.log.unlink()
+        with patch.dict(os.environ, {"OMATAINER_TEST_HYPR_RESPONSES": json.dumps({
+            "configerrors": [{}, {"stdout": "fixture installed error\n"},
+                             {"stderr": "fixture restored error\n"}],
+        })}):
+            result = self.shell_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("Installed Omatainer", result.stdout)
+        self.assertIn("fixture installed error", result.stderr)
+        self.assertIn("fixture restored error", result.stderr)
+        pending = [path for path in self.state.glob("*/journal.json")
+                   if json.loads(path.read_text())["state"] == "reload_failed"]
+        self.assertEqual(len(pending), 1)
+        journal = pending[0]
+        self.assertIn(installer.recovery_command(self.root, journal), result.stderr)
+        self.assertEqual(self.tree(), original)
+        self.assertTrue((journal.parent / "old" / installer.licenses.RECEIPT).is_file())
+        self.assertEqual(self.hypr_calls(), ["configerrors", "reload", "configerrors", "reload", "configerrors"])
+
+        self.log.unlink()
+        with patch.dict(os.environ, {"OMATAINER_TEST_HYPR_RESPONSES": json.dumps({
+            "configerrors": [{"status": 7, "stderr": "fixture retry still invalid\n"}],
+        })}):
+            failed = self.shell_install("--recover", journal)
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertNotIn("Restored prior files; recovery journal", failed.stdout)
+        self.assertIn("desktop recovery is incomplete", failed.stderr)
+        self.assertIn(installer.recovery_command(self.root, journal), failed.stderr)
+        self.assertEqual(json.loads(journal.read_text())["state"], "reload_failed")
+        self.assertEqual(self.tree(), original)
+
+        self.log.unlink()
+        # Execute the exact command the failure tells the user to copy; paths
+        # containing spaces must still address this private fixture root.
+        recovered = subprocess.run(shlex.split(installer.recovery_command(self.root, journal)),
+                                   text=True, capture_output=True)
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+        self.assertIn("Restored prior files; recovery journal", recovered.stdout)
+        self.assertEqual(self.hypr_calls(), ["reload", "configerrors"])
+        self.assertEqual(json.loads(journal.read_text())["state"], "rolled_back")
+        self.assertEqual(self.tree(), original)
+
+    def test_hyprctl_clean_validation_must_finish_before_success_is_printed(self):
+        import select
+        import time
+        ready = self.base / "validation-running"
+        release = self.base / "finish-validation"
+        with patch.dict(os.environ, {"OMATAINER_TEST_HYPR_RESPONSES": json.dumps({
+            "reload": [{"stdout": "ok\n", "stderr": "reload informational output\n"}],
+            "configerrors": [{}, {"stdout": " \n\t", "stderr": "\n", "ready": str(ready), "wait_for": str(release)}],
+        })}):
+            process = subprocess.Popen([
+                "bash", str(REPOSITORY / "scripts/install-omarchy.sh"),
+                "--user-root", str(self.root), "--source-root", str(self.source),
+                "--state-root", str(self.state),
+            ], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                deadline = time.monotonic() + 8
+                while not ready.exists() and process.poll() is None:
+                    self.assertLess(time.monotonic(), deadline, "stub never reached final validation")
+                    time.sleep(0.01)
+                self.assertIsNone(process.poll(), "installer exited before final validator completed")
+                self.assertTrue(ready.exists())
+                # Unbuffered Python makes this an output-order assertion, rather
+                # than an observation of a buffered success line.
+                self.assertEqual(select.select([process.stdout], [], [], 0.05)[0], [])
+                journals = list(self.state.glob("*/journal.json"))
+                self.assertEqual(len(journals), 1)
+                self.assertNotEqual(json.loads(journals[0].read_text())["state"], "committed")
+                release.touch()
+                stdout, stderr = process.communicate(timeout=8)
+                self.assertEqual(process.returncode, 0, stderr)
+                self.assertIn("Installed Omatainer", stdout)
+                self.assertEqual(json.loads(journals[0].read_text())["state"], "committed")
+            finally:
+                release.touch()
+                if process.poll() is None:
+                    process.kill()
+                process.communicate()
+        self.assertEqual(self.hypr_calls(), ["configerrors", "reload", "configerrors"])
 
     def test_shell_entrypoint_accepts_temporary_user_root_without_changing_home(self):
         home = os.environ.get("HOME")
