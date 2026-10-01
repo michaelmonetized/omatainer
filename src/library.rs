@@ -18,7 +18,7 @@ use std::{
 mod content;
 pub(crate) use content::Relocate;
 
-const SCHEMA: u32 = 3;
+const SCHEMA: u32 = 4;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -374,7 +374,7 @@ pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
-        Some(2 | 3) => {
+        Some(2 | 3 | 4) => {
             let mut current: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             current.schema = SCHEMA;
             current

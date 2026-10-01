@@ -253,7 +253,8 @@ impl Frame {
             out.touching = deck.touching;
             out.loop_start = deck.loop_start;
             out.loop_len = deck.loop_len;
-            out.bpm = deck.bpm;
+            out.source_bpm = deck.audio.as_ref().map_or(0.0, |audio| audio.bpm);
+            out.bpm = deck.musical_bpm();
             out.pitch = deck.pitch;
             out.gain = deck.gain;
             out.eq = [deck.eq[0].low_g, deck.eq[0].mid_g, deck.eq[0].high_g];
@@ -266,6 +267,7 @@ impl Frame {
             out.hotcues = std::array::from_fn(|i| deck.hotcues[i].set);
             out.hotcue_positions = std::array::from_fn(|i| deck.hotcues[i].set.then_some(deck.hotcues[i].pos));
             out.cue_styles = deck.cue_styles;
+            out.grid = deck.grid;
             out.receipt_key = deck.load_receipt.as_ref().map_or(0, load_receipt::Receipt::snapshot_key);
             out.meter = deck.meter;
             out.duration = deck

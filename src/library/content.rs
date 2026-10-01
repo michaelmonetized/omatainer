@@ -79,7 +79,7 @@ impl Catalog {
         else {
             return;
         };
-        if version.content_hash.is_some() || version.preparation.hotcues.iter().all(Option::is_none)
+        if version.content_hash.is_some() || (version.preparation.grid.is_none() && version.preparation.hotcues.iter().all(Option::is_none))
         {
             return;
         }

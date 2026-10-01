@@ -317,7 +317,7 @@ impl App {
             // A project CloseGuard seals renderer edits; the same close must
             // also exclude new catalog imports after its durability check.
             if self.project.committing() { ui.disable(); }
-            ui.label("Import a version 1, 2 or 3 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
+            ui.label("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
             ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
             let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
             path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "DJ library import path"));

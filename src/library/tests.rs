@@ -34,6 +34,7 @@ fn metadata() -> Metadata {
 }
 fn preparation() -> Preparation {
     Preparation {
+        grid: None,
         cue: 4.5,
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
         hotcues: [
@@ -121,7 +122,7 @@ fn migration_preserves_every_v1_field_and_backs_up_original() {
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&fs::read(dir.store()).unwrap()).unwrap()
             ["schema"],
-        3
+        4
     );
 }
 #[test]
@@ -567,6 +568,7 @@ fn schema_two_migrates_default_styles_and_no_invented_hash_without_overwriting_o
         for version in track["versions"].as_array_mut().unwrap() {
             version.as_object_mut().unwrap().remove("content_hash");
             version["preparation"].as_object_mut().unwrap().remove("hotcue_styles");
+            version["preparation"].as_object_mut().unwrap().remove("grid");
         }
     }
     let bytes = serde_json::to_vec(&old).unwrap();
@@ -577,4 +579,69 @@ fn schema_two_migrates_default_styles_and_no_invented_hash_without_overwriting_o
     store.save().unwrap();
     assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
     assert_eq!(read(&dir.store()).unwrap().tracks, original.tracks);
+}
+
+#[test]
+fn manual_beatgrid_survives_reanalysis_restart_and_verified_relocation_with_cues_aligned() {
+    use crate::engine::beatgrid::Grid;
+    let dir = Dir::new();
+    let path = dir.0.join("pickup-ambiguous-tempo.wav");
+    let moved_path = dir.0.join("relocated-pickup.wav");
+    fs::write(&path, b"immutable source with leading silence and a pickup").unwrap();
+    let source = LibSource::File(path.clone());
+    let fingerprint = FileFingerprint::read(&path).unwrap();
+    let grid = Grid::new(1.25, 120.0).unwrap();
+    let mut prepared = preparation();
+    prepared.grid = Some(grid);
+    prepared.hotcues = std::array::from_fn(|i| grid.seconds_at(i as f64 - 2.0));
+    let mut initial = metadata();
+    initial.bpm = Bpm::new(60.0, Origin::Heuristic);
+    let mut store = Store::open(dir.store()).unwrap();
+    store.catalog.upsert(source.clone(), Some(fingerprint), initial.clone()).unwrap().preparation = prepared;
+    store.catalog.qualify_cues(&source, Some(fingerprint));
+    let identity = store.catalog.track(&source).unwrap().id.clone();
+    for suggestion in [240.0, 61.0, 119.5] {
+        initial.bpm = Bpm::new(suggestion, Origin::Heuristic);
+        let version = store.catalog.upsert(source.clone(), Some(fingerprint), initial.clone()).unwrap();
+        assert_eq!(version.metadata.bpm.value(), Some(suggestion));
+        assert_eq!(version.preparation.grid, Some(grid));
+        assert_eq!(version.preparation.hotcues, prepared.hotcues);
+    }
+    store.save().unwrap();
+    drop(store);
+    fs::rename(&path, &moved_path).unwrap();
+    let mut reopened = Store::open(dir.store()).unwrap();
+    reopened.catalog.relocate(&Relocate { id: identity.clone(), source: source.clone(), fingerprint, destination: moved_path.clone() }).unwrap();
+    reopened.save().unwrap();
+    drop(reopened);
+    let reopened = Store::open(dir.store()).unwrap();
+    let source = LibSource::File(moved_path.clone());
+    let version = reopened.catalog.version(&source, FileFingerprint::read(&moved_path)).unwrap();
+    assert_eq!(reopened.catalog.track(&source).unwrap().id, identity);
+    assert_eq!(version.preparation, prepared);
+    for (i, seconds) in version.preparation.hotcues.into_iter().enumerate() {
+        assert_eq!(version.preparation.grid.unwrap().beat_at(seconds.unwrap()), Some(i as f64 - 2.0));
+    }
+}
+
+#[test]
+fn schema_three_cue_metadata_migrates_without_an_invented_beatgrid() {
+    let dir = Dir::new();
+    let original = mixed(&dir);
+    let mut old = serde_json::to_value(&original).unwrap();
+    old["schema"] = 3.into();
+    for track in old["tracks"].as_array_mut().unwrap() {
+        for version in track["versions"].as_array_mut().unwrap() {
+            version["preparation"].as_object_mut().unwrap().remove("grid");
+        }
+    }
+    let bytes = serde_json::to_vec(&old).unwrap();
+    fs::write(dir.store(), &bytes).unwrap();
+    let mut store = Store::open(dir.store()).unwrap();
+    assert_eq!(store.catalog.tracks, original.tracks);
+    assert!(store.catalog.tracks.iter().all(|t| t.versions.iter().all(|v| v.preparation.grid.is_none())));
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    store.save().unwrap();
+    assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
+    assert_eq!(read(&dir.store()).unwrap().schema, 4);
 }

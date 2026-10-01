@@ -2,12 +2,15 @@
 //! output rate or current playback pitch. Loading restores markers, not Play.
 use serde::{Deserialize, Serialize};
 use super::cue_metadata::{Style, STYLE_WORDS};
-pub(super) const WORDS: usize = 12 + super::HOTCUES * STYLE_WORDS;
+const GRID_OFFSET: usize = 12 + super::HOTCUES * STYLE_WORDS;
+pub(super) const WORDS: usize = GRID_OFFSET + super::beatgrid::WORDS;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Preparation {
     pub cue: f64,
+    #[serde(default)]
+    pub grid: Option<super::beatgrid::Grid>,
     pub hotcues: [Option<f64>; super::HOTCUES],
     #[serde(default)]
     pub hotcue_styles: [Style; super::HOTCUES],
@@ -41,12 +44,14 @@ impl Preparation {
         for (dest, style) in words[12..].chunks_exact_mut(STYLE_WORDS).zip(self.hotcue_styles) {
             dest.copy_from_slice(&style.words());
         }
+        words[GRID_OFFSET..].copy_from_slice(&super::beatgrid::Grid::encode(self.grid));
         words
     }
     pub(super) fn from_words(words: [u64; WORDS]) -> Self {
         let value = |i| f64::from_bits(words[i]);
         Self {
             cue: value(0),
+            grid: super::beatgrid::Grid::decode(words[GRID_OFFSET..].try_into().unwrap()).flatten(),
             hotcues: std::array::from_fn(|i| (value(i + 1) >= 0.0).then(|| value(i + 1))),
             hotcue_styles: std::array::from_fn(|i| Style::from_words(words[12+i*STYLE_WORDS..12+(i+1)*STYLE_WORDS].try_into().unwrap()).unwrap_or_default()),
             loop_region: (value(9) >= 0.0).then(|| Loop {
@@ -69,6 +74,7 @@ impl super::DeckRt {
         let pos = |p: f64| p.clamp(0.0, end) / sr;
         Some(Preparation {
             cue: pos(self.cue_pos),
+            grid: self.grid,
             hotcue_styles: self.cue_styles,
             hotcues: std::array::from_fn(|i| self.hotcues[i].set.then(|| pos(self.hotcues[i].pos))),
             loop_region: (self.loop_len > 0.0 && self.loop_start < end).then(|| Loop {
@@ -91,6 +97,7 @@ impl super::DeckRt {
         let frames = audio.frames() as f64;
         let sr = audio.sr as f64;
         self.cue_styles = preparation.hotcue_styles;
+        self.grid = preparation.grid;
         self.cue_pos = (preparation.cue * sr).clamp(0.0, frames);
         for (cue, saved) in self.hotcues.iter_mut().zip(preparation.hotcues) {
             cue.set = saved.is_some_and(|p| p * sr <= frames);
@@ -144,6 +151,7 @@ mod tests {
             for i in 1..50_000 {
                 writing.record_preparation(Preparation {
                     cue: i as f64,
+                    grid: Some(super::super::beatgrid::Grid::new(i as f64, 120.0).unwrap()),
                     hotcues: [Some(i as f64); 8],
                     hotcue_styles: [Style { name: super::super::cue_metadata::Name::new(&format!("{i}")).unwrap(), color: Some([(i % 256) as u8, 23, 42]) }; super::super::HOTCUES],
                     loop_region: Some(Loop {
@@ -160,6 +168,7 @@ mod tests {
                 assert_eq!(revision & 1, 0);
                 assert!(value.hotcues.into_iter().all(|cue| cue == Some(value.cue)));
                 assert_eq!(value.loop_region.unwrap().length, value.cue);
+                assert_eq!(value.grid.unwrap().downbeat(), value.cue);
                 for style in value.hotcue_styles {
                     assert_eq!(style.name.as_str(), format!("{}", value.cue as u64));
                     assert_eq!(style.color, Some([(value.cue as u64 % 256) as u8, 23, 42]));

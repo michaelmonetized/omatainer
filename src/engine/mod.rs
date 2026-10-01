@@ -46,6 +46,7 @@ pub mod media_load;
 pub(crate) mod load_receipt;
 pub(crate) mod preparation;
 pub(crate) mod cue_metadata;
+pub(crate) mod beatgrid;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
@@ -276,6 +277,7 @@ pub struct DeckRt {
     pub pfl: bool,
     pub hotcues: [HotCue; HOTCUES],
     pub cue_styles: [cue_metadata::Style; HOTCUES],
+    pub grid: Option<beatgrid::Grid>,
     pub loop_on: bool,
     pub loop_start: f64,
     pub loop_len: f64,
@@ -330,6 +332,7 @@ impl DeckRt {
             filter_amt: 0.5,
             pfl: false,
             cue_styles: [cue_metadata::Style::default(); HOTCUES],
+            grid: None,
             hotcues: std::array::from_fn(|_| HotCue {
                 set: false,
                 pos: 0.0,
@@ -549,6 +552,8 @@ pub struct DeckSnap {
     pub touching: bool,
     pub loop_start: f64,
     pub loop_len: f64,
+    /// Immutable decoded source tempo hint; never overwritten by a manual grid.
+    pub source_bpm: f32,
     pub bpm: f32,
     pub pitch: f32,
     pub gain: f32,
@@ -564,6 +569,7 @@ pub struct DeckSnap {
     pub receipt_key: usize,
     pub hotcue_positions: [Option<f64>; HOTCUES],
     pub cue_styles: [cue_metadata::Style; HOTCUES],
+    pub grid: Option<beatgrid::Grid>,
     pub meter: f32,
     #[serde(skip)]
     pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
@@ -730,6 +736,7 @@ pub enum Command {
     DeckFilter { deck: u8, value: f32 },
     DeckPfl { deck: u8 },
     DeckHotCue { deck: u8, pad: u8, del: bool },
+    DeckGrid { deck: u8, grid: Option<beatgrid::Grid>, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
     DeckCuePoint { deck: u8, pad: u8, del: bool, receipt: load_receipt::Receipt },
     DeckCueStyle { deck: u8, pad: u8, style: cue_metadata::Style, receipt: load_receipt::Receipt },
     DeckLoop { deck: u8, beats: f32 },
@@ -1403,9 +1410,8 @@ impl RtEngine {
             let d = &mut self.decks[di];
             if d.sync {
                 if let Some(a) = &d.audio {
-                    if a.bpm > 1.0 {
-                        d.target_rate = d.sync_bpm / a.bpm;
-                    }
+                    let bpm = d.grid.map_or(a.bpm, |grid| grid.bpm() as f32);
+                    if bpm > 1.0 { d.target_rate = d.sync_bpm / bpm; }
                 }
             } else {
                 d.target_rate = d.play_rate();
@@ -1840,6 +1846,16 @@ impl RtEngine {
                     };
                 }
             }
+            command @ Command::DeckGrid { .. } => {
+                if let Command::DeckGrid { deck, grid, ack, .. } = &command {
+                    let deck = &mut self.decks[*deck as usize];
+                    deck.grid = *grid;
+                    deck.publish_preparation();
+                    // Release acknowledgement only after coherent preparation is visible.
+                    ack.applied();
+                }
+                self.undo.retire_command(command);
+            }
             command @ Command::DeckCueStyle { .. } => {
                 if let Command::DeckCueStyle { deck, pad, style, .. } = &command {
                     // Identity, indices, set state and no-op were checked before
@@ -1849,32 +1865,23 @@ impl RtEngine {
                 self.undo.retire_command(command);
             }
             Command::DeckLoop { deck, beats } => {
-                let spb = self.decks[deck as usize % DECKS]
-                    .audio
-                    .as_ref()
-                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
-                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
+                let (_, spb) = self.decks[deck as usize % DECKS].grid_geometry(self.sr, self.bpm);
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_on = false;
                 } else {
                     d.loop_on = true;
-                    d.loop_start = d.pos;
+                    d.loop_start = if self.quantize && d.grid.is_some() { d.grid_snap(d.pos, self.sr, self.bpm) } else { d.pos };
                     d.loop_len = beats as f64 * spb;
                 }
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckLoopIn { deck } => {
-                let spb = self.decks[deck as usize % DECKS]
-                    .audio
-                    .as_ref()
-                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
-                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
                 let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
                 let mut pos = d.pos;
                 if q {
-                    pos = (pos / spb).round() * spb;
+                    pos = d.grid_snap(pos, self.sr, self.bpm);
                 }
                 d.loop_start = pos;
                 if d.loop_on {
@@ -1882,16 +1889,11 @@ impl RtEngine {
                 }
             }
             Command::DeckLoopOut { deck } => {
-                let spb = self.decks[deck as usize % DECKS]
-                    .audio
-                    .as_ref()
-                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
-                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
                 let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
                 let mut pos = d.pos;
                 if q {
-                    pos = (pos / spb).round() * spb;
+                    pos = d.grid_snap(pos, self.sr, self.bpm);
                 }
                 d.loop_len = (pos - d.loop_start).abs().max(64.0);
                 d.loop_on = true;
@@ -1949,6 +1951,7 @@ impl RtEngine {
                 d.cue_pos = 0.0;
                 d.playing = false;
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
+                d.grid = None;
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -1966,6 +1969,7 @@ impl RtEngine {
                 d.cue_pos = 0.0;
                 d.clear_loop();
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
+                d.grid = None;
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -2137,16 +2141,12 @@ impl RtEngine {
                 }
             }
             Command::DeckReloop { deck } => {
-                let spb = self.decks[deck as usize % DECKS]
-                    .audio
-                    .as_ref()
-                    .map(|a| a.sr as f64 * 60.0 / a.bpm.max(1.0) as f64)
-                    .unwrap_or(self.sr as f64 * 60.0 / self.bpm as f64);
+                let (_, spb) = self.decks[deck as usize % DECKS].grid_geometry(self.sr, self.bpm);
                 let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
                 let mut pos = d.pos;
                 if q {
-                    pos = (pos / spb).round() * spb;
+                    pos = d.grid_snap(pos, self.sr, self.bpm);
                 }
                 d.loop_start = pos;
                 d.loop_len = 4.0 * 4.0 * spb;
@@ -2156,19 +2156,21 @@ impl RtEngine {
             Command::DeckMatch => {
                 let fav = if self.xfader <= 0.5 { 0 } else { 1 };
                 let oth = 1 - fav;
-                let Some(af) = self.decks[fav].audio.clone() else {
-                    return;
-                };
-                let target_bpm = af.bpm.max(1.0) * self.decks[fav].pitch_rate();
+                if self.decks[fav].audio.is_none() { return; }
+                let target_bpm = self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate();
                 self.decks[oth].sync = true;
                 self.decks[oth].sync_bpm = target_bpm;
                 if self.decks[fav].playing && self.decks[oth].playing {
-                    if let Some(ao) = self.decks[oth].audio.clone() {
-                        let spb_f = af.sr as f64 * 60.0 / af.bpm.max(1.0) as f64;
-                        let spb_o = ao.sr as f64 * 60.0 / ao.bpm.max(1.0) as f64;
-                        let phase = self.decks[fav].pos.rem_euclid(spb_f) / spb_f;
-                        let bar = (self.decks[oth].pos / spb_o).floor();
-                        self.decks[oth].transition_to((bar + phase) * spb_o, self.sr, DeckTransition::Jump);
+                    if self.decks[oth].audio.is_some() {
+                        let (origin_f, spb_f) = self.decks[fav].grid_geometry(self.sr, self.bpm);
+                        let (origin_o, spb_o) = self.decks[oth].grid_geometry(self.sr, self.bpm);
+                        let phase = (self.decks[fav].pos - origin_f).rem_euclid(spb_f) / spb_f;
+                        let beat = ((self.decks[oth].pos - origin_o) / spb_o).floor();
+                        let mut position = origin_o + (beat + phase) * spb_o;
+                        if self.decks[oth].grid.is_some() {
+                            position = position.clamp(0.0, self.decks[oth].audio.as_ref().unwrap().frames() as f64);
+                        }
+                        self.decks[oth].transition_to(position, self.sr, DeckTransition::Jump);
                     }
                 }
             }

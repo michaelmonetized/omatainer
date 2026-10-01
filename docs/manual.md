@@ -48,7 +48,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Prepare a DJ deck
 
-Select a crate row and explicitly load A or B. Built-in Drums (session) and Harmony (session) work without media files. Wait for Loaded: Queued only confirms admission. The filename BPM/key hints and heuristic analyzed BPM have distinct provenance and are not a verified beat grid. Set a main cue or hot cues, set loop in/out, then audition. Pitch lock separates pitch from tempo. Match follows the crossfader-favored deck's effective tempo. Remaining time is an estimate and repeating loops suppress runout alerts. Preparation persists in the library for the exact file identity.
+Select a crate row and explicitly load A or B. Built-in Drums (session) and Harmony (session) work without media files. Wait for Loaded: Queued only confirms admission. The filename BPM/key hints and heuristic analyzed BPM have distinct provenance and are not a verified beat grid. Use the grid editor to set the downbeat, slip beat lines, stretch tempo or correct half/double ambiguity in a draft preview. Apply creates one manual uniform four-beat grid; it does not overwrite analyzed BPM or move cues. Cancel or Escape discards unapplied drafts. Set a main cue or hot cues, set loop in/out, then audition. Pitch lock separates pitch from tempo. Match follows the crossfader-favored deck's effective tempo. Remaining time is an estimate and repeating loops suppress runout alerts. Preparation persists in the library for the exact file identity.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -806,6 +806,94 @@ Workflow: Prepare a DJ deck.
 ±8%, ±16%, ±50%
 
 Cycle the pitch fader's range. Check the current value after changing range.
+
+Workflow: Prepare a DJ deck.
+
+### Manual beatgrid editor
+
+Loaded track; source-time coordinates
+
+Open a draft grid for this exact loaded track. Analysis BPM may seed an explicitly unverified preview; it never establishes a downbeat. Changing the loaded track closes the draft.
+
+Workflow: Prepare a DJ deck.
+
+### Grid downbeat position
+
+Finite source seconds; negative positions allowed
+
+Enter the source-time position of beat zero. Earlier source positions have negative beat coordinates. Editing changes the preview only; absolute cues and audio stay unchanged until the separate grid Apply, which still does not move cues.
+
+Workflow: Prepare a DJ deck.
+
+### Set grid downbeat at playhead
+
+Published source playhead seconds
+
+Place beat zero at the displayed renderer playhead, using the draft tempo. Enter a valid tempo first when no usable BPM hint exists. This edits only the preview.
+
+Workflow: Prepare a DJ deck.
+
+### Slip beatgrid
+
+−10 / −1 / +1 / +10 milliseconds
+
+Move all draft beat lines by the chosen source-time offset without changing tempo. Preview the alignment before Apply.
+
+Workflow: Prepare a DJ deck.
+
+### Stretch grid tempo
+
+20–400 BPM
+
+Change beat spacing while keeping the draft downbeat fixed. Enter a finite tempo; invalid text cannot be applied. This uniform grid does not implement changing meters or tempo maps.
+
+Workflow: Prepare a DJ deck.
+
+### Half grid tempo
+
+Draft BPM divided by two; minimum 20
+
+Correct double-tempo ambiguity in the preview while retaining the downbeat. Disabled when the result would fall below the supported range.
+
+Workflow: Prepare a DJ deck.
+
+### Double grid tempo
+
+Draft BPM multiplied by two; maximum 400
+
+Correct half-tempo ambiguity in the preview while retaining the downbeat. Disabled when the result would exceed the supported range.
+
+Workflow: Prepare a DJ deck.
+
+### Reset manual beatgrid
+
+Preview removal
+
+Preview removing the manual grid. Apply commits removal; Cancel keeps the current grid. Reset does not change analyzed BPM, audio or absolute cue positions.
+
+Workflow: Prepare a DJ deck.
+
+### Beatgrid preview
+
+Solid applied / dashed draft; uniform four-beat bars
+
+Inspect bounded source-time beat markers around the live playhead over a summed low/mid/high magnitude envelope, not raw sample peaks. Beat zero is the first downbeat; negative beat coordinates represent pickups. Colored cue markers keep their source positions. Preview does not alter playback.
+
+Workflow: Prepare a DJ deck.
+
+### Apply manual beatgrid
+
+One receipt-qualified undoable edit
+
+Submit the validated draft for the same loaded track. Queued means waiting for renderer preparation; actual application and library durability are reported separately. Manual preparation survives reanalysis without replacing analysis metadata. An accepted edit cannot be cancelled by closing this window.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel or close beatgrid editor
+
+Draft only; Escape
+
+Discard unapplied preview changes and close the editor without submitting an audio or grid edit. Closing after Apply does not cancel a command already accepted by the renderer queue.
 
 Workflow: Prepare a DJ deck.
 

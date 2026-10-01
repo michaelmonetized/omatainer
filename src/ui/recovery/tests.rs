@@ -947,3 +947,131 @@ fn background_status_changes_do_not_retarget_native_recovery_actions() {
     assert_ne!(gui.app.engine.undo.checkpoint().epoch, epoch);
     assert_eq!(gui.rt.master, 0.37);
 }
+
+#[test]
+fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_future_rejection() {
+    use crate::engine::beatgrid::{Grid, GridEditAck};
+    let files = Files::new();
+    let root = files.path("manual-grid");
+    let grid = Grid::new(1.25, 96.0).unwrap();
+    let mut original = Gui::new();
+    let receipt = original.app.engine.initial_playback[0].clone();
+    original
+        .app
+        .engine
+        .send(Command::DeckGrid {
+            deck: 0,
+            grid: Some(grid),
+            receipt,
+            ack: GridEditAck::new(),
+        })
+        .unwrap();
+    original.rt.decks[0].pos = 24_000.0;
+    original
+        .app
+        .engine
+        .send(Command::DeckHotCue {
+            deck: 0,
+            pad: 7,
+            del: false,
+        })
+        .unwrap();
+    original.rt.process(&mut []);
+    let cue = original.rt.decks[0].hotcues[7].pos;
+    let source_bpm = original.rt.decks[0].audio.as_ref().unwrap().bpm;
+    original.start(&root);
+    original.durable(original.app.engine.project.revision());
+    original.crash_worker();
+    let cancel = AtomicBool::new(false);
+    let inventory = crate::recovery::discover(&root, &cancel).unwrap();
+    let recovered =
+        crate::recovery::recover::<project::Document>(&inventory.candidates[0], &cancel).unwrap();
+    assert_eq!(recovered.bundle.state.engine.version, 3);
+    assert_eq!(recovered.bundle.state.engine.decks[0].grid, Some(grid));
+    let mut restarted = Gui::new();
+    restarted.start(&root);
+    restarted.wait(|g| !g.app.recovery.candidates.is_empty());
+    let epoch = restarted.app.engine.undo.checkpoint().epoch;
+    restarted.click("Preview recovery");
+    restarted.wait(|g| g.app.recovery.preview.is_some());
+    assert_eq!(restarted.rt.decks[0].grid, None, "preview is read-only");
+    restarted.click("Restore as untitled copy");
+    restarted.settled();
+    assert_ne!(restarted.app.engine.undo.checkpoint().epoch, epoch);
+    assert_eq!(restarted.rt.decks[0].grid, Some(grid));
+    assert_eq!(restarted.rt.decks[0].hotcues[7].pos, cue);
+    assert!(restarted.rt.decks[0].hotcues[7].set);
+    assert_eq!(
+        restarted.rt.decks[0].audio.as_ref().unwrap().bpm,
+        source_bpm
+    );
+    assert!(!restarted.rt.playing && restarted.rt.decks.iter().all(|d| !d.playing));
+
+    for version in [1, 2, 4, 3] {
+        let variant = files.path(&format!("state-{version}"));
+        let mut state = serde_json::to_value(&recovered.bundle.state).unwrap();
+        state["engine"]["version"] = version.into();
+        for deck in state["engine"]["decks"].as_array_mut().unwrap() {
+            if version <= 2 {
+                deck.as_object_mut().unwrap().remove("grid");
+            }
+            if version == 1 {
+                deck.as_object_mut().unwrap().remove("cue_styles");
+            }
+        }
+        if version == 3 {
+            state["engine"]["decks"][0]["grid"]["seconds_per_beat"] = 0.into();
+        }
+        let mut store = crate::recovery::Store::open(&variant).unwrap();
+        assert!(
+            store
+                .append(
+                    &crate::project_file::Bundle {
+                        state,
+                        media: recovered.bundle.media.clone()
+                    },
+                    recovered.metadata.clone(),
+                    &crate::recovery::Config::default(),
+                    &cancel
+                )
+                .unwrap()
+                .durable
+        );
+        drop(store);
+        let mut gui = Gui::new();
+        gui.start(&variant);
+        gui.wait(|g| !g.app.recovery.candidates.is_empty());
+        let before = gui.app.engine.undo.checkpoint();
+        gui.click("Preview recovery");
+        if version <= 2 {
+            gui.wait(|g| g.app.recovery.preview.is_some());
+            gui.click("Restore as untitled copy");
+            gui.settled();
+            assert!(gui.rt.decks.iter().all(|d| d.grid.is_none()));
+            assert!(gui.rt.decks[0].hotcues[7].set);
+            assert_eq!(gui.rt.decks[0].hotcues[7].pos, cue);
+            assert_ne!(gui.app.engine.undo.checkpoint().epoch, before.epoch);
+        } else {
+            gui.wait(|g| g.app.recovery.pending.is_none());
+            assert!(gui.app.recovery.preview.is_none());
+            assert_eq!(gui.app.engine.undo.checkpoint(), before);
+            assert_eq!(gui.rt.decks[0].grid, None);
+            let message = gui.app.recovery.message.as_deref().unwrap();
+            assert!(
+                message.contains(if version == 4 {
+                    "version"
+                } else {
+                    "Grid tempo"
+                }),
+                "{message}"
+            );
+            assert!(
+                !crate::recovery::discover(&variant, &cancel)
+                    .unwrap()
+                    .candidates
+                    .is_empty(),
+                "unsupported recovery remains available to a compatible reader"
+            );
+        }
+    }
+}
