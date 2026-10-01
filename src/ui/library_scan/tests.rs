@@ -66,7 +66,7 @@ fn item(path: PathBuf, title: &str, bpm: f32) -> LibItem {
         artist: "cached artist".into(),
         bpm: Bpm::new(bpm, super::super::Origin::User),
         key: "DM".into(),
-        length: 183.25,
+        length: Some(183.25),
         last_play: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(123)),
     }
 }
@@ -186,7 +186,7 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
     assert_eq!(selected_item.artist, "cached artist");
     assert_eq!(selected_item.bpm.value(), Some(135.5));
     assert_eq!(selected_item.key, "DM");
-    assert_eq!(selected_item.length, 183.25);
+    assert_eq!(selected_item.length, Some(183.25));
     assert_eq!(fixture.app.item_last_play(selected_item), Some(latest));
     assert!(fixture
         .app
@@ -307,7 +307,7 @@ fn stable_file_metadata_is_retained_but_changed_content_invalidates_cached_analy
         .unwrap();
     let entries = Arc::make_mut(&mut fixture.app.library);
     entries[position].bpm = Bpm::new(132.5, super::super::Origin::User);
-    entries[position].length = 45.0;
+    entries[position].length = Some(45.0);
     start(&mut fixture.app, vec![directory.0.clone()]);
     finish(&mut fixture.app);
     let item = fixture
@@ -317,7 +317,7 @@ fn stable_file_metadata_is_retained_but_changed_content_invalidates_cached_analy
         .find(|item| item.source == LibSource::File(path.clone()))
         .unwrap();
     assert_eq!(item.bpm.value(), Some(132.5));
-    assert_eq!(item.length, 45.0);
+    assert_eq!(item.length, Some(45.0));
     std::fs::write(&path, b"changed content with a different size").unwrap();
     start(&mut fixture.app, vec![directory.0.clone()]);
     finish(&mut fixture.app);
@@ -328,7 +328,7 @@ fn stable_file_metadata_is_retained_but_changed_content_invalidates_cached_analy
         .find(|item| item.source == LibSource::File(path.clone()))
         .unwrap();
     assert_eq!(item.bpm.value(), Some(120.0));
-    assert_eq!(item.length, 0.0);
+    assert_eq!(item.length, None);
 }
 
 #[test]

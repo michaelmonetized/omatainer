@@ -44,6 +44,8 @@ mod library_view_tests;
 mod keyboard_tests;
 #[cfg(test)]
 mod sampler_identity_tests;
+#[cfg(test)]
+mod duration_tests;
 
 pub struct App {
     engine: Engine,
@@ -81,7 +83,7 @@ struct LibItem {
     bpm: Bpm,
     fingerprint: Option<FileFingerprint>,
     key: String,
-    length: f32,
+    length: Option<f64>,
     last_play: Option<SystemTime>,
     source: LibSource,
 }
@@ -280,7 +282,7 @@ impl App {
                     report.sample.bpm = bpm.value().unwrap_or(0.0);
                     state.bpm = Some(bpm);
                     state.metadata = completion.fingerprint.zip(source.cloned()).map(|(fingerprint, source)|
-                        library_metadata::Patch { source, fingerprint, bpm });
+                        library_metadata::Patch { source, fingerprint, bpm, duration: decoded_duration(&report.sample) });
                     state.warning = report.diagnostics.warning();
                     let receipt = Receipt::new();
                     state.phase = if self.submit(Command::DeckLoadRequested {
@@ -339,7 +341,7 @@ fn builtin_crate_items() -> Vec<LibItem> {
             bpm: Bpm::new(124.0, Origin::Builtin),
             fingerprint: None,
             key: "C".into(),
-            length: 16.0 * 60.0 / 124.0,
+            length: Some(16.0 * 60.0 / 124.0),
             last_play: None,
             source: LibSource::Builtin(BuiltinStem::Drums),
         },
@@ -349,7 +351,7 @@ fn builtin_crate_items() -> Vec<LibItem> {
             bpm: Bpm::new(124.0, Origin::Builtin),
             fingerprint: None,
             key: "C".into(),
-            length: 16.0 * 60.0 / 124.0,
+            length: Some(16.0 * 60.0 / 124.0),
             last_play: None,
             source: LibSource::Builtin(BuiltinStem::Harmony),
         },
@@ -1097,11 +1099,22 @@ fn sort_crate(items: &mut [LibItem]) {
     });
 }
 
-fn fmt_len(s: f32) -> String {
-    if s <= 0.0 {
-        "—".into()
-    } else {
-        format!("{}:{:02}", (s as u32) / 60, (s as u32) % 60)
+/// Duration of the successfully decoded playable buffer. An unavailable
+/// declared source length does not make this measured frame count unknown.
+fn decoded_duration(sample: &crate::engine::dsp::Sample) -> Option<f64> {
+    if sample.sr == 0 || sample.ch == 0 || sample.data.len() % sample.ch as usize != 0 {
+        return None;
+    }
+    Some(sample.frames() as f64 / sample.sr as f64)
+}
+
+fn fmt_len(seconds: Option<f64>) -> String {
+    match seconds.filter(|s| s.is_finite() && *s >= 0.0) {
+        Some(seconds) => {
+            let seconds = seconds as u64;
+            format!("{}:{:02}", seconds / 60, seconds % 60)
+        }
+        None => "unknown".into(),
     }
 }
 
