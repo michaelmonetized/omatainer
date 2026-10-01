@@ -148,3 +148,23 @@ fn originals_can_be_prepared_without_any_existing_working_factory_bank() {
         }
     }
 }
+
+#[test]
+#[ignore = "local block filesystem UUID through production sampler resolver and verified relocation"]
+fn local_block_volume_sampler_prepares_typed_source_and_preserves_old_reference_after_relocation() {
+    let home=PathBuf::from(std::env::var_os("HOME").unwrap());let files=Files(home.join(format!(".cache/omat-sampler-volume-{}",BankId::new().unwrap())));std::fs::create_dir(&files.0).unwrap();
+    let mut catalog=Catalog::default();let old=files.source("volume.wav",&wav(4096,16000,1),&mut catalog);
+    let path=old.path().unwrap().to_path_buf();let inventory=crate::media_location::Snapshot::fixture_local_volume(&path).unwrap();let source=inventory.identify(&path).unwrap().source;
+    catalog.adopt_volume(&crate::library::watch_roots::Adoption {old:old.source.clone(),expected:old.fingerprint,source:source.clone()}).unwrap();
+    let reference=SourceRef {source:source.clone(),..old.clone()};
+    let owner=assets::Owner::isolated_for_test(assets::Budget::limits());let prepared=run(request(definition(&[reference.clone()]),&catalog),&owner,||false).unwrap();
+    assert!(prepared.bank.data.issues[0].is_none());assert_eq!(prepared.verified_sources.len(),1);assert_eq!(prepared.verified_sources[0].source,source);
+    let proof=&prepared.verified_sources[0];catalog.qualify_verified_content(&proof.track,&proof.source,proof.fingerprint,proof.content_hash.unwrap()).unwrap();
+    let moved=files.0.join("relocated.wav");std::fs::rename(&path,&moved).unwrap();
+    catalog.relocate(&crate::library::Relocate {id:proof.track.clone(),source:proof.source.clone(),fingerprint:proof.fingerprint,destination:moved.clone()}).unwrap();
+    let restored=run(request(definition(&[reference]),&catalog),&owner,||false).unwrap();
+    assert_eq!(restored.bank.data.audio[0].as_ref().unwrap().data,prepared.bank.data.audio[0].as_ref().unwrap().data);
+    let Some(Source::Library {reference})=&restored.bank.data.settings.slots[0].source else {panic!()};assert_eq!(reference.path().unwrap(),moved);assert_eq!(reference.track,old.track);
+    let store_path=files.0.join("saved/library.json");let mut store=crate::library::Store::open(store_path.clone()).unwrap();store.catalog=catalog;store.save().unwrap();drop(store);
+    assert!(crate::library::read(&store_path).unwrap().version(&source,Some(old.fingerprint)).is_some());
+}

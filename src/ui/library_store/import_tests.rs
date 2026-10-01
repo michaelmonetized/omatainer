@@ -114,9 +114,10 @@ impl Gui {
             }
             assert!(
                 Instant::now() < until,
-                "{} / {}",
+                "{} / {} / loads {:?}",
                 self.app.library_scan.label(),
-                self.app.library_metadata.label()
+                self.app.library_metadata.label(),
+                self.app.loads.iter().map(|l|l.as_ref().map(|l|match &l.phase {Phase::Failed(e)=>e.as_str(),Phase::Loading=>"loading",Phase::Queued=>"queued",Phase::Loaded=>"loaded",Phase::Superseded=>"superseded"})).collect::<Vec<_>>()
             );
             std::thread::sleep(Duration::from_millis(1));
         }
@@ -192,4 +193,62 @@ fn actual_typed_import_persists_once_without_changing_playing_audio() {
         Action::Click,
     );
     assert!(gui.app.settings.open);
+}
+
+#[test]
+fn actual_gui_enrollment_typed_reload_offline_reconnect_and_root_removal_preserve_audio_and_identity() {
+    enrollment_gui(Files::new(),false);
+}
+#[test]
+#[ignore = "local real block filesystem UUID and production Linux resolver qualification"]
+fn local_block_volume_production_resolver_preserves_actual_gui_audio_and_identity() {
+    let home=PathBuf::from(std::env::var_os("HOME").expect("local host home"));
+    let root=home.join(format!(".cache/omat-import-block-ui-{}",crate::performance_history::storage::new_id().unwrap()));
+    std::fs::create_dir(&root).unwrap();enrollment_gui(Files(root),true);
+}
+fn enrollment_gui(files:Files,real:bool) {
+    use crate::media_location::Snapshot;
+    use std::sync::Mutex;
+    let path=files.wave();let fingerprint=FileFingerprint::read(&path).unwrap();let original=std::fs::read(&path).unwrap();
+    let mut gui=Gui::new(&files);let file=LibSource::File(path.clone());
+    gui.action(gui.node("Music file and folder paths"),Action::Focus);gui.frame(vec![egui::Event::Text(path.display().to_string())]);gui.frame(vec![]);
+    gui.action(gui.node("Import music files/folders"),Action::Click);gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active() && g.app.library_metadata.catalog.track(&file).is_some());
+    let identity=gui.app.library_metadata.catalog.track(&file).unwrap().id.clone();
+    gui.app.load_source(1,Some(&Selection {title:"Imported source".into(),source:file.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)));
+    let receipt=gui.app.loads[1].as_ref().unwrap().receipt.clone().unwrap();
+    gui.app.engine.send(Command::DeckSeek {deck:1,frac:0.25}).unwrap();gui.app.engine.send(Command::DeckCuePoint {deck:1,pad:0,del:false,receipt}).unwrap();
+    gui.wait(|g|!g.app.library_metadata.active() && g.app.library_metadata.catalog.version(&file,Some(fingerprint)).is_some_and(|v|v.preparation.hotcues[0].is_some() && v.content_hash.is_some()));
+    let preparation=gui.app.library_metadata.catalog.version(&file,Some(fingerprint)).unwrap().preparation;
+    // Keep the real filesystem UUID/mount/namespace. Only removable
+    // classification is injected; this is local software evidence, not USB QA.
+    let mounted=if real {Snapshot::fixture_local_volume(&path).expect("local mounted block filesystem needed for this real-resolver case")}
+        else {Snapshot::fixture_volume(&files.0,"SOFTWARE-107",1)};
+    let typed=mounted.identify(&path).unwrap().source;assert!(matches!(typed,LibSource::Removable {..}));
+    let mounts=Arc::new(Mutex::new(mounted.clone()));let inventory=mounts.clone();
+    gui.app.library_scan=LibraryScan::with_inventory(move ||Ok(inventory.lock().unwrap().clone()));gui.app.library_scan.set_performance(gui.app.engine.cmd.performance().clone());
+    gui.app.library_media_paths.clear();gui.app.library_media_revision+=1;gui.frame(vec![]);
+    gui.action(gui.node("Music file and folder paths"),Action::Focus);gui.frame(vec![egui::Event::Text(path.display().to_string())]);gui.frame(vec![]);
+    gui.action(gui.node("Import music files/folders"),Action::Click);gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active() && g.app.library_metadata.catalog.track(&typed).is_some());
+    assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().id,identity);assert!(gui.app.library_metadata.catalog.track(&file).is_none());
+    assert_eq!(gui.app.library.iter().filter(|i|matches!(i.source,LibSource::File(_) | LibSource::Removable {..})).count(),1);
+    assert_eq!(gui.app.library_metadata.catalog.version(&file,Some(fingerprint)).unwrap().preparation,preparation);
+    if !real {let inventory=mounts.clone();gui.app.loader=Some(crate::engine::media_load::Loader::with_inventory(move ||Ok(inventory.lock().unwrap().clone())).unwrap());}
+    gui.app.load_source(1,Some(&Selection {title:"Typed volume".into(),source:typed.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)) && !g.app.library_metadata.active());
+    assert_eq!(gui.app.library_metadata.catalog.version(&typed,Some(fingerprint)).unwrap().preparation,preparation);
+    assert_eq!(gui.app.loads[1].as_ref().unwrap().selection.as_ref().unwrap().source,typed);
+    assert!(gui.app.library_scan.start_watched(vec![files.0.clone()],gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));
+    gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
+    assert!(gui.app.library_metadata.catalog.watched_roots.binding("Live",&files.0).is_some());
+    *mounts.lock().unwrap()=Snapshot::fixture_offline();
+    let inventory=mounts.clone();gui.app.loader=Some(crate::engine::media_load::Loader::with_inventory(move ||Ok(inventory.lock().unwrap().clone())).unwrap());
+    gui.app.load_source(1,Some(&Selection {title:"Offline volume".into(),source:typed.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Failed(e)) if e.contains("offline")));
+    assert!(gui.app.library_scan.start_watched(vec![files.0.clone()],gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
+    assert!(gui.app.library_scan.summary.as_ref().unwrap().availability[&typed].contains("offline"));assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().id,identity);
+    *mounts.lock().unwrap()=mounted;
+    assert!(gui.app.library_scan.start_watched(vec![files.0.clone()],gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
+    assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().id,identity);assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().versions.len(),1);
+    gui.app.load_source(1,Some(&Selection {title:"Reconnected volume".into(),source:typed.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)) && !g.app.library_metadata.active());
+    assert!(gui.app.library_scan.start_watched(Vec::new(),gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
+    let saved=crate::library::read(&files.0.join("saved/library.json")).unwrap();assert!(saved.watched_roots.binding("Live",&files.0).is_none());assert_eq!(saved.track(&typed).unwrap().id,identity);assert_eq!(saved.version(&typed,Some(fingerprint)).unwrap().preparation,preparation);
+    assert!(gui.nonzero);assert_eq!(FileFingerprint::read(&path),Some(fingerprint));assert_eq!(std::fs::read(path).unwrap(),original);
 }

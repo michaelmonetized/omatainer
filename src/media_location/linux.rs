@@ -108,9 +108,6 @@ fn blocks() -> Result<Vec<Block>, Failure> {
             let number = udev_device_get_devnum(device.0);
             if number != 0 {
                 let uuid = property(device.0, b"ID_FS_UUID\0").unwrap_or_default();
-                if !uuid.is_empty() && !valid_uuid(&uuid) {
-                    return Err(Failure::Invalid);
-                }
                 let mut parent = device.0;
                 let mut removable = false;
                 for _ in 0..32 {
@@ -173,6 +170,22 @@ pub(super) fn discover() -> Result<Snapshot, Failure> {
                 }
             }
         }
+        if mount.btrfs && mount.block.is_some() {
+            mount.qualified = false;
+            if let Some(block) = blocks
+                .iter()
+                .find(|b| Some(b.device) == mount.block && valid_uuid(&b.uuid))
+            {
+                if let Ok(uuid) = btrfs_uuid(&mount.point) {
+                    if uuid == block.uuid {
+                        if let Ok(meta) = mount.point.metadata() {
+                            mount.access = Device::from_raw(meta.dev());
+                            mount.qualified = true;
+                        }
+                    }
+                }
+            }
+        }
     }
     let mut after = Vec::new();
     File::open("/proc/self/mountinfo")
@@ -188,4 +201,49 @@ pub(super) fn discover() -> Result<Snapshot, Failure> {
         mounts,
         blocks,
     })
+}
+
+/// Btrfs reports a per-subvolume anonymous st_dev; mountinfo can report the
+/// superblock's different device. Verify the full filesystem UUID rather than
+/// comparing those unrelated numbers. FS_INFO is read-only, flags are zero.
+/// UAPI layout: include/uapi/linux/btrfs.h, BTRFS_IOC_FS_INFO (1 KiB).
+/// Kernel: fs/btrfs/inode.c getattr and fs/btrfs/ioctl.c fs_info.
+#[repr(C)]
+pub(super) struct BtrfsInfo {
+    max_id: u64,
+    devices: u64,
+    uuid: [u8; 16],
+    rest: [u8; 992],
+}
+pub(super) fn btrfs_uuid(path: &Path) -> Result<String, Failure> {
+    use std::{
+        fmt::Write,
+        os::{fd::AsRawFd, unix::fs::OpenOptionsExt},
+    };
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(path)
+        .map_err(io)?;
+    let mut info = BtrfsInfo {
+        max_id: 0,
+        devices: 0,
+        uuid: [0; 16],
+        rest: [0; 992],
+    };
+    const REQUEST: libc::c_ulong = (2 << 30) | (1024 << 16) | (0x94 << 8) | 31;
+    if unsafe { libc::ioctl(file.as_raw_fd(), REQUEST, &mut info) } < 0 {
+        return Err(io(std::io::Error::last_os_error()));
+    }
+    if info.devices == 0 {
+        return Err(Failure::Changed);
+    }
+    let mut uuid = String::with_capacity(36);
+    for (index, byte) in info.uuid.into_iter().enumerate() {
+        if matches!(index, 4 | 6 | 8 | 10) {
+            uuid.push('-');
+        }
+        let _ = write!(uuid, "{byte:02x}");
+    }
+    Ok(uuid)
 }

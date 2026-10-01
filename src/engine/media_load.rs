@@ -1,8 +1,8 @@
 //! One active decoder with a replaceable pending/result slot per deck.
 //! Filesystem and decoder calls remain on the worker. Cancellation is observed
 //! at safe decode boundaries; it cannot interrupt an OS read already in progress.
-use super::decode::{decode_audio_with_cancel, DecodeFailure, DecodedAudio};
-use super::media_source::FileFingerprint;
+use super::decode::{DecodeFailure, DecodedAudio};
+use super::media_source::{FileFingerprint,LibSource};
 use super::DECKS;
 use crate::sampler_bank::{assets, prepare};
 use super::{performance, sampler, media_analysis};
@@ -25,10 +25,11 @@ impl LoadToken {
 }
 struct Request {
     token: LoadToken,
-    path: PathBuf,
+    source: LibSource,
 }
 pub struct Completion {
     pub fingerprint: Option<FileFingerprint>,
+    pub content_hash: Option<[u8;32]>,
     pub token: LoadToken,
     pub result: Result<DecodedAudio, DecodeFailure>,
 }
@@ -99,12 +100,18 @@ pub struct Loader {
 impl Loader {
     pub fn start_with_performance(performance: super::performance::Handle) -> io::Result<Self> {
         let decode_performance = performance.clone();
-        Self::with_worker(move |path, token| super::decode::decode_audio_for_show(path, || !token.is_current(), &decode_performance), performance)
+        Self::with_backend(move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &decode_performance),
+            media_analysis::run, performance, true, crate::media_location::Snapshot::discover)
     }
     pub fn start() -> io::Result<Self> {
-        Self::with_decoder(|path, token| decode_audio_with_cancel(path, || !token.is_current()))
+        Self::start_with_performance(performance::Handle::default())
     }
 
+    #[cfg(test)]
+    pub(crate) fn with_inventory(inventory:impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure>+Send+'static)->io::Result<Self> {
+        let performance=performance::Handle::default();let foreground=performance.clone();
+        Self::with_backend(move |path,token,file|super::decode::decode_deck_file(path,file.expect("verified descriptor"),||!token.is_current(),&foreground),media_analysis::run,performance,true,inventory)
+    }
     pub(crate) fn with_decoder(
         decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure>
             + Send + 'static,
@@ -124,17 +131,28 @@ impl Loader {
         mut before: impl FnMut(&AnalysisToken) + Send + 'static,
     ) -> io::Result<Self> {
         let foreground = performance.clone();
-        Self::with_workers(
-            move |path, token| super::decode::decode_audio_for_show(path, || !token.is_current(), &foreground),
+        Self::with_backend(
+            move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &foreground),
             move |request, token, work| { before(token); media_analysis::run(request, token, work) },
-            performance,
+            performance, true, crate::media_location::Snapshot::discover,
         )
     }
     fn with_workers(
         mut decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure> + Send + 'static,
-        mut analyze: impl FnMut(AnalysisRequest, &AnalysisToken, &performance::WorkPermit)
+        analyze: impl FnMut(AnalysisRequest, &AnalysisToken, &performance::WorkPermit)
             -> Result<crate::track_analysis::Prepared, AnalysisFailure> + Send + 'static,
         performance: performance::Handle,
+    ) -> io::Result<Self> {
+        // Path decoders are explicit synthetic test adapters. Production
+        // constructors always supply the same opened descriptor to decoding.
+        Self::with_backend(move |path,token,_file|decode(path,token),analyze,performance,false,crate::media_location::Snapshot::discover)
+    }
+    fn with_backend(
+        mut decode: impl FnMut(&Path,&LoadToken,Option<std::fs::File>)->Result<DecodedAudio,DecodeFailure> + Send + 'static,
+        mut analyze: impl FnMut(AnalysisRequest,&AnalysisToken,&performance::WorkPermit)->Result<crate::track_analysis::Prepared,AnalysisFailure> + Send + 'static,
+        performance:performance::Handle,
+        verified:bool,
+        mut inventory:impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure> +Send+'static,
     ) -> io::Result<Self> {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
@@ -221,10 +239,12 @@ impl Loader {
                 if !request.token.is_current() {
                     continue;
                 }
-                let before = FileFingerprint::read(&request.path);
-                let result = decode(&request.path, &request.token);
-                let after = FileFingerprint::read(&request.path);
-                let fingerprint = before.filter(|before| Some(*before) == after);
+                let (fingerprint,content_hash,result) = if verified || matches!(request.source,LibSource::Removable {..}) {
+                    guarded_decode(&request.source,&request.token,&mut decode,&mut inventory)
+                } else if let LibSource::File(path)=&request.source {
+                    let before=FileFingerprint::read(path);let result=decode(path,&request.token,None);
+                    let after=FileFingerprint::read(path);(before.filter(|before|Some(*before)==after),None,result)
+                } else {(None,None,Err(source_failure("Unsupported media namespace")))};
                 if !request.token.is_current() {
                     continue;
                 }
@@ -238,6 +258,7 @@ impl Loader {
                     }
                     state.ready[deck].replace(Completion {
                         fingerprint,
+                        content_hash,
                         token: request.token,
                         result,
                     })
@@ -336,6 +357,14 @@ impl Loader {
     }
 
     pub fn request(&self, deck: u8, path: PathBuf) -> Result<LoadToken, String> {
+        self.enqueue(deck,LibSource::File(path))
+    }
+    pub fn request_source(&self,deck:u8,source:LibSource)->Result<LoadToken,String> {
+        crate::library::validate_source(&source)?;
+        crate::media_location::validate_root_source(&source).map_err(|e|e.to_string())?;
+        self.enqueue(deck,source)
+    }
+    fn enqueue(&self,deck:u8,source:LibSource)->Result<LoadToken,String> {
         let current = self
             .generations
             .get(deck as usize)
@@ -354,7 +383,7 @@ impl Loader {
             };
             let pending = state.pending[deck as usize].replace(Request {
                 token: token.clone(),
-                path,
+                source,
             });
             let ready = state.ready[deck as usize].take();
             (token, (pending, ready))
@@ -396,6 +425,45 @@ impl Drop for Loader {
     }
 }
 
+fn source_failure(detail:impl ToString)->DecodeFailure {
+    DecodeFailure {kind:super::decode::DecodeFailureKind::Io,stage:super::decode::DecodeStage::Open,
+        diagnostics:Default::default(),detail:detail.to_string().chars().take(256).collect()}
+}
+fn guarded_decode(
+    source:&LibSource,token:&LoadToken,
+    decode:&mut impl FnMut(&Path,&LoadToken,Option<std::fs::File>)->Result<DecodedAudio,DecodeFailure>,
+    inventory:&mut impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure>,
+)->(Option<FileFingerprint>,Option<[u8;32]>,Result<DecodedAudio,DecodeFailure>) {
+    use crate::media_location::{Location,Failure};
+    use std::{os::unix::fs::OpenOptionsExt,io::{Read,Seek}};
+    use sha2::{Digest,Sha256};
+    let mut operation=|| -> Result<(FileFingerprint,Option<[u8;32]>,DecodedAudio),DecodeFailure> {
+        let location=if matches!(source,LibSource::Removable {..}) {
+            let snapshot=inventory().map_err(source_failure)?;let location=snapshot.resolve(source).map_err(source_failure)?;
+            snapshot.inspect(&location).map_err(source_failure)?;location
+        } else {Location::resolve(source).map_err(source_failure)?};
+        let mut file=std::fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK).open(&location.path).map_err(source_failure)?;
+        let meta=file.metadata().map_err(source_failure)?;let fingerprint=FileFingerprint::from_metadata(&meta);
+        if !meta.is_file() || FileFingerprint::read(&location.path)!=Some(fingerprint) {return Err(source_failure(Failure::Changed));}
+        if !token.is_current() {return Err(source_failure("Load superseded before decoding"));}
+        let content_hash=if matches!(source,LibSource::Removable {..}) {
+            if meta.len()>8*1024*1024*1024 {return Err(source_failure("removable source exceeds 8 GiB verification limit"));}
+            let mut hash=Sha256::new();let mut buffer=[0u8;64*1024];let mut total=0u64;
+            loop {
+                if !token.is_current() {return Err(source_failure("Load superseded during content verification"));}
+                let n=file.read(&mut buffer).map_err(source_failure)?;if n==0 {break;}
+                total+=n as u64;if total>meta.len() {return Err(source_failure(Failure::Changed));}hash.update(&buffer[..n]);
+            }
+            if total!=meta.len() {return Err(source_failure(Failure::Changed));}
+            file.rewind().map_err(source_failure)?;Some(hash.finalize().into())
+        } else {None};
+        let result=decode(&location.path,token,Some(file.try_clone().map_err(source_failure)?));
+        if matches!(source,LibSource::Removable {..}) {location.recheck_with(&inventory().map_err(source_failure)?).map_err(source_failure)?;}
+        if FileFingerprint::from_metadata(&file.metadata().map_err(source_failure)?)!=fingerprint || FileFingerprint::read(&location.path)!=Some(fingerprint) {return Err(source_failure(Failure::Changed));}
+        result.map(|audio|(fingerprint,content_hash,audio))
+    };
+    match operation() {Ok((fingerprint,hash,audio))=>(Some(fingerprint),hash,Ok(audio)),Err(error)=>(None,None,Err(error))}
+}
 fn preempt_analysis(state: &State) {
     if let Some(token) = &state.analysis_active { token.preempt(); }
     if let Some(job) = &state.analysis_pending { job.token.preempt(); }

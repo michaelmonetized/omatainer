@@ -278,3 +278,16 @@ fn replacement_during_hash_or_decode_is_rejected_and_packet_cancel_discards_pcm(
     assert_eq!(failure.kind, decode::DecodeFailureKind::Cancelled);
     assert!(decoded.get() > 0 && decoded.get() < 192_000);
 }
+
+#[test]
+#[ignore = "local block filesystem UUID through production analysis resolver"]
+fn local_block_volume_analysis_keeps_typed_source_and_same_descriptor_digest() {
+    let home=PathBuf::from(std::env::var_os("HOME").unwrap());let files=Files(home.join(format!(".cache/omat-analysis-volume-{}",BankId::new().unwrap())));std::fs::create_dir(&files.0).unwrap();
+    let bytes=wav(4096,16000,1,false);let mut reference=files.source("volume.wav",&bytes);let path=reference.path().unwrap().to_path_buf();
+    let inventory=crate::media_location::Snapshot::fixture_local_volume(&path).unwrap();reference.source=inventory.identify(&path).unwrap().source;
+    assert!(matches!(reference.source,LibSource::Removable {..}));let result=analyze(reference.clone(),Fields::ALL);
+    assert_eq!(result.reference.source,reference.source);assert_eq!(result.reference.content_hash,Some(Sha256::digest(&bytes).into()));assert_eq!(result.reference.fingerprint,reference.fingerprint);
+    assert_eq!(result.duration,4096.0/16000.0);assert!(result.waveform.is_some());
+    std::fs::remove_file(path).unwrap();let result=run(Request {reference,fields:Fields::ALL},&token(),&performance::Handle::default().optional_work().unwrap());
+    assert!(result.unwrap_err().to_string().contains("missing on the mounted volume"));
+}

@@ -445,7 +445,7 @@ fn skipped_reason_counts_are_visible_before_completion() {
     let hook_path = held_path.clone(); let mut scanner = LibraryScan::default();
     assert!(scanner.admit(vec![unsupported, held_path], Arc::new(builtin_crate_items()), Options { before_entry: Some(Arc::new(move |path| {
         if path == hook_path { entered.send(()).unwrap(); let _ = held.lock().unwrap().recv_timeout(Duration::from_secs(5)); }
-    })) }, Kind::Import));
+    })) }, Kind::Import, None));
     ready.recv_timeout(Duration::from_secs(3)).unwrap();
     assert!(scanner.label().contains("1 unsupported file type")); release.send(()).unwrap();
     wait_for(|| { if let Some(publication) = scanner.poll() { publication.discard(); } !scanner.active() });
@@ -639,4 +639,61 @@ fn performance_protection_refuses_scans_and_retires_held_and_completed_candidate
     publication.unwrap().publish(&mut library);
     assert!(Arc::ptr_eq(&library, &original));
     wait_for(|| performance.status().optional_active == 0);
+}
+
+#[test]
+fn watched_volume_reconnects_at_new_mountpoint_and_offline_bookmark_survives() {
+    use crate::library::watch_roots::{Batch,Binding};
+    use crate::media_location::Snapshot;
+    let old=Directory::new();let old_root=old.0.join("sets");std::fs::create_dir(&old_root).unwrap();
+    let volume=Directory::new();let root=volume.0.join("sets");std::fs::create_dir(&root).unwrap();
+    let song=root.join("nested.wav");std::fs::write(&song,b"scan fixture").unwrap();
+    let source=LibSource::Removable {volume_id:"TEST-A".into(),relative_path:"sets".into()};
+    let mut catalog=crate::library::Catalog::default();catalog.watched_roots.apply(&Batch {expected:0,profile:"Live".into(),configured:vec![old_root.clone()],observed:vec![Binding {profile:"Live".into(),configured:old_root.clone(),source:source.clone()}]}).unwrap();
+    let snapshot=Snapshot::fixture_volume(&volume.0,"TEST-A",9);
+    let mut scan=LibraryScan::with_inventory(move ||Ok(snapshot.clone()));
+    assert!(scan.start_watched(vec![old_root.clone()],Arc::new(builtin_crate_items()),"Live".into(),Arc::new(catalog.clone())));
+    let mut result=None;wait_for(|| { result=scan.poll();result.is_some() || !scan.active() });
+    let publication=result.expect("typed watched result");let track=publication.items.iter().find(|i|matches!(i.source,LibSource::Removable{..})).unwrap_or_else(||panic!("No typed row: {:?}",publication.summary));
+    assert_eq!(track.source,LibSource::Removable {volume_id:"TEST-A".into(),relative_path:"sets/nested.wav".into()});assert_eq!(track.fingerprint,FileFingerprint::read(&song));
+    assert!(catalog.watched_roots.matches(publication.roots.as_ref().unwrap().book.as_ref().unwrap()));
+    publication.discard();
+    let mut offline=LibraryScan::with_inventory(||Ok(Snapshot::fixture_offline()));
+    assert!(offline.start_watched(vec![old_root.clone()],Arc::new(builtin_crate_items()),"Live".into(),Arc::new(catalog.clone())));
+    let mut result=None;wait_for(|| {result=offline.poll();result.is_some() || !offline.active()});let publication=result.unwrap();
+    assert_eq!(publication.summary.skipped[SkipReason::MissingRoot as usize],1);
+    assert!(publication.summary.samples[0].detail.contains("offline"));
+    catalog.watched_roots.apply(publication.roots.as_ref().unwrap().book.as_ref().unwrap()).unwrap();assert_eq!(catalog.watched_roots.binding("Live",&old_root).unwrap().source,source);
+    publication.discard();
+}
+
+#[test]
+fn watched_volume_mount_change_before_publication_discards_complete_candidate() {
+    use crate::media_location::Snapshot;
+    let volume=Directory::new();volume.file("a.wav");
+    let first=Snapshot::fixture_volume(&volume.0,"TEST-A",1);let next=Snapshot::fixture_volume(&volume.0,"TEST-A",2);
+    let mut calls=0;let mut scan=LibraryScan::with_inventory(move ||{calls+=1;Ok(if calls==1 {first.clone()} else {next.clone()})});
+    assert!(scan.start_watched(vec![volume.0.clone()],Arc::new(builtin_crate_items()),"Live".into(),Arc::new(crate::library::Catalog::default())));
+    wait_for(|| {assert!(scan.poll().is_none());!scan.active()});
+    assert!(matches!(scan.state,ScanState::Failed(ref e) if e.contains("changed during access")));
+}
+
+#[test]
+fn actual_folder_events_coalesce_and_wait_for_studio_without_a_second_filesystem_worker() {
+    let directory=Directory::new();let nested=directory.0.join("nested");std::fs::create_dir(&nested).unwrap();directory.file("initial.wav");
+    let mut scanner=LibraryScan::default();scanner.enable_watching();let performance=Handle::default();scanner.set_performance(performance.clone());
+    let mut library=Arc::new(builtin_crate_items());assert!(scanner.start_watched(vec![directory.0.clone()],library.clone(),"Live".into(),Arc::new(crate::library::Catalog::default())));
+    let mut publication=None;wait_for(||{publication=scanner.poll();publication.is_some()});publication.unwrap().publish(&mut library);
+    wait_for(||scanner.watch_ready.load(Ordering::Acquire));
+    // Catalog writes do not manufacture a music event and perpetually rescan.
+    std::fs::write(nested.join("library.json"),b"unrelated file").unwrap();
+    std::thread::sleep(Duration::from_millis(300));assert!(!scanner.take_watch_hint());
+    performance.set_enabled(true).unwrap();
+    std::fs::write(nested.join("added.WAV"),b"scan fixture").unwrap();std::fs::write(nested.join("added2.wav"),b"scan fixture").unwrap();
+    std::thread::sleep(Duration::from_millis(300));assert!(!scanner.take_watch_hint());
+    performance.set_enabled(false).unwrap();wait_for(||scanner.changed.load(Ordering::Acquire));assert!(scanner.take_watch_hint());assert!(!scanner.take_watch_hint());
+    assert!(!library.iter().any(|i|matches!(&i.source,LibSource::File(p) if p.ends_with("added.WAV"))));
+    assert!(scanner.start_watched(vec![directory.0.clone()],library.clone(),"Live".into(),Arc::new(crate::library::Catalog::default())));
+    let mut publication=None;wait_for(||{publication=scanner.poll();publication.is_some()});let publication=publication.unwrap();
+    assert_eq!(publication.items.iter().filter(|i|matches!(i.source,LibSource::File(_))).count(),3);publication.discard();
 }

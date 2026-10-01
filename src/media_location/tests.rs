@@ -7,6 +7,9 @@ fn snapshot(point: &str, id: u64) -> Snapshot {
         mounts: vec![Mount {
             id,
             device: Device(8, 17),
+            access: Device(8, 17),
+            btrfs: false,
+            qualified: true,
             root: "/".into(),
             point: point.into(),
             source: "/dev/sdb1".into(),
@@ -43,6 +46,29 @@ fn remount_changes_only_io_location_not_persisted_source() {
     assert_ne!(resolved.stamp, picked.stamp);
     let serialized = serde_json::to_string(&picked.source).unwrap();
     assert!(!serialized.contains("OLD") && !serialized.contains("reconnected"));
+}
+#[test]
+fn descendants_keep_volume_identity_and_refuse_escape_or_foreign_mount() {
+    let mut s = snapshot("/mnt/a", 1);
+    let root = s.resolve(&source("music")).unwrap();
+    let child = root.child(Path::new("/mnt/a/music/deep/song.wav")).unwrap();
+    assert_eq!(child.source, source("music/deep/song.wav"));
+    assert_eq!(child.stamp, root.stamp);
+    assert_eq!(
+        root.child(Path::new("/mnt/a/music/../outside.wav"))
+            .unwrap_err(),
+        Failure::Invalid
+    );
+    assert_eq!(
+        root.child(Path::new("/different/song.wav")).unwrap_err(),
+        Failure::Invalid
+    );
+    let mut foreign = s.mounts[0].clone();
+    foreign.id = 2;
+    foreign.point = "/mnt/a/music/deep".into();
+    foreign.block = Some(Device(8, 33));
+    s.mounts.push(foreign);
+    assert_eq!(s.inspect(&child).unwrap_err(), Failure::Changed);
 }
 #[test]
 fn unmounted_and_duplicate_uuid_are_not_missing_file_observations() {
@@ -82,6 +108,10 @@ fn bind_roots_keep_filesystem_relative_identity_and_foreign_overmount_refuses() 
     bind.root = "/music".into();
     bind.point = "/mnt/set".into();
     s.mounts.push(bind);
+    assert_eq!(
+        s.identify_canonical("/mnt/set".into()).unwrap().source,
+        source("music")
+    );
     assert_eq!(
         s.identify_canonical("/mnt/set/deep/a.wav".into())
             .unwrap()
@@ -224,6 +254,7 @@ fn actual_file_missing_symlink_and_namespace_guard_are_distinct() {
     let meta = path.metadata().unwrap();
     let mut s = snapshot(dir.0.to_str().unwrap(), 1);
     s.mounts[0].device = Device::from_raw(meta.dev());
+    s.mounts[0].access = s.mounts[0].device;
     let location = s.resolve(&source("a.wav")).unwrap();
     assert_eq!(s.inspect(&location).unwrap().len(), 7);
     let mut reused = s.clone();
@@ -248,4 +279,60 @@ fn real_host_mount_and_udev_inventory_are_read_only_and_bounded() {
     assert_eq!(location.source, LibSource::File(path.clone()));
     assert_eq!(s.inspect(&location).unwrap().len(), 5);
     location.recheck().unwrap();
+}
+
+#[test]
+fn known_volume_identity_does_not_depend_on_later_removable_classification() {
+    let root = std::env::temp_dir().join(format!(
+        "omat-volume-classification-{}",
+        crate::sampler_bank::BankId::new().unwrap()
+    ));
+    std::fs::create_dir(&root).unwrap();
+    let path = root.join("a.wav");
+    std::fs::write(&path, b"fixture").unwrap();
+    let mut snapshot = Snapshot::fixture_volume(&root, "TEST-A", 1);
+    let location = snapshot.identify(&path).unwrap();
+    snapshot.blocks[0].removable = false;
+    assert!(matches!(
+        snapshot.identify(&path).unwrap().source,
+        LibSource::File(_)
+    ));
+    assert!(location.recheck_with(&snapshot).is_ok());
+    let forged = Location {
+        source: LibSource::Removable {
+            volume_id: "TEST-A".into(),
+            relative_path: "wrong.wav".into(),
+        },
+        ..location
+    };
+    assert_eq!(
+        forged.recheck_with(&snapshot).unwrap_err(),
+        Failure::Changed
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn btrfs_read_only_uapi_layout_and_foreign_device_refusal_are_exact() {
+    assert_eq!(std::mem::size_of::<linux::BtrfsInfo>(), 1024);
+    assert_eq!(std::mem::align_of::<linux::BtrfsInfo>(), 8);
+    let root = std::env::temp_dir().join(format!(
+        "omat-volume-device-{}",
+        crate::sampler_bank::BankId::new().unwrap()
+    ));
+    std::fs::create_dir(&root).unwrap();
+    let path = root.join("a.wav");
+    std::fs::write(&path, b"fixture").unwrap();
+    let mut snapshot = Snapshot::fixture_volume(&root, "TEST-A", 1);
+    let location = snapshot.identify(&path).unwrap();
+    snapshot.mounts[0].access = Device(99, 99);
+    assert_eq!(snapshot.inspect(&location).unwrap_err(), Failure::Changed);
+    snapshot.mounts[0].btrfs = true;
+    let location = snapshot.resolve(&location.source).unwrap();
+    assert_eq!(
+        snapshot.inspect(&location).unwrap_err(),
+        Failure::Changed,
+        "an unrelated filesystem cannot manufacture Btrfs UUID proof"
+    );
+    std::fs::remove_dir_all(root).unwrap();
 }

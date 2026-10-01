@@ -1,66 +1,107 @@
-# Music imports and removable libraries: work in progress
+# Music imports and watched removable libraries
 
-Issue #107 is not yet complete or qualified for a PR. This layer starts above
-final #106, cebfb53. Physical external-drive unplug/reconnect remains untested.
+Issue #107 stacks above final #106, cebfb53. This layer adds explicit files and
+folders, saved watched roots, UUID-based removable sources and guarded resolution
+through deck loading, analysis, sampler preparation, cue qualification, relocation
+and history. Final release qualification is recorded below when completed.
+Physical external-drive unplug/reconnect remains reserved for user QA.
 
-## Implemented checkpoints
+## Product behavior and ownership
 
-A worker-only Linux location module reads bounded `/proc/self/mountinfo` and the
-installed libudev block inventory, preserving filesystem UUID separately from
-namespace/mount/device access guards. It parses kernel path escapes, handles
-bind/subvolume roots, resolves a persistent volume-relative identity at a new
-mountpoint, and refuses duplicate UUIDs, ambiguous overmounts, changed namespaces,
-foreign nested mounts and symlink traversal. Offline, unavailable mounted views
-and missing files are separate outcomes. The resolver is not yet connected to
-all media workers; no product removable-load claim is made at this checkpoint.
+The Library dialog accepts one absolute path per line and merges readable music.
+The existing filesystem worker performs traversal, progress, cancellation and
+bounded skipped-reason publication. Limits are 64 inputs, 64 folder levels, one
+million visits and 100,000 rows. The first 32 skipped path/detail samples are
+bounded to 1024/256 bytes. Descendant symlinks are not followed. Overlapping
+canonical paths and logical volume paths do not duplicate rows.
 
-Primary interfaces reviewed:
-[Linux mountinfo documentation](https://www.kernel.org/doc/html/latest/filesystems/proc.html),
-[libudev header](https://github.com/systemd/systemd/blob/main/src/libudev/libudev.h).
-Nine resolver tests pass, including read-only discovery on this real host;
-remount, duplicate UUID and bind-mount scenarios use explicit software snapshots.
+The same worker owns one nonblocking inotify descriptor, at most 4,096 directory
+watches, two-second idle mount checks and a full-scan hint every 30 idle seconds.
+Hints coalesce; real scans wait for Studio, current catalog persistence and Close.
+Filesystem calls can delay completion. Notifications are not a completeness proof;
+the fallback catches missed events, additional directories and unsupported watches.
+Large summaries and enrollment batches retire on workers.
 
-The existing scanner now accepts explicit file/folder import jobs that merge
-rather than discard prior rows. Canonical overlapping inputs are deduplicated.
-Readable regular files are checked through a non-following, nonblocking open;
-unsupported extensions, unavailable inputs, permissions/entry errors, symlinks,
-invalid serializable paths and traversal limits expose bounded reasons.
-Limits are 64 inputs, 64 folder levels, one million visited entries and 100,000
-library rows. At most 32 path/detail samples are retained (1024/256 bytes each).
-A boundary marker does not claim an exact count of unvisited descendants.
+Catalog schema 7 retains root bindings by active profile and configured path,
+with strict migration from schemas 1–6. The sole metadata writer saves enrollment
+and bookmarks atomically with the optional scan. Offline bindings survive; root
+removal prunes only that bookmark. Tracks, named-crate membership, preparation
+and source files are retained. Imported catalogs never activate foreign roots.
+Startup waits for the existing catalog before scanning; essential metadata survives
+cancellation of optional scan work.
 
-Fourteen scanner tests pass, covering deeper-than-six traversal, explicit files,
-overlap, bounded skipped samples, live reason counts, cancellation, performance
-protection and actual GUI/renderer progress during a held filesystem worker.
-The Library dialog accepts actual typed input, imports music through that worker,
-shows progress and skip details, and opens saved root preferences. A captured
-button ID is retired when the path text changes. Automatic watching is pending.
+Previous File records enroll under UUID/relative paths while keeping TrackId and
+old aliases. Changed fingerprints create fresh preparation. Matching preparation
+and history can return only after actual measured content-hash qualification;
+UUID, pathname and title are not content proofs. Missing status comes from guarded
+inspection of the exact path on a visible mounted volume, never an absent entry
+in an incomplete traversal. The selected row displays the last scan observation;
+o scan deletes tracks. Offline, not-visible, missing, unreadable, ambiguous and
+changed remain distinct.
 
-Nine library-store/UI groups pass, including actual AccessKit focus and typed
-text, stale-action refusal, overlapping file/folder input, real catalog saving
-and unchanged source fingerprint. Every rendered callback in that import UI flow
-was bit-for-bit equal to a separate playing reference renderer and included
-nonzero audio. It does not prove physical device delivery, latency or zero XRUNs.
+## Linux resolution and media workers
 
-Logs under the local work evidence directory: `issue-107-location-v3.log`,
-`issue-107-import-v3.log`, `issue-107-import-ui-v1.log`. The first scanner compile
-failed two test-only PathBuf moves; these were corrected before passed checks.
+Worker-only discovery reads bounded mountinfo and installed libudev block data.
+Filesystem UUID is separate from current namespace, mount ID/root/point and
+filesystem/block-device guards. Duplicate UUIDs, ambiguous overmounts, foreign
+nested mounts and symlinks are refused. A known enrolled UUID remains resolvable
+when bus/removable classification later changes. Unsupported UUID formats on
+unrelated blocks do not disable local files.
 
-The assembled foundation passes all 1,018 ordinary tests with 22 opt-in tests
-ignored in 111.94 seconds (`issue-107-foundation-full-v1.log`). The generated
-manual and source/license inventory were refreshed before that build. This is
-a functional checkpoint, not final release/show or hardware qualification.
+Real-host checks exposed Btrfs anonymous/subvolume device numbers: mountinfo and
+file stat can legitimately differ. Btrfs roots now require the read-only FS_INFO
+filesystem UUID to match block discovery; another anonymous device is accepted
+only with that same verified UUID. No mounts, formatting or privileges are used.
+Primary interfaces reviewed: [mountinfo](https://www.kernel.org/doc/html/latest/filesystems/proc.html),
+[libudev](https://github.com/systemd/systemd/blob/main/src/libudev/libudev.h),
+[Btrfs FS_INFO implementation](https://github.com/torvalds/linux/blob/master/fs/btrfs/ioctl.c)
+and the installed Linux btrfs.h argument layout.
 
-## Required before publishing
+Typed source identity survives separate worker I/O resolution. Production loads
+open a regular, non-following, nonblocking descriptor; removable loads hash and
+decode that same descriptor, then recheck path fingerprint and mount identity.
+The content-proof limit is 8 GiB. Analysis and sampler preparation use equivalent
+same-descriptor guards. Offline, swapped and changed sources cannot publish PCM
+or preparation. Content proofs persist through the existing metadata owner.
 
-- Persistent volume bookmarks for user-managed watched roots, off-GUI coalesced
-  change detection and optional-work deferral during performance protection.
-- Stable catalog adoption of pre-existing file records without duplicate IDs;
-  same-byte qualification across changed remount fingerprints.
-- Actual typed-source resolution through deck decode/receipts, analysis,
-  sampler preparation/residency, cue qualification, relocation and history.
-- Visible offline versus missing-on-mounted-volume status without deleting saved
-  tracks on incomplete/unreadable scans or root removal.
-- Restart/watch/reconnect/playback workflow checks, full ordinary regression,
-  final source-bound release/native/show/package checks and explicit hardware
-  evidence limits. No issue closure or #107 PR is claimed yet.
+## Functional evidence
+
+The assembled component run passed all selected resolver, loader, analysis,
+sampler, catalog, scanner, metadata/store, preferences, cue and history groups:
+`issue-107-assembled-components-v1.log`. The root-save/cancellation regression also
+passed (`issue-107-root-save-v1.log`). Actual inotify events from nested WAV files
+coalesce, defer under protection and produce a real subsequent scan; catalog JSON
+writes do not trigger a self-rescan loop.
+
+Actual AccessKit focus, typed path text and Library controls exercise import,
+stale-button retirement, File-to-volume enrollment, saving/restart, offline and
+reconnect snapshots, cue reload and root removal. Every output callback in that
+flow equals a separate playing reference bit-for-bit and includes nonzero audio.
+The ordinary portable version uses explicit software mount snapshots over real
+files; it does not represent a physical remount.
+
+Three opt-in tests passed on this host's actual block filesystem in 0.53 seconds
+(`issue-107-local-block-workers-v5.log`): GUI enrollment/playback, analysis and
+sampler preparation/verified relocation. Only initial removable classification
+is injected; UUID discovery, current mount/Btrfs guards, production resolution,
+descriptor decoding and hashing use actual host interfaces. The simulated offline
+case remains software evidence. These checks do not prove USB detection or unplug.
+
+Earlier failed development runs remain retained. They exposed strict legacy
+fixture fields, root-bind trailing separators, generic proof-error text, and
+known-UUID/Btrfs access mismatches. Corrected positive-count tests passed; an
+accidental zero-test exact filter is not counted as evidence.
+
+## Final qualification
+
+Pending full ordinary regression and unchanged source-bound local release,
+native, show and package checks. This checkpoint makes no completed PR claim.
+
+## Remaining user QA
+
+Use actual removable music with nested folders: import, play/cue both decks,
+unplug, reconnect at a different mountpoint, remove/re-add roots and restart.
+Confirm stable track/crate identities, explicit offline versus mounted missing
+status, preserved cue preparation after verified same bytes and uninterrupted
+other-deck output. Physical controller operation, driver delivery, listening,
+latency and XRUN results remain separate from these software tests.

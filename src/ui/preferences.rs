@@ -234,10 +234,10 @@ impl App {
             if self.settings.busy() { self.settings.message = "Preferences work is cancelled/deferred by performance protection. A committed file remains saved; its live application waits until protection is deliberately left.".into(); }
             return;
         }
-        let old = self.settings.profile().clone();
+        let old = self.settings.profile().clone();let old_profile=self.settings.applied.active.clone();
         if self.settings.poll() {
             self.apply_appearance(ctx);
-            if old.library_roots != self.settings.profile().library_roots {
+            if old.library_roots != self.settings.profile().library_roots || old_profile!=self.settings.applied.active {
                 self.library_scan.cancel();
                 self.library_metadata.cancel_scan();
                 self.settings.rescan = true;
@@ -259,7 +259,7 @@ impl App {
                 }
             }
         }
-        if self.settings.rescan && !self.library_scan.active() {
+        if self.settings.rescan && !self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active() {
             self.settings.rescan = false;
             self.scan_library();
         }

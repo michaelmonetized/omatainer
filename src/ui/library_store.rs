@@ -48,9 +48,11 @@ pub(super) fn reconcile_optional(
     store: &mut Store,
     items: &mut Vec<LibItem>,
     captures: &[Capture],
+    proofs:&[crate::sampler_bank::SourceRef],
     import: Option<&std::path::Path>,
     import_work: Option<&crate::engine::performance::WorkPermit>,
     scan_work: Option<&crate::engine::performance::WorkPermit>,
+    roots: Option<&library_scan::ScanRoots>,
     fallback: &[LibItem],
     relocation: Option<(&crate::library::Relocate, &crate::engine::performance::WorkPermit)>,
     qualification_work: Option<&crate::engine::performance::WorkPermit>,
@@ -73,11 +75,26 @@ pub(super) fn reconcile_optional(
             }
         }
     }
-    let use_scan = scan_work.is_some_and(|work| !cancelled(work));
+    let mut use_scan = scan_work.is_some_and(|work| !cancelled(work));
+    let mut roots_error=None;
+    if use_scan {
+        if let Some(roots)=roots {
+            let enrollment=(|| {
+                if let Some(book)=&roots.book {if !catalog.watched_roots.matches(book) {catalog.watched_roots.apply(book)?;}}
+                catalog.adopt_volumes(&roots.adoptions)?;
+                Ok::<(),String>(())
+            })();
+            if let Err(error)=enrollment {
+                roots_error=Some(format!("watched-root scan rejected: {error}"));use_scan=false;
+                catalog=store.catalog.clone();
+            }
+        }
+    }
     if scan_work.is_some() && !use_scan {
         *items = fallback.to_vec();
     }
     reconcile_items(&mut catalog, items, captures)?;
+    let mut proof_error=qualify_proofs(&mut catalog,proofs);
     let needs_qualification = !qualification_sources.is_empty();
     let mut qualification_pending = needs_qualification && qualification_work.is_none();
     if let Some(work) = qualification_work.filter(|_| needs_qualification) {
@@ -123,6 +140,7 @@ pub(super) fn reconcile_optional(
             *items = fallback.to_vec();
         }
         reconcile_items(&mut catalog, items, captures)?;
+        proof_error=qualify_proofs(&mut catalog,proofs);
         if imported { import_error = Some(PROTECTED.into()); }
         if relocated { relocation_error = Some("relocation rejected: Performance protection cancelled verification before commit".into()); }
         qualification_pending |= needs_qualification;
@@ -144,7 +162,7 @@ pub(super) fn reconcile_optional(
         None => Err("relocation rejected: verification did not complete".into()),
     });
     Ok(Reconciled {
-        notice: relocation_error.or_else(|| import_error.map(|error| format!("import rejected: {error}"))),
+        notice: roots_error.or(proof_error).or(relocation_error).or_else(|| import_error.map(|error| format!("import rejected: {error}"))),
         qualification_pending,
         relocation,
     })
@@ -171,33 +189,46 @@ pub(super) fn restricted_rows(base: &[LibItem], captures: &[Capture]) -> Vec<Lib
         .collect()
 }
 
+fn qualify_proofs(catalog:&mut crate::library::Catalog,proofs:&[crate::sampler_bank::SourceRef])->Option<String> {
+    let mut error=None;
+    for proof in proofs {
+        let result=proof.content_hash.ok_or("measured content proof has no digest".to_string()).and_then(|hash|catalog.qualify_verified_content(&proof.track,&proof.source,proof.fingerprint,hash));
+        if let Err(detail)=result {error.get_or_insert(format!("content proof rejected: {detail}"));}
+    }
+    error
+}
 fn reconcile_items(
     catalog: &mut crate::library::Catalog,
     items: &[LibItem],
     captures: &[Capture],
 ) -> Result<(), String> {
+    let changed=|source:&LibSource,fp:Option<FileFingerprint>|catalog.track(source).is_some_and(|t|t.versions[t.current].fingerprint!=fp);
+    let needs_mounts=items.iter().any(|i|matches!(i.source,LibSource::Removable {..}) && changed(&i.source,i.fingerprint))
+        || captures.iter().any(|c|matches!(c.source,LibSource::Removable {..}) && changed(&c.source,c.fingerprint));
+    let mounts=needs_mounts.then(crate::media_location::Snapshot::discover).and_then(Result::ok);
+    let present=|source:&LibSource,fp:Option<FileFingerprint>|match source {
+        LibSource::File(path)=>FileFingerprint::read(path)==fp,
+        LibSource::Removable {..}=>mounts.as_ref().and_then(|s|s.resolve(source).ok().and_then(|l|s.inspect(&l).ok()))
+            .map(|m|FileFingerprint::from_metadata(&m))==fp,
+        _=>true,
+    };
     for item in items.iter() {
-        let current = catalog.track(&item.source).map(|t| t.current);
+        let current = catalog.track(&item.source).map(|t| (t.current,t.versions[t.current].fingerprint));
         catalog.upsert(
             item.source.clone(),
             item.fingerprint,
             item.stored_metadata(),
         )?;
-        if let (Some(current), LibSource::File(path)) = (current, &item.source) {
-            if FileFingerprint::read(path) != item.fingerprint {
-                catalog
-                    .tracks
-                    .iter_mut()
-                    .find(|t| t.source == item.source)
-                    .unwrap()
-                    .current = current;
+        if let Some((current,old))=current {
+            if old!=item.fingerprint && !present(&item.source,item.fingerprint) {
+                catalog.restore_current(&item.source,current);
             }
         }
     }
     for capture in captures {
         // A retired load can update its archived version, never change which
         // bytes are current at a path after a newer scan/load.
-        let current = catalog.track(&capture.source).map(|t| t.current);
+        let current = catalog.track(&capture.source).map(|t| (t.current,t.versions[t.current].fingerprint));
         let version = catalog.upsert(
             capture.source.clone(),
             capture.fingerprint,
@@ -205,16 +236,8 @@ fn reconcile_items(
         )?;
         let _ = version;
         catalog.update_preparation(&capture.source, capture.fingerprint, capture.preparation, capture.played);
-        if let Some(current) = current.filter(|_| match &capture.source {
-            LibSource::File(path) => FileFingerprint::read(path) != capture.fingerprint,
-            _ => false,
-        }) {
-            let track = catalog
-                .tracks
-                .iter_mut()
-                .find(|t| t.source == capture.source)
-                .unwrap();
-            track.current = current;
+        if let Some((current,_))=current.filter(|(_,old)|*old!=capture.fingerprint && !present(&capture.source,capture.fingerprint)) {
+            catalog.restore_current(&capture.source,current);
         }
     }
     Ok(())
@@ -222,10 +245,11 @@ fn reconcile_items(
 
 impl App {
     fn import_media_paths(&mut self) {
+        if !self.library_metadata.ready() || self.library_metadata.active() {self.status="Wait for the current catalog save before importing music".into();return;}
         let paths: Vec<PathBuf> = self.library_media_paths.lines().filter(|line| !line.is_empty()).map(PathBuf::from).collect();
         if paths.is_empty() || paths.len() > 64 || paths.iter().any(|p| !p.is_absolute() || p.as_os_str().len() > 4096) {
             self.status = "Enter 1–64 absolute file or folder paths, one per line (at most 4096 bytes each)".into();
-        } else if self.library_scan.import(paths, self.library.clone()) {
+        } else if self.library_scan.import_with_catalog(paths, self.library.clone(),self.library_metadata.catalog.clone()) {
             self.status = "Music import queued; current decks keep playing".into();
         } else { self.status = self.library_scan.label(); }
     }
@@ -239,7 +263,7 @@ impl App {
         source: &LibSource,
         fingerprint: Option<FileFingerprint>,
     ) -> Receipt {
-        let preparation = if matches!(source, LibSource::File(_)) && fingerprint.is_none() {
+        let preparation = if matches!(source, LibSource::File(_) | LibSource::Removable {..}) && fingerprint.is_none() {
             None
         } else {
             self.library_metadata
@@ -332,7 +356,7 @@ impl App {
             if paths.changed() { self.library_media_revision = self.library_media_revision.checked_add(1).unwrap_or(u64::MAX); }
             let busy = self.library_scan.active();
             ui.push_id(("music-import", self.library_media_revision), |ui| {
-                let response = ui.add_enabled(!busy && self.library_media_revision != u64::MAX, egui::Button::new("Import music files/folders"));
+                let response = ui.add_enabled(!busy && !self.library_metadata.active() && self.library_metadata.ready() && self.library_media_revision != u64::MAX, egui::Button::new("Import music files/folders"));
                 help::annotate(ui, &response, help::Control::MusicImport);
                 if response.clicked() { self.import_media_paths(); }
             });
@@ -350,7 +374,7 @@ impl App {
             }
             ui.separator();
             ui.label("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
-            ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
+            ui.label("Local files and uniquely identified mounted removable libraries can play. Offline, ambiguous or changed volumes fail explicitly. Provider references remain unavailable locally.");
             let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
             path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "DJ library import path"));
             help::annotate(ui, &path, help::Control::LibraryImportPath);

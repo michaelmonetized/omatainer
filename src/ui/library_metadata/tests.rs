@@ -448,7 +448,7 @@ fn sampler_proofs_survive_cancelled_optional_rebase_and_enable_move_after_origin
     conflict.content_hash.as_mut().unwrap()[0] ^= 1;
     metadata.qualify_sampler(conflict).unwrap();
     settle_metadata(&mut metadata, &mut library);
-    assert!(metadata.label().contains("sampler content proof rejected"));
+    assert!(metadata.label().contains("content proof rejected"));
     assert_eq!(crate::library::read(&path).unwrap().tracks, reopened.tracks);
 }
 
@@ -802,4 +802,27 @@ fn performance_committed_import_never_leaks_existing_row_metadata_but_keeps_esse
         .unwrap();
     assert_eq!(visible.bpm, Bpm::new(133.0, Origin::User));
     assert_eq!(visible.title, "Imported title");
+}
+
+#[test]
+fn watched_root_bookmarks_commit_with_catalog_and_cancelled_scan_preserves_essential_cues() {
+    let files=Files::new();let wave=files.wave("observed.wav");let path=files.0.join("saved/library.json");
+    let mut catalog=crate::library::Catalog::default();let source=LibSource::File(wave.clone());let fp=FileFingerprint::read(&wave).unwrap();
+    catalog.upsert(source.clone(),Some(fp),builtin_crate_items()[0].stored_metadata()).unwrap();
+    let mut store=crate::library::Store::open(path.clone()).unwrap();store.catalog=catalog;store.save().unwrap();drop(store);
+    let (entered,seen)=mpsc::sync_channel(1);let (release,held)=mpsc::sync_channel(1);let mut calls=0;
+    let mut metadata=Metadata::with_hook(path.clone(),move ||{calls+=1;if calls==2 {entered.send(()).unwrap();held.recv_timeout(Duration::from_secs(5)).unwrap();}});
+    let mut library=Arc::new(builtin_crate_items());settle_metadata(&mut metadata,&mut library);
+    let performance=Handle::default();metadata.set_performance(performance.clone());let mut scan=LibraryScan::default();scan.set_performance(performance.clone());
+    assert!(scan.start_watched(vec![files.0.clone()],library.clone(),"Live".into(),metadata.catalog.clone()));
+    let mut publication=None;wait(||{publication=scan.poll();publication.is_some()});metadata.stage_scan(publication.unwrap(),&library);metadata.poll(&mut library).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    let preparation=crate::engine::preparation::Preparation {cue:0.005,..Default::default()};
+    metadata.capture(super::super::library_store::Capture {source:source.clone(),fingerprint:Some(fp),metadata:library.iter().find(|i|i.source==source).unwrap().stored_metadata(),preparation:Some(preparation),played:None});
+    performance.set_enabled(true).unwrap();release.send(()).unwrap();settle_metadata(&mut metadata,&mut library);
+    assert!(metadata.durable);let reopened=crate::library::read(&path).unwrap();assert!(reopened.watched_roots.binding("Live",&files.0).is_none());assert_eq!(reopened.version(&source,Some(fp)).unwrap().preparation,preparation);
+    performance.set_enabled(false).unwrap();assert!(scan.start_watched(vec![files.0.clone()],library.clone(),"Live".into(),metadata.catalog.clone()));
+    let mut publication=None;wait(||{publication=scan.poll();publication.is_some()});metadata.stage_scan(publication.unwrap(),&library);settle_metadata(&mut metadata,&mut library);
+    let reopened=crate::library::read(&path).unwrap();assert_eq!(reopened.watched_roots.binding("Live",&files.0).unwrap().source,LibSource::File(files.0.clone()));
+    assert!(scan.start_watched(Vec::new(),library.clone(),"Live".into(),metadata.catalog.clone()));let mut publication=None;wait(||{publication=scan.poll();publication.is_some()});metadata.stage_scan(publication.unwrap(),&library);settle_metadata(&mut metadata,&mut library);
+    let reopened=crate::library::read(&path).unwrap();assert!(reopened.watched_roots.binding("Live",&files.0).is_none());assert_eq!(reopened.version(&source,Some(fp)).unwrap().preparation,preparation);assert!(wave.is_file());
 }

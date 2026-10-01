@@ -176,6 +176,7 @@ impl App {
             Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
         }
         app.start_library_store(crate::library::default_path());
+        app.library_scan.enable_watching();
         }
         app.start_default_recovery();
         app.start_default_session_history();
@@ -257,10 +258,11 @@ impl App {
     }
 
     fn scan_library(&mut self) {
-        self.library_scan.start(
-            self.settings.profile().library_roots.clone(),
-            self.library.clone(),
-        );
+        if !self.library_metadata.ready() || self.library_metadata.active() {
+            self.settings.rescan=true;self.status="Waiting for the current catalog before scanning".into();return;
+        }
+        self.library_scan.start_watched(self.settings.profile().library_roots.clone(),self.library.clone(),
+            self.settings.applied.active.clone(),self.library_metadata.catalog.clone());
     }
 
     fn poll_library_scan(&mut self) {
@@ -268,6 +270,10 @@ impl App {
             self.library_metadata.stage_scan(publication, &self.library);
         }
         self.poll_library_metadata();
+        if !self.library_scan.active() && !self.library_metadata.active() && self.library_metadata.ready()
+            && !self.project.committing() && !self.engine.cmd.performance().protected() && self.library_scan.take_watch_hint() {
+            self.scan_library();
+        }
     }
 
     fn send(&self, c: Command) {
@@ -328,11 +334,12 @@ impl App {
                     self.set_load_state(deck, state);
                 }
                 LibSource::File(path) => self.load_file(deck, path.clone(), &picked.title),
-                LibSource::Removable { .. } | LibSource::Provider { .. } => {
+                LibSource::Removable { .. } => self.load_reference(deck,picked.source.clone(),&picked.title),
+                LibSource::Provider { .. } => {
                     self.supersede_load(deck);
                     if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
                     self.set_load_state(deck, LoadState::new(Some(picked.clone()), Phase::Failed(
-                        "This library namespace is unavailable: removable/provider resolution is not supported".into())));
+                        "This provider library namespace is unavailable locally".into())));
                 }
             }
         } else {
@@ -349,14 +356,17 @@ impl App {
     }
 
     fn load_file(&mut self, deck: u8, path: PathBuf, name: &str) {
+        self.load_reference(deck,LibSource::File(path),name);
+    }
+    fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
         if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
-        let selection = Selection { title: name.into(), source: LibSource::File(path.clone()) };
+        let selection = Selection { title: name.into(), source:source.clone() };
         let mut state = LoadState::new(Some(selection), Phase::Loading);
         match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
-            .and_then(|loader| loader.request(deck, path)) {
+            .and_then(|loader| loader.request_source(deck, source)) {
             Ok(token) => state.token = Some(token),
             Err(error) => state.phase = Phase::Failed(error),
         }
@@ -443,7 +453,19 @@ impl App {
                         if let Some(selection) = &state.selection { metadata.title = selection.title.clone(); }
                         metadata
                     });
-                    let receipt = history_source.as_ref().map(|source| self.library_receipt(source, completion.fingerprint)).unwrap_or_else(Receipt::new);
+                    let measured=history_source.as_ref().zip(completion.fingerprint).zip(completion.content_hash);
+                    let receipt=if let Some(((source,fp),hash))=measured {
+                        Receipt::with_preparation(self.library_metadata.catalog.preparation_for_content(source,fp,hash))
+                    } else {history_source.as_ref().map(|source|self.library_receipt(source,completion.fingerprint)).unwrap_or_else(Receipt::new)};
+                    if let Some(((source,fingerprint),hash))=measured {
+                        if let Some(track)=self.library_metadata.catalog.track(source) {
+                            let proof=crate::sampler_bank::SourceRef {track:track.id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};
+                            if let Some(metadata)=captured_metadata.as_ref() {
+                                self.library_metadata.capture(library_store::Capture {source:source.clone(),fingerprint:Some(fingerprint),metadata:metadata.clone(),preparation:None,played:None});
+                            }
+                            if let Err(error)=self.library_metadata.qualify_sampler(proof) {self.status=format!("Media verified; catalog content proof needs attention: {error}");}
+                        }
+                    }
                     state.phase = if self.submit(Command::DeckLoadRequested {
                         deck, media: Media::Decoded { token: completion.token, audio: Arc::new(report.sample) },
                         receipt: receipt.clone(),
@@ -588,6 +610,7 @@ impl App {
         if !self.project.committing() {
             self.poll_ui_requests();
             self.poll_library_scan();
+            ctx.request_repaint_after(std::time::Duration::from_millis(500));
         } else { keyboard::block_for_dialog(ctx); }
         let submissions = self.engine.cmd.stats();
         if submissions.rejected > self.seen_submission_failures {
@@ -1111,7 +1134,7 @@ impl App {
                 let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
                 help::annotate(ui, &search, HelpControl::CrateSearch);
-                if ui.add_enabled(!self.library_scan.active(), egui::Button::new("scan")).help(ui, HelpControl::CrateScan).clicked() {
+                if ui.add_enabled(!self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active(), egui::Button::new("scan")).help(ui, HelpControl::CrateScan).clicked() {
                     self.scan_library();
                 }
                 if self.library_scan.active() && ui.button("cancel scan").help(ui, HelpControl::CrateCancel).clicked() {
@@ -1140,6 +1163,10 @@ impl App {
                     .on_hover_text(progress);
             });
             ui.label(RichText::new(self.library_metadata.label()).size(10.0).color(t.fg_dim));
+            let selected_source=self.selected_library_item().map(|item|item.source.clone());
+            if let Some(state)=selected_source.as_ref().and_then(|source|self.library_scan.summary.as_ref().and_then(|s|s.availability.get(source))) {
+                ui.label(format!("Last scan: {state}. Library records are retained."));
+            }
             let header = ["song", "bpm · source", "key", "length", "last play", "artist"];
             let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0];
             ui.horizontal(|ui| {

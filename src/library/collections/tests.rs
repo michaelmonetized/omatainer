@@ -268,6 +268,7 @@ fn migrations_have_empty_collections_and_current_schema_requires_explicit_valid_
         let mut old = serde_json::to_value(&original).unwrap();
         old["schema"] = schema.into();
         old.as_object_mut().unwrap().remove("crates");
+        old.as_object_mut().unwrap().remove("watched_roots");
         if schema == 1 {
             old["tracks"]=serde_json::Value::Array(original.tracks.iter().map(|track| serde_json::json!({
             "id":track.id,"source":track.source,"fingerprint":track.versions[0].fingerprint,"metadata":track.versions[0].metadata,"preparation":track.versions[0].preparation
@@ -277,7 +278,7 @@ fn migrations_have_empty_collections_and_current_schema_requires_explicit_valid_
         let bytes = serde_json::to_vec(&old).unwrap();
         fs::write(&path, &bytes).unwrap();
         let mut store = Store::open(path.clone()).unwrap();
-        assert_eq!(store.catalog.schema, 6);
+        assert_eq!(store.catalog.schema, SCHEMA);
         assert!(store.catalog.crates.nodes().is_empty());
         assert_eq!(fs::read(&path).unwrap(), bytes);
         for (actual, expected) in store.catalog.tracks.iter().zip(&original.tracks) {
@@ -292,7 +293,7 @@ fn migrations_have_empty_collections_and_current_schema_requires_explicit_valid_
         }
         store.save().unwrap();
         assert_eq!(fs::read(path.with_extension("backup.json")).unwrap(), bytes);
-        assert_eq!(read(&path).unwrap().schema, 6);
+        assert_eq!(read(&path).unwrap().schema, SCHEMA);
     }
     for corrupt in 0..4 {
         let files = Files::new();

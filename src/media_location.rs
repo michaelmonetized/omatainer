@@ -59,6 +59,9 @@ fn io(error: std::io::Error) -> Failure {
 struct Mount {
     id: u64,
     device: Device,
+    access: Device,
+    btrfs: bool,
+    qualified: bool,
     root: PathBuf,
     point: PathBuf,
     source: PathBuf,
@@ -81,29 +84,129 @@ struct Stamp {
     namespace: (u64, u64),
     mount: u64,
     device: Device,
+    access: Device,
+    btrfs: bool,
     block: Device,
     uuid: String,
     root: PathBuf,
     point: PathBuf,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Location {
     pub source: LibSource,
     pub path: PathBuf,
     stamp: Option<Stamp>,
 }
 impl Location {
+    /// A worker resolves typed identity to a transient path. Local paths need
+    /// no mount enumeration; removable paths always require current discovery.
+    pub fn resolve(source: &LibSource) -> Result<Self, Failure> {
+        validate_root_source(source)?;
+        match source {
+            LibSource::File(path) => Ok(Self {
+                source: source.clone(),
+                path: path.clone(),
+                stamp: None,
+            }),
+            LibSource::Removable { relative_path, .. } if !relative_path.as_os_str().is_empty() => {
+                let snapshot = Snapshot::discover()?;
+                let location = snapshot.resolve(source)?;
+                snapshot.inspect(&location)?;
+                Ok(location)
+            }
+            _ => Err(Failure::Unsupported),
+        }
+    }
+    /// Descriptor and currently visible path must still identify the opened
+    /// regular file. Volume discovery is worker-only and guards mount reuse.
+    pub fn verify_file(
+        &self,
+        file: &std::fs::File,
+        expected: crate::engine::media_source::FileFingerprint,
+    ) -> Result<(), Failure> {
+        use crate::engine::media_source::FileFingerprint;
+        let meta = file.metadata().map_err(io)?;
+        if !meta.is_file()
+            || FileFingerprint::from_metadata(&meta) != expected
+            || FileFingerprint::read(&self.path) != Some(expected)
+        {
+            return Err(Failure::Changed);
+        }
+        self.recheck()
+    }
+    /// Preserve a directory input's typed identity for descendants. The
+    /// snapshot's inspect checks reject nested foreign mounts and symlinks.
+    pub fn child(&self, path: &Path) -> Result<Self, Failure> {
+        if !absolute(path) {
+            return Err(Failure::Invalid);
+        }
+        let tail = path
+            .strip_prefix(&self.path)
+            .map_err(|_| Failure::Invalid)?;
+        if !relative(tail, true) {
+            return Err(Failure::Invalid);
+        }
+        let source = match &self.source {
+            LibSource::File(_) => LibSource::File(path.into()),
+            LibSource::Removable {
+                volume_id,
+                relative_path,
+            } => {
+                let relative_path = if tail.as_os_str().is_empty() {
+                    relative_path.clone()
+                } else {
+                    relative_path.join(tail)
+                };
+                if !relative(&relative_path, true) {
+                    return Err(Failure::Invalid);
+                }
+                LibSource::Removable {
+                    volume_id: volume_id.clone(),
+                    relative_path,
+                }
+            }
+            _ => return Err(Failure::Unsupported),
+        };
+        Ok(Self {
+            source,
+            path: path.into(),
+            stamp: self.stamp.clone(),
+        })
+    }
     /// Re-discovery is deliberately worker-only. The caller also checks its
     /// opened descriptor's fingerprint before/after hashing or decoding.
     pub fn recheck(&self) -> Result<(), Failure> {
         if self.stamp.is_none() {
             return Ok(());
         }
-        let snapshot = Snapshot::discover()?;
+        self.recheck_with(&Snapshot::discover()?)
+    }
+    pub fn recheck_with(&self, snapshot: &Snapshot) -> Result<(), Failure> {
+        if self.stamp.is_none() {
+            return Ok(());
+        }
         snapshot.inspect(self)?;
-        let current = snapshot.identify_canonical(self.path.clone())?;
-        if self.stamp != current.stamp || self.path != current.path || self.source != current.source
-        {
+        // The saved UUID is authoritative after enrollment. A bus/removable
+        // classification change must not silently turn an existing reference
+        // back into a File source. Inspect already checked this exact mount;
+        // derive its filesystem-relative path without selecting another alias.
+        let stamp = self.stamp.as_ref().ok_or(Failure::Changed)?;
+        let mount = snapshot.mount_at(&self.path)?;
+        let prefix = mount.root.strip_prefix("/").map_err(|_| Failure::Changed)?;
+        let tail = self
+            .path
+            .strip_prefix(&mount.point)
+            .map_err(|_| Failure::Changed)?;
+        let relative_path = if tail.as_os_str().is_empty() {
+            prefix.into()
+        } else {
+            prefix.join(tail)
+        };
+        let current = LibSource::Removable {
+            volume_id: stamp.uuid.clone(),
+            relative_path,
+        };
+        if self.source != current {
             return Err(Failure::Changed);
         }
         Ok(())
@@ -126,15 +229,83 @@ fn relative(path: &Path, empty: bool) -> bool {
         && path.components().all(|c| matches!(c, Component::Normal(_)))
 }
 fn absolute(path: &Path) -> bool {
+    use std::os::unix::ffi::OsStrExt;
     path.is_absolute()
         && path.as_os_str().len() <= MAX_PATH
+        && !path.as_os_str().as_bytes().contains(&0)
         && path
             .components()
             .all(|c| matches!(c, Component::RootDir | Component::Normal(_)))
 }
+pub(crate) fn validate_root_source(source: &LibSource) -> Result<(), Failure> {
+    let valid = match source {
+        LibSource::File(path) => absolute(path),
+        LibSource::Removable {
+            volume_id,
+            relative_path,
+        } => valid_uuid(volume_id) && relative(relative_path, true),
+        _ => false,
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(Failure::Invalid)
+    }
+}
 impl Snapshot {
     pub fn discover() -> Result<Self, Failure> {
         linux::discover()
+    }
+    /// Software-only removable classification of an actual mounted local
+    /// block filesystem. The real UUID, namespace and mount guards stay intact.
+    /// This is not physical USB discovery or an unplug qualification.
+    #[cfg(test)]
+    pub(crate) fn fixture_local_volume(path: &Path) -> Result<Self, Failure> {
+        let mut snapshot = Self::discover()?;
+        let path = path.canonicalize().map_err(io)?;
+        let block = snapshot
+            .mount_at(&path)?
+            .block
+            .ok_or(Failure::Unsupported)?;
+        let device = snapshot
+            .blocks
+            .iter_mut()
+            .find(|b| b.device == block && !b.uuid.is_empty())
+            .ok_or(Failure::Unsupported)?;
+        device.removable = true;
+        Ok(snapshot)
+    }
+    #[cfg(test)]
+    pub(crate) fn fixture_volume(point: &Path, uuid: &str, id: u64) -> Self {
+        use std::os::unix::fs::MetadataExt;
+        let device = Device::from_raw(point.metadata().unwrap().dev());
+        Self {
+            namespace: (1, 2),
+            mounts: vec![Mount {
+                id,
+                device,
+                access: device,
+                btrfs: false,
+                qualified: true,
+                root: "/".into(),
+                point: point.into(),
+                source: "/dev/software-fixture".into(),
+                block: Some(device),
+            }],
+            blocks: vec![Block {
+                device,
+                uuid: uuid.into(),
+                removable: true,
+            }],
+        }
+    }
+    #[cfg(test)]
+    pub(crate) fn fixture_offline() -> Self {
+        Self {
+            namespace: (1, 2),
+            mounts: Vec::new(),
+            blocks: Vec::new(),
+        }
     }
 
     fn unique_block(&self, uuid: &str) -> Result<Device, Failure> {
@@ -177,6 +348,8 @@ impl Snapshot {
             namespace: self.namespace,
             mount: mount.id,
             device: mount.device,
+            access: mount.access,
+            btrfs: mount.btrfs,
             block,
             uuid: uuid.into(),
             root: mount.root.clone(),
@@ -212,18 +385,22 @@ impl Snapshot {
                 stamp: None,
             });
         };
-        if identity.uuid.is_empty() {
+        if !mount.qualified {
+            return Err(Failure::Changed);
+        }
+        if !valid_uuid(&identity.uuid) {
             return Err(Failure::Unsupported);
         }
         self.unique_block(&identity.uuid)?;
         let tail = path
             .strip_prefix(&mount.point)
             .map_err(|_| Failure::Changed)?;
-        let within_volume = mount
-            .root
-            .strip_prefix("/")
-            .map_err(|_| Failure::Invalid)?
-            .join(tail);
+        let prefix = mount.root.strip_prefix("/").map_err(|_| Failure::Invalid)?;
+        let within_volume = if tail.as_os_str().is_empty() {
+            prefix.into()
+        } else {
+            prefix.join(tail)
+        };
         if !relative(&within_volume, true) {
             return Err(Failure::Invalid);
         }
@@ -283,6 +460,9 @@ impl Snapshot {
                 if !absolute(&path) {
                     return Err(Failure::Invalid);
                 }
+                if !mount.qualified {
+                    return Err(Failure::Changed);
+                }
                 Ok(Location {
                     source: source.clone(),
                     path,
@@ -303,6 +483,7 @@ impl Snapshot {
             }
             let mount = self.mount_at(&location.path)?;
             if *stamp != self.stamp(mount, stamp.block, &stamp.uuid)
+                || !mount.qualified
                 || mount.block != Some(stamp.block)
             {
                 return Err(Failure::Changed);
@@ -317,8 +498,12 @@ impl Snapshot {
                 path.push(component);
                 match path.symlink_metadata() {
                     Ok(meta) if meta.file_type().is_symlink() => return Err(Failure::Unsupported),
-                    Ok(meta) if Device::from_raw(meta.dev()) != mount.device => {
-                        return Err(Failure::Changed)
+                    Ok(meta) if Device::from_raw(meta.dev()) != mount.access => {
+                        if !mount.btrfs
+                            || !linux::btrfs_uuid(&path).is_ok_and(|uuid| uuid == stamp.uuid)
+                        {
+                            return Err(Failure::Changed);
+                        }
                     }
                     Ok(_) => {}
                     Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -335,11 +520,11 @@ impl Snapshot {
                 io(e)
             }
         })?;
-        if location
-            .stamp
-            .as_ref()
-            .is_some_and(|stamp| Device::from_raw(metadata.dev()) != stamp.device)
-        {
+        if location.stamp.as_ref().is_some_and(|stamp| {
+            Device::from_raw(metadata.dev()) != stamp.access
+                && (!stamp.btrfs
+                    || !linux::btrfs_uuid(&location.path).is_ok_and(|uuid| uuid == stamp.uuid))
+        }) {
             return Err(Failure::Changed);
         }
         Ok(metadata)
@@ -417,6 +602,9 @@ fn parse_mounts(bytes: &[u8]) -> Result<Vec<Mount>, Failure> {
         mounts.push(Mount {
             id,
             device: Device(major, minor),
+            access: Device(major, minor),
+            btrfs: fields[separator + 1] == b"btrfs",
+            qualified: true,
             root,
             point,
             source,

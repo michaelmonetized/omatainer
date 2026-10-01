@@ -71,7 +71,7 @@ impl Catalog {
         fingerprint: FileFingerprint,
         hash: [u8; 32],
     ) -> Result<(), String> {
-        if !matches!(source, LibSource::File(_)) {
+        if !matches!(source, LibSource::File(_) | LibSource::Removable {..}) {
             return Err("sampler content proof must refer to a local file".into());
         }
         let index = self.version_track(source, Some(fingerprint))
@@ -80,11 +80,21 @@ impl Catalog {
         if &track.id != id {
             return Err("sampler content proof belongs to a different track identity".into());
         }
+        let equivalent=track.versions.iter().rev().find(|v|v.content_hash==Some(hash)).cloned();
         let version = track.versions.iter_mut()
             .find(|version| version.fingerprint == Some(fingerprint))
             .ok_or("sampler content proof version is missing")?;
         if version.content_hash.is_some_and(|old| old != hash) {
             return Err("sampler content proof conflicts with the saved digest".into());
+        }
+        if version.content_hash.is_none() {
+            if let Some(old)=equivalent {
+                if version.preparation==Preparation::default() {version.preparation=old.preparation;}
+                if version.metadata.bpm.origin!=Origin::User {version.metadata.bpm=old.metadata.bpm.reconcile(version.metadata.bpm);}
+                version.metadata.duration=version.metadata.duration.or(old.metadata.duration);
+                version.metadata.last_play=version.metadata.last_play.max(old.metadata.last_play);
+                if version.analysis.is_none() {version.analysis=old.analysis;}
+            }
         }
         version.content_hash = Some(hash);
         Ok(())
@@ -113,13 +123,12 @@ impl Catalog {
         {
             return;
         }
-        let (LibSource::File(path), Some(expected)) = (source, fingerprint) else {
-            return;
-        };
-        if let Ok(hash) = hash_file(path, expected, || {
+        let Some(expected)=fingerprint else {return;};
+        let Ok(location)=crate::media_location::Location::resolve(source) else {return;};
+        if let Ok(hash) = hash_file(&location.path, expected, || {
             !cancel.load(std::sync::atomic::Ordering::Acquire)
         }) {
-            version.content_hash = Some(hash);
+            if location.recheck().is_ok() && !cancel.load(std::sync::atomic::Ordering::Acquire) {version.content_hash=Some(hash);}
         }
     }
     #[cfg(test)]
@@ -183,9 +192,7 @@ impl Catalog {
         {
             return Err("track changed since relocation was requested; select it again".into());
         }
-        let LibSource::File(old_path) = &original.source else {
-            return Err("only local file tracks can be relocated".into());
-        };
+        if !matches!(original.source,LibSource::File(_) | LibSource::Removable {..}) {return Err("only local files or removable tracks can be relocated".into());}
         let source = LibSource::File(request.destination.clone());
         validate_source(&source)?;
         if self.index.contains_key(&source) {
@@ -198,8 +205,12 @@ impl Catalog {
             .ok_or("destination is not an available regular file")?;
         let expected = original.versions[original.current]
             .content_hash
-            .map(Ok)
-            .unwrap_or_else(|| hash_file(old_path, request.fingerprint, active))
+            .map(Ok::<_,String>)
+            .unwrap_or_else(|| {
+                let location=crate::media_location::Location::resolve(&original.source).map_err(|e|e.to_string())?;
+                let hash=hash_file(&location.path,request.fingerprint,active)?;
+                location.recheck().map_err(|e|e.to_string())?;Ok(hash)
+            })
             .map_err(|e| format!("original content was not verified before the move: {e}"))?;
         let actual = hash_file(&request.destination, fingerprint, active)?;
         if expected != actual {

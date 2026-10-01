@@ -11,6 +11,7 @@ use std::thread::JoinHandle;
 #[cfg(test)]
 mod tests;
 mod traversal;
+mod watch;
 
 const MAX_INPUTS: usize = 64;
 const MAX_DEPTH: usize = 64;
@@ -30,7 +31,8 @@ impl SkipReason {
 #[derive(Clone, Debug)]
 pub(super) struct Skipped { pub path: String, pub reason: SkipReason, pub detail: String }
 #[derive(Clone, Debug, Default)]
-pub(super) struct Summary { pub skipped: [usize; 8], pub samples: Vec<Skipped>, pub truncated: bool }
+pub(super) struct Summary { pub skipped: [usize; 8], pub samples: Vec<Skipped>, pub truncated: bool,
+    pub availability:HashMap<LibSource,String>,pub watch_limited:bool }
 impl Summary { pub fn skipped_count(&self) -> usize { self.skipped.iter().sum() } }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -61,7 +63,19 @@ pub(super) struct Options {
     pub before_entry: Option<Arc<dyn Fn(&Path) + Send + Sync>>,
 }
 
+#[derive(Clone)]
+struct Watch { profile: String, catalog: Arc<crate::library::Catalog> }
+#[derive(Debug)]
+pub(super) struct ScanRoots {
+    pub book:Option<crate::library::watch_roots::Batch>,
+    pub adoptions:Vec<crate::library::watch_roots::Adoption>,
+    pub directories:Vec<PathBuf>,
+}
+type RootBatch = Arc<ScanRoots>;
 struct Request {
+    performance:Handle,
+    watch_enabled:bool,
+    watch: Option<Watch>,
     work: Arc<WorkPermit>,
     roots: Vec<PathBuf>,
     kind: Kind,
@@ -81,6 +95,7 @@ pub(super) struct Publication {
     pub(super) work: Arc<WorkPermit>,
     pub items: Arc<Vec<LibItem>>,
     pub summary: Arc<Summary>,
+    pub roots: Option<RootBatch>,
     retirement: mpsc::SyncSender<Retired>,
 }
 
@@ -103,7 +118,7 @@ impl Publication {
     pub(super) fn stage(
         self,
         baseline: &Arc<Vec<LibItem>>,
-    ) -> Option<(Arc<Vec<LibItem>>, Arc<WorkPermit>)> {
+    ) -> Option<(Arc<Vec<LibItem>>, Arc<WorkPermit>, Option<RootBatch>)> {
         if self.work.cancel().load(Ordering::Acquire) {
             self.discard();
             return None;
@@ -112,7 +127,7 @@ impl Publication {
             _library: baseline.clone(),
             published: true,
         });
-        Some((self.items, self.work))
+        Some((self.items, self.work, self.roots))
     }
 
     pub(super) fn discard(self) {
@@ -130,6 +145,9 @@ enum Completion {
 }
 
 pub(super) struct LibraryScan {
+    watch_enabled:bool,
+    watch_ready:Arc<AtomicBool>,
+    changed:Arc<AtomicBool>,
     performance: Handle,
     requests: Option<mpsc::SyncSender<Request>>,
     completion: mpsc::Receiver<Completion>,
@@ -141,22 +159,35 @@ pub(super) struct LibraryScan {
 }
 
 impl Default for LibraryScan {
-    fn default() -> Self {
+    fn default() -> Self { Self::with_inventory(crate::media_location::Snapshot::discover) }
+}
+impl LibraryScan {
+    pub(super) fn with_inventory(mut inventory: impl FnMut() -> Result<crate::media_location::Snapshot, crate::media_location::Failure> + Send + 'static) -> Self {
         let (requests, jobs) = mpsc::sync_channel::<Request>(1);
         let (finished, completion) = mpsc::sync_channel(1);
+        let changed=Arc::new(AtomicBool::new(false));let worker_changed=changed.clone();
+        let watch_ready=Arc::new(AtomicBool::new(false));let worker_watch_ready=watch_ready.clone();
         let worker = std::thread::Builder::new()
             .name("omatainer-library".into())
             .spawn(move || {
                 let mut fingerprints = HashMap::new();
-                while let Ok(request) = jobs.recv() {
-                    match scan(&request, &fingerprints) {
-                        Ok((items, next_fingerprints, summary)) => {
-                            let items = Arc::new(items);
+                let mut summary_pin:Option<Arc<Summary>>=None;
+                let mut watcher=watch::Watcher::default();
+                loop {
+                    let request=match jobs.recv_timeout(std::time::Duration::from_millis(250)) {
+                        Ok(request)=>request,
+                        Err(mpsc::RecvTimeoutError::Timeout)=>{if watcher.poll(&mut inventory) {worker_changed.store(true,Ordering::Release);}continue;},
+                        Err(mpsc::RecvTimeoutError::Disconnected)=>break,
+                    };
+                    match traversal::scan_with_inventory(&request, &fingerprints, &mut inventory) {
+                        Ok((items, next_fingerprints, summary, roots)) => {
+                            let items = Arc::new(items);let roots=roots.map(Arc::new);let summary=Arc::new(summary);
                             let (retirement, retired) = mpsc::sync_channel(1);
                             if finished
                                 .send(Completion::Ready(Publication {
                                     items: items.clone(),
-                                    summary: Arc::new(summary),
+                                    summary: summary.clone(),
+                                    roots: roots.clone(),
                                     retirement,
                                     work: request.work.clone(),
                                 }))
@@ -170,9 +201,15 @@ impl Default for LibraryScan {
                             if let Ok(retired) = retired.recv() {
                                 if retired.published {
                                     fingerprints = next_fingerprints;
+                                    if request.watch_enabled && request.kind==Kind::Roots {
+                                        if let Some(roots)=&roots {watcher.configure(&request,roots,&mut inventory);worker_watch_ready.store(!request.roots.is_empty(),Ordering::Release);}
+                                    }
                                 }
                                 drop(retired);
                             }
+                            // The GUI replaces its prior summary before this
+                            // acknowledgment; large maps retire only here.
+                            let old=summary_pin.replace(summary);drop(old);
                         }
                         Err(ScanFailure::Cancelled) => {
                             if finished.send(Completion::Cancelled).is_err() {
@@ -186,9 +223,13 @@ impl Default for LibraryScan {
                         }
                     }
                 }
+                drop(summary_pin);
             });
         match worker {
             Ok(worker) => Self {
+                watch_enabled:false,
+                watch_ready,
+                changed,
                 performance: Handle::default(),
                 requests: Some(requests),
                 completion,
@@ -199,6 +240,9 @@ impl Default for LibraryScan {
                 summary: None,
             },
             Err(error) => Self {
+                watch_enabled:false,
+                watch_ready,
+                changed,
                 performance: Handle::default(),
                 requests: None,
                 completion,
@@ -213,6 +257,8 @@ impl Default for LibraryScan {
 }
 
 impl LibraryScan {
+    pub fn enable_watching(&mut self) {self.watch_enabled=true;}
+    pub fn take_watch_hint(&self)->bool {self.changed.swap(false,Ordering::AcqRel)}
     pub fn set_performance(&mut self, performance: Handle) {
         self.performance = performance;
     }
@@ -230,14 +276,20 @@ impl LibraryScan {
         baseline: Arc<Vec<LibItem>>,
         options: Options,
     ) -> bool {
-        self.admit(roots, baseline, options, Kind::Roots)
+        self.admit(roots, baseline, options, Kind::Roots, None)
     }
 
     pub fn import(&mut self, paths: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>) -> bool {
-        self.admit(paths, baseline, Options::default(), Kind::Import)
+        self.admit(paths, baseline, Options::default(), Kind::Import, None)
     }
 
-    fn admit(&mut self, roots: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>, options: Options, kind: Kind) -> bool {
+    pub fn import_with_catalog(&mut self, paths:Vec<PathBuf>,baseline:Arc<Vec<LibItem>>,catalog:Arc<crate::library::Catalog>)->bool {
+        self.admit(paths,baseline,Options::default(),Kind::Import,Some(Watch {profile:"Explicit import".into(),catalog}))
+    }
+    pub fn start_watched(&mut self, roots: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>, profile: String, catalog: Arc<crate::library::Catalog>) -> bool {
+        self.admit(roots, baseline, Options::default(), Kind::Roots, Some(Watch {profile,catalog}))
+    }
+    fn admit(&mut self, roots: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>, options: Options, kind: Kind, watch: Option<Watch>) -> bool {
         if self.active() {
             return false;
         }
@@ -254,9 +306,9 @@ impl LibraryScan {
         };
         // A failed worker can be retried explicitly by the Scan button.
         if self.requests.is_none() {
-            let performance = self.performance.clone();
+            let performance = self.performance.clone();let watching=self.watch_enabled;
             *self = Self::default();
-            self.performance = performance;
+            self.performance = performance;self.watch_enabled=watching;
         }
         let Some(requests) = &self.requests else {
             return false;
@@ -265,6 +317,8 @@ impl LibraryScan {
         self.progress = Arc::new(Progress::default());
         self.summary = None;
         let request = Request {
+            performance:self.performance.clone(),watch_enabled:self.watch_enabled,
+            watch,
             work,
             roots,
             kind,
@@ -339,7 +393,7 @@ impl LibraryScan {
             }
             ScanState::Cancelling => "Cancelling scan…".into(),
             ScanState::Complete(count) => format!("Scan/import complete · {count} tracks · {} skipped entries{}", self.summary.as_ref().map_or(0, |s| s.skipped_count()),
-                if self.summary.as_ref().is_some_and(|s| s.truncated) { " · incomplete coverage" } else { "" }),
+                if self.summary.as_ref().is_some_and(|s| s.truncated) { " · incomplete coverage" } else { "" }) + if self.summary.as_ref().is_some_and(|s|s.watch_limited) {" · directory notifications limited; periodic rescan active"} else {""} + if self.watch_enabled && self.watch_ready.load(Ordering::Acquire) {" · watching folders (30s fallback)"} else {""},
             ScanState::Cancelled => "Scan cancelled · crate unchanged".into(),
             ScanState::Failed(error) => format!("Scan failed · {error}"),
         }
@@ -385,7 +439,8 @@ fn scan(
     request: &Request,
     previous_fingerprints: &HashMap<PathBuf, Fingerprint>,
 ) -> Result<(Vec<LibItem>, HashMap<PathBuf, Fingerprint>, Summary), ScanFailure> {
-    traversal::scan(request, previous_fingerprints)
+    traversal::scan_with_inventory(request, previous_fingerprints, &mut crate::media_location::Snapshot::discover)
+        .map(|(items, fingerprints, summary, _)| (items, fingerprints, summary))
 }
 
 fn preserve_metadata(item: &mut LibItem, old: &LibItem) {

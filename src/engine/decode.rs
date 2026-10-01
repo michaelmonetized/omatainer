@@ -239,6 +239,14 @@ pub(crate) fn decode_audio_for_show(path: &Path, cancelled: impl Fn() -> bool, p
         super::dsp::detect_bpm_with_cancel(data, ch, sr, || cancel.load(std::sync::atomic::Ordering::Acquire))
     })
 }
+/// Foreground deck loading owns and verifies this descriptor on its media
+/// worker. Preserve the existing optional BPM policy without reopening a path.
+pub(crate) fn decode_deck_file(path:&Path,file:std::fs::File,cancelled:impl Fn()->bool,performance:&super::performance::Handle) -> Result<DecodedAudio,DecodeFailure> {
+    decode_source(path,Some(file),None,cancelled,|data,ch,sr| {
+        let permit=performance.optional_work().ok()?;let cancel=permit.cancel();
+        super::dsp::detect_bpm_with_cancel(data,ch,sr,||cancel.load(std::sync::atomic::Ordering::Acquire))
+    },true,|_,_|{})
+}
 fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>) -> Result<DecodedAudio, DecodeFailure> {
     decode_source(path, None, None, cancelled, analyze, true, |_, _| {})
 }

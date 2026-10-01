@@ -12,7 +12,7 @@ impl Identity {
     pub(super) fn new(source: LibSource, fingerprint: Option<FileFingerprint>) -> Option<Self> {
         // A pathname without verified file identity must not credit replacement
         // content at that path. Built-ins have stable typed in-session identity.
-        if matches!(source, LibSource::File(_)) && fingerprint.is_none() {
+        if matches!(source, LibSource::File(_) | LibSource::Removable {..}) && fingerprint.is_none() {
             return None;
         }
         Some(Self {
@@ -220,7 +220,7 @@ impl App {
         }
         let saved = self.library_metadata.catalog.version(&watch.identity.source, watch.identity.fingerprint);
         if !self.library_metadata.active() && receipt.preparation().is_some_and(|(_, p)| saved.is_some_and(|v| v.preparation == p)) {
-            if matches!(watch.identity.source, LibSource::File(_)) && saved.is_some_and(|v| v.content_hash.is_none()) {
+            if matches!(watch.identity.source, LibSource::File(_) | LibSource::Removable {..}) && saved.is_some_and(|v| v.content_hash.is_none()) {
                 "Saved in DJ library; move verification pending — keep the original file available"
             } else { "Saved in DJ library" }
         } else { "Saving cues to DJ library…" }

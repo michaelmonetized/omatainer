@@ -53,7 +53,8 @@ pub(super) fn inspect(store: &Store, disk: &mut Disk, mut request: Inspect) -> I
         if reference.content_hash.is_some() && reference.content_hash != version.content_hash {
             return Err("Analysis source digest no longer matches this catalog version".into());
         }
-        if crate::engine::media_source::FileFingerprint::read(reference.path()?) != Some(reference.fingerprint) {
+        let location=crate::media_location::Location::resolve(&reference.source).map_err(|e|e.to_string())?;
+        if crate::engine::media_source::FileFingerprint::read(&location.path) != Some(reference.fingerprint) {
             return Err("Analysis source is missing or changed; saved results were retained".into());
         }
         request.reference.content_hash = version.content_hash;
@@ -81,6 +82,8 @@ pub(super) fn inspect(store: &Store, disk: &mut Disk, mut request: Inspect) -> I
                 }
             } else { None }
         } else { None };
+        location.recheck().map_err(|e|e.to_string())?;
+        if crate::engine::media_source::FileFingerprint::read(&location.path)!=Some(request.reference.fingerprint) {return Err("Analysis source changed during inspection".into());}
         if request.cancelled() { return Err("Analysis inspection cancelled".into()); }
         Ok(Cached { needed, record, waveform, notice })
     })();

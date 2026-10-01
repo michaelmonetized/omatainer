@@ -116,7 +116,7 @@ impl App {
         };
         let Some(fingerprint) = item
             .fingerprint
-            .filter(|_| matches!(item.source, LibSource::File(_)))
+            .filter(|_| matches!(item.source, LibSource::File(_) | LibSource::Removable {..}))
         else {
             self.status = "Relocation requires a previously inspected local file track".into();
             return;

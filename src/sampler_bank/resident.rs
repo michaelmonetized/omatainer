@@ -57,6 +57,7 @@ impl Settings {
                                 crate::engine::media_source::LibSource::File(path) => {
                                     path.capacity()
                                 }
+                                crate::engine::media_source::LibSource::Removable {volume_id,relative_path}=>volume_id.capacity()+relative_path.capacity(),
                                 _ => 0,
                             }
                     }
