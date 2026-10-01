@@ -43,6 +43,8 @@ mod keyboard_tests;
 mod midi_connection_tests;
 #[cfg(test)]
 mod theme_reload_tests;
+#[cfg(test)]
+mod font_selection_tests;
 
 pub struct App {
     engine: Engine,
@@ -86,6 +88,7 @@ struct LibItem {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, engine: Engine) -> Self {
         let theme = Theme::default();
+        cc.egui_ctx.set_fonts(crate::theme::reload::fallback_fonts());
         theme.apply(&cc.egui_ctx);
         let loader = Loader::start();
         let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));

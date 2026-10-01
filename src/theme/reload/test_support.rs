@@ -53,6 +53,14 @@ impl Fixture {
         )
         .unwrap()
     }
+    pub(crate) fn installed_loader(&self, family: &str) -> Loader {
+        Loader::with_resolver(
+            self.theme.clone(),
+            self.fontconfig(family),
+            Duration::from_millis(20),
+        )
+        .unwrap()
+    }
     pub(super) fn resolver(&self) -> FileResolver {
         FileResolver(self.root.join("selected-font"))
     }
@@ -68,7 +76,7 @@ impl Fixture {
         ];
         resolver
     }
-    pub(super) fn write_fontconfig(&self, family: &str) {
+    pub(crate) fn write_fontconfig(&self, family: &str) {
         fs::write(self.root.join("fonts.conf"), format!(r#"<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>{}/fonts</dir><cachedir>{}/cache</cachedir><match target="pattern"><test name="family" qual="any"><string>monospace</string></test><edit name="family" mode="prepend_first" binding="strong"><string>{family}</string></edit></match></fontconfig>"#, self.root.display(), self.root.display())).unwrap();
     }
 }
