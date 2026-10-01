@@ -578,3 +578,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   asynchronously for a FIFO renderer fence and durable save receipt. A failed or
   delayed save permits Keep working, Retry, or an explicit Close without saving.
   Filesystem syscalls already in progress cannot be forcibly cancelled.
+
+## Factory content and license records
+
+- Content & licenses opens an offline index of factory sound/preset identities,
+  embedded fonts, resolved Rust components and supplied integration files. Each
+  entry links its source records, commercial-use/redistribution summary and full
+  licensor notices. Missing records fail visibly; they cannot imply permission.
+- Factory sounds are procedural originals. No impulse-response assets, ML models
+  or proprietary reference-product content/SDKs are bundled. User media and
+  system-selected fonts retain their own terms.
+- The release packager and transactional installer reject unmanifested, missing
+  or altered artifacts, source/dependency drift and stale embedded license
+  records. Every retained installation includes that release's records and
+  executable SHA-256 receipt. Refreshing records requires a rebuild.

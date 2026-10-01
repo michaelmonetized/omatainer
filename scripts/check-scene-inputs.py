@@ -22,6 +22,9 @@ repo = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix="omatainer-scene-inputs-") as temporary:
     work = Path(temporary)
     shutil.copytree(repo / "src", work / "src")
+    # The actual native implementation embeds the release's offline records.
+    # Retain those exact inputs when compiling the isolated production probe.
+    shutil.copytree(repo / "licenses", work / "licenses")
     for name in ("Cargo.toml", "Cargo.lock"):
         shutil.copy2(repo / name, work / name)
     source = work / "src/scene_input_probe.rs"
