@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 mod connections;
+mod policy;
 mod profile;
 mod handoff;
 mod framing;
@@ -15,6 +16,7 @@ mod relative;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
 pub use connections::Retry;
+pub use policy::{InputPolicy, PolicyError, PolicyStatus};
 #[cfg(test)]
 pub(crate) use connections::test_support as connection_test_support;
 pub use relative::RelativeSpec;
@@ -151,17 +153,31 @@ impl MidiHub {
     }
 
     pub fn start(cmd: super::CommandPort, snapshot: Arc<Mutex<super::Snapshot>>) -> anyhow::Result<Self> {
+        Self::start_with_policy(cmd, snapshot, InputPolicy::All)
+    }
+
+    pub fn start_with_policy(cmd: super::CommandPort, snapshot: Arc<Mutex<super::Snapshot>>, policy: InputPolicy) -> anyhow::Result<Self> {
+        policy.validate()?;
         // Fail profile validation before a device callback can dispatch it.
         let maps = builtin_maps()?;
         let log = Arc::new(Mutex::new(Vec::new()));
         let learn = Arc::new(Mutex::new(None));
         let input_counters = Arc::new(handoff::InputCounters::default());
         let outs = Arc::new(Mutex::new(Vec::new()));
-        let connections = connections::Manager::start(
+        let connections = connections::Manager::start_with_policy(
             connections::MidirBackend::new(outs.clone()),
-            &snapshot, cmd, maps, log.clone(), learn.clone(), input_counters.clone(),
+            &snapshot, cmd, maps, log.clone(), learn.clone(), input_counters.clone(), policy,
         )?;
         Ok(Self { connections: Some(connections), input_counters, outs, log, learn })
+    }
+
+    /// Does not wait for discovery, connection teardown, or a queue slot.
+    pub fn configure_inputs(&self, policy: InputPolicy) -> Result<u64, PolicyError> {
+        self.connections.as_ref().ok_or(PolicyError::Unavailable)?.configure(policy)
+    }
+
+    pub fn policy_status(&self) -> Option<Arc<PolicyStatus>> {
+        self.connections.as_ref().map(|manager| manager.policy_status())
     }
 
     /// Retry admission never waits for OS discovery/connect or a queue slot.

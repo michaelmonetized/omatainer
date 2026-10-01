@@ -620,3 +620,47 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Automated native evidence uses a private D-Bus accessibility bus and actual
   App output/renderer commands. It does not change the user's desktop bus or
   preferences, and is not a claim of Orca, human, or physical-controller QA.
+
+### User preferences and setup profiles (#88)
+
+- Preferences are strict versioned data at `$XDG_CONFIG_HOME/omatainer/preferences.json`
+  when XDG_CONFIG_HOME is absolute, otherwise `$HOME/.config/omatainer/preferences.json`.
+  Studio and Performance are editable defaults; Performance disables startup scanning.
+  Profile identity, supported audio/MIDI choices, library roots, appearance, performance
+  shortcut overrides and startup panel/scan choices round-trip without hidden fields.
+- The settings window edits a draft. Preview discovers audio configurations and checks
+  library folders on a worker. Apply saves the exact previewed draft before changing
+  live settings. Cancel never submits a MIDI policy or changes live settings before
+  commit. A save that already committed still reports success after late cancellation.
+- Audio selection is consumed when starting the actual CPAL stream. An explicit
+  device name must match one device; rate/channels/buffer must match advertised
+  supported configurations. Unknown backend buffer limits are labeled, and startup
+  errors do not silently pick another route. Main stereo uses channels 1/2; mono sums
+  L/R; additional channels are silent. Independent cue routing is not implemented.
+  Changes are visibly pending restart. Explicit recovery can use system-default
+  audio for one launch without changing the saved profile.
+- MIDI startup uses the exact saved policy. Live policy changes use the manager's
+  generation-qualified requested/applied receipt. Preview and Cancel have no MIDI
+  side effects; allowed source identities/holds persist, excluded sources retire
+  through the existing source-owned release path. Availability, missing exact names,
+  pending work and manager errors remain visible and distinct.
+- Preference IO/discovery runs outside App::update and all audio/MIDI callbacks.
+  Jobs/results are bounded to one outstanding operation. Cancellation is cooperative
+  at IO boundaries; blocked filesystem/driver calls are not claimed interruptible.
+- Files are bounded to 1 MiB, regular and non-symlink; staging and exports are private
+  0600 files. Saves validate, sync, recheck destination identity and atomically publish.
+  Export refuses existing destinations. Observed external edits require Reload; this
+  is optimistic conflict detection, not a filesystem transaction with arbitrary editors.
+  Postcommit sync/identity warnings cannot be reported as failed saves.
+- Unknown versions/fields, duplicate profile/shortcut keys, invalid values, unknown
+  shortcut actions and effective shortcut collisions are rejected without rewriting
+  the file. The supported version-1 single-profile form migrates losslessly in memory;
+  an explicit save writes version 2. Recovery Reset preserves prior bounded regular
+  file bytes in a private sibling backup before replacing them with defaults.
+- Export contains only the typed preference model. No credentials, environment,
+  connection handles or runtime tokens are serialized. Device names and explicit
+  library paths remain visible/exported so cross-machine setup is reviewable.
+- New settings controls use native accessible widgets and the shared numeric editor.
+  Private Linux AT-SPI tests exercise actual Preferences/Preview/Apply/Cancel and
+  persisted appearance values. Hardware route quality, controller compatibility,
+  native-window behavior and human assistive-technology QA remain separate.

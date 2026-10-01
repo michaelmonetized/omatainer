@@ -2575,6 +2575,11 @@ pub struct Engine {
 
 impl Engine {
     pub fn start() -> anyhow::Result<Self> {
+        Self::start_with_settings(&crate::preferences::Profile::defaults(std::path::Path::new("/tmp")))
+    }
+
+    pub fn start_with_settings(settings: &crate::preferences::Profile) -> anyhow::Result<Self> {
+        settings.validate().map_err(anyhow::Error::msg)?;
         let (tx, rx) = CommandPort::channel(256);
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
@@ -2582,9 +2587,9 @@ impl Engine {
         let undo = rt.enable_undo()?;
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
-        let audio = audio::start(rt)?;
+        let audio = audio::start_with_settings(rt, &settings.audio)?;
         let sample_rate = audio.sr;
-        let midi = midi::MidiHub::start(tx.clone(), snap.clone())?;
+        let midi = midi::MidiHub::start_with_policy(tx.clone(), snap.clone(), settings.midi_inputs.clone())?;
         Ok(Self {
             undo,
             project,

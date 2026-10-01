@@ -1,5 +1,6 @@
 //! One management worker owns OS discovery, connection attempts and teardown.
 //! Only the existing fixed-work InputSink runs in a raw MIDI callback.
+use super::policy::{self, Control, InputPolicy, PolicyError, PolicyStatus, Request};
 use super::{device_status::Status, handoff, next_source_id, pick_map, MidiMap};
 use crate::engine::{CommandPort, Snapshot};
 use crossbeam_channel::{bounded, Sender};
@@ -22,13 +23,15 @@ pub enum Retry {
 struct Activity {
     busy: AtomicBool,
     alive: AtomicBool,
-    stop: AtomicBool,
+    retry_pending: AtomicBool,
+    policy: Control,
 }
 struct WorkerLife(Arc<Activity>);
 impl Drop for WorkerLife {
     fn drop(&mut self) {
         self.0.alive.store(false, Release);
         self.0.busy.store(false, Release);
+        self.0.policy.unavailable();
     }
 }
 
@@ -39,7 +42,7 @@ pub(super) struct Manager {
 }
 
 impl Manager {
-    pub(super) fn start<B: Backend>(
+    pub(super) fn start_with_policy<B: Backend>(
         backend: B,
         snapshot: &Arc<Mutex<Snapshot>>,
         cmd: CommandPort,
@@ -47,13 +50,18 @@ impl Manager {
         log: Arc<Mutex<Vec<String>>>,
         learn: Arc<Mutex<Option<String>>>,
         counters: Arc<handoff::InputCounters>,
+        policy: InputPolicy,
     ) -> std::io::Result<Self> {
+        policy
+            .validate()
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidInput, error))?;
         // Keyboard and mouse remain usable with or without connected hardware.
         Status::new(snapshot, "keyboard + mouse", "built-in").connected();
         let activity = Arc::new(Activity {
             busy: AtomicBool::new(true),
             alive: AtomicBool::new(true),
-            stop: AtomicBool::new(false),
+            retry_pending: AtomicBool::new(false),
+            policy: Control::new(policy),
         });
         let (requests, receiver) = bounded(1);
         let shared = activity.clone();
@@ -75,10 +83,26 @@ impl Manager {
                     activity: shared.clone(),
                 };
                 loop {
-                    if shared.stop.load(Acquire) {
+                    // There is at most one coalesced wake, never a policy-job
+                    // backlog. A request changed during OS work is read afresh.
+                    let _ = receiver.try_recv();
+                    if shared.policy.stopped() {
                         break;
                     }
-                    worker.refresh();
+                    shared.busy.store(true, Release);
+                    let request = shared.policy.requested();
+                    if !shared.retry_pending.swap(false, AcqRel)
+                        && !shared.policy.status().pending()
+                    {
+                        shared.busy.store(false, Release);
+                        if receiver.recv().is_err() {
+                            break;
+                        }
+                        continue;
+                    }
+                    if !worker.refresh(&request) {
+                        continue;
+                    }
                     shared.busy.store(false, Release);
                     if receiver.recv().is_err() {
                         break;
@@ -92,9 +116,33 @@ impl Manager {
             worker: Some(worker),
         })
     }
+    pub(super) fn configure(&self, policy: InputPolicy) -> Result<u64, PolicyError> {
+        if !self.available() {
+            return Err(PolicyError::Unavailable);
+        }
+        let generation = self.activity.policy.request(policy)?;
+        match self
+            .requests
+            .as_ref()
+            .ok_or(PolicyError::Unavailable)?
+            .try_send(())
+        {
+            Ok(()) | Err(crossbeam_channel::TrySendError::Full(())) => Ok(generation),
+            Err(crossbeam_channel::TrySendError::Disconnected(())) => {
+                self.activity.policy.unavailable();
+                Err(PolicyError::Unavailable)
+            }
+        }
+    }
+    pub(super) fn policy_status(&self) -> Arc<PolicyStatus> {
+        self.activity.policy.status()
+    }
     pub(super) fn retry(&self) -> Retry {
         if !self.available() {
             return Retry::Unavailable;
+        }
+        if self.policy_status().pending() {
+            return Retry::AlreadyRunning;
         }
         if self
             .activity
@@ -104,19 +152,21 @@ impl Manager {
         {
             return Retry::AlreadyRunning;
         }
-        if self
-            .requests
-            .as_ref()
-            .is_some_and(|tx| tx.try_send(()).is_ok())
-        {
-            Retry::Queued
-        } else {
-            self.activity.busy.store(false, Release);
-            Retry::Unavailable
+        self.activity.retry_pending.store(true, Release);
+        match self.requests.as_ref().map(|tx| tx.try_send(())) {
+            // A stale wake for the now-applied policy is also sufficient to
+            // carry this explicit retry. Keep its flag instead of falsely
+            // declaring a live manager unavailable because the wake is full.
+            Some(Ok(())) | Some(Err(crossbeam_channel::TrySendError::Full(()))) => Retry::Queued,
+            _ => {
+                self.activity.retry_pending.store(false, Release);
+                self.activity.busy.store(false, Release);
+                Retry::Unavailable
+            }
         }
     }
     pub(super) fn busy(&self) -> bool {
-        self.activity.busy.load(Acquire)
+        self.activity.busy.load(Acquire) || self.policy_status().pending()
     }
     pub(super) fn available(&self) -> bool {
         self.activity.alive.load(Acquire)
@@ -124,7 +174,7 @@ impl Manager {
 }
 impl Drop for Manager {
     fn drop(&mut self) {
-        self.activity.stop.store(true, Release);
+        self.activity.policy.stop();
         self.requests.take(); // Wakes an idle worker without waiting for its queue.
         if let Some(worker) = self.worker.take() {
             if worker.is_finished() {
@@ -180,7 +230,15 @@ struct Worker<B: Backend> {
     activity: Arc<Activity>,
 }
 impl<B: Backend> Worker<B> {
-    fn refresh(&mut self) {
+    fn refresh(&mut self, request: &Request) -> bool {
+        // Apply exclusions before any new discovery/connect OS call. Allowed
+        // sources keep their connection and source ID across preference edits.
+        for entry in &mut self.entries {
+            if !request.policy.allows(&entry.name) {
+                entry.active.take();
+                entry.status.disabled();
+            }
+        }
         if let Some(status) = &self.backend_status {
             status.connecting();
         }
@@ -199,13 +257,19 @@ impl<B: Backend> Worker<B> {
                     }
                 }
                 if let Some(status) = &self.backend_status {
-                    status.failed(error);
+                    status.failed(&error);
                 }
-                return;
+                return self
+                    .activity
+                    .policy
+                    .complete(request, None, Vec::new(), Some(error));
             }
         };
-        if self.activity.stop.load(Acquire) {
-            return;
+        if self.activity.policy.stopped() {
+            return true;
+        }
+        if !self.activity.policy.is_current(request) {
+            return false;
         }
         for entry in &mut self.entries {
             entry.present = false;
@@ -237,13 +301,22 @@ impl<B: Backend> Worker<B> {
                 });
             }
         }
+        let mut error = None;
         for entry in &mut self.entries {
-            if self.activity.stop.load(Acquire) {
-                return;
+            if self.activity.policy.stopped() {
+                return true;
+            }
+            if !self.activity.policy.is_current(request) {
+                return false;
             }
             if !entry.present {
                 entry.active.take();
                 entry.status.disconnected();
+                continue;
+            }
+            if !request.policy.allows(&entry.name) {
+                entry.active.take();
+                entry.status.disabled();
                 continue;
             }
             if entry.active.is_some() && entry.status.is_connected() {
@@ -254,7 +327,7 @@ impl<B: Backend> Worker<B> {
             entry.active.take();
             entry.status.connecting();
             let completed = entry.status.clone();
-            let pair = handoff::start_with_completion(
+            let pair = handoff::start_gated(
                 next_source_id(),
                 entry.map.clone(),
                 self.cmd.clone(),
@@ -262,32 +335,82 @@ impl<B: Backend> Worker<B> {
                 self.learn.clone(),
                 entry.name.clone(),
                 self.counters.clone(),
+                false,
                 move || completed.disconnected(),
             );
             let (input, worker) = match pair {
                 Ok(pair) => pair,
-                Err(error) => {
-                    entry.status.failed(error);
+                Err(failure) => {
+                    entry.status.failed(&failure);
+                    error = Some(failure.to_string());
                     continue;
                 }
             };
             match self.backend.connect(&entry.port, &entry.name, input) {
                 Ok(connection) => {
+                    if !self
+                        .activity
+                        .policy
+                        .activate(&entry.name, || worker.enable())
+                    {
+                        drop(connection);
+                        drop(worker);
+                        if self.activity.policy.stopped() {
+                            entry.status.disconnected();
+                        } else {
+                            entry.status.disabled();
+                        }
+                        continue;
+                    }
                     entry.status.connected();
                     entry.active = Some(Active {
                         _connection: connection,
                         _worker: worker,
                     });
                 }
-                Err(error) => {
-                    entry.status.failed(error);
+                Err(failure) => {
+                    entry.status.failed(&failure);
+                    error = Some(failure);
                     drop(worker); // failure survives completion; retry waits for it
                 }
             }
         }
-        if !self.activity.stop.load(Acquire) {
+        if !self.activity.policy.stopped() {
             self.backend.refresh_output();
         }
+        let mut available = Vec::new();
+        let mut truncated = false;
+        for entry in self.entries.iter().filter(|entry| entry.present) {
+            if available.contains(&entry.name) {
+                continue;
+            }
+            if available.len() >= policy::MAX_AVAILABLE_INPUTS
+                || entry.name.len() > policy::MAX_INPUT_NAME_BYTES
+                || entry.name.is_empty()
+                || entry.name.contains('\0')
+            {
+                truncated = true;
+            } else {
+                available.push(entry.name.clone());
+            }
+        }
+        available.sort();
+        let missing = match request.policy.as_ref() {
+            InputPolicy::Selected(names) => names
+                .iter()
+                .filter(|name| {
+                    !self
+                        .entries
+                        .iter()
+                        .any(|entry| entry.present && &entry.name == *name)
+                })
+                .cloned()
+                .collect(),
+            _ => Vec::new(),
+        };
+        self.activity
+            .policy
+            .complete(request, Some((available, truncated)), missing, error)
     }
 }
 
@@ -366,6 +489,8 @@ impl Backend for MidirBackend {
     }
 }
 
+#[cfg(test)]
+mod policy_tests;
 #[cfg(test)]
 pub(crate) mod test_support;
 #[cfg(test)]
