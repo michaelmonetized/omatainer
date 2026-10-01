@@ -325,6 +325,9 @@ impl CommandPort {
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui_load(deck);
         }
+        if matches!(&command, Command::FxSelect { slot } | Command::FxWet { slot, .. } if *slot >= 3) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         let mut state = self.admission.lock();
         // The receiver may have disconnected while this producer waited for
         // another producer's bookkeeping. Never coalesce against dead audio.

@@ -208,9 +208,9 @@ fn sample_rate_delay_reverb_and_haas_arrivals_keep_their_durations() {
                 for frame in 0..=expected + 1 {
                     let input = if frame == 0 { 1.0 } else { 0.0 };
                     let value = if processor == 0 {
-                        rt.delay[channel].tick(input)
+                        rt.master_fx[0].echo[channel].tick(input)
                     } else {
-                        rt.reverb[channel].tick(input)
+                        rt.master_fx[1].reverb[channel].tick(input)
                     };
                     if value.abs() > 1e-5 && arrival.is_none() {
                         arrival = Some(frame);

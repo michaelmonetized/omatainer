@@ -289,6 +289,7 @@ fn handle_client_with_limits(
                 || s.decks.iter().take(2).any(|deck| deck.title.len() > 256),
             "midi_clock": s.midi_clock,
             "audio": commands.audio_metrics(),
+            "master_fx": { "types": s.fx_kind, "wet": s.fx_wet },
             "commands": s.commands,
             "submissions": commands.stats(),
             "deckA": s.decks.first().map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
