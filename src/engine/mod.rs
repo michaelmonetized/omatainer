@@ -464,6 +464,7 @@ pub struct RtEngine {
     pub selected_track: usize,
     pub selected_scene: usize,
     pub selected_deck: usize,
+    pub selected_deck_request: u64,
     pub library_sel: usize,
     pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
@@ -591,6 +592,7 @@ pub struct Snapshot {
     pub selected_track: usize,
     pub selected_scene: usize,
     pub selected_deck: usize,
+    pub selected_deck_request: u64,
     pub tracks: Vec<TrackSnap>,
     pub decks: Vec<DeckSnap>,
     pub midi: Vec<String>,
@@ -630,6 +632,7 @@ impl Default for Snapshot {
             selected_track: 0,
             selected_scene: 0,
             selected_deck: 0,
+            selected_deck_request: 0,
             tracks: Vec::new(),
             decks: Vec::new(),
             midi: Vec::new(),
@@ -704,6 +707,7 @@ pub enum Command {
     ComposeArm { track: usize, scene: usize },
     ComposeDisarm,
     SelectDeck(usize),
+    SelectDeckRequested { deck: usize, request: u64 },
     SetView(View),
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
@@ -806,6 +810,7 @@ impl RtEngine {
             selected_track: 0,
             selected_scene: 0,
             selected_deck: 0,
+            selected_deck_request: 0,
             library_sel: 0,
             cmd_rx,
             command_stats: control::CommandStats::default(),
@@ -1873,6 +1878,10 @@ impl RtEngine {
                 }
             }
             Command::SelectDeck(d) => self.selected_deck = d.min(DECKS - 1),
+            Command::SelectDeckRequested { deck, request } => {
+                self.selected_deck = deck.min(DECKS - 1);
+                self.selected_deck_request = request;
+            }
             Command::SetView(v) => self.view = v,
             Command::LiveNoteOn { source, ch, note, vel } => {
                 let input = InputKey::Midi { source, ch: ch & 15, note };

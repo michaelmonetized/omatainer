@@ -288,3 +288,16 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Muted/solo-excluded tracks still advance ramps. The stopped sample-rate reset
   establishes current target gains directly at the next callback. Initial
   controls also start at their exact target without an unnecessary fade-in.
+
+## Deck selection and crate destination
+
+- The crate exposes Deck A/B load-target selectors. A pointer press on either
+  deck's controls or waveform selects that deck; hovering and releases elsewhere
+  do not. Covered or clipped controls cannot change the target. Within a frame,
+  pointer-event order determines the final target, not widget traversal order.
+- Crate double-click and F capture the latest accepted target. Explicit → A/→ B
+  buttons keep their direct destination without changing that selection.
+- The selected deck has a renderer-confirmed outline. A queued selector is marked
+  until the renderer publishes its matching request revision. Fast A/B changes
+  cannot mistake an old equal-valued snapshot for acknowledgment. Rejected requests
+  leave the previous target and use the existing visible submission-error path.

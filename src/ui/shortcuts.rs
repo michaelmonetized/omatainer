@@ -223,7 +223,7 @@ impl App {
             Action::Sync(deck) => self.send(Command::DeckSync { deck }),
             Action::Scene(scene) => self.send(Command::LaunchScene { scene }),
             Action::Crossfader(deck) => self.send(Command::Xfader(deck as f32)),
-            Action::Load => self.load_sel(self.snap.selected_deck as u8),
+            Action::Load => self.load_sel(self.load_target() as u8),
             Action::Help => self.keys_open = !self.keys_open,
             Action::Midi => self.midi_open = !self.midi_open,
             Action::CloseFx => self.send(Command::CloseFx),
