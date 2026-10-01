@@ -1174,6 +1174,7 @@ impl RtEngine {
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
             self.publish();
         }
+        self.project_finish_block();
     }
 
     // Direct numerical fixtures treat each call as a one-frame block. The
