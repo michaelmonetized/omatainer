@@ -3,6 +3,7 @@ mod theme;
 mod ui;
 mod ipc_server;
 mod ipc_transport;
+mod ipc_follow;
 mod instance;
 mod runtime;
 
@@ -18,8 +19,8 @@ use crate::theme::socket_path;
 use anyhow::Context;
 use eframe::egui;
 #[cfg(test)]
-use std::io::BufRead;
-use std::io::{BufReader, Write};
+use std::io::{BufRead, Write};
+use std::io::BufReader;
 use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
@@ -77,23 +78,9 @@ fn focus_existing() {
 fn ctl(args: &[String]) -> anyhow::Result<()> {
     let op = args.first().map(|s| s.as_str()).unwrap_or("status");
     if op == "follow" {
-        loop {
-            match send_op(STATUS_REQUEST) {
-                Ok(s) => {
-                    println!("{s}");
-                    let _ = std::io::stdout().flush();
-                }
-                Err(e) => {
-                    println!(
-                        "{}",
-                        serde_json::json!({"ok":false,"error":e.to_string(),"playing":false})
-                    );
-                    let _ = std::io::stdout().flush();
-                }
-            }
-            std::thread::sleep(Duration::from_millis(250));
-        }
+        return ipc_follow::run(&socket_path()?, &mut std::io::stdout().lock());
     }
+
     let payload = match op {
         "play" => r#"{"op":"play"}"#,
         "stop" => r#"{"op":"stop"}"#,
@@ -238,10 +225,15 @@ fn handle_client_with_limits(
             }
         };
         let mut request_id = serde_json::Value::Null;
+        let mut follow = false;
         let submission: Result<Option<&str>, (&str, anyhow::Error)> = (|| {
             let request: serde_json::Value = serde_json::from_slice(&line[..size])
                 .map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
             request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
+            if request.get("op").and_then(serde_json::Value::as_str) == Some("follow") {
+                follow = true;
+                return Ok(None);
+            }
             let command = ipc_command(&request).map_err(|error| ("invalid_operation", error))?;
             match command {
                 Some(command) => commands.send(command)
@@ -257,6 +249,11 @@ fn handle_client_with_limits(
                 continue;
             }
         };
+        if follow {
+            // This is a read-only stream, not an uncapped command connection.
+            drop(reader);
+            return ipc_follow::serve(writer, commands, snap, request_id, limits);
+        }
         let Some(s) = snap.try_lock_for(limits.snapshot) else {
             if let Some(status) = command_status {
                 ipc_transport::reply(&mut writer, &serde_json::json!({
