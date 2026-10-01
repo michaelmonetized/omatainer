@@ -270,7 +270,7 @@ fn real_file_load_stays_unplayed_until_render_and_records_captured_identity_when
     assert_eq!(f.app.lib_sel, 0, "history must not browse for the user");
     let ctx = egui::Context::default();
     let output = crate_frame(&ctx, &mut f.app, 0.0, vec![]);
-    assert!(visible(&output, &fmt_play(Some(played))));
+    assert!(visible(&output, &play_time::format(Some(played), SystemTime::now()).label));
     assert!(visible(&output, "—"));
 }
 
