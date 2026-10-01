@@ -114,11 +114,12 @@ def restrict():
             raise GuardError('could not set no-new-privileges')
         if library.seccomp_load(context) != 0:
             raise GuardError('could not load the child network filter')
+        return number
     finally:
         library.seccomp_release(context)
 
 
-def controls(directory):
+def controls(directory, io_uring_setup):
     denied = {}
     for family, label in [(socket.AF_INET, 'ipv4'), (socket.AF_INET6, 'ipv6')]:
         for kind, transport in [(socket.SOCK_STREAM, 'tcp'), (socket.SOCK_DGRAM, 'udp')]:
@@ -157,9 +158,16 @@ def controls(directory):
     values = dict(line.split(':', 1) for line in Path('/proc/self/status').read_text().splitlines() if ':' in line)
     if values.get('NoNewPrivs', '').strip() != '1' or values.get('Seccomp', '').strip() != '2':
         raise GuardError('kernel did not report an active unprivileged filter')
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.syscall.restype = ctypes.c_long
+    result = libc.syscall(ctypes.c_long(io_uring_setup), ctypes.c_uint(1), ctypes.c_void_p())
+    if result != -1 or ctypes.get_errno() != errno.EPERM:
+        if result >= 0:
+            os.close(result)
+        raise GuardError('io_uring setup was not refused by the network filter')
     return {'schema': SCHEMA, 'mechanism': 'child-only libseccomp socket-family denial',
             'direct_network': denied, 'unix_socketpair': True, 'unix_listener': True,
-            'io_uring_setup': 'denied by filter', 'effective_uid': os.geteuid(),
+            'io_uring_setup': 'EPERM', 'effective_uid': os.geteuid(),
             'kernel': platform.release(), 'architecture': platform.machine(),
             'no_new_privileges': True, 'seccomp_filter': True,
             'scope': 'No non-AF_UNIX socket creation or inherited network FDs. Private buses required; host proxies and external browser handoffs are not qualification evidence.'}
@@ -174,8 +182,8 @@ def run(receipt, command):
         raise GuardError('guard receipt must be a new file')
     close_inherited()
     original_uid = os.geteuid()
-    restrict()
-    evidence = controls(directory)
+    io_uring_setup = restrict()
+    evidence = controls(directory, io_uring_setup)
     if os.geteuid() != original_uid:
         raise GuardError('effective identity changed during qualification')
     data = (json.dumps(evidence, sort_keys=True, indent=2) + '\n').encode()
