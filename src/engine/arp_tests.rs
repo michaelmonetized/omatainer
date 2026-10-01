@@ -194,7 +194,7 @@ fn arp_record_and_compose_additions_preserve_existing_chord_while_monitored() {
         render_at(&mut rt, 0.0);
         rt.beat = 0.1;
         if compose {
-            rt.compose_armed = true;
+            rt.apply(Command::ComposeArm { track: rt.selected_track, scene: rt.selected_scene });
             // Sample pad zero writes pitch 36, before the held chord's notes.
             rt.apply(Command::SamplerPad { pad: 0, on: true });
         } else {

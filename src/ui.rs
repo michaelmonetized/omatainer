@@ -20,6 +20,8 @@ mod test_support;
 mod tests;
 #[cfg(test)]
 mod controller_load_tests;
+#[cfg(test)]
+mod compose_tests;
 
 pub struct App {
     engine: Engine,
@@ -337,7 +339,7 @@ impl App {
             .show(ctx, |ui| {
                 let h = ui.available_height();
                 let gap = 4.0;
-                let samp_h = 88.0;
+                let samp_h = 118.0;
                 let crate_h = 108.0;
                 let seq_row = (t.font_size + 10.0).clamp(20.0, 26.0);
                 let seq_h = 26.0 + 48.0 + seq_row * SCENES as f32 + gap * (SCENES as f32 + 2.0);
@@ -607,6 +609,19 @@ impl App {
     }
 
     fn sampler_row(&mut self, ui: &mut Ui, t: &Theme) {
+        ui.horizontal(|ui| {
+            if let Some(target) = self.snap.compose_target {
+                let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
+                ui.label(RichText::new(format!("Compose armed: {} / scene {}", name, target.scene + 1)).color(t.yellow));
+                if ui.button("Disarm compose").clicked() { self.send(Command::ComposeDisarm); }
+            } else {
+                ui.label("Compose disarmed");
+                if ui.button("Arm selected cell").on_hover_text("Pads write to this cell; shift-click a sequencer cell to choose another target").clicked() {
+                    self.send(Command::ComposeArm { track: self.snap.selected_track, scene: self.snap.selected_scene });
+                }
+            }
+            if self.snap.recording { ui.label(RichText::new("Recording pads").color(t.red)); }
+        });
         let h = ui.available_height();
         let w = ui.available_width();
         ui.horizontal(|ui| {
@@ -873,12 +888,7 @@ impl App {
                                 }
                                 if resp.clicked() {
                                     if ui.input(|i| i.modifiers.shift) {
-                                        self.send(Command::Select { track: tr, scene: sc });
-                                        self.status = format!(
-                                            "compose {} / scene {}",
-                                            self.snap.tracks.get(tr).map(|x| x.name.as_str()).unwrap_or("?"),
-                                            sc + 1
-                                        );
+                                        self.send(Command::ComposeArm { track: tr, scene: sc });
                                     } else {
                                         self.send(Command::FireClip { track: tr as u8, scene: sc as u8, looping: false });
                                     }
@@ -1365,6 +1375,6 @@ pads fill width · instrument mode A-G piano
 crate: ↓ bpm up. load →A / →B
 seq: scene head launch/stop, rclick restart, shift add
 track head mute / rclick solo
-cell click once / rclick loop / shift compose
+cell click once / rclick loop / shift arm compose; Stop disarms
 gain rotary click mute / rclick solo / ctrl fx chain
 ";

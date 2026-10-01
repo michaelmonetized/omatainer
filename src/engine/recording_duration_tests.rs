@@ -7,7 +7,7 @@ fn fixture(playing: bool) -> RtEngine {
     rt.quant = 0.0;
     rt.selected_track = 1;
     rt.selected_scene = 2;
-    rt.apply(Command::Select { track: 1, scene: 2 });
+    rt.apply(Command::ComposeArm { track: 1, scene: 2 });
     if playing {
         rt.apply(Command::LaunchClip { track: 1, scene: 2 });
         rt.apply(Command::Record);
