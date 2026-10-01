@@ -1,5 +1,6 @@
 use crate::engine::fx::FxId;
 use crate::engine::{Command, Engine, Snapshot, DECKS, SCENES, TRACKS};
+use crate::engine::media_source::{BuiltinStem, LibSource, Selection};
 use crate::theme::Theme;
 use eframe::egui::{
     self, Align, Color32, FontId, Key, PointerButton, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2,
@@ -17,6 +18,8 @@ use library_scan::LibraryScan;
 mod test_support;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod controller_load_tests;
 
 pub struct App {
     engine: Engine,
@@ -27,6 +30,7 @@ pub struct App {
     // History can change while a worker holds the immutable crate baseline.
     // Keep those small edits separate from the full library allocation.
     last_played: HashMap<LibSource, SystemTime>,
+    published_selection: Option<Arc<Selection>>,
     lib_filter: String,
     lib_sel: usize,
     keys_open: bool,
@@ -52,27 +56,6 @@ struct LibItem {
     source: LibSource,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum LibSource {
-    Builtin(BuiltinStem),
-    File(PathBuf),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum BuiltinStem {
-    Drums,
-    Harmony,
-}
-
-impl BuiltinStem {
-    fn index(self) -> u8 {
-        match self {
-            Self::Drums => 0,
-            Self::Harmony => 1,
-        }
-    }
-}
-
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, engine: Engine) -> Self {
         Theme::install_fonts(&cc.egui_ctx);
@@ -92,13 +75,14 @@ impl App {
         loader: Option<Loader>,
     ) -> Self {
         let snap = engine.snapshot();
-        Self {
+        let mut app = Self {
             engine,
             theme,
             fonts_set: true,
             library: Arc::new(builtin_crate_items()),
             library_scan: LibraryScan::default(),
             last_played: HashMap::new(),
+            published_selection: None,
             lib_filter: String::new(),
             lib_sel: 0,
             keys_open: false,
@@ -111,7 +95,9 @@ impl App {
             snap,
             last_play_idx: 0,
             pad_held: [false; 16],
-        }
+        };
+        app.publish_library_selection();
+        app
     }
 
     fn scan_library(&mut self) {
@@ -160,10 +146,21 @@ impl App {
     }
 
     fn load_sel(&mut self, deck: u8) {
-        if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
-        let picked = self.filtered().get(self.lib_sel).map(|i| (i.title.clone(), i.source.clone()));
-        if let Some((name, source)) = picked {
-            self.last_play_idx = self.lib_sel;
+        let picked = self.filtered().get(self.lib_sel).map(|item| Selection {
+            title: item.title.clone(), source: item.source.clone(),
+        });
+        self.load_source(deck, picked.as_ref());
+    }
+
+    fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
+        if deck as usize >= DECKS {
+            self.status = "load failed: invalid deck".into();
+            return;
+        }
+        if let Some(Selection { title: name, source }) = picked {
+            if let Some(index) = self.filtered().iter().position(|item| &item.source == source) {
+                self.last_play_idx = index;
+            }
             self.last_played.insert(source.clone(), SystemTime::now());
             match source {
                 LibSource::Builtin(stem) => {
@@ -174,9 +171,11 @@ impl App {
                     }
                 }
                 LibSource::File(path) => {
-                    self.load_file(deck, path, &name);
+                    self.load_file(deck, path.clone(), name);
                 }
             }
+        } else {
+            self.status = "load failed: no library item selected".into();
         }
     }
 
@@ -186,6 +185,26 @@ impl App {
             Ok(_) => format!("loading {name} → {}", (b'A' + deck) as char),
             Err(error) => format!("load failed: {error}"),
         };
+    }
+
+    fn poll_ui_requests(&mut self) {
+        for request in self.engine.ui_requests.take_loads().into_iter().flatten() {
+            self.load_source(request.deck, request.selection.as_deref());
+        }
+    }
+
+    fn publish_library_selection(&mut self) {
+        let visible = self.filtered();
+        let selected = visible.get(self.lib_sel);
+        if self.published_selection.as_ref().map(|item| (&item.source, &item.title))
+            == selected.map(|item| (&item.source, &item.title)) {
+            return;
+        }
+        let selection = selected.map(|item| Arc::new(Selection {
+            source: item.source.clone(), title: item.title.clone(),
+        }));
+        self.engine.ui_requests.publish_selection(selection.clone());
+        self.published_selection = selection;
     }
 
     fn poll_loads(&mut self) {
@@ -281,6 +300,7 @@ impl eframe::App for App {
 
 impl App {
     fn update_frame(&mut self, ctx: &egui::Context) {
+        self.poll_ui_requests();
         self.poll_library_scan();
         let submissions = self.engine.cmd.stats();
         if submissions.rejected > self.seen_submission_failures {
@@ -375,6 +395,7 @@ impl App {
         } else {
             ctx.request_repaint_after(std::time::Duration::from_millis(80));
         }
+        self.publish_library_selection();
     }
 }
 

@@ -218,7 +218,7 @@ fn file_load_reports_unavailable_decoder_and_empty_selection_is_inert() {
     fixture.app.lib_filter = "no matching media".into();
     fixture.app.status = "unchanged".into();
     fixture.app.load_sel(1);
-    assert_eq!(fixture.app.status, "unchanged");
+    assert_eq!(fixture.app.status, "load failed: no library item selected");
     assert!(fixture.rt.cmd_rx.is_empty());
 }
 
