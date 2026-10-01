@@ -328,7 +328,10 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 ## Persistent status followers
 
-- `ctl follow` opens one read-only `follow` subscription. Its initial request
+- `ctl status` and `ctl follow` use the same typed, bounded JSON request encoder
+  and fresh process/counter correlation IDs. Follow opens one read-only `follow`
+  subscription rather than sending bare text or repeating ordinary status polls.
+  Its initial request
   retains the 4096-byte, 500 ms idle and 2-second total read limits. It then
   receives at most four current-state frames per second; no updates are queued
   and later bytes on that connection cannot submit commands.
@@ -348,6 +351,12 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   2 s, then at most 4 s.
   A valid frame resets backoff. Closed output exits successfully; process exit
   closes the socket. A reconnect never retries a musical control command.
+- Client follow failures retain the state-unavailable JSON shape and include
+  `error_code`: malformed JSON/UTF-8, mismatched IDs, invalid state envelopes or
+  oversized frames are `protocol_error`; absent/refused sockets are
+  `not_running`; disconnects and other I/O failures are `transport_error`.
+  Valid server state errors such as `snapshot_unavailable` pass through with
+  their original code and keep the connection.
 ## Shell scene arguments
 
 - `Service.scene(n)` and public shell IPC `omatainer.scene` use one-based scene
