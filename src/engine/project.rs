@@ -207,6 +207,27 @@ impl Handle {
         }
     }
 
+    /// Worker only. Retire only a previously cancelled exchange; an unrelated
+    /// active operation remains Busy. Used after the recovery worker's capture
+    /// fence so an explicit project action never races its cancelled reply.
+    pub(crate) fn retire_cancelled_capture(&self, cancel: &AtomicBool) -> Result<(), Error> {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); }
+            match self.shared.busy.load(Ordering::Acquire) {
+                0 => return Ok(()),
+                2 => match self.shared.results.try_recv() {
+                    Ok(_) => { self.shared.busy.store(0, Ordering::Release); return Ok(()); }
+                    Err(crossbeam_channel::TryRecvError::Disconnected) => return Err(Error::Unavailable),
+                    Err(crossbeam_channel::TryRecvError::Empty) => {},
+                },
+                _ => return Err(Error::Busy),
+            }
+            if Instant::now() >= deadline { return Err(Error::Unavailable); }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+
     /// Worker only: coherent capture, with capacity preparation between passes.
     pub fn capture(&self, cancel: &AtomicBool) -> Result<Captured, Error> {
         self.begin()?;

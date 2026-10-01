@@ -24,6 +24,7 @@ pub const MAX_SAMPLE_RATE: u32 = 768_000;
 pub const MAX_CHANNELS: u16 = 32;
 const HEADER_LEN: usize = 28;
 const FOOTER_LEN: u64 = 4;
+pub(crate) const CONTAINER_OVERHEAD: u64 = HEADER_LEN as u64 + FOOTER_LEN;
 const IO_CHUNK: usize = 16 * 1024;
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
@@ -159,7 +160,7 @@ fn validate_shape(sr: u32, ch: u16, values: u64, bpm: f32) -> Result<(), Error> 
 fn total_size(metadata: u64, pcm: u64) -> Result<u64, Error> {
     metadata
         .checked_add(pcm)
-        .and_then(|n| n.checked_add(HEADER_LEN as u64 + FOOTER_LEN))
+        .and_then(|n| n.checked_add(CONTAINER_OVERHEAD))
         .ok_or_else(|| invalid("container size overflow"))
 }
 
@@ -424,11 +425,32 @@ pub fn load<T: DeserializeOwned>(
     cancel: &AtomicBool,
 ) -> Result<Bundle<T>, Error> {
     check_cancel(cancel)?;
-    let mut file = OpenOptions::new()
+    let file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path)
         .map_err(|e| io_error("open", e))?;
+    load_from_file(file, limits, cancel)
+}
+
+/// Decode the caller's already-open regular file. Recovery uses this entry
+/// point so digest verification and decoding cannot select different inodes.
+pub(crate) fn load_from_file<T: DeserializeOwned>(
+    file: File,
+    limits: &Limits,
+    cancel: &AtomicBool,
+) -> Result<Bundle<T>, Error> {
+    load_from_file_measured(file, limits, cancel).map(|(bundle, _)| bundle)
+}
+
+/// Also return validated encoded metadata bytes, so a multi-sidecar reader can
+/// apply one aggregate envelope budget before allocating the next asset.
+pub(crate) fn load_from_file_measured<T: DeserializeOwned>(
+    mut file: File,
+    limits: &Limits,
+    cancel: &AtomicBool,
+) -> Result<(Bundle<T>, usize), Error> {
+    check_cancel(cancel)?;
     let stat = file.metadata().map_err(|e| io_error("inspect input", e))?;
     if !stat.is_file() {
         return Err(invalid("input is not a regular file"));
@@ -543,10 +565,13 @@ pub fn load<T: DeserializeOwned>(
         return Err(invalid("trailing data"));
     }
     check_cancel(cancel)?;
-    Ok(Bundle {
-        state: envelope.state,
-        media,
-    })
+    Ok((
+        Bundle {
+            state: envelope.state,
+            media,
+        },
+        metadata_len,
+    ))
 }
 fn read_exact(file: &mut File, bytes: &mut [u8]) -> Result<(), Error> {
     file.read_exact(bytes).map_err(|e| io_error("read", e))

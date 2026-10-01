@@ -585,3 +585,29 @@ fn persisted_undo_remap_controls_the_renderer_and_edit_menu_hint() {
         "menu must display the saved effective shortcut"
     );
 }
+
+#[test]
+fn recovery_limits_are_real_numeric_controls_persist_reopen_and_cancel() {
+    use egui::accesskit::ActionData;
+    let mut gui = Gui::new();
+    gui.open();
+    gui.click("Autosave and recovery limits");
+    for (label, value) in [("Recovery checkpoint interval", 75.0), ("Recovery generations per session", 5.0), ("Recovery storage limit", 512.0)] {
+        let target = gui.node(label);
+        gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::SetValue, data: Some(ActionData::NumericValue(value)) })]);
+        gui.frame(vec![]);
+    }
+    let draft = gui.fixture.app.settings.draft.profiles["Studio"].recovery.clone();
+    assert_eq!((draft.checkpoint_seconds, draft.retention, draft.max_bytes), (75, 5, 512 * crate::recovery::MIB));
+    gui.preview_apply();
+    let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
+    assert_eq!(loaded.preferences.current().unwrap().recovery, draft);
+    let previous = loaded.preferences.current().unwrap().recovery.clone();
+    gui.click("Cancel changes"); gui.open();
+    if !gui.nodes.iter().any(|(_, node)| node.label() == Some("Recovery checkpoint interval")) { gui.click("Autosave and recovery limits"); }
+    let target = gui.node("Recovery checkpoint interval");
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::SetValue, data: Some(ActionData::NumericValue(100.0)) })]);
+    gui.click("Cancel changes");
+    assert_eq!(gui.fixture.app.settings.profile().recovery, previous);
+    assert_eq!(storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap().preferences.current().unwrap().recovery, previous);
+}

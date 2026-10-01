@@ -79,7 +79,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Save and reopen
 
-Project → New, Open and window close protect unsaved work with Save changes / Discard changes / Cancel. Save project as chooses a .omat path; replacing an existing file requires the checkbox. Save copy leaves the current path and unsaved baseline unchanged. Native projects embed playable media and creative state. Reopen restores playback stopped and excludes physical held keys, connections and DSP tails. Later edits during saving remain dirty. Cancel before commit preserves the old document; a completed commit is reported honestly. Use a private test destination for the guided example.
+Project → New, Open and window close protect unsaved work with Save changes / Discard changes / Cancel. Save project as chooses a .omat path; replacing an existing file requires the checkbox. Save copy leaves the current path and unsaved baseline unchanged. Native projects embed playable media and creative state. Reopen restores playback stopped and excludes physical held keys, connections and DSP tails. Later edits during saving remain dirty. Cancel before commit preserves the old document; a completed commit is reported honestly. Autosave and recovery keeps separate full edit-state batches about every two seconds and compacts checkpoints at the saved profile interval. Capture and disk delays can increase the loss window; read the last confirmed durable age. At restart, preview an inactive recovery and restore as a stopped, unsaved untitled copy without overwriting the original saved version. Full storage stops new writes visibly while preserving existing recovery. Use a private test destination for the guided example.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -576,6 +576,126 @@ Local filesystem path
 Choose a source/destination for portable preferences. No network transfer occurs.
 
 Workflow: Audio setup.
+
+### Autosave and recovery
+
+Independent recovery copies
+
+Open the recovery status and inactive-session list. Batched full edit-state records normally capture dirty work about every two seconds, including untitled projects. Confirmed durable age is the actual loss-window evidence; explicit project files are never overwritten.
+
+Workflow: Save and reopen.
+
+### Last confirmed durable recovery
+
+Seconds and revision
+
+Captured-state age advances only after that state has a confirmed durable journal commit. The separately labeled commit acknowledgment may be newer after slow I/O; edits accepted during the write are not included automatically. Busy capture, full storage and I/O failure keep the prior confirmed state. Newer edits may be lost until the next confirmed record; a committed durability warning is not a durable acknowledgment.
+
+Workflow: Save and reopen.
+
+### Refresh recovery list
+
+Inactive sessions
+
+Discover bounded, validated inactive recovery candidates on the worker, including sidecar hashing. Performance protection defers this work and invalidates old verified lists; leave protection and Refresh for a fresh selection. Active sessions remain locked. A malformed tail stops replay at its valid prefix and is reported; incomplete or corrupt media is never silently omitted.
+
+Workflow: Save and reopen.
+
+### Journal current edits now
+
+Background capture
+
+Request the next coherent edit-state record without changing playback. This is an asynchronous request, not confirmation of durability. Read the resulting durable timestamp and warnings.
+
+Workflow: Save and reopen.
+
+### Preview recovery
+
+Read-only validation
+
+Validate the selected record and embedded media on the worker and display its notes, media and recovery report. Preview does not replace the current project or write its explicit saved path. Performance protection rejects or cancels this optional PCM verification; a cheap protected-startup availability notice and automatic durability remain available. Full discovery is deferred until you leave protection and Refresh.
+
+Workflow: Save and reopen.
+
+### Restore as untitled copy
+
+Stopped, unsaved document
+
+Use the ordinary Save / Discard / Cancel protection before installing the selected recovery. The recovered project starts stopped as a dirty untitled copy; Save As chooses a new explicit file. The original path is informational and is not overwritten.
+
+Workflow: Save and reopen.
+
+### Delete recovery session
+
+Every generation in one session
+
+After explicit confirmation, permanently discard this inactive session's journal, checkpoints and sidecars. A session lock and candidate identity prevent deleting active or changed recovery. Explicit project files are unaffected. Performance protection excludes this optional explicit deletion; automatic committed-checkpoint cleanup remains essential durability.
+
+Workflow: Save and reopen.
+
+### Cancel recovery operation
+
+Before commit
+
+Cancel pending preview, discovery or deletion without changing the current project. A deletion or durable write that already committed remains truthful; cancellation cannot undo a committed filesystem operation.
+
+Workflow: Save and reopen.
+
+### Retry recovery retirement
+
+Intentional close
+
+Retry recording that this document epoch was intentionally closed. Failure leaves a visible warning and may offer the recovery copy again after restart; it never changes the explicit project Save decision.
+
+Workflow: Save and reopen.
+
+### Keep working after recovery close
+
+Cancel exit
+
+Cancel the exit and release its existing project close guard. Recovery restarts in a fresh session, including when the retirement marker already committed. Playback does not resume automatically.
+
+Workflow: Save and reopen.
+
+### Close and retain possible recovery
+
+Explicit warning override
+
+Finish the authorized exit even when recovery retirement failed or its durability is uncertain. The remaining copy may be offered at startup. This does not label unsaved work as explicitly saved.
+
+Workflow: Save and reopen.
+
+### Autosave and recovery limits
+
+Saved profile settings
+
+Configure checkpoint compaction, retained generations per session and the global storage cap. Dirty edit-state journal batches remain separate from checkpoints. Apply and save persists these settings; it is not a journal durability acknowledgment.
+
+Workflow: Save and reopen.
+
+### Recovery checkpoint interval
+
+5–3600 seconds
+
+Choose how often the edit-state journal compacts into a checkpoint. Dirty state is batched about every two seconds independently; capture, queue pressure and disk I/O can increase the loss window. Read the observed last durable age in Recovery.
+
+Workflow: Save and reopen.
+
+### Recovery generations per session
+
+2–20 generations
+
+Retain checkpoint generations within each session, preserving a known-valid prior generation until a newer durable commit. This does not silently delete another session's recovery history.
+
+Workflow: Save and reopen.
+
+### Recovery storage limit
+
+64–16384 MiB globally
+
+Bound embedded media, journal, checkpoint and staging storage together. Full storage stops new durable writes and reports the failure. The only usable recovery is never removed automatically to make room; explicit project files are outside this store.
+
+Workflow: Save and reopen.
 
 ### Close panel
 

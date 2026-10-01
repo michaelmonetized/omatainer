@@ -380,6 +380,8 @@ impl App {
                                     });
                                 }
                             });
+                            ui.collapsing("Autosave and recovery limits", |ui| recovery_settings::edit(ui, &mut profile.recovery))
+                                .header_response.help(ui, HelpControl::RecoverySettings);
                         }
                         ui.separator();
                         text(ui, "Preferences import or export path", &mut state.file_path, HelpControl::PreferenceFilePath);

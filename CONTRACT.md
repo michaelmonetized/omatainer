@@ -804,3 +804,42 @@ optional commit permits serialize mode entry without stealing a CloseGuard.
 Optional cancellation never rewrites an already committed/applied outcome, and
 pre-mode scan/import visibility cannot leak through later essential metadata
 publication. Preferences persist startup protection only, not emergency state.
+### Batched recovery journal and untitled recovery (#97)
+
+- A separate recovery worker captures coherent engine state through the bounded
+  project handoff. It batches dirty edit state about every two seconds, including
+  untitled work, and coalesces pending GUI view updates into one latest value.
+  Encoding, hashing, embedded-media writes, fsync and retirement run off GUI/audio.
+  This is a full edit-state batch journal, not synchronous per-command durability.
+- Confirmed durable captured-state time, revision and sequence identify coverage.
+  The separate commit acknowledgment is not the age of its captured edits. Capture
+  contention, unavailable rendering, cancellation, full storage and I/O failures
+  can enlarge the loss window; warnings retain the last confirmed durable age.
+  A committed directory-sync warning never becomes a false durability claim.
+- Preferences version 5 migrates versions 1–4 without losing version 4 startup
+  performance protection; migration alone never rewrites a saved file.
+  Saved profile settings configure checkpoint compaction (5–3600 seconds, default
+  30), generations retained per session (2–20, default 3), and a global storage cap
+  (64 MiB–16 GiB, default 2 GiB). Media, journal/checkpoint and staging bytes count
+  toward the cap. No automatic deletion of another session or sole useful copy
+  makes space for a newer write. Replay is bounded by record and byte limits.
+- Private locked sessions and checksummed record framing distinguish epochs and
+  order. Embedded media is content-addressed and verified on restart; in-session
+  Arc identity is only a cache. A malformed final tail yields a valid-prefix report.
+  Missing provenance files are informational when verified PCM is embedded;
+  missing/corrupt required media prevents that candidate from silently losing audio.
+- Startup discovery and Preview never replace the active document. Restore reuses
+  Save/Discard/Cancel and the revision-checked project installation handshake. It
+  starts stopped as an unsaved untitled copy and never adopts or overwrites the
+  recorded explicit save path. A changed baseline or cancellation preserves the
+  current project. Performance protection remains enforced by the project API.
+  Full discovery/PCM Preview and explicit session deletion are optional guarded
+  work. Protected startup only inspects root metadata and shows a deferred-scan
+  notice; it does not claim there are no recoverable copies. Automatic durability
+  remains essential, and protection invalidates prior verified previews/lists.
+- Automatic capture yields to explicit project work using cancellation and a bounded
+  worker-only retirement fence. It does not acquire destructive project/audio seals.
+  Intentional exit retires its epoch after the existing project/library decisions;
+  retirement failure permits an explicit warning override. Cancel exit starts a
+  fresh recovery session even if retirement already committed. A replaced epoch is
+  retained until the newer epoch has a confirmed durable record.

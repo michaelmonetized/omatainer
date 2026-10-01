@@ -18,7 +18,7 @@ pub(crate) struct Document {
     pub mapping_schema: u32,
 }
 impl Document {
-    fn validate(&self) -> Result<(), String> {
+    pub(super) fn validate(&self) -> Result<(), String> {
         if self.mapping_schema != FACTORY_MAPPING_SCHEMA {
             return Err(format!(
                 "Unsupported controller mapping schema {}; this build supports {}",
@@ -35,6 +35,7 @@ pub(super) struct SavedIdentity {
     pub source: LibSource,
     pub fingerprint: Option<FileFingerprint>,
 }
+#[derive(Clone)]
 pub(super) struct WatchIdentity {
     pub receipt: Receipt,
     pub identity: SavedIdentity,
@@ -58,7 +59,7 @@ pub(crate) struct UiState {
     pub(super) deck_identities: [Option<SavedIdentity>; DECKS],
 }
 impl UiState {
-    fn validate(&self) -> Result<(), String> {
+    pub(super) fn validate(&self) -> Result<(), String> {
         if self.library_filter.len() > 4096
             || !self.library_offset.is_finite()
             || self.library_offset < 0.0
@@ -123,6 +124,7 @@ enum Action {
     New,
     OpenDialog,
     Open(PathBuf),
+    Recover(crate::recovery::Candidate),
     Close,
 }
 #[derive(Clone, Copy, PartialEq)]
@@ -247,6 +249,9 @@ impl App {
         self.project.close_guard.is_some()
     }
     pub(super) fn allow_project_close(&mut self, ctx: &egui::Context) {
+        self.begin_recovery_close(ctx);
+    }
+    pub(super) fn finish_project_close(&mut self, ctx: &egui::Context) {
         self.project.allow_close = true;
         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
     }
@@ -255,8 +260,9 @@ impl App {
         self.project.close_guard = None;
         self.project.allow_close = false;
         self.cancel_library_close();
+        self.cancel_recovery_close();
     }
-    fn project_view(&mut self) -> UiState {
+    pub(super) fn project_view(&mut self) -> UiState {
         let selection = self.selected_library_item().map(|item| item.source.clone());
         let selection = if let Some((source, index, filter)) = &self.project.pending_selection {
             if self.lib_sel == *index && self.lib_filter == *filter {
@@ -292,7 +298,7 @@ impl App {
             edits: self.project.local_edits,
         }
     }
-    fn project_dirty(&mut self) -> bool {
+    pub(super) fn project_dirty(&mut self) -> bool {
         let now = self.project_baseline();
         self.project
             .clean
@@ -321,12 +327,13 @@ impl App {
     }
 
     fn begin_project_job(&mut self, operation: Operation, job: Job, cancel: Arc<AtomicBool>) {
+        let recovery_fence = self.suspend_recovery();
         let result = self
             .project
             .worker
             .as_ref()
             .ok_or_else(|| "Project worker unavailable".to_owned())
-            .and_then(|worker| worker.submit(job));
+            .and_then(|worker| worker.submit(job, recovery_fence));
         match result {
             Ok(()) => {
                 self.project.message = None;
@@ -365,11 +372,12 @@ impl App {
                     replace: false,
                 });
             }
-            Action::New | Action::Open(_) => {
+            Action::New | Action::Open(_) | Action::Recover(_) => {
                 let before = self.project_baseline();
-                let path = match action {
-                    Action::Open(path) => Some(path),
-                    _ => None,
+                let (path, recovery) = match action {
+                    Action::Open(path) => (Some(path), None),
+                    Action::Recover(candidate) => (None, Some(candidate)),
+                    _ => (None, None),
                 };
                 let work = match self.engine.cmd.performance().optional_work() {
                     Ok(work) => work,
@@ -386,6 +394,7 @@ impl App {
                     Job::Prepare {
                         _work: work,
                         path,
+                        recovery,
                         cancel: cancel.clone(),
                         commit: receiver,
                     },
@@ -584,11 +593,20 @@ impl App {
                     path,
                     view,
                     applied,
+                    recovered,
+                    report,
                 } => {
                     self.project.active = None;
                     self.install_project_view(ctx, view, applied);
                     self.project.current_path = path;
-                    self.project.message = Some("Project ready, stopped. Space resumes remembered session clips; deck play buttons resume saved deck positions.".into());
+                    if recovered {
+                        self.project.current_path = None;
+                        self.project.clean = None;
+                        let notices = self.restored_recovery_report(report);
+                        self.project.message = Some(format!("Recovered as an unsaved untitled copy, stopped. Use Save as to choose a destination; the original explicit project was not overwritten. {notices} recovery notices are available in Recovery."));
+                    } else {
+                        self.project.message = Some("Project ready, stopped. Space resumes remembered session clips; deck play buttons resume saved deck positions.".into());
+                    }
                 }
                 Event::CheckedClose(revision, guard) => {
                     let Some(active) = self.project.active.take() else {
@@ -765,6 +783,22 @@ impl App {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn project_message_for_recovery_test(&self) -> Option<&str> { self.project.message.as_deref() }
+    #[cfg(test)]
+    pub(super) fn pause_project_prepare_for_recovery_test(&self) -> (crossbeam_channel::Receiver<()>, Sender<()>) {
+        self.project.worker.as_ref().unwrap().pause_next(worker::Stage::Prepared)
+    }
+    pub(super) fn recovery_project_path(&self) -> Option<PathBuf> {
+        self.project.current_path.clone()
+    }
+    pub(super) fn recovery_project_busy(&self) -> bool {
+        self.project.busy() || self.project.committing() || !self.project.dialog_is_closed()
+    }
+    pub(super) fn request_recovery_restore(&mut self, candidate: crate::recovery::Candidate) {
+        self.request_project_action(Action::Recover(candidate));
+    }
+
     /// Read-only observations for the guided native project workflow.
     pub(super) fn project_help_state(&mut self) -> (Option<PathBuf>, bool, bool) {
         (self.project.current_path.clone(), self.project_dirty(), self.project.busy() || self.project.committing())
@@ -795,6 +829,9 @@ impl App {
                     |ui| {
                         self.undo_menu(ui);
                         let menu = ui.menu_button("Project", |ui| {
+                            let recovery = ui.button("Autosave and recovery…");
+                            help::annotate(ui, &recovery, help::Control::RecoveryOpen);
+                            if recovery.clicked() { self.recovery.open = true; ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);
                             if response.clicked() {
@@ -855,6 +892,8 @@ impl App {
                         " · not saved to a file"
                     }
                 ));
+                let recovery_text = self.recovery_toolbar_text();
+                if ui.button(recovery_text).help(ui, HelpControl::RecoveryOpen).clicked() { self.recovery.open = true; }
                 if self.project.awaiting_snapshot.is_some() {
                     ui.label("Waiting for project display…");
                 }
