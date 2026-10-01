@@ -47,3 +47,14 @@ Logs are `/tmp/issue102-consent-red.log`, `issue102-consent-green.log`,
 `issue102-consent-support.log`, `issue102-consent-native.log`, and
 `issue102-consent-build.log`. Final full suite and performance qualification are
 performed on the parent's ordered assembled stack.
+
+Duplicate-reference follow-up: the actual collector can retain A/B/A recovery
+references. The new actual-App regression confirms both A controls have distinct
+native action identities and neither substitutes another record or mutates the
+project. This regression also passed before the explicit reference-index salt,
+because egui already distinguished the controls by their parent insertion
+positions. The index change makes that identity intentional; it is hardening
+and existing-behavior coverage, not a second reproduced defect. All eleven
+support App groups pass in 3.06 seconds with two test threads. Baseline-pass
+evidence is `/tmp/issue102-duplicate-red.log` (despite its provisional filename);
+the final result is `/tmp/issue102-duplicate-final.log`.
