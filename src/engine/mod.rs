@@ -825,7 +825,7 @@ impl RtEngine {
             .collect();
         let mut e = Self {
             undo: undo::Journal::default(),
-            project: project::Handle::new(),
+            project: project::Handle::new(sr as u32),
             project_pending: None,
             project_waiting: None,
             project_sealed: false,
@@ -910,6 +910,7 @@ impl RtEngine {
             return;
         }
         self.sr = sr as f32;
+        self.project.set_sample_rate(sr);
         let active_history=self.active_recording_history();
         self.undo.prepare_sample_rate(self.sr,active_history);
         self.metro = metronome::Click::new(self.sr);
@@ -2570,10 +2571,9 @@ pub struct Engine {
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
     pub(crate) initial_playback: [load_receipt::Receipt; DECKS],
-    // Production always owns a live stream. Only the test constructor below
-    // omits hardware while retaining the real command and snapshot paths.
+    // Production owns the audio manager; it may retain a stopped graph after
+    // backend failure while still serving project Save/Open/Close.
     _audio: Option<audio::AudioOut>,
-    sample_rate: u32,
 }
 
 impl Engine {
@@ -2591,7 +2591,6 @@ impl Engine {
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let audio = audio::start_with_settings(rt, &settings.audio)?;
-        let sample_rate = audio.sr;
         let midi = midi::MidiHub::start_with_policy(tx.clone(), snap.clone(), settings.midi_inputs.clone())?;
         Ok(Self {
             undo,
@@ -2602,7 +2601,6 @@ impl Engine {
             midi,
             initial_playback,
             _audio: Some(audio),
-            sample_rate,
         })
     }
 
@@ -2625,7 +2623,6 @@ impl Engine {
                 midi: midi::MidiHub::without_devices(),
                 initial_playback,
                 _audio: None,
-                sample_rate,
             },
             rt,
         )
@@ -2642,10 +2639,11 @@ impl Engine {
         s
     }
 
-    pub fn output_info(&self) -> Option<&audio::OutputInfo> { self._audio.as_ref().map(|output| &output.info) }
+    pub fn output_info(&self) -> Option<audio::OutputInfo> { self._audio.as_ref().and_then(|output| output.handle.status().active.clone()) }
+    pub fn audio_handle(&self) -> Option<audio::owner::Handle> { self._audio.as_ref().map(|output|output.handle.clone()) }
 
     pub fn sr(&self) -> u32 {
-        self.sample_rate
+        self.project.sample_rate()
     }
 }
 

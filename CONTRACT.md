@@ -693,7 +693,7 @@ once before encoding the request.
   supported configurations. Unknown backend buffer limits are labeled, and startup
   errors do not silently pick another route. Main stereo uses channels 1/2; mono sums
   L/R; additional channels are silent. Independent cue routing is not implemented.
-  Changes are visibly pending restart. Explicit recovery can use system-default
+  Saved changes remain pending until a confirmed live audio change (#94) or restart. Explicit recovery can use system-default
   audio for one launch without changing the saved profile.
 - MIDI startup uses the exact saved policy. Live policy changes use the manager's
   generation-qualified requested/applied receipt. Preview and Cancel have no MIDI
@@ -711,7 +711,7 @@ once before encoding the request.
 - Unknown versions/fields, duplicate profile/shortcut keys, invalid values, unknown
   shortcut actions and effective shortcut collisions are rejected without rewriting
   the file. The supported version-1 single-profile form migrates losslessly in memory;
-  an explicit save writes version 2. Recovery Reset preserves prior bounded regular
+  an explicit save writes version 3; version-2 profiles migrate with default calibration/format fields. Recovery Reset preserves prior bounded regular
   file bytes in a private sibling backup before replacing them with defaults.
 - Export contains only the typed preference model. No credentials, environment,
   connection handles or runtime tokens are serialized. Device names and explicit
@@ -737,3 +737,44 @@ once before encoding the request.
 - In-app shortcuts reflect active preferences. The checked offline manual uses
   the canonical defaults and the same control/lesson catalogue; its golden test
   must pass when handlers, metadata or default bindings change.
+
+### Professional audio devices and qualified latency (#94)
+
+- Preferences version 3 persists the exact backend/device names, output format/rate/
+  channels/buffer and optional calibration input/route/level. Unknown fields/formats
+  fail closed. Versions 1/2 migrate in memory; migration never rewrites a file alone.
+  CPAL exposes logical names rather than stable hardware serial identities; missing
+  or duplicate explicit names fail visibly. Preview enumerates both directions and
+  only offers supported choices within the application's validated limits.
+- Saving audio intent does not switch a stream. A separate preview and confirmation
+  stops decks/clips/captured and physical gates before applying the current advertised
+  target. Exact preview drift is rejected; failed opens restore the prior exact plan.
+  Cancel before the atomic activation decision rolls back; a later cancellation cannot
+  misreport an already applied output. Neither success nor rollback resumes playback.
+- Linux ALSA streams are created/played/dropped on one audio-owner thread. CPAL 0.15.3
+  ALSA Stream Drop wakes and joins the callback worker. A unique graph lease returns
+  through a preallocated one-slot channel; callbacks never share or lock a renderer.
+  Other backend ownership contracts are not assumed supported. A missing return fails
+  closed; blocking driver calls are not claimed interruptible. Shutdown independently
+  silences managed output and probe callbacks, including a delayed opening stream.
+- Audio operations share the project admission seal; physical releases remain accepted.
+  On double failure the owner retains a stopped graph, rejects creative input via an
+  independent offline flag, and services zero-frame project work for capture/Save,
+  install/New/Open and Close. The audio guard releases only its own seal. Project DSP
+  preparation reads the current logical rate; an obsolete-rate install is rejected.
+- The displayed stream configuration is backend-accepted logical configuration, not
+  physical negotiation. Observed callback frames and CPAL's output scheduling estimate
+  are separate. Requested input/output buffer durations form a labeled partial roundtrip
+  estimate; unknown buffer sizes make that estimate unavailable. Exact physical rate,
+  converter/driver roundtrip and dropped-buffer counts are not fabricated.
+- Loopback runs only after explicit cable/route/level confirmation, with the session
+  stopped. Its selected input is temporary and never monitored into output. Three
+  distinct coded probes stay between -60 and -24 dBFS on one chosen output; capture,
+  timestamps and duration are bounded. Signal matching and quality checks run off audio.
+  Silence/noise/ambiguous echoes/clipping/nonfinite data/missing stamps/backend failure/
+  timeout/inconsistent repeated timing yield no measurement. Cancellation invalidates
+  prior evidence. Accepted evidence names its profile and exact input/output plans.
+- The measured quantity is common-host callback-entry-to-callback-entry loopback return
+  time, with nominal callback resolution at the logical rate and repeat spread. It is
+  not converter-only latency, and does not subtract unrelated CPAL stream clocks.
+  No physical probe or controller qualification was performed for this change.

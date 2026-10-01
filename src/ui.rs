@@ -37,6 +37,7 @@ mod deck_time_tests;
 mod licenses;
 mod accessibility;
 mod preferences;
+mod audio_settings;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -80,6 +81,7 @@ mod font_selection_tests;
 
 pub struct App {
     settings: preferences::Settings,
+    audio_settings: audio_settings::Panel,
     diagnostics: diagnostics::Diagnostics,
     licenses: licenses::Licenses,
     engine: Engine,
@@ -165,6 +167,7 @@ impl App {
         let playback_watches = play_history::initial_watches(&engine);
         let theme_requests = engine.cmd.theme_requests().attach();
         let mut app = Self {
+            audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             settings: preferences::Settings::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             licenses: licenses::Licenses::default(),
@@ -547,6 +550,7 @@ impl App {
             self.submission_error.set(submissions.last_error);
         }
         self.poll_preferences(ctx);
+        self.poll_audio_settings(ctx);
         self.poll_theme(ctx);
         if !self.project.committing() { self.poll_loads(); }
         self.snap = self.engine.snapshot();
@@ -644,6 +648,7 @@ impl App {
             });
         }
         self.preferences_ui(ctx);
+        self.audio_settings_ui(ctx);
         self.diagnostics_panel(ctx);
         self.licenses_panel(ctx);
         self.clip_gain_editor(ctx);
