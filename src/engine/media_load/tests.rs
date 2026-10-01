@@ -3,7 +3,7 @@ use crate::engine::{Command, CommandPort, RtEngine, Snapshot};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-fn sample(name: &str) -> DecodedAudio {
+pub(super) fn sample(name: &str) -> DecodedAudio {
     DecodedAudio {
         sample: crate::engine::dsp::Sample {
             name: name.into(),

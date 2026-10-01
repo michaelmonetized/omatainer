@@ -1,7 +1,7 @@
 //! File decoding is transactional: detected damage never produces a loadable
 //! partial Sample. Unknown/estimated lengths remain explicitly unverified.
 
-use super::dsp::{detect_bpm, peaks_3band, Sample};
+use super::dsp::{detect_bpm, peaks_3band_with_cancel, Sample};
 use std::fmt;
 use std::path::Path;
 use symphonia::core::audio::SampleBuffer;
@@ -240,7 +240,7 @@ pub(crate) fn decode_audio_for_show(path: &Path, cancelled: impl Fn() -> bool, p
     })
 }
 fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>) -> Result<DecodedAudio, DecodeFailure> {
-    decode_source(path, None, None, cancelled, analyze)
+    decode_source(path, None, None, cancelled, analyze, true, |_, _| {})
 }
 
 /// Sampler preparation already owns a regular, fingerprint/hash-qualified
@@ -253,7 +253,15 @@ pub(crate) fn decode_sampler_file(
     pcm_bytes: u64,
     cancelled: impl Fn() -> bool,
 ) -> Result<DecodedAudio, DecodeFailure> {
-    decode_source(path, Some(file), Some(pcm_bytes), cancelled, |_, _, _| None)
+    decode_source(path, Some(file), Some(pcm_bytes), cancelled, |_, _, _| None, true, |_, _| {})
+}
+/// Background analysis shares the strict decoder and exact open descriptor,
+/// but computes only requested optional fields after decoding. No PCM escapes
+/// the analysis worker's result boundary.
+pub(crate) fn decode_analysis_file(path: &Path, file: std::fs::File,
+    cancelled: impl Fn() -> bool, progress: impl Fn(u64, Option<u64>)) -> Result<DecodedAudio, DecodeFailure> {
+    decode_source(path, Some(file), Some(crate::track_analysis::MAX_PCM_BYTES), cancelled,
+        |_, _, _| None, false, progress)
 }
 fn decode_source(
     path: &Path,
@@ -261,6 +269,8 @@ fn decode_source(
     pcm_limit: Option<u64>,
     cancelled: impl Fn() -> bool,
     analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>,
+    waveform: bool,
+    progress: impl Fn(u64, Option<u64>),
 ) -> Result<DecodedAudio, DecodeFailure> {
     let mut diagnostics = DecodeDiagnostics::default();
     check_cancel(&cancelled, DecodeStage::Open, &diagnostics)?;
@@ -413,6 +423,7 @@ fn decode_source(
             ));
         }
         diagnostics.decoded_frames += (samples.samples().len() / current.channels.count()) as u64;
+        progress(diagnostics.decoded_frames, diagnostics.expected_frames);
         diagnostics.decoded_packets += 1;
         packet_end = packet_end.max(packet.ts.saturating_add(packet.dur));
         data.extend_from_slice(samples.samples());
@@ -460,7 +471,10 @@ fn decode_source(
     }
     check_cancel(&cancelled, DecodeStage::Analysis, &diagnostics)?;
     let ch = spec.channels.count() as u16;
-    let peaks = peaks_3band(&data, ch, 2048);
+    let peaks = if waveform {
+        peaks_3band_with_cancel(&data, ch, 2048, &cancelled).ok_or_else(||
+            failure(DecodeFailureKind::Cancelled, DecodeStage::Analysis, &diagnostics, "decode cancelled"))?
+    } else { Vec::new() };
     check_cancel(&cancelled, DecodeStage::Analysis, &diagnostics)?;
     let analysis = analyze(&data, ch, spec.rate);
     diagnostics.analysis_deferred = analysis.is_none();
