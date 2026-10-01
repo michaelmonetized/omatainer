@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix="omatainer-midi-status-") as directory:
         "shared_midi_status_matches_gui_protocol_and_survives_audio_publication",
     ], cwd=root, env=env, check=True)
     native = json.loads(evidence.read_text())
-    assert len(native) == 4
+    assert len(native) == 5
     shutil.copy2(root / "plugin/Service.qml", work / "Service.qml")
     # This fixture exercises the real state's consumer, without launching the
     # installed application's follower or touching its live socket.
@@ -51,4 +51,4 @@ ShellRoot {
     lines = [line.split(marker, 1)[1] for line in run.stdout.splitlines() if marker in line]
     assert run.returncode == 0 and len(lines) == 1, run.stdout
     assert json.loads(lines[0]) == [frame["midi"] for frame in native]
-    print("PASS: native GUI/shared snapshot/private IPC and real Service.qml agree on all four MIDI states")
+    print("PASS: native GUI/shared snapshot/private IPC and real Service.qml agree on all five MIDI states")

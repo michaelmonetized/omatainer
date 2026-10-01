@@ -58,6 +58,13 @@ controls. Device-name selection and synthetic MIDI tests do not establish
 physical compatibility. Controller QA remains pending; see the
 [APC40 mapping evidence](docs/validation/issue-38-apc40-profiles.md).
 
+Ctrl+M shows each MIDI port's discovery/connection state and failure reason.
+**Retry / rescan MIDI** checks current ports in a background worker and retries
+failed connections without reopening working ones. Keyboard and mouse remain
+available throughout. A disconnected device is detected on an explicit rescan
+or when its input worker ends; automatic hotplug detection is not implemented.
+See the [connection lifecycle validation](docs/validation/issue-73-midi-connections.md).
+
 MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
 their accepted count and last source in `midi_clock` status; this reception hook
 does not synchronize tempo or phase. See the [MIDI framing validation](docs/validation/issue-41-midi-realtime.md).
