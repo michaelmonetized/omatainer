@@ -17,6 +17,7 @@ mod bpm;
 use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod library_view;
+mod key_hints;
 mod clip_gain;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
@@ -790,6 +791,7 @@ impl App {
                     self.load_sel(1);
                 }
                 ui.label(RichText::new("↓ bpm up   ↑ bpm down   same bpm → key → name").size(10.0).color(t.muted));
+                ui.label(RichText::new("file keys: hints").size(10.0).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
                     .on_hover_text(progress);
@@ -1071,21 +1073,14 @@ fn split_artist_title(stem: &str) -> (String, String) {
 
 fn parse_tags(stem: &str) -> (f32, String) {
     let mut bpm = 0.0f32;
-    let mut key = "—".into();
     for tok in stem.split(|c: char| !c.is_ascii_alphanumeric()) {
         if let Ok(n) = tok.parse::<f32>() {
             if (60.0..200.0).contains(&n) {
                 bpm = n;
             }
         }
-        let u = tok.to_uppercase();
-        if matches!(u.as_str(), "A" | "B" | "C" | "D" | "E" | "F" | "G" | "AM" | "BM" | "CM" | "DM" | "EM" | "FM" | "GM" | "A#" | "C#" | "D#" | "F#" | "G#" | "BB" | "DB" | "EB" | "GB" | "AB") {
-            if tok.len() <= 3 {
-                key = u;
-            }
-        }
     }
-    (bpm, key)
+    (bpm, key_hints::from_filename(stem).unwrap_or_else(|| "—".into()))
 }
 
 fn sort_crate(items: &mut [LibItem]) {
