@@ -1,3 +1,4 @@
+mod mixer_gain;
 mod arp;
 mod recording;
 #[cfg(test)]
@@ -144,6 +145,7 @@ pub struct TrackRt {
     pub scene_bus: usize,
     pub gain: f32,
     pub pan: f32,
+    mixer_gain: mixer_gain::GainPair,
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
@@ -412,6 +414,9 @@ pub struct RtEngine {
     pub view: View,
     pub xfader: f32,
     pub xfader_curve: f32,
+    xfader_gain: mixer_gain::GainPair,
+    #[cfg(test)]
+    legacy_gain_math: bool,
     pub master: f32,
     pub cue_mix: f32,
     pub tracks: Vec<TrackRt>,
@@ -706,6 +711,7 @@ impl RtEngine {
                 scene_bus: 0,
                 gain: 0.8,
                 pan: 0.0,
+                mixer_gain: mixer_gain::GainPair::default(),
                 mute: false,
                 solo: false,
                 armed: false,
@@ -733,6 +739,9 @@ impl RtEngine {
             view: View::Session,
             xfader: 0.5,
             xfader_curve: 0.35,
+            xfader_gain: mixer_gain::GainPair::default(),
+            #[cfg(test)]
+            legacy_gain_math: false,
             master: 0.85,
             cue_mix: 0.0,
             tracks,
@@ -800,6 +809,8 @@ impl RtEngine {
             return;
         }
         self.sr = sr as f32;
+        self.xfader_gain = mixer_gain::GainPair::default();
+        for track in &mut self.tracks { track.mixer_gain = mixer_gain::GainPair::default(); }
         // Rate changes reset master tails on both channels together. Controls
         // are reapplied from fx_wet at the next block, as for the delay before.
         self.delay = std::array::from_fn(|_| Delay::new((sr as f32 * 2.0) as usize));
@@ -953,6 +964,7 @@ impl RtEngine {
         }
         let t0 = Instant::now();
         let frames = out.len() / 2;
+        if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for channel in 0..2 {
             self.delay[channel].time_samples = (spb * 0.75) as f32;
@@ -977,7 +989,7 @@ impl RtEngine {
             self.pad_output = self.tick_pad_sources();
             let mut scene_inputs = [[0.0_f32; 2]; SCENES];
             for ti in 0..self.tracks.len() {
-                let (tl, tr, pfl) = self.render_track(ti, any_solo);
+                let (tl, tr, pfl) = self.render_track_cached(ti, any_solo);
                 if pfl {
                     cue_l += tl;
                     cue_r += tr;
@@ -996,7 +1008,14 @@ impl RtEngine {
 
             let (al, ar) = self.render_deck(0);
             let (bl, br) = self.render_deck(1);
-            let (ga, gb) = xfader_gains(self.xfader, self.xfader_curve);
+            let [ga, gb] = {
+                #[cfg(test)]
+                if self.legacy_gain_math {
+                    mixer_gain::crossfader_gains(self.xfader, self.xfader_curve)
+                } else { self.xfader_gain.tick() }
+                #[cfg(not(test))]
+                self.xfader_gain.tick()
+            };
             let dl = al * ga + bl * gb;
             let dr = ar * ga + br * gb;
             l += dl;
@@ -1044,7 +1063,16 @@ impl RtEngine {
         }
     }
 
+    // Direct numerical fixtures treat each call as a one-frame block. The
+    // real callback prepares all control gains once before its sample loop.
+    #[cfg(test)]
     fn render_track(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
+        let track = &mut self.tracks[ti];
+        track.mixer_gain.prepare([track.gain, track.pan], self.sr, mixer_gain::pan_gains);
+        self.render_track_cached(ti, any_solo)
+    }
+
+    fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
@@ -1161,11 +1189,17 @@ impl RtEngine {
         let r = track.eq_right.tick(s + pad_r);
         let [fl, fr] = track.fx.process_stereo([l, r], self.sr);
         track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
+        let [gl, gr] = {
+            #[cfg(test)]
+            if self.legacy_gain_math {
+                mixer_gain::pan_gains(track.gain, track.pan)
+            } else { track.mixer_gain.tick() }
+            #[cfg(not(test))]
+            track.mixer_gain.tick()
+        };
         if silent {
             (0.0, 0.0, false)
         } else {
-            let gl = (1.0 - track.pan.max(0.0)).sqrt() * track.gain;
-            let gr = (1.0 + track.pan.min(0.0)).sqrt() * track.gain;
             (fl * gl, fr * gr, false)
         }
     }
@@ -2619,3 +2653,6 @@ mod tests {
         assert!(rt.decks[1].title.contains("Harmony"));
     }
 }
+
+#[cfg(test)]
+mod mixer_gain_tests;
