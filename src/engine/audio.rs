@@ -156,6 +156,9 @@ pub(crate) struct OutputCallback {
 }
 
 impl OutputCallback {
+    #[cfg(test)]
+    pub(crate) fn renderer_for_test(&self) -> &RtEngine { &self.rt }
+
     pub(crate) fn new(rt: RtEngine, channels: usize) -> Self {
         Self {
             rt: GraphLease {

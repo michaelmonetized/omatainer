@@ -53,6 +53,7 @@ fn prepared(role: &str) -> (Engine, RtEngine) {
 
 fn workload(role: &str, frames: usize) -> Value {
     let (engine, rt) = prepared(role);
+    let bpm = rt.bpm as f64;
     let mut callback = OutputCallback::new(rt, 2);
     let mut output = vec![0.0f32; frames * 2];
     for _ in 0..WARMUP {
@@ -140,10 +141,38 @@ fn workload(role: &str, frames: usize) -> Value {
         // this is outside the measured production callback, never an RT yield.
         std::thread::yield_now();
     }
+    let rt = callback.renderer_for_test();
+    let recording = matches!(role, "composer" | "hybrid");
+    let expected_added = if recording { BLOCKS / 16 } else { 0 };
+    let original_notes_intact = role == "live_dj"
+        || rt.tracks.iter().enumerate().all(|(track, t)| {
+            let notes = &t.clips[0].notes;
+            notes.len() == 1024 + if track == 1 { expected_added } else { 0 }
+                && notes.iter().take(1024).enumerate().all(|(n, note)| {
+                    note.pitch == 36 + ((n + track * 5) % 48) as u8
+                        && note.start == n as f32 * 0.125
+                        && note.len == 0.45
+                        && note.vel == 45 + (n % 55) as u8
+                })
+        });
+    let exact_recorded_notes = !recording || {
+        let notes = &rt.tracks[1].clips[0].notes;
+        notes.len() == 1024 + expected_added
+            && notes.iter().skip(1024).enumerate().all(|(n, note)| {
+                let start = (WARMUP + n * 16) as f64 * frames as f64 / RATE as f64 * bpm / 60.0;
+                let duration = 8.0 * frames as f64 / RATE as f64 * bpm / 60.0;
+                note.pitch == 48 + (n % 24) as u8
+                    && note.vel == 87
+                    && (note.start as f64 - start.rem_euclid(128.0)).abs() < 0.0001
+                    && (note.len as f64 - duration).abs() < 0.000001
+            })
+            && !rt.has_held_project_notes()
+    };
     json!({"metrics":{"allocations":allocations,"frees":frees,
         "rejected_commands":rejected,"rms":(energy/(BLOCKS*output.len()) as f64).sqrt(),"peak":peak},
         "samples":{"callback_wall_ns":wall,"render_cpu_ns":cpu},
         "checks":{"finite_output":true,"nonzero_output":energy>0.0,
+            "original_notes_intact":original_notes_intact,"exact_recorded_notes":exact_recorded_notes,
             "all_commands_applied":engine.cmd.len()==0 && engine.undo.view().failures==0},
         "observations":{"quantized_audio_hash":format!("{hash:016x}")}})
 }
