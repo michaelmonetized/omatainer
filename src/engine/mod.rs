@@ -2758,7 +2758,7 @@ impl Engine {
         let (cmd, rx)=CommandPort::channel(256);
         let ui_requests=cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap=Arc::new(Mutex::new(Snapshot::default()));
-        let mut rt=RtEngine::new(48000.0,rx,snap.clone());
+        let mut rt=RtEngine::try_new(48000.0,rx,snap.clone()).map_err(anyhow::Error::msg)?;
         let initial_playback=std::array::from_fn(|deck|rt.decks[deck].load_receipt.clone().unwrap());
         // Start empty and stopped. Builtin source generation is application
         // code; no external media/project is opened or automatically resumed.
@@ -2769,8 +2769,9 @@ impl Engine {
         }
         let undo=rt.enable_undo()?;
         let project=rt.project.clone();
+        let sampler_assets=rt.sampler_assets.clone();
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,_audio:Some(audio)})
+        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
