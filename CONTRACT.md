@@ -219,3 +219,11 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Alt-click an occupied clip to edit its gain from zero to 1.5, with explicit
   zero/unity controls. Snapshots and serialized clips expose the same value;
   nonfinite edits are rejected. Audio-clip playback remains a separate feature.
+
+## Deck filter sweep
+
+- Center (`0.47` through `0.53`) is transparent. Leftward motion monotonically
+  increases low-pass attenuation; rightward motion independently increases
+  high-pass attenuation. Each channel has independent filter history.
+- The active response meets bypass continuously, with a bounded 5 ms control
+  slew for full-range jumps. Returning to center clears old branch history.

@@ -1,4 +1,7 @@
 mod arp;
+mod deck_filter;
+#[cfg(test)]
+mod deck_filter_tests;
 mod recording;
 #[cfg(test)]
 mod arp_tests;
@@ -60,7 +63,7 @@ mod compose_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
-    InputKey, Sample, Svf, ThreeBand,
+    InputKey, Sample, ThreeBand,
 };
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -236,7 +239,8 @@ pub struct DeckRt {
     pub sync: bool,
     pub gain: f32,
     pub eq: [ThreeBand; 2],
-    pub filter: [Svf; 2],
+    pub filter: [deck_filter::ChannelFilter; 2],
+    filter_position: f32,
     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
     pub filter_amt: f32,   // 0.5 = noon
     pub pfl: bool,
@@ -288,7 +292,8 @@ impl DeckRt {
             sync: false,
             gain: 0.85,
             eq: [ThreeBand::new(sr); 2],
-            filter: [Svf::default(); 2],
+            filter: [deck_filter::ChannelFilter::default(); 2],
+            filter_position: 0.5,
             filter_morph: 0.5,
             filter_amt: 0.5,
             pfl: false,
@@ -342,7 +347,7 @@ impl DeckRt {
                     eq.low.z = 0.0;
                     eq.high.z = 0.0;
                 }
-                self.filter = [Svf::default(); 2];
+                self.filter = [deck_filter::ChannelFilter::default(); 2];
             }
             DeckTransition::Jog => self.transition_remaining = 0,
         }
@@ -857,7 +862,8 @@ impl RtEngine {
             for eq in &mut d.eq {
                 eq.set_sample_rate(self.sr);
             }
-            d.filter = [Svf::default(); 2];
+            d.filter = [deck_filter::ChannelFilter::default(); 2];
+            d.filter_position = d.filter_amt;
             d.grain_frames = 2.0 * (GRAIN_HOP * self.sr / 48_000.0).round().max(1.0);
             d.rate_smoothing = dsp::rate_blend(0.08, self.sr);
             d.last_output = [0.0; 2];
@@ -1310,14 +1316,11 @@ impl RtEngine {
         r *= g;
         l = self.decks[di].eq[0].tick(l);
         r = self.decks[di].eq[1].tick(r);
-        let f = self.decks[di].filter_amt;
-        if (f - 0.5).abs() > 0.03 {
-            let morph = if f < 0.5 { 0.0 } else { 1.0 };
-            let amt = (f - 0.5).abs() * 2.0;
-            let cut = 200.0 + amt * 8000.0;
-            l = self.decks[di].filter[0].process(l, cut, 0.4, self.sr, morph);
-            r = self.decks[di].filter[1].process(r, cut, 0.4, self.sr, morph);
-        }
+        let deck = &mut self.decks[di];
+        deck.filter_position = deck_filter::slew(deck.filter_position, deck.filter_amt, self.sr);
+        let curve = deck_filter::Curve::at(deck.filter_position, self.sr);
+        l = deck.filter[0].process(l, curve);
+        r = deck.filter[1].process(r, curve);
         [l, r] = self.decks[di].transition_output([l, r]);
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
         (l, r)
@@ -1592,7 +1595,9 @@ impl RtEngine {
                 }
             }
             Command::DeckFilter { deck, value } => {
-                self.decks[deck as usize % DECKS].filter_amt = value.clamp(0.0, 1.0);
+                if value.is_finite() {
+                    self.decks[deck as usize % DECKS].filter_amt = value.clamp(0.0, 1.0);
+                }
             }
             Command::DeckPfl { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
