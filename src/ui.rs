@@ -32,6 +32,7 @@ use crate::engine::load_receipt::{Media, Receipt};
 mod load_status_tests;
 mod keyboard;
 mod shortcuts;
+mod deck_selection;
 use library_scan::LibraryScan;
 
 #[cfg(test)]
@@ -61,6 +62,7 @@ pub struct App {
     engine: Engine,
     theme: Theme,
     fonts_set: bool,
+    deck_selection: deck_selection::Selection,
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
     library_scan: LibraryScan,
@@ -124,6 +126,7 @@ impl App {
             engine,
             theme,
             fonts_set: true,
+            deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
@@ -556,6 +559,7 @@ impl App {
     }
 
     fn scratch_row(&mut self, ui: &mut Ui, t: &Theme) {
+        self.deck_selection.begin_pointer_frame();
         ui.spacing_mut().item_spacing = Vec2::splat(4.0);
         let h = ui.available_height();
         let w = ui.available_width();
@@ -576,9 +580,12 @@ impl App {
                         ui.spacing_mut().item_spacing = Vec2::splat(gap);
                         for d in 0..DECKS {
                             let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
-                            vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
-                                self.send(Command::DeckSeek { deck: d as u8, frac });
+                            let wave = ui.scope(|ui| {
+                                vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
+                                    self.send(Command::DeckSeek { deck: d as u8, frac });
+                                });
                             });
+                            self.select_deck_from_pointer(ui, wave.response.rect, d);
                         }
                     });
                     let mut x = self.snap.xfader;
@@ -598,7 +605,7 @@ impl App {
         let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
         let col = t.track_color(d);
         let h = wave_h + fader_h + 4.0;
-        ui.horizontal(|ui| {
+        let panel = ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_min_height(h);
             if d == 0 {
@@ -613,6 +620,11 @@ impl App {
                 self.speed_col(ui, t, d, &snap, h, sq);
             }
         });
+        self.select_deck_from_pointer(ui, panel.response.rect, d);
+        if self.snap.selected_deck == d {
+            ui.painter().rect_stroke(panel.response.rect.expand(2.0), 3.0,
+                st(1.5, t.accent), egui::StrokeKind::Inside);
+        }
     }
 
     fn speed_col(&mut self, ui: &mut Ui, t: &Theme, d: usize, snap: &crate::engine::DeckSnap, h: f32, sq: f32) {
@@ -835,6 +847,7 @@ impl App {
                 if self.library_scan.active() && ui.button("cancel scan").clicked() {
                     self.library_scan.cancel();
                 }
+                self.deck_selectors(ui);
                 if ui.button("→ A").clicked() {
                     self.load_sel(0);
                 }
@@ -892,7 +905,7 @@ impl App {
                         self.lib_sel = i;
                         ui.memory_mut(|memory| memory.request_focus(focus));
                     }
-                    if resp.double_clicked() { self.load_sel(self.snap.selected_deck as u8); }
+                    if resp.double_clicked() { self.load_sel(self.load_target() as u8); }
                 }
             });
             ui.interact(output.inner_rect, focus, Sense::focusable_noninteractive());

@@ -293,6 +293,7 @@ impl Frame {
         target.selected_scene = rt.selected_scene;
         target.compose_target = rt.compose_target;
         target.selected_deck = rt.selected_deck;
+        target.selected_deck_request = rt.selected_deck_request;
         target.audio = rt.telemetry.read();
         target.cpu = target.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
         target.commands = rt.command_stats;
