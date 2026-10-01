@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -155,6 +155,8 @@ pub struct Profile {
     #[serde(deserialize_with = "unique_map")]
     pub shortcuts: BTreeMap<String, Option<Shortcut>>,
     pub startup: Startup,
+    #[serde(default)]
+    pub recovery: crate::recovery::Config,
 }
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
@@ -169,6 +171,7 @@ impl Profile {
             },
             shortcuts_enabled: true,
             shortcuts: BTreeMap::new(),
+            recovery: crate::recovery::Config::default(),
             startup: Startup {
                 performance_mode: false,
                 scan_library: true,
@@ -243,6 +246,7 @@ impl Preferences {
 
 impl Profile {
     pub fn validate(&self) -> Result<(), String> {
+        self.recovery.validate()?;
         let calibration = &self.audio.calibration;
         for name in [&self.audio.backend, &calibration.device]
             .into_iter()
