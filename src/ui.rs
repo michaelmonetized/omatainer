@@ -19,6 +19,7 @@ use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
 #[cfg(test)]
 mod load_status_tests;
+mod keyboard;
 use library_scan::LibraryScan;
 
 #[cfg(test)]
@@ -31,6 +32,8 @@ mod controller_load_tests;
 mod compose_tests;
 #[cfg(test)]
 mod library_view_tests;
+#[cfg(test)]
+mod keyboard_tests;
 
 pub struct App {
     engine: Engine,
@@ -56,6 +59,7 @@ pub struct App {
     snap: Snapshot,
     last_play_idx: usize,
     pad_held: [bool; 16],
+    shortcut_focus: keyboard::ShortcutFocus,
 }
 
 #[derive(Clone)]
@@ -110,6 +114,7 @@ impl App {
             snap,
             last_play_idx: 0,
             pad_held: [false; 16],
+            shortcut_focus: keyboard::ShortcutFocus::default(),
         };
         app.publish_library_selection();
         app
@@ -333,6 +338,7 @@ impl eframe::App for App {
 
 impl App {
     fn update_frame(&mut self, ctx: &egui::Context) {
+        self.shortcut_focus.begin_frame(ctx);
         self.poll_ui_requests();
         self.poll_library_scan();
         let submissions = self.engine.cmd.stats();
@@ -352,7 +358,6 @@ impl App {
         }
         self.poll_loads();
         self.snap = self.engine.snapshot();
-        self.handle_keys(ctx);
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
             i.raw.dropped_files.iter().find_map(|f| f.path.clone())
@@ -397,6 +402,7 @@ impl App {
             });
 
         if let Some(error) = self.submission_error.get() {
+            keyboard::block_for_dialog(ctx);
             egui::Window::new("Action was not accepted")
                 .collapsible(false)
                 .resizable(false)
@@ -423,6 +429,8 @@ impl App {
                 }
             });
         }
+        // Text fields and dialogs get this frame's keys before global actions.
+        self.handle_keys(ctx);
         if animating {
             ctx.request_repaint();
         } else {
@@ -434,23 +442,25 @@ impl App {
 
 impl App {
     fn handle_keys(&mut self, ctx: &egui::Context) {
-        let mods = ctx.input(|i| i.modifiers);
+        if !self.shortcut_focus.globals_allowed(ctx) {
+            return;
+        }
         ctx.input(|i| {
             for ev in &i.events {
-                if let egui::Event::Key { key, pressed: true, repeat, .. } = ev {
+                if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
                     if *repeat {
                         continue;
                     }
                     match key {
-                        Key::Space => self.send(Command::TogglePlay),
-                        Key::Q if !mods.shift => self.send(Command::DeckPlay { deck: 0 }),
-                        Key::P => self.send(Command::DeckPlay { deck: 1 }),
-                        Key::A if !mods.ctrl => self.send(Command::DeckCue { deck: 0 }),
-                        Key::L => self.send(Command::DeckCue { deck: 1 }),
-                        Key::Slash if mods.shift => self.keys_open = !self.keys_open,
-                        Key::F1 => self.keys_open = !self.keys_open,
-                        Key::M if mods.ctrl => self.midi_open = !self.midi_open,
-                        Key::Escape => self.send(Command::CloseFx),
+                        Key::Space if mods.is_none() => self.send(Command::TogglePlay),
+                        Key::Q if mods.is_none() => self.send(Command::DeckPlay { deck: 0 }),
+                        Key::P if mods.is_none() => self.send(Command::DeckPlay { deck: 1 }),
+                        Key::A if mods.is_none() => self.send(Command::DeckCue { deck: 0 }),
+                        Key::L if mods.is_none() => self.send(Command::DeckCue { deck: 1 }),
+                        Key::Slash if mods.matches_exact(egui::Modifiers::SHIFT) => self.keys_open = !self.keys_open,
+                        Key::F1 if mods.is_none() => self.keys_open = !self.keys_open,
+                        Key::M if mods.matches_exact(egui::Modifiers::CTRL) => self.midi_open = !self.midi_open,
+                        Key::Escape if mods.is_none() => self.send(Command::CloseFx),
                         _ => {}
                     }
                 }
