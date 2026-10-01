@@ -523,7 +523,7 @@ pub struct RtEngine {
     // audio callback when installing a separately prepared project graph.
     sampler_assets: crate::sampler_bank::assets::Owner,
     pub pad_voices: [Option<crate::sampler_bank::resident::Voice>; 16],
-    pub sampler_audition: Option<(u64, crate::sampler_bank::resident::Voice)>,
+    pub sampler_audition: Option<sampler::ActiveAudition>,
     pad_destinations: [usize; 16],
     pad_output: [[f32; 2]; TRACKS],
     pad_targets: [Option<PadTarget>; 16],
@@ -979,6 +979,7 @@ impl RtEngine {
         let drums = build_kit(sr);
         self.install_sampler_rate_banks(sampler_banks);
         for voice in &mut self.pad_voices { *voice = None; }
+        if let Some(active) = &self.sampler_audition { active.ended(); }
         self.sampler_audition = None;
         self.pad_output.fill([0.0; 2]);
         self.sampler_poly.set_sample_rate(self.sr);
@@ -1607,11 +1608,12 @@ impl RtEngine {
                 }
             }
         }
-        if let Some((_, voice)) = &mut self.sampler_audition {
+        if let Some(active) = &mut self.sampler_audition {
+            let voice = &mut active.voice;
             if let Some((l, r)) = voice.tick(self.sr as f64) {
                 buses[voice.track][0] += l; buses[voice.track][1] += r;
             }
-            if voice.position >= voice.end { self.sampler_audition = None; }
+            if voice.position >= voice.end { self.finish_sampler_audition(); }
         }
         buses
     }
@@ -2370,8 +2372,8 @@ impl RtEngine {
             Command::SamplerEdit(edit) => self.apply_sampler_edit(edit),
             Command::SamplerAudition(request) => self.apply_sampler_audition(request),
             Command::SamplerAuditionStop { id } => {
-                if self.sampler_audition.as_ref().is_some_and(|(current, _)| *current == id) {
-                    self.sampler_audition = None;
+                if self.sampler_audition.as_ref().is_some_and(|active| active.id == id) {
+                    self.finish_sampler_audition();
                 }
             },
             Command::SamplerInst(i) => {

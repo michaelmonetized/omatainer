@@ -257,3 +257,59 @@ fn cancellation_linearizes_before_history_claim_and_late_cancel_preserves_actual
         }
     }
 }
+
+#[test]
+fn audition_uses_draft_range_gain_destination_without_pad_recording_and_reserved_stop_survives_saturation() {
+    let (engine, mut rt) = fixture();
+    let source = native_sample();
+    let bank = bank(&engine.sampler_assets, source.clone(), Controls { gain: 0.5, start_seconds: 10.0 / 16_000.0, end_seconds: Some(80.0 / 16_000.0) });
+    rt.apply(Command::SamplerPad { pad: 0, on: true });
+    rt.recording = true;
+    let physical = rt.pad_voices[0].as_ref().unwrap().audio.clone();
+    let checkpoint = engine.undo.checkpoint();
+    let notes = rt.tracks[4].clips[0].notes.clone();
+    let ack = Ack::new();
+    engine.send(Command::SamplerAudition(Audition { id: 41, bank: bank.data, slot: 0, track: 6, ack: ack.clone() })).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [0.0; 2])), test_alloc::Counts::default());
+    assert_eq!(ack.state(), EditState::Applied);
+    let active = rt.sampler_audition.as_ref().unwrap();
+    let voice = &active.voice;
+    assert_eq!((active.id, voice.gain, voice.track, voice.end), (41, 0.5, 6, 80.0));
+    assert!(Arc::ptr_eq(&voice.audio, &source));
+    assert_eq!(serde_json::to_string(&rt.tracks[4].clips[0].notes).unwrap(), serde_json::to_string(&notes).unwrap());
+    assert_eq!(engine.undo.checkpoint(), checkpoint);
+    // An unrelated stop cannot end the current audition.
+    rt.apply(Command::SamplerAuditionStop { id: 40 });
+    assert!(rt.sampler_audition.is_some());
+    while engine.send(Command::Master(0.8)).is_ok() {}
+    assert!(engine.send(Command::SamplerAuditionStop { id: 41 }).is_ok());
+    while engine.cmd.len() != 0 {
+        assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
+    }
+    assert!(rt.sampler_audition.is_none());
+    assert!(ack.ended());
+    assert!(Arc::ptr_eq(&rt.pad_voices[0].as_ref().unwrap().audio, &physical));
+}
+
+#[test]
+fn short_audition_end_receipt_and_final_editor_drop_are_retired_off_callback() {
+    let (engine, mut rt) = fixture();
+    let first = bank(&engine.sampler_assets, native_sample(), Controls { end_seconds: Some(2.0 / 16000.0), ..Controls::default() });
+    let ack = Ack::new(); let observer = ack.clone();
+    engine.send(Command::SamplerAudition(Audition { id: 70, bank: first.data, slot: 0, track: 0, ack })).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [0.0; 64])), test_alloc::Counts::default());
+    assert_eq!(observer.state(), EditState::Applied);
+    assert!(observer.ended(), "a voice shorter than snapshot cadence has an exact completion receipt");
+    assert!(rt.sampler_audition.is_none());
+    engine.send(Command::SamplerAuditionStop { id: 70 }).unwrap();
+    rt.process(&mut []);
+    let ack = Ack::new(); let weak = Arc::downgrade(&ack.0);
+    let bank = bank(&engine.sampler_assets, native_sample(), Controls { end_seconds: Some(2.0 / 16000.0), ..Controls::default() });
+    engine.send(Command::SamplerAudition(Audition { id: 71, bank: bank.data, slot: 0, track: 0, ack })).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [0.0; 64])), test_alloc::Counts::default());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while weak.upgrade().is_some() {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+}

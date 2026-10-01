@@ -106,8 +106,8 @@ impl Registry {
         }
         if let Some(shared) = self.owner.upgrade() {
             let state = shared.state();
-            shared.check()?;
             if !state.sealed {
+                shared.check()?;
                 shared.clients.fetch_add(1, Ordering::Relaxed);
                 drop(state);
                 return Ok(Owner(Arc::new(Client { shared })));
@@ -344,6 +344,8 @@ impl Drop for Client {
 #[derive(Clone)]
 pub(crate) struct Owner(Arc<Client>);
 impl Owner {
+    #[cfg(test)]
+    pub(crate) fn isolated_for_test(limits: Budget) -> Self { Registry::default().acquire(limits).unwrap() }
     /// Preparation/worker only. Never called by rendering or command apply.
     pub fn acquire() -> Result<Self, Error> {
         REGISTRY

@@ -242,3 +242,18 @@ fn native_rate_cropped_voice_is_bounded_and_full_source_preserves_legacy_samples
         assert!(full.tick(output_rate).is_none());
     }
 }
+
+#[test]
+fn a_fully_sealed_healthy_owner_can_be_replaced_before_its_worker_arc_is_dropped() {
+    let mut registry = Registry::default();
+    let owner = registry.acquire(Budget::limits()).unwrap();
+    let finishing = owner.0.shared.clone();
+    let id = finishing.id;
+    drop(owner);
+    wait(|| !finishing.health.alive.load(Ordering::Acquire));
+    assert!(finishing.state().sealed);
+    let next = registry.acquire(Budget::limits()).unwrap();
+    assert_ne!(next.0.shared.id, id);
+    assert!(!next.0.shared.state().sealed);
+    assert_eq!(next.available().unwrap(), Budget::limits());
+}
