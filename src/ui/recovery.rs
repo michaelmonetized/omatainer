@@ -98,10 +98,11 @@ impl App {
     }
     pub(super) fn start_recovery(&mut self, root: PathBuf) {
         self.recovery.root = Some(root.clone());
-        match Worker::start(
+        match Worker::start_with_scan(
             root,
             self.engine.project.clone(),
             self.engine.cmd.performance(),
+            !self.engine.safe_mode(),
         ) {
             Ok(worker) => self.recovery.worker = Some(worker),
             Err(error) => {

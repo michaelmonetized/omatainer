@@ -1,5 +1,7 @@
 mod project_file;
 mod recovery;
+mod support;
+mod startup;
 mod licenses;
 mod engine;
 mod library;
@@ -63,6 +65,8 @@ fn main() -> anyhow::Result<()> {
         args.remove(0);
         return ctl(&args);
     }
+    let launch = startup::Launch::parse(&args)?;
+    let paths = startup::Paths::environment()?;
     let socket = socket_path()?;
     // Ownership is established before opening audio/MIDI or constructing a
     // window. Keep it until the later IPC guard and GUI have both shut down.
@@ -71,15 +75,16 @@ fn main() -> anyhow::Result<()> {
     {
         instance::Acquisition::Owner(guard) => guard,
         instance::Acquisition::Existing => {
+            anyhow::ensure!(!launch.safe_mode, "Omatainer already owns this runtime. Safe mode did not focus, control or replace the existing session; close it explicitly first.");
             focus_existing();
             return Ok(());
         }
     };
-    let home = std::path::PathBuf::from(std::env::var_os("HOME").context("HOME is unavailable; cannot resolve user preferences")?);
-    let path = preferences::storage::default_path(std::env::var_os("XDG_CONFIG_HOME").as_deref(), &home);
-    let mut startup = preferences::worker::Startup::read(path, home);
-    let defaults_once = args.iter().any(|arg| arg == "--defaults-once");
-    if startup.blocked && !defaults_once {
+    let support = support::worker::Session::start(&paths.support,launch.safe_mode).ok();
+    if let Some(support)=&support {support.install_panic_hook();}
+    let mut startup = preferences::worker::Startup::read(paths.preferences, paths.home);
+    let defaults_once = launch.defaults_once;
+    if startup.blocked && !defaults_once && !launch.safe_mode {
         let retry = preferences::recovery::show(startup.diagnostic.as_deref().unwrap_or("Preferences are unavailable"), true)?;
         drop(_instance);
         return preferences::recovery::restart(retry);
@@ -91,14 +96,28 @@ fn main() -> anyhow::Result<()> {
         startup.diagnostic = Some(startup.diagnostic.map_or(notice.into(), |error| format!("{error}\n{notice}")));
     }
     let running_audio = profile.audio.clone();
-    let engine = match engine::Engine::start_with_settings(&profile) {
+    let engine = match if launch.safe_mode {engine::Engine::start_safe()} else {engine::Engine::start_with_settings(&profile)} {
         Ok(engine) => engine,
         Err(error) => {
+            if let Some(support)=&support {
+                support.port.event(crate::support::Code::AudioOpenFailed,Some(crate::support::FailureClass::Unavailable));
+                support.finish(crate::support::Exit::StartupFailed,Duration::from_secs(2));
+            }
+            if launch.startup_check {anyhow::bail!("safe startup project service could not be initialized");}
             let retry = preferences::recovery::show(&format!("Could not open the requested setup: {error:#}. Saved preferences were not changed."), false)?;
             drop(_instance);
             return preferences::recovery::restart(retry);
         }
     };
+    if launch.startup_check {
+        let result = startup::check_safe_engine(&engine,!startup.blocked);
+        drop(engine);
+        let marker_clean = support.as_ref().is_some_and(|session|session.finish(crate::support::Exit::Clean,Duration::from_secs(2)));
+        let mut report = result?;
+        report["support_marker_clean"] = marker_clean.into();
+        println!("{}",serde_json::to_string(&report)?);
+        return Ok(());
+    }
     let _ipc = ipc_server::start_at(&socket, engine.cmd.clone(), engine.snap.clone())
         .context("could not start the local control service; check the reported socket path and permissions")?;
 
@@ -120,6 +139,8 @@ fn main() -> anyhow::Result<()> {
         }),
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
+    drop(_ipc);
+    if let Some(support)=&support {support.finish(crate::support::Exit::Clean,Duration::from_secs(2));}
     Ok(())
 }
 

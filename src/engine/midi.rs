@@ -141,7 +141,7 @@ impl MidiHub {
         drop(worker);
     }
 
-    #[cfg(test)]
+    /// Explicit safe startup: no manager, discovery or OS port construction.
     pub(super) fn without_devices() -> Self {
         Self {
             connections: None,

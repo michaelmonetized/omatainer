@@ -36,6 +36,7 @@ pub(super) struct Status {
 }
 #[derive(Clone)]
 pub(super) struct Durable {
+    pub session: [u8;32],
     pub epoch: u64,
     pub revision: u64,
     pub view_revision: u64,
@@ -130,6 +131,9 @@ impl Worker {
         handle: crate::engine::project::Handle,
         performance: &crate::engine::performance::Handle,
     ) -> std::io::Result<Self> {
+        Self::start_with_scan(root,handle,performance,true)
+    }
+    pub fn start_with_scan(root:PathBuf,handle:crate::engine::project::Handle,performance:&crate::engine::performance::Handle,scan:bool)->std::io::Result<Self> {
         #[cfg(test)]
         let hooks = Hooks::default();
         #[cfg(test)]
@@ -137,11 +141,11 @@ impl Worker {
         #[cfg(test)]
         let (finished, finish) = bounded(1);
         let latest = Arc::new(ArcSwapOption::<Update>::empty());
-        let startup_work = performance.optional_work();
+        let startup_work = scan.then(||performance.optional_work());
         let startup_cancel = startup_work
-            .as_ref()
+            .as_ref().and_then(|work|work.as_ref().ok())
             .map(|work| work.cancel())
-            .unwrap_or_else(|_| Arc::new(AtomicBool::new(false)));
+            .unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
         let control = Arc::new(ArcSwap::from_pointee(Control {
             paused: false,
             cancel: startup_cancel,
@@ -193,8 +197,8 @@ impl Worker {
                 status.store(Arc::new(current.clone()));
                 let startup_token = control.load_full();
                 let (startup, startup_work) = match startup_work {
-                    Ok(work) => (crate::recovery::discover(&root, &work.cancel()).map_err(|e| e.to_string()), Some(work)),
-                    Err(error) => {
+                    Some(Ok(work)) => (crate::recovery::discover(&root, &work.cancel()).map_err(|e| e.to_string()), Some(work)),
+                    Some(Err(error)) => {
                         // A single metadata lookup is the essential startup notice.
                         // Full journal/PCM verification is optional guarded work.
                         let warnings = if std::fs::symlink_metadata(&root).is_ok() {
@@ -202,6 +206,7 @@ impl Worker {
                         } else { Vec::new() };
                         (Ok(crate::recovery::Inventory { warnings, ..Default::default() }), None)
                     }
+                    None => (Ok(crate::recovery::Inventory{warnings:vec!["Safe mode: recovery discovery is deferred. Use Refresh recovery list to explicitly verify retained copies.".into()],..Default::default()}),None),
                 };
                 control.rcu(|current| if Arc::ptr_eq(current, &startup_token) { Arc::new(Control::new(current.paused)) } else { current.clone() });
                 if outgoing.send(Output { id: 0, event: Event::Listed(startup, startup_work) }).is_err() { return; }
@@ -297,6 +302,7 @@ impl Worker {
                             current.warning = !commit.durable || commit.warning.is_some();
                             if commit.durable {
                                 current.durable = Some(Durable {
+                                    session: crate::recovery::session_digest(sessions.current.as_ref().unwrap().1.session_id()),
                                     epoch: update.epoch,
                                     revision,
                                     view_revision: update.view_revision,

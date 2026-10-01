@@ -2752,6 +2752,28 @@ impl Engine {
         })
     }
 
+    /// A real offline owner services project requests. This is not the test
+    /// headless constructor: no caller owns or manually pumps the render graph.
+    pub fn start_safe() -> anyhow::Result<Self> {
+        let (cmd, rx)=CommandPort::channel(256);
+        let ui_requests=cmd.take_ui_receiver().expect("fresh GUI request receiver");
+        let snap=Arc::new(Mutex::new(Snapshot::default()));
+        let mut rt=RtEngine::new(48000.0,rx,snap.clone());
+        let initial_playback=std::array::from_fn(|deck|rt.decks[deck].load_receipt.clone().unwrap());
+        // Start empty and stopped. Builtin source generation is application
+        // code; no external media/project is opened or automatically resumed.
+        for track in &mut rt.tracks {track.clips=std::array::from_fn(|_|Clip::empty());}
+        for deck in &mut rt.decks {
+            if let Some(receipt)=&deck.load_receipt {receipt.supersede();}
+            *deck=DeckRt::new(48000.0);
+        }
+        let undo=rt.enable_undo()?;
+        let project=rt.project.clone();
+        let audio=audio::owner::start_safe(rt)?;
+        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,_audio:Some(audio)})
+    }
+    pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
+
     #[cfg(test)]
     pub(crate) fn headless_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
         let (cmd, rx) = CommandPort::channel(capacity);

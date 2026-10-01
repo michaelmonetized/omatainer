@@ -184,7 +184,11 @@ impl App {
         startup: Startup,
         running_audio: model::Audio,
     ) {
-        self.settings = Settings::from_startup(startup, true, Some(running_audio));
+        self.settings = Settings::from_startup(startup, !self.engine.safe_mode(), Some(running_audio));
+        if self.engine.safe_mode() {
+            self.settings.message = "Safe mode: saved preferences are available for inspection but not applied. Audio/MIDI, external theme and startup library scan remain disabled until an explicit normal restart.".into();
+            return;
+        }
         if let Some(worker) = &mut self.settings.worker { worker.set_performance(self.engine.cmd.performance().clone()); }
         self.initialize_project_panels(
             self.settings.profile().startup.show_help,
@@ -196,6 +200,7 @@ impl App {
         }
     }
     pub(super) fn apply_appearance(&mut self, ctx: &egui::Context) {
+        if self.engine.safe_mode() { self.theme=Theme::default(); self.theme.apply(ctx); ctx.set_zoom_factor(1.0); return; }
         let appearance = self.settings.profile().appearance.clone();
         if appearance.follow_theme {
             if let Some(update) = &self.settings.theme_update {
@@ -224,6 +229,7 @@ impl App {
         ctx.set_zoom_factor(appearance.scale);
     }
     pub(super) fn poll_preferences(&mut self, ctx: &egui::Context) {
+        if self.engine.safe_mode() { return; }
         if self.engine.cmd.performance().protected() {
             if self.settings.busy() { self.settings.message = "Preferences work is cancelled/deferred by performance protection. A committed file remains saved; its live application waits until protection is deliberately left.".into(); }
             return;
@@ -266,6 +272,16 @@ impl App {
             return;
         }
         keyboard::block_for_dialog(ctx);
+        if self.engine.safe_mode() {
+            let mut open=true;
+            egui::Window::new("Preferences and profiles").open(&mut open).show(ctx,|ui|{
+                ui.label("Safe mode keeps saved preferences unchanged and does not apply audio, MIDI, theme or startup settings.");
+                ui.label(format!("Saved active profile: {}",self.settings.applied.active));
+                if let Some(notice)=&self.settings.startup_notice {ui.label(notice);}
+                ui.label("Use Restart normally after saving your project to edit and apply profiles.");
+            });
+            self.settings.open=open;return;
+        }
         let state = &mut self.settings;
         let mut open = true;
         let mut discard = false;
