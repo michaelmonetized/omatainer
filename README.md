@@ -453,3 +453,17 @@ project. Open, recovery and Save remain available; engine controls are offline.
 **Restart normally** completes Save/Discard/Cancel before restarting with the
 saved setup. `--safe-mode --startup-check` is a bounded headless startup diagnostic,
 not native GUI or hardware QA. See [support/privacy and validation boundaries](docs/validation/issue-102-support.md).
+
+**Offline operation:** installed Omatainer needs no account or cloud session for
+local media, native projects, built-in DSP, sampler banks, Help or license
+notices. Native projects embed playable PCM; reusable bank definitions keep
+source references, so unavailable files remain visibly missing until restored
+or verified as relocated. Plugin hosting, provider streaming/downloads,
+authentication and cloud transfer are not implemented. No credential store is
+advertised or stubbed. Support exports are reviewed local files, not uploads.
+
+License **Source record (external browser)** links deliberately leave the local
+viewer; bundled notices stay available offline. Remote filesystems, display or
+audio servers and host Unix proxies are separate dependencies. Building from
+source can require previously obtained packages. See Help → Offline operation
+and the [network-denied qualification boundary](docs/validation/issue-103-offline.md).

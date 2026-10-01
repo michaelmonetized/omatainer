@@ -940,3 +940,35 @@ publication. Preferences persist startup protection only, not emergency state.
   capture/install supports Open, recovery and Save. Existing offline admission
   rejects engine controls. Normal restart is explicit and occurs only after
   successful close coordination, including Save/Discard/Cancel.
+
+## Offline runtime contract
+
+- Local media, embedded-PCM native projects, local sampler-bank definitions,
+  built-in Rust instruments/effects, Help and bundled notices require no cloud
+  session or online authorization. Missing source references fail explicitly;
+  the application never substitutes a download or provider login.
+- No audio plugin host, provider download/streaming, cloud transfer,
+  authentication or credential acquisition/storage is implemented. A future
+  authenticated integration requires its own OS secret-store implementation,
+  opaque references in app state and separate offline/cache qualification; this
+  contract does not invent that capability. Unknown credential fields are
+  rejected by strict preferences/project/support schemas. User-authored project
+  names, paths and PCM remain intentional document content, not sanitized data.
+- Support export is a reviewed local allowlisted file, without environment,
+  credentials or raw project/media/error content. External upstream source
+  links explicitly request a browser. Reading bundled documentation/notices
+  issues no external URL request; browser/portal activity is outside offline
+  qualification.
+- Linux qualification denies non-AF_UNIX socket creation and io_uring setup only
+  in new same-EUID children/descendants. Negative controls are measured before
+  exec and local Unix IPC remains enabled. No firewall, route, desktop network,
+  service or identity is changed; existing IPC/runtime ownership checks remain.
+  Private buses, no inherited network descriptors and an allowlisted child
+  environment bound the tested surface. This is not a hostile-code sandbox or
+  proof about a host Unix proxy, remote filesystem/audio/display or unavailable
+  physical hardware.
+- `scripts/check-offline.py` source-binds prebuilt executables and checks actual
+  UI/local persistence, fresh-process reopen after source removal, safe startup,
+  support and private native accessibility. Its separate performance phase uses
+  unchanged #95 and #100 workloads/policies; actual deadline exceedances remain
+  distinct from ceiling pass and backend XRUNs remain unavailable.

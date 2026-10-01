@@ -118,7 +118,7 @@ impl App {
                 if !entry.members.is_empty() { ui.label(format!("Content identities: {}", entry.members.join(", "))); }
                 for record in &entry.sources {
                     if record.location.starts_with("https://") {
-                        let response = ui.hyperlink_to("Source record", &record.location);
+                        let response = ui.hyperlink_to("Source record (external browser)", &record.location);
                         help::annotate(ui, &response, help::Control::LicenseSource);
                     }
                     else { ui.monospace(&record.location); }

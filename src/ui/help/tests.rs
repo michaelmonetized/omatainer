@@ -676,3 +676,23 @@ fn disabled_help_is_visible_and_text_paint_does_not_claim_an_input_layer() {
         Some(layer)
     );
 }
+
+#[test]
+fn offline_contract_is_visible_reference_without_a_fabricated_lesson() {
+    let mut g = Gui::new();
+    g.app.keys_open = true;
+    g.app.help.topic = Topic::Offline;
+    g.frame(vec![]);
+    g.frame(vec![]);
+    assert!(g
+        .painted
+        .iter()
+        .any(|text| text.contains("without an account or cloud session")));
+    assert!(!g
+        .nodes
+        .iter()
+        .any(|(_, node)| node.label() == Some("Start this lesson")));
+    assert!(g.app.help.lesson.is_none());
+    assert!(Topic::Offline.text().contains("not implemented"));
+    assert!(Topic::Offline.text().contains("external browser"));
+}
