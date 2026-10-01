@@ -17,7 +17,8 @@ mod tests;
 #[cfg(test)]
 mod wet_mix_tests;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FxId {
     Comp,
     Spread,
