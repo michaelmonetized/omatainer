@@ -433,6 +433,8 @@ pub struct RtEngine {
     publisher: snapshot::Publisher,
     clock_accum: f64,
     cpu_acc: f32,
+    #[cfg(test)]
+    pub(crate) load_test_hooks: [Option<Box<dyn FnOnce() + Send>>; 2],
     frames_done: u64,
     note_recording: recording::Recording,
     metronome: bool,
@@ -726,6 +728,8 @@ impl RtEngine {
             snap,
             clock_accum: 0.0,
             cpu_acc: 0.0,
+            #[cfg(test)]
+            load_test_hooks: [None, None],
             frames_done: 0,
             note_recording: recording::Recording::default(),
             metronome: false,
@@ -1608,7 +1612,10 @@ impl RtEngine {
             Command::DeckLoadRequested { deck, media, receipt } => {
                 use load_receipt::{Media, State};
                 if receipt.state() != State::Pending { return; }
-                if deck as usize >= DECKS { receipt.finish(State::Unavailable); return; }
+                if deck as usize >= DECKS {
+                    if receipt.claim() { receipt.finish(State::Unavailable); }
+                    return;
+                }
                 let audio = match media {
                     Media::Builtin(stem) => self.builtin.get(stem as usize).and_then(Clone::clone),
                     Media::Decoded { token, audio } => {
@@ -1619,6 +1626,13 @@ impl RtEngine {
                         Some(audio)
                     }
                 };
+                #[cfg(test)]
+                if let Some(hook) = self.load_test_hooks[0].take() { hook(); }
+                // Cancellation and application race for one atomic transition.
+                // A claimed request may finish; a cancelled request cannot mutate media.
+                if !receipt.claim() { return; }
+                #[cfg(test)]
+                if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
                 if let Some(audio) = audio {
                     self.apply(Command::DeckAudio { deck, audio });
                     receipt.finish(State::Current);

@@ -62,13 +62,11 @@ impl App {
         for (deck, load) in self.loads.iter_mut().enumerate() {
             let Some(load) = load else { continue };
             // Decoder cancellation prevents future application; it cannot undo
-            // media already applied. Only renderer retirement changes Current.
+            // media already claimed/applied. Renderer completion determines its outcome.
             let next = if load.token.as_ref().is_some_and(|token| !token.is_current())
-                && !load
-                    .receipt
-                    .as_ref()
-                    .is_some_and(|receipt| receipt.state() == State::Current)
-            {
+                && !load.receipt.as_ref().is_some_and(|receipt| {
+                    matches!(receipt.state(), State::Current | State::Applying)
+                }) {
                 if matches!(load.phase, Phase::Superseded) {
                     None
                 } else {
@@ -76,7 +74,9 @@ impl App {
                 }
             } else if let Some(receipt) = &load.receipt {
                 match receipt.state() {
-                    State::Pending | State::Current if !self.engine.cmd.is_connected() => {
+                    State::Pending | State::Applying | State::Current
+                        if !self.engine.cmd.is_connected() =>
+                    {
                         if matches!(load.phase, Phase::Failed(_)) {
                             None
                         } else {
