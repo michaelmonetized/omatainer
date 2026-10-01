@@ -381,6 +381,7 @@ pub struct Poly {
 }
 
 impl Poly {
+    pub(super) fn tuning_hz(&self) -> f32 { self.tuning_hz }
     pub fn new(sr: f32, kind: SynthInstrument, n: usize) -> Self {
         Self {
             voices: (0..n).map(|_| Voice::new(sr, kind)).collect(),
