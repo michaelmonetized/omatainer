@@ -258,6 +258,9 @@ impl App {
     }
 
     fn scan_library(&mut self) {
+        if self.engine.cmd.performance().protected() || self.project.committing() {
+            self.settings.rescan=true;self.status="Library scan waits for Studio and the current project operation".into();return;
+        }
         if !self.library_metadata.ready() || self.library_metadata.active() {
             self.settings.rescan=true;self.status="Waiting for the current catalog before scanning".into();return;
         }

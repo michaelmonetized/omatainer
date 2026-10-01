@@ -259,7 +259,7 @@ impl App {
                 }
             }
         }
-        if self.settings.rescan && !self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active() {
+        if self.settings.rescan && !self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active() && !self.engine.cmd.performance().protected() && !self.project.committing() {
             self.settings.rescan = false;
             self.scan_library();
         }

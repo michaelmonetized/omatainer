@@ -92,10 +92,30 @@ fixture fields, root-bind trailing separators, generic proof-error text, and
 known-UUID/Btrfs access mismatches. Corrected positive-count tests passed; an
 accidental zero-test exact filter is not counted as evidence.
 
+## Qualification checkpoints
+
+The first assembled source passed all 1,036 ordinary tests with 25 opt-ins
+ignored in 117.06 seconds (`issue-107-final-full-v1.log`). All three actual
+block-filesystem opt-ins passed again in 0.45 seconds
+(`issue-107-final-local-block-v1.log`).
+
+A subsequent admission regression reproduced a pending preference rescan lost
+when protection began before admission (`issue-107-deferral-red.log`). Scans now
+retain the pending request through protection and Close instead of clearing it.
+The corrected source must pass the complete checks below.
+
+The first release checkpoint (f44c134) completed the native preflight and fixed
+workloads but failed one unchanged wall-time maximum: live-DJ repetition 3 had
+maximum 5.621517 ms versus 5.333332 ms, with p99 0.219954 ms. Its failed JSON,
+raw samples and log remain as `issue-107-checkpoint-performance-v1.*`; the source
+was subsequently corrected for scan deferral. This run is not qualification.
+No policy ceilings, audio goldens or scheduling priorities were changed.
+
 ## Final qualification
 
-Pending full ordinary regression and unchanged source-bound local release,
-native, show and package checks. This checkpoint makes no completed PR claim.
+Pending corrected full ordinary regression and unchanged source-bound local
+release, native, show and package checks. This checkpoint makes no completed PR
+claim.
 
 ## Remaining user QA
 
