@@ -25,6 +25,35 @@ install prints a recovery journal under `~/.local/state/omatainer/installations`
 restore its saved state with `scripts/install-omarchy.sh --recover /path/to/journal.json`.
 Running app instances retain their executable until you close and relaunch them.
 
+## Preferences and profiles
+
+Open **Preferences** in the status bar or press **Ctrl+,** outside an editor.
+Choose Studio/Performance, duplicate or rename a profile, and select **Use this
+profile** to stage a switch. **Preview changes** shows the requested audio route,
+MIDI input policy and folder availability. **Apply and save** commits the draft;
+**Cancel changes** keeps the current setup.
+
+Audio device, sample rate, output channel count and buffer size take effect on
+restart. The running route and pending restart are shown explicitly. An unavailable
+saved setup opens recovery; **Use system default audio this time** preserves the
+saved profile. Main left/right use outputs 1/2; mono sums both channels and extra
+channels are silent. There is no separate headphone cue bus yet.
+
+MIDI input selection applies through the connection worker, with requested/applied
+generations and missing-device errors visible. Appearance (desktop theme/font,
+font size and scale), library roots and performance shortcut overrides apply live
+following a successful save. Startup scanning and Help/MIDI panel choices apply
+when launching. Navigation, focused-control keys and reserved project keys remain
+available when performance shortcuts are disabled.
+
+Settings live in `$XDG_CONFIG_HOME/omatainer/preferences.json`, or
+`~/.config/omatainer/preferences.json` if XDG_CONFIG_HOME is unset/relative.
+**Reset profile to defaults** stages a reset; **Import into draft** also needs
+Preview and Apply. **Export draft** writes a new private file without overwriting
+an existing one. It includes device names and library paths, but no credentials
+or runtime handles. Invalid/newer files are preserved; recovery offers an explicit
+backup-and-reset operation instead of silently replacing them.
+
 ## Play without files
 
 The default session is a four-clip house sketch (drums, bass, keys, pad). Press **space**. Scenes **1** and **2** are filled.

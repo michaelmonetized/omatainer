@@ -179,6 +179,24 @@ def private(binary):
         alternate(synth_pad,'Release pad')
         wait_for(lambda:not state()['pad_held'] and state()['held_pad_voices']==0,
                  'native menu release releases the real synth voice')
+        action(named('Preferences'),'click')
+        wait_for(lambda:state()['preferences_open'],'native Preferences window')
+        scale=named('UI scale')
+        assert scale.get_role()==Atspi.Role.SLIDER
+        assert scale.get_value_iface().set_current_value(1.25)
+        wait_for(lambda:state()['preferences_draft_scale']==1.25,'native settings value edits draft')
+        assert state()['preferences_scale']==1.0,'draft changed live scale before Apply'
+        action(named('Follow desktop theme and font'),'click')
+        action(named('Preview changes'),'click')
+        wait_for(lambda:'Preview ready' in state()['preferences_message'],'off-thread route preview')
+        action(named('Apply and save'),'click')
+        wait_for(lambda:state()['preferences_saved'] and state()['preferences_scale']==1.25,
+                 'native Apply commits real private preferences file and applies scale')
+        saved=json.loads((root/'preferences.json').read_text())
+        assert saved['profiles'][saved['active']]['appearance']['scale']==1.25
+        assert not state()['preferences_follow_theme']
+        action(named('Cancel changes'),'click')
+        wait_for(lambda:not state()['preferences_open'],'native preferences cancel closes editor')
         result=state()
         expected={'Focus','SetValue','Click'}
         assert expected.issubset({a['action'] for a in result['actions']}),result
@@ -189,6 +207,7 @@ def private(binary):
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
                           'pitch_renderer':result['pitch'],'frames':result['frames'],
+                          'preferences_saved_scale':result['preferences_scale'],
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',

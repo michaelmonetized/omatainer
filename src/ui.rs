@@ -28,6 +28,7 @@ mod play_time;
 mod audio_status;
 mod diagnostics;
 mod accessibility;
+mod preferences;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -35,6 +36,7 @@ use crate::engine::load_receipt::{Media, Receipt};
 mod load_status_tests;
 mod keyboard;
 mod shortcuts;
+pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
 mod deck_selection;
 use library_scan::LibraryScan;
 
@@ -66,6 +68,7 @@ mod theme_reload_tests;
 mod font_selection_tests;
 
 pub struct App {
+    settings: preferences::Settings,
     diagnostics: diagnostics::Diagnostics,
     engine: Engine,
     theme: Theme,
@@ -125,8 +128,8 @@ impl App {
             Ok(loader) => app.theme_reload = Some(loader),
             Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
         }
-        app.scan_library();
         app
+
     }
 
     fn with_loader(
@@ -137,6 +140,7 @@ impl App {
         let snap = engine.snapshot();
         let playback_watches = play_history::initial_watches(&engine);
         let mut app = Self {
+            settings: preferences::Settings::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             engine,
             theme,
@@ -173,9 +177,8 @@ impl App {
     }
 
     fn scan_library(&mut self) {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
         self.library_scan.start(
-            vec![PathBuf::from(&home).join("Music"), PathBuf::from(&home).join("music")],
+            self.settings.profile().library_roots.clone(),
             self.library.clone(),
         );
     }
@@ -468,12 +471,8 @@ impl eframe::App for App {
 impl App {
     fn poll_theme(&mut self, ctx: &egui::Context) {
         let Some(update) = self.theme_reload.as_ref().and_then(|loader| loader.poll()) else { return };
-        if !self.theme_fonts.as_ref().is_some_and(|fonts| Arc::ptr_eq(fonts, &update.fonts)) {
-            ctx.set_fonts((*update.fonts).clone());
-            self.theme_fonts = Some(update.fonts.clone());
-        }
-        self.theme = update.theme.clone();
-        self.theme.apply(ctx);
+        self.settings.theme_update = Some(update);
+        if self.settings.profile().appearance.follow_theme { self.apply_appearance(ctx); }
         ctx.request_repaint();
     }
 
@@ -490,6 +489,7 @@ impl App {
             self.seen_submission_failures = submissions.rejected;
             self.submission_error.set(submissions.last_error);
         }
+        self.poll_preferences(ctx);
         self.poll_theme(ctx);
         self.poll_loads();
         self.snap = self.engine.snapshot();
@@ -559,7 +559,7 @@ impl App {
         }
         if self.keys_open {
             egui::Window::new("keys").show(ctx, |ui| {
-                shortcuts::show_help(ui);
+                shortcuts::show_help_with(ui, self.settings.profile());
                 ui.separator();
                 ui.monospace(POINTER_HELP);
             });
@@ -586,6 +586,7 @@ impl App {
                 }
             });
         }
+        self.preferences_ui(ctx);
         self.diagnostics_panel(ctx);
         self.clip_gain_editor(ctx);
         accessibility::numeric_editor(ctx);
@@ -610,7 +611,8 @@ impl App {
         ctx.input(|i| {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
-                    if let Some(action) = shortcuts::lookup(*key, *mods, *repeat) {
+                    if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }
+                    if let Some(action) = shortcuts::lookup_with(self.settings.profile(), *key, *mods, *repeat) {
                         self.dispatch_shortcut(action);
                     }
                 }

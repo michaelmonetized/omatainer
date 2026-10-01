@@ -1,4 +1,5 @@
 use crate::engine::RtEngine;
+pub mod config;
 use anyhow::Context;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
@@ -6,6 +7,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 pub struct OutputInfo {
     pub backend: String,
     pub format: String,
+    pub plan: config::Plan,
 }
 
 pub struct AudioOut {
@@ -14,24 +16,26 @@ pub struct AudioOut {
     pub _stream: cpal::Stream,
 }
 
-pub fn start(mut rt: RtEngine) -> anyhow::Result<AudioOut> {
-    let host = cpal::default_host();
-    let device = host
-        .default_output_device()
-        .context("no default audio output (PipeWire/ALSA)")?;
-    let cfg = device.default_output_config().context("output config")?;
-    let sr = cfg.sample_rate().0;
+pub fn start(rt: RtEngine) -> anyhow::Result<AudioOut> {
+    start_with_settings(rt, &crate::preferences::Audio::default())
+}
+
+pub fn start_with_settings(mut rt: RtEngine, settings: &crate::preferences::Audio) -> anyhow::Result<AudioOut> {
+    let (device, plan) = config::select(settings)?;
+    let cfg = plan.config();
+    let sr = plan.rate;
     let info = OutputInfo {
-        backend: host.id().name().to_owned(),
-        format: cfg.sample_format().to_string(),
+        backend: plan.backend.clone(),
+        format: plan.format.to_string(),
+        plan: plan.clone(),
     };
     rt.set_sample_rate(sr);
     let errors = rt.telemetry.clone();
     let err_fn = move |e| errors.error(&e);
-    let stream = match cfg.sample_format() {
-        cpal::SampleFormat::F32 => build::<f32>(&device, &cfg.into(), rt, err_fn)?,
-        cpal::SampleFormat::I16 => build::<i16>(&device, &cfg.into(), rt, err_fn)?,
-        cpal::SampleFormat::U16 => build::<u16>(&device, &cfg.into(), rt, err_fn)?,
+    let stream = match plan.format {
+        cpal::SampleFormat::F32 => build::<f32>(&device, &cfg, rt, err_fn)?,
+        cpal::SampleFormat::I16 => build::<i16>(&device, &cfg, rt, err_fn)?,
+        cpal::SampleFormat::U16 => build::<u16>(&device, &cfg, rt, err_fn)?,
         other => anyhow::bail!("unsupported sample format {other}"),
     };
     stream.play()?;
