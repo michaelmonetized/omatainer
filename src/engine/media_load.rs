@@ -118,6 +118,18 @@ impl Loader {
     ) -> io::Result<Self> {
         Self::with_workers(decode, media_analysis::run, performance)
     }
+    #[cfg(test)]
+    pub(crate) fn with_analysis_hook(
+        performance: performance::Handle,
+        mut before: impl FnMut(&AnalysisToken) + Send + 'static,
+    ) -> io::Result<Self> {
+        let foreground = performance.clone();
+        Self::with_workers(
+            move |path, token| super::decode::decode_audio_for_show(path, || !token.is_current(), &foreground),
+            move |request, token, work| { before(token); media_analysis::run(request, token, work) },
+            performance,
+        )
+    }
     fn with_workers(
         mut decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure> + Send + 'static,
         mut analyze: impl FnMut(AnalysisRequest, &AnalysisToken, &performance::WorkPermit)
