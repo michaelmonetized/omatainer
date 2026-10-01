@@ -1,6 +1,6 @@
 # Issue 102 — local support reports and safe startup
 
-Prepared implementation; ordered stack integration and final source-bound release qualification remain with the parent task.
+The ordered implementation and final source-bound release qualification are recorded below.
 
 Support evidence is an explicit typed allowlist: build/source-manifest identity and selected linked crate versions, numeric requested/backend-accepted routes, bounded structured event codes, existing atomic callback/command/MIDI counters, and opaque exact recovery references. Runtime driver/converter details and audio plugin hosting remain unavailable. No media, waveform, project content, notes, paths/titles, device or port names, raw error/panic text, environment, credentials, core dump or upload client is collected.
 
@@ -50,3 +50,50 @@ native fixture assertion that disabled button attempts cause no command
 submission; the final focused/native/build runs include both. No unchanged
 performance policy was rerun on this private preparation branch, and it is not
 publication/package evidence for the final assembled stack.
+
+## Final ordered-stack qualification
+
+The assembled source `7155ff7`, based on final issue101 `48e6a49`, includes exact
+preview consent, linked recovery action identity and repeated-reference native
+coverage. The final ordinary suite passed **892 tests**, with **17 opt-in or
+maintainer entries ignored**, in **45.67 seconds** with four test threads.
+`issue-102-final-full-v2.log` retains the run. The actual offline-manual generator
+also passed; the license inventory was regenerated from the final source.
+
+The unchanged local performance gate passed from `2026-10-01T10:41:15.985368+00:00` to
+`2026-10-01T10:44:54.811437+00:00` with other agents' builds/tests paused. Fresh locked offline
+release/application-test builds and all eight fixed workloads across three
+sessions passed. Native general preflight covered **123 actions, 242 nodes and
+1,099 App frames**. The exact release binary SHA-256 is
+`82014f64453895b0414274c966c7d9db6e310564e2b40c2641a87d1496db803d`.
+
+Worst callback wall p99 / maximum across three sessions, in milliseconds:
+producer **0.831381 / 1.389134**, composer **0.811672 / 1.186258**, live DJ
+**0.092876 / 0.165793**, hybrid **0.843214 / 1.194257**. Measured callback and
+recording allocations/frees, rejected commands and MIDI drops were zero.
+Worst large-crate frame p99 was **3.259063 ms**; multi-controller frame p99
+**4.866448 ms**, IPC round-trip p99 **8.549723 ms**, MIDI dispatch p99
+**3.192271 ms**. These are local fixture timings, not hardware/device latency.
+
+The separate final-source private native safe-support workflow passed
+**9 actions, 245 nodes and 163 App frames**: inspect, explicit consent,
+exact local export, reopen and normal-restart request, with zero callbacks or
+accepted/rejected engine commands. It exercises the actual safe App and offline
+project owner through Linux AT-SPI, without a native window, Orca, devices or
+actual process exec. Report: `issue-102-final-native-support.log`.
+
+The actual release `check-safe-startup.py` passed headless safe construction,
+offline project service, malformed-preferences preservation, strict arguments,
+existing-instance refusal and read-only diagnostics. Independent performance
+report checking, release packaging/package verification and all **7 CLI**,
+**6 follow-protocol** and **5 runtime-isolation** groups passed. Retained evidence
+under `/home/michael/Projects/omatainer-work` includes `issue-102-final-package`,
+`issue-102-final-performance.{json,raw.json,log}` and `issue-102-stack-gate.log`.
+
+Plugin failure is a typed simulated diagnostic observation; no audio plugin host
+exists to qualify containment. There is no upload or network provider client.
+The disabled native custom-button state discrepancy described above remains
+explicit; actions are inert, but no screen-reader usability qualification is
+claimed. Physical producer/composer/live-DJ controller, hardware latency and
+human listening/accessibility acceptance remain for the user's final runs.
+No issue is closed and no PR is merged by these checks.
