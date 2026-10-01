@@ -100,9 +100,13 @@ as supplied licensed assets.
 - The 1.4 MB Rust runtime notice uses worker-prepared UTF-8 line ranges and
   virtual rows. A real egui fixture keeps rendered text below 64 KiB over 16
   frames while real renderer commands continue to advance.
-- `cargo test`: **447 passed, 4 existing opt-in tests ignored**. The production
-  release build and a package made from that actual native executable both pass
-  validation, including exact embedded-record byte comparisons and reopened
-  package membership/hash checks. No user desktop configuration,
+- Final assembled `cargo test --offline -- --test-threads=4`: **571 passed,
+  6 opt-in fixtures ignored**; `cargo build --offline` passed. The refreshed
+  native inventory contains 315 manifest entries and 188 source files. A package
+  made from that assembled native executable passes exact embedded-record byte
+  comparisons and reopened membership/hash checks. The isolated implementation
+  also passed a release-profile build and package verification. Seven package,
+  fourteen transaction and eight executable-rollback test groups all pass on
+  the assembled source. No user desktop configuration,
   live socket, real controller, external media license, x86_64 execution, or
   physical power-loss durability was tested by these fixtures.
