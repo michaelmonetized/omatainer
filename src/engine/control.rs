@@ -47,7 +47,7 @@ struct AdmissionShared {
     last_error: std::sync::atomic::AtomicU8,
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct SubmissionStats {
     pub accepted: u64,
     pub coalesced: u64,
@@ -518,7 +518,7 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
             && pending[1..].iter().any(|ticket| *ticket != 0))
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct CommandStats {
     pub received: u64,
     pub applied: u64,

@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct CallbackMeasurement {
     pub elapsed_ns: u64,
     pub budget_ns: u64,
@@ -21,7 +21,7 @@ impl CallbackMeasurement {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AudioMetrics {
     /// None before the first callback or if this bounded read overlaps a write.
     pub last_callback: Option<CallbackMeasurement>,

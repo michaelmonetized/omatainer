@@ -15,6 +15,9 @@ use std::time::{Duration, Instant};
 #[path = "ipc_limits_tests.rs"]
 mod limits_tests;
 #[cfg(test)]
+#[path = "ipc_follow_tests.rs"]
+mod follow_tests;
+#[cfg(test)]
 #[path = "ipc_startup_tests.rs"]
 mod tests;
 
@@ -64,6 +67,10 @@ impl Drop for OwnedEndpoint {
 
 #[derive(Default)]
 struct ClientStats {
+    #[cfg(test)]
+    accepted: AtomicUsize,
+    #[cfg(test)]
+    started: AtomicUsize,
     active: AtomicUsize,
     peak: AtomicUsize,
     rejected: AtomicUsize,
@@ -179,6 +186,8 @@ fn start_at_with_limits(
             }
             match listener.accept() {
                 Ok((mut stream, _)) => {
+                    #[cfg(test)]
+                    worker_clients.accepted.fetch_add(1, Ordering::Relaxed);
                     if handlers.len() == ipc_transport::CLIENTS {
                         worker_clients.rejected.fetch_add(1, Ordering::Relaxed);
                         let _ = ipc_transport::reject(
@@ -204,7 +213,11 @@ fn start_at_with_limits(
                                 stream, commands, snapshot, limits,
                             );
                         }) {
-                        Ok(worker) => handlers.push(ClientWorker { connection, worker }),
+                        Ok(worker) => {
+                            #[cfg(test)]
+                            worker_clients.started.fetch_add(1, Ordering::Relaxed);
+                            handlers.push(ClientWorker { connection, worker });
+                        }
                         Err(error) => {
                             // A failed spawn drops the captured permit/stream.
                             worker_clients.rejected.fetch_add(1, Ordering::Relaxed);

@@ -108,6 +108,22 @@ pub fn probe(path: &Path) -> io::Result<EndpointState> {
     connection_attempt(path).map(|(state, _socket)| state)
 }
 
+/// One nonblocking connect attempt; callers choose their bounded retry policy.
+pub(crate) fn connect(path: &Path) -> io::Result<std::os::unix::net::UnixStream> {
+    let (state, socket) = connection_attempt(path)?;
+    if state != EndpointState::Connected {
+        let kind = match state {
+            EndpointState::Absent => io::ErrorKind::NotFound,
+            EndpointState::Refused => io::ErrorKind::ConnectionRefused,
+            _ => io::ErrorKind::WouldBlock,
+        };
+        return Err(io::Error::new(kind, "omatainer control endpoint is unavailable"));
+    }
+    let stream = std::os::unix::net::UnixStream::from(socket);
+    stream.set_nonblocking(false)?;
+    Ok(stream)
+}
+
 fn connection_attempt(path: &Path) -> io::Result<(EndpointState, OwnedFd)> {
     let bytes = path.as_os_str().as_bytes();
     // SAFETY: all-zero sockaddr_un is valid storage before filling its family
