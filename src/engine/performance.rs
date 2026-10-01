@@ -165,7 +165,7 @@ impl WorkPermit {
         Ok(permit)
     }
 
-    fn cancelled(&self) -> bool {
+    pub(crate) fn cancelled(&self) -> bool {
         self.handle.0.work[self.slot].load(Ordering::Acquire)
             || self.handle.0.admission.load(Ordering::Acquire) / SAFETY_GENERATION
                 != self.generation
@@ -485,7 +485,8 @@ fn destructive(command: &Command) -> bool {
         | Command::Undo
         | Command::Redo
         | Command::FxAdd(_)
-        | Command::DeckHotCue { del: true, .. } => true,
+        | Command::DeckHotCue { del: true, .. }
+        | Command::DeckCuePoint { del: true, .. } => true,
         Command::Gesture { command, .. } => destructive(command),
         Command::PerformanceMode(_)
         | Command::SafetyStop(_)
@@ -513,6 +514,8 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckFilter { .. }
         | Command::DeckPfl { .. }
         | Command::DeckHotCue { del: false, .. }
+        | Command::DeckCuePoint { del: false, .. }
+        | Command::DeckCueStyle { .. }
         | Command::DeckLoop { .. }
         | Command::DeckLoopIn { .. }
         | Command::DeckLoopOut { .. }

@@ -136,7 +136,7 @@ impl App {
             // the filter must not inherit the temporary row-zero fallback.
             if let Some(identity) = self.last_played.latest_identity() {
                 self.last_play_idx = view.indices.iter()
-                    .position(|&i| identity.matches(&self.library[i])).unwrap_or(0);
+                    .position(|&i| identity.matches_current(&self.library[i], &self.library_metadata.catalog)).unwrap_or(0);
             }
             let stride = view.stride.max(18.0);
             view.pending_offset = Some(if query_changed {

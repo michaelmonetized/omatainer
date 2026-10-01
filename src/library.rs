@@ -104,6 +104,19 @@ impl Catalog {
     pub(crate) fn track_for_version(&self, source: &LibSource, fingerprint: Option<FileFingerprint>) -> Option<&Track> {
         self.tracks.get(self.version_track(source, fingerprint)?)
     }
+    /// Resolve only a verified byte-equivalent current version. Stable track
+    /// identity alone cannot credit replacement content at a relocated path.
+    pub(crate) fn equivalent_current(
+        &self,
+        source: &LibSource,
+        fingerprint: Option<FileFingerprint>,
+    ) -> Option<(&LibSource, Option<FileFingerprint>)> {
+        let track = self.track_for_version(source, fingerprint)?;
+        let old = track.versions.iter().find(|v| v.fingerprint == fingerprint)?;
+        let current = track.versions.get(track.current)?;
+        (old.content_hash.is_some() && old.content_hash == current.content_hash)
+            .then_some((&track.source, current.fingerprint))
+    }
     fn validate(&mut self) -> Result<(), String> {
         if self.schema != SCHEMA {
             return Err(format!("unsupported library schema {}", self.schema));

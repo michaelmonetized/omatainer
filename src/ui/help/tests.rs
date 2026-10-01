@@ -595,6 +595,14 @@ fn effective_shortcuts_and_disabled_next_remain_accessibly_explained() {
 }
 
 #[test]
+fn topic_titles_remain_short_and_emergency_instructions_are_in_the_body() {
+    for topic in Topic::ALL { assert!(topic.title().chars().count() <= 40, "{}", topic.title()); }
+    assert_eq!(Topic::Emergency.title(), "Stop and recover");
+    assert!(Topic::Emergency.text().starts_with("Enable performance mode"));
+    assert!(Topic::Emergency.text().contains("Emergency mute remains"));
+}
+
+#[test]
 fn manual_and_catalogue_are_synchronized() {
     let generated = catalogue::manual();
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/manual.md");

@@ -23,6 +23,10 @@ impl Identity {
     pub(super) fn matches(&self, item: &LibItem) -> bool {
         self.source == item.source && self.fingerprint == item.fingerprint
     }
+    pub(super) fn matches_current(&self, item: &LibItem, catalog: &crate::library::Catalog) -> bool {
+        self.matches(item) || catalog.equivalent_current(&self.source, self.fingerprint)
+            .is_some_and(|(source, fingerprint)| *source == item.source && fingerprint == item.fingerprint)
+    }
 }
 
 #[derive(Default)]
@@ -207,7 +211,9 @@ impl App {
         }
         let saved = self.library_metadata.catalog.version(&watch.identity.source, watch.identity.fingerprint);
         if !self.library_metadata.active() && receipt.preparation().is_some_and(|(_, p)| saved.is_some_and(|v| v.preparation == p)) {
-            "Saved in DJ library"
+            if matches!(watch.identity.source, LibSource::File(_)) && saved.is_some_and(|v| v.content_hash.is_none()) {
+                "Saved in DJ library; move verification pending — keep the original file available"
+            } else { "Saved in DJ library" }
         } else { "Saving cues to DJ library…" }
     }
 }

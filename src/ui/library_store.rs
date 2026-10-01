@@ -38,6 +38,12 @@ impl LibItem {
     }
 }
 
+pub(super) struct Reconciled {
+    pub notice: Option<String>,
+    pub qualification_pending: bool,
+    pub relocation: Option<Result<(), String>>,
+}
+
 pub(super) fn reconcile_optional(
     store: &mut Store,
     items: &mut Vec<LibItem>,
@@ -48,12 +54,12 @@ pub(super) fn reconcile_optional(
     fallback: &[LibItem],
     relocation: Option<(&crate::library::Relocate, &crate::engine::performance::WorkPermit)>,
     qualification_work: Option<&crate::engine::performance::WorkPermit>,
-) -> Result<(Option<String>, bool), String> {
-    use std::sync::atomic::Ordering;
+    qualification_sources: &[(LibSource, Option<FileFingerprint>)],
+) -> Result<Reconciled, String> {
     const PROTECTED: &str =
         "Performance protection cancelled the optional catalog import before commit";
     let cancelled =
-        |work: &crate::engine::performance::WorkPermit| work.cancel().load(Ordering::Acquire);
+        |work: &crate::engine::performance::WorkPermit| work.cancelled();
     let mut catalog = store.catalog.clone();
     let mut import_error = None;
     let mut imported = false;
@@ -72,10 +78,13 @@ pub(super) fn reconcile_optional(
         *items = fallback.to_vec();
     }
     reconcile_items(&mut catalog, items, captures)?;
-    let needs_qualification = catalog.needs_qualification();
+    let needs_qualification = !qualification_sources.is_empty();
     let mut qualification_pending = needs_qualification && qualification_work.is_none();
     if let Some(work) = qualification_work.filter(|_| needs_qualification) {
-        catalog.qualify_current_cues(&work.cancel());
+        for (source, fingerprint) in qualification_sources {
+            if cancelled(work) { break; }
+            catalog.qualify_cues_cancellable(source, *fingerprint, &work.cancel());
+        }
         qualification_pending = cancelled(work);
     }
     let mut relocated = false;
@@ -129,7 +138,16 @@ pub(super) fn reconcile_optional(
         .map(|track| LibItem::from_stored(track.source.clone(), &track.versions[track.current]))
         .collect();
     drop(guard);
-    Ok((relocation_error.or_else(|| import_error.map(|error| format!("import rejected: {error}"))), qualification_pending))
+    let relocation = relocation.map(|_| match &relocation_error {
+        Some(error) => Err(error.clone()),
+        None if relocated => Ok(()),
+        None => Err("relocation rejected: verification did not complete".into()),
+    });
+    Ok(Reconciled {
+        notice: relocation_error.or_else(|| import_error.map(|error| format!("import rejected: {error}"))),
+        qualification_pending,
+        relocation,
+    })
 }
 
 /// A committed optional transaction can outlive the frame that enables

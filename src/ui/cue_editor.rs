@@ -15,76 +15,146 @@ pub(super) struct Editor {
     drafts: [Draft; 8],
     message: String,
 }
-struct Draft { name: String, color: String }
+struct Draft {
+    name: String,
+    color: String,
+}
 impl Draft {
     fn from_style(style: Style) -> Self {
-        Self { name: style.name.as_str().into(), color: style.color.map(|[r,g,b]| format!("#{r:02X}{g:02X}{b:02X}")).unwrap_or_default() }
+        Self {
+            name: style.name.as_str().into(),
+            color: style
+                .color
+                .map(|[r, g, b]| format!("#{r:02X}{g:02X}{b:02X}"))
+                .unwrap_or_default(),
+        }
     }
     fn style(&self) -> Result<Style, &'static str> {
         let name = Name::new(&self.name)?;
         let text = self.color.trim();
-        let color = if text.is_empty() { None } else {
+        let color = if text.is_empty() {
+            None
+        } else {
             let text = text.strip_prefix('#').unwrap_or(text);
-            if text.len() != 6 || !text.bytes().all(|b| b.is_ascii_hexdigit()) { return Err("Use six hexadecimal color digits, or leave empty for the theme color"); }
-            Some(std::array::from_fn(|i| u8::from_str_radix(&text[i*2..i*2+2], 16).unwrap()))
+            if text.len() != 6 || !text.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return Err("Use six hexadecimal color digits, or leave empty for the theme color");
+            }
+            Some(std::array::from_fn(|i| {
+                u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).unwrap()
+            }))
         };
         Ok(Style { name, color })
     }
 }
-struct Relocation { request: crate::library::Relocate, path: String, title: String, message: String, pending: bool, saved: bool }
+struct Relocation {
+    request: crate::library::Relocate,
+    path: String,
+    title: String,
+    message: String,
+    pending: bool,
+    saved: bool,
+}
 
 pub(super) fn color(theme: &Theme, style: Style, slot: usize) -> Color32 {
-    style.color.map(|[r,g,b]| Color32::from_rgb(r,g,b)).unwrap_or_else(|| theme.track_color(slot))
+    style
+        .color
+        .map(|[r, g, b]| Color32::from_rgb(r, g, b))
+        .unwrap_or_else(|| theme.track_color(slot))
 }
 pub(super) fn short_name(name: &str, count: usize) -> String {
     let mut chars = name.chars();
     let mut result: String = chars.by_ref().take(count).collect();
-    if chars.next().is_some() { result.push('…'); }
+    if chars.next().is_some() {
+        result.push('…');
+    }
     result
 }
 pub(super) fn label(slot: usize, style: Style) -> String {
-    if style.name.as_str().is_empty() { format!("Hot cue {}", slot + 1) }
-    else { format!("Hot cue {}: {}", slot + 1, style.name.as_str()) }
+    if style.name.as_str().is_empty() {
+        format!("Hot cue {}", slot + 1)
+    } else {
+        format!("Hot cue {}: {}", slot + 1, style.name.as_str())
+    }
 }
 pub(super) fn description(snap: &crate::engine::DeckSnap, slot: usize) -> String {
-    let position = snap.hotcue_positions[slot].filter(|_| snap.source_sample_rate > 0)
-        .map(|p| format!("{:.3} seconds", p / snap.source_sample_rate as f64)).unwrap_or_else(|| "empty".into());
-    let color = snap.cue_styles[slot].color.map(|[r,g,b]| format!("#{r:02X}{g:02X}{b:02X}")).unwrap_or_else(|| "theme color".into());
-    format!("{}, {position}, {color}", label(slot, snap.cue_styles[slot]))
+    let position = snap.hotcue_positions[slot]
+        .filter(|_| snap.source_sample_rate > 0)
+        .map(|p| format!("{:.3} seconds", p / snap.source_sample_rate as f64))
+        .unwrap_or_else(|| "empty".into());
+    let color = snap.cue_styles[slot]
+        .color
+        .map(|[r, g, b]| format!("#{r:02X}{g:02X}{b:02X}"))
+        .unwrap_or_else(|| "theme color".into());
+    format!(
+        "{}, {position}, {color}",
+        label(slot, snap.cue_styles[slot])
+    )
 }
 impl App {
     pub(super) fn open_cue_editor(&mut self, deck: usize) {
-        let Some(snap) = self.snap.decks.get(deck) else { return };
-        let Some(receipt) = self.cue_receipt(snap.receipt_key) else {
-            self.status = "Wait for the loaded track identity before editing cue names".into(); return;
+        let Some(snap) = self.snap.decks.get(deck) else {
+            return;
         };
-        self.cue_editor.editor = Some(Editor { deck, receipt,
-            drafts: std::array::from_fn(|i| Draft::from_style(snap.cue_styles[i])), message: String::new() });
+        let Some(receipt) = self.cue_receipt(snap.receipt_key) else {
+            self.status = "Wait for the loaded track identity before editing cue names".into();
+            return;
+        };
+        self.cue_editor.editor = Some(Editor {
+            deck,
+            receipt,
+            drafts: std::array::from_fn(|i| Draft::from_style(snap.cue_styles[i])),
+            message: String::new(),
+        });
     }
     pub(super) fn open_cue_relocation(&mut self) {
-        let Some(item) = self.selected_library_item().cloned() else { return };
-        let Some(track) = self.library_metadata.catalog.track(&item.source) else {
-            self.status = "Wait for this track to be saved in the DJ library".into(); return;
+        let Some(item) = self.selected_library_item().cloned() else {
+            return;
         };
-        let Some(fingerprint) = item.fingerprint.filter(|_| matches!(item.source, LibSource::File(_))) else {
-            self.status = "Relocation requires a previously inspected local file track".into(); return;
+        let Some(track) = self.library_metadata.catalog.track(&item.source) else {
+            self.status = "Wait for this track to be saved in the DJ library".into();
+            return;
+        };
+        let Some(fingerprint) = item
+            .fingerprint
+            .filter(|_| matches!(item.source, LibSource::File(_)))
+        else {
+            self.status = "Relocation requires a previously inspected local file track".into();
+            return;
         };
         self.cue_editor.relocation = Some(Relocation {
-            request: crate::library::Relocate { id: track.id.clone(), source: item.source.clone(), fingerprint, destination: PathBuf::new() },
-            path: String::new(), title: item.title,
-            pending: false, saved: false,
-            message: if track.versions[track.current].content_hash.is_some() { "Original track content is verified.".into() }
-                else { "The original file must still be available for content verification.".into() },
+            request: crate::library::Relocate {
+                id: track.id.clone(),
+                source: item.source.clone(),
+                fingerprint,
+                destination: PathBuf::new(),
+            },
+            path: String::new(),
+            title: item.title,
+            pending: false,
+            saved: false,
+            message: if track.versions[track.current].content_hash.is_some() {
+                "Original track content is verified.".into()
+            } else {
+                "The original file must still be available for content verification.".into()
+            },
         });
     }
     pub(super) fn cue_editor_ui(&mut self, ctx: &egui::Context) {
         if let Some(mut editor) = self.cue_editor.editor.take() {
-            let snap = self.snap.decks.get(editor.deck).cloned().unwrap_or_default();
-            if snap.receipt_key != editor.receipt.snapshot_key() || editor.receipt.state() != crate::engine::load_receipt::State::Current {
+            let snap = self
+                .snap
+                .decks
+                .get(editor.deck)
+                .cloned()
+                .unwrap_or_default();
+            if snap.receipt_key != editor.receipt.snapshot_key()
+                || editor.receipt.state() != crate::engine::load_receipt::State::Current
+            {
                 self.status = "Cue editor closed because the loaded track changed".into();
             } else {
                 keyboard::block_for_dialog(ctx);
                 let mut open = true;
+                let mut close = false;
                 egui::Window::new(format!("Deck {} cues", (b'A' + editor.deck as u8) as char)).open(&mut open).resizable(true).vscroll(true).show(ctx, |ui| {
                     if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                     ui.heading(&snap.title);
@@ -131,22 +201,27 @@ impl App {
                     let reset = ui.button("Reload cue values");
                     help::annotate(ui, &reset, HelpControl::CueReload);
                     if reset.clicked() { editor.drafts = std::array::from_fn(|i| Draft::from_style(snap.cue_styles[i])); editor.message.clear(); }
+                    if ui.button("Close cue editor").help(ui, HelpControl::CueClose).clicked() { close = true; }
                     if !editor.message.is_empty() { ui.label(&editor.message); }
                 });
-                if open { self.cue_editor.editor = Some(editor); }
+                if open && !close {
+                    self.cue_editor.editor = Some(editor);
+                }
             }
         }
         if let Some(mut relocation) = self.cue_editor.relocation.take() {
             if relocation.pending {
-                let destination = LibSource::File(relocation.request.destination.clone());
-                if self.library_metadata.durable && self.library_metadata.catalog.track(&destination)
-                    .is_some_and(|track| track.id == relocation.request.id) {
+                if let Some(outcome) = self.library_metadata.relocation_result(&relocation.request)
+                {
                     relocation.pending = false;
-                    relocation.saved = true;
-                    relocation.message = format!("Relocation saved: {}. Track identity and cues were preserved.", relocation.request.destination.display());
-                } else if !self.library_metadata.active() {
-                    relocation.pending = false;
-                    relocation.message = self.library_metadata.label().to_owned();
+                    relocation.saved = outcome.is_ok();
+                    relocation.message = match outcome {
+                        Ok(()) => format!(
+                            "Relocation saved: {}. Track identity and cues were preserved.",
+                            relocation.request.destination.display()
+                        ),
+                        Err(error) => error.clone(),
+                    };
                 }
             }
             keyboard::block_for_dialog(ctx);
@@ -166,11 +241,13 @@ impl App {
                     relocation.message = if self.library_metadata.relocate(relocation.request.clone()) {
                         relocation.pending = true;
                         "Verifying relocation on the library worker…".into()
-                    } else { "Library is busy or unavailable; wait for its save and retry.".into() };
+                    } else { format!("Relocation was not queued. {}", self.library_metadata.label()) };
                 }
                 ui.label(self.library_metadata.label());
             });
-            if open { self.cue_editor.relocation = Some(relocation); }
+            if open {
+                self.cue_editor.relocation = Some(relocation);
+            }
         }
     }
 }

@@ -492,7 +492,16 @@ fn eight_named_colored_cues_survive_restart_move_and_late_old_location_receipts(
     assert_eq!(restarted.catalog.version(&moved, Some(moved_fp)).unwrap().preparation, prepared);
     restarted.save().unwrap();
     drop(restarted);
-    assert_eq!(Store::open(dir.store()).unwrap().catalog.track(&moved).unwrap().id, id);
+    let mut restored = Store::open(dir.store()).unwrap();
+    assert_eq!(restored.catalog.track(&moved).unwrap().id, id);
+    assert_eq!(restored.catalog.equivalent_current(&source, Some(old_fp)),
+        Some((&moved, Some(moved_fp))));
+    // Stable identity does not qualify later replacement bytes at the new path.
+    fs::write(&moved_path, b"different bytes at relocated path").unwrap();
+    let changed = FileFingerprint::read(&moved_path).unwrap();
+    restored.catalog.upsert(moved.clone(), Some(changed), metadata()).unwrap();
+    assert_eq!(restored.catalog.track(&moved).unwrap().id, id);
+    assert!(restored.catalog.equivalent_current(&source, Some(old_fp)).is_none());
 }
 
 #[test]
