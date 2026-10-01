@@ -1,3 +1,6 @@
+pub(crate) mod keylock;
+#[cfg(test)]
+mod keylock_tests;
 pub(crate) mod project;
 pub(crate) mod undo;
 mod mixer_gain;
@@ -101,8 +104,6 @@ pub const TRACKS: usize = 8;
 pub const SCENES: usize = 8;
 pub const DECKS: usize = 2;
 pub const HOTCUES: usize = 8;
-const GRAIN_FRAMES: f32 = 1024.0;
-const GRAIN_HOP: f32 = GRAIN_FRAMES / 2.0;
 
 #[derive(Clone, Copy)]
 enum DeckTransition {
@@ -292,11 +293,9 @@ pub struct DeckRt {
     pub eq_store: [f32; 4],
     pub pitch_range: u8,
     pub sync_bpm: f32,
-    pub grain_i: f32,
-    grain_frames: f32,
+    keylock_dsp: keylock::Processor,
+    keylock_render_mode: keylock::Mode,
     rate_smoothing: f32,
-    pub grain_origin: f64,
-    pub prev_origin: f64,
     last_output: [f32; 2],
     transition_from: [f32; 2],
     transition_remaining: u32,
@@ -351,11 +350,9 @@ impl DeckRt {
             eq_store: [1.0, 1.0, 1.0, 0.85],
             pitch_range: 0,
             sync_bpm: 124.0,
-            grain_i: 0.0,
-            grain_frames: 2.0 * (GRAIN_HOP * sr / 48_000.0).round().max(1.0),
+            keylock_dsp: keylock::Processor::new(sr),
+            keylock_render_mode: keylock::Mode::Off,
             rate_smoothing: dsp::rate_blend(0.08, sr),
-            grain_origin: 0.0,
-            prev_origin: 0.0,
             last_output: [0.0; 2],
             transition_from: [0.0; 2],
             transition_remaining: 0,
@@ -371,16 +368,11 @@ impl DeckRt {
     fn transition_to(&mut self, pos: f64, sr: f32, transition: DeckTransition) {
         self.pos = pos;
         let source_rate = self.audio.as_ref().map_or(sr, |audio| audio.sr as f32);
-        self.grain_origin = pos;
-        // The previous window starts half a grain earlier, so its first
-        // full-weight sample is at the new position, not 512 frames ahead.
-        self.prev_origin = pos - self.grain_frames as f64 * 0.5 * source_rate as f64 / sr as f64;
-        self.grain_i = 0.0;
+        self.keylock_dsp.reset(pos, source_rate as f64 / sr as f64);
+        self.keylock_render_mode = self.keylock_mode();
         match transition {
             DeckTransition::Jump => {
-                self.transition_from = self.last_output;
-                self.transition_frames = (sr as f64 * 0.002).ceil().max(2.0) as u32;
-                self.transition_remaining = self.transition_frames;
+                self.fade_from_last_output(sr);
                 for eq in &mut self.eq {
                     eq.low.z = 0.0;
                     eq.high.z = 0.0;
@@ -391,30 +383,20 @@ impl DeckRt {
         }
     }
 
+    fn fade_from_last_output(&mut self, sr: f32) {
+        self.transition_from = self.last_output;
+        self.transition_frames = (sr as f64 * 0.002).ceil().max(2.0) as u32;
+        self.transition_remaining = self.transition_frames;
+    }
+
     fn sample_at(&self, pos: f64) -> (f32, f32) {
         let Some(audio) = &self.audio else { return (0.0, 0.0) };
-        if !(self.loop_on && self.loop_len > 1.0) {
-            return audio.at(pos);
-        }
-        let pos = self.loop_start + (pos - self.loop_start).rem_euclid(self.loop_len);
-        let next = pos.floor() + 1.0;
-        if next < self.loop_start + self.loop_len {
-            return audio.at(pos);
-        }
-        // Interpolation itself must cross back to the loop start rather than
-        // reading the neighboring out-of-loop sample. Read the left frame
-        // directly so loops ending at the file boundary retain their last frame.
-        let frame = pos.floor() as usize;
-        if pos < 0.0 || frame >= audio.frames() {
-            return (0.0, 0.0);
-        }
-        let channels = audio.ch as usize;
-        let left = audio.data[frame * channels];
-        let right = audio.data[frame * channels + usize::from(channels > 1)];
-        let wrapped = self.loop_start + (next - self.loop_start).rem_euclid(self.loop_len);
-        let (next_left, next_right) = audio.at(wrapped);
-        let mix = pos.fract() as f32;
-        (left + (next_left - left) * mix, right + (next_right - right) * mix)
+        keylock::Source {
+            audio,
+            loop_on: self.loop_on,
+            loop_start: self.loop_start,
+            loop_len: self.loop_len,
+        }.at(pos)
     }
 
     fn transition_output(&mut self, input: [f32; 2]) -> [f32; 2] {
@@ -430,6 +412,20 @@ impl DeckRt {
         }
         self.last_output = output;
         output
+    }
+
+    /// Shared by rendering and publication: an armed but stopped/empty deck
+    /// has no active rate to qualify and must not display a fallback warning.
+    fn keylock_mode(&self) -> keylock::Mode {
+        if !self.keylock {
+            keylock::Mode::Off
+        } else if self.audio.is_none() {
+            keylock::Mode::NoMedia
+        } else if !self.playing && !self.touching {
+            keylock::Mode::Stopped
+        } else {
+            keylock::mode(true, self.touching, self.rate)
+        }
     }
 
     fn pitch_rate(&self) -> f32 {
@@ -564,6 +560,7 @@ pub struct DeckSnap {
     pub vinyl: bool,
     pub sync: bool,
     pub keylock: bool,
+    pub keylock_mode: keylock::Mode,
     pub pfl: bool,
     pub loop_on: bool,
     pub hotcues: [bool; HOTCUES],
@@ -973,7 +970,7 @@ impl RtEngine {
             }
             d.filter = [deck_filter::ChannelFilter::default(); 2];
             d.filter_position = d.filter_amt;
-            d.grain_frames = 2.0 * (GRAIN_HOP * self.sr / 48_000.0).round().max(1.0);
+            d.keylock_dsp = keylock::Processor::new(self.sr);
             d.rate_smoothing = dsp::rate_blend(0.08, self.sr);
             d.last_output = [0.0; 2];
             d.transition_to(d.pos, self.sr, DeckTransition::Jump);
@@ -1422,12 +1419,29 @@ impl RtEngine {
                 d.rate = d.scratch;
             } else {
                 d.rate += (d.target_rate - d.rate) * d.rate_smoothing;
+                if d.keylock
+                    && (d.target_rate == keylock::MIN_RATIO || d.target_rate == 1.0
+                        || d.target_rate == keylock::MAX_RATIO)
+                    && (d.rate - d.target_rate).abs() <= keylock::boundary_tolerance(d.rate_smoothing)
+                {
+                    // f32 smoothing otherwise stalls beside the exact target,
+                    // missing unity bypass or supported-rate reentry. Only the
+                    // three declared boundaries converge; arbitrary targets
+                    // and unlocked playback retain the original trajectory.
+                    d.rate = d.target_rate;
+                }
                 d.scratch *= 0.85;
             }
+            let before_position = d.pos;
             if d.playing || d.touching {
                 d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr);
             }
             let mut position = d.pos;
+            let natural_wrap = d.loop_on && d.loop_len > 1.0 && d.loop_start >= 0.0
+                && d.audio.as_ref().is_some_and(|audio| d.loop_start + d.loop_len <= audio.frames() as f64)
+                && before_position >= d.loop_start
+                && before_position < d.loop_start + d.loop_len
+                && position >= d.loop_start + d.loop_len;
             if d.loop_on && d.loop_len > 1.0 {
                 if position >= d.loop_start + d.loop_len {
                     position = d.loop_start + (position - d.loop_start) % d.loop_len;
@@ -1448,7 +1462,12 @@ impl RtEngine {
                 }
             }
             if position != d.pos {
-                d.transition_to(position, self.sr, DeckTransition::Jump);
+                if natural_wrap && d.keylock_mode() == keylock::Mode::Locked {
+                    d.pos = position;
+                    d.keylock_dsp.natural_wrap();
+                } else {
+                    d.transition_to(position, self.sr, DeckTransition::Jump);
+                }
             }
         }
         {
@@ -1477,8 +1496,27 @@ impl RtEngine {
         }
         // Vinyl contact follows the hand directly; OLA resumes from the
         // release position rather than replaying grains from before the jog.
-        let keylock = self.decks[di].keylock && !self.decks[di].touching;
-        let (mut l, mut r) = if keylock {
+        let mode = {
+            let d = &mut self.decks[di];
+            let mode = d.keylock_mode();
+            if mode != d.keylock_render_mode {
+                if mode == keylock::Mode::Locked || d.keylock_render_mode == keylock::Mode::Locked {
+                    let source_step = d.audio.as_ref().map_or(sr, |audio| audio.sr as f64) / sr;
+                    d.keylock_dsp.reset(d.pos, source_step);
+                    // A rate-mode transition retires overlap through the existing
+                    // envelope but preserves the continuous deck filter histories.
+                    // A seek/play/release already owns its two-millisecond
+                    // envelope. Crossing the supported-rate boundary during
+                    // that ramp must not restart or extend its settling time.
+                    if d.transition_remaining == 0 {
+                        d.fade_from_last_output(self.sr);
+                    }
+                }
+                d.keylock_render_mode = mode;
+            }
+            mode
+        };
+        let (mut l, mut r) = if mode == keylock::Mode::Locked {
             self.deck_grain(di, sr)
         } else {
             self.decks[di].sample_at(self.decks[di].pos)
@@ -1500,26 +1538,15 @@ impl RtEngine {
 
     fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
         let d = &mut self.decks[di];
-        let Some(a) = &d.audio else {
-            return (0.0, 0.0);
+        let Some(audio) = &d.audio else { return (0.0, 0.0) };
+        if !d.playing && !d.touching { return (0.0, 0.0); }
+        let source = keylock::Source {
+            audio,
+            loop_on: d.loop_on,
+            loop_start: d.loop_start,
+            loop_len: d.loop_len,
         };
-        let asr = a.sr as f64 / sr;
-        if !d.playing && !d.touching {
-            return (0.0, 0.0);
-        }
-        let gi = d.grain_i;
-        let hop = d.grain_frames * 0.5;
-        let (l0, r0) = d.sample_at(d.grain_origin + gi as f64 * asr);
-        let (l1, r1) = d.sample_at(d.prev_origin + (gi + hop) as f64 * asr);
-        let w0 = 0.5 - 0.5 * (std::f32::consts::TAU * (gi / d.grain_frames)).cos();
-        let w1 = 0.5 - 0.5 * (std::f32::consts::TAU * ((gi + hop) / d.grain_frames)).cos();
-        d.grain_i += 1.0;
-        if d.grain_i >= hop {
-            d.prev_origin = d.grain_origin;
-            d.grain_origin = d.pos;
-            d.grain_i -= hop;
-        }
-        (l0 * w0 + l1 * w1, r0 * w0 + r1 * w1)
+        d.keylock_dsp.render(source, d.pos, audio.sr as f64 / sr)
     }
 
     fn tick_pad_sources(&mut self) -> [[f32; 2]; TRACKS] {

@@ -262,6 +262,7 @@ impl Frame {
             out.vinyl = deck.vinyl;
             out.sync = deck.sync;
             out.keylock = deck.keylock;
+            out.keylock_mode = deck.keylock_mode();
             out.pfl = deck.pfl;
             out.loop_on = deck.loop_on;
             out.hotcues = std::array::from_fn(|i| deck.hotcues[i].set);
