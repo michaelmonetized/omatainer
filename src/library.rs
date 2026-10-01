@@ -18,10 +18,11 @@ use std::{
 mod content;
 mod analysis;
 pub(crate) mod crates;
+pub(crate) mod watch_roots;
 mod collections;
 pub(crate) use content::Relocate;
 
-const SCHEMA: u32 = 6;
+const SCHEMA: u32 = 7;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -74,6 +75,7 @@ pub(crate) struct Catalog {
     pub schema: u32,
     pub tracks: Vec<Track>,
     pub crates: crates::CrateForest<TrackId>,
+    pub watched_roots: watch_roots::Book,
     #[serde(skip)]
     index: HashMap<LibSource, usize>,
     #[serde(skip)]
@@ -85,6 +87,7 @@ impl Default for Catalog {
             schema: SCHEMA,
             tracks: vec![],
             crates: Default::default(),
+            watched_roots: Default::default(),
             index: HashMap::new(),
             relocations: HashMap::new(),
         }
@@ -124,10 +127,27 @@ impl Catalog {
         (old.content_hash.is_some() && old.content_hash == current.content_hash)
             .then_some((&track.source, current.fingerprint))
     }
+    /// Preserve the selected current version after an archived capture/scan.
+    /// The caller has already checked the current I/O identity off the GUI.
+    pub(crate) fn restore_current(&mut self,source:&LibSource,current:usize) {
+        if let Some(&i)=self.index.get(source) {if current<self.tracks[i].versions.len() {self.tracks[i].current=current;}}
+    }
+    /// A freshly measured descriptor hash may restore preparation from a
+    /// version of this exact track whose saved digest matches. No filesystem
+    /// reads or pathname/title association occur here.
+    pub(crate) fn preparation_for_content(&self,source:&LibSource,fingerprint:FileFingerprint,hash:[u8;32])->Option<Preparation> {
+        let track=self.track(source)?;
+        if let Some(v)=track.versions.iter().find(|v|v.fingerprint==Some(fingerprint)) {
+            if v.content_hash.is_some_and(|saved|saved!=hash) {return None;}
+            if v.content_hash==Some(hash) || v.preparation!=Preparation::default() {return Some(v.preparation);}
+        }
+        track.versions.iter().rev().find(|v|v.content_hash==Some(hash)).map(|v|v.preparation)
+    }
     fn validate(&mut self) -> Result<(), String> {
         if self.schema != SCHEMA {
             return Err(format!("unsupported library schema {}", self.schema));
         }
+        self.watched_roots.validate()?;
         if self.tracks.len() > MAX_TRACKS {
             return Err("library exceeds 100000 tracks".into());
         }
@@ -156,7 +176,7 @@ impl Catalog {
             if track.previous_locations.len() > 64 { return Err("track relocation history exceeds 64 locations".into()); }
             for previous in &track.previous_locations {
                 validate_source(&previous.source)?;
-                if !matches!(&previous.source, LibSource::File(_))
+                if !matches!(&previous.source, LibSource::File(_) | LibSource::Removable {..})
                     || !track.versions.iter().any(|v| v.fingerprint == Some(previous.fingerprint))
                     || self.relocations.insert(previous.clone(), i).is_some() {
                     return Err("invalid or conflicting relocated track association".into());
@@ -381,6 +401,13 @@ struct BeforeCollections {
     schema: u32,
     tracks: Vec<Track>,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BeforeWatchedRoots {
+    schema: u32,
+    tracks: Vec<Track>,
+    crates: crates::CrateForest<TrackId>,
+}
 
 pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
     read_with_identity(path).map(|(catalog, _)| catalog)
@@ -406,7 +433,12 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
-        Some(6) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(7) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(6) => {
+            let old: BeforeWatchedRoots = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            debug_assert_eq!(old.schema,6);
+            Catalog { tracks: old.tracks, crates: old.crates, ..Default::default() }
+        },
         Some(2 | 3 | 4 | 5) => {
             let old: BeforeCollections = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             debug_assert!((2..=5).contains(&old.schema));
@@ -418,6 +450,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
             Catalog {
                 schema: SCHEMA,
                 crates: Default::default(),
+                watched_roots: Default::default(),
                 index: HashMap::new(),
             relocations: HashMap::new(),
                 tracks: old
@@ -445,6 +478,10 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
             ))
         }
     };
+    if header.get("schema").and_then(|v|v.as_u64()).is_some_and(|v|v<7)
+        && catalog.tracks.iter().any(|t|t.previous_locations.iter().any(|p|!matches!(p.source,LibSource::File(_)))) {
+        return Err("invalid legacy relocated track association".into());
+    }
     catalog.validate()?;
     let identity = FileFingerprint::from_metadata(&meta);
     if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != identity

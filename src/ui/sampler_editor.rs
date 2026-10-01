@@ -550,7 +550,7 @@ impl App {
                         let picked = self.selected_library_item();
                         ui.label(format!("Selected crate source: {}", picked.map_or("none", |item| item.title.as_str())));
                         ui.horizontal_wrapped(|ui| {
-                            let local = picked.is_some_and(|item| matches!(item.source, LibSource::File(_)) && item.fingerprint.is_some());
+                            let local = picked.is_some_and(|item| matches!(item.source, LibSource::File(_) | LibSource::Removable {..}) && item.fingerprint.is_some());
                             if button(ui, "Assign selected local source", "Assign selected local source", HelpControl::SamplerAssign, editable && local).clicked() { action = Some(Action::Assign); }
                             if button(ui, "Clear slot", "Clear selected slot", HelpControl::SamplerClear, editable).clicked() { action = Some(Action::Clear); }
                             if button(ui, "Retry missing source", "Retry selected source", HelpControl::SamplerRetry, editable && draft.settings.slots[slot].source.is_some()).clicked() { action = Some(Action::Retry); }
@@ -584,7 +584,7 @@ impl App {
                     }); }
                     });
                     ui.separator();
-                    ui.label("Reusable definitions reference local files. Project Save embeds playable audio.");
+                    ui.label("Reusable definitions reference local files or removable volumes. Project Save embeds playable audio.");
                     if let Some(store) = &editor.store {
                         ui.push_id("store-status", |ui| {
                         if store.busy { ui.label("Reusable store operation pending…"); }

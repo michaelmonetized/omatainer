@@ -251,9 +251,9 @@ impl App {
             return;
         };
         self.library_analysis.current_title = item.title.clone();
-        if !matches!(item.source, LibSource::File(_)) {
+        if !matches!(item.source, LibSource::File(_) | LibSource::Removable {..}) {
             self.library_analysis.message = format!(
-                "Skipped {}: background analysis supports local file sources only.",
+                "Skipped {}: background analysis supports local files and removable volumes.",
                 item.title
             );
             self.library_analysis.queue.as_mut().unwrap().skipped += 1;

@@ -53,6 +53,7 @@ struct Relocation {
     work: Arc<WorkPermit>,
 }
 struct Staged {
+    roots: Option<Arc<library_scan::ScanRoots>>,
     items: Arc<Vec<LibItem>>,
     work: Arc<WorkPermit>,
 }
@@ -61,8 +62,10 @@ struct Job {
     base: Arc<Vec<LibItem>>,
     candidate: Arc<Vec<LibItem>>,
     scan_work: Option<Arc<WorkPermit>>,
+    roots: Option<Arc<library_scan::ScanRoots>>,
     restricted: bool,
     _retired_candidates: Vec<Arc<Vec<LibItem>>>,
+    _retired_roots:Vec<Arc<library_scan::ScanRoots>>,
     revision: u64,
     updates: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
@@ -103,6 +106,7 @@ struct RelocationResult {
 }
 
 pub(super) struct Metadata {
+    initialized:bool,
     collection: Option<collections::Request>,
     collection_result: Option<CollectionReceipt>,
     collection_active: Option<CollectionToken>,
@@ -136,6 +140,7 @@ pub(super) struct Metadata {
     clear_error: bool,
     staged: Option<Staged>,
     retired_candidates: Vec<Arc<Vec<LibItem>>>,
+    retired_roots:Vec<Arc<library_scan::ScanRoots>>,
     revision: u64,
     dirty: bool,
     in_flight: bool,
@@ -183,7 +188,7 @@ impl Metadata {
                         // verified by an explicit relocation while the original
                         // is available. Never grow optional backlog without bound.
                         if (qualifications.len() < 256 || qualifications.contains_key(&capture.source))
-                            && matches!(capture.source, LibSource::File(_))
+                            && matches!(capture.source, LibSource::File(_) | LibSource::Removable {..})
                             && capture.preparation.is_some_and(|p| p.grid.is_some() || p.hotcues.iter().any(Option::is_some)) {
                             qualifications.insert(capture.source.clone(), capture.fingerprint);
                         }
@@ -251,23 +256,12 @@ impl Metadata {
                     let catalog = if let Some(store) = &mut store {
                         match store {
                             Ok(store) => {
-                                // This is essential persistence of an already
-                                // measured digest, not optional hashing. Apply
-                                // it to the baseline so a cancelled scan/import
-                                // cannot erase it in reconcile_optional's rebase.
-                                let mut proof_error = None;
-                                for proof in &job.sampler_sources {
-                                    let result = proof.content_hash.ok_or_else(|| "sampler content proof has no digest".to_string())
-                                        .and_then(|hash| store.catalog.qualify_verified_content(
-                                            &proof.track, &proof.source, proof.fingerprint, hash));
-                                    if let Err(error) = result { proof_error.get_or_insert(error); }
-                                }
                                 storage = Some(
                                     match super::library_store::reconcile_optional(
-                                        store, &mut items, &job.captures,
+                                        store, &mut items, &job.captures, &job.sampler_sources,
                                         job.import.as_ref().map(|import| import.path.as_path()),
                                         job.import.as_ref().map(|import| import.work.as_ref()),
-                                        job.scan_work.as_deref(), &fallback,
+                                        job.scan_work.as_deref(), job.roots.as_deref(), &fallback,
                                         job.relocation.as_ref().map(|r| (&r.request, r.work.as_ref())), job.qualification_work.as_ref(), &qualification_sources,
                                     ) {
                                         Ok(result) => {
@@ -280,11 +274,6 @@ impl Metadata {
                                         Err(error) => format!("DJ library NOT saved: {error}"),
                                     },
                                 );
-                                if let Some(error) = proof_error {
-                                    let status = storage.as_mut().unwrap();
-                                    status.push_str("; sampler content proof rejected: ");
-                                    status.push_str(&error);
-                                }
                                 if let Some(completion) = job.analysis.take() {
                                     let receipt = if durable {
                                         analysis::save(store, analysis_disk.as_mut().unwrap(), completion)
@@ -444,12 +433,14 @@ impl Metadata {
             relocation: None,
             catalog: Arc::new(crate::library::Catalog::default()),
             collection_rows: Arc::new(CollectionRows::default()),
+            initialized:!persistent,
             storage: persistent.then(|| "Opening DJ library…".into()),
             storage_error: None,
             durable: !persistent,
             clear_error: false,
             staged: None,
             retired_candidates: Vec::new(),
+            retired_roots:Vec::new(),
             revision: 0,
             dirty: persistent,
             in_flight: false,
@@ -509,8 +500,8 @@ impl Metadata {
         self.dirty = true;
         Ok(())
     }
-    /// Enqueue only fresh hash/decode proofs from an Applied sampler request.
-    /// A project/definition SourceRef by itself is not a measured content proof.
+    /// Enqueue only freshly measured same-descriptor hash/decode proofs from
+    /// media workers. A project/definition SourceRef is not a measured proof.
     /// At most 256 proofs wait here and one 256-proof job can be in flight.
     pub fn qualify_sampler(&mut self, proof: crate::sampler_bank::SourceRef) -> std::result::Result<(), String> {
         if self.storage.is_none() {
@@ -535,6 +526,7 @@ impl Metadata {
         Ok(())
     }
 
+    pub fn ready(&self)->bool {self.initialized && !self.worker_closed && (self.storage.is_none() || self.durable)}
     pub fn set_performance(&mut self, performance: Handle) {
         self.performance = performance;
     }
@@ -635,15 +627,16 @@ impl Metadata {
         publication: library_scan::Publication,
         library: &Arc<Vec<LibItem>>,
     ) {
-        let Some((items, work)) = publication.stage(library) else {
+        let Some((items, work, roots)) = publication.stage(library) else {
             return;
         };
-        if let Some(previous) = self.staged.replace(Staged { items, work }) {
+        if let Some(previous) = self.staged.replace(Staged { items, work, roots }) {
             previous
                 .work
                 .cancel()
                 .store(true, std::sync::atomic::Ordering::Release);
             self.retired_candidates.push(previous.items);
+            if let Some(roots)=previous.roots {self.retired_roots.push(roots);}
         }
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -658,6 +651,7 @@ impl Metadata {
                 .cancel()
                 .store(true, std::sync::atomic::Ordering::Release);
             self.retired_candidates.push(candidate.items);
+            if let Some(roots)=candidate.roots {self.retired_roots.push(roots);}
         }
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -713,6 +707,7 @@ impl Metadata {
             return Err(error);
         }
         if let Ok(result) = received {
+            self.initialized=true;
             if let Some(collection) = result.collection { self.collection_result = Some(collection); }
             if let Some(analysis) = result.analysis { self.analysis_result = Some(analysis); }
             if let Some(inspection) = result.inspection { self.inspection_result = Some(inspection); }
@@ -790,8 +785,10 @@ impl Metadata {
                     .map_or(&*library, |staged| &staged.items)
                     .clone(),
                 scan_work: self.staged.as_ref().map(|staged| staged.work.clone()),
+                roots: self.staged.as_ref().and_then(|staged|staged.roots.clone()),
                 restricted: self.deferred || self.performance.protected(),
                 _retired_candidates: std::mem::take(&mut self.retired_candidates),
+                _retired_roots:std::mem::take(&mut self.retired_roots),
                 revision: self.revision,
                 updates: std::mem::take(&mut self.pending),
                 captures: std::mem::take(&mut self.captures),
@@ -821,6 +818,7 @@ impl Metadata {
                     self.import = job.import;
                     self.relocation = job.relocation;
                     self.retired_candidates = job._retired_candidates;
+                    self.retired_roots=job._retired_roots;
                     if self.storage.is_some() {
                         self.durable = false;
                         self.storage_error =

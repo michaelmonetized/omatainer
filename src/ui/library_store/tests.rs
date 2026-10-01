@@ -221,9 +221,9 @@ fn actual_gui_mixed_import_restart_and_real_load_restore_all_ids_and_preparation
         select(&mut f, source);
         if !matches!(source, LibSource::File(_)) {
             f.app.load_sel(0);
-            assert!(
-                matches!(&f.app.loads[0].as_ref().unwrap().phase, Phase::Failed(message) if message.contains("namespace"))
-            );
+            wait(|| {f.app.poll_loads();matches!(&f.app.loads[0].as_ref().unwrap().phase,Phase::Failed(_))});
+            assert!(matches!(&f.app.loads[0].as_ref().unwrap().phase,Phase::Failed(message)
+                if if matches!(source,LibSource::Removable {..}) {message.contains("offline")} else {message.contains("namespace")}));
             assert!(f.decoder_jobs.try_recv().is_err());
         }
     }

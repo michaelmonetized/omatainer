@@ -199,7 +199,8 @@ fn run_with(
     request.validate()?;
     token.check(work)?;
     let cancelled = || token.check(work).is_err();
-    let path = request.reference.path().map_err(Failure::error)?;
+    let location=crate::media_location::Location::resolve(&request.reference.source).map_err(Failure::error)?;
+    let path=location.path.as_path();
     let mut file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
@@ -216,6 +217,7 @@ fn run_with(
     }
     let stable = |file: &std::fs::File| -> Result<(), Failure> {
         token.check(work)?;
+        location.verify_file(file,request.reference.fingerprint).map_err(|e|Failure::error(format!("analysis source changed during verification: {e}")))?;
         if FileFingerprint::from_metadata(&file.metadata().map_err(Failure::error)?)
             != request.reference.fingerprint
             || FileFingerprint::read(path) != Some(request.reference.fingerprint)

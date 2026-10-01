@@ -176,8 +176,9 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 ## Library scanning
 
-- Startup presents the built-in crate immediately. Filesystem discovery,
-  metadata reconciliation, and sorting run on one background worker.
+- Startup presents the built-in crate immediately. Filesystem discovery and
+  scan sorting run on one filesystem worker; catalog reconciliation and
+  persistence stay on the existing sole metadata writer.
 - Scan shows entry/file progress and an explicit completion or failure state.
   Cancel keeps the existing crate; another scan starts only after the current
   worker has acknowledged cancellation. Filesystem calls already in progress
@@ -660,9 +661,11 @@ once before encoding the request.
   range/arming state. Cue/loop positions
   use source seconds; loading restores preparation while remaining paused.
 - Built-in, absolute local file, removable volume/relative path, and provider/ID
-  namespaces cannot collide. Local files and built-ins use the existing loader.
-  Removable/provider resolution is explicitly unavailable; importing their
-  metadata never fetches media or treats IDs as local paths.
+  namespaces cannot collide. Local files, built-ins and mounted removable volumes
+  use the existing worker/loader. UUID and volume-relative identity remain on
+  receipts; resolved mountpoints are transient I/O paths. Offline, missing,
+  ambiguous and changed media remain distinct. Providers are unavailable locally;
+  metadata imports never fetch media or treat provider IDs as local paths.
 - Replacing bytes at a local path keeps the track ID but creates a fresh
   fingerprint-qualified version. Old preparation/history remains archived and
   cannot apply to the replacement. Moves are not inferred; a different typed
@@ -673,9 +676,10 @@ once before encoding the request.
   serialization and fsync. Scan/import publication is atomic and retains source
   selection. Renderer receipts publish preparation in 87 fixed atomic words;
   terminal receipts remain attributable even after replacement before a GUI poll.
-- Schema 6 is written; schemas 1–5 migrate without changing IDs or preparation.
-  Earlier catalogs migrate with an empty named-crate forest; malformed schema 6
-  stores missing that forest are rejected.
+- Schema 7 is written; schemas 1–6 migrate without changing IDs or preparation.
+  Schema 6 retains its forest and gains an empty local watched-root book; earlier
+  catalogs gain both. Missing required fields or new fields smuggled into old
+  schemas are rejected. Older relocated-source histories remain File-only.
   Older hot cues default to unnamed, theme-colored slots. Unknown schemas/fields, malformed stores and a missing primary
   with a preserved backup fail closed. Scans and startup defaults cannot replace
   them. Import conflicts reject the import while unrelated pending edits persist.
@@ -1046,3 +1050,46 @@ publication. Preferences persist startup protection only, not emergency state.
   source; obsolete Browse requests cannot redirect the new view. Project state
   saves the selected crate ID only, never the external forest. Missing saved
   crates fall back explicitly to All tracks without recreating collections.
+
+
+## Music imports and watched removable libraries (#107)
+
+- Explicit files/folders merge on the existing scanner. Limits are 64 inputs,
+  64 folder levels, one million visits and 100,000 rows. No descendant symlink
+  traversal; live reason counts and at most 32 bounded path/detail samples expose
+  unreadable, unsupported, missing and incomplete inputs. Cancellation preserves
+  the previous candidate. Imported catalogs never activate foreign watched roots.
+- The scanner owns one nonblocking inotify descriptor and at most 4,096 directory
+  watches. Notifications and mount observations coalesce into one hint. A
+  30-second full-scan hint covers missed/new directories and unsupported watches.
+  The GUI admits that scan against its current catalog/baseline only in Studio,
+  outside Close and after pending persistence. Mount polling is worker-only.
+  No second filesystem/catalog writer is introduced. Large summaries and
+  enrollment batches retire on workers. Startup waits for the saved root book.
+- The catalog writer atomically saves local root bookmarks with optional scan
+  enrollment. At most 32 profiles / 64 roots each are retained. Offline bindings
+  survive; removing a root removes only its bookmark. Rebinding a known UUID
+  requires a confirmed removal and later enrollment. Essential cues and measured
+  source proofs survive an optional scan cancelled before commit.
+- Linux discovery uses bounded mountinfo and libudev block data. UUID is durable
+  identity; namespace, mount ID/root/point and filesystem/block device are access
+  guards. Duplicate UUIDs, ambiguous overmounts, foreign mounts, unsupported UUIDs
+  and symlink traversal are refused. Btrfs access verifies its read-only FS_INFO
+  UUID when inode and mountinfo device numbers differ. Existing UUID resolution does not depend on
+  a later change in bus/removable classification. Unsupported unrelated block
+  UUID formats do not disable local-file imports.
+- Missing-file observations come from guarded inspection of that exact path on
+  the visible mounted volume, never absence from a traversal. Offline/not-visible/
+  unreadable/ambiguous/changed remain distinct; all records are retained. Selected
+  rows display the last scan observation. No scan deletes media or saved tracks.
+- Exact captured File locations enroll as UUID/relative sources while preserving
+  TrackId, crate membership and archived aliases. Changed fingerprints create
+  fresh versions; UUID/path alone never transfer preparation/history. Removable
+  deck loads hash and decode one opened regular descriptor (8 GiB source limit),
+  retain typed receipts and verify path/mount/descriptor afterward. Analysis and
+  sampler preparation use the same guarded resolver. Only fresh same-byte proof
+  restores archived preparation. Explicit verified relocation supports both
+  local namespaces and retains old attributable references, without moving files.
+- Software mount inventories, local block-filesystem resolver checks and converted
+  callback comparisons do not qualify a physical removable-drive unplug, human
+  listening, controller compatibility, backend XRUN freedom or Orca behavior.

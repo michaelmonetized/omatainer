@@ -230,7 +230,8 @@ fn decode_reference(
     pcm_limit: u64,
     cancelled: &impl Fn() -> bool,
 ) -> Result<(crate::engine::dsp::Sample, [u8; 32]), SourceError> {
-    let path = reference.path()?;
+    let location=crate::media_location::Location::resolve(&reference.source).map_err(|e|e.to_string())?;
+    let path=location.path.as_path();
     let mut file = OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path).map_err(|e| format!("sampler source unavailable: {e}"))?;
     let metadata = file.metadata().map_err(|e| e.to_string())?;
@@ -240,6 +241,7 @@ fn decode_reference(
     { return Err("sampler source changed or exceeds the 8 GiB source-file limit".into()); }
     let stable = |file: &std::fs::File| -> Result<(), String> {
         if cancelled() { return Err("sampler preparation cancelled".into()); }
+        location.verify_file(file,reference.fingerprint).map_err(|e|format!("sampler source changed during preparation: {e}"))?;
         if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != reference.fingerprint
             || FileFingerprint::read(path) != Some(reference.fingerprint)
         { return Err("sampler source changed during preparation".into()); }

@@ -1474,7 +1474,7 @@ Workflow: Record a held note.
 
 Exact crate source and file version
 
-Capture the currently selected local file identity and decode it on the bounded shared worker. Changed or invalid media is rejected without replacing the current bank. Built-in deck stems are not file assignments.
+Capture the selected local-file or mounted removable-volume identity and decode it on the bounded shared worker. Changed or invalid media is rejected without replacing the current bank. Built-in deck stems are not file assignments.
 
 Workflow: Record a held note.
 
@@ -1634,7 +1634,7 @@ Workflow: Prepare a DJ deck.
 
 Background filesystem discovery
 
-Scan the configured music location. Progress and errors are visible; only a complete result replaces the crate. Existing selection and valid metadata survive.
+Scan configured watched folders with bounded traversal. Known removable roots resolve by UUID even at a new mountpoint; an offline volume is not a deleted file. Readable supported entries publish together; skipped reasons and incomplete coverage are visible. Cancellation keeps the prior crate, and the persistent catalog retains saved identities absent from a scan.
 
 Workflow: Prepare a DJ deck.
 
@@ -1979,6 +1979,30 @@ Workflow: Prepare a DJ deck.
 Validated background merge
 
 Merge compatible identities and preparation off the UI thread. Malformed/newer/conflicting data is rejected; unrelated pending edits remain preserved.
+
+Workflow: Prepare a DJ deck.
+
+### Music paths
+
+Explicit file and folder inputs
+
+Enter one absolute local music file or folder per line. The background worker reads at most 64 inputs, 64 folder levels, one million entries and 100,000 library rows. Unsupported, unreadable and truncated entries have visible reasons.
+
+Workflow: Prepare a DJ deck.
+
+### Import music files/folders
+
+Background music discovery
+
+Wait for the current catalog save, then merge readable audio files/folders without unloading either deck. Overlapping inputs are deduplicated; mounted removable media keeps UUID/relative-path identity. Cancellation before publication keeps the prior crate.
+
+Workflow: Prepare a DJ deck.
+
+### Manage music folders
+
+Saved library root preferences
+
+Open Preferences to edit and apply watched music folders. After a scan, changes coalesce on the filesystem worker; a full-scan hint every 30 idle seconds covers missed notifications. Scans wait for Studio and current catalog work; filesystem work can delay completion. Known volumes reconnect by UUID; offline or ambiguous media stays explicit. Removing a root deletes only its bookmark, never tracks or audio.
 
 Workflow: Prepare a DJ deck.
 

@@ -324,3 +324,36 @@ fn protection_cancels_prepared_but_unpublished_sampler_work_and_queued_edits_kee
     token.cancel(); assert_eq!(token.ack.state(), super::sampler::EditState::Rejected);
     assert!(loader.request_sampler(sampler_request("refused"), crate::sampler_bank::assets::Owner::isolated_for_test(crate::sampler_bank::assets::Budget::limits())).is_err());
 }
+
+#[test]
+fn actual_descriptor_decoder_loads_typed_volume_and_fails_offline_or_changed_mount() {
+    use crate::engine::media_analysis::tests::{Files,wav};
+    use crate::media_location::Snapshot as Mounts;
+    use sha2::{Digest,Sha256};
+    let files=Files::new();let bytes=wav(8000,8000,1,false);let local=files.source("volume.wav",&bytes);
+    let LibSource::File(path)=&local.source else {unreachable!()};let root=path.parent().unwrap();
+    let source=LibSource::Removable {volume_id:"TEST-A".into(),relative_path:"volume.wav".into()};
+    let mounted=Mounts::fixture_volume(root,"TEST-A",1);let mounts=Arc::new(Mutex::new(mounted.clone()));let observed=mounts.clone();
+    let loader=Loader::with_inventory(move ||Ok(observed.lock().unwrap().clone())).unwrap();
+    loader.request_source(0,source.clone()).unwrap();let completion=ready(&loader,0);
+    assert_eq!(completion.fingerprint,Some(local.fingerprint));assert_eq!(completion.content_hash,Some(Sha256::digest(&bytes).into()));assert_eq!(completion.result.unwrap().sample.frames(),8000);
+    *mounts.lock().unwrap()=Mounts::fixture_offline();loader.request_source(1,source.clone()).unwrap();let completion=ready(&loader,1);
+    assert!(completion.result.unwrap_err().to_string().contains("offline"));assert!(completion.fingerprint.is_none() && completion.content_hash.is_none());
+    let mut calls=0;let next=Mounts::fixture_volume(root,"TEST-A",2);let policy=performance::Handle::default();let foreground=policy.clone();
+    let loader=Loader::with_backend(move |path,token,file|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,policy,true,
+        move ||{calls+=1;Ok(if calls==1 {mounted.clone()} else {next.clone()})}).unwrap();
+    loader.request_source(0,source).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.content_hash.is_none());
+}
+
+#[test]
+fn production_descriptor_cannot_admit_a_different_path_swapped_during_decode() {
+    use crate::engine::media_analysis::tests::{Files,wav};
+    let files=Files::new();let bytes=wav(8000,8000,1,false);let local=files.source("original.wav",&bytes);let other=files.source("other.wav",&wav(8000,2000,1,false));
+    let LibSource::File(path)=local.source else {unreachable!()};let LibSource::File(other)=other.source else {unreachable!()};
+    let saved=path.with_extension("saved");let policy=performance::Handle::default();let foreground=policy.clone();
+    let loader=Loader::with_backend(move |path,token,file| {
+        std::fs::rename(path,&saved).unwrap();std::fs::rename(&other,path).unwrap();
+        super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground)
+    },media_analysis::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
+    loader.request(0,path).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.fingerprint.is_none());
+}

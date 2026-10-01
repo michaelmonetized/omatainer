@@ -674,6 +674,7 @@ fn schema_two_migrates_default_styles_and_no_invented_hash_without_overwriting_o
     let mut old = serde_json::to_value(&original).unwrap();
     old["schema"] = 2.into();
     old.as_object_mut().unwrap().remove("crates");
+        old.as_object_mut().unwrap().remove("watched_roots");
     for track in old["tracks"].as_array_mut().unwrap() {
         track.as_object_mut().unwrap().remove("previous_locations");
         for version in track["versions"].as_array_mut().unwrap() {
@@ -742,6 +743,7 @@ fn schema_three_cue_metadata_migrates_without_an_invented_beatgrid() {
     let mut old = serde_json::to_value(&original).unwrap();
     old["schema"] = 3.into();
     old.as_object_mut().unwrap().remove("crates");
+        old.as_object_mut().unwrap().remove("watched_roots");
     for track in old["tracks"].as_array_mut().unwrap() {
         for version in track["versions"].as_array_mut().unwrap() {
             version["preparation"].as_object_mut().unwrap().remove("grid");
@@ -857,6 +859,7 @@ fn schema_four_migrates_without_inventing_cached_analysis_or_modifying_original(
     let mut old = serde_json::to_value(&original).unwrap();
     old["schema"] = 4.into();
     old.as_object_mut().unwrap().remove("crates");
+        old.as_object_mut().unwrap().remove("watched_roots");
     for track in old["tracks"].as_array_mut().unwrap() {
         for version in track["versions"].as_array_mut().unwrap() {
             version.as_object_mut().unwrap().remove("analysis");

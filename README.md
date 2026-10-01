@@ -120,7 +120,7 @@ and [file format and atomic save rules](docs/validation/issue-82-codec.md).
 ## DJ library
 
 Use **analyze…** beside the crate search to prepare BPM, duration and a bounded
-waveform for selected local files. **Analyze selected row** captures one source;
+waveform for selected local files or mounted removable libraries. **Analyze selected row** captures one source;
 **Analyze filtered crate** captures the current filtered order, up to 4,096 rows.
 Later filtering or scanning does not retarget that queue. Choose individual
 fields and **Force selected fields** to reanalyze them; manual BPM and locked
@@ -157,6 +157,28 @@ crate as a view preference; they never replace this independent catalog. A
 missing saved crate falls back to All tracks. Collection edits are unavailable
 during Performance protection; browsing existing crates remains available.
 
+**library… → Import music files/folders** accepts one absolute path per line,
+including individual files and nested folders. It merges readable supported audio
+without stopping either deck. Progress shows skipped reasons and incomplete
+coverage: at most 64 inputs, 64 folder levels, one million visited entries and
+100,000 rows; the first 32 skipped paths are shown. Cancellation retains the
+prior crate. The worker does not follow descendant symlinks.
+
+**Manage music folders in Preferences** edits saved watched roots. After the
+startup/manual scan, directory notifications coalesce into one pending rescan;
+a full-scan hint every 30 idle seconds catches missed events and reconnects. Watches
+cover at most 4,096 directories; the fallback scan covers further directories
+within the traversal limits. Scans wait for Studio and for the current catalog
+save; filesystem work can delay completion. Removing a root removes its bookmark, never tracks or source files.
+
+Known removable roots retain their filesystem UUID across mountpoint changes.
+An offline volume remains distinct from a missing file observed on the mounted
+volume; scans never infer deletion from an unreadable or incomplete traversal.
+Previous file records enroll without changing TrackId or named-crate membership.
+New fingerprints start unprepared; only a freshly verified matching content hash
+restores older cues/history. Duplicate UUIDs and foreign mounts are refused.
+Importing another catalog does not activate its watched folders.
+
 Tracks discovered by Scan or successfully loaded from a dropped file are stored
 in `$XDG_DATA_HOME/omatainer/library.json` (normally
 `~/.local/share/omatainer/library.json`). Stable track IDs, metadata, tempo
@@ -165,12 +187,13 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 6 is the current format; versions 1–5 migrate without changing
+worker. Version 7 is the current format; versions 1–6 migrate without changing
 IDs or preparation. Source-qualified analysis results and their algorithm versions
 are retained in the catalog; bounded waveform blobs live in the private cache. Conflicting identities or unknown
-fields/formats are rejected rather than discarded. Removable-volume and provider
-references stay distinct, but loading them is explicitly unavailable until a
-resolver is implemented. No provider/network media is fetched.
+fields/formats are rejected rather than discarded. Mounted removable libraries
+resolve by filesystem UUID and volume-relative path. Offline, ambiguous or changed
+volumes fail explicitly; provider references remain unavailable locally. No
+provider/network media is fetched.
 
 The main cue, eight hot cues and saved loop range/arming state return on a later
 load; playback stays paused. Replaced file bytes keep their location's ID but get

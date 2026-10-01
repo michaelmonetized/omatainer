@@ -121,14 +121,11 @@ impl SourceRef {
         {
             return Err("invalid sampler catalog track identity".into());
         }
-        let LibSource::File(path) = &self.source else {
-            return Err("sampler library sources must be local files".into());
-        };
-        use std::os::unix::ffi::OsStrExt;
-        let bytes = path.as_os_str().as_bytes();
-        if !path.is_absolute() || bytes.len() > 4096 || bytes.contains(&0) {
-            return Err("invalid local sampler source path".into());
+        if !matches!(self.source,LibSource::File(_) | LibSource::Removable {..}) {
+            return Err("sampler library sources must be local files or removable volumes".into());
         }
+        crate::library::validate_source(&self.source)?;
+        crate::media_location::validate_root_source(&self.source).map_err(|e|e.to_string())?;
         Ok(())
     }
 

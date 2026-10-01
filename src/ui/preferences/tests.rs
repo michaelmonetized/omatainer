@@ -611,3 +611,38 @@ fn recovery_limits_are_real_numeric_controls_persist_reopen_and_cancel() {
     assert_eq!(gui.fixture.app.settings.profile().recovery, previous);
     assert_eq!(storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap().preferences.current().unwrap().recovery, previous);
 }
+
+#[test]
+fn protected_pending_root_scan_waits_for_studio_without_losing_the_request() {
+    let mut gui = Gui::new();
+    gui.fixture.app.library_metadata = crate::ui::library_metadata::Metadata::new(Some(gui.dir.join("library.json")));
+    gui.fixture.app.library_metadata.set_performance(gui.fixture.app.engine.cmd.performance().clone());
+    let end = Instant::now() + std::time::Duration::from_secs(3);
+    while !gui.fixture.app.library_metadata.ready() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    let active = gui.fixture.app.settings.applied.active.clone();
+    gui.fixture.app.settings.applied.profiles.get_mut(&active).unwrap().library_roots = vec![gui.dir.clone()];
+    gui.fixture.app.engine.cmd.send(Command::PerformanceMode(true)).unwrap();
+    gui.fixture.rt.process(&mut [0.0; 128]);
+    assert!(gui.fixture.app.engine.cmd.performance().protected());
+    gui.fixture.app.scan_library();
+    assert!(gui.fixture.app.settings.rescan, "protected scan must retain the pending request");
+    for _ in 0..3 { gui.frame(vec![]); }
+    assert!(gui.fixture.app.settings.rescan);
+    assert!(!gui.fixture.app.library_scan.active());
+    gui.fixture.app.engine.cmd.send(Command::PerformanceMode(false)).unwrap();
+    gui.fixture.rt.process(&mut [0.0; 128]);
+    gui.frame(vec![]);
+    assert!(!gui.fixture.app.settings.rescan);
+    assert!(gui.fixture.app.library_scan.active());
+    let end = Instant::now() + std::time::Duration::from_secs(3);
+    while gui.fixture.app.library_scan.active() || gui.fixture.app.library_metadata.active() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    assert!(gui.fixture.app.library_metadata.catalog.watched_roots.binding(&active, &gui.dir).is_some());
+}
