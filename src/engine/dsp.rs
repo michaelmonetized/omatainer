@@ -29,7 +29,9 @@ impl OnePole {
     }
 }
 
-/// State-variable filter. `morph` 0 = LP, 0.5 = BP-ish, 1 = HP (Serato channel filter).
+/// Trapezoidal state-variable filter. `morph` 0 = LP, 0.5 = BP, 1 = HP.
+/// For a finite positive output rate, cutoff is in Hz, limited to the legacy
+/// numerical floor (~1.53 Hz) through 45% of that rate (90% of Nyquist).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Svf {
     pub ic1eq: f32,
@@ -38,15 +40,12 @@ pub struct Svf {
 
 impl Svf {
     pub fn process(&mut self, x: f32, cutoff: f32, res: f32, sr: f32, morph: f32) -> f32 {
-        // Keep the original 48 kHz cutoff limits in Hz at every output rate.
-        // A fixed normalized clamp would change the audible upper cutoff when
-        // opening the same project at 44.1 or 96 kHz. Retain Nyquist headroom.
-        let scale = 48_000.0 / sr;
-        let ceiling = (0.45 * scale).min(std::f32::consts::PI * 0.45);
-        let f = (std::f32::consts::PI * cutoff / sr)
-            .clamp((0.0001 * scale).min(ceiling), ceiling)
-            .tan();
-        let g = f;
+        // Clamp frequency before prewarping. Clamping the angle to 0.45
+        // instead incorrectly plateaus near 6.875 kHz at a 48 kHz rate.
+        const MIN_HZ: f32 = 48_000.0 * 0.0001 / std::f32::consts::PI;
+        let max_hz = 0.45 * sr;
+        let hz = cutoff.clamp(MIN_HZ.min(max_hz), max_hz);
+        let g = (std::f32::consts::PI * hz / sr).tan();
         let k = 2.0 - res.clamp(0.0, 0.95) * 1.8;
         let a1 = 1.0 / (1.0 + g * (g + k));
         let a2 = g * a1;
@@ -735,4 +734,3 @@ pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
 }
 
 pub use super::decode::decode_audio;
-

@@ -368,22 +368,22 @@ fn sample_rate_filters_keep_cutoff_hz_and_controls() {
 }
 
 #[test]
-fn sample_rate_svf_upper_cutoff_stays_at_the_original_frequency() {
-    let cutoff_hz = 48_000.0 * 0.45 / std::f64::consts::PI;
+fn sample_rate_svf_requested_upper_cutoff_keeps_its_frequency() {
+    let cutoff_hz = 18_000.0;
     for sr in [44_100, 48_000, 96_000] {
         let mut filter = Svf::default();
         let mut input_energy = 0.0;
         let mut output_energy = 0.0;
         for frame in 0..sr {
             let x = (frame as f64 / sr as f64 * cutoff_hz * std::f64::consts::TAU).sin() as f32;
-            let y = filter.process(x, 20_000.0, 0.0, sr as f32, 0.0);
+            let y = filter.process(x, cutoff_hz as f32, 0.0, sr as f32, 0.0);
             if frame >= sr / 2 {
                 input_energy += x as f64 * x as f64;
                 output_energy += y as f64 * y as f64;
             }
         }
         // At its cutoff a critically damped SVF has gain 1/2. This independent
-        // frequency probe catches a stale normalized clamp at either rate.
+        // frequency probe catches the former erroneous 6.875 kHz ceiling.
         let gain = (output_energy / input_energy).sqrt();
         assert!(
             (gain - 0.5).abs() < 0.002,
