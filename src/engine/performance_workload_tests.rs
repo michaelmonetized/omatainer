@@ -8,7 +8,11 @@ const BLOCKS: usize = 8192;
 const WARMUP: usize = 128;
 
 fn prepared(role: &str) -> (Engine, RtEngine) {
-    let (engine, mut rt) = Engine::headless_for_test(RATE, 256);
+    prepared_at(role, RATE)
+}
+
+pub(super) fn prepared_at(role: &str, rate: u32) -> (Engine, RtEngine) {
+    let (engine, mut rt) = Engine::headless_for_test(rate, 256);
     rt.quant = 0.0;
     rt.master = 0.4;
     if role != "live_dj" {
@@ -19,7 +23,7 @@ fn prepared(role: &str) -> (Engine, RtEngine) {
             rt.tracks[track].clips[0].bars = 32.0;
             rt.tracks[track].fx.slots = [fx::FxId::Eq3, fx::FxId::Comp, fx::FxId::Reverb]
                 .into_iter()
-                .map(|id| fx::FxSlot::new(id, RATE as f32))
+                .map(|id| fx::FxSlot::new(id, rate as f32))
                 .collect();
             rt.apply(Command::SetNotes {
                 track: track as u8,
@@ -75,45 +79,7 @@ fn workload(role: &str, frames: usize) -> Value {
                 rejected += 1;
             }
         };
-        if role != "live_dj" && block % 8 == 0 {
-            for track in 0..TRACKS {
-                let phase = ((block / 8 + track * 11) % 128) as f32 / 127.0;
-                submit(Command::TrackGain {
-                    track: track as u8,
-                    value: 0.12 + phase * 0.12,
-                });
-            }
-        }
-        if matches!(role, "composer" | "hybrid") {
-            let note = 48 + ((block / 16) % 24) as u8;
-            if block % 16 == 0 {
-                submit(Command::LiveNoteOn {
-                    source: 901,
-                    ch: 0,
-                    note,
-                    vel: 87,
-                });
-            }
-            if block % 16 == 8 {
-                submit(Command::LiveNoteOff {
-                    source: 901,
-                    ch: 0,
-                    note,
-                });
-            }
-        }
-        if matches!(role, "live_dj" | "hybrid") && block % 8 == 0 {
-            let phase = ((block / 8) % 128) as f32 / 127.0;
-            submit(Command::Xfader(phase));
-            submit(Command::DeckPitch {
-                deck: 1,
-                value: 0.46 + phase * 0.08,
-            });
-            submit(Command::DeckJog {
-                deck: 0,
-                delta: if block % 32 == 0 { -0.002 } else { 0.001 },
-            });
-        }
+        controls(role, block, false, &mut submit);
         let measured = test_alloc::measure(|| callback.render(&mut output));
         allocations += measured.allocations;
         frees += measured.frees;
@@ -175,6 +141,57 @@ fn workload(role: &str, frames: usize) -> Value {
             "original_notes_intact":original_notes_intact,"exact_recorded_notes":exact_recorded_notes,
             "all_commands_applied":engine.cmd.len()==0 && engine.undo.view().failures==0},
         "observations":{"quantized_audio_hash":format!("{hash:016x}")}})
+}
+
+/// Same producer event order for the original show gate and the locked-deck
+/// extension. Fixed decks retain their declared ratio and aligned search hops.
+pub(super) fn controls(
+    role: &str,
+    block: usize,
+    fixed_decks: bool,
+    submit: &mut impl FnMut(Command),
+) {
+    if role != "live_dj" && block % 8 == 0 {
+        for track in 0..TRACKS {
+            let phase = ((block / 8 + track * 11) % 128) as f32 / 127.0;
+            submit(Command::TrackGain {
+                track: track as u8,
+                value: 0.12 + phase * 0.12,
+            });
+        }
+    }
+    if matches!(role, "composer" | "hybrid") {
+        let note = 48 + ((block / 16) % 24) as u8;
+        if block % 16 == 0 {
+            submit(Command::LiveNoteOn {
+                source: 901,
+                ch: 0,
+                note,
+                vel: 87,
+            });
+        }
+        if block % 16 == 8 {
+            submit(Command::LiveNoteOff {
+                source: 901,
+                ch: 0,
+                note,
+            });
+        }
+    }
+    if matches!(role, "live_dj" | "hybrid") && block % 8 == 0 {
+        let phase = ((block / 8) % 128) as f32 / 127.0;
+        submit(Command::Xfader(phase));
+        if !fixed_decks {
+            submit(Command::DeckPitch {
+                deck: 1,
+                value: 0.46 + phase * 0.08,
+            });
+            submit(Command::DeckJog {
+                deck: 0,
+                delta: if block % 32 == 0 { -0.002 } else { 0.001 },
+            });
+        }
+    }
 }
 
 pub(crate) fn callbacks() -> Vec<Value> {

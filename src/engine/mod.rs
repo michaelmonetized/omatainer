@@ -52,6 +52,8 @@ pub(crate) mod cue_metadata;
 pub(crate) mod beatgrid;
 #[cfg(test)]
 mod keylock_quality_tests;
+#[cfg(test)]
+mod keylock_showload_tests;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
