@@ -175,8 +175,8 @@ impl std::fmt::Display for SubmissionError {
             Self::Disconnected => "Audio has disconnected. Restart Omatainer before retrying.",
             Self::InvalidTarget => "The requested control target does not exist.",
             Self::UiUnavailable => "Library control is unavailable. Reopen Omatainer before retrying.",
-            Self::UiFull => "The library request queue is full. Wait for the interface to catch up, then retry loading.",
-            Self::UncapturedSelection => "Load failed because the request did not capture a library selection. Retry using the controller or crate load button.",
+            Self::UiFull => "The library request queue is full. Wait for the interface to catch up, then retry browsing or loading.",
+            Self::UncapturedSelection => "Library request could not resolve the visible selection. Select an available crate item, then retry.",
         })
     }
 }
@@ -202,9 +202,9 @@ impl AdmissionShared {
         Err(error)
     }
 
-    fn submit_ui_load(&self, deck: u8) -> Result<SubmissionOutcome, SubmissionError> {
+    fn submit_ui(&self, result: Result<SubmissionOutcome, SubmissionError>) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::Relaxed;
-        match self.ui_requests.load(deck) {
+        match result {
             Ok(outcome) => {
                 match outcome {
                     SubmissionOutcome::Accepted => &self.accepted,
@@ -323,7 +323,10 @@ impl CommandPort {
             return fail(SubmissionError::Disconnected);
         }
         if let Command::DeckLoadSelected { deck } = command {
-            return self.shared.submit_ui_load(deck);
+            return self.shared.submit_ui(self.shared.ui_requests.load(deck));
+        }
+        if let Command::Browse(steps) = command {
+            return self.shared.submit_ui(self.shared.ui_requests.browse(steps));
         }
         if matches!(&command, Command::FxSelect { slot } | Command::FxWet { slot, .. } if *slot >= 3) {
             return fail(SubmissionError::InvalidTarget);
@@ -443,10 +446,10 @@ mod gui_routing_tests {
         drop(locked);
         worker.join().unwrap();
         assert_eq!(result.unwrap(), Ok(SubmissionOutcome::Accepted));
-        let request = gui.take_loads()[0].take().unwrap();
+        let super::super::ui_requests::Request::Load(request) = gui.take_requests()[0].take().unwrap() else { panic!("expected load") };
         assert_eq!(request.deck, 1);
         assert_eq!(
-            request.selection.unwrap().source,
+            request.selection.source,
             LibSource::Builtin(BuiltinStem::Harmony)
         );
         assert_eq!(commands.len(), 0);

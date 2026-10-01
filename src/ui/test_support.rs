@@ -33,8 +33,7 @@ impl Fixture {
             report
         })
         .unwrap();
-        let mut app = App::with_loader(engine, Theme::default(), Some(loader));
-        app.library = Arc::new(builtin_crate_items());
+        let app = App::with_loader(engine, Theme::default(), Some(loader));
         Self {
             app,
             rt,

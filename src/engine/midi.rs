@@ -14,7 +14,7 @@ mod relative;
 pub use handoff::InputStats;
 pub use relative::RelativeSpec;
 #[cfg(test)]
-use relative::RelativeEncoding;
+pub(crate) use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
 #[cfg(test)]
@@ -121,6 +121,12 @@ impl MidiHub {
     #[cfg(test)]
     pub(crate) fn receive_for_test(&self, cmd: &super::CommandPort, source: u64, device: &str, message: &[u8]) {
         let map = pick_map(&builtin_maps().unwrap(), device);
+        self.receive_map_for_test(cmd, source, map, device, message);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn receive_map_for_test(&self, cmd: &super::CommandPort, source: u64, map: MidiMap, device: &str, message: &[u8]) {
+        map.validate().expect("invalid synthetic controller map");
         let counters = Arc::new(handoff::InputCounters::default());
         let (mut callback, worker) = handoff::start(
             source, map, cmd.clone(), self.log.clone(), self.learn.clone(), device.into(), counters.clone(),
@@ -493,7 +499,7 @@ fn dispatch(
         Action::CueMix => {
             let _ = cmd.send(Command::CueMix(rel));
         }
-        Action::Browse => {
+        Action::Browse if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => {
             let _ = cmd.send(Command::Browse(rel));
         }
         Action::LoadA if pressed => {
