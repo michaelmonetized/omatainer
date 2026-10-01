@@ -131,3 +131,8 @@ workflows (230 native nodes in this run). Evidence is in
 `/tmp/issue94-help-full.log`, `/tmp/issue94-help-build.log` and
 `/tmp/issue94-help-native.log`. This is actual App/renderer plus native API evidence;
 no native window, Orca, desktop configuration or physical audio device was exercised.
+
+The ordered integration additionally refreshed embedded source records and passed
+a fresh production build, seven native CLI protocol cases and native package
+verification. The assembled native accessibility run performed 75 actions and
+persisted/reopened one project note and UI scale 1.25.
