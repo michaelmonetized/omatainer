@@ -391,5 +391,16 @@ fn preserve_metadata(item: &mut LibItem, old: &LibItem) {
     if old.fingerprint == item.fingerprint {
         item.length = old.length.filter(|value| value.is_finite() && *value >= 0.0);
     }
-    item.last_play = old.last_play;
+    // The worker's previous-scan cache can be empty (first scan, or a source
+    // returning after removal). A pathname alone must never transfer history
+    // to different bytes; require the same verified identity in the baseline.
+    let same_media = item.source == old.source
+        && match item.source {
+            LibSource::Builtin(_) => true,
+            LibSource::File(_) => item.fingerprint.is_some()
+                && item.fingerprint == old.fingerprint,
+        };
+    if same_media {
+        item.last_play = old.last_play;
+    }
 }

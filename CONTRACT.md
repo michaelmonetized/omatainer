@@ -377,3 +377,19 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   whose identity changed during decoding receive no unverified path-only credit.
   Built-in stems have stable typed identity. History remains an in-session overlay;
   unchanged identities can reappear after a scan without losing their timestamp.
+
+## Crate history across scans
+
+- Unchanged files retain their existing history only when both the typed source
+  path and verified filesystem fingerprint match. Built-in stems use their
+  stable typed identity. Unknown or changed file identity never inherits a
+  timestamp solely because its pathname matches an old row.
+- Removed files disappear from the crate. Renderer-confirmed playback history
+  stays in memory for the session, keyed by source and fingerprint, so an
+  unchanged file temporarily excluded from scan roots can recover its history.
+  A renamed/moved path is a new identity; no move discovery or history transfer
+  is inferred. Replacing bytes at the same path is also a new identity.
+- Selection follows the same source while it remains in the filtered crate;
+  if it disappears, selection clamps to a valid row. History arriving during a
+  scan remains overlaid on the published crate. Cross-restart history persistence
+  is separate work.
