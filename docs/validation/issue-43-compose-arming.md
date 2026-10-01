@@ -31,4 +31,8 @@ Validation on assembled issue 37 prerequisite:
   measured progress through finite demo media. Producer descheduling can let
   the renderer reach EOF. The fixture now loops and sums wrapped distance,
   preserving its dequeue, frame-count, liveness and final-release assertions.
+- The isolated scene CLI/IPC/engine probe also passes with panic=abort. Its
+  shared scene fixture now imports BufRead itself and calls the production
+  bounded IPC handler directly; the old cfg(test)-only wrapper was unavailable
+  to the standalone probe after issue30.
 - Peer review found no blocker. No physical MIDI/audio hardware was exercised.

@@ -6,6 +6,7 @@ use engine::{ClipKind, MidiNote, RtEngine, Snapshot, SCENES};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::sync::Arc;
+use std::io::BufRead;
 
 fn engine() -> RtEngine {
     let (_tx, rx) = crossbeam_channel::bounded(16);
@@ -206,7 +207,7 @@ pub(super) fn check_ipc_scene_requests() {
     client
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
-    let server_thread = std::thread::spawn(move || handle_client(server, commands, snap));
+    let server_thread = std::thread::spawn(move || handle_client_with_limits(server, commands, snap, ipc_transport::Limits::default()));
     let mut client = BufReader::new(client);
     let before = scene_state(&rt);
     let mut invalid = vec![json!({"op": "scene"})];
