@@ -31,7 +31,7 @@ impl std::fmt::Display for Error {
             Self::Protected => "Performance protection: this destructive action was not applied. Leave performance mode deliberately to edit it.",
             Self::PlayingDeck => "Performance protection: pause and release the target deck before loading or unloading it.",
             Self::Recovery => "Recovery is latched. Release physical inputs, then explicitly acknowledge recovery. Playback will remain stopped.",
-            Self::Changing => "A project or audio-device change is already pending. Finish or cancel it before changing performance protection.",
+            Self::Changing => "A project/device change or irreversible background commit is already pending. Finish or cancel it before changing performance protection.",
             Self::PendingStop => "The renderer has not completed the safety stop yet. Recovery cannot be acknowledged early.",
             Self::BackgroundBusy => "Optional work is already at its bounded capacity. Retry after it finishes.",
         })
@@ -138,6 +138,16 @@ pub struct WorkPermit {
     slot: usize,
 }
 impl WorkPermit {
+    /// Worker/UI publication boundary. Winning this claim keeps mode entry out
+    /// until commit acknowledgement completes; losing to protection cancels the
+    /// optional publication without pretending an already committed write lost.
+    pub fn commit(&self) -> Result<ExclusivePermit, Error> {
+        if self.handle.0.work[self.slot].load(Ordering::Acquire) {
+            return Err(self.handle.reject(Error::Protected));
+        }
+        self.handle.project_change()
+    }
+
     pub fn cancel(&self) -> Arc<AtomicBool> {
         self.handle.0.work[self.slot].clone()
     }
@@ -384,7 +394,7 @@ impl Handle {
     pub(super) fn publish_decks(&self, activity: u8) {
         self.0.deck_activity.store(activity, Ordering::Release);
     }
-    pub(super) fn check(&self, command: &Command, activity: Option<u8>) -> Result<(), Error> {
+    pub(crate) fn check(&self, command: &Command, activity: Option<u8>) -> Result<(), Error> {
         let state = self.0.admission.load(Ordering::Acquire);
         if state & RECOVERY != 0 && !recovery_safe(command) {
             return Err(Error::Recovery);
