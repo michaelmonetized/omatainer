@@ -65,6 +65,13 @@ fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
         .decks
         .each_ref()
         .map(|d| d.keylock_dsp.analysis_count());
+    let mut previous_searches = callback
+        .renderer_for_test()
+        .decks
+        .each_ref()
+        .map(|d| d.keylock_dsp.full_search_count());
+    let before_searches = previous_searches;
+    let mut coincident_search_callbacks = 0;
     let mut wall = Vec::with_capacity(blocks);
     let mut render_cpu = Vec::with_capacity(blocks);
     let mut full_cpu = Vec::with_capacity(blocks);
@@ -97,6 +104,14 @@ fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
         let decks = &callback.renderer_for_test().decks;
         synchronized &= decks[0].keylock_dsp.phase == decks[1].keylock_dsp.phase
             && decks[0].keylock_dsp.analysis_count() == decks[1].keylock_dsp.analysis_count();
+        let searches = decks.each_ref().map(|d| d.keylock_dsp.full_search_count());
+        let deltas = [
+            searches[0] - previous_searches[0],
+            searches[1] - previous_searches[1],
+        ];
+        synchronized &= deltas[0] == deltas[1];
+        coincident_search_callbacks += usize::from(deltas[0] > 0 && deltas[0] == deltas[1]);
+        previous_searches = searches;
         locked &= decks
             .iter()
             .all(|d| d.keylock_mode() == keylock::Mode::Locked && (d.rate - ratio).abs() < 1e-7);
@@ -112,8 +127,12 @@ fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
         std::thread::yield_now(); // Outside callback, same retirement scheduling as #95.
     }
     let rt = callback.renderer_for_test();
-    let searches = rt.decks.each_ref().map(|d| d.keylock_dsp.analysis_count());
-    let searches = [searches[0] - before[0], searches[1] - before[1]];
+    let hops = rt.decks.each_ref().map(|d| d.keylock_dsp.analysis_count());
+    let hops = [hops[0] - before[0], hops[1] - before[1]];
+    let searches = [
+        previous_searches[0] - before_searches[0],
+        previous_searches[1] - before_searches[1],
+    ];
     let last_parameters = (blocks - 1) / 8;
     let parameters_applied = rt.xfader == (last_parameters % 128) as f32 / 127.0
         && rt.tracks.iter().enumerate().all(|(track, t)| {
@@ -162,8 +181,9 @@ fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
             "full_cpu_deadline_exceedances":full_cpu.iter().filter(|v|**v>deadline).count()},
         "checks":{"finite_output":finite,"nonzero_output":energy>0.0,"original_notes_intact":originals,
             "exact_recorded_notes":recorded,"all_commands_applied":parameters_applied&&engine.cmd.len()==0&&engine.undo.view().failures==0,
-            "both_locked_at_fixed_ratio":locked,"coincident_search_hops":synchronized&&searches[0]>0&&searches[0]==searches[1]},
-        "observations":{"searches_per_deck":searches,"quantized_audio_hash":format!("{hash:016x}")}})
+            "both_locked_at_fixed_ratio":locked,"coincident_search_hops":synchronized&&searches[0]>0&&searches==hops&&coincident_search_callbacks>0},
+        "observations":{"searches_per_deck":searches,"analysis_hops_per_deck":hops,
+            "coincident_search_callbacks":coincident_search_callbacks,"quantized_audio_hash":format!("{hash:016x}")}})
 }
 
 #[test]

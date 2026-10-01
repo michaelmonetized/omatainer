@@ -28,6 +28,10 @@ listening quality.
 Every run checks finite/nonzero audio, exact original and recorded notes,
 recording release, command queue/history status, both actual Locked modes and
 rates, coincident alignment counts, and zero Rust callback allocations/frees.
+The full-search counter increments only after the silent-reference early exit.
+Every measured hop must perform a full search, and both decks' full-search
+deltas must agree in every callback. The report retains hop counts, full-search
+counts and the number of callbacks containing coincident full searches.
 Repeated schedules must produce the same quantized audio hash. Raw per-block
 timings are retained, including outliers; there is no trimming or automatic
 budget relaxation.

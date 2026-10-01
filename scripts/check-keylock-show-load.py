@@ -106,14 +106,19 @@ def evaluate(raw, policy, manifest):
                     raise ValueError('checks must be booleans')
                 if not passed:
                     failures.append(f'{prefix}: check failed: {name}')
-            gate.keys(measured['observations'], ('searches_per_deck', 'quantized_audio_hash'), prefix+' observations')
+            gate.keys(measured['observations'], ('searches_per_deck', 'analysis_hops_per_deck',
+                'coincident_search_callbacks', 'quantized_audio_hash'), prefix+' observations')
             searches = measured['observations']['searches_per_deck']
-            if type(searches) is not list or len(searches) != 2:
-                raise ValueError('invalid per-deck search counts')
-            for value in searches:
-                gate.integer(value, 'search count', 1)
-            if searches[0] != searches[1]:
-                failures.append(f'{prefix}: search hops diverged')
+            hops = measured['observations']['analysis_hops_per_deck']
+            for name, values in [('search', searches), ('analysis hop', hops)]:
+                if type(values) is not list or len(values) != 2:
+                    raise ValueError('invalid per-deck '+name+' counts')
+                for value in values:
+                    gate.integer(value, name+' count', 1)
+            if searches[0] != searches[1] or searches != hops:
+                failures.append(f'{prefix}: full searches differ from coincident analysis hops')
+            gate.integer(measured['observations']['coincident_search_callbacks'],
+                'coincident search callbacks', 1, min(policy['blocks'], *searches))
             audio_hash = measured['observations']['quantized_audio_hash']
             if type(audio_hash) is not str or len(audio_hash) != 16 or any(c not in '0123456789abcdef' for c in audio_hash):
                 raise ValueError('invalid audio observation')
@@ -166,7 +171,8 @@ def self_test():
                 measured = dict(samples={name:[10]*2048 for name in ['callback_wall_ns','render_cpu_ns','full_callback_thread_cpu_ns']},
                     metrics=dict(allocations=0,frees=0,rejected_commands=0,rms=.1,peak=.2,wall_deadline_exceedances=0,
                         render_cpu_deadline_exceedances=0,full_cpu_deadline_exceedances=0),
-                    checks={name:True for name in policy['checks']}, observations=dict(searches_per_deck=[100,100],quantized_audio_hash='0123456789abcdef'))
+                    checks={name:True for name in policy['checks']}, observations=dict(searches_per_deck=[100,100],
+                        analysis_hops_per_deck=[100,100],coincident_search_callbacks=100,quantized_audio_hash='0123456789abcdef'))
                 workloads.append(dict(id=f'show_{rate}_{frames}_{ratio:.2f}',
                     conditions=dict(policy['conditions'],sample_rate=rate,frames=frames,ratio=struct.unpack('<f',struct.pack('<f',ratio))[0],blocks=2048,warmup_blocks=128),
                     measurements=[copy.deepcopy(measured) for _ in range(3)]))
@@ -187,6 +193,9 @@ def self_test():
     try:evaluate(changed,policy,manifest)
     except ValueError:pass
     else:raise AssertionError('boolean deadline count accepted')
+    changed=copy.deepcopy(raw);changed['workloads'][0]['measurements'][0]['observations']['searches_per_deck']=[99,99]
+    changed['workloads'][0]['measurements'][0]['observations']['coincident_search_callbacks']=99
+    assert any('full searches' in failure for failure in evaluate(changed,policy,manifest)[1])
     print('Show verifier fixtures pass: fixed matrix, unchanged deadline ceilings, state/heap/timing refusal and source binding.')
 
 
