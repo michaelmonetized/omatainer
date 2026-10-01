@@ -25,6 +25,7 @@ pub mod midi;
 #[cfg(test)]
 mod master_stereo_tests;
 mod midi_schedule;
+mod metronome;
 #[cfg(test)]
 mod midi_schedule_tests;
 #[cfg(test)]
@@ -435,7 +436,7 @@ pub struct RtEngine {
     frames_done: u64,
     note_recording: recording::Recording,
     metronome: bool,
-    metro_phase: u8,
+    metro: metronome::Click,
     scratch: Vec<f32>,
     pub quantize: bool,
     pub sampler_bank: usize,
@@ -755,7 +756,7 @@ impl RtEngine {
             frames_done: 0,
             note_recording: recording::Recording::default(),
             metronome: false,
-            metro_phase: 0,
+            metro: metronome::Click::new(sr),
             scratch: Vec::new(),
             quantize: true,
             sampler_bank: 0,
@@ -800,6 +801,7 @@ impl RtEngine {
             return;
         }
         self.sr = sr as f32;
+        self.metro = metronome::Click::new(self.sr);
         // Rate changes reset master tails on both channels together. Controls
         // are reapplied from fx_wet at the next block, as for the delay before.
         self.delay = std::array::from_fn(|_| Delay::new((sr as f32 * 2.0) as usize));
@@ -966,6 +968,7 @@ impl RtEngine {
             // Compose holds still have a musical duration with the transport
             // stopped. This clock integrates actual tempo and never loops.
             self.note_recording.clock += 1.0 / spb;
+            let beat_start = self.beat;
             if self.playing {
                 self.beat += 1.0 / spb;
             }
@@ -1010,17 +1013,9 @@ impl RtEngine {
                 cue_r += br;
             }
 
-            if self.metronome && self.playing {
-                let bi = self.beat.fract();
-                let beat_i = self.beat.floor() as i64;
-                if beat_i as u8 != self.metro_phase && bi < 0.02 {
-                    self.metro_phase = beat_i as u8;
-                    let hz = if beat_i % 4 == 0 { 1200.0 } else { 800.0 };
-                    let click = (i as f32 * hz / self.sr).sin() * 0.15;
-                    l += click;
-                    r += click;
-                }
-            }
+            let click = self.metro.tick(self.metronome && self.playing, beat_start, self.beat);
+            l += click;
+            r += click;
 
             // Dual mono master effects preserve stereo separation; crossfeed
             // is not implicit in either processor's shared control values.
@@ -1442,6 +1437,7 @@ impl RtEngine {
                 self.playing = false;
                 self.recording = false;
                 self.compose_target = None;
+                self.metro.reset();
                 for t in &mut self.tracks {
                     t.stop_clip();
                 }
@@ -1801,7 +1797,10 @@ impl RtEngine {
                 };
             }
             Command::Quant(q) => self.quant = q,
-            Command::Metronome => self.metronome = !self.metronome,
+            Command::Metronome => {
+                self.metronome = !self.metronome;
+                self.metro.reset();
+            }
             Command::LearnCapture { .. } => {}
             Command::ToggleQuant => {
                 self.quantize = !self.quantize;
