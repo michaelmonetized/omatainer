@@ -577,3 +577,38 @@ fn committed_support_export_survives_cancel_before_gui_poll() {
     assert!(gui.app.support.message.contains("exported and synced"));
     assert_eq!(std::fs::read(path).unwrap(), exact.as_bytes());
 }
+
+#[test]
+fn duplicate_recovery_references_have_distinct_native_actions_in_the_exact_preview() {
+    let mut gui = Gui::safe();
+    let first = model::RecoveryRef {
+        session: [9; 32], epoch: 1, sequence: 7, revision: 3, view_revision: 2,
+        captured_unix_ms: 100, committed_unix_ms: 101,
+    };
+    let mut middle = first.clone();
+    middle.session = [8; 32];
+    middle.sequence = 8;
+    // The real collector intentionally suppresses only consecutive repeats.
+    // References can recur after another session/record without invalidating
+    // this bounded report. Inspection does not imply record availability.
+    gui.session.port.recovery(first.clone());
+    gui.session.port.recovery(middle);
+    gui.session.port.recovery(first);
+    gui.wait(|g| g.session.view().report.recovery.len() == 3);
+    gui.open_support();
+    gui.click("Inspect current report");
+    gui.wait(|g| g.app.support.preview.is_some());
+    let nodes: Vec<_> = gui.nodes.iter().filter_map(|(id, node)|
+        (node.label() == Some("Find exact recovery record 7") && node.supports_action(Action::Click)).then_some(*id)).collect();
+    assert_eq!(nodes.len(), 2, "duplicate references collapsed a native action");
+    assert_ne!(nodes[0], nodes[1], "duplicate reference controls share a native ID");
+    let before = gui.app.engine.project.revision();
+    for target in nodes {
+        gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target, action: Action::Click, data: None,
+        })]);
+        gui.wait(|g| !g.app.support.worker.as_ref().unwrap().busy());
+        assert!(gui.app.support.found.is_none());
+        assert_eq!(gui.app.engine.project.revision(), before);
+    }
+}
