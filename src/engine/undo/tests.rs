@@ -26,6 +26,33 @@ fn notes(rt: &RtEngine, t: usize, s: usize) -> Vec<u8> {
 }
 
 #[test]
+fn grid_acknowledges_real_history_budget_rejection_without_callback_heap_work() {
+    use crate::engine::beatgrid::{Grid, GridEditAck, GridEditState};
+    let (engine, mut rt) = fixture();
+    send(&engine, &mut rt, Command::SetNotes {
+        track: 0, scene: 0, notes: vec![note(62)],
+    });
+    assert!(rt.undo.bytes > 2, "the fixture must own real history storage");
+    rt.undo.budget = 1;
+    let checkpoint = rt.undo.checkpoint();
+    let history_len = rt.undo.entries.len();
+    let before = rt.decks[0].grid;
+    let ack = GridEditAck::new();
+    engine.send(Command::DeckGrid {
+        deck: 0, grid: Some(Grid::new(0.375, 127.0).unwrap()),
+        receipt: engine.initial_playback[0].clone(), ack: ack.clone(),
+    }).unwrap();
+    assert_eq!(ack.state(), GridEditState::Pending);
+    let counts = test_alloc::measure(|| tick(&mut rt));
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    assert_eq!(rt.undo.failure, Some(Failure::Capacity));
+    assert_eq!(rt.decks[0].grid, before);
+    assert_eq!(rt.undo.checkpoint(), checkpoint);
+    assert_eq!(rt.undo.entries.len(), history_len);
+    assert_eq!(ack.state(), GridEditState::Rejected);
+}
+
+#[test]
 fn renderer_controls_undo_and_redo_without_stopping_unrelated_live_owners() {
     let (engine, mut rt) = fixture();
     let initial = Global::get(&rt);

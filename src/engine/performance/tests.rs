@@ -454,3 +454,30 @@ fn combined_optional_commit_rechecks_each_generation_before_cancel_flags_arrive(
     );
     assert!(!current.cancelled());
 }
+
+#[test]
+fn manual_grid_edits_are_destructive_and_queued_protected_requests_acknowledge_rejection_without_heap() {
+    use crate::engine::beatgrid::{Grid, GridEditAck, GridEditState};
+    let (engine, mut rt) = fixture();
+    let receipt = engine.initial_playback[0].clone();
+    let grid = Grid::new(1.25, 120.0).unwrap();
+    let ack = GridEditAck::new();
+    engine.send(Command::DeckGrid { deck: 0, grid: Some(grid), receipt: receipt.clone(), ack: ack.clone() }).unwrap();
+    // Protection enters after admission but before this queued edit is applied.
+    engine.cmd.performance().set_enabled(true).unwrap();
+    let before = engine.undo.view().cursor;
+    assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
+    assert_eq!(ack.state(), GridEditState::Rejected);
+    assert_eq!(rt.decks[0].grid, None);
+    assert_eq!(receipt.preparation().unwrap().1.grid, None);
+    assert_eq!(engine.undo.view().cursor, before);
+    for grid in [Some(grid), None] {
+        assert!(matches!(engine.send(Command::DeckGrid { deck: 0, grid, receipt: receipt.clone(), ack: GridEditAck::new() }), Err(crate::engine::SubmissionError::Performance(Error::Protected))));
+    }
+    engine.cmd.performance().set_enabled(false).unwrap();
+    let ack = GridEditAck::new();
+    engine.send(Command::DeckGrid { deck: 0, grid: Some(grid), receipt, ack: ack.clone() }).unwrap();
+    assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
+    assert_eq!(ack.state(), GridEditState::Applied);
+    assert_eq!(rt.decks[0].grid, Some(grid));
+}

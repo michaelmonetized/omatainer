@@ -139,8 +139,14 @@ fresh preparation, with old fingerprint versions preserved in the catalog. A
 new path receives a new identity unless the crate’s **relocate…** action
 verifies identical file bytes and deliberately preserves the existing track ID.
 Keep the original file available until its move-verification digest is saved.
-The current engine has no editable beat-grid model; only its implemented tempo
-analysis and cue/loop preparation are persisted.
+**Deck grid…** edits a manual downbeat and uniform tempo independently of analyzed
+BPM. Preview Set at playhead, slip, stretch, half/double tempo and Reset before
+Apply; Cancel/Escape discards the draft. Applied grids are undoable, survive
+library/project/recovery reloads, and guide Match phase and quantized loops.
+Negative beat coordinates represent pickups; bars currently contain four beats
+(changing meters and tempo maps are not implemented). Cue positions stay in
+source seconds. Performance protection rejects grid edits; essential saving
+continues, with optional relocation hashing deferred until Studio mode.
 
 **Deck Actions → Edit cue names and colors** edits all eight hot cues with names
 up to 64 UTF-8 bytes and optional RGB colors. Pads, waveform markers and the cue

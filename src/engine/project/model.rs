@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 2;
+pub const STATE_VERSION: u32 = 3;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -124,6 +124,8 @@ pub struct Deck {
     pub hotcues: [Option<f64>; HOTCUES],
     #[serde(default)]
     pub cue_styles: [crate::engine::cue_metadata::Style; HOTCUES],
+    #[serde(default)]
+    pub grid: Option<crate::engine::beatgrid::Grid>,
     pub loop_on: bool,
     pub loop_start: f64,
     pub loop_len: f64,
@@ -197,6 +199,7 @@ impl State {
                 pfl: false,
                 hotcues: [None; HOTCUES],
                 cue_styles: [crate::engine::cue_metadata::Style::default(); HOTCUES],
+                grid: None,
                 loop_on: false,
                 loop_start: 0.0,
                 loop_len: 0.0,
@@ -227,7 +230,7 @@ impl State {
 
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
-        if !matches!(self.version, 1 | STATE_VERSION) {
+        if !matches!(self.version, 1 | 2 | STATE_VERSION) {
             return Err(format!(
                 "unsupported project state version {}",
                 self.version

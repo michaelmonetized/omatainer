@@ -28,7 +28,7 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 - Favored deck = xfader ≤ 0.5 → A, else B.
 - Unfavored deck’s playback rate is set so its **effective BPM** equals the
-  favored deck’s **pitched** BPM (`file_bpm * pitch_rate`), not session BPM.
+  favored deck’s **pitched** BPM (`manual_grid_or_source_bpm * pitch_rate`), not session BPM. Manual grids also define source downbeat phase for Match.
 - If both decks are playing, only the unfavored playhead is phase-aligned.
   Favored time does not jump.
 - Works whenever the favored deck has audio; the unfavored deck can be stopped
@@ -609,7 +609,7 @@ once before encoding the request.
   durable 128-bit track ID to each typed location (random for media locations,
   reserved stable IDs for the two built-in stems) and stores title, artist,
   BPM/provenance, key hint, decoded duration, renderer-confirmed last play, main
-  cue, eight hot cue positions/names/optional RGB colors, and the saved loop
+  cue, eight hot cue positions/names/optional RGB colors, a manual source-time beatgrid, and the saved loop
   range/arming state. Cue/loop positions
   use source seconds; loading restores preparation while remaining paused.
 - Built-in, absolute local file, removable volume/relative path, and provider/ID
@@ -621,13 +621,12 @@ once before encoding the request.
   cannot apply to the replacement. Moves are not inferred; a different typed
   path gets a different ID unless an explicit worker-verified, exact-byte
   relocation preserves it. Old receipts resolve through the captured path and
-  fingerprint; only verified equivalent versions share cues and history. No
-  editable beat-grid format is invented.
+  fingerprint; only verified equivalent versions share cues, manual grids and history. Grid-only preparation qualifies for the same bounded optional content hash.
 - One background metadata worker owns store locking, parsing, merging, migration,
   serialization and fsync. Scan/import publication is atomic and retains source
-  selection. Renderer receipts publish preparation in 84 fixed atomic words;
+  selection. Renderer receipts publish preparation in 87 fixed atomic words;
   terminal receipts remain attributable even after replacement before a GUI poll.
-- Schema 3 is written; schemas 1 and 2 migrate without changing IDs or preparation.
+- Schema 4 is written; schemas 1, 2 and 3 migrate without changing IDs or preparation.
   Older hot cues default to unnamed, theme-colored slots. Unknown schemas/fields, malformed stores and a missing primary
   with a preserved backup fail closed. Scans and startup defaults cannot replace
   them. Import conflicts reject the import while unrelated pending edits persist.
@@ -848,3 +847,22 @@ publication. Preferences persist startup protection only, not emergency state.
   retirement failure permits an explicit warning override. Cancel exit starts a
   fresh recovery session even if retirement already committed. A replaced epoch is
   retained until the newer epoch has a confirmed durable record.
+
+
+### Manual beatgrid editing
+
+- A validated grid stores a finite downbeat in source seconds and a 20–400 BPM
+  constant period; negative beat coordinates support pickups. Four-beat bars
+  are presentation only; changing meter and tempo maps remain outside this model.
+- The GUI drafts Set, slip, stretch, half/double and Reset without renderer edits.
+  Apply sends one receipt-qualified undoable command. Its own atomic Applied or
+  Rejected acknowledgement survives later grid edits/Undo; unrelated preparation
+  cannot complete it. A disconnected unconfirmed request has an unknown outcome.
+- Analysis/source BPM remains separate from manual effective BPM, including Reset
+  before snapshot refresh. Absolute cue positions never move with the grid.
+- Catalog 4 and engine State 3 preserve grids. State 1/2 default to no manual grid;
+  generic recovery journal 1/container 1 needs no format change. Future/invalid
+  states fail before installation. Restored transport remains stopped.
+- Performance protection rejects every grid edit at producer admission and again
+  at consumption. Already-admitted rejected payloads acknowledge rejection and
+  retire off the callback, without allocation/free in the warmed render path.

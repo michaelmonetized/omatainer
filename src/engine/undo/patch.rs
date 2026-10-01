@@ -150,6 +150,7 @@ pub(super) struct DeckControls {
     cue: f64,
     hotcues: [Option<f64>; HOTCUES],
     cue_styles: [super::super::cue_metadata::Style; HOTCUES],
+    grid: Option<super::super::beatgrid::Grid>,
     loop_on: bool,
     loop_start: f64,
     loop_len: f64,
@@ -172,6 +173,7 @@ impl DeckControls {
             pitch_range: deck.pitch_range,
             cue: deck.cue_pos,
             cue_styles: deck.cue_styles,
+            grid: deck.grid,
             hotcues: std::array::from_fn(|i| deck.hotcues[i].set.then_some(deck.hotcues[i].pos)),
             loop_on: deck.loop_on,
             loop_start: deck.loop_start,
@@ -201,6 +203,7 @@ impl DeckControls {
         deck.pitch_range = self.pitch_range;
         deck.cue_pos = self.cue;
         deck.cue_styles = self.cue_styles;
+        deck.grid = self.grid;
         deck.hotcues = self.hotcues.map(|p| HotCue {
             set: p.is_some(),
             pos: p.unwrap_or(0.0),
