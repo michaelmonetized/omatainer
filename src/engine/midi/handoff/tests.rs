@@ -391,3 +391,28 @@ fn browse_callback_stays_allocation_free_while_gui_selection_lock_is_held() {
     drop(callback);
     drop(worker);
 }
+
+#[test]
+fn performance_recovery_discards_raw_packets_before_stop_and_during_recovery() {
+    use crate::engine::performance::Safety;
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    rt.selected_track = 1;
+    let (mut sink, mut worker) = input(16, 42, &engine.cmd);
+    sink.push(&[0x90, 60, 100]);
+    drain(&mut worker); render(&mut rt);
+    assert!(held(&rt, 42, 60));
+    sink.push(&[0x90, 61, 100]); // not yet parsed at the safety boundary
+    engine.send(Command::SafetyStop(Safety::Stop)).unwrap();
+    rt.process(&mut []);
+    sink.push(&[0x90, 62, 100]); // physically still held during recovery
+    engine.send(Command::RecoverPerformance).unwrap();
+    rt.process(&mut []);
+    assert!(!engine.cmd.performance().status().recovery);
+    drain(&mut worker); render(&mut rt);
+    assert!(!held(&rt, 42, 60) && !held(&rt, 42, 61) && !held(&rt, 42, 62));
+    let counts = crate::engine::test_alloc::measure(|| sink.push(&[0x90, 63, 100]));
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    drain(&mut worker); render(&mut rt);
+    assert!(held(&rt, 42, 63));
+    assert_eq!(sink.shared.counters.snapshot().dropped, 2);
+}

@@ -57,6 +57,7 @@ pub struct DecodeDiagnostics {
     pub length_evidence: LengthEvidence,
     pub verification: Option<bool>,
     pub reached_eof: bool,
+    pub analysis_deferred: bool,
 }
 
 impl Default for DecodeDiagnostics {
@@ -68,12 +69,14 @@ impl Default for DecodeDiagnostics {
             length_evidence: LengthEvidence::Unavailable,
             verification: None,
             reached_eof: false,
+            analysis_deferred: false,
         }
     }
 }
 
 impl DecodeDiagnostics {
     pub fn warning(&self) -> Option<&'static str> {
+        if self.analysis_deferred { return Some(if self.verification == Some(true) || self.length_evidence == LengthEvidence::Declared { "heuristic BPM analysis deferred by performance protection; manual or filename BPM is retained" } else { "heuristic BPM analysis deferred; length unverified and incomplete media cannot be ruled out" }); }
         if self.verification == Some(true) || self.length_evidence == LengthEvidence::Declared {
             None
         } else {
@@ -225,6 +228,16 @@ pub fn decode_audio_with_cancel(
     path: &Path,
     cancelled: impl Fn() -> bool,
 ) -> Result<DecodedAudio, DecodeFailure> {
+    decode_with_analysis(path, cancelled, |data, ch, sr| Some(detect_bpm(data, ch, sr)))
+}
+pub(crate) fn decode_audio_for_show(path: &Path, cancelled: impl Fn() -> bool, performance: &super::performance::Handle) -> Result<DecodedAudio, DecodeFailure> {
+    decode_with_analysis(path, cancelled, |data, ch, sr| {
+        let permit = performance.optional_work().ok()?;
+        let cancel = permit.cancel();
+        super::dsp::detect_bpm_with_cancel(data, ch, sr, || cancel.load(std::sync::atomic::Ordering::Acquire))
+    })
+}
+fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>) -> Result<DecodedAudio, DecodeFailure> {
     let mut diagnostics = DecodeDiagnostics::default();
     check_cancel(&cancelled, DecodeStage::Open, &diagnostics)?;
     let file = std::fs::File::open(path).map_err(|error| {
@@ -384,7 +397,9 @@ pub fn decode_audio_with_cancel(
     let ch = spec.channels.count() as u16;
     let peaks = peaks_3band(&data, ch, 2048);
     check_cancel(&cancelled, DecodeStage::Analysis, &diagnostics)?;
-    let bpm = detect_bpm(&data, ch, spec.rate);
+    let analysis = analyze(&data, ch, spec.rate);
+    diagnostics.analysis_deferred = analysis.is_none();
+    let bpm = analysis.unwrap_or(0.0);
     check_cancel(&cancelled, DecodeStage::Analysis, &diagnostics)?;
     Ok(DecodedAudio {
         diagnostics,

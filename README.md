@@ -360,3 +360,21 @@ reviewing the benchmark policy and refreshing the license inventory; `check`
 recomputes the retained raw evidence. The report travels with the package and
 installation. Draft policies, missing/stale evidence and failed checks block
 publication. See [the local release gate contract and reproduction steps](docs/validation/issue-95-local-release-gate.md).
+
+### Performance protection
+
+Use the visible **Performance** bar before a show. Protection keeps playing/touched
+deck loads, destructive edits, project replacement and device changes from being
+applied; mixing, composing, recording, stopped-deck loads and project Save remain
+available. Optional scans, imports, analysis, theme reloads and exports are deferred
+or refused explicitly. The startup preference can enable protection next launch.
+
+**Safe stop…** stops session and both decks, finalizes captured notes and releases
+input synth gates; finite hits and effects decay naturally. **Emergency silence…**
+adds a 2 ms fade to latched mute. Both require deliberate confirmation and display
+renderer acknowledgment. Release physical inputs, then confirm **Recover inputs…**;
+playback stays stopped. Emergency mute requires a deliberate **Reset stopped DSP
+and unmute…** through the audio owner and remains latched if reset fails. You may
+retain mute to Save and deliberately leave/close. Quiet tail readings and device
+names do not establish physical hardware health. See the
+[protection policy and validation](docs/validation/issue-96-performance-mode.md).

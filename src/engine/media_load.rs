@@ -44,6 +44,9 @@ pub struct Loader {
     generations: [Arc<AtomicU64>; DECKS],
 }
 impl Loader {
+    pub fn start_with_performance(performance: super::performance::Handle) -> io::Result<Self> {
+        Self::with_decoder(move |path, token| super::decode::decode_audio_for_show(path, || !token.is_current(), &performance))
+    }
     pub fn start() -> io::Result<Self> {
         Self::with_decoder(|path, token| decode_audio_with_cancel(path, || !token.is_current()))
     }

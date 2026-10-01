@@ -217,3 +217,23 @@ fn simultaneous_retry_admission_has_one_request_and_no_followup_backlog() {
     until(|| !manager.busy());
     assert!(control.attempts.try_recv().is_err());
 }
+
+#[test]
+fn performance_protects_retry_and_pending_rediscovery_prevents_mode_entry() {
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 64);
+    let control = install(&mut engine);
+    assert!(matches!(engine.send(Command::PerformanceMode(true)), Err(crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Changing))));
+    control.discover(&[]);
+    until(|| !engine.midi.connections_busy());
+    engine.send(Command::PerformanceMode(true)).unwrap();
+    assert_eq!(engine.midi.retry_connections(), Retry::Performance(crate::engine::performance::Error::Protected));
+    assert!(control.attempts.try_recv().is_err());
+    engine.send(Command::PerformanceMode(false)).unwrap();
+    assert_eq!(engine.midi.retry_connections(), Retry::Queued);
+    assert!(matches!(control.next(), Attempt::Discover));
+    assert!(matches!(engine.send(Command::PerformanceMode(true)), Err(crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Changing))));
+    control.replies.send(Reply::Ports(Err("injected discovery failure".into()))).unwrap();
+    until(|| !engine.midi.connections_busy());
+    engine.send(Command::PerformanceMode(true)).unwrap();
+    assert!(engine.cmd.performance().status().protected);
+}

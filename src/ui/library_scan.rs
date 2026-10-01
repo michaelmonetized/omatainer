@@ -1,11 +1,12 @@
 //! One cooperative filesystem worker; the UI only polls and swaps completed data.
 use super::{builtin_crate_items, parse_tags, sort_crate, split_artist_title, LibItem, LibSource};
+use super::{Bpm, FileFingerprint};
+use crate::engine::performance::{Handle, WorkPermit};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
-use super::{Bpm, FileFingerprint};
 use walkdir::WalkDir;
 
 #[cfg(test)]
@@ -35,6 +36,7 @@ pub(super) struct Options {
 }
 
 struct Request {
+    work: Arc<WorkPermit>,
     roots: Vec<PathBuf>,
     baseline: Arc<Vec<LibItem>>,
     cancel: Arc<AtomicBool>,
@@ -49,12 +51,17 @@ struct Retired {
 }
 
 pub(super) struct Publication {
+    pub(super) work: Arc<WorkPermit>,
     pub items: Arc<Vec<LibItem>>,
     retirement: mpsc::SyncSender<Retired>,
 }
 
 impl Publication {
     pub fn publish(self, library: &mut Arc<Vec<LibItem>>) {
+        let Ok(_commit) = self.work.commit() else {
+            self.discard();
+            return;
+        };
         let previous = std::mem::replace(library, self.items);
         // Exactly one acknowledgment fits the reserved slot. The worker keeps
         // both baseline and candidate alive until this handoff, so neither a
@@ -65,7 +72,22 @@ impl Publication {
         });
     }
 
-    fn discard(self) {
+    pub(super) fn stage(
+        self,
+        baseline: &Arc<Vec<LibItem>>,
+    ) -> Option<(Arc<Vec<LibItem>>, Arc<WorkPermit>)> {
+        if self.work.cancel().load(Ordering::Acquire) {
+            self.discard();
+            return None;
+        }
+        let _ = self.retirement.try_send(Retired {
+            _library: baseline.clone(),
+            published: true,
+        });
+        Some((self.items, self.work))
+    }
+
+    pub(super) fn discard(self) {
         let _ = self.retirement.try_send(Retired {
             _library: self.items,
             published: false,
@@ -80,6 +102,7 @@ enum Completion {
 }
 
 pub(super) struct LibraryScan {
+    performance: Handle,
     requests: Option<mpsc::SyncSender<Request>>,
     completion: mpsc::Receiver<Completion>,
     worker: Option<JoinHandle<()>>,
@@ -105,6 +128,7 @@ impl Default for LibraryScan {
                                 .send(Completion::Ready(Publication {
                                     items: items.clone(),
                                     retirement,
+                                    work: request.work.clone(),
                                 }))
                                 .is_err()
                             {
@@ -135,6 +159,7 @@ impl Default for LibraryScan {
             });
         match worker {
             Ok(worker) => Self {
+                performance: Handle::default(),
                 requests: Some(requests),
                 completion,
                 worker: Some(worker),
@@ -143,6 +168,7 @@ impl Default for LibraryScan {
                 state: ScanState::Idle,
             },
             Err(error) => Self {
+                performance: Handle::default(),
                 requests: None,
                 completion,
                 worker: None,
@@ -155,6 +181,9 @@ impl Default for LibraryScan {
 }
 
 impl LibraryScan {
+    pub fn set_performance(&mut self, performance: Handle) {
+        self.performance = performance;
+    }
     pub fn active(&self) -> bool {
         matches!(self.state, ScanState::Scanning | ScanState::Cancelling)
     }
@@ -172,16 +201,26 @@ impl LibraryScan {
         if self.active() {
             return false;
         }
+        let work = match self.performance.optional_work() {
+            Ok(work) => Arc::new(work),
+            Err(error) => {
+                self.state = ScanState::Failed(error.to_string());
+                return false;
+            }
+        };
         // A failed worker can be retried explicitly by the Scan button.
         if self.requests.is_none() {
+            let performance = self.performance.clone();
             *self = Self::default();
+            self.performance = performance;
         }
         let Some(requests) = &self.requests else {
             return false;
         };
-        self.cancel = Arc::new(AtomicBool::new(false));
+        self.cancel = work.cancel();
         self.progress = Arc::new(Progress::default());
         let request = Request {
+            work,
             roots,
             baseline,
             cancel: self.cancel.clone(),
@@ -384,12 +423,16 @@ fn preserve_metadata(item: &mut LibItem, old: &LibItem) {
     if !old.artist.is_empty() {
         item.artist.clone_from(&old.artist);
     }
-    if old.fingerprint == item.fingerprint { item.bpm = old.bpm; }
+    if old.fingerprint == item.fingerprint {
+        item.bpm = old.bpm;
+    }
     if !old.key.is_empty() && old.key != "—" {
         item.key.clone_from(&old.key);
     }
     if old.fingerprint == item.fingerprint {
-        item.length = old.length.filter(|value| value.is_finite() && *value >= 0.0);
+        item.length = old
+            .length
+            .filter(|value| value.is_finite() && *value >= 0.0);
     }
     // The worker's previous-scan cache can be empty (first scan, or a source
     // returning after removal). A pathname alone must never transfer history
@@ -398,8 +441,7 @@ fn preserve_metadata(item: &mut LibItem, old: &LibItem) {
         && match item.source {
             LibSource::Builtin(_) => true,
             LibSource::Removable { .. } | LibSource::Provider { .. } => false,
-            LibSource::File(_) => item.fingerprint.is_some()
-                && item.fingerprint == old.fingerprint,
+            LibSource::File(_) => item.fingerprint.is_some() && item.fingerprint == old.fingerprint,
         };
     if same_media {
         item.last_play = old.last_play;

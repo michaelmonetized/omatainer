@@ -161,7 +161,7 @@ impl App {
                     }
                 }
             }
-            connected && (!matches!(state, State::Superseded | State::Unavailable)
+            connected && (!matches!(state, State::Superseded | State::Unavailable | State::Protected)
                 || watch.receipt.retained_by_history())
         });
         if let Some(identity) = latest {

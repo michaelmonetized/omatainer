@@ -740,13 +740,18 @@ pub fn peaks_3band(data: &[f32], ch: u16, buckets: usize) -> Vec<[f32; 3]> {
 }
 
 pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
+    detect_bpm_with_cancel(data, ch, sr, || false).unwrap_or(120.0)
+}
+pub(super) fn detect_bpm_with_cancel(data: &[f32], ch: u16, sr: u32, cancelled: impl Fn() -> bool) -> Option<f32> {
+    if cancelled() { return None; }
     if data.is_empty() || ch == 0 {
-        return 120.0;
+        return Some(120.0);
     }
     let hop = 512usize;
     let frames = data.len() / ch as usize;
     let mut env = Vec::with_capacity(frames / hop + 1);
     for i in (0..frames).step_by(hop) {
+        if cancelled() { return None; }
         let mut e = 0.0;
         let end = (i + hop).min(frames);
         for k in i..end {
@@ -760,7 +765,7 @@ pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
         env.push((e / hop as f32).sqrt());
     }
     if env.len() < 8 {
-        return 120.0;
+        return Some(120.0);
     }
     let mut flux = vec![0.0; env.len()];
     for i in 1..env.len() {
@@ -771,6 +776,7 @@ pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
     let mut best = 0.0f32;
     let mut bpm = 70.0f32;
     while bpm <= 180.0 {
+        if cancelled() { return None; }
         let period = 60.0 / bpm / hop_t;
         if period < 2.0 {
             bpm += 0.5;
@@ -780,6 +786,7 @@ pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
         let mut n = 0.0;
         let mut t = period;
         while t < flux.len() as f32 - 1.0 {
+            if cancelled() { return None; }
             let i = t as usize;
             acc += flux[i];
             n += 1.0;
@@ -800,7 +807,7 @@ pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
     if best_bpm > 170.0 {
         best_bpm *= 0.5;
     }
-    best_bpm
+    Some(best_bpm)
 }
 
 pub use super::decode::decode_audio;

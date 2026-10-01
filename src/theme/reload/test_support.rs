@@ -45,6 +45,15 @@ impl Fixture {
         )
         .unwrap();
     }
+    pub fn quiet_loader_with_performance(&self, performance: Handle) -> Loader {
+        Loader::with_resolver_and_performance(
+            self.theme.clone(),
+            self.resolver(),
+            Duration::from_secs(30),
+            performance,
+        )
+        .unwrap()
+    }
     pub fn quiet_loader(&self) -> Loader {
         Loader::with_resolver(self.theme.clone(), self.resolver(), Duration::from_secs(30)).unwrap()
     }
@@ -120,9 +129,12 @@ impl Resolver for Held {
     }
 }
 pub(crate) fn held(fixture: &Fixture) -> (Loader, Control) {
+    held_with_performance(fixture, Handle::default())
+}
+pub(crate) fn held_with_performance(fixture: &Fixture, performance: Handle) -> (Loader, Control) {
     let (ready, started) = bounded(4);
     let (release, finish) = bounded(4);
-    let loader = Loader::with_resolver(
+    let loader = Loader::with_resolver_and_performance(
         fixture.theme.clone(),
         Held {
             inner: fixture.resolver(),
@@ -130,6 +142,7 @@ pub(crate) fn held(fixture: &Fixture) -> (Loader, Control) {
             release: finish,
         },
         Duration::from_secs(30),
+        performance,
     )
     .unwrap();
     (loader, Control { started, release })

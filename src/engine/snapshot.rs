@@ -203,6 +203,7 @@ impl Frame {
         }
 
         let target = &mut self.values;
+        target.performance = rt.performance.status();
         let held = rt.note_recording.held_targets();
         for (track_index, (out, track)) in target.tracks.iter_mut().zip(&rt.tracks).enumerate() {
             copy(&mut out.name, &track.name);

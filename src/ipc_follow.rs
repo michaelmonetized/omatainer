@@ -35,6 +35,7 @@ struct SmallStatus {
     audio: AudioMetrics,
     commands: CommandStats,
     submissions: SubmissionStats,
+    performance: crate::engine::performance::Status,
     #[serde(rename = "deckAPlaying")]
     deck_a_playing: bool,
     #[serde(rename = "deckBPlaying")]
@@ -57,6 +58,7 @@ impl SmallStatus {
             audio: commands.audio_metrics(),
             commands: snapshot.commands,
             submissions: commands.stats(),
+            performance: commands.performance().status(),
             deck_a_playing: snapshot.decks.first().is_some_and(|d| d.playing),
             deck_b_playing: snapshot.decks.get(1).is_some_and(|d| d.playing),
         }
