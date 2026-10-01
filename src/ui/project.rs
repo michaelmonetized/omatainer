@@ -197,6 +197,9 @@ impl Projects {
         let recent_file = Some(crate::theme::config_dir().join("recent-projects.json"));
         #[cfg(test)]
         let recent_file = None;
+        Self::with_recent(handle,output_sr,recent_file)
+    }
+    pub(super) fn with_recent(handle:Handle,output_sr:u32,recent_file:Option<PathBuf>)->Self {
         let (worker, message) = match Worker::start(handle, output_sr, recent_file) {
             Ok(worker) => (Some(worker), None),
             Err(error) => (None, Some(format!("Project worker unavailable: {error}"))),

@@ -160,11 +160,13 @@ impl App {
         let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));
         let mut app = Self::with_loader(engine, theme, loader.ok());
         if let Some(failure) = failure { app.status = failure; }
+        if !app.engine.safe_mode() {
         match crate::theme::reload::Loader::start_with_performance(app.theme.clone(), app.engine.cmd.performance().clone()) {
             Ok(loader) => app.theme_reload = Some(loader),
             Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
         }
         app.start_library_store(crate::library::default_path());
+        }
         app.start_default_recovery();
         app
 
@@ -175,7 +177,8 @@ impl App {
         theme: Theme,
         loader: Option<Loader>,
     ) -> Self {
-        let project = project::Projects::new(engine.project.clone(), engine.sr());
+        let project = if engine.safe_mode() { project::Projects::with_recent(engine.project.clone(),engine.sr(),None) }
+            else { project::Projects::new(engine.project.clone(), engine.sr()) };
         let snap = engine.snapshot();
         let playback_watches = play_history::initial_watches(&engine);
         let theme_requests = engine.cmd.theme_requests().attach();

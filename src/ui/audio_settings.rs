@@ -111,6 +111,7 @@ impl Worker {
         })
     }
     fn request(&mut self, job: Job) -> Result<(), String> {
+        if self.handle.safe_mode() {return Err("Audio discovery is disabled in safe mode; restart normally to use devices".into());}
         if self.cancel.is_some() {
             return Err("An audio operation is already pending".into());
         }
@@ -169,7 +170,7 @@ impl Panel {
         discover: impl Fn() -> Result<config::Inventory, String> + Send + 'static,
     ) -> Self {
         let worker = handle
-            .clone()
+            .clone().filter(|handle|!handle.safe_mode())
             .map(|handle| Worker::start(handle, discover))
             .transpose();
         let message = worker
@@ -285,6 +286,14 @@ impl App {
             return;
         }
         keyboard::block_for_dialog(ctx);
+        if self.engine.safe_mode() {
+            let mut open=true;
+            egui::Window::new("Audio devices and latency").open(&mut open).show(ctx,|ui|{
+                ui.label("Safe mode: audio/MIDI are offline. No devices were enumerated or opened.");
+                ui.label("Playback, live output changes and loopback probes are disabled. Save your project, then explicitly Restart normally to enable device setup.");
+            });
+            self.audio_settings.open=open;return;
+        }
         let saved = self.settings.profile().audio.clone();
         let profile = self.settings.applied.active.clone();
         let metrics = self.engine.cmd.audio_metrics();
