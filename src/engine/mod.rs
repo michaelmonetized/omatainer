@@ -53,6 +53,8 @@ mod stopped_deck_tests;
 mod recording_position_tests;
 #[cfg(test)]
 mod recording_duration_tests;
+#[cfg(test)]
+mod compose_tests;
 
 use crate::engine::dsp::{
     detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
@@ -449,7 +451,13 @@ pub struct RtEngine {
     pub builtin: [Option<Arc<Sample>>; 2],
     pub fx_view: i16,
     pub scene_fx: [fx::FxChain; SCENES],
-    pub compose_armed: bool,
+    pub compose_target: Option<ComposeTarget>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct ComposeTarget {
+    pub track: usize,
+    pub scene: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -524,6 +532,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub compose_target: Option<ComposeTarget>,
     pub playing: bool,
     pub recording: bool,
     pub bpm: f32,
@@ -559,6 +568,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            compose_target: None,
             playing: false,
             recording: false,
             bpm: 124.0,
@@ -639,6 +649,8 @@ pub enum Command {
     Arm { track: u8 },
     Browse(f32),
     Select { track: usize, scene: usize },
+    ComposeArm { track: usize, scene: usize },
+    ComposeDisarm,
     SelectDeck(usize),
     SetView(View),
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
@@ -759,7 +771,7 @@ impl RtEngine {
             builtin: [None, None],
             fx_view: -1,
             scene_fx: std::array::from_fn(|_| fx::FxChain::new(sr)),
-            compose_armed: false,
+            compose_target: None,
         };
         e.seed_demo();
         let (stem_a, stem_b) = demo_stems(sr as u32, e.bpm);
@@ -1404,7 +1416,7 @@ impl RtEngine {
             | Command::RestartScene { scene }
             | Command::AddScene { scene }
             | Command::OpenFxScene(scene) => Some(*scene as usize),
-            Command::Select { track, scene } => {
+            Command::Select { track, scene } | Command::ComposeArm { track, scene } => {
                 if *track >= self.tracks.len() {
                     return;
                 }
@@ -1429,6 +1441,7 @@ impl RtEngine {
                 self.finish_recording_all();
                 self.playing = false;
                 self.recording = false;
+                self.compose_target = None;
                 for t in &mut self.tracks {
                     t.stop_clip();
                 }
@@ -1701,12 +1714,27 @@ impl RtEngine {
             Command::Select { track, scene } => {
                 self.selected_track = track;
                 self.selected_scene = scene;
-                self.compose_armed = true;
-                let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
+            }
+            Command::ComposeArm { track, scene } => {
+                // Only an explicit arm changes the write destination. Browsing
+                // and playback are free to change their own selection.
+                let target = ComposeTarget { track, scene };
+                if self.compose_target != Some(target) {
+                    self.finish_recording_pads();
+                }
+                self.compose_target = Some(target);
+                self.selected_track = track;
+                self.selected_scene = scene;
+                let clip = &mut self.tracks[track].clips[scene];
                 if clip.kind == ClipKind::Empty {
                     clip.kind = ClipKind::Midi;
                     clip.name = "Clip".into();
                     clip.bars = 1.0;
+                }
+            }
+            Command::ComposeDisarm => {
+                if self.compose_target.take().is_some() {
+                    self.finish_recording_pads();
                 }
             }
             Command::SelectDeck(d) => self.selected_deck = d.min(DECKS - 1),
@@ -1913,6 +1941,9 @@ impl RtEngine {
                 let pad = pad % 16;
                 let input = InputKey::Pad(pad);
                 let pitch = sampler_pitch(self.sampler_inst, self.sampler_oct, pad);
+                let destination = self.compose_target.unwrap_or(ComposeTarget {
+                    track: self.selected_track, scene: self.selected_scene,
+                });
                 if on {
                     self.release_input(input);
                     self.pad_targets[pad as usize] = None;
@@ -1920,26 +1951,26 @@ impl RtEngine {
                         if let Some(bank) = self.pad_banks.get(self.sampler_bank) {
                             let samp = bank[pad as usize % 16].clone();
                             let rate = 2f32.powi((self.sampler_oct - 3) as i32);
-                            self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate, self.selected_track));
+                            self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate, destination.track));
                         }
                     } else {
                         self.sampler_poly.note_on_input(pitch, 0.9, input);
-                        let target = PadTarget { track: self.selected_track, pitch };
+                        let target = PadTarget { track: destination.track, pitch };
                         self.pad_destinations[pad as usize] = target.track;
                         self.pad_targets[pad as usize] = Some(target);
                     }
-                    if self.compose_armed || self.recording {
+                    if self.compose_target.is_some() || self.recording {
                         if self.recording_position(
-                            self.selected_track, self.selected_scene,
+                            destination.track, destination.scene,
                         ).is_none() { return; }
-                        let clip = &mut self.tracks[self.selected_track].clips[self.selected_scene];
+                        let clip = &mut self.tracks[destination.track].clips[destination.scene];
                         if clip.kind == ClipKind::Empty {
                             clip.kind = ClipKind::Midi;
                             clip.name = "Pad".into();
                             clip.bars = 1.0;
                         }
                         self.begin_recording_note(
-                            input, self.selected_track, self.selected_scene, pitch, 110,
+                            input, destination.track, destination.scene, pitch, 110,
                         );
                     }
                 } else {
@@ -2492,7 +2523,7 @@ mod tests {
         );
     }
 
-    /// C5: shift-click (Select) arms compose; pads write into that empty cell.
+    /// C5: shift-click (ComposeArm) arms compose; pads write into that empty cell.
     #[test]
     fn contract_pad_writes_empty_clip() {
         let mut rt = engine();
@@ -2502,7 +2533,7 @@ mod tests {
             !rt.tracks[4].clips[3].occupied(),
             "pads must not scribble until compose is armed"
         );
-        rt.apply(Command::Select { track: 4, scene: 3 });
+        rt.apply(Command::ComposeArm { track: 4, scene: 3 });
         assert_eq!(rt.tracks[4].clips[3].kind, ClipKind::Midi);
         rt.apply(Command::SamplerPad { pad: 2, on: true });
         assert!(!rt.tracks[4].clips[3].notes.is_empty());

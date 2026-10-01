@@ -136,6 +136,10 @@ impl RtEngine {
         self.finish_recording_where(|held| held.track == track);
     }
 
+    pub(super) fn finish_recording_pads(&mut self) {
+        self.finish_recording_where(|held| matches!(held.input, InputKey::Pad(_)));
+    }
+
     pub(super) fn finish_recording_all(&mut self) {
         self.finish_recording_where(|_| true);
     }

@@ -50,9 +50,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 ## C5. Compose (shift-click cell)
 
-- Shift-click a sequencer cell selects it as the compose target.
-- If empty, it becomes a MIDI clip.
-- Pads write notes into that cell even when not recording.
+- Shift-click a sequencer cell explicitly arms it as the compose target. The
+  sampler also has Arm selected cell and Disarm compose controls, and displays
+  the renderer-confirmed armed destination or disarmed state.
+- If empty, the armed target becomes a MIDI clip. Browsing and playback/scene
+  launches cannot change that destination; only another explicit arm can.
+- Pads monitor and write into that destination even when not recording. Held
+  pad voices and capture releases retain their original destination.
+- Disarm finalizes current pad captures without cutting held monitor voices.
+  Stop (including transport toggle-off) disarms composition. Restarting cannot
+  re-arm it. Disarmed pads do not edit clips unless Record is deliberately on.
+- Plain selection only browses; it neither creates a clip nor arms composition.
 
 ## C6. FX: spread, balance, arp, EQ 3/5/8
 
