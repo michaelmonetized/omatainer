@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import resource
 import socket
 import stat
 import sys
@@ -181,6 +182,7 @@ def run(receipt, command):
     if receipt.name in ('', '.', '..') or receipt.exists() or receipt.is_symlink():
         raise GuardError('guard receipt must be a new file')
     close_inherited()
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))  # private crash fixtures must not dump user-sized cores
     original_uid = os.geteuid()
     io_uring_setup = restrict()
     evidence = controls(directory, io_uring_setup)

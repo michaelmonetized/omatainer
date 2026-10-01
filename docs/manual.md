@@ -87,6 +87,11 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 2. Use Project → New. Respond to any unsaved-work prompt deliberately. Wait for the empty replacement; cancellation or failed replacement does not count.
 3. Open the exact saved file through Project → Open or Recent projects. Wait for the clean document with playback stopped; its stored media needs no original files.
 
+## Offline operation
+
+Omatainer starts without an account or cloud session. Locally available media, native projects with embedded PCM, user sampler banks, built-in instruments/effects, Help and license notices work locally. Reusable bank definitions reference local sources: retain those files or use a verified library relocation; missing sources remain explicit. Native projects embed their playable audio. Audio plugin hosting, provider streaming/downloads, cloud transfer, authentication and credential storage are not implemented. They are not offline-supported integrations. No account tokens are collected. Preferences, project envelopes and support reports reject unknown credential fields; project names, paths and audio are intentional user content, not redacted documents. Support export is a reviewed local file with an allowlisted schema, never an upload. License Source record links explicitly hand off to an external browser; that browser and host Unix proxies are outside the network-denied application test. Network filesystems, remote display/audio servers and source-build package downloads also need their own availability. Safe mode starts stopped without audio/MIDI devices; it can Open, Recover and Save locally. Network-denied fixtures qualify local software paths, not physical controllers, OS audio dropouts or perceived quality.
+
+
 ## Control reference
 
 ### Support and crash reports

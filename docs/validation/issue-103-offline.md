@@ -37,3 +37,44 @@ inheritance, same UID, local IPC, inherited FD closure, failure preservation,
 no-overwrite/symlink refusal, parent isolation and failure to install. They make
 no Internet connection and change no route, firewall, network service, user
 desktop setting or application data.
+
+## Functional and timing orchestration
+
+`check-offline.py functional --binary /absolute/omatainer --test-binary
+/absolute/omatainer-tests --out /absolute/fresh/o103-run` uses prebuilt local
+executables. Use a short private path beneath `/home/michael` on this host:
+Unix-domain socket paths are finite. The destination must not exist; symlink
+ancestors are refused, reports are create-new, process time/output and aggregate
+evidence bytes are bounded. `TMPDIR` and all fixture XDG roots point inside it;
+HOME remains unchanged.
+
+The shipped safe CLI runs cold, including malformed preferences, unavailable
+support storage and existing-instance refusal. Actual App/worker tests and both
+private AT-SPI workflows run inside the inherited filter. A separate actual UI
+fixture creates/assigns/trims/applies a sampler bank, loads the local WAV onto a
+deck and saves `.omat`; the launcher removes only that fixture WAV. A fresh
+process opens through the Project UI, compares PCM hashes, bank identity/range/
+gain and notes, then plays the deck and auditions its embedded bank. This is
+hardware-free renderer/UI evidence, not a compositor or physical audio claim.
+Existing UI suites retain real failure/cancellation/refusal checks. Browser-link
+tests inspect `PlatformOutput.commands` and never execute the handoff.
+
+The separate `performance` action is opt-in and requires release executables.
+It runs the mandatory native preflight, the original eight workload groups with
+three repetitions and the two-keylocked-deck 18-group show load with three
+repetitions. It calls the existing strict evaluators without changing workloads,
+goldens, deadlines or jitter ceilings. Reports include every actual callback
+wall/render-CPU deadline exceedance independently of policy pass. Use a
+coordinated quiet host window; no backend XRUN, device latency, physical
+controller or listening result is inferred.
+
+Every document/performance receipt embeds the executable's retained license and
+source manifest; it must equal the currently validated inventory. Production
+and test executable digests, policy digests and source inventory are unchanged
+across the run. A failed stage leaves a failure record and prior logs; it cannot
+become a pass by reusing a previous output directory. Build dependencies and
+source inventory regeneration occur outside the network-denied execution.
+
+Application and performance execution results are pending this revision's
+qualification run. The already tested launcher alone is not the acceptance
+claim.

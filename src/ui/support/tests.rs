@@ -185,6 +185,10 @@ fn actual_app_inspects_exports_reopens_and_rejects_invalid_files_without_touchin
     gui.click("Export reviewed support report");
     gui.wait(|g| g.app.support.message.contains("exported and synced"));
     let exported = std::fs::read(&destination).unwrap();
+    if let Ok(sentinel)=std::env::var("OMATAINER_OFFLINE_SENTINEL") {
+        assert!(!sentinel.is_empty());
+        assert!(!String::from_utf8_lossy(&exported).contains(&sentinel),"support must not collect environment values");
+    }
     let report = model::storage::reopen(&destination, &AtomicBool::new(false)).unwrap();
     assert!(report.safe_mode);
     assert!(!String::from_utf8(exported.clone())
@@ -611,4 +615,103 @@ fn duplicate_recovery_references_have_distinct_native_actions_in_the_exact_previ
         assert!(gui.app.support.found.is_none());
         assert_eq!(gui.app.engine.project.revision(), before);
     }
+}
+
+#[test]
+#[ignore = "scripts/check-offline.py opens an embedded project in a fresh real safe owner"]
+fn offline_safe_document_child() {
+    use sha2::{Digest, Sha256};
+    use std::io::Write;
+    assert_eq!(std::env::var("OMATAINER_OFFLINE_CHILD").as_deref(), Ok("1"));
+    let fd = unsafe { libc::socket(libc::AF_INET6, libc::SOCK_DGRAM, 0) };
+    assert_eq!(fd, -1);
+    assert_eq!(
+        std::io::Error::last_os_error().raw_os_error(),
+        Some(libc::EPERM)
+    );
+    let root = PathBuf::from(std::env::var_os("OMATAINER_OFFLINE_DIR").unwrap());
+    assert!(!root.join("sample.wav").exists());
+    let before: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(root.join("prepare.json")).unwrap()).unwrap();
+    let original = root.join("offline.omat");
+    let copy = root.join("safe-copy.omat");
+    let mut gui = Gui::safe();
+    gui.click("Project");
+    gui.click("Open project…");
+    gui.text("Project file path", original.to_str().unwrap());
+    gui.click("Open");
+    gui.wait(|g| g.app.snap.sampler_instances.len() == 4 && !g.app.project.committing());
+    let hash = |sample: &crate::engine::dsp::Sample| {
+        let mut digest = Sha256::new();
+        digest.update(sample.sr.to_le_bytes());
+        digest.update(sample.ch.to_le_bytes());
+        for value in &sample.data {
+            digest.update(value.to_bits().to_le_bytes());
+        }
+        format!("{:x}", digest.finalize())
+    };
+    let captured = gui
+        .app
+        .engine
+        .project
+        .capture(&AtomicBool::new(false))
+        .unwrap();
+    let bank = &captured.state.banks[3];
+    assert_eq!(
+        hash(&captured.media[bank.media[0].unwrap()]),
+        before["state"]["bank_pcm"]
+    );
+    assert_eq!(
+        hash(&captured.media[captured.state.decks[0].audio.unwrap()]),
+        before["state"]["deck_pcm"]
+    );
+    assert_eq!(
+        serde_json::to_value(bank.instance.unwrap()).unwrap(),
+        before["state"]["bank_id"]
+    );
+    assert_eq!(
+        serde_json::to_value(bank.settings.as_ref().unwrap().slots[0].controls).unwrap(),
+        before["state"]["bank_controls"]
+    );
+    assert_eq!(
+        serde_json::to_value(&captured.state.tracks[0].clips[0].notes).unwrap(),
+        before["state"]["notes"]
+    );
+    gui.click("Project");
+    gui.click("Save project copy…");
+    gui.text("Project file path", copy.to_str().unwrap());
+    gui.click("Save");
+    gui.wait(|g| {
+        copy.exists()
+            && g.app
+                .project_message_for_recovery_test()
+                .is_some_and(|text| text.starts_with("Saved "))
+    });
+    let bundle = crate::project_file::load::<crate::ui::project::Document>(
+        &copy,
+        &crate::project_file::Limits::default(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        hash(&bundle.media[bundle.state.engine.banks[3].media[0].unwrap()]),
+        before["state"]["bank_pcm"]
+    );
+    assert!(gui.app.engine.safe_mode());
+    assert_eq!(gui.app.engine.cmd.audio_metrics().callbacks, 0);
+    assert!(gui.app.engine.output_info().is_none());
+    assert!(!gui.app.engine.midi.connections_available());
+    assert!(!gui.app.snap.playing && gui.app.snap.decks.iter().all(|deck| !deck.playing));
+    let value = serde_json::json!({"schema":1,"stage":"safe_reopen","safe_mode":true,"callbacks":0,
+        "saved_copy":true,"embedded_bank_pcm":before["state"]["bank_pcm"],"source_absent":true,
+        "embedded_manifest":serde_json::from_str::<serde_json::Value>(crate::licenses::MANIFEST).unwrap()});
+    let mut output = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(root.join("safe_reopen.json"))
+        .unwrap();
+    output
+        .write_all(&serde_json::to_vec_pretty(&value).unwrap())
+        .unwrap();
+    output.sync_all().unwrap();
 }
