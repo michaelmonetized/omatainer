@@ -11,6 +11,7 @@ enum State {
     Connected,
     Failed(String),
     Disconnected,
+    Disabled,
 }
 
 struct Inner {
@@ -53,6 +54,7 @@ impl Status {
             State::Connected => "connected",
             State::Failed(_) => "failed",
             State::Disconnected => "disconnected",
+            State::Disabled => "disabled",
         };
         format!("[{state}] {name} · {map}")
     }
@@ -96,6 +98,9 @@ impl Status {
     }
     pub(crate) fn disconnected(&self) {
         self.update(State::Disconnected);
+    }
+    pub(crate) fn disabled(&self) {
+        self.update(State::Disabled);
     }
 }
 
