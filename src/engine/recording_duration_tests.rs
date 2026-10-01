@@ -95,14 +95,14 @@ fn recording_retrigger_and_zero_velocity_finalize_exact_gate_only_once() {
 #[test]
 fn recording_release_retains_original_clip_and_pad_pitch_after_control_changes() {
     let mut rt = fixture(true);
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.apply(Command::SamplerPad { pad: 3, on: true });
     let pitch = rt.tracks[1].clips[2].notes[0].pitch;
     on(&mut rt, 4, 0, 81, 99);
     render(&mut rt, 6_000);
     rt.apply(Command::Select { track: 2, scene: 4 });
     rt.apply(Command::SamplerOct(1));
-    rt.apply(Command::SamplerInst(2));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Pad)));
     render(&mut rt, 12_000);
     rt.apply(Command::SamplerPad { pad: 3, on: false });
     off(&mut rt, 4, 0, 81);

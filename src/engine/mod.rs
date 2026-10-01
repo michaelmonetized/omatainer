@@ -3,6 +3,11 @@ mod arp;
 mod deck_filter;
 #[cfg(test)]
 mod deck_filter_tests;
+
+pub mod instrument;
+#[cfg(test)]
+pub(crate) mod sampler_identity_tests;
+pub use instrument::{SamplerInstrument, SynthInstrument};
 mod recording;
 #[cfg(test)]
 mod arp_tests;
@@ -478,7 +483,7 @@ pub struct RtEngine {
     scratch: Vec<f32>,
     pub quantize: bool,
     pub sampler_bank: usize,
-    pub sampler_inst: i8,
+    pub sampler_inst: SamplerInstrument,
     pub sampler_oct: i8,
     pub sampler_poly: Poly,
     pub sampler_banks: Vec<String>,
@@ -601,7 +606,7 @@ pub struct Snapshot {
     pub quant: f32,
     pub quantize: bool,
     pub sampler_bank: usize,
-    pub sampler_inst: i8,
+    pub sampler_inst: SamplerInstrument,
     pub sampler_oct: i8,
     pub sampler_banks: Vec<String>,
     pub fx_view: i16,
@@ -639,7 +644,7 @@ impl Default for Snapshot {
             quant: 1.0,
             quantize: true,
             sampler_bank: 0,
-            sampler_inst: -1,
+            sampler_inst: SamplerInstrument::Samples,
             sampler_oct: 3,
             sampler_banks: vec!["Kit".into()],
             fx_view: -1,
@@ -723,7 +728,7 @@ pub enum Command {
     AddScene { scene: u8 },
     SamplerPad { pad: u8, on: bool },
     SamplerBank(usize),
-    SamplerInst(i8),
+    SamplerInst(SamplerInstrument),
     SamplerOct(i8),
     OpenFxTrack(u8),
     OpenFxScene(u8),
@@ -760,7 +765,11 @@ impl RtEngine {
                 solo: false,
                 armed: false,
                 kind: kinds[i],
-                poly: Poly::new(sr, kinds[i].min(2), 8),
+                poly: Poly::new(sr, match kinds[i] {
+                    0 => SynthInstrument::Analog,
+                    1 => SynthInstrument::Keys,
+                    _ => SynthInstrument::Pad,
+                }, 8),
                 eq: ThreeBand::new(sr),
                 eq_right: ThreeBand::new(sr),
                 meter: 0.0,
@@ -816,9 +825,9 @@ impl RtEngine {
             scratch: Vec::new(),
             quantize: true,
             sampler_bank: 0,
-            sampler_inst: -1,
+            sampler_inst: SamplerInstrument::Samples,
             sampler_oct: 3,
-            sampler_poly: Poly::new(sr, 1, 8),
+            sampler_poly: Poly::new(sr, SynthInstrument::Keys, 8),
             sampler_banks: vec!["Kit".into(), "Perc".into(), "Hits".into()],
             pad_banks: build_pad_banks(sr as u32),
             pad_voices: std::array::from_fn(|_| None),
@@ -1400,7 +1409,7 @@ impl RtEngine {
         for (voice, filter) in self.sampler_poly.voices.iter_mut()
             .zip(self.sampler_poly.filters.iter_mut())
         {
-            let sample = voice.tick(self.sr, self.sampler_poly.cutoff, filter);
+            let sample = voice.tick(self.sr, voice.cutoff, filter);
             if let Some(InputKey::Pad(pad)) = voice.input {
                 let bus = &mut buses[self.pad_destinations[pad as usize % 16]];
                 bus[0] += sample;
@@ -2076,7 +2085,7 @@ impl RtEngine {
                 if on {
                     self.release_input(input);
                     self.pad_targets[pad as usize] = None;
-                    if self.sampler_inst < 0 {
+                    if self.sampler_inst == SamplerInstrument::Samples {
                         if let Some(bank) = self.pad_banks.get(self.sampler_bank) {
                             let samp = bank[pad as usize % 16].clone();
                             let rate = 2f32.powi((self.sampler_oct - 3) as i32);
@@ -2110,8 +2119,11 @@ impl RtEngine {
             Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
             Command::SamplerInst(i) => {
                 self.sampler_inst = i;
-                let kind = if i < 0 { 0 } else { i.min(2) as u8 };
-                self.sampler_poly = Poly::new(self.sr, kind, 8);
+                if let Some(kind) = i.synth() {
+                    // Selection affects new gates. Held voices keep their
+                    // original instrument, envelope and mixer destination.
+                    self.sampler_poly.select_instrument(kind);
+                }
             }
             Command::SamplerOct(d) => {
                 let old = self.sampler_oct;
@@ -2217,7 +2229,7 @@ impl RtEngine {
     }
 }
 
-fn sampler_pitch(inst: i8, oct: i8, pad: u8) -> u8 {
+fn sampler_pitch(inst: SamplerInstrument, oct: i8, pad: u8) -> u8 {
     let pad = pad.min(15);
     let col = (pad % 8) as usize;
     let sharp = pad >= 8;
@@ -2228,7 +2240,7 @@ fn sampler_pitch(inst: i8, oct: i8, pad: u8) -> u8 {
     if sharp && has_sharp[col] {
         n += 1;
     }
-    if inst >= 0 {
+    if inst.synth().is_some() {
         n = n.clamp(0, 127);
     }
     n as u8
@@ -2307,8 +2319,8 @@ fn demo_stems(sr: u32, bpm: f32) -> (Arc<Sample>, Arc<Sample>) {
         ));
     }
     events.sort_by_key(|e| e.0);
-    let mut bass_poly = Poly::new(sr as f32, 0, 8);
-    let mut pad_poly = Poly::new(sr as f32, 2, 4);
+    let mut bass_poly = Poly::new(sr as f32, SynthInstrument::Analog, 8);
+    let mut pad_poly = Poly::new(sr as f32, SynthInstrument::Pad, 4);
     let mut ei = 0;
     for i in 0..frames {
         while ei < events.len() && events[ei].0 == i {
@@ -2622,7 +2634,7 @@ mod tests {
         assert!((rt.pad_voices[0].as_ref().unwrap().2 / r0 - 2.0).abs() < 1e-4);
 
         let mut rt = engine();
-        rt.apply(Command::SamplerInst(1));
+        rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
         rt.apply(Command::SamplerPad { pad: 3, on: true });
         assert!(
             rt.sampler_poly.voices.iter().any(|v| matches!(v.env.stage, 1 | 2 | 3)),

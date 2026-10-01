@@ -13,7 +13,7 @@ fn fixture(count: usize, legacy: bool) -> RtEngine {
         track.gain = 0.4 + index as f32 * 0.06;
         track.pan = -1.0 + index as f32 * 2.0 / 7.0;
         track.fx.slots.clear();
-        track.poly = Poly::new(rt.sr, 1, 8);
+        track.poly = Poly::new(rt.sr, SynthInstrument::Keys, 8);
         track.poly.note_on(48 + index as u8, 0.4);
         track.clips = std::array::from_fn(|_| Clip::empty());
     }

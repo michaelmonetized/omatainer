@@ -110,7 +110,7 @@ fn retrigger_moves_one_gate_and_old_stolen_gate_cannot_release_new_owner() {
     on(&mut rt, 1, 0, 60);
     assert!(held(&rt.tracks[1].poly, midi(1, 0, 60)).is_empty());
     assert_eq!(held(&rt.tracks[2].poly, midi(1, 0, 60)), [60]);
-    rt.tracks[2].poly = Poly::new(rt.sr, 1, 1);
+    rt.tracks[2].poly = Poly::new(rt.sr, SynthInstrument::Keys, 1);
     on(&mut rt, 1, 0, 60);
     on(&mut rt, 2, 0, 60);
     off(&mut rt, 1, 0, 60);
@@ -118,7 +118,7 @@ fn retrigger_moves_one_gate_and_old_stolen_gate_cannot_release_new_owner() {
     off(&mut rt, 2, 0, 60);
     assert!(held(&rt.tracks[2].poly, midi(2, 0, 60)).is_empty());
 
-    let mut poly = Poly::new(rt.sr, 1, 2);
+    let mut poly = Poly::new(rt.sr, SynthInstrument::Keys, 2);
     poly.note_on_input(60, 1.0, midi(1, 0, 60));
     poly.note_on_input(60, 1.0, midi(2, 0, 60));
     poly.voices[0].env.stage = 0;
@@ -133,7 +133,7 @@ fn retrigger_moves_one_gate_and_old_stolen_gate_cannot_release_new_owner() {
 #[test]
 fn held_pads_keep_original_destination_pitch_and_release_after_control_changes() {
     let mut rt = engine();
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.apply(Command::SamplerPad { pad: 0, on: true });
     let original = rt.pad_targets[0].unwrap().pitch;
     on(&mut rt, 9, 0, original);
@@ -151,9 +151,9 @@ fn held_pads_keep_original_destination_pitch_and_release_after_control_changes()
         .voices
         .iter()
         .any(|v| v.owner == VoiceOwner::Clip && v.note == original));
-    // Instrument changes reset the source pool as before; an old release must
-    // not target this newly selected track or a different physical pad.
-    rt.apply(Command::SamplerInst(2));
+    // Instrument changes affect future onsets; the original held gate must
+    // retain its source and release independently of a different pad.
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Pad)));
     rt.apply(Command::SamplerPad { pad: 1, on: true });
     let other = rt.pad_targets[1].unwrap().pitch;
     rt.apply(Command::SamplerPad { pad: 0, on: false });
@@ -171,9 +171,9 @@ fn held_pads_keep_original_destination_pitch_and_release_after_control_changes()
 #[test]
 fn equal_pitch_pad_gates_are_independent_and_one_shots_keep_their_tails() {
     let mut rt = engine();
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     // These two physical pad identities map to the same natural note.
-    assert_eq!(sampler_pitch(1, 3, 1), sampler_pitch(1, 3, 9));
+    assert_eq!(sampler_pitch(SamplerInstrument::Synth(SynthInstrument::Keys), 3, 1), sampler_pitch(SamplerInstrument::Synth(SynthInstrument::Keys), 3, 9));
     rt.apply(Command::SamplerPad { pad: 1, on: true });
     rt.apply(Command::SamplerPad { pad: 9, on: true });
     let pitch = rt.pad_targets[9].unwrap().pitch;
@@ -181,7 +181,7 @@ fn equal_pitch_pad_gates_are_independent_and_one_shots_keep_their_tails() {
     assert!(held(&rt.tracks[1].poly, InputKey::Pad(9)).is_empty());
     assert_eq!(rt.pad_destinations[9], 1);
     assert_eq!(held(&rt.sampler_poly, InputKey::Pad(9)), [pitch]);
-    rt.apply(Command::SamplerInst(-1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Samples));
     rt.apply(Command::Select { track: 3, scene: 5 });
     rt.apply(Command::SamplerOct(-1));
     rt.apply(Command::SamplerPad { pad: 9, on: false });
@@ -213,7 +213,7 @@ fn direct_zero_velocity_on_releases_only_its_original_input() {
 #[test]
 fn ownership_on_release_and_pad_octave_changes_allocate_nothing() {
     let mut rt = engine();
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     let counts = test_alloc::measure(|| {
         for source in 1..=4 {
             on(&mut rt, source, 0, 60);

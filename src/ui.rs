@@ -1,5 +1,5 @@
 use crate::engine::fx::FxId;
-use crate::engine::{Command, Engine, Snapshot, DECKS, SCENES, TRACKS};
+use crate::engine::{Command, Engine, Snapshot, SamplerInstrument, DECKS, SCENES, TRACKS};
 use crate::engine::media_source::{BuiltinStem, LibSource, Selection};
 use crate::theme::Theme;
 use eframe::egui::{
@@ -38,6 +38,8 @@ mod compose_tests;
 mod library_view_tests;
 #[cfg(test)]
 mod keyboard_tests;
+#[cfg(test)]
+mod sampler_identity_tests;
 
 pub struct App {
     engine: Engine,
@@ -694,19 +696,13 @@ impl App {
                             }
                         }
                     });
-                let inst = match self.snap.sampler_inst {
-                    -1 => "samples",
-                    0 => "drums",
-                    1 => "analog",
-                    2 => "keys",
-                    _ => "pad",
-                };
                 egui::ComboBox::from_id_salt("inst")
-                    .selected_text(inst)
+                    .selected_text(self.snap.sampler_inst.label())
                     .show_ui(ui, |ui| {
-                        for (i, n) in [(-1i8, "samples"), (0, "drums"), (1, "analog"), (2, "keys"), (3, "pad")] {
-                            if ui.selectable_label(self.snap.sampler_inst == i, n).clicked() {
-                                self.send(Command::SamplerInst(i));
+                        for instrument in SamplerInstrument::ALL {
+                            if ui.selectable_label(self.snap.sampler_inst == instrument, instrument.label())
+                                .on_hover_text(instrument.description()).clicked() {
+                                self.send(Command::SamplerInst(instrument));
                             }
                         }
                     });
@@ -724,7 +720,7 @@ impl App {
             let pad_h = ((h - 4.0) / 2.0).max(32.0);
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(4.0);
-                let piano = self.snap.sampler_inst >= 0;
+                let piano = self.snap.sampler_inst.synth().is_some();
                 let labels_top = if piano {
                     ["A#", "", "C#", "D#", "", "F#", "G#", ""]
                 } else {
