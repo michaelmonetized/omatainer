@@ -51,6 +51,7 @@ fn private_atspi_bridge_child() {
     let mut app = App::with_loader(engine, Theme::default(), Some(loader));
     app.sampler_editor.set_store_path(directory.join("sampler-banks.json"));
     app.start_library_store(directory.join("library.json"));
+    app.seed_native_crate_draft(); // Text entry is covered by actual egui events; native adapter exposes read/focus only.
     let sampler_path = directory.join("sampler.flac");
     std::fs::write(&sampler_path, include_bytes!("../../tests/fixtures/audio/tone.flac")).unwrap();
     let sampler_source = LibSource::File(sampler_path.clone());
@@ -166,6 +167,7 @@ fn private_atspi_bridge_child() {
             "hotcue_1":rt.decks[0].hotcues[0].set,"cue_slots":rt.decks[0].hotcues.iter().map(|cue|cue.set).collect::<Vec<_>>(),"cue_editor_open":app.cue_editor.editor.is_some(),"pad_held":app.pad_held[0],"focus":focus,
             "sampler_editor":app.sampler_editor.evidence(),
             "analysis":app.library_analysis.evidence(),
+            "named_crates":app.crate_evidence(),
             "sampler_banks":rt.sampler_banks.iter().map(|b|serde_json::json!({"id":b.id,"name":b.name(),"gain":b.data.settings.slots[0].controls.gain,"frames":b.data.audio[0].as_ref().map(|s|s.frames())})).collect::<Vec<_>>(),
             "sampler_fixture_row":app.library_view.indices.iter().position(|&i|app.library[i].source==sampler_source).map(|i|i+1),
             "sampler_instrument":rt.sampler_inst.label(),"held_pad_voices":held_pad_voices,

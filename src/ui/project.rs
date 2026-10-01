@@ -45,6 +45,8 @@ pub(super) struct WatchIdentity {
 #[serde(deny_unknown_fields)]
 pub(crate) struct UiState {
     pub library_filter: String,
+    #[serde(default)]
+    pub selected_crate: Option<crate::library::crates::CrateId>,
     pub library_selection: Option<LibSource>,
     pub library_offset: f32,
     pub keys_open: bool,
@@ -60,6 +62,9 @@ pub(crate) struct UiState {
 }
 impl UiState {
     pub(super) fn validate(&self) -> Result<(), String> {
+        if self.selected_crate.as_ref().is_some_and(|id| id.0.len() != 32 || !id.0.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))) {
+            return Err("Invalid project view: malformed crate identity".into());
+        }
         if self.library_filter.len() > 4096
             || !self.library_offset.is_finite()
             || self.library_offset < 0.0
@@ -93,7 +98,8 @@ impl UiState {
         Ok(())
     }
     fn editable_eq(&self, other: &Self) -> bool {
-        self.library_filter == other.library_filter
+        self.selected_crate == other.selected_crate
+            && self.library_filter == other.library_filter
             && self.library_selection == other.library_selection
             && self.library_offset == other.library_offset
             && self.keys_open == other.keys_open
@@ -289,6 +295,7 @@ impl App {
         };
         UiState {
             library_filter: self.lib_filter.clone(),
+            selected_crate: self.library_crates.selected.clone(),
             library_selection: selection,
             library_offset: self
                 .library_view
@@ -741,6 +748,7 @@ impl App {
         self.poll_play_history();
         self.loads = std::array::from_fn(|_| None);
         self.lib_filter = view.library_filter.clone();
+        self.choose_named_crate(view.selected_crate.clone());
         self.keys_open = view.keys_open;
         self.midi_open = view.midi_open;
         self.diagnostics.open = view.diagnostics_open;
