@@ -14,6 +14,7 @@ use std::time::{Instant, SystemTime};
 mod library_scan;
 mod load_status;
 mod audio_status;
+mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
 #[cfg(test)]
@@ -363,6 +364,7 @@ impl App {
 
         self.load_status(ctx);
         self.audio_status(ctx);
+        self.master_fx_status(ctx);
         let t = self.theme.clone();
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(t.bg).inner_margin(6.0))

@@ -106,6 +106,7 @@ impl ThreeBand {
 pub struct Delay {
     buf: Vec<f32>,
     w: usize,
+    written: usize,
     pub time_samples: f32,
     pub fb: f32,
     pub mix: f32,
@@ -116,22 +117,29 @@ impl Delay {
         Self {
             buf: vec![0.0; max.max(64)],
             w: 0,
+            written: 0,
             time_samples: 12000.0,
             fb: 0.35,
             mix: 0.0,
         }
     }
+    /// Invalidate history without touching the backing allocation. Until the
+    /// first full wrap, only [0, written) contains samples from this generation.
+    pub fn reset_history(&mut self) { self.w = 0; self.written = 0; }
+
     pub fn tick(&mut self, x: f32) -> f32 {
         let n = self.buf.len() as f32;
         let t = self.time_samples.clamp(1.0, n - 2.0);
         let r = (self.w as f32 - t + n) % n;
         let i = r as usize;
         let f = r.fract();
-        let a = self.buf[i];
-        let b = self.buf[(i + 1) % self.buf.len()];
+        let next = (i + 1) % self.buf.len();
+        let a = if i < self.written { self.buf[i] } else { 0.0 };
+        let b = if next < self.written { self.buf[next] } else { 0.0 };
         let y = a + (b - a) * f;
         self.buf[self.w] = x + y * self.fb;
         self.w = (self.w + 1) % self.buf.len();
+        self.written = (self.written + 1).min(self.buf.len());
         x * (1.0 - self.mix) + y * self.mix
     }
 }
@@ -162,6 +170,9 @@ impl Reverb {
             delay
         });
         Self { delays, mix: 0.0 }
+    }
+    pub fn reset_history(&mut self) {
+        for delay in &mut self.delays { delay.reset_history(); }
     }
     pub fn tick(&mut self, x: f32) -> f32 {
         let mut y = 0.0;
