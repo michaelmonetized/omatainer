@@ -43,6 +43,17 @@ pub struct Applied {
     pub playback_receipts: [Option<load_receipt::Receipt>; DECKS],
 }
 
+/// Keeps creative admission closed through the GUI's final Close event.
+/// Dropping on any thread only publishes an atomic release request; the next
+/// audio block reopens admission. No graph, media or worker join belongs here.
+pub struct CloseGuard { handle: Handle }
+impl Drop for CloseGuard {
+    fn drop(&mut self) { self.handle.shared.release_seal.store(true, Ordering::Release); }
+}
+impl std::fmt::Debug for CloseGuard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str("CloseGuard") }
+}
+
 #[derive(Clone)]
 pub struct Handle { shared: Arc<Shared> }
 struct Shared {
@@ -52,6 +63,7 @@ struct Shared {
     results: Receiver<Box<Task>>,
     busy: AtomicU8,
     revision: AtomicU64,
+    release_seal: AtomicBool,
 }
 
 pub(super) struct Task {
@@ -61,6 +73,7 @@ pub(super) struct Task {
 }
 enum Operation {
     Capture(capture::Frame),
+    Seal { expected: Option<u64>, guard: Option<CloseGuard> },
     Install { prepared: Prepared, expected: u64, applied: Option<Applied> },
 }
 
@@ -69,7 +82,7 @@ impl Handle {
         let (request, incoming) = bounded(1);
         let (completed, results) = bounded(1);
         Self { shared: Arc::new(Shared { request, incoming, completed, results,
-            busy: AtomicU8::new(0), revision: AtomicU64::new(0) }) }
+            busy: AtomicU8::new(0), revision: AtomicU64::new(0), release_seal: AtomicBool::new(false) }) }
     }
     /// This atomic read is safe on the UI thread.
     pub fn revision(&self) -> u64 { self.shared.revision.load(Ordering::Acquire) }
@@ -138,6 +151,22 @@ impl Handle {
         }
     }
 
+    /// Worker only. Some(revision) requires saved/clean state with no held
+    /// recording. None is an explicit user decision to discard unsaved work.
+    pub fn seal_for_close(&self, expected_revision: Option<u64>, cancel: &AtomicBool) -> Result<CloseGuard, Error> {
+        self.begin()?;
+        if cancel.load(Ordering::Acquire) { self.shared.busy.store(0, Ordering::Release); return Err(Error::Cancelled); }
+        let task = Box::new(Task { operation: Operation::Seal { expected: expected_revision, guard: None },
+            stage: Arc::new(AtomicU8::new(PENDING)), error: None });
+        let mut task = self.exchange(task, cancel)?;
+        self.shared.busy.store(0, Ordering::Release);
+        if let Some(error) = task.error.take() { return Err(error); }
+        match &mut task.operation {
+            Operation::Seal { guard, .. } => guard.take().ok_or(Error::Unavailable),
+            _ => unreachable!(),
+        }
+    }
+
     /// Worker only. Preparing DSP has already finished; this commits or returns
     /// Conflict/Cancelled without changing the current graph. Committed wins a
     /// cancellation that arrives after the callback's atomic application claim.
@@ -163,17 +192,37 @@ impl RtEngine {
             if let Err(error) = self.project.shared.completed.try_send(task) { self.project_pending = Some(error.into_inner()); }
             return;
         }
-        // Install only after commands that predate it have drained. This avoids
-        // an older queued edit entering the newly installed document.
-        if !self.cmd_rx.is_empty() { return; }
-        let Ok(mut task) = self.project.shared.incoming.try_recv() else { return; };
+        if self.project_sealed {
+            if self.project.shared.release_seal.swap(false, Ordering::AcqRel) {
+                self.cmd_rx.end_project_install();
+                self.project_sealed = false;
+            } else { return; }
+        }
+        let Some(mut task) = self.project_waiting.take().or_else(|| self.project.shared.incoming.try_recv().ok()) else { return; };
+        let exclusive = matches!(task.operation, Operation::Install { .. } | Operation::Seal { .. });
+        if task.stage.load(Ordering::Acquire) == PENDING {
+            // The atomic admission gate closes before inspecting the queue.
+            // A producer already holding a lease may finish; audio never waits,
+            // and processes those commands on following blocks before commit.
+            let drained = (!exclusive || self.cmd_rx.begin_project_install()) && self.cmd_rx.is_empty();
+            if !drained { self.project_waiting = Some(task); return; }
+        }
         if task.stage.compare_exchange(PENDING, APPLYING, Ordering::AcqRel, Ordering::Acquire).is_err() {
             task.error = Some(Error::Cancelled);
         } else {
             match &mut task.operation {
                 Operation::Capture(frame) => frame.capture(self),
+                Operation::Seal { expected, guard } => {
+                    if expected.is_some_and(|revision| revision != self.project.revision() || self.has_held_project_notes() || self.cmd_rx.pending_project_ui_requests()) {
+                        task.error = Some(Error::Conflict);
+                    } else {
+                        self.project.shared.release_seal.store(false, Ordering::Release);
+                        self.project_sealed = true;
+                        *guard = Some(CloseGuard { handle: self.project.clone() });
+                    }
+                }
                 Operation::Install { prepared, expected, applied } => {
-                    if self.project.revision() != *expected {
+                    if self.project.revision() != *expected || self.cmd_rx.pending_project_ui_requests() {
                         task.error = Some(Error::Conflict);
                     } else {
                         prepared.swap_into(self);
@@ -184,6 +233,7 @@ impl RtEngine {
                 }
             }
         }
+        if exclusive && !self.project_sealed { self.cmd_rx.end_project_install(); }
         task.stage.store(READY, Ordering::Release);
         if let Err(error) = self.project.shared.completed.try_send(task) { self.project_pending = Some(error.into_inner()); }
     }
