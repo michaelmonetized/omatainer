@@ -59,11 +59,36 @@ Queue/renderer rejection remains visible and does not change the working bank.
   release away from the callback. Original generated factory PCM, names and peak
   arrays are compared at 44.1, 48 and 96 kHz.
 - The normalized core and catalog/recovery prerequisites passed 851 ordinary tests
-  with 15 opt-in tests ignored (four test threads; 51.15 seconds). The retained log
+with 15 opt-in tests ignored (four test threads; 51.15 seconds). The retained log
   is `issue-101-normalized-full.log` in the local work evidence directory.
 
-Editor/native interaction evidence and the final combined source inventory are
-recorded after the UI union is verified. No physical controller, audio-device
-latency, listening-quality or screen-reader user qualification follows from these
-headless/native API fixtures. Filesystem/codec cancellation is cooperative between
-bounded chunks/packets; an operating-system call is not forcibly interrupted.
+## Final editor and combined verification
+
+The actual App suite includes 14 editor groups covering all slots, mixed formats,
+per-slot gain/trim, prepared audition, renderer Apply/Undo, private-store restart,
+missing media and verified relocation. Controlled boundaries include cancellation
+before and after renderer claim, no proof persistence before Applied, replaced
+targets, snapshot lag followed by Undo, asynchronous native action identity,
+pending-store close, same-frame Apply/Cancel and engine disconnect. Small-window
+scroll/focus, F1 and Escape are exercised through real egui controls.
+
+The private Linux AT-SPI workflow passed 123 actions across 242 native nodes and
+1,062 actual App frames, within the existing 128-action/70-second child limits.
+It assigns real FLAC PCM, changes gain with native SetValue, auditions/stops,
+checks a confirmed durable reusable Save separately from renderer Apply, then
+clears a preview and cancels without changing the applied bank. Evidence is
+retained locally as `issue-101-native-ui.json`; the final source-bound release
+gate repeats this preflight on the assembled package source.
+
+After combining the core, editor and catalog/recovery/audio-action prerequisites,
+`cargo test --locked --offline -- --test-threads=4` passed **867 tests**, with
+**15 opt-in tests ignored**, in 44.49 seconds. The real offline-manual generator
+also passed. Log: `issue-101-final-full.log`. These are local development checks;
+the controlled performance/package gate is a separate qualification step.
+`cargo build --locked --offline` passed, and the resulting production executable's
+embedded manifest/notices exactly matched the refreshed source-bound inventory.
+
+No physical controller, audio-device latency, listening-quality or screen-reader
+user qualification follows from these headless/native API fixtures.
+Filesystem/codec cancellation is cooperative between bounded chunks/packets; an
+operating-system call is not forcibly interrupted.
