@@ -934,3 +934,6 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod performance_gate_tests;

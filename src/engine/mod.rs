@@ -2941,3 +2941,6 @@ mod mixer_gain_tests;
 
 #[cfg(test)]
 mod license_content_tests;
+
+#[cfg(test)]
+pub(crate) mod performance_workload_tests;
