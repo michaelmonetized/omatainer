@@ -71,6 +71,14 @@ pub(super) struct ViewStats {
 }
 
 impl App {
+    /// Follow an explicitly verified relocation, preserving a user's current
+    /// selection rather than restoring whichever row submitted the request.
+    pub(super) fn follow_library_relocation(&mut self, from: &LibSource, to: &LibSource) {
+        let view = &mut self.library_view;
+        if view.selected.as_ref() == Some(from) { view.selected = Some(to.clone()); }
+        if view.top.as_ref() == Some(from) { view.top = Some(to.clone()); }
+    }
+
     pub(super) fn refresh_library_view(&mut self) {
         let view = &mut self.library_view;
         // The weak reference prevents allocation-address reuse and makes
@@ -128,7 +136,7 @@ impl App {
             // the filter must not inherit the temporary row-zero fallback.
             if let Some(identity) = self.last_played.latest_identity() {
                 self.last_play_idx = view.indices.iter()
-                    .position(|&i| identity.matches(&self.library[i])).unwrap_or(0);
+                    .position(|&i| identity.matches_current(&self.library[i], &self.library_metadata.catalog)).unwrap_or(0);
             }
             let stride = view.stride.max(18.0);
             view.pending_offset = Some(if query_changed {

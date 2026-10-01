@@ -435,3 +435,22 @@ fn emergency_envelope_has_exact_bounded_endpoints_at_supported_rates() {
         assert_eq!(output.output([f32::NAN, f32::INFINITY]), [0.0; 2]);
     }
 }
+
+#[test]
+fn combined_optional_commit_rechecks_each_generation_before_cancel_flags_arrive() {
+    let handle = Handle::default();
+    let old = handle.optional_work().unwrap();
+    // Mode entry has advanced its generation, but has not yet walked flags.
+    handle
+        .0
+        .admission
+        .fetch_add(SAFETY_GENERATION, Ordering::AcqRel);
+    let current = handle.optional_work().unwrap();
+    let _commit = current.commit().unwrap();
+    assert!(!old.cancel().load(Ordering::Acquire));
+    assert!(
+        old.cancelled(),
+        "a different component's guard cannot revive old work"
+    );
+    assert!(!current.cancelled());
+}

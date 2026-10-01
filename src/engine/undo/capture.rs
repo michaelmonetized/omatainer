@@ -116,6 +116,9 @@ impl Plan {
                     420 + (*deck % 2) as u64,
                 )
             }
+            DeckCueStyle { deck, pad, .. } => (
+                Target::Deck(*deck), Name::CueStyle, 440 + (*deck as u64) * 8 + *pad as u64,
+            ),
             DeckMatch => {
                 let other = if rt.xfader <= 0.5 { 1 } else { 0 };
                 (Target::Seek(other), Name::DeckSeek, 410 + other as u64)
@@ -159,6 +162,23 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if let Command::DeckCueStyle { deck, pad, style, receipt } = &c {
+            let current = self.decks.get(*deck as usize).filter(|d| {
+                d.audio.is_some() && (*pad as usize) < HOTCUES
+                    && d.hotcues[*pad as usize].set
+                    && receipt.state() == load_receipt::State::Current
+                    && d.load_receipt.as_ref().is_some_and(|r| r.same_request(receipt))
+            });
+            let Some(deck) = current else {
+                self.undo.reject(Failure::Invalid);
+                self.undo.retire_command(c);
+                return None;
+            };
+            if deck.cue_styles[*pad as usize] == *style {
+                self.undo.retire_command(c);
+                return None;
+            }
+        }
         if !self.undo.enabled || self.undo.replaying {
             return Some(c);
         }

@@ -221,6 +221,7 @@ impl Frame {
             copy_string(&mut out.title, &deck.title);
             out.eq = eq(&deck.eq[0]);
             out.audio = deck.audio.as_ref().map(|s| media(&mut self.media, s));
+            out.cue_styles = deck.cue_styles;
             out.hotcues =
                 std::array::from_fn(|j| deck.hotcues[j].set.then_some(deck.hotcues[j].pos));
         }

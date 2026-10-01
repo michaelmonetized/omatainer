@@ -38,6 +38,12 @@ impl LibItem {
     }
 }
 
+pub(super) struct Reconciled {
+    pub notice: Option<String>,
+    pub qualification_pending: bool,
+    pub relocation: Option<Result<(), String>>,
+}
+
 pub(super) fn reconcile_optional(
     store: &mut Store,
     items: &mut Vec<LibItem>,
@@ -46,12 +52,14 @@ pub(super) fn reconcile_optional(
     import_work: Option<&crate::engine::performance::WorkPermit>,
     scan_work: Option<&crate::engine::performance::WorkPermit>,
     fallback: &[LibItem],
-) -> Result<Option<String>, String> {
-    use std::sync::atomic::Ordering;
+    relocation: Option<(&crate::library::Relocate, &crate::engine::performance::WorkPermit)>,
+    qualification_work: Option<&crate::engine::performance::WorkPermit>,
+    qualification_sources: &[(LibSource, Option<FileFingerprint>)],
+) -> Result<Reconciled, String> {
     const PROTECTED: &str =
         "Performance protection cancelled the optional catalog import before commit";
     let cancelled =
-        |work: &crate::engine::performance::WorkPermit| work.cancel().load(Ordering::Acquire);
+        |work: &crate::engine::performance::WorkPermit| work.cancelled();
     let mut catalog = store.catalog.clone();
     let mut import_error = None;
     let mut imported = false;
@@ -70,6 +78,23 @@ pub(super) fn reconcile_optional(
         *items = fallback.to_vec();
     }
     reconcile_items(&mut catalog, items, captures)?;
+    let needs_qualification = !qualification_sources.is_empty();
+    let mut qualification_pending = needs_qualification && qualification_work.is_none();
+    if let Some(work) = qualification_work.filter(|_| needs_qualification) {
+        for (source, fingerprint) in qualification_sources {
+            if cancelled(work) { break; }
+            catalog.qualify_cues_cancellable(source, *fingerprint, &work.cancel());
+        }
+        qualification_pending = cancelled(work);
+    }
+    let mut relocated = false;
+    let mut relocation_error = None;
+    if let Some((request, work)) = relocation {
+        match catalog.relocate_cancellable(request, &work.cancel()) {
+            Ok(()) => relocated = true,
+            Err(error) => relocation_error = Some(format!("relocation rejected: {error}")),
+        }
+    }
     // A single short Studio-only permit orders mode entry against catalog
     // replacement/rename/fsync. A mode request during an already committed save
     // reports Changing; it cannot retroactively label the saved import cancelled.
@@ -77,14 +102,20 @@ pub(super) fn reconcile_optional(
         scan_work
     } else if imported {
         import_work
+    } else if relocated {
+        relocation.map(|(_, work)| work)
+    } else if needs_qualification {
+        qualification_work
     } else {
         None
     };
     let commit = work.map(|work| work.commit());
     let import_cancelled = imported && import_work.is_some_and(&cancelled);
     let scan_cancelled = use_scan && scan_work.is_some_and(&cancelled);
+    let relocation_cancelled = relocated && relocation.is_some_and(|(_, work)| cancelled(work));
+    let qualification_cancelled = needs_qualification && qualification_work.is_some_and(&cancelled);
     let mut guard = None;
-    if import_cancelled || scan_cancelled || commit.as_ref().is_some_and(|commit| commit.is_err()) {
+    if import_cancelled || scan_cancelled || relocation_cancelled || qualification_cancelled || commit.as_ref().is_some_and(|commit| commit.is_err()) {
         // Optional candidates never replace essential loaded-media metadata,
         // preparation or play history. Rebuild only that essential transaction.
         catalog = store.catalog.clone();
@@ -92,9 +123,9 @@ pub(super) fn reconcile_optional(
             *items = fallback.to_vec();
         }
         reconcile_items(&mut catalog, items, captures)?;
-        if imported {
-            import_error = Some(PROTECTED.into());
-        }
+        if imported { import_error = Some(PROTECTED.into()); }
+        if relocated { relocation_error = Some("relocation rejected: Performance protection cancelled verification before commit".into()); }
+        qualification_pending |= needs_qualification;
     } else if let Some(Ok(commit)) = commit {
         guard = Some(commit);
     }
@@ -107,7 +138,16 @@ pub(super) fn reconcile_optional(
         .map(|track| LibItem::from_stored(track.source.clone(), &track.versions[track.current]))
         .collect();
     drop(guard);
-    Ok(import_error)
+    let relocation = relocation.map(|_| match &relocation_error {
+        Some(error) => Err(error.clone()),
+        None if relocated => Ok(()),
+        None => Err("relocation rejected: verification did not complete".into()),
+    });
+    Ok(Reconciled {
+        notice: relocation_error.or_else(|| import_error.map(|error| format!("import rejected: {error}"))),
+        qualification_pending,
+        relocation,
+    })
 }
 
 /// A committed optional transaction can outlive the frame that enables
@@ -163,10 +203,8 @@ fn reconcile_items(
             capture.fingerprint,
             capture.metadata.clone(),
         )?;
-        if let Some(preparation) = capture.preparation.filter(|p| p.valid()) {
-            version.preparation = preparation;
-        }
-        version.metadata.last_play = version.metadata.last_play.max(capture.played);
+        let _ = version;
+        catalog.update_preparation(&capture.source, capture.fingerprint, capture.preparation, capture.played);
         if let Some(current) = current.filter(|_| match &capture.source {
             LibSource::File(path) => FileFingerprint::read(path) != capture.fingerprint,
             _ => false,
@@ -279,7 +317,7 @@ impl App {
             // A project CloseGuard seals renderer edits; the same close must
             // also exclude new catalog imports after its durability check.
             if self.project.committing() { ui.disable(); }
-            ui.label("Import a version 1 or 2 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
+            ui.label("Import a version 1, 2 or 3 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
             ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
             let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
             path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "DJ library import path"));

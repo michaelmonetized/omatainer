@@ -264,6 +264,9 @@ impl Frame {
             out.pfl = deck.pfl;
             out.loop_on = deck.loop_on;
             out.hotcues = std::array::from_fn(|i| deck.hotcues[i].set);
+            out.hotcue_positions = std::array::from_fn(|i| deck.hotcues[i].set.then_some(deck.hotcues[i].pos));
+            out.cue_styles = deck.cue_styles;
+            out.receipt_key = deck.load_receipt.as_ref().map_or(0, load_receipt::Receipt::snapshot_key);
             out.meter = deck.meter;
             out.duration = deck
                 .audio
