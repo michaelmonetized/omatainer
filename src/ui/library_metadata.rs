@@ -49,6 +49,7 @@ struct Import {
     work: Arc<WorkPermit>,
 }
 struct Relocation {
+    reviewed: Option<crate::library::relocation_search::Candidate>,
     request: crate::library::Relocate,
     work: Arc<WorkPermit>,
 }
@@ -262,7 +263,7 @@ impl Metadata {
                                         job.import.as_ref().map(|import| import.path.as_path()),
                                         job.import.as_ref().map(|import| import.work.as_ref()),
                                         job.scan_work.as_deref(), job.roots.as_deref(), &fallback,
-                                        job.relocation.as_ref().map(|r| (&r.request, r.work.as_ref())), job.qualification_work.as_ref(), &qualification_sources,
+                                        job.relocation.as_ref().map(|r| (&r.request, r.work.as_ref(), r.reviewed.as_ref())), job.qualification_work.as_ref(), &qualification_sources,
                                     ) {
                                         Ok(result) => {
                                             qualification_pending = result.qualification_pending;
@@ -271,6 +272,7 @@ impl Metadata {
                                             result.notice.map_or_else(|| "DJ library saved".into(), |error|
                                                 format!("DJ library saved; {error}"))
                                         },
+                                        Err(error) if store.last_save_replaced() => format!("DJ library replacement committed; durability unconfirmed: {error}"),
                                         Err(error) => format!("DJ library NOT saved: {error}"),
                                     },
                                 );
@@ -354,8 +356,7 @@ impl Metadata {
                     let items = Arc::new(items);
                     let restricted = restricted.unwrap_or_else(|| items.clone());
                     let relocation = job.relocation.as_ref().map(|relocation| {
-                        let saved = durable && catalog.track(&LibSource::File(relocation.request.destination.clone()))
-                            .is_some_and(|track| track.id == relocation.request.id);
+                        let saved = durable && catalog.tracks.iter().any(|track| track.id==relocation.request.id && track.source!=relocation.request.source);
                         RelocationResult {
                             request: relocation.request.clone(),
                             outcome: match relocation_outcome {
@@ -504,6 +505,9 @@ impl Metadata {
     /// media workers. A project/definition SourceRef is not a measured proof.
     /// At most 256 proofs wait here and one 256-proof job can be in flight.
     pub fn qualify_sampler(&mut self, proof: crate::sampler_bank::SourceRef) -> std::result::Result<(), String> {
+        self.qualify_measured_content(proof)
+    }
+    pub fn qualify_measured_content(&mut self, proof: crate::sampler_bank::SourceRef) -> std::result::Result<(), String> {
         if self.storage.is_none() {
             return Err("sampler source identity is not saved: persistent DJ library unavailable".into());
         }
@@ -565,6 +569,12 @@ impl Metadata {
         true
     }
     pub fn relocate(&mut self, request: crate::library::Relocate) -> bool {
+        self.relocate_choice(request, None)
+    }
+    pub fn relocate_reviewed(&mut self, request: crate::library::Relocate, candidate: crate::library::relocation_search::Candidate) -> bool {
+        self.relocate_choice(request, Some(candidate))
+    }
+    fn relocate_choice(&mut self, request: crate::library::Relocate, reviewed: Option<crate::library::relocation_search::Candidate>) -> bool {
         if self.storage.is_none() || self.relocation.is_some() || self.in_flight { return false; }
         let work = match self.performance.optional_work() {
             Ok(work) => Arc::new(work),
@@ -573,7 +583,7 @@ impl Metadata {
                 return false;
             }
         };
-        self.relocation = Some(Relocation { request, work });
+        self.relocation = Some(Relocation { request, work, reviewed });
         self.relocation_result = None;
         self.clear_error = true;
         self.revision = self.revision.wrapping_add(1);

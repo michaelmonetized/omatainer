@@ -54,7 +54,7 @@ pub(super) fn reconcile_optional(
     scan_work: Option<&crate::engine::performance::WorkPermit>,
     roots: Option<&library_scan::ScanRoots>,
     fallback: &[LibItem],
-    relocation: Option<(&crate::library::Relocate, &crate::engine::performance::WorkPermit)>,
+    relocation: Option<(&crate::library::Relocate, &crate::engine::performance::WorkPermit, Option<&crate::library::relocation_search::Candidate>)>,
     qualification_work: Option<&crate::engine::performance::WorkPermit>,
     qualification_sources: &[(LibSource, Option<FileFingerprint>)],
 ) -> Result<Reconciled, String> {
@@ -104,10 +104,16 @@ pub(super) fn reconcile_optional(
         }
         qualification_pending = cancelled(work);
     }
+    let mut relocation_baseline = None;
     let mut relocated = false;
     let mut relocation_error = None;
-    if let Some((request, work)) = relocation {
-        match catalog.relocate_cancellable(request, &work.cancel()) {
+    if let Some((request, work, reviewed)) = relocation {
+        relocation_baseline = Some(catalog.clone());
+        let result = match reviewed {
+            Some(candidate) => catalog.relocate_reviewed(request, candidate, &work.cancel()),
+            None => catalog.relocate_cancellable(request, &work.cancel()),
+        };
+        match result {
             Ok(()) => relocated = true,
             Err(error) => relocation_error = Some(format!("relocation rejected: {error}")),
         }
@@ -120,7 +126,7 @@ pub(super) fn reconcile_optional(
     } else if imported {
         import_work
     } else if relocated {
-        relocation.map(|(_, work)| work)
+        relocation.map(|(_, work, _)| work)
     } else if needs_qualification {
         qualification_work
     } else {
@@ -129,13 +135,14 @@ pub(super) fn reconcile_optional(
     let commit = work.map(|work| work.commit());
     let import_cancelled = imported && import_work.is_some_and(&cancelled);
     let scan_cancelled = use_scan && scan_work.is_some_and(&cancelled);
-    let relocation_cancelled = relocated && relocation.is_some_and(|(_, work)| cancelled(work));
+    let relocation_cancelled = relocated && relocation.is_some_and(|(_, work, _)| cancelled(work));
     let qualification_cancelled = needs_qualification && qualification_work.is_some_and(&cancelled);
     let mut guard = None;
     if import_cancelled || scan_cancelled || relocation_cancelled || qualification_cancelled || commit.as_ref().is_some_and(|commit| commit.is_err()) {
         // Optional candidates never replace essential loaded-media metadata,
         // preparation or play history. Rebuild only that essential transaction.
         catalog = store.catalog.clone();
+        relocation_baseline = None;
         if scan_work.is_some() {
             *items = fallback.to_vec();
         }
@@ -148,7 +155,16 @@ pub(super) fn reconcile_optional(
         guard = Some(commit);
     }
     store.catalog = catalog;
-    store.save()?;
+    if let Err(error) = store.save() {
+        if relocated && !store.last_save_replaced() {
+            // Keep essential edits pending, but a failed optional relocation
+            // must not become the baseline of a later unrelated save.
+            if let Some(baseline) = relocation_baseline { store.catalog = baseline; }
+        }
+        *items = store.catalog.tracks.iter().map(|track|
+            LibItem::from_stored(track.source.clone(), &track.versions[track.current])).collect();
+        return Err(error);
+    }
     *items = store
         .catalog
         .tracks

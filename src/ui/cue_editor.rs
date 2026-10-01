@@ -2,6 +2,7 @@
 //! from renderer snapshots; library durability comes from its worker receipt.
 use super::*;
 use crate::engine::cue_metadata::{Name, Style};
+mod replacement;
 
 #[derive(Default)]
 pub(super) struct Cues {
@@ -47,6 +48,7 @@ impl Draft {
     }
 }
 struct Relocation {
+    search: replacement::Search,
     request: crate::library::Relocate,
     path: String,
     title: String,
@@ -122,6 +124,7 @@ impl App {
             return;
         };
         self.cue_editor.relocation = Some(Relocation {
+            search: replacement::Search::default(),
             request: crate::library::Relocate {
                 id: track.id.clone(),
                 source: item.source.clone(),
@@ -234,15 +237,17 @@ impl App {
                 let path = ui.add_enabled(!relocation.pending && !relocation.saved, egui::TextEdit::singleline(&mut relocation.path).desired_width(420.0).hint_text("/new/location/track.wav"));
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Relocated track path"));
                 help::annotate(ui, &path, HelpControl::CueRelocatePath);
-                let submit = ui.add_enabled(!relocation.pending && !relocation.saved, egui::Button::new("Verify and relocate track"));
+                let submit = ui.push_id((&relocation.request.id, &relocation.path), |ui| ui.add_enabled(!relocation.pending && !relocation.saved, egui::Button::new("Verify and relocate track"))).inner;
                 help::annotate(ui, &submit, HelpControl::CueRelocateApply);
                 if submit.clicked() {
+                    relocation.search.discard();
                     relocation.request.destination = PathBuf::from(relocation.path.trim());
                     relocation.message = if self.library_metadata.relocate(relocation.request.clone()) {
                         relocation.pending = true;
                         "Verifying relocation on the library worker…".into()
                     } else { format!("Relocation was not queued. {}", self.library_metadata.label()) };
                 }
+                replacement::panel(self, &mut relocation, ui);
                 ui.label(self.library_metadata.label());
             });
             if open {

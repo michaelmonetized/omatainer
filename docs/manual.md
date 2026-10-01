@@ -1274,7 +1274,7 @@ Workflow: Prepare a DJ deck.
 
 Local file association
 
-Choose the new path of the selected library track after a file move or copy. The worker must verify identical content before retaining the stable track identity and preparation.
+Choose the new path, or search replacement folders, for the selected library track after a file move or copy. The worker must verify identical content before retaining the stable track identity and preparation.
 
 Workflow: Prepare a DJ deck.
 
@@ -1291,6 +1291,46 @@ Workflow: Prepare a DJ deck.
 Background content verification and catalog save
 
 Compare complete file hashes and stable file metadata before changing the library association. Different bytes, an occupied destination or a changed source are rejected. Loaded and undo-retained old receipts preserve the same prepared identity. No files are moved or deleted.
+
+Workflow: Prepare a DJ deck.
+
+### Replacement search folders
+
+1–64 absolute folders, one per line
+
+Search the selected track by complete content identity, including renamed files. A missing original needs its previously saved content digest. Symlinks and nested mounts are skipped; incomplete coverage is explicit. Changing these folders discards the previous review.
+
+Workflow: Prepare a DJ deck.
+
+### Search replacement folders
+
+Background read-only discovery in Studio
+
+Compare up to 100,000 files, one million entries, 4,096 directories, depth 64 and 64 GiB of hashed bytes. Show up to 256 byte-identical copies without automatically choosing one. Cue and history saves remain available while searching. A newly measured original digest is saved before relocation becomes available.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel replacement search
+
+Leave track associations unchanged
+
+Cancel discovery cooperatively. Closing the relocation window or entering Performance protection also invalidates the search. Already committed catalog saves remain committed.
+
+Workflow: Prepare a DJ deck.
+
+### Choose a replacement match
+
+Explicit location selection
+
+Review the full path of the copy you want. Several identical copies are ambiguous locations and require your choice. Incomplete searches may have additional unseen matches. Choosing a row alone changes no association.
+
+Workflow: Prepare a DJ deck.
+
+### Verify and use selected replacement
+
+Recheck identity and persist association
+
+Rehash the reviewed file and recheck its captured filesystem location before saving. Preserve stable track ID, preparation, crate membership and history. Replaced files and stale versions are rejected. A failed pre-rename save retains the old association; a completed rename with an unconfirmed directory sync is reported separately.
 
 Workflow: Prepare a DJ deck.
 

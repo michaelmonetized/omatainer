@@ -50,6 +50,7 @@ pub(crate) struct FileFingerprint {
 }
 
 impl FileFingerprint {
+    pub fn byte_len(self) -> u64 { self.length }
     pub fn from_metadata(metadata: &std::fs::Metadata) -> Self {
         use std::os::unix::fs::MetadataExt;
         Self {
