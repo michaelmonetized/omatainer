@@ -92,3 +92,42 @@ No physical controller, audio-device latency, listening-quality or screen-reader
 user qualification follows from these headless/native API fixtures.
 Filesystem/codec cancellation is cooperative between bounded chunks/packets; an
 operating-system call is not forcibly interrupted.
+
+## Final assembled release qualification
+
+The final source `ffc5a13` includes the captured audio-route confirmation fix and
+its regression. The complete ordinary suite passed **868 tests**, with **15
+opt-in tests ignored**, in **44.54 seconds** (four test threads); retained log:
+`issue-101-consent-final-tests.log` in the local work evidence directory.
+
+The unchanged local performance gate passed from
+`2026-10-01T10:16:40.106409+00:00` to
+`2026-10-01T10:20:17.176673+00:00`, with other agents' builds/tests paused during
+measurement. It freshly built the locked offline release and release tests,
+verified the embedded source inventory, and ran all eight fixed workloads in
+three sessions. Native preflight passed **123 actions, 242 nodes and 1,015 App
+frames**, persisting the note and 1.25 preference scale. The release binary SHA-256
+is `8c25c9ac8e199d3355e6a4f7f3e2c61b7676f6c2c6c82bbcf969d37a6b128209`.
+
+Worst callback wall p99 / maximum across the three sessions, in milliseconds:
+producer **0.830550 / 1.073428**, composer **0.820591 / 1.337347**, live DJ
+**0.107002 / 0.174085**, hybrid **0.857508 / 0.964801**. These are local fixture
+callback measurements, not device latency. Measured callback and recording heap
+allocations/frees, rejected commands and MIDI drops were zero. Worst large-crate
+frame p99 was **3.237031 ms**; multi-controller frame p99 **4.841921 ms**, IPC
+round-trip p99 **8.891794 ms**, and MIDI dispatch p99 **4.260291 ms**. All fixed
+thresholds passed; no threshold or workload was relaxed.
+
+An independent report check passed. Packaging and package verification passed
+with the exact release executable, followed by all **7 CLI**, **6 follow-protocol**
+and **5 runtime-isolation** groups. The latter protocol fixtures deliberately do
+not contact the user's application socket or audio device. The verified package
+is `issue-101-final-package`; reports, raw measurements and detailed log are
+retained as `issue-101-final-performance.{json,raw.json,log}`, with gate output
+in `issue-101-stack-gate.log`, under `/home/michael/Projects/omatainer-work`.
+
+An earlier gate attempt was stopped during compilation, before measurement, to
+include the route-confirmation fix; it is not counted as passing evidence.
+Physical Pioneer/Numark/Akai/MIDI-keyboard, hardware latency, human listening and
+screen-reader acceptance remain pending the user's final producer/composer/live
+DJ runs. No issue is closed and no PR is merged by this qualification.
