@@ -610,7 +610,7 @@ impl App {
                 });
         }
         if self.keys_open {
-            egui::Window::new("keys").show(ctx, |ui| {
+            egui::Window::new("keys").default_pos(Pos2::new(30.0, 60.0)).default_height(600.0).vscroll(true).show(ctx, |ui| {
                 shortcuts::show_help(ui);
                 ui.separator();
                 ui.monospace(POINTER_HELP);
@@ -1584,7 +1584,7 @@ fn platter(
         on_jog(0.0, false);
     }
     accessibility::button(ui, &resp, "Platter play or pause", Some(snap.playing));
-    accessibility::status(ui, &resp, &format!("{}; {:.1} playing BPM; {} remaining; loop {}. Left/Right arrows jog", snap.title, bpm, platter_remain(snap), if snap.loop_on { "on" } else { "off" }));
+    accessibility::status(ui, &resp, &format!("{}; {:.1} playing BPM; {}. {}. Left/Right arrows jog", snap.title, bpm, readout.status, readout.tooltip));
     let action = accessibility::actions(ui, &resp, &["Play or pause", "Cue", "Unload", "Jog backward", "Jog forward"]);
     if matches!(action, Some(3 | 4)) { on_jog(if action == Some(3) { -0.05 } else { 0.05 }, true); on_jog(0.0, false); }
     if resp.has_focus() {

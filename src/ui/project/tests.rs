@@ -1509,3 +1509,28 @@ fn coordinated_close_keep_working_wins_on_same_frame_library_becomes_ready() {
     assert_eq!(gui.rt.master, 0.33);
     assert_eq!(gui.close_commands, 0);
 }
+
+#[test]
+fn project_replacement_retires_all_gui_pad_admission_owners() {
+    let mut gui = Gui::new();
+    // Start through the same admission/ownership method as pointer, keyboard
+    // and native accessibility actions; use a fresh project while still held.
+    gui.app.set_pad_input(0, 8, true);
+    gui.rt.process(&mut []);
+    assert!(gui.app.pad_held[0]);
+    assert_eq!(gui.app.engine.cmd.queue_pressure().reserved_releases, 1);
+    gui.app.begin_project_action(Action::New);
+    gui.settle();
+    gui.rt.process(&mut []);
+    assert!(!gui.app.pad_held[0]);
+    assert_eq!(gui.app.pad_inputs[0], 0);
+    assert_eq!(gui.app.engine.cmd.queue_pressure().reserved_releases, 0);
+    gui.app.set_pad_input(0, 8, false); // late old-session release is inert
+    gui.app.set_pad_input(0, 8, true);
+    assert!(gui.app.pad_held[0]);
+    assert_eq!(gui.app.engine.cmd.queue_pressure().reserved_releases, 1);
+    gui.app.set_pad_input(0, 8, false);
+    gui.rt.process(&mut []);
+    assert!(!gui.app.pad_held[0]);
+    assert_eq!(gui.app.engine.cmd.queue_pressure().reserved_releases, 0);
+}

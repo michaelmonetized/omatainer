@@ -690,3 +690,102 @@ fn overflow_scrollbar_values_and_scroll_view_keys_move_the_actual_content() {
     gui.key(Key::PageDown, Default::default(), false);
     assert!(gui.node(name).1.numeric_value().unwrap() > 32.0);
 }
+
+#[test]
+fn accessible_project_path_keyboard_edit_save_reopen_and_undo_preserve_composition() {
+    let directory = std::env::temp_dir().join(format!(
+        "omatainer-accessible-project-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("keyboard composition.omat");
+    let _ = std::fs::remove_file(&path);
+    let mut gui = Gui::new();
+    let wait = |gui: &mut Gui, check: &dyn Fn(&Gui) -> bool| {
+        let until = Instant::now() + std::time::Duration::from_secs(8);
+        while !check(gui) {
+            gui.frame(vec![]);
+            assert!(Instant::now() < until, "accessible project did not settle: epoch {} notes {} labels {:?}", gui.app.engine.undo.view().epoch, gui.rt.tracks[0].clips[0].notes.len(), gui.nodes.iter().filter_map(|(_,n)| n.label()).filter(|n| n.contains("project") || n.contains(".omat") || n.contains("Saved") || n.contains("Open")).collect::<Vec<_>>());
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        gui.frame(vec![]);
+    };
+    let epoch = gui.app.engine.undo.view().epoch;
+    gui.action("Project", Action::Click, None);
+    gui.action("New project", Action::Click, None);
+    wait(&mut gui, &|g| {
+        g.app.engine.undo.view().epoch > epoch && !g.app.project.committing()
+    });
+    let clip = gui
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label())
+        .find(|n| n.starts_with("Clip track 1 scene 1:"))
+        .unwrap()
+        .to_owned();
+    gui.action(&clip, Action::Focus, None);
+    gui.key(Key::F10, egui::Modifiers::SHIFT, true);
+    gui.key(Key::F10, egui::Modifiers::SHIFT, false);
+    gui.action("Arm compose", Action::Focus, None);
+    gui.key(Key::Enter, Default::default(), true);
+    gui.key(Key::Enter, Default::default(), false);
+    assert!(gui.rt.compose_target.is_some());
+    let pad = gui
+        .nodes
+        .iter()
+        .filter_map(|(_, n)| n.label())
+        .find(|n| *n == "Sampler: Sample pad 1" || n.starts_with("Sampler: Pad 1:"))
+        .unwrap()
+        .to_owned();
+    gui.action(&pad, Action::Focus, None);
+    gui.key(Key::Space, Default::default(), true);
+    gui.key(Key::Space, Default::default(), false);
+    assert_eq!(gui.rt.tracks[0].clips[0].notes.len(), 1);
+    gui.action("Project", Action::Click, None);
+    gui.action("Save project as…", Action::Click, None);
+    assert_eq!(gui.node("Project file path").1.role(), Role::TextInput);
+    gui.action("Project file path", Action::Focus, None);
+    gui.key(Key::A, egui::Modifiers::CTRL, true);
+    gui.key(Key::A, egui::Modifiers::CTRL, false);
+    gui.frame(vec![egui::Event::Text(path.display().to_string())]);
+    gui.action("Save", Action::Focus, None);
+    gui.key(Key::Enter, Default::default(), true);
+    gui.key(Key::Enter, Default::default(), false);
+    wait(&mut gui, &|g| {
+        path.exists() && !g.node("Project").1.is_disabled()
+    });
+    gui.action(
+        "Track 1: Gain",
+        Action::SetValue,
+        Some(ActionData::NumericValue(31.0)),
+    );
+    assert!((gui.rt.tracks[0].gain - 0.31).abs() < 1e-6);
+    gui.key(Key::Z, egui::Modifiers::CTRL, true);
+    gui.key(Key::Z, egui::Modifiers::CTRL, false);
+    assert!(
+        (gui.rt.tracks[0].gain - 0.31).abs() > 1e-4,
+        "focused slider permits global creative Undo"
+    );
+    gui.action("Project", Action::Click, None);
+    gui.action("New project", Action::Click, None);
+    wait(&mut gui, &|g| {
+        g.rt.tracks[0].clips[0].notes.is_empty() && !g.app.project.committing()
+    });
+    gui.action("Project", Action::Click, None);
+    gui.action("Open project…", Action::Click, None);
+    gui.action("Project file path", Action::Focus, None);
+    gui.frame(vec![egui::Event::Text(path.display().to_string())]);
+    gui.action("Open", Action::Focus, None);
+    gui.key(Key::Enter, Default::default(), true);
+    gui.key(Key::Enter, Default::default(), false);
+    wait(&mut gui, &|g| {
+        g.rt.tracks[0].clips[0].notes.len() == 1 && !g.app.project.committing()
+    });
+    assert_eq!(gui.app.engine.undo.view().cursor, 0);
+    assert!(gui.app.pad_inputs.iter().all(|v| *v == 0));
+    assert!(gui
+        .ctx
+        .data(|d| d.get_temp::<NumericEdit>(egui::Id::new(NUMBER)))
+        .is_none());
+    std::fs::remove_dir_all(directory).unwrap();
+}

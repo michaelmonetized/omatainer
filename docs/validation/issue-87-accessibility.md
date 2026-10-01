@@ -44,7 +44,13 @@ and queries/actions through Python GI AT-SPI. It runs on newly created private
 session/accessibility buses, with private XDG directories and memory-only
 settings. It verifies names/roles, focus, pitch SetValue, platter Click, hot-cue
 set/delete through the ordinary menu, and sample/synth Press/Release reaching
-the actual renderer. No accessibility tree transform or synthetic substitute
+the actual renderer. Its native project workflow creates an empty project,
+arms composition, records and releases a pad note, undoes/redoes that note,
+saves, creates another empty project, and reopens the saved note through Recent.
+A separate actual-egui keyboard fixture types a custom absolute path containing
+a space and exercises Save/Open, composition and undo. Project replacement also
+retires every GUI pad admission owner before clearing transient input/editor
+state, so a later release cannot leak reserved queue capacity. No accessibility tree transform or synthetic substitute
 for the platform bridge is used.
 
 Run after building the test executable:
@@ -58,22 +64,24 @@ The harness requires Linux, `dbus-run-session`, at-spi2-core, Python GI and the
 Atspi/Gio typelibs. The ignored Rust child refuses direct use without the private
 harness guard. It opens no window and never changes the desktop's accessibility
 settings. Human assistive-tool usability, Orca workflows and physical-controller
-qualification are not established by these automated tests. Project/undo
-workflows are validated again when this delta is assembled above issues 82/83;
-this implementation branch starts from issue 81.
+qualification are not established by these automated tests. These project/undo
+workflows run against the prepared integration containing issues 82–86; the
+complete final assembled stack is checked separately before publication.
 
 
 Native validation on Linux aarch64 used egui 0.32.3, AccessKit 0.19.0,
 accesskit_unix 0.15.0, accesskit_atspi_common 0.12.0, system at-spi2-core 2.60.7,
-and Python 3.14.7. The successful run traversed 219 native nodes and returned
-21 native actions through the real adapter. Deliberate child failure and SIGTERM
-cancellation exited within the harness deadlines and left the pre-existing
-desktop bus/registry process inventory unchanged. Frame counts are diagnostic,
-not a performance claim.
+and Python 3.14.7. The expanded successful run traversed 227 native nodes and
+returned 45 native actions through the real adapter, with one saved note
+verified after reopening. Deliberate child failure and SIGTERM cancellation
+exited within the harness deadlines and left the pre-existing desktop bus/registry
+process inventory unchanged. Frame counts are diagnostic, not a performance claim.
+The live-tree traversal tolerates a child disappearing during enumeration while
+still requiring each named control and state transition within a fixed deadline.
 
-
-Final local checks: `cargo test -- --test-threads=1` passed 454 tests with five
-opt-in fixtures ignored. A subsequently added actual scrollbar/scroll-view
-regression passed separately (no production-source change). The native harness
-passed again against the same implementation. `cargo build` passed. New Rust modules pass rustfmt
-and the complete delta passes `git diff --check`.
+The original isolated implementation passed 454 ordinary Rust tests and a
+production build. The prepared project integration passes 183 GUI tests with
+one native child fixture ignored by the ordinary runner; that child passes when
+invoked through the private native harness. The shortcut window has bounded,
+scrollable geometry so its expanded content does not cover the project menu.
+Final assembled full-suite/build results are recorded at publication.

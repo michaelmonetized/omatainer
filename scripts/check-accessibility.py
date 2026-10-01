@@ -45,7 +45,7 @@ def outer(binary):
                                   '--private','--test-binary',str(binary.resolve())],
                                  env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
         try:
-            stdout,stderr=process.communicate(timeout=55)
+            stdout,stderr=process.communicate(timeout=85)
             if process.returncode:
                 raise RuntimeError(f'private AT-SPI fixture failed ({process.returncode}):\n{stdout}\n{stderr}')
             print(stdout.strip())
@@ -121,7 +121,12 @@ def private(binary):
         def tree_nodes():
             nodes={};pending=[app];visited=0
             while pending:
-                node=pending.pop();visited+=1
+                node=pending.pop()
+                # Menus and status nodes can disappear between child-count and
+                # child lookup on this live tree. Required controls are still
+                # checked through bounded named-node waits below.
+                if node is None:continue
+                visited+=1
                 assert visited<=10_000,'unbounded accessibility fixture tree'
                 name=node.get_name()
                 if name:nodes[name]=node
@@ -142,6 +147,7 @@ def private(binary):
         wait_for(lambda:pitch.get_state_set().contains(Atspi.StateType.FOCUSED),'AT-SPI focused state')
         assert value.set_current_value(-4.0)
         wait_for(lambda:state()['pitch']==.25,'SetValue reached actual renderer')
+        verified_pitch=state()['pitch']
         wait_for(lambda:abs(value.get_current_value()+4)<1e-8,'numeric state returned through AT-SPI')
         def action(node,name):
             interface=node.get_action_iface();assert interface is not None
@@ -179,6 +185,57 @@ def private(binary):
         alternate(synth_pad,'Release pad')
         wait_for(lambda:not state()['pad_held'] and state()['held_pad_voices']==0,
                  'native menu release releases the real synth voice')
+        # Complete native project workflow with the production menu, path
+        # dialog's default filename, clip Actions and the same persisted codec.
+        # Arbitrary path typing is covered separately by real egui key events.
+        def menu(name,entry):
+            action(named(name),'click')
+            action(named(entry),'click')
+        def project_ready():
+            node=tree_nodes()[0].get('Project')
+            return node and node.get_state_set().contains(Atspi.StateType.ENABLED)
+        epoch=state()['undo_epoch']
+        menu('Project','New project')
+        action(named('Discard changes'),'click')
+        wait_for(lambda:state()['undo_epoch']>epoch and state()['notes']==0,'native New installed an empty project')
+        wait_for(project_ready,'New controls enabled after applied snapshot')
+        clip=wait_for(lambda:next((node for name,node in tree_nodes()[0].items()
+                                  if name.startswith('Clip track 1 scene 1:')),None),
+                      'new project clip')
+        alternate(clip,'Arm compose')
+        wait_for(lambda:state()['compose_armed'],'native clip action armed composition')
+        pad_name=wait_for(lambda:next((name for name in tree_nodes()[0]
+                                     if name=='Sampler: Sample pad 1' or name.startswith('Sampler: Pad 1:')),None),
+                          'new project pad')
+        alternate(named(pad_name),'Press pad')
+        wait_for(lambda:state()['pad_held'] and state()['notes']==1,'native pad composed a stored note')
+        alternate(named(pad_name),'Release pad')
+        wait_for(lambda:not state()['pad_held'],'native composition released its gate')
+        action(named('Edit'),'click')
+        undo=wait_for(lambda:next((node for name,node in tree_nodes()[0].items() if name.startswith('Undo ')),None),'named Undo command')
+        action(undo,'click')
+        wait_for(lambda:state()['notes']==0,'native Undo reverted composed note')
+        action(named('Edit'),'click')
+        redo=wait_for(lambda:next((node for name,node in tree_nodes()[0].items() if name.startswith('Redo ')),None),'named Redo command')
+        action(redo,'click')
+        wait_for(lambda:state()['notes']==1,'native Redo restored composed note')
+        menu('Project','Save project as…')
+        path_field=named('Project file path')
+        assert path_field.get_text_iface() is not None,'project path has native text semantics'
+        action(named('Save'),'click')
+        wait_for(lambda:state()['saved_notes']==1,'native save persisted composed note')
+        wait_for(project_ready,'save completed')
+        epoch=state()['undo_epoch']
+        menu('Project','New project')
+        wait_for(lambda:state()['undo_epoch']>epoch and state()['notes']==0,'second native New installed empty state')
+        wait_for(project_ready,'second New controls enabled')
+        assert state()['all_pad_inputs_clear'],'project replacement clears all input ownership'
+        saved_path=state()['project_file']
+        action(named('Project'),'click')
+        action(named('Open recent ⏵'),'click')
+        action(named(saved_path),'click')
+        wait_for(lambda:state()['notes']==1 and state()['undo_cursor']==0,'native recent reopen restored saved note with empty history')
+        wait_for(project_ready,'reopened project controls enabled')
         result=state()
         expected={'Focus','SetValue','Click'}
         assert expected.issubset({a['action'] for a in result['actions']}),result
@@ -188,10 +245,12 @@ def private(binary):
         assert child.returncode==0,(root/'child.log').read_text()
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
-                          'pitch_renderer':result['pitch'],'frames':result['frames'],
+                          'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',
+                          'project_workflow':'New -> compose -> Undo -> Redo -> Save -> New -> Open recent',
+                          'persisted_notes':result['saved_notes'],'reopened_notes':result['notes'],
                           'scope':'actual App/renderer plus native accessibility API; no window, Orca, desktop setting or hardware QA'},indent=2))
     except BaseException:
         launcher_log.flush();child_log.flush()

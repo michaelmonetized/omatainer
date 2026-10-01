@@ -42,6 +42,7 @@ fn private_atspi_bridge_child() {
         std::env::var_os("OMATAINER_ATSPI_TEST_DIR").expect("private evidence directory"),
     );
     assert!(directory.is_dir() && directory.join("private-harness").is_file());
+    std::env::set_current_dir(&directory).unwrap(); // This isolated child owns its process cwd.
     assert!(std::env::var("DBUS_SESSION_BUS_ADDRESS").is_ok());
     assert!(std::env::var("AT_SPI_BUS_ADDRESS").is_ok());
     let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
@@ -80,7 +81,7 @@ fn private_atspi_bridge_child() {
         Deactivate,
     );
     adapter.update_window_focus_state(true);
-    let deadline = Instant::now() + Duration::from_secs(40);
+    let deadline = Instant::now() + Duration::from_secs(70);
     let mut actions = Vec::new();
     let mut frames = 0u64;
     while !directory.join("done").exists() {
@@ -105,7 +106,7 @@ fn private_atspi_bridge_child() {
             actions.push(serde_json::json!({"action":format!("{:?}",request.action),"label":label,"data":format!("{:?}",request.data)}));
             events.push(egui::Event::AccessKitActionRequest(request));
         }
-        assert!(actions.len() <= 64, "unbounded fixture action stream");
+        assert!(actions.len() <= 128, "unbounded fixture action stream");
         tree = frame(&mut app, events);
         *initial.lock().unwrap() = tree.clone();
         adapter.update_if_active(|| tree.clone());
@@ -126,11 +127,33 @@ fn private_atspi_bridge_child() {
                     && matches!(voice.env.stage, 1..=3)
             })
             .count();
+        let saved_project = directory.join("Untitled.omat");
+        let saved_notes = if saved_project.exists() {
+            let bundle = crate::project_file::load::<serde_json::Value>(
+                &saved_project,
+                &crate::project_file::Limits::default(),
+                &std::sync::atomic::AtomicBool::new(false),
+            )
+            .expect("native Save produced a valid project");
+            Some(
+                bundle.state["engine"]["tracks"][0]["clips"][0]["notes"]
+                    .as_array()
+                    .unwrap()
+                    .len(),
+            )
+        } else {
+            None
+        };
+        let undo = app.engine.undo.view();
         let evidence = serde_json::json!({"pid":std::process::id(),"frames":frames,"actions":actions,
             "pitch":rt.decks[0].pitch,"playing":rt.decks[0].playing,"loaded":rt.decks[0].audio.is_some(),
             "hotcue_1":rt.decks[0].hotcues[0].set,"pad_held":app.pad_held[0],"focus":focus,
             "sampler_instrument":rt.sampler_inst.label(),"held_pad_voices":held_pad_voices,
-            "pad_sample_active":rt.pad_voices[0].is_some()});
+            "pad_sample_active":rt.pad_voices[0].is_some(),
+            "notes":rt.tracks[0].clips[0].notes.len(),"undo_cursor":undo.cursor,"undo_epoch":undo.epoch,
+            "compose_armed":rt.compose_target.is_some(),"saved_notes":saved_notes,
+            "all_pad_inputs_clear":app.pad_inputs.iter().all(|v| *v==0),
+            "project_file":saved_project.display().to_string()});
         std::fs::write(
             directory.join("state.tmp"),
             serde_json::to_vec(&evidence).unwrap(),
