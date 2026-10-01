@@ -127,8 +127,8 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 2 is the current format; the documented flat version 1 layout
-migrates without changing IDs or preparation. Conflicting identities or unknown
+worker. Version 3 is the current format; versions 1 and 2 migrate without changing
+IDs or preparation. Conflicting identities or unknown
 fields/formats are rejected rather than discarded. Removable-volume and provider
 references stay distinct, but loading them is explicitly unavailable until a
 resolver is implemented. No provider/network media is fetched.
@@ -136,8 +136,16 @@ resolver is implemented. No provider/network media is fetched.
 The main cue, eight hot cues and saved loop range/arming state return on a later
 load; playback stays paused. Replaced file bytes keep their location's ID but get
 fresh preparation, with old fingerprint versions preserved in the catalog. A
-moved path is a new location. The current engine has no editable beat-grid model;
-only its implemented tempo analysis and cue/loop preparation are persisted.
+new path receives a new identity unless the crate’s **relocate…** action
+verifies identical file bytes and deliberately preserves the existing track ID.
+Keep the original file available until its move-verification digest is saved.
+The current engine has no editable beat-grid model; only its implemented tempo
+analysis and cue/loop preparation are persisted.
+
+**Deck Actions → Edit cue names and colors** edits all eight hot cues with names
+up to 64 UTF-8 bytes and optional RGB colors. Pads, waveform markers and the cue
+list share those values; edits are undoable and the list shows whether they are
+session-only or saved. [Cue storage and relocation details](docs/validation/issue-98-cue-metadata.md).
 
 Saves publish atomically and retain `library.backup.json`. A malformed or newer
 store is never reset to an empty library. Repair/restore it while the app is

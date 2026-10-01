@@ -25,6 +25,7 @@ use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
 mod play_history;
+mod cue_editor;
 mod play_time;
 mod project;
 mod undo;
@@ -111,6 +112,7 @@ pub struct App {
     // Keep those small edits separate from the full library allocation.
     last_played: play_history::History,
     playback_watches: Vec<play_history::Watch>,
+    cue_editor: cue_editor::Cues,
     published_selection: Option<Arc<Selection>>,
     published_indices: std::sync::Weak<Vec<usize>>,
     lib_filter: String,
@@ -199,6 +201,7 @@ impl App {
             library_import_path: String::new(),
             last_played: play_history::History::default(),
             playback_watches,
+            cue_editor: cue_editor::Cues::default(),
             published_selection: None,
             published_indices: std::sync::Weak::new(),
             lib_filter: String::new(),
@@ -586,6 +589,7 @@ impl App {
         self.project_toolbar(ctx);
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
+        self.cue_editor_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -826,11 +830,17 @@ impl App {
                     for c in 0..4 {
                         let i = row * 4 + c;
                         let on = snap.hotcues.get(i).copied().unwrap_or(false);
-                        let r = sq_btn(ui, t, &format!("{}", i + 1), on, t.track_color(i), cell);
-                        accessibility::button(ui, &r, &format!("Hot cue {}", i + 1), Some(on));
-                        let alternative = accessibility::actions(ui, &r, &["Set or jump to cue", "Delete cue"]);
+                        let name = snap.cue_styles[i].name.as_str();
+                        let text = if name.is_empty() { format!("{}", i + 1) }
+                            else { format!("{}\n{}", i + 1, cue_editor::short_name(name, 5)) };
+                        let r = sq_btn(ui, t, &text, on, cue_editor::color(t, snap.cue_styles[i], i), cell);
+                        let label = cue_editor::label(i, snap.cue_styles[i]);
+                        accessibility::button(ui, &r, &label, Some(on));
+                        accessibility::status(ui, &r, &cue_editor::description(snap, i));
+                        let alternative = accessibility::actions(ui, &r, &["Set or jump to cue", "Delete cue", "Edit cue names and colors"]);
                         help::annotate(ui, &r, HelpControl::HotCue);
-                        if r.clicked() || alternative.is_some() {
+                        if alternative == Some(2) { self.open_cue_editor(d); }
+                        else if r.clicked() || alternative.is_some() {
                             self.send(Command::DeckHotCue {
                                 deck: d as u8,
                                 pad: i as u8,
@@ -840,6 +850,7 @@ impl App {
                     }
                 });
             }
+            if ui.small_button("cues…").help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(3.0);
                 for (band, lab) in [(0u8, "b"), (1, "m"), (2, "t"), (3, "g")] {
@@ -1054,6 +1065,7 @@ impl App {
                 }
                 self.deck_selectors(ui);
                 if ui.button("library…").help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
+                if ui.button("relocate…").help(ui, HelpControl::CueRelocate).clicked() { self.open_cue_relocation(); }
                 let load_a = ui.button("→ A");
                 accessibility::button(ui, &load_a, "Load selected crate item to deck A", None);
                 help::annotate(ui, &load_a, HelpControl::DeckLoad);
@@ -1710,6 +1722,18 @@ fn vertical_wave(
         i += step;
         k += 1;
     }
+    for (i, position) in snap.hotcue_positions.iter().enumerate() {
+        let Some(seconds) = position.map(|p| (p / snap.frames) as f32 * snap.duration) else { continue };
+        if !(start_s..=end_s).contains(&seconds) { continue; }
+        let y = rect.top() + (seconds - start_s) / (end_s - start_s).max(0.001) * rect.height();
+        let color = cue_editor::color(t, snap.cue_styles[i], i);
+        p.line_segment([Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)], st(1.0, color));
+        let name = cue_editor::short_name(snap.cue_styles[i].name.as_str(), 8);
+        p.text(Pos2::new(rect.left() + 2.0, y), egui::Align2::LEFT_BOTTOM,
+            format!("{} {}", i + 1, name), FontId::proportional(9.0), t.fg);
+    }
+    accessibility::status(ui, &resp, &snap.hotcue_positions.iter().enumerate()
+        .filter(|(_, pos)| pos.is_some()).map(|(i, _)| cue_editor::description(snap, i)).collect::<Vec<_>>().join("; "));
     let play_y = rect.top() + ((pos_s - start_s) / (end_s - start_s).max(0.001)) * rect.height();
     p.line_segment([Pos2::new(rect.left(), play_y), Pos2::new(rect.right(), play_y)], st(1.6, t.accent));
     if resp.clicked() || resp.dragged() {

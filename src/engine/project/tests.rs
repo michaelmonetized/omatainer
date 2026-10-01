@@ -70,6 +70,10 @@ fn populated() -> RtEngine {
         set: true,
         pos: 12345.125,
     };
+    rt.decks[0].cue_styles[3] = crate::engine::cue_metadata::Style {
+        name: crate::engine::cue_metadata::Name::new("Drop • 演奏").unwrap(),
+        color: Some([240, 32, 90]),
+    };
     rt.decks[0].pos = 1987.5;
     rt.decks[0].cue_pos = 123.75;
     rt.decks[1].loop_on = true;
@@ -704,4 +708,24 @@ fn close_acknowledgement_waits_for_preceding_first_frame_playback_history() {
         live.process(&mut []);
         assert!(engine.send(Command::Master(0.44)).is_ok());
     }
+}
+
+#[test]
+fn version_one_projects_migrate_empty_cue_names_and_colors_and_unknown_versions_fail() {
+    let original = populated();
+    let captured = captured(&original);
+    let mut json = serde_json::to_value(&captured.state).unwrap();
+    json["version"] = serde_json::json!(1);
+    for deck in json["decks"].as_array_mut().unwrap() {
+        deck.as_object_mut().unwrap().remove("cue_styles");
+    }
+    let legacy: State = serde_json::from_value(json.clone()).unwrap();
+    legacy.validate(&captured.media).unwrap();
+    assert!(legacy.decks.iter().all(|d| d.cue_styles == [crate::engine::cue_metadata::Style::default(); HOTCUES]));
+    let restored = Prepared::from_state(legacy, captured.media.clone(), 48000).unwrap();
+    assert!(restored.rt.decks[0].hotcues[3].set);
+    assert_eq!(restored.rt.decks[0].hotcues[3].pos, original.decks[0].hotcues[3].pos);
+    json["version"] = serde_json::json!(STATE_VERSION + 1);
+    let future: State = serde_json::from_value(json).unwrap();
+    assert!(future.validate(&captured.media).is_err());
 }

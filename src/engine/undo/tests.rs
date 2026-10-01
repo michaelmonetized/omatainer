@@ -432,6 +432,52 @@ fn held_recording_changes_invalidate_saved_states_before_later_mixer_undo() {
 }
 
 #[test]
+fn full_history_wrap_keeps_retained_entries_in_place_and_exact_undo_redo_without_heap_work() {
+    let (_engine, mut rt) = fixture();
+    let capacity = rt.undo.entries.capacity();
+    let value = |index: usize| 0.25 + index as f32 / 2048.0;
+    let settle = |rt: &RtEngine| {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while rt.undo.preflight(0).is_err() {
+            assert!(Instant::now() < deadline, "history retirement did not settle");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    };
+    let total = MAX_ENTRIES * 2 + 17;
+    for index in 0..total {
+        settle(&rt); // Worker progress is outside the renderer heap measurement.
+        let retained = (index >= MAX_ENTRIES).then(|| {
+            let entry = rt.undo.entries[64].as_ref().unwrap();
+            (entry.id, entry as *const Entry)
+        });
+        let measured = test_alloc::measure(|| rt.apply(Command::Master(value(index))));
+        assert_eq!(measured, test_alloc::Counts::default());
+        assert_eq!(rt.undo.failures, 0);
+        assert_eq!(rt.undo.entries.capacity(), capacity);
+        if let Some((id, address)) = retained {
+            let entry = rt.undo.entries[63].as_ref().unwrap();
+            assert_eq!(entry.id, id);
+            assert_eq!(entry as *const Entry, address,
+                "eviction must not copy the retained inline transaction array");
+        }
+    }
+    assert_eq!(rt.undo.entries.len(), MAX_ENTRIES);
+    for index in (total - MAX_ENTRIES..total).rev() {
+        let measured = test_alloc::measure(|| rt.apply(Command::Undo));
+        assert_eq!(measured, test_alloc::Counts::default());
+        assert_eq!(rt.master, value(index - 1));
+    }
+    assert_eq!(rt.undo.cursor, 0);
+    for index in total - MAX_ENTRIES..total {
+        let measured = test_alloc::measure(|| rt.apply(Command::Redo));
+        assert_eq!(measured, test_alloc::Counts::default());
+        assert_eq!(rt.master, value(index));
+    }
+    assert_eq!(rt.undo.cursor, MAX_ENTRIES);
+    assert_eq!(rt.undo.failures, 0);
+}
+
+#[test]
 fn oldest_whole_transactions_evict_redo_branches_retire_and_pcm_is_deduplicated() {
     let (engine, mut rt) = fixture();
     for i in 0..MAX_ENTRIES + 10 {
@@ -1160,7 +1206,7 @@ fn owned_history_off(source: u64, note: u8) -> Command {
     Command::LiveNoteOff { source, ch: 0, note }
 }
 fn owned_history_id(rt: &RtEngine) -> u64 {
-    rt.undo.entries.last().unwrap().as_ref().unwrap().id
+    rt.undo.entries.back().unwrap().as_ref().unwrap().id
 }
 
 #[test]

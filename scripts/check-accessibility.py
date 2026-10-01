@@ -287,6 +287,25 @@ def private(binary):
         assert state()['help_lesson'][2] and state()['lesson_notes']==1
         action(named('Cancel lesson'),'click')
         wait_for(lambda:state()['help_lesson'] is None,'cancel guide only')
+        action(named('Load selected crate item to deck A'),'click')
+        wait_for(lambda:state()['loaded'],'native cue fixture loaded current crate selection')
+        alternate(named('Deck A: Hot cue 1'),'Edit cue names and colors')
+        wait_for(lambda:state()['cue_editor_open'],'native cue editor opened')
+        for slot in [1,8]:
+            action(named(f'Set {slot}'),'click')
+            wait_for(lambda:state()['cue_slots'][slot-1],f'native cue editor set slot {slot}')
+            field=named(f'Cue {slot} name')
+            assert field.get_text_iface() is not None,'cue name exposes native text semantics'
+            assert field.get_component_iface().grab_focus()
+            wait_for(lambda:state().get('focus')==f'Cue {slot} name',f'cue {slot} text focus')
+            assert '64 UTF-8 bytes' in field.get_description(),field.get_description()
+            assert named(f'Cue {slot} color').get_text_iface() is not None
+            action(named(f'Apply {slot}'),'click')
+        action(named('Delete 1'),'click')
+        wait_for(lambda:not state()['cue_slots'][0] and state()['cue_slots'][7],'native cue list delete targeted slot')
+        action(named('Close cue editor'),'click')
+        wait_for(lambda:not state()['cue_editor_open'],'native cue editor close')
+        cue_editor_workflow='native list open -> set slots 1/8 -> text semantics/focus -> apply -> delete 1 -> close; typed names/colors covered by real egui tests'
         action(named('Enable performance mode'),'click')
         wait_for(lambda:state()['performance']['protected'],'native performance protection')
         action(named('Safe stop…'),'click')
@@ -322,6 +341,7 @@ def private(binary):
                           'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
+                          'cue_editor_workflow':cue_editor_workflow,
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',
                           'project_workflow':'New -> compose -> Undo -> Redo -> Save -> New -> Open recent',
                           'persisted_notes':result['saved_notes'],'reopened_notes':result['notes'],
