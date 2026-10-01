@@ -33,11 +33,7 @@ pub(super) struct Cells {
 impl Cells {
     pub fn new(item: &LibItem, played_at: Option<SystemTime>) -> Self {
         Self {
-            bpm: if item.bpm > 1.0 {
-                format!("{:.1}", item.bpm)
-            } else {
-                "—".into()
-            },
+            bpm: item.bpm.cell(),
             length: fmt_len(item.length),
             played: fmt_play(played_at),
             played_at,
