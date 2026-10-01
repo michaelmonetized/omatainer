@@ -388,8 +388,8 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - File history belongs to a typed pathname plus the verified decode fingerprint;
   replacement content at the same path and moved paths do not inherit it. Files
   whose identity changed during decoding receive no unverified path-only credit.
-  Built-in stems have stable typed identity. History remains an in-session overlay;
-  unchanged identities can reappear after a scan without losing their timestamp.
+  Built-in stems have stable typed identity. History uses an in-session overlay until the DJ library worker commits it;
+  unchanged identities can reappear after a scan or restart without losing their timestamp.
 
 ## Crate history across scans
 
@@ -397,15 +397,15 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   path and verified filesystem fingerprint match. Built-in stems use their
   stable typed identity. Unknown or changed file identity never inherits a
   timestamp solely because its pathname matches an old row.
-- Removed files disappear from the crate. Renderer-confirmed playback history
-  stays in memory for the session, keyed by source and fingerprint, so an
+- Session-only crates omit removed files. A persistent DJ catalog retains its
+  imported locations across scans; unavailable local files fail visibly on load.
+  Renderer-confirmed playback history is keyed by source and fingerprint, so an
   unchanged file temporarily excluded from scan roots can recover its history.
   A renamed/moved path is a new identity; no move discovery or history transfer
   is inferred. Replacing bytes at the same path is also a new identity.
 - Selection follows the same source while it remains in the filtered crate;
   if it disappears, selection clamps to a valid row. History arriving during a
-  scan remains overlaid on the published crate. Cross-restart history persistence
-  is separate work.
+  scan remains overlaid on the published crate. Cross-restart history follows the durable DJ library contract below.
 
 ## MIDI connection lifecycle
 
@@ -546,3 +546,35 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   warning only while the playhead is inside it. LOOP identifies playing loop
   suppression; its tooltip explains that the file-end estimate ignores repeats.
   An invalid loop flag cannot hide a real runout warning.
+## Persistent DJ library
+
+- The DJ catalog is separate from DAW project/performance state. It assigns a
+  durable 128-bit track ID to each typed location (random for media locations,
+  reserved stable IDs for the two built-in stems) and stores title, artist,
+  BPM/provenance, key hint, decoded duration, renderer-confirmed last play, main
+  cue, eight hot cues, and the saved loop range/arming state. Cue/loop positions
+  use source seconds; loading restores preparation while remaining paused.
+- Built-in, absolute local file, removable volume/relative path, and provider/ID
+  namespaces cannot collide. Local files and built-ins use the existing loader.
+  Removable/provider resolution is explicitly unavailable; importing their
+  metadata never fetches media or treats IDs as local paths.
+- Replacing bytes at a local path keeps the track ID but creates a fresh
+  fingerprint-qualified version. Old preparation/history remains archived and
+  cannot apply to the replacement. Moves are not inferred; a different typed
+  path gets a different ID. No editable beat-grid format is invented.
+- One background metadata worker owns store locking, parsing, merging, migration,
+  serialization and fsync. Scan/import publication is atomic and retains source
+  selection. Renderer receipts publish preparation in twelve fixed atomic words;
+  terminal receipts remain attributable even after replacement before a GUI poll.
+- Schema 2 is written; strict flat schema 1 input migrates without changing IDs or
+  preparation. Unknown schemas/fields, malformed stores and a missing primary
+  with a preserved backup fail closed. Scans and startup defaults cannot replace
+  them. Import conflicts reject the import while unrelated pending edits persist.
+- Writes use a same-directory private temporary file, file sync, a prior-version
+  backup, atomic rename and directory sync. A post-rename sync failure explicitly
+  reports unconfirmed durability. The last committed catalog remains readable
+  after an interrupted writer; stale temporary files are never loaded.
+- The crate shows opening/saving/saved or a persistent error. Normal close waits
+  asynchronously for a FIFO renderer fence and durable save receipt. A failed or
+  delayed save permits Keep working, Retry, or an explicit Close without saving.
+  Filesystem syscalls already in progress cannot be forcibly cancelled.

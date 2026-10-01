@@ -1,5 +1,6 @@
 mod project_file;
 mod engine;
+mod library;
 mod theme;
 mod ui;
 mod ipc_server;

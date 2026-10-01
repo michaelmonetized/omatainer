@@ -59,6 +59,8 @@ pub(super) struct Watch {
     identity: Identity,
     receipt: Receipt,
     observed: Option<SystemTime>,
+    preparation_revision: u64,
+    metadata: crate::library::Metadata,
 }
 
 pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
@@ -69,6 +71,12 @@ pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
             identity: Identity::new(LibSource::Builtin(stem), None).unwrap(),
             receipt: receipt.clone(),
             observed: None,
+            preparation_revision: receipt.preparation().map_or(0, |(revision, _)| revision),
+            metadata: builtin_crate_items()
+                .into_iter()
+                .find(|i| i.source == LibSource::Builtin(stem))
+                .unwrap()
+                .stored_metadata(),
         })
         .collect()
 }
@@ -93,12 +101,26 @@ impl App {
         fingerprint: Option<FileFingerprint>,
         receipt: Receipt,
     ) {
+        let metadata = self.capture_metadata(&source, fingerprint);
         if let Some(identity) = Identity::new(source, fingerprint) {
             self.playback_watches.push(Watch {
                 identity,
                 receipt,
                 observed: None,
+                preparation_revision: 0,
+                metadata,
             });
+        }
+    }
+
+    pub(super) fn watch_metadata(&mut self, receipt: &Receipt, metadata: crate::library::Metadata) {
+        if let Some(watch) = self
+            .playback_watches
+            .iter_mut()
+            .rev()
+            .find(|watch| watch.receipt.same_request(receipt))
+        {
+            watch.metadata = metadata;
         }
     }
 
@@ -112,6 +134,25 @@ impl App {
             // update. Read it first to avoid losing a last event at retirement.
             let state = watch.receipt.state();
             let played = watch.receipt.last_play();
+            let preparation = watch.receipt.preparation();
+            if preparation.is_some_and(|(revision, _)| revision != watch.preparation_revision)
+                || played != watch.observed
+            {
+                let previous_revision = watch.preparation_revision;
+                if let Some((revision, _)) = preparation {
+                    watch.preparation_revision = revision;
+                }
+                self.library_metadata
+                    .capture(super::library_store::Capture {
+                        source: watch.identity.source.clone(),
+                        fingerprint: watch.identity.fingerprint,
+                        metadata: watch.metadata.clone(),
+                        preparation: preparation
+                            .filter(|(revision, _)| *revision != previous_revision)
+                            .map(|(_, p)| p),
+                        played,
+                    });
+            }
             if played != watch.observed {
                 watch.observed = played;
                 if let Some(played) = played {

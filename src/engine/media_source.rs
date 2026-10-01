@@ -6,6 +6,14 @@ use std::path::PathBuf;
 pub(crate) enum LibSource {
     Builtin(BuiltinStem),
     File(PathBuf),
+    Removable {
+        volume_id: String,
+        relative_path: PathBuf,
+    },
+    Provider {
+        provider: String,
+        media_id: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
