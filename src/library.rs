@@ -502,6 +502,10 @@ impl Store {
         })
     }
     pub(crate) fn last_save_replaced(&self) -> bool { self.last_save_replaced }
+    #[cfg(test)]
+    pub(crate) fn save_for_test(&mut self, checkpoint: impl FnMut(u8) -> Result<(), String>) -> Result<(), String> {
+        self.save_with(checkpoint)
+    }
     pub fn save(&mut self) -> Result<(), String> {
         self.save_with(|_| Ok(()))
     }
