@@ -17,9 +17,11 @@ use std::{
 
 mod content;
 mod analysis;
+pub(crate) mod crates;
+mod collections;
 pub(crate) use content::Relocate;
 
-const SCHEMA: u32 = 5;
+const SCHEMA: u32 = 6;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -71,6 +73,7 @@ pub(crate) struct PreviousLocation {
 pub(crate) struct Catalog {
     pub schema: u32,
     pub tracks: Vec<Track>,
+    pub crates: crates::CrateForest<TrackId>,
     #[serde(skip)]
     index: HashMap<LibSource, usize>,
     #[serde(skip)]
@@ -81,6 +84,7 @@ impl Default for Catalog {
         Self {
             schema: SCHEMA,
             tracks: vec![],
+            crates: Default::default(),
             index: HashMap::new(),
             relocations: HashMap::new(),
         }
@@ -187,6 +191,7 @@ impl Catalog {
                 return Err("relocated content belongs to conflicting track identities".into());
             }
         }
+        self.crates.validate(|id| ids.contains(id)).map_err(|error| error.to_string())?;
         Ok(())
     }
     pub fn upsert(
@@ -285,8 +290,9 @@ impl Catalog {
         };
         Ok(version)
     }
-    pub fn merge_import(&mut self, other: Catalog) -> Result<(), String> {
+    pub fn merge_import(&mut self, mut other: Catalog) -> Result<(), String> {
         // Validate all conflicts before mutation; imports are never partial.
+        other.validate()?;
         let mut candidate = self.clone();
         for track in other.tracks {
             if let Some(&index) = candidate.index.get(&track.source) {
@@ -320,6 +326,9 @@ impl Catalog {
                 candidate.tracks.push(track);
             }
         }
+        let known: HashSet<_> = candidate.tracks.iter().map(|track| &track.id).collect();
+        candidate.crates.merge_import(candidate.crates.revision(), &other.crates, |id| known.contains(id))
+            .map_err(|error| error.to_string())?;
         candidate.validate()?;
         *self = candidate;
         Ok(())
@@ -366,6 +375,13 @@ struct V1Track {
     preparation: Preparation,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BeforeCollections {
+    schema: u32,
+    tracks: Vec<Track>,
+}
+
 pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
     read_with_identity(path).map(|(catalog, _)| catalog)
 }
@@ -390,16 +406,18 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
+        Some(6) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
         Some(2 | 3 | 4 | 5) => {
-            let mut current: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-            current.schema = SCHEMA;
-            current
+            let old: BeforeCollections = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            debug_assert!((2..=5).contains(&old.schema));
+            Catalog { tracks: old.tracks, ..Default::default() }
         },
         Some(1) => {
             let old: V1 = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema, 1);
             Catalog {
                 schema: SCHEMA,
+                crates: Default::default(),
                 index: HashMap::new(),
             relocations: HashMap::new(),
                 tracks: old

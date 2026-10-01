@@ -7,6 +7,8 @@ use std::sync::{mpsc, Weak};
 
 const SAMPLER_PROOF_LIMIT: usize = 256;
 mod analysis;
+mod collections;
+pub(super) use collections::{Action as CollectionAction, Admission as CollectionAdmission, Token as CollectionToken, Receipt as CollectionReceipt, Outcome as CollectionOutcome};
 pub(super) use analysis::{Receipt as AnalysisReceipt, Inspect as AnalysisInspect, Inspected as AnalysisInspected, Cached as AnalysisCached};
 
 #[cfg(test)]
@@ -53,6 +55,7 @@ struct Staged {
     work: Arc<WorkPermit>,
 }
 struct Job {
+    collection: Option<collections::Request>,
     base: Arc<Vec<LibItem>>,
     candidate: Arc<Vec<LibItem>>,
     scan_work: Option<Arc<WorkPermit>>,
@@ -71,6 +74,7 @@ struct Job {
     retired_analysis_inspections: Vec<AnalysisInspected>,
 }
 struct Result {
+    collection: Option<CollectionReceipt>,
     analysis: Option<AnalysisReceipt>,
     inspection: Option<AnalysisInspected>,
     relocation: Option<RelocationResult>,
@@ -95,6 +99,11 @@ struct RelocationResult {
 }
 
 pub(super) struct Metadata {
+    collection: Option<collections::Request>,
+    collection_result: Option<CollectionReceipt>,
+    collection_active: Option<CollectionToken>,
+    next_collection: u64,
+    collections_closing: bool,
     analysis: Option<crate::engine::media_load::AnalysisCompletion>,
     inspection: Option<AnalysisInspect>,
     retired_analysis_indices: Vec<Arc<Vec<usize>>>,
@@ -229,6 +238,7 @@ impl Metadata {
                     let mut relocation_outcome = None;
                     let mut analysis_result = None;
                     let mut inspection_result = None;
+                    let mut collection_result = None;
                     let mut analysis_committed = false;
                     let catalog = if let Some(store) = &mut store {
                         match store {
@@ -284,6 +294,22 @@ impl Metadata {
                                     }
                                     analysis_result = Some(receipt);
                                 }
+                                if let Some(request) = job.collection.take() {
+                                    let receipt = if durable { collections::apply(store, request) }
+                                        else { CollectionReceipt::refused(request, store.catalog.crates.revision(),
+                                            collections::Failure::Storage("Crate edit requires confirmed essential catalog persistence".into())) };
+                                    match &receipt.outcome {
+                                        CollectionOutcome::CommittedUnconfirmed(error) => {
+                                            durable = false;
+                                            storage = Some(format!("Crate replacement committed; durability unconfirmed: {error}"));
+                                        }
+                                        CollectionOutcome::Rejected(error) => {
+                                            storage = Some(format!("Crate request was not applied: {error}"));
+                                        }
+                                        _ => {}
+                                    }
+                                    collection_result = Some(receipt);
+                                }
                                 if let Some(request) = job.inspection.take() {
                                     inspection_result = Some(if durable {
                                         analysis::inspect(store, analysis_disk.as_mut().unwrap(), request)
@@ -303,6 +329,9 @@ impl Metadata {
                     } else {
                         Arc::new(crate::library::Catalog::default())
                     };
+                    if let Some(request) = job.collection.take() {
+                        collection_result = Some(CollectionReceipt::refused(request, catalog.crates.revision(), collections::Failure::Unavailable));
+                    }
                     if let Some(completion) = job.analysis.take() {
                         analysis_result = Some(AnalysisReceipt::refused(completion,
                             "Analysis was not saved: persistent DJ library is unavailable".into()));
@@ -342,6 +371,7 @@ impl Metadata {
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
+                            collection: collection_result,
                             analysis: analysis_result,
                             inspection: inspection_result,
                             relocation,
@@ -369,6 +399,11 @@ impl Metadata {
                 }
             });
         Self {
+            collection: None,
+            collection_result: None,
+            collection_active: None,
+            next_collection: 0,
+            collections_closing: false,
             analysis: None,
             inspection: None,
             retired_analysis_indices: Vec::new(),
@@ -635,6 +670,11 @@ impl Metadata {
             let error = "DJ library worker unavailable; pending save outcome is unconfirmed";
             self.storage_error = Some(error.into());
             self.durable = false;
+            if self.collection_result.is_none() {
+                if let Some(token) = &self.collection_active {
+                    self.collection_result = Some(CollectionReceipt::unavailable(token, self.catalog.crates.revision()));
+                }
+            }
             if self.analysis_result.is_none() {
                 if let Some(id) = self.analysis_active {
                     self.analysis_result = Some(AnalysisReceipt { id, committed: false,
@@ -650,6 +690,7 @@ impl Metadata {
             return Err(error);
         }
         if let Ok(result) = received {
+            if let Some(collection) = result.collection { self.collection_result = Some(collection); }
             if let Some(analysis) = result.analysis { self.analysis_result = Some(analysis); }
             if let Some(inspection) = result.inspection { self.inspection_result = Some(inspection); }
             if let Some(relocation) = result.relocation { self.relocation_result = Some(relocation); }
@@ -710,6 +751,7 @@ impl Metadata {
         }
         if self.dirty && !self.in_flight {
             let job = Job {
+                collection: self.collection.take(),
                 base: library.clone(),
                 candidate: self
                     .staged
@@ -737,6 +779,7 @@ impl Metadata {
                     self.in_flight = true;
                 }
                 Err(mpsc::TrySendError::Full(job) | mpsc::TrySendError::Disconnected(job)) => {
+                    self.collection = job.collection;
                     self.analysis = job.analysis;
                     self.inspection = job.inspection;
                     self.retired_analysis_indices = job.retired_analysis_indices;
