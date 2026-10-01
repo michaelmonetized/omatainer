@@ -12,6 +12,8 @@ use std::sync::Arc;
 use crate::engine::media_load::Loader;
 use std::time::{Instant, SystemTime};
 mod library_scan;
+mod library_view;
+use library_view::{LibraryView, Cells};
 use library_scan::LibraryScan;
 
 #[cfg(test)]
@@ -22,12 +24,15 @@ mod tests;
 mod controller_load_tests;
 #[cfg(test)]
 mod compose_tests;
+#[cfg(test)]
+mod library_view_tests;
 
 pub struct App {
     engine: Engine,
     theme: Theme,
     fonts_set: bool,
     library: Arc<Vec<LibItem>>,
+    library_view: LibraryView,
     library_scan: LibraryScan,
     // History can change while a worker holds the immutable crate baseline.
     // Keep those small edits separate from the full library allocation.
@@ -82,6 +87,7 @@ impl App {
             theme,
             fonts_set: true,
             library: Arc::new(builtin_crate_items()),
+            library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
             last_played: HashMap::new(),
             published_selection: None,
@@ -112,14 +118,9 @@ impl App {
 
     fn poll_library_scan(&mut self) {
         let Some(publication) = self.library_scan.poll() else { return };
-        let selected = self.filtered().get(self.lib_sel).map(|item| item.source.clone());
-        let last_played = self.filtered().get(self.last_play_idx).map(|item| item.source.clone());
+        self.refresh_library_view();
         publication.publish(&mut self.library);
-        let visible = self.filtered();
-        self.lib_sel = selected.and_then(|source| visible.iter().position(|item| item.source == source))
-            .unwrap_or_else(|| self.lib_sel.min(visible.len().saturating_sub(1)));
-        self.last_play_idx = last_played.and_then(|source| self.filtered().iter().position(|item| item.source == source))
-            .unwrap_or(0);
+        self.refresh_library_view();
     }
 
     fn item_last_play(&self, item: &LibItem) -> Option<SystemTime> {
@@ -148,7 +149,7 @@ impl App {
     }
 
     fn load_sel(&mut self, deck: u8) {
-        let picked = self.filtered().get(self.lib_sel).map(|item| Selection {
+        let picked = self.selected_library_item().map(|item| Selection {
             title: item.title.clone(), source: item.source.clone(),
         });
         self.load_source(deck, picked.as_ref());
@@ -160,7 +161,8 @@ impl App {
             return;
         }
         if let Some(Selection { title: name, source }) = picked {
-            if let Some(index) = self.filtered().iter().position(|item| &item.source == source) {
+            self.refresh_library_view();
+            if let Some(index) = self.library_view.indices.iter().position(|&i| &self.library[i].source == source) {
                 self.last_play_idx = index;
             }
             self.last_played.insert(source.clone(), SystemTime::now());
@@ -196,8 +198,8 @@ impl App {
     }
 
     fn publish_library_selection(&mut self) {
-        let visible = self.filtered();
-        let selected = visible.get(self.lib_sel);
+        self.refresh_library_view();
+        let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
         if self.published_selection.as_ref().map(|item| (&item.source, &item.title))
             == selected.map(|item| (&item.source, &item.title)) {
             return;
@@ -258,6 +260,7 @@ impl App {
         }
     }
 
+    #[cfg(test)]
     fn filtered(&self) -> Vec<&LibItem> {
         let q = self.lib_filter.to_lowercase();
         self.library
@@ -710,7 +713,7 @@ impl App {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.label(RichText::new("crate").size(11.0).color(t.fg_dim));
-                ui.add(egui::TextEdit::singleline(&mut self.lib_filter).hint_text("search").desired_width(180.0));
+                ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
                 if ui.add_enabled(!self.library_scan.active(), egui::Button::new("scan")).clicked() {
                     self.scan_library();
                 }
@@ -735,49 +738,48 @@ impl App {
                     ui.add_sized(Vec2::new(*w, 16.0), egui::Label::new(RichText::new(*h).size(10.0).color(t.fg_dim)));
                 }
             });
-            let rows: Vec<(usize, String, String, String, String, String, String)> = self
-                .filtered()
-                .iter()
-                .enumerate()
-                .map(|(i, it)| {
-                    (
-                        i,
-                        it.title.clone(),
-                        if it.bpm > 1.0 { format!("{:.1}", it.bpm) } else { "—".into() },
-                        it.key.clone(),
-                        fmt_len(it.length),
-                        fmt_play(self.item_last_play(it)),
-                        it.artist.clone(),
-                    )
-                })
-                .collect();
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                for (i, title, bpm, key, len, last, artist) in &rows {
-                    let sel = *i == self.lib_sel;
-                    let (rect, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 18.0), Sense::click());
-                    if sel {
-                        ui.painter().rect_filled(rect, 2.0, t.accent.gamma_multiply(0.18));
+            self.refresh_library_view();
+            let focus = ui.make_persistent_id("crate-navigation");
+            self.crate_navigation(ui, focus);
+            let stride = 18.0 + ui.spacing().item_spacing.y;
+            #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
+            let mut scroll = egui::ScrollArea::vertical().id_salt("crate-rows").auto_shrink([false, false]);
+            if let Some(offset) = self.library_view.pending_offset.take() {
+                scroll = scroll.vertical_scroll_offset(offset);
+            }
+            let output = scroll.show_rows(ui, 18.0, self.library_view.indices.len(), |ui, rows| {
+                self.library_view.cells.retain(|index, _| rows.contains(index));
+                for i in rows {
+                    let item = &self.library[self.library_view.indices[i]];
+                    let played_at = self.item_last_play(item);
+                    let cells = self.library_view.cells.entry(i).or_insert_with(|| {
+                        #[cfg(test)] { self.library_view.stats.formatted += 1; }
+                        Cells::new(item, played_at)
+                    });
+                    if cells.played_at != played_at {
+                        cells.played_at = played_at;
+                        cells.played = fmt_play(played_at);
+                        #[cfg(test)] { self.library_view.stats.formatted += 1; }
                     }
+                    #[cfg(test)] { self.library_view.stats.rendered += 1; }
+                    let sel = i == self.lib_sel;
+                    let (rect, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 18.0), Sense::click());
+                    if sel { ui.painter().rect_filled(rect, 2.0, t.accent.gamma_multiply(0.18)); }
                     let mut x = rect.left();
-                    for (txt, w) in [title, bpm, key, len, last, artist].iter().zip(col_w) {
-                        ui.painter().text(
-                            Pos2::new(x + 4.0, rect.center().y),
-                            egui::Align2::LEFT_CENTER,
-                            *txt,
-                            FontId::proportional(11.0),
-                            if sel { t.accent } else { t.fg },
-                        );
+                    for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist].iter().zip(col_w) {
+                        ui.painter().text(Pos2::new(x + 4.0, rect.center().y), egui::Align2::LEFT_CENTER,
+                            *txt, FontId::proportional(11.0), if sel { t.accent } else { t.fg });
                         x += w;
                     }
-                    if resp.clicked() {
-                        self.lib_sel = *i;
+                    if resp.clicked() || resp.double_clicked() {
+                        self.lib_sel = i;
+                        ui.memory_mut(|memory| memory.request_focus(focus));
                     }
-                    if resp.double_clicked() {
-                        self.lib_sel = *i;
-                        self.load_sel(self.snap.selected_deck as u8);
-                    }
+                    if resp.double_clicked() { self.load_sel(self.snap.selected_deck as u8); }
                 }
             });
+            ui.interact(output.inner_rect, focus, Sense::focusable_noninteractive());
+            self.remember_crate_viewport(output.state.offset.y, output.inner_rect.height(), stride);
         });
     }
 
