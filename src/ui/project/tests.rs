@@ -174,6 +174,55 @@ fn new_and_open_reset_old_history_and_preserve_only_the_history_panel_view() {
     );
 }
 
+#[test]
+fn deck_time_preferences_round_trip_new_open_and_reject_unsupported_values() {
+    let files = Files::new();
+    let path = files.path("deck-time.omat");
+    let mut gui = Gui::new();
+    let expected = [
+        DeckTimeSettings {
+            mode: TimeMode::Elapsed,
+            warning_lead_seconds: 17,
+        },
+        DeckTimeSettings {
+            mode: TimeMode::Remaining,
+            warning_lead_seconds: 0,
+        },
+    ];
+    gui.app.deck_time = expected;
+    gui.save_as_ui(&path);
+    assert!(!gui.app.project_dirty());
+    let bundle =
+        crate::project_file::load::<Document>(&path, &Limits::default(), &AtomicBool::new(false))
+            .unwrap();
+    assert_eq!(bundle.state.view.deck_time, expected);
+    let mut future = serde_json::to_value(&bundle.state.view).unwrap();
+    future["deck_time"][0]["future_time_mode"] = serde_json::json!(true);
+    assert!(serde_json::from_value::<UiState>(future).is_err());
+    gui.menu("New project");
+    gui.settle();
+    assert_eq!(gui.app.deck_time, [DeckTimeSettings::default(); DECKS]);
+    gui.menu("Open project…");
+    gui.enter_path(&path);
+    gui.click_label("Open");
+    gui.settle();
+    assert_eq!(gui.app.deck_time, expected);
+    let old = std::fs::read(&path).unwrap();
+    gui.app.deck_time[0].warning_lead_seconds = 301;
+    gui.app
+        .begin_project_save(SaveKind::Save, None, path.clone(), true);
+    gui.settle();
+    assert_eq!(std::fs::read(path).unwrap(), old);
+    assert!(gui
+        .app
+        .project
+        .message
+        .as_ref()
+        .unwrap()
+        .contains("outside supported bounds"));
+    assert!(gui.app.project_dirty());
+}
+
 struct Files(PathBuf);
 impl Files {
     fn new() -> Self {

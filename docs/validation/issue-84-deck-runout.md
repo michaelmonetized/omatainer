@@ -4,8 +4,10 @@ Each deck has a time menu in the existing footer below its platter. It chooses
 Elapsed (source playhead time) or Remaining (estimated wall time to file end),
 and a warning lead from 0 to 300 seconds. The default is Remaining and 30 seconds;
 0 disables the warning. The settings are independent per deck and represented by
-a dedicated serde-compatible `DeckTimeSettings` for project view persistence.
-This change itself does not add a preferences file or project storage workflow.
+a strict, optional `DeckTimeSettings` field in the native project view. Save/Open
+round-trip both decks independently; New restores defaults. Earlier native
+documents without this field use those defaults. Out-of-range warning leads or
+unknown setting fields fail validation and preserve the previous good file.
 
 Remaining time uses the captured source frame count, playhead, source sample
 rate, and actual rate after sync/smoothing/scratch processing. The rate is source
@@ -41,12 +43,13 @@ Validation is local and synthetic; no hardware qualification is claimed:
   PAUSED states. The actual full App at 1440×900 verifies both time controls and
   every popup field remain on screen; Escape does not leak into performance
   commands. The settings popup stays open during field interaction.
-- Settings serialization preserves each deck's mode/lead, supports defaults,
-  clamps an imported excessive lead to the supported limit, and rejects a
-  negative unsigned lead. Existing periodic snapshot allocation checks exercise
-  the added scalar capture fields as part of the full suite.
+- Settings serialization preserves each deck's mode/lead and supports defaults.
+  The readout defensively bounds an excessive lead; native project validation
+  rejects unsupported values and fields. Actual Save/New/Open round-trips both
+  deck settings, and a failed save preserves the good destination. Existing
+  periodic snapshot allocation checks cover the added scalar capture fields.
 
-Local results: eight new regression groups passed; the full suite passed 401
+Original isolated layer: eight regression groups passed; its full suite passed 401
 checks with three existing opt-in benchmark/native-soak tests ignored. The
 production `cargo build --offline`, targeted rustfmt checks and `git diff --check`
 also passed. The ignored tests are the unrelated dense-polyphony timing probe,
