@@ -15,7 +15,7 @@ fn items(count: usize) -> Vec<LibItem> {
             bpm: Bpm::hint(100.0 + index as f32 / 1000.0),
             fingerprint: None,
             key: "C".into(),
-            length: 123.0 + index as f32,
+            length: Some(123.0 + index as f64),
             last_play: None,
         })
         .collect()
@@ -156,7 +156,7 @@ fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells()
     assert_eq!(fixture.app.library_view.cells[&1].played, "555");
     // Weak cache ownership neither pins the large library nor misses mutation.
     assert_eq!(Arc::strong_count(&fixture.app.library), 1);
-    Arc::make_mut(&mut fixture.app.library)[2].length = 600.0;
+    Arc::make_mut(&mut fixture.app.library)[2].length = Some(600.0);
     frame(&ctx, &mut fixture.app, 0.3, vec![]);
     assert_eq!(fixture.app.library_view.stats.rebuilds, rebuilt + 1);
     assert_eq!(fixture.app.library_view.cells[&1].length, "10:00");

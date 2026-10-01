@@ -112,7 +112,7 @@ impl WaveFile {
             bpm: Bpm::UNKNOWN,
             fingerprint: None,
             key: String::new(),
-            length: 0.0,
+            length: None,
             last_play: None,
             source: LibSource::File(self.0.clone()),
         }
