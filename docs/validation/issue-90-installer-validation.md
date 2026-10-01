@@ -56,3 +56,5 @@ Validation passed: all 20 transaction groups (including the six new groups),
 eight executable publication/rollback groups, seven license/package groups,
 `license-manifest.py check`, shell syntax validation and `git diff --check`. These are unit/integration fixtures for installer behavior;
 they do not claim live-desktop, physical power-loss or controller QA.
+
+The assembled stack also passed a fresh production build and native package verification with the updated installer source inventory.
