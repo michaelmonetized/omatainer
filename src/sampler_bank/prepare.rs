@@ -17,6 +17,7 @@ pub(crate) struct Assignment {
 #[derive(Clone, Debug)]
 pub(crate) enum Operation {
     Empty { name: String },
+    Factory { bank: super::Factory, name: String },
     Copy { bank: sampler::Bank, name: String },
     Definition(Definition),
     Change {
@@ -73,6 +74,17 @@ pub(crate) fn run(
     match request.operation {
         Operation::Empty { name } => {
             settings = resident::Settings::empty(name)?;
+            id = super::BankId::new()?;
+            target = sampler::Target::Append { revision: request.revision };
+            tolerate_missing = false;
+        }
+        Operation::Factory { bank, name } => {
+            let originals = crate::engine::sampler::factory_data(owner, request.sample_rate)?;
+            let original = &originals[bank.index()];
+            settings = (*original.settings).clone();
+            settings.name = name;
+            settings.definition = None;
+            audio = original.audio.clone();
             id = super::BankId::new()?;
             target = sampler::Target::Append { revision: request.revision };
             tolerate_missing = false;

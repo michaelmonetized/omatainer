@@ -14,11 +14,11 @@ enum Action {
     Open,
     Save { bank: sampler::Bank, name: String, replace: Option<BankId>, revision: u64 },
 }
-#[derive(Debug)]
-struct Job { action: Action, cancel: Arc<AtomicBool> }
+struct Job { action: Action, cancel: Arc<AtomicBool>, work: Result<performance::WorkPermit, performance::Error> }
 struct Update {
     collection: Option<Arc<Collection>>,
     result: Result<Option<Saved>, String>,
+    publication_work: Option<performance::WorkPermit>,
     retired: mpsc::SyncSender<Option<Arc<Collection>>>,
 }
 pub(crate) struct Manager {
@@ -33,15 +33,21 @@ pub(crate) struct Manager {
 }
 impl Manager {
     pub fn start(path: PathBuf, performance: performance::Handle) -> std::io::Result<Self> {
+        Self::with_hook(path, performance, |_| {})
+    }
+    pub(crate) fn with_hook(path: PathBuf, performance: performance::Handle, mut before: impl FnMut(bool) + Send + 'static) -> std::io::Result<Self> {
         let (jobs, incoming) = mpsc::sync_channel::<Job>(1);
         let (results, updates) = mpsc::sync_channel::<Update>(1);
-        let policy = performance.clone();
+        let initial_work = performance.optional_work();
         std::thread::Builder::new().name("omat-sampler-store".into()).spawn(move || {
             let mut store: Option<Store> = None;
             while let Ok(job) = incoming.recv() {
+                before(matches!(job.action, Action::Save { .. }));
+                let opening = matches!(job.action, Action::Open);
+                let work = job.work;
                 let result = (|| {
                     if job.cancel.load(Ordering::Acquire) { return Err("sampler store operation cancelled".into()); }
-                    let work = policy.optional_work().map_err(|e| e.to_string())?;
+                    let work = work.as_ref().map_err(|e| e.to_string())?;
                     match job.action {
                         Action::Open => {
                             if store.is_none() { store = Some(Store::open(path.clone())?); }
@@ -73,22 +79,24 @@ impl Manager {
                 })();
                 let collection = if result.is_ok() { store.as_ref().map(|store| Arc::new(store.collection.clone())) } else { None };
                 let (retired, ack) = mpsc::sync_channel(1);
-                if results.send(Update { collection, result, retired }).is_err() { return; }
+                let publication_work = if opening && result.is_ok() { work.ok() } else { None };
+                if results.send(Update { collection, result, publication_work, retired }).is_err() { return; }
                 // At most one publication waits for UI acknowledgment. Closing
                 // the UI drops the reply sender; there is no UI join or busy loop.
                 match ack.recv() { Ok(old) => drop(old), Err(_) => return }
             }
         })?;
         let cancel = Arc::new(AtomicBool::new(false));
-        jobs.try_send(Job { action: Action::Open, cancel: cancel.clone() }).expect("fresh sampler store queue");
+        jobs.try_send(Job { action: Action::Open, cancel: cancel.clone(), work: initial_work })
+            .map_err(|_| std::io::Error::other("sampler store worker disconnected at startup"))?;
         Ok(Self { collection: None, error: None, saved: None, busy: true,
             jobs, results: updates, cancel, performance })
     }
     fn request(&mut self, action: Action) -> Result<(), String> {
         if self.busy { return Err("a sampler store operation is still pending".into()); }
-        self.performance.optional_work().map_err(|e| e.to_string())?;
+        let work = self.performance.optional_work().map_err(|e| e.to_string())?;
         let cancel = Arc::new(AtomicBool::new(false));
-        self.jobs.try_send(Job { action, cancel: cancel.clone() }).map_err(|_| "sampler store worker is unavailable or busy".to_string())?;
+        self.jobs.try_send(Job { action, cancel: cancel.clone(), work: Ok(work) }).map_err(|_| "sampler store worker is unavailable or busy".to_string())?;
         self.cancel = cancel;
         self.busy = true;
         self.error = None;
@@ -101,8 +109,9 @@ impl Manager {
         self.request(Action::Save { bank, name, replace, revision })
     }
     pub fn cancel(&self) { self.cancel.store(true, Ordering::Release); }
-    pub fn poll(&mut self) -> bool {
-        let update = match self.results.try_recv() {
+    pub fn poll(&mut self) -> bool { self.poll_before_publish(|| {}) }
+    fn poll_before_publish(&mut self, before: impl FnOnce()) -> bool {
+        let mut update = match self.results.try_recv() {
             Ok(update) => update,
             Err(mpsc::TryRecvError::Empty) => return false,
             Err(mpsc::TryRecvError::Disconnected) => {
@@ -111,9 +120,17 @@ impl Manager {
             }
         };
         self.busy = false;
-        let old = if let Some(collection) = update.collection {
-            self.collection.replace(collection)
-        } else { None };
+        before();
+        let guard = update.publication_work.as_ref().map(|work| work.commit());
+        let publish = match &guard {
+            Some(Err(error)) => {
+                update.result = Err(format!("sampler store read was not published: {error}")); false
+            }
+            _ => true,
+        };
+        let old = if publish {
+            if let Some(collection) = update.collection { self.collection.replace(collection) } else { None }
+        } else { update.collection };
         match update.result {
             Ok(saved) => { self.saved = saved; self.error = None; }
             Err(error) => { self.error = Some(error); self.saved = None; }
@@ -124,3 +141,6 @@ impl Manager {
     }
 }
 impl Drop for Manager { fn drop(&mut self) { self.cancel(); } }
+
+#[cfg(test)]
+mod tests;
