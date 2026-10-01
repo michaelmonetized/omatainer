@@ -1,3 +1,4 @@
+use crate::engine::{SamplerInstrument, SynthInstrument};
 use super::*;
 use crate::engine::{RtEngine, Snapshot};
 use parking_lot::Mutex;
@@ -12,7 +13,7 @@ fn engine() -> (CommandPort, RtEngine) {
         Arc::new(Mutex::new(Snapshot::default())),
     );
     rt.selected_track = 1;
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.decks[1].playing = true;
     (port, rt)
 }

@@ -38,7 +38,7 @@ fn prepare(rt: &mut RtEngine, bpm: f32, quant: f32, instrument: Instrument) {
     rt.quant = quant;
     rt.playing = true;
     let track = &mut rt.tracks[TRACK];
-    track.poly = Poly::new(rt.sr, 1, 16);
+    track.poly = Poly::new(rt.sr, SynthInstrument::Keys, 16);
     track.eq = ThreeBand::new(rt.sr);
     track.eq_right = ThreeBand::new(rt.sr);
     track.drum_pos.fill(None);

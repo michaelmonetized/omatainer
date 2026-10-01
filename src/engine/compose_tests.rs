@@ -6,7 +6,7 @@ fn fixture() -> RtEngine {
     rt.apply(Command::Stop);
     rt.bpm = 120.0;
     rt.quant = 0.0;
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt
 }
 
@@ -43,7 +43,7 @@ fn selection_and_stop_restart_leave_pads_monitor_only() {
 
 #[test]
 fn armed_target_survives_browsing_scene_launch_and_play_without_moving_monitor() {
-    for instrument in [-1, 1] {
+    for instrument in [SamplerInstrument::Samples, SamplerInstrument::Synth(SynthInstrument::Keys)] {
         let mut rt = fixture();
         rt.apply(Command::SamplerInst(instrument));
         rt.apply(Command::ComposeArm { track: 4, scene: 3 });
@@ -61,7 +61,7 @@ fn armed_target_survives_browsing_scene_launch_and_play_without_moving_monitor()
                 rt.compose_target,
                 Some(ComposeTarget { track: 4, scene: 3 })
             );
-            if instrument < 0 {
+            if instrument == SamplerInstrument::Samples {
                 assert_eq!(rt.pad_voices[0].as_ref().unwrap().3, 4);
             } else {
                 assert_eq!(rt.pad_destinations[0], 4);

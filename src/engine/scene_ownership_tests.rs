@@ -115,7 +115,7 @@ fn old_scene_delay_tail_stays_on_its_own_bus_after_track_moves() {
     rt.process(&mut [0.0; 512]);
     let mut tail = rt.scene_fx[0].clone();
     // Isolate the already seeded scene history from any more track input.
-    rt.tracks[1].poly = Poly::new(rt.sr, 1, 16);
+    rt.tracks[1].poly = Poly::new(rt.sr, SynthInstrument::Keys, 16);
     rt.tracks[1].eq = ThreeBand::new(rt.sr);
     rt.tracks[1].eq_right = ThreeBand::new(rt.sr);
     rt.apply(Command::LaunchClip { track: 1, scene: 1 });

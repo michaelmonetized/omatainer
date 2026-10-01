@@ -7,7 +7,7 @@ fn fixture(drums: bool, arp: bool) -> RtEngine {
     rt.bpm = 120.0;
     let track = &mut rt.tracks[1];
     track.kind = if drums { 0 } else { 3 };
-    track.poly = Poly::new(rt.sr, 2, 16);
+    track.poly = Poly::new(rt.sr, SynthInstrument::Pad, 16);
     track.clips[0] = Clip {
         name: "Mute lifecycle".into(),
         kind: ClipKind::Midi,
