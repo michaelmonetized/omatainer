@@ -19,6 +19,7 @@ struct Update {
     collection: Option<Arc<Collection>>,
     result: Result<Option<Saved>, String>,
     publication_work: Option<performance::WorkPermit>,
+    publication_cancel: Option<Arc<AtomicBool>>,
     retired: mpsc::SyncSender<Option<Arc<Collection>>>,
 }
 pub(crate) struct Manager {
@@ -80,7 +81,8 @@ impl Manager {
                 let collection = if result.is_ok() { store.as_ref().map(|store| Arc::new(store.collection.clone())) } else { None };
                 let (retired, ack) = mpsc::sync_channel(1);
                 let publication_work = if opening && result.is_ok() { work.ok() } else { None };
-                if results.send(Update { collection, result, publication_work, retired }).is_err() { return; }
+                let publication_cancel = opening.then_some(job.cancel);
+                if results.send(Update { collection, result, publication_work, publication_cancel, retired }).is_err() { return; }
                 // At most one publication waits for UI acknowledgment. Closing
                 // the UI drops the reply sender; there is no UI join or busy loop.
                 match ack.recv() { Ok(old) => drop(old), Err(_) => return }
@@ -122,12 +124,15 @@ impl Manager {
         self.busy = false;
         before();
         let guard = update.publication_work.as_ref().map(|work| work.commit());
-        let publish = match &guard {
+        let publish = if update.publication_cancel.as_ref().is_some_and(|cancel| cancel.load(Ordering::Acquire)) {
+            update.result = Err("sampler store read was not published: operation cancelled".into());
+            false
+        } else { match &guard {
             Some(Err(error)) => {
                 update.result = Err(format!("sampler store read was not published: {error}")); false
             }
             _ => true,
-        };
+        } };
         let old = if publish {
             if let Some(collection) = update.collection { self.collection.replace(collection) } else { None }
         } else { update.collection };

@@ -74,16 +74,22 @@ fn cancel_after_store_rename_reports_the_committed_definition_instead_of_losing_
 }
 
 #[test]
-fn a_finished_optional_store_read_cannot_publish_across_a_complete_protection_cycle() {
-    let files = Files::new(); let policy = performance::Handle::default();
-    let mut manager = Manager::start(files.path(), policy.clone()).unwrap();
-    let deadline = Instant::now() + Duration::from_secs(3);
-    while manager.busy {
-        manager.poll_before_publish(|| { policy.set_enabled(true).unwrap(); policy.set_enabled(false).unwrap(); });
-        assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1));
+fn finished_optional_store_reads_honor_user_cancel_and_complete_protection_cycles() {
+    for protect in [false, true] {
+        let files = Files::new(); let policy = performance::Handle::default();
+        let mut manager = Manager::start(files.path(), policy.clone()).unwrap();
+        let cancel = manager.cancel.clone();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while manager.busy {
+            manager.poll_before_publish(|| {
+                if protect { policy.set_enabled(true).unwrap(); policy.set_enabled(false).unwrap(); }
+                else { cancel.store(true, Ordering::Release); }
+            });
+            assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(manager.collection.is_none());
+        assert!(manager.error.as_ref().unwrap().contains("not published"));
+        manager.retry().unwrap(); wait(&mut manager);
+        assert!(manager.collection.is_some()); assert!(manager.error.is_none());
     }
-    assert!(manager.collection.is_none());
-    assert!(manager.error.as_ref().unwrap().contains("not published"));
-    manager.retry().unwrap(); wait(&mut manager);
-    assert!(manager.collection.is_some()); assert!(manager.error.is_none());
 }
