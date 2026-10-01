@@ -196,3 +196,13 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Alt-click an occupied clip to edit its gain from zero to 1.5, with explicit
   zero/unity controls. Snapshots and serialized clips expose the same value;
   nonfinite edits are rejected. Audio-clip playback remains a separate feature.
+
+## Drum velocity
+
+- Live MIDI and MIDI-clip drum hits capture normalized velocity independently
+  from clip gain. Overlapping hits retain both values until their one-shots end.
+- Velocity-zero note-on follows the release path and never creates or steals a
+  drum voice. Existing finite drum hits continue under the usual release policy.
+- Arpeggiated drum steps use the largest velocity among active, visible notes
+  of the selected pitch. Membership boundaries, edits and loops refresh that
+  value; a zero-velocity step is silent. Synth arp velocity is unchanged.
