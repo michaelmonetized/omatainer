@@ -86,6 +86,15 @@ banks, deck cues/loops/positions, selections and the crate/panel view. The curre
 factory controller mapping schema is recorded; there is no editable mapping
 configuration to save in this build.
 
+**Project → Autosave and recovery…** shows separate recovery copies, including
+untitled sessions. Dirty edit state is normally journaled about every two seconds;
+the displayed last confirmed durable age is the actual recovery coverage, and
+capture/disk delays can increase that loss window. Checkpoint interval, retained
+generations and global storage cap are saved profile settings. After interruption,
+Preview a candidate, then Restore as untitled copy: the ordinary unsaved-changes
+decision protects your current session, playback starts stopped, and Save As chooses
+a new explicit project file. The original saved project is never overwritten.
+
 **Save project** updates the current file. **Save project as…** changes the current
 path; **Save copy…** writes another file while keeping the current path and unsaved
 state. Path dialogs accept absolute paths or paths relative to the application's
