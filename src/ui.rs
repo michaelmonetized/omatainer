@@ -39,6 +39,8 @@ mod accessibility;
 mod preferences;
 mod performance;
 mod audio_settings;
+mod recovery_settings;
+mod recovery;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -81,6 +83,7 @@ mod theme_requests;
 mod font_selection_tests;
 
 pub struct App {
+    recovery: recovery::Recovery,
     settings: preferences::Settings,
     performance_panel: performance::Panel,
     audio_settings: audio_settings::Panel,
@@ -155,6 +158,7 @@ impl App {
             Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
         }
         app.start_library_store(crate::library::default_path());
+        app.start_default_recovery();
         app
 
     }
@@ -169,6 +173,7 @@ impl App {
         let playback_watches = play_history::initial_watches(&engine);
         let theme_requests = engine.cmd.theme_requests().attach();
         let mut app = Self {
+            recovery: recovery::Recovery::default(),
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             settings: preferences::Settings::default(),
             performance_panel: performance::Panel::default(),
@@ -559,6 +564,7 @@ impl App {
             self.seen_submission_failures = submissions.rejected;
             self.submission_error.set(submissions.last_error);
         }
+        self.poll_recovery();
         self.poll_preferences(ctx);
         self.poll_audio_settings(ctx);
         self.poll_theme(ctx);
@@ -662,6 +668,7 @@ impl App {
         }
         self.preferences_ui(ctx);
         self.audio_settings_ui(ctx);
+        self.recovery_ui(ctx);
         self.diagnostics_panel(ctx);
         self.licenses_panel(ctx);
         self.clip_gain_editor(ctx);
@@ -673,6 +680,8 @@ impl App {
         accessibility::finish_frame(ctx);
         // Resolve terminal project outcomes after this frame's Cancel/input.
         self.poll_projects(ctx);
+        self.recovery_close_ui(ctx);
+        self.sync_recovery();
         if animating {
             ctx.request_repaint();
         } else {

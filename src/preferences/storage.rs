@@ -111,12 +111,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let (preferences, migrated) = match version {
-        4 => (
+        5 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 => {
+        2 | 3 | 4 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -375,6 +375,30 @@ mod tests {
         }
     }
     #[test]
+    fn version_four_migration_adds_recovery_limits_without_rewriting_audio_or_performance() {
+        let dir = Directory::new();
+        let mut original = Preferences::defaults(&dir.0);
+        original.profiles.get_mut("Studio").unwrap().audio.sample_rate = Some(96000);
+        original.profiles.get_mut("Studio").unwrap().startup.performance_mode = true;
+        let mut json = serde_json::to_value(&original).unwrap();
+        json["version"] = 4.into();
+        for profile in json["profiles"].as_object_mut().unwrap().values_mut() {
+            profile.as_object_mut().unwrap().remove("recovery");
+        }
+        let bytes = serde_json::to_vec(&json).unwrap();
+        fs::write(dir.file(), &bytes).unwrap();
+        let loaded = load(&dir.file(), &AtomicBool::new(false)).unwrap();
+        assert!(loaded.migrated);
+        assert_eq!(loaded.preferences, original);
+        assert_eq!(fs::read(dir.file()).unwrap(), bytes);
+        for limit in [0_u64, 63 * crate::recovery::MIB, 17 * 1024 * crate::recovery::MIB] {
+            let mut invalid = original.clone();
+            invalid.profiles.get_mut("Studio").unwrap().recovery.max_bytes = limit;
+            assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+        }
+    }
+
+    #[test]
     fn atomic_roundtrip_defaults_profiles_and_conflict_preserve_exact_values() {
         let dir = Directory::new();
         let cancel = AtomicBool::new(false);
@@ -553,7 +577,7 @@ mod tests {
         for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("performance_mode"); }
         let (legacy, migrated) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
         assert!(migrated);
-        assert_eq!(legacy.version, 4);
+        assert_eq!(legacy.version, VERSION);
         assert!(legacy.profiles.values().all(|profile| !profile.startup.performance_mode));
     }
 

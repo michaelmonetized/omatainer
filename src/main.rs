@@ -1,4 +1,5 @@
 mod project_file;
+mod recovery;
 mod licenses;
 mod engine;
 mod library;
