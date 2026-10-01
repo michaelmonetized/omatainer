@@ -32,6 +32,7 @@ All fixtures run locally on Linux aarch64 with private temporary roots; none cha
 
 - Storage fixtures exercise actual child-process `SIGKILL` at journal-append, media-publication and checkpoint boundaries; the parent reopens and validates the prior confirmed durable record. Further fixtures cover ENOSPC, cancellation before and after commit, directory-sync warnings, malformed/reordered/oversized tails, missing/corrupt assets, immutable-sidecar mutation, permissions/symlinks, locks, quota, bounded replay, aggregate decode/hash budgets, rotation and resumed retirement cleanup.
 - Real `App::update_frame`/AccessKit and renderer fixtures Save As, persist preferences, restart, Preview, cancel, Restore through unsaved decisions, and verify byte-for-byte preservation of the original explicit file. Tests cover edits during preparation, canceled automatic captures before New/Open/Restore, canceled exit after committed retirement, late committed deletion, missing provenance versus required sidecars, and Save As provenance changes without a creative edit.
+- Dynamic status, reports and candidate content use isolated UI identity scopes. A controlled regression retains the previously exposed native Preview/Restore node, changes the real worker to a paused automatic append without redrawing, then activates that original node. This reproduced lost actions before the fix and now exercises actual preview and project installation.
 - Full-disk injection runs through the real background worker and visible UI status. It retains the previous durable age; removing the scoped injected fault allows a new confirmed durable record.
 - Repeated automatic two-second capture and actual disk writes run while the production `OutputCallback` renders. Every warmed callback is checked for zero allocations and frees, and output is compared sample-for-sample with an identical reference renderer. Callback wall observations are diagnostic, not hardware deadline or XRUN evidence.
 - Performance-mode fixtures prove essential journaling continues while optional discovery/inspection/restore is refused or canceled. Preview publication and later invalidation are exercised separately.
@@ -42,10 +43,12 @@ Process-kill and injected filesystem failures are not physical power-loss qualif
 
 Base: final performance-mode layer `acceca5`. All Cargo work used the private local `/home/michael/Projects/omatainer-work/issue-35/target`.
 
-- `cargo test -- --test-threads=4`: **743 passed, 0 failed, 13 opt-in fixtures ignored**. The ordinary storage parent explicitly launches and kills the guarded crash-child fixture; its ignored marker does not omit that crash test.
+- `cargo test -- --test-threads=4`: **744 passed, 0 failed, 13 opt-in fixtures ignored**. The ordinary storage parent explicitly launches and kills the guarded crash-child fixture; its ignored marker does not omit that crash test.
 - `cargo build`: passed. Existing unused/dead-code warnings remain; no warning-free claim.
-- `cargo test ui::atspi_tests --no-run`, then `python3 scripts/check-accessibility.py --test-binary …`: passed against the fresh binary, with 235 native nodes and 646 real App frames. This preserves native value/action, sample/synth gates, project Save/reopen/Undo, preferences, help lesson and performance-mode workflows; the new recovery-specific flows are the actual egui/renderer fixtures described above, not a claimed additional native screen-reader exercise.
+- `cargo test ui::atspi_tests --no-run`, then `python3 scripts/check-accessibility.py --test-binary …`: passed against the fresh binary, with 235 native nodes and 696 real App frames. This preserves native value/action, sample/synth gates, project Save/reopen/Undo, preferences, help lesson and performance-mode workflows; the new recovery-specific flows are the actual egui/renderer fixtures described above, not a claimed additional native screen-reader exercise.
 - `python3 scripts/license-manifest.py check --binary …`: passed for the production binary and updated source-bound notices, including SHA-256 dependencies.
 - Generated offline manual consistency and `git diff --check`: passed.
 
-Local evidence logs: `/tmp/issue97-full-final.log`, `/tmp/issue97-build.log`, `/tmp/issue97-native.log`, `/tmp/issue97-license-binary.log`.
+The previously intermittent missing-provenance workflow also passed five consecutive isolated repetitions after the UI identity correction.
+
+Local final evidence logs: `/tmp/issue97-full-id-fix.log`, `/tmp/issue97-build-id-fix.log`, `/tmp/issue97-native-id-fix.log`, `/tmp/issue97-license-id-fix.log`, `/tmp/issue97-missing-provenance-fixed-repeat.log`. The pre-fix deterministic failure is `/tmp/issue97-action-race.log`.

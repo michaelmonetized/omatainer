@@ -303,6 +303,9 @@ impl App {
             ui.label("Recovery keeps batched edit-state copies, including untitled projects. It does not save or overwrite your explicit .omat file.");
             ui.label("Dirty state is normally captured about every 2 seconds. Capture, queue pressure and storage I/O can increase the loss window; only the confirmed durable time below is evidence of recovery coverage.");
             if let Some(path) = &self.recovery.root { ui.label(format!("Storage: {}", path.display())); }
+            // Dynamic labels/spinners stay in one scope. Their auto-ID count
+            // must not change the identity of a previously exposed action.
+            ui.push_id("recovery-status", |ui| {
             if let Some(status) = &status {
                 let durable = match &status.durable {
                     Some(durable) if Some(durable.epoch) == self.recovery.epoch => format!("Confirmed durable captured state: {} · revision {} · record {}", durable_age(worker::unix_ms(), durable.captured_unix_ms), durable.revision, durable.sequence),
@@ -322,6 +325,7 @@ impl App {
                 if unsaved { ui.label("Newer current state or recovery metadata is not yet confirmed durable."); }
                 if status.busy { ui.spinner(); }
             }
+            });
             ui.horizontal(|ui| {
                 if ui.add_enabled(!busy, egui::Button::new("Refresh recovery list")).help(ui, HelpControl::RecoveryRefresh).clicked() { refresh = true; }
                 if ui.add_enabled(!busy && self.recovery.worker.is_some(), egui::Button::new("Journal current edits now")).help(ui, HelpControl::RecoveryNow).clicked() {
@@ -329,9 +333,12 @@ impl App {
                 }
                 if ui.add_enabled(self.recovery.pending.is_some(), egui::Button::new("Cancel recovery operation")).help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
             });
-            if let Some(message) = &self.recovery.message { ui.label(message); }
+            ui.push_id("recovery-message", |ui| {
+                if let Some(message) = &self.recovery.message { ui.label(message); }
+            });
             show_report(ui, "Recovery discovery report", &self.recovery.warnings);
             ui.separator();
+            ui.push_id("recovery-candidate-panel", |ui| {
             ui.label("Recoverable sessions (active sessions stay locked and are not offered)");
             if self.recovery.candidates.is_empty() { ui.label(if self.recovery.discovery_complete { "No inactive recovery candidates found." } else { "Recovery candidates have not been verified. Copies may exist; use Refresh recovery list in Studio." }); }
             let scroll = egui::ScrollArea::vertical().id_salt("recovery-candidates").max_height(180.0).show(ui, |ui| {
@@ -347,6 +354,7 @@ impl App {
                 }
             });
             accessibility::scrollbars(ui, "Recovery candidates", &scroll);
+            });
             if let Some(preview) = &self.recovery.preview {
                 ui.separator(); ui.heading("Recovery preview");
                 ui.label(format!("{} notes · {} embedded media · {} BPM", preview.notes, preview.media, preview.bpm));
@@ -487,17 +495,20 @@ fn durable_age(now: u64, written: u64) -> String {
 mod tests;
 
 fn show_report(ui: &mut Ui, name: &str, rows: &[String]) {
-    if rows.is_empty() {
-        return;
-    }
-    ui.label(format!("{name}: {} notices", rows.len()));
-    let scroll = egui::ScrollArea::vertical()
-        .id_salt(name)
-        .max_height(100.0)
-        .show(ui, |ui| {
-            for row in rows {
-                ui.label(row);
-            }
-        });
-    accessibility::scrollbars(ui, name, &scroll);
+    // One parent auto-ID whether the report is absent, short or scrollable.
+    ui.push_id(name, |ui| {
+        if rows.is_empty() {
+            return;
+        }
+        ui.label(format!("{name}: {} notices", rows.len()));
+        let scroll = egui::ScrollArea::vertical()
+            .id_salt(name)
+            .max_height(100.0)
+            .show(ui, |ui| {
+                for row in rows {
+                    ui.label(row);
+                }
+            });
+        accessibility::scrollbars(ui, name, &scroll);
+    });
 }

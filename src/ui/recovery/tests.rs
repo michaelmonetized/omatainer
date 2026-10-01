@@ -148,15 +148,20 @@ impl Gui {
         self.click("Project");
         self.click(label);
     }
+    #[track_caller]
     fn wait(&mut self, condition: impl Fn(&Self) -> bool) {
+        let caller = std::panic::Location::caller();
         let deadline = Instant::now() + Duration::from_secs(10);
         while !condition(self) {
             self.frame(vec![]);
             assert!(
                 Instant::now() < deadline,
-                "Recovery timeout: {:?}; project {:?}",
+                "Recovery timeout at {caller}: {:?}; project {:?}; worker {:?}; pending {:?}; controls {:?}",
                 self.app.recovery.message,
-                self.app.recovery_project_path()
+                self.app.project_message_for_recovery_test(),
+                self.app.recovery.worker.as_ref().map(|w| w.status().message.clone()),
+                self.app.recovery.pending,
+                self.nodes.iter().filter_map(|(_, n)| n.label()).collect::<Vec<_>>()
             );
             std::thread::sleep(Duration::from_millis(2));
         }
@@ -674,6 +679,10 @@ fn missing_provenance_is_visible_and_embedded_pcm_restores_but_missing_sidecar_k
     assert!(painted.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text().contains("Original external media is unavailable"))));
     gui.click("Restore as untitled copy");
     gui.settled();
+    assert_eq!(
+        gui.rt.decks[0].audio.as_ref().unwrap().data.len(),
+        sample.data.len()
+    );
     assert_eq!(gui.rt.decks[0].audio.as_ref().unwrap().data, sample.data);
     assert!(!origin.exists());
     gui.open_panel();
@@ -699,6 +708,10 @@ fn missing_provenance_is_visible_and_embedded_pcm_restores_but_missing_sidecar_k
     gui.settled();
     assert_eq!(gui.app.engine.undo.checkpoint().epoch, epoch);
     assert_eq!(gui.rt.master, 0.73);
+    assert_eq!(
+        gui.rt.decks[0].audio.as_ref().unwrap().data.len(),
+        sample.data.len()
+    );
     assert_eq!(gui.rt.decks[0].audio.as_ref().unwrap().data, sample.data);
     assert!(gui
         .app
@@ -864,4 +877,73 @@ fn delayed_write_reports_captured_state_age_separately_from_later_commit_and_edi
         durable.captured_unix_ms
     );
     assert_eq!(inventory.candidates[0].metadata.revision, captured_revision);
+}
+
+#[test]
+fn background_status_changes_do_not_retarget_native_recovery_actions() {
+    let files = Files::new();
+    let _ = existing(&files);
+    let mut gui = Gui::new();
+    gui.start(&files.path("recovery"));
+    gui.wait(|g| !g.app.recovery.candidates.is_empty());
+    gui.durable(gui.app.engine.project.revision());
+    let preview = gui.node("Preview recovery");
+    let (entered, resume) = gui
+        .app
+        .recovery
+        .worker
+        .as_ref()
+        .unwrap()
+        .pause_next(worker::Stage::BeforeAppend);
+    gui.app.recovery.worker.as_ref().unwrap().force();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        // Advance the actual capture boundary without redrawing the GUI. The
+        // user's previously exposed native action must survive status changes.
+        gui.rt.process(&mut []);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert!(gui.app.recovery.worker.as_ref().unwrap().status().busy);
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        target: preview,
+        action: Action::Click,
+        data: None,
+    })]);
+    assert!(
+        gui.app.recovery.pending.is_some(),
+        "Preview action was lost when the background status added a spinner"
+    );
+    resume.send(()).unwrap();
+    gui.wait(|g| g.app.recovery.preview.is_some());
+
+    let restore = gui.node("Restore as untitled copy");
+    let epoch = gui.app.engine.undo.checkpoint().epoch;
+    let (entered, resume) = gui
+        .app
+        .recovery
+        .worker
+        .as_ref()
+        .unwrap()
+        .pause_next(worker::Stage::BeforeAppend);
+    gui.app.recovery.worker.as_ref().unwrap().force();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        gui.rt.process(&mut []);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        target: restore,
+        action: Action::Click,
+        data: None,
+    })]);
+    assert!(
+        gui.app.recovery_project_busy() || gui.app.engine.undo.checkpoint().epoch != epoch,
+        "Restore action was lost when the background status changed"
+    );
+    resume.send(()).unwrap();
+    gui.settled();
+    assert_ne!(gui.app.engine.undo.checkpoint().epoch, epoch);
+    assert_eq!(gui.rt.master, 0.37);
 }
