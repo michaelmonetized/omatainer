@@ -44,6 +44,11 @@ Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F**
 | `TAB` | Session → arrange → compose |
 | `?` | In-app cheat sheet |
 
+Typing in search or another text field owns the keyboard, including the frame
+that editing ends. Blocking dialogs and popups also suppress global shortcuts.
+Outside those contexts, letter/space shortcuts require no modifiers; `?` uses
+Shift+Slash, and Ctrl+M opens the MIDI window.
+
 MIDI clock in/out and live notes from any class-compliant USB device hit the selected track. APC grids launch clips. Pioneer / Numark jog wheels scratch the platters.
 
 The APC40 original and mkII use separate protocol-based input profiles for eight
