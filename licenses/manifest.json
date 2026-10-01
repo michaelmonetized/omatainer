@@ -10938,7 +10938,7 @@
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "887d16395b89b432322fc7562b75a3b35e83c4a30c78c6bc38bdc17c52d5652d",
     "plugin/manifest.json": "bb5da467bd143775315caab141e900274277e4c86420ae7b4da56dcb11751610",
-    "scripts/install-transaction.py": "5158199e4b600cb6cadb41325b490c89641bac7405fbcf98c7256603538b9beb",
+    "scripts/install-transaction.py": "b34a017fbf743ac6970e6f20b5020827b1ef7136d8f22ef0493c92d6c77580ee",
     "scripts/license-manifest.py": "313a9d88d27172ac11094bbb1bcb7be662935d93ed084625d6bf134d5211d385",
     "src/engine/arp.rs": "2750fd8b5e7683fd14472321b247f010272276e94695c5865e0137a24014035e",
     "src/engine/arp_tests.rs": "b8229f15145b307cfe4eb4c97679e8ae79f1829abfe96224acac53b3ff1c55ca",

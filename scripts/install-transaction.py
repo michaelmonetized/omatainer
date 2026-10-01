@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -56,24 +57,50 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def run(command, purpose):
+def command_result(command, purpose):
     try:
-        result = subprocess.run(command, text=True, capture_output=True)
+        return subprocess.run(command, text=True, capture_output=True)
     except OSError as error:
         raise InstallError(f"{purpose}: {error}") from error
+
+
+def command_diagnostic(command, purpose, result):
+    details = [f"{purpose}: {shlex.join(map(str, command))} exited {result.returncode}"]
+    # A validator can write its actionable error to either stream, including
+    # stdout alongside an unrelated stderr message. Preserve both.
+    for name in ("stdout", "stderr"):
+        output = getattr(result, name).strip()
+        if output:
+            details.append(f"{name}: {output}")
+    return "\n".join(details)
+
+
+def run(command, purpose):
+    result = command_result(command, purpose)
     if result.returncode:
-        raise InstallError(
-            f"{purpose}: {' '.join(map(str, command))} exited {result.returncode}: "
-            f"{result.stderr.strip() or result.stdout.strip()}"
-        )
+        raise InstallError(command_diagnostic(command, purpose, result))
     return result.stdout.strip()
+
+
+def validate_desktop(purpose):
+    command = ["hyprctl", "configerrors"]
+    result = command_result(command, f"validate {purpose}")
+    if result.returncode or result.stdout.strip() or result.stderr.strip():
+        raise InstallError(
+            command_diagnostic(command, f"validate {purpose}", result)
+            + "\nHyprland configuration validation failed. Correct the reported "
+              "configuration or connection problem, inspect with `hyprctl configerrors`, then retry."
+        )
 
 
 def reload_desktop(purpose):
     run(["hyprctl", "reload"], f"reload {purpose}")
-    errors = run(["hyprctl", "configerrors"], f"validate {purpose}")
-    if errors:
-        raise InstallError(f"{purpose} configuration errors: {errors}")
+    validate_desktop(purpose)
+
+
+def recovery_command(root, journal):
+    return shlex.join(["bash", str(Path(__file__).resolve().with_name("install-omarchy.sh")),
+                       "--user-root", str(root), "--recover", str(journal)])
 
 
 def checked_relative(relative):
@@ -325,7 +352,7 @@ class Transaction:
         self.flush()
         if errors:
             raise InstallError(f"rollback incomplete: {'; '.join(errors)}; recover with "
-                               f"--user-root {self.root} --recover {self.directory / 'journal.json'}")
+                               f"{recovery_command(self.root, self.directory / 'journal.json')}")
 
     def discard(self):
         shutil.rmtree(self.directory)
@@ -453,9 +480,7 @@ def validate(transaction):
     run(["bash", "-n", str(staged / HOOK)], "validate theme hook")
     run(["desktop-file-validate", str(staged / ".local/share/applications/org.omarchy.omatainer.desktop")], "validate desktop entry")
     run(["omarchy", "plugin", "validate", str(staged / PLUGIN)], "validate staged plugin")
-    errors = run(["hyprctl", "configerrors"], "validate current desktop")
-    if errors:
-        raise InstallError(f"current desktop configuration errors: {errors}")
+    validate_desktop("current desktop")
 
 
 def install(source, root, state_root, after_mutation=None):
@@ -493,7 +518,8 @@ def install_locked(source, root, state_root, after_mutation=None):
                 transaction.journal["recovery_error"] = str(recovery_error)
                 transaction.flush()
             raise InstallError(f"installation failed: {error}; recovery: {recovery_error}; "
-                               f"journal: {transaction.directory / 'journal.json'}") from error
+                               f"journal: {transaction.directory / 'journal.json'}; recover with "
+                               f"{recovery_command(root, transaction.directory / 'journal.json')}") from error
         raise InstallError(f"installation failed and prior files restored: {error}") from error
 
     warnings = []
@@ -529,7 +555,8 @@ def recover_locked(journal_path, root):
         transaction.journal["state"] = "reload_failed"
         transaction.journal["recovery_error"] = str(error)
         transaction.flush()
-        raise
+        raise InstallError(f"prior files restored but desktop recovery is incomplete: {error}; "
+                           f"recover with {recovery_command(root, journal_path)}") from error
     return journal_path
 
 
