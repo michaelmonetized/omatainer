@@ -29,7 +29,7 @@ fn load_sel_routes_both_builtins_to_both_decks_and_reload_resets_playhead() {
                 fixture.app.load_sel(deck);
                 let command = fixture.rt.cmd_rx.try_recv().unwrap();
                 assert!(
-                    matches!(command, Command::LoadBuiltin { deck: d, stem: s } if d == deck && s == stem)
+                    matches!(command, Command::DeckLoadRequested { deck: d, media: Media::Builtin(s), .. } if d == deck && s == stem)
                 );
                 assert!(fixture.rt.cmd_rx.is_empty());
                 assert!(matches!(
@@ -38,7 +38,7 @@ fn load_sel_routes_both_builtins_to_both_decks_and_reload_resets_playhead() {
                 ));
                 assert_eq!(
                     fixture.app.status,
-                    format!("queued {title} → {}", (b'A' + deck) as char)
+                    format!("queued {title} → {} · waiting for audio engine", (b'A' + deck) as char)
                 );
                 assert_eq!(fixture.app.submission_error.get(), None);
 
@@ -154,7 +154,7 @@ fn load_sel_sends_real_files_only_to_decoder_then_applies_decoded_audio() {
         fixture.poll_loads();
         let command = fixture.rt.cmd_rx.try_recv().unwrap();
         assert!(
-            matches!(&command, Command::DeckDecoded { request, audio } if request.deck == deck && audio.path == wave.0.to_string_lossy())
+            matches!(&command, Command::DeckLoadRequested { media: Media::Decoded { token: request, audio }, .. } if request.deck == deck && audio.path == wave.0.to_string_lossy())
         );
         fixture.rt.apply(command);
         assert_eq!(fixture.rt.decks[deck as usize].pos, 0.0);
@@ -166,7 +166,7 @@ fn load_sel_sends_real_files_only_to_decoder_then_applies_decoded_audio() {
                 .frames(),
             4800
         );
-        assert!(fixture.app.status.starts_with("queued builtin:harmony"));
+        assert!(fixture.app.status.starts_with("queued real WAV"));
     }
 }
 
@@ -183,7 +183,7 @@ fn builtin_load_rejection_is_reported_without_decoder_fallback() {
     let queued = fixture.rt.cmd_rx.len();
     fixture.app.load_sel(1);
     assert_eq!(fixture.rt.cmd_rx.len(), queued);
-    assert_eq!(fixture.app.status, "Load was not accepted");
+    assert!(fixture.app.status.contains("Load was not accepted"));
     assert_eq!(
         fixture.app.submission_error.get(),
         Some(crate::engine::SubmissionError::Full)
@@ -195,7 +195,7 @@ fn builtin_load_rejection_is_reported_without_decoder_fallback() {
 
     drop(fixture.rt);
     fixture.app.load_sel(0);
-    assert_eq!(fixture.app.status, "Load was not accepted");
+    assert!(fixture.app.status.contains("Load was not accepted"));
     assert_eq!(
         fixture.app.submission_error.get(),
         Some(crate::engine::SubmissionError::Disconnected)
@@ -213,12 +213,12 @@ fn file_load_reports_unavailable_decoder_and_empty_selection_is_inert() {
     fixture.app.library = Arc::new(vec![wave.item()]);
     fixture.app.loader.take();
     fixture.app.load_sel(0);
-    assert_eq!(fixture.app.status, "load failed: decoder is unavailable");
+    assert!(fixture.app.status.contains("decoder is unavailable"));
     assert!(fixture.rt.cmd_rx.is_empty());
     fixture.app.lib_filter = "no matching media".into();
     fixture.app.status = "unchanged".into();
     fixture.app.load_sel(1);
-    assert_eq!(fixture.app.status, "load failed: no library item selected");
+    assert!(fixture.app.status.contains("no library item selected"));
     assert!(fixture.rt.cmd_rx.is_empty());
 }
 
@@ -250,7 +250,7 @@ fn incomplete_decode_leaves_loaded_decks_untouched_and_surfaces_the_reason() {
         assert!(fixture.rt.cmd_rx.is_empty());
         assert!(fixture.app.status.contains("Incomplete audio"));
         assert!(fixture.app.status.contains("media was not loaded"));
-        assert_load_status_is_painted(&fixture.app, "Incomplete audio");
+        assert_load_status_is_painted(&mut fixture.app, "Incomplete audio");
         assert!(Arc::ptr_eq(
             fixture.rt.decks[deck as usize].audio.as_ref().unwrap(),
             &before[deck as usize]
@@ -282,9 +282,9 @@ fn uncertain_length_warning_survives_worker_result_and_deck_admission() {
         .app
         .status
         .contains("incomplete media cannot be ruled out"));
-    assert_load_status_is_painted(&fixture.app, "length unverified");
+    assert_load_status_is_painted(&mut fixture.app, "length unverified");
     let command = fixture.rt.cmd_rx.try_recv().unwrap();
-    assert!(matches!(&command, Command::DeckDecoded { request, .. } if request.deck == 0));
+    assert!(matches!(&command, Command::DeckLoadRequested { media: Media::Decoded { token: request, .. }, .. } if request.deck == 0));
     fixture.rt.apply(command);
     assert_eq!(
         fixture.rt.decks[0].audio.as_ref().unwrap().path,
@@ -292,7 +292,7 @@ fn uncertain_length_warning_survives_worker_result_and_deck_admission() {
     );
 }
 
-fn assert_load_status_is_painted(app: &App, expected: &str) {
+fn assert_load_status_is_painted(app: &mut App, expected: &str) {
     let ctx = egui::Context::default();
     let output = ctx.run(
         egui::RawInput {
@@ -326,7 +326,7 @@ fn crate_buttons_and_double_click_emit_builtin_commands_on_the_selected_deck() {
             let button = label_center(&output, label);
             click(&ctx, &mut fixture.app, button, time + 0.1);
             assert!(
-                matches!(fixture.rt.cmd_rx.try_recv().unwrap(), Command::LoadBuiltin { deck: d, stem: s } if d == deck && s == stem)
+                matches!(fixture.rt.cmd_rx.try_recv().unwrap(), Command::DeckLoadRequested { deck: d, media: Media::Builtin(s), .. } if d == deck && s == stem)
             );
             assert!(fixture.rt.cmd_rx.is_empty());
 
@@ -341,7 +341,7 @@ fn crate_buttons_and_double_click_emit_builtin_commands_on_the_selected_deck() {
             );
             click(&ctx, &mut fixture.app, row, time + 0.2);
             assert!(
-                matches!(fixture.rt.cmd_rx.try_recv().unwrap(), Command::LoadBuiltin { deck: d, stem: s } if d == deck && s == stem)
+                matches!(fixture.rt.cmd_rx.try_recv().unwrap(), Command::DeckLoadRequested { deck: d, media: Media::Builtin(s), .. } if d == deck && s == stem)
             );
             assert!(fixture.rt.cmd_rx.is_empty());
             assert!(matches!(
@@ -395,7 +395,7 @@ fn newer_file_selection_discards_delayed_old_success_and_error_before_ui_publica
         fixture.poll_loads();
         let command = fixture.rt.cmd_rx.try_recv().unwrap();
         assert!(
-            matches!(&command, Command::DeckDecoded { request, audio } if request.deck == 0 && audio.path == b.0.to_string_lossy())
+            matches!(&command, Command::DeckLoadRequested { media: Media::Decoded { token: request, audio }, .. } if request.deck == 0 && audio.path == b.0.to_string_lossy())
         );
         fixture.rt.apply(command);
         assert_eq!(
@@ -428,7 +428,7 @@ fn builtin_selection_and_real_platter_unload_invalidate_active_file_decodes() {
         } else {
             assert!(matches!(
                 replacement,
-                Command::LoadBuiltin { deck: 0, stem: 1 }
+                Command::DeckLoadRequested { deck: 0, media: Media::Builtin(1), .. }
             ));
         }
         fixture.rt.apply(replacement);
@@ -454,7 +454,7 @@ fn builtin_selection_and_real_platter_unload_invalidate_active_file_decodes() {
             .unwrap();
         fixture.poll_loads();
         let completion = fixture.rt.cmd_rx.try_recv().unwrap();
-        assert!(matches!(&completion, Command::DeckDecoded { request, .. } if request.deck == 1));
+        assert!(matches!(&completion, Command::DeckLoadRequested { media: Media::Decoded { token: request, .. }, .. } if request.deck == 1));
         fixture.rt.apply(completion);
         match expected {
             None => assert!(fixture.rt.decks[0].audio.is_none()),

@@ -14,6 +14,11 @@ use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_view;
 use library_view::{LibraryView, Cells};
+mod load_status;
+use load_status::{LoadState, Phase};
+use crate::engine::load_receipt::{Media, Receipt};
+#[cfg(test)]
+mod load_status_tests;
 use library_scan::LibraryScan;
 
 #[cfg(test)]
@@ -43,6 +48,7 @@ pub struct App {
     keys_open: bool,
     midi_open: bool,
     status: String,
+    loads: [Option<LoadState>; DECKS],
     submission_error: Cell<Option<crate::engine::SubmissionError>>,
     seen_submission_failures: u64,
     last_theme_check: Instant,
@@ -96,6 +102,7 @@ impl App {
             keys_open: false,
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
+            loads: std::array::from_fn(|_| None),
             submission_error: Cell::new(None),
             seen_submission_failures: 0,
             last_theme_check: Instant::now(),
@@ -135,6 +142,9 @@ impl App {
         // Replacing or unloading a deck invalidates even a completion that has
         // already entered the audio command queue. The renderer rechecks it.
         if let Command::DeckUnload { deck } | Command::LoadBuiltin { deck, .. } | Command::DeckAudio { deck, .. } = &c {
+            if let Some(load) = self.loads.get(*deck as usize).and_then(Option::as_ref) {
+                if let Some(receipt) = &load.receipt { receipt.cancel_pending(); }
+            }
             if self.loader.as_ref().is_some_and(|loader| loader.invalidate(*deck).is_err()) {
                 return false;
             }
@@ -160,35 +170,52 @@ impl App {
             self.status = "load failed: invalid deck".into();
             return;
         }
-        if let Some(Selection { title: name, source }) = picked {
+        if let Some(picked) = picked {
             self.refresh_library_view();
-            if let Some(index) = self.library_view.indices.iter().position(|&i| &self.library[i].source == source) {
+            if let Some(index) = self.library_view.indices.iter().position(|&i| self.library[i].source == picked.source) {
                 self.last_play_idx = index;
             }
-            self.last_played.insert(source.clone(), SystemTime::now());
-            match source {
+            self.last_played.insert(picked.source.clone(), SystemTime::now());
+            match &picked.source {
                 LibSource::Builtin(stem) => {
-                    if self.submit(Command::LoadBuiltin { deck, stem: stem.index() }) {
-                        self.status = format!("queued {name} → {}", (b'A' + deck) as char);
+                    self.supersede_load(deck);
+                    let mut state = LoadState::new(Some(picked.clone()), Phase::Queued);
+                    if let Some(error) = self.loader.as_ref().and_then(|loader| loader.invalidate(deck).err()) {
+                        state.phase = Phase::Failed(error);
                     } else {
-                        self.status = "Load was not accepted".into();
+                        let receipt = Receipt::new();
+                        if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
+                            state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
+                        } else { state.receipt = Some(receipt); }
                     }
+                    self.set_load_state(deck, state);
                 }
-                LibSource::File(path) => {
-                    self.load_file(deck, path.clone(), name);
-                }
+                LibSource::File(path) => self.load_file(deck, path.clone(), &picked.title),
             }
         } else {
-            self.status = "load failed: no library item selected".into();
+            self.supersede_load(deck);
+            if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
+            self.set_load_state(deck, LoadState::new(None, Phase::Failed("no library item selected".into())));
+        }
+    }
+
+    fn supersede_load(&self, deck: u8) {
+        if let Some(load) = self.loads.get(deck as usize).and_then(Option::as_ref) {
+            if let Some(receipt) = &load.receipt { receipt.cancel_pending(); }
         }
     }
 
     fn load_file(&mut self, deck: u8, path: PathBuf, name: &str) {
-        self.status = match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
+        if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
+        self.supersede_load(deck);
+        let selection = Selection { title: name.into(), source: LibSource::File(path.clone()) };
+        let mut state = LoadState::new(Some(selection), Phase::Loading);
+        match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
             .and_then(|loader| loader.request(deck, path)) {
-            Ok(_) => format!("loading {name} → {}", (b'A' + deck) as char),
-            Err(error) => format!("load failed: {error}"),
-        };
+            Ok(token) => state.token = Some(token),
+            Err(error) => state.phase = Phase::Failed(error),
+        }
+        self.set_load_state(deck, state);
     }
 
     fn poll_ui_requests(&mut self) {
@@ -212,32 +239,33 @@ impl App {
     }
 
     fn poll_loads(&mut self) {
+        self.poll_load_receipts();
         let Some(loader) = &self.loader else { return };
-        for completion in loader.take_ready().into_iter().flatten() {
+        let ready = loader.take_ready();
+        for completion in ready.into_iter().flatten() {
             if !completion.token.is_current() { continue; }
+            let deck = completion.token.deck;
+            let Some(mut state) = self.loads[deck as usize].take() else { continue };
+            if state.token.as_ref().map(|token| token.id) != Some(completion.token.id) {
+                self.loads[deck as usize] = Some(state);
+                continue;
+            }
             match completion.result {
                 Ok(report) => {
-                    let warning = report.diagnostics.warning();
-                    let sample = report.sample;
-                    let mut queued = format!("queued {} → {}  {:.1} bpm", sample.name, (b'A' + completion.token.deck) as char, sample.bpm);
-                    if let Some(warning) = warning { queued.push_str(&format!(" · {warning}")); }
-                    self.status = if self.submit(Command::DeckDecoded {
-                        request: completion.token,
-                        audio: Arc::new(sample),
-                    }) { queued } else { "Load was not accepted".into() };
+                    state.warning = report.diagnostics.warning();
+                    let receipt = Receipt::new();
+                    state.phase = if self.submit(Command::DeckLoadRequested {
+                        deck, media: Media::Decoded { token: completion.token, audio: Arc::new(report.sample) },
+                        receipt: receipt.clone(),
+                    }) {
+                        state.receipt = Some(receipt);
+                        Phase::Queued
+                    } else { Phase::Failed("Load was not accepted; media was not loaded".into()) };
                 }
-                Err(error) => self.status = format!("load failed on {}: {error}", (b'A' + completion.token.deck) as char),
+                Err(error) => state.phase = Phase::Failed(error.to_string()),
             }
+            self.set_load_state(deck, state);
         }
-    }
-
-    fn load_status(&self, ctx: &egui::Context) {
-        egui::TopBottomPanel::bottom("load-status")
-            .resizable(false)
-            .frame(egui::Frame::new().fill(self.theme.bg).inner_margin(6.0))
-            .show(ctx, |ui| {
-                ui.label(RichText::new(&self.status).color(self.theme.fg));
-            });
     }
 
     fn pad_gate(&mut self, p: usize, enabled: bool, r: &egui::Response) {

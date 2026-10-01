@@ -44,9 +44,12 @@ impl Fixture {
     }
 
     pub fn poll_loads(&mut self) {
-        let before = self.app.status.clone();
+        let loading: [bool; DECKS] = std::array::from_fn(|deck| self.app.loads[deck].as_ref()
+            .is_some_and(|load| matches!(load.phase, load_status::Phase::Loading)));
+        assert!(loading.iter().any(|loading| *loading), "no pending decoder request");
         let deadline = Instant::now() + Duration::from_secs(3);
-        while self.app.status == before {
+        while loading.iter().enumerate().all(|(deck, was_loading)| !was_loading ||
+            self.app.loads[deck].as_ref().is_some_and(|load| matches!(load.phase, load_status::Phase::Loading))) {
             self.app.poll_loads();
             assert!(Instant::now() < deadline, "no visible decoder result");
             std::thread::sleep(Duration::from_millis(1));
