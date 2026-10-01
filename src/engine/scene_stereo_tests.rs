@@ -66,6 +66,7 @@ fn enabled_scene_processors_do_not_feed_a_panned_source_into_the_empty_channel()
 fn explicitly_selected_zero_width_is_mono_and_center_width_preserves_stereo() {
     let mut mono = fixture(true);
     let mut slot = fx::FxSlot::new(fx::FxId::Spread, mono.sr);
+    slot.mix = 1.0;
     slot.p[0] = 0.0;
     mono.scene_fx[0].slots.push(slot);
     let mut output = vec![0.0; 4096];

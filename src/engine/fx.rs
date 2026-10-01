@@ -3,6 +3,8 @@
 mod bypass;
 #[cfg(test)]
 mod neutral_tests;
+#[cfg(test)]
+mod stereo_mix_tests;
 
 use crate::engine::dsp::{rate_blend, Delay, OnePole, Reverb, Svf};
 
@@ -213,9 +215,9 @@ impl FxSlot {
                     delay.fb = 0.0;
                     delay.tick(input[channel])
                 });
-                // Spread/Balance retain their existing amount behavior in this
-                // state-isolation change; their slot mix contract is issue #60.
-                return if width > 0.5 {
+                // Compute the full-width result here; the common slot path
+                // applies dry/wet mix once, preserving this position in series.
+                if width > 0.5 {
                     [input[0], delayed[1]]
                 } else if width < 0.5 {
                     let narrow = (0.5 - width) * 2.0;
@@ -223,7 +225,7 @@ impl FxSlot {
                     input.map(|x| x * (1.0 - narrow) + mid * narrow)
                 } else {
                     input
-                };
+                }
             }
             FxState::Reverb(reverbs) => std::array::from_fn(|channel| {
                 reverbs[channel].mix = 1.0;
@@ -268,10 +270,10 @@ impl FxSlot {
             FxState::None => match self.id {
                 FxId::Balance => {
                     let pan = (self.p[0] * 2.0 - 1.0).clamp(-1.0, 1.0);
-                    return [
+                    [
                         input[0] * (1.0 - pan.max(0.0)).sqrt(),
                         input[1] * (1.0 + pan.min(0.0)).sqrt(),
-                    ];
+                    ]
                 }
                 FxId::Dist => input.map(|x| (x * (1.0 + self.p[0] * 8.0)).tanh()),
                 // Arpeggiation is an upstream MIDI event processor.
@@ -280,7 +282,6 @@ impl FxSlot {
         };
         // Processors supply fully wet output. Interpolate exactly once here:
         // mix=0 is dry, mix=1 is wet, and intermediate values are linear.
-        // Spread/Balance's separate amount law is addressed by issue #60.
         if self.mix == 0.0 || wet == input {
             input
         } else if self.mix == 1.0 {
