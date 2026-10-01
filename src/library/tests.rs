@@ -673,6 +673,7 @@ fn schema_two_migrates_default_styles_and_no_invented_hash_without_overwriting_o
     let original = mixed(&dir);
     let mut old = serde_json::to_value(&original).unwrap();
     old["schema"] = 2.into();
+    old.as_object_mut().unwrap().remove("crates");
     for track in old["tracks"].as_array_mut().unwrap() {
         track.as_object_mut().unwrap().remove("previous_locations");
         for version in track["versions"].as_array_mut().unwrap() {
@@ -740,6 +741,7 @@ fn schema_three_cue_metadata_migrates_without_an_invented_beatgrid() {
     let original = mixed(&dir);
     let mut old = serde_json::to_value(&original).unwrap();
     old["schema"] = 3.into();
+    old.as_object_mut().unwrap().remove("crates");
     for track in old["tracks"].as_array_mut().unwrap() {
         for version in track["versions"].as_array_mut().unwrap() {
             version["preparation"].as_object_mut().unwrap().remove("grid");
@@ -854,6 +856,7 @@ fn schema_four_migrates_without_inventing_cached_analysis_or_modifying_original(
     let original = mixed(&dir);
     let mut old = serde_json::to_value(&original).unwrap();
     old["schema"] = 4.into();
+    old.as_object_mut().unwrap().remove("crates");
     for track in old["tracks"].as_array_mut().unwrap() {
         for version in track["versions"].as_array_mut().unwrap() {
             version.as_object_mut().unwrap().remove("analysis");
@@ -862,13 +865,13 @@ fn schema_four_migrates_without_inventing_cached_analysis_or_modifying_original(
     let bytes = serde_json::to_vec(&old).unwrap();
     fs::write(dir.store(), &bytes).unwrap();
     let mut store = Store::open(dir.store()).unwrap();
-    assert_eq!(store.catalog.schema, 5);
+    assert_eq!(store.catalog.schema, SCHEMA);
     assert_eq!(store.catalog.tracks, original.tracks);
     assert!(store.catalog.tracks.iter().all(|t| t.versions.iter().all(|v| v.analysis.is_none())));
     assert_eq!(fs::read(dir.store()).unwrap(), bytes);
     store.save().unwrap();
     assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
-    assert_eq!(read(&dir.store()).unwrap().schema, 5);
+    assert_eq!(read(&dir.store()).unwrap().schema, SCHEMA);
 }
 
 #[test]

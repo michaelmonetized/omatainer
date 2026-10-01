@@ -357,6 +357,7 @@ impl App {
     /// GUI-free progress API for the project/library close coordinator. A Ready
     /// result follows a renderer FIFO fence and the durable worker receipt.
     pub(super) fn prepare_library_close(&mut self) -> CloseState {
+        self.library_metadata.set_collections_closing(true);
         use std::sync::atomic::{AtomicBool, Ordering};
         if self.library_metadata.storage.is_none() {
             return CloseState::Ready;
@@ -396,9 +397,11 @@ impl App {
         }
     }
     pub(super) fn cancel_library_close(&mut self) {
+        self.library_metadata.set_collections_closing(false);
         self.library_close = Close::default();
     }
     pub(super) fn request_library_close(&mut self, ctx: &egui::Context) {
+        self.library_metadata.set_collections_closing(true);
         self.library_close.requested = true;
         if self.library_metadata.storage.is_none() {
             self.library_close.allow = true;
