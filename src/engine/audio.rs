@@ -15,7 +15,8 @@ pub fn start(mut rt: RtEngine) -> anyhow::Result<AudioOut> {
     let cfg = device.default_output_config().context("output config")?;
     let sr = cfg.sample_rate().0;
     rt.set_sample_rate(sr);
-    let err_fn = |e| eprintln!("omatainer audio: {e}");
+    let errors = rt.telemetry.clone();
+    let err_fn = move |e| errors.error(&e);
     let stream = match cfg.sample_format() {
         cpal::SampleFormat::F32 => build::<f32>(&device, &cfg.into(), rt, err_fn)?,
         cpal::SampleFormat::I16 => build::<i16>(&device, &cfg.into(), rt, err_fn)?,
@@ -54,6 +55,8 @@ pub(super) struct OutputCallback {
     rt: RtEngine,
     channels: usize,
     buffer: Vec<f32>,
+    #[cfg(test)]
+    conversion_delay: std::time::Duration,
 }
 
 impl OutputCallback {
@@ -62,6 +65,8 @@ impl OutputCallback {
             rt,
             channels,
             buffer: Vec::new(),
+            #[cfg(test)]
+            conversion_delay: std::time::Duration::ZERO,
         }
     }
 
@@ -69,18 +74,26 @@ impl OutputCallback {
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
     {
+        let started = std::time::Instant::now();
         if self.buffer.len() < data.len() {
             self.buffer.resize(data.len(), 0.0);
         }
         let slice = &mut self.buffer[..data.len()];
         slice.fill(0.0);
         self.rt.process_interleaved(slice, self.channels);
+        #[cfg(test)]
+        std::thread::sleep(self.conversion_delay);
         for (destination, source) in data.iter_mut().zip(slice) {
             *destination = T::from_sample(*source);
         }
+        self.rt.telemetry.record(started.elapsed(), data.len() / self.channels.max(1), self.rt.sr as u32, self.rt.render_cpu_ns);
     }
 }
 
 #[cfg(test)]
 #[path = "audio_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "audio_metrics_tests.rs"]
+mod metrics_tests;
