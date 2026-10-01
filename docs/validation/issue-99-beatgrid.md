@@ -78,7 +78,7 @@ inventory validated, and the production binary's embedded manifest/notices
 matched the regenerated records exactly. No timed release-gate result is inferred
 from these correctness runs.
 
-## Final assembled verification
+## Initial assembled release verification
 
 On final issue 98 (`e9b8d02`), the complete ordinary suite passed **784 tests**,
 with 13 existing opt-in fixtures ignored, in 46.36 seconds using four threads.
@@ -129,3 +129,39 @@ groups passed. The package is retained as `issue-99-final-package`; raw report,
 summary and logs are retained separately from the moving stack worktree.
 These are local software checks. Physical audio/controller operation, hardware
 deadlines and human screen-reader/listening behavior remain for final user QA.
+
+## History-capacity acknowledgement correction
+
+Integration review found a rejection path that bypassed the usual command
+retirement helper. A valid grid change refused by Undo capacity preserved the
+grid and history, but its per-request acknowledgement remained Pending. The UI
+could therefore keep waiting for an operation the renderer had already rejected.
+
+The common retirement path now rejects pending grid acknowledgements before
+passing owned commands to the worker. Applied acknowledgements remain Applied.
+A regression first reproduced Pending instead of Rejected using real prior
+note-edit history and an exhausted Undo budget. With the correction, all 31
+ordinary Undo groups pass (one explicit fixture ignored); the new path preserves
+the grid/history checkpoint and performs zero callback allocations or frees.
+The corrected assembled release is verified separately below.
+
+On the corrected assembled source (`bede882`, including `703b35a`), **785 ordinary
+tests passed**, with 13 explicit fixtures ignored, in 43.16 seconds. The fresh
+controlled release gate passed all eight unchanged groups across three sessions
+from 2026-10-01 08:55:18.888912 to 08:58:38.954261 UTC. The exact production
+binary SHA-256 is
+`d4180c1e96e4b9568b01c5f8b980e9f8e7e3d049aff3d18223fe9eef3da7676a`.
+The same local M1 Pro host and scheduler settings described above were used;
+other agent CPU jobs were held, with one-minute load 2.747 before and 2.540 after.
+
+Worst callback wall p99/maximum across the three sessions, in milliseconds:
+producer 0.8703/1.0606, composer 0.8684/1.4058, live DJ 0.0969/0.1238 and
+hybrid 0.9024/1.2093. All original audio/state goldens and callback heap/admission
+checks passed. The native replay completed 109 actions over 963 App frames,
+visiting 240 nodes and retaining one persisted note and UI scale 1.25.
+
+Independent report validation, source-bound package verification, seven CLI,
+six follow-protocol and five runtime-isolation groups passed. The corrected
+package is `issue-99-ack-final-package`, and report/raw/log copies are
+`issue-99-ack-performance.*`. The earlier release evidence remains available;
+these corrected artifacts identify the latest qualified source and executable.
