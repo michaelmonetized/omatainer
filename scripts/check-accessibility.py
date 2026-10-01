@@ -309,6 +309,8 @@ def private(binary):
         sys.dont_write_bytecode = True  # Keep fixture imports out of the source checkout.
         from check_grid_accessibility import verify_grid
         grid_evidence=verify_grid(named, action, state, wait_for, Atspi)
+        from check_sampler_accessibility import verify_sampler
+        sampler_evidence=verify_sampler(named, action, state, wait_for, Atspi)
         action(named('Enable performance mode'),'click')
         wait_for(lambda:state()['performance']['protected'],'native performance protection')
         action(named('Safe stop…'),'click')
@@ -341,7 +343,7 @@ def private(binary):
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
                           'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
-                          'beatgrid':grid_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
+                          'beatgrid':grid_evidence,'sampler_editor':sampler_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'cue_editor_workflow':cue_editor_workflow,

@@ -17,11 +17,11 @@ impl Prepared {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
         let (_, rx) = crossbeam_channel::bounded(1);
-        let mut rt = Box::new(RtEngine::new(
+        let mut rt = Box::new(RtEngine::try_new(
             output_sr as f32,
             rx,
             Arc::new(Mutex::new(Snapshot::default())),
-        ));
+        ).map_err(Error::Invalid)?);
         macro_rules! scalars { ($($field:ident),* $(,)?) => { $(rt.$field = state.$field;)* }; }
         scalars!(
             bpm,
@@ -134,12 +134,18 @@ impl Prepared {
             }
         }
         rt.scene_fx = state.scene_fx.map(|rack| effects(rack, output_sr));
-        rt.sampler_banks = state.banks.iter().map(|b| b.name.clone()).collect();
-        rt.pad_banks = state
-            .banks
-            .into_iter()
-            .map(|b| b.media.map(|index| media[index].clone()))
-            .collect();
+        rt.sampler_banks.clear();
+        for saved in state.banks {
+            let settings = match saved.settings {
+                Some(settings) => settings,
+                None => Arc::new(crate::sampler_bank::resident::Settings::empty(saved.name).map_err(Error::Invalid)?),
+            };
+            let issues = std::array::from_fn(|slot| (settings.slots[slot].source.is_some() && saved.media[slot].is_none()).then(|| "Source unavailable in this embedded project; assign or retry the original source".into()));
+            let audio = saved.media.map(|index| index.map(|i| media[i].clone()));
+            let data = crate::sampler_bank::resident::Data::prepare(settings, audio, issues).map_err(Error::Invalid)?;
+            let data = rt.sampler_assets.pin(data).map_err(|e| Error::Invalid(e.to_string()))?;
+            rt.sampler_banks.push(sampler::Bank { id: match saved.instance { Some(id) => id, None => crate::sampler_bank::BankId::new().map_err(Error::Invalid)? }, revision: 1, factory: None, data });
+        }
         rt.builtin = state.builtin.map(|index| index.map(|i| media[i].clone()));
         for track in &mut rt.tracks {
             track.midi_schedule.prepare_history(8192);
@@ -153,11 +159,11 @@ impl Prepared {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
         let (_, rx) = crossbeam_channel::bounded(1);
-        let mut rt = Box::new(RtEngine::new(
+        let mut rt = Box::new(RtEngine::try_new(
             output_sr as f32,
             rx,
             Arc::new(Mutex::new(Snapshot::default())),
-        ));
+        ).map_err(Error::Invalid)?);
         for track in &mut rt.tracks {
             track.clips = std::array::from_fn(|_| Clip::empty());
         }
@@ -172,6 +178,7 @@ impl Prepared {
     }
 
     pub(super) fn swap_into(&mut self, rt: &mut RtEngine) {
+        if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership
         // in the retired graph until this Prepared is dropped on the worker.
         for deck in &rt.decks {
@@ -210,8 +217,9 @@ impl Prepared {
             sampler_oct,
             sampler_poly,
             sampler_banks,
-            pad_banks,
+            sampler_revision,
             pad_voices,
+            sampler_audition,
             pad_destinations,
             pad_output,
             pad_targets,

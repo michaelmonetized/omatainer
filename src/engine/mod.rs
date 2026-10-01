@@ -11,6 +11,7 @@ mod deck_filter_tests;
 
 pub mod instrument;
 pub(crate) mod sampler_pad;
+pub(crate) mod sampler;
 #[cfg(test)]
 pub(crate) mod sampler_identity_tests;
 pub use instrument::{SamplerInstrument, SynthInstrument};
@@ -516,9 +517,13 @@ pub struct RtEngine {
     pub sampler_inst: SamplerInstrument,
     pub sampler_oct: i8,
     pub sampler_poly: Poly,
-    pub sampler_banks: Vec<String>,
-    pub pad_banks: Vec<[Arc<Sample>; 16]>,
-    pub pad_voices: [Option<(Arc<Sample>, f64, f32, usize)>; 16],
+    pub sampler_banks: Vec<sampler::Bank>,
+    pub sampler_revision: u64,
+    // Renderer lifetime ownership; never swapped or finally dropped by an
+    // audio callback when installing a separately prepared project graph.
+    sampler_assets: crate::sampler_bank::assets::Owner,
+    pub pad_voices: [Option<crate::sampler_bank::resident::Voice>; 16],
+    pub sampler_audition: Option<sampler::ActiveAudition>,
     pad_destinations: [usize; 16],
     pad_output: [[f32; 2]; TRACKS],
     pad_targets: [Option<PadTarget>; 16],
@@ -659,6 +664,11 @@ pub struct Snapshot {
     pub sampler_inst: SamplerInstrument,
     pub sampler_oct: i8,
     pub sampler_banks: Vec<String>,
+    #[serde(skip)]
+    pub sampler_instances: Vec<sampler::Bank>,
+    pub sampler_audition: Option<u64>,
+    pub sampler_revision: u64,
+    pub sampler_epoch: u64,
     pub fx_view: i16,
     pub fx_slots: Vec<(String, bool, f32, [f32; 4])>,
 }
@@ -700,6 +710,10 @@ impl Default for Snapshot {
             sampler_inst: SamplerInstrument::Samples,
             sampler_oct: 3,
             sampler_banks: vec!["Kit".into()],
+            sampler_instances: Vec::new(),
+            sampler_audition: None,
+            sampler_revision: 0,
+            sampler_epoch: 0,
             fx_view: -1,
             fx_slots: Vec::new(),
         }
@@ -793,6 +807,9 @@ pub enum Command {
     AddScene { scene: u8 },
     SamplerPad { pad: u8, on: bool },
     SamplerBank(usize),
+    SamplerEdit(sampler::Edit),
+    SamplerAudition(sampler::Audition),
+    SamplerAuditionStop { id: u64 },
     SamplerInst(SamplerInstrument),
     SamplerOct(i8),
     OpenFxTrack(u8),
@@ -805,11 +822,20 @@ pub enum Command {
 }
 
 impl RtEngine {
+    #[cfg(test)]
     pub fn new(
         sr: f32,
         cmd_rx: impl Into<control::CommandReceiver>,
         snap: Arc<Mutex<Snapshot>>,
     ) -> Self {
+        Self::try_new(sr, cmd_rx, snap).expect("prepare test renderer")
+    }
+    pub fn try_new(
+        sr: f32,
+        cmd_rx: impl Into<control::CommandReceiver>,
+        snap: Arc<Mutex<Snapshot>>,
+    ) -> Result<Self, String> {
+        let (sampler_assets, sampler_banks) = sampler::initial(sr as u32)?;
         let cmd_rx = cmd_rx.into();
         let telemetry = cmd_rx.telemetry();
         let performance = cmd_rx.performance().clone();
@@ -903,9 +929,11 @@ impl RtEngine {
             sampler_inst: SamplerInstrument::Samples,
             sampler_oct: 3,
             sampler_poly: Poly::new(sr, SynthInstrument::Keys, 8),
-            sampler_banks: vec!["Kit".into(), "Perc".into(), "Hits".into()],
-            pad_banks: build_pad_banks(sr as u32),
+            sampler_banks,
+            sampler_revision: 1,
+            sampler_assets,
             pad_voices: std::array::from_fn(|_| None),
+            sampler_audition: None,
             pad_destinations: [0; 16],
             pad_output: [[0.0; 2]; TRACKS],
             pad_targets: [None; 16],
@@ -923,7 +951,7 @@ impl RtEngine {
             });
         }
         e.publish_initial();
-        e
+        Ok(e)
     }
 
     /// Prepare a stopped/unowned renderer before constructing its output
@@ -933,10 +961,11 @@ impl RtEngine {
     /// Changed rates discard voices/tails/filter history, preserving musical
     /// positions and controls. Ordinary clips chase their current notes on the
     /// next sample; arpeggiators resume at the next step. Equal rates are a no-op.
-    pub fn set_sample_rate(&mut self, sr: u32) {
+    pub fn set_sample_rate(&mut self, sr: u32) -> Result<(), String> {
         if sr == 0 || sr as f32 == self.sr {
-            return;
+            return Ok(());
         }
+        let sampler_banks = self.sampler_rate_banks(sr)?;
         self.sr = sr as f32;
         self.project.set_sample_rate(sr);
         let active_history=self.active_recording_history();
@@ -948,8 +977,10 @@ impl RtEngine {
         // wet controls remain intact and are configured on the next block.
         self.master_fx = std::array::from_fn(|_| master_fx::MasterSlot::new(sr as f32));
         let drums = build_kit(sr);
-        self.pad_banks = build_pad_banks(sr);
-        self.pad_voices.fill(None);
+        self.install_sampler_rate_banks(sampler_banks);
+        for voice in &mut self.pad_voices { *voice = None; }
+        if let Some(active) = &self.sampler_audition { active.ended(); }
+        self.sampler_audition = None;
         self.pad_output.fill([0.0; 2]);
         self.sampler_poly.set_sample_rate(self.sr);
         for chain in &mut self.scene_fx {
@@ -978,6 +1009,7 @@ impl RtEngine {
             d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             d.meter = 0.0;
         }
+        Ok(())
     }
 
     fn seed_demo(&mut self) {
@@ -1566,15 +1598,22 @@ impl RtEngine {
             }
         }
         for slot in &mut self.pad_voices {
-            if let Some((sample, position, rate, destination)) = slot {
-                let (l, r) = sample.at(*position);
-                buses[*destination][0] += l;
-                buses[*destination][1] += r;
-                *position += *rate as f64 * sample.sr as f64 / self.sr as f64;
-                if *position >= sample.frames() as f64 {
+            if let Some(voice) = slot {
+                if let Some((l, r)) = voice.tick(self.sr as f64) {
+                    buses[voice.track][0] += l;
+                    buses[voice.track][1] += r;
+                }
+                if voice.position >= voice.end {
                     *slot = None;
                 }
             }
+        }
+        if let Some(active) = &mut self.sampler_audition {
+            let voice = &mut active.voice;
+            if let Some((l, r)) = voice.tick(self.sr as f64) {
+                buses[voice.track][0] += l; buses[voice.track][1] += r;
+            }
+            if voice.position >= voice.end { self.finish_sampler_audition(); }
         }
         buses
     }
@@ -2296,10 +2335,12 @@ impl RtEngine {
                     self.release_input(input);
                     self.pad_targets[pad as usize] = None;
                     if self.sampler_inst == SamplerInstrument::Samples {
-                        if let Some(bank) = self.pad_banks.get(self.sampler_bank) {
-                            let samp = bank[pad as usize % 16].clone();
-                            let rate = 2f32.powi((self.sampler_oct - 3) as i32);
-                            self.pad_voices[pad as usize % 16] = Some((samp, 0.0, rate, destination.track));
+                        if let Some(bank) = self.sampler_banks.get(self.sampler_bank) {
+                            let slot = pad as usize;
+                            self.pad_voices[slot] = bank.data.audio[slot].as_ref().zip(bank.data.ranges[slot]).map(|(sample, range)| {
+                                let rate = 2f32.powi((self.sampler_oct - 3) as i32) as f64;
+                                crate::sampler_bank::resident::Voice::new(sample.clone(), range, bank.data.settings.slots[slot].controls, rate, destination.track)
+                            });
                         }
                     } else {
                         self.sampler_poly.note_on_input(pitch, 0.9, input);
@@ -2328,6 +2369,13 @@ impl RtEngine {
                 }
             }
             Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
+            Command::SamplerEdit(edit) => self.apply_sampler_edit(edit),
+            Command::SamplerAudition(request) => self.apply_sampler_audition(request),
+            Command::SamplerAuditionStop { id } => {
+                if self.sampler_audition.as_ref().is_some_and(|active| active.id == id) {
+                    self.finish_sampler_audition();
+                }
+            },
             Command::SamplerInst(i) => {
                 self.sampler_inst = i;
                 if let Some(kind) = i.synth() {
@@ -2350,8 +2398,8 @@ impl RtEngine {
                     }
                     let rate = 2f32.powi((self.sampler_oct - 3) as i32);
                     for slot in &mut self.pad_voices {
-                        if let Some((_, _, r, _)) = slot {
-                            *r = rate;
+                        if let Some(voice) = slot {
+                            voice.rate = rate as f64;
                         }
                     }
                 }
@@ -2667,6 +2715,7 @@ pub struct Engine {
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
     pub(crate) initial_playback: [load_receipt::Receipt; DECKS],
+    pub(crate) sampler_assets: crate::sampler_bank::assets::Owner,
     // Production owns the audio manager; it may retain a stopped graph after
     // backend failure while still serving project Save/Open/Close.
     _audio: Option<audio::AudioOut>,
@@ -2683,10 +2732,11 @@ impl Engine {
         if settings.startup.performance_mode { tx.performance().set_enabled(true)?; }
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
-        let mut rt = RtEngine::new(48000.0, rx, snap.clone());
+        let mut rt = RtEngine::try_new(48000.0, rx, snap.clone()).map_err(anyhow::Error::msg)?;
         let undo = rt.enable_undo()?;
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
+        let sampler_assets = rt.sampler_assets.clone();
         let audio = audio::start_with_settings(rt, &settings.audio)?;
         let midi = midi::MidiHub::start_with_policy(tx.clone(), snap.clone(), settings.midi_inputs.clone())?;
         Ok(Self {
@@ -2697,6 +2747,7 @@ impl Engine {
             snap,
             midi,
             initial_playback,
+            sampler_assets,
             _audio: Some(audio),
         })
     }
@@ -2710,6 +2761,7 @@ impl Engine {
         let undo = rt.enable_undo().expect("undo worker");
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
+        let sampler_assets = rt.sampler_assets.clone();
         (
             Self {
                 undo,
@@ -2719,6 +2771,7 @@ impl Engine {
                 snap,
                 midi: midi::MidiHub::without_devices(),
                 initial_playback,
+                sampler_assets,
                 _audio: None,
             },
             rt,
@@ -2870,12 +2923,12 @@ mod tests {
         }
         let mut rt = engine();
         rt.apply(Command::SamplerPad { pad: 0, on: true });
-        let kit = rt.pad_voices[0].as_ref().unwrap().0.name.clone();
+        let kit = rt.pad_voices[0].as_ref().unwrap().audio.name.clone();
         rt.apply(Command::SamplerPad { pad: 0, on: false });
         rt.pad_voices[0] = None;
         rt.apply(Command::SamplerBank(1));
         rt.apply(Command::SamplerPad { pad: 0, on: true });
-        let perc = rt.pad_voices[0].as_ref().unwrap().0.name.clone();
+        let perc = rt.pad_voices[0].as_ref().unwrap().audio.name.clone();
         assert_ne!(kit, perc, "bank switch must change pad 0 sample ({kit} vs {perc})");
     }
 
@@ -2885,11 +2938,11 @@ mod tests {
         let mut rt = engine();
         rt.apply(Command::SamplerPad { pad: 0, on: true });
         assert!(rt.pad_voices[0].is_some(), "sample pad down must start a voice");
-        let r0 = rt.pad_voices[0].as_ref().unwrap().2;
+        let r0 = rt.pad_voices[0].as_ref().unwrap().rate;
         rt.apply(Command::SamplerPad { pad: 0, on: false });
         assert!(rt.pad_voices[0].is_some(), "one-shot may ring after release");
         rt.apply(Command::SamplerOct(1));
-        assert!((rt.pad_voices[0].as_ref().unwrap().2 / r0 - 2.0).abs() < 1e-4);
+        assert!((rt.pad_voices[0].as_ref().unwrap().rate / r0 - 2.0).abs() < 1e-4);
 
         let mut rt = engine();
         rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));

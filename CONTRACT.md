@@ -46,9 +46,44 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Works whenever the favored deck has audio; the unfavored deck can be stopped
   (rate is armed for when it plays).
 
-## C3. Sample banks (Kit / Perc / Hits)
+## C3. Sample banks (factory and user banks)
 
-- Three banks, **16 samples each**.
+- Kit, Perc and Hits remain original factory banks, **16 samples each**. The
+  editor can always create an editable copy, even after opening a project that
+  replaced all startup banks. A session supports at most 16 working banks.
+- Named reusable definitions contain 16 slots with local catalog identity or an
+  explicit factory source. At most 64 definitions are stored in schema 1,
+  bounded to 4 MiB. Loading/copying creates a fresh working identity; replacing
+  a reusable definition requires its exact ID, never a matching display name.
+- Slot gain is 0–2. Start and exclusive end are source seconds, validated against
+  resident PCM without clamping; blank end means the source end. A draft can be
+  prepared and auditioned without applying it. Apply targets the captured bank,
+  revision and project epoch, and creates one Undo entry after an atomic claim.
+- Assignment, decoding and reusable-store work run off the GUI/audio callbacks.
+  The existing decoder has two deck lanes and one sampler lane, with one active
+  job and one pending/result per lane. A source is hashed and decoded through
+  the same descriptor, then its fingerprint/path identity is rechecked. Only
+  fresh successful decode proofs, acknowledged Applied, qualify catalog hashes.
+- Missing/changed reusable files remain explicitly unavailable; no factory sound
+  is substituted. Verified same-content catalog relocation preserves TrackId.
+  Native projects embed available PCM independently of reusable file references,
+  so missing originals do not silence valid embedded project audio.
+- Held sample voices retain their onset's PCM, source range, gain and destination
+  across edits, Undo/Redo and bank changes. User/project PCM keeps its native
+  rate across output-rate changes. Only explicitly marked startup factory data
+  is regenerated; State 1–3 banks migrate as embedded regardless of their names.
+- Engine State 4 persists sparse bank slots, controls, sources and identities.
+  Generic project container/recovery formats remain unchanged. Unknown future
+  states fail before installation. Independent background pins keep final PCM,
+  settings and bank destruction off the callback, including surviving captures;
+  ownership has fixed 1 GiB PCM/8 MiB metadata and object-count limits. Capacity
+  refusal is explicit. Unexpected owner failure refuses new preparation until
+  restart while keeping existing callback references safe.
+- Performance protection rejects new preparation/store work and bank edits at
+  producer admission and renderer consumption. Audition has a guaranteed FIFO
+  release, separate from pad/recording gates; completion is observable even when
+  a short preview finishes between snapshots. Cancellation before an edit claim
+  is inert; cancellation after the claim reports the actual terminal outcome.
 - Switching banks changes which buffer pad N triggers.
 - Visible sample pad N dispatches zero-based bank slot N−1. Bottom-row pads are
   1–8 (identities 0–7); top-row pads are 9–16 (identities 8–15). Labels, tooltips,
@@ -872,7 +907,7 @@ publication. Preferences persist startup protection only, not emergency state.
   cannot complete it. A disconnected unconfirmed request has an unknown outcome.
 - Analysis/source BPM remains separate from manual effective BPM, including Reset
   before snapshot refresh. Absolute cue positions never move with the grid.
-- Catalog 4 and engine State 3 preserve grids. State 1/2 default to no manual grid;
+- Catalog 4 and engine State 3 onward preserve grids. State 1/2 default to no manual grid;
   generic recovery journal 1/container 1 needs no format change. Future/invalid
   states fail before installation. Restored transport remains stopped.
 - Performance protection rejects every grid edit at producer admission and again

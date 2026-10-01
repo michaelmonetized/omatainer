@@ -62,7 +62,7 @@ fn armed_target_survives_browsing_scene_launch_and_play_without_moving_monitor()
                 Some(ComposeTarget { track: 4, scene: 3 })
             );
             if instrument == SamplerInstrument::Samples {
-                assert_eq!(rt.pad_voices[0].as_ref().unwrap().3, 4);
+                assert_eq!(rt.pad_voices[0].as_ref().unwrap().track, 4);
             } else {
                 assert_eq!(rt.pad_destinations[0], 4);
             }

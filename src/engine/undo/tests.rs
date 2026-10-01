@@ -875,7 +875,7 @@ fn stopped_sample_rate_preparation_updates_retained_processors_before_redo() {
     rt.fx_view = 2;
     send(&engine, &mut rt, Command::FxAdd(5));
     rt.apply(Command::Undo);
-    rt.set_sample_rate(96000);
+    rt.set_sample_rate(96000).unwrap();
     let counts = test_alloc::measure(|| rt.apply(Command::Redo));
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     assert_eq!(
@@ -952,7 +952,7 @@ fn rate_budget_pruning_preserves_only_current_holds_and_never_claims_saved_conte
     send(&engine, &mut rt, Command::Master(0.7));
     let original_audio = rt.decks[0].audio.clone().unwrap();
     rt.undo.budget = 1100 * 1024;
-    rt.set_sample_rate(96000);
+    rt.set_sample_rate(96000).unwrap();
     assert_eq!(rt.undo.failure, Some(Failure::RateHistoryPruned));
     assert_eq!(rt.undo.cursor, 1);
     assert_eq!(
@@ -1344,7 +1344,7 @@ fn rate_pruning_preserves_distinct_held_inverse_owners_in_the_same_cell() {
     rt.apply(Command::FxAdd(5));
     let before = engine.undo.checkpoint();
     rt.undo.budget = 1100 * 1024;
-    rt.set_sample_rate(96000);
+    rt.set_sample_rate(96000).unwrap();
     assert_eq!(rt.undo.failure, Some(Failure::RateHistoryPruned));
     assert_eq!(rt.undo.cursor, 2, "both actual held inverses survive, even with the same cell");
     assert_eq!(rt.undo.entries[0].as_ref().unwrap().id, first);

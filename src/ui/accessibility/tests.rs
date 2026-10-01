@@ -514,8 +514,8 @@ fn every_pad_keyboard_and_assistive_gate_retains_exact_note_and_original_instrum
                     );
                 } else {
                     assert!(Arc::ptr_eq(
-                        &gui.rt.pad_voices[pad].as_ref().unwrap().0,
-                        &gui.rt.pad_banks[gui.rt.sampler_bank][pad]
+                        &gui.rt.pad_voices[pad].as_ref().unwrap().audio,
+                        &gui.rt.sampler_banks[gui.rt.sampler_bank].data.audio[pad].as_ref().unwrap()
                     ));
                 }
                 if assistive {

@@ -363,6 +363,126 @@ fn settle_metadata(metadata: &mut Metadata, library: &mut Arc<Vec<LibItem>>) {
 }
 
 #[test]
+fn sampler_proofs_survive_cancelled_optional_rebase_and_enable_move_after_original_disappears() {
+    use crate::sampler_bank::SourceRef;
+    use sha2::{Digest, Sha256};
+    let files = Files::new();
+    let original = files.wave("Sampler original.wav");
+    let source = LibSource::File(original.clone());
+    let fingerprint = FileFingerprint::read(&original).unwrap();
+    let hash: [u8; 32] = Sha256::digest(std::fs::read(&original).unwrap()).into();
+    let path = files.0.join("catalog/library.json");
+    let mut store = crate::library::Store::open(path.clone()).unwrap();
+    let saved_metadata = crate::library::Metadata {
+        title: "Sampler identity".into(), artist: "Local".into(),
+        bpm: Bpm::new(127.0, Origin::User), key: "Am".into(),
+        duration: Some(1024.0 / 48000.0), last_play: None,
+    };
+    store.catalog.upsert(source.clone(), Some(fingerprint), saved_metadata.clone()).unwrap();
+    let id = store.catalog.track(&source).unwrap().id.clone();
+    store.save().unwrap();
+    drop(store);
+    let (entered, ready) = mpsc::sync_channel(1);
+    let (release, held) = mpsc::sync_channel(1);
+    let mut calls = 0;
+    let mut metadata = Metadata::with_hook(path.clone(), move || {
+        calls += 1;
+        if calls == 2 {
+            entered.send(()).unwrap();
+            held.recv_timeout(Duration::from_secs(5)).unwrap();
+        }
+    });
+    let performance = Handle::default();
+    metadata.set_performance(performance.clone());
+    let mut library = Arc::new(builtin_crate_items());
+    settle_metadata(&mut metadata, &mut library);
+    let proof = SourceRef { track: id.clone(), source: source.clone(), fingerprint, content_hash: Some(hash) };
+    metadata.qualify_sampler(proof.clone()).unwrap();
+    let added = files.wave("Optional extra.wav");
+    let mut scanner = library_scan::LibraryScan::default();
+    scanner.set_performance(performance.clone());
+    assert!(scanner.start(vec![files.0.clone()], library.clone()));
+    let mut publication = None;
+    wait(|| { publication = scanner.poll(); publication.is_some() });
+    metadata.stage_scan(publication.unwrap(), &library);
+    metadata.poll(&mut library).unwrap();
+    ready.recv_timeout(Duration::from_secs(3)).unwrap();
+    let mut latest_metadata = saved_metadata;
+    latest_metadata.last_play = Some(SystemTime::UNIX_EPOCH + Duration::from_secs(1234));
+    let mut incoming_metadata = latest_metadata.clone();
+    // A late decoded estimate cannot erase the saved user tempo.
+    incoming_metadata.bpm = Bpm::new(139.0, Origin::Heuristic);
+    let preparation = crate::engine::preparation::Preparation {
+        cue: 0.01, ..Default::default()
+    };
+    metadata.capture(super::super::library_store::Capture {
+        source: source.clone(), fingerprint: Some(fingerprint), metadata: incoming_metadata,
+        preparation: Some(preparation), played: None,
+    });
+    // No original path remains by the time the worker receives the proof.
+    let destination = files.0.join("Moved sampler.wav");
+    std::fs::rename(&original, &destination).unwrap();
+    performance.set_enabled(true).unwrap();
+    release.send(()).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.durable);
+    let saved = crate::library::read(&path).unwrap();
+    let version = saved.version(&source, Some(fingerprint)).unwrap();
+    assert_eq!(version.content_hash, Some(hash));
+    assert_eq!(version.metadata, latest_metadata);
+    assert_eq!(version.preparation, preparation);
+    assert!(saved.track(&LibSource::File(added)).is_none());
+    assert_eq!(saved.track(&source).unwrap().id, id);
+    performance.set_enabled(false).unwrap();
+    let request = crate::library::Relocate { id: id.clone(), source: source.clone(), fingerprint, destination: destination.clone() };
+    assert!(metadata.relocate(request.clone()));
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.relocation_result(&request).unwrap().is_ok());
+    let reopened = crate::library::read(&path).unwrap();
+    let resolved = proof.resolve(&reopened).unwrap();
+    assert_eq!(resolved.source, LibSource::File(destination));
+    assert_eq!(resolved.track, id);
+    assert_eq!(resolved.content_hash, Some(hash));
+    // A stale/conflicting producer cannot silently overwrite the durable hash.
+    let mut conflict = proof;
+    conflict.content_hash.as_mut().unwrap()[0] ^= 1;
+    metadata.qualify_sampler(conflict).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.label().contains("sampler content proof rejected"));
+    assert_eq!(crate::library::read(&path).unwrap().tracks, reopened.tracks);
+}
+
+#[test]
+fn sampler_proof_queue_is_bounded_deduplicated_and_rejects_unmeasured_claims() {
+    use crate::sampler_bank::SourceRef;
+    let files = Files::new();
+    let file = files.wave("Queue.wav");
+    let proof = SourceRef { track: crate::library::TrackId(format!("{:032x}", 1)),
+        source: LibSource::File(file.clone()), fingerprint: FileFingerprint::read(&file).unwrap(),
+        content_hash: Some([7; 32]) };
+    let mut unavailable = Metadata::default();
+    assert!(unavailable.qualify_sampler(proof.clone()).is_err());
+    let mut metadata = Metadata::new(Some(files.0.join("catalog/library.json")));
+    let mut unmeasured = proof.clone();
+    unmeasured.content_hash = None;
+    assert!(metadata.qualify_sampler(unmeasured).is_err());
+    for i in 0..SAMPLER_PROOF_LIMIT {
+        let mut next = proof.clone();
+        next.track = crate::library::TrackId(format!("{:032x}", i + 1));
+        metadata.qualify_sampler(next).unwrap();
+    }
+    metadata.qualify_sampler(proof.clone()).unwrap();
+    assert_eq!(metadata.sampler_sources.len(), SAMPLER_PROOF_LIMIT);
+    let mut conflict = proof.clone();
+    conflict.content_hash = Some([9; 32]);
+    assert!(metadata.qualify_sampler(conflict).is_err());
+    let mut overflow = proof;
+    overflow.track = crate::library::TrackId("f".repeat(32));
+    assert!(metadata.qualify_sampler(overflow).unwrap_err().contains("queue is full"));
+    assert_eq!(metadata.sampler_sources.len(), SAMPLER_PROOF_LIMIT);
+}
+
+#[test]
 fn performance_cancelled_staged_scan_keeps_essential_metadata_durable() {
     let files = Files::new();
     let added = files.wave("Optional 143.wav");

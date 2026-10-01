@@ -47,7 +47,18 @@ fn private_atspi_bridge_child() {
     assert!(std::env::var("AT_SPI_BUS_ADDRESS").is_ok());
     let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
     rt.publish_for_test();
-    let mut app = App::with_loader(engine, Theme::default(), None);
+    let loader = Loader::start_with_performance(engine.cmd.performance().clone()).unwrap();
+    let mut app = App::with_loader(engine, Theme::default(), Some(loader));
+    app.sampler_editor.set_store_path(directory.join("sampler-banks.json"));
+    app.start_library_store(directory.join("library.json"));
+    let sampler_path = directory.join("sampler.flac");
+    std::fs::write(&sampler_path, include_bytes!("../../tests/fixtures/audio/tone.flac")).unwrap();
+    let sampler_source = LibSource::File(sampler_path.clone());
+    let sampler_fingerprint = FileFingerprint::read(&sampler_path).unwrap();
+    Arc::make_mut(&mut app.library).push(LibItem { title: "ZZ sampler native fixture".into(), artist: "fixture".into(),
+        bpm: Bpm::UNKNOWN, fingerprint: Some(sampler_fingerprint), key: String::new(), length: None,
+        last_play: None, source: sampler_source.clone() });
+    app.library_metadata.rebase();
     app.settings.path = Some(directory.join("preferences.json"));
     app.settings.worker = Some(crate::preferences::worker::Worker::with_discovery(
         directory.join("preferences.json"), || Ok(crate::engine::audio::config::tests::inventory())
@@ -153,6 +164,9 @@ fn private_atspi_bridge_child() {
             "pitch":rt.decks[0].pitch,"playing":rt.decks[0].playing,"loaded":rt.decks[0].audio.is_some(),
             "grid":rt.decks[0].grid,"grid_editor":app.grid_editor.as_ref().map(grid_editor::Editor::evidence),
             "hotcue_1":rt.decks[0].hotcues[0].set,"cue_slots":rt.decks[0].hotcues.iter().map(|cue|cue.set).collect::<Vec<_>>(),"cue_editor_open":app.cue_editor.editor.is_some(),"pad_held":app.pad_held[0],"focus":focus,
+            "sampler_editor":app.sampler_editor.evidence(),
+            "sampler_banks":rt.sampler_banks.iter().map(|b|serde_json::json!({"id":b.id,"name":b.name(),"gain":b.data.settings.slots[0].controls.gain,"frames":b.data.audio[0].as_ref().map(|s|s.frames())})).collect::<Vec<_>>(),
+            "sampler_fixture_row":app.library_view.indices.iter().position(|&i|app.library[i].source==sampler_source).map(|i|i+1),
             "sampler_instrument":rt.sampler_inst.label(),"held_pad_voices":held_pad_voices,
             "pad_sample_active":rt.pad_voices[0].is_some(),
             "notes":rt.tracks[0].clips[0].notes.len(),"undo_cursor":undo.cursor,"undo_epoch":undo.epoch,

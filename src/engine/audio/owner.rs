@@ -235,7 +235,10 @@ impl<B: Backend> Owner<B> {
             .graph
             .take()
             .ok_or("Renderer ownership has not returned")?;
-        graph.set_sample_rate(plan.rate);
+        if let Err(error) = graph.set_sample_rate(plan.rate) {
+            self.graph = Some(graph);
+            return Err(error);
+        }
         let (returned, receiver) = bounded(1);
         let enabled = Arc::new(AtomicBool::new(false));
         let fault = Arc::new(AtomicBool::new(false));
@@ -564,6 +567,8 @@ impl RtEngine {
         self.sampler_poly.set_sample_rate(self.sr);
         self.pad_targets.fill(None);
         self.pad_voices.fill(None);
+        if let Some(active) = &self.sampler_audition { active.ended(); }
+        self.sampler_audition = None;
         self.pad_output.fill([0.0; 2]);
         for chain in &mut self.scene_fx {
             for slot in &mut chain.slots {
@@ -596,6 +601,7 @@ impl RtEngine {
             || self.compose_target.is_some()
             || self.decks.iter().any(|deck| deck.playing || deck.touching)
             || self.has_held_project_notes()
+            || self.sampler_audition.is_some()
         {
             self.stop_for_audio();
         }
@@ -620,6 +626,7 @@ pub(crate) mod tests {
         pub calibration_block: AtomicBool,
         pub entering_calibration: AtomicBool,
         pub opens: AtomicUsize,
+        pub alternate_device: AtomicBool,
         pub renders: AtomicUsize,
         pub dropped: AtomicUsize,
     }
@@ -641,10 +648,11 @@ pub(crate) mod tests {
     impl Backend for Fake {
         type Stream = Stream;
         fn select(&mut self, settings: &crate::preferences::Audio) -> Result<config::Plan, String> {
+            let device = if self.controls.alternate_device.load(Ordering::Acquire) { "Alternate fixture" } else { "Fixture" };
             if settings
                 .device
                 .as_deref()
-                .is_some_and(|name| name != "Fixture")
+                .is_some_and(|name| name != device)
             {
                 return Err("Requested fixture output missing".into());
             }
@@ -654,7 +662,7 @@ pub(crate) mod tests {
             }
             Ok(config::Plan {
                 backend: "Fixture".into(),
-                device: "Fixture".into(),
+                device: device.into(),
                 channels: settings.channels.unwrap_or(2),
                 rate,
                 format: cpal::SampleFormat::F32,
@@ -751,6 +759,13 @@ pub(crate) mod tests {
         let (mut engine, audio, controls) = fixture();
         engine._audio = Some(audio);
         (engine, controls)
+    }
+    pub(crate) fn publish_phase_for_ui_test(handle: &Handle, phase: Phase) {
+        handle.status.rcu(|old| {
+            let mut status = (**old).clone();
+            status.phase = phase.clone();
+            Arc::new(status)
+        });
     }
     fn cancel() -> Arc<AtomicBool> {
         Arc::new(AtomicBool::new(false))
@@ -1047,7 +1062,7 @@ pub(crate) mod tests {
             let before = rt.tracks[1].poly.note_on_events;
             assert!(before > 0);
             rt.stop_for_audio();
-            rt.set_sample_rate(48000);
+            rt.set_sample_rate(48000).unwrap();
             rt.process(&mut out);
             assert!(out.iter().all(|sample| *sample == 0.0));
             assert_eq!(rt.tracks[1].poly.note_on_events, before);

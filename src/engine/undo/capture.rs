@@ -5,6 +5,7 @@ use super::*;
 #[derive(Clone, Copy)]
 enum Target {
     Global,
+    Sampler(usize),
     Track(u8),
     Gain(u8, u8),
     Deck(u8),
@@ -33,6 +34,7 @@ impl Plan {
                 (Target::Global, Name::MasterEffect, 10 + *slot as u64)
             }
             SamplerBank(_) | SamplerInst(_) | SamplerOct(_) => (Target::Global, Name::Sampler, 20),
+            SamplerEdit(edit) => (Target::Sampler(rt.sampler_edit_index(edit)?), Name::Sampler, 21),
             TrackGain { track, .. }
             | TrackPan { track, .. }
             | Mute { track }
@@ -163,6 +165,11 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if let Command::SamplerEdit(edit) = &c {
+            if self.sampler_edit_index(edit).is_none() || !edit.ack.claim() {
+                self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+            }
+        }
         if let Command::DeckGrid { deck, grid, receipt, ack } = &c {
             let current = self.decks.get(*deck as usize).filter(|d| d.audio.is_some()
                 && receipt.state() == load_receipt::State::Current
@@ -209,7 +216,7 @@ impl RtEngine {
         };
         if !matches!(
             plan.target,
-            Target::Clip(..) | Target::Media(..) | Target::Slot(..)
+            Target::Clip(..) | Target::Media(..) | Target::Slot(..) | Target::Sampler(..)
         ) && self.undo.can_group(plan.key, self.frames_done)
         {
             self.undo.changed();
@@ -220,6 +227,10 @@ impl RtEngine {
             return None;
         }
         let estimate = match plan.target {
+            Target::Sampler(index) => {
+                let Command::SamplerEdit(edit) = &c else { unreachable!() };
+                bank_bytes(&edit.bank) + self.sampler_banks.get(index).map_or(0, bank_bytes)
+            }
             Target::Media(d) => {
                 self.decks[d as usize]
                     .audio
@@ -279,6 +290,14 @@ impl RtEngine {
             None
         };
         let patch = match plan.target {
+            Target::Sampler(index) => {
+                let Command::SamplerEdit(edit) = &c else { unreachable!() };
+                Patch::Sampler {
+                    index, value: self.sampler_banks.get(index).cloned(), selected: self.sampler_bank,
+                    original: self.sampler_banks.get(index).map(|bank| bank.data.clone()),
+                    replacement: edit.bank.data.clone(),
+                }
+            }
             Target::Global => Patch::Global(Global::get(self)),
             Target::Track(t) => Patch::Track(t, TrackControls::get(&self.tracks[t as usize])),
             Target::Gain(t, s) => Patch::ClipGain {
@@ -373,6 +392,8 @@ impl RtEngine {
 }
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
+        Command::SamplerEdit(edit) => bank_bytes(&edit.bank),
+        Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|sample| sample_bytes(sample)).sum::<usize>(),
         Command::SetNotes { notes, .. } => notes.capacity() * std::mem::size_of::<MidiNote>(),
         Command::DeckAudio { audio, .. }
         | Command::DeckDecoded { audio, .. }
@@ -384,4 +405,8 @@ pub(super) fn command_bytes(command: &Command) -> usize {
         Command::Gesture { command, .. } => std::mem::size_of::<Command>() + command_bytes(command),
         _ => 0,
     }
+}
+
+pub(super) fn bank_bytes(bank: &sampler::Bank) -> usize {
+    bank.data.metadata_bytes() + bank.data.audio.iter().flatten().map(|audio| sample_bytes(audio)).sum::<usize>()
 }

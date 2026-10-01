@@ -128,11 +128,11 @@ fn every_sample_label_and_tooltip_dispatches_exact_bank_slot_and_matching_releas
             assert!(pads.f.app.pad_held[pad]);
             let voice = pads.f.rt.pad_voices[pad].as_ref().unwrap();
             assert!(
-                Arc::ptr_eq(&voice.0, &pads.f.rt.pad_banks[bank][pad]),
+                Arc::ptr_eq(&voice.audio, &pads.f.rt.sampler_banks[bank].data.audio[pad].as_ref().unwrap()),
                 "bank {bank} label {} misrouted",
                 pad + 1
             );
-            assert_eq!(voice.3, 4, "original sampler mixer destination");
+            assert_eq!(voice.track, 4, "original sampler mixer destination");
             assert!(pads.frame(vec![]).1.is_empty(), "held pointer retriggered");
             assert_eq!(pads.pointer(pads.points[pad], false), [(pad as u8, false)]);
             assert!(!pads.f.app.pad_held.iter().any(|held| *held));
@@ -212,11 +212,11 @@ fn held_identity_survives_mode_changes_gaps_octave_and_selection_without_new_gat
     for pad in 0..16usize {
         pads.instrument(SamplerInstrument::Samples);
         assert_eq!(pads.pointer(pads.points[pad], true), [(pad as u8, true)]);
-        let sample = pads.f.rt.pad_voices[pad].as_ref().unwrap().0.clone();
+        let sample = pads.f.rt.pad_voices[pad].as_ref().unwrap().audio.clone();
         pads.instrument(SamplerInstrument::Synth(SynthInstrument::Keys));
         assert!(pads.f.app.pad_held[pad]);
         assert!(Arc::ptr_eq(
-            &pads.f.rt.pad_voices[pad].as_ref().unwrap().0,
+            &pads.f.rt.pad_voices[pad].as_ref().unwrap().audio,
             &sample
         ));
         assert!(

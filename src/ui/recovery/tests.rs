@@ -986,7 +986,7 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
     let inventory = crate::recovery::discover(&root, &cancel).unwrap();
     let recovered =
         crate::recovery::recover::<project::Document>(&inventory.candidates[0], &cancel).unwrap();
-    assert_eq!(recovered.bundle.state.engine.version, 3);
+    assert_eq!(recovered.bundle.state.engine.version, crate::engine::project::STATE_VERSION);
     assert_eq!(recovered.bundle.state.engine.decks[0].grid, Some(grid));
     let mut restarted = Gui::new();
     restarted.start(&root);
@@ -1007,10 +1007,11 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
     );
     assert!(!restarted.rt.playing && restarted.rt.decks.iter().all(|d| !d.playing));
 
-    for version in [1, 2, 4, 3] {
+    for version in [1, 2, crate::engine::project::STATE_VERSION + 1, 3] {
         let variant = files.path(&format!("state-{version}"));
         let mut state = serde_json::to_value(&recovered.bundle.state).unwrap();
         state["engine"]["version"] = version.into();
+        if version < 4 { for bank in state["engine"]["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); } }
         for deck in state["engine"]["decks"].as_array_mut().unwrap() {
             if version <= 2 {
                 deck.as_object_mut().unwrap().remove("grid");
@@ -1058,7 +1059,7 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
             assert_eq!(gui.rt.decks[0].grid, None);
             let message = gui.app.recovery.message.as_deref().unwrap();
             assert!(
-                message.contains(if version == 4 {
+                message.contains(if version > crate::engine::project::STATE_VERSION {
                     "version"
                 } else {
                     "Grid tempo"

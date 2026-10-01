@@ -243,6 +243,13 @@ impl Effect {
 
 pub(super) enum Patch {
     Global(Global),
+    Sampler {
+        index: usize,
+        value: Option<sampler::Bank>,
+        selected: usize,
+        original: Option<crate::sampler_bank::assets::Bank>,
+        replacement: crate::sampler_bank::assets::Bank,
+    },
     Track(u8, TrackControls),
     ClipGain {
         track: u8,
@@ -322,7 +329,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::Global(_) => T::None,
+            Self::Global(_) | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -337,6 +344,9 @@ impl Patch {
     }
     pub fn valid(&self, rt: &RtEngine) -> bool {
         match self {
+            Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
+                && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
+                else { *index < rt.sampler_banks.len() },
             Self::Effect { rack, index, .. } => *index < rack.get(rt).slots.len(),
             Self::Slot {
                 rack, index, slot, ..
@@ -353,6 +363,17 @@ impl Patch {
     }
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
+            Self::Sampler { index, value, selected, .. } => {
+                let selection = rt.sampler_bank;
+                if let Some(mut prior) = value.take() {
+                    if let Some(current) = rt.sampler_banks.get_mut(*index) { std::mem::swap(current, &mut prior); *value = Some(prior); }
+                    else { rt.sampler_banks.push(prior); }
+                } else { *value = Some(rt.sampler_banks.remove(*index)); }
+                rt.sampler_revision += 1;
+                if let Some(bank) = rt.sampler_banks.get_mut(*index) { bank.revision = rt.sampler_revision; }
+                rt.sampler_bank = (*selected).min(rt.sampler_banks.len().saturating_sub(1));
+                *selected = selection;
+            }
             Self::Global(value) => value.swap(rt),
             Self::Track(track, value) => value.swap(&mut rt.tracks[*track as usize]),
             Self::ClipGain { track, scene, gain } => std::mem::swap(
@@ -434,6 +455,7 @@ impl Patch {
 
     pub fn heap_bytes(&self) -> usize {
         match self {
+            Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
             Self::Slot { reserved_bytes, .. } => *reserved_bytes,
             Self::Clip {
                 value, spare_notes, ..
@@ -456,6 +478,11 @@ impl Patch {
             }
         };
         match self {
+            Self::Sampler { original, replacement, .. } => {
+                for bank in original.iter().chain(std::iter::once(replacement)) {
+                    for audio in &bank.audio { visit(audio); }
+                }
+            }
             Self::Clip { value, .. } => visit(&value.audio),
             Self::Media {
                 reserved_original,

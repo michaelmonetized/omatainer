@@ -185,7 +185,7 @@ fn master_controls_apply_to_both_channels_and_rate_changes_reset_both_tails() {
             rt.master_fx[0].echo[channel].tick(0.5);
             rt.master_fx[1].reverb[channel].tick(0.5);
         }
-        rt.set_sample_rate(sr);
+        rt.set_sample_rate(sr).unwrap();
         for (bpm, echo_mix, reverb_mix) in
             [(90.0, 0.25, 0.75), (120.0, 1.0, 1.0), (180.0, 0.0, 0.0)]
         {

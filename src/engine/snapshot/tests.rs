@@ -125,7 +125,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
     let mut rt = engine();
     rt.tracks[0].name = "track".repeat(65_536);
     rt.tracks[0].clips[0].name = "clip".repeat(32_768);
-    rt.sampler_banks = vec!["bank".repeat(8192); 5];
+    rt.sampler_banks = (0..5).map(|_| sampler::test_bank(&rt, "bank".repeat(1024), std::array::from_fn(|_| None))).collect();
     rt.fx_view = 103;
     rt.scene_fx[3].slots = (0..512)
         .map(|index| {
@@ -159,7 +159,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
         assert_eq!(snap.tracks[0].clips[0].name, rt.tracks[0].clips[0].name);
         assert_eq!(snap.decks[0].title, rt.decks[0].title);
         assert_eq!(snap.decks[0].peaks.len(), 262_144);
-        assert_eq!(snap.sampler_banks, rt.sampler_banks);
+        assert_eq!(snap.sampler_banks, rt.sampler_banks.iter().map(|bank| bank.name().to_owned()).collect::<Vec<_>>());
         assert_eq!(snap.fx_slots.len(), 512);
         assert_eq!(snap.fx_slots[511].3[0], 511.0 / 512.0);
         assert_eq!(snap.midi, ["persistent MIDI input"]);
@@ -194,7 +194,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
     rt.tracks[0].name = "short".into();
     rt.tracks[0].clips[0].name = "short clip".into();
     rt.decks[0].title.clear();
-    rt.sampler_banks = vec!["one bank".into()];
+    rt.sampler_banks = vec![sampler::test_bank(&rt, "one bank".into(), std::array::from_fn(|_| None))];
     rt.scene_fx[3].slots.clear();
     publish_without_allocating(&mut rt);
     rt.publish_for_test();

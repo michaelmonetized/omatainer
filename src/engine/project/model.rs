@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 3;
+pub const STATE_VERSION: u32 = 4;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -103,7 +103,11 @@ pub struct Effect {
 #[serde(deny_unknown_fields)]
 pub struct Bank {
     pub name: String,
-    pub media: [usize; 16],
+    pub media: [Option<usize>; 16],
+    #[serde(default)]
+    pub instance: Option<crate::sampler_bank::BankId>,
+    #[serde(default)]
+    pub settings: Option<Arc<crate::sampler_bank::resident::Settings>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -230,7 +234,7 @@ impl State {
 
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
-        if !matches!(self.version, 1 | 2 | STATE_VERSION) {
+        if !(1..=STATE_VERSION).contains(&self.version) {
             return Err(format!(
                 "unsupported project state version {}",
                 self.version
@@ -311,9 +315,21 @@ impl State {
         if self.scene_fx.iter().any(|rack| !valid_fx(rack, true)) {
             return fail("scene rack");
         }
+        let mut bank_ids = std::collections::HashSet::new();
         for bank in &self.banks {
-            if !text_ok(&bank.name) || bank.media.iter().any(|i| !reference(*i)) {
+            if !text_ok(&bank.name) || bank.media.iter().any(|i| !optional(*i)) {
                 return fail("sample bank");
+            }
+            if self.version < 4 {
+                if bank.instance.is_some() || bank.settings.is_some() || bank.media.iter().any(Option::is_none) {
+                    return fail("legacy sample bank must contain embedded media only");
+                }
+            } else {
+                let (Some(instance), Some(settings)) = (bank.instance, &bank.settings) else { return fail("sample bank identity or settings"); };
+                if !bank_ids.insert(instance) || settings.definition == Some(instance) || settings.name != bank.name || settings.validate().is_err() { return fail("sample bank identity or settings"); }
+                for (slot, index) in settings.slots.iter().zip(bank.media) {
+                    if index.is_some_and(|i| slot.controls.frames(media[i].sr, media[i].frames()).is_err()) { return fail("sample bank source range"); }
+                }
             }
         }
         if self.builtin.iter().any(|i| !optional(*i)) {
@@ -384,7 +400,7 @@ impl State {
             map(&mut deck.audio);
         }
         for bank in &mut self.banks {
-            for index in &mut bank.media {
+            for index in bank.media.iter_mut().flatten() {
                 *index = remap[*index];
             }
         }

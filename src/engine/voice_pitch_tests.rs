@@ -290,7 +290,7 @@ fn actual_sampler_octave_tuning_and_rate_preparation_keep_pitch_cache_current() 
         .iter()
         .filter(|voice| voice.env.active())
         .all(|voice| voice.tuning_hz == 442.0));
-    rt.set_sample_rate(96_000);
+    rt.set_sample_rate(96_000).unwrap();
     rt.apply(Command::SamplerPad { pad: 0, on: true });
     let voice = rt
         .sampler_poly
