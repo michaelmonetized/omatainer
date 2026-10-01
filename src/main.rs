@@ -38,6 +38,15 @@ const STATUS_REQUEST: &str = r#"{"op":"status"}"#;
 
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().map(|s| s.as_str()) == Some("benchmark-build-info") {
+        anyhow::ensure!(args.len() == 1, "usage: omatainer benchmark-build-info");
+        println!("{}", serde_json::json!({
+            "schema": 1, "debug_assertions": cfg!(debug_assertions),
+            "pkg_version": env!("CARGO_PKG_VERSION"),
+            "arch": std::env::consts::ARCH, "os": std::env::consts::OS,
+        }));
+        return Ok(());
+    }
     if args.first().map(|s| s.as_str()) == Some("licenses") {
         std::hint::black_box(licenses::PROTOCOL);
         let text = match args.get(1).map(String::as_str) {

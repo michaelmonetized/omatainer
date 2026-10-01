@@ -778,3 +778,14 @@ once before encoding the request.
   time, with nominal callback resolution at the logical rate and repeat spread. It is
   not converter-only latency, and does not subtract unrelated CPAL stream clocks.
   No physical probe or controller qualification was performed for this change.
+
+## Local release qualification
+
+- Packaging and installation require source-, policy-, toolchain- and binary-bound
+  passing local workload evidence. Raw timing samples and unresolved limits ship
+  with the artifact; verification recomputes distributions and golden checks.
+- A draft policy, missing or stale report, failed workload, missing native AT-SPI
+  preflight or unreviewed target stops publication. Native builds and benchmarks
+  remain local; no GitHub compute is used.
+- Headless callback/render/UI budgets do not claim hardware deadlines, XRUN
+  freedom, physical controller compatibility, compositor FPS or Orca testing.

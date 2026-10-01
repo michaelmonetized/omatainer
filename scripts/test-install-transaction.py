@@ -20,6 +20,8 @@ SPEC = importlib.util.spec_from_file_location(
 )
 installer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(installer)
+FIXTURE_SPEC=importlib.util.spec_from_file_location('performance_fixture',Path(__file__).with_name('performance-test-support.py'))
+performance_fixture=importlib.util.module_from_spec(FIXTURE_SPEC);FIXTURE_SPEC.loader.exec_module(performance_fixture)
 REPOSITORY = Path(__file__).resolve().parent.parent
 CARGO_METADATA = subprocess.run(['cargo', 'metadata', '--locked', '--offline', '--format-version', '1', '--filter-platform', json.loads((REPOSITORY/'licenses/manifest.json').read_text())['target'], '--manifest-path', str(REPOSITORY/'Cargo.toml')], check=True, capture_output=True).stdout
 
@@ -49,6 +51,7 @@ class InstallerTransactionTests(unittest.TestCase):
         destination = self.source / "target/release/omatainer"
         destination.parent.mkdir(parents=True)
         shutil.copy2(self.new, destination)
+        performance_fixture.report(self.source,destination)
         self.write(installer.HYPR, '-- unrelated window configuration\nrequire("hypr.apps.synchro")\n', 0o640)
         self.write(installer.BINDINGS, '-- custom bindings\no.bind("SUPER + X", "custom", "true")\n')
         self.write(installer.SHELL, json.dumps({
@@ -114,8 +117,8 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
         source = self.base / f"{name}.c"
         source.write_text('#include <stdio.h>\n#include <string.h>\n' +
             'int main(int argc, char **argv) { if(argc>1 && !strcmp(argv[1],"omatainer:offline-license-records:v1"))return 7; if(argc==3 && !strcmp(argv[1],"licenses")) { const char *p = NULL;' +
-            'if(!strcmp(argv[2],"--manifest")) p = '+json.dumps(str(REPOSITORY/'licenses/manifest.json'))+';' +
-            'if(!strcmp(argv[2],"--notices")) p = '+json.dumps(str(REPOSITORY/'licenses/notices.json'))+';' +
+            'if(!strcmp(argv[2],"--manifest")) p = '+json.dumps(str(self.source/'licenses/manifest.json'))+';' +
+            'if(!strcmp(argv[2],"--notices")) p = '+json.dumps(str(self.source/'licenses/notices.json'))+';' +
             'if(!p)return 8;FILE *f=fopen(p,"rb");if(!f)return 9;int c;while((c=fgetc(f))!=EOF)putchar(c);fclose(f);return 0;}' +
             f'return {result};' + '}\n')
         destination = self.base / name
@@ -153,6 +156,22 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
 
     def install(self, after_mutation=None):
         return installer.install(self.source, self.root, self.state, after_mutation)
+
+    def test_missing_stale_or_failing_performance_evidence_never_changes_the_desktop(self):
+        self.prior_install()
+        self.write(installer.licenses.gate.INSTALLED,'previous retained evidence')
+        original=self.tree();report=self.source/installer.licenses.gate.REPORT;prior=report.read_bytes()
+        for failure in ('missing','stale','failed'):
+            with self.subTest(failure=failure):
+                if failure=='missing':report.unlink()
+                else:
+                    value=json.loads(prior)
+                    if failure=='stale':value['bindings']['binary_sha256']='0'*64
+                    else:value['raw']['workloads'][0]['measurements'][0]['checks']['finite_output']=False
+                    report.write_text(json.dumps(value))
+                with self.assertRaises(installer.InstallError):self.install()
+                self.assertEqual(self.tree(),original)
+                report.write_bytes(prior)
 
     def test_success_is_idempotent_preserves_unrelated_data_and_retains_recoverable_backups(self):
         self.prior_install()

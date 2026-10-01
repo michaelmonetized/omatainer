@@ -353,3 +353,10 @@ validates and retains the same records, including an executable hash receipt,
 under `~/.local/share/omatainer/licenses` and its per-install recovery journal.
 `omatainer licenses --manifest` and `omatainer licenses --notices` print the
 records embedded in the executable without opening audio or the desktop.
+
+Release packaging and installation also require a passing local workload report
+for the exact artifact. Run `python3 scripts/performance-gate.py run` after
+reviewing the benchmark policy and refreshing the license inventory; `check`
+recomputes the retained raw evidence. The report travels with the package and
+installation. Draft policies, missing/stale evidence and failed checks block
+publication. See [the local release gate contract and reproduction steps](docs/validation/issue-95-local-release-gate.md).

@@ -368,6 +368,7 @@ def artifacts(transaction, source):
     if {dest:src for src,dest in document['package'].items()} != STATIC:
         raise InstallError("installer payload differs from the reviewed license inventory")
     licenses.verify_binary(source, source / "target/release/omatainer")
+    licenses.gate.check(source, source / "target/release/omatainer", manifest=document)
     for relative, source_path in licenses.INSTALLED.items():
         transaction.stage(relative, (source / source_path).read_bytes())
     receipt = licenses.release_record(source, source / "target/release/omatainer", document)
