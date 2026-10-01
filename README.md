@@ -268,13 +268,32 @@ MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
 their accepted count and last source in `midi_clock` status; this reception hook
 does not synchronize tempo or phase. See the [MIDI framing validation](docs/validation/issue-41-midi-realtime.md).
 
-The sampler offers **samples**, **analog**, **keys**, and **pad**. Samples use the
-Kit/Perc/Hits banks. Analog is a fast saw/square bass, Keys blend saw and sine with
+The sampler offers **samples**, **analog**, **keys**, and **pad**. Samples use
+factory Kit/Perc/Hits banks or your own banks. Analog is a fast saw/square bass, Keys blend saw and sine with
 a medium release, and Pad blends sine with a detuned saw and a longer envelope.
 Changing the selection affects new presses; held notes keep their original sound.
 Sample pads **1–8** occupy the bottom row and **9–16** the top row, preserving the
 piano layout's natural/accidental positions. Number N triggers bank slot N−1.
 Hover a pad for its slot or piano MIDI note; blank piano positions are inactive.
+
+Open the **Sampler bank editor** to create an empty bank, copy an original factory
+bank, or edit a user bank. Select a local crate file and assign it to one of 16
+slots. Prepare its gain and source-second start/end range, inspect the sampled
+PCM waveform, and audition it through the selected track before **Apply bank**.
+The waveform samples a bounded set of actual PCM positions; it can miss narrow
+peaks. Cancel discards unapplied drafts; an already-applied edit remains applied.
+Existing voices retain the
+source, range, gain and destination captured at their onset.
+
+**Save reusable** stores a named reference definition outside the project. Loading
+it creates a new working bank; duplicate names do not overwrite each other.
+There are up to 64 reusable definitions and 16 simultaneous project banks, with
+bounded shared PCM storage. Reusable definitions need their original files or a
+verified same-content library relocation; missing slots are shown explicitly and
+never replaced with defaults. Native **Project Save** embeds the available PCM,
+so a project remains playable when its original files are missing. User/project
+samples keep their source rate when the audio output rate changes. Preparation
+and reusable-store operations are unavailable during Performance protection.
 
 Theme colors, shell base font size, and fontconfig's current monospace font
 reload in a background worker, including font-only edits. The next valid update

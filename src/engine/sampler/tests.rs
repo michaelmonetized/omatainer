@@ -329,3 +329,37 @@ fn registered_factory_payloads_preserve_original_generated_pcm_at_each_output_ra
         } }
     }
 }
+
+#[test]
+fn working_bank_limit_refuses_without_history_mutation_and_undo_never_revives_old_targets() {
+    let (engine, mut rt) = fixture();
+    let source = native_sample();
+    while rt.sampler_banks.len() < MAX_BANKS {
+        let request = edit(&rt, bank(&engine.sampler_assets, source.clone(), Controls::default()),
+            Target::Append { revision: rt.sampler_revision });
+        apply(&engine, &mut rt, request);
+    }
+    let refused = edit(&rt, bank(&engine.sampler_assets, source.clone(), Controls::default()),
+        Target::Append { revision: rt.sampler_revision });
+    let ack = refused.ack.clone();
+    let checkpoint = engine.undo.checkpoint();
+    let counts = test_alloc::measure(|| rt.apply(Command::SamplerEdit(refused)));
+    assert_eq!(counts, test_alloc::Counts::default());
+    assert_eq!(ack.state(), EditState::Rejected);
+    assert_eq!(rt.sampler_banks.len(), MAX_BANKS);
+    assert_eq!(engine.undo.checkpoint(), checkpoint);
+
+    let stale = edit(&rt, bank(&engine.sampler_assets, source.clone(), Controls::default()),
+        Target::Append { revision: rt.sampler_revision });
+    let stale_ack = stale.ack.clone();
+    assert_eq!(test_alloc::measure(|| rt.apply(Command::Undo)), test_alloc::Counts::default());
+    assert_eq!(rt.sampler_banks.len(), MAX_BANKS - 1);
+    let after_undo = engine.undo.checkpoint();
+    assert_eq!(test_alloc::measure(|| rt.apply(Command::SamplerEdit(stale))), test_alloc::Counts::default());
+    assert_eq!(stale_ack.state(), EditState::Rejected);
+    assert_eq!(engine.undo.checkpoint(), after_undo);
+    let fresh = edit(&rt, bank(&engine.sampler_assets, source, Controls::default()),
+        Target::Append { revision: rt.sampler_revision });
+    apply(&engine, &mut rt, fresh);
+    assert_eq!(rt.sampler_banks.len(), MAX_BANKS);
+}
