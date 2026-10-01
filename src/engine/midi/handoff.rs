@@ -406,11 +406,27 @@ pub(super) fn start(
     name: String,
     counters: Arc<InputCounters>,
 ) -> std::io::Result<(InputSink, InputGuard)> {
+    start_with_completion(source, map, cmd, log, learn, name, counters, || {})
+}
+
+pub(super) fn start_with_completion(
+    source: u64,
+    map: MidiMap,
+    cmd: CommandPort,
+    log: Arc<Mutex<Vec<String>>>,
+    learn: Arc<Mutex<Option<String>>>,
+    name: String,
+    counters: Arc<InputCounters>,
+    completed: impl FnOnce() + Send + 'static,
+) -> std::io::Result<(InputSink, InputGuard)> {
     let (sink, worker) = channel(EVENTS, source, map, cmd, log, learn, name, counters);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()
         .name(format!("omatainer-midi-{source}"))
-        .spawn(move || worker.run())?;
+        .spawn(move || {
+            worker.run();
+            completed();
+        })?;
     Ok((
         sink,
         InputGuard {

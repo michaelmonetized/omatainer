@@ -11,6 +11,7 @@ mod profile;
 mod handoff;
 mod framing;
 mod relative;
+pub(crate) mod device_status;
 pub use handoff::InputStats;
 pub use relative::RelativeSpec;
 #[cfg(test)]
@@ -100,19 +101,12 @@ pub enum UnmappedNotes {
     Ignore,
 }
 
-#[derive(Clone, Debug)]
-pub struct MidiDevice {
-    pub name: String,
-    pub map: String,
-}
-
 pub struct MidiHub {
     _ins: Vec<MidiInputConnection<()>>,
     // Connections close before worker guards join, ending callback ownership.
     _workers: Vec<handoff::InputGuard>,
     input_counters: Arc<handoff::InputCounters>,
     outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
-    pub devices: Arc<Mutex<Vec<MidiDevice>>>,
     pub log: Arc<Mutex<Vec<String>>>,
     pub learn: Arc<Mutex<Option<String>>>,
 }
@@ -144,16 +138,14 @@ impl MidiHub {
             _workers: Vec::new(),
             input_counters: Arc::new(handoff::InputCounters::default()),
             outs: Arc::new(Mutex::new(Vec::new())),
-            devices: Arc::new(Mutex::new(Vec::new())),
             log: Arc::new(Mutex::new(Vec::new())),
             learn: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub fn start(cmd: super::CommandPort) -> anyhow::Result<Self> {
+    pub fn start(cmd: super::CommandPort, snapshot: Arc<Mutex<super::Snapshot>>) -> anyhow::Result<Self> {
         // Fail profile validation before a device callback can dispatch it.
         let maps = builtin_maps()?;
-        let devices = Arc::new(Mutex::new(Vec::new()));
         let log = Arc::new(Mutex::new(Vec::new()));
         let learn = Arc::new(Mutex::new(None));
         let input_counters = Arc::new(handoff::InputCounters::default());
@@ -167,26 +159,40 @@ impl MidiHub {
                 .into_iter()
                 .filter_map(|p| probe.port_name(&p).ok().map(|n| (n, p)))
                 .collect(),
-            Err(_) => Vec::new(),
+            Err(error) => {
+                device_status::Status::new(&snapshot, "MIDI input backend", "unavailable").failed(error);
+                Vec::new()
+            }
         };
         for (idx, (name, port)) in in_ports.into_iter().enumerate() {
             if name.to_lowercase().contains("through") {
                 continue;
             }
-            let Ok(mut midi_in) = MidiInput::new(&format!("omatainer-in-{idx}")) else {
-                break;
+            let map = pick_map(&maps, &name);
+            let status = device_status::Status::new(&snapshot, &name, &map.name);
+            let mut midi_in = match MidiInput::new(&format!("omatainer-in-{idx}")) {
+                Ok(input) => input,
+                Err(error) => {
+                    status.failed(&error);
+                    log.lock().push(format!("in init fail {name}: {error}"));
+                    continue;
+                }
             };
             midi_in.ignore(Ignore::None);
-            let map = pick_map(&maps, &name);
-            devices.lock().push(MidiDevice {
-                name: name.clone(),
-                map: map.name.clone(),
-            });
             // Names and channels are not identities: two identical keyboards
             // can use the same channel and pitch simultaneously.
             let source = next_source_id();
-            let (mut input, worker) = handoff::start(source, map, cmd.clone(),
-                log.clone(), learn.clone(), name.clone(), input_counters.clone())?;
+            let completed = status.clone();
+            let (mut input, worker) = match handoff::start_with_completion(source, map, cmd.clone(),
+                log.clone(), learn.clone(), name.clone(), input_counters.clone(),
+                move || completed.disconnected()) {
+                Ok(pair) => pair,
+                Err(error) => {
+                    status.failed(&error);
+                    log.lock().push(format!("in worker fail {name}: {error}"));
+                    continue;
+                }
+            };
             match midi_in.connect(
                 &port,
                 &format!("omatainer-in-{name}"),
@@ -196,10 +202,12 @@ impl MidiHub {
                 (),
             ) {
                 Ok(conn) => {
+                    status.connected();
                     ins.push(conn);
                     workers.push(worker);
                 }
                 Err(e) => {
+                    status.failed(&e);
                     log.lock().push(format!("in fail {name}: {e}"));
                 }
             }
@@ -225,11 +233,8 @@ impl MidiHub {
             }
         }
 
-        if devices.lock().is_empty() {
-            devices.lock().push(MidiDevice {
-                name: "keyboard + mouse".into(),
-                map: "built-in".into(),
-            });
+        if ins.is_empty() {
+            device_status::Status::new(&snapshot, "keyboard + mouse", "built-in").connected();
         }
 
         Ok(Self {
@@ -237,7 +242,6 @@ impl MidiHub {
             _workers: workers,
             input_counters,
             outs,
-            devices,
             log,
             learn,
         })
