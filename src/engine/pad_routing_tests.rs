@@ -102,6 +102,7 @@ fn both_sample_and_instrument_pads_obey_destination_mute_gain_pan_solo_and_fx() 
                 3 => rt.tracks[DEST + 1].solo = true,
                 _ => {
                     let mut effect = fx::FxSlot::new(fx::FxId::Balance, rt.sr);
+                    effect.mix = 1.0;
                     effect.p[0] = 0.0;
                     rt.tracks[DEST].fx.slots.push(effect);
                 }

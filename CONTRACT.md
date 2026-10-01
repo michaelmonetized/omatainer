@@ -235,3 +235,15 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Zero mix emits dry input while processor history keeps advancing; full mix
   emits only the time-effect signal. Intermediate mix changes do not scale the
   stored feedback history or apply the wet coefficient a second time.
+
+## Spread and Balance slot mix
+
+- Every Spread and Balance instance processes its own position in the serial
+  stereo chain. Its mix applies once: dry × (1 − mix) + full effect × mix.
+  Zero mix is exact stereo identity; full mix keeps the existing effect law.
+- Spread above noon delays the right channel; below noon it blends toward the
+  delayed stereo midpoint. Noon is exact identity and does not advance a delay
+  tap. Balance keeps the existing square-root attenuation of the opposite side.
+- Nonneutral enabled Spread history advances even at zero mix, so increasing
+  mix exposes its current history. Per-slot bypass retains the 5 ms fade/freeze
+  policy; each duplicate instance owns its history and mix independently.

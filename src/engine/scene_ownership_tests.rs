@@ -63,6 +63,7 @@ fn added_scenes_process_only_the_tracks_routed_to_each_scene() {
         rt.apply(Command::LaunchScene { scene: 0 });
         rt.apply(Command::AddScene { scene: 1 });
         let mut balance = fx::FxSlot::new(fx::FxId::Balance, rt.sr);
+        balance.mix = 1.0;
         // Kill that scene's only populated channel.
         balance.p[0] = if effect_scene == 0 { 1.0 } else { 0.0 };
         rt.scene_fx[effect_scene].slots.push(balance);
