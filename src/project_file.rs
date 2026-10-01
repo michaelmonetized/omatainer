@@ -424,11 +424,22 @@ pub fn load<T: DeserializeOwned>(
     cancel: &AtomicBool,
 ) -> Result<Bundle<T>, Error> {
     check_cancel(cancel)?;
-    let mut file = OpenOptions::new()
+    let file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path)
         .map_err(|e| io_error("open", e))?;
+    load_from_file(file, limits, cancel)
+}
+
+/// Decode the caller's already-open regular file. Recovery uses this entry
+/// point so digest verification and decoding cannot select different inodes.
+pub(crate) fn load_from_file<T: DeserializeOwned>(
+    mut file: File,
+    limits: &Limits,
+    cancel: &AtomicBool,
+) -> Result<Bundle<T>, Error> {
+    check_cancel(cancel)?;
     let stat = file.metadata().map_err(|e| io_error("inspect input", e))?;
     if !stat.is_file() {
         return Err(invalid("input is not a regular file"));
