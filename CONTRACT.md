@@ -482,6 +482,33 @@ once before encoding the request.
   500 ms deadline and 4096-byte limits on each output stream. Diagnostics are
   emitted only when they change. A slow filesystem never blocks GUI teardown.
 
+### Explicit reload receipt
+
+- `reload-theme` is a strict typed IPC operation with no target or extra fields.
+  It uses a producer-only GUI port, never an audio command or callback-owned
+  request state. Eight pending requests and one active worker transaction are
+  the fixed bounds; full/unavailable endpoints reject explicitly. The existing
+  eight IPC workers, request/reply byte limits and finite writes remain intact.
+- Each force re-reads and validates colors, shell size and selected font bytes,
+  including unchanged font identities. All requested resources must be valid.
+  A failed force preserves the prior bundle and prevents partial automatic
+  publication until a fully valid bundle is available again. Automatic checks
+  otherwise retain their existing per-source last-good behavior.
+- Completion is correlated to the request and follows the actual next GUI frame
+  that installs font definitions and zoom. The latest applied preference profile
+  remains authoritative: follow-theme off retains the default appearance while
+  refreshing the cached desktop bundle; size and scale overrides remain active.
+- Admission-to-receipt is bounded to 3 seconds; the reload CLI uses a separate
+  4-second reply budget. Cancellation before GUI application prevents that
+  request from applying. The independent watcher may later publish the current
+  valid resources normally, so cancelling a ticket does not disable theme watching.
+  Cancellation after application begins reports an unknown
+  outcome, not rollback. Server shutdown cancels waiting handlers in at most a
+  20 ms wait slice; GUI teardown does not join a blocked resource worker.
+- Fontconfig retains its 500 ms subprocess limit. A kernel filesystem call can
+  outlive the receipt deadline on its sole background worker; no additional jobs
+  accumulate behind it and neither GUI nor audio waits for that call.
+
 ## Selected font and glyph fallback
 
 - Fontconfig's resolved installed `monospace` face is first in both proportional

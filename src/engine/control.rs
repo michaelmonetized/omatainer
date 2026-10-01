@@ -19,6 +19,7 @@ pub const MAX_QUEUED_PAYLOAD_BYTES: usize = 256 * 1024 * 1024;
 #[derive(Clone)]
 pub struct CommandPort {
     input_epoch: Option<u64>,
+    theme_requests: crate::theme::requests::Port,
     sender: crossbeam_channel::Sender<Command>,
     shared: std::sync::Arc<AdmissionShared>,
     admission: std::sync::Arc<parking_lot::Mutex<Admission>>,
@@ -453,6 +454,7 @@ impl CommandPort {
         });
         let port = Self {
             input_epoch: None,
+            theme_requests: crate::theme::requests::Port::default(),
             sender,
             shared: shared.clone(),
             admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
@@ -473,6 +475,8 @@ impl CommandPort {
             },
         )
     }
+
+    pub(crate) fn theme_requests(&self) -> &crate::theme::requests::Port { &self.theme_requests }
 
     pub fn len(&self) -> usize {
         self.sender.len()

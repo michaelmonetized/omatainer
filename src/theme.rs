@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 mod color;
 pub(crate) mod reload;
+pub(crate) mod requests;
 #[cfg(test)]
 mod tests;
 
