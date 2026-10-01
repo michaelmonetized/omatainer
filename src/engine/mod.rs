@@ -14,6 +14,8 @@ mod arp_tests;
 #[cfg(test)]
 mod fx_allocation_tests;
 #[cfg(test)]
+mod fx_control_tests;
+#[cfg(test)]
 mod mute_lifecycle_tests;
 #[cfg(test)]
 pub(crate) mod test_alloc;
@@ -2170,7 +2172,10 @@ impl RtEngine {
             }
             Command::CloseFx => self.fx_view = -1,
             Command::FxAdd(kind) => {
-                let id = *fx::FxId::all().get(kind as usize).unwrap_or(&fx::FxId::Delay);
+                let Some(&id) = fx::FxId::all().get(kind as usize) else { return };
+                if !id.supports_scene() && !(0..TRACKS as i16).contains(&self.fx_view) {
+                    return;
+                }
                 let slot = fx::FxSlot::new(id, self.sr);
                 self.active_chain().slots.push(slot);
             }
@@ -2183,13 +2188,13 @@ impl RtEngine {
             Command::FxMix { slot, value } => {
                 let c = self.active_chain();
                 if let Some(s) = c.slots.get_mut(slot) {
-                    s.mix = value.clamp(0.0, 1.0);
+                    s.set_control(None, value);
                 }
             }
             Command::FxParam { slot, p, value } => {
                 let c = self.active_chain();
                 if let Some(s) = c.slots.get_mut(slot) {
-                    s.p[p as usize % 4] = value.clamp(0.0, 1.0);
+                    s.set_control(Some(p), value);
                 }
             }
         }

@@ -16,6 +16,7 @@ mod library_metadata;
 mod bpm;
 use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
+mod fx_controls;
 mod library_view;
 mod key_hints;
 mod clip_gain;
@@ -1061,6 +1062,9 @@ impl App {
         });
         ui.horizontal_wrapped(|ui| {
             for (i, id) in FxId::all().iter().enumerate() {
+                if self.snap.fx_view >= 100 && !id.supports_scene() {
+                    continue;
+                }
                 if pill(ui, t, id.name(), false, t.cyan).clicked() {
                     self.send(Command::FxAdd(i as u8));
                 }
@@ -1068,31 +1072,7 @@ impl App {
         });
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (i, (name, on, mix, p)) in self.snap.fx_slots.clone().into_iter().enumerate() {
-                ui.horizontal(|ui| {
-                    if pill(ui, t, &name, on, t.green).clicked() {
-                        self.send(Command::FxToggle(i));
-                    }
-                    let mut m = mix;
-                    if ui.add(egui::Slider::new(&mut m, 0.0..=1.0).text("mix")).changed() {
-                        self.send(Command::FxMix { slot: i, value: m });
-                    }
-                    for pi in 0..3 {
-                        let mut v = p[pi];
-                        let mut slider = egui::Slider::new(&mut v, 0.0..=1.0);
-                        if name == "spread" && pi == 0 {
-                            slider = slider.text("width");
-                        }
-                        let response = ui.add(slider);
-                        let response = if name == "spread" && pi == 0 {
-                            response.on_hover_text("0: mono; 0.5: original stereo; 1: Haas spread")
-                        } else {
-                            response
-                        };
-                        if response.changed() {
-                            self.send(Command::FxParam { slot: i, p: pi as u8, value: v });
-                        }
-                    }
-                });
+                self.fx_slot_controls(ui, t, i, &name, on, mix, p);
             }
             if self.snap.fx_slots.is_empty() {
                 ui.label(RichText::new("add a device — chain runs top to bottom").color(t.muted));
