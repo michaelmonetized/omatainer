@@ -23,6 +23,7 @@ use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
 mod audio_status;
+mod diagnostics;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -49,6 +50,7 @@ mod sampler_identity_tests;
 mod duration_tests;
 
 pub struct App {
+    diagnostics: diagnostics::Diagnostics,
     engine: Engine,
     theme: Theme,
     fonts_set: bool,
@@ -109,6 +111,7 @@ impl App {
     ) -> Self {
         let snap = engine.snapshot();
         let mut app = Self {
+            diagnostics: diagnostics::Diagnostics::default(),
             engine,
             theme,
             fonts_set: true,
@@ -367,6 +370,9 @@ impl eframe::App for App {
 
 impl App {
     fn update_frame(&mut self, ctx: &egui::Context) {
+        let ui_started = Instant::now();
+        #[cfg(test)]
+        std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
         self.poll_ui_requests();
         self.poll_library_scan();
@@ -460,6 +466,7 @@ impl App {
                 }
             });
         }
+        self.diagnostics_panel(ctx);
         self.clip_gain_editor(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
@@ -469,6 +476,7 @@ impl App {
             ctx.request_repaint_after(std::time::Duration::from_millis(80));
         }
         self.publish_library_selection();
+        self.diagnostics.ui_update_ns = Some(ui_started.elapsed().as_nanos().min(u64::MAX as u128) as u64);
     }
 }
 

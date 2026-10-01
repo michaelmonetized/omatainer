@@ -1,15 +1,19 @@
 //! Callback measurements use fixed atomics. Only the audio callback writes the
 //! last-completed sample; GUI/IPC readers make one bounded coherence check.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallbackMeasurement {
     pub elapsed_ns: u64,
     pub budget_ns: u64,
     pub render_cpu_ns: Option<u64>,
     pub overrun_ns: u64,
+    pub output_latency_ns: Option<u64>,
+    pub sample_rate: u32,
+    pub channels: u16,
+    pub frames: usize,
 }
 impl CallbackMeasurement {
     pub fn render_cpu_fraction(self) -> Option<f64> {
@@ -21,7 +25,7 @@ impl CallbackMeasurement {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AudioMetrics {
     /// None before the first callback or if this bounded read overlaps a write.
     pub last_callback: Option<CallbackMeasurement>,
@@ -37,6 +41,11 @@ pub struct AudioMetrics {
 
 #[derive(Default)]
 pub(super) struct Telemetry {
+    pub profiler: super::diagnostics::Profiler,
+    latency: AtomicU64,
+    sample_rate: AtomicU64,
+    channels: AtomicU64,
+    frames: AtomicU64,
     sequence: AtomicU64,
     elapsed: AtomicU64,
     budget: AtomicU64,
@@ -56,6 +65,18 @@ pub(super) fn nanoseconds(duration: Duration) -> u64 {
 
 impl Telemetry {
     pub fn record(&self, elapsed: Duration, frames: usize, sr: u32, cpu: Option<u64>) {
+        self.record_output(elapsed, frames, sr, cpu, 0, None);
+    }
+
+    pub fn record_output(
+        &self,
+        elapsed: Duration,
+        frames: usize,
+        sr: u32,
+        cpu: Option<u64>,
+        channels: u16,
+        latency: Option<Duration>,
+    ) {
         let elapsed = nanoseconds(elapsed);
         let budget =
             ((frames as u128 * 1_000_000_000) / sr.max(1) as u128).min(u64::MAX as u128) as u64;
@@ -67,6 +88,13 @@ impl Telemetry {
         // One writer, no lock or retry loop. Readers cannot mistake a partial
         // update for a completed callback; missed reads return no sample.
         self.sequence.fetch_add(1, Ordering::AcqRel);
+        self.latency.store(
+            latency.map(nanoseconds).unwrap_or(u64::MAX),
+            Ordering::Relaxed,
+        );
+        self.sample_rate.store(sr as u64, Ordering::Relaxed);
+        self.channels.store(channels as u64, Ordering::Relaxed);
+        self.frames.store(frames as u64, Ordering::Relaxed);
         self.elapsed.store(elapsed, Ordering::Relaxed);
         self.budget.store(budget, Ordering::Relaxed);
         self.cpu.store(cpu.unwrap_or(u64::MAX), Ordering::Relaxed);
@@ -90,7 +118,12 @@ impl Telemetry {
     pub fn read(&self) -> AudioMetrics {
         let before = self.sequence.load(Ordering::Acquire);
         let cpu = self.cpu.load(Ordering::Relaxed);
+        let latency = self.latency.load(Ordering::Relaxed);
         let last = CallbackMeasurement {
+            output_latency_ns: (latency != u64::MAX).then_some(latency),
+            sample_rate: self.sample_rate.load(Ordering::Relaxed) as u32,
+            channels: self.channels.load(Ordering::Relaxed) as u16,
+            frames: self.frames.load(Ordering::Relaxed) as usize,
             elapsed_ns: self.elapsed.load(Ordering::Relaxed),
             budget_ns: self.budget.load(Ordering::Relaxed),
             render_cpu_ns: (cpu != u64::MAX).then_some(cpu),
