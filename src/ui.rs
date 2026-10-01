@@ -79,6 +79,7 @@ mod duration_tests;
 mod midi_connection_tests;
 #[cfg(test)]
 mod sampler_pad_tests;
+mod sampler_editor;
 #[cfg(test)]
 mod theme_reload_tests;
 mod theme_requests;
@@ -116,6 +117,7 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    sampler_editor: sampler_editor::Editor,
     published_selection: Option<Arc<Selection>>,
     published_indices: std::sync::Weak<Vec<usize>>,
     lib_filter: String,
@@ -206,6 +208,7 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            sampler_editor: sampler_editor::Editor::default(),
             published_selection: None,
             published_indices: std::sync::Weak::new(),
             lib_filter: String::new(),
@@ -579,6 +582,7 @@ impl App {
         self.snap = self.engine.snapshot();
         self.confirm_project_snapshot();
         self.poll_undo();
+        self.poll_sampler_editor();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
@@ -595,6 +599,7 @@ impl App {
         self.library_store_ui(ctx);
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
+        self.sampler_editor_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -964,6 +969,10 @@ impl App {
 
     fn sampler_row(&mut self, ui: &mut Ui, t: &Theme) {
         ui.horizontal(|ui| {
+            let edit = ui.button("Edit banks");
+            accessibility::button(ui, &edit, "Edit sampler banks", None);
+            help::annotate(ui, &edit, HelpControl::SamplerEdit);
+            if edit.clicked() { self.open_sampler_editor(); }
             if let Some(target) = self.snap.compose_target {
                 let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
                 ui.label(RichText::new(format!("Compose armed: {} / scene {}", name, target.scene + 1)).color(t.yellow));
