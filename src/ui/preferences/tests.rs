@@ -49,13 +49,18 @@ impl Gui {
         gui
     }
     fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
+        self.raw_frame(egui::RawInput {
+            events,
+            ..Default::default()
+        })
+    }
+    fn raw_frame(&mut self, mut raw: egui::RawInput) -> egui::FullOutput {
         self.time += 0.02;
         let out = self.ctx.run(
-            egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 1200.0))),
-                time: Some(self.time),
-                events,
-                ..Default::default()
+            {
+                raw.screen_rect = Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 1200.0)));
+                raw.time = Some(self.time);
+                raw
             },
             |ctx| self.fixture.app.update_frame(ctx),
         );
@@ -469,4 +474,114 @@ fn applied_library_roots_drive_the_real_scan_and_failed_save_keeps_previous_root
     assert_eq!(gui.fixture.app.settings.applied, old);
     assert_eq!(std::fs::read(&path).unwrap(), b"external editor change");
     assert!(gui.fixture.app.settings.message.contains("reload"));
+}
+
+#[test]
+fn native_close_preserves_pending_preferences_work_until_explicit_cancel_or_completion() {
+    let mut gui = Gui::new();
+    gui.open();
+    gui.preview_apply();
+    let path = gui.dir.join("preferences.json");
+    let before = std::fs::read(&path).unwrap();
+    gui.fixture
+        .app
+        .settings
+        .draft
+        .profiles
+        .get_mut("Studio")
+        .unwrap()
+        .appearance
+        .scale = 1.4;
+    gui.click("Preview changes");
+    gui.wait();
+    gui.fixture
+        .app
+        .settings
+        .worker
+        .as_ref()
+        .unwrap()
+        .delay
+        .store(1000, Ordering::Release);
+    gui.click("Apply and save");
+    assert!(gui.fixture.app.settings.busy());
+    let mut raw = egui::RawInput::default();
+    raw.viewports
+        .get_mut(&egui::ViewportId::ROOT)
+        .unwrap()
+        .events
+        .push(egui::ViewportEvent::Close);
+    let output = gui.raw_frame(raw);
+    let commands = &output.viewport_output[&egui::ViewportId::ROOT].commands;
+    assert!(commands
+        .iter()
+        .any(|command| matches!(command, egui::ViewportCommand::CancelClose)));
+    assert!(!commands
+        .iter()
+        .any(|command| matches!(command, egui::ViewportCommand::Close)));
+    assert!(gui.fixture.app.settings.message.contains("Close cancelled"));
+    assert!(!gui.fixture.app.project.committing());
+    assert!(gui.fixture.app.engine.send(Command::Master(0.37)).is_ok());
+    gui.click("Cancel pending preferences operation");
+    gui.wait();
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert!(!gui.fixture.app.project.committing());
+    assert_eq!(gui.fixture.rt.master, 0.37);
+}
+
+#[test]
+fn persisted_undo_remap_controls_the_renderer_and_edit_menu_hint() {
+    let mut gui = Gui::new();
+    gui.open();
+    gui.fixture
+        .app
+        .settings
+        .draft
+        .profiles
+        .get_mut("Studio")
+        .unwrap()
+        .shortcuts
+        .insert(
+            "undo".into(),
+            Some(model::Shortcut {
+                key: "U".into(),
+                ctrl: true,
+                shift: false,
+                alt: false,
+            }),
+        );
+    gui.preview_apply();
+    let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
+    assert_eq!(
+        loaded.preferences.current().unwrap().shortcuts["undo"]
+            .as_ref()
+            .unwrap()
+            .key,
+        "U"
+    );
+    gui.click("Cancel changes");
+    gui.ctx
+        .memory_mut(|memory| memory.surrender_focus(memory.focused().unwrap_or(egui::Id::NULL)));
+    let before = gui.fixture.rt.master;
+    gui.fixture.app.engine.send(Command::Master(0.31)).unwrap();
+    gui.frame(vec![]);
+    gui.frame(vec![]);
+    assert_eq!(gui.fixture.rt.master, 0.31);
+    gui.frame(vec![egui::Event::Key {
+        key: Key::U,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::CTRL,
+    }]);
+    assert_eq!(gui.fixture.rt.master, before);
+    gui.fixture.app.engine.send(Command::Master(0.42)).unwrap();
+    gui.frame(vec![]);
+    gui.frame(vec![]);
+    gui.click("Edit");
+    let output = gui.frame(vec![]);
+    assert!(
+        output.shapes.iter().any(|shape| matches!(&shape.shape,
+        egui::epaint::Shape::Text(text) if text.galley.text() == "Ctrl+U")),
+        "menu must display the saved effective shortcut"
+    );
 }

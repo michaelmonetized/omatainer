@@ -216,6 +216,7 @@ impl Binding {
             Action::Scene(0) => "scene_1", Action::Scene(1) => "scene_2", Action::Scene(2) => "scene_3", Action::Scene(3) => "scene_4",
             Action::Scene(4) => "scene_5", Action::Scene(5) => "scene_6", Action::Scene(6) => "scene_7", Action::Scene(_) => "scene_8",
             Action::Crossfader(0) => "crossfader_a", Action::Crossfader(_) => "crossfader_b", Action::Load => "load",
+            Action::Undo => "undo", Action::Redo if self.key == Key::Z => "redo_shift_z", Action::Redo => "redo_y",
             Action::Help if self.key == Key::F1 => "help_f1", Action::Help => "help_question", Action::Midi => "midi", Action::CloseFx => "close_fx",
         }
     }
@@ -257,6 +258,13 @@ pub(super) fn lookup_with(profile: &crate::preferences::Profile, key: Key, modif
             && modifiers.ctrl == expected.ctrl && modifiers.shift == expected.shift && modifiers.alt == expected.alt)
             .then_some(binding.action)
     })
+}
+
+pub(super) fn action_label(profile: &crate::preferences::Profile, action: Action) -> String {
+    if !profile.shortcuts_enabled { return String::new(); }
+    BINDINGS.iter().filter(|binding| binding.action == action)
+        .find_map(|binding| binding.effective(profile).map(|value| value.label()))
+        .unwrap_or_default()
 }
 
 pub(super) fn show_help_with(ui: &mut Ui, profile: &crate::preferences::Profile) {
