@@ -65,7 +65,7 @@ fn stopped_track_fx_fixture_has_no_per_frame_slot_allocations() {
 }
 
 #[test]
-fn bypass_does_no_dsp_and_resumes_the_same_tail_without_heap_work() {
+fn settled_bypass_freezes_dsp_and_resumes_the_same_tail_without_heap_work() {
     for id in FxId::all() {
         let mut actual = FxChain::new(48_000.0);
         actual.slots.push(FxSlot::new(*id, 48_000.0));
@@ -76,8 +76,14 @@ fn bypass_does_no_dsp_and_resumes_the_same_tail_without_heap_work() {
         for frame in 0..15_000 {
             actual.process_stereo([(frame as f32 * 0.1).sin() * 0.3, 0.2], 48_000.0);
         }
-        let mut frozen_reference = actual.clone();
         actual.slots[0].on = false;
+        let fade = test_alloc::measure(|| {
+            for _ in 0..240 {
+                black_box(actual.process_stereo([0.27, -0.38], 48_000.0));
+            }
+        });
+        assert_eq!(fade, test_alloc::Counts::default(), "fade {id:?}");
+        let mut frozen_reference = actual.clone();
         let mut dry = true;
         let measured = test_alloc::measure(|| {
             for _ in 0..15_000 {
@@ -87,6 +93,7 @@ fn bypass_does_no_dsp_and_resumes_the_same_tail_without_heap_work() {
         assert!(dry, "{id:?}");
         assert_eq!(measured, test_alloc::Counts::default(), "{id:?}");
         actual.slots[0].on = true;
+        frozen_reference.slots[0].on = true;
         let mut matches = true;
         let measured = test_alloc::measure(|| {
             for _ in 0..15_000 {
