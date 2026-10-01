@@ -1,6 +1,8 @@
 //! Device discovery and configuration planning stay outside the render callback.
 use super::*;
 use crate::preferences::Audio;
+use anyhow::Context;
+use cpal::traits::HostTrait;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Range {
@@ -22,6 +24,9 @@ pub struct Device {
 pub struct Inventory {
     pub backend: String,
     pub devices: Vec<Device>,
+    pub inputs: Vec<Device>,
+    pub input_error: Option<String>,
+    pub truncated: bool,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Plan {
@@ -60,23 +65,46 @@ impl Plan {
 fn supported(format: cpal::SampleFormat) -> bool {
     matches!(
         format,
-        cpal::SampleFormat::F32 | cpal::SampleFormat::I16 | cpal::SampleFormat::U16
+        cpal::SampleFormat::F32
+            | cpal::SampleFormat::F64
+            | cpal::SampleFormat::I8
+            | cpal::SampleFormat::I16
+            | cpal::SampleFormat::I32
+            | cpal::SampleFormat::I64
+            | cpal::SampleFormat::U8
+            | cpal::SampleFormat::U16
+            | cpal::SampleFormat::U32
+            | cpal::SampleFormat::U64
     )
 }
-fn inspect(device: &cpal::Device, is_default: bool) -> Device {
+fn inspect(device: &cpal::Device, is_default: bool, input: bool) -> Device {
     let name = device.name().unwrap_or_else(|_| "Unnamed output".into());
-    let defaults = device.default_output_config().ok().map(|config| {
+    let defaults = (if input {
+        device.default_input_config()
+    } else {
+        device.default_output_config()
+    })
+    .ok()
+    .map(|config| {
         (
             config.channels(),
             config.sample_rate().0,
             config.sample_format(),
         )
     });
-    let (ranges, error) = match device.supported_output_configs() {
+    let (ranges, error) = match if input {
+        device
+            .supported_input_configs()
+            .map(|items| items.take(4097).collect::<Vec<_>>())
+    } else {
+        device
+            .supported_output_configs()
+            .map(|items| items.take(4097).collect::<Vec<_>>())
+    } {
         Ok(configs) => (
             configs
+                .into_iter()
                 .take(4096)
-                .filter(|config| supported(config.sample_format()))
                 .map(|config| Range {
                     channels: config.channels(),
                     min_rate: config.min_sample_rate().0,
@@ -103,32 +131,69 @@ fn inspect(device: &cpal::Device, is_default: bool) -> Device {
 
 pub fn discover() -> Result<Inventory, String> {
     let host = cpal::default_host();
-    let default = host.default_output_device();
-    let mut devices: Vec<_> = host
+    let outputs = host
         .output_devices()
-        .map_err(|error| error.to_string())?
-        .take(256)
-        .map(|device| inspect(&device, false))
-        .collect();
-    // Use the actual default device object, even when names are duplicated.
-    if let Some(default) = default {
-        let current = inspect(&default, true);
-        if let Some(index) = devices
-            .iter()
-            .position(|device| device.name == current.name)
-        {
-            devices[index] = current;
-        } else {
-            devices.push(current);
+        .map_err(|e| e.to_string())?
+        .take(257)
+        .collect::<Vec<_>>();
+    let inputs = host
+        .input_devices()
+        .map(|devices| devices.take(257).collect::<Vec<_>>())
+        .map_err(|e| e.to_string());
+    let mut truncated =
+        outputs.len() > 256 || inputs.as_ref().is_ok_and(|devices| devices.len() > 256);
+    fn collect(
+        devices: Vec<cpal::Device>,
+        default: Option<cpal::Device>,
+        input: bool,
+    ) -> Vec<Device> {
+        let mut found = devices
+            .into_iter()
+            .take(256)
+            .map(|device| inspect(&device, false, input))
+            .collect::<Vec<_>>();
+        if let Some(default) = default {
+            let default = inspect(&default, true, input);
+            if let Some(index) = found.iter().position(|d| d.name == default.name) {
+                found[index] = default;
+            } else {
+                if found.len() == 256 {
+                    found.pop();
+                }
+                found.push(default);
+            }
         }
+        found
     }
+    let devices = collect(outputs, host.default_output_device(), false);
+    let (inputs, input_error) = match inputs {
+        Ok(inputs) => (collect(inputs, host.default_input_device(), true), None),
+        Err(error) => (Vec::new(), Some(error)),
+    };
+    truncated |= devices
+        .iter()
+        .chain(&inputs)
+        .any(|device| device.ranges.len() == 4096);
     Ok(Inventory {
         backend: host.id().name().into(),
         devices,
+        inputs,
+        input_error,
+        truncated,
     })
 }
 
 pub fn plan(settings: &Audio, inventory: &Inventory) -> Result<Plan, String> {
+    if settings
+        .backend
+        .as_ref()
+        .is_some_and(|backend| backend != &inventory.backend)
+    {
+        return Err(
+            "Saved audio backend is unavailable; select the current backend explicitly".into(),
+        );
+    }
+
     let matches: Vec<_> = inventory
         .devices
         .iter()
@@ -156,16 +221,24 @@ pub fn plan(settings: &Audio, inventory: &Inventory) -> Result<Plan, String> {
     if let Some(error) = &device.error {
         return Err(format!("{}: {error}", device.name));
     }
-    let (default_channels, default_rate, default_format) = device
-        .defaults
-        .ok_or("Device has no default output configuration")?;
+    let (default_channels, default_rate, default_format) = match device.defaults {
+        Some(defaults)=>defaults,
+        None=>match (settings.channels,settings.sample_rate,settings.format) {
+            (Some(channels),Some(rate),Some(format))=>(channels,rate,format.cpal()),
+            _=>return Err("Device has no default configuration; choose channels, rate and sample format explicitly".into()),
+        }
+    };
     let channels = settings.channels.unwrap_or(default_channels);
     let rate = settings.sample_rate.unwrap_or(default_rate);
     let mut matches: Vec<_> = device
         .ranges
         .iter()
         .filter(|range| {
-            range.channels == channels
+            supported(range.format)
+                && settings
+                    .format
+                    .is_none_or(|format| format.cpal() == range.format)
+                && range.channels == channels
                 && (range.min_rate..=range.max_rate).contains(&rate)
                 && settings.buffer_frames.is_none_or(|frames| {
                     range
@@ -217,7 +290,10 @@ pub(super) fn select(settings: &Audio) -> anyhow::Result<(cpal::Device, Plan)> {
     };
     let inventory = Inventory {
         backend: host.id().name().into(),
-        devices: vec![inspect(&device, true)],
+        devices: vec![inspect(&device, true, false)],
+        inputs: Vec::new(),
+        input_error: None,
+        truncated: false,
     };
     let plan = plan(settings, &inventory).map_err(anyhow::Error::msg)?;
     Ok((device, plan))
@@ -229,6 +305,9 @@ pub(crate) mod tests {
     pub(crate) fn inventory() -> Inventory {
         Inventory {
             backend: "fixture".into(),
+            inputs: Vec::new(),
+            input_error: None,
+            truncated: false,
             devices: vec![Device {
                 name: "Studio interface".into(),
                 default: true,
@@ -292,5 +371,165 @@ pub(crate) mod tests {
         let mut mono = default;
         mono.channels = 1;
         assert!(mono.route().contains("summed"));
+    }
+}
+
+/// Re-open the exact accepted device/configuration for rollback; do not silently
+/// follow a changed system default to a different interface.
+pub(super) fn select_exact(plan: &Plan) -> anyhow::Result<cpal::Device> {
+    let host = cpal::default_host();
+    anyhow::ensure!(
+        host.id().name() == plan.backend,
+        "Audio backend changed since preview"
+    );
+    let mut matching = host
+        .output_devices()?
+        .filter(|device| device.name().ok().as_deref() == Some(plan.device.as_str()));
+    let device = matching
+        .next()
+        .context("Previously selected output is unavailable")?;
+    anyhow::ensure!(
+        matching.next().is_none(),
+        "Previously selected output name became ambiguous"
+    );
+    let found = inspect(&device, true, false);
+    anyhow::ensure!(
+        found.ranges.iter().any(|r| r.channels == plan.channels
+            && r.format == plan.format
+            && (r.min_rate..=r.max_rate).contains(&plan.rate)
+            && plan
+                .buffer
+                .is_none_or(|b| r.buffer.is_none_or(|(lo, hi)| (lo..=hi).contains(&b)))),
+        "Output capabilities changed since preview"
+    );
+    Ok(device)
+}
+
+pub fn calibration_plan(
+    settings: &Audio,
+    inventory: &Inventory,
+    output: &Plan,
+) -> Result<Plan, String> {
+    if output.rate > super::calibration::MAX_RATE {
+        return Err("Calibration supports rates up to 192 kHz".into());
+    }
+    if let Some(error) = &inventory.input_error {
+        return Err(format!("Input enumeration failed: {error}"));
+    }
+    let input = &settings.calibration;
+    let selected = Audio {
+        backend: Some(output.backend.clone()),
+        device: input.device.clone(),
+        sample_rate: Some(output.rate),
+        channels: input.channels,
+        buffer_frames: input.buffer_frames,
+        format: input.format,
+        calibration: Default::default(),
+    };
+    let input_inventory = Inventory {
+        backend: inventory.backend.clone(),
+        devices: inventory.inputs.clone(),
+        inputs: Vec::new(),
+        input_error: None,
+        truncated: false,
+    };
+    let plan =
+        plan(&selected, &input_inventory).map_err(|error| error.replace("output", "input"))?;
+    if input.channel >= plan.channels || input.output_channel >= output.channels {
+        return Err("Calibration channel is outside the selected input/output layout".into());
+    }
+    Ok(plan)
+}
+pub(super) fn select_input_exact(plan: &Plan) -> anyhow::Result<cpal::Device> {
+    let host = cpal::default_host();
+    anyhow::ensure!(
+        host.id().name() == plan.backend,
+        "Input backend changed since preview"
+    );
+    let mut devices = host
+        .input_devices()?
+        .filter(|device| device.name().ok().as_deref() == Some(plan.device.as_str()));
+    let device = devices
+        .next()
+        .context("Selected calibration input is unavailable")?;
+    anyhow::ensure!(
+        devices.next().is_none(),
+        "Selected calibration input name is ambiguous"
+    );
+    let found = inspect(&device, true, true);
+    anyhow::ensure!(
+        found
+            .ranges
+            .iter()
+            .any(|range| range.channels == plan.channels
+                && range.format == plan.format
+                && (range.min_rate..=range.max_rate).contains(&plan.rate)
+                && plan
+                    .buffer
+                    .is_none_or(|b| range.buffer.is_none_or(|(lo, hi)| (lo..=hi).contains(&b)))),
+        "Input capabilities changed since preview"
+    );
+    Ok(device)
+}
+
+#[cfg(test)]
+mod professional_tests {
+    use super::*;
+    #[test]
+    fn advertised_rates_formats_channels_and_input_routes_are_exact_and_missing_modes_fail() {
+        let mut inventory = tests::inventory();
+        inventory.devices[0].ranges.clear();
+        for rate in [44100, 48000, 96000, 192000] {
+            for format in crate::preferences::AudioFormat::ALL {
+                inventory.devices[0].ranges.push(Range {
+                    channels: 2,
+                    min_rate: rate,
+                    max_rate: rate,
+                    format: format.cpal(),
+                    buffer: Some((64, 512)),
+                });
+            }
+        }
+        inventory.inputs = inventory.devices.clone();
+        let mut settings = Audio::default();
+        settings.backend = Some("fixture".into());
+        settings.channels = Some(2);
+        settings.buffer_frames = Some(128);
+        settings.calibration.channels = Some(2);
+        settings.calibration.buffer_frames = Some(128);
+        for rate in [44100, 48000, 96000, 192000] {
+            for format in crate::preferences::AudioFormat::ALL {
+                settings.sample_rate = Some(rate);
+                settings.format = Some(format);
+                settings.calibration.format = Some(format);
+                let output = plan(&settings, &inventory).unwrap();
+                assert_eq!(output.rate, rate);
+                assert_eq!(output.format, format.cpal());
+                assert_eq!(output.config().buffer_size, cpal::BufferSize::Fixed(128));
+                let input = calibration_plan(&settings, &inventory, &output).unwrap();
+                assert_eq!(input.rate, rate);
+                assert_eq!(input.format, format.cpal());
+                settings.calibration.channel = 2;
+                assert!(calibration_plan(&settings, &inventory, &output).is_err());
+                settings.calibration.channel = 0;
+            }
+        }
+        settings.sample_rate = Some(88200);
+        assert!(plan(&settings, &inventory).is_err());
+        settings.sample_rate = Some(48000);
+        settings.backend = Some("Missing backend".into());
+        assert!(plan(&settings, &inventory).is_err());
+        settings.backend = None;
+        inventory.devices[0].defaults = None;
+        assert!(plan(&settings, &inventory).is_ok());
+        settings.format = None;
+        assert!(plan(&settings, &inventory).is_err());
+    }
+    #[test]
+    #[ignore = "read-only native driver capability inventory; no stream playback or probe"]
+    fn native_readonly_inventory() {
+        let inventory = discover().unwrap();
+        eprintln!("NATIVE READ-ONLY INVENTORY {inventory:#?}");
+        assert!(!inventory.backend.is_empty());
     }
 }

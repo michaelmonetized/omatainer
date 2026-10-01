@@ -195,6 +195,13 @@ impl FxSlot {
         }
     }
 
+    /// Owner only, with output stopped: discard all effect tails while keeping
+    /// the same slot and controls. Allocation/retirement stay off the callback.
+    pub(super) fn reset_for_audio(&mut self) {
+        self.state = Self::new(self.id, self.sample_rate).state;
+        self.bypass = bypass::Bypass::default();
+    }
+
     pub(super) fn tick_stereo(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
         let level = self.bypass.next(self.on, sr);
         if level == 0.0 {

@@ -32,11 +32,24 @@ profile** to stage a switch. **Preview changes** shows the requested audio route
 MIDI input policy and folder availability. **Apply and save** commits the draft;
 **Cancel changes** keeps the current setup.
 
-Audio device, sample rate, output channel count and buffer size take effect on
-restart. The running route and pending restart are shown explicitly. An unavailable
-saved setup opens recovery; **Use system default audio this time** preserves the
+Audio device, sample format, rate, channel count and buffer size are saved separately
+from the running output. Open **Audio devices and latency**, select **Preview saved
+audio**, then **Use saved audio now** and **Stop and change output** to apply without
+restarting. This stops performance and tries to restore the prior output on failure;
+it never resumes playback automatically. If both devices fail, the stopped session
+still supports Save, New/Open and Close while you recover an output. An unavailable
+startup setup offers **Use system default audio this time** without changing the
 saved profile. Main left/right use outputs 1/2; mono sums both channels and extra
 channels are silent. There is no separate headphone cue bus yet.
+
+The audio window lists advertised input/output capabilities and distinguishes the
+backend-accepted logical configuration from observed callback sizes. Physical
+negotiated rate and converter latency are unavailable through CPAL. Optional
+**Measure loopback** requires a suitable line-output-to-line-input cable/interface
+route and explicit **Cable ready: stop and measure** confirmation. It plays three
+low-level probes, never monitors input, rejects weak/ambiguous/corrupt evidence,
+and reports qualified host callback-to-callback return timing, not converter-only
+roundtrip latency. See [audio settings validation](docs/validation/issue-94-audio-settings.md).
 
 MIDI input selection applies through the connection worker, with requested/applied
 generations and missing-device errors visible. Appearance (desktop theme/font,

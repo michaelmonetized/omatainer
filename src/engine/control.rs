@@ -72,6 +72,7 @@ struct Admission {
 struct AdmissionShared {
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
+    audio_offline: std::sync::atomic::AtomicBool,
     queued_payload_bytes: std::sync::atomic::AtomicUsize,
     payload_limit: usize,
     history_available: std::sync::atomic::AtomicBool,
@@ -119,6 +120,7 @@ impl AdmissionShared {
                     13 => super::performance::Error::Recovery, 14 => super::performance::Error::Changing,
                     15 => super::performance::Error::PendingStop, _ => super::performance::Error::BackgroundBusy,
                 })),
+                17 => Some(SubmissionError::AudioUnavailable),
                 _ => None,
             },
         }
@@ -220,6 +222,12 @@ impl CommandReceiver {
         }
     }
 
+    /// Owner only, while the exclusive audio seal is held. Offline service
+    /// continues project I/O without admitting creative performance commands.
+    pub(super) fn set_audio_offline(&self, offline: bool) {
+        if let Some(shared) = &self.shared { shared.audio_offline.store(offline, std::sync::atomic::Ordering::Release); }
+    }
+
     pub(super) fn pending_project_ui_requests(&self) -> bool {
         self.shared
             .as_ref()
@@ -288,6 +296,7 @@ pub enum SubmissionError {
     HistoryBusy,
     PayloadFull,
     Performance(super::performance::Error),
+    AudioUnavailable,
 }
 
 impl std::fmt::Display for SubmissionError {
@@ -295,6 +304,7 @@ impl std::fmt::Display for SubmissionError {
         if let Self::Performance(error) = self { return error.fmt(f); }
         f.write_str(match self {
             Self::Performance(_) => unreachable!(),
+            Self::AudioUnavailable => "Audio output is unavailable. Save or close the session, or recover an output in Audio settings before performing.",
             Self::PayloadFull => "The control queue has reached its media and edit memory limit. Wait for playback to catch up, then retry with a smaller edit or media file.",
             Self::Full => "The control queue is full. Releases remain reserved. Wait for playback to catch up, then retry the action.",
             Self::StopPending => "A stop is still pending for this target. Retry the start after the stop has completed.",
@@ -330,6 +340,7 @@ impl AdmissionShared {
                 SubmissionError::HistoryBusy => 9,
                 SubmissionError::PayloadFull => 10,
                 SubmissionError::Performance(error) => 11 + error as u8,
+                SubmissionError::AudioUnavailable => 17,
             },
             Relaxed,
         );
@@ -423,6 +434,7 @@ impl CommandPort {
         let shared = std::sync::Arc::new(AdmissionShared {
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
+            audio_offline: std::sync::atomic::AtomicBool::new(false),
             queued_payload_bytes: std::sync::atomic::AtomicUsize::new(0),
             payload_limit,
             history_available: std::sync::atomic::AtomicBool::new(true),
@@ -551,6 +563,9 @@ impl CommandPort {
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
+        if self.shared.audio_offline.load(Acquire) && !project_release(&command) {
+            return fail(SubmissionError::AudioUnavailable);
+        }
         if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {
             return fail(SubmissionError::HistoryBusy);
         }
@@ -586,6 +601,9 @@ impl CommandPort {
         // another producer's bookkeeping. Never coalesce against dead audio.
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
+        }
+        if self.shared.audio_offline.load(Acquire) && !project_release(&command) {
+            return fail(SubmissionError::AudioUnavailable);
         }
         // A producer may have passed preflight before waiting on this mutex.
         // Recycler backpressure must also cover that waiting producer, so the
@@ -739,7 +757,8 @@ fn owned_payload_bytes(command: &Command) -> usize {
 fn project_release(command: &Command) -> bool {
     matches!(
         command,
-        Command::LiveNoteOff { .. }
+        Command::LibraryFence { .. }
+            | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
             | Command::DeckTouch { on: false, .. }

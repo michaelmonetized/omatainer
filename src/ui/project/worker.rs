@@ -88,7 +88,7 @@ pub(super) struct Worker {
 impl Worker {
     pub fn start(
         handle: Handle,
-        output_sr: u32,
+        _output_sr: u32,
         recent_file: Option<PathBuf>,
     ) -> std::io::Result<Self> {
         #[cfg(test)]
@@ -119,7 +119,7 @@ impl Worker {
                     let result = perform(
                         job,
                         &handle,
-                        output_sr,
+                        handle.sample_rate(),
                         &events,
                         #[cfg(test)]
                         &thread_hooks,

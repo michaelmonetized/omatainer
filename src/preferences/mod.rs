@@ -1,5 +1,5 @@
 //! Versioned user preferences. Profiles contain supported app behavior only;
-//! audio selection is consumed at startup, never transferred out of a callback.
+//! audio selection is consumed at startup or by the confirmed audio-owner workflow.
 pub mod recovery;
 pub mod storage;
 pub mod worker;
@@ -7,19 +7,105 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AudioFormat {
+    F32,
+    F64,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+}
+impl AudioFormat {
+    pub const ALL: [Self; 10] = [
+        Self::F32,
+        Self::F64,
+        Self::I8,
+        Self::I16,
+        Self::I32,
+        Self::I64,
+        Self::U8,
+        Self::U16,
+        Self::U32,
+        Self::U64,
+    ];
+    pub fn cpal(self) -> cpal::SampleFormat {
+        match self {
+            Self::F32 => cpal::SampleFormat::F32,
+            Self::F64 => cpal::SampleFormat::F64,
+            Self::I8 => cpal::SampleFormat::I8,
+            Self::I16 => cpal::SampleFormat::I16,
+            Self::I32 => cpal::SampleFormat::I32,
+            Self::I64 => cpal::SampleFormat::I64,
+            Self::U8 => cpal::SampleFormat::U8,
+            Self::U16 => cpal::SampleFormat::U16,
+            Self::U32 => cpal::SampleFormat::U32,
+            Self::U64 => cpal::SampleFormat::U64,
+        }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CalibrationInput {
+    pub device: Option<String>,
+    pub channels: Option<u16>,
+    pub format: Option<AudioFormat>,
+    pub buffer_frames: Option<u32>,
+    pub channel: u16,
+    pub output_channel: u16,
+    pub level_db: f32,
+}
+impl Default for CalibrationInput {
+    fn default() -> Self {
+        Self {
+            device: None,
+            channels: None,
+            format: None,
+            buffer_frames: None,
+            channel: 0,
+            output_channel: 0,
+            level_db: -40.0,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Audio {
+    #[serde(default)]
+    pub backend: Option<String>,
+    #[serde(default)]
+    pub format: Option<AudioFormat>,
+    #[serde(default)]
+    pub calibration: CalibrationInput,
     pub device: Option<String>,
     pub sample_rate: Option<u32>,
     pub channels: Option<u16>,
     pub buffer_frames: Option<u32>,
 }
+impl Audio {
+    pub fn output_eq(&self, other: &Self) -> bool {
+        self.backend == other.backend
+            && self.device == other.device
+            && self.sample_rate == other.sample_rate
+            && self.channels == other.channels
+            && self.buffer_frames == other.buffer_frames
+            && self.format == other.format
+    }
+}
 impl Default for Audio {
     fn default() -> Self {
         Self {
+            backend: None,
+            format: None,
+            calibration: CalibrationInput::default(),
             device: None,
             sample_rate: None,
             channels: None,
@@ -153,6 +239,26 @@ impl Preferences {
 
 impl Profile {
     pub fn validate(&self) -> Result<(), String> {
+        let calibration = &self.audio.calibration;
+        for name in [&self.audio.backend, &calibration.device]
+            .into_iter()
+            .flatten()
+        {
+            if name.trim().is_empty() || name.len() > 1024 || name.chars().any(char::is_control) {
+                return Err("Choose a valid exact audio backend/device name".into());
+            }
+        }
+        if calibration.channels.is_some_and(|v| !(1..=64).contains(&v))
+            || calibration
+                .buffer_frames
+                .is_some_and(|v| !(16..=32768).contains(&v))
+            || calibration.channel >= 64
+            || calibration.output_channel >= 64
+            || !calibration.level_db.is_finite()
+            || !(-60.0..=-24.0).contains(&calibration.level_db)
+        {
+            return Err("Calibration channel, buffer or safe probe level is invalid".into());
+        }
         if self
             .audio
             .device
