@@ -34,7 +34,7 @@ impl Startup {
                     Ok(loaded) => {
                         state.preferences = loaded.preferences;
                         state.revision = loaded.revision;
-                        state.diagnostic = loaded.migrated.then(|| "Preferences migrated in memory; Apply saves version 3.".into());
+                        state.diagnostic = loaded.migrated.then(|| "Preferences migrated in memory; Apply saves version 4.".into());
                     }
                     Err(error) => {
                         state.blocked = true;
