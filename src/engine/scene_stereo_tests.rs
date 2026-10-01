@@ -23,8 +23,12 @@ fn all_bypassed_scene_devices_preserve_independent_panned_tones_exactly() {
     let mut dry = fixture(true);
     let mut bypass = fixture(true);
     bypass.apply(Command::OpenFxScene(0));
-    for (slot, _) in fx::FxId::all().iter().enumerate() {
-        bypass.apply(Command::FxAdd(slot as u8));
+    for (kind, id) in fx::FxId::all().iter().enumerate() {
+        if !id.supports_scene() {
+            continue;
+        }
+        let slot = bypass.scene_fx[0].slots.len();
+        bypass.apply(Command::FxAdd(kind as u8));
         bypass.apply(Command::FxToggle(slot));
     }
     let mut expected = vec![0.0; 16_384];

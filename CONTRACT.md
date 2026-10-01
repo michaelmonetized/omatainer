@@ -73,6 +73,11 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - **Arp:** on a MIDI clip, overlapping notes are stepped as 16ths instead of
   held as a chord.
 - **EQ3 / EQ5 / EQ8:** different crossover counts (3 / 5 / 8 bands).
+- Chain sliders expose only implemented controls, with names, units, ranges,
+  current values and explanations. Reverb and Chorus expose wet mix only;
+  Delay exposes wet mix and feedback, with time explicitly fixed at 250 ms.
+- Arp is an upstream MIDI event effect with on/off only. It has no wet mix or
+  generic parameters and cannot be added to a scene's audio bus.
 
 ## C7. Builtin crate
 

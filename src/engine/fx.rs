@@ -1,6 +1,10 @@
 //! Per-track / per-scene FX chain. Slots are stackable; order is the chain.
 
 mod bypass;
+mod parameters;
+pub use parameters::Control;
+#[cfg(test)]
+mod parameter_tests;
 #[cfg(test)]
 mod neutral_tests;
 #[cfg(test)]
@@ -146,6 +150,20 @@ impl FxSlot {
             state,
             bypass: bypass::Bypass::default(),
         }
+    }
+
+    pub fn set_control(&mut self, parameter: Option<u8>, value: f32) -> bool {
+        if !value.is_finite()
+            || !self.id.controls().iter().any(|control| control.parameter == parameter)
+        {
+            return false;
+        }
+        if let Some(index) = parameter {
+            self.p[index as usize] = value.clamp(0.0, 1.0);
+        } else {
+            self.mix = value.clamp(0.0, 1.0);
+        }
+        true
     }
 
     pub fn id(&self) -> FxId {

@@ -4,7 +4,7 @@ const SR: f32 = 48_000.0;
 
 // Reference state is explicitly independent per instance and per channel. It
 // uses DSP primitives, never FxSlot/FxChain, to catch shared rack histories.
-struct Reference {
+pub(super) struct Reference {
     id: FxId,
     p: [f32; 4],
     mix: f32,
@@ -19,7 +19,7 @@ struct Reference {
 }
 
 impl Reference {
-    fn new(id: FxId, p: [f32; 4], mix: f32) -> Self {
+    pub(super) fn new(id: FxId, p: [f32; 4], mix: f32) -> Self {
         Self {
             id,
             p,
@@ -40,7 +40,7 @@ impl Reference {
         }
     }
 
-    fn process(&mut self, input: [f32; 2]) -> [f32; 2] {
+    pub(super) fn process(&mut self, input: [f32; 2]) -> [f32; 2] {
         if self.id == FxId::Chorus {
             self.phase = (self.phase + 0.7 / SR) % 1.0;
         }
