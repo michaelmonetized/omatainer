@@ -136,15 +136,16 @@ issue handoff; no installed desktop, physical audio probe, or controller was cha
 ### Final assembled release gate
 
 The published layer is based on #95 `ce771d6`. Its independent assembled ordinary
-suite passed **708 tests / 12 ignored** in 17.08 s. The controlled release build,
+suite passed **709 tests / 12 ignored** in 17.73 s, including a regression that
+keeps help navigation titles short and recovery instructions in the topic body. The controlled release build,
 mandatory native preflight and all eight fixed workload groups across three fresh
-sessions passed on 2026-10-01 06:31:32–06:34:53 UTC; the workload fixture itself ran
-134.03 s. The native run visited 234 nodes and exercised 88 actions over 857 App
+sessions passed on 2026-10-01 06:47:29–06:50:47 UTC; the workload fixture itself ran
+133.86 s. The native run visited 234 nodes and exercised 88 actions over 752 App
 frames. It persisted/reopened one note and UI scale 1.25 and ended with output
 mute still latched after deliberate protection exit.
 
 The source-bound release binary SHA-256 is
-`96257c7dd03899a4c4d39a4a15a9989f2983c072f3bbeeafa6fbe255a9280f65`.
+`10aa69a856f5834b14501ec4e9ce530b610664af919a78a7e8938cb24c90ad10`.
 `target/performance.json`, its raw samples and log retain full evidence. Independent
 report checking and native package verification passed; the package contains that
 report. Seven CLI envelope checks, six status/follow protocol groups and five
@@ -153,24 +154,24 @@ runtime-isolation groups also passed.
 The host was Linux aarch64, Apple M1 Pro (16-inch MacBook Pro, 2021), 10 logical
 CPUs, 16,141,549,568 bytes RAM, kernel `7.1.13-3-2-ARCH`, schedutil, SCHED_OTHER/nice 0
 with CPUs 0–9 available. Other agent builds/tests were paused during qualification;
-unrelated host applications remained running. One-minute load was 3.471 before
-and 1.999 after the timed workload. Every #95 budget remained unchanged.
+unrelated host applications remained running. One-minute load was 3.994 before
+and 1.495 after the timed workload. Every #95 budget remained unchanged.
 
 Worst p99 / maximum across the three sessions, in milliseconds:
 
 | Work | p99 | Maximum |
 | --- | ---: | ---: |
-| Producer callback wall | 2.254 | 8.188 |
-| Composer callback wall | 2.439 | 5.902 |
-| Live DJ callback wall | 0.452 | 0.513 |
-| Hybrid callback wall | 2.842 | 3.127 |
-| 50,000-track App frame | 3.634 | 5.648 |
-| Multi-input App frame | 4.483 | 6.160 |
-| Private IPC roundtrip | 9.099 | 10.344 |
-| MIDI worker dispatch | 3.197 | 8.614 |
-| Project roundtrip App frame | 5.020 | 5.020 |
-| Long recording App frame | 6.240 | 6.240 |
-| Long recording render block | 2.675 | 4.007 |
+| Producer callback wall | 2.220 | 7.910 |
+| Composer callback wall | 2.431 | 2.811 |
+| Live DJ callback wall | 0.458 | 0.486 |
+| Hybrid callback wall | 2.974 | 3.365 |
+| 50,000-track App frame | 4.210 | 6.512 |
+| Multi-input App frame | 4.710 | 5.723 |
+| Private IPC roundtrip | 9.095 | 10.137 |
+| MIDI worker dispatch | 2.183 | 4.299 |
+| Project roundtrip App frame | 3.644 | 3.981 |
+| Long recording App frame | 4.360 | 4.360 |
+| Long recording render block | 2.446 | 4.529 |
 
 All measured callback allocation/free, rejection and MIDI-drop counters were zero;
 exact state/audio checks passed. These fixed workloads preserve their #95 operation
