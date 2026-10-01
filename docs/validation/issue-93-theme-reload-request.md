@@ -56,3 +56,8 @@ Final local results: 490 tests passed, six opt-in tests ignored by the ordinary
 suite; production build passed. The new native CLI opt-in test was then run
 explicitly and passed. The final suite includes the added cancelled-ticket
 watcher recovery regression and both real 3-second IPC timeout boundaries.
+
+Assembled stack validation: 642 Rust tests pass (9 opt-in fixtures ignored),
+a fresh production build passes, and the native reload test passes explicitly
+against that executable. The six native follow groups, seven native CLI cases
+and native package validation also pass.
