@@ -664,3 +664,14 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   Private Linux AT-SPI tests exercise actual Preferences/Preview/Apply/Cancel and
   persisted appearance values. Hardware route quality, controller compatibility,
   native-window behavior and human assistive-technology QA remain separate.
+
+## Local release qualification
+
+- Packaging and installation require source-, policy-, toolchain- and binary-bound
+  passing local workload evidence. Raw timing samples and unresolved limits ship
+  with the artifact; verification recomputes distributions and golden checks.
+- A draft policy, missing or stale report, failed workload, missing native AT-SPI
+  preflight or unreviewed target stops publication. Native builds and benchmarks
+  remain local; no GitHub compute is used.
+- Headless callback/render/UI budgets do not claim hardware deadlines, XRUN
+  freedom, physical controller compatibility, compositor FPS or Orca testing.
