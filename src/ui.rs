@@ -12,6 +12,10 @@ use std::sync::Arc;
 use crate::engine::media_load::Loader;
 use std::time::{Instant, SystemTime};
 mod library_scan;
+mod library_metadata;
+mod bpm;
+use bpm::{Bpm, Origin};
+use crate::engine::media_source::FileFingerprint;
 mod library_view;
 mod clip_gain;
 use clip_gain::ClipGainEdit;
@@ -48,6 +52,7 @@ pub struct App {
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
     library_scan: LibraryScan,
+    library_metadata: library_metadata::Metadata,
     // History can change while a worker holds the immutable crate baseline.
     // Keep those small edits separate from the full library allocation.
     last_played: HashMap<LibSource, SystemTime>,
@@ -73,7 +78,8 @@ pub struct App {
 struct LibItem {
     title: String,
     artist: String,
-    bpm: f32,
+    bpm: Bpm,
+    fingerprint: Option<FileFingerprint>,
     key: String,
     length: f32,
     last_play: Option<SystemTime>,
@@ -106,6 +112,7 @@ impl App {
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
+            library_metadata: library_metadata::Metadata::default(),
             last_played: HashMap::new(),
             published_selection: None,
             lib_filter: String::new(),
@@ -137,10 +144,10 @@ impl App {
     }
 
     fn poll_library_scan(&mut self) {
-        let Some(publication) = self.library_scan.poll() else { return };
-        self.refresh_library_view();
-        publication.publish(&mut self.library);
-        self.refresh_library_view();
+        if let Some(publication) = self.library_scan.poll() {
+            self.library_metadata.stage_scan(publication, &self.library);
+        }
+        self.poll_library_metadata();
     }
 
     fn item_last_play(&self, item: &LibItem) -> Option<SystemTime> {
@@ -264,7 +271,16 @@ impl App {
                 continue;
             }
             match completion.result {
-                Ok(report) => {
+                Ok(mut report) => {
+                    let analysis = Bpm::new(report.sample.bpm, Origin::Heuristic);
+                    let source = state.selection.as_ref().map(|selection| &selection.source);
+                    let bpm = self.library.iter().find(|item| Some(&item.source) == source
+                        && item.fingerprint.is_some() && item.fingerprint == completion.fingerprint)
+                        .map(|item| item.bpm.reconcile(analysis)).unwrap_or(analysis);
+                    report.sample.bpm = bpm.value().unwrap_or(0.0);
+                    state.bpm = Some(bpm);
+                    state.metadata = completion.fingerprint.zip(source.cloned()).map(|(fingerprint, source)|
+                        library_metadata::Patch { source, fingerprint, bpm });
                     state.warning = report.diagnostics.warning();
                     let receipt = Receipt::new();
                     state.phase = if self.submit(Command::DeckLoadRequested {
@@ -320,7 +336,8 @@ fn builtin_crate_items() -> Vec<LibItem> {
         LibItem {
             title: "Drums (session)".into(),
             artist: "omatainer".into(),
-            bpm: 124.0,
+            bpm: Bpm::new(124.0, Origin::Builtin),
+            fingerprint: None,
             key: "C".into(),
             length: 16.0 * 60.0 / 124.0,
             last_play: None,
@@ -329,7 +346,8 @@ fn builtin_crate_items() -> Vec<LibItem> {
         LibItem {
             title: "Harmony (session)".into(),
             artist: "omatainer".into(),
-            bpm: 124.0,
+            bpm: Bpm::new(124.0, Origin::Builtin),
+            fingerprint: None,
             key: "C".into(),
             length: 16.0 * 60.0 / 124.0,
             last_play: None,
@@ -774,8 +792,8 @@ impl App {
                 ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
                     .on_hover_text(progress);
             });
-            let header = ["song", "bpm", "key", "length", "last play", "artist"];
-            let col_w = [280.0, 56.0, 48.0, 64.0, 140.0, 180.0];
+            let header = ["song", "bpm · source", "key", "length", "last play", "artist"];
+            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0];
             ui.horizontal(|ui| {
                 for (h, w) in header.iter().zip(col_w.iter()) {
                     ui.add_sized(Vec2::new(*w, 16.0), egui::Label::new(RichText::new(*h).size(10.0).color(t.fg_dim)));
@@ -814,6 +832,7 @@ impl App {
                             *txt, FontId::proportional(11.0), if sel { t.accent } else { t.fg });
                         x += w;
                     }
+                    let resp = resp.on_hover_text(format!("BPM: {}", item.bpm.label()));
                     if resp.clicked() || resp.double_clicked() {
                         self.lib_sel = i;
                         ui.memory_mut(|memory| memory.request_focus(focus));
@@ -1069,8 +1088,8 @@ fn parse_tags(stem: &str) -> (f32, String) {
 
 fn sort_crate(items: &mut [LibItem]) {
     items.sort_by(|a, b| {
-        let ba = if a.bpm > 1.0 { a.bpm } else { 999.0 };
-        let bb = if b.bpm > 1.0 { b.bpm } else { 999.0 };
+        let ba = a.bpm.value().unwrap_or(f32::INFINITY);
+        let bb = b.bpm.value().unwrap_or(f32::INFINITY);
         ba.partial_cmp(&bb)
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.key.cmp(&b.key))
