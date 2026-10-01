@@ -240,6 +240,7 @@ pub struct HotCue {
 #[derive(Clone, Debug)]
 pub struct DeckRt {
     load_receipt: Option<load_receipt::Receipt>,
+    playback_active: bool,
     pub audio: Option<Arc<Sample>>,
     pub pos: f64,
     pub rate: f32,
@@ -295,6 +296,7 @@ impl DeckRt {
     fn new(sr: f32) -> Self {
         Self {
             load_receipt: None,
+            playback_active: false,
             audio: None,
             pos: 0.0,
             rate: 1.0,
@@ -844,15 +846,12 @@ impl RtEngine {
         };
         e.seed_demo();
         let (stem_a, stem_b) = demo_stems(sr as u32, e.bpm);
-        e.builtin = [Some(stem_a.clone()), Some(stem_b.clone())];
-        e.apply(Command::DeckAudio {
-            deck: 0,
-            audio: stem_a,
-        });
-        e.apply(Command::DeckAudio {
-            deck: 1,
-            audio: stem_b,
-        });
+        e.builtin = [Some(stem_a), Some(stem_b)];
+        for deck in 0..DECKS as u8 {
+            e.apply(Command::DeckLoadRequested {
+                deck, media: load_receipt::Media::Builtin(deck), receipt: load_receipt::Receipt::new(),
+            });
+        }
         e.publish_initial();
         e
     }
@@ -1350,6 +1349,22 @@ impl RtEngine {
                 d.transition_to(position, self.sr, DeckTransition::Jump);
             }
         }
+        {
+            let d = &mut self.decks[di];
+            if !d.playing {
+                d.playback_active = false;
+            } else if !d.playback_active && d.audio.as_ref().is_some_and(|sample| {
+                let frames = sample.frames();
+                sample.sr > 0 && frames >= 2 && d.pos.is_finite()
+                    && d.pos >= 0.0 && d.pos < (frames - 1) as f64
+            }) {
+                // Credit source rendering, before gain/crossfader processing.
+                // Loops stay in the same episode; an actually rendered pause,
+                // EOF, replacement or unload ends it. No per-sample timestamp.
+                if let Some(receipt) = &d.load_receipt { receipt.record_playback(); }
+                d.playback_active = true;
+            }
+        }
         if !self.decks[di].playing && !self.decks[di].touching {
             // Retire the last output through the bounded transition envelope.
             // A paused source must never be read repeatedly as a DC signal.
@@ -1770,6 +1785,7 @@ impl RtEngine {
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
+                d.playback_active = false;
                 d.clear_loop();
                 d.title = audio.name.clone();
                 d.bpm = audio.bpm;
@@ -1785,6 +1801,7 @@ impl RtEngine {
             Command::DeckUnload { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
+                d.playback_active = false;
                 d.audio = None;
                 d.title.clear();
                 d.playing = false;
@@ -2423,6 +2440,7 @@ pub struct Engine {
     pub ui_requests: ui_requests::Receiver,
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
+    pub(crate) initial_playback: [load_receipt::Receipt; DECKS],
     // Production always owns a live stream. Only the test constructor below
     // omits hardware while retaining the real command and snapshot paths.
     _audio: Option<audio::AudioOut>,
@@ -2435,6 +2453,7 @@ impl Engine {
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(48000.0, rx, snap.clone());
+        let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let audio = audio::start(rt)?;
         let sample_rate = audio.sr;
         let midi = midi::MidiHub::start(tx.clone(), snap.clone())?;
@@ -2443,6 +2462,7 @@ impl Engine {
             ui_requests,
             snap,
             midi,
+            initial_playback,
             _audio: Some(audio),
             sample_rate,
         })
@@ -2454,12 +2474,14 @@ impl Engine {
         let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         (
             Self {
                 cmd,
                 ui_requests,
                 snap,
                 midi: midi::MidiHub::without_devices(),
+                initial_playback,
                 _audio: None,
                 sample_rate,
             },
