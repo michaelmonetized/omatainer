@@ -7,11 +7,10 @@ A missing, stale, malformed or failing report stops publication before install
 mutations. Package verification recomputes the report from retained raw samples;
 it does not need Cargo, rustc, audio hardware or a running application.
 
-The initial policy is deliberately **draft** until all final workload recipes,
-three repetitions and audio hashes have been reviewed. Draft policy cannot
-qualify a package. The measured target under review is
-`aarch64-unknown-linux-gnu`; another target needs its own reviewed evidence.
-No current draft or synthetic test record is release qualification.
+The fixed policy is reviewed for `aarch64-unknown-linux-gnu`. The baseline audio
+hashes are identical across three fresh sessions with exact note-state checks.
+Another target needs its own reviewed evidence; no synthetic test record qualifies
+a release. The complete assembled source must still produce a fresh passing report.
 
 ## Reproduce on a local Linux host
 
@@ -54,7 +53,12 @@ The fixed suite contains producer, composer, live DJ and hybrid callback
 sessions; a 50,000-entry crate; five synthetic controller inputs plus concurrent
 IPC; an 8,192-note project Save/New/Open round trip; and a 600-note, 600-second
 virtual MIDI recording followed by save/reopen. Each workload starts fresh for
-three repetitions. Conditions, scalar counters, exact state checks and target
+three repetitions. The private production IPC server handles sixteen connections
+of 32 correlated requests each. Held chords verify distinct stable source IDs,
+channel/pitch ownership and release; crate selection verifies the exact selected
+and next-frame published sources. Callback capture verifies all 512 added notes
+and all original notes, including pitch, velocity, position and held duration.
+Conditions, scalar counters, exact state checks and target
 qualified quantized-audio hashes belong to the reviewed policy. Dense track
 parameter changes and live MIDI capture exercise the currently implemented
 commands. They do not stand in for an absent automation-lane editor or general
@@ -103,3 +107,19 @@ Validator/package/installer regression fixtures use clearly labelled synthetic
 numbers to test rejection and rollback. They cannot establish performance or
 native accessibility results; release evidence comes only from the actual
 local runner and production component workloads.
+
+## Regressions found by the workload
+
+The combined capture/fader workload exposed a history journal that protected the
+first prior note inverse for a cell rather than each actually held note's inverse.
+After enough short captures, this pinned an old entry and rejected later edits.
+Held notes now retain their exact journal owner; overlapping-source duration updates
+also reach later inverse snapshots and replay patches. Tests cover capacity,
+overlapping ownership, rate pruning and exact Undo/Redo duration with zero callback
+allocations or frees.
+
+The held-chord workload exposed voice allocation stealing zero-level new attacks
+while older release tails remained. Saturated voice pools now prefer released tails
+before active holds. A fixed-pool regression verifies independent sources plus clip
+onsets and exact releases without heap work. These fixes preserve the workload's
+original zero-allocation and zero-rejection requirements.

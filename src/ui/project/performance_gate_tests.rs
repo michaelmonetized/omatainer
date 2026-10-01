@@ -609,7 +609,7 @@ fn fixed_native_workloads() {
         std::env::var_os("OMATAINER_BENCHMARK_RAW_REPORT").expect("private raw report destination");
     let mut workloads = crate::engine::performance_workload_tests::callbacks();
     workloads.push(group("large_crate_ui",json!({"width":1440,"height":1000,"frames":UI_FRAMES,"warmup_frames":WARMUP,"entries":50_000}),large_crate));
-    workloads.push(group("multi_controller_ipc",json!({"width":1440,"height":1000,"frames":UI_FRAMES,"warmup_frames":WARMUP,"inputs":5,"events_per_frame":8,"ipc_requests":UI_FRAMES}),multi_controller));
+    workloads.push(group("multi_controller_ipc",json!({"width":1440,"height":1000,"frames":UI_FRAMES,"warmup_frames":WARMUP,"inputs":5,"events_per_frame":8,"ipc_requests":UI_FRAMES,"ipc_connections":16,"requests_per_connection":32}),multi_controller));
     workloads.push(group("project_roundtrip",json!({"width":1440,"height":1000,"warmup_frames":WARMUP,"tracks":8,"notes_per_track":1024}),project_roundtrip));
     workloads.push(group("long_note_recording",json!({"width":1440,"height":1000,"warmup_frames":WARMUP,"sample_rate":48_000,"frames":4800,"blocks":6000,"virtual_seconds":600,"notes":600}),long_recording));
     let report = json!({"schema":1,"suite":"supported-workloads-v1","workloads":workloads,

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "suite": "supported-workloads-v1",
-  "status": "draft",
+  "status": "reviewed",
   "test": "ui::project::performance_gate_tests::fixed_native_workloads",
   "timeout_seconds": 900,
   "scope": "Local release-profile production components driven through implemented App, callback, MIDI and IPC paths. Timing describes headless callback/render/UI work on the recorded Linux host.",
@@ -9,7 +9,8 @@
     "No physical audio-device deadline, converter latency, XRUN, audible quality or controller hardware compatibility proof.",
     "Headless egui frame time excludes a window-system compositor and physical display presentation; no Orca or human accessibility certification.",
     "Dense live control changes exercise implemented commands; no automation-lane editor exists.",
-    "Long note capture exercises implemented MIDI composition; no general microphone or audio-file recording editor exists."
+    "Long note capture exercises implemented MIDI composition; no general microphone or audio-file recording editor exists.",
+    "Ten minutes of musical-time recording is accelerated; this does not certify a ten-minute wall-clock hardware soak."
   ],
   "workloads": [
     {
@@ -74,10 +75,14 @@
       "checks": [
         "all_commands_applied",
         "finite_output",
-        "nonzero_output"
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
       ],
       "expected_observations": {
-        "aarch64-unknown-linux-gnu": {}
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "26f84beea80f5ec5"
+        }
       }
     },
     {
@@ -142,10 +147,14 @@
       "checks": [
         "all_commands_applied",
         "finite_output",
-        "nonzero_output"
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
       ],
       "expected_observations": {
-        "aarch64-unknown-linux-gnu": {}
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "e2f197b02633bd3d"
+        }
       }
     },
     {
@@ -210,10 +219,14 @@
       "checks": [
         "all_commands_applied",
         "finite_output",
-        "nonzero_output"
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
       ],
       "expected_observations": {
-        "aarch64-unknown-linux-gnu": {}
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "d7711a2dc3b32a39"
+        }
       }
     },
     {
@@ -278,10 +291,14 @@
       "checks": [
         "all_commands_applied",
         "finite_output",
-        "nonzero_output"
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
       ],
       "expected_observations": {
-        "aarch64-unknown-linux-gnu": {}
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "adc9540dab057fed"
+        }
       }
     },
     {
@@ -339,7 +356,9 @@
         "inputs": 5,
         "ipc_requests": 512,
         "warmup_frames": 16,
-        "width": 1440
+        "width": 1440,
+        "ipc_connections": 16,
+        "requests_per_connection": 32
       },
       "repetitions": 3,
       "samples": {
