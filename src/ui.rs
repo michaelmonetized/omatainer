@@ -22,6 +22,7 @@ mod clip_gain;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
+mod play_history;
 mod audio_status;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
@@ -58,7 +59,8 @@ pub struct App {
     library_metadata: library_metadata::Metadata,
     // History can change while a worker holds the immutable crate baseline.
     // Keep those small edits separate from the full library allocation.
-    last_played: HashMap<LibSource, SystemTime>,
+    last_played: play_history::History,
+    playback_watches: Vec<play_history::Watch>,
     published_selection: Option<Arc<Selection>>,
     lib_filter: String,
     lib_sel: usize,
@@ -108,6 +110,7 @@ impl App {
         loader: Option<Loader>,
     ) -> Self {
         let snap = engine.snapshot();
+        let playback_watches = play_history::initial_watches(&engine);
         let mut app = Self {
             engine,
             theme,
@@ -116,7 +119,8 @@ impl App {
             library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
-            last_played: HashMap::new(),
+            last_played: play_history::History::default(),
+            playback_watches,
             published_selection: None,
             lib_filter: String::new(),
             lib_sel: 0,
@@ -151,10 +155,6 @@ impl App {
             self.library_metadata.stage_scan(publication, &self.library);
         }
         self.poll_library_metadata();
-    }
-
-    fn item_last_play(&self, item: &LibItem) -> Option<SystemTime> {
-        self.last_played.get(&item.source).copied().or(item.last_play)
     }
 
     fn send(&self, c: Command) {
@@ -194,11 +194,6 @@ impl App {
             return;
         }
         if let Some(picked) = picked {
-            self.refresh_library_view();
-            if let Some(index) = self.library_view.indices.iter().position(|&i| self.library[i].source == picked.source) {
-                self.last_play_idx = index;
-            }
-            self.last_played.insert(picked.source.clone(), SystemTime::now());
             match &picked.source {
                 LibSource::Builtin(stem) => {
                     self.supersede_load(deck);
@@ -209,7 +204,10 @@ impl App {
                         let receipt = Receipt::new();
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
-                        } else { state.receipt = Some(receipt); }
+                        } else {
+                            self.watch_playback(picked.source.clone(), None, receipt.clone());
+                            state.receipt = Some(receipt);
+                        }
                     }
                     self.set_load_state(deck, state);
                 }
@@ -285,11 +283,15 @@ impl App {
                     state.metadata = completion.fingerprint.zip(source.cloned()).map(|(fingerprint, source)|
                         library_metadata::Patch { source, fingerprint, bpm, duration: decoded_duration(&report.sample) });
                     state.warning = report.diagnostics.warning();
+                    let history_source = source.cloned();
                     let receipt = Receipt::new();
                     state.phase = if self.submit(Command::DeckLoadRequested {
                         deck, media: Media::Decoded { token: completion.token, audio: Arc::new(report.sample) },
                         receipt: receipt.clone(),
                     }) {
+                        if let Some(source) = history_source {
+                            self.watch_playback(source, completion.fingerprint, receipt.clone());
+                        }
                         state.receipt = Some(receipt);
                         Phase::Queued
                     } else { Phase::Failed("Load was not accepted; media was not loaded".into()) };

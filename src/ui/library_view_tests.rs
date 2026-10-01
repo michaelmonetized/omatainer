@@ -3,6 +3,7 @@ use super::*;
 use std::time::Duration;
 
 fn items(count: usize) -> Vec<LibItem> {
+    let fingerprint = crate::engine::media_source::FileFingerprint::read(std::path::Path::new("Cargo.toml"));
     (0..count)
         .map(|index| LibItem {
             source: LibSource::File(format!("private/{index}.wav").into()),
@@ -13,7 +14,7 @@ fn items(count: usize) -> Vec<LibItem> {
                 "Odd Artist".into()
             },
             bpm: Bpm::hint(100.0 + index as f32 / 1000.0),
-            fingerprint: None,
+            fingerprint,
             key: "C".into(),
             length: Some(123.0 + index as f64),
             last_play: None,
@@ -146,8 +147,8 @@ fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells()
     assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text() == "Track 00002")));
     // A history edit updates that visible cell without a full filter rebuild.
     let rebuilt = fixture.app.library_view.stats.rebuilds;
-    fixture.app.last_played.insert(
-        source.clone(),
+    fixture.app.last_played.record(
+        &play_history::Identity::new(source.clone(), fixture.app.library[2].fingerprint).unwrap(),
         SystemTime::UNIX_EPOCH + Duration::from_secs(555),
     );
     frame(&ctx, &mut fixture.app, 0.2, vec![]);
