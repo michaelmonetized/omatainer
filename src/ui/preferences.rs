@@ -185,8 +185,10 @@ impl App {
         running_audio: model::Audio,
     ) {
         self.settings = Settings::from_startup(startup, true, Some(running_audio));
-        self.keys_open = self.settings.profile().startup.show_help;
-        self.midi_open = self.settings.profile().startup.show_midi;
+        self.initialize_project_panels(
+            self.settings.profile().startup.show_help,
+            self.settings.profile().startup.show_midi,
+        );
         self.apply_appearance(ctx);
         if self.settings.profile().startup.scan_library {
             self.scan_library();
@@ -264,6 +266,7 @@ impl App {
         let mut discard = false;
         egui::Window::new("Preferences and profiles").id(egui::Id::new("preferences-window"))
             .open(&mut open).default_width(680.0).default_height(620.0).show(ctx, |ui| {
+                if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.label("Audio applies after restart. MIDI, folders, appearance and shortcuts apply after a successful save.");
                 if let Some(path) = &state.path { ui.label(format!("Preferences file: {}", path.display())); }
                 if let Some(info) = self.engine.output_info() {

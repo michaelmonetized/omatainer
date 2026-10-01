@@ -154,7 +154,7 @@ impl App {
             if ui
                 .add_enabled(
                     undo.is_some(),
-                    egui::Button::new(label).shortcut_text("Ctrl+Z"),
+                    egui::Button::new(label).shortcut_text(shortcuts::action_label(self.settings.profile(), shortcuts::Action::Undo)),
                 )
                 .clicked()
             {
@@ -167,7 +167,7 @@ impl App {
             if ui
                 .add_enabled(
                     redo.is_some(),
-                    egui::Button::new(label).shortcut_text("Ctrl+Shift+Z"),
+                    egui::Button::new(label).shortcut_text(shortcuts::action_label(self.settings.profile(), shortcuts::Action::Redo)),
                 )
                 .clicked()
             {

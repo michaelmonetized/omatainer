@@ -309,6 +309,17 @@ impl App {
         self.project.clean = Some(self.project_baseline());
     }
 
+    pub(super) fn initialize_project_panels(&mut self, keys_open: bool, midi_open: bool) {
+        self.keys_open = keys_open;
+        self.midi_open = midi_open;
+        // Startup panel defaults are the initial view, not a user edit. Preserve
+        // the engine checkpoint so earlier accepted edits remain dirty.
+        if let Some(clean) = &mut self.project.clean {
+            clean.view.keys_open = keys_open;
+            clean.view.midi_open = midi_open;
+        }
+    }
+
     fn begin_project_job(&mut self, operation: Operation, job: Job, cancel: Arc<AtomicBool>) {
         let result = self
             .project
@@ -666,7 +677,10 @@ impl App {
         }
         if ctx.input(|input| input.viewport().close_requested()) && !self.project.allow_close {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            if !self.project.busy() && self.project.dialog.is_none() {
+            if self.settings.busy() {
+                self.settings.open = true;
+                self.settings.message = "Close cancelled while a preferences operation is pending. Wait for its result or cancel it, then close again.".into();
+            } else if !self.project.busy() && self.project.dialog.is_none() {
                 self.request_project_action(Action::Close);
             }
         }

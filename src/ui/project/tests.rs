@@ -1534,3 +1534,25 @@ fn project_replacement_retires_all_gui_pad_admission_owners() {
     assert!(!gui.app.pad_held[0]);
     assert_eq!(gui.app.engine.cmd.queue_pressure().reserved_releases, 0);
 }
+
+#[test]
+fn startup_preferences_set_clean_panel_defaults_without_erasing_prior_engine_edits() {
+    let files = Files::new();
+    let mut gui = Gui::new();
+    let startup = || {
+        let mut startup = crate::preferences::worker::Startup::read(files.path("preferences.json"), files.0.clone());
+        for profile in startup.preferences.profiles.values_mut() {
+            profile.startup.show_help = true;
+            profile.startup.show_midi = true;
+            profile.startup.scan_library = false;
+        }
+        startup
+    };
+    gui.app.initialize_preferences(&gui.ctx, startup(), crate::preferences::Audio::default());
+    assert!(gui.app.keys_open && gui.app.midi_open);
+    assert!(!gui.app.project_dirty());
+    gui.app.engine.send(Command::Master(0.37)).unwrap();
+    gui.rt.process(&mut []);
+    gui.app.initialize_preferences(&gui.ctx, startup(), crate::preferences::Audio::default());
+    assert!(gui.app.project_dirty(), "startup defaults must not accept a new engine checkpoint");
+}
