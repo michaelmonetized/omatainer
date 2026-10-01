@@ -66,7 +66,7 @@ harness guard. It opens no window and never changes the desktop's accessibility
 settings. Human assistive-tool usability, Orca workflows and physical-controller
 qualification are not established by these automated tests. These project/undo
 workflows run against the prepared integration containing issues 82–86; the
-complete final assembled stack is checked separately before publication.
+complete final assembled stack passes the same native fixture.
 
 
 Native validation on Linux aarch64 used egui 0.32.3, AccessKit 0.19.0,
@@ -84,4 +84,8 @@ production build. The prepared project integration passes 183 GUI tests with
 one native child fixture ignored by the ordinary runner; that child passes when
 invoked through the private native harness. The shortcut window has bounded,
 scrollable geometry so its expanded content does not cover the project menu.
-Final assembled full-suite/build results are recorded at publication.
+The final assembled full suite passes 587 tests with 7 opt-in fixtures ignored;
+`cargo build --offline` passes. The native fixture passes again on that exact
+stack, traversing 227 nodes and returning 45 native actions. The saved/reopened
+note remains present. License records were refreshed for the new source and
+feature graph, and packaging verifies the built executable's embedded records.
