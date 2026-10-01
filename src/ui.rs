@@ -74,6 +74,7 @@ mod midi_connection_tests;
 mod sampler_pad_tests;
 #[cfg(test)]
 mod theme_reload_tests;
+mod theme_requests;
 #[cfg(test)]
 mod font_selection_tests;
 
@@ -88,6 +89,8 @@ pub struct App {
     deck_selection: deck_selection::Selection,
 
     theme_reload: Option<crate::theme::reload::Loader>,
+    theme_requests: Option<crate::theme::requests::Endpoint>,
+    theme_request: Option<theme_requests::Pending>,
     theme_fonts: Option<Arc<egui::FontDefinitions>>,
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
@@ -160,6 +163,7 @@ impl App {
         let project = project::Projects::new(engine.project.clone(), engine.sr());
         let snap = engine.snapshot();
         let playback_watches = play_history::initial_watches(&engine);
+        let theme_requests = engine.cmd.theme_requests().attach();
         let mut app = Self {
             settings: preferences::Settings::default(),
             diagnostics: diagnostics::Diagnostics::default(),
@@ -171,6 +175,8 @@ impl App {
             deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
 
             theme_reload: None,
+            theme_requests,
+            theme_request: None,
             theme_fonts: None,
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
@@ -517,6 +523,7 @@ impl eframe::App for App {
 
 impl App {
     fn poll_theme(&mut self, ctx: &egui::Context) {
+        if self.poll_theme_requests(ctx) { return; }
         let Some(update) = self.theme_reload.as_ref().and_then(|loader| loader.poll()) else { return };
         self.settings.theme_update = Some(update);
         if self.settings.profile().appearance.follow_theme { self.apply_appearance(ctx); }

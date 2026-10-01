@@ -37,6 +37,8 @@ pub(crate) enum Operation {
     Ping {},
     Status {},
     Follow {},
+    #[serde(rename = "reload-theme")]
+    ReloadTheme {},
     Play {},
     Stop {},
     TogglePlay {},
@@ -60,7 +62,7 @@ impl Operation {
 
     pub fn command(self) -> Option<Command> {
         Some(match self {
-            Self::Ping {} | Self::Status {} | Self::Follow {} => return None,
+            Self::Ping {} | Self::Status {} | Self::Follow {} | Self::ReloadTheme {} => return None,
             Self::Play {} => Command::Play,
             Self::Stop {} => Command::Stop,
             Self::TogglePlay {} => Command::TogglePlay,

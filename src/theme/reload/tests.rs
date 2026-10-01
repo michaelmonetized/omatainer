@@ -143,3 +143,45 @@ fn invalid_missing_and_oversized_files_never_replace_a_valid_font_or_size() {
     assert!(start.elapsed() < Duration::from_millis(100));
     control.release.send(()).unwrap();
 }
+
+#[test]
+fn forced_reload_is_atomic_revalidates_unchanged_font_and_recovers_only_complete_bundles() {
+    let fixture = Fixture::new();
+    let mut reader = Reader::new(fixture.theme.clone(), fixture.resolver());
+    let first = reader.read().unwrap();
+    let forced = reader.force().unwrap();
+    assert_eq!(first.theme, forced.theme);
+    assert!(!Arc::ptr_eq(&first.fonts, &forced.fonts), "force must re-read cached bytes");
+    fixture.colors("background = '#aabbcc'\n");
+    fixture.shell("[font]\nbase-size = 'broken'\n");
+    fixture.select("Ubuntu", "ubuntu.ttf");
+    assert!(reader.force().err().unwrap().contains("font.base-size"));
+    assert_eq!(reader.current.theme, forced.theme);
+    assert!(Arc::ptr_eq(&reader.current.fonts, &forced.fonts));
+    assert!(reader.read().is_none(), "watcher cannot leak the valid subset after failure");
+    fixture.shell("[font]\nbase-size = 18\n");
+    let recovered = reader.read().unwrap();
+    assert_eq!(recovered.theme.font_size, 18.0);
+    assert_eq!(recovered.theme.font, "Ubuntu");
+    assert_eq!(recovered.theme.bg, egui::Color32::from_rgb(0xaa, 0xbb, 0xcc));
+    fixture.colors("background = 'broken'\n");
+    assert!(reader.force().is_err());
+    fixture.colors("background = '#aabbcc'\n");
+    fs::write(fixture.root.join("fonts/ubuntu.ttf"), "broken").unwrap();
+    assert!(reader.force().is_err());
+    assert_eq!(reader.current.theme, recovered.theme);
+    assert!(Arc::ptr_eq(&reader.current.fonts, &recovered.fonts));
+}
+
+#[test]
+fn automatic_watch_can_publish_valid_resources_after_the_forced_ticket_is_abandoned() {
+    let fixture = Fixture::new();
+    let mut reader = Reader::new(fixture.theme.clone(), fixture.resolver());
+    reader.read().unwrap();
+    fixture.select("Ubuntu", "ubuntu.ttf");
+    let ignored_ticket = reader.force().unwrap();
+    let automatic = reader.read().expect("an expired GUI ticket cannot suppress the watcher forever");
+    assert_eq!(automatic.theme.font, "Ubuntu");
+    assert!(Arc::ptr_eq(&automatic.fonts, &ignored_ticket.fonts));
+    assert!(reader.read().is_none(), "one republication, not an ongoing font/style loop");
+}
