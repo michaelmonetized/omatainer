@@ -192,3 +192,16 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   visible failures. An uncaptured legacy renderer request fails explicitly;
   it cannot infer a later GUI selection. File loading uses the existing pending,
   result and diagnostic status, with request-token cancellation rules above.
+
+## Crate browsing
+
+- Crate rows use a fixed-height virtual viewport. Only visible rows and egui's
+  bounded overscan are painted or formatted; unchanged visible cells are reused.
+- Filtered indices follow the scan worker's sorted crate and rebuild only when
+  the query or immutable library metadata changes. Controller selection uses
+  the same index cache. Play-history changes refresh only visible history cells.
+- Selection follows its typed media source across filtering and publication;
+  the scroll anchor follows its source across reordered scan results. If a
+  selected source disappears, selection clamps to a valid neighboring row.
+- Clicking a row focuses the crate. Up/Down, Page Up/Down and Home/End move and
+  reveal selection while that list has focus. Search-field arrows edit text.
