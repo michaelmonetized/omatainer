@@ -1093,3 +1093,30 @@ publication. Preferences persist startup protection only, not emergency state.
 - Software mount inventories, local block-filesystem resolver checks and converted
   callback comparisons do not qualify a physical removable-drive unplug, human
   listening, controller compatibility, backend XRUN freedom or Orca behavior.
+
+## Reviewed missing-media relocation (#108)
+
+- The selected track can use an explicit replacement path or search 1–64
+  absolute roots. Complete SHA content identity, never a filename or size guess,
+  qualifies a match. A missing original requires its previously saved digest;
+  an available unqualified original is measured on the filesystem worker and
+  its digest is persisted before a searched choice can commit.
+- Search shares the existing scanner, leaving essential metadata saves free.
+  Bounds are depth 64, one million visited entries, 100,000 inspected files,
+  4,096 guarded directories, 64 GiB hashed bytes and 256 matching locations.
+  Static symlinks and nested mounts are skipped. Unavailable inputs, errors and
+  limits expose incomplete coverage, full observed reason counts and up to 32
+  bounded samples. Cancellation and changed directory/mount guards discard
+  publication. Two bounded worker pins retire immutable result rows off the GUI.
+- All identical copies require explicit selection, including a single match.
+  New searches and edited roots retire the prior review. Control identities
+  capture input text, track and search/choice identity so an obsolete event
+  cannot select a different displayed path. Closing cancels search; Performance
+  protection invalidates old work even after a quick return to Studio.
+- Commit rechecks the reviewed candidate's fingerprint, mount namespace/location
+  and complete bytes using the sole catalog writer. The latest cue/grid edits,
+  stable TrackId, crate memberships and history survive the path change, with
+  the old source retained as an attributable alias. No media is moved/deleted.
+  Pre-rename persistence failure rolls back the optional association while
+  retaining essential edits for retry. A post-rename failure retains the actual
+  committed association and reports unconfirmed durability.

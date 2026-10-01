@@ -55,7 +55,7 @@ impl std::fmt::Display for Failure {
 fn io(error: std::io::Error) -> Failure {
     Failure::Unreadable(error.to_string().chars().take(256).collect())
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct Mount {
     id: u64,
     device: Device,
@@ -72,6 +72,21 @@ struct Block {
     device: Device,
     uuid: String,
     removable: bool,
+}
+/// Opaque current mount-view guard for worker searches, including File roots.
+/// It carries no persistent identity and performs no filesystem work itself.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Access {
+    namespace: (u64, u64),
+    mount: Mount,
+}
+impl Access {
+    pub fn check(&self, snapshot: &Snapshot, path: &Path) -> Result<(), Failure> {
+        if snapshot.namespace != self.namespace || snapshot.mount_at(path)? != &self.mount {
+            return Err(Failure::Changed);
+        }
+        Ok(())
+    }
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Snapshot {
@@ -356,8 +371,11 @@ impl Snapshot {
             point: mount.point.clone(),
         }
     }
-    /// Explicit path imports adopt a canonical identity once, off the GUI.
-    /// Internal/non-block files remain ordinary local-file sources.
+    /// Capture the namespace and mounted location for a worker-side path access.
+    pub fn access(&self, path: &Path) -> Result<Access, Failure> {
+        Ok(Access { namespace: self.namespace, mount: self.mount_at(path)?.clone() })
+    }
+    /// Explicit imports adopt canonical identity; internal files remain local paths.
     pub fn identify(&self, path: &Path) -> Result<Location, Failure> {
         let path = path.canonicalize().map_err(io)?;
         self.identify_canonical(path)

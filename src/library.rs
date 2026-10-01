@@ -16,6 +16,7 @@ use std::{
 };
 
 mod content;
+pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;
 pub(crate) mod watch_roots;

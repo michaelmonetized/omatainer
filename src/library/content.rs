@@ -10,6 +10,15 @@ pub(super) fn hash_file(
     expected: FileFingerprint,
     mut keep_going: impl FnMut() -> bool,
 ) -> Result<[u8; 32], String> {
+    hash_file_progress(path, expected, &mut keep_going, |_| {})
+}
+
+pub(super) fn hash_file_progress(
+    path: &Path,
+    expected: FileFingerprint,
+    mut keep_going: impl FnMut() -> bool,
+    mut advance: impl FnMut(u64),
+) -> Result<[u8; 32], String> {
     let mut file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
@@ -36,6 +45,7 @@ pub(super) fn hash_file(
         if n == 0 {
             break;
         }
+        advance(n as u64);
         total = total.checked_add(n as u64).ok_or("track length overflow")?;
         if total > before.len() {
             return Err("track grew during verification".into());
@@ -177,6 +187,19 @@ impl Catalog {
         request: &Relocate,
         cancel: &std::sync::atomic::AtomicBool,
     ) -> Result<(), String> {
+        self.relocate_checked(request,None,cancel)
+    }
+    pub(crate) fn relocate_reviewed(
+        &mut self,request:&Relocate,candidate:&super::relocation_search::Candidate,
+        cancel:&std::sync::atomic::AtomicBool,
+    )->Result<(),String> {
+        if candidate.location.path!=request.destination {return Err("reviewed replacement path does not match the request".into());}
+        self.relocate_checked(request,Some(candidate),cancel)
+    }
+    fn relocate_checked(
+        &mut self,request:&Relocate,reviewed:Option<&super::relocation_search::Candidate>,
+        cancel:&std::sync::atomic::AtomicBool,
+    )->Result<(),String> {
         let active = || !cancel.load(std::sync::atomic::Ordering::Acquire);
         if !active() {
             return Err("Performance protection cancelled track verification".into());
@@ -193,31 +216,43 @@ impl Catalog {
             return Err("track changed since relocation was requested; select it again".into());
         }
         if !matches!(original.source,LibSource::File(_) | LibSource::Removable {..}) {return Err("only local files or removable tracks can be relocated".into());}
-        let source = LibSource::File(request.destination.clone());
+        validate_source(&LibSource::File(request.destination.clone()))?;
+        let snapshot=crate::media_location::Snapshot::discover().map_err(|e|e.to_string())?;
+        let location=match reviewed {
+            Some(candidate)=>{candidate.check(&snapshot)?;candidate.location.clone()},
+            None=>snapshot.identify(&request.destination).map_err(|e|e.to_string())?,
+        };
+        let access=snapshot.access(&location.path).map_err(|e|e.to_string())?;
+        let source=location.source.clone();
         validate_source(&source)?;
-        if self.index.contains_key(&source) {
-            return Err("destination already belongs to a library track".into());
+        if self.index.contains_key(&source) {return Err("destination already belongs to a library track".into());}
+        if original.previous_locations.len()>=64 {return Err("track relocation history is full (64 locations)".into());}
+        let metadata=snapshot.inspect(&location).map_err(|e|e.to_string())?;
+        if !metadata.is_file() {return Err("destination is not an available regular file".into());}
+        let fingerprint=FileFingerprint::from_metadata(&metadata);
+        let mut original_guard=None;
+        let expected=if let Some(hash)=original.versions[original.current].content_hash {hash} else {
+            if reviewed.is_some() {return Err("reviewed search proof was not durably qualified; retry search".into());}
+            let old=snapshot.resolve(&original.source).map_err(|e|format!("original content was not verified before the move: {e}"))?;
+            let old_access=snapshot.access(&old.path).map_err(|e|e.to_string())?;
+            let hash=hash_file(&old.path,request.fingerprint,active)
+                .map_err(|e|format!("original content was not verified before the move: {e}"))?;
+            original_guard=Some((old,old_access));hash
+        };
+        if reviewed.is_some_and(|candidate|candidate.hash!=expected || candidate.fingerprint!=fingerprint) {
+            return Err("reviewed replacement no longer matches the captured track proof".into());
         }
-        if original.previous_locations.len() >= 64 {
-            return Err("track relocation history is full (64 locations)".into());
+        let actual=hash_file(&location.path,fingerprint,active)?;
+        if expected!=actual {return Err("destination contains different bytes; saved cues were not reassigned".into());}
+        let fresh=crate::media_location::Snapshot::discover().map_err(|e|e.to_string())?;
+        access.check(&fresh,&location.path).map_err(|e|e.to_string())?;
+        location.recheck_with(&fresh).map_err(|e|e.to_string())?;
+        if let Some((old,access))=original_guard {
+            access.check(&fresh,&old.path).map_err(|e|e.to_string())?;
+            old.recheck_with(&fresh).map_err(|e|e.to_string())?;
         }
-        let fingerprint = FileFingerprint::read(&request.destination)
-            .ok_or("destination is not an available regular file")?;
-        let expected = original.versions[original.current]
-            .content_hash
-            .map(Ok::<_,String>)
-            .unwrap_or_else(|| {
-                let location=crate::media_location::Location::resolve(&original.source).map_err(|e|e.to_string())?;
-                let hash=hash_file(&location.path,request.fingerprint,active)?;
-                location.recheck().map_err(|e|e.to_string())?;Ok(hash)
-            })
-            .map_err(|e| format!("original content was not verified before the move: {e}"))?;
-        let actual = hash_file(&request.destination, fingerprint, active)?;
-        if expected != actual {
-            return Err(
-                "destination contains different bytes; saved cues were not reassigned".into(),
-            );
-        }
+        if let Some(reviewed)=reviewed {reviewed.check(&fresh)?;}
+        if !active() {return Err("Performance protection cancelled track verification".into());}
         let mut candidate = self.clone();
         let track = &mut candidate.tracks[i];
         track.versions[track.current].content_hash = Some(expected);

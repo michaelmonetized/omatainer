@@ -12,6 +12,8 @@ use std::thread::JoinHandle;
 mod tests;
 mod traversal;
 mod watch;
+mod replacement;
+pub(super) use replacement::SearchHandle;
 
 const MAX_INPUTS: usize = 64;
 const MAX_DEPTH: usize = 64;
@@ -42,6 +44,9 @@ enum Kind { Roots, Import }
 pub(super) enum ScanState {
     Idle,
     Scanning,
+    Searching,
+    SearchCancelling,
+    SearchFinished(String),
     Cancelling,
     Complete(usize),
     Cancelled,
@@ -73,6 +78,7 @@ pub(super) struct ScanRoots {
 }
 type RootBatch = Arc<ScanRoots>;
 struct Request {
+    replacement: Option<replacement::Task>,
     performance:Handle,
     watch_enabled:bool,
     watch: Option<Watch>,
@@ -139,12 +145,15 @@ impl Publication {
 }
 
 enum Completion {
+    Replacement(u64, Result<Arc<crate::library::relocation_search::Receipt>, String>),
     Ready(Publication),
     Cancelled,
     Failed(String),
 }
 
 pub(super) struct LibraryScan {
+    next_search: u64,
+    replacement: Option<(u64, Result<Arc<crate::library::relocation_search::Receipt>, String>)>,
     watch_enabled:bool,
     watch_ready:Arc<AtomicBool>,
     changed:Arc<AtomicBool>,
@@ -171,14 +180,29 @@ impl LibraryScan {
             .name("omatainer-library".into())
             .spawn(move || {
                 let mut fingerprints = HashMap::new();
+                let mut search_pins = Vec::new();
                 let mut summary_pin:Option<Arc<Summary>>=None;
                 let mut watcher=watch::Watcher::default();
                 loop {
+                    search_pins.retain(|receipt: &Arc<crate::library::relocation_search::Receipt>| Arc::strong_count(receipt) > 1);
                     let request=match jobs.recv_timeout(std::time::Duration::from_millis(250)) {
                         Ok(request)=>request,
                         Err(mpsc::RecvTimeoutError::Timeout)=>{if watcher.poll(&mut inventory) {worker_changed.store(true,Ordering::Release);}continue;},
                         Err(mpsc::RecvTimeoutError::Disconnected)=>break,
                     };
+                    if let Some(task) = &request.replacement {
+                        let result = if search_pins.len() >= 2 {
+                            Err("Close an earlier replacement review before searching again".into())
+                        } else {
+                            crate::library::relocation_search::search_with_inventory(
+                                &task.catalog, &task.target, &request.roots, &task.progress,
+                                || !request.work.cancelled(), &mut inventory,
+                            ).map(Arc::new)
+                        };
+                        if let Ok(receipt) = &result { search_pins.push(receipt.clone()); }
+                        if finished.send(Completion::Replacement(task.id, result)).is_err() { break; }
+                        continue;
+                    }
                     match traversal::scan_with_inventory(&request, &fingerprints, &mut inventory) {
                         Ok((items, next_fingerprints, summary, roots)) => {
                             let items = Arc::new(items);let roots=roots.map(Arc::new);let summary=Arc::new(summary);
@@ -224,9 +248,18 @@ impl LibraryScan {
                     }
                 }
                 drop(summary_pin);
+                drop(watcher);
+                drop(fingerprints);
+                // Receipt rows retire on this worker even when App fields are
+                // dropped in a different order during shutdown.
+                while !search_pins.is_empty() {
+                    search_pins.retain(|receipt| Arc::strong_count(receipt) > 1);
+                    if !search_pins.is_empty() { std::thread::sleep(std::time::Duration::from_millis(10)); }
+                }
             });
         match worker {
             Ok(worker) => Self {
+                next_search: 0, replacement: None,
                 watch_enabled:false,
                 watch_ready,
                 changed,
@@ -240,6 +273,7 @@ impl LibraryScan {
                 summary: None,
             },
             Err(error) => Self {
+                next_search: 0, replacement: None,
                 watch_enabled:false,
                 watch_ready,
                 changed,
@@ -263,7 +297,7 @@ impl LibraryScan {
         self.performance = performance;
     }
     pub fn active(&self) -> bool {
-        matches!(self.state, ScanState::Scanning | ScanState::Cancelling)
+        matches!(self.state, ScanState::Scanning | ScanState::Cancelling | ScanState::Searching | ScanState::SearchCancelling)
     }
 
     pub fn start(&mut self, roots: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>) -> bool {
@@ -306,9 +340,9 @@ impl LibraryScan {
         };
         // A failed worker can be retried explicitly by the Scan button.
         if self.requests.is_none() {
-            let performance = self.performance.clone();let watching=self.watch_enabled;
+            let performance = self.performance.clone();let watching=self.watch_enabled;let next_search=self.next_search;
             *self = Self::default();
-            self.performance = performance;self.watch_enabled=watching;
+            self.performance = performance;self.watch_enabled=watching;self.next_search=next_search;
         }
         let Some(requests) = &self.requests else {
             return false;
@@ -317,6 +351,7 @@ impl LibraryScan {
         self.progress = Arc::new(Progress::default());
         self.summary = None;
         let request = Request {
+            replacement: None,
             performance:self.performance.clone(),watch_enabled:self.watch_enabled,
             watch,
             work,
@@ -344,12 +379,22 @@ impl LibraryScan {
     pub fn cancel(&mut self) {
         if self.active() {
             self.cancel.store(true, Ordering::Release);
-            self.state = ScanState::Cancelling;
+            self.state = if matches!(self.state, ScanState::Searching | ScanState::SearchCancelling) { ScanState::SearchCancelling } else { ScanState::Cancelling };
         }
     }
 
     pub fn poll(&mut self) -> Option<Publication> {
         match self.completion.try_recv() {
+            Ok(Completion::Replacement(id, result)) => {
+                let result = if self.cancel.load(Ordering::Acquire) {
+                    Err("Replacement search cancelled; library unchanged".into())
+                } else { result };
+                self.state = ScanState::SearchFinished(match &result {
+                    Ok(receipt) => format!("Replacement search: {} matches{}", receipt.matches.len(), if receipt.complete { "" } else { " · incomplete coverage" }),
+                    Err(error) => error.clone(),
+                });
+                self.replacement = Some((id, result));
+            }
             Ok(Completion::Ready(publication)) => {
                 if self.cancel.load(Ordering::Acquire) {
                     publication.discard();
@@ -373,6 +418,9 @@ impl LibraryScan {
 
     pub fn label(&self) -> String {
         match &self.state {
+            ScanState::Searching => "Searching replacement folders…".into(),
+            ScanState::SearchCancelling => "Cancelling replacement search…".into(),
+            ScanState::SearchFinished(message) => message.clone(),
             ScanState::Idle => "Ready to scan".into(),
             ScanState::Scanning => {
                 let phase = match self.progress.phase.load(Ordering::Relaxed) {

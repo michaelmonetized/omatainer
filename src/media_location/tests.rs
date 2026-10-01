@@ -336,3 +336,35 @@ fn btrfs_read_only_uapi_layout_and_foreign_device_refusal_are_exact() {
     );
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn explicit_nested_mount_root_is_searched_even_when_parent_cannot_cross_it() {
+    use crate::engine::media_source::FileFingerprint;
+    use crate::library::{Catalog, Metadata, Relocate, relocation_search};
+    let dir = Temp::new();
+    let original = dir.0.join("original.wav");
+    let nested = dir.0.join("other-mount");
+    std::fs::create_dir(&nested).unwrap();
+    let copy = nested.join("renamed.wav");
+    std::fs::write(&original, b"same verified content").unwrap();
+    std::fs::copy(&original, &copy).unwrap();
+    let mut snapshot = Snapshot::discover().unwrap();
+    let mut foreign = snapshot.mount_at(&dir.0).unwrap().clone();
+    foreign.id = snapshot.mounts.iter().map(|m|m.id).max().unwrap() + 1;
+    foreign.point = nested.clone(); foreign.root = "/".into(); foreign.block = None;
+    snapshot.mounts.push(foreign);
+    let source = LibSource::File(original.clone());
+    let fingerprint = FileFingerprint::read(&original).unwrap();
+    let mut catalog = Catalog::default();
+    catalog.upsert(source.clone(), Some(fingerprint), Metadata {
+        title: "Original".into(), artist: "".into(), bpm: crate::ui::bpm::Bpm::UNKNOWN,
+        key: "".into(), duration: None, last_play: None,
+    }).unwrap();
+    let target = Relocate { id:catalog.track(&source).unwrap().id.clone(), source, fingerprint, destination:PathBuf::new() };
+    let parent_only = relocation_search::search_with_inventory(&catalog, &target, &[dir.0.clone()], &relocation_search::Progress::default(), ||true, &mut ||Ok(snapshot.clone())).unwrap();
+    assert!(parent_only.matches.is_empty()); assert!(!parent_only.complete);
+    let explicit = relocation_search::search_with_inventory(&catalog, &target, &[dir.0.clone(), nested], &relocation_search::Progress::default(), ||true, &mut ||Ok(snapshot.clone())).unwrap();
+    assert_eq!(explicit.matches.len(), 1);
+    assert_eq!(explicit.matches[0].location.path, copy);
+    assert_eq!(explicit.skipped[relocation_search::Reason::ForeignMount as usize], 1);
+}

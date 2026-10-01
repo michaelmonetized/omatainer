@@ -252,3 +252,5 @@ fn enrollment_gui(files:Files,real:bool) {
     let saved=crate::library::read(&files.0.join("saved/library.json")).unwrap();assert!(saved.watched_roots.binding("Live",&files.0).is_none());assert_eq!(saved.track(&typed).unwrap().id,identity);assert_eq!(saved.version(&typed,Some(fingerprint)).unwrap().preparation,preparation);
     assert!(gui.nonzero);assert_eq!(FileFingerprint::read(&path),Some(fingerprint));assert_eq!(std::fs::read(path).unwrap(),original);
 }
+
+mod relocation;
