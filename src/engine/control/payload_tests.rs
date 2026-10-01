@@ -275,3 +275,30 @@ fn producer_waiting_on_admission_rechecks_new_history_backpressure() {
         Ok(Command::ReservedStop { .. })
     ));
 }
+
+#[test]
+fn performance_packet_waiter_rechecks_safety_after_producer_mutex() {
+    use crate::engine::performance::{Error, Safety};
+    let (port, receiver) = CommandPort::channel(32);
+    let producer = port.for_input_epoch(port.performance().input_epoch());
+    let locked = port.admission.lock();
+    let (preflight, passed) = std::sync::mpsc::sync_channel(0);
+    let worker = std::thread::spawn(move || producer.send_after_preflight(
+        Command::LiveNoteOn { source: 42, ch: 0, note: 60, vel: 100 },
+        || preflight.send(()).unwrap(),
+    ));
+    passed.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+    port.send(Command::SafetyStop(Safety::Stop)).unwrap();
+    drop(locked);
+    assert_eq!(worker.join().unwrap(), Err(SubmissionError::Performance(Error::Recovery)));
+    assert!(receiver.is_empty());
+    assert_eq!(pending(&port), 0);
+    // Stale packet handles may still deliver safety releases; they cannot start
+    // a new voice after an explicit recovery opens the creative gate again.
+    let old = port.for_input_epoch(port.performance().input_epoch());
+    port.performance().stopped(port.performance().safety_request().unwrap().0);
+    port.send(Command::RecoverPerformance).unwrap();
+    assert!(port.performance().try_recover(|| true));
+    assert_eq!(old.send(Command::Master(0.2)), Err(SubmissionError::Performance(Error::Recovery)));
+    assert!(old.send(Command::LiveNoteOff { source: 42, ch: 0, note: 60 }).is_ok());
+}

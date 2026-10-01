@@ -350,7 +350,7 @@ impl<B: Backend> Owner<B> {
         let previous = self.reclaim();
         if let Some(graph) = &mut self.graph {
             graph.stop_for_audio();
-            if reset { graph.safety_output = crate::engine::performance::Output::default(); graph.performance.publish_output(&graph.safety_output); }
+            if reset { graph.safety_output = crate::engine::performance::Output::default(); }
             graph.cmd_rx.set_audio_offline(false);
         }
         let attempted = self.open(plan, &cancel);
@@ -1095,5 +1095,58 @@ pub(crate) mod tests {
         let state = engine.project.capture(&AtomicBool::new(false)).unwrap();
         assert_eq!(state.revision, revision);
         assert!(state.media.len() > 0);
+    }
+}
+
+#[cfg(test)]
+mod performance_tests {
+    use super::*;
+    use crate::engine::{Command, performance::{Error, Safety}};
+    fn wait(mut ready: impl FnMut() -> bool) {
+        let deadline = std::time::Instant::now() + Duration::from_secs(4);
+        while !ready() { assert!(std::time::Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1)); }
+    }
+    #[test]
+    fn protected_owner_refuses_disruptions_and_explicit_reset_is_the_only_emergency_unmute() {
+        let (engine, audio, controls) = tests::fixture();
+        engine.send(Command::PerformanceMode(true)).unwrap();
+        let opens = controls.opens.load(Ordering::Acquire);
+        assert!(audio.handle.switch(crate::preferences::Audio::default(), Arc::new(AtomicBool::new(false))).is_err());
+        assert_eq!(controls.opens.load(Ordering::Acquire), opens);
+        engine.send(Command::SafetyStop(Safety::Silence)).unwrap();
+        wait(|| engine.cmd.performance().status().stopped && engine.cmd.performance().status().output_muted);
+        // A failed reset/rollback retains mute, even though histories were reset.
+        controls.failures.lock().extend([true, false]);
+        let permit = audio.handle.performance_permit().unwrap();
+        let status = audio.handle.reset_permitted(Arc::new(AtomicBool::new(false)), permit).unwrap();
+        assert!(status.message.contains("failed"));
+        assert!(engine.cmd.performance().status().output_muted);
+        engine.send(Command::RecoverPerformance).unwrap();
+        wait(|| !engine.cmd.performance().status().recovery);
+        assert!(engine.cmd.performance().status().protected);
+        assert!(engine.cmd.performance().status().output_muted);
+        let permit = audio.handle.performance_permit().unwrap();
+        let status = audio.handle.reset_permitted(Arc::new(AtomicBool::new(false)), permit).unwrap();
+        assert!(status.message.contains("reset completed"));
+        wait(|| !engine.cmd.performance().status().output_muted);
+        let capture = engine.project.capture(&AtomicBool::new(false)).unwrap();
+        assert_eq!(capture.state.bpm, 124.0);
+        wait(|| { let snapshot = engine.snapshot(); !snapshot.playing && snapshot.decks.iter().all(|deck| !deck.playing) });
+    }
+    #[test]
+    fn queued_audio_permit_prevents_mode_entry_without_stealing_another_seal() {
+        let (engine, audio, controls) = tests::fixture();
+        let permit = audio.handle.performance_permit().unwrap();
+        assert_eq!(engine.cmd.performance().set_enabled(true), Err(Error::Changing));
+        drop(permit);
+        controls.block_open.store(true, Ordering::Release);
+        let handle = audio.handle.clone();
+        let worker = std::thread::spawn(move || handle.switch(crate::preferences::Audio::default(), Arc::new(AtomicBool::new(false))));
+        wait(|| controls.entering_open.load(Ordering::Acquire));
+        assert_eq!(engine.cmd.performance().set_enabled(true), Err(Error::Changing));
+        controls.block_open.store(false, Ordering::Release);
+        worker.join().unwrap().unwrap();
+        wait(|| !engine.cmd.performance().status().changing);
+        engine.cmd.performance().set_enabled(true).unwrap();
     }
 }

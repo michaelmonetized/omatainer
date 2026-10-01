@@ -18,6 +18,7 @@ pub const MAX_QUEUED_PAYLOAD_BYTES: usize = 256 * 1024 * 1024;
 /// serializes admission bookkeeping only; the audio consumer never acquires it.
 #[derive(Clone)]
 pub struct CommandPort {
+    input_epoch: Option<u64>,
     sender: crossbeam_channel::Sender<Command>,
     shared: std::sync::Arc<AdmissionShared>,
     admission: std::sync::Arc<parking_lot::Mutex<Admission>>,
@@ -451,6 +452,7 @@ impl CommandPort {
             full_rejections: std::sync::atomic::AtomicU64::new(0),
         });
         let port = Self {
+            input_epoch: None,
             sender,
             shared: shared.clone(),
             admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
@@ -523,6 +525,15 @@ impl CommandPort {
     /// release is already ordered and no intervening accepted onset exists.
     /// No producer waits for queue capacity; only the small admission section
     /// serializes producers. Construct media/instruments before calling here.
+    pub(super) fn for_input_epoch(&self, epoch: u64) -> Self {
+        let mut port = self.clone(); port.input_epoch = Some(epoch); port
+    }
+    fn performance_check(&self, command: &Command) -> Result<(), super::performance::Error> {
+        if self.input_epoch.is_some_and(|epoch| epoch != self.shared.performance.input_epoch()) && !super::performance::recovery_safe(command) {
+            return Err(super::performance::Error::Recovery);
+        }
+        self.shared.performance.check(command, None)
+    }
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
         self.send_after_preflight(command, || {})
     }
@@ -549,7 +560,7 @@ impl CommandPort {
             };
         }
         let _performance_writer = self.shared.performance.writer();
-        if let Err(error) = self.shared.performance.check(&command, None) {
+        if let Err(error) = self.performance_check(&command) {
             self.shared.performance.reject(error);
             return fail(SubmissionError::Performance(error));
         }
@@ -586,7 +597,7 @@ impl CommandPort {
         }
         after_preflight();
         let mut state = self.admission.lock();
-        if let Err(error) = self.shared.performance.check(&command, None) {
+        if let Err(error) = self.performance_check(&command) {
             self.shared.performance.reject(error);
             return fail(SubmissionError::Performance(error));
         }

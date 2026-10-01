@@ -290,4 +290,24 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn performance_policy_guard_lives_until_manager_completion_and_last_request_release() {
+        let performance = crate::engine::performance::Handle::default();
+        let control = Control::with_performance(InputPolicy::All, performance.clone());
+        control.request(InputPolicy::Disabled).unwrap();
+        let request = control.requested();
+        assert_eq!(performance.set_enabled(true), Err(crate::engine::performance::Error::Changing));
+        // A coalesced new policy shares this manager's existing permit.
+        control.request(InputPolicy::All).unwrap();
+        let newer = control.requested();
+        assert!(!control.complete(&request, None, Vec::new(), None));
+        assert!(control.complete(&newer, None, Vec::new(), None));
+        drop(newer);
+        assert_eq!(performance.set_enabled(true), Err(crate::engine::performance::Error::Changing));
+        drop(request);
+        performance.set_enabled(true).unwrap();
+        assert_eq!(control.request(InputPolicy::Disabled), Err(PolicyError::Protected));
+        assert_eq!(control.requested().policy.as_ref(), &InputPolicy::All);
+    }
+
 }

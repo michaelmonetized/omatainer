@@ -83,3 +83,6 @@ impl App {
         } else { false }
     }
 }
+
+#[cfg(test)]
+mod tests;

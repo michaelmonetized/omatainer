@@ -67,6 +67,7 @@ pub struct Status {
 struct Shared {
     admission: AtomicU64,
     safety: AtomicU64,
+    input_epoch: AtomicU64,
     applied: AtomicU64,
     recover: AtomicU64,
     deck_activity: AtomicU8,
@@ -85,6 +86,7 @@ impl Default for Handle {
         Self(Arc::new(Shared {
             admission: AtomicU64::new(0),
             safety: AtomicU64::new(0),
+            input_epoch: AtomicU64::new(0),
             applied: AtomicU64::new(0),
             recover: AtomicU64::new(0),
             output: AtomicU8::new(0),
@@ -299,6 +301,7 @@ impl Handle {
         }
         Err(self.reject(Error::BackgroundBusy))
     }
+    pub(crate) fn input_epoch(&self) -> u64 { self.0.input_epoch.load(Ordering::Acquire) }
     pub fn request_safety(&self, safety: Safety) {
         self.0
             .admission
@@ -306,6 +309,7 @@ impl Handle {
                 Some((state | RECOVERY) & !STOPPED)
             })
             .unwrap();
+        self.0.input_epoch.fetch_add(1, Ordering::AcqRel);
         self.0
             .safety
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |previous| {
@@ -371,6 +375,7 @@ impl Handle {
         {
             return false;
         }
+        self.0.input_epoch.fetch_add(1, Ordering::AcqRel);
         self.0
             .admission
             .compare_exchange(
@@ -527,7 +532,7 @@ fn destructive(command: &Command) -> bool {
         | Command::FxParam { .. } => false,
     }
 }
-fn recovery_safe(command: &Command) -> bool {
+pub(super) fn recovery_safe(command: &Command) -> bool {
     matches!(
         command,
         Command::Stop
