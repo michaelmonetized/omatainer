@@ -264,7 +264,10 @@ and source bindings. The complete retained output is
 the launcher log is `issue-106-final-keylock-show-v4.log`. Neither show suite
 substitutes for the prior matched listening corpus or new human listening.
 
-Independent source/binary-bound gate verification passed. Seven CLI protocol,
+The immutable `issue-106-final-package` was built from committed source
+807f44d and independently verified with the source-bound workload receipt,
+embedded license records and package checksums. Independent source/binary-bound
+gate verification passed. Seven CLI protocol,
 six follow protocol, five runtime-isolation groups and actual headless safe
 startup all passed against the final release executable. Their logs are
 `issue-106-final-{cli,follow,runtime,safe-start}.log`.
