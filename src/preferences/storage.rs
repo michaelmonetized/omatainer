@@ -111,11 +111,18 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let (preferences, migrated) = match version {
-        2 => (
+        3 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
+        2 => {
+            let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
+                Error::Invalid(format!("Invalid version 2 preferences: {error}"))
+            })?;
+            preferences.version = VERSION;
+            (preferences, true)
+        }
         1 => {
             #[derive(Deserialize)]
             #[serde(deny_unknown_fields)]
@@ -393,6 +400,46 @@ mod tests {
         .unwrap();
         assert_eq!(load(&dir.file(), &cancel).unwrap().preferences, prefs);
         assert_eq!(fs::metadata(dir.file()).unwrap().mode() & 0o777, 0o600);
+    }
+    #[test]
+    fn version_two_audio_migrates_and_version_three_retains_exact_input_output_settings() {
+        let prefs = Preferences::defaults(Path::new("/private/user"));
+        let mut value = serde_json::to_value(&prefs).unwrap();
+        value["version"] = 2.into();
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() {
+            for field in ["backend", "format", "calibration"] {
+                profile["audio"].as_object_mut().unwrap().remove(field);
+            }
+        }
+        let (mut migrated, changed) = decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(changed);
+        assert_eq!(migrated, prefs);
+        let audio = &mut migrated.profiles.get_mut("Studio").unwrap().audio;
+        audio.backend = Some("ALSA".into());
+        audio.device = Some("External USB".into());
+        audio.format = Some(AudioFormat::I32);
+        audio.sample_rate = Some(192000);
+        audio.buffer_frames = Some(64);
+        audio.calibration.device = Some("Loopback input".into());
+        audio.calibration.format = Some(AudioFormat::F32);
+        audio.calibration.channel = 3;
+        audio.calibration.channels = Some(4);
+        audio.calibration.output_channel = 1;
+        audio.calibration.level_db = -48.0;
+        let dir = Directory::new();
+        save(
+            &dir.file(),
+            &migrated,
+            Overwrite::New,
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        let read = load(&dir.file(), &AtomicBool::new(false)).unwrap();
+        assert_eq!(read.preferences, migrated);
+        assert!(!read.migrated);
+        let mut invalid = serde_json::to_value(&migrated).unwrap();
+        invalid["profiles"]["Studio"]["audio"]["format"] = "packed-24".into();
+        assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
     }
     #[test]
     fn migration_is_explicit_and_unknown_or_duplicate_fields_never_disappear() {

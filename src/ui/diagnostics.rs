@@ -53,8 +53,8 @@ impl App {
             logical_cpus: std::thread::available_parallelism()
                 .map(usize::from)
                 .unwrap_or(0),
-            audio_backend: output.map(|info| info.backend.clone()),
-            output_format: output.map(|info| info.format.clone()),
+            audio_backend: output.as_ref().map(|info| info.backend.clone()),
+            output_format: output.as_ref().map(|info| info.format.clone()),
             midi_status_entries: self.snap.midi.len(),
             tracks: self.snap.tracks.len(),
             scenes: SCENES,

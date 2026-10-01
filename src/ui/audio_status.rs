@@ -15,7 +15,8 @@ impl App {
                     let label = if self.settings.message.starts_with("Preferences failed") { "Preferences failed" } else { "Preferences update" };
                     if ui.button(label).help_detail(ui, HelpControl::Preferences, &self.settings.message).clicked() { self.settings.open = true; }
                 }
-                if self.settings.pending_restart() { ui.label("Audio settings pending restart"); }
+                if self.settings.pending_restart() && ui.button("Saved audio pending").help(ui, HelpControl::AudioDevices).clicked() {self.audio_settings.open=true;}
+                if !self.audio_settings.open {if let Some((label,message))=self.audio_settings.notice(){if ui.button(label).help_detail(ui, HelpControl::AudioNotice, &message).clicked(){self.audio_settings.open=true;}}}
                 if let Some(notice) = &self.settings.startup_notice {
                     if ui.button("Setup notice").help_detail(ui, HelpControl::Preferences, notice).clicked() { self.settings.open = true; }
                 }
