@@ -248,3 +248,66 @@ fn view_edits_and_continuing_held_notes_cannot_appear_saved() {
     let later = captured(&live);
     assert!(later.state.tracks[7].clips[7].notes[0].len > saved.state.tracks[7].clips[7].notes[0].len);
 }
+
+fn reference_hash(mut prepared: Prepared) -> u64 {
+    prepared.rt.apply(Command::LaunchScene { scene: 0 });
+    prepared.rt.apply(Command::DeckPlay { deck: 0 });
+    prepared.rt.apply(Command::DeckPlay { deck: 1 });
+    let mut out = vec![0.0; 8192]; prepared.rt.process(&mut out);
+    assert!(out.iter().any(|v| v.abs() > 0.0001));
+    out.into_iter().flat_map(|v| v.to_bits().to_le_bytes()).fold(0xcbf29ce484222325, |h,b| (h ^ b as u64).wrapping_mul(0x100000001b3))
+}
+
+#[test]
+fn fresh_process_reopens_native_project_and_matches_reference_render() {
+    const CHILD: &str = "OMATAINER_PROJECT_RENDER_CHILD";
+    if let Some(path) = std::env::var_os(CHILD) {
+        let bundle = crate::project_file::load::<State>(std::path::Path::new(&path), &Default::default(), &AtomicBool::new(false)).unwrap();
+        let hash = reference_hash(Prepared::from_state(bundle.state, bundle.media, 48000).unwrap());
+        assert_eq!(hash.to_string(), std::env::var("OMATAINER_PROJECT_RENDER_HASH").unwrap());
+        return;
+    }
+    let base = std::env::temp_dir().join(format!("omatainer-project-render-{}-{}", std::process::id(), Instant::now().elapsed().as_nanos()));
+    std::fs::create_dir(&base).unwrap();
+    let path = base.join("full-production.omat");
+    let state = captured(&populated());
+    let hash = reference_hash(Prepared::from_state(state.state.clone(), state.media.clone(), 48000).unwrap());
+    crate::project_file::save(&path, &crate::project_file::Bundle { state: state.state, media: state.media },
+        crate::project_file::Overwrite::Never, &Default::default(), &AtomicBool::new(false)).unwrap();
+    let child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "engine::project::tests::fresh_process_reopens_native_project_and_matches_reference_render", "--nocapture"])
+        .env(CHILD, &path).env("OMATAINER_PROJECT_RENDER_HASH", hash.to_string()).output().unwrap();
+    assert!(child.status.success(), "fresh process failed: {}{}", String::from_utf8_lossy(&child.stdout), String::from_utf8_lossy(&child.stderr));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
+    let mut live = rt();
+    for track in &mut live.tracks {
+        track.name = "t".repeat(MAX_TEXT_BYTES);
+        for clip in &mut track.clips { clip.name = "c".repeat(MAX_TEXT_BYTES); clip.notes.clear(); }
+        track.clips[0].notes = vec![MidiNote { pitch: 60, start: 0.0, len: 1.0, vel: 100 }; MAX_NOTES_PER_CLIP];
+        track.fx.slots = (0..MAX_FX_PER_RACK).map(|_| fx::FxSlot::new(fx::FxId::Comp, live.sr)).collect();
+    }
+    for rack in &mut live.scene_fx { rack.slots = (0..MAX_FX_PER_RACK).map(|_| fx::FxSlot::new(fx::FxId::Comp, live.sr)).collect(); }
+    for deck in &mut live.decks { deck.title = "d".repeat(MAX_TEXT_BYTES); }
+    live.sampler_banks = (0..MAX_BANKS).map(|_| "b".repeat(MAX_TEXT_BYTES)).collect();
+    live.pad_banks = (0..MAX_BANKS).map(|_| live.pad_banks[0].clone()).collect();
+    let mut micros = Vec::new();
+    for _ in 0..9 {
+        let mut frame = capture::Frame::new(); frame.capture(&live); frame.prepare();
+        let start = Instant::now();
+        let counts = super::super::test_alloc::measure(|| frame.capture(&live));
+        micros.push(start.elapsed().as_micros());
+        assert_eq!(counts, super::super::test_alloc::Counts::default());
+        assert!(frame.complete);
+        assert_eq!(frame.state.tracks.iter().flat_map(|t| &t.clips).map(|c| c.notes.len()).sum::<usize>(), MAX_TOTAL_NOTES);
+    }
+    micros.sort();
+    eprintln!("maximum project capture: {} notes, {} rack slots, 16 banks, 4096-byte names; wall us median={} max={}; zero allocation/free (local copy cost, not stream deadline proof)",
+        MAX_TOTAL_NOTES, MAX_FX_PER_RACK * (TRACKS + SCENES), micros[4], micros[8]);
+    live.tracks[0].clips[1].notes.push(MidiNote { pitch: 60, start: 0.0, len: 1.0, vel: 100 });
+    let mut rejected = capture::Frame::new(); rejected.capture(&live);
+    assert_eq!(rejected.error, Some("project exceeds 65536 notes"));
+}
