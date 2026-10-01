@@ -3,6 +3,8 @@
 
 This uses a freshly built native Rust test executable and private evidence files.
 It does not open an audio device or establish perceptual/physical qualification.
+Outputs must be fresh descendants of OMATAINER_KEYLOCK_EVIDENCE_ROOT
+(default: repository target/keylock-quality).
 """
 import argparse
 import csv
@@ -16,7 +18,11 @@ import sys
 import tempfile
 from types import SimpleNamespace
 
-ROOT = Path('/home/michael/Projects/omatainer-work').resolve()
+ROOT = Path(os.environ.get('OMATAINER_KEYLOCK_EVIDENCE_ROOT',
+            Path(__file__).resolve().parent.parent / 'target/keylock-quality'))
+if not ROOT.is_absolute():
+    raise ValueError('OMATAINER_KEYLOCK_EVIDENCE_ROOT must be absolute')
+ROOT = ROOT.resolve()
 TEST = 'engine::keylock_quality_tests::export_keylock_quality'
 LIMIT = 2 * 1024 ** 3
 
@@ -127,7 +133,11 @@ corpus cannot qualify all music or the physical live setup.
                  'levels': row['levels'], 'cpu': row['measurement'],
                  'unity_content_alignment': row.get('unity_content_alignment')} for row in report['records'] if row['block_frames'] == 128]
     write(operator / 'key.json', json.dumps({'schema': 1, 'seed': args.seed, 'workload_sha256': candidate['workload_sha256'],
-          'baseline_commit': baseline['git_commit'], 'candidate_commit': candidate['git_commit'], 'pairs': key}, indent=2) + '\n')
+          'baseline_runtime_checkout_commit': baseline['runtime_checkout_commit'],
+          'candidate_runtime_checkout_commit': candidate['runtime_checkout_commit'],
+          'baseline_executable_sha256': baseline['build']['executable_sha256'],
+          'candidate_executable_sha256': candidate['build']['executable_sha256'],
+          'source_qualification': 'Runtime checkout is not embedded build provenance; retain matching build receipts', 'pairs': key}, indent=2) + '\n')
     write(operator / 'objective-diagnostics.json', json.dumps({'schema': 1, 'human_scores': None,
           'baseline': measurements(baseline), 'candidate': measurements(candidate),
           'scope': 'Objective diagnostics only; no automated quality winner or listening score'}, indent=2) + '\n')
@@ -158,7 +168,8 @@ def self_test():
                                     locked=locked, wav='audio.wav', wav_sha256=hashlib.sha256(payload).hexdigest(),
                                     levels=[], measurement={}))
             report = dict(schema=1, workload={'test': True}, workload_sha256='synthetic-script-fixture',
-                          records=rows, callbacks=[{}] * 126, human_listening_scores=None, git_commit=implementation)
+                          records=rows, callbacks=[{}] * 126, human_listening_scores=None, runtime_checkout_commit=implementation,
+                          build={'executable_sha256': 'synthetic-' + implementation})
             (folder / 'report.json').write_text(json.dumps(report))
             for name in ['README.md', 'sources.json', 'VocalSet-CC-BY-4.0.txt']:
                 (folder / name).write_text('Synthetic orchestration fixture; not corpus evidence.\n')
@@ -203,9 +214,11 @@ def main():
     comparison.add_argument('--out', type=Path, required=True)
     comparison.add_argument('--seed', type=int, default=100)
     args = parser.parse_args()
+    ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     if args.action == 'run':
         destination = fresh(args.out)
-        env = dict(os.environ, OMATAINER_KEYLOCK_QUALITY_OUT=str(destination))
+        env = dict(os.environ, OMATAINER_KEYLOCK_QUALITY_OUT=str(destination),
+                   OMATAINER_KEYLOCK_EVIDENCE_ROOT=str(ROOT))
         subprocess.run([str(args.test_binary.resolve()), '--ignored', '--exact', TEST, '--nocapture', '--test-threads=1'], env=env, check=True)
         result = document(destination)
         print(json.dumps({'workload_sha256': result['workload_sha256'], 'renders': len(result['records']),

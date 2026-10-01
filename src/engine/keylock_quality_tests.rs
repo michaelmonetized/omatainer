@@ -15,7 +15,11 @@ const RATIOS: [f32; 7] = [0.5, 0.84, 0.92, 1.0, 1.08, 1.16, 1.5];
 const RATES: [u32; 3] = [44_100, 48_000, 96_000];
 const BLOCKS: [usize; 3] = [64, 128, 512];
 const OUTPUT_LIMIT: u64 = 2 * 1024 * 1024 * 1024;
-const ROOT: &str = "/home/michael/Projects/omatainer-work";
+fn evidence_root() -> PathBuf {
+    std::env::var_os("OMATAINER_KEYLOCK_EVIDENCE_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("target/keylock-quality"))
+}
 struct Corpus {
     id: &'static str,
     kind: &'static str,
@@ -579,7 +583,7 @@ fn callback_cases(root: &Path, source: &Arc<Sample>) -> Vec<Value> {
 }
 
 #[test]
-#[ignore = "explicit bounded offline quality export; requires fresh OMATAINER_KEYLOCK_QUALITY_OUT under omatainer-work"]
+#[ignore = "explicit bounded offline quality export; requires fresh OMATAINER_KEYLOCK_QUALITY_OUT beneath the configured evidence root"]
 fn export_keylock_quality() {
     assert!(
         !cfg!(debug_assertions),
@@ -589,12 +593,27 @@ fn export_keylock_quality() {
         std::env::var_os("OMATAINER_KEYLOCK_QUALITY_OUT")
             .expect("set explicit new evidence directory"),
     );
+    let evidence_root = evidence_root();
     assert!(
-        root.is_absolute() && root.starts_with(ROOT) && !root.exists(),
-        "evidence must be a fresh directory under {ROOT}"
+        evidence_root.is_absolute(),
+        "OMATAINER_KEYLOCK_EVIDENCE_ROOT must be absolute"
+    );
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(&evidence_root)
+        .unwrap();
+    let evidence_root = evidence_root.canonicalize().unwrap();
+    assert!(
+        root.is_absolute() && !root.exists(),
+        "evidence must be a fresh absolute directory"
     );
     let parent = root.parent().unwrap().canonicalize().unwrap();
-    assert!(parent.starts_with(Path::new(ROOT).canonicalize().unwrap()));
+    assert!(
+        parent.starts_with(&evidence_root),
+        "evidence must be beneath {}",
+        evidence_root.display()
+    );
     fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
     write_new(&root.join("INCOMPLETE"),b"No success is implied until report.json exists. All metrics are objective diagnostics; human scores absent.\n");
     let corpus = corpus();
@@ -739,11 +758,11 @@ fn export_keylock_quality() {
             .unwrap()
             .stdout
     };
-    let report = json!({"schema":1,"workload":workload,"workload_sha256":workload_sha,"git_commit":String::from_utf8_lossy(&git(&["rev-parse","HEAD"])).trim(),
+    let report = json!({"schema":1,"workload":workload,"workload_sha256":workload_sha,"runtime_checkout_commit":String::from_utf8_lossy(&git(&["rev-parse","HEAD"])).trim(),
         "build":{"debug_assertions":cfg!(debug_assertions),"rustc":String::from_utf8_lossy(&std::process::Command::new("rustc").arg("--version").output().unwrap().stdout).trim(),"executable_sha256":digest(&fs::read(std::env::current_exe().unwrap()).unwrap())},
-        "engine_worktree_diff_sha256":digest(&git(&["diff","--binary","HEAD","--","src/engine"])),"records":records,"callbacks":callbacks,"transitions":transitions,
+        "runtime_tracked_engine_diff_sha256":digest(&git(&["diff","--binary","HEAD","--","src/engine"])),"records":records,"callbacks":callbacks,"transitions":transitions,
         "human_listening_scores":Value::Null,"device_latency":Value::Null,"backend_xruns":Value::Null,
-        "limitations":["Offline controlled corpus, not physical device qualification","No automatic metric establishes perceptual transparency","CPU is current-thread CPU; wall includes scheduling","Rust allocator instrumentation does not measure foreign allocation","No effect or plugin load stress; final release gate is separate"]});
+        "limitations":["Runtime checkout metadata does not prove the executable was built from that checkout; use the executable SHA and a retained build receipt", "Per-block timer and Rust allocator instrumentation overhead is included; decode, analysis and file output are excluded", "Offline controlled corpus, not physical device qualification","No automatic metric establishes perceptual transparency","CPU is current-thread CPU; wall includes scheduling","Rust allocator instrumentation does not measure foreign allocation","No effect or plugin load stress; final release gate is separate"]});
     let report = serde_json::to_vec_pretty(&report).unwrap();
     write_new(&root.join("report.json"), &report);
     fs::remove_file(root.join("INCOMPLETE")).unwrap();
