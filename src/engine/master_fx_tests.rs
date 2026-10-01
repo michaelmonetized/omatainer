@@ -28,7 +28,7 @@ fn signal(rt: &mut RtEngine, frames: usize) {
             sr: rt.sr as u32,
             ch: 2,
             data,
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         }),

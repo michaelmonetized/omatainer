@@ -447,7 +447,8 @@ pub struct Sample {
     pub sr: u32,
     pub ch: u16,
     pub data: Vec<f32>,
-    pub peaks: Vec<[f32; 3]>,
+    /// Immutable analysis metadata, prepared once with the media and shared by snapshots.
+    pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
     pub bpm: f32,
     pub path: String,
 }

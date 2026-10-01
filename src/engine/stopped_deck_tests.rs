@@ -10,7 +10,7 @@ fn fixture(sr: u32, deck: u8, keylock: bool) -> RtEngine {
             sr,
             ch: 2,
             data: vec![0.25; 16_384],
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         }),

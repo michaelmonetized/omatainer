@@ -74,7 +74,7 @@ fn idle_and_active_drum_rendering_have_no_heap_activity_and_rate_replacement_ret
             sr: 48_000,
             ch: 1,
             data: vec![0.25; 1024],
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         })
@@ -118,7 +118,7 @@ fn local_drum_loop_benchmark_reports_idle_and_active_elapsed_time() {
             sr: 48_000,
             ch: 1,
             data: vec![0.01 * (i + 1) as f32; FRAMES + 2048],
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         })

@@ -11,7 +11,7 @@ fn sample(name: &str, frames: usize) -> Arc<Sample> {
         sr: 48_000,
         ch: 1,
         data: (0..frames).map(|i| (i as f32 * 0.1).sin() * 0.25).collect(),
-        peaks: Vec::new(),
+        peaks: Vec::new().into(),
         bpm: 120.0,
         path: String::new(),
     })

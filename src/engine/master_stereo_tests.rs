@@ -16,7 +16,7 @@ fn engine(sr: u32, input: &[[f32; 2]]) -> RtEngine {
             sr,
             ch: 2,
             data,
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         }),

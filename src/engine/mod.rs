@@ -2350,7 +2350,7 @@ fn demo_stems(sr: u32, bpm: f32) -> (Arc<Sample>, Arc<Sample>) {
             sr,
             ch: 2,
             bpm,
-            peaks,
+            peaks: peaks.into(),
             path: format!("builtin:{name}"),
             data,
         })
@@ -2365,7 +2365,7 @@ fn mk_samp(name: &str, sr: u32, data: Vec<f32>) -> Arc<Sample> {
         sr,
         ch: 1,
         bpm: 120.0,
-        peaks,
+        peaks: peaks.into(),
         path: format!("builtin:{name}"),
         data,
     })
@@ -2408,7 +2408,7 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
             sr,
             ch: 1,
             bpm: detect_bpm(&data, 1, sr),
-            peaks,
+            peaks: peaks.into(),
             path: format!("builtin:{names}", names = names[i]),
             data,
         })

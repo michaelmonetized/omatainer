@@ -1431,3 +1431,6 @@ cell click once / rclick loop / shift arm compose; Stop disarms
 gain rotary click mute / rclick solo / ctrl fx chain
 alt-click clip = gain for new notes/hits
 ";
+
+#[cfg(test)]
+mod waveform_tests;
