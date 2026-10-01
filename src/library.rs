@@ -16,9 +16,10 @@ use std::{
 };
 
 mod content;
+mod analysis;
 pub(crate) use content::Relocate;
 
-const SCHEMA: u32 = 4;
+const SCHEMA: u32 = 5;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -44,6 +45,8 @@ pub(crate) struct Version {
     pub preparation: Preparation,
     #[serde(default)]
     pub content_hash: Option<[u8; 32]>,
+    #[serde(default)]
+    pub analysis: Option<crate::track_analysis::Record>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -164,6 +167,8 @@ impl Catalog {
                 let m = &version.metadata;
                 if !fingerprints.insert(version.fingerprint)
                     || !version.preparation.valid()
+                    || version.analysis.as_ref().is_some_and(|record|
+                        !record.valid() || version.fingerprint.is_none() || version.content_hash.is_none())
                     || [&m.title, &m.artist, &m.key]
                         .into_iter()
                         .any(|s| s.len() > 4096)
@@ -235,6 +240,7 @@ impl Catalog {
                 metadata: metadata.clone(),
                 preparation: Preparation::default(),
                 content_hash: None,
+                analysis: None,
             });
             track.versions.len() - 1
         };
@@ -378,7 +384,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
-        Some(2 | 3 | 4) => {
+        Some(2 | 3 | 4 | 5) => {
             let mut current: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             current.schema = SCHEMA;
             current
@@ -403,6 +409,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
                             metadata: track.metadata,
                             preparation: track.preparation,
                             content_hash: None,
+                            analysis: None,
                         }],
                     })
                     .collect(),
