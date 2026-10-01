@@ -7,7 +7,7 @@ use std::sync::Weak;
 pub(super) struct LibraryView {
     library: Weak<Vec<LibItem>>,
     query: String,
-    pub indices: Vec<usize>,
+    pub indices: Arc<Vec<usize>>,
     selected: Option<LibSource>,
     selected_index: usize,
     last_played: Option<LibSource>,
@@ -78,14 +78,14 @@ impl App {
         }
         if library_changed || query_changed {
             let q = self.lib_filter.to_lowercase();
-            view.indices.clear();
-            view.indices
-                .extend(self.library.iter().enumerate().filter_map(|(index, item)| {
-                    (q.is_empty()
-                        || item.title.to_lowercase().contains(&q)
-                        || item.artist.to_lowercase().contains(&q))
-                    .then_some(index)
-                }));
+            let indices = Arc::make_mut(&mut view.indices);
+            indices.clear();
+            indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| {
+                (q.is_empty()
+                    || item.title.to_lowercase().contains(&q)
+                    || item.artist.to_lowercase().contains(&q))
+                .then_some(index)
+            }));
             // Keep the worker's BPM/key/title order; never sort on a steady frame.
             let find = |source: &LibSource| {
                 view.indices
@@ -212,5 +212,26 @@ impl App {
             }
             self.refresh_library_view();
         }
+    }
+}
+
+/// Weak references keep retired large crate/index allocations out of the
+/// controller bridge. Resolution fails closed if a new GUI view replaced them.
+pub(super) struct PublishedView {
+    pub library: Weak<Vec<LibItem>>,
+    pub indices: Weak<Vec<usize>>,
+}
+impl crate::engine::ui_requests::SelectionView for PublishedView {
+    fn len(&self) -> Option<usize> {
+        Some(self.indices.upgrade()?.len())
+    }
+    fn selection(&self, index: usize) -> Option<Arc<Selection>> {
+        let library = self.library.upgrade()?;
+        let indices = self.indices.upgrade()?;
+        let item = library.get(*indices.get(index)?)?;
+        Some(Arc::new(Selection {
+            source: item.source.clone(),
+            title: item.title.clone(),
+        }))
     }
 }

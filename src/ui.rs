@@ -39,6 +39,8 @@ mod tests;
 #[cfg(test)]
 mod controller_load_tests;
 #[cfg(test)]
+mod controller_browse_tests;
+#[cfg(test)]
 mod compose_tests;
 #[cfg(test)]
 mod library_view_tests;
@@ -62,6 +64,7 @@ pub struct App {
     last_played: play_history::History,
     playback_watches: Vec<play_history::Watch>,
     published_selection: Option<Arc<Selection>>,
+    published_indices: std::sync::Weak<Vec<usize>>,
     lib_filter: String,
     lib_sel: usize,
     keys_open: bool,
@@ -122,6 +125,7 @@ impl App {
             last_played: play_history::History::default(),
             playback_watches,
             published_selection: None,
+            published_indices: std::sync::Weak::new(),
             lib_filter: String::new(),
             lib_sel: 0,
             keys_open: false,
@@ -240,22 +244,50 @@ impl App {
     }
 
     fn poll_ui_requests(&mut self) {
-        for request in self.engine.ui_requests.take_loads().into_iter().flatten() {
-            self.load_source(request.deck, request.selection.as_deref());
+        use crate::engine::ui_requests::Request;
+        for request in self.engine.ui_requests.take_requests().into_iter().flatten() {
+            match request {
+                Request::Load(request) => self.load_source(request.deck, Some(&request.selection)),
+                Request::Browse(request) => {
+                    if request.epoch != self.engine.ui_requests.epoch() { continue; }
+                    self.refresh_library_view();
+                    let matches = |&i: &usize| self.library[i].source == request.selection.source;
+                    let Some(index) = self.library_view.indices.get(request.index).filter(|i| matches(i))
+                        .map(|_| request.index).or_else(|| self.library_view.indices.iter().position(matches))
+                        else { continue };
+                    self.lib_sel = index;
+                    let top = index as f32 * self.library_view.stride.max(18.0);
+                    let bottom = top + self.library_view.stride.max(18.0);
+                    if top < self.library_view.offset {
+                        self.library_view.pending_offset = Some(top);
+                    } else if bottom > self.library_view.offset + self.library_view.height {
+                        self.library_view.pending_offset = Some((bottom - self.library_view.height).max(0.0));
+                    }
+                    // This is an acknowledgement, not a new manual selection.
+                    // Do not reset the worker cursor if later queued browse
+                    // events have already advanced it further this same burst.
+                    self.published_selection = Some(request.selection);
+                    self.refresh_library_view();
+                }
+            }
         }
     }
 
     fn publish_library_selection(&mut self) {
         self.refresh_library_view();
         let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
-        if self.published_selection.as_ref().map(|item| (&item.source, &item.title))
-            == selected.map(|item| (&item.source, &item.title)) {
+        if self.published_indices.as_ptr() == Arc::as_ptr(&self.library_view.indices)
+            && self.published_selection.as_ref().map(|item| (&item.source, &item.title))
+                == selected.map(|item| (&item.source, &item.title)) {
             return;
         }
         let selection = selected.map(|item| Arc::new(Selection {
             source: item.source.clone(), title: item.title.clone(),
         }));
-        self.engine.ui_requests.publish_selection(selection.clone());
+        self.engine.ui_requests.publish_view(Arc::new(library_view::PublishedView {
+            library: Arc::downgrade(&self.library), indices: Arc::downgrade(&self.library_view.indices),
+        }), self.lib_sel);
+        self.published_indices = Arc::downgrade(&self.library_view.indices);
         self.published_selection = selection;
     }
 

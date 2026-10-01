@@ -1,6 +1,6 @@
 //! Validate the wire addresses that dispatch actually matches, rather than
 //! treating decoder flavor (absolute/relative CC) as a separate MIDI address.
-use super::{Binding, MidiMap, MsgKind};
+use super::{Action, Binding, MidiMap, MsgKind};
 
 fn message_class(kind: MsgKind) -> u8 {
     match kind {
@@ -39,6 +39,12 @@ impl MidiMap {
                     (_, Some(_)) => false,
                 },
                 "MIDI profile {:?}: binding {index} has invalid relative encoding/scale metadata",
+                self.name
+            );
+            anyhow::ensure!(
+                binding.action != Action::Browse || (binding.kind == MsgKind::CcRel
+                    && binding.relative.is_some_and(|spec| spec.scale == 1.0)),
+                "MIDI profile {:?}: binding {index} Browse requires an explicit relative encoding and one row per wire step",
                 self.name
             );
             for (previous, other) in self.bindings[..index].iter().enumerate() {

@@ -247,7 +247,8 @@ fn empty_and_failed_captured_sources_report_failure_without_substituting_later_s
     fixture.app.lib_filter.clear();
     fixture.app.publish_library_selection();
     fixture.app.poll_ui_requests();
-    assert!(fixture.app.status.contains("no library item selected"));
+    assert_eq!(fixture.app.engine.cmd.stats().last_error, Some(SubmissionError::UncapturedSelection));
+    assert_eq!(fixture.app.engine.cmd.ui_request_stats().pending, 0);
     assert!(fixture.rt.cmd_rx.is_empty());
     let directory = Directory::new();
     let missing = directory.0.join("missing.wav");

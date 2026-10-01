@@ -367,3 +367,27 @@ fn mailbox_keeps_full_event_fields_coherent_under_concurrent_replacement() {
     }
     assert_eq!(previous, 100_000);
 }
+
+#[test]
+fn browse_callback_stays_allocation_free_while_gui_selection_lock_is_held() {
+    let (engine, _rt) = Engine::headless_for_test(48000, 256);
+    engine.ui_requests.publish_selection(Some(Arc::new(crate::engine::media_source::Selection {
+        title: "captured".into(), source: crate::engine::media_source::LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums),
+    })));
+    let mut profile = map();
+    profile.bindings = vec![
+        rbind(0,17,Action::Browse,0,0,RelativeSpec {encoding:crate::engine::midi::RelativeEncoding::OffsetBinary,scale:1.0}),
+        nbind(0,2,Action::DeckLoad,0,0),
+    ];
+    profile.validate().unwrap();
+    let (mut callback, worker) = start(72,profile,engine.cmd.clone(),Arc::new(Mutex::new(Vec::new())),Arc::new(Mutex::new(None)),"synthetic browser".into(),Arc::new(InputCounters::default())).unwrap();
+    engine.ui_requests.with_navigation_held_for_test(|| {
+        let counts = crate::engine::test_alloc::measure(|| {
+            for _ in 0..1000 { callback.push(&[0xb0,17,65,0x90,2,127]); }
+        });
+        assert_eq!(counts.allocations,0);
+        assert_eq!(counts.frees,0);
+    });
+    drop(callback);
+    drop(worker);
+}
