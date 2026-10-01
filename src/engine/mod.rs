@@ -536,6 +536,12 @@ pub struct DeckSnap {
     pub playing: bool,
     pub pos: f64,
     pub frames: f64,
+    pub source_sample_rate: u32,
+    /// Source seconds per output second, before the source/output frame ratio.
+    pub playback_rate: f32,
+    pub touching: bool,
+    pub loop_start: f64,
+    pub loop_len: f64,
     pub bpm: f32,
     pub pitch: f32,
     pub gain: f32,

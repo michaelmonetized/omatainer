@@ -532,3 +532,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   so an edit-and-undo cannot silently authorize a stale Open/New/Close decision.
 - Successful New/Open begins a new process-local history epoch. Saved projects
   retain the history-panel view, not old undo payloads or pending physical input.
+## Deck time and runout display
+
+- Each platter's time menu independently chooses elapsed source time or
+  estimated remaining wall time, with a visible mode indicator. Remaining uses
+  the renderer's captured actual rate, including sync and smoothing, and applies
+  the source sample rate once. It does not reconstruct rate from a pitch fader.
+- Each deck's lead is configurable from 0 (off) to 300 seconds; the default is
+  30. At or below that estimate a playing forward deck shows RUNOUT plus a red
+  outline/readout, in either time mode. Paused, scratching, stationary, reverse
+  and absent/invalid media states do not warn.
+- A finite, media-contained repeating loop longer than one frame suppresses the
+  warning only while the playhead is inside it. LOOP identifies playing loop
+  suppression; its tooltip explains that the file-end estimate ignores repeats.
+  An invalid loop flag cannot hide a real runout warning.

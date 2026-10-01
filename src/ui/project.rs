@@ -51,6 +51,8 @@ pub(crate) struct UiState {
     pub diagnostics_open: bool,
     #[serde(default)]
     pub history_open: bool,
+    #[serde(default)]
+    pub deck_time: [DeckTimeSettings; DECKS],
     // Verified identities accompany captured receipts. Embedded path strings
     // alone cannot credit a same-path replacement in the live library.
     pub(super) deck_identities: [Option<SavedIdentity>; DECKS],
@@ -60,9 +62,13 @@ impl UiState {
         if self.library_filter.len() > 4096
             || !self.library_offset.is_finite()
             || self.library_offset < 0.0
+            || self
+                .deck_time
+                .iter()
+                .any(|settings| settings.warning_lead_seconds > deck_time::MAX_WARNING_LEAD_SECONDS)
         {
             return Err(
-                "Invalid project view: filter or scroll position is outside supported bounds"
+                "Invalid project view: filter, scroll position or deck warning lead is outside supported bounds"
                     .into(),
             );
         }
@@ -92,6 +98,7 @@ impl UiState {
             && self.midi_open == other.midi_open
             && self.diagnostics_open == other.diagnostics_open
             && self.history_open == other.history_open
+            && self.deck_time == other.deck_time
     }
 }
 
@@ -252,6 +259,7 @@ impl App {
             midi_open: self.midi_open,
             diagnostics_open: self.diagnostics.open,
             history_open: self.undo_history.open,
+            deck_time: self.deck_time,
             deck_identities: Default::default(),
         }
     }
@@ -654,6 +662,7 @@ impl App {
         self.midi_open = view.midi_open;
         self.diagnostics.open = view.diagnostics_open;
         self.undo_history.open = view.history_open;
+        self.deck_time = view.deck_time;
         self.clip_gain_edit = None;
         self.pad_held = [false; 16];
 

@@ -29,6 +29,10 @@ mod project;
 mod undo;
 mod audio_status;
 mod diagnostics;
+pub(crate) mod deck_time;
+use deck_time::{DeckTimeSettings, Readout, TimeMode};
+#[cfg(test)]
+mod deck_time_tests;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -100,6 +104,7 @@ pub struct App {
     pad_held: [bool; 16],
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
+    deck_time: [DeckTimeSettings; DECKS],
 }
 
 #[derive(Clone)]
@@ -171,6 +176,7 @@ impl App {
             pad_held: [false; 16],
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
+            deck_time: [DeckTimeSettings::default(); DECKS],
         };
         app.publish_library_selection();
         app.initialize_project_baseline();
@@ -744,7 +750,8 @@ impl App {
     fn platter_col(&mut self, ui: &mut Ui, t: &Theme, d: usize, snap: &crate::engine::DeckSnap, col: Color32, wave_h: f32) {
         ui.vertical(|ui| {
             ui.set_width(wave_h);
-            let hit = platter(ui, t, snap, col, wave_h, |delta, touch| {
+            let readout = Readout::from_snapshot(snap, self.deck_time[d]);
+            let hit = platter(ui, t, snap, &readout, col, wave_h, |delta, touch| {
                 self.send(Command::DeckTouch { deck: d as u8, on: touch });
                 self.send(Command::DeckJog { deck: d as u8, delta });
             });
@@ -757,6 +764,24 @@ impl App {
             } else if hit.click {
                 self.send(Command::DeckPlay { deck: d as u8 });
             }
+            // This row uses the same existing 28 px footer as the wave fader;
+            // it does not shrink the platter or add height to the scratch area.
+            ui.push_id(("deck-time", d), |ui| {
+                let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(11.0));
+                egui::Popup::menu(&button)
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                    .show(|ui| {
+                    ui.label(format!("Deck {} time", (b'A' + d as u8) as char));
+                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Elapsed, "Elapsed · source time");
+                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Remaining, "Remaining · wall estimate");
+                    ui.separator();
+                    ui.label("Warn before file end (seconds)");
+                    ui.add(egui::DragValue::new(&mut self.deck_time[d].warning_lead_seconds)
+                        .range(0..=deck_time::MAX_WARNING_LEAD_SECONDS).suffix(" s"));
+                    ui.small("0 = off · repeating loops suppress alerts");
+                });
+                button.on_hover_text("Time mode and runout warning lead for this deck");
+            });
         });
     }
 
@@ -1357,6 +1382,7 @@ fn platter(
     ui: &mut Ui,
     t: &Theme,
     snap: &crate::engine::DeckSnap,
+    readout: &Readout,
     col: Color32,
     size: f32,
     mut on_jog: impl FnMut(f32, bool),
@@ -1366,13 +1392,17 @@ fn platter(
     let r = size * 0.47;
     let p = ui.painter();
     p.circle_filled(c, r, t.bg_darker);
-    p.circle_stroke(c, r, st(2.0, col.gamma_multiply(0.85)));
+    p.circle_stroke(c, r, st(if readout.warning { 3.0 } else { 2.0 },
+        if readout.warning { t.red } else { col.gamma_multiply(0.85) }));
     for i in 6..16 {
         p.circle_stroke(c, r * i as f32 / 18.0, st(0.5, t.muted.gamma_multiply(0.35)));
     }
     p.circle_filled(c, r * 0.38, col.gamma_multiply(0.28));
     let bpm = platter_bpm(snap);
-    let remain = platter_remain(snap);
+    if !readout.status.is_empty() {
+        p.text(c + Vec2::new(0.0, -r * 0.68), egui::Align2::CENTER_CENTER,
+            readout.status, FontId::proportional(10.0), if readout.warning { t.red } else { t.fg });
+    }
     p.text(
         c + Vec2::new(0.0, -8.0),
         egui::Align2::CENTER_CENTER,
@@ -1383,9 +1413,9 @@ fn platter(
     p.text(
         c + Vec2::new(0.0, 10.0),
         egui::Align2::CENTER_CENTER,
-        remain,
+        &readout.text,
         FontId::monospace((size * 0.08).clamp(10.0, 14.0)),
-        t.accent,
+        if readout.warning { t.red } else { t.accent },
     );
     let angle = if snap.frames > 1.0 {
         (snap.pos / snap.frames) as f32 * std::f32::consts::TAU * 18.0
@@ -1410,6 +1440,7 @@ fn platter(
         on_jog(0.0, false);
     }
     let shift = ui.input(|i| i.modifiers.shift);
+    let resp = resp.on_hover_text(&readout.tooltip);
     PlatterHit {
         click: resp.clicked() && !shift,
         right_click: resp.secondary_clicked(),
@@ -1510,23 +1541,6 @@ fn platter_bpm(snap: &crate::engine::DeckSnap) -> f32 {
     snap.bpm.max(0.0) * rate
 }
 
-fn platter_remain(snap: &crate::engine::DeckSnap) -> String {
-    if snap.frames < 1.0 || snap.duration <= 0.01 {
-        return "—:——".into();
-    }
-    let left = snap.duration * (1.0 - (snap.pos / snap.frames) as f32).clamp(0.0, 1.0);
-    let span = match snap.pitch_range {
-        1 => 0.16,
-        2 => 0.50,
-        _ => 0.08,
-    };
-    let rate = (1.0 + (snap.pitch - 0.5) * 2.0 * span).max(0.05);
-    let s = left / rate;
-    let m = (s as u32) / 60;
-    let sec = s % 60.0;
-    format!("-{m}:{sec:04.1}")
-}
-
 fn eq_to_knob(g: f32) -> f32 {
     if g <= 1.0 {
         (g.max(0.0)).powf(1.0 / 1.4) * 0.5
@@ -1537,7 +1551,7 @@ fn eq_to_knob(g: f32) -> f32 {
 
 const POINTER_HELP: &str = "\
 platter click = play   right-click = cue   shift-click = unload
-platter shows playing BPM + time remaining
+platter time menu: elapsed source time / estimated remaining · runout lead 0–300 s
 buttons: Q quantize · I/O loop in / right-click out · ×2 ½ ↻ reloop ⇄ match
 cues 1-8   bass/mid/treb/gain click=cut  rclick=solo
 pitch L lock + 8/16/50 range
