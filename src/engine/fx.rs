@@ -8,6 +8,8 @@ use crate::engine::dsp::{rate_blend, Delay, OnePole, Reverb, Svf};
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod wet_mix_tests;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FxId {
@@ -224,7 +226,7 @@ impl FxSlot {
                 };
             }
             FxState::Reverb(reverbs) => std::array::from_fn(|channel| {
-                reverbs[channel].mix = self.mix;
+                reverbs[channel].mix = 1.0;
                 reverbs[channel].tick(input[channel])
             }),
             FxState::Chorus { delays, phase } => {
@@ -232,13 +234,13 @@ impl FxSlot {
                 std::array::from_fn(|channel| {
                     delays[channel].time_samples =
                         sr * (0.008 + 0.006 * (*phase * std::f32::consts::TAU).sin());
-                    delays[channel].mix = self.mix;
+                    delays[channel].mix = 1.0;
                     delays[channel].tick(input[channel])
                 })
             }
             FxState::Delay(delays) => std::array::from_fn(|channel| {
                 delays[channel].fb = self.p[1];
-                delays[channel].mix = self.mix;
+                delays[channel].mix = 1.0;
                 delays[channel].tick(input[channel])
             }),
             FxState::Filter(filters) => std::array::from_fn(|channel| {
@@ -276,8 +278,9 @@ impl FxSlot {
                 _ => input,
             },
         };
-        // Preserve the pre-existing time-effect wet law here; correcting its
-        // second interpolation is tracked separately by issue #54.
+        // Processors supply fully wet output. Interpolate exactly once here:
+        // mix=0 is dry, mix=1 is wet, and intermediate values are linear.
+        // Spread/Balance's separate amount law is addressed by issue #60.
         if self.mix == 0.0 || wet == input {
             input
         } else if self.mix == 1.0 {
