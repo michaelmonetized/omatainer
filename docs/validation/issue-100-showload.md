@@ -1,8 +1,9 @@
 # Issue 100: bounded two-deck keylock show workload
 
 `benchmarks/keylock-show-policy.json` is the fixed policy for a separate opt-in
-measurement. It leaves the matched 630-render/126-callback quality matrix and the
-original issue 95 workload, policy and audio goldens unchanged.
+measurement. It leaves the matched quality matrix (630 renders in version 1,
+756 in version 2, each with 126 callbacks) and the original issue 95 workload,
+policy and audio goldens unchanged.
 
 The actual `OutputCallback<f32>` renders two simultaneously keylocked decks,
 eight tracks with 1,024 notes each and three effects per track, live note
