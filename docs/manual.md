@@ -1105,11 +1105,171 @@ Finalize current pad captures and stop automatic pad writes. Existing monitor vo
 
 Workflow: Record a held note.
 
+### Edit sampler banks
+
+Captured project bank
+
+Open a draft of the selected working bank. Factory originals are read-only: copy before editing. Later selection, Undo or project replacement never retargets an existing draft.
+
+Workflow: Record a held note.
+
+### Sampler bank name
+
+1–128 UTF-8 bytes for reusable definitions
+
+Working draft and reusable-save names are separate. Renaming does not replace another definition with the same name.
+
+Workflow: Record a held note.
+
+### Create empty bank
+
+Sixteen empty slots
+
+Prepare a new working-bank identity off the audio thread. It remains a preview until Apply; empty slots never receive default sounds.
+
+Workflow: Record a held note.
+
+### Copy sampler bank
+
+New working identity
+
+Copy immutable audio and controls into a new editable draft. Original Kit / Perc / Hits buttons remain available even after a project replaced the startup banks. Original banks and held voices keep their captured sources.
+
+Workflow: Record a held note.
+
+### Sampler slot
+
+Slots 1–16
+
+Choose the slot to inspect or edit. Changing the selected slot stops the independent audition; pad input remains separate.
+
+Workflow: Record a held note.
+
+### Assign selected local source
+
+Exact crate source and file version
+
+Capture the currently selected local file identity and decode it on the bounded shared worker. Changed or invalid media is rejected without replacing the current bank. Built-in deck stems are not file assignments.
+
+Workflow: Record a held note.
+
+### Clear sampler slot
+
+Prepared edit
+
+Prepare an empty slot. Apply is required before pads change; clearing never substitutes a factory sound.
+
+Workflow: Record a held note.
+
+### Retry sampler source or store
+
+Explicit worker retry
+
+Retry the referenced missing source or reopen the reusable store. Source identity must still match or have a verified library relocation; unrelated files are not substituted.
+
+Workflow: Record a held note.
+
+### Sampler slot gain
+
+0–2 linear
+
+Gain is captured at audition or pad onset. Prepare preview and Apply to change future pads; held voices retain their original gain.
+
+Workflow: Record a held note.
+
+### Sampler source range
+
+Start inclusive / end exclusive in source seconds
+
+Blank end uses the source end. Start must precede end within the decoded source. Prepare validates the range; source seconds are independent of output sample rate.
+
+Workflow: Record a held note.
+
+### Prepare sampler preview
+
+Worker validation
+
+Validate controls and register immutable audio off the renderer. A ready preview changes neither the working bank nor its physical gates.
+
+Workflow: Record a held note.
+
+### Audition sampler slot
+
+One independent voice
+
+Play the prepared range and gain through the captured selected track. This does not press a sampler pad or record a note. Existing mix/effect controls still affect output.
+
+Workflow: Record a held note.
+
+### Stop sampler audition
+
+Reserved release
+
+Stop the exact audition identity. Cancel, slot changes and replacement also request this release; admission failures remain visible and retry.
+
+Workflow: Record a held note.
+
+### Reusable sampler definition
+
+Stable definition identity
+
+Choose a saved reference definition. Selection alone changes no working bank; Import prepares sources and reports unavailable slots explicitly.
+
+Workflow: Record a held note.
+
+### Import reusable sampler bank
+
+Local reference resolution
+
+Prepare a new working identity from the selected definition. Missing or changed files stay missing with diagnostics. Apply is separate; native projects embed playable audio.
+
+Workflow: Record a held note.
+
+### Replace reusable definition
+
+Explicit selected identity
+
+Allow Save reusable to overwrite the selected definition ID. Matching a name alone never authorizes replacement.
+
+Workflow: Record a held note.
+
+### Save reusable bank
+
+Reference file / explicit replacement
+
+Persist the prepared draft as a named reusable definition. This does not Apply a working bank or save the native project. Reusable banks retain file identities, controls and ranges, not copies of local PCM.
+
+Workflow: Record a held note.
+
+### Apply sampler bank
+
+One revision-qualified undoable edit
+
+Queue the prepared bank for its original project epoch and bank revision. Wait for renderer Applied: admission is not completion. Cancellation can win only before renderer claim.
+
+Workflow: Record a held note.
+
+### Cancel sampler editor
+
+Stop audition and discard unapplied draft
+
+Cancel pending preparation and request audition release. Applied edits and committed reusable saves survive closing. An already claimed Apply reports its actual outcome.
+
+Workflow: Record a held note.
+
+### Sampler waveform
+
+256 sampled PCM positions
+
+Display bounded actual PCM samples in separate left and right lanes, plus prepared range markers. This sampled preview can miss narrow peaks and is not a complete peak analysis; audition checks the prepared sound.
+
+Workflow: Record a held note.
+
 ### Sampler bank
 
-Kit / Perc / Hits
+Working banks; original Kit / Perc / Hits
 
-Choose one of three banks of sixteen distinct samples. New pad presses use the new bank; held voices retain their captured source.
+Choose a working bank of sixteen slots. Edit banks creates, copies or imports reusable banks. New pad presses use the new bank; held voices retain their captured source.
 
 Workflow: Record a held note.
 
