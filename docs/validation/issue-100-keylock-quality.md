@@ -35,6 +35,43 @@ checks source, executable, manifest and notices stability. A verified-run receip
 binds these checks to the report hash; comparisons require matching workload
 and corpus identities. Runtime checkout fields are explicitly informational.
 
+## Implementation and declared bounds
+
+The replacement is original MIT Rust waveform-similarity overlap-add (WSOLA),
+with one joint stereo correlation decision for both channels. It introduces no
+foreign allocator, DSP dependency or proprietary algorithm. Normalized
+correlation sums channel energies separately, so opposite-phase stereo and a
+silent channel do not cancel the alignment reference.
+
+At 48 kHz the window is 2,048 frames and the hop is 1,024 frames; their durations
+scale with the output sample rate, with integer rounding exposed in each report.
+The search radius is 25 ms. Each non-silent search has at most 100 candidate
+scores, each using 128 deterministic stratified reference points. Weights are
+allocated during preparation; processing and reset use fixed storage.
+
+The first 15 ms search candidate attenuated a 20 Hz fundamental even while its
+total RMS remained strong. Uniform reference/candidate spacing also missed phase
+at some upper-band frequencies. The final search covers a full 20 Hz cycle and
+uses stratified positions plus six bounded refinements. Regressions measure
+fundamental amplitude/coherence for sub-bass and upper-band tones, alongside
+mixed sample rates, stereo relationships and callback heap behavior. These
+focused probes supplement the unchanged before/after musical corpus.
+
+Supported forward ratios are 0.50–1.50. Unity uses exact direct playback;
+scratch touch and unsupported rates use direct resampling with an explicit
+renderer-confirmed UI mode. Release, seek, cue and load reset overlap history
+through the existing bounded 2 ms transition. Valid natural loop wraps retain
+overlap with cyclic source reads. Only exact unity/range-endpoint targets receive
+a sample-rate-derived floating-point convergence snap; arbitrary rates and
+unlocked playback retain their previous smoothing behavior.
+
+Resident source PCM supplies look-ahead without adding an output FIFO. At
+48 kHz, conservative source-time configuration bounds are 67.667 ms of look-ahead
+and 46.333 ms of content displacement. These are geometry bounds, not measured
+device latency. The render report separately measures transient onset/envelope
+displacement and unity alignment; output-driver/converter latency remains
+unmeasured by this offline protocol.
+
 ## Original implementation baseline
 
 The baseline ran from 2026-10-01 07:49:25 to 07:50:09 UTC with other agent CPU
