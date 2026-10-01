@@ -274,6 +274,7 @@ pub struct DeckRt {
     pub filter_amt: f32,   // 0.5 = noon
     pub pfl: bool,
     pub hotcues: [HotCue; HOTCUES],
+    pub cue_styles: [cue_metadata::Style; HOTCUES],
     pub loop_on: bool,
     pub loop_start: f64,
     pub loop_len: f64,
@@ -327,6 +328,7 @@ impl DeckRt {
             filter_morph: 0.5,
             filter_amt: 0.5,
             pfl: false,
+            cue_styles: [cue_metadata::Style::default(); HOTCUES],
             hotcues: std::array::from_fn(|_| HotCue {
                 set: false,
                 pos: 0.0,
@@ -555,6 +557,10 @@ pub struct DeckSnap {
     pub pfl: bool,
     pub loop_on: bool,
     pub hotcues: [bool; HOTCUES],
+    #[serde(skip)]
+    pub receipt_key: usize,
+    pub hotcue_positions: [Option<f64>; HOTCUES],
+    pub cue_styles: [cue_metadata::Style; HOTCUES],
     pub meter: f32,
     #[serde(skip)]
     pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
@@ -716,6 +722,8 @@ pub enum Command {
     DeckFilter { deck: u8, value: f32 },
     DeckPfl { deck: u8 },
     DeckHotCue { deck: u8, pad: u8, del: bool },
+    DeckCuePoint { deck: u8, pad: u8, del: bool, receipt: load_receipt::Receipt },
+    DeckCueStyle { deck: u8, pad: u8, style: cue_metadata::Style, receipt: load_receipt::Receipt },
     DeckLoop { deck: u8, beats: f32 },
     DeckLoopIn { deck: u8 },
     DeckLoopOut { deck: u8 },
@@ -1586,6 +1594,19 @@ impl RtEngine {
         match c {
             Command::Undo => {self.history_replay(false);return;}
             Command::Redo => {self.history_replay(true);return;}
+            command @ Command::DeckCuePoint { .. } => {
+                if let Command::DeckCuePoint { deck, pad, del, receipt } = &command {
+                    if self.decks.get(*deck as usize).is_some_and(|d| {
+                        d.audio.is_some() && (*pad as usize) < HOTCUES
+                            && receipt.state() == load_receipt::State::Current
+                            && d.load_receipt.as_ref().is_some_and(|r| r.same_request(receipt))
+                    }) {
+                        self.apply(Command::DeckHotCue { deck: *deck, pad: *pad, del: *del });
+                    } else { self.undo.reject(undo::Failure::Invalid); }
+                }
+                self.undo.retire_command(command);
+                return;
+            }
             Command::Gesture {id,mut command} => {
                 let next=std::mem::replace(command.as_mut(),Command::ComposeDisarm);
                 let old=self.undo.gesture_id();self.undo.set_gesture(id);
@@ -1599,7 +1620,7 @@ impl RtEngine {
     }
     fn apply_plain(&mut self, c: Command) {
         let preparation_deck = match &c {
-            Command::DeckCue { deck } | Command::DeckHotCue { deck, .. }
+            Command::DeckCue { deck } | Command::DeckHotCue { deck, .. } | Command::DeckCueStyle { deck, .. }
             | Command::DeckLoop { deck, .. } | Command::DeckLoopIn { deck }
             | Command::DeckLoopOut { deck } | Command::DeckLoopDouble { deck }
             | Command::DeckLoopHalf { deck } | Command::DeckReloop { deck }
@@ -1633,7 +1654,7 @@ impl RtEngine {
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
-            Command::Undo|Command::Redo|Command::Gesture {..}=>unreachable!(),
+            Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}=>unreachable!(),
             Command::ReservedStop { lane, ticket } => {
                 if lane == 0 { self.apply(Command::Stop); }
                 else { self.apply(Command::StopTrack { track: lane - 1 }); }
@@ -1778,6 +1799,7 @@ impl RtEngine {
                 let i = pad as usize % HOTCUES;
                 if del {
                     d.hotcues[i].set = false;
+                    d.cue_styles[i] = cue_metadata::Style::default();
                 } else if d.hotcues[i].set {
                     d.transition_to(d.hotcues[i].pos, self.sr, DeckTransition::Jump);
                     d.playing = true;
@@ -1787,6 +1809,14 @@ impl RtEngine {
                         pos: d.pos,
                     };
                 }
+            }
+            command @ Command::DeckCueStyle { .. } => {
+                if let Command::DeckCueStyle { deck, pad, style, .. } = &command {
+                    // Identity, indices, set state and no-op were checked before
+                    // history capture. The renderer is the sole deck writer.
+                    self.decks[*deck as usize].cue_styles[*pad as usize] = *style;
+                }
+                self.undo.retire_command(command);
             }
             Command::DeckLoop { deck, beats } => {
                 let spb = self.decks[deck as usize % DECKS]
@@ -1888,6 +1918,7 @@ impl RtEngine {
                 d.bpm = audio.bpm;
                 d.cue_pos = 0.0;
                 d.playing = false;
+                d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -1904,6 +1935,7 @@ impl RtEngine {
                 d.playing = false;
                 d.cue_pos = 0.0;
                 d.clear_loop();
+                d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,

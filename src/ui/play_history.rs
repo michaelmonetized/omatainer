@@ -190,3 +190,24 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+impl App {
+    pub(super) fn cue_receipt(&self, key: usize) -> Option<Receipt> {
+        self.playback_watches.iter().map(|w| &w.receipt)
+            .chain(self.cue_editor.project_receipts.iter().flatten())
+            .find(|receipt| key != 0 && receipt.snapshot_key() == key).cloned()
+    }
+    pub(super) fn cue_storage_status(&self, receipt: &Receipt) -> &'static str {
+        let Some(watch) = self.playback_watches.iter().find(|w| w.receipt.same_request(receipt)) else {
+            return "Session cues — save the project to keep them; no library association";
+        };
+        if self.library_metadata.storage.is_none() { return "Session cues — DJ library storage is unavailable"; }
+        if !self.library_metadata.durable || self.library_metadata.storage_error.is_some() {
+            return "Library save needs attention — cues remain in this session";
+        }
+        let saved = self.library_metadata.catalog.version(&watch.identity.source, watch.identity.fingerprint);
+        if !self.library_metadata.active() && receipt.preparation().is_some_and(|(_, p)| saved.is_some_and(|v| v.preparation == p)) {
+            "Saved in DJ library"
+        } else { "Saving cues to DJ library…" }
+    }
+}

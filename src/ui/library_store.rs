@@ -43,13 +43,14 @@ pub(super) fn reconcile(
     items: &mut Vec<LibItem>,
     captures: Vec<Capture>,
     import: Option<PathBuf>,
+    relocation: Option<crate::library::Relocate>,
 ) -> Result<Option<String>, String> {
     // Work on a candidate so invalid imports/limits never partly mutate memory.
     let mut catalog = store.catalog.clone();
-    let import_error = import.and_then(|path| {
+    let mut operation_error = import.and_then(|path| {
         crate::library::read(&path)
             .and_then(|other| catalog.merge_import(other))
-            .err()
+            .err().map(|error| format!("import rejected: {error}"))
     });
     for item in items.iter() {
         let current = catalog.track(&item.source).map(|t| t.current);
@@ -78,10 +79,9 @@ pub(super) fn reconcile(
             capture.fingerprint,
             capture.metadata,
         )?;
-        if let Some(preparation) = capture.preparation.filter(|p| p.valid()) {
-            version.preparation = preparation;
-        }
-        version.metadata.last_play = version.metadata.last_play.max(capture.played);
+        let _ = version;
+        catalog.update_preparation(&capture.source, capture.fingerprint, capture.preparation, capture.played);
+        catalog.qualify_cues(&capture.source, capture.fingerprint);
         if let Some(current) = current.filter(|_| match &capture.source {
             LibSource::File(path) => FileFingerprint::read(path) != capture.fingerprint,
             _ => false,
@@ -94,6 +94,11 @@ pub(super) fn reconcile(
             track.current = current;
         }
     }
+    if let Some(request) = relocation {
+        if let Err(error) = catalog.relocate(&request) {
+            operation_error = Some(format!("relocation rejected: {error}"));
+        }
+    }
     store.catalog = catalog;
     store.save()?;
     // A scan discovers local media; it never deletes persisted entries or
@@ -104,7 +109,7 @@ pub(super) fn reconcile(
         .iter()
         .map(|track| LibItem::from_stored(track.source.clone(), &track.versions[track.current]))
         .collect();
-    Ok(import_error)
+    Ok(operation_error)
 }
 
 impl App {
@@ -203,7 +208,7 @@ impl App {
             // A project CloseGuard seals renderer edits; the same close must
             // also exclude new catalog imports after its durability check.
             if self.project.committing() { ui.disable(); }
-            ui.label("Import a version 1 or 2 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
+            ui.label("Import a version 1, 2 or 3 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
             ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
             let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
             path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "DJ library import path"));

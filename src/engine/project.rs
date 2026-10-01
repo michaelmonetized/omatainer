@@ -507,6 +507,7 @@ impl RtEngine {
             | Command::DeckAudio { .. }
             | Command::DeckUnload { .. }
             | Command::DeckSeek { .. }
+            | Command::DeckCueStyle { .. }
             | Command::Xfader(_)
             | Command::Master(_)
             | Command::CueMix(_)

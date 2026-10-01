@@ -43,6 +43,7 @@ struct Job {
     updates: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
     import: Option<PathBuf>,
+    relocation: Option<crate::library::Relocate>,
 }
 struct Result {
     base: Weak<Vec<LibItem>>,
@@ -64,6 +65,7 @@ pub(super) struct Metadata {
     pending: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
     import: Option<PathBuf>,
+    relocation: Option<crate::library::Relocate>,
     pub catalog: Arc<crate::library::Catalog>,
     pub storage: Option<String>,
     pub storage_error: Option<String>,
@@ -138,11 +140,12 @@ impl Metadata {
                                         &mut items,
                                         job.captures,
                                         job.import,
+                                        job.relocation,
                                     ) {
                                         Ok(import_error) => {
                                             durable = true;
                                             import_error.map_or_else(|| "DJ library saved".into(), |error|
-                                                format!("DJ library saved; import rejected: {error}"))
+                                                format!("DJ library saved; {error}"))
                                         },
                                         Err(error) => format!("DJ library NOT saved: {error}"),
                                     },
@@ -190,6 +193,7 @@ impl Metadata {
             pending: Vec::new(),
             captures: Vec::new(),
             import: None,
+            relocation: None,
             catalog: Arc::new(crate::library::Catalog::default()),
             storage: persistent.then(|| "Opening DJ library…".into()),
             storage_error: None,
@@ -227,6 +231,14 @@ impl Metadata {
             return false;
         }
         self.import = Some(path);
+        self.clear_error = true;
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        true
+    }
+    pub fn relocate(&mut self, request: crate::library::Relocate) -> bool {
+        if self.storage.is_none() || self.relocation.is_some() || self.in_flight { return false; }
+        self.relocation = Some(request);
         self.clear_error = true;
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -341,6 +353,7 @@ impl Metadata {
                 updates: std::mem::take(&mut self.pending),
                 captures: std::mem::take(&mut self.captures),
                 import: self.import.take(),
+                relocation: self.relocation.take(),
             };
             match self.jobs.try_send(job) {
                 Ok(()) => {
@@ -351,6 +364,7 @@ impl Metadata {
                     self.pending = job.updates;
                     self.captures = job.captures;
                     self.import = job.import;
+                    self.relocation = job.relocation;
                     self.retired_candidates = job._retired_candidates;
                     if self.storage.is_some() {
                         self.durable = false;
