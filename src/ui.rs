@@ -13,7 +13,8 @@ use crate::engine::media_load::Loader;
 use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
-mod bpm;
+mod library_store;
+pub(crate) mod bpm;
 use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod library_view;
@@ -61,6 +62,10 @@ pub struct App {
     library_view: LibraryView,
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
+    library_import_open: bool,
+    library_initialized: bool,
+    library_close: library_store::Close,
+    library_import_path: String,
     // History can change while a worker holds the immutable crate baseline.
     // Keep those small edits separate from the full library allocation.
     last_played: play_history::History,
@@ -105,6 +110,7 @@ impl App {
         let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));
         let mut app = Self::with_loader(engine, theme, loader.ok());
         if let Some(failure) = failure { app.status = failure; }
+        app.start_library_store(crate::library::default_path());
         app.scan_library();
         app
     }
@@ -124,6 +130,10 @@ impl App {
             library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
+            library_import_open: false,
+            library_initialized: false,
+            library_close: library_store::Close::default(),
+            library_import_path: String::new(),
             last_played: play_history::History::default(),
             playback_watches,
             published_selection: None,
@@ -207,7 +217,7 @@ impl App {
                     if let Some(error) = self.loader.as_ref().and_then(|loader| loader.invalidate(deck).err()) {
                         state.phase = Phase::Failed(error);
                     } else {
-                        let receipt = Receipt::new();
+                        let receipt = self.library_receipt(&picked.source, None);
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
                         } else {
@@ -218,6 +228,12 @@ impl App {
                     self.set_load_state(deck, state);
                 }
                 LibSource::File(path) => self.load_file(deck, path.clone(), &picked.title),
+                LibSource::Removable { .. } | LibSource::Provider { .. } => {
+                    self.supersede_load(deck);
+                    if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
+                    self.set_load_state(deck, LoadState::new(Some(picked.clone()), Phase::Failed(
+                        "This library namespace is unavailable: removable/provider resolution is not supported".into())));
+                }
             }
         } else {
             self.supersede_load(deck);
@@ -318,13 +334,21 @@ impl App {
                         library_metadata::Patch { source, fingerprint, bpm, duration: decoded_duration(&report.sample) });
                     state.warning = report.diagnostics.warning();
                     let history_source = source.cloned();
-                    let receipt = Receipt::new();
+                    let captured_metadata = history_source.as_ref().map(|source| {
+                        let mut metadata = self.capture_metadata(source, completion.fingerprint);
+                        metadata.bpm = bpm;
+                        metadata.duration = decoded_duration(&report.sample);
+                        if let Some(selection) = &state.selection { metadata.title = selection.title.clone(); }
+                        metadata
+                    });
+                    let receipt = history_source.as_ref().map(|source| self.library_receipt(source, completion.fingerprint)).unwrap_or_else(Receipt::new);
                     state.phase = if self.submit(Command::DeckLoadRequested {
                         deck, media: Media::Decoded { token: completion.token, audio: Arc::new(report.sample) },
                         receipt: receipt.clone(),
                     }) {
                         if let Some(source) = history_source {
                             self.watch_playback(source, completion.fingerprint, receipt.clone());
+                            if let Some(metadata) = captured_metadata { self.watch_metadata(&receipt, metadata); }
                         }
                         state.receipt = Some(receipt);
                         Phase::Queued
@@ -433,6 +457,8 @@ impl App {
             self.load_file(deck, p, &name);
         }
 
+        self.library_close_ui(ctx);
+        self.library_store_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -831,6 +857,7 @@ impl App {
                 if self.library_scan.active() && ui.button("cancel scan").clicked() {
                     self.library_scan.cancel();
                 }
+                if ui.button("library…").clicked() { self.library_import_open = true; }
                 if ui.button("→ A").clicked() {
                     self.load_sel(0);
                 }
@@ -843,6 +870,7 @@ impl App {
                 ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
                     .on_hover_text(progress);
             });
+            ui.label(RichText::new(self.library_metadata.label()).size(10.0).color(t.fg_dim));
             let header = ["song", "bpm · source", "key", "length", "last play", "artist"];
             let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0];
             ui.horizontal(|ui| {
@@ -883,7 +911,8 @@ impl App {
                             *txt, FontId::proportional(11.0), if sel { t.accent } else { t.fg });
                         x += w;
                     }
-                    let resp = resp.on_hover_text(format!("BPM: {}", item.bpm.label()));
+                    let identity = self.library_metadata.catalog.track(&item.source).map(|t| t.id.0.as_str()).unwrap_or("not saved yet");
+                    let resp = resp.on_hover_text(format!("BPM: {}\nTrack ID: {}\nLocation: {:?}", item.bpm.label(), identity, item.source));
                     if resp.clicked() || resp.double_clicked() {
                         self.lib_sel = i;
                         ui.memory_mut(|memory| memory.request_focus(focus));

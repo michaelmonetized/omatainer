@@ -37,6 +37,7 @@ pub mod dsp;
 mod svf_tests;
 pub mod media_load;
 pub(crate) mod load_receipt;
+pub(crate) mod preparation;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
@@ -691,6 +692,8 @@ pub enum Command {
     DeckAudio { deck: u8, audio: Arc<Sample> },
     DeckDecoded { request: media_load::LoadToken, audio: Arc<Sample> },
     DeckLoadRequested { deck: u8, media: load_receipt::Media, receipt: load_receipt::Receipt },
+    DeckRestorePreparation { deck: u8, receipt: load_receipt::Receipt, preparation: preparation::Preparation },
+    LibraryFence { acknowledged: Arc<std::sync::atomic::AtomicBool> },
     DeckSeek { deck: u8, frac: f32 },
     DeckUnload { deck: u8 },
     LoadBuiltin { deck: u8, stem: u8 },
@@ -1512,6 +1515,14 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        let preparation_deck = match &c {
+            Command::DeckCue { deck } | Command::DeckHotCue { deck, .. }
+            | Command::DeckLoop { deck, .. } | Command::DeckLoopIn { deck }
+            | Command::DeckLoopOut { deck } | Command::DeckLoopDouble { deck }
+            | Command::DeckLoopHalf { deck } | Command::DeckReloop { deck }
+            | Command::DeckSeek { deck, .. } => Some(*deck as usize % DECKS),
+            _ => None,
+        };
         // Validate before any command can launch, select, or alter another scene.
         // In particular, FireClip must not change a previous clip's looping flag
         // after an invalid LaunchClip, and Select must not clamp into a real cell.
@@ -1745,6 +1756,16 @@ impl RtEngine {
                 d.keylock = !d.keylock;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
+            Command::LibraryFence { acknowledged } => { acknowledged.store(true, std::sync::atomic::Ordering::Release); }
+            Command::DeckRestorePreparation { deck, receipt, preparation } => {
+                if let Some(d) = self.decks.get_mut(deck as usize) {
+                    if d.load_receipt.as_ref().is_some_and(|current| current.same(&receipt))
+                        && receipt.preparation().is_some_and(|(revision, _)| revision == 2) {
+                        d.restore_preparation(preparation);
+                        d.publish_preparation();
+                    }
+                }
+            }
             Command::DeckLoadRequested { deck, media, receipt } => {
                 use load_receipt::{Media, State};
                 if receipt.state() != State::Pending { return; }
@@ -1771,8 +1792,11 @@ impl RtEngine {
                 if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
                 if let Some(audio) = audio {
                     self.apply(Command::DeckAudio { deck, audio });
+                    let d = &mut self.decks[deck as usize];
+                    if let Some(preparation) = receipt.initial_preparation() { d.restore_preparation(preparation); }
+                    d.load_receipt = Some(receipt.clone());
+                    d.publish_preparation();
                     receipt.finish(State::Current);
-                    self.decks[deck as usize].load_receipt = Some(receipt);
                 } else { receipt.finish(State::Unavailable); }
             }
             Command::DeckDecoded { request, audio } => {
@@ -2193,6 +2217,7 @@ impl RtEngine {
                 }
             }
         }
+        if let Some(deck) = preparation_deck { self.decks[deck].publish_preparation(); }
     }
 
     // Playing targets use their own launch origin. An unlaunched target has

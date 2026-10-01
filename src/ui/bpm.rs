@@ -1,7 +1,7 @@
 //! Provenance is explicit; neither filename numbers nor the tempo heuristic
 //! provide a calibrated confidence score. User values always win reconciliation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Origin {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) enum Origin {
     Unknown,
     FilenameHint,
     Heuristic,
@@ -9,8 +9,9 @@ pub(super) enum Origin {
     Builtin,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) struct Bpm {
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Bpm {
     value: Option<f32>,
     pub origin: Origin,
 }
