@@ -25,7 +25,7 @@ pub const WINDOW_SECONDS: f64 = 2048.0 / 48_000.0;
 pub const SEARCH_SECONDS: f64 = 0.025;
 pub const OUTPUT_FIFO_FRAMES: usize = 0;
 const CORRELATION_POINTS: usize = 128;
-// Spend the same bounded score budget on enough sub-frame refinement to avoid
+// Spend a bounded score budget on enough sub-frame refinement to avoid
 // accumulating high-frequency phase error at each hop. Nominal and exact
 // continuation candidates plus 45 coarse and 6*9 refined scores total 101.
 const COARSE_STEPS: i32 = 22;

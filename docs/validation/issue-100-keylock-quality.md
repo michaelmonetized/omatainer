@@ -9,7 +9,8 @@ converter latency, backend XRUN performance or a human transparency judgment.
 
 The corpus contains two complete recorded VocalSet 1.2 singing-vowel files,
 plus original analytical stereo bass, stereo transient pulses and the complete
-procedural Omatainer drums/harmony mix. The recorded files cover one soprano
+procedural Omatainer drums/harmony mix. Version 2 retains those five sources and
+adds an audible-band kick/tone/filtered-noise onset train. The recorded files cover one soprano
 and one baritone performing the same slow forte arpeggio vowel; they are a
 limited musical sample. The source license is CC BY 4.0, with author/DOI
 attribution, exact member names, member CRC32/SHA-256 and complete terms in
@@ -20,8 +21,8 @@ media. Original generated corpus material follows the application's MIT license.
 
 The fixed matrix uses forward ratios 0.50, 0.84, 0.92, 1.00, 1.08, 1.16 and
 1.50 at 44.1/48/96 kHz output, blocks 64/128/512, with lock on/off. Each run
-contains 630 isolated renderer cases, 126 actual callback cases and nine
-transition traces. Decode, analysis and file writes are outside timed blocks.
+contains 630 isolated renderer cases in version 1, or 756 in version 2, alongside
+126 actual callback cases and nine transition traces. Decode, analysis and file writes are outside timed blocks.
 Timers and Rust allocator instrumentation add measured overhead. Canonical
 Float32 WAVs use block 128; the other block sizes must produce exact matching
 PCM. Every sample must be finite and timed sections heap-free.
@@ -45,8 +46,11 @@ silent channel do not cancel the alignment reference.
 
 At 48 kHz the window is 2,048 frames and the hop is 1,024 frames; their durations
 scale with the output sample rate, with integer rounding exposed in each report.
-The search radius is 25 ms. Each non-silent search has at most 100 candidate
-scores, each using 128 deterministic stratified reference points. Weights are
+The search radius is 25 ms. Each non-silent search has at most 101 candidate
+scores, each using 128 reference points. A dense, bounded scan of the overlap
+retains both channels' peaks among the stratified points so isolated attacks
+cannot disappear between probes. The score penalizes amplitude loss as well as
+phase mismatch, and the exact continuation is one bounded candidate. Weights are
 allocated during preparation; processing and reset use fixed storage.
 
 The first 15 ms search candidate attenuated a 20 Hz fundamental even while its
@@ -63,11 +67,14 @@ renderer-confirmed UI mode. Release, seek, cue and load reset overlap history
 through the existing bounded 2 ms transition. Valid natural loop wraps retain
 overlap with cyclic source reads. Only exact unity/range-endpoint targets receive
 a sample-rate-derived floating-point convergence snap; arbitrary rates and
-unlocked playback retain their previous smoothing behavior.
+unlocked playback retain their previous smoothing behavior. Initial and silent
+grain origins use a phase-safe sampling lattice, fenced at an explicit seek,
+with at most one source frame and one output frame of quantization. Both initial
+overlap contributions share that origin; the logical transport remains exact.
 
 Resident source PCM supplies look-ahead without adding an output FIFO. At
-48 kHz, conservative source-time configuration bounds are 67.667 ms of look-ahead
-and 46.333 ms of content displacement. These are geometry bounds, not measured
+48 kHz, conservative source-time configuration bounds are 67.688 ms of look-ahead
+and 46.354 ms of content displacement, including the quantization margin. These are geometry bounds, not measured
 device latency. The render report separately measures transient onset/envelope
 displacement and unity alignment; output-driver/converter latency remains
 unmeasured by this offline protocol.
@@ -159,15 +166,16 @@ whole-file energy confirm this is not a missed-window diagnostic. Fractional
 source interpolation can cancel neighboring opposite-sign samples; this extreme
 stress input is not representative evidence of ordinary drum fidelity.
 
-The implementation and musical corpus require further work before publication.
-The next corpus revision retains this stress source and adds an audible-band
+These findings required further implementation and corpus work before publication.
+Corpus version 2 retains this stress source and adds an audible-band
 onset train, with a freshly matched original-algorithm baseline. The v1 data
 remain unchanged; the extra case must not erase the discovered failure or be
 compared against a different workload as if it were the same experiment.
 
 ## Listening acceptance
 
-The comparison script creates 35 deterministic blinded A/B pairs at 48 kHz,
+The comparison script creates 35 deterministic blinded A/B pairs for version 1,
+or 42 for version 2, at 48 kHz,
 with a separate implementation key and an explicitly unlocked rate-shifted
 reference. It carries the corpus attribution and supplies an empty score sheet.
 No level normalization, alignment correction or fabricated listening score is

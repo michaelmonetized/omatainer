@@ -11286,7 +11286,7 @@
     "src/engine/fx_control_tests.rs": "6df1d9a03cba2865d55d07321956103addea50b0fec53992b137c8cd455fd5e1",
     "src/engine/input_ownership_tests.rs": "517f5b605129639fc338a5a461382a169c356ba718458682fc4ea576089c7741",
     "src/engine/instrument.rs": "6b92166184cd503c80c060dcb4d944a1f18e341b148b403065317bdef59338f4",
-    "src/engine/keylock.rs": "5a4d6bf4f746093bdf018e8896546ecd4e0c10546e12495b19bf1e2637da8b39",
+    "src/engine/keylock.rs": "d4f8471d2b2f7551fbe3870828928b4a496330cbdae9becf9a922a9a25e5dd31",
     "src/engine/keylock_quality_tests.rs": "5a4b70af7f528f9a9a98e889e2b48a5c4c1fe5556c1fafbcf1bd14218e3bf98e",
     "src/engine/keylock_showload_tests.rs": "4a81e6df20592c6ae2ac3972e3d14c850c239f307720228d3f32f5ee4634b3c0",
     "src/engine/keylock_tests.rs": "138c92c355bf4ab2ef422893942fa83f93f19fd131fcdb4e20fac6cc8adaaeb5",
