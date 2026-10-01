@@ -36,4 +36,4 @@ built CLI against private strict Unix socket servers in six groups:
 All six groups pass. The fixtures use private runtime directories, bounded
 socket/process deadlines and explicit process cleanup. They never open audio,
 MIDI, a desktop window or the live application's socket. Peer review found no
-blocking issue. Final assembled checks run when this layer reaches the stack.
+blocking issue. The complete assembled stack passes 630 Rust tests (8 opt-in fixtures ignored), a fresh production build and native package verification.
