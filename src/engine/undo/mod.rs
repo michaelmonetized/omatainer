@@ -393,6 +393,12 @@ impl Journal {
         Ok(())
     }
     fn retire(&mut self, value: Retired, bytes: usize) {
+        // Budget/capacity refusal also reaches this lower-level path directly.
+        // Settle pending grid requests before handing owned payloads to the
+        // worker; an already-applied acknowledgement remains applied.
+        if let Retired::Command(command) = &value {
+            super::beatgrid::reject_retired(command);
+        }
         self.shared
             .retired_bytes
             .fetch_add(bytes, Ordering::Release);
