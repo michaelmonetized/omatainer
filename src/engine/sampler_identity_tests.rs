@@ -58,7 +58,7 @@ pub(crate) fn assert_selected_sound(
         assert_eq!(active.len(), 1);
         let voice = active[0];
         assert_eq!(voice.kind, kind);
-        assert_eq!(voice.note, 57);
+        assert_eq!(voice.note(), 57);
         assert_eq!(voice.input, Some(InputKey::Pad(0)));
         assert_eq!(voice.owner, VoiceOwner::Live);
         assert_eq!(

@@ -44,7 +44,7 @@ fn assert_released(rt: &RtEngine, pitch: u8) {
             .poly
             .voices
             .iter()
-            .filter(|v| v.note == pitch)
+            .filter(|v| v.note() == pitch)
             .all(|v| v.env.stage == 0 || v.env.stage == 4),
         "pitch {pitch} stayed held"
     );
@@ -109,7 +109,7 @@ fn arp_emitted_sequence_deduplicates_and_releases_rests_across_loops() {
                     .poly
                     .voices
                     .iter()
-                    .any(|v| v.note == pitch && v.env.stage > 0 && v.env.stage < 4));
+                    .any(|v| v.note() == pitch && v.env.stage > 0 && v.env.stage < 4));
             } else {
                 for pitch in [60, 62, 64, 67, 69] {
                     assert_released(&rt, pitch);
@@ -210,7 +210,7 @@ fn arp_record_and_compose_additions_preserve_existing_chord_while_monitored() {
         assert_eq!(rt.tracks[2].arp_cache.rebuilds, 2);
         assert!(
             rt.tracks[2].poly.voices.iter().any(|voice| {
-                voice.note == 60
+                voice.note() == 60
                     && voice.owner == dsp::VoiceOwner::Clip
                     && matches!(voice.env.stage, 1..=3)
             }),
@@ -239,7 +239,7 @@ fn arp_toggle_releases_current_gate_and_refreshes_on_reenable() {
         .poly
         .voices
         .iter()
-        .any(|v| v.note == 60 && matches!(v.env.stage, 1..=3)));
+        .any(|v| v.note() == 60 && matches!(v.env.stage, 1..=3)));
     rt.apply(Command::FxToggle(0));
     assert_eq!(render_at(&mut rt, 0.15), None);
     assert_eq!(rt.tracks[2].arp_cache.rebuilds, 2);

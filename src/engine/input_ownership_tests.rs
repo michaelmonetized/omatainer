@@ -29,7 +29,7 @@ fn held(poly: &Poly, input: InputKey) -> Vec<u8> {
     poly.voices
         .iter()
         .filter(|voice| voice.input == Some(input) && matches!(voice.env.stage, 1..=3))
-        .map(|voice| voice.note)
+        .map(|voice| voice.note())
         .collect()
 }
 
@@ -150,7 +150,7 @@ fn held_pads_keep_original_destination_pitch_and_release_after_control_changes()
         .poly
         .voices
         .iter()
-        .any(|v| v.owner == VoiceOwner::Clip && v.note == original));
+        .any(|v| v.owner == VoiceOwner::Clip && v.note() == original));
     // Instrument changes affect future onsets; the original held gate must
     // retain its source and release independently of a different pad.
     rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Pad)));

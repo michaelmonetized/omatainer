@@ -260,7 +260,7 @@ fn pending_replacement_and_cancellation_do_not_emit_the_old_clip() {
                 .poly
                 .voices
                 .iter()
-                .all(|voice| voice.note != 60 || !voice.env.active())
+                .all(|voice| voice.note() != 60 || !voice.env.active())
         );
         if !cancel {
             assert!(
@@ -268,7 +268,7 @@ fn pending_replacement_and_cancellation_do_not_emit_the_old_clip() {
                     .poly
                     .voices
                     .iter()
-                    .any(|voice| voice.note == 67 && voice.env.active())
+                    .any(|voice| voice.note() == 67 && voice.env.active())
             );
         }
     }

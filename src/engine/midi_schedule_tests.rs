@@ -153,7 +153,7 @@ fn midi_same_pitch_overlap_holds_until_final_off_and_orders_off_before_on() {
     ]);
     rt.tracks[2].midi_schedule.trace = Some(Vec::new());
     render(&mut rt, 24_001, 512);
-    assert!(rt.tracks[2].poly.voices.iter().any(|voice| voice.note == 60
+    assert!(rt.tracks[2].poly.voices.iter().any(|voice| voice.note() == 60
         && voice.owner == dsp::VoiceOwner::Clip
         && matches!(voice.env.stage, 1..=3)));
     render(&mut rt, 24_000, 127);
@@ -224,7 +224,7 @@ fn midi_edits_chase_active_notes_once_and_note_additions_keep_existing_gates() {
                 .voices
                 .iter()
                 .any(|voice| voice.owner == dsp::VoiceOwner::Clip
-                    && voice.note == 60
+                    && voice.note() == 60
                     && matches!(voice.env.stage, 1..=3))
         );
         // Ordinary edits still chase their active notes; recording suppression

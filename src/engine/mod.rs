@@ -2554,7 +2554,7 @@ mod tests {
             .iter()
             .find(|v| matches!(v.env.stage, 1 | 2 | 3))
             .unwrap()
-            .note;
+            .note();
         rt.apply(Command::SamplerOct(1));
         let note2 = rt
             .sampler_poly
@@ -2562,7 +2562,7 @@ mod tests {
             .iter()
             .find(|v| v.env.active())
             .unwrap()
-            .note;
+            .note();
         assert_eq!(note2, note + 12);
         rt.apply(Command::SamplerPad { pad: 3, on: false });
         assert!(

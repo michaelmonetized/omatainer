@@ -30,7 +30,7 @@ fn scene_state(rt: &RtEngine) -> Value {
                 "looping": clip.looping,
             })),
             "voices": track.poly.voices.iter().map(|voice|
-                (voice.note, voice.env.stage)
+                (voice.note(), voice.env.stage)
             ).collect::<Vec<_>>(),
             "arp_note": track.arp_note,
             "drum_pos": track.drum_pos,
