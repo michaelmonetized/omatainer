@@ -136,6 +136,27 @@ or changed source versions remain explicit. Closing the panel leaves its queue
 running. Optional analysis is unavailable during Performance protection.
 
 
+Use **All tracks ▾** to open the **Named crates** manager. Create root or child
+crates, rename them, reorder siblings or nest a crate in a chosen destination.
+Crates hold references to tracks; deleting a confirmed subtree removes only its
+crates and memberships. Source audio, saved preparation and sampler banks stay
+intact. Names must be unique among siblings.
+
+Choose **Use as destination**, then select All tracks or another crate to add
+the selected track or up to 4,096 filtered tracks. Member checkboxes and the
+numeric **Member row** control select tracks for copy, move, removal or manual
+reordering. **Insert before row** uses the unfiltered membership order; its last
+position appends. Filtering preserves that order. Children are separate views,
+and All tracks keeps the normal library sort.
+
+Changes wait for the catalog save receipt; cancellation cannot undo a published
+edit, and unconfirmed durability stays visible. Membership survives restart,
+refresh, missing media and verified relocation. The manager shows unavailable
+members without substituting another source. Projects remember the selected
+crate as a view preference; they never replace this independent catalog. A
+missing saved crate falls back to All tracks. Collection edits are unavailable
+during Performance protection; browsing existing crates remains available.
+
 Tracks discovered by Scan or successfully loaded from a dropped file are stored
 in `$XDG_DATA_HOME/omatainer/library.json` (normally
 `~/.local/share/omatainer/library.json`). Stable track IDs, metadata, tempo
@@ -144,7 +165,7 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 5 is the current format; versions 1–4 migrate without changing
+worker. Version 6 is the current format; versions 1–5 migrate without changing
 IDs or preparation. Source-qualified analysis results and their algorithm versions
 are retained in the catalog; bounded waveform blobs live in the private cache. Conflicting identities or unknown
 fields/formats are rejected rather than discarded. Removable-volume and provider

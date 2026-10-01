@@ -134,6 +134,17 @@ fn actual_manager_builds_nested_overlapping_ordered_crates_and_reopens_without_t
     gui.app.choose_named_crate(None);
     let LibSource::File(path) = target.1 else { unreachable!() };
     gui.wait(|gui| gui.rt.decks[0].audio.as_ref().is_some_and(|sample| sample.path == path.to_string_lossy()));
+    gui.select(Some(&child)); gui.click("Delete crate…"); gui.click("Confirm delete crate subtree"); gui.finish();
+    assert_eq!(gui.app.library_crates.selected, Some(root.clone()));
+    assert_eq!(gui.app.library_crates.name, "Studio");
+    assert!(gui.app.library_metadata.catalog.crates.node(&child).is_none());
+    let forest = gui.app.library_metadata.catalog.crates.clone();
+    let restored: super::super::project::UiState = serde_json::from_value(serde_json::to_value(view).unwrap()).unwrap();
+    restored.validate().unwrap();
+    gui.app.choose_named_crate(restored.selected_crate);
+    assert!(gui.app.library_crates.selected.is_none());
+    assert!(gui.app.library_crates.message.contains("unavailable"));
+    assert_eq!(gui.app.library_metadata.catalog.crates, forest);
     for (path, bytes, fingerprint) in before { assert_eq!(std::fs::read(&path).unwrap(), bytes); assert_eq!(FileFingerprint::read(&path), Some(fingerprint)); }
 }
 
@@ -197,4 +208,15 @@ fn large_named_crate_and_tree_reuse_view_indices_and_render_only_visible_rows() 
         let visible = gui.nodes.iter().filter(|(_, node)| node.label().is_some_and(|label| label.starts_with("Member ") && label.contains(':'))).count();
         assert!(visible > 0 && visible < 32, "rendered {visible} member rows");
     }
+    gui.app.remember_crate_viewport(2003.0, 60.0, 20.0);
+    gui.app.library_metadata.rebase();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        gui.app.poll_library_metadata();
+        if !gui.app.library_metadata.active() { break; }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    gui.app.refresh_library_view();
+    assert_eq!(gui.app.library_view.pending_offset, Some(2003.0), "catalog refresh jumped from the captured top member to the selection");
 }

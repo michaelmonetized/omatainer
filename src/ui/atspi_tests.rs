@@ -51,7 +51,6 @@ fn private_atspi_bridge_child() {
     let mut app = App::with_loader(engine, Theme::default(), Some(loader));
     app.sampler_editor.set_store_path(directory.join("sampler-banks.json"));
     app.start_library_store(directory.join("library.json"));
-    app.seed_native_crate_draft(); // Text entry is covered by actual egui events; native adapter exposes read/focus only.
     let sampler_path = directory.join("sampler.flac");
     std::fs::write(&sampler_path, include_bytes!("../../tests/fixtures/audio/tone.flac")).unwrap();
     let sampler_source = LibSource::File(sampler_path.clone());

@@ -94,6 +94,78 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Named ordered crates
+
+Saved collections; All tracks is a virtual view
+
+Choose a named crate or All tracks. Named crates contain only their direct members, in manual order; nested children are separate views. Browse is available during performance protection, while edits require Studio. Closing this manager does not cancel an admitted edit.
+
+Workflow: Prepare a DJ deck.
+
+### Crate name
+
+1–256 UTF-8 bytes
+
+Use a trimmed name without control characters, unique among siblings. Rename changes only the saved collection name. IDs and audio files are preserved.
+
+Workflow: Prepare a DJ deck.
+
+### Create root or child crate
+
+At most 4096 crates and 32 levels
+
+Create an empty root or a child of the selected crate. The catalog owner generates a stable identity; Queued is not Saved. Wait for the durable result before another edit.
+
+Workflow: Prepare a DJ deck.
+
+### Delete crate subtree
+
+Explicit membership-only confirmation
+
+Review the exact named subtree and membership count, then confirm or keep it. This deletes collections and membership references only, never catalog tracks, source audio, sampler references or project PCM.
+
+Workflow: Prepare a DJ deck.
+
+### Manual crate and member order
+
+Stable identity anchors
+
+Move sibling crates up or down, move a child out, or reorder selected members before an unfiltered row. Last row plus one appends. Selected members retain their relative order as one group; selecting their own anchor is rejected. Filtering never sorts a named crate.
+
+Workflow: Prepare a DJ deck.
+
+### Copy, move and nesting destination
+
+An explicitly selected saved crate
+
+Choose a crate and Use as destination, then select a source. Copy keeps memberships in both crates; Move removes them from the source and inserts them in the destination. Nest moves a collection under the destination; cycles are rejected. No action moves an audio file.
+
+Workflow: Prepare a DJ deck.
+
+### Add captured library tracks
+
+At most 4096 tracks per edit
+
+Add the selected track or filtered view to the chosen destination crate, appending in visible order. Existing members are retained without duplicates or reordering. Capture uses stable catalog TrackIds. Unsaved rows and oversized batches are refused without partial changes.
+
+Workflow: Prepare a DJ deck.
+
+### Select or remove direct memberships
+
+At most 4096 selected TrackIds
+
+Checkboxes select exact track identities for a later operation. Remove changes only the current crate, leaving the track in other crates and the library. Child memberships are separate.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel or retry a crate edit
+
+Actual catalog outcome
+
+Cancel requests cancellation before publication. If publication already won, wait for the truthful result. Retry is available only for a rejected edit and keeps its captured identities. Committed or unknown outcomes must not be repeated blindly.
+
+Workflow: Prepare a DJ deck.
+
 ### Support and crash reports
 
 Local redacted evidence

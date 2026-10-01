@@ -4,7 +4,8 @@ def verify_crates(named, action, state, wait_for, Atspi):
     def click(label):
         count = len(state()['actions'])
         action(named(label), 'click')
-        wait_for(lambda: len(state()['actions']) > count, 'crate action: ' + label)
+        wait_for(lambda: any(entry['action'] == 'Click' and entry['label'] == label
+                            for entry in state()['actions'][count:]), 'crate action: ' + label)
     def settle():
         wait_for(lambda: not current()['pending'] and not current()['owner_active'], 'actual crate save receipt')
         assert current()['durable'], current()
@@ -19,11 +20,12 @@ def verify_crates(named, action, state, wait_for, Atspi):
     field = named('Crate name')
     assert field.get_role() == Atspi.Role.ENTRY
     assert field.get_component_iface().grab_focus()
+    wait_for(lambda: state().get('focus') == 'Crate name', 'crate name native focus')
     # The pinned adapter exposes text/focus, not native EditableText mutation.
-    # Only the initial draft text is seeded; every collection mutation below is native.
+    # The ordinary product draft supplies New crate; every mutation below is native.
     click('New root crate'); settle()
     root = current()['selected']
-    assert root and node(root)['name'] == 'Native crate'
+    assert root and node(root)['name'] == 'New crate', (current(), state()['actions'][-5:])
     click('Use as destination'); select(0)
     click('Add filtered tracks'); settle()
     original = node(root)['members']
@@ -54,5 +56,5 @@ def verify_crates(named, action, state, wait_for, Atspi):
     wait_for(lambda: not current()['open'], 'crate manager closes')
     return {'workflow':'create root/child -> overlapping copy -> manual reorder -> cancel deletion -> delete child only',
             'root':root,'manual_order':reordered,'saved':True,
-            'name_entry':'initial draft seeded; typed rename covered by actual egui event tests',
+            'name_entry':'ordinary New crate draft; typed rename covered by actual egui event tests',
             'physical_controller_qa':False}

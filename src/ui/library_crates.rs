@@ -34,9 +34,6 @@ struct Deletion {
 }
 impl App {
     #[cfg(test)]
-    pub(super) fn seed_native_crate_draft(&mut self) { self.library_crates.name = "Native crate".into(); }
-
-    #[cfg(test)]
     pub(super) fn crate_evidence(&self) -> serde_json::Value {
         serde_json::json!({"open":self.library_crates.open,"selected":self.library_crates.selected,
             "pending":self.library_crates.pending.is_some(),"message":self.library_crates.message,
@@ -57,8 +54,11 @@ impl App {
         }
         if state.selected != selected {
             state.message = "Selected crate no longer exists; showing its nearest surviving parent or All tracks.".into();
+            state.name = selected.as_ref().and_then(|id| forest.node(id)).map(|node| node.name.clone()).unwrap_or_else(|| "New crate".into());
             state.selected = selected;
             state.members.clear();
+            state.member_cursor = 1;
+            state.position = 1;
         }
         state.tree.clear();
         state.parents.clear();
@@ -89,7 +89,7 @@ impl App {
         self.library_crates.members.clear();
         self.library_crates.delete = None;
         self.library_crates.name = self.library_crates.selected.as_ref()
-            .and_then(|id| self.library_metadata.catalog.crates.node(id)).map(|n| n.name.clone()).unwrap_or_default();
+            .and_then(|id| self.library_metadata.catalog.crates.node(id)).map(|n| n.name.clone()).unwrap_or_else(|| "New crate".into());
         self.library_crates.position = 1;
         self.refresh_library_view();
         self.publish_library_selection();
@@ -177,7 +177,10 @@ impl App {
         let response = ui.button(format!("{title} ▾"));
         accessibility::button(ui, &response, "Choose or edit named crates", None);
         help::annotate(ui, &response, HelpControl::NamedCrates);
-        if response.clicked() { self.library_crates.open = true; }
+        if response.clicked() {
+            if self.library_crates.name.is_empty() { self.library_crates.name = "New crate".into(); }
+            self.library_crates.open = true;
+        }
     }
 
     pub(super) fn named_crates_ui(&mut self, ctx: &egui::Context) {
@@ -226,7 +229,7 @@ impl App {
                 let available = self.library_crates.pending.is_none() && !self.project.committing() && self.project.dialog_is_closed() && !self.library_closing();
                 ui.push_id(("crate-edit", revision, &id), |ui| {
                     ui.horizontal(|ui| {
-                        let label = ui.label("Crate name");
+                        let label = ui.label("Name");
                         let name = ui.add(egui::TextEdit::singleline(&mut self.library_crates.name).char_limit(256).desired_width(190.0)).labelled_by(label.id).help(ui, HelpControl::CrateName);
                         name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Crate name"));
                     });
