@@ -1121,3 +1121,6 @@ mod contextual_help_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod performance_gate_tests;

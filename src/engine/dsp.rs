@@ -449,7 +449,11 @@ impl Poly {
             .voices
             .iter()
             .enumerate()
-            .min_by(|a, b| a.1.env.level.partial_cmp(&b.1.env.level).unwrap())
+            // A burst can start several voices before the first audio sample.
+            // Their attack levels may still be zero. Reuse a released tail
+            // before stealing one of those newly held gates or active clips.
+            .min_by(|a, b| (a.1.env.stage != 4).cmp(&(b.1.env.stage != 4))
+                .then_with(|| a.1.env.level.total_cmp(&b.1.env.level)))
             .map(|(i, _)| i)
             .unwrap_or(0));
         if self.voices[i].kind != self.kind {
