@@ -251,3 +251,11 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   and resumes during the enable fade. Flat EQ keeps history warm; neutral Spread
   never activates a delay tap. Sample-rate changes rebuild history and restart
   at the slot's configured enabled/disabled state.
+
+## Time-effect slot mix
+
+- Delay, Reverb and Chorus produce fully wet processor output. The slot applies
+  one linear dry/wet interpolation: dry × (1 − mix) + wet × mix.
+- Zero mix emits dry input while processor history keeps advancing; full mix
+  emits only the time-effect signal. Intermediate mix changes do not scale the
+  stored feedback history or apply the wet coefficient a second time.
