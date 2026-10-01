@@ -10,7 +10,7 @@ fn sample(name: &str) -> DecodedAudio {
             sr: 48000,
             ch: 1,
             data: vec![0.25; 128],
-            peaks: Vec::new(),
+            peaks: Vec::new().into(),
             bpm: 120.0,
             path: name.into(),
         },

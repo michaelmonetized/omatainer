@@ -45,7 +45,7 @@ fn load_fixture(rt: &mut RtEngine, deck: usize, samples: &[[f32; 2]], mono: bool
             sr: rt.sr as u32,
             ch: channels as u16,
             data,
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         }),

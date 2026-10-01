@@ -19,7 +19,7 @@ fn fixture() -> (OutputCallback, CommandPort) {
             sr: 48_000,
             ch: 2,
             data: vec![0.25; 200_000],
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         }),

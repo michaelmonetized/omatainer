@@ -136,7 +136,7 @@ fn stereo_sample_and_release_tails_keep_the_original_destination() {
         sr: SR as u32,
         ch: 2,
         data: (0..4096).flat_map(|_| [0.0, 0.25]).collect(),
-        peaks: vec![],
+        peaks: vec![].into(),
         bpm: 120.0,
         path: String::new(),
     });

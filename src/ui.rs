@@ -1410,3 +1410,6 @@ track head mute / rclick solo
 cell click once / rclick loop / shift arm compose; Stop disarms
 gain rotary click mute / rclick solo / ctrl fx chain
 ";
+
+#[cfg(test)]
+mod waveform_tests;

@@ -397,7 +397,7 @@ pub fn decode_audio_with_cancel(
             sr: spec.rate,
             ch,
             data,
-            peaks,
+            peaks: peaks.into(),
             bpm,
             path: path.to_string_lossy().into(),
         },

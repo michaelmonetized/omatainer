@@ -14,7 +14,7 @@ fn sample(sr: u32, value: impl Fn(usize) -> f32) -> Arc<Sample> {
                 [value, -value * 0.5]
             })
             .collect(),
-        peaks: vec![],
+        peaks: vec![].into(),
         bpm: 120.0,
         path: String::new(),
     })

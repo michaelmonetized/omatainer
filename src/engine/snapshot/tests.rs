@@ -2,7 +2,7 @@ use super::*;
 use crate::engine::test_alloc;
 use std::sync::mpsc;
 
-fn engine() -> RtEngine {
+pub(super) fn engine() -> RtEngine {
     let (_tx, rx) = CommandPort::channel(256);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
     rt.decks.iter_mut().for_each(|deck| deck.audio = None);
@@ -14,7 +14,7 @@ fn engine() -> RtEngine {
     rt
 }
 
-fn wait(mut ready: impl FnMut() -> bool) {
+pub(super) fn wait(mut ready: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(5);
     while !ready() {
         assert!(Instant::now() < deadline, "snapshot worker did not advance");
@@ -139,7 +139,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
         sr: 48_000,
         ch: 2,
         data: vec![0.0; 1_048_576],
-        peaks: vec![[0.1, 0.2, 0.3]; 262_144],
+        peaks: vec![[0.1, 0.2, 0.3]; 262_144].into(),
         bpm: 120.0,
         path: String::new(),
     });
@@ -185,7 +185,11 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
     });
     assert_eq!(counts, test_alloc::Counts::default());
     drop(reader);
-    wait(|| retired_media.upgrade().is_none() && retired_peaks.upgrade().is_none());
+    wait(|| retired_media.upgrade().is_none());
+    assert!(
+        retired_peaks.upgrade().is_some(),
+        "published waveform must retain its data"
+    );
 
     rt.tracks[0].name = "short".into();
     rt.tracks[0].clips[0].name = "short clip".into();
@@ -197,6 +201,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
     let snap = rt.snap.lock();
     assert_eq!(snap.tracks[0].name, "short");
     assert!(snap.decks[0].peaks.is_empty());
+    assert!(retired_peaks.upgrade().is_none());
     assert_eq!(snap.sampler_banks, ["one bank"]);
     assert!(snap.fx_slots.is_empty());
     assert_eq!(snap.midi, ["persistent MIDI input"]);
@@ -212,6 +217,7 @@ fn isolated_publisher(capacity: usize) -> (Publisher, Receiver<Box<Frame>>, Send
             pending: None,
             disconnected: false,
             sequence: 0,
+            empty_peaks: Arc::new(Vec::new()),
             published: Arc::new(AtomicU64::new(0)),
         },
         receiver,
@@ -220,14 +226,14 @@ fn isolated_publisher(capacity: usize) -> (Publisher, Receiver<Box<Frame>>, Send
 }
 
 fn large_frame() -> (Box<Frame>, std::sync::Weak<Sample>) {
-    let mut frame = Box::new(Frame::new());
+    let mut frame = Box::new(Frame::new(Arc::new(Vec::new())));
     frame.values.tracks[0].name = "old name".repeat(32_768);
     let sample = Arc::new(Sample {
         name: "old".into(),
         sr: 48_000,
         ch: 1,
         data: vec![0.0; 262_144],
-        peaks: vec![[0.0; 3]; 65_536],
+        peaks: vec![[0.0; 3]; 65_536].into(),
         bpm: 120.0,
         path: String::new(),
     });
@@ -239,7 +245,7 @@ fn large_frame() -> (Box<Frame>, std::sync::Weak<Sample>) {
 #[test]
 fn snapshot_full_and_disconnected_handoffs_retain_payload_without_callback_drops() {
     let (mut publisher, receiver, free_tx) = isolated_publisher(1);
-    publisher.ready.send(Box::new(Frame::new())).unwrap();
+    publisher.ready.send(Box::new(Frame::new(Arc::new(Vec::new())))).unwrap();
     let (frame, retired) = large_frame();
     let counts = test_alloc::measure(|| publisher.submit(frame));
     assert_eq!(counts, test_alloc::Counts::default());
