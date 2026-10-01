@@ -4,6 +4,8 @@ use crate::project_file::Limits;
 use std::sync::atomic::AtomicU64;
 use std::time::Duration;
 
+mod library_history_tests;
+
 fn history_key(gui: &mut Gui, redo: bool) {
     // Closing a text/path dialog owns its closing frame's keys. Start the
     // shortcut only after the normal next-frame focus guard has settled.
@@ -265,16 +267,25 @@ impl Gui {
         }
     }
     fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
+        self.raw_frame(egui::RawInput {
+            events,
+            ..Default::default()
+        })
+    }
+    fn native_close(&mut self) -> egui::FullOutput {
+        let mut raw = egui::RawInput::default();
+        raw.viewports
+            .get_mut(&egui::ViewportId::ROOT)
+            .unwrap()
+            .events
+            .push(egui::ViewportEvent::Close);
+        self.raw_frame(raw)
+    }
+    fn raw_frame(&mut self, mut raw: egui::RawInput) -> egui::FullOutput {
         self.time += 0.02;
-        let result = self.ctx.run(
-            egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, 1000.0))),
-                time: Some(self.time),
-                events,
-                ..Default::default()
-            },
-            |ctx| self.app.update_frame(ctx),
-        );
+        raw.screen_rect = Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, 1000.0)));
+        raw.time = Some(self.time);
+        let result = self.ctx.run(raw, |ctx| self.app.update_frame(ctx));
         self.close_commands += result.viewport_output[&egui::ViewportId::ROOT]
             .commands
             .iter()
@@ -1243,4 +1254,258 @@ fn unreadable_regular_recent_cache_is_preserved_while_current_projects_and_memor
         crate::project_file::load::<Document>(&path, &Limits::default(), &AtomicBool::new(false))
             .unwrap();
     }
+}
+
+fn settle_library(gui: &mut Gui) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        gui.frame(vec![]);
+        if !gui.app.library_metadata.active() {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{}",
+            gui.app.library_metadata.label()
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+fn wait_close_library(gui: &mut Gui) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !gui.app.project.closing_library {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline, "{:?}", gui.app.project.message);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+fn saved_cue(path: &std::path::Path) -> f64 {
+    crate::library::read(path)
+        .unwrap()
+        .version(&LibSource::Builtin(BuiltinStem::Drums), None)
+        .unwrap()
+        .preparation
+        .cue
+}
+
+#[test]
+fn coordinated_native_close_cancel_then_save_preserves_project_and_library() {
+    let files = Files::new();
+    let catalog = files.path("catalog/library.json");
+    let project = files.path("saved.omat");
+    let mut gui = Gui::new();
+    gui.app.start_library_store(catalog.clone());
+    settle_library(&mut gui);
+    gui.edited();
+    gui.app.send(Command::DeckSeek {
+        deck: 0,
+        frac: 0.23,
+    });
+    gui.rt.process(&mut []);
+    let cue = gui.rt.decks[0].cue_pos / 48_000.0;
+    let output = gui.native_close();
+    assert!(output.viewport_output[&egui::ViewportId::ROOT]
+        .commands
+        .iter()
+        .any(|command| matches!(command, egui::ViewportCommand::CancelClose)));
+    assert!(matches!(
+        gui.app.project.dialog,
+        Some(Dialog::Unsaved(Action::Close))
+    ));
+    gui.click_label("Cancel");
+    assert_eq!(gui.close_commands, 0);
+    assert!(!gui.app.project.committing());
+    assert!(gui.app.project.close_guard.is_none());
+    assert!(gui.app.engine.send(Command::Master(0.61)).is_ok());
+    gui.rt.process(&mut []);
+
+    gui.native_close();
+    gui.click_label("Save changes");
+    gui.enter_path(&project);
+    gui.click_label("Save");
+    gui.settle();
+    assert_eq!(gui.close_commands, 1);
+    assert!(gui.app.project.allow_close && gui.app.project.committing());
+    assert!(
+        !gui.app.project.busy(),
+        "terminal close is no longer pending work"
+    );
+    assert!(
+        gui.app.project.close_guard.is_some(),
+        "admission remains sealed through exit"
+    );
+    assert!(matches!(
+        gui.app.engine.send(Command::Master(0.12)),
+        Err(crate::engine::SubmissionError::ProjectChanging)
+    ));
+    let saved = crate::project_file::load::<Document>(
+        &project,
+        &Limits::default(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(saved.state.engine.tracks[0].clips[0].notes[0].pitch, 61);
+    assert_eq!(saved_cue(&catalog), cue);
+    gui.frame(vec![]);
+    assert_eq!(
+        gui.close_commands, 1,
+        "one terminal Close, no retrigger loop"
+    );
+}
+
+#[test]
+fn coordinated_project_discard_keeps_failed_library_and_keep_working_reopens_admission() {
+    let files = Files::new();
+    let catalog = files.path("catalog/library.json");
+    let mut gui = Gui::new();
+    gui.app.start_library_store(catalog.clone());
+    settle_library(&mut gui);
+    std::fs::write(&catalog, b"{external catalog replacement}").unwrap();
+    gui.edited();
+    gui.app.send(Command::DeckSeek {
+        deck: 0,
+        frac: 0.37,
+    });
+    gui.rt.process(&mut []);
+    gui.native_close();
+    gui.click_label("Discard changes");
+    wait_close_library(&mut gui);
+    settle_library(&mut gui);
+    assert!(!gui.app.library_metadata.durable);
+    assert!(gui.app.library_metadata.label().contains("outside"));
+    assert_eq!(
+        gui.close_commands, 0,
+        "project Discard does not discard DJ library edits"
+    );
+    assert!(gui.app.project.close_guard.is_some());
+    assert!(gui.app.project.busy() && gui.app.project.committing());
+    gui.click_label("Keep working");
+    assert!(!gui.app.project.busy() && !gui.app.project.committing());
+    assert!(gui.app.project.close_guard.is_none());
+    assert!(gui.app.engine.send(Command::Master(0.42)).is_ok());
+    gui.rt.process(&mut []);
+    assert_eq!(gui.rt.master, 0.42);
+    assert_eq!(
+        std::fs::read(&catalog).unwrap(),
+        b"{external catalog replacement}"
+    );
+
+    gui.native_close();
+    gui.click_label("Discard changes");
+    wait_close_library(&mut gui);
+    gui.click_label("Close without saving");
+    assert_eq!(gui.close_commands, 1);
+    assert!(gui.app.project.allow_close && gui.app.project.committing());
+    assert!(!gui.app.project.busy());
+    assert!(gui.app.project.close_guard.is_some());
+    assert_eq!(
+        std::fs::read(&catalog).unwrap(),
+        b"{external catalog replacement}"
+    );
+}
+
+#[test]
+fn coordinated_close_keep_working_wins_on_same_frame_library_becomes_ready() {
+    use std::sync::mpsc;
+    let files = Files::new();
+    let catalog = files.path("catalog/library.json");
+    let mut gui = Gui::new();
+    let hold = Arc::new(AtomicBool::new(false));
+    let held = hold.clone();
+    let (entered, entry) = mpsc::sync_channel(1);
+    let (resume, resumed) = mpsc::sync_channel(1);
+    gui.app.library_metadata = library_metadata::Metadata::with_hook(catalog.clone(), move || {
+        if held.swap(false, Ordering::AcqRel) {
+            entered.send(()).unwrap();
+            resumed.recv_timeout(Duration::from_secs(5)).unwrap();
+        }
+    });
+    settle_library(&mut gui);
+    hold.store(true, Ordering::Release);
+    gui.edited();
+    gui.app.send(Command::DeckSeek {
+        deck: 0,
+        frac: 0.29,
+    });
+    gui.rt.process(&mut []);
+    let cue = gui.rt.decks[0].cue_pos / 48_000.0;
+    gui.native_close();
+    gui.click_label("Discard changes");
+    entry.recv_timeout(Duration::from_secs(2)).unwrap();
+    wait_close_library(&mut gui);
+    gui.ctx.enable_accesskit();
+    gui.app.library_import_open = true;
+    gui.app.library_import_path = catalog.display().to_string();
+    gui.app.status = "before disabled import".into();
+    gui.frame(vec![]);
+    let output = gui.frame(vec![]);
+    let (import, node) = output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .unwrap()
+        .nodes
+        .iter()
+        .find(|(_, node)| node.label() == Some("Import catalog"))
+        .unwrap();
+    assert!(
+        node.is_disabled(),
+        "floating import editor respects close admission"
+    );
+    gui.frame(vec![egui::Event::AccessKitActionRequest(
+        egui::accesskit::ActionRequest {
+            action: egui::accesskit::Action::Click,
+            target: *import,
+            data: None,
+        },
+    )]);
+    assert_eq!(
+        gui.app.status, "before disabled import",
+        "no catalog import accepted while closing"
+    );
+    gui.app.library_import_open = false;
+    gui.frame(vec![]);
+    let output = gui.frame(vec![]);
+    let keep = test_support::label_center(&output, "Keep working");
+    assert_eq!(gui.close_commands, 0);
+    assert!(gui.app.project.close_guard.is_some());
+    resume.send(()).unwrap();
+    // Finish the worker without rendering a frame: Ready and the user's
+    // pointer-down are observed together on the next actual App frame.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if matches!(
+            gui.app.prepare_library_close(),
+            library_store::CloseState::Ready
+        ) {
+            break;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(saved_cue(&catalog), cue);
+    gui.frame(vec![
+        egui::Event::PointerMoved(keep),
+        egui::Event::PointerButton {
+            pos: keep,
+            button: PointerButton::Primary,
+            pressed: true,
+            modifiers: Default::default(),
+        },
+    ]);
+    assert_eq!(
+        gui.close_commands, 0,
+        "current-frame cancellation wins over Ready"
+    );
+    assert!(!gui.app.project.allow_close && !gui.app.project.committing());
+    assert!(gui.app.project.close_guard.is_none());
+    assert!(gui.app.engine.send(Command::Master(0.33)).is_ok());
+    gui.frame(vec![egui::Event::PointerButton {
+        pos: keep,
+        button: PointerButton::Primary,
+        pressed: false,
+        modifiers: Default::default(),
+    }]);
+    assert_eq!(gui.rt.master, 0.33);
+    assert_eq!(gui.close_commands, 0);
 }

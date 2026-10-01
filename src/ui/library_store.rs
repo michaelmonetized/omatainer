@@ -129,11 +129,12 @@ impl App {
     }
     pub(super) fn restore_initial_library_preparation(&mut self) {
         if self.library_initialized
-            || self.library_metadata.storage.as_deref() != Some("DJ library saved")
+            || self.library_metadata.storage.is_none()
+            || !self.library_metadata.durable
         {
             return;
         }
-        self.library_initialized = true;
+        let mut admitted = true;
         for (deck, stem) in [BuiltinStem::Drums, BuiltinStem::Harmony]
             .into_iter()
             .enumerate()
@@ -146,13 +147,14 @@ impl App {
                 continue;
             };
             if version.preparation != Preparation::default() {
-                self.submit(Command::DeckRestorePreparation {
+                admitted &= self.submit(Command::DeckRestorePreparation {
                     deck: deck as u8,
                     receipt: self.engine.initial_playback[deck].clone(),
                     preparation: version.preparation,
                 });
             }
         }
+        self.library_initialized = admitted;
     }
     pub(super) fn capture_metadata(
         &self,
@@ -186,12 +188,21 @@ impl App {
             })
     }
     pub(super) fn library_store_ui(&mut self, ctx: &egui::Context) {
+        // Publication can arrive while the command port is temporarily full or
+        // history preparation owns admission. Keep retrying the receipt-guarded
+        // startup restore, without opening creative admission during close.
+        if !self.project.committing() {
+            self.restore_initial_library_preparation();
+        }
         if !self.library_import_open {
             return;
         }
         keyboard::block_for_dialog(ctx);
         let mut open = true;
         egui::Window::new("Import DJ library").open(&mut open).show(ctx, |ui| {
+            // A project CloseGuard seals renderer edits; the same close must
+            // also exclude new catalog imports after its durability check.
+            if self.project.committing() { ui.disable(); }
             ui.label("Import a version 1 or 2 Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
             ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
             ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
@@ -215,6 +226,7 @@ pub(super) struct Close {
     requested: bool,
     fence: Option<Arc<std::sync::atomic::AtomicBool>>,
     allow: bool,
+    shown: bool,
 }
 pub(super) enum CloseState {
     Ready,
@@ -229,7 +241,11 @@ impl App {
         if self.library_metadata.storage.is_none() {
             return CloseState::Ready;
         }
-        if self.library_close.fence.is_none() && self.engine.cmd.is_connected() {
+        // A project CloseGuard already proves creative admission is sealed and
+        // its prior command queue drained. Reuse it instead of submitting a
+        // fence to the deliberately closed admission gate.
+        let sealed = self.project_admission_sealed();
+        if !sealed && self.library_close.fence.is_none() && self.engine.cmd.is_connected() {
             let acknowledged = Arc::new(AtomicBool::new(false));
             if self
                 .engine
@@ -246,7 +262,7 @@ impl App {
             .fence
             .as_ref()
             .is_some_and(|a| a.load(Ordering::Acquire));
-        if !acknowledged && self.engine.cmd.is_connected() {
+        if !sealed && !acknowledged && self.engine.cmd.is_connected() {
             return CloseState::Pending;
         }
         self.poll_play_history();
@@ -262,46 +278,56 @@ impl App {
     pub(super) fn cancel_library_close(&mut self) {
         self.library_close = Close::default();
     }
+    pub(super) fn request_library_close(&mut self, ctx: &egui::Context) {
+        self.library_close.requested = true;
+        if self.library_metadata.storage.is_none() {
+            self.library_close.allow = true;
+            self.allow_project_close(ctx);
+        }
+    }
     pub(super) fn library_close_ui(&mut self, ctx: &egui::Context) {
-        if self.library_metadata.storage.is_none() || self.library_close.allow {
-            return;
-        }
-        if ctx.input(|input| input.viewport().close_requested()) {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            self.library_close.requested = true;
-        }
-        if !self.library_close.requested {
+        if self.library_close.allow || !self.library_close.requested {
             return;
         }
         keyboard::block_for_dialog(ctx);
         let state = self.prepare_library_close();
-        if matches!(state, CloseState::Ready) {
-            self.library_close.allow = true;
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            return;
+        let ready = matches!(state, CloseState::Ready);
+        let mut keep_working = false;
+        let mut discard = false;
+        // A pending dialog's current-frame input wins even if its save has
+        // become Ready since the previous frame.
+        if !ready || self.library_close.shown {
+            self.library_close.shown = true;
+            egui::Window::new("Saving DJ library before exit")
+                .collapsible(false)
+                .show(ctx, |ui| {
+                    match &state {
+                        CloseState::Failed(error) => {
+                            ui.label(error);
+                        }
+                        CloseState::Ready => {
+                            ui.label("DJ library saved.");
+                        }
+                        CloseState::Pending => {
+                            ui.label(
+                                "Waiting for earlier deck edits and the background library save…",
+                            );
+                        }
+                    }
+                    if ui.button("Retry library save").clicked() {
+                        self.library_metadata.retry_save();
+                    }
+                    let keep = ui.button("Keep working");
+                    keep_working = keep.clicked() || keep.is_pointer_button_down_on();
+                    discard = ui.button("Close without saving").clicked();
+                });
         }
-        egui::Window::new("Saving DJ library before exit")
-            .collapsible(false)
-            .show(ctx, |ui| {
-                match &state {
-                    CloseState::Failed(error) => {
-                        ui.label(error);
-                    }
-                    _ => {
-                        ui.label("Waiting for earlier deck edits and the background library save…");
-                    }
-                }
-                if ui.button("Retry library save").clicked() {
-                    self.library_metadata.retry_save();
-                }
-                if ui.button("Keep working").clicked() {
-                    self.cancel_library_close();
-                }
-                if ui.button("Close without saving").clicked() {
-                    self.library_close.allow = true;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                }
-            });
+        if keep_working {
+            self.cancel_project_close();
+        } else if ready || discard {
+            self.library_close.allow = true;
+            self.allow_project_close(ctx);
+        }
         ctx.request_repaint_after(std::time::Duration::from_millis(16));
     }
 }

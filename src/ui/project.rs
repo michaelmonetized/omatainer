@@ -173,6 +173,7 @@ pub(super) struct Projects {
     dialog: Option<Dialog>,
     message: Option<String>,
     allow_close: bool,
+    closing_library: bool,
     close_guard: Option<CloseGuard>,
     awaiting_snapshot: Option<u64>,
     title: String,
@@ -208,6 +209,7 @@ impl Projects {
             dialog: None,
             message,
             allow_close: false,
+            closing_library: false,
             close_guard: None,
             awaiting_snapshot: None,
             title: String::new(),
@@ -216,7 +218,8 @@ impl Projects {
         }
     }
     pub fn committing(&self) -> bool {
-        self.awaiting_snapshot.is_some()
+        self.closing_library
+            || self.awaiting_snapshot.is_some()
             || self.active.as_ref().is_some_and(|active| {
                 matches!(
                     active.operation,
@@ -228,7 +231,7 @@ impl Projects {
             })
     }
     fn busy(&self) -> bool {
-        self.active.is_some()
+        self.active.is_some() || self.closing_library && !self.allow_close
     }
     pub fn dialog_is_closed(&self) -> bool {
         self.dialog.is_none()
@@ -236,6 +239,23 @@ impl Projects {
 }
 
 impl App {
+    fn begin_coordinated_library_close(&mut self, ctx: &egui::Context) {
+        self.project.closing_library = true;
+        self.request_library_close(ctx);
+    }
+    pub(super) fn project_admission_sealed(&self) -> bool {
+        self.project.close_guard.is_some()
+    }
+    pub(super) fn allow_project_close(&mut self, ctx: &egui::Context) {
+        self.project.allow_close = true;
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+    }
+    pub(super) fn cancel_project_close(&mut self) {
+        self.project.closing_library = false;
+        self.project.close_guard = None;
+        self.project.allow_close = false;
+        self.cancel_library_close();
+    }
     fn project_view(&mut self) -> UiState {
         let selection = self.selected_library_item().map(|item| item.source.clone());
         let selection = if let Some((source, index, filter)) = &self.project.pending_selection {
@@ -569,8 +589,7 @@ impl App {
                             && !self.project_dirty()
                     {
                         self.project.close_guard = Some(guard);
-                        self.project.allow_close = true;
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        self.begin_coordinated_library_close(ctx);
                     } else {
                         self.project.dialog = Some(Dialog::Unsaved(Action::Close));
                     }
@@ -607,8 +626,7 @@ impl App {
                         self.project.message = Some(format!(
                             "Closing without saving; audio renderer unavailable: {error}"
                         ));
-                        self.project.allow_close = true;
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        self.begin_coordinated_library_close(ctx);
                     } else {
                         self.project.message = Some(format!("Could not verify a clean close: {error}. Save or explicitly discard before closing."));
                         self.project.dialog = Some(Dialog::Unsaved(Action::Close));
@@ -879,8 +897,7 @@ impl App {
                 } else {
                     // Explicit Discard can close after a renderer/worker failure
                     // without claiming that pending creative work was saved.
-                    self.project.allow_close = true;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    self.begin_coordinated_library_close(ctx);
                 }
             } else {
                 self.begin_project_action(action);
