@@ -77,6 +77,7 @@ struct Shared {
     epoch: AtomicU64,
     stop_pending: AtomicBool,
     shutdown: AtomicBool,
+    enabled: AtomicBool,
     counters: Arc<InputCounters>,
 }
 
@@ -190,6 +191,12 @@ impl InputSink {
         self.shared.counters.received.fetch_add(1, Relaxed);
         if self.shared.shutdown.load(Acquire) || self.producer.is_abandoned() {
             self.shared.counters.disconnected.fetch_add(1, Relaxed);
+            return;
+        }
+        // Newly connecting inputs remain inert until the manager rechecks
+        // current preferences after the potentially blocking OS open call.
+        if !self.shared.enabled.load(Acquire) {
+            self.shared.counters.dropped.fetch_add(1, Relaxed);
             return;
         }
         if bytes.len() > EVENT_BYTES {
@@ -342,6 +349,11 @@ pub(super) struct InputGuard {
     shared: Arc<Shared>,
     worker: Option<std::thread::JoinHandle<()>>,
 }
+impl InputGuard {
+    pub(super) fn enable(&self) {
+        self.shared.enabled.store(true, Release);
+    }
+}
 impl Drop for InputGuard {
     fn drop(&mut self) {
         self.shared.shutdown.store(true, Release);
@@ -367,6 +379,7 @@ fn channel(
         epoch: AtomicU64::new(0),
         stop_pending: AtomicBool::new(false),
         shutdown: AtomicBool::new(false),
+        enabled: AtomicBool::new(true),
         counters,
     });
     let rules = Rules::new(&map);
@@ -419,7 +432,24 @@ pub(super) fn start_with_completion(
     counters: Arc<InputCounters>,
     completed: impl FnOnce() + Send + 'static,
 ) -> std::io::Result<(InputSink, InputGuard)> {
+    start_gated(
+        source, map, cmd, log, learn, name, counters, true, completed,
+    )
+}
+
+pub(super) fn start_gated(
+    source: u64,
+    map: MidiMap,
+    cmd: CommandPort,
+    log: Arc<Mutex<Vec<String>>>,
+    learn: Arc<Mutex<Option<String>>>,
+    name: String,
+    counters: Arc<InputCounters>,
+    enabled: bool,
+    completed: impl FnOnce() + Send + 'static,
+) -> std::io::Result<(InputSink, InputGuard)> {
     let (sink, worker) = channel(EVENTS, source, map, cmd, log, learn, name, counters);
+    sink.shared.enabled.store(enabled, Release);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()
         .name(format!("omatainer-midi-{source}"))
