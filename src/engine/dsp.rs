@@ -703,8 +703,14 @@ pub fn synth_drum(kind: u8, sr: u32) -> Vec<f32> {
 }
 
 pub fn peaks_3band(data: &[f32], ch: u16, buckets: usize) -> Vec<[f32; 3]> {
+    peaks_3band_with_cancel(data, ch, buckets, || false).expect("uncancelled waveform")
+}
+/// Identical band geometry with cooperative boundaries for optional analysis.
+pub(super) fn peaks_3band_with_cancel(data: &[f32], ch: u16, buckets: usize,
+    cancelled: impl Fn() -> bool) -> Option<Vec<[f32; 3]>> {
+    if cancelled() { return None; }
     if data.is_empty() || ch == 0 {
-        return vec![[0.0; 3]; buckets.max(1)];
+        return Some(vec![[0.0; 3]; buckets.max(1)]);
     }
     let frames = data.len() / ch as usize;
     let buckets = buckets.max(1);
@@ -719,6 +725,7 @@ pub fn peaks_3band(data: &[f32], ch: u16, buckets: usize) -> Vec<[f32; 3]> {
         let mut h = 0.0;
         let mut c = 0.0;
         for i in a..z {
+            if i % 4096 == 0 && cancelled() { return None; }
             let s = if ch >= 2 {
                 0.5 * (data[i * ch as usize] + data[i * ch as usize + 1])
             } else {
@@ -736,22 +743,30 @@ pub fn peaks_3band(data: &[f32], ch: u16, buckets: usize) -> Vec<[f32; 3]> {
             out[b] = [(l / c).min(1.0), (m / c).min(1.0), (h / c).min(1.0)];
         }
     }
-    out
+    Some(out)
 }
 
 pub fn detect_bpm(data: &[f32], ch: u16, sr: u32) -> f32 {
     detect_bpm_with_cancel(data, ch, sr, || false).unwrap_or(120.0)
 }
 pub(super) fn detect_bpm_with_cancel(data: &[f32], ch: u16, sr: u32, cancelled: impl Fn() -> bool) -> Option<f32> {
-    if cancelled() { return None; }
-    if data.is_empty() || ch == 0 {
-        return Some(120.0);
+    // Preserve the existing deck fallback; persistent analysis calls the honest
+    // optional estimator below and never labels this fallback as measured.
+    estimate_bpm_with_cancel(data, ch, sr, cancelled).ok().map(|value| value.unwrap_or(120.0))
+}
+/// None is a completed but unavailable estimate; Err is cooperative cancellation.
+/// This remains the existing 70–180 BPM heuristic, without a confidence claim.
+pub(super) fn estimate_bpm_with_cancel(data: &[f32], ch: u16, sr: u32,
+    cancelled: impl Fn() -> bool) -> Result<Option<f32>, ()> {
+    if cancelled() { return Err(()); }
+    if data.is_empty() || ch == 0 || sr == 0 {
+        return Ok(None);
     }
     let hop = 512usize;
     let frames = data.len() / ch as usize;
     let mut env = Vec::with_capacity(frames / hop + 1);
     for i in (0..frames).step_by(hop) {
-        if cancelled() { return None; }
+        if cancelled() { return Err(()); }
         let mut e = 0.0;
         let end = (i + hop).min(frames);
         for k in i..end {
@@ -765,10 +780,11 @@ pub(super) fn detect_bpm_with_cancel(data: &[f32], ch: u16, sr: u32, cancelled: 
         env.push((e / hop as f32).sqrt());
     }
     if env.len() < 8 {
-        return Some(120.0);
+        return Ok(None);
     }
     let mut flux = vec![0.0; env.len()];
     for i in 1..env.len() {
+        if i % 4096 == 0 && cancelled() { return Err(()); }
         flux[i] = (env[i] - env[i - 1]).max(0.0);
     }
     let hop_t = hop as f32 / sr as f32;
@@ -776,7 +792,7 @@ pub(super) fn detect_bpm_with_cancel(data: &[f32], ch: u16, sr: u32, cancelled: 
     let mut best = 0.0f32;
     let mut bpm = 70.0f32;
     while bpm <= 180.0 {
-        if cancelled() { return None; }
+        if cancelled() { return Err(()); }
         let period = 60.0 / bpm / hop_t;
         if period < 2.0 {
             bpm += 0.5;
@@ -786,7 +802,7 @@ pub(super) fn detect_bpm_with_cancel(data: &[f32], ch: u16, sr: u32, cancelled: 
         let mut n = 0.0;
         let mut t = period;
         while t < flux.len() as f32 - 1.0 {
-            if cancelled() { return None; }
+            if cancelled() { return Err(()); }
             let i = t as usize;
             acc += flux[i];
             n += 1.0;
@@ -801,13 +817,14 @@ pub(super) fn detect_bpm_with_cancel(data: &[f32], ch: u16, sr: u32, cancelled: 
         }
         bpm += 0.5;
     }
+    if !best.is_finite() || best <= 0.0 { return Ok(None); }
     if best_bpm < 85.0 {
         best_bpm *= 2.0;
     }
     if best_bpm > 170.0 {
         best_bpm *= 0.5;
     }
-    Some(best_bpm)
+    Ok(Some(best_bpm))
 }
 
 pub use super::decode::decode_audio;
