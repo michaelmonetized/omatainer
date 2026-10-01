@@ -6,6 +6,15 @@ impl App {
         egui::TopBottomPanel::top("audio-status").resizable(false).show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 accessibility::action_button(ui);
+                if ui.button("Preferences").clicked() { self.settings.open = true; }
+                if !self.settings.open && !self.settings.message.is_empty() {
+                    let label = if self.settings.message.starts_with("Preferences failed") { "Preferences failed" } else { "Preferences update" };
+                    if ui.button(label).on_hover_text(&self.settings.message).clicked() { self.settings.open = true; }
+                }
+                if self.settings.pending_restart() { ui.label("Audio settings pending restart"); }
+                if let Some(notice) = &self.settings.startup_notice {
+                    if ui.button("Setup notice").on_hover_text(notice).clicked() { self.settings.open = true; }
+                }
                 if ui.button("Diagnostics").clicked() { self.diagnostics.open = true; }
                 if ui.button("Content & licenses").clicked() { self.licenses.open = true; }
                 if let Some(sample) = metrics.last_callback {

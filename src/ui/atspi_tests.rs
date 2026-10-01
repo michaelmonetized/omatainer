@@ -48,6 +48,10 @@ fn private_atspi_bridge_child() {
     let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
     rt.publish_for_test();
     let mut app = App::with_loader(engine, Theme::default(), None);
+    app.settings.path = Some(directory.join("preferences.json"));
+    app.settings.worker = Some(crate::preferences::worker::Worker::with_discovery(
+        directory.join("preferences.json"), || Ok(crate::engine::audio::config::tests::inventory())
+    ).unwrap());
     let ctx = egui::Context::default();
     ctx.enable_accesskit();
     let mut time = 0.0;
@@ -153,7 +157,12 @@ fn private_atspi_bridge_child() {
             "notes":rt.tracks[0].clips[0].notes.len(),"undo_cursor":undo.cursor,"undo_epoch":undo.epoch,
             "compose_armed":rt.compose_target.is_some(),"saved_notes":saved_notes,
             "all_pad_inputs_clear":app.pad_inputs.iter().all(|v| *v==0),
-            "project_file":saved_project.display().to_string()});
+            "project_file":saved_project.display().to_string(),
+            "preferences_open":app.settings.open,"preferences_busy":app.settings.busy(),
+            "preferences_scale":app.settings.profile().appearance.scale,
+            "preferences_draft_scale":app.settings.draft.current().unwrap().appearance.scale,
+            "preferences_saved":app.settings.revision.is_some(),"preferences_message":app.settings.message,
+            "preferences_follow_theme":app.settings.profile().appearance.follow_theme});
         std::fs::write(
             directory.join("state.tmp"),
             serde_json::to_vec(&evidence).unwrap(),

@@ -208,24 +208,59 @@ pub(super) const BINDINGS: &[Binding] = &[
     ),
 ];
 
-pub(super) fn lookup(key: Key, modifiers: Modifiers, repeat: bool) -> Option<Action> {
-    (!repeat)
-        .then(|| {
-            BINDINGS.iter().find(|binding| {
-                binding.key == key
-                    && modifiers.mac_cmd == binding.modifiers.mac_cmd
-                    && if binding.modifiers.is_none() {
-                        modifiers.is_none()
-                    } else {
-                        modifiers.matches_exact(binding.modifiers)
-                    }
-            })
-        })
-        .flatten()
-        .map(|binding| binding.action)
+impl Binding {
+    pub(super) fn id(&self) -> &'static str {
+        match self.action {
+            Action::Transport => "transport", Action::Play(0) => "play_a", Action::Play(_) => "play_b",
+            Action::Cue(0) => "cue_a", Action::Cue(_) => "cue_b", Action::Sync(0) => "sync_a", Action::Sync(_) => "sync_b",
+            Action::Scene(0) => "scene_1", Action::Scene(1) => "scene_2", Action::Scene(2) => "scene_3", Action::Scene(3) => "scene_4",
+            Action::Scene(4) => "scene_5", Action::Scene(5) => "scene_6", Action::Scene(6) => "scene_7", Action::Scene(_) => "scene_8",
+            Action::Crossfader(0) => "crossfader_a", Action::Crossfader(_) => "crossfader_b", Action::Load => "load",
+            Action::Help if self.key == Key::F1 => "help_f1", Action::Help => "help_question", Action::Midi => "midi", Action::CloseFx => "close_fx",
+        }
+    }
+    pub(super) fn effective(&self, profile: &crate::preferences::Profile) -> Option<crate::preferences::Shortcut> {
+        profile.shortcuts.get(self.id()).cloned().unwrap_or_else(|| Some(crate::preferences::Shortcut {
+            key: self.key.name().into(), ctrl: self.modifiers.ctrl, shift: self.modifiers.shift, alt: self.modifiers.alt,
+        }))
+    }
 }
 
-pub(super) fn show_help(ui: &mut Ui) {
+pub(super) fn validate(profile: &crate::preferences::Profile) -> Result<(), String> {
+    for id in profile.shortcuts.keys() {
+        if !BINDINGS.iter().any(|binding| binding.id() == id) { return Err(format!("Unknown shortcut action {id}; preferences were preserved")); }
+    }
+    let mut seen = std::collections::BTreeMap::new();
+    for binding in BINDINGS {
+        if let Some(value) = binding.effective(profile) {
+            // Canonicalize aliases accepted by egui before checking conflicts.
+            let key = Key::from_name(&value.key).ok_or_else(|| format!("Unknown key {}", value.key))?;
+            let identity = (key.name(), value.ctrl, value.shift, value.alt);
+            if let Some(other) = seen.insert(identity, binding.description) {
+                return Err(format!("{} and {other} both use {}", binding.description, value.label()));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn lookup(key: Key, modifiers: Modifiers, repeat: bool) -> Option<Action> {
+    lookup_with(&crate::preferences::Profile::defaults(std::path::Path::new("/tmp")), key, modifiers, repeat)
+}
+pub(super) fn lookup_with(profile: &crate::preferences::Profile, key: Key, modifiers: Modifiers, repeat: bool) -> Option<Action> {
+    if repeat || !profile.shortcuts_enabled { return None; }
+    BINDINGS.iter().find_map(|binding| {
+        let value = binding.effective(profile)?;
+        let expected = value.modifiers();
+        (Key::from_name(&value.key) == Some(key) && !modifiers.mac_cmd && (!modifiers.command || modifiers.ctrl)
+            && modifiers.ctrl == expected.ctrl && modifiers.shift == expected.shift && modifiers.alt == expected.alt)
+            .then_some(binding.action)
+    })
+}
+
+pub(super) fn show_help_with(ui: &mut Ui, profile: &crate::preferences::Profile) {
+    ui.label("Ctrl+, opens Preferences and profiles. This setup shortcut is always available outside text editing and dialogs.");
     ui.label("Tab / Shift+Tab traverses controls. Enter or Space activates the focused control.");
     ui.label("Numeric controls: arrows adjust, Shift is fine adjustment, Home/End choose limits, F2 enters a value.");
     ui.label("Shift+F10 opens alternate actions, including cue deletion, looping, solo, compose arming and clip gain.");
@@ -235,7 +270,7 @@ pub(super) fn show_help(ui: &mut Ui) {
         .striped(true)
         .show(ui, |ui| {
             for binding in BINDINGS {
-                ui.monospace(binding.label);
+                ui.monospace(if profile.shortcuts_enabled { if profile.shortcuts.contains_key(binding.id()) { binding.effective(profile).map(|s| s.label()).unwrap_or_else(|| "Disabled".into()) } else { binding.label.into() } } else { "Disabled".into() });
                 ui.label(binding.description);
                 ui.end_row();
             }
@@ -292,3 +327,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+pub(super) fn show_help(ui: &mut Ui) { show_help_with(ui, &crate::preferences::Profile::defaults(std::path::Path::new("/tmp"))); }

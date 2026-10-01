@@ -2,6 +2,7 @@ mod project_file;
 mod licenses;
 mod engine;
 mod library;
+mod preferences;
 mod theme;
 mod ui;
 mod ipc_server;
@@ -59,7 +60,30 @@ fn main() -> anyhow::Result<()> {
             return Ok(());
         }
     };
-    let engine = engine::Engine::start().context("audio engine")?;
+    let home = std::path::PathBuf::from(std::env::var_os("HOME").context("HOME is unavailable; cannot resolve user preferences")?);
+    let path = preferences::storage::default_path(std::env::var_os("XDG_CONFIG_HOME").as_deref(), &home);
+    let mut startup = preferences::worker::Startup::read(path, home);
+    let defaults_once = args.iter().any(|arg| arg == "--defaults-once");
+    if startup.blocked && !defaults_once {
+        let retry = preferences::recovery::show(startup.diagnostic.as_deref().unwrap_or("Preferences are unavailable"), true)?;
+        drop(_instance);
+        return preferences::recovery::restart(retry);
+    }
+    let mut profile = startup.preferences.current().expect("validated startup profile").clone();
+    if defaults_once {
+        profile.audio = preferences::Audio::default();
+        let notice = "System-default audio explicitly selected for this launch. Saved preferences are unchanged.";
+        startup.diagnostic = Some(startup.diagnostic.map_or(notice.into(), |error| format!("{error}\n{notice}")));
+    }
+    let running_audio = profile.audio.clone();
+    let engine = match engine::Engine::start_with_settings(&profile) {
+        Ok(engine) => engine,
+        Err(error) => {
+            let retry = preferences::recovery::show(&format!("Could not open the requested setup: {error:#}. Saved preferences were not changed."), false)?;
+            drop(_instance);
+            return preferences::recovery::restart(retry);
+        }
+    };
     let _ipc = ipc_server::start_at(&socket, engine.cmd.clone(), engine.snap.clone())
         .context("could not start the local control service; check the reported socket path and permissions")?;
 
@@ -74,7 +98,11 @@ fn main() -> anyhow::Result<()> {
     eframe::run_native(
         "omatainer",
         options,
-        Box::new(|cc| Ok(Box::new(ui::App::new(cc, engine)))),
+        Box::new(|cc| {
+            let mut app = ui::App::new(cc, engine);
+            app.initialize_preferences(&cc.egui_ctx, startup, running_audio);
+            Ok(Box::new(app))
+        }),
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(())
