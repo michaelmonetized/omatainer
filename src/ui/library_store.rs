@@ -23,7 +23,7 @@ impl LibItem {
             last_play: self.last_play,
         }
     }
-    fn from_stored(source: LibSource, version: &crate::library::Version) -> Self {
+    pub(super) fn from_stored(source: LibSource, version: &crate::library::Version) -> Self {
         let m = &version.metadata;
         Self {
             source,
