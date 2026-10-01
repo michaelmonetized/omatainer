@@ -549,6 +549,8 @@ pub struct DeckSnap {
     pub touching: bool,
     pub loop_start: f64,
     pub loop_len: f64,
+    /// Immutable decoded source tempo hint; never overwritten by a manual grid.
+    pub source_bpm: f32,
     pub bpm: f32,
     pub pitch: f32,
     pub gain: f32,

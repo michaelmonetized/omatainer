@@ -252,6 +252,7 @@ impl Frame {
             out.touching = deck.touching;
             out.loop_start = deck.loop_start;
             out.loop_len = deck.loop_len;
+            out.source_bpm = deck.audio.as_ref().map_or(0.0, |audio| audio.bpm);
             out.bpm = deck.musical_bpm();
             out.pitch = deck.pitch;
             out.gain = deck.gain;
