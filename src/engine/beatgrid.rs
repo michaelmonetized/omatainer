@@ -220,11 +220,15 @@ mod renderer_tests {
         rt.decks[0].pos = 12_000.0;
         rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
         rt.clear_undo_for_test();
+        let source_bpm = rt.decks[0].audio.as_ref().unwrap().bpm;
         let grid = Grid::new(1.25, 127.5).unwrap();
         let command = Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: Some(grid), receipt: receipt.clone() };
         assert_eq!(test_alloc::measure(|| rt.apply(command)), test_alloc::Counts::default());
         assert_eq!(rt.decks[0].grid, Some(grid));
         assert_eq!(receipt.preparation().unwrap().1.grid, Some(grid));
+        rt.publish_for_test();
+        assert_eq!(rt.snap.lock().decks[0].bpm, 127.5);
+        assert_eq!(rt.snap.lock().decks[0].source_bpm, source_bpm);
         assert_eq!(rt.decks[0].hotcues[0].pos, 12_000.0);
         assert_eq!(receipt.preparation().unwrap().1.hotcues[0], Some(0.25));
         assert_eq!(test_alloc::measure(|| rt.apply(Command::Undo)), test_alloc::Counts::default());
@@ -239,6 +243,10 @@ mod renderer_tests {
         rt.apply(Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: None, receipt: receipt.clone() });
         assert_eq!(rt.decks[0].grid, None);
         assert_eq!(rt.decks[0].hotcues[0].pos, 12_000.0);
+        // A lagging snapshot may still show the old effective manual tempo,
+        // while its immutable source hint remains correct for a new draft.
+        assert_eq!(rt.snap.lock().decks[0].bpm, 127.5);
+        assert_eq!(rt.snap.lock().decks[0].source_bpm, source_bpm);
         rt.apply(Command::Undo);
         assert_eq!(rt.decks[0].grid, Some(grid));
         let before = engine.undo.checkpoint();
