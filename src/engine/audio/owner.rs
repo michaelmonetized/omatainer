@@ -567,6 +567,7 @@ impl RtEngine {
         self.sampler_poly.set_sample_rate(self.sr);
         self.pad_targets.fill(None);
         self.pad_voices.fill(None);
+        self.sampler_audition = None;
         self.pad_output.fill([0.0; 2]);
         for chain in &mut self.scene_fx {
             for slot in &mut chain.slots {
@@ -599,6 +600,7 @@ impl RtEngine {
             || self.compose_target.is_some()
             || self.decks.iter().any(|deck| deck.playing || deck.touching)
             || self.has_held_project_notes()
+            || self.sampler_audition.is_some()
         {
             self.stop_for_audio();
         }

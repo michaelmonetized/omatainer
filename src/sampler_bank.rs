@@ -8,6 +8,8 @@ use std::{collections::HashSet, fmt, io::Read, path::PathBuf};
 mod store;
 pub(crate) mod assets;
 pub(crate) mod resident;
+pub(crate) mod prepare;
+pub(crate) mod manager;
 pub(crate) use store::{default_path, Commit, Store};
 #[cfg(test)]
 mod tests;

@@ -39,6 +39,7 @@ pub enum DecodeFailureKind {
     VerificationFailed,
     Empty,
     Cancelled,
+    Capacity,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -112,6 +113,7 @@ impl fmt::Display for DecodeFailure {
             DecodeFailureKind::VerificationFailed => "Audio checksum failed",
             DecodeFailureKind::Empty => "Empty audio",
             DecodeFailureKind::Cancelled => "Load cancelled",
+            DecodeFailureKind::Capacity => "Audio exceeds sampler capacity",
         };
         let activity = match self.stage {
             DecodeStage::Open => "opening the file",
@@ -238,9 +240,31 @@ pub(crate) fn decode_audio_for_show(path: &Path, cancelled: impl Fn() -> bool, p
     })
 }
 fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>) -> Result<DecodedAudio, DecodeFailure> {
+    decode_source(path, None, None, cancelled, analyze)
+}
+
+/// Sampler preparation already owns a regular, fingerprint/hash-qualified
+/// descriptor and a PCM reservation. Decode that exact descriptor, never reopen
+/// the pathname. The caller retains a duplicate descriptor for final identity
+/// verification. This lane does not run unrelated heuristic BPM analysis.
+pub(crate) fn decode_sampler_file(
+    path: &Path,
+    file: std::fs::File,
+    pcm_bytes: u64,
+    cancelled: impl Fn() -> bool,
+) -> Result<DecodedAudio, DecodeFailure> {
+    decode_source(path, Some(file), Some(pcm_bytes), cancelled, |_, _, _| None)
+}
+fn decode_source(
+    path: &Path,
+    supplied: Option<std::fs::File>,
+    pcm_limit: Option<u64>,
+    cancelled: impl Fn() -> bool,
+    analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>,
+) -> Result<DecodedAudio, DecodeFailure> {
     let mut diagnostics = DecodeDiagnostics::default();
     check_cancel(&cancelled, DecodeStage::Open, &diagnostics)?;
-    let file = std::fs::File::open(path).map_err(|error| {
+    let file = supplied.map(Ok).unwrap_or_else(|| std::fs::File::open(path)).map_err(|error| {
         failure(
             DecodeFailureKind::Io,
             DecodeStage::Open,
@@ -279,6 +303,19 @@ fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl
     let mut params = track.codec_params.clone();
     if let Some(sr) = params.sample_rate {
         set_expected(&mut diagnostics, &params, sr);
+    }
+    if let Some(limit) = pcm_limit {
+        let ch = params.channels.map(|channels| channels.count() as u64);
+        if params.sample_rate.is_some_and(|rate| rate == 0 || rate > crate::project_file::MAX_SAMPLE_RATE)
+            || ch.is_some_and(|channels| channels == 0 || channels > u64::from(crate::project_file::MAX_CHANNELS))
+            || ch.zip(diagnostics.expected_frames).is_some_and(|(channels, frames)| {
+                diagnostics.length_evidence == LengthEvidence::Declared
+                    && frames.saturating_mul(channels).saturating_mul(4) > limit
+            })
+        {
+            return Err(failure(DecodeFailureKind::Capacity, DecodeStage::CreateDecoder,
+                &diagnostics, "declared audio exceeds the reserved sampler PCM/channel/rate limit"));
+        }
     }
     let mut decoder = symphonia::default::get_codecs()
         .make(&params, &DecoderOptions { verify: true })
@@ -337,6 +374,34 @@ fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl
             ));
         }
         spec = Some(current);
+        if let Some(limit) = pcm_limit {
+            let channels = current.channels.count() as u64;
+            let added = (buffer.frames() as u64).saturating_mul(channels);
+            let required = (data.len() as u64).saturating_add(added).saturating_mul(4);
+            // Bound the conversion scratch buffer too. Decoder internals are
+            // supplied by Symphonia; our owned PCM never grows past its credit.
+            if current.rate > crate::project_file::MAX_SAMPLE_RATE
+                || channels > u64::from(crate::project_file::MAX_CHANNELS)
+                || required > limit
+                || (buffer.capacity() as u64).saturating_mul(channels).saturating_mul(4) > limit
+            {
+                return Err(failure(DecodeFailureKind::Capacity, DecodeStage::DecodePacket,
+                    &diagnostics, "decoded audio exceeds the reserved sampler PCM/channel/rate limit"));
+            }
+            let added = usize::try_from(added).map_err(|_| failure(DecodeFailureKind::Capacity,
+                DecodeStage::DecodePacket, &diagnostics, "decoded packet length overflow"))?;
+            let required_samples = data.len().saturating_add(added);
+            if required_samples > data.capacity() {
+                let ceiling = usize::try_from(limit / 4).unwrap_or(usize::MAX);
+                let target = required_samples.max(data.capacity().saturating_mul(2)).min(ceiling);
+                data.try_reserve_exact(target - data.len()).map_err(|_| failure(DecodeFailureKind::Capacity,
+                    DecodeStage::DecodePacket, &diagnostics, "could not reserve bounded sampler PCM"))?;
+            }
+            if data.capacity() as u64 * 4 > limit {
+                return Err(failure(DecodeFailureKind::Capacity, DecodeStage::DecodePacket,
+                    &diagnostics, "allocator capacity exceeds the reserved sampler PCM limit"));
+            }
+        }
         let mut samples = SampleBuffer::<f32>::new(buffer.capacity() as u64, current);
         samples.copy_interleaved_ref(buffer);
         if samples.samples().iter().any(|sample| !sample.is_finite()) {

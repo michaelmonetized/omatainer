@@ -4,6 +4,8 @@
 use super::decode::{decode_audio_with_cancel, DecodeFailure, DecodedAudio};
 use super::media_source::FileFingerprint;
 use super::DECKS;
+use crate::sampler_bank::{assets, prepare};
+use super::{performance, sampler};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -29,9 +31,40 @@ pub struct Completion {
     pub token: LoadToken,
     pub result: Result<DecodedAudio, DecodeFailure>,
 }
+#[derive(Clone, Debug)]
+pub(crate) struct SamplerToken {
+    pub id: u64,
+    pub ack: sampler::Ack,
+    current: Arc<AtomicU64>,
+}
+impl SamplerToken {
+    pub fn is_current(&self) -> bool {
+        self.current.load(Ordering::Acquire) == self.id && self.ack.state() != sampler::EditState::Rejected
+    }
+    pub fn cancel(&self) {
+        // Applied or renderer-claimed requests retain their truthful outcome.
+        self.ack.cancel();
+        let _ = self.current.compare_exchange(self.id, 0, Ordering::AcqRel, Ordering::Acquire);
+    }
+}
+struct SamplerRequest {
+    token: SamplerToken,
+    request: prepare::Request,
+    owner: assets::Owner,
+    work: performance::WorkPermit,
+}
+pub(crate) struct SamplerCompletion {
+    pub token: SamplerToken,
+    pub result: Result<prepare::Prepared, String>,
+    pub work: performance::WorkPermit,
+}
+enum Work { Deck(Request), Sampler(SamplerRequest) }
 struct State {
     pending: [Option<Request>; DECKS],
     ready: [Option<Completion>; DECKS],
+    sampler_pending: Option<SamplerRequest>,
+    sampler_ready: Option<SamplerCompletion>,
+    sampler_token: Option<SamplerToken>,
     stop: bool,
     next_deck: usize,
 }
@@ -42,24 +75,37 @@ struct Shared {
 pub struct Loader {
     shared: Arc<Shared>,
     generations: [Arc<AtomicU64>; DECKS],
+    sampler_generation: Arc<AtomicU64>,
+    sampler_next: AtomicU64,
+    performance: performance::Handle,
 }
 impl Loader {
     pub fn start_with_performance(performance: super::performance::Handle) -> io::Result<Self> {
-        Self::with_decoder(move |path, token| super::decode::decode_audio_for_show(path, || !token.is_current(), &performance))
+        let decode_performance = performance.clone();
+        Self::with_worker(move |path, token| super::decode::decode_audio_for_show(path, || !token.is_current(), &decode_performance), performance)
     }
     pub fn start() -> io::Result<Self> {
         Self::with_decoder(|path, token| decode_audio_with_cancel(path, || !token.is_current()))
     }
 
     pub(crate) fn with_decoder(
+        decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure>
+            + Send + 'static,
+    ) -> io::Result<Self> {
+        Self::with_worker(decode, performance::Handle::default())
+    }
+    fn with_worker(
         mut decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure>
-            + Send
-            + 'static,
+            + Send + 'static,
+        performance: performance::Handle,
     ) -> io::Result<Self> {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 pending: std::array::from_fn(|_| None),
                 ready: std::array::from_fn(|_| None),
+                sampler_pending: None,
+                sampler_ready: None,
+                sampler_token: None,
                 stop: false,
                 next_deck: 0,
             }),
@@ -75,14 +121,37 @@ impl Loader {
                         if state.stop {
                             return;
                         }
-                        let selected = (0..DECKS)
-                            .map(|offset| (state.next_deck + offset) % DECKS)
-                            .find(|&deck| state.pending[deck].is_some());
-                        if let Some(deck) = selected {
-                            state.next_deck = (deck + 1) % DECKS;
-                            break state.pending[deck].take().unwrap();
+                        // Three typed lanes share one decoder. A bank import
+                        // decodes at most 16 sources sequentially in its turn;
+                        // neither a fake deck ID nor another worker is needed.
+                        let selected = (0..=DECKS)
+                            .map(|offset| (state.next_deck + offset) % (DECKS + 1))
+                            .find(|&lane| if lane == DECKS { state.sampler_pending.is_some() }
+                                else { state.pending[lane].is_some() });
+                        if let Some(lane) = selected {
+                            state.next_deck = (lane + 1) % (DECKS + 1);
+                            break if lane == DECKS { Work::Sampler(state.sampler_pending.take().unwrap()) }
+                                else { Work::Deck(state.pending[lane].take().unwrap()) };
                         }
                         state = worker.wake.wait(state).unwrap();
+                    }
+                };
+                let request = match request {
+                    Work::Deck(request) => request,
+                    Work::Sampler(request) => {
+                        if !request.token.is_current() { continue; }
+                        let result = prepare::run(request.request, &request.owner,
+                            || !request.token.is_current() || request.work.cancelled());
+                        if !request.token.is_current() { continue; }
+                        let old = {
+                            let mut state = worker.state.lock().unwrap();
+                            if state.stop || !request.token.is_current() { drop(state); continue; }
+                            state.sampler_ready.replace(SamplerCompletion {
+                                token: request.token, result, work: request.work,
+                            })
+                        };
+                        drop(old);
+                        continue;
                     }
                 };
                 if !request.token.is_current() {
@@ -114,7 +183,39 @@ impl Loader {
         Ok(Self {
             shared,
             generations: std::array::from_fn(|_| Arc::new(AtomicU64::new(0))),
+            sampler_generation: Arc::new(AtomicU64::new(0)),
+            sampler_next: AtomicU64::new(0),
+            performance,
         })
+    }
+
+    pub(crate) fn request_sampler(&self, request: prepare::Request, owner: assets::Owner) -> Result<SamplerToken, String> {
+        let work = self.performance.optional_work().map_err(|e| e.to_string())?;
+        let id = self.sampler_next.fetch_update(Ordering::AcqRel, Ordering::Acquire,
+            |id| id.checked_add(1)).map_err(|_| "sampler request identity exhausted")? + 1;
+        let token = SamplerToken { id, ack: sampler::Ack::new(), current: self.sampler_generation.clone() };
+        let old = {
+            let mut state = self.shared.state.lock().unwrap();
+            if state.stop { return Err("decoder is unavailable".into()); }
+            if let Some(previous) = state.sampler_token.replace(token.clone()) { previous.cancel(); }
+            self.sampler_generation.store(id, Ordering::Release);
+            let pending = state.sampler_pending.replace(SamplerRequest { token: token.clone(), request, owner, work });
+            (pending, state.sampler_ready.take())
+        };
+        drop(old);
+        self.shared.wake.notify_one();
+        Ok(token)
+    }
+    pub(crate) fn take_sampler_ready(&self) -> Option<SamplerCompletion> {
+        self.shared.state.try_lock().ok()?.sampler_ready.take()
+    }
+    pub(crate) fn invalidate_sampler(&self) {
+        let old = {
+            let mut state = self.shared.state.lock().unwrap();
+            if let Some(token) = state.sampler_token.take() { token.cancel(); }
+            (state.sampler_pending.take(), state.sampler_ready.take())
+        };
+        drop(old);
     }
 
     /// Invalidates queued, active, completed, and already-submitted completions.
@@ -178,7 +279,8 @@ impl Drop for Loader {
         let discarded = {
             let mut state = self.shared.state.lock().unwrap();
             state.stop = true;
-            (
+            if let Some(token) = state.sampler_token.take() { token.cancel(); }
+            (state.sampler_pending.take(), state.sampler_ready.take(),
                 std::mem::replace(&mut state.pending, std::array::from_fn(|_| None)),
                 std::mem::replace(&mut state.ready, std::array::from_fn(|_| None)),
             )

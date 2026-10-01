@@ -801,6 +801,7 @@ impl Journal {
                     | Command::DeckCueStyle { .. }
                     | Command::DeckGrid { .. }
                     | Command::SamplerEdit(_)
+                    | Command::SamplerAudition(_)
                     | Command::DeckCuePoint { .. }
                     | Command::LearnCapture { .. }
             )

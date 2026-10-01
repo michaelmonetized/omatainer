@@ -74,6 +74,14 @@ impl Ack {
     }
 }
 #[derive(Clone, Debug)]
+pub(crate) struct Audition {
+    pub id: u64,
+    pub bank: assets::Bank,
+    pub slot: u8,
+    pub track: u8,
+    pub ack: Ack,
+}
+#[derive(Clone, Debug)]
 pub(crate) struct Edit {
     pub epoch: u64,
     pub target: Target,
@@ -82,7 +90,7 @@ pub(crate) struct Edit {
     pub ack: Ack,
 }
 
-pub(super) fn factory_data(owner: &assets::Owner, sr: u32) -> Result<[assets::Bank; 3], String> {
+pub(crate) fn factory_data(owner: &assets::Owner, sr: u32) -> Result<[assets::Bank; 3], String> {
     let mut cached = [None, None, None];
     for factory in Factory::ALL {
         cached[factory.index()] = owner.factory(factory, sr).map_err(|e| e.to_string())?;
@@ -132,6 +140,24 @@ pub(super) fn initial(sr: u32) -> Result<(assets::Owner, Vec<Bank>), String> {
 }
 
 impl RtEngine {
+    pub(super) fn apply_sampler_audition(&mut self, request: Audition) {
+        let slot = request.slot as usize;
+        let track = request.track as usize;
+        if request.id == 0 || slot >= SLOTS || track >= TRACKS
+            || !self.sampler_assets.owns(&request.bank)
+            || request.bank.audio[slot].is_none() || request.bank.ranges[slot].is_none()
+            || !request.ack.claim()
+        {
+            request.ack.reject();
+        } else {
+            self.sampler_audition = Some((request.id, resident::Voice::new(
+                request.bank.audio[slot].as_ref().unwrap().clone(),
+                request.bank.ranges[slot].unwrap(), request.bank.settings.slots[slot].controls,
+                1.0, track)));
+            request.ack.applied();
+        }
+        self.undo.retire_command(Command::SamplerAudition(request));
+    }
     pub(super) fn sampler_edit_index(&self, edit: &Edit) -> Option<usize> {
         if edit.epoch != self.undo.checkpoint().epoch
             || !self.sampler_assets.owns(&edit.bank.data)
@@ -223,6 +249,7 @@ mod tests;
 pub(crate) fn reject(command: &Command) {
     match command {
         Command::SamplerEdit(edit) => edit.ack.reject(),
+        Command::SamplerAudition(request) => request.ack.reject(),
         Command::Gesture { command, .. } => reject(command),
         _ => (),
     }
@@ -231,6 +258,7 @@ pub(super) fn admission_ack(mut command: &Command) -> Option<Ack> {
     loop {
         match command {
             Command::SamplerEdit(edit) => return Some(edit.ack.clone()),
+            Command::SamplerAudition(request) => return Some(request.ack.clone()),
             Command::Gesture { command: inner, .. } => command = inner,
             _ => return None,
         }
