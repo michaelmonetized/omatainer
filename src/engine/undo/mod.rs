@@ -305,6 +305,18 @@ impl RtEngine {
         if redo { for patch in entry.patches[..entry.len].iter_mut().flatten(){patch.apply(self);} }
         else { for patch in entry.patches[..entry.len].iter_mut().rev().flatten(){patch.apply(self);} }
         self.undo.replaying=false;
+        // Publish only after every patch (including media receipt swaps) is in
+        // place, so restored preparation remains attached to its actual source.
+        let mut preparation_decks = [false; DECKS];
+        for patch in entry.patches[..entry.len].iter().flatten() {
+            match patch {
+                Patch::Deck(deck, _) | Patch::Position { deck, .. } | Patch::Media { deck, .. } => preparation_decks[*deck as usize] = true,
+                _ => {}
+            }
+        }
+        for (deck, changed) in self.decks.iter().zip(preparation_decks) {
+            if changed { deck.publish_preparation(); }
+        }
         self.undo.state=if redo{entry.after}else{entry.before};
         self.undo.cursor=if redo{index+1}else{index};self.undo.gesture=0;
         self.undo.entries[index]=Some(entry);self.undo.recount();self.undo.publish_checkpoint();self.project.edited();

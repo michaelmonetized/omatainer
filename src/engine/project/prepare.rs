@@ -128,6 +128,7 @@ impl Prepared {
                 receipt.claim();
                 receipt.finish(load_receipt::State::Current);
                 deck.load_receipt = Some(receipt);
+                deck.publish_preparation();
             }
         }
         rt.scene_fx = state.scene_fx.map(|rack| effects(rack, output_sr));

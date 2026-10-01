@@ -1847,8 +1847,11 @@ impl RtEngine {
                         && receipt.preparation().is_some_and(|(revision, _)| revision == 2) {
                         d.restore_preparation(preparation);
                         d.publish_preparation();
+                        self.project.edited();
+                        self.undo.untracked_change();
                     }
                 }
+                self.undo.retire_command(Command::DeckRestorePreparation { deck, receipt, preparation });
             }
             Command::DeckLoadRequested { deck, media, receipt } => {
                 use load_receipt::{Media, State};
