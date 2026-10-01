@@ -551,6 +551,7 @@ impl RtEngine {
             | Command::DeckUnload { .. }
             | Command::DeckSeek { .. }
             | Command::DeckCueStyle { .. }
+            | Command::DeckGrid { .. }
             | Command::Xfader(_)
             | Command::Master(_)
             | Command::CueMix(_)

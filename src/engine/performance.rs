@@ -482,6 +482,7 @@ fn media_target(command: &Command) -> Option<usize> {
 fn destructive(command: &Command) -> bool {
     match command {
         Command::SetNotes { .. }
+        | Command::DeckGrid { .. }
         | Command::Undo
         | Command::Redo
         | Command::FxAdd(_)

@@ -74,6 +74,7 @@ fn populated() -> RtEngine {
         name: crate::engine::cue_metadata::Name::new("Drop • 演奏").unwrap(),
         color: Some([240, 32, 90]),
     };
+    rt.decks[0].grid = Some(crate::engine::beatgrid::Grid::new(0.5, 127.0).unwrap());
     rt.decks[0].pos = 1987.5;
     rt.decks[0].cue_pos = 123.75;
     rt.decks[1].loop_on = true;
@@ -718,9 +719,11 @@ fn version_one_projects_migrate_empty_cue_names_and_colors_and_unknown_versions_
     json["version"] = serde_json::json!(1);
     for deck in json["decks"].as_array_mut().unwrap() {
         deck.as_object_mut().unwrap().remove("cue_styles");
+        deck.as_object_mut().unwrap().remove("grid");
     }
     let legacy: State = serde_json::from_value(json.clone()).unwrap();
     legacy.validate(&captured.media).unwrap();
+    assert!(legacy.decks.iter().all(|d| d.grid.is_none()));
     assert!(legacy.decks.iter().all(|d| d.cue_styles == [crate::engine::cue_metadata::Style::default(); HOTCUES]));
     let restored = Prepared::from_state(legacy, captured.media.clone(), 48000).unwrap();
     assert!(restored.rt.decks[0].hotcues[3].set);
@@ -728,4 +731,20 @@ fn version_one_projects_migrate_empty_cue_names_and_colors_and_unknown_versions_
     json["version"] = serde_json::json!(STATE_VERSION + 1);
     let future: State = serde_json::from_value(json).unwrap();
     assert!(future.validate(&captured.media).is_err());
+}
+
+#[test]
+fn version_two_projects_keep_cue_metadata_with_no_invented_manual_grid() {
+    let original = populated();
+    let captured = captured(&original);
+    let mut json = serde_json::to_value(&captured.state).unwrap();
+    json["version"] = serde_json::json!(2);
+    for deck in json["decks"].as_array_mut().unwrap() { deck.as_object_mut().unwrap().remove("grid"); }
+    let legacy: State = serde_json::from_value(json).unwrap();
+    legacy.validate(&captured.media).unwrap();
+    assert!(legacy.decks.iter().all(|deck| deck.grid.is_none()));
+    assert_eq!(legacy.decks[0].cue_styles, original.decks[0].cue_styles);
+    let restored = Prepared::from_state(legacy, captured.media, 48000).unwrap();
+    assert_eq!(restored.rt.decks[0].cue_styles, original.decks[0].cue_styles);
+    assert_eq!(restored.rt.decks[0].hotcues[3].pos, original.decks[0].hotcues[3].pos);
 }

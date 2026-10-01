@@ -26,6 +26,7 @@ use library_view::{LibraryView, Cells};
 mod load_status;
 mod play_history;
 mod cue_editor;
+mod grid_editor;
 mod play_time;
 mod project;
 mod undo;
@@ -113,6 +114,7 @@ pub struct App {
     last_played: play_history::History,
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
+    grid_editor: Option<grid_editor::Editor>,
     published_selection: Option<Arc<Selection>>,
     published_indices: std::sync::Weak<Vec<usize>>,
     lib_filter: String,
@@ -202,6 +204,7 @@ impl App {
             last_played: play_history::History::default(),
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
+            grid_editor: None,
             published_selection: None,
             published_indices: std::sync::Weak::new(),
             lib_filter: String::new(),
@@ -590,6 +593,7 @@ impl App {
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
         self.cue_editor_ui(ctx);
+        self.grid_editor_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -850,7 +854,13 @@ impl App {
                     }
                 });
             }
-            if ui.small_button("cues…").help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
+            ui.horizontal_wrapped(|ui| {
+                if ui.small_button("cues…").help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
+                let grid = ui.small_button("grid…");
+                accessibility::button(ui, &grid, "Beatgrid editor", None);
+                help::annotate(ui, &grid, HelpControl::GridEditor);
+                if grid.clicked() { self.open_grid_editor(d); }
+            });
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(3.0);
                 for (band, lab) in [(0u8, "b"), (1, "m"), (2, "t"), (3, "g")] {
@@ -1722,6 +1732,7 @@ fn vertical_wave(
         i += step;
         k += 1;
     }
+    grid_editor::paint_vertical_grid(&p, rect, t, snap.grid, start_s as f64, end_s as f64);
     for (i, position) in snap.hotcue_positions.iter().enumerate() {
         let Some(seconds) = position.map(|p| (p / snap.frames) as f32 * snap.duration) else { continue };
         if !(start_s..=end_s).contains(&seconds) { continue; }
