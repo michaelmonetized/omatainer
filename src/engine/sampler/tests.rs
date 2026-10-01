@@ -37,7 +37,6 @@ pub(super) fn edit(rt: &RtEngine, bank: Bank, target: Target) -> Edit {
         bank,
         select: true,
         ack: Ack::new(),
-        cancel: Arc::new(AtomicBool::new(false)),
     }
 }
 fn apply(engine: &Engine, rt: &mut RtEngine, edit: Edit) {
@@ -156,9 +155,8 @@ fn cancelled_stale_and_protected_requests_acknowledge_rejection_without_mutation
     };
     let cancelled = edit(&rt, replacement.clone(), target);
     let ack = cancelled.ack.clone();
-    let cancel = cancelled.cancel.clone();
     engine.send(Command::SamplerEdit(cancelled)).unwrap();
-    cancel.store(true, Ordering::Release);
+    assert!(ack.cancel());
     assert_eq!(
         test_alloc::measure(|| rt.process(&mut [0.0; 2])),
         test_alloc::Counts::default()
@@ -225,4 +223,37 @@ fn only_explicit_factory_origins_regenerate_at_new_output_rates() {
             .is_err(),
         "embedded-only audio must not silently become an empty reusable slot"
     );
+}
+
+#[test]
+fn cancellation_linearizes_before_history_claim_and_late_cancel_preserves_actual_commit() {
+    for cancel_before_claim in [true, false] {
+        let (engine, mut rt) = fixture();
+        let request = edit(&rt,
+            bank(&engine.sampler_assets, native_sample(), Controls::default()),
+            Target::Append { revision: rt.sampler_revision });
+        let ack = request.ack.clone();
+        let checkpoint = engine.undo.checkpoint();
+        if cancel_before_claim { assert!(ack.cancel()); }
+        let mut claimed = None;
+        let counts = test_alloc::measure(|| {
+            claimed = rt.history_before(Command::SamplerEdit(request));
+        });
+        assert_eq!(counts, test_alloc::Counts::default());
+        if cancel_before_claim {
+            assert!(claimed.is_none());
+            assert_eq!(engine.undo.checkpoint(), checkpoint);
+            assert_eq!(rt.sampler_banks.len(), 3);
+            assert_eq!(ack.state(), EditState::Rejected);
+        } else {
+            assert!(claimed.is_some());
+            assert!(!ack.cancel(), "history claim is the irreversible admission boundary");
+            assert_eq!(test_alloc::measure(|| rt.apply_plain(claimed.unwrap())),
+                test_alloc::Counts::default());
+            assert_eq!(ack.state(), EditState::Applied);
+            assert_eq!(rt.sampler_banks.len(), 4);
+            assert_ne!(engine.undo.checkpoint(), checkpoint);
+            assert!(!ack.cancel());
+        }
+    }
 }
