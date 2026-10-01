@@ -1,3 +1,4 @@
+pub(crate) mod project;
 mod mixer_gain;
 mod arp;
 mod deck_filter;
@@ -116,6 +117,7 @@ pub enum ClipKind {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MidiNote {
     pub pitch: u8,
     pub start: f32,
@@ -434,7 +436,7 @@ impl DeckRt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FxKind {
     Echo,
@@ -448,6 +450,9 @@ impl FxKind {
 }
 
 pub struct RtEngine {
+    pub project: project::Handle,
+    project_pending: Option<Box<project::Task>>,
+    project_resume: [Option<PlayingClip>; TRACKS],
     pub sr: f32,
     pub playing: bool,
     pub recording: bool,
@@ -794,6 +799,9 @@ impl RtEngine {
             })
             .collect();
         let mut e = Self {
+            project: project::Handle::new(),
+            project_pending: None,
+            project_resume: [None; TRACKS],
             sr,
             playing: false,
             recording: false,
@@ -1028,6 +1036,7 @@ impl RtEngine {
         for command in batch.commands.into_iter().flatten() {
             self.apply(command);
         }
+        self.project_tick();
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[0]);
         let cpu_start = audio_metrics::thread_cpu_ns();
@@ -1503,6 +1512,7 @@ impl RtEngine {
         if track >= self.tracks.len() || scene_index >= SCENES {
             return;
         }
+        self.project_resume[track] = None;
         self.finish_recording_track(track);
         self.tracks[track].stop_clip();
         if self.tracks[track].clips[scene_index].occupied() {
@@ -1544,6 +1554,7 @@ impl RtEngine {
         if scene.is_some_and(|scene| scene >= SCENES) {
             return;
         }
+        if self.project_command_edits(&c) { self.project.edited(); }
         match c {
             Command::ReservedStop { lane, ticket } => {
                 if lane == 0 { self.apply(Command::Stop); }
@@ -1552,6 +1563,7 @@ impl RtEngine {
             }
             Command::MidiClock { source } => self.midi_clock.receive_tick(source),
             Command::Play => {
+                self.resume_project_clips();
                 self.playing = true;
             }
             Command::Stop => {
@@ -1559,6 +1571,7 @@ impl RtEngine {
                 self.playing = false;
                 self.recording = false;
                 self.compose_target = None;
+                self.project_resume.fill(None);
                 self.metro.reset();
                 for t in &mut self.tracks {
                     t.stop_clip();
@@ -1568,6 +1581,7 @@ impl RtEngine {
                 if self.playing {
                     self.apply(Command::Stop);
                 } else {
+                    self.resume_project_clips();
                     self.playing = true;
                     // launch scene 0 if nothing running
                     if self.tracks.iter().all(|t| t.playing.is_none()) {
@@ -1606,6 +1620,7 @@ impl RtEngine {
             }
             Command::StopTrack { track } => {
                 if (track as usize) < self.tracks.len() {
+                    self.project_resume[track as usize] = None;
                     self.finish_recording_track(track as usize);
                     self.tracks[track as usize].stop_clip();
                 }
@@ -2434,6 +2449,7 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
 }
 
 pub struct Engine {
+    pub project: project::Handle,
     pub cmd: CommandPort,
     pub ui_requests: ui_requests::Receiver,
     pub snap: Arc<Mutex<Snapshot>>,
@@ -2451,11 +2467,13 @@ impl Engine {
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(48000.0, rx, snap.clone());
+        let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let audio = audio::start(rt)?;
         let sample_rate = audio.sr;
         let midi = midi::MidiHub::start(tx.clone(), snap.clone())?;
         Ok(Self {
+            project,
             cmd: tx,
             ui_requests,
             snap,
@@ -2472,9 +2490,11 @@ impl Engine {
         let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         (
             Self {
+                project,
                 cmd,
                 ui_requests,
                 snap,
