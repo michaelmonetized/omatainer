@@ -129,33 +129,47 @@ impl App {
             let running = self.diagnostics.capture.running();
             let busy = self.diagnostics.worker.is_some();
             ui.horizontal_wrapped(|ui| {
-                if ui.add_enabled(!busy && !running, egui::Button::new("Start capture")).clicked() {
+                let response = ui.add_enabled(!busy && !running, egui::Button::new("Start capture"));
+                help::annotate(ui, &response, help::Control::DiagnosticCapture);
+                if response.clicked() {
                     self.diagnostics.capture.start(self.diagnostic_metadata(), Instant::now());
                     self.diagnostics.status = "Capturing".into();
                 }
-                if ui.add_enabled(running, egui::Button::new("Stop capture")).clicked() { self.diagnostics.capture.stop(); self.diagnostics.status = "Capture stopped".into(); }
-                if ui.add_enabled(running, egui::Button::new("Cancel capture")).clicked() { self.diagnostics.capture.cancel(); self.diagnostics.status = "Capture cancelled".into(); }
+                let response = ui.add_enabled(running, egui::Button::new("Stop capture"));
+                help::annotate(ui, &response, help::Control::DiagnosticStop);
+                if response.clicked() { self.diagnostics.capture.stop(); self.diagnostics.status = "Capture stopped".into(); }
+                let response = ui.add_enabled(running, egui::Button::new("Cancel capture"));
+                help::annotate(ui, &response, help::Control::DiagnosticCancel);
+                if response.clicked() { self.diagnostics.capture.cancel(); self.diagnostics.status = "Capture cancelled".into(); }
             });
             ui.label(&self.diagnostics.status);
             if let Some(report) = &self.diagnostics.capture.report {
                 ui.label(format!("Captured samples: {} · schema {} · version {}", report.samples.len(), report.schema, report.metadata.app_version));
                 if let Some(sample) = report.samples.last() {
-                    egui::CollapsingHeader::new("Captured last sample (not live)").show(ui, |ui| show_sample(ui, sample));
+                    let sample = egui::CollapsingHeader::new("Captured last sample (not live)").show(ui, |ui| show_sample(ui, sample));
+                    help::annotate(ui, &sample.header_response, help::Control::Diagnostics);
                 }
             }
             ui.horizontal(|ui| {
                 ui.label("Diagnostic file");
                 let path = ui.add(egui::TextEdit::singleline(&mut self.diagnostics.path).id_salt("diagnostic-path").desired_width(490.0));
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Diagnostic file path"));
+                help::annotate(ui, &path, help::Control::DiagnosticPath);
             });
             ui.label("Export creates a new private file; existing files are never overwritten. Reopen displays measurements only.");
             ui.horizontal_wrapped(|ui| {
                 let has_samples = self.diagnostics.capture.report.as_ref().is_some_and(|r| !r.samples.is_empty());
-                if ui.add_enabled(!busy && !running && has_samples, egui::Button::new("Export redacted")).clicked() {
+                let response = ui.add_enabled(!busy && !running && has_samples, egui::Button::new("Export redacted"));
+                help::annotate(ui, &response, help::Control::DiagnosticExport);
+                if response.clicked() {
                     self.start_diagnostic_file(self.diagnostics.capture.report.clone());
                 }
-                if ui.add_enabled(!busy && !running, egui::Button::new("Reopen capture")).clicked() { self.start_diagnostic_file(None); }
-                if ui.add_enabled(busy, egui::Button::new("Cancel file operation")).clicked() {
+                let response = ui.add_enabled(!busy && !running, egui::Button::new("Reopen capture"));
+                help::annotate(ui, &response, help::Control::DiagnosticReopen);
+                if response.clicked() { self.start_diagnostic_file(None); }
+                let response = ui.add_enabled(busy, egui::Button::new("Cancel file operation"));
+                help::annotate(ui, &response, help::Control::DiagnosticFileCancel);
+                if response.clicked() {
                     if let Some(worker) = &self.diagnostics.worker { worker.cancel(); }
                     self.diagnostics.status = "Cancelling file operation".into();
                 }
@@ -221,7 +235,7 @@ fn show_sample(ui: &mut Ui, sample: &Sample) {
     if let Some(profile) = &sample.profile {
         ui.label(format!("Sampled load at audio frame {}: one frame every {}. First {} devices per chain; {} omitted.", profile.frame, crate::engine::diagnostics::STRIDE, crate::engine::diagnostics::SLOTS, profile.omitted_devices));
         ui.label("Wall ns per sampled frame; estimated buffer share assumes that frame repeats. Track/scene totals include their devices; do not add them. Scheduling and timer overhead are included. Not per-track CPU or worst-case headroom.");
-        egui::CollapsingHeader::new("Track and device samples")
+        let details = egui::CollapsingHeader::new("Track and device samples")
             .default_open(false)
             .show(ui, |ui| {
                 egui::Grid::new("diagnostic-costs")
@@ -242,6 +256,7 @@ fn show_sample(ui: &mut Ui, sample: &Sample) {
                         }
                     });
             });
+        help::annotate(ui, &details.header_response, help::Control::Diagnostics);
     } else {
         ui.label("Sampled track/device load awaiting audio (profiling is enabled while this window or a capture is active)");
     }

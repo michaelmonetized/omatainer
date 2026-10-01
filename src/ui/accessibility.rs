@@ -24,7 +24,7 @@ struct ActionTarget {
 pub(super) fn action_button(ui: &mut Ui) {
     let target = ui.data(|data| data.get_temp::<ActionTarget>(egui::Id::new(ACTION_TARGET)));
     let Some(target) = target else {
-        ui.add_enabled(false, egui::Button::new("Control actions: focus a control"));
+        ui.add_enabled(false, egui::Button::new("Control actions: focus a control")).help(ui, HelpControl::Actions);
         return;
     };
     let mut visible = target.label.chars().take(48).collect::<String>();
@@ -34,7 +34,7 @@ pub(super) fn action_button(ui: &mut Ui) {
     let menu = ui.menu_button(format!("Actions for {visible}"), |ui| {
         keyboard::block_for_dialog(ui.ctx());
         for (index, label) in target.actions.iter().enumerate() {
-            if ui.button(label).clicked() {
+            if ui.button(label).help(ui, HelpControl::Actions).clicked() {
                 ui.data_mut(|data| {
                     data.insert_temp(egui::Id::new(ACTION_RESULT), (target.owner, index))
                 });
@@ -42,6 +42,7 @@ pub(super) fn action_button(ui: &mut Ui) {
             }
         }
     });
+    help::annotate(ui, &menu.response, HelpControl::Actions);
     menu.response.on_hover_text(&target.label).widget_info(|| {
         egui::WidgetInfo::labeled(
             egui::WidgetType::Button,
@@ -85,6 +86,8 @@ pub(super) fn scrollbars<R>(ui: &Ui, label: &str, area: &egui::scroll_area::Scro
             node.set_value(format!("Horizontal {:.0}, vertical {:.0} pixels", state.offset.x, state.offset.y));
             node.set_description("Arrow keys scroll; Page Up/Down scroll a page; Home/End reach the vertical limits. Named scrollbars also support direct values.");
         });
+        // The viewport overlaps its rows; keep their rich tooltips authoritative.
+        help::describe(ui, &response, HelpControl::Scroll);
         focus(ui, &response);
         if response.has_focus() {
             ui.memory_mut(|memory| {
@@ -159,6 +162,7 @@ pub(super) fn scrollbars<R>(ui: &Ui, label: &str, area: &egui::scroll_area::Scro
         }
         ui.ctx()
             .accesskit_node_builder(id, |node| node.set_role(Role::ScrollBar));
+        help::annotate(ui, &response, HelpControl::Scroll);
     }
 }
 
@@ -343,7 +347,7 @@ pub(super) fn actions(ui: &Ui, response: &egui::Response, labels: &[&str]) -> Op
         .show(|ui| {
             keyboard::block_for_dialog(ui.ctx());
             for (index, label) in labels.iter().enumerate() {
-                if ui.button(*label).clicked() {
+                if ui.button(*label).help(ui, HelpControl::Actions).clicked() {
                     picked = Some(index);
                     ui.close();
                 }
@@ -513,6 +517,7 @@ pub(super) fn numeric_editor(ctx: &egui::Context) {
         field.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, &edit.label)
         });
+        help::annotate(ui, &field, HelpControl::NumericEditor);
         if edit.focus {
             field.request_focus();
             edit.focus = false;
@@ -523,9 +528,9 @@ pub(super) fn numeric_editor(ctx: &egui::Context) {
         }
         ui.horizontal(|ui| {
             let cancel =
-                ui.button("Cancel").clicked() || ui.input(|input| input.key_pressed(Key::Escape));
+                ui.button("Cancel").help(ui, HelpControl::NumericEditor).clicked() || ui.input(|input| input.key_pressed(Key::Escape));
             let apply =
-                ui.button("Apply").clicked() || ui.input(|input| input.key_pressed(Key::Enter));
+                ui.button("Apply").help(ui, HelpControl::NumericEditor).clicked() || ui.input(|input| input.key_pressed(Key::Enter));
             if cancel {
                 done = true;
             } else if apply {

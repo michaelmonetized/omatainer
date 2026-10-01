@@ -203,7 +203,8 @@ impl Frame {
         }
 
         let target = &mut self.values;
-        for (out, track) in target.tracks.iter_mut().zip(&rt.tracks) {
+        let held = rt.note_recording.held_targets();
+        for (track_index, (out, track)) in target.tracks.iter_mut().zip(&rt.tracks).enumerate() {
             copy(&mut out.name, &track.name);
             out.gain = track.gain;
             out.pan = track.pan;
@@ -224,7 +225,9 @@ impl Frame {
                 })
                 .unwrap_or(0.0);
             out.clip_looping = track.playing.is_some_and(|p| p.looping);
-            for (out, clip) in out.clips.iter_mut().zip(&track.clips) {
+            for (scene_index, (out, clip)) in out.clips.iter_mut().zip(&track.clips).enumerate() {
+                out.note_count = clip.notes.len();
+                out.recording_held = held & (1u64 << (track_index * SCENES + scene_index)) != 0;
                 out.kind = match clip.kind {
                     ClipKind::Empty => 0,
                     ClipKind::Midi => 1,

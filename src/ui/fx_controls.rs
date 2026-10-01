@@ -20,6 +20,7 @@ impl App {
             ui.horizontal_wrapped(|ui| {
                 let toggle = pill(ui, t, name, on, t.green);
                 accessibility::button(ui, &toggle, &format!("{scope}: Enabled"), Some(on));
+                help::annotate(ui, &toggle, HelpControl::FxToggle);
                 if toggle.clicked() {
                     self.send(Command::FxToggle(slot));
                 }
@@ -41,10 +42,10 @@ impl App {
                                     .show_value(true)
                                     .max_decimals(2),
                             )
-                            .on_hover_text(control.help)
                         })
                         .inner;
                     let alternate = accessibility::numeric(ui, &response, &format!("{scope}: {label}"), original, control.min, control.max, (control.max - control.min) / 100.0, "");
+                    response.clone().help_detail(ui, HelpControl::FxParameter, control.help);
                     if let Some(next) = alternate { value = next; }
                     if response.changed() || alternate.is_some() {
                         let value = control.normalized(value);

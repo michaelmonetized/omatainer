@@ -44,6 +44,8 @@ use crate::engine::load_receipt::{Media, Receipt};
 mod load_status_tests;
 mod keyboard;
 mod shortcuts;
+mod help;
+use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
 mod deck_selection;
 use library_scan::LibraryScan;
@@ -104,6 +106,7 @@ pub struct App {
     lib_filter: String,
     lib_sel: usize,
     keys_open: bool,
+    help: help::Help,
     midi_open: bool,
     status: String,
     loads: [Option<LoadState>; DECKS],
@@ -184,6 +187,7 @@ impl App {
             lib_filter: String::new(),
             lib_sel: 0,
             keys_open: false,
+            help: help::Help::default(),
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
             loads: std::array::from_fn(|_| None),
@@ -604,22 +608,16 @@ impl App {
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(error.to_string());
-                    if ui.button("Dismiss").clicked() {
+                    if ui.button("Dismiss").help(ui, HelpControl::AdmissionDismiss).clicked() {
                         self.submission_error.set(None);
                     }
                 });
         }
-        if self.keys_open {
-            egui::Window::new("keys").default_pos(Pos2::new(30.0, 60.0)).default_height(600.0).vscroll(true).show(ctx, |ui| {
-                shortcuts::show_help_with(ui, self.settings.profile());
-                ui.separator();
-                ui.monospace(POINTER_HELP);
-            });
-        }
+        self.help_panel(ctx);
         if self.midi_open {
             egui::Window::new("midi").show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
-                if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).clicked() {
+                if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
                     let _ = self.engine.midi.retry_connections();
                 }
                 if busy {
@@ -662,6 +660,17 @@ impl App {
 
 impl App {
     fn handle_keys(&mut self, ctx: &egui::Context) {
+        // A bound function-key Help action is safe in text/dialog contexts.
+        // Letter and punctuation bindings keep the ordinary typing protection.
+        let help = ctx.input_mut(|input| {
+            let modifiers = input.events.iter().find_map(|event| match event {
+                egui::Event::Key { key: Key::F1, pressed: true, repeat, modifiers, .. }
+                    if shortcuts::lookup_with(self.settings.profile(), Key::F1, *modifiers, *repeat) == Some(shortcuts::Action::Help) => Some(*modifiers),
+                _ => None,
+            });
+            modifiers.is_some_and(|modifiers| input.consume_key(modifiers, Key::F1))
+        });
+        if help { self.dispatch_shortcut(shortcuts::Action::Help); }
         if !self.shortcut_focus.globals_allowed(ctx) {
             return;
         }
@@ -753,7 +762,7 @@ impl App {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_width(sq);
             ui.set_min_height(h);
-            if sq_btn(ui, t, "L", snap.keylock, t.cyan, sq).on_hover_text("pitch lock").clicked() {
+            if sq_btn(ui, t, "L", snap.keylock, t.cyan, sq).help(ui, HelpControl::PitchLock).clicked() {
                 self.send(Command::DeckKeylock { deck: d as u8 });
             }
             let fader_h = (h - sq * 2.0 - 8.0).max(48.0);
@@ -762,8 +771,9 @@ impl App {
                 self.send(Command::DeckPitch { deck: d as u8, value: v });
             }
             let lab = ["8", "16", "50"][snap.pitch_range.min(2) as usize];
-            let range = sq_btn(ui, t, lab, false, t.orange, sq).on_hover_text("pitch range");
+            let range = sq_btn(ui, t, lab, false, t.orange, sq);
             accessibility::button(ui, &range, &format!("Pitch range ±{span}%"), None);
+            help::annotate(ui, &range, HelpControl::PitchRange);
             if range.clicked() {
                 self.send(Command::DeckPitchRange { deck: d as u8 });
             }
@@ -785,6 +795,7 @@ impl App {
                         let r = sq_btn(ui, t, &format!("{}", i + 1), on, t.track_color(i), cell);
                         accessibility::button(ui, &r, &format!("Hot cue {}", i + 1), Some(on));
                         let alternative = accessibility::actions(ui, &r, &["Set or jump to cue", "Delete cue"]);
+                        help::annotate(ui, &r, HelpControl::HotCue);
                         if r.clicked() || alternative.is_some() {
                             self.send(Command::DeckHotCue {
                                 deck: d as u8,
@@ -806,7 +817,7 @@ impl App {
                         (snap.gain / 1.2).clamp(0.0, 1.0)
                     };
                     let c = if cut { t.red } else if solo { t.yellow } else { col };
-                    let resp = rotary(ui, t, lab, v, c, cell + 4.0, cut, solo);
+                    let resp = rotary(ui, t, lab, v, c, cell + 4.0, cut, solo, if band < 3 { HelpControl::DeckEq } else { HelpControl::DeckGain });
                     if resp.changed {
                         if band < 3 {
                             self.send(Command::DeckEq { deck: d as u8, band, value: resp.value });
@@ -845,20 +856,19 @@ impl App {
             // This row uses the same existing 28 px footer as the wave fader;
             // it does not shrink the platter or add height to the scratch area.
             ui.push_id(("deck-time", d), |ui| {
-                let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(11.0));
+                let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(11.0)).help(ui, HelpControl::DeckTime);
                 egui::Popup::menu(&button)
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
                     .show(|ui| {
                     ui.label(format!("Deck {} time", (b'A' + d as u8) as char));
-                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Elapsed, "Elapsed · source time");
-                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Remaining, "Remaining · wall estimate");
+                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Elapsed, "Elapsed · source time").help(ui, HelpControl::DeckTime);
+                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Remaining, "Remaining · wall estimate").help(ui, HelpControl::DeckTime);
                     ui.separator();
                     ui.label("Warn before file end (seconds)");
                     ui.add(egui::DragValue::new(&mut self.deck_time[d].warning_lead_seconds)
-                        .range(0..=deck_time::MAX_WARNING_LEAD_SECONDS).suffix(" s"));
+                        .range(0..=deck_time::MAX_WARNING_LEAD_SECONDS).suffix(" s")).help(ui, HelpControl::RunoutWarning);
                     ui.small("0 = off · repeating loops suppress alerts");
                 });
-                button.on_hover_text("Time mode and runout warning lead for this deck");
             });
         });
     }
@@ -868,10 +878,10 @@ impl App {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_width(sq);
             let q = self.snap.quantize;
-            if sq_btn(ui, t, "Q", q, t.yellow, sq).on_hover_text("quantize").clicked() {
+            if sq_btn(ui, t, "Q", q, t.yellow, sq).help(ui, HelpControl::Quantize).clicked() {
                 self.send(Command::ToggleQuant);
             }
-            let io = sq_btn(ui, t, "I/O", snap.loop_on, t.accent, sq).on_hover_text("loop in · right-click out");
+            let io = sq_btn(ui, t, "I/O", snap.loop_on, t.accent, sq).help(ui, HelpControl::LoopBounds);
             let alternative = accessibility::actions(ui, &io, &["Loop in", "Loop out"]);
             if io.clicked() || alternative == Some(0) {
                 self.send(Command::DeckLoopIn { deck: d as u8 });
@@ -879,16 +889,16 @@ impl App {
             if io.secondary_clicked() || alternative == Some(1) {
                 self.send(Command::DeckLoopOut { deck: d as u8 });
             }
-            if sq_btn(ui, t, "×2", false, t.cyan, sq).on_hover_text("double loop").clicked() {
+            if sq_btn(ui, t, "×2", false, t.cyan, sq).help(ui, HelpControl::LoopDouble).clicked() {
                 self.send(Command::DeckLoopDouble { deck: d as u8 });
             }
-            if sq_btn(ui, t, "½", false, t.cyan, sq).on_hover_text("halve loop").clicked() {
+            if sq_btn(ui, t, "½", false, t.cyan, sq).help(ui, HelpControl::LoopHalf).clicked() {
                 self.send(Command::DeckLoopHalf { deck: d as u8 });
             }
-            if sq_btn(ui, t, "↻", snap.loop_on, t.magenta, sq).on_hover_text("reloop 4 bars").clicked() {
+            if sq_btn(ui, t, "↻", snap.loop_on, t.magenta, sq).help(ui, HelpControl::Reloop).clicked() {
                 self.send(Command::DeckReloop { deck: d as u8 });
             }
-            if sq_btn(ui, t, "⇄", snap.sync, t.green, sq).on_hover_text("match").clicked() {
+            if sq_btn(ui, t, "⇄", snap.sync, t.green, sq).help(ui, HelpControl::Match).clicked() {
                 self.send(Command::DeckMatch);
             }
         });
@@ -899,10 +909,10 @@ impl App {
             if let Some(target) = self.snap.compose_target {
                 let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
                 ui.label(RichText::new(format!("Compose armed: {} / scene {}", name, target.scene + 1)).color(t.yellow));
-                if ui.button("Disarm compose").clicked() { self.send(Command::ComposeDisarm); }
+                if ui.button("Disarm compose").help(ui, HelpControl::ComposeDisarm).clicked() { self.send(Command::ComposeDisarm); }
             } else {
                 ui.label("Compose disarmed");
-                if ui.button("Arm selected cell").on_hover_text("Pads write to this cell; shift-click a sequencer cell to choose another target").clicked() {
+                if ui.button("Arm selected cell").help(ui, HelpControl::ComposeArm).clicked() {
                     self.send(Command::ComposeArm { track: self.snap.selected_track, scene: self.snap.selected_scene });
                 }
             }
@@ -925,11 +935,12 @@ impl App {
                     )
                     .show_ui(ui, |ui| {
                         for (i, n) in self.snap.sampler_banks.iter().enumerate() {
-                            if ui.selectable_label(i == self.snap.sampler_bank, n).clicked() {
+                            if ui.selectable_label(i == self.snap.sampler_bank, n).help(ui, HelpControl::SamplerBank).clicked() {
                                 self.send(Command::SamplerBank(i));
                             }
                         }
                     });
+                help::annotate(ui, &bank.response, HelpControl::SamplerBank);
                 bank.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler bank"));
                 ui.ctx().accesskit_node_builder(bank.response.id, |node| node.set_value(self.snap.sampler_banks.get(self.snap.sampler_bank).map(String::as_str).unwrap_or("No bank")));
                 let instrument = egui::ComboBox::from_id_salt("inst")
@@ -937,19 +948,20 @@ impl App {
                     .show_ui(ui, |ui| {
                         for instrument in SamplerInstrument::ALL {
                             if ui.selectable_label(self.snap.sampler_inst == instrument, instrument.label())
-                                .on_hover_text(instrument.description()).clicked() {
+                                .help_detail(ui, HelpControl::SamplerInstrument, instrument.description()).clicked() {
                                 self.send(Command::SamplerInst(instrument));
                             }
                         }
                     });
+                help::annotate(ui, &instrument.response, HelpControl::SamplerInstrument);
                 instrument.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler instrument"));
                 ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(self.snap.sampler_inst.label()));
                 ui.horizontal(|ui| {
-                    if sq_btn(ui, t, "^", false, t.accent, 26.0).clicked() {
+                    if sq_btn(ui, t, "^", false, t.accent, 26.0).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(1));
                     }
                     ui.label(RichText::new(format!("C{}", self.snap.sampler_oct)).size(11.0).color(t.fg));
-                    if sq_btn(ui, t, "v", false, t.accent, 26.0).clicked() {
+                    if sq_btn(ui, t, "v", false, t.accent, 26.0).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(-1));
                     }
                 });
@@ -969,16 +981,19 @@ impl App {
                             let color = t.track_color(column as usize + if row == 0 { 8 } else { 0 });
                             let r = ui.push_id(("sampler-pad", pad.index()), |ui| {
                                 pad_btn(ui, t, label, empty, color, Vec2::new(pad_w, pad_h))
-                            }).inner.on_hover_ui(|ui| {
-                                if piano && empty {
-                                    ui.label(format!("Pad {} · no piano accidental", pad.number()));
-                                } else if piano {
-                                    ui.label(format!("{} · pad {} · MIDI note {}", label, pad.number(), pad.midi_note(self.snap.sampler_oct)));
-                                } else {
-                                    ui.label(format!("Sample pad {} · bank slot {}", pad.number(), pad.index()));
-                                }
+                            }).inner;
+                            help::rich_tooltip(&r, || {
+                            let identity = if piano && empty {
+                                format!("Pad {} · no piano accidental", pad.number())
+                            } else if piano {
+                                format!("{} · pad {} · MIDI note {}", label, pad.number(), pad.midi_note(self.snap.sampler_oct))
+                            } else {
+                                format!("Sample pad {} · bank slot {}", pad.number(), pad.index())
+                            };
+                            vec![identity, help::tooltip_text(HelpControl::SamplerPad)]
                             });
                             self.pad_gate(ui, pad.index(), !empty, &r);
+                            help::describe(ui, &r, HelpControl::SamplerPad);
                         }
                     });
                 }
@@ -996,21 +1011,24 @@ impl App {
                 ui.label(RichText::new("crate").size(11.0).color(t.fg_dim));
                 let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
-                if ui.add_enabled(!self.library_scan.active(), egui::Button::new("scan")).clicked() {
+                help::annotate(ui, &search, HelpControl::CrateSearch);
+                if ui.add_enabled(!self.library_scan.active(), egui::Button::new("scan")).help(ui, HelpControl::CrateScan).clicked() {
                     self.scan_library();
                 }
-                if self.library_scan.active() && ui.button("cancel scan").clicked() {
+                if self.library_scan.active() && ui.button("cancel scan").help(ui, HelpControl::CrateCancel).clicked() {
                     self.library_scan.cancel();
                 }
                 self.deck_selectors(ui);
-                if ui.button("library…").clicked() { self.library_import_open = true; }
+                if ui.button("library…").help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
                 let load_a = ui.button("→ A");
                 accessibility::button(ui, &load_a, "Load selected crate item to deck A", None);
+                help::annotate(ui, &load_a, HelpControl::DeckLoad);
                 if load_a.clicked() {
                     self.load_sel(0);
                 }
                 let load_b = ui.button("→ B");
                 accessibility::button(ui, &load_b, "Load selected crate item to deck B", None);
+                help::annotate(ui, &load_b, HelpControl::DeckLoad);
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
@@ -1070,12 +1088,12 @@ impl App {
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
                     accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
-                    let resp = resp.on_hover_ui(|ui| {
-                        ui.label(format!("BPM: {}", item.bpm.label()));
-                        ui.label(&cells.played_tooltip);
-                        ui.label(format!("Track ID: {identity}"));
-                        ui.label(format!("Location: {:?}", item.source));
-                    });
+                    help::describe(ui, &resp, HelpControl::CrateRow);
+                    help::rich_tooltip(&resp, || vec![
+                        format!("BPM: {}", item.bpm.label()), cells.played_tooltip.clone(),
+                        format!("Track ID: {identity}"), format!("Location: {:?}", item.source),
+                        help::tooltip_text(HelpControl::CrateRow),
+                    ]);
                     if resp.clicked() || resp.double_clicked() || row_action.is_some() {
                         self.lib_sel = i;
                         ui.memory_mut(|memory| memory.request_focus(focus));
@@ -1097,6 +1115,7 @@ impl App {
                 node.set_description("All filtered rows are available: Up/Down, Page Up/Down, Home/End; F2 enters a row number. Shift+F10 loads the selected row. Search narrows the crate.");
             });
             let action = accessibility::actions(ui, &navigation, &["Load to deck A", "Load to deck B", "Load to selected deck"]);
+            help::describe(ui, &navigation, HelpControl::CrateRow);
             if let Some(action) = action { self.load_sel(if action == 2 { self.load_target() as u8 } else { action as u8 }); }
             self.remember_crate_viewport(output.state.offset.y, output.inner_rect.height(), stride);
         });
@@ -1142,6 +1161,7 @@ impl App {
                             accessibility::button(ui, &resp, &format!("Track {} {}: Mute", tr + 1, name), Some(mute));
                             accessibility::status(ui, &resp, &format!("Mute {}; solo {}", if mute { "on" } else { "off" }, if solo { "on" } else { "off" }));
                             let action = accessibility::actions(ui, &resp, &["Toggle mute", "Toggle solo", "Open track effects", "Select track"]);
+                            help::annotate(ui, &resp, HelpControl::Track);
                             if resp.clicked() || action == Some(0) {
                                 self.send(Command::Mute { track: tr as u8 });
                             }
@@ -1163,6 +1183,7 @@ impl App {
                             ui.painter().text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{}", sc + 1), FontId::proportional(11.0), t.fg);
                             accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", sc + 1), Some(on));
                             let action = accessibility::actions(ui, &hresp, &["Toggle scene", "Add scene", "Open scene effects", "Restart scene"]);
+                            help::annotate(ui, &hresp, HelpControl::Scene);
                             if hresp.clicked() || matches!(action, Some(0..=2)) {
                                 if action == Some(1) || action.is_none() && ui.input(|i| i.modifiers.shift) {
                                     self.send(Command::AddScene { scene: sc as u8 });
@@ -1218,6 +1239,7 @@ impl App {
                                 accessibility::status(ui, &resp, &format!("{}; {}", if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
                                 let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain"] } else { &["Launch once", "Launch loop", "Arm compose"] };
                                 let action = accessibility::actions(ui, &resp, labels);
+                                help::annotate(ui, &resp, HelpControl::Clip);
                                 if resp.clicked() || matches!(action, Some(0 | 2 | 3)) {
                                     if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
                                         if filled {
@@ -1281,7 +1303,7 @@ impl App {
                 )
             };
             ui.label(RichText::new(label).color(t.accent).strong());
-            if pill(ui, t, "back", false, t.fg).clicked() {
+            if pill(ui, t, "back", false, t.fg).help(ui, HelpControl::FxClose).clicked() {
                 self.send(Command::CloseFx);
             }
         });
@@ -1290,7 +1312,7 @@ impl App {
                 if self.snap.fx_view >= 100 && !id.supports_scene() {
                     continue;
                 }
-                if pill(ui, t, id.name(), false, t.cyan).clicked() {
+                if pill(ui, t, id.name(), false, t.cyan).help(ui, HelpControl::FxAdd).clicked() {
                     self.send(Command::FxAdd(i as u8));
                 }
             }
@@ -1475,13 +1497,14 @@ fn rotary_in(
     }
     accessibility::status(ui, &resp, &format!("Mute {}; solo {}", if mute { "on" } else { "off" }, if solo { "on" } else { "off" }));
     let action = accessibility::actions(ui, &resp, &["Toggle mute", "Toggle solo", "Open track effects"]);
+    help::annotate(ui, &resp, HelpControl::TrackGain);
     out.clicked |= action == Some(0);
     out.secondary |= action == Some(1);
     out.effects = action == Some(2) || action.is_none() && resp.clicked() && ui.input(|i| i.modifiers.ctrl);
     out
 }
 
-fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f32, cut: bool, solo: bool) -> RotaryResp {
+fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f32, cut: bool, solo: bool, control: HelpControl) -> RotaryResp {
     ui.vertical(|ui| {
         ui.set_width(size);
         let (rect, resp) = ui.allocate_exact_size(Vec2::splat(size), Sense::click_and_drag());
@@ -1512,6 +1535,7 @@ fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f
         }
         accessibility::status(ui, &resp, &format!("Cut {}; solo {}", if cut { "on" } else { "off" }, if solo { "on" } else { "off" }));
         let action = accessibility::actions(ui, &resp, &["Toggle cut", "Toggle solo"]);
+        help::annotate(ui, &resp, control);
         out.clicked |= action == Some(0); out.secondary |= action == Some(1);
         out
     })
@@ -1588,6 +1612,7 @@ fn platter(
     accessibility::button(ui, &resp, "Platter play or pause", Some(snap.playing));
     accessibility::status(ui, &resp, &format!("{}; {:.1} playing BPM; {}. {}. Left/Right arrows jog", snap.title, bpm, readout.status, readout.tooltip));
     let action = accessibility::actions(ui, &resp, &["Play or pause", "Cue", "Unload", "Jog backward", "Jog forward"]);
+    help::describe(ui, &resp, HelpControl::Platter);
     if matches!(action, Some(3 | 4)) { on_jog(if action == Some(3) { -0.05 } else { 0.05 }, true); on_jog(0.0, false); }
     if resp.has_focus() {
         ui.memory_mut(|memory| memory.set_focus_lock_filter(resp.id, egui::EventFilter { horizontal_arrows: true, ..Default::default() }));
@@ -1600,7 +1625,7 @@ fn platter(
         if delta != 0.0 { on_jog(delta * 0.05, true); on_jog(0.0, false); }
     }
     let shift = ui.input(|i| i.modifiers.shift);
-    let resp = resp.on_hover_text(&readout.tooltip);
+    help::rich_tooltip(&resp, || vec![readout.tooltip.clone(), help::tooltip_text(HelpControl::Platter)]);
     PlatterHit {
         click: (resp.clicked() && !shift) || action == Some(0),
         right_click: resp.secondary_clicked() || action == Some(1),
@@ -1624,6 +1649,7 @@ fn vertical_wave(
     if let Some(seconds) = accessibility::numeric(ui, &resp, "Waveform position", position, 0.0, snap.duration.max(0.0), 0.1, " s") {
         if snap.duration > 0.0 { on_seek(seconds / snap.duration); }
     }
+    help::annotate(ui, &resp, HelpControl::Seek);
     if snap.peaks.is_empty() || snap.frames < 1.0 || snap.duration <= 0.01 {
         p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(10.0), t.muted);
         return;
@@ -1672,6 +1698,7 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
     p.rect_filled(Rect::from_center_size(Pos2::new(rect.center().x, y), Vec2::new(16.0, 7.0)), 2.0, col);
     let alternate = accessibility::numeric(ui, &resp, "Pitch", (value * 2.0 - 1.0) * span, -span, span, 0.1, "%")
         .map(|percent| (percent / span + 1.0) * 0.5);
+    help::annotate(ui, &resp, HelpControl::Pitch);
     if resp.clicked() || resp.dragged() {
         if let Some(pos) = resp.interact_pointer_pos() {
             return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));
@@ -1689,6 +1716,7 @@ fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> b
     let x = rect.left() + 16.0 + value.clamp(0.0, 1.0) * (rect.width() - 32.0);
     p.rect_filled(Rect::from_center_size(Pos2::new(x, rect.center().y), Vec2::new(12.0, 14.0)), 2.0, t.accent);
     let alternate = accessibility::numeric(ui, &resp, "Crossfader", *value * 100.0, 0.0, 100.0, 1.0, "% B");
+    help::annotate(ui, &resp, HelpControl::Crossfader);
     if resp.clicked() || resp.dragged() {
         if let Some(pos) = resp.interact_pointer_pos() {
             *value = ((pos.x - rect.left() - 16.0) / (rect.width() - 32.0)).clamp(0.0, 1.0);
@@ -1718,21 +1746,6 @@ fn eq_to_knob(g: f32) -> f32 {
         0.5 + (g - 1.0) / 2.4 * 0.5
     }
 }
-
-const POINTER_HELP: &str = "\
-platter click = play   right-click = cue   shift-click = unload
-platter time menu: elapsed source time / estimated remaining · runout lead 0–300 s
-buttons: Q quantize · I/O loop in / right-click out · ×2 ½ ↻ reloop ⇄ match
-cues 1-8   bass/mid/treb/gain click=cut  rclick=solo
-pitch L lock + 8/16/50 range
-pads: hold to play the selected sample or instrument
-crate: ↓ bpm up. load →A / →B
-seq: scene head launch/stop, rclick restart, shift add
-track head mute / rclick solo
-cell click once / rclick loop / shift arm compose; Stop disarms
-gain rotary click mute / rclick solo / ctrl fx chain
-alt-click clip = gain for new notes/hits
-";
 
 #[cfg(test)]
 mod waveform_tests;

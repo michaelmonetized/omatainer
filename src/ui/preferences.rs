@@ -274,7 +274,7 @@ impl App {
                 } else { ui.label("Audio device unavailable in this session"); }
                 if state.pending_restart() { ui.colored_label(Color32::YELLOW, "Audio changes pending restart"); }
                 ui.label(&state.message);
-                if !state.message.is_empty() && !state.busy() && ui.button("Dismiss preferences notice").clicked() { state.message.clear(); }
+                if !state.message.is_empty() && !state.busy() && ui.button("Dismiss preferences notice").help(ui, HelpControl::PreferenceNotice).clicked() { state.message.clear(); }
 
                 if let Some(policy) = self.engine.midi.policy_status() {
                     ui.label(format!("MIDI requested generation {}: {:?}",policy.requested,policy.requested_policy));
@@ -283,34 +283,35 @@ impl App {
                     if let Some(error)=&policy.error {ui.colored_label(Color32::YELLOW,format!("MIDI: {error}"));}
                     if !policy.missing_names.is_empty(){ui.label(format!("Missing MIDI inputs: {}",policy.missing_names.join(", ")));}
                     if policy.requested_policy.as_ref()!=&state.profile().midi_inputs {ui.colored_label(Color32::YELLOW,"Saved MIDI input policy differs from the live request.");}
-                    if ui.add_enabled(!policy.pending() && self.engine.midi.connections_available(),egui::Button::new("Retry saved MIDI policy")).clicked(){
+                    if ui.add_enabled(!policy.pending() && self.engine.midi.connections_available(),egui::Button::new("Retry saved MIDI policy")).help(ui, HelpControl::PreferenceMidiRetry).clicked(){
                         match self.engine.midi.configure_inputs(state.profile().midi_inputs.clone()) { Ok(generation)=>state.message=format!("MIDI request {generation} queued"),Err(error)=>state.message=error.to_string() }
                     }
                 } else {ui.label("MIDI input manager unavailable; saved policy will be used after restart.");}
                 if state.busy() {
-                    if ui.button("Cancel pending preferences operation").clicked() { state.worker.as_ref().unwrap().cancel(); }
+                    if ui.button("Cancel pending preferences operation").help(ui, HelpControl::PreferenceCancel).clicked() { state.worker.as_ref().unwrap().cancel(); }
                 }
                 ui.add_enabled_ui(!state.busy(), |ui| {
                     egui::ScrollArea::vertical().id_salt("preferences-body").max_height(470.0).show(ui, |ui| {
                         let previous = state.edited.clone();
-                        egui::ComboBox::from_label("Edit profile").selected_text(&state.edited).show_ui(ui, |ui| {
-                            for name in state.draft.profiles.keys() { ui.selectable_value(&mut state.edited, name.clone(), name); }
+                        let profile_combo = egui::ComboBox::from_label("Edit profile").selected_text(&state.edited).show_ui(ui, |ui| {
+                            for name in state.draft.profiles.keys() { ui.selectable_value(&mut state.edited, name.clone(), name).help(ui, HelpControl::PreferenceProfile); }
                         });
+                        help::annotate(ui, &profile_combo.response, HelpControl::PreferenceProfile);
                         if previous != state.edited { state.editor_strings(); }
                         ui.horizontal_wrapped(|ui| {
                             ui.label(format!("Active profile on Apply: {}", state.draft.active));
-                            if ui.button("Use this profile").clicked() { state.draft.active = state.edited.clone(); state.preview = None; }
+                            if ui.button("Use this profile").help(ui, HelpControl::PreferenceActivate).clicked() { state.draft.active = state.edited.clone(); state.preview = None; }
                         });
-                        text(ui, "New profile name", &mut state.profile_name);
+                        text(ui, "New profile name", &mut state.profile_name, HelpControl::PreferenceRename);
                         ui.horizontal_wrapped(|ui| {
-                            if ui.button("Duplicate profile").clicked() {
+                            if ui.button("Duplicate profile").help(ui, HelpControl::PreferenceClone).clicked() {
                                 let name = state.profile_name.trim().to_owned();
                                 if name.is_empty() || state.draft.profiles.contains_key(&name) { state.message = "Choose a new unique profile name.".into(); }
                                 else if let Some(profile) = state.draft.profiles.get(&state.edited).cloned() {
                                     state.draft.profiles.insert(name.clone(), profile); state.edited = name; state.preview = None;
                                 }
                             }
-                            if ui.button("Rename profile").clicked() {
+                            if ui.button("Rename profile").help(ui, HelpControl::PreferenceRename).clicked() {
                                 let name = state.profile_name.trim().to_owned();
                                 if name.is_empty() || state.draft.profiles.contains_key(&name) { state.message = "Choose a new unique profile name.".into(); }
                                 else if let Some(profile) = state.draft.profiles.remove(&state.edited) {
@@ -318,22 +319,22 @@ impl App {
                                     state.draft.profiles.insert(name.clone(), profile); state.edited = name; state.preview = None;
                                 }
                             }
-                            if ui.add_enabled(state.draft.profiles.len()>1 && state.edited != state.draft.active, egui::Button::new("Delete profile")).clicked() {
+                            if ui.add_enabled(state.draft.profiles.len()>1 && state.edited != state.draft.active, egui::Button::new("Delete profile")).help(ui, HelpControl::PreferenceDelete).clicked() {
                                 state.draft.profiles.remove(&state.edited); state.edited = state.draft.active.clone(); state.editor_strings(); state.preview = None;
                             }
-                            if ui.button("Reset profile to defaults").clicked() {
+                            if ui.button("Reset profile to defaults").help(ui, HelpControl::PreferenceReset).clicked() {
                                 state.draft.profiles.insert(state.edited.clone(), model::Profile::defaults(&state.home)); state.editor_strings(); state.preview = None;
                             }
                         });
                         if let Some(profile) = state.draft.profiles.get_mut(&state.edited) {
                             ui.separator(); ui.heading("Audio output · restart required");
                             let mut device = profile.audio.device.clone().unwrap_or_default();
-                            if text(ui, "Exact audio output name (empty = system default)", &mut device) { profile.audio.device = (!device.is_empty()).then_some(device); }
+                            if text(ui, "Exact audio output name (empty = system default)", &mut device, HelpControl::PreferenceAudioDevice) { profile.audio.device = (!device.is_empty()).then_some(device); }
                             if let Some(inventory) = &state.inventory { for device in &inventory.devices { ui.label(format!("Available: {}{}", device.name, if device.default { " (system default)" } else { "" })); } }
-                            optional_u32(ui, "Sample rate Hz", &mut profile.audio.sample_rate, 8_000..=384_000, 48_000);
+                            optional_u32(ui, "Sample rate Hz", &mut profile.audio.sample_rate, 8_000..=384_000, 48_000, HelpControl::PreferenceAudioRate);
                             let mut channels = profile.audio.channels.map(u32::from);
-                            optional_u32(ui, "Output channels", &mut channels, 1..=64, 2); profile.audio.channels = channels.map(|v| v as u16);
-                            optional_u32(ui, "Buffer frames", &mut profile.audio.buffer_frames, 16..=32768, 256);
+                            optional_u32(ui, "Output channels", &mut channels, 1..=64, 2, HelpControl::PreferenceAudioChannels); profile.audio.channels = channels.map(|v| v as u16);
+                            optional_u32(ui, "Buffer frames", &mut profile.audio.buffer_frames, 16..=32768, 256, HelpControl::PreferenceAudioBuffer);
                             ui.label("Main left/right use outputs 1/2 (mono sums both); additional outputs are silent. There is no independent cue route.");
                             ui.heading("MIDI inputs");
                             if let Some(policy)=self.engine.midi.policy_status(){
@@ -341,26 +342,27 @@ impl App {
                                 if policy.available_truncated {ui.label("Device preview is truncated; exact-name selection is still supported.");}
                             }
                             let mut mode = match profile.midi_inputs { model::MidiInputs::All=>0, model::MidiInputs::Selected(_)=>1, model::MidiInputs::Disabled=>2 };
-                            egui::ComboBox::from_label("MIDI input policy").selected_text(["All discovered inputs","Selected exact names","Disabled"][mode]).show_ui(ui, |ui| {
-                                for (i,name) in ["All discovered inputs","Selected exact names","Disabled"].iter().enumerate() { ui.selectable_value(&mut mode,i,*name); }
+                            let midi_combo = egui::ComboBox::from_label("MIDI input policy").selected_text(["All discovered inputs","Selected exact names","Disabled"][mode]).show_ui(ui, |ui| {
+                                for (i,name) in ["All discovered inputs","Selected exact names","Disabled"].iter().enumerate() { ui.selectable_value(&mut mode,i,*name).help(ui, HelpControl::PreferenceMidiPolicy); }
                             });
-                            if mode == 1 { multiline(ui, "Selected MIDI input names (one per line)", &mut state.midi_names); }
+                            help::annotate(ui, &midi_combo.response, HelpControl::PreferenceMidiPolicy);
+                            if mode == 1 { multiline(ui, "Selected MIDI input names (one per line)", &mut state.midi_names, HelpControl::PreferenceMidiNames); }
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
                             ui.heading("Library folders");
-                            multiline(ui, "Library folders (one absolute path per line)", &mut state.roots);
+                            multiline(ui, "Library folders (one absolute path per line)", &mut state.roots, HelpControl::PreferenceLibraryRoots);
                             profile.library_roots = state.roots.lines().filter(|s| !s.is_empty()).map(PathBuf::from).collect();
                             ui.heading("Appearance");
-                            ui.checkbox(&mut profile.appearance.follow_theme,"Follow desktop theme and font");
+                            ui.checkbox(&mut profile.appearance.follow_theme,"Follow desktop theme and font").help(ui, HelpControl::PreferenceTheme);
                             let mut custom = profile.appearance.font_size.is_some();
-                            if ui.checkbox(&mut custom,"Override theme font size").changed() { profile.appearance.font_size = custom.then_some(12.0); }
-                            if let Some(size) = &mut profile.appearance.font_size { float_control(ui,"Font size",size,8.0,48.0,1.0," pt"); }
-                            float_control(ui,"UI scale",&mut profile.appearance.scale,0.5,3.0,0.05,"×");
+                            if ui.checkbox(&mut custom,"Override theme font size").help(ui, HelpControl::PreferenceFont).changed() { profile.appearance.font_size = custom.then_some(12.0); }
+                            if let Some(size) = &mut profile.appearance.font_size { float_control(ui,"Font size",size,8.0,48.0,1.0," pt",HelpControl::PreferenceFont); }
+                            float_control(ui,"UI scale",&mut profile.appearance.scale,0.5,3.0,0.05,"×",HelpControl::PreferenceScale);
                             ui.heading("Startup");
-                            ui.checkbox(&mut profile.startup.scan_library,"Scan library on startup");
-                            ui.checkbox(&mut profile.startup.show_help,"Open help on startup");
-                            ui.checkbox(&mut profile.startup.show_midi,"Open MIDI panel on startup");
+                            ui.checkbox(&mut profile.startup.scan_library,"Scan library on startup").help(ui, HelpControl::PreferenceStartup);
+                            ui.checkbox(&mut profile.startup.show_help,"Open help on startup").help(ui, HelpControl::PreferenceStartup);
+                            ui.checkbox(&mut profile.startup.show_midi,"Open MIDI panel on startup").help(ui, HelpControl::PreferenceStartup);
                             ui.collapsing("Keyboard shortcuts", |ui| {
-                                ui.checkbox(&mut profile.shortcuts_enabled,"Enable performance shortcuts");
+                                ui.checkbox(&mut profile.shortcuts_enabled,"Enable performance shortcuts").help(ui, HelpControl::PreferenceShortcut);
                                 ui.label("Navigation, focused controls and reserved project keys remain available. Empty key disables this shortcut.");
                                 for binding in shortcuts::BINDINGS {
                                     accessibility::group(ui, binding.description, |ui| {
@@ -369,9 +371,9 @@ impl App {
                                         let mut value = binding.effective(profile).unwrap_or(model::Shortcut {key:String::new(),ctrl:false,shift:false,alt:false});
                                         let before = value.clone();
                                         ui.horizontal(|ui| {
-                                            text(ui, &format!("{} key",binding.description), &mut value.key);
-                                            ui.checkbox(&mut value.ctrl,"Ctrl");ui.checkbox(&mut value.alt,"Alt");ui.checkbox(&mut value.shift,"Shift");
-                                            if ui.button("Default").clicked() { profile.shortcuts.remove(binding.id()); }
+                                            text(ui, &format!("{} key",binding.description), &mut value.key, HelpControl::PreferenceShortcut);
+                                            ui.checkbox(&mut value.ctrl,"Ctrl").help(ui, HelpControl::PreferenceShortcut);ui.checkbox(&mut value.alt,"Alt").help(ui, HelpControl::PreferenceShortcut);ui.checkbox(&mut value.shift,"Shift").help(ui, HelpControl::PreferenceShortcut);
+                                            if ui.button("Default").help(ui, HelpControl::PreferenceShortcut).clicked() { profile.shortcuts.remove(binding.id()); }
                                         });
                                         if value != before { profile.shortcuts.insert(binding.id().into(),(!value.key.is_empty()).then_some(value)); }
                                     });
@@ -380,16 +382,16 @@ impl App {
                             });
                         }
                         ui.separator();
-                        text(ui, "Preferences import or export path", &mut state.file_path);
+                        text(ui, "Preferences import or export path", &mut state.file_path, HelpControl::PreferenceFilePath);
                         ui.label("Export contains only these settings. No credentials, environment, runtime tokens or device connection handles. Device names and library paths remain explicit and may need changing on another machine. Export never overwrites an existing file.");
                         ui.horizontal(|ui| {
-                            if ui.button("Import into draft").clicked() { state.request(Job::Import(PathBuf::from(&state.file_path))); }
-                            if ui.button("Export draft").clicked() { state.request(Job::Export{path:PathBuf::from(&state.file_path),preferences:state.draft.clone()}); }
-                            if ui.button("Reload saved preferences").clicked() { state.request(Job::Reload); }
+                            if ui.button("Import into draft").help(ui, HelpControl::PreferenceImport).clicked() { state.request(Job::Import(PathBuf::from(&state.file_path))); }
+                            if ui.button("Export draft").help(ui, HelpControl::PreferenceExport).clicked() { state.request(Job::Export{path:PathBuf::from(&state.file_path),preferences:state.draft.clone()}); }
+                            if ui.button("Reload saved preferences").help(ui, HelpControl::PreferenceReload).clicked() { state.request(Job::Reload); }
                         });
                         if state.blocked {
                             ui.colored_label(Color32::YELLOW,"Saving is blocked to preserve an unreadable or changed preferences file.");
-                            if ui.button("Preserve old file and reset all preferences").clicked() { state.request(Job::Reset(model::Preferences::defaults(&state.home))); }
+                            if ui.button("Preserve old file and reset all preferences").help(ui, HelpControl::PreferenceRecover).clicked() { state.request(Job::Reset(model::Preferences::defaults(&state.home))); }
                         }
                         if let Some((preview, plan, paths)) = &state.preview {
                             if preview == &state.draft {
@@ -415,12 +417,12 @@ impl App {
                         }
                     });
                     ui.horizontal_wrapped(|ui| {
-                        if ui.button("Preview changes").clicked() { state.request(Job::Preview(state.draft.clone())); }
+                        if ui.button("Preview changes").help(ui, HelpControl::PreferencePreview).clicked() { state.request(Job::Preview(state.draft.clone())); }
                         let ready = state.preview.as_ref().is_some_and(|(draft,plan,_)| draft==&state.draft && (plan.is_ok() || draft.current().map(|p| &p.audio)==state.applied.current().map(|p| &p.audio)));
-                        if ui.add_enabled(ready && !state.blocked,egui::Button::new("Apply and save")).clicked() {
+                        if ui.add_enabled(ready && !state.blocked,egui::Button::new("Apply and save")).help(ui, HelpControl::PreferenceApply).clicked() {
                             state.request(Job::Save {preferences:state.draft.clone(),revision:state.revision.clone()});
                         }
-                        if ui.button("Cancel changes").clicked() { discard = true; }
+                        if ui.button("Cancel changes").help(ui, HelpControl::PreferenceCancel).clicked() { discard = true; }
                     });
                 });
             });
@@ -436,20 +438,20 @@ impl App {
         }
     }
 }
-fn text(ui: &mut Ui, name: &str, value: &mut String) -> bool {
+fn text(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) -> bool {
     let label = ui.label(name);
     ui.text_edit_singleline(value)
         .labelled_by(label.id)
-        .changed()
+        .help(ui, control).changed()
 }
-fn multiline(ui: &mut Ui, name: &str, value: &mut String) {
+fn multiline(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) {
     let label = ui.label(name);
     ui.add(
         egui::TextEdit::multiline(value)
             .desired_rows(3)
             .desired_width(f32::INFINITY),
     )
-    .labelled_by(label.id);
+    .labelled_by(label.id).help(ui, control);
 }
 fn optional_u32(
     ui: &mut Ui,
@@ -457,6 +459,7 @@ fn optional_u32(
     value: &mut Option<u32>,
     range: std::ops::RangeInclusive<u32>,
     default: u32,
+    control: HelpControl,
 ) {
     ui.push_id(name, |ui| {
         let mut custom = value.is_some();
@@ -464,7 +467,7 @@ fn optional_u32(
             .checkbox(
                 &mut custom,
                 format!("Set {name} (otherwise device default)"),
-            )
+            ).help(ui, control)
             .changed()
         {
             *value = custom.then_some(default);
@@ -482,6 +485,7 @@ fn optional_u32(
             {
                 *value = alternate.round() as u32;
             }
+            help::annotate(ui, &response, control);
         }
     });
 }
@@ -494,6 +498,7 @@ fn float_control(
     max: f32,
     step: f32,
     unit: &str,
+    control: HelpControl,
 ) {
     let original = *value;
     let response = ui.add(egui::Slider::new(value, min..=max).text(name));
@@ -502,6 +507,7 @@ fn float_control(
     {
         *value = alternate;
     }
+    help::annotate(ui, &response, control);
 }
 #[cfg(test)]
 mod tests;

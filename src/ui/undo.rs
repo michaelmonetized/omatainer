@@ -141,7 +141,7 @@ impl App {
         }
     }
     pub(super) fn undo_menu(&mut self, ui: &mut Ui) {
-        ui.menu_button("Edit", |ui| {
+        let menu = ui.menu_button("Edit", |ui| {
             let view = &self.undo_history.view;
             let undo = view
                 .cursor
@@ -151,35 +151,36 @@ impl App {
             let label = undo
                 .map(|item| format!("Undo {}", item.label()))
                 .unwrap_or_else(|| "Undo".into());
-            if ui
-                .add_enabled(
+            let response = ui.add_enabled(
                     undo.is_some(),
                     egui::Button::new(label).shortcut_text(shortcuts::action_label(self.settings.profile(), shortcuts::Action::Undo)),
-                )
-                .clicked()
-            {
+                );
+            help::annotate(ui, &response, help::Control::Undo);
+            if response.clicked() {
                 self.history_action(false);
                 ui.close();
             }
             let label = redo
                 .map(|item| format!("Redo {}", item.label()))
                 .unwrap_or_else(|| "Redo".into());
-            if ui
-                .add_enabled(
+            let response = ui.add_enabled(
                     redo.is_some(),
                     egui::Button::new(label).shortcut_text(shortcuts::action_label(self.settings.profile(), shortcuts::Action::Redo)),
-                )
-                .clicked()
-            {
+                );
+            help::annotate(ui, &response, help::Control::Redo);
+            if response.clicked() {
                 self.history_action(true);
                 ui.close();
             }
             ui.separator();
-            if ui.button("History…").clicked() {
+            let response = ui.button("History…");
+            help::annotate(ui, &response, help::Control::History);
+            if response.clicked() {
                 self.undo_history.open = true;
                 ui.close();
             }
         });
+        help::annotate(ui, &menu.response, help::Control::History);
     }
     pub(super) fn undo_panel(&mut self, ctx: &egui::Context) {
         if !self.undo_history.open && self.undo_history.failure.is_none() {
@@ -190,7 +191,9 @@ impl App {
             .open(&mut open).default_width(370.0).show(ctx, |ui| {
                 if let Some(message) = &self.undo_history.failure {
                     ui.colored_label(self.theme.red, message);
-                    if ui.button("Dismiss history message").clicked() { self.undo_history.failure = None; }
+                    let response = ui.button("Dismiss history message");
+                    help::annotate(ui, &response, help::Control::HistoryDismiss);
+                    if response.clicked() { self.undo_history.failure = None; }
                 }
                 if let Some(queued) = self.undo_history.queued {
                     ui.label(format!("{queued}; the list shows renderer-confirmed history."));
@@ -200,8 +203,12 @@ impl App {
                 let can_redo = view.items.get(view.cursor).is_some_and(Option::is_some);
                 ui.horizontal(|ui| {
                     let enabled = !self.project.committing() && self.project.dialog_is_closed();
-                    if ui.add_enabled(enabled && can_undo, egui::Button::new("Undo")).clicked() { self.history_action(false); }
-                    if ui.add_enabled(enabled && can_redo, egui::Button::new("Redo")).clicked() { self.history_action(true); }
+                    let response = ui.add_enabled(enabled && can_undo, egui::Button::new("Undo"));
+                    help::annotate(ui, &response, help::Control::Undo);
+                    if response.clicked() { self.history_action(false); }
+                    let response = ui.add_enabled(enabled && can_redo, egui::Button::new("Redo"));
+                    help::annotate(ui, &response, help::Control::Redo);
+                    if response.clicked() { self.history_action(true); }
                 });
                 let view = &self.undo_history.view;
                 ui.label(format!("{} edits applied · {} available to redo", view.cursor,

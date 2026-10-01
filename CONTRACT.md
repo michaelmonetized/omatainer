@@ -664,3 +664,20 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   Private Linux AT-SPI tests exercise actual Preferences/Preview/Apply/Cancel and
   persisted appearance values. Hardware route quality, controller compatibility,
   native-window behavior and human assistive-technology QA remain separate.
+
+## Contextual help and lessons
+
+- Every shipped control's help describes its actual handler, units, target and
+  implemented limits. Widget hover text, accessibility descriptions, focused
+  help and the offline manual share typed definitions; dynamic metadata remains
+  visible alongside help. Disabled actions still explain their purpose.
+- Guides observe renderer/project/receipt state and preserve original target
+  identity. Admission, waiting, or an unrelated document cannot complete a step.
+  Held capture and released capture are distinct. Restored cues are not a new
+  cue edit; opening a project is not Save As.
+- Starting/cancelling a guide cannot mutate musical state, bypass unsaved-work
+  prompts, or stop an audition. Physical checks are explicitly self-reported;
+  software steps never certify hardware. Progress remains session-local.
+- In-app shortcuts reflect active preferences. The checked offline manual uses
+  the canonical defaults and the same control/lesson catalogue; its golden test
+  must pass when handlers, metadata or default bindings change.

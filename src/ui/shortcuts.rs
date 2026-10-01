@@ -161,14 +161,14 @@ pub(super) const BINDINGS: &[Binding] = &[
         Key::Slash,
         Modifiers::SHIFT,
         "? (Shift+/)",
-        "Show / hide shortcut help",
+        "Show / hide contextual help and lessons",
         Action::Help,
     ),
     b(
         Key::F1,
         Modifiers::NONE,
         "F1",
-        "Show / hide shortcut help",
+        "Show / hide contextual help and lessons",
         Action::Help,
     ),
     b(

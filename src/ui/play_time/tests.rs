@@ -181,11 +181,13 @@ fn real_crate_tooltip_exposes_precise_time_future_annotation_and_unknown_state()
         assert!(visible(&output, label));
         let output = gui.tooltip(now, 0);
         assert!(visible(&output, exact), "precise tooltip missing {exact}");
+        assert!(visible(&output, "Crate row / selection"));
         if played > now {
             assert!(visible(&output, "Future timestamp"));
         }
         let output = gui.tooltip(now, 1);
         assert!(visible(&output, "No recorded playback time"));
+        assert!(visible(&output, "Crate row / selection"));
     }
 }
 
