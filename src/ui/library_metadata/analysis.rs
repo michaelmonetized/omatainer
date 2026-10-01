@@ -7,6 +7,9 @@ use crate::{
 };
 use std::{path::PathBuf, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 
+#[cfg(test)]
+mod tests;
+
 pub(in crate::ui) struct Inspect {
     pub id: u64,
     pub reference: crate::sampler_bank::SourceRef,
@@ -114,7 +117,11 @@ pub(super) fn save(store: &mut Store, disk: &mut Disk, completion: AnalysisCompl
     save_with(store, disk, completion, |_| {})
 }
 fn save_with(store: &mut Store, disk: &mut Disk, completion: AnalysisCompletion,
-    mut checkpoint: impl FnMut(u8)) -> Receipt {
+    checkpoint: impl FnMut(u8)) -> Receipt {
+    save_using(store, disk, completion, checkpoint, Store::save)
+}
+fn save_using(store: &mut Store, disk: &mut Disk, completion: AnalysisCompletion,
+    mut checkpoint: impl FnMut(u8), write: impl FnOnce(&mut Store) -> Result<(), String>) -> Receipt {
     let id = completion.token.id;
     let mut committed = false;
     let outcome = (|| {
@@ -154,7 +161,7 @@ fn save_with(store: &mut Store, disk: &mut Disk, completion: AnalysisCompletion,
         // No token/current check after the shared claim: newer request admission
         // or a late Cancel cannot relabel this transaction's actual outcome.
         let baseline = std::mem::replace(&mut store.catalog, candidate);
-        let saved = store.save();
+        let saved = write(store);
         committed = saved.is_ok() || store.last_save_replaced();
         if !committed { store.catalog = baseline; }
         checkpoint(3);
