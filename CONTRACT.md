@@ -172,6 +172,26 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   never copies or clears it. Device bypass fades to dry, then freezes that slot's
   history according to the FX bypass policy below.
 
+## Typed local control requests
+
+Requests are JSON objects. `op` is required and case-sensitive; `id` is optional
+(null, signed/unsigned 64-bit integer, or UTF-8 string of at most 128 bytes).
+No operation accepts undeclared fields.
+
+| Wire opcode | Required arguments beyond `op` | Meaning |
+| --- | --- | --- |
+| `ping`, `status` | none | Read current status |
+| `follow` | none | Subscribe to bounded status frames |
+| `play`, `stop`, `togglePlay`, `record`, `tap` | none | Existing transport/record/tap action |
+| `scene` | `n`: JSON integer 0–7 | Launch that zero-based scene |
+| `deckPlay`, `deckCue` | `deck`: JSON integer 0–1 | Act on exactly deck A or B |
+
+Missing, null, boolean, string, fractional, negative and out-of-range target
+values fail before command admission. Errors name `n` or `deck`; no default,
+clamp, truncation or modulo selects another target. Unknown operations/fields
+fail before mutation. CLI scene numbers remain one-based 1–8 and are converted
+once before encoding the request.
+
 ## Local control connection limits
 
 - A request may contain at most 4096 bytes before its newline. Idle reads expire
