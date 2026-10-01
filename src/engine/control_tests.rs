@@ -47,7 +47,13 @@ fn sustained_concurrent_producers_cannot_extend_the_callback_command_budget() {
     let mut engine = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
     engine.selected_track = 1;
     engine.decks[0].playing = true;
-    let initial_position = engine.decks[0].pos;
+    // The consumer can render far ahead while the producer is descheduled.
+    // Keep the finite demo media looping and count distance across wraps;
+    // final position alone can be near zero after any amount of progress.
+    engine.decks[0].loop_on = true;
+    engine.decks[0].loop_start = 0.0;
+    engine.decks[0].loop_len = 8192.0;
+    let mut rendered_distance = 0.0;
     for _ in 0..256 {
         tx.send(Command::Master(0.8)).unwrap();
     }
@@ -84,9 +90,11 @@ fn sustained_concurrent_producers_cannot_extend_the_callback_command_budget() {
     while !finished.load(Ordering::Acquire) || !engine.cmd_rx.is_empty() {
         assert!(Instant::now() < deadline, "command stress did not finish");
         let before = engine.frames_done;
+        let previous_position = engine.decks[0].pos;
         let started = Instant::now();
         engine.process(&mut out);
         let elapsed = started.elapsed();
+        rendered_distance += (engine.decks[0].pos - previous_position).rem_euclid(8192.0);
         maximum = maximum.max(elapsed);
         // A generous liveness guard, not a device deadline qualification.
         assert!(
@@ -103,7 +111,7 @@ fn sustained_concurrent_producers_cannot_extend_the_callback_command_budget() {
     assert!(blocks >= (256 + sent as usize).div_ceil(control::COMMANDS_PER_BLOCK));
     assert_eq!(engine.command_stats.received, 256 + sent);
     assert!(engine.command_stats.budget_exhaustions > 0);
-    assert!(engine.decks[0].pos > initial_position + 32_000.0);
+    assert!(rendered_distance > 32_000.0, "deck must advance while commands drain");
     // No direct rescue command: the final release must have traversed the
     // saturated queue and actual callback consumer.
     assert!(!engine.tracks[1]

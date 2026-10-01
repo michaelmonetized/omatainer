@@ -18,7 +18,7 @@ fn scene_state(rt: &RtEngine) -> Value {
         "recording": rt.recording,
         "beat": rt.beat,
         "selected": [rt.selected_track, rt.selected_scene],
-        "compose_armed": rt.compose_armed,
+        "compose_target": rt.compose_target,
         "fx_view": rt.fx_view,
         "tracks": rt.tracks.iter().map(|track| json!({
             "clips": track.clips,
@@ -108,6 +108,7 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
                     track: 0,
                     scene: scene as usize,
                 },
+                Command::ComposeArm { track: 0, scene: scene as usize },
                 Command::OpenFxScene(scene),
             ];
             for command in commands {
@@ -151,7 +152,9 @@ pub(super) fn check_valid_scene_operations() {
             scene: scene as usize,
         });
         assert_eq!(rt.selected_scene, scene as usize);
-        assert!(rt.compose_armed);
+        assert_eq!(rt.compose_target, None);
+        rt.apply(Command::ComposeArm { track: 0, scene: scene as usize });
+        assert_eq!(rt.compose_target, Some(engine::ComposeTarget { track: 0, scene: scene as usize }));
         rt.apply(Command::OpenFxScene(scene));
         assert_eq!(rt.fx_view, 100 + scene as i16);
 
