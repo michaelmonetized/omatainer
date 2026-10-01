@@ -13,6 +13,9 @@ mod mute_lifecycle_tests;
 pub(crate) mod test_alloc;
 pub mod audio;
 pub mod audio_metrics;
+mod master_fx;
+#[cfg(test)]
+mod master_fx_tests;
 mod control;
 pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
 pub(crate) mod ui_requests;
@@ -62,9 +65,11 @@ mod recording_duration_tests;
 mod compose_tests;
 
 use crate::engine::dsp::{
-    detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Delay, Poly, Reverb,
+    detect_bpm, limiter, peaks_3band, resample_mono, synth_drum, xfader_gains, Poly,
     InputKey, Sample, ThreeBand,
 };
+#[cfg(test)]
+use crate::engine::dsp::{Delay, Reverb};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -413,11 +418,17 @@ impl DeckRt {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FxKind {
     Echo,
     Reverb,
     Filter,
+}
+
+impl FxKind {
+    pub fn name(self) -> &'static str { match self { Self::Echo => "Echo", Self::Reverb => "Reverb", Self::Filter => "Filter" } }
+    fn next(self) -> Self { match self { Self::Echo => Self::Reverb, Self::Reverb => Self::Filter, Self::Filter => Self::Echo } }
 }
 
 pub struct RtEngine {
@@ -434,9 +445,8 @@ pub struct RtEngine {
     pub cue_mix: f32,
     pub tracks: Vec<TrackRt>,
     pub decks: [DeckRt; DECKS],
-    // Independent histories: one DSP tick per channel per output frame.
-    pub delay: [Delay; 2],
-    pub reverb: [Reverb; 2],
+    // Each control owns its selected processor and both channel histories.
+    master_fx: [master_fx::MasterSlot; 3],
     pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub tap: Vec<Instant>,
@@ -579,6 +589,7 @@ pub struct Snapshot {
     pub audio: audio_metrics::AudioMetrics,
     pub commands: control::CommandStats,
     pub submissions: control::SubmissionStats,
+    pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub metronome: bool,
     pub quant: f32,
@@ -616,6 +627,7 @@ impl Default for Snapshot {
             audio: audio_metrics::AudioMetrics::default(),
             commands: control::CommandStats::default(),
             submissions: control::SubmissionStats::default(),
+            fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0; 3],
             metronome: false,
             quant: 1.0,
@@ -768,8 +780,7 @@ impl RtEngine {
             cue_mix: 0.0,
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
-            delay: std::array::from_fn(|_| Delay::new((sr * 2.0) as usize)),
-            reverb: std::array::from_fn(|_| Reverb::at_sample_rate(sr)),
+            master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0, 0.0, 0.0],
             tap: Vec::new(),
@@ -836,10 +847,9 @@ impl RtEngine {
             return;
         }
         self.sr = sr as f32;
-        // Rate changes reset master tails on both channels together. Controls
-        // are reapplied from fx_wet at the next block, as for the delay before.
-        self.delay = std::array::from_fn(|_| Delay::new((sr as f32 * 2.0) as usize));
-        self.reverb = std::array::from_fn(|_| Reverb::at_sample_rate(sr as f32));
+        // Rate changes reconstruct all preallocated master histories; type and
+        // wet controls remain intact and are configured on the next block.
+        self.master_fx = std::array::from_fn(|_| master_fx::MasterSlot::new(sr as f32));
         let drums = build_kit(sr);
         self.pad_banks = build_pad_banks(sr);
         self.pad_voices.fill(None);
@@ -995,11 +1005,7 @@ impl RtEngine {
         std::thread::sleep(self.telemetry_delays[1]);
         let frames = out.len() / 2;
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
-        for channel in 0..2 {
-            self.delay[channel].time_samples = (spb * 0.75) as f32;
-            self.delay[channel].mix = self.fx_wet[0];
-            self.reverb[channel].mix = self.fx_wet[1];
-        }
+        for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
 
         let any_solo = self.tracks.iter().any(|t| t.solo);
 
@@ -1063,10 +1069,10 @@ impl RtEngine {
                 }
             }
 
-            // Dual mono master effects preserve stereo separation; crossfeed
-            // is not implicit in either processor's shared control values.
-            l = self.reverb[0].tick(self.delay[0].tick(l));
-            r = self.reverb[1].tick(self.delay[1].tick(r));
+            // Three legacy controls select real processors in a serial chain.
+            for slot in 0..self.master_fx.len() {
+                [l, r] = self.master_fx[slot].process([l, r], self.fx_kind[slot], self.fx_wet[slot]);
+            }
 
             let cm = self.cue_mix;
             l = l * (1.0 - cm) + cue_l * cm;
@@ -1880,15 +1886,15 @@ impl RtEngine {
                 }
             }
             Command::FxWet { slot, value } => {
-                self.fx_wet[slot as usize % 3] = value.clamp(0.0, 1.0);
+                if let Some(wet) = self.fx_wet.get_mut(slot as usize) {
+                    if value.is_finite() { *wet = value.clamp(0.0, 1.0); }
+                }
             }
             Command::FxSelect { slot } => {
-                let i = slot as usize % 3;
-                self.fx_kind[i] = match self.fx_kind[i] {
-                    FxKind::Echo => FxKind::Reverb,
-                    FxKind::Reverb => FxKind::Filter,
-                    FxKind::Filter => FxKind::Echo,
-                };
+                if let Some(kind) = self.fx_kind.get_mut(slot as usize) {
+                    *kind = kind.next();
+                    self.master_fx[slot as usize].reset(*kind);
+                }
             }
             Command::Quant(q) => self.quant = q,
             Command::Metronome => self.metronome = !self.metronome,

@@ -70,8 +70,8 @@ fn master_echo_arrives_in_audio_frames_at_each_tempo_and_sample_rate() {
                     output.iter().all(|sample| sample[1 - channel] == 0.0),
                     "echo crossed channels"
                 );
-                assert_eq!(rt.delay[0].time_samples, delay_frames as f32);
-                assert_eq!(rt.delay[1].time_samples, delay_frames as f32);
+                assert_eq!(rt.master_fx[0].echo[0].time_samples, delay_frames as f32);
+                assert_eq!(rt.master_fx[0].echo[1].time_samples, delay_frames as f32);
                 if delay_frames.fract() == 0.5 {
                     let first = first.unwrap();
                     assert!(
@@ -182,8 +182,8 @@ fn master_controls_apply_to_both_channels_and_rate_changes_reset_both_tails() {
     let mut rt = engine(48_000, &input);
     for sr in [44_100, 48_000] {
         for channel in 0..2 {
-            rt.delay[channel].tick(0.5);
-            rt.reverb[channel].tick(0.5);
+            rt.master_fx[0].echo[channel].tick(0.5);
+            rt.master_fx[1].reverb[channel].tick(0.5);
         }
         rt.set_sample_rate(sr);
         for (bpm, echo_mix, reverb_mix) in
@@ -204,10 +204,10 @@ fn master_controls_apply_to_both_channels_and_rate_changes_reset_both_tails() {
                 "rate reset retained master effect tails"
             );
             for channel in 0..2 {
-                assert_eq!(rt.delay[channel].mix, echo_mix);
-                assert_eq!(rt.reverb[channel].mix, reverb_mix);
+                assert_eq!(rt.master_fx[0].echo[channel].mix, echo_mix);
+                assert_eq!(rt.master_fx[1].reverb[channel].mix, reverb_mix);
                 assert_eq!(
-                    rt.delay[channel].time_samples,
+                    rt.master_fx[0].echo[channel].time_samples,
                     sr as f32 * 60.0 / bpm * 0.75
                 );
             }

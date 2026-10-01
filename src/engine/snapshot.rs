@@ -282,6 +282,7 @@ impl Frame {
         target.cpu = target.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
         target.commands = rt.command_stats;
         target.submissions = rt.cmd_rx.submissions();
+        target.fx_kind = rt.fx_kind;
         target.fx_wet = rt.fx_wet;
         target.metronome = rt.metronome;
         target.quant = rt.quant;
