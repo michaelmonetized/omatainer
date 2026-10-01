@@ -13,6 +13,7 @@ use crate::engine::media_load::Loader;
 use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
+mod library_analysis;
 mod library_store;
 pub(crate) mod bpm;
 use bpm::{Bpm, Origin};
@@ -109,6 +110,7 @@ pub struct App {
     library_view: LibraryView,
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
+    library_analysis: library_analysis::Panel,
     library_import_open: bool,
     library_initialized: bool,
     library_close: library_store::Close,
@@ -206,6 +208,7 @@ impl App {
             library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
+            library_analysis: library_analysis::Panel::default(),
             library_import_open: false,
             library_initialized: false,
             library_close: library_store::Close::default(),
@@ -589,6 +592,7 @@ impl App {
         self.confirm_project_snapshot();
         self.poll_undo();
         self.poll_sampler_editor();
+        self.poll_library_analysis();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
@@ -607,6 +611,7 @@ impl App {
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
         self.sampler_editor_ui(ctx);
+        self.library_analysis_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -1096,6 +1101,7 @@ impl App {
                 if self.library_scan.active() && ui.button("cancel scan").help(ui, HelpControl::CrateCancel).clicked() {
                     self.library_scan.cancel();
                 }
+                if ui.button("analyze…").help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 self.deck_selectors(ui);
                 if ui.button("library…").help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
                 if ui.button("relocate…").help(ui, HelpControl::CueRelocate).clicked() { self.open_cue_relocation(); }

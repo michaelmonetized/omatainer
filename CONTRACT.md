@@ -972,3 +972,23 @@ publication. Preferences persist startup protection only, not emergency state.
   support and private native accessibility. Its separate performance phase uses
   unchanged #95 and #100 workloads/policies; actual deadline exceedances remain
   distinct from ceiling pass and backend XRUNs remain unavailable.
+### Background analysis queue and inspection
+
+- The GUI captures an immutable crate and filtered-index Arc in constant work,
+  never a copied batch of sources. One selected row or at most 4,096 filtered
+  rows is admitted; oversized batches are refused without silent truncation.
+  Later filters, sort publications and selection do not retarget queued sources.
+- Exactly one source inspection, shared-decoder token and catalog publication
+  receipt is awaited in order. Prepared/Ready is not a saved result. Foreground
+  preemption and failures pause the captured row with explicit Retry, Skip and
+  Cancel. A committed result cannot be relabeled cancelled; unconfirmed
+  durability is counted and displayed separately from successful saves.
+- Selected BPM/duration/waveform fields reuse only qualified cached values;
+  Force recomputes chosen fields. Inspection reads partial saved results and
+  verifies waveform bytes on the metadata owner without initiating decode.
+  Automatic key detection is unavailable, and existing hints are not promoted
+  to measured keys. Manual/locked preparation remains authoritative.
+- Captured large views and inspection payloads return through bounded retirement
+  slots to the metadata owner. The GUI keeps ownership and retries if those
+  slots are occupied. No analysis filesystem access or source decoding runs on
+  the GUI or audio callback. Closing the panel hides it without cancelling work.
