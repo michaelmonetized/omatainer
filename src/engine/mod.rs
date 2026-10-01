@@ -133,6 +133,14 @@ pub struct PlayingClip {
     pub looping: bool,
 }
 
+/// A finite drum hit captures its clip level when triggered. Live hits use unity.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct DrumVoice {
+    pub sample: usize,
+    pub position: f64,
+    pub clip_gain: f32,
+}
+
 #[derive(Clone, Debug)]
 pub struct TrackRt {
     pub name: String,
@@ -151,7 +159,7 @@ pub struct TrackRt {
     eq_right: ThreeBand,
     pub meter: f32,
     pub drum_samples: [Arc<Sample>; 6],
-    pub drum_pos: [Option<(usize, f64)>; 16],
+    pub drum_pos: [Option<DrumVoice>; 16],
     pub fx: fx::FxChain,
     pub arp_note: Option<u8>,
     arp_cache: arp::ChordCache,
@@ -505,6 +513,7 @@ pub struct ClipSnap {
     pub kind: u8,
     pub name: String,
     pub bars: f32,
+    pub gain: f32,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -615,6 +624,7 @@ pub enum Command {
     Master(f32),
     CueMix(f32),
     TrackGain { track: u8, value: f32 },
+    ClipGain { track: u8, scene: u8, value: f32 },
     TrackPan { track: u8, value: f32 },
     Mute { track: u8 },
     Solo { track: u8 },
@@ -1037,6 +1047,7 @@ impl RtEngine {
                 let prev = p.last_beat;
                 if self.tracks[ti].clips[scene].kind == ClipKind::Midi {
                     let kind = self.tracks[ti].kind;
+                    let gain = clip_gain(self.tracks[ti].clips[scene].gain);
                     let arp = self.tracks[ti]
                         .fx
                         .slots
@@ -1073,9 +1084,9 @@ impl RtEngine {
                         let pitch = advance.then(|| track.arp_cache.pitch(step)).flatten();
                         if let Some(pitch) = pitch {
                             if kind == 0 {
-                                self.trig_drum(ti, pitch, 1.0);
+                                self.trig_drum_with_gain(ti, pitch, 1.0, gain);
                             } else {
-                                self.tracks[ti].poly.note_on_clip(pitch, 0.9);
+                                self.tracks[ti].poly.note_on_clip_with_gain(pitch, 0.9, gain);
                             }
                             self.tracks[ti].arp_note = Some(pitch);
                         }
@@ -1095,12 +1106,12 @@ impl RtEngine {
                         {
                             match gate {
                                 midi_schedule::Gate::On(pitch, velocity) if kind == 0 => {
-                                    self.trig_drum(ti, pitch, velocity as f32 / 127.0);
+                                    self.trig_drum_with_gain(ti, pitch, velocity as f32 / 127.0, gain);
                                 }
                                 midi_schedule::Gate::On(pitch, velocity) => {
                                     self.tracks[ti]
                                         .poly
-                                        .note_on_clip(pitch, velocity as f32 / 127.0);
+                                        .note_on_clip_with_gain(pitch, velocity as f32 / 127.0, gain);
                                 }
                                 midi_schedule::Gate::Off(pitch) if kind != 0 => {
                                     self.tracks[ti].poly.note_off_clip(pitch);
@@ -1141,6 +1152,10 @@ impl RtEngine {
     }
 
     fn trig_drum(&mut self, ti: usize, pitch: u8, vel: f32) {
+        self.trig_drum_with_gain(ti, pitch, vel, 1.0);
+    }
+
+    fn trig_drum_with_gain(&mut self, ti: usize, pitch: u8, vel: f32, clip_gain: f32) {
         let idx = match pitch {
             36 | 35 => 0, // kick
             38 | 40 => 1, // snare
@@ -1151,9 +1166,9 @@ impl RtEngine {
         };
         let slots = &mut self.tracks[ti].drum_pos;
         if let Some(slot) = slots.iter_mut().find(|s| s.is_none()) {
-            *slot = Some((idx, 0.0));
+            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain });
         } else if let Some(slot) = slots.first_mut() {
-            *slot = Some((idx, 0.0));
+            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain });
         }
         let _ = vel;
     }
@@ -1163,12 +1178,12 @@ impl RtEngine {
         let samples = self.tracks[ti].drum_samples.clone();
         let sr = self.sr as f64;
         for slot in self.tracks[ti].drum_pos.iter_mut() {
-            if let Some((idx, pos)) = slot {
-                let samp = &samples[*idx];
-                let (l, _) = samp.at(*pos);
-                s += l;
-                *pos += samp.sr as f64 / sr;
-                if *pos >= samp.frames() as f64 {
+            if let Some(voice) = slot {
+                let samp = &samples[voice.sample];
+                let (l, _) = samp.at(voice.position);
+                s += l * voice.clip_gain;
+                voice.position += samp.sr as f64 / sr;
+                if voice.position >= samp.frames() as f64 {
                     *slot = None;
                 }
             }
@@ -1381,6 +1396,7 @@ impl RtEngine {
             Command::LaunchClip { scene, .. }
             | Command::LaunchScene { scene }
             | Command::SetNotes { scene, .. }
+            | Command::ClipGain { scene, .. }
             | Command::FireClip { scene, .. }
             | Command::ToggleScene { scene }
             | Command::RestartScene { scene }
@@ -1650,6 +1666,13 @@ impl RtEngine {
             Command::TrackGain { track, value } => {
                 if (track as usize) < self.tracks.len() {
                     self.tracks[track as usize].gain = value.clamp(0.0, 1.5);
+                }
+            }
+            Command::ClipGain { track, scene, value } => {
+                if value.is_finite() {
+                    if let Some(track) = self.tracks.get_mut(track as usize) {
+                        track.clips[scene as usize].gain = clip_gain(value);
+                    }
                 }
             }
             Command::TrackPan { track, value } => {
@@ -2569,3 +2592,11 @@ mod tests {
         assert!(rt.decks[1].title.contains("Harmony"));
     }
 }
+
+/// Normalize imported clip values as well as admitted editor controls.
+fn clip_gain(value: f32) -> f32 {
+    if value.is_finite() { value.clamp(0.0, 1.5) } else { 1.0 }
+}
+
+#[cfg(test)]
+mod clip_gain_tests;

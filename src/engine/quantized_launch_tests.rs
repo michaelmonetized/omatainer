@@ -79,7 +79,7 @@ fn count_onsets(rt: &RtEngine, instrument: Instrument, drum_events: &mut u64) ->
         *drum_events += rt.tracks[TRACK]
             .drum_pos
             .iter()
-            .filter(|slot| slot.is_some_and(|(_, position)| (position - 1.0).abs() < EPS))
+            .filter(|slot| slot.is_some_and(|voice| (voice.position - 1.0).abs() < EPS))
             .count() as u64;
         *drum_events
     } else {

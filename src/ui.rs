@@ -13,6 +13,8 @@ use crate::engine::media_load::Loader;
 use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_view;
+mod clip_gain;
+use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 use library_scan::LibraryScan;
 
@@ -48,6 +50,7 @@ pub struct App {
     snap: Snapshot,
     last_play_idx: usize,
     pad_held: [bool; 16],
+    clip_gain_edit: Option<ClipGainEdit>,
 }
 
 #[derive(Clone)]
@@ -101,6 +104,7 @@ impl App {
             snap,
             last_play_idx: 0,
             pad_held: [false; 16],
+            clip_gain_edit: None,
         };
         app.publish_library_selection();
         app
@@ -398,6 +402,7 @@ impl App {
         } else {
             ctx.request_repaint_after(std::time::Duration::from_millis(80));
         }
+        self.clip_gain_editor(ctx);
         self.publish_library_selection();
     }
 }
@@ -874,7 +879,14 @@ impl App {
                                     }
                                 }
                                 if resp.clicked() {
-                                    if ui.input(|i| i.modifiers.shift) {
+                                    if ui.input(|i| i.modifiers.alt) {
+                                        if filled {
+                                            self.clip_gain_edit = Some(ClipGainEdit {
+                                                track: tr as u8, scene: sc as u8,
+                                                value: clip.map(|c| c.gain).unwrap_or(1.0),
+                                            });
+                                        }
+                                    } else if ui.input(|i| i.modifiers.shift) {
                                         self.send(Command::Select { track: tr, scene: sc });
                                         self.status = format!(
                                             "compose {} / scene {}",
@@ -1369,4 +1381,5 @@ seq: scene head launch/stop, rclick restart, shift add
 track head mute / rclick solo
 cell click once / rclick loop / shift compose
 gain rotary click mute / rclick solo / ctrl fx chain
+alt-click clip = gain for new notes/hits
 ";
