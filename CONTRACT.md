@@ -288,3 +288,15 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Muted/solo-excluded tracks still advance ramps. The stopped sample-rate reset
   establishes current target gains directly at the next callback. Initial
   controls also start at their exact target without an unnecessary fade-in.
+
+## Spread and Balance slot mix
+
+- Every Spread and Balance instance processes its own position in the serial
+  stereo chain. Its mix applies once: dry × (1 − mix) + full effect × mix.
+  Zero mix is exact stereo identity; full mix keeps the existing effect law.
+- Spread above noon delays the right channel; below noon it blends toward the
+  delayed stereo midpoint. Noon is exact identity and does not advance a delay
+  tap. Balance keeps the existing square-root attenuation of the opposite side.
+- Nonneutral enabled Spread history advances even at zero mix, so increasing
+  mix exposes its current history. Per-slot bypass retains the 5 ms fade/freeze
+  policy; each duplicate instance owns its history and mix independently.

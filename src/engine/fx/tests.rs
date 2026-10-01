@@ -134,7 +134,7 @@ impl Reference {
         }
         if self.id == FxId::Spread {
             let width = self.p[0];
-            return if width > 0.5 {
+            wet = if width > 0.5 {
                 [input[0], wet[1]]
             } else if width < 0.5 {
                 let amount = (0.5 - width) * 2.0;
@@ -143,9 +143,6 @@ impl Reference {
             } else {
                 input
             };
-        }
-        if self.id == FxId::Balance {
-            return wet;
         }
         std::array::from_fn(|channel| input[channel] * (1.0 - self.mix) + wet[channel] * self.mix)
     }

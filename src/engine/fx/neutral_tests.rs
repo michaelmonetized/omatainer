@@ -72,6 +72,7 @@ fn neutral_or_initially_bypassed_spread_never_activates_delay_history() {
             }
         }
         let mut active = FxSlot::new(FxId::Spread, sr);
+        active.mix = 1.0;
         active.p[0] = 1.0;
         assert_eq!(active.tick_stereo([1.0, 1.0], sr), [1.0, 0.0]);
     }
@@ -82,6 +83,7 @@ fn bypass_fades_to_exact_dry_and_back_in_five_ms_with_bounded_steps() {
     for sr in [32_000.0, 44_100.0, 48_000.0, 96_000.0] {
         let frames = (sr * 0.005_f32).ceil() as usize;
         let mut slot = FxSlot::new(FxId::Balance, sr);
+        slot.mix = 1.0;
         slot.p[0] = 1.0;
         let sample = [0.75, -0.25];
         let processed = [0.0, -0.25];
@@ -117,6 +119,7 @@ fn rapid_bypass_reversal_continues_from_current_level_without_a_jump() {
     for sr in [44_100.0, 48_000.0, 96_000.0] {
         let frames = (sr * 0.005_f32).ceil() as usize;
         let mut slot = FxSlot::new(FxId::Balance, sr);
+        slot.mix = 1.0;
         slot.p[0] = 1.0;
         let sample = [1.0, -0.5];
         slot.tick_stereo(sample, sr);
