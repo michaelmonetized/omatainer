@@ -44,6 +44,7 @@ mod svf_tests;
 pub mod media_load;
 pub(crate) mod load_receipt;
 pub(crate) mod preparation;
+pub(crate) mod cue_metadata;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
