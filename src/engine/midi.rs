@@ -7,6 +7,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
+mod profile;
+#[cfg(test)]
+mod profile_tests;
+
 static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
 
 fn next_source_id() -> u64 {
@@ -75,6 +79,13 @@ pub struct MidiMap {
     pub name: String,
     pub matchers: Vec<String>,
     pub bindings: Vec<Binding>,
+    pub unmapped_notes: UnmappedNotes,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnmappedNotes {
+    Live,
+    Ignore,
 }
 
 #[derive(Clone, Debug)]
@@ -105,13 +116,14 @@ impl MidiHub {
         }
     }
 
-    pub fn start(cmd: super::CommandPort) -> Self {
+    pub fn start(cmd: super::CommandPort) -> anyhow::Result<Self> {
+        // Fail profile validation before a device callback can dispatch it.
+        let maps = builtin_maps()?;
         let devices = Arc::new(Mutex::new(Vec::new()));
         let log = Arc::new(Mutex::new(Vec::new()));
         let learn = Arc::new(Mutex::new(None));
         let shift = Arc::new(Mutex::new([false; 4]));
         let outs = Arc::new(Mutex::new(Vec::new()));
-        let maps = builtin_maps();
         let mut ins = Vec::new();
 
         let in_ports: Vec<(String, midir::MidiInputPort)> = match MidiInput::new("omatainer") {
@@ -186,14 +198,14 @@ impl MidiHub {
             });
         }
 
-        Self {
+        Ok(Self {
             _ins: ins,
             outs,
             devices,
             log,
             learn,
             shift,
-        }
+        })
     }
 
     pub fn send_clock_tick(&self) {
@@ -293,7 +305,7 @@ fn handle_msg(
 
     // Live MIDI notes onto the selected track when no map consumed a note
     // (generic class-compliant keyboards / Akai MPK keys).
-    if !matched {
+    if !matched && map.unmapped_notes == UnmappedNotes::Live {
         if kind_hi == 0x90 && d2 > 0 {
             let _ = cmd.send(Command::LiveNoteOn {
                 source,
@@ -524,16 +536,21 @@ fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
     }
 }
 
-pub fn builtin_maps() -> Vec<MidiMap> {
+pub fn builtin_maps() -> anyhow::Result<Vec<MidiMap>> {
     let mut maps = Vec::new();
     maps.push(pioneer_ddj_fx());
     maps.push(numark_ns7(true));
     maps.push(numark_ns7(false));
     maps.push(akai_apc_mini());
+    // The specific MkII name must precede the original's broader matcher.
+    maps.push(akai_apc40_mk2());
     maps.push(akai_apc40());
     maps.push(akai_mpk());
     maps.push(class_compliant());
-    maps
+    for map in &maps {
+        map.validate()?;
+    }
+    Ok(maps)
 }
 
 /// Pioneer DDJ-FLX / DDJ-400 / DDJ-SB3 family ("DDJ-FX").
@@ -583,6 +600,7 @@ fn pioneer_ddj_fx() -> MidiMap {
             "alphaTheta".into(),
         ],
         bindings: b,
+        unmapped_notes: UnmappedNotes::Live,
     }
 }
 
@@ -639,6 +657,7 @@ fn numark_ns7(fx: bool) -> MidiMap {
             vec!["ns7".into(), "numark ns7".into()]
         },
         bindings: b,
+        unmapped_notes: UnmappedNotes::Live,
     }
 }
 
@@ -663,29 +682,67 @@ fn akai_apc_mini() -> MidiMap {
         name: "Akai APC Mini".into(),
         matchers: vec!["apc mini".into(), "apc-mini".into(), "apcmini".into()],
         bindings: b,
+        unmapped_notes: UnmappedNotes::Live,
     }
 }
 
-fn akai_apc40() -> MidiMap {
+// These addresses are shared by the original and MkII protocols. Clip-grid
+// addresses are deliberately constructed separately in the two profiles.
+fn apc40_common_bindings() -> Vec<Binding> {
     let mut b = Vec::new();
     for scene in 0..5u8 {
-        for track in 0..8u8 {
-            let note = scene * 8 + track;
-            b.push(nbind(0, note, Action::Clip, track, scene));
-        }
-        b.push(nbind(0, 82 + scene, Action::Scene, 0, scene));
+        // Global note controls do not use the track-channel discriminator.
+        b.push(nbind(0xff, 0x52 + scene, Action::Scene, 0, scene));
     }
-    for t in 0..8u8 {
-        b.push(cbind(0, 7, Action::TrackFader, t, t)); // ch per track on mk2; also bind extra
-        b.push(cbind(t, 7, Action::TrackFader, 0, t));
-        b.push(nbind(t, 48, Action::TrackMute, 0, t));
-        b.push(nbind(t, 51, Action::DeckPlay, t.min(1), 0));
+    for track in 0..8u8 {
+        b.push(cbind(track, 7, Action::TrackFader, 0, track));
     }
     b.push(cbind(0, 14, Action::Master, 0, 0));
+    b
+}
+
+fn akai_apc40() -> MidiMap {
+    let mut b = apc40_common_bindings();
+    // Akai APC40 protocol rev. 1, pp. 16-18: five clip buttons on each
+    // track's MIDI channel. The MkII has a different grid address space.
+    for scene in 0..5u8 {
+        for track in 0..8u8 {
+            b.push(nbind(track, 0x35 + scene, Action::Clip, track, scene));
+        }
+    }
     MidiMap {
-        name: "Akai APC40".into(),
+        name: "Akai APC40 (original)".into(),
         matchers: vec!["apc40".into(), "apc 40".into(), "apc-40".into()],
         bindings: b,
+        // Unmapped surface buttons are not piano keys. In particular record
+        // arm and track selection must never mute a track or start a deck.
+        unmapped_notes: UnmappedNotes::Ignore,
+    }
+}
+
+fn akai_apc40_mk2() -> MidiMap {
+    let mut b = apc40_common_bindings();
+    // Akai APC40 Mk2 protocol v1.2, pp. 30-34: forty distinct clip notes,
+    // with the same eight per-channel CC7 track faders as the original.
+    for scene in 0..5u8 {
+        for track in 0..8u8 {
+            b.push(nbind(0xff, scene * 8 + track, Action::Clip, track, scene));
+        }
+    }
+    MidiMap {
+        name: "Akai APC40 mkII".into(),
+        matchers: ["apc40", "apc 40", "apc-40"]
+            .into_iter()
+            .flat_map(|model| {
+                ["mkii", "mk2", "mk ii", "mk 2"]
+                    .into_iter()
+                    .flat_map(move |variant| {
+                        [format!("{model} {variant}"), format!("{model}{variant}")]
+                    })
+            })
+            .collect(),
+        bindings: b,
+        unmapped_notes: UnmappedNotes::Ignore,
     }
 }
 
@@ -694,7 +751,10 @@ fn akai_mpk() -> MidiMap {
     // pads typically C1 (36) upward — treat as drum / hotcues
     for i in 0..8u8 {
         b.push(nbind(9, 36 + i, Action::DeckHotCue, 0, i));
-        b.push(cbind(0, 1 + i, Action::FxWet, 0, i.min(2)));
+        // CC1 already controls the filter below; do not also change FX wet.
+        if i > 0 {
+            b.push(cbind(0, 1 + i, Action::FxWet, 0, i.min(2)));
+        }
     }
     b.push(cbind(0, 1, Action::DeckFilter, 0, 0));
     MidiMap {
@@ -707,6 +767,7 @@ fn akai_mpk() -> MidiMap {
             "akai".into(),
         ],
         bindings: b,
+        unmapped_notes: UnmappedNotes::Live,
     }
 }
 
@@ -719,6 +780,7 @@ fn class_compliant() -> MidiMap {
             cbind(0, 1, Action::DeckFilter, 0, 0),
             cbind(0, 10, Action::Xfader, 0, 0),
         ],
+        unmapped_notes: UnmappedNotes::Live,
     }
 }
 
@@ -727,7 +789,7 @@ mod tests {
     use super::*;
 
     fn map_for(name: &str) -> String {
-        let maps = builtin_maps();
+        let maps = builtin_maps().unwrap();
         pick_map(&maps, name).name
     }
 
