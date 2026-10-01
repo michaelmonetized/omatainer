@@ -12,6 +12,9 @@ pub(super) struct Recovery {
     root: Option<PathBuf>,
     message: Option<String>,
     candidates: Vec<Candidate>,
+    discovery_complete: bool,
+    discovery_cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
+    preview_cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
     warnings: Vec<String>,
     preview: Option<worker::Preview>,
     remove: Option<Candidate>,
@@ -95,7 +98,11 @@ impl App {
     }
     pub(super) fn start_recovery(&mut self, root: PathBuf) {
         self.recovery.root = Some(root.clone());
-        match Worker::start(root, self.engine.project.clone()) {
+        match Worker::start(
+            root,
+            self.engine.project.clone(),
+            self.engine.cmd.performance(),
+        ) {
             Ok(worker) => self.recovery.worker = Some(worker),
             Err(error) => {
                 self.recovery.message = Some(format!("Recovery worker unavailable: {error}"));
@@ -131,6 +138,8 @@ impl App {
         if changed {
             if self.recovery.epoch != Some(checkpoint.epoch)
                 || self.recovery.view.as_ref() != Some(&view)
+                || self.recovery.saved_path != path
+                || self.recovery.config.as_ref() != Some(&config)
             {
                 self.recovery.view_revision = self.recovery.view_revision.saturating_add(1);
             }
@@ -156,32 +165,85 @@ impl App {
         self.recovery.worker.as_ref().unwrap().pause(false);
     }
     pub(super) fn poll_recovery(&mut self) {
+        use std::sync::atomic::Ordering;
+        let expired_list = self
+            .recovery
+            .discovery_cancel
+            .as_ref()
+            .is_some_and(|flag| flag.load(Ordering::Acquire));
+        let expired_preview = self
+            .recovery
+            .preview_cancel
+            .as_ref()
+            .is_some_and(|flag| flag.load(Ordering::Acquire));
+        if expired_list || expired_preview {
+            self.recovery.preview = None;
+            self.recovery.preview_cancel = None;
+            if expired_list {
+                self.recovery.candidates.clear();
+                self.recovery.discovery_complete = false;
+                self.recovery.discovery_cancel = None;
+            }
+            self.recovery.message = Some("Recovery inspection expired when performance protection changed. Leave protection and Refresh recovery list for a fresh verified selection.".into());
+        }
         while let Some(output) = self.recovery.worker.as_ref().and_then(Worker::poll) {
             if output.id != 0 && self.recovery.pending != Some(output.id) {
+                // Cancellation cannot undo an already committed deletion. Its
+                // result remains truthful even after a newer UI job was chosen.
+                if let Event::Removed(Ok(warning)) = output.event {
+                    self.recovery.message = Some(format!("Earlier recovery deletion committed before cancellation. Explicit project files were not changed. {}", warning.unwrap_or_default()));
+                    self.recovery.candidates.clear();
+                    self.recovery.preview = None;
+                    self.recovery.discovery_complete = false;
+                }
                 continue;
             }
             if output.id != 0 {
                 self.recovery.pending = None;
             }
             match output.event {
-                Event::Listed(Ok(inventory)) => {
-                    self.recovery.candidates = inventory.candidates;
-                    self.recovery.warnings = inventory.warnings;
-                    if output.id == 0
-                        && (!self.recovery.candidates.is_empty()
-                            || !self.recovery.warnings.is_empty())
-                    {
-                        self.recovery.open = true;
-                    }
-                }
-                Event::Listed(Err(error)) => {
-                    self.recovery.message = Some(error);
-                    if output.id == 0 {
-                        self.recovery.open = true;
+                Event::Listed(result, work) => {
+                    let publication = work.as_ref().map(|work| work.commit()).transpose();
+                    match publication {
+                        Err(error) => {
+                            self.recovery.message = Some(format!("Recovery scan deferred or cancelled: {error}. Leave protection and Refresh recovery list; copies may exist."));
+                            self.recovery.open = true;
+                        }
+                        Ok(_publication) => match result {
+                            Ok(inventory) => {
+                                self.recovery.discovery_complete = work.is_some();
+                                self.recovery.discovery_cancel =
+                                    work.as_ref().map(|work| work.cancel());
+                                self.recovery.candidates = inventory.candidates;
+                                self.recovery.warnings = inventory.warnings;
+                                if output.id == 0
+                                    && (!self.recovery.candidates.is_empty()
+                                        || !self.recovery.warnings.is_empty())
+                                {
+                                    self.recovery.open = true;
+                                }
+                            }
+                            Err(error) => {
+                                self.recovery.message = Some(error);
+                                if output.id == 0 {
+                                    self.recovery.open = true;
+                                }
+                            }
+                        },
                     }
                 }
                 Event::Inspected(result) => match result {
-                    Ok(preview) => self.recovery.preview = Some(preview),
+                    Ok((preview, work)) => match work.commit() {
+                        Ok(_publication) => {
+                            self.recovery.preview_cancel = Some(work.cancel());
+                            self.recovery.preview = Some(preview);
+                        }
+                        Err(error) => {
+                            self.recovery.message = Some(format!(
+                                "Recovery preview was cancelled by performance protection: {error}"
+                            ))
+                        }
+                    },
                     Err(error) => {
                         self.recovery.message = Some(format!(
                             "Preview refused: {error}. Current project is unchanged."
@@ -200,10 +262,16 @@ impl App {
                         Err(error) => format!("Recovery deletion failed: {error}"),
                     });
                     self.recovery.preview = None;
-                    self.recovery.request(Job::List);
+                    self.refresh_recovery();
                 }
                 Event::Retired(result) => self.recovery.close_result = Some(result),
             }
+        }
+    }
+    fn refresh_recovery(&mut self) {
+        match self.engine.cmd.performance().optional_work() {
+            Ok(work) => self.recovery.request(Job::List(work)),
+            Err(error) => self.recovery.message = Some(format!("Recovery discovery deferred: {error}. Copies may exist; leave protection and Refresh to verify.")),
         }
     }
     pub(super) fn recovery_ui(&mut self, ctx: &egui::Context) {
@@ -211,12 +279,13 @@ impl App {
             return;
         }
         let mut open = true;
-        let mut job = None;
+        let mut refresh = false;
         let mut restore = None;
+        let mut inspect = None;
         let mut cancel = false;
         let busy = self.recovery.pending.is_some() || self.recovery_project_busy();
         let status = self.recovery.worker.as_ref().map(Worker::status);
-        egui::Window::new("Autosave and recovery").open(&mut open).default_width(570.0).show(ctx, |ui| {
+        egui::Window::new("Autosave and recovery").open(&mut open).default_width(570.0).default_height(700.0).vscroll(true).show(ctx, |ui| {
             ui.label("Recovery keeps batched edit-state copies, including untitled projects. It does not save or overwrite your explicit .omat file.");
             ui.label("Dirty state is normally captured about every 2 seconds. Capture, queue pressure and storage I/O can increase the loss window; only the confirmed durable time below is evidence of recovery coverage.");
             if let Some(path) = &self.recovery.root { ui.label(format!("Storage: {}", path.display())); }
@@ -227,30 +296,34 @@ impl App {
                     None => "No confirmed durable record for this session yet.".into(),
                 };
                 ui.label(durable).help(ui, HelpControl::RecoveryStatus);
-                ui.label(format!("Observed storage use: {:.1} MiB · {}", status.usage_bytes as f64 / crate::recovery::MIB as f64, status.message));
+                ui.label(match status.usage_bytes {
+                    Some(bytes) => format!("Last write storage accounting: {:.1} MiB of logical files (may be an upper bound; warnings apply)", bytes as f64 / crate::recovery::MIB as f64),
+                    None => "Current recovery storage usage has not been measured by a successful write.".into(),
+                });
+                ui.label(&status.message);
                 let unsaved = status.durable.as_ref().is_none_or(|durable| Some(durable.epoch) != self.recovery.epoch || durable.revision != self.engine.project.revision() || durable.view_revision != self.recovery.view_revision);
-                if unsaved { ui.label("Newer current edits are not yet confirmed durable."); }
+                if unsaved { ui.label("Newer current state or recovery metadata is not yet confirmed durable."); }
                 if status.busy { ui.spinner(); }
             }
             ui.horizontal(|ui| {
-                if ui.add_enabled(!busy, egui::Button::new("Refresh recovery list")).help(ui, HelpControl::RecoveryRefresh).clicked() { job = Some(Job::List); }
+                if ui.add_enabled(!busy, egui::Button::new("Refresh recovery list")).help(ui, HelpControl::RecoveryRefresh).clicked() { refresh = true; }
                 if ui.add_enabled(!busy && self.recovery.worker.is_some(), egui::Button::new("Journal current edits now")).help(ui, HelpControl::RecoveryNow).clicked() {
                     if let Some(worker) = &self.recovery.worker { worker.force(); }
                 }
                 if ui.add_enabled(self.recovery.pending.is_some(), egui::Button::new("Cancel recovery operation")).help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
             });
             if let Some(message) = &self.recovery.message { ui.label(message); }
-            for warning in &self.recovery.warnings { ui.label(warning); }
+            show_report(ui, "Recovery discovery report", &self.recovery.warnings);
             ui.separator();
             ui.label("Recoverable sessions (active sessions stay locked and are not offered)");
-            if self.recovery.candidates.is_empty() { ui.label("No inactive recovery candidates found."); }
+            if self.recovery.candidates.is_empty() { ui.label(if self.recovery.discovery_complete { "No inactive recovery candidates found." } else { "Recovery candidates have not been verified. Copies may exist; use Refresh recovery list in Studio." }); }
             let scroll = egui::ScrollArea::vertical().id_salt("recovery-candidates").max_height(180.0).show(ui, |ui| {
                 for candidate in &self.recovery.candidates {
                     ui.push_id((&candidate.session, candidate.sequence), |ui| {
                         ui.label(format!("{} · record {} · revision {}", candidate.session, candidate.sequence, candidate.metadata.revision));
                         ui.label(candidate.metadata.saved_path.as_ref().map(|path| format!("Original saved path: {}", path.display())).unwrap_or("Untitled project".into()));
                         ui.horizontal(|ui| {
-                            if ui.add_enabled(!busy, egui::Button::new("Preview recovery")).help(ui, HelpControl::RecoveryPreview).clicked() { job = Some(Job::Inspect(candidate.clone())); }
+                            if ui.add_enabled(!busy, egui::Button::new("Preview recovery")).help(ui, HelpControl::RecoveryPreview).clicked() { inspect = Some(candidate.clone()); }
                             if ui.add_enabled(!busy, egui::Button::new("Delete this recovery session…")).help(ui, HelpControl::RecoveryDelete).clicked() { self.recovery.remove = Some(candidate.clone()); }
                         });
                     });
@@ -261,7 +334,7 @@ impl App {
                 ui.separator(); ui.heading("Recovery preview");
                 ui.label(format!("{} notes · {} embedded media · {} BPM", preview.notes, preview.media, preview.bpm));
                 ui.label("Restore opens playback stopped as an unsaved untitled copy. Your current unsaved changes get the ordinary Save / Discard / Cancel decision. The original saved file is never overwritten.");
-                for report in &preview.report { ui.label(report); }
+                show_report(ui, "Recovery preview report", &preview.report);
                 ui.horizontal(|ui| {
                     if ui.add_enabled(!busy, egui::Button::new("Restore as untitled copy")).help(ui, HelpControl::RecoveryRestore).clicked() { restore = Some(preview.candidate.clone()); }
                     if ui.button("Close recovery preview").help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
@@ -276,8 +349,17 @@ impl App {
             self.recovery.preview = None;
         }
         self.recovery.open = open;
-        if let Some(job) = job {
-            self.recovery.request(job);
+        if let Some(candidate) = inspect {
+            match self.engine.cmd.performance().optional_work() {
+                Ok(work) => self.recovery.request(Job::Inspect(candidate, work)),
+                Err(error) => {
+                    self.recovery.message =
+                        Some(format!("Recovery preview was not accepted: {error}"))
+                }
+            }
+        }
+        if refresh {
+            self.refresh_recovery();
         }
         if let Some(candidate) = restore {
             self.recovery.preview = None;
@@ -289,7 +371,10 @@ impl App {
             let modal = egui::Modal::new(egui::Id::new("recovery-delete")).show(ctx, |ui| {
                 ui.heading("Delete every recovery generation in this session?");
                 ui.label(format!("Session {}. This permanently deletes its journal, checkpoints and media sidecars. Explicit saved project files are unaffected.", candidate.session));
-                if ui.button("Delete recovery session").help(ui, HelpControl::RecoveryDelete).clicked() { self.recovery.request(Job::Remove(candidate.clone())); self.recovery.remove = None; }
+                if ui.button("Delete recovery session").help(ui, HelpControl::RecoveryDelete).clicked() { match self.engine.cmd.performance().optional_work() {
+                    Ok(work) => self.recovery.request(Job::Remove(candidate.clone(), work)),
+                    Err(error) => self.recovery.message = Some(format!("Recovery deletion was not accepted: {error}")),
+                } self.recovery.remove = None; }
                 if ui.button("Cancel deletion").help(ui, HelpControl::RecoveryCancel).clicked() { self.recovery.remove = None; }
             });
             if modal.should_close() {
@@ -297,6 +382,14 @@ impl App {
             }
         }
         ctx.request_repaint_after(std::time::Duration::from_millis(250));
+    }
+    pub(super) fn restored_recovery_report(&mut self, report: Vec<String>) -> usize {
+        let count = report.len();
+        if count > 0 {
+            self.recovery.warnings = report;
+            self.recovery.open = true;
+        }
+        count
     }
     pub(super) fn begin_recovery_close(&mut self, ctx: &egui::Context) {
         if self.recovery.worker.is_none() {
@@ -375,3 +468,19 @@ fn durable_age(now: u64, written: u64) -> String {
 }
 #[cfg(test)]
 mod tests;
+
+fn show_report(ui: &mut Ui, name: &str, rows: &[String]) {
+    if rows.is_empty() {
+        return;
+    }
+    ui.label(format!("{name}: {} notices", rows.len()));
+    let scroll = egui::ScrollArea::vertical()
+        .id_salt(name)
+        .max_height(100.0)
+        .show(ui, |ui| {
+            for row in rows {
+                ui.label(row);
+            }
+        });
+    accessibility::scrollbars(ui, name, &scroll);
+}

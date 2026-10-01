@@ -375,12 +375,13 @@ mod tests {
         }
     }
     #[test]
-    fn version_three_migration_adds_recovery_limits_without_rewriting_the_saved_profile() {
+    fn version_four_migration_adds_recovery_limits_without_rewriting_audio_or_performance() {
         let dir = Directory::new();
         let mut original = Preferences::defaults(&dir.0);
         original.profiles.get_mut("Studio").unwrap().audio.sample_rate = Some(96000);
+        original.profiles.get_mut("Studio").unwrap().startup.performance_mode = true;
         let mut json = serde_json::to_value(&original).unwrap();
-        json["version"] = 3.into();
+        json["version"] = 4.into();
         for profile in json["profiles"].as_object_mut().unwrap().values_mut() {
             profile.as_object_mut().unwrap().remove("recovery");
         }
@@ -576,7 +577,7 @@ mod tests {
         for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("performance_mode"); }
         let (legacy, migrated) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
         assert!(migrated);
-        assert_eq!(legacy.version, 4);
+        assert_eq!(legacy.version, VERSION);
         assert!(legacy.profiles.values().all(|profile| !profile.startup.performance_mode));
     }
 

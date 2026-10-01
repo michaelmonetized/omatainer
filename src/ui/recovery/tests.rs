@@ -116,17 +116,33 @@ impl Gui {
     }
     fn text(&mut self, label: &str, value: &str) {
         self.action(label, Action::Focus);
-        self.frame(vec![
-            egui::Event::Key {
-                key: Key::A,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: egui::Modifiers::CTRL,
-            },
-            egui::Event::Text(value.into()),
-        ]);
-        self.frame(vec![]);
+        // Native Linux backends set both ctrl and the platform command bit.
+        let modifiers = egui::Modifiers {
+            ctrl: true,
+            command: true,
+            ..Default::default()
+        };
+        self.raw(egui::RawInput {
+            modifiers,
+            events: vec![
+                egui::Event::Key {
+                    key: Key::A,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                },
+                egui::Event::Text(value.into()),
+            ],
+            ..Default::default()
+        });
+        self.frame(vec![egui::Event::Key {
+            key: Key::A,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: Default::default(),
+        }]);
     }
     fn menu(&mut self, label: &str) {
         self.click("Project");
@@ -175,9 +191,24 @@ impl Gui {
     fn save_as(&mut self, path: &PathBuf) {
         self.menu("Save project as…");
         self.text("Project file path", &path.display().to_string());
+        assert_eq!(
+            self.nodes
+                .iter()
+                .find(|(_, n)| n.label() == Some("Project file path"))
+                .unwrap()
+                .1
+                .value(),
+            Some(path.to_str().unwrap()),
+            "path input did not change"
+        );
         self.click("Save");
         self.settled();
-        assert_eq!(self.app.recovery_project_path().as_ref(), Some(path));
+        assert_eq!(
+            self.app.recovery_project_path().as_ref(),
+            Some(path),
+            "{:?}",
+            self.app.project_message_for_recovery_test()
+        );
     }
     fn crash_worker(&mut self) {
         self.app.recovery.worker.take().unwrap().stop_for_test();
@@ -196,6 +227,7 @@ impl Gui {
             .events
             .push(egui::ViewportEvent::Close);
         self.raw(input);
+        self.frame(vec![]);
     }
 }
 fn existing(files: &Files) -> (PathBuf, Vec<u8>, crate::recovery::Candidate) {
@@ -234,7 +266,7 @@ fn restart_preview_cancel_and_restore_preserve_explicit_file_and_current_unsaved
     assert!(gui
         .nodes
         .iter()
-        .any(|(_, n)| n.label() == Some("Unsaved project changes")));
+        .any(|(_, n)| n.label() == Some("Save changes")));
     gui.click("Cancel");
     assert_eq!(gui.rt.master, 0.81);
     assert_eq!(gui.app.engine.undo.checkpoint().epoch, epoch);
@@ -433,11 +465,11 @@ fn cancelled_automatic_capture_reply_does_not_block_new_open_or_restore() {
 fn periodic_capture_and_disk_writes_keep_real_output_callback_heap_free() {
     let files = Files::new();
     let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
-    rt.apply(Command::LaunchScene(0));
+    rt.apply(Command::LaunchScene { scene: 0 });
     let mut app = App::with_loader(engine, Theme::default(), None);
     let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
     let (_, mut reference) = Engine::headless_for_test(48_000, 256);
-    reference.apply(Command::LaunchScene(0));
+    reference.apply(Command::LaunchScene { scene: 0 });
     let mut reference = crate::engine::audio::OutputCallback::new(reference, 2);
     let mut block = [0.0f32; 256];
     let mut expected = block;
@@ -501,4 +533,220 @@ fn periodic_capture_and_disk_writes_keep_real_output_callback_heap_free() {
 fn durable_age_is_honest_when_wall_clock_moves_backward() {
     assert_eq!(durable_age(5500, 3000), "2 s ago");
     assert!(durable_age(2999, 3000).contains("unavailable"));
+}
+
+#[test]
+fn protected_startup_keeps_durability_and_metadata_reports_but_refuses_pcm_preview_and_restore() {
+    let files = Files::new();
+    let (_, _, candidate) = existing(&files);
+    let mut gui = Gui::new();
+    gui.app.engine.cmd.performance().set_enabled(true).unwrap();
+    gui.start(&files.path("recovery"));
+    gui.wait(|g| !g.app.recovery.warnings.is_empty());
+    assert!(gui.app.recovery.candidates.is_empty());
+    gui.app.engine.cmd.performance().set_enabled(false).unwrap();
+    gui.click("Refresh recovery list");
+    gui.wait(|g| !g.app.recovery.candidates.is_empty());
+    gui.app.engine.cmd.performance().set_enabled(true).unwrap();
+    gui.click("Refresh recovery list");
+    assert!(gui
+        .app
+        .recovery
+        .message
+        .as_ref()
+        .is_some_and(|m| m.contains("deferred")));
+    assert!(gui.app.recovery.pending.is_none());
+    let epoch = gui.app.engine.undo.checkpoint().epoch;
+    gui.app.request_recovery_restore(candidate);
+    gui.frame(vec![]);
+    assert_eq!(gui.app.engine.undo.checkpoint().epoch, epoch);
+    assert!(!gui.app.recovery_project_busy());
+    let revision = gui.edit(0.52);
+    gui.app.recovery.worker.as_ref().unwrap().force();
+    gui.durable(revision);
+    assert!(gui.app.engine.cmd.performance().status().protected);
+}
+
+#[test]
+fn protect_unprotect_cancels_a_queued_pcm_preview_without_reviving_its_result() {
+    let files = Files::new();
+    let (_, _, _) = existing(&files);
+    let mut gui = Gui::new();
+    gui.start(&files.path("recovery"));
+    gui.wait(|g| !g.app.recovery.candidates.is_empty());
+    let (entered, resume) = gui
+        .app
+        .recovery
+        .worker
+        .as_ref()
+        .unwrap()
+        .pause_next(worker::Stage::BeforeInspect);
+    gui.click("Preview recovery");
+    let end = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+    }
+    gui.app.engine.cmd.performance().set_enabled(true).unwrap();
+    gui.app.engine.cmd.performance().set_enabled(false).unwrap();
+    resume.send(()).unwrap();
+    gui.wait(|g| g.app.recovery.pending.is_none());
+    assert!(gui.app.recovery.preview.is_none());
+    assert!(gui.app.recovery.message.is_some());
+}
+
+#[test]
+fn cancellation_after_explicit_delete_commit_keeps_the_real_outcome_visible() {
+    let files = Files::new();
+    let (saved, bytes, _) = existing(&files);
+    let mut gui = Gui::new();
+    gui.start(&files.path("recovery"));
+    gui.wait(|g| !g.app.recovery.candidates.is_empty());
+    let (entered, resume) = gui
+        .app
+        .recovery
+        .worker
+        .as_ref()
+        .unwrap()
+        .pause_next(worker::Stage::AfterRemove);
+    gui.click("Delete this recovery session…");
+    gui.click("Delete recovery session");
+    let end = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+    }
+    gui.click("Cancel recovery operation");
+    resume.send(()).unwrap();
+    gui.wait(|g| {
+        g.app
+            .recovery
+            .message
+            .as_ref()
+            .is_some_and(|m| m.contains("committed before cancellation"))
+    });
+    assert_eq!(std::fs::read(saved).unwrap(), bytes);
+    assert!(gui.app.recovery.candidates.is_empty());
+}
+
+#[test]
+fn missing_provenance_is_visible_and_embedded_pcm_restores_but_missing_sidecar_keeps_current_document(
+) {
+    let files = Files::new();
+    let root = files.path("recovery");
+    let origin = files.path("disconnected-source.wav");
+    let sample = Arc::new(crate::engine::dsp::Sample {
+        name: "Verified embedded source".into(),
+        sr: 44100,
+        ch: 1,
+        bpm: 100.0,
+        path: origin.display().to_string(),
+        data: vec![0.25; 128],
+        peaks: Arc::new(vec![[0.25; 3]; 4]),
+    });
+    let mut first = Gui::new();
+    assert!(first.app.submit(Command::DeckAudio {
+        deck: 0,
+        audio: sample.clone()
+    }));
+    first.rt.process(&mut []);
+    let revision = first.app.engine.project.revision();
+    first.start(&root);
+    first.durable(revision);
+    first.crash_worker();
+    drop(first);
+    let mut gui = Gui::new();
+    gui.start(&root);
+    gui.wait(|g| !g.app.recovery.candidates.is_empty());
+    let candidate = gui.app.recovery.candidates[0].clone();
+    gui.click("Preview recovery");
+    gui.wait(|g| g.app.recovery.preview.is_some());
+    assert!(gui
+        .app
+        .recovery
+        .preview
+        .as_ref()
+        .unwrap()
+        .report
+        .iter()
+        .any(|line| line.contains("Original external media is unavailable")));
+    let painted = gui.frame(vec![]);
+    assert!(painted.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(text) if text.galley.text().contains("Original external media is unavailable"))));
+    gui.click("Restore as untitled copy");
+    gui.settled();
+    assert_eq!(gui.rt.decks[0].audio.as_ref().unwrap().data, sample.data);
+    assert!(!origin.exists());
+    gui.open_panel();
+    gui.click("Preview recovery");
+    gui.wait(|g| g.app.recovery.preview.is_some());
+    let asset_dir = root.join(&candidate.session).join("assets");
+    let asset = std::fs::read_dir(asset_dir)
+        .unwrap()
+        .map(Result::unwrap)
+        .find(|entry| {
+            entry
+                .path()
+                .extension()
+                .is_some_and(|extension| extension == "omat")
+        })
+        .unwrap()
+        .path();
+    std::fs::remove_file(asset).unwrap();
+    gui.edit(0.73);
+    let epoch = gui.app.engine.undo.checkpoint().epoch;
+    gui.click("Restore as untitled copy");
+    gui.click("Discard changes");
+    gui.settled();
+    assert_eq!(gui.app.engine.undo.checkpoint().epoch, epoch);
+    assert_eq!(gui.rt.master, 0.73);
+    assert_eq!(gui.rt.decks[0].audio.as_ref().unwrap().data, sample.data);
+    assert!(gui
+        .app
+        .project_message_for_recovery_test()
+        .is_some_and(|message| message.contains("Recovery refused; current session preserved")));
+}
+
+#[test]
+fn save_as_updates_recovery_provenance_even_when_engine_and_view_are_unchanged() {
+    let files = Files::new();
+    let root = files.path("recovery");
+    let mut gui = Gui::new();
+    let revision = gui.app.engine.project.revision();
+    gui.start(&root);
+    gui.durable(revision);
+    let before = gui
+        .app
+        .recovery
+        .worker
+        .as_ref()
+        .unwrap()
+        .status()
+        .durable
+        .as_ref()
+        .unwrap()
+        .sequence;
+    let path = files.path("named.omat");
+    gui.save_as(&path);
+    assert_eq!(gui.app.engine.project.revision(), revision);
+    assert!(!gui.app.project_dirty());
+    gui.wait(|g| {
+        g.app
+            .recovery
+            .worker
+            .as_ref()
+            .unwrap()
+            .status()
+            .durable
+            .as_ref()
+            .is_some_and(|durable| {
+                durable.sequence > before && durable.view_revision == g.app.recovery.view_revision
+            })
+    });
+    gui.crash_worker();
+    let inventory = crate::recovery::discover(&root, &AtomicBool::new(false)).unwrap();
+    assert_eq!(
+        inventory.candidates[0].metadata.saved_path.as_ref(),
+        Some(&path)
+    );
+    assert!(path.is_file());
 }

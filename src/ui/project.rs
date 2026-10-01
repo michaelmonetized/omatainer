@@ -602,7 +602,8 @@ impl App {
                     if recovered {
                         self.project.current_path = None;
                         self.project.clean = None;
-                        self.project.message = Some(format!("Recovered as an unsaved untitled copy, stopped. Use Save as to choose a destination; the original explicit project was not overwritten. {}", report.join("; ")));
+                        let notices = self.restored_recovery_report(report);
+                        self.project.message = Some(format!("Recovered as an unsaved untitled copy, stopped. Use Save as to choose a destination; the original explicit project was not overwritten. {notices} recovery notices are available in Recovery."));
                     } else {
                         self.project.message = Some("Project ready, stopped. Space resumes remembered session clips; deck play buttons resume saved deck positions.".into());
                     }
@@ -782,6 +783,8 @@ impl App {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn project_message_for_recovery_test(&self) -> Option<&str> { self.project.message.as_deref() }
     #[cfg(test)]
     pub(super) fn pause_project_prepare_for_recovery_test(&self) -> (crossbeam_channel::Receiver<()>, Sender<()>) {
         self.project.worker.as_ref().unwrap().pause_next(worker::Stage::Prepared)

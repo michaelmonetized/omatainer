@@ -16,13 +16,13 @@ pub(super) struct Update {
 }
 struct Control {
     paused: bool,
-    cancel: AtomicBool,
+    cancel: Arc<AtomicBool>,
 }
 impl Control {
     fn new(paused: bool) -> Self {
         Self {
             paused,
-            cancel: AtomicBool::new(false),
+            cancel: Arc::new(AtomicBool::new(false)),
         }
     }
 }
@@ -32,7 +32,7 @@ pub(super) struct Status {
     pub warning: bool,
     pub message: String,
     pub durable: Option<Durable>,
-    pub usage_bytes: u64,
+    pub usage_bytes: Option<u64>,
 }
 #[derive(Clone)]
 pub(super) struct Durable {
@@ -50,14 +50,23 @@ pub(super) struct Preview {
     pub report: Vec<String>,
 }
 pub(super) enum Job {
-    List,
-    Inspect(crate::recovery::Candidate),
-    Remove(crate::recovery::Candidate),
+    List(crate::engine::performance::WorkPermit),
+    Inspect(
+        crate::recovery::Candidate,
+        crate::engine::performance::WorkPermit,
+    ),
+    Remove(
+        crate::recovery::Candidate,
+        crate::engine::performance::WorkPermit,
+    ),
     Retire,
 }
 pub(super) enum Event {
-    Listed(Result<crate::recovery::Inventory, String>),
-    Inspected(Result<Preview, String>),
+    Listed(
+        Result<crate::recovery::Inventory, String>,
+        Option<crate::engine::performance::WorkPermit>,
+    ),
+    Inspected(Result<(Preview, crate::engine::performance::WorkPermit), String>),
     Removed(Result<Option<String>, String>),
     Retired(Result<Option<String>, String>),
 }
@@ -71,6 +80,7 @@ pub(super) enum Stage {
     BeforeAppend,
     BeforeInspect,
     AfterRetire,
+    AfterRemove,
 }
 #[cfg(test)]
 type Hooks = Arc<parking_lot::Mutex<Option<(Stage, Sender<()>, Receiver<()>)>>>;
@@ -114,7 +124,11 @@ pub(super) struct Worker {
     status: Arc<ArcSwap<Status>>,
 }
 impl Worker {
-    pub fn start(root: PathBuf, handle: crate::engine::project::Handle) -> std::io::Result<Self> {
+    pub fn start(
+        root: PathBuf,
+        handle: crate::engine::project::Handle,
+        performance: &crate::engine::performance::Handle,
+    ) -> std::io::Result<Self> {
         #[cfg(test)]
         let hooks = Hooks::default();
         #[cfg(test)]
@@ -122,7 +136,15 @@ impl Worker {
         #[cfg(test)]
         let (finished, finish) = bounded(1);
         let latest = Arc::new(ArcSwapOption::<Update>::empty());
-        let control = Arc::new(ArcSwap::from_pointee(Control::new(false)));
+        let startup_work = performance.optional_work();
+        let startup_cancel = startup_work
+            .as_ref()
+            .map(|work| work.cancel())
+            .unwrap_or_else(|_| Arc::new(AtomicBool::new(false)));
+        let control = Arc::new(ArcSwap::from_pointee(Control {
+            paused: false,
+            cancel: startup_cancel,
+        }));
         let force = Arc::new(AtomicBool::new(false));
         let reset = Arc::new(AtomicBool::new(false));
         let stop = Arc::new(AtomicBool::new(false));
@@ -165,18 +187,26 @@ impl Worker {
                 let mut current = Status::default();
                 let mut next = Instant::now();
                 let mut last_captured: Option<(u64, u64, u64)> = None;
+                current.busy = true;
+                current.message = "Checking recovery availability; the first new durable record is pending".into();
+                status.store(Arc::new(current.clone()));
                 let startup_token = control.load_full();
-                let startup = crate::recovery::discover(&root, &startup_token.cancel)
-                    .map_err(|e| e.to_string());
-                if outgoing
-                    .send(Output {
-                        id: 0,
-                        event: Event::Listed(startup),
-                    })
-                    .is_err()
-                {
-                    return;
-                }
+                let (startup, startup_work) = match startup_work {
+                    Ok(work) => (crate::recovery::discover(&root, &work.cancel()).map_err(|e| e.to_string()), Some(work)),
+                    Err(error) => {
+                        // A single metadata lookup is the essential startup notice.
+                        // Full journal/PCM verification is optional guarded work.
+                        let warnings = if std::fs::symlink_metadata(&root).is_ok() {
+                            vec![format!("Recovery scan deferred by performance protection: {error}. Copies may exist. Leave protection and Refresh recovery list to verify them.")]
+                        } else { Vec::new() };
+                        (Ok(crate::recovery::Inventory { warnings, ..Default::default() }), None)
+                    }
+                };
+                control.rcu(|current| if Arc::ptr_eq(current, &startup_token) { Arc::new(Control::new(current.paused)) } else { current.clone() });
+                if outgoing.send(Output { id: 0, event: Event::Listed(startup, startup_work) }).is_err() { return; }
+                current.busy = false;
+                current.message = "Waiting for the next coherent edit-state record".into();
+                status.store(Arc::new(current.clone()));
                 loop {
                     if stop.load(Ordering::Acquire) {
                         return;
@@ -184,18 +214,18 @@ impl Worker {
                     match incoming.recv_timeout(std::time::Duration::from_millis(25)) {
                         Ok((id, job, token)) => {
                             let event = match job {
-                                Job::List => Event::Listed(
-                                    crate::recovery::discover(&root, &token.cancel)
-                                        .map_err(|e| e.to_string()),
-                                ),
-                                Job::Inspect(candidate) => {
+                                Job::List(work) => Event::Listed(
+                                    crate::recovery::discover(&root, &token.cancel).map_err(|e| e.to_string()), Some(work)),
+                                Job::Inspect(candidate, work) => {
                                     #[cfg(test)] pause_at(&thread_hooks, Stage::BeforeInspect);
-                                    Event::Inspected(inspect(candidate, &token.cancel))
+                                    Event::Inspected(inspect(candidate, &token.cancel).map(|preview| (preview, work)))
                                 }
-                                Job::Remove(candidate) => Event::Removed(
-                                    crate::recovery::discard(&candidate, &token.cancel)
-                                        .map_err(|e| e.to_string()),
-                                ),
+                                Job::Remove(candidate, work) => {
+                                    let result = work.commit().map_err(|e| e.to_string()).and_then(|_publication|
+                                        crate::recovery::discard(&candidate, &token.cancel).map_err(|e| e.to_string()));
+                                    #[cfg(test)] pause_at(&thread_hooks, Stage::AfterRemove);
+                                    Event::Removed(result)
+                                }
                                 Job::Retire => {
                                     let result = sessions.retire(&token.cancel);
                                     #[cfg(test)]
@@ -211,6 +241,10 @@ impl Worker {
                                     Event::Retired(result)
                                 }
                             };
+                            control.rcu(|current| {
+                                if Arc::ptr_eq(current, &token) { Arc::new(Control::new(current.paused)) }
+                                else { current.clone() }
+                            });
                             if outgoing.send(Output { id, event }).is_err() {
                                 return;
                             }
@@ -258,7 +292,7 @@ impl Worker {
                         Ok((commit, revision)) => {
                             // Cancellation after publication does not erase a real
                             // commit; the durability outcome comes from the writer.
-                            current.usage_bytes = commit.usage_bytes;
+                            current.usage_bytes = Some(commit.usage_bytes);
                             current.warning = !commit.durable || commit.warning.is_some();
                             if commit.durable {
                                 current.durable = Some(Durable {
@@ -331,9 +365,16 @@ impl Worker {
         self.control.load().cancel.store(true, Ordering::SeqCst);
     }
     pub fn request(&self, job: Job) -> Result<u64, String> {
+        let cancel = match &job {
+            Job::List(work) | Job::Inspect(_, work) | Job::Remove(_, work) => work.cancel(),
+            _ => Arc::new(AtomicBool::new(false)),
+        };
         self.control.rcu(|old| {
             old.cancel.store(true, Ordering::SeqCst);
-            Arc::new(Control::new(old.paused))
+            Arc::new(Control {
+                paused: old.paused,
+                cancel: cancel.clone(),
+            })
         });
         let token = self.control.load_full();
         let id = self.next_job.get();
@@ -403,6 +444,15 @@ impl Sessions {
             ));
         }
         Ok(&mut self.current.as_mut().unwrap().1)
+    }
+    fn restart_session(&mut self) {
+        // Preserve any useful prefix of a failed journal. Releasing an older
+        // extra session only makes it discoverable; it never deletes its data.
+        if self.prior.is_none() {
+            self.prior = self.current.take();
+        } else {
+            self.current = None;
+        }
     }
     fn retire_prior(&mut self, cancel: &AtomicBool) -> Result<Option<String>, String> {
         let warning = if let Some((epoch, store)) = &mut self.prior {
@@ -488,18 +538,26 @@ fn capture_and_append(
     };
     #[cfg(test)]
     pause_at(hooks, Stage::BeforeAppend);
-    let mut commit = sessions
-        .store(update.epoch)?
-        .append(
-            &crate::project_file::Bundle {
-                state,
-                media: captured.media,
-            },
-            metadata,
-            &update.config,
-            cancel,
-        )
-        .map_err(|e| e.to_string())?;
+    let store = sessions.store(update.epoch)?;
+    let result = store.append(
+        &crate::project_file::Bundle {
+            state,
+            media: captured.media,
+        },
+        metadata,
+        &update.config,
+        cancel,
+    );
+    let needs_new_session = store.needs_new_session();
+    let mut commit = match result {
+        Ok(commit) => commit,
+        Err(error) => {
+            if needs_new_session {
+                sessions.restart_session();
+            }
+            return Err(error.to_string());
+        }
+    };
     if commit.durable {
         // The newer session is already durable even if retirement of its
         // predecessor fails; keep that failure as a warning, never a false save failure.
