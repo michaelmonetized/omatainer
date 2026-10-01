@@ -50,6 +50,8 @@ mod keyboard_tests;
 mod sampler_identity_tests;
 #[cfg(test)]
 mod duration_tests;
+#[cfg(test)]
+mod midi_connection_tests;
 
 pub struct App {
     engine: Engine,
@@ -485,6 +487,17 @@ impl App {
         }
         if self.midi_open {
             egui::Window::new("midi").show(ctx, |ui| {
+                let busy = self.engine.midi.connections_busy();
+                if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).clicked() {
+                    let _ = self.engine.midi.retry_connections();
+                }
+                if busy {
+                    ui.label("Checking MIDI connections…");
+                    ctx.request_repaint_after(std::time::Duration::from_millis(50));
+                } else if !self.engine.midi.connections_available() {
+                    ui.label("MIDI connection worker unavailable; restart to retry.");
+                }
+                ui.label("Keyboard and mouse remain available. Retry checks current ports.");
                 let input = self.engine.midi.input_stats();
                 ui.label(format!("Input: {} received · {} queued · {} handled", input.received, input.queued, input.dispatched));
                 ui.label(format!("Overload: {} coalesced · {} discarded · {} source resets", input.coalesced, input.dropped, input.resets));

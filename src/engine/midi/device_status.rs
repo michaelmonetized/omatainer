@@ -6,6 +6,7 @@ use std::sync::{Arc, Weak};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum State {
+    Discovered,
     Connecting,
     Connected,
     Failed(String),
@@ -25,20 +26,29 @@ pub(crate) struct Status(Arc<Inner>);
 
 impl Status {
     pub(crate) fn new(snapshot: &Arc<Mutex<Snapshot>>, name: &str, map: &str) -> Self {
+        Self::with_state(snapshot, name, map, State::Connecting)
+    }
+
+    pub(crate) fn discovered(snapshot: &Arc<Mutex<Snapshot>>, name: &str, map: &str) -> Self {
+        Self::with_state(snapshot, name, map, State::Discovered)
+    }
+
+    fn with_state(snapshot: &Arc<Mutex<Snapshot>>, name: &str, map: &str, state: State) -> Self {
         let mut shared = snapshot.lock();
         let index = shared.midi.len();
-        shared.midi.push(Self::label(name, map, &State::Connecting));
+        shared.midi.push(Self::label(name, map, &state));
         Self(Arc::new(Inner {
             snapshot: Arc::downgrade(snapshot),
             index,
             name: name.into(),
             map: map.into(),
-            state: Mutex::new(State::Connecting),
+            state: Mutex::new(state),
         }))
     }
 
     fn label(name: &str, map: &str, state: &State) -> String {
         let state = match state {
+            State::Discovered => "discovered",
             State::Connecting => "connecting",
             State::Connected => "connected",
             State::Failed(_) => "failed",
@@ -72,6 +82,12 @@ impl Status {
         }
     }
 
+    pub(crate) fn connecting(&self) {
+        self.update(State::Connecting);
+    }
+    pub(crate) fn is_connected(&self) -> bool {
+        *self.0.state.lock() == State::Connected
+    }
     pub(crate) fn connected(&self) {
         self.update(State::Connected);
     }
@@ -121,6 +137,7 @@ mod tests {
         let status = Status::new(&engine.snap, "MIDI keyboard", "Generic");
         let mut evidence = Vec::new();
         for state in [
+            State::Discovered,
             State::Connecting,
             State::Connected,
             State::Failed("open denied".into()),
