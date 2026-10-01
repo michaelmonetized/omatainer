@@ -242,6 +242,7 @@ fn real_ui_calibration_qualifies_identity_and_clears_prior_result_on_cancel_or_m
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
     assert!(handle.status().measurement.is_none());
+    described(&gui.nodes, "Cancel audio operation", HelpControl::AudioCancel);
     gui.click("Cancel audio operation");
     gui.wait();
     assert!(handle.status().measurement.is_none());
@@ -305,12 +306,14 @@ fn capability_selectors_edit_the_real_preference_draft_and_save_exact_format() {
         .unwrap(),
     );
     gui.click("Output sample format");
+    described(&gui.nodes, "f32", HelpControl::AudioOutputFormat);
     gui.click("f32");
     assert_eq!(
         gui.app.settings.draft.profiles["Studio"].audio.format,
         Some(AudioFormat::F32)
     );
     gui.click("Sample rate Hz");
+    described(&gui.nodes, "192000", HelpControl::PreferenceAudioRate);
     gui.click("192000");
     assert_eq!(
         gui.app.settings.draft.profiles["Studio"].audio.sample_rate,
@@ -375,4 +378,79 @@ fn closed_audio_window_still_surfaces_pending_and_failed_operations() {
     gui.click("Audio offline");
     assert!(gui.app.audio_settings.open);
     assert!(gui.app.audio_settings.message.contains("Session retained"));
+}
+
+fn described(nodes: &[(NodeId, Node)], name: &str, control: HelpControl) {
+    let node = nodes.iter().find(|(_, n)| n.label() == Some(name))
+        .unwrap_or_else(|| panic!("missing {name}"));
+    let description = node.1.description().unwrap_or_default();
+    let definition = control.definition();
+    assert!(description.contains(definition.title), "{name}: {description}");
+    assert!(description.contains(definition.units), "{name}: {description}");
+    assert!(description.contains(definition.purpose), "{name}: {description}");
+}
+
+#[test]
+fn actual_audio_confirmations_expose_canonical_help_without_starting_an_operation() {
+    let mut gui = Gui::new(48000);
+    gui.click("Preferences");
+    described(&gui.nodes, "Audio devices and latency", HelpControl::AudioDevices);
+    gui.click("Audio devices and latency");
+    described(&gui.nodes, "Preview saved audio", HelpControl::AudioPreview);
+    gui.preview();
+    for (name, control) in [
+        ("Use saved audio now", HelpControl::AudioUse),
+        ("Measure loopback", HelpControl::AudioMeasure),
+        ("Advertised input and output capabilities", HelpControl::AudioCapabilities),
+        ("Dismiss audio notice", HelpControl::AudioNotice),
+    ] { described(&gui.nodes, name, control); }
+    gui.click("Use saved audio now");
+    described(&gui.nodes, "Stop and change output", HelpControl::AudioConfirm);
+    described(&gui.nodes, "Keep current audio", HelpControl::AudioKeep);
+    gui.click("Keep current audio");
+    gui.click("Measure loopback");
+    described(&gui.nodes, "Cable ready: stop and measure", HelpControl::AudioProbeConfirm);
+    // Focus + real F1 handling must display the exact confirmation's context.
+    let target = gui.nodes.iter().find(|(_, n)| n.label() == Some("Cable ready: stop and measure")).unwrap().0;
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::Focus, data: None })]);
+    gui.frame(vec![egui::Event::Key { key: Key::F1, physical_key: Some(Key::F1), pressed: true, repeat: false, modifiers: Default::default() }]);
+    gui.frame(vec![]);
+    assert!(gui.app.keys_open);
+    assert!(gui.nodes.iter().any(|(_, n)| n.value() == Some(HelpControl::AudioProbeConfirm.definition().purpose)
+        || n.label() == Some(HelpControl::AudioProbeConfirm.definition().purpose)));
+    assert_eq!(gui.controls.opens.load(Ordering::Acquire), 1, "reading help never starts a device change or probe");
+    assert!(!gui.controls.entering_calibration.load(Ordering::Acquire));
+}
+
+#[test]
+fn every_audio_preference_editor_has_explicit_units_and_saved_intent_description() {
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let mut audio = Audio::default();
+    let original = audio.clone();
+    let inventory = inventory();
+    let mut nodes = Vec::new();
+    for _ in 0..2 {
+        let output = ctx.run(egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 1800.0))),
+            ..Default::default()
+        }, |ctx| { egui::CentralPanel::default().show(ctx, |ui| edit_profile(ui, &mut audio, Some(&inventory))); });
+        nodes = output.platform_output.accesskit_update.unwrap().nodes;
+    }
+    for (name, control) in [
+        ("Audio backend", HelpControl::AudioBackend),
+        ("Output device", HelpControl::PreferenceAudioDevice),
+        ("Sample rate Hz", HelpControl::PreferenceAudioRate),
+        ("Output channels", HelpControl::PreferenceAudioChannels),
+        ("Output sample format", HelpControl::AudioOutputFormat),
+        ("Output buffer frames", HelpControl::PreferenceAudioBuffer),
+        ("Calibration input device", HelpControl::AudioInputDevice),
+        ("Input channels", HelpControl::AudioInputChannels),
+        ("Input sample format", HelpControl::AudioInputFormat),
+        ("Input buffer frames", HelpControl::AudioInputBuffer),
+        ("Calibration input channel", HelpControl::AudioInputChannel),
+        ("Probe output channel", HelpControl::AudioOutputChannel),
+        ("Probe level", HelpControl::AudioProbeLevel),
+    ] { described(&nodes, name, control); }
+    assert_eq!(audio, original);
 }
