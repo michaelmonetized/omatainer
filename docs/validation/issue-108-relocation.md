@@ -58,8 +58,41 @@ nested root is not pruned merely because its parent is also selected.
 The final ordinary suite passed 1,048 tests with 25 opt-in tests excluded in
 105.11 seconds (`issue-108-full-v2.log`). The earlier full run passed 1,047
 tests before the explicit nested-mount regression was added. The offline manual
-was regenerated and the source/license inventory validates. Release results
-will be recorded after the source-bound gate and packaging checks.
+was regenerated and the source/license inventory validates.
+
+## Source-bound release qualification
+
+Source commit `4db0f53` passed the unchanged standard gate on 2026-10-01,
+21:45:16.113186–21:51:30.255814 UTC. The local aarch64 process used affinity
+`[6]`, nice 0, SCHED_OTHER, with normal host/user processes left running. All eight
+fixed groups passed three repeats each, including their audio/state/hash/heap
+checks. Native accessibility passed 158 actions over 244 nodes and 565 frames;
+it is the actual private AT-SPI/App/renderer fixture, not a desktop Orca run.
+
+Worst repeat values in milliseconds:
+
+| Callback | Render CPU p99 | Callback wall p99 | Callback wall max |
+| --- | ---: | ---: | ---: |
+| Producer | 0.664875 | 0.771546 | 0.991755 |
+| Composer | 0.674290 | 0.818838 | 0.933214 |
+| Live DJ | 0.156041 | 0.196126 | 0.267293 |
+| Hybrid | 0.872583 | 1.044964 | 4.790611 |
+
+Release SHA-256:
+`9c919b9dc53d1524dab893c5e09bb94df9add2eab77c124139fb40b3aa5e0b1f`.
+Release-test SHA-256:
+`2c8625d497c458a08765d5a19522d605469c5bbe1fb91f2a83ae78420a0c1d8d`.
+Independent gate verification, immutable package creation/verification, seven
+CLI, six follow-protocol, five runtime-isolation and safe-startup checks passed.
+The package records source `4db0f53`; this evidence-only documentation update
+is outside the source inventory and does not change the tested executable.
+
+Local evidence under `/home/michael/Projects/omatainer-work`:
+`issue-108-final-performance.{json,raw.json,log}`, `issue-108-final-native.json`,
+`issue-108-final-post-results.json`, `issue-108-final-{gate-check,package,
+package-verify,cli,follow,runtime,safe-start}.log`, and immutable
+`issue-108-final-package`. The gate's workload test completed in 120.85 seconds;
+the preceding controlled release/test builds are also retained in its log.
 
 ## Acceptance boundary
 
