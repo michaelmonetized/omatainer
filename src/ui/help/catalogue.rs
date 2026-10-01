@@ -9,9 +9,10 @@ pub(crate) enum Topic {
     Controllers,
     Emergency,
     Projects,
+    Offline,
 }
 impl Topic {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Setup,
         Self::Recording,
         Self::Editing,
@@ -20,6 +21,7 @@ impl Topic {
         Self::Controllers,
         Self::Emergency,
         Self::Projects,
+        Self::Offline,
     ];
     pub fn title(self) -> &'static str {
         match self {
@@ -31,6 +33,7 @@ impl Topic {
             Self::Controllers => "Connect a controller",
             Self::Emergency => "Stop and recover",
             Self::Projects => "Save and reopen",
+            Self::Offline => "Offline operation",
         }
     }
     pub fn text(self) -> &'static str {
@@ -42,6 +45,7 @@ impl Topic {
         Self::Dj => "Select a crate row and explicitly load A or B. Built-in Drums (session) and Harmony (session) work without media files. Wait for Loaded: Queued only confirms admission. The filename BPM/key hints and heuristic analyzed BPM have distinct provenance and are not a verified beat grid. Use the grid editor to set the downbeat, slip beat lines, stretch tempo or correct half/double ambiguity in a draft preview. Apply creates one manual uniform four-beat grid; it does not overwrite analyzed BPM or move cues. Cancel or Escape discards unapplied drafts. Set a main cue or hot cues, set loop in/out, then audition. Pitch lock separates pitch from tempo. Match follows the crossfader-favored deck's effective tempo. Remaining time is an estimate and repeating loops suppress runout alerts. Preparation persists in the library for the exact file identity.",
         Self::Controllers => "Open the MIDI window and Retry / rescan MIDI. Settings can request all inputs, selected exact port names or disabled inputs. Check requested versus applied policy and per-port errors before playing. The native callback only queues bounded input; overflow releases that source's gates and reports counters. Factory profiles are limited, documented mappings; a matching device name is not physical compatibility proof. NS7 motorized platter and NS7II support remain unverified. MIDI clock input is an observable tick hook, not tempo synchronization or clock output. There is no editable MIDI-learn mapping UI.",
             Self::Emergency => "Enable performance mode to protect playing/touched deck replacement, destructive edits and project/device changes across GUI, MIDI and IPC. Continuous mixing, live composition/recording, stopped-deck loads and Save remain available; optional scans/imports/analysis/theme/export work is refused or deferred. Safe stop deliberately stops the session and both decks, finalizes held captures and releases input notes; finite sample and effect tails continue naturally. Emergency silence additionally fades output to latched mute over 2 ms. Wait for renderer acknowledgment: request acceptance is not silence. Release physical keys, pads and touches, then explicitly acknowledge input recovery. This is your report, not a hardware health check. Emergency mute remains until a deliberate stopped DSP reset through the audio owner; a two-second −80 dBFS tail observation cannot prove bypassed/delayed history is empty. Failed reset keeps mute; you can acknowledge inputs and remain muted to Save and deliberately leave protection or close. No action automatically resumes playback. Ordinary Session Stop retains its narrower session-only behavior. Read Diagnostics queue/reset counters and explicit failures before recovery; physical hardware QA remains separate.",
+        Self::Offline => "Omatainer starts without an account or cloud session. Locally available media, native projects with embedded PCM, user sampler banks, built-in instruments/effects, Help and license notices work locally. Reusable bank definitions reference local sources: retain those files or use a verified library relocation; missing sources remain explicit. Native projects embed their playable audio. Audio plugin hosting, provider streaming/downloads, cloud transfer, authentication and credential storage are not implemented. They are not offline-supported integrations. No account tokens are collected. Preferences, project envelopes and support reports reject unknown credential fields; project names, paths and audio are intentional user content, not redacted documents. Support export is a reviewed local file with an allowlisted schema, never an upload. License Source record links explicitly hand off to an external browser; that browser and host Unix proxies are outside the network-denied application test. Network filesystems, remote display/audio servers and source-build package downloads also need their own availability. Safe mode starts stopped without audio/MIDI devices; it can Open, Recover and Save locally. Network-denied fixtures qualify local software paths, not physical controllers, OS audio dropouts or perceived quality.",
         Self::Projects => "Project → New, Open and window close protect unsaved work with Save changes / Discard changes / Cancel. Save project as chooses a .omat path; replacing an existing file requires the checkbox. Save copy leaves the current path and unsaved baseline unchanged. Native projects embed playable media and creative state. Reopen restores playback stopped and excludes physical held keys, connections and DSP tails. Later edits during saving remain dirty. Cancel before commit preserves the old document; a completed commit is reported honestly. Autosave and recovery keeps separate full edit-state batches about every two seconds and compacts checkpoints at the saved profile interval. Capture and disk delays can increase the loss window; read the last confirmed durable age. At restart, preview an inactive recovery and restore as a stopped, unsaved untitled copy without overwriting the original saved version. Full storage stops new writes visibly while preserving existing recovery. Use a private test destination for the guided example.",
     }
     }
@@ -285,7 +289,8 @@ controls! {
 pub fn manual() -> String {
     let mut text = String::from("# Omatainer offline manual\n\nGenerated from the in-app help catalogue. Hardware observations remain separate from software confirmation.\n\n");
     for topic in Topic::ALL {
-        text.push_str(&format!("## {}\n\n{}\n\nGuided example (use Start this lesson in Help; Next requires observed evidence):\n\n", topic.title(), topic.text()));
+        text.push_str(&format!("## {}\n\n{}\n\n", topic.title(), topic.text()));
+        if !super::lessons::steps(topic).is_empty() { text.push_str("Guided example (use Start this lesson in Help; Next requires observed evidence):\n\n"); }
         for (index, step) in super::lessons::steps(topic).iter().enumerate() {
             text.push_str(&format!("{}. {}\n", index + 1, step));
         }
