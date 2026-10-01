@@ -45,6 +45,9 @@ impl Fixture {
         )
         .unwrap();
     }
+    pub fn quiet_loader(&self) -> Loader {
+        Loader::with_resolver(self.theme.clone(), self.resolver(), Duration::from_secs(30)).unwrap()
+    }
     pub fn loader(&self) -> Loader {
         Loader::with_resolver(
             self.theme.clone(),

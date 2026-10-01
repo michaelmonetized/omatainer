@@ -51,9 +51,19 @@ pub(crate) struct Update {
     pub theme: Theme,
     pub fonts: Arc<FontDefinitions>,
 }
+enum Job {
+    Wake,
+    Force(u64),
+}
+pub(crate) struct Forced {
+    pub generation: u64,
+    pub result: Result<Arc<Update>, String>,
+}
 pub(crate) struct Loader {
-    requests: Option<Sender<()>>,
+    requests: Option<Sender<Job>>,
     results: Receiver<Arc<Update>>,
+    forced_results: Receiver<Forced>,
+    forced_busy: AtomicBool,
     stop: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
 }
@@ -68,6 +78,7 @@ impl Loader {
     ) -> std::io::Result<Self> {
         let (requests, jobs) = bounded(1);
         let (output, results) = bounded(1);
+        let (forced_output, forced_results) = bounded(1);
         let superseded = results.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let stopped = stop.clone();
@@ -75,29 +86,48 @@ impl Loader {
             .name("omatainer-theme".into())
             .spawn(move || {
                 let mut reader = Reader::new(theme, resolver);
+                let mut next = Job::Wake;
                 loop {
                     if stopped.load(Ordering::Acquire) {
                         break;
                     }
-                    if let Some(update) = reader.read() {
-                        if let Err(crossbeam_channel::TrySendError::Full(update)) =
-                            output.try_send(update)
-                        {
-                            // One producer and one latest-state slot. Eviction and
-                            // large obsolete font buffers are retired on this worker.
+                    match next {
+                        Job::Force(generation) => {
+                            // Supersede only automatic candidates from before this
+                            // transaction. A later valid recovery remains publishable.
                             let _ = superseded.try_recv();
-                            let _ = output.try_send(update);
+                            let result = reader.force();
+                            if stopped.load(Ordering::Acquire) {
+                                break;
+                            }
+                            // One forced request stays busy until the GUI takes
+                            // its result, so this lane cannot evict a receipt.
+                            let _ = forced_output.try_send(Forced { generation, result });
+                        }
+                        Job::Wake => {
+                            if let Some(update) = reader.read() {
+                                if let Err(crossbeam_channel::TrySendError::Full(update)) =
+                                    output.try_send(update)
+                                {
+                                    // Automatic updates coalesce and retire on this worker.
+                                    let _ = superseded.try_recv();
+                                    let _ = output.try_send(update);
+                                }
+                            }
                         }
                     }
-                    match jobs.recv_timeout(interval) {
+                    next = match jobs.recv_timeout(interval) {
                         Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
-                        _ => {}
-                    }
+                        Ok(job) => job,
+                        Err(crossbeam_channel::RecvTimeoutError::Timeout) => Job::Wake,
+                    };
                 }
             })?;
         Ok(Self {
             requests: Some(requests),
             results,
+            forced_results,
+            forced_busy: AtomicBool::new(false),
             stop,
             worker: Some(worker),
         })
@@ -105,9 +135,28 @@ impl Loader {
     pub fn poll(&self) -> Option<Arc<Update>> {
         self.results.try_recv().ok()
     }
+    pub fn force(&self, generation: u64) -> Result<(), &'static str> {
+        if self.forced_busy.swap(true, Ordering::AcqRel) {
+            return Err("theme worker already has an outstanding reload");
+        }
+        if self
+            .requests
+            .as_ref()
+            .is_none_or(|send| send.try_send(Job::Force(generation)).is_err())
+        {
+            self.forced_busy.store(false, Ordering::Release);
+            return Err("theme worker request slot is unavailable");
+        }
+        Ok(())
+    }
+    pub fn poll_forced(&self) -> Option<Forced> {
+        let result = self.forced_results.try_recv().ok()?;
+        self.forced_busy.store(false, Ordering::Release);
+        Some(result)
+    }
     #[cfg(test)]
     pub(super) fn request(&self) {
-        let _ = self.requests.as_ref().unwrap().try_send(());
+        let _ = self.requests.as_ref().unwrap().try_send(Job::Wake);
     }
 }
 impl Drop for Loader {
@@ -182,6 +231,7 @@ struct Reader<R> {
     font_source: Option<(FontSource, Identity)>,
     diagnostics: Vec<String>,
     first: bool,
+    strict_after_failure: bool,
 }
 impl<R: Resolver> Reader<R> {
     fn new(theme: Theme, resolver: R) -> Self {
@@ -194,9 +244,19 @@ impl<R: Resolver> Reader<R> {
             font_source: None,
             diagnostics: Vec::new(),
             first: true,
+            strict_after_failure: false,
         }
     }
-    fn read(&mut self) -> Option<Arc<Update>> {
+    fn sample(
+        &mut self,
+        force: bool,
+    ) -> (
+        Theme,
+        Arc<FontDefinitions>,
+        Option<(FontSource, Identity)>,
+        Vec<String>,
+    ) {
+        let mut font_source = self.font_source.clone();
         let mut theme = self.current.theme.clone();
         let mut diagnostics = Vec::new();
         match read_text(&theme.path)
@@ -227,7 +287,7 @@ impl<R: Resolver> Reader<R> {
         let mut fonts = self.current.fonts.clone();
         match self.resolver.resolve().and_then(|source| {
             let identity = Identity::read(&source.path)?;
-            if self.font_source.as_ref() == Some(&(source.clone(), identity.clone())) {
+            if !force && self.font_source.as_ref() == Some(&(source.clone(), identity.clone())) {
                 return Ok(None);
             }
             let (bytes, identity) = read_file(&source.path, FONT_LIMIT)?;
@@ -250,18 +310,54 @@ impl<R: Resolver> Reader<R> {
         }) {
             Ok(Some((source, identity, definitions))) => {
                 theme.font = source.family.clone();
-                self.font_source = Some((source, identity));
+                font_source = Some((source, identity));
                 fonts = definitions;
             }
             Ok(None) => {}
             Err(error) => diagnostics.push(format!("font: {error}; keeping previous font")),
         }
+        (theme, fonts, font_source, diagnostics)
+    }
+    fn report(&mut self, diagnostics: Vec<String>) {
         if diagnostics != self.diagnostics {
             for diagnostic in &diagnostics {
                 eprintln!("omatainer theme: {diagnostic}");
             }
             self.diagnostics = diagnostics;
         }
+    }
+    fn force(&mut self) -> Result<Arc<Update>, String> {
+        let (theme, fonts, font_source, diagnostics) = self.sample(true);
+        if !diagnostics.is_empty() {
+            let failure = diagnostics.join("; ");
+            self.report(diagnostics);
+            // An explicit failed transaction must not be followed by a partial
+            // automatic publication of that same invalid resource bundle.
+            self.strict_after_failure = true;
+            return Err(failure);
+        }
+        self.report(diagnostics);
+        self.strict_after_failure = false;
+        // The GUI may cancel this ticket before applying it. Keep the normal
+        // watcher able to publish the valid bundle once on its next check. It
+        // shares these font definitions, so an already-applied force does not
+        // cause a second font-byte installation.
+        self.first = true;
+        self.font_source = font_source;
+        self.current = Arc::new(Update { theme, fonts });
+        Ok(self.current.clone())
+    }
+    fn read(&mut self) -> Option<Arc<Update>> {
+        let (theme, fonts, font_source, diagnostics) = self.sample(false);
+        let valid = diagnostics.is_empty();
+        self.report(diagnostics);
+        if self.strict_after_failure && !valid {
+            return None;
+        }
+        if valid {
+            self.strict_after_failure = false;
+        }
+        self.font_source = font_source;
         if self.first || theme != self.current.theme || !Arc::ptr_eq(&fonts, &self.current.fonts) {
             self.first = false;
             self.current = Arc::new(Update { theme, fonts });

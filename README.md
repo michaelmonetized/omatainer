@@ -266,6 +266,7 @@ shared `/tmp/omatainer.sock` endpoint is never used or removed.
 
 ```bash
 omatainer ctl status
+omatainer ctl reload-theme
 omatainer ctl togglePlay
 omatainer ctl scene 1 # scene numbers are 1 through 8
 omarchy-shell -q omatainer togglePlay
@@ -290,6 +291,15 @@ queued for audio processing. The response's state fields are the latest publishe
 snapshot and may precede execution; use `ctl status` or `ctl follow` for updates.
 Full or disconnected queues return `ok: false`, `accepted: false`, and an error.
 Status queries have null `accepted` and `command_status` fields.
+
+`ctl reload-theme` forces a fresh colors, shell-size and selected-font read on the
+background theme worker. It returns `event: "theme", status: "applied"` only after
+the GUI installs the valid result. Saved follow-theme, font-size override and UI
+scale preferences remain authoritative; the response reports that effective
+appearance. Invalid resources return a correlated error and preserve the usable
+style. The server waits at most 3 seconds and this CLI operation reads for at most
+4 seconds (ordinary control/status still uses 800 ms). A timeout after application
+begins reports an unknown outcome; it does not claim to undo a visible change.
 
 `ctl follow` maintains one read-only status connection, with at most four updates
 per second. It reconnects after a server restart with bounded backoff (up to four

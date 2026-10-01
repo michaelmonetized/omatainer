@@ -104,6 +104,7 @@ fn typed_opcode_schemas_reject_extra_fields_and_dispatch_exact_valid_boundaries(
         "ping",
         "status",
         "follow",
+        "reload-theme",
         "play",
         "stop",
         "togglePlay",
