@@ -1,5 +1,5 @@
 use super::*;
-use dsp::{Env, OnePole};
+use dsp::{Env, OnePole, Svf};
 use fx::{FxChain, FxId, FxSlot};
 
 fn engine() -> RtEngine {

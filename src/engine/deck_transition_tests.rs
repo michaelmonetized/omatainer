@@ -324,8 +324,8 @@ fn transitions_clear_old_channel_filter_history_and_end_of_file_grains() {
     for channel in 0..2 {
         rt.decks[0].eq[channel].low.z = 0.5;
         rt.decks[0].eq[channel].high.z = -0.3;
-        rt.decks[0].filter[channel].ic1eq = 0.2;
-        rt.decks[0].filter[channel].ic2eq = 0.4;
+        rt.decks[0].filter[channel].history[0] = 0.2;
+        rt.decks[0].filter[channel].history[1] = 0.4;
     }
     rt.apply(Command::DeckSeek {
         deck: 0,
@@ -334,8 +334,8 @@ fn transitions_clear_old_channel_filter_history_and_end_of_file_grains() {
     for channel in 0..2 {
         assert_eq!(rt.decks[0].eq[channel].low.z, 0.0);
         assert_eq!(rt.decks[0].eq[channel].high.z, 0.0);
-        assert_eq!(rt.decks[0].filter[channel].ic1eq, 0.0);
-        assert_eq!(rt.decks[0].filter[channel].ic2eq, 0.0);
+        assert_eq!(rt.decks[0].filter[channel].history[0], 0.0);
+        assert_eq!(rt.decks[0].filter[channel].history[1], 0.0);
     }
     rt.apply(Command::DeckSeek { deck: 0, frac: 1.0 });
     rt.render_deck(0);
