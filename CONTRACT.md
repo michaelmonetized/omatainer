@@ -205,3 +205,11 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   selected source disappears, selection clamps to a valid neighboring row.
 - Clicking a row focuses the crate. Up/Down, Page Up/Down and Home/End move and
   reveal selection while that list has focus. Search-field arrows edit text.
+
+## Deck filter sweep
+
+- Center (`0.47` through `0.53`) is transparent. Leftward motion monotonically
+  increases low-pass attenuation; rightward motion independently increases
+  high-pass attenuation. Each channel has independent filter history.
+- The active response meets bypass continuously, with a bounded 5 ms control
+  slew for full-range jumps. Returning to center clears old branch history.
