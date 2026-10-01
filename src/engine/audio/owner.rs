@@ -665,6 +665,7 @@ pub(crate) mod tests {
         pub calibration_block: AtomicBool,
         pub entering_calibration: AtomicBool,
         pub opens: AtomicUsize,
+        pub alternate_device: AtomicBool,
         pub renders: AtomicUsize,
         pub dropped: AtomicUsize,
     }
@@ -686,10 +687,11 @@ pub(crate) mod tests {
     impl Backend for Fake {
         type Stream = Stream;
         fn select(&mut self, settings: &crate::preferences::Audio) -> Result<config::Plan, String> {
+            let device = if self.controls.alternate_device.load(Ordering::Acquire) { "Alternate fixture" } else { "Fixture" };
             if settings
                 .device
                 .as_deref()
-                .is_some_and(|name| name != "Fixture")
+                .is_some_and(|name| name != device)
             {
                 return Err("Requested fixture output missing".into());
             }
@@ -699,7 +701,7 @@ pub(crate) mod tests {
             }
             Ok(config::Plan {
                 backend: "Fixture".into(),
-                device: "Fixture".into(),
+                device: device.into(),
                 channels: settings.channels.unwrap_or(2),
                 rate,
                 format: cpal::SampleFormat::F32,
