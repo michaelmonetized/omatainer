@@ -267,3 +267,60 @@ fn failure(detail: &str) -> DecodeFailure {
         detail: detail.into(),
     }
 }
+
+fn sampler_request(name: &str) -> crate::sampler_bank::prepare::Request {
+    crate::sampler_bank::prepare::Request {
+        epoch: 91, revision: 7, sample_rate: 48_000,
+        operation: crate::sampler_bank::prepare::Operation::Empty { name: name.into() },
+        catalog: Arc::new(crate::library::Catalog::default()),
+    }
+}
+fn sampler_ready(loader: &Loader) -> SamplerCompletion {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        if let Some(done) = loader.take_sampler_ready() { return done; }
+        assert!(Instant::now() < deadline, "sampler decoder lane did not complete");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+#[test]
+fn typed_sampler_lane_shares_one_decoder_and_supersession_cannot_redirect_to_a_deck_or_selection() {
+    let (started, seen) = mpsc::channel(); let (release, wait) = mpsc::channel();
+    let loader = Loader::with_decoder(move |path, token| {
+        if path == Path::new("blocked deck A") { started.send(()).unwrap(); wait.recv().unwrap(); }
+        Ok(sample(&format!("deck {}", token.deck)))
+    }).unwrap();
+    loader.request(0, "blocked deck A".into()).unwrap(); seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    let owner = crate::sampler_bank::assets::Owner::isolated_for_test(crate::sampler_bank::assets::Budget::limits());
+    let old = loader.request_sampler(sampler_request("old"), owner.clone()).unwrap();
+    let next = loader.request_sampler(sampler_request("captured target"), owner.clone()).unwrap();
+    loader.request(1, "deck B".into()).unwrap();
+    assert!(!old.is_current()); assert_eq!(old.ack.state(), super::sampler::EditState::Rejected);
+    assert!(loader.take_sampler_ready().is_none());
+    {
+        let state = loader.shared.state.lock().unwrap();
+        assert_eq!(state.pending.iter().flatten().count(), 1);
+        assert!(state.sampler_pending.is_some());
+    }
+    release.send(()).unwrap();
+    let done = sampler_ready(&loader); assert_eq!(done.token.id, next.id);
+    let prepared = done.result.unwrap();
+    assert_eq!(prepared.bank.name(), "captured target");
+    assert_eq!(prepared.epoch, 91); assert_eq!(prepared.target, super::sampler::Target::Append { revision: 7 });
+    assert!(prepared.verified_sources.is_empty());
+    assert_eq!(ready(&loader, 1).result.unwrap().sample.name, "deck 1");
+    loader.invalidate_sampler(); assert!(!next.is_current()); assert!(loader.take_sampler_ready().is_none());
+}
+
+#[test]
+fn protection_cancels_prepared_but_unpublished_sampler_work_and_queued_edits_keep_correlated_ack() {
+    let policy = super::performance::Handle::default();
+    let loader = Loader::with_worker(|_, _| Ok(sample("unused")), policy.clone()).unwrap();
+    let owner = crate::sampler_bank::assets::Owner::isolated_for_test(crate::sampler_bank::assets::Budget::limits());
+    let token = loader.request_sampler(sampler_request("pending preview"), owner).unwrap();
+    let done = sampler_ready(&loader); assert!(done.result.is_ok());
+    policy.set_enabled(true).unwrap();
+    assert!(done.work.cancelled()); assert!(done.work.commit().is_err());
+    token.cancel(); assert_eq!(token.ack.state(), super::sampler::EditState::Rejected);
+    assert!(loader.request_sampler(sampler_request("refused"), crate::sampler_bank::assets::Owner::isolated_for_test(crate::sampler_bank::assets::Budget::limits())).is_err());
+}

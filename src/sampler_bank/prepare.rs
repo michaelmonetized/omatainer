@@ -40,6 +40,9 @@ pub(crate) struct Prepared {
     pub epoch: u64,
     pub target: sampler::Target,
     pub bank: sampler::Bank,
+    /// Fresh measurements only: never copied from project/definition metadata.
+    /// Persist after this request's renderer acknowledgement is Applied.
+    pub verified_sources: Vec<SourceRef>,
 }
 impl Prepared {
     pub fn command(self, ack: sampler::Ack) -> crate::engine::Command {
@@ -156,13 +159,14 @@ pub(crate) fn run(
     }
     let reservation = owner.reserve(budget).map_err(|e| e.to_string())?;
     let mut pcm_remaining = budget.pcm_bytes;
+    let mut verified_sources = Vec::with_capacity(SLOTS);
     for slot in 0..SLOTS {
         check()?;
         if !reload[slot] { continue; }
         let source = settings.slots[slot].source.clone().ok_or("missing slot source")?;
-        let result: Result<_, String> = match source {
+        let result: Result<_, SourceError> = match source {
             Source::Library { reference } => {
-                reference.resolve(&request.catalog).and_then(|mut reference| {
+                reference.resolve(&request.catalog).map_err(SourceError::from).and_then(|mut reference| {
                     let (sample, hash) = decode_reference(&reference, pcm_remaining, &cancelled)?;
                     reference.content_hash = Some(hash);
                     Ok((Arc::new(sample), Source::Library { reference }))
@@ -181,32 +185,39 @@ pub(crate) fn run(
                 // Shared factory PCM already has its own registered credit.
                 if matches!(source, Source::Library { .. }) {
                     pcm_remaining = pcm_remaining.checked_sub(bytes).ok_or("sampler aggregate PCM limit exceeded")?;
+                    if let Source::Library { reference } = &source { verified_sources.push(reference.clone()); }
                 }
                 settings.slots[slot].controls.frames(sample.sr, sample.frames())?;
                 settings.slots[slot].source = Some(source);
                 audio[slot] = Some(sample);
                 issues[slot] = None;
             }
-            Err(error) if tolerate_missing && !cancelled() => {
+            Err(error) if tolerate_missing && error.missing && !cancelled() => {
                 audio[slot] = None;
-                issues[slot] = Some(error.chars().take(2048).collect());
+                issues[slot] = Some(error.message.chars().take(2048).collect());
             }
-            Err(error) => return Err(error),
+            Err(error) => return Err(error.message),
         }
     }
     check()?;
     let data = resident::Data::prepare(Arc::new(settings), audio, issues)?;
     let data = reservation.publish(Arc::new(data)).map_err(|e| e.to_string())?;
     check()?;
-    Ok(Prepared { epoch: request.epoch, target,
+    Ok(Prepared { epoch: request.epoch, target, verified_sources,
         bank: sampler::Bank { id, revision: 0, factory: None, data } })
 }
+
+#[derive(Debug)]
+struct SourceError { message: String, missing: bool }
+impl From<String> for SourceError { fn from(message: String) -> Self { Self { message, missing: true } } }
+impl From<&str> for SourceError { fn from(message: &str) -> Self { message.to_string().into() } }
+impl std::fmt::Display for SourceError { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { self.message.fmt(f) } }
 
 fn decode_reference(
     reference: &SourceRef,
     pcm_limit: u64,
     cancelled: &impl Fn() -> bool,
-) -> Result<(crate::engine::dsp::Sample, [u8; 32]), String> {
+) -> Result<(crate::engine::dsp::Sample, [u8; 32]), SourceError> {
     let path = reference.path()?;
     let mut file = OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path).map_err(|e| format!("sampler source unavailable: {e}"))?;
@@ -243,7 +254,12 @@ fn decode_reference(
     stable(&file)?;
     file.rewind().map_err(|e| e.to_string())?;
     let copy = file.try_clone().map_err(|e| e.to_string())?;
-    let decoded = decode::decode_sampler_file(path, copy, pcm_limit, cancelled).map_err(|e| e.to_string())?;
+    let decoded = decode::decode_sampler_file(path, copy, pcm_limit, cancelled).map_err(|e| SourceError {
+        missing: e.kind != decode::DecodeFailureKind::Capacity, message: e.to_string(),
+    })?;
     stable(&file)?;
     Ok((decoded.sample, hash))
 }
+
+#[cfg(test)]
+mod tests;

@@ -567,6 +567,7 @@ impl RtEngine {
         self.sampler_poly.set_sample_rate(self.sr);
         self.pad_targets.fill(None);
         self.pad_voices.fill(None);
+        if let Some(active) = &self.sampler_audition { active.ended(); }
         self.sampler_audition = None;
         self.pad_output.fill([0.0; 2]);
         for chain in &mut self.scene_fx {

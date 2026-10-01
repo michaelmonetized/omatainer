@@ -715,7 +715,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
-        self.sampler_audition = None;
+        self.finish_sampler_audition();
         // Finite sample one-shots keep their existing Arc ownership and natural
         // tails. Emergency silence is applied after the entire output chain.
         for deck in &mut self.decks {

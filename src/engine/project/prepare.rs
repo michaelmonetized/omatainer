@@ -178,6 +178,7 @@ impl Prepared {
     }
 
     pub(super) fn swap_into(&mut self, rt: &mut RtEngine) {
+        if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership
         // in the retired graph until this Prepared is dropped on the worker.
         for deck in &rt.decks {

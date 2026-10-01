@@ -1,7 +1,7 @@
 //! Renderer bank identities and immutable prepared edit requests.
 use super::*;
 use crate::sampler_bank::{assets, resident, BankId, Factory, Slot, Source, SLOTS};
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 pub(crate) const MAX_BANKS: usize = 16;
 
@@ -44,32 +44,37 @@ pub(crate) enum EditState {
     Rejected,
 }
 #[derive(Clone, Debug)]
-pub(crate) struct Ack(Arc<AtomicU8>);
+pub(crate) struct Ack(Arc<AckState>);
+#[derive(Debug)]
+struct AckState { state: AtomicU8, ended: AtomicBool }
 impl Ack {
     pub fn new() -> Self {
-        Self(Arc::new(AtomicU8::new(0)))
+        Self(Arc::new(AckState { state: AtomicU8::new(0), ended: AtomicBool::new(false) }))
     }
     pub fn state(&self) -> EditState {
-        match self.0.load(Ordering::Acquire) {
+        match self.0.state.load(Ordering::Acquire) {
             1 => EditState::Applied,
             2 => EditState::Rejected,
             _ => EditState::Pending,
         }
     }
+    /// Audition completion is renderer-owned and observable even when a short
+    /// voice starts and finishes between two snapshot publications.
+    pub fn ended(&self) -> bool { self.0.ended.load(Ordering::Acquire) }
     /// A cancellation before renderer ownership wins. Once claimed, the
     /// renderer reports its actual commit or rejection; late cancellation never
     /// rewrites an applied edit as a failure.
     pub fn cancel(&self) -> bool {
-        self.0.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire).is_ok()
+        self.0.state.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire).is_ok()
     }
     pub(in crate::engine) fn claim(&self) -> bool {
-        self.0.compare_exchange(0, 3, Ordering::AcqRel, Ordering::Acquire).is_ok()
+        self.0.state.compare_exchange(0, 3, Ordering::AcqRel, Ordering::Acquire).is_ok()
     }
     pub(super) fn applied(&self) {
-        self.0.store(1, Ordering::Release);
+        self.0.state.store(1, Ordering::Release);
     }
     pub(crate) fn reject(&self) {
-        let _ = self.0.fetch_update(Ordering::AcqRel, Ordering::Acquire,
+        let _ = self.0.state.fetch_update(Ordering::AcqRel, Ordering::Acquire,
             |state| matches!(state, 0 | 3).then_some(2));
     }
 }
@@ -80,6 +85,15 @@ pub(crate) struct Audition {
     pub slot: u8,
     pub track: u8,
     pub ack: Ack,
+}
+#[derive(Debug)]
+pub(crate) struct ActiveAudition {
+    pub id: u64,
+    pub voice: resident::Voice,
+    request: Audition,
+}
+impl ActiveAudition {
+    pub(super) fn ended(&self) { self.request.ack.0.ended.store(true, Ordering::Release); }
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Edit {
@@ -150,13 +164,22 @@ impl RtEngine {
         {
             request.ack.reject();
         } else {
-            self.sampler_audition = Some((request.id, resident::Voice::new(
-                request.bank.audio[slot].as_ref().unwrap().clone(),
-                request.bank.ranges[slot].unwrap(), request.bank.settings.slots[slot].controls,
-                1.0, track)));
+            self.finish_sampler_audition();
+            self.sampler_audition = Some(ActiveAudition { id: request.id,
+                voice: resident::Voice::new(request.bank.audio[slot].as_ref().unwrap().clone(),
+                    request.bank.ranges[slot].unwrap(), request.bank.settings.slots[slot].controls, 1.0, track),
+                request: request.clone() });
             request.ack.applied();
         }
         self.undo.retire_command(Command::SamplerAudition(request));
+    }
+    pub(super) fn finish_sampler_audition(&mut self) {
+        if let Some(active) = self.sampler_audition.take() {
+            active.request.ack.0.ended.store(true, Ordering::Release);
+            self.undo.retire_command(Command::SamplerAudition(active.request));
+            // The source PCM still has the independent asset-worker pin.
+            drop(active.voice);
+        }
     }
     pub(super) fn sampler_edit_index(&self, edit: &Edit) -> Option<usize> {
         if edit.epoch != self.undo.checkpoint().epoch
