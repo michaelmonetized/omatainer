@@ -287,6 +287,9 @@ def private(binary):
         assert state()['help_lesson'][2] and state()['lesson_notes']==1
         action(named('Cancel lesson'),'click')
         wait_for(lambda:state()['help_lesson'] is None,'cancel guide only')
+        sys.dont_write_bytecode = True  # Keep fixture imports out of the source checkout.
+        from check_grid_accessibility import verify_grid
+        grid_evidence=verify_grid(named, action, state, wait_for, Atspi)
         result=state()
         expected={'Focus','SetValue','Click'}
         assert expected.issubset({a['action'] for a in result['actions']}),result
@@ -297,7 +300,7 @@ def private(binary):
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
                           'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
-                          'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
+                          'beatgrid':grid_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',

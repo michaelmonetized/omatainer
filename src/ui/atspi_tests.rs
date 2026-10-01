@@ -151,6 +151,7 @@ fn private_atspi_bridge_child() {
         let undo = app.engine.undo.view();
         let evidence = serde_json::json!({"pid":std::process::id(),"frames":frames,"actions":actions,
             "pitch":rt.decks[0].pitch,"playing":rt.decks[0].playing,"loaded":rt.decks[0].audio.is_some(),
+            "grid":rt.decks[0].grid,"grid_editor":app.grid_editor.as_ref().map(grid_editor::Editor::evidence),
             "hotcue_1":rt.decks[0].hotcues[0].set,"pad_held":app.pad_held[0],"focus":focus,
             "sampler_instrument":rt.sampler_inst.label(),"held_pad_voices":held_pad_voices,
             "pad_sample_active":rt.pad_voices[0].is_some(),
