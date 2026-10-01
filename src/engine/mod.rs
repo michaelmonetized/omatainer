@@ -2437,7 +2437,7 @@ impl Engine {
         let rt = RtEngine::new(48000.0, rx, snap.clone());
         let audio = audio::start(rt)?;
         let sample_rate = audio.sr;
-        let midi = midi::MidiHub::start(tx.clone())?;
+        let midi = midi::MidiHub::start(tx.clone(), snap.clone())?;
         Ok(Self {
             cmd: tx,
             ui_requests,
@@ -2475,13 +2475,6 @@ impl Engine {
         let mut s = self.snap.lock().clone();
         s.audio = self.cmd.audio_metrics();
         s.cpu = s.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
-        s.midi = self
-            .midi
-            .devices
-            .lock()
-            .iter()
-            .map(|d| format!("{} · {}", d.name, d.map))
-            .collect();
         s
     }
 
