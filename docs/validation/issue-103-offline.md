@@ -11,8 +11,9 @@ create sockets outside the syscall rules. It closes inherited descriptors above
 stdio and rejects socket stdio. The filter persists across exec and descendants.
 The parent process and desktop network configuration are unchanged.
 
-Every invocation verifies refused IPv4/IPv6 TCP/UDP socket creation and working
-Unix socketpair/listener traffic. Failure to install the filter, unexpected
+Every invocation verifies refused IPv4/IPv6 TCP/UDP socket creation, an actual
+io_uring setup syscall returning EPERM, and working Unix socketpair/listener
+traffic. Failure to install the filter, unexpected
 negative-control behavior, an untrusted receipt directory or occupied receipt
 fails before the requested executable runs. Receipts are fresh 0600 files in an
 effective-UID-owned 0700 directory, bounded to 16 KiB. The supported guard hosts

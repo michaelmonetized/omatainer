@@ -53,6 +53,7 @@ print(json.dumps({'uid':os.geteuid(),'denied':len(result),'home':os.environ.get(
         self.assertEqual(set(record['direct_network'].values()), {'EPERM'})
         self.assertTrue(record['unix_listener'] and record['unix_socketpair'])
         self.assertTrue(record['no_new_privileges'] and record['seccomp_filter'])
+        self.assertEqual(record['io_uring_setup'], 'EPERM')
         self.assertEqual((self.root / 'guard.json').stat().st_mode & 0o777, 0o600)
         self.assertFalse((self.root / 'network-guard.sock').exists())
 
