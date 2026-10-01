@@ -335,3 +335,14 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   2 s, then at most 4 s.
   A valid frame resets backoff. Closed output exits successfully; process exit
   closes the socket. A reconnect never retries a musical control command.
+## Shell scene arguments
+
+- `Service.scene(n)` and public shell IPC `omatainer.scene` use one-based scene
+  numbers 1 through 8, matching `omatainer ctl scene <n>`. The CLI alone converts
+  them to the protocol's zero-based `n` and engine scene indexes 0 through 7.
+- Every queued shell scene command captures its own separate CLI argument.
+  Its receipt and final result retain that argument, even when several different
+  scenes are waiting. Command acceptance still does not mean audio application.
+- Invalid scene inputs return an explicit rejected result without queuing or
+  starting a control process. Fractions, nonnumeric strings, booleans, missing
+  values and out-of-range numbers never collapse to scene 1.

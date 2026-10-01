@@ -10,6 +10,8 @@ mod runtime;
 #[cfg(test)]
 mod scene_index_tests;
 #[cfg(test)]
+mod shell_scene_tests;
+#[cfg(test)]
 mod ipc_control_tests;
 #[cfg(test)]
 mod ipc_error_tests;

@@ -99,12 +99,21 @@ omatainer ctl status
 omatainer ctl togglePlay
 omatainer ctl scene 1 # scene numbers are 1 through 8
 omarchy-shell -q omatainer togglePlay
+omarchy-shell omatainer scene 3 # shell scenes are also 1 through 8
 ```
 
 `ctl scene` requires exactly one integer from 1 through 8. The control socket's
 JSON scene operation uses zero-based indexes instead: `{"op":"scene","n":0}`
 launches scene 1, and `n` must be an integer from 0 through 7. Invalid scene
 requests return `{"ok":false,"error":"..."}` without changing the session.
+
+The shell service's `scene(n)` and public `omatainer.scene` IPC method also take
+one-based scene numbers 1 through 8. They validate before queuing, preserve the
+number as a separate CLI argument, and report invalid requests as `rejected`
+with `accepted: false` without launching a control process. For example,
+`omarchy-shell omatainer scene 3` runs `omatainer ctl scene 3`, which sends
+`{"op":"scene","n":2}`. Queued/result records include the captured `arguments`
+array so multiple pending scene requests remain distinguishable.
 
 Control commands return `accepted: true` and `command_status: "accepted"` when
 queued for audio processing. The response's state fields are the latest published
