@@ -20,6 +20,22 @@ const TEXT_LIMIT: usize = 64 * 1024;
 const FONT_LIMIT: usize = 32 * 1024 * 1024;
 pub(super) const SELECTED: &str = "omatainer-selected";
 
+/// Keep every bundled fallback available to both UI text families. Some
+/// transport symbols (for example ⇄) exist in Hack but not Ubuntu/emoji fonts.
+/// Preserve each family's established order and append only missing fallbacks.
+pub(crate) fn fallback_fonts() -> FontDefinitions {
+    let mut fonts = FontDefinitions::default();
+    let fallbacks: Vec<_> = fonts.families.values().flatten().cloned().collect();
+    for family in fonts.families.values_mut() {
+        for fallback in &fallbacks {
+            if !family.contains(fallback) {
+                family.push(fallback.clone());
+            }
+        }
+    }
+    fonts
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct FontSource {
     family: String,
@@ -172,7 +188,7 @@ impl<R: Resolver> Reader<R> {
         Self {
             current: Arc::new(Update {
                 theme,
-                fonts: Arc::new(FontDefinitions::default()),
+                fonts: Arc::new(fallback_fonts()),
             }),
             resolver,
             font_source: None,
@@ -217,7 +233,7 @@ impl<R: Resolver> Reader<R> {
             let (bytes, identity) = read_file(&source.path, FONT_LIMIT)?;
             ab_glyph::FontRef::try_from_slice_and_index(&bytes, source.index)
                 .map_err(|_| "selected font bytes or face index are invalid".to_owned())?;
-            let mut definitions = FontDefinitions::default();
+            let mut definitions = fallback_fonts();
             let mut data = FontData::from_owned(bytes);
             data.index = source.index;
             definitions

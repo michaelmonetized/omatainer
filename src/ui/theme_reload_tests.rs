@@ -2,7 +2,11 @@ use super::{test_support::Fixture, *};
 use crate::theme::reload::test_support::{self as sources, Fixture as Sources};
 use std::time::Duration;
 
-fn frame(ctx: &egui::Context, fixture: &mut Fixture, time: &mut f64) -> egui::FullOutput {
+pub(super) fn frame(
+    ctx: &egui::Context,
+    fixture: &mut Fixture,
+    time: &mut f64,
+) -> egui::FullOutput {
     *time += 0.02;
     let output = ctx.run(
         egui::RawInput {
@@ -32,7 +36,7 @@ fn probe(output: &egui::FullOutput) -> Vec2 {
         })
         .unwrap()
 }
-fn installed(ctx: &egui::Context) -> Arc<egui::FontData> {
+pub(super) fn installed(ctx: &egui::Context) -> Arc<egui::FontData> {
     ctx.fonts(|fonts| {
         let fonts = fonts.lock();
         let definitions = fonts.fonts.definitions();

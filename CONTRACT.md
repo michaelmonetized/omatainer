@@ -452,3 +452,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Text inputs are capped at 64 KiB and font data at 32 MiB. Fontconfig has a
   500 ms deadline and 4096-byte limits on each output stream. Diagnostics are
   emitted only when they change. A slow filesystem never blocks GUI teardown.
+
+## Selected font and glyph fallback
+
+- Fontconfig's resolved installed `monospace` face is first in both proportional
+  and monospace UI text families. Its exact file bytes and face index are used;
+  there is no fixed JetBrains override. Fontconfig may choose an installed
+  substitute when the configured family is unavailable.
+- All bundled glyph fallbacks remain available in both families, preserving each
+  family's existing fallback order. This includes transport symbols such as
+  `⇄` that some selected fonts and the default proportional chain lack.
+- Before a valid selection is available, bundled Ubuntu/Hack/emoji fonts provide
+  the fallback. If a later resolution or file validation fails, the last loaded
+  valid font remains active until recovery. Discovery and font reads retain the
+  background-worker and resource limits of the theme-reload contract.
