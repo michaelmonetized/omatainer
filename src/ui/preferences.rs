@@ -87,7 +87,7 @@ impl Settings {
         self.applied.current().expect("validated settings")
     }
     pub fn pending_restart(&self) -> bool {
-        self.profile().audio != self.running_audio
+        !self.profile().audio.output_eq(&self.running_audio)
     }
     pub fn busy(&self) -> bool {
         self.worker.as_ref().is_some_and(Worker::busy)
@@ -141,7 +141,7 @@ impl Settings {
                 self.revision = saved.revision;
                 self.blocked = self.revision.is_none();
                 self.preview = None;
-                self.message = saved.warning.unwrap_or_else(|| "Preferences saved. MIDI application is acknowledged below; audio changes take effect after restart.".into());
+                self.message = saved.warning.unwrap_or_else(|| "Preferences saved. MIDI application is acknowledged below; use Audio devices to confirm a live output change, or restart.".into());
                 return true;
             }
             Event::Imported(preferences, migrated) => {
@@ -267,12 +267,13 @@ impl App {
         egui::Window::new("Preferences and profiles").id(egui::Id::new("preferences-window"))
             .open(&mut open).default_width(680.0).default_height(620.0).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
-                ui.label("Audio applies after restart. MIDI, folders, appearance and shortcuts apply after a successful save.");
+                ui.label("Apply saves preferences. MIDI, folders, appearance and shortcuts follow that save. Audio can be applied explicitly in Audio devices, or after restart.");
+                if ui.button("Audio devices and latency").clicked() { self.audio_settings.open = true; }
                 if let Some(path) = &state.path { ui.label(format!("Preferences file: {}", path.display())); }
                 if let Some(info) = self.engine.output_info() {
                     ui.label(format!("Running: {} · {} Hz · {} · {}", info.plan.device, info.plan.rate, info.format, info.plan.route()));
                 } else { ui.label("Audio device unavailable in this session"); }
-                if state.pending_restart() { ui.colored_label(Color32::YELLOW, "Audio changes pending restart"); }
+                if state.pending_restart() { ui.colored_label(Color32::YELLOW, "Saved audio differs from running intent; use Audio devices or restart"); }
                 ui.label(&state.message);
                 if !state.message.is_empty() && !state.busy() && ui.button("Dismiss preferences notice").clicked() { state.message.clear(); }
 
@@ -327,14 +328,7 @@ impl App {
                         });
                         if let Some(profile) = state.draft.profiles.get_mut(&state.edited) {
                             ui.separator(); ui.heading("Audio output · restart required");
-                            let mut device = profile.audio.device.clone().unwrap_or_default();
-                            if text(ui, "Exact audio output name (empty = system default)", &mut device) { profile.audio.device = (!device.is_empty()).then_some(device); }
-                            if let Some(inventory) = &state.inventory { for device in &inventory.devices { ui.label(format!("Available: {}{}", device.name, if device.default { " (system default)" } else { "" })); } }
-                            optional_u32(ui, "Sample rate Hz", &mut profile.audio.sample_rate, 8_000..=384_000, 48_000);
-                            let mut channels = profile.audio.channels.map(u32::from);
-                            optional_u32(ui, "Output channels", &mut channels, 1..=64, 2); profile.audio.channels = channels.map(|v| v as u16);
-                            optional_u32(ui, "Buffer frames", &mut profile.audio.buffer_frames, 16..=32768, 256);
-                            ui.label("Main left/right use outputs 1/2 (mono sums both); additional outputs are silent. There is no independent cue route.");
+                            audio_settings::edit_profile(ui, &mut profile.audio, state.inventory.as_ref());
                             ui.heading("MIDI inputs");
                             if let Some(policy)=self.engine.midi.policy_status(){
                                 ui.label(format!("Discovered MIDI names: {}",policy.available_inputs.join(", ")));
@@ -451,42 +445,7 @@ fn multiline(ui: &mut Ui, name: &str, value: &mut String) {
     )
     .labelled_by(label.id);
 }
-fn optional_u32(
-    ui: &mut Ui,
-    name: &str,
-    value: &mut Option<u32>,
-    range: std::ops::RangeInclusive<u32>,
-    default: u32,
-) {
-    ui.push_id(name, |ui| {
-        let mut custom = value.is_some();
-        if ui
-            .checkbox(
-                &mut custom,
-                format!("Set {name} (otherwise device default)"),
-            )
-            .changed()
-        {
-            *value = custom.then_some(default);
-        }
-        if let Some(value) = value {
-            let original = *value as f32;
-            let min = *range.start() as f32;
-            let max = *range.end() as f32;
-            let label = ui.label(name);
-            let response = ui
-                .add(egui::DragValue::new(value).range(range))
-                .labelled_by(label.id);
-            if let Some(alternate) =
-                accessibility::numeric(ui, &response, name, original, min, max, 1.0, "")
-            {
-                *value = alternate.round() as u32;
-            }
-        }
-    });
-}
-
-fn float_control(
+pub(super) fn float_control(
     ui: &mut Ui,
     name: &str,
     value: &mut f32,

@@ -8,7 +8,7 @@ use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 pub use model::State;
 pub use prepare::Prepared;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
 
 const PENDING: u8 = 0;
 const APPLYING: u8 = 1;
@@ -86,6 +86,7 @@ struct Shared {
     results: Receiver<Box<Task>>,
     busy: AtomicU8,
     revision: AtomicU64,
+    sample_rate: AtomicU32,
     release_seal: AtomicBool,
     #[cfg(test)]
     wait_limit_millis: AtomicU64,
@@ -100,6 +101,7 @@ enum Operation {
     Capture(capture::Frame),
     Seal {
         expected: Option<u64>,
+        audio: bool,
         guard: Option<CloseGuard>,
     },
     Install {
@@ -110,7 +112,7 @@ enum Operation {
 }
 
 impl Handle {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(sample_rate: u32) -> Self {
         let (request, incoming) = bounded(1);
         let (completed, results) = bounded(1);
         Self {
@@ -121,6 +123,7 @@ impl Handle {
                 results,
                 busy: AtomicU8::new(0),
                 revision: AtomicU64::new(0),
+                sample_rate: AtomicU32::new(sample_rate),
                 release_seal: AtomicBool::new(false),
                 #[cfg(test)]
                 wait_limit_millis: AtomicU64::new(WAIT_LIMIT.as_millis() as u64),
@@ -130,6 +133,12 @@ impl Handle {
     /// This atomic read is safe on the UI thread.
     pub fn revision(&self) -> u64 {
         self.shared.revision.load(Ordering::Acquire)
+    }
+    pub fn sample_rate(&self) -> u32 {
+        self.shared.sample_rate.load(Ordering::Acquire)
+    }
+    pub(super) fn set_sample_rate(&self, rate: u32) {
+        self.shared.sample_rate.store(rate, Ordering::Release);
     }
     pub(super) fn edited(&self) {
         self.shared.revision.fetch_add(1, Ordering::Release);
@@ -244,6 +253,21 @@ impl Handle {
         expected_revision: Option<u64>,
         cancel: &AtomicBool,
     ) -> Result<CloseGuard, Error> {
+        self.seal(expected_revision, false, cancel)
+    }
+
+    /// Worker only. Audio switching shares the exclusive project gate, without
+    /// discarding queued GUI intentions or pretending to be a clean Close.
+    pub fn seal_for_audio(&self, cancel: &AtomicBool) -> Result<CloseGuard, Error> {
+        self.seal(None, true, cancel)
+    }
+
+    fn seal(
+        &self,
+        expected_revision: Option<u64>,
+        audio: bool,
+        cancel: &AtomicBool,
+    ) -> Result<CloseGuard, Error> {
         self.begin()?;
         if cancel.load(Ordering::Acquire) {
             self.shared.busy.store(0, Ordering::Release);
@@ -252,6 +276,7 @@ impl Handle {
         let task = Box::new(Task {
             operation: Operation::Seal {
                 expected: expected_revision,
+                audio,
                 guard: None,
             },
             stage: Arc::new(AtomicU8::new(PENDING)),
@@ -365,12 +390,18 @@ impl RtEngine {
         } else {
             match &mut task.operation {
                 Operation::Capture(frame) => frame.capture(self),
-                Operation::Seal { expected, guard } => {
-                    if expected.is_some_and(|revision| {
-                        revision != self.project.revision()
-                            || self.has_held_project_notes()
-                            || self.cmd_rx.pending_project_ui_requests()
-                    }) {
+                Operation::Seal {
+                    expected,
+                    audio,
+                    guard,
+                } => {
+                    if (*audio && self.cmd_rx.pending_project_ui_requests())
+                        || expected.is_some_and(|revision| {
+                            revision != self.project.revision()
+                                || self.has_held_project_notes()
+                                || self.cmd_rx.pending_project_ui_requests()
+                        })
+                    {
                         task.error = Some(Error::Conflict);
                     } else {
                         self.project
@@ -389,6 +420,7 @@ impl RtEngine {
                     applied,
                 } => {
                     if self.project.revision() != *expected
+                        || prepared.rt.sr != self.sr
                         || self.cmd_rx.pending_project_ui_requests()
                     {
                         task.error = Some(Error::Conflict);
