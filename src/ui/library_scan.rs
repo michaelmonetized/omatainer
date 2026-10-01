@@ -353,7 +353,7 @@ fn scan(
                 bpm: Bpm::hint(bpm),
                 fingerprint: Some(fingerprint),
                 key,
-                length: 0.0,
+                length: None,
                 last_play: None,
                 source: LibSource::File(path.to_path_buf()),
             };
@@ -388,8 +388,8 @@ fn preserve_metadata(item: &mut LibItem, old: &LibItem) {
     if !old.key.is_empty() && old.key != "—" {
         item.key.clone_from(&old.key);
     }
-    if old.length.is_finite() && old.length > 0.0 {
-        item.length = old.length;
+    if old.fingerprint == item.fingerprint {
+        item.length = old.length.filter(|value| value.is_finite() && *value >= 0.0);
     }
     item.last_play = old.last_play;
 }

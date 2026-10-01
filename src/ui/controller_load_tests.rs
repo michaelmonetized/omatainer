@@ -147,7 +147,7 @@ fn file_item(path: PathBuf, title: &str) -> LibItem {
         bpm: Bpm::UNKNOWN,
             fingerprint: None,
         key: String::new(),
-        length: 0.0,
+        length: None,
         last_play: None,
     }
 }

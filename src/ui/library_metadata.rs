@@ -12,12 +12,22 @@ pub(super) struct Patch {
     pub source: LibSource,
     pub fingerprint: FileFingerprint,
     pub bpm: Bpm,
+    pub duration: Option<f64>,
 }
 
 impl Patch {
+    fn preserve_duration(&mut self, previous: &Self) {
+        if self.duration.is_none() && self.fingerprint == previous.fingerprint {
+            self.duration = previous.duration;
+        }
+    }
+
     fn apply(&self, item: &mut LibItem) {
         if item.source == self.source && item.fingerprint == Some(self.fingerprint) {
             item.bpm = item.bpm.reconcile(self.bpm);
+            if let Some(duration) = self.duration.filter(|value| value.is_finite() && *value >= 0.0) {
+                item.length = Some(duration);
+            }
         }
     }
 }
@@ -58,7 +68,12 @@ impl Default for Metadata {
             .spawn(move || {
                 let mut cache = HashMap::<LibSource, Patch>::new();
                 while let Ok(job) = work.recv() {
-                    for patch in job.updates {
+                    for mut patch in job.updates {
+                        // A BPM-only update cannot erase a known duration for
+                        // these same bytes; a replacement identity starts fresh.
+                        if let Some(previous) = cache.get(&patch.source) {
+                            patch.preserve_duration(previous);
+                        }
                         cache.insert(patch.source.clone(), patch);
                     }
                     let corrections: HashMap<_, _> = job
@@ -114,12 +129,13 @@ impl Default for Metadata {
 }
 
 impl Metadata {
-    pub fn update(&mut self, patch: Patch) {
+    pub fn update(&mut self, mut patch: Patch) {
         if let Some(old) = self
             .pending
             .iter_mut()
             .find(|old| old.source == patch.source)
         {
+            patch.preserve_duration(old);
             *old = patch;
         } else {
             self.pending.push(patch);
@@ -183,7 +199,7 @@ impl Metadata {
                     self.pending = job.updates;
                     self.retired_candidates = job._retired_candidates;
                     return Err(
-                        "crate metadata worker unavailable; BPM metadata was not refreshed",
+                        "crate metadata worker unavailable; library metadata was not refreshed",
                     );
                 }
             }

@@ -259,3 +259,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Zero mix emits dry input while processor history keeps advancing; full mix
   emits only the time-effect signal. Intermediate mix changes do not scale the
   stored feedback history or apply the wet coefficient a second time.
+
+## Crate duration
+
+- Files start with an explicitly unknown duration. Once a decoded file becomes
+  the current deck load, the crate records its playable frame count divided by
+  its own sample rate, independently of mono/stereo channel count or output rate.
+- Duration belongs to the source path and matching file fingerprint. Unchanged
+  rescans preserve it; replaced or changed files return to unknown until a valid
+  result for those bytes becomes current. Rejected, cancelled and stale loads
+  cannot update another row or supply an old file's duration.
+- The existing metadata worker merges duration and publishes the crate atomically.
+  Selection follows its source and visible cells refresh. Unknown displays as
+  `unknown`; a measured zero is distinct and displays as `0:00`. Display rounds
+  down to whole seconds while the cached value retains fractional seconds.

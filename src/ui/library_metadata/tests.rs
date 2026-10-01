@@ -208,6 +208,7 @@ fn rejected_cancelled_and_superseded_loads_do_not_publish_analysis() {
         }
         finish(&mut f);
         assert_eq!(find(&f, &path).bpm, Bpm::hint(155.0), "{mode}");
+        assert_eq!(find(&f, &path).length, None, "{mode} acquired a duration");
     }
 }
 
@@ -251,6 +252,7 @@ fn pending_metadata_rebases_on_new_arc_and_preserves_intervening_user_correction
         source: LibSource::File(path.clone()),
         fingerprint: find(&f, &path).fingerprint.unwrap(),
         bpm: Bpm::new(120.0, Origin::Heuristic),
+        duration: None,
     };
     f.app.library_metadata.update(patch);
     f.app.poll_library_metadata();
@@ -342,6 +344,7 @@ fn newer_patch_revision_wins_over_an_already_inflight_candidate() {
         source: LibSource::File(path.clone()),
         fingerprint: find(&f, &path).fingerprint.unwrap(),
         bpm: Bpm::new(120.0, Origin::Heuristic),
+        duration: None,
     };
     f.app.library_metadata.update(patch.clone());
     f.app.poll_library_metadata();
