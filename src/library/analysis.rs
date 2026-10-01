@@ -28,3 +28,6 @@ impl Catalog {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests;
