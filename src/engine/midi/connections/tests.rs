@@ -225,7 +225,7 @@ fn performance_protects_retry_and_pending_rediscovery_prevents_mode_entry() {
     control.discover(&[]);
     until(|| !engine.midi.connections_busy());
     engine.send(Command::PerformanceMode(true)).unwrap();
-    assert_eq!(engine.midi.retry_connections(), Retry::Protected);
+    assert_eq!(engine.midi.retry_connections(), Retry::Performance(crate::engine::performance::Error::Protected));
     assert!(control.attempts.try_recv().is_err());
     engine.send(Command::PerformanceMode(false)).unwrap();
     assert_eq!(engine.midi.retry_connections(), Retry::Queued);

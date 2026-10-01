@@ -150,7 +150,7 @@ impl App {
         let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));
         let mut app = Self::with_loader(engine, theme, loader.ok());
         if let Some(failure) = failure { app.status = failure; }
-        match crate::theme::reload::Loader::start(app.theme.clone()) {
+        match crate::theme::reload::Loader::start_with_performance(app.theme.clone(), app.engine.cmd.performance().clone()) {
             Ok(loader) => app.theme_reload = Some(loader),
             Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
         }
@@ -214,6 +214,8 @@ impl App {
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
         };
+        app.library_scan.set_performance(app.engine.cmd.performance().clone());
+        app.library_metadata.set_performance(app.engine.cmd.performance().clone());
         app.publish_library_selection();
         app.initialize_project_baseline();
         app
@@ -533,7 +535,9 @@ impl eframe::App for App {
 impl App {
     fn poll_theme(&mut self, ctx: &egui::Context) {
         if self.poll_theme_requests(ctx) { return; }
-        let Some(update) = self.theme_reload.as_ref().and_then(|loader| loader.poll()) else { return };
+        let Some((update, _commit)) = self.theme_reload.as_ref()
+            .and_then(|loader| loader.poll_candidate())
+            .and_then(|candidate| candidate.claim().ok()) else { return };
         self.settings.theme_update = Some(update);
         if self.settings.profile().appearance.follow_theme { self.apply_appearance(ctx); }
         ctx.request_repaint();
@@ -636,8 +640,8 @@ impl App {
             egui::Window::new("midi").show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
                 if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
-                    if matches!(self.engine.midi.retry_connections(), crate::engine::midi::Retry::Protected) {
-                        self.submission_error.set(Some(crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Protected)));
+                    if let crate::engine::midi::Retry::Performance(error) = self.engine.midi.retry_connections() {
+                        self.submission_error.set(Some(crate::engine::SubmissionError::Performance(error)));
                     }
                 }
                 if busy {

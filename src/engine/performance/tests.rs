@@ -245,3 +245,31 @@ fn new_safety_request_cannot_reuse_old_recovery_cas_state() {
     assert!(handle.status().recovery);
     assert!(handle.try_recover(|| true));
 }
+
+#[test]
+fn protection_generation_rejects_publication_before_cancellation_flags_propagate() {
+    let handle = Handle::default();
+    let work = handle.optional_work().unwrap();
+    // Pause mode entry after its admission-word linearization, before walking
+    // the fixed cancellation slots; another operator can already leave mode.
+    handle.0.admission.fetch_add(SAFETY_GENERATION, Ordering::AcqRel);
+    assert!(!work.cancel().load(Ordering::Acquire));
+    assert!(matches!(work.commit(), Err(Error::Protected)));
+    assert!(!handle.status().changing);
+}
+
+#[test]
+fn newer_safety_request_cannot_receive_an_older_stopped_publication_or_early_ack() {
+    let handle = Handle::default();
+    handle.request_safety(Safety::Stop);
+    let old = handle.safety_request().unwrap().0;
+    handle.stopped_after_check(old, || handle.request_safety(Safety::Silence));
+    assert!(!handle.status().stopped);
+    assert_eq!(handle.acknowledge_inputs_released(), Err(Error::PendingStop));
+    let new = handle.safety_request().unwrap().0;
+    assert_ne!(new, old);
+    handle.stopped(new);
+    assert!(!handle.try_recover(|| true), "new stop needs its own deliberate acknowledgment");
+    handle.acknowledge_inputs_released().unwrap();
+    assert!(handle.try_recover(|| true));
+}

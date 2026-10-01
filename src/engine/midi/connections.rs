@@ -18,7 +18,7 @@ pub enum Retry {
     Queued,
     AlreadyRunning,
     Unavailable,
-    Protected,
+    Performance(crate::engine::performance::Error),
 }
 
 struct Activity {
@@ -162,7 +162,7 @@ impl Manager {
             Ok(_) => Retry::Queued,
             Err(error) => {
                 self.activity.busy.store(false, Release);
-                if error == PolicyError::Protected { Retry::Protected } else { Retry::Unavailable }
+                if let PolicyError::Performance(error) = error { Retry::Performance(error) } else { Retry::Unavailable }
             }
         }
     }

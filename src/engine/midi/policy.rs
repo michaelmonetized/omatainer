@@ -65,12 +65,12 @@ pub enum PolicyError {
     Invalid(&'static str),
     Unavailable,
     GenerationExhausted,
-    Protected,
+    Performance(crate::engine::performance::Error),
 }
 impl std::fmt::Display for PolicyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::Protected => "Performance protection refuses MIDI policy changes; leave protection deliberately first.",
+            Self::Performance(error) => return std::fmt::Display::fmt(error, f),
             Self::Invalid(reason) => reason,
             Self::Unavailable => {
                 "MIDI input manager is unavailable; restart to apply input preferences."
@@ -145,7 +145,7 @@ impl Control {
         if self.stopped() {
             return Err(PolicyError::Unavailable);
         }
-        let permit = match &current.permit { Some(permit) => permit.clone(), None => Arc::new(self.performance.project_change().map_err(|_| PolicyError::Protected)?) };
+        let permit = match &current.permit { Some(permit) => permit.clone(), None => Arc::new(self.performance.project_change().map_err(PolicyError::Performance)?) };
         let generation = current
             .generation
             .checked_add(1)
@@ -307,7 +307,7 @@ mod tests {
         assert_eq!(performance.set_enabled(true), Err(crate::engine::performance::Error::Changing));
         drop(request);
         performance.set_enabled(true).unwrap();
-        assert_eq!(control.request(InputPolicy::Disabled), Err(PolicyError::Protected));
+        assert_eq!(control.request(InputPolicy::Disabled), Err(PolicyError::Performance(crate::engine::performance::Error::Protected)));
         assert_eq!(control.requested().policy.as_ref(), &InputPolicy::All);
     }
 

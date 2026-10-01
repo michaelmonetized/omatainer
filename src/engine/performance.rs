@@ -354,12 +354,12 @@ impl Handle {
         if state & EXCLUSIVE != 0 {
             return Err(self.reject(Error::Changing));
         }
-        if state & (RECOVERY | STOPPED) != RECOVERY | STOPPED {
+        let request = self.0.safety.load(Ordering::Acquire);
+        if state & (RECOVERY | STOPPED) != RECOVERY | STOPPED
+            || self.0.applied.load(Ordering::Acquire) != request {
             return Err(self.reject(Error::PendingStop));
         }
-        self.0
-            .recover
-            .store(self.0.safety.load(Ordering::Acquire), Ordering::Release);
+        self.0.recover.store(request, Ordering::Release);
         Ok(())
     }
     pub(super) fn safety_epoch(&self) -> u64 {
@@ -379,9 +379,17 @@ impl Handle {
         })
     }
     pub(super) fn stopped(&self, request: u64) {
-        self.0.applied.store(request, Ordering::Release);
-        if request == self.0.safety.load(Ordering::Acquire) {
-            self.0.admission.fetch_or(STOPPED, Ordering::Release);
+        self.stopped_after_check(request, || {});
+    }
+    fn stopped_after_check(&self, request: u64, after_check: impl FnOnce()) {
+        let state = self.0.admission.load(Ordering::Acquire);
+        if request != self.0.safety.load(Ordering::Acquire) { return; }
+        after_check();
+        // A newer stop changes the generation, so an older renderer completion
+        // cannot publish STOPPED for it. One attempt only; keep the mailbox
+        // unapplied on contention and safely retry at the next block boundary.
+        if self.0.admission.compare_exchange(state, state | STOPPED, Ordering::AcqRel, Ordering::Acquire).is_ok() {
+            self.0.applied.store(request, Ordering::Release);
         }
     }
     /// Audio makes one attempt. Read writer count before queue emptiness: an
