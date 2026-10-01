@@ -20,6 +20,7 @@ mod quantized_launch_tests;
 pub mod decode;
 pub mod dsp;
 pub mod media_load;
+pub(crate) mod load_receipt;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
@@ -209,6 +210,7 @@ pub struct HotCue {
 
 #[derive(Clone, Debug)]
 pub struct DeckRt {
+    load_receipt: Option<load_receipt::Receipt>,
     pub audio: Option<Arc<Sample>>,
     pub pos: f64,
     pub rate: f32,
@@ -262,6 +264,7 @@ impl DeckRt {
 
     fn new(sr: f32) -> Self {
         Self {
+            load_receipt: None,
             audio: None,
             pos: 0.0,
             rate: 1.0,
@@ -636,6 +639,7 @@ pub enum Command {
     DeckKeylock { deck: u8 },
     DeckAudio { deck: u8, audio: Arc<Sample> },
     DeckDecoded { request: media_load::LoadToken, audio: Arc<Sample> },
+    DeckLoadRequested { deck: u8, media: load_receipt::Media, receipt: load_receipt::Receipt },
     DeckSeek { deck: u8, frac: f32 },
     DeckUnload { deck: u8 },
     LoadBuiltin { deck: u8, stem: u8 },
@@ -1633,6 +1637,26 @@ impl RtEngine {
                 d.keylock = !d.keylock;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
+            Command::DeckLoadRequested { deck, media, receipt } => {
+                use load_receipt::{Media, State};
+                if receipt.state() != State::Pending { return; }
+                if deck as usize >= DECKS { receipt.finish(State::Unavailable); return; }
+                let audio = match media {
+                    Media::Builtin(stem) => self.builtin.get(stem as usize).and_then(Clone::clone),
+                    Media::Decoded { token, audio } => {
+                        if token.deck != deck || !token.is_current() {
+                            receipt.supersede();
+                            return;
+                        }
+                        Some(audio)
+                    }
+                };
+                if let Some(audio) = audio {
+                    self.apply(Command::DeckAudio { deck, audio });
+                    receipt.finish(State::Current);
+                    self.decks[deck as usize].load_receipt = Some(receipt);
+                } else { receipt.finish(State::Unavailable); }
+            }
             Command::DeckDecoded { request, audio } => {
                 if (request.deck as usize) < DECKS && request.is_current() {
                     self.apply(Command::DeckAudio { deck: request.deck, audio });
@@ -1640,6 +1664,7 @@ impl RtEngine {
             }
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.clear_loop();
                 d.title = audio.name.clone();
                 d.bpm = audio.bpm;
@@ -1654,6 +1679,7 @@ impl RtEngine {
             }
             Command::DeckUnload { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.audio = None;
                 d.title.clear();
                 d.playing = false;
