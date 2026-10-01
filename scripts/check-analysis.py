@@ -47,6 +47,18 @@ def write(path, value):
 def validate(root, guard):
     guard.private_directory(root)
     guard.private_directory(root / 'sources')
+    # The actual App scans this whole directory, so every entry must belong to
+    # the fixed corpus, not merely the three paths named by its manifest. Stop
+    # at the first foreign entry; an externally populated directory cannot
+    # turn validation into an unbounded inventory walk.
+    names = set()
+    with os.scandir(root / 'sources') as entries:
+        for entry in entries:
+            if entry.name not in NAMES or entry.name in names:
+                raise ValueError('unmanifested entry in the fixed source corpus')
+            names.add(entry.name)
+    if names != set(NAMES):
+        raise ValueError('fixed source corpus is missing a generated file')
     path = root / 'source-manifest.json'
     info = path.lstat()
     if not stat.S_ISREG(info.st_mode) or info.st_size > 64 * 1024:
@@ -106,7 +118,8 @@ def run(root, binary, offline, guard):
     binary = binary.resolve(strict=True)
     if not binary.is_file():
         raise ValueError('test binary must be a regular executable')
-    offline.records.validate(ROOT)
+    records = offline.gate.licenses()
+    records.validate(ROOT)
     inventory = json.loads((ROOT / 'licenses/manifest.json').read_text())
     before = dict(test_binary_sha256=digest(binary), source_inventory_sha256=digest(ROOT / 'licenses/manifest.json'),
                   source_manifest_sha256=digest(root / 'source-manifest.json'))
@@ -130,7 +143,7 @@ def run(root, binary, offline, guard):
     report = json.loads(path.read_text())
     if report.get('schema') != 1 or report.get('status') != 'pass' or report.get('embedded_manifest') != inventory:
         raise ValueError('child report failed or belongs to a different source inventory')
-    offline.records.validate(ROOT)
+    records.validate(ROOT)
     after = dict(test_binary_sha256=digest(binary), source_inventory_sha256=digest(ROOT / 'licenses/manifest.json'),
                  source_manifest_sha256=digest(root / 'source-manifest.json'))
     if before != after or validate(root, guard) != source_manifest:
