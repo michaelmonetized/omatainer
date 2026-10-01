@@ -47,10 +47,21 @@ pub(super) fn open(path: &Path, write: bool, create: bool) -> Result<File, Error
     }
     Ok(file)
 }
-pub(super) fn lock(path: &Path, create: bool) -> Result<Option<File>, Error> {
+/// Owns a recovery transaction/session lock, without exposing clonable handles.
+/// On Linux a forked child's inherited descriptor shares the flock even with
+/// CLOEXEC: closing only the parent's descriptor need not release it. Explicit
+/// unlock ends this owner's critical section before closing the descriptor.
+pub(super) struct Lock(File);
+impl Drop for Lock {
+    fn drop(&mut self) {
+        let _ = self.0.unlock();
+    }
+}
+
+pub(super) fn lock(path: &Path, create: bool) -> Result<Option<Lock>, Error> {
     let file = open(path, true, create)?;
     match file.try_lock() {
-        Ok(()) => Ok(Some(file)),
+        Ok(()) => Ok(Some(Lock(file))),
         Err(std::fs::TryLockError::WouldBlock) => Ok(None),
         Err(std::fs::TryLockError::Error(error)) => Err(Error::io("lock session", error)),
     }
@@ -194,7 +205,7 @@ impl Drop for Temporary {
     }
 }
 
-pub(super) fn root_lock(root: &Path) -> Result<File, Error> {
+pub(super) fn root_lock(root: &Path) -> Result<Lock, Error> {
     let path = root.join("storage.lock");
     let file = match open(&path, true, true) {
         Ok(file) => file,
@@ -204,7 +215,7 @@ pub(super) fn root_lock(root: &Path) -> Result<File, Error> {
         Err(error) => return Err(error),
     };
     match file.try_lock() {
-        Ok(()) => Ok(file),
+        Ok(()) => Ok(Lock(file)),
         Err(std::fs::TryLockError::WouldBlock) => Err(Error::invalid(
             "another recovery storage transaction is active; retry after it finishes",
         )),
