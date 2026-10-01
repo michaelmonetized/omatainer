@@ -561,23 +561,30 @@ fn actual_egui_close_is_cancelled_until_preceding_renderer_edits_are_durable() {
     start(&mut f, files.store());
     f.app.submit(Command::DeckSeek { deck: 0, frac: 0.3 });
     let ctx = egui::Context::default();
-    let close_frame = |ctx: &egui::Context, f: &mut Fixture, close: bool, time: f64| {
-        let mut input = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1000.0, 700.0))),
-            time: Some(time),
-            ..Default::default()
+    // Apply the edit first so the actual project coordinator presents its
+    // unsaved-project decision before the independent catalog durability step.
+    f.rt.process(&mut []);
+    let close_frame =
+        |ctx: &egui::Context, f: &mut Fixture, close: bool, time: f64, events: Vec<egui::Event>| {
+            let mut input = egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1000.0, 700.0))),
+                time: Some(time),
+                events,
+                ..Default::default()
+            };
+            if close {
+                input
+                    .viewports
+                    .get_mut(&egui::ViewportId::ROOT)
+                    .unwrap()
+                    .events
+                    .push(egui::ViewportEvent::Close);
+            }
+            let output = ctx.run(input, |ctx| f.app.update_frame(ctx));
+            f.rt.process(&mut [0.0; 128]);
+            output
         };
-        if close {
-            input
-                .viewports
-                .get_mut(&egui::ViewportId::ROOT)
-                .unwrap()
-                .events
-                .push(egui::ViewportEvent::Close);
-        }
-        ctx.run(input, |ctx| f.app.library_close_ui(ctx))
-    };
-    let first = close_frame(&ctx, &mut f, true, 0.0);
+    let first = close_frame(&ctx, &mut f, true, 0.0, vec![]);
     let commands = &first.viewport_output[&egui::ViewportId::ROOT].commands;
     assert!(commands
         .iter()
@@ -587,10 +594,30 @@ fn actual_egui_close_is_cancelled_until_preceding_renderer_edits_are_durable() {
         .any(|cmd| matches!(cmd, egui::ViewportCommand::Close)));
     f.rt.process(&mut []);
     let expected = f.rt.decks[0].cue_pos / 48000.0;
+    close_frame(&ctx, &mut f, false, 0.01, vec![]);
+    let output = close_frame(&ctx, &mut f, false, 0.02, vec![]);
+    let discard = label_center(&output, "Discard changes");
+    for (time, pressed) in [(0.03, true), (0.04, false)] {
+        close_frame(
+            &ctx,
+            &mut f,
+            false,
+            time,
+            vec![
+                egui::Event::PointerMoved(discard),
+                egui::Event::PointerButton {
+                    pos: discard,
+                    button: PointerButton::Primary,
+                    pressed,
+                    modifiers: Default::default(),
+                },
+            ],
+        );
+    }
     let mut time = 0.1;
     wait(|| {
         time += 0.01;
-        let output = close_frame(&ctx, &mut f, false, time);
+        let output = close_frame(&ctx, &mut f, false, time, vec![]);
         output.viewport_output[&egui::ViewportId::ROOT]
             .commands
             .iter()
@@ -604,5 +631,59 @@ fn actual_egui_close_is_cancelled_until_preceding_renderer_edits_are_durable() {
             .preparation
             .cue,
         expected
+    );
+}
+
+#[test]
+fn initial_preparation_retries_full_admission_on_later_actual_ui_frame() {
+    let files = Files::new();
+    {
+        let mut store = crate::library::Store::open(files.store()).unwrap();
+        store
+            .catalog
+            .upsert(
+                LibSource::Builtin(BuiltinStem::Drums),
+                None,
+                metadata("Drums (session)"),
+            )
+            .unwrap()
+            .preparation = prepared();
+        store.save().unwrap();
+    }
+    let mut f = Fixture::new(64);
+    f.app.start_library_store(files.store());
+    let rejected_import = files.0.join("invalid-import.json");
+    std::fs::write(&rejected_import, b"{invalid import").unwrap();
+    assert!(f.app.library_metadata.import(rejected_import));
+    while f.app.engine.send(Command::Master(0.6)).is_ok() {}
+    wait(|| {
+        f.app.poll_library_metadata();
+        !f.app.library_metadata.active()
+    });
+    assert!(f.app.library_metadata.label().contains("import rejected"));
+    assert!(
+        f.app.library_metadata.durable,
+        "the valid saved catalog remains usable"
+    );
+    assert!(
+        !f.app.library_initialized,
+        "a rejected restore remains pending"
+    );
+    assert_eq!(f.rt.decks[0].cue_pos, 0.0);
+    while !f.rt.cmd_rx.is_empty() {
+        f.rt.process(&mut []);
+    }
+    let ctx = egui::Context::default();
+    let _ = ctx.run(Default::default(), |ctx| f.app.update_frame(ctx));
+    f.rt.process(&mut []);
+    assert!(f.app.library_initialized);
+    assert_eq!(f.rt.decks[0].cue_pos, prepared().cue * 48_000.0);
+    let preparation = f.app.engine.initial_playback[0].preparation().unwrap();
+    let _ = ctx.run(Default::default(), |ctx| f.app.update_frame(ctx));
+    f.rt.process(&mut []);
+    assert_eq!(
+        f.app.engine.initial_playback[0].preparation().unwrap(),
+        preparation,
+        "an admitted restore is not replayed on later frames"
     );
 }
