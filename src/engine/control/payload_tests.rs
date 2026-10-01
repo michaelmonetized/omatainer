@@ -240,3 +240,38 @@ fn coalesced_boxed_gestures_return_credit_without_callback_destruction() {
     .unwrap();
     assert_eq!(pending(&port), one);
 }
+
+#[test]
+fn producer_waiting_on_admission_rechecks_new_history_backpressure() {
+    let (port, receiver) = CommandPort::channel(32);
+    let locked = port.admission.lock();
+    let (preflight, passed) = std::sync::mpsc::sync_channel(0);
+    let producer = port.clone();
+    let worker = std::thread::spawn(move || {
+        producer.send_after_preflight(
+            Command::SetNotes {
+                track: 0,
+                scene: 0,
+                notes: Vec::with_capacity(128),
+            },
+            || {
+                preflight.send(()).unwrap();
+            },
+        )
+    });
+    passed
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .unwrap();
+    receiver.set_history_available(false);
+    drop(locked);
+    assert_eq!(worker.join().unwrap(), Err(SubmissionError::HistoryBusy));
+    assert!(receiver.is_empty());
+    assert_eq!(pending(&port), 0);
+    assert_eq!(port.stats().accepted, 0);
+    // Emergency stop still has its reserved route after creative admission closes.
+    port.send(Command::Stop).unwrap();
+    assert!(matches!(
+        receiver.try_recv(),
+        Ok(Command::ReservedStop { .. })
+    ));
+}
