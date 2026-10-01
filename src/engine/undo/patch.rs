@@ -25,14 +25,14 @@ pub(super) struct Global {
     bpm: f32, quant: f32, quantize: bool, metronome: bool,
     xfader: f32, master: f32, cue_mix: f32,
     fx_kind: [FxKind; 3], fx_wet: [f32; 3],
-    bank: usize, instrument: SamplerInstrument, octave: i8,
+    bank: usize, instrument: SamplerInstrument, octave: i8, synth:SynthInstrument,cutoff:f32,
 }
 impl Global {
     pub fn get(rt: &RtEngine) -> Self {
         Self { bpm: rt.bpm, quant: rt.quant, quantize: rt.quantize,
             metronome: rt.metronome, xfader: rt.xfader, master: rt.master,
             cue_mix: rt.cue_mix, fx_kind: rt.fx_kind, fx_wet: rt.fx_wet,
-            bank: rt.sampler_bank, instrument: rt.sampler_inst, octave: rt.sampler_oct }
+            bank: rt.sampler_bank, instrument: rt.sampler_inst, octave: rt.sampler_oct,synth:rt.sampler_poly.kind,cutoff:rt.sampler_poly.cutoff }
     }
     fn swap(&mut self, rt: &mut RtEngine) {
         let current = Self::get(rt);
@@ -45,6 +45,7 @@ impl Global {
         }
         rt.fx_kind = self.fx_kind; rt.fx_wet = self.fx_wet; rt.sampler_bank = self.bank;
         if rt.sampler_inst != self.instrument { rt.apply(Command::SamplerInst(self.instrument)); }
+        rt.sampler_poly.kind=self.synth;rt.sampler_poly.cutoff=self.cutoff;
         if rt.sampler_oct != self.octave { rt.apply(Command::SamplerOct(self.octave - rt.sampler_oct)); }
         *self = current;
     }
@@ -146,6 +147,10 @@ impl Drop for PinnedReceipt {
 }
 
 impl Patch {
+    pub fn target_label(&self)->super::TargetLabel {
+        use super::TargetLabel as T;
+        match self {Self::Global(_)=>T::None,Self::Track(t,_)=>T::Track(*t),Self::ClipGain {track,scene,..}|Self::Clip {track,scene,..}=>T::Clip(*track,*scene),Self::Deck(d,_)|Self::Position {deck:d,..}|Self::Media {deck:d,..}=>T::Deck(*d),Self::Effect {rack,index,..}|Self::Slot {rack,index,..}=>T::Effect(*rack,*index)}
+    }
     pub fn valid(&self, rt: &RtEngine)->bool {
         match self {
             Self::Effect {rack,index,..}=>*index<rack.get(rt).slots.len(),

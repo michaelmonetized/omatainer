@@ -4,6 +4,7 @@
 mod patch;
 mod capture;
 mod recording;
+#[cfg(test)] mod tests;
 use super::*;
 use patch::*;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -13,7 +14,7 @@ const MAX_ENTRIES: usize = 256;
 const MAX_PATCHES: usize = TRACKS * SCENES;
 const SCRATCHES: usize = 64;
 const RETIRE_CAPACITY: usize = 1024;
-const RESERVE_RETIRE: usize = control::MAX_COMMANDS + control::COMMANDS_PER_BLOCK + 4;
+const RESERVE_RETIRE: usize = 2*control::MAX_COMMANDS + 2*control::COMMANDS_PER_BLOCK + 4;
 const NOTE_LIMIT: usize = 8192;
 const TEXT_LIMIT: usize = 4096;
 const DEFAULT_BYTES: usize = 256 * 1024 * 1024;
@@ -41,7 +42,7 @@ impl Name {
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Failure { Capacity, Budget, Notes, Text, Unavailable, Invalid }
+pub enum Failure { Capacity, Budget, Notes, Text, Effects, Unavailable, Invalid }
 impl Failure {
     pub fn label(self) -> &'static str {
         match self {
@@ -49,13 +50,28 @@ impl Failure {
             Self::Budget => "Edit not applied: its retained media or notes exceed the undo memory budget.",
             Self::Notes => "Recording write not applied: the clip exceeds 8192 notes. Live monitoring continues.",
             Self::Text => "Edit not applied: clip metadata exceeds the supported history limit.",
+            Self::Effects => "Edit not applied: an effect rack supports at most 128 slots.",
             Self::Unavailable => "Edit not applied: the undo retirement worker is unavailable.",
             Self::Invalid => "Undo transaction is no longer valid; no objects were changed.",
         }
     }
 }
 #[derive(Clone, Copy, Debug)]
-pub struct Item { pub id: u64, pub name: Name, pub patches: usize }
+pub struct Item { pub id: u64, pub name: Name, pub patches: usize, target:TargetLabel }
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+enum TargetLabel {None,Track(u8),Clip(u8,u8),Deck(u8),Effect(Rack,usize),Multiple}
+impl Item {
+    pub fn label(self)->String {
+        let name=self.name.label();
+        match self.target {
+            TargetLabel::None=>name.into(),TargetLabel::Track(t)=>format!("{name} · Track {}",t+1),
+            TargetLabel::Clip(t,s)=>format!("{name} · Track {}, scene {}",t+1,s+1),
+            TargetLabel::Deck(d)=>format!("{name} · Deck {}",if d==0 {"A"}else{"B"}),
+            TargetLabel::Effect(rack,slot)=>match rack {Rack::Track(t)=>format!("{name} · Track {}, FX {}",t+1,slot+1),Rack::Scene(s)=>format!("{name} · Scene {}, FX {}",s+1,slot+1)},
+            TargetLabel::Multiple=>format!("{name} · Multiple objects"),
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub struct View {
     pub items: [Option<Item>; MAX_ENTRIES],
@@ -63,6 +79,7 @@ pub struct View {
     pub bytes: usize,
     pub retired_bytes: usize,
     pub budget: usize,
+    pub fixed_bytes:usize,
     pub failure: Option<Failure>,
     pub failures: u64,
     pub state: u64,
@@ -71,7 +88,7 @@ pub struct View {
 impl Default for View {
     fn default() -> Self {
         Self { items: [None; MAX_ENTRIES], cursor: 0, bytes: 0, retired_bytes: 0,
-            budget: DEFAULT_BYTES, failure: None, failures: 0, state: 0, epoch: 0 }
+            budget: DEFAULT_BYTES,fixed_bytes:0, failure: None, failures: 0, state: 0, epoch: 0 }
     }
 }
 struct Shared {
@@ -93,6 +110,7 @@ impl Handle {
 struct Entry {
     id: u64,
     name: Name,
+    target:TargetLabel,
     gesture: u64,
     key: u64,
     frame: u64,
@@ -103,10 +121,10 @@ struct Entry {
 }
 impl Entry {
     fn new(id: u64, name: Name, gesture: u64, key: u64, frame: u64, before: u64) -> Self {
-        Self { id, name, gesture, key, frame, before, after: id,
+        Self { id, name, target:TargetLabel::None,gesture, key, frame, before, after: id,
             patches: std::array::from_fn(|_| None), len: 0 }
     }
-    fn push(&mut self, patch: Patch) { self.patches[self.len] = Some(patch); self.len += 1; }
+    fn push(&mut self, patch: Patch) {let target=patch.target_label();self.target=if self.len==0 {target}else if target!=self.target {TargetLabel::Multiple}else{target}; self.patches[self.len] = Some(patch); self.len += 1; }
 }
 
 /// Names and note storage are prepared before streaming. A recording takes a
@@ -180,7 +198,7 @@ impl Journal {
         })?;
         self.entries = Vec::with_capacity(MAX_ENTRIES);
         self.assets = Vec::with_capacity(MAX_ENTRIES * MAX_PATCHES * 2);
-        self.stranded = Vec::with_capacity(control::MAX_COMMANDS + 1);
+        self.stranded = Vec::with_capacity(2*control::MAX_COMMANDS + 2*control::COMMANDS_PER_BLOCK + 4);
         self.retired = Some(retired); self.scratch = Some(scratch); self.enabled = true;
         Ok(Handle { shared: self.shared.clone() })
     }
@@ -207,11 +225,11 @@ impl Journal {
         if let Some(mut view) = self.shared.view.try_lock() {
             view.items.fill(None);
             for (out, entry) in view.items.iter_mut().zip(&self.entries) {
-                *out = entry.as_ref().map(|e| Item { id: e.id, name: e.name, patches: e.len });
+                *out = entry.as_ref().map(|e| Item { id: e.id, name: e.name, patches: e.len,target:e.target });
             }
             view.cursor = self.cursor; view.bytes = self.bytes;
             view.retired_bytes = self.shared.retired_bytes.load(Ordering::Acquire);
-            view.budget = self.budget; view.failure = self.failure; view.failures = self.failures;
+            view.fixed_bytes=self.fixed_bytes();view.budget = self.budget; view.failure = self.failure; view.failures = self.failures;
             view.state = self.state; view.epoch = self.epoch;
         }
     }
@@ -226,8 +244,8 @@ impl Journal {
             .is_some_and(|e|e.gesture==self.gesture && e.key==key && e.len<MAX_PATCHES)
     }
     fn preflight(&self,bytes:usize)->Result<(),Failure> {
-        self.room(self.entries.len()+3)?;
         if bytes>self.budget { return Err(Failure::Budget); }
+        self.room(self.entries.len()+3)?;
         // Retiring evictions and rejected incoming payloads has its own budget.
         // Never hide outstanding PCM behind deduplicated live-history totals.
         let pending=self.shared.retired_bytes.load(Ordering::Acquire);
@@ -300,7 +318,8 @@ impl Handle {
         loop {
             let before=self.shared.sequence.load(Ordering::Acquire);if before&1!=0 {std::hint::spin_loop();continue;}
             let value=Checkpoint {epoch:self.shared.epoch.load(Ordering::Relaxed),state:self.shared.state.load(Ordering::Relaxed),untracked:self.shared.untracked.load(Ordering::Relaxed)};
-            if self.shared.sequence.load(Ordering::Acquire)==before {return value;}
+            std::sync::atomic::fence(Ordering::Acquire);
+            if self.shared.sequence.load(Ordering::Relaxed)==before {return value;}
         }
     }
 }
@@ -317,7 +336,16 @@ impl Journal {
         self.publish_checkpoint();
     }
     pub(super) fn untracked_change(&mut self) {self.untracked=self.untracked.wrapping_add(1);self.publish_checkpoint();}
-    pub(super) fn held_change(&mut self) {if self.enabled {self.changed();}}
+    fn changed_from(&mut self,index:usize) {
+        for i in index..self.entries.len() {
+            let before=self.entries[i].as_ref().unwrap().before;
+            let after=self.next;self.next=self.next.wrapping_add(1).max(1);
+            let entry=self.entries[i].as_mut().unwrap();entry.before=if i==index {before}else{self.state};entry.after=after;
+            self.state=after;
+        }
+        self.state=self.entries[self.cursor-1].as_ref().unwrap().after;
+        self.publish_checkpoint();
+    }
     pub(super) fn available(&self)->bool {!self.enabled || self.room(0).is_ok()}
     pub(super) fn gesture_id(&self)->u64 {self.gesture}
     pub(super) fn set_gesture(&mut self,id:u64) {self.gesture=id;}
@@ -337,3 +365,14 @@ impl Journal {
 }
 
 impl Journal {pub(super) fn failure_count(&self)->u64 {self.failures}}
+
+impl Journal {
+    fn fixed_bytes(&self)->usize {
+        self.entries.capacity()*std::mem::size_of::<Option<Entry>>()
+            +(RETIRE_CAPACITY+self.stranded.capacity())*std::mem::size_of::<Garbage>()
+            +self.assets.capacity()*std::mem::size_of::<(usize,usize)>()
+            +SCRATCHES*(TEXT_LIMIT+NOTE_LIMIT*std::mem::size_of::<MidiNote>())
+    }
+}
+
+#[cfg(test)] impl RtEngine {pub(crate) fn clear_undo_for_test(&mut self) {assert!(self.undo.clear());}}
