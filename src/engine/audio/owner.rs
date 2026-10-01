@@ -617,6 +617,7 @@ impl RtEngine {
         for (slot, kind) in self.master_fx.iter_mut().zip(self.fx_kind) {
             slot.reset(kind);
         }
+        if let Some(history) = &mut self.history_measurement { history.reset_dsp(); }
         for deck in &mut self.decks {
             deck.playing = false;
             deck.touching = false;

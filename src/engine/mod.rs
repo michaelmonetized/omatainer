@@ -501,6 +501,7 @@ pub struct RtEngine {
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
+    history_measurement: Option<history_measurement::capture::Measurement>,
     pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub tap: Vec<Instant>,
@@ -913,6 +914,7 @@ impl RtEngine {
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
+            history_measurement: history_measurement::capture::Measurement::new(sr as u32).ok(),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0, 0.0, 0.0],
             tap: Vec::new(),
@@ -989,6 +991,7 @@ impl RtEngine {
         // Rate changes reconstruct all preallocated master histories; type and
         // wet controls remain intact and are configured on the next block.
         self.master_fx = std::array::from_fn(|_| master_fx::MasterSlot::new(sr as f32));
+        if let Some(history) = &mut self.history_measurement { history.set_rate(sr); }
         let drums = build_kit(sr);
         self.install_sampler_rate_banks(sampler_banks);
         for voice in &mut self.pad_voices { *voice = None; }
@@ -1156,6 +1159,7 @@ impl RtEngine {
         if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
+        if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
 
         let any_solo = self.tracks.iter().any(|t| t.solo);
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
@@ -1242,6 +1246,13 @@ impl RtEngine {
             l = l * (1.0 - cm) + cue_l * cm;
             r = r * (1.0 - cm) + cue_r * cm;
             self.safety_output.observe([l * self.master, r * self.master], self.sr);
+            if let Some(history) = self.history_measurement.as_mut().filter(|history| history.available) {
+                let contribution = history.tracker.process(
+                    [self.decks[0].history_last, self.decks[1].history_last],
+                    [self.decks[0].history_key, self.decks[1].history_key],
+                    [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], cm);
+                history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output);
+            }
             l = limiter(l * self.master);
             r = limiter(r * self.master);
             let [l, r] = self.safety_output.output([l, r]);

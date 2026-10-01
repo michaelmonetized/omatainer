@@ -5,6 +5,7 @@
 //! not reclassify the combined waveform of several loads of the same track.
 pub(super) mod parts;
 pub(super) mod error;
+pub(super) mod capture;
 pub(super) mod tracker;
 mod tail;
 mod window;
@@ -45,3 +46,9 @@ mod error_tests;
 
 #[cfg(test)]
 mod tracker_tests;
+
+#[cfg(test)]
+mod capture_tests;
+
+#[cfg(test)]
+mod performance_tests;

@@ -229,6 +229,7 @@ impl Prepared {
             scene_fx,
             compose_target
         );
+        if let Some(history) = &mut rt.history_measurement { history.reset_dsp(); }
     }
 }
 

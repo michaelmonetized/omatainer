@@ -654,7 +654,12 @@ impl Output {
             self.observing = false;
         }
     }
-    pub(super) fn output(&mut self, mut frame: [f32; 2]) -> [f32; 2] {
+    pub(super) fn output(&mut self, frame: [f32; 2]) -> [f32; 2] {
+        let output = self.preview(frame);
+        if self.muted && self.ramp > 0 { self.ramp -= 1; }
+        output
+    }
+    pub(super) fn preview(&self, mut frame: [f32; 2]) -> [f32; 2] {
         if !self.muted {
             return frame;
         }
@@ -662,7 +667,6 @@ impl Output {
             return [0.0; 2];
         }
         let gain = (self.ramp - 1) as f32 / (self.ramp_total - 1) as f32;
-        self.ramp -= 1;
         for sample in &mut frame {
             *sample = if sample.is_finite() {
                 *sample * gain
