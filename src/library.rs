@@ -355,6 +355,10 @@ struct V1Track {
 }
 
 pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
+    read_with_identity(path).map(|(catalog, _)| catalog)
+}
+
+fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String> {
     let mut file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
@@ -411,7 +415,13 @@ pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
         }
     };
     catalog.validate()?;
-    Ok(catalog)
+    let identity = FileFingerprint::from_metadata(&meta);
+    if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != identity
+        || store_identity(path)? != Some(identity)
+    {
+        return Err("DJ library changed while it was read; original file preserved".into());
+    }
+    Ok((catalog, identity))
 }
 
 fn store_identity(path: &Path) -> Result<Option<FileFingerprint>, String> {
@@ -430,6 +440,13 @@ pub(crate) struct Store {
     pub catalog: Catalog,
     saved: Vec<u8>,
 }
+impl Drop for Store {
+    fn drop(&mut self) {
+        // Closing only this descriptor can leave an inherited fork/dup handle
+        // holding the same flock after this writer has finished.
+        let _ = self._lock.unlock();
+    }
+}
 impl Store {
     pub fn open(path: PathBuf) -> Result<Self, String> {
         let parent = path.parent().ok_or("library has no parent directory")?;
@@ -447,8 +464,8 @@ impl Store {
             .map_err(|_| "DJ library is already open by another writer".to_string())?;
         // A malformed/newer file is never treated as an empty library. Only
         // genuinely absent stores are initialized. Backups are explicit recovery.
-        let catalog = match fs::symlink_metadata(&path) {
-            Ok(_) => read(&path)?,
+        let (catalog, identity) = match fs::symlink_metadata(&path) {
+            Ok(_) => read_with_identity(&path).map(|(catalog, identity)| (catalog, Some(identity)))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 if path
                     .with_extension("backup.json")
@@ -457,12 +474,12 @@ impl Store {
                 {
                     return Err("primary DJ library is missing; backup.json was preserved. Restore the verified backup and restart before saving".into());
                 }
-                Catalog::default()
+                (Catalog::default(), None)
             }
             Err(e) => return Err(e.to_string()),
         };
         Ok(Self {
-            identity: store_identity(&path)?,
+            identity,
             path,
             _lock: lock,
             catalog,
@@ -500,39 +517,80 @@ impl Store {
             .mode(0o600)
             .open(&temp)
             .map_err(|e| format!("temporary library write: {e}"))?;
+        let temporary_owned = file.metadata().map_err(|e| e.to_string())?;
         let result = (|| {
             file.write_all(&bytes).map_err(|e| e.to_string())?;
             checkpoint(0)?;
             file.sync_all().map_err(|e| e.to_string())?;
             checkpoint(1)?;
+            let written = file.metadata().map_err(|e| e.to_string())?;
             if store_identity(&self.path)? != self.identity {
                 return Err("DJ library changed during save; original file preserved".into());
             }
             if self.identity.is_some() {
+                let original = OpenOptions::new().read(true)
+                    .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+                    .open(&self.path).map_err(|e| e.to_string())?;
+                let before = original.metadata().map_err(|e| e.to_string())?;
+                if Some(FileFingerprint::from_metadata(&before)) != self.identity {
+                    return Err("DJ library changed before backup; original file preserved".into());
+                }
                 let backup_temp = self
                     .path
                     .with_extension(format!("backup-{}", std::process::id()));
                 fs::hard_link(&self.path, &backup_temp).map_err(|e| e.to_string())?;
                 let owned = fs::symlink_metadata(&backup_temp).map_err(|e| e.to_string())?;
-                let renamed = fs::rename(&backup_temp, self.path.with_extension("backup.json"));
+                let renamed = (|| {
+                    checkpoint(4)?;
+                    let current = fs::symlink_metadata(&self.path).map_err(|e| e.to_string())?;
+                    if !same_content_identity(&before, &owned) || !same_content_identity(&before, &current) {
+                        return Err("DJ library changed during backup; external bytes preserved".into());
+                    }
+                    fs::rename(&backup_temp, self.path.with_extension("backup.json"))
+                        .map_err(|e| e.to_string())
+                })();
                 // POSIX rename is a successful no-op when both paths already
                 // link the same inode (e.g. retry after checkpoint 2). Retire
                 // only the temporary link we created, including that case.
-                if fs::symlink_metadata(&backup_temp).is_ok_and(|metadata| {
-                    metadata.dev() == owned.dev() && metadata.ino() == owned.ino()
-                }) {
-                    fs::remove_file(&backup_temp).map_err(|e| e.to_string())?;
-                }
-                // Both linking and unlinking can change primary ctime.
-                self.identity = store_identity(&self.path)?;
-                renamed.map_err(|error| error.to_string())?;
+                let cleanup = remove_owned(&backup_temp, &owned);
+                let refresh = (|| {
+                    let current = fs::symlink_metadata(&self.path).map_err(|e| e.to_string())?;
+                    let still_owned = original.metadata().map_err(|e| e.to_string())?;
+                    if !same_content_identity(&before, &current)
+                        || !same_content_identity(&before, &still_owned)
+                        || FileFingerprint::from_metadata(&current) != FileFingerprint::from_metadata(&still_owned)
+                    {
+                        return Err("DJ library changed during backup; external bytes preserved".into());
+                    }
+                    // Only our original descriptor's expected link-related
+                    // ctime change is accepted. Never adopt a replacement path.
+                    self.identity = Some(FileFingerprint::from_metadata(&still_owned));
+                    Ok::<(), String>(())
+                })();
+                renamed?;
+                cleanup?;
+                refresh?;
             }
             checkpoint(2)?;
+            if store_identity(&self.path)? != self.identity {
+                return Err("DJ library changed before commit; external bytes preserved".into());
+            }
+            let pending = fs::symlink_metadata(&temp).map_err(|e| e.to_string())?;
+            if !same_content_identity(&written, &pending) {
+                return Err("temporary DJ library changed before commit; preserved".into());
+            }
             fs::rename(&temp, &self.path).map_err(|e| e.to_string())?;
-            self.identity = store_identity(&self.path)?;
+            let committed = file.metadata().map_err(|e| format!("replacement committed; identity unavailable: {e}"))?;
+            if !same_content_identity(&written, &committed) {
+                return Err("replacement committed but externally modified; durability unconfirmed".into());
+            }
+            self.identity = Some(FileFingerprint::from_metadata(&committed));
             checkpoint(3).map_err(|error| {
                 format!("replacement committed; durability unconfirmed: {error}")
             })?;
+            if store_identity(&self.path).map_err(|error| format!("replacement committed; identity recheck failed: {error}"))? != self.identity {
+                return Err("replacement committed but changed externally; original external file preserved".into());
+            }
             File::open(self.path.parent().unwrap())
                 .and_then(|dir| dir.sync_all())
                 .map_err(|e| {
@@ -543,8 +601,29 @@ impl Store {
             self.saved = bytes;
             Ok(())
         })();
-        let _ = fs::remove_file(temp);
-        result
+        let cleanup = remove_owned(&temp, &temporary_owned);
+        match (result, cleanup) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(error), Ok(())) => Err(error),
+            (Ok(()), Err(error)) => Err(format!("replacement committed; temporary cleanup: {error}")),
+            (Err(error), Err(cleanup)) => Err(format!("{error}; temporary cleanup: {cleanup}")),
+        }
+    }
+}
+
+fn same_content_identity(a: &fs::Metadata, b: &fs::Metadata) -> bool {
+    a.is_file() && b.is_file() && a.dev() == b.dev() && a.ino() == b.ino()
+        && a.len() == b.len() && a.mtime() == b.mtime() && a.mtime_nsec() == b.mtime_nsec()
+        && a.mode() == b.mode() && a.uid() == b.uid() && a.gid() == b.gid()
+}
+
+fn remove_owned(path: &Path, owned: &fs::Metadata) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(current) if current.dev() == owned.dev() && current.ino() == owned.ino() =>
+            fs::remove_file(path).map_err(|e| e.to_string()),
+        Ok(_) => Err("temporary DJ library path changed; preserved".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.to_string()),
     }
 }
 
