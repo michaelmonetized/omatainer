@@ -9,7 +9,7 @@ pub use config::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-pub use storage::{discard, discover, recover, Store};
+pub use storage::{discard, discover, lookup_exact, recover, session_digest, Store};
 
 const RECORD_LIMIT: usize = 8 * 1024 * 1024;
 const SEGMENT_LIMIT: u64 = 64 * 1024 * 1024;
@@ -48,6 +48,11 @@ pub struct Candidate {
     segment: String,
     digest: [u8; 32],
     report: Vec<String>,
+}
+impl Candidate {
+    /// Bind local UI actions to the exact verified journal record. This does
+    /// not export project content, paths or a substitute latest candidate.
+    pub(crate) fn record_digest(&self) -> [u8; 32] { self.digest }
 }
 #[derive(Debug, Default)]
 pub struct Inventory {

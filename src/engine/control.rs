@@ -18,6 +18,7 @@ pub const MAX_QUEUED_PAYLOAD_BYTES: usize = 256 * 1024 * 1024;
 /// serializes admission bookkeeping only; the audio consumer never acquires it.
 #[derive(Clone)]
 pub struct CommandPort {
+    support: Option<crate::support::worker::Port>,
     input_epoch: Option<u64>,
     theme_requests: crate::theme::requests::Port,
     sender: crossbeam_channel::Sender<Command>,
@@ -383,6 +384,11 @@ pub struct QueuePressure {
 }
 
 impl CommandPort {
+    pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
+    /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
+    pub(crate) fn support_event(&self,code:crate::support::Code,failure:Option<crate::support::FailureClass>) {
+        if let Some(port)=&self.support {port.event(code,failure);}
+    }
     pub fn performance(&self) -> &super::performance::Handle { &self.shared.performance }
     pub fn queue_pressure(&self) -> QueuePressure {
         use std::sync::atomic::Ordering::Relaxed;
@@ -454,6 +460,7 @@ impl CommandPort {
             full_rejections: std::sync::atomic::AtomicU64::new(0),
         });
         let port = Self {
+            support: None,
             input_epoch: None,
             theme_requests: crate::theme::requests::Port::default(),
             sender,

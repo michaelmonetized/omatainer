@@ -35,6 +35,7 @@ pub struct Handle {
     project: Project,
     stopped: Arc<AtomicBool>,
     busy: Arc<AtomicBool>,
+    safe_mode: bool,
 }
 pub struct AudioOut {
     pub handle: Handle,
@@ -61,6 +62,7 @@ impl Handle {
     pub fn status(&self) -> Arc<Status> {
         self.status.load_full()
     }
+    pub fn safe_mode(&self) -> bool { self.safe_mode }
     /// Worker only. The GUI previews first and explicitly confirms stopping.
     pub fn switch(
         &self,
@@ -86,6 +88,7 @@ impl Handle {
         self.calibrate_permitted(request, cancel, self.performance_permit()?)
     }
     pub(crate) fn performance_permit(&self) -> Result<crate::engine::performance::ExclusivePermit, String> {
+        if self.safe_mode {return Err("Audio devices are disabled in safe mode; save your work and explicitly restart normally".into());}
         self.project.performance().audio_change().map_err(|error| error.to_string())
     }
     pub(crate) fn apply_preview_permitted(&self, settings: crate::preferences::Audio, expected: config::Plan, cancel: Arc<AtomicBool>, permit: crate::engine::performance::ExclusivePermit) -> Result<Arc<Status>, String> {
@@ -104,6 +107,9 @@ impl Handle {
         cancel: Arc<AtomicBool>,
         permit: crate::engine::performance::ExclusivePermit,
     ) -> Result<Arc<Status>, String> {
+        // Guard the permitted/internal entry points too. Preview cannot bypass
+        // startup isolation by retaining a permit acquired elsewhere.
+        if self.safe_mode {return Err("Audio devices are disabled in safe mode; save your work and explicitly restart normally".into());}
         if self.busy.swap(true, Ordering::AcqRel) {
             return Err("An audio operation is still pending".into());
         }
@@ -492,6 +498,29 @@ pub(super) fn start_with<B: Backend>(
     settings: crate::preferences::Audio,
     create: impl FnOnce() -> B + Send + 'static,
 ) -> anyhow::Result<AudioOut> {
+    start_owned(rt,settings,create,false)
+}
+
+/// No CPAL host, device enumeration, input stream or MIDI manager is created.
+/// The same retained-graph service loop as backend failure still supports real
+/// project capture/install, recovery and clean close while transport is offline.
+pub fn start_safe(rt:RtEngine)->anyhow::Result<AudioOut> {
+    start_owned(rt,crate::preferences::Audio::default(),||Unavailable,true)
+}
+struct Unavailable;
+impl Backend for Unavailable {
+    type Stream=();
+    fn select(&mut self,_:&crate::preferences::Audio)->Result<config::Plan,String>{Err("Safe mode has no audio backend".into())}
+    fn open(&mut self,_:&config::Plan,_:OutputCallback,_:Arc<AtomicBool>)->Result<(),String>{Err("Safe mode has no audio backend".into())}
+    fn play(&mut self,_:&())->Result<(),String>{Err("Safe mode has no audio backend".into())}
+    fn calibrate(&mut self,_:&calibration::Request,_:&AtomicBool,_:&Arc<AtomicBool>)->Result<calibration::Measurement,String>{Err("Safe mode has no audio backend".into())}
+}
+fn start_owned<B:Backend>(
+    rt:RtEngine,
+    settings:crate::preferences::Audio,
+    create:impl FnOnce()->B+Send+'static,
+    safe_mode:bool,
+)->anyhow::Result<AudioOut> {
     let project = rt.project.clone();
     let status = Arc::new(ArcSwap::from_pointee(Status {
         generation: 0,
@@ -510,6 +539,7 @@ pub(super) fn start_with<B: Backend>(
         project,
         stopped: stopped.clone(),
         busy: Arc::new(AtomicBool::new(false)),
+        safe_mode,
     };
     let (ready, started) = bounded(1);
     std::thread::Builder::new()
@@ -523,6 +553,15 @@ pub(super) fn start_with<B: Backend>(
                 stopped,
                 last_offline_publish: std::time::Instant::now(),
             };
+            if safe_mode {
+                let graph=owner.graph.as_mut().expect("safe owner keeps its graph");
+                graph.cmd_rx.set_audio_offline(true);
+                graph.stop_for_audio();
+                owner.publish(Phase::Offline, settings, "Safe mode: audio and MIDI devices are disabled. Project Open, recovery and Save remain available; restart normally to enable playback.".into());
+                let _=ready.send(Ok(()));
+                owner.run(requests);
+                return;
+            }
             let result = owner
                 .backend
                 .select(&settings)

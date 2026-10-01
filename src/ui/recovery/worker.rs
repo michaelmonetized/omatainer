@@ -33,9 +33,12 @@ pub(super) struct Status {
     pub message: String,
     pub durable: Option<Durable>,
     pub usage_bytes: Option<u64>,
+    pub write_failures: u64,
+    pub last_write_failure: Option<crate::support::FailureClass>,
 }
 #[derive(Clone)]
 pub(super) struct Durable {
+    pub session: [u8;32],
     pub epoch: u64,
     pub revision: u64,
     pub view_revision: u64,
@@ -130,6 +133,9 @@ impl Worker {
         handle: crate::engine::project::Handle,
         performance: &crate::engine::performance::Handle,
     ) -> std::io::Result<Self> {
+        Self::start_with_scan(root,handle,performance,true)
+    }
+    pub fn start_with_scan(root:PathBuf,handle:crate::engine::project::Handle,performance:&crate::engine::performance::Handle,scan:bool)->std::io::Result<Self> {
         #[cfg(test)]
         let hooks = Hooks::default();
         #[cfg(test)]
@@ -137,11 +143,11 @@ impl Worker {
         #[cfg(test)]
         let (finished, finish) = bounded(1);
         let latest = Arc::new(ArcSwapOption::<Update>::empty());
-        let startup_work = performance.optional_work();
+        let startup_work = scan.then(||performance.optional_work());
         let startup_cancel = startup_work
-            .as_ref()
+            .as_ref().and_then(|work|work.as_ref().ok())
             .map(|work| work.cancel())
-            .unwrap_or_else(|_| Arc::new(AtomicBool::new(false)));
+            .unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
         let control = Arc::new(ArcSwap::from_pointee(Control {
             paused: false,
             cancel: startup_cancel,
@@ -193,8 +199,8 @@ impl Worker {
                 status.store(Arc::new(current.clone()));
                 let startup_token = control.load_full();
                 let (startup, startup_work) = match startup_work {
-                    Ok(work) => (crate::recovery::discover(&root, &work.cancel()).map_err(|e| e.to_string()), Some(work)),
-                    Err(error) => {
+                    Some(Ok(work)) => (crate::recovery::discover(&root, &work.cancel()).map_err(|e| e.to_string()), Some(work)),
+                    Some(Err(error)) => {
                         // A single metadata lookup is the essential startup notice.
                         // Full journal/PCM verification is optional guarded work.
                         let warnings = if std::fs::symlink_metadata(&root).is_ok() {
@@ -202,6 +208,7 @@ impl Worker {
                         } else { Vec::new() };
                         (Ok(crate::recovery::Inventory { warnings, ..Default::default() }), None)
                     }
+                    None => (Ok(crate::recovery::Inventory{warnings:vec!["Safe mode: recovery discovery is deferred. Use Refresh recovery list to explicitly verify retained copies.".into()],..Default::default()}),None),
                 };
                 control.rcu(|current| if Arc::ptr_eq(current, &startup_token) { Arc::new(Control::new(current.paused)) } else { current.clone() });
                 if outgoing.send(Output { id: 0, event: Event::Listed(startup, startup_work) }).is_err() { return; }
@@ -297,6 +304,7 @@ impl Worker {
                             current.warning = !commit.durable || commit.warning.is_some();
                             if commit.durable {
                                 current.durable = Some(Durable {
+                                    session: crate::recovery::session_digest(sessions.current.as_ref().unwrap().1.session_id()),
                                     epoch: update.epoch,
                                     revision,
                                     view_revision: update.view_revision,
@@ -322,6 +330,8 @@ impl Worker {
                             next = Instant::now();
                         }
                         Err(error) => {
+                            current.write_failures=current.write_failures.saturating_add(1);
+                            current.last_write_failure=Some(error.class);
                             current.warning = true;
                             current.message =
                                 format!("Recovery has not saved newer edits: {error}");
@@ -490,6 +500,19 @@ impl Sessions {
         Ok(warning)
     }
 }
+struct CaptureError { message:String, class:crate::support::FailureClass }
+impl From<String> for CaptureError {fn from(message:String)->Self {Self{message,class:crate::support::FailureClass::Unknown}}}
+impl From<crate::recovery::Error> for CaptureError {
+    fn from(error:crate::recovery::Error)->Self {
+        let class=match &error {
+            crate::recovery::Error::Cancelled=>crate::support::FailureClass::Cancelled,
+            crate::recovery::Error::Invalid(_)=>crate::support::FailureClass::Invalid,
+            crate::recovery::Error::Io{source,..}=>crate::support::FailureClass::from_io(source),
+        };
+        Self {message:error.to_string(),class}
+    }
+}
+impl std::fmt::Display for CaptureError {fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result {f.write_str(&self.message)}}
 fn capture_and_append(
     handle: &crate::engine::project::Handle,
     update: &Update,
@@ -497,7 +520,7 @@ fn capture_and_append(
     cancel: &AtomicBool,
     capture_active: &AtomicBool,
     #[cfg(test)] hooks: &Hooks,
-) -> Result<(crate::recovery::Commit, u64, u64), String> {
+) -> Result<(crate::recovery::Commit, u64, u64), CaptureError> {
     // SC ordering pairs GUI cancellation with its subsequent fence observation:
     // either it waits for this claim or this claim observes cancellation before
     // entering the engine's single capture exchange.
@@ -511,7 +534,7 @@ fn capture_and_append(
     capture_active.store(false, Ordering::SeqCst);
     let captured = captured.map_err(|e| e.to_string())?;
     if captured.checkpoint.epoch != update.epoch {
-        return Err("Document epoch changed; stale UI state was not journaled".into());
+        return Err("Document epoch changed; stale UI state was not journaled".to_owned().into());
     }
     let mut view = update.view.clone();
     view.deck_identities = std::array::from_fn(|deck| {
@@ -558,7 +581,7 @@ fn capture_and_append(
             if needs_new_session {
                 sessions.restart_session();
             }
-            return Err(error.to_string());
+            return Err(error.into());
         }
     };
     if commit.durable {

@@ -437,3 +437,19 @@ and unmute…** through the audio owner and remains latched if reset fails. You 
 retain mute to Save and deliberately leave/close. Quiet tail readings and device
 names do not establish physical hardware health. See the
 [protection policy and validation](docs/validation/issue-96-performance-mode.md).
+
+
+**Support and crash reports** is in the Project menu. Inspect the bounded JSON,
+choose its categories, and confirm review before exporting a new local
+`.omasupport.json` file. There is no upload client. Media, project content,
+paths, titles, device names, raw errors, credentials and panic payloads are
+excluded. Retained reports distinguish an observed Rust panic from an unclean
+exit whose cause is unknown; exact retained recovery references open the normal
+recovery preview.
+
+Run `omatainer --safe-mode` to use a stopped project service without opening audio
+or MIDI devices, external theme/library startup, or automatically restoring a
+project. Open, recovery and Save remain available; engine controls are offline.
+**Restart normally** completes Save/Discard/Cancel before restarting with the
+saved setup. `--safe-mode --startup-check` is a bounded headless startup diagnostic,
+not native GUI or hardware QA. See [support/privacy and validation boundaries](docs/validation/issue-102-support.md).

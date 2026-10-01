@@ -93,6 +93,8 @@ impl Store {
             poisoned: false,
         })
     }
+    /// Opaque application-owned session identity; never a project/media path.
+    pub fn session_id(&self) -> &str { &self.session }
     /// Only irreversible lifecycle or an uncertain tail requires a new session.
     /// Invalid documents/configuration remain errors the caller must correct.
     pub fn needs_new_session(&self) -> bool {
@@ -585,6 +587,9 @@ fn verify_assets(
     verified: &mut HashSet<String>,
     remaining_bytes: &mut u64,
 ) -> Result<(), Error> {
+    // Every lookup/restore revalidates the intermediate directory. O_NOFOLLOW
+    // on each final sidecar alone cannot reject an assets-directory symlink.
+    files::private_dir(&path.join("assets"), false)?;
     for id in ids {
         check(cancel)?;
         if verified.contains(id) {
@@ -610,6 +615,49 @@ fn verify_assets(
         verified.insert(id.clone());
     }
     Ok(())
+}
+/// Full SHA256 avoids exporting the local session name, timestamp or PID.
+pub fn session_digest(session:&str)->[u8;32] {
+    use sha2::{Digest,Sha256};
+    Sha256::digest(session.as_bytes()).into()
+}
+/// Optional worker-only lookup of one previously confirmed durable record.
+/// Unlike discovery this never substitutes a newer sequence. Missing/pruned
+/// records return None; corrupt/locked/ambiguous inputs return an explicit error.
+pub fn lookup_exact(root:&Path,digest:[u8;32],epoch:u64,sequence:u64,cancel:&AtomicBool)->Result<Option<Candidate>,Error> {
+    check(cancel)?;
+    match fs::symlink_metadata(root) {
+        Err(error) if error.kind()==std::io::ErrorKind::NotFound=>return Ok(None),
+        Err(error)=>return Err(Error::io("inspect recovery root",error)),Ok(_)=>{},
+    }
+    files::private_dir(root,false)?;
+    let mut session=None;
+    for path in files::entries(root,SESSIONS_LIMIT+1,cancel)? {
+        let Some(name)=path.file_name().and_then(|n|n.to_str()).filter(|n|valid_session(n)) else {continue};
+        if session_digest(name)==digest {
+            if session.is_some(){return Err(Error::invalid("ambiguous recovery session digest; no candidate selected"));}
+            session=Some(name.to_owned());
+        }
+    }
+    let Some(session)=session else {return Ok(None)};
+    let (path,_lock)=session_lock(root,&session)?.ok_or_else(||Error::invalid("referenced recovery session is still active"))?;
+    if retired(&path,cancel)? {return Ok(None);}
+    let mut candidate=None;let mut warnings=Vec::new();
+    let mut budget=project_file::DEFAULT_PCM_LIMIT + project_file::DEFAULT_METADATA_LIMIT as u64
+        + (project_file::CONTAINER_OVERHEAD+1)*project_file::DEFAULT_MEDIA_LIMIT as u64;
+    for segment in segments(&path,cancel)? {
+        let read=journal::read(&segment,cancel)?;
+        if let Some(warning)=read.warning {report(&mut warnings,warning);}
+        for record in read.records {
+            if record.sequence!=sequence || record.body.metadata.epoch!=epoch {continue;}
+            if candidate.is_some(){return Err(Error::invalid("ambiguous recovery record; no candidate selected"));}
+            verify_assets(&path,&record.body.media,cancel,&mut HashSet::new(),&mut budget)?;
+            candidate=Some(Candidate {session:session.clone(),sequence,metadata:record.body.metadata,
+                root:root.into(),segment:segment.file_name().unwrap().to_str().unwrap().into(),digest:record.digest,report:Vec::new()});
+        }
+    }
+    if let Some(candidate)=&mut candidate {candidate.report=warnings;}
+    check(cancel)?;Ok(candidate)
 }
 pub fn discover(root: &Path, cancel: &AtomicBool) -> Result<Inventory, Error> {
     discover_with_budget(root, cancel, MAX_STORAGE_BYTES)

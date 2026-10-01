@@ -181,6 +181,7 @@ pub(super) struct Projects {
     title: String,
     pending_selection: Option<(LibSource, usize, String)>,
     pub(super) local_edits: u64,
+    restarting: bool,
 }
 impl Drop for Projects {
     fn drop(&mut self) {
@@ -197,6 +198,9 @@ impl Projects {
         let recent_file = Some(crate::theme::config_dir().join("recent-projects.json"));
         #[cfg(test)]
         let recent_file = None;
+        Self::with_recent(handle,output_sr,recent_file)
+    }
+    pub(super) fn with_recent(handle:Handle,output_sr:u32,recent_file:Option<PathBuf>)->Self {
         let (worker, message) = match Worker::start(handle, output_sr, recent_file) {
             Ok(worker) => (Some(worker), None),
             Err(error) => (None, Some(format!("Project worker unavailable: {error}"))),
@@ -217,6 +221,7 @@ impl Projects {
             title: String::new(),
             pending_selection: None,
             local_edits: 0,
+            restarting: false,
         }
     }
     pub fn committing(&self) -> bool {
@@ -251,11 +256,19 @@ impl App {
     pub(super) fn allow_project_close(&mut self, ctx: &egui::Context) {
         self.begin_recovery_close(ctx);
     }
+    pub(super) fn request_normal_restart(&mut self) {
+        if !self.engine.safe_mode() || self.project.busy() || self.project.committing() || self.project.dialog.is_some() {return;}
+        self.project.restarting=true;
+        self.request_project_action(Action::Close);
+    }
     pub(super) fn finish_project_close(&mut self, ctx: &egui::Context) {
         self.project.allow_close = true;
+        self.support.restart.store(self.project.restarting,Ordering::Release);
         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
     }
     pub(super) fn cancel_project_close(&mut self) {
+        self.project.restarting=false;
+        self.support.restart.store(false,Ordering::Release);
         self.project.closing_library = false;
         self.project.close_guard = None;
         self.project.allow_close = false;
@@ -616,6 +629,7 @@ impl App {
                         continue;
                     };
                     if active.cancel.load(Ordering::Acquire) {
+                        self.project.restarting=false;
                         self.project.message =
                             Some("Close cancelled; current session preserved.".into());
                         continue;
@@ -639,6 +653,7 @@ impl App {
                         .take()
                         .is_some_and(|active| active.cancel.load(Ordering::Acquire))
                     {
+                        self.project.restarting=false;
                         self.project.message =
                             Some("Close cancelled; current session preserved.".into());
                         continue;
@@ -656,6 +671,7 @@ impl App {
                         continue;
                     };
                     if active.cancel.load(Ordering::Acquire) {
+                        self.project.restarting=false;
                         self.project.message =
                             Some("Close cancelled; current session preserved.".into());
                     } else if discard {
@@ -671,6 +687,9 @@ impl App {
                     }
                 }
                 Event::Failed(error) => {
+                    if !self.project.active.as_ref().is_some_and(|active|matches!(active.operation,Operation::CloseCheck{..})) {self.project.restarting=false;}
+                    let code=if self.project.active.as_ref().is_some_and(|active|matches!(active.operation,Operation::Save{..})){crate::support::Code::ProjectWriteFailed}else{crate::support::Code::ProjectReadFailed};
+                    self.engine.cmd.support_event(code,Some(crate::support::FailureClass::Unknown));
                     if self.project.active.take().is_some_and(|active| {
                         matches!(active.operation, Operation::CloseCheck { .. })
                             && !active.cancel.load(Ordering::Acquire)
@@ -680,6 +699,7 @@ impl App {
                     self.project.message = Some(format!("Project operation failed: {error}"));
                 }
                 Event::Cancelled => {
+                    self.project.restarting=false;
                     self.project.active = None;
                     if self.project.message.is_none() {
                         self.project.message = Some("Project operation cancelled; current session and destination were preserved.".into());
@@ -834,6 +854,7 @@ impl App {
                     |ui| {
                         self.undo_menu(ui);
                         let menu = ui.menu_button("Project", |ui| {
+                            if ui.button("Support and crash reports…").help(ui,HelpControl::SupportOpen).clicked(){self.support.open=true;ui.close();}
                             let recovery = ui.button("Autosave and recovery…");
                             help::annotate(ui, &recovery, help::Control::RecoveryOpen);
                             if recovery.clicked() { self.recovery.open = true; ui.close(); }
@@ -942,6 +963,7 @@ impl App {
         let mut action = None;
         let mut save = None;
         let mut recheck = None;
+        let mut started_save = false;
         let response = egui::Modal::new(egui::Id::new("project-dialog")).show(ctx, |ui| {
             match &mut dialog {
                 Dialog::Unsaved(next) => {
@@ -982,6 +1004,7 @@ impl App {
                                 if before.matches(&self.project_baseline()) { action = Some(Action::Open(path)); }
                                 else { recheck = Some(Action::Open(path)); }
                             }, PathKind::Save(kind, after) => {
+                                started_save = true;
                                 self.begin_project_save(*kind, after.clone(), path, *replace);
                             } }
                             retain = false;
@@ -995,6 +1018,10 @@ impl App {
         });
         if response.should_close() {
             retain = false;
+        }
+        if !retain && !started_save && action.is_none() && save.is_none() && recheck.is_none() {
+            self.project.restarting=false;
+            self.support.restart.store(false,Ordering::Release);
         }
         if retain {
             self.project.dialog = Some(dialog);

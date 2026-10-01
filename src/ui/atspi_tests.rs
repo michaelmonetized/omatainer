@@ -194,3 +194,46 @@ fn private_atspi_bridge_child() {
         "native consumer did not exercise the bridge"
     );
 }
+
+#[test]
+#[ignore = "run scripts/check-accessibility.py --support on private D-Bus buses"]
+fn private_support_bridge_child() {
+    assert_eq!(std::env::var("OMATAINER_ATSPI_PRIVATE").as_deref(),Ok("1"));
+    let directory=PathBuf::from(std::env::var_os("OMATAINER_ATSPI_TEST_DIR").unwrap());
+    assert!(directory.join("private-harness").is_file());
+    std::env::set_current_dir(&directory).unwrap();
+    let mut engine=Engine::start_safe().unwrap();
+    let session=crate::support::worker::Session::start(&directory.join("support"),true).unwrap();
+    engine.cmd.attach_support(session.port.clone());
+    let mut app=App::with_loader(engine,Theme::default(),None);
+    let restarting=Arc::new(std::sync::atomic::AtomicBool::new(false));
+    app.initialize_support(Some(session.client()),directory.join("support"),restarting.clone());
+    let ctx=egui::Context::default();ctx.enable_accesskit();let mut time=0.0;
+    let mut frame=|app:&mut App,events| {
+        time+=0.02;
+        ctx.run(egui::RawInput{screen_rect:Some(Rect::from_min_size(Pos2::ZERO,Vec2::new(1900.0,1800.0))),time:Some(time),events,focused:true,..Default::default()},|ctx|app.update_frame(ctx))
+    };
+    frame(&mut app,vec![]);
+    let mut tree=frame(&mut app,vec![]).platform_output.accesskit_update.unwrap();
+    let initial=Arc::new(StdMutex::new(tree.clone()));let (send,receive)=mpsc::sync_channel(64);let dropped=Arc::new(AtomicUsize::new(0));
+    let mut adapter=accesskit_unix::Adapter::new(Initial(initial.clone()),Actions{send,dropped:dropped.clone()},Deactivate);
+    adapter.update_window_focus_state(true);
+    let deadline=Instant::now()+Duration::from_secs(65);let mut frames=0;let mut actions=0;let mut closes=0;
+    while !directory.join("done").exists() {
+        assert!(Instant::now()<deadline,"private support consumer timed out");
+        let events=receive.try_iter().take(64).map(|action|{actions+=1;egui::Event::AccessKitActionRequest(action)}).collect();
+        let output=frame(&mut app,events);tree=output.platform_output.accesskit_update.unwrap();
+        closes+=output.viewport_output[&egui::ViewportId::ROOT].commands.iter().filter(|cmd|matches!(cmd,egui::ViewportCommand::Close)).count();
+        *initial.lock().unwrap()=tree.clone();adapter.update_if_active(||tree.clone());frames+=1;
+        let destination=directory.join("support-report.omasupport.json");
+        let exported=destination.exists().then(||crate::support::storage::reopen(&destination,&std::sync::atomic::AtomicBool::new(false)).unwrap().safe_mode);
+        let engine_controls_disabled=["Deck A: Pitch","Deck A: Platter play or pause","Sampler: Sample pad 1"].iter().all(|name|tree.nodes.iter().any(|(_,node)|node.label()==Some(*name)&&node.is_disabled()));
+        let value=serde_json::json!({"frames":frames,"actions":actions,"safe_mode":app.engine.safe_mode(),"callbacks":app.engine.cmd.audio_metrics().callbacks,"support_open":app.support.open,"command_accepted":app.engine.cmd.stats().accepted,"command_rejected":app.engine.cmd.stats().rejected,"engine_controls_disabled":engine_controls_disabled,"transport_stopped":!app.snap.playing&&app.snap.decks.iter().all(|deck|!deck.playing),"message":app.support.message_for_native_test(),"exported_safe_report":exported,"restarting":restarting.load(Ordering::Acquire),"closes":closes});
+        std::fs::write(directory.join("state.tmp"),serde_json::to_vec(&value).unwrap()).unwrap();std::fs::rename(directory.join("state.tmp"),directory.join("state.json")).unwrap();
+        std::thread::sleep(Duration::from_millis(12));
+    }
+    assert_eq!(dropped.load(Ordering::Acquire),0);assert_eq!(app.engine.cmd.audio_metrics().callbacks,0);
+    assert!(app.engine.output_info().is_none());assert!(!app.engine.midi.connections_available());
+    assert!(actions>=8);assert!(closes>0);assert!(restarting.load(Ordering::Acquire));
+    assert!(session.finish(crate::support::Exit::Clean,Duration::from_secs(2)));
+}

@@ -1,5 +1,7 @@
 mod project_file;
 mod recovery;
+mod support;
+mod startup;
 mod licenses;
 mod engine;
 mod library;
@@ -63,6 +65,8 @@ fn main() -> anyhow::Result<()> {
         args.remove(0);
         return ctl(&args);
     }
+    let launch = startup::Launch::parse(&args)?;
+    let paths = startup::Paths::environment()?;
     let socket = socket_path()?;
     // Ownership is established before opening audio/MIDI or constructing a
     // window. Keep it until the later IPC guard and GUI have both shut down.
@@ -71,15 +75,20 @@ fn main() -> anyhow::Result<()> {
     {
         instance::Acquisition::Owner(guard) => guard,
         instance::Acquisition::Existing => {
+            anyhow::ensure!(!launch.safe_mode, "Omatainer already owns this runtime. Safe mode did not focus, control or replace the existing session; close it explicitly first.");
             focus_existing();
             return Ok(());
         }
     };
-    let home = std::path::PathBuf::from(std::env::var_os("HOME").context("HOME is unavailable; cannot resolve user preferences")?);
-    let path = preferences::storage::default_path(std::env::var_os("XDG_CONFIG_HOME").as_deref(), &home);
-    let mut startup = preferences::worker::Startup::read(path, home);
-    let defaults_once = args.iter().any(|arg| arg == "--defaults-once");
-    if startup.blocked && !defaults_once {
+    let support = support::worker::Session::start(&paths.support,launch.safe_mode).ok();
+    if let Some(support)=&support {support.install_panic_hook();}
+    let mut startup = preferences::worker::Startup::read(paths.preferences, paths.home);
+    let defaults_once = launch.defaults_once;
+    if startup.blocked && !defaults_once && !launch.safe_mode {
+        if let Some(support)=&support {
+            support.port.event(crate::support::Code::PreferencesReadFailed,Some(crate::support::FailureClass::Invalid));
+            support.finish(crate::support::Exit::StartupFailed,Duration::from_secs(2));
+        }
         let retry = preferences::recovery::show(startup.diagnostic.as_deref().unwrap_or("Preferences are unavailable"), true)?;
         drop(_instance);
         return preferences::recovery::restart(retry);
@@ -91,17 +100,43 @@ fn main() -> anyhow::Result<()> {
         startup.diagnostic = Some(startup.diagnostic.map_or(notice.into(), |error| format!("{error}\n{notice}")));
     }
     let running_audio = profile.audio.clone();
-    let engine = match engine::Engine::start_with_settings(&profile) {
+    let mut engine = match if launch.safe_mode {engine::Engine::start_safe()} else {engine::Engine::start_with_settings(&profile)} {
         Ok(engine) => engine,
         Err(error) => {
+            if let Some(support)=&support {
+                support.port.event(crate::support::Code::EngineStartupFailed,Some(crate::support::FailureClass::Unavailable));
+                support.finish(crate::support::Exit::StartupFailed,Duration::from_secs(2));
+            }
+            if launch.startup_check {anyhow::bail!("safe startup project service could not be initialized");}
             let retry = preferences::recovery::show(&format!("Could not open the requested setup: {error:#}. Saved preferences were not changed."), false)?;
             drop(_instance);
             return preferences::recovery::restart(retry);
         }
     };
-    let _ipc = ipc_server::start_at(&socket, engine.cmd.clone(), engine.snap.clone())
-        .context("could not start the local control service; check the reported socket path and permissions")?;
+    if let Some(support)=&support {engine.cmd.attach_support(support.port.clone());}
+    if launch.startup_check {
+        let result = startup::check_safe_engine(&engine,!startup.blocked);
+        drop(engine);
+        let exit=if result.is_ok(){crate::support::Exit::Clean}else{crate::support::Exit::StartupFailed};
+        let marker_clean = support.as_ref().is_some_and(|session|session.finish(exit,Duration::from_secs(2)));
+        let mut report = result?;
+        report["support_marker_clean"] = marker_clean.into();
+        println!("{}",serde_json::to_string(&report)?);
+        return Ok(());
+    }
+    let _ipc = match ipc_server::start_at(&socket, engine.cmd.clone(), engine.snap.clone()) {
+        Ok(ipc)=>ipc, Err(error)=>{
+            if let Some(support)=&support {
+                support.port.event(crate::support::Code::IpcStartupFailed,Some(crate::support::FailureClass::Unavailable));
+                support.finish(crate::support::Exit::StartupFailed,Duration::from_secs(2));
+            }
+            return Err(error).context("could not start the local control service; check the reported socket path and permissions");
+        }
+    };
 
+    let restart = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let support_client = support.as_ref().map(|session|session.client());
+    let support_root = paths.support.clone();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1540.0, 960.0])
@@ -110,16 +145,29 @@ fn main() -> anyhow::Result<()> {
             .with_app_id("org.omarchy.omatainer"),
         ..Default::default()
     };
-    eframe::run_native(
+    let gui_result=eframe::run_native(
         "omatainer",
         options,
         Box::new(|cc| {
             let mut app = ui::App::new(cc, engine);
             app.initialize_preferences(&cc.egui_ctx, startup, running_audio);
+            app.initialize_support(support_client,support_root,restart.clone());
             Ok(Box::new(app))
         }),
     )
-    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    .map_err(|e| anyhow::anyhow!("{e}"));
+    drop(_ipc);
+    if let Some(support)=&support {
+        let exit=if gui_result.is_ok(){crate::support::Exit::Clean}else{support.port.event(crate::support::Code::GuiStartupFailed,Some(crate::support::FailureClass::Unavailable));crate::support::Exit::StartupFailed};
+        support.finish(exit,Duration::from_secs(2));
+    }
+    drop(_instance);
+    gui_result?;
+    if restart.load(std::sync::atomic::Ordering::Acquire) {
+        use std::os::unix::process::CommandExt;
+        let error=std::process::Command::new(std::env::current_exe()?).exec();
+        return Err(error.into());
+    }
     Ok(())
 }
 
@@ -264,6 +312,7 @@ fn handle_client_with_stop(
             Ok(Some(size)) => size,
             Ok(None) => return Ok(()),
             Err(error) => {
+                commands.support_event(support::Code::ParserRejected,Some(support::FailureClass::Invalid));
                 let _ = ipc_transport::reject(&mut writer, serde_json::Value::Null,
                     error.code(), &error.to_string(), limits.write);
                 return Ok(());
@@ -291,6 +340,7 @@ fn handle_client_with_stop(
         let command_status = match submission {
             Ok(status) => status,
             Err((code, error)) => {
+                if matches!(code,"invalid_json"|"invalid_operation") {commands.support_event(support::Code::ParserRejected,Some(support::FailureClass::Invalid));}
                 ipc_transport::reject(&mut writer, request_id, code, &error.to_string(), limits.write)?;
                 continue;
             }
