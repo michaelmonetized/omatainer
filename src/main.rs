@@ -8,6 +8,7 @@ mod ui;
 mod ipc_server;
 mod ipc_transport;
 mod ipc_request;
+mod ipc_schema;
 mod ipc_follow;
 mod instance;
 mod runtime;
@@ -20,6 +21,8 @@ mod shell_scene_tests;
 mod ipc_control_tests;
 #[cfg(test)]
 mod ipc_error_tests;
+#[cfg(test)]
+mod ipc_schema_tests;
 
 use crate::engine::Command;
 use crate::theme::socket_path;
@@ -160,16 +163,6 @@ fn scene_payload(args: &[String]) -> anyhow::Result<String> {
     Ok(serde_json::json!({"op": "scene", "n": n - 1}).to_string())
 }
 
-fn ipc_scene_index(v: &serde_json::Value) -> anyhow::Result<u8> {
-    let n = v.get("n").and_then(serde_json::Value::as_u64);
-    match n {
-        Some(n) if n < engine::SCENES as u64 => Ok(u8::try_from(n)?),
-        _ => anyhow::bail!(
-            "scene n must be a zero-based integer from 0 through {}",
-            engine::SCENES - 1
-        ),
-    }
-}
 
 fn send_op(payload: &str) -> anyhow::Result<String> {
     let stream = UnixStream::connect(socket_path()?).context("omatainer is not running")?;
@@ -212,32 +205,9 @@ fn ipc_request_id(request: &serde_json::Value) -> anyhow::Result<serde_json::Val
     }
 }
 
-fn ipc_deck_index(request: &serde_json::Value) -> anyhow::Result<u8> {
-    match request.get("deck").and_then(serde_json::Value::as_u64) {
-        Some(deck) if deck < engine::DECKS as u64 => Ok(deck as u8),
-        _ => anyhow::bail!("deck must be an integer from 0 through {}", engine::DECKS - 1),
-    }
-}
-
-
+#[cfg(test)]
 fn ipc_command(v: &serde_json::Value) -> anyhow::Result<Option<Command>> {
-    let op = v.get("op").and_then(|x| x.as_str()).unwrap_or("");
-    Ok(Some(match op {
-        "play" => Command::Play,
-        "stop" => Command::Stop,
-        "togglePlay" => Command::TogglePlay,
-        "record" => Command::Record,
-        "tap" => Command::Tap(std::time::Instant::now()),
-        "scene" => Command::LaunchScene { scene: ipc_scene_index(v)? },
-        "deckPlay" => Command::DeckPlay {
-            deck: ipc_deck_index(v)?,
-        },
-        "deckCue" => Command::DeckCue {
-            deck: ipc_deck_index(v)?,
-        },
-        "ping" | "status" => return Ok(None),
-        _ => anyhow::bail!("missing or unsupported IPC operation {:?}", op.chars().take(64).collect::<String>()),
-    }))
+    Ok(ipc_schema::Operation::parse(v)?.command())
 }
 
 #[cfg(test)]
@@ -274,11 +244,10 @@ fn handle_client_with_limits(
             let request: serde_json::Value = serde_json::from_slice(&line[..size])
                 .map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
             request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
-            if request.get("op").and_then(serde_json::Value::as_str) == Some("follow") {
-                follow = true;
-                return Ok(None);
-            }
-            let command = ipc_command(&request).map_err(|error| ("invalid_operation", error))?;
+            let operation = ipc_schema::Operation::parse(&request)
+                .map_err(|error| ("invalid_operation", error))?;
+            follow = matches!(operation, ipc_schema::Operation::Follow {});
+            let command = operation.command();
             match command {
                 Some(command) => commands.send(command)
                     .map(|outcome| Some(outcome.name()))
