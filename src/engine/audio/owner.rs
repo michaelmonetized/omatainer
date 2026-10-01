@@ -758,6 +758,13 @@ pub(crate) mod tests {
         engine._audio = Some(audio);
         (engine, controls)
     }
+    pub(crate) fn publish_phase_for_ui_test(handle: &Handle, phase: Phase) {
+        handle.status.rcu(|old| {
+            let mut status = (**old).clone();
+            status.phase = phase.clone();
+            Arc::new(status)
+        });
+    }
     fn cancel() -> Arc<AtomicBool> {
         Arc::new(AtomicBool::new(false))
     }
