@@ -469,7 +469,6 @@ pub struct RtEngine {
     pub selected_track: usize,
     pub selected_scene: usize,
     pub selected_deck: usize,
-    pub library_sel: usize,
     pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
     pub snap: Arc<Mutex<Snapshot>>,
@@ -811,7 +810,6 @@ impl RtEngine {
             selected_track: 0,
             selected_scene: 0,
             selected_deck: 0,
-            library_sel: 0,
             cmd_rx,
             command_stats: control::CommandStats::default(),
             publisher: snapshot::Publisher::new(snap.clone()),
@@ -1859,12 +1857,10 @@ impl RtEngine {
                     self.tracks[track as usize].armed = !self.tracks[track as usize].armed;
                 }
             }
-            Command::Browse(v) => {
-                if v > 0.55 {
-                    self.library_sel = self.library_sel.saturating_add(1);
-                } else if v < 0.45 {
-                    self.library_sel = self.library_sel.saturating_sub(1);
-                }
+            Command::Browse(_) => {
+                // Browsing must resolve the GUI's published filtered view on a
+                // control producer. The renderer has no independent selection.
+                self.cmd_rx.reject_uncaptured_ui_load();
             }
             Command::Select { track, scene } => {
                 self.selected_track = track;

@@ -1,11 +1,8 @@
-//! Bounded typed requests for work owned by the GUI.
-//!
-//! The GUI publishes its selection; the MIDI dispatch worker captures that
-//! exact Arc at admission. Browsing or a scan cannot change an admitted source.
-//! No filesystem, decoder, or renderer work is performed by this handoff.
+//! Ordered, bounded requests for the GUI. The dispatch worker advances a cursor
+//! over the GUI's published filtered view before capturing subsequent loads.
+//! The raw MIDI callback and audio renderer never enter this producer bridge.
 use super::media_source::Selection;
 use super::{SubmissionError, SubmissionOutcome, DECKS};
-use arc_swap::ArcSwapOption;
 use crossbeam_channel::{bounded, Receiver as QueueReceiver, Sender, TrySendError};
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -14,6 +11,12 @@ use std::sync::Arc;
 pub const CAPACITY: usize = 16;
 pub const PER_FRAME: usize = 8;
 
+/// Implementations resolve immutable source identity from the published view.
+/// A retired/unresolved view returns None; it must never substitute another row.
+pub trait SelectionView: Send + Sync {
+    fn len(&self) -> Option<usize>;
+    fn selection(&self, index: usize) -> Option<Arc<Selection>>;
+}
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Stats {
     pub pending: usize,
@@ -21,27 +24,39 @@ pub struct Stats {
     pub dispatched: u64,
     pub rejected: u64,
 }
-
 pub struct LoadRequest {
     pub deck: u8,
-    pub selection: Option<Arc<Selection>>,
+    pub selection: Arc<Selection>,
 }
-
+pub struct BrowseRequest {
+    pub index: usize,
+    pub epoch: u64,
+    pub selection: Arc<Selection>,
+}
+pub enum Request {
+    Browse(BrowseRequest),
+    Load(LoadRequest),
+}
+#[derive(Default)]
+struct Navigation {
+    view: Option<Arc<dyn SelectionView>>,
+    cursor: usize,
+    epoch: u64,
+}
 #[derive(Default)]
 struct Shared {
     attached: AtomicBool,
-    selection: ArcSwapOption<Selection>,
+    navigation: Mutex<Navigation>,
+    epoch: AtomicU64,
     accepted: AtomicU64,
     dispatched: AtomicU64,
     rejected: AtomicU64,
 }
-
 pub(super) struct Mailbox {
     shared: Arc<Shared>,
-    sender: Sender<LoadRequest>,
-    receiver: Mutex<Option<QueueReceiver<LoadRequest>>>,
+    sender: Sender<Request>,
+    receiver: Mutex<Option<QueueReceiver<Request>>>,
 }
-
 impl Default for Mailbox {
     fn default() -> Self {
         let (sender, receiver) = bounded(CAPACITY);
@@ -52,10 +67,8 @@ impl Default for Mailbox {
         }
     }
 }
-
 impl Mailbox {
     pub fn receiver(&self) -> Option<Receiver> {
-        // Called once during Engine construction, before MIDI connections open.
         let receiver = self.receiver.lock().take()?;
         self.shared.attached.store(true, Ordering::Release);
         Some(Receiver {
@@ -63,23 +76,29 @@ impl Mailbox {
             receiver,
         })
     }
-
-    pub fn load(&self, deck: u8) -> Result<SubmissionOutcome, SubmissionError> {
-        let result = if deck as usize >= DECKS {
-            Err(SubmissionError::InvalidTarget)
-        } else if !self.shared.attached.load(Ordering::Acquire) {
+    fn submit(
+        &self,
+        make: impl FnOnce(&mut Navigation) -> Result<Request, SubmissionError>,
+    ) -> Result<SubmissionOutcome, SubmissionError> {
+        let result = if !self.shared.attached.load(Ordering::Acquire) {
             Err(SubmissionError::UiUnavailable)
         } else {
-            // CommandPort is called by the MIDI dispatch worker (issue 39),
-            // never by the raw MIDI callback. Rejected Arc destruction stays
-            // off that callback and off the audio renderer.
-            let selection = self.shared.selection.load_full();
-            self.sender
-                .try_send(LoadRequest { deck, selection })
-                .map_err(|error| match error {
+            // Only GUI/control producers and the MIDI dispatch worker use this
+            // lock. It orders cursor movement and captured source admission.
+            let mut navigation = self.shared.navigation.lock();
+            let previous = navigation.cursor;
+            match make(&mut navigation).and_then(|request| {
+                self.sender.try_send(request).map_err(|error| match error {
                     TrySendError::Full(_) => SubmissionError::UiFull,
                     TrySendError::Disconnected(_) => SubmissionError::UiUnavailable,
                 })
+            }) {
+                Ok(()) => Ok(()),
+                Err(error) => {
+                    navigation.cursor = previous;
+                    Err(error)
+                }
+            }
         };
         match result {
             Ok(()) => {
@@ -92,11 +111,50 @@ impl Mailbox {
             }
         }
     }
-
+    pub fn load(&self, deck: u8) -> Result<SubmissionOutcome, SubmissionError> {
+        self.submit(|navigation| {
+            if deck as usize >= DECKS {
+                return Err(SubmissionError::InvalidTarget);
+            }
+            let selection = navigation
+                .view
+                .as_ref()
+                .and_then(|view| view.selection(navigation.cursor))
+                .ok_or(SubmissionError::UncapturedSelection)?;
+            Ok(Request::Load(LoadRequest { deck, selection }))
+        })
+    }
+    pub fn browse(&self, steps: f32) -> Result<SubmissionOutcome, SubmissionError> {
+        self.submit(|navigation| {
+            // Browse is a signed count, never an absolute knob position.
+            if !steps.is_finite() || steps.fract() != 0.0 || steps.abs() > i32::MAX as f32 {
+                return Err(SubmissionError::InvalidTarget);
+            }
+            let view = navigation
+                .view
+                .as_ref()
+                .ok_or(SubmissionError::UncapturedSelection)?;
+            let len = view
+                .len()
+                .filter(|len| *len > 0)
+                .ok_or(SubmissionError::UncapturedSelection)?;
+            let cursor = (navigation.cursor as i64)
+                .saturating_add(steps as i64)
+                .clamp(0, len.saturating_sub(1) as i64) as usize;
+            let selection = view
+                .selection(cursor)
+                .ok_or(SubmissionError::UncapturedSelection)?;
+            navigation.cursor = cursor;
+            Ok(Request::Browse(BrowseRequest {
+                index: cursor,
+                epoch: navigation.epoch,
+                selection,
+            }))
+        })
+    }
     pub fn reject_uncaptured(&self) {
         self.shared.rejected.fetch_add(1, Ordering::Relaxed);
     }
-
     pub fn stats(&self) -> Stats {
         Stats {
             pending: self.sender.len(),
@@ -106,32 +164,52 @@ impl Mailbox {
         }
     }
 }
-
 pub struct Receiver {
     shared: Arc<Shared>,
-    receiver: QueueReceiver<LoadRequest>,
+    receiver: QueueReceiver<Request>,
 }
-
 impl Receiver {
-    pub fn publish_selection(&self, selection: Option<Arc<Selection>>) {
-        self.shared.selection.store(selection);
+    pub fn publish_view(&self, view: Arc<dyn SelectionView>, cursor: usize) {
+        let mut navigation = self.shared.navigation.lock();
+        navigation.view = Some(view);
+        navigation.cursor = cursor;
+        navigation.epoch = navigation.epoch.wrapping_add(1);
+        self.shared.epoch.store(navigation.epoch, Ordering::Release);
     }
-
-    pub fn take_loads(&self) -> [Option<LoadRequest>; PER_FRAME] {
+    #[cfg(test)]
+    pub(crate) fn with_navigation_held_for_test(&self, action: impl FnOnce()) {
+        let _guard = self.shared.navigation.lock();
+        action();
+    }
+    pub fn epoch(&self) -> u64 {
+        self.shared.epoch.load(Ordering::Acquire)
+    }
+    pub fn take_requests(&self) -> [Option<Request>; PER_FRAME] {
         std::array::from_fn(|_| {
             self.receiver.try_recv().ok().inspect(|_| {
                 self.shared.dispatched.fetch_add(1, Ordering::Relaxed);
             })
         })
     }
+    #[cfg(test)]
+    pub fn publish_selection(&self, selection: Option<Arc<Selection>>) {
+        struct Single(Option<Arc<Selection>>);
+        impl SelectionView for Single {
+            fn len(&self) -> Option<usize> {
+                Some(usize::from(self.0.is_some()))
+            }
+            fn selection(&self, index: usize) -> Option<Arc<Selection>> {
+                (index == 0).then(|| self.0.clone()).flatten()
+            }
+        }
+        self.publish_view(Arc::new(Single(selection)), 0);
+    }
 }
-
 impl Drop for Receiver {
     fn drop(&mut self) {
         self.shared.attached.store(false, Ordering::Release);
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,6 +225,7 @@ mod tests {
             })));
         let counts = crate::engine::test_alloc::measure(|| {
             renderer.apply(crate::engine::Command::DeckLoadSelected { deck: 0 });
+            renderer.apply(crate::engine::Command::Browse(1.0));
         });
         assert_eq!(counts.allocations, 0);
         assert_eq!(counts.frees, 0);
