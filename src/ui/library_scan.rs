@@ -2,15 +2,39 @@
 use super::{builtin_crate_items, parse_tags, sort_crate, split_artist_title, LibItem, LibSource};
 use super::{Bpm, FileFingerprint};
 use crate::engine::performance::{Handle, WorkPermit};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
-use walkdir::WalkDir;
 
 #[cfg(test)]
 mod tests;
+mod traversal;
+
+const MAX_INPUTS: usize = 64;
+const MAX_DEPTH: usize = 64;
+const MAX_VISITED: usize = 1_000_000;
+const MAX_ITEMS: usize = 100_000;
+const MAX_SKIP_SAMPLES: usize = 32;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum SkipReason { Unsupported, Unreadable, MissingRoot, Symlink, DepthLimit, Capacity, Duplicate, InvalidPath }
+impl SkipReason {
+    pub fn label(self) -> &'static str { match self {
+        Self::Unsupported => "unsupported file type", Self::Unreadable => "unreadable entry", Self::MissingRoot => "unavailable input",
+        Self::Symlink => "symlink not traversed", Self::DepthLimit => "depth limit", Self::Capacity => "inventory limit",
+        Self::Duplicate => "overlapping input", Self::InvalidPath => "path cannot be persisted",
+    } }
+}
+#[derive(Clone, Debug)]
+pub(super) struct Skipped { pub path: String, pub reason: SkipReason, pub detail: String }
+#[derive(Clone, Debug, Default)]
+pub(super) struct Summary { pub skipped: [usize; 8], pub samples: Vec<Skipped>, pub truncated: bool }
+impl Summary { pub fn skipped_count(&self) -> usize { self.skipped.iter().sum() } }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Kind { Roots, Import }
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ScanState {
@@ -27,6 +51,8 @@ struct Progress {
     visited: AtomicUsize,
     found: AtomicUsize,
     phase: AtomicU8,
+    skipped: AtomicUsize,
+    reasons: [AtomicUsize; 8],
 }
 
 #[derive(Clone, Default)]
@@ -38,6 +64,7 @@ pub(super) struct Options {
 struct Request {
     work: Arc<WorkPermit>,
     roots: Vec<PathBuf>,
+    kind: Kind,
     baseline: Arc<Vec<LibItem>>,
     cancel: Arc<AtomicBool>,
     progress: Arc<Progress>,
@@ -53,6 +80,7 @@ struct Retired {
 pub(super) struct Publication {
     pub(super) work: Arc<WorkPermit>,
     pub items: Arc<Vec<LibItem>>,
+    pub summary: Arc<Summary>,
     retirement: mpsc::SyncSender<Retired>,
 }
 
@@ -109,6 +137,7 @@ pub(super) struct LibraryScan {
     cancel: Arc<AtomicBool>,
     progress: Arc<Progress>,
     pub state: ScanState,
+    pub summary: Option<Arc<Summary>>,
 }
 
 impl Default for LibraryScan {
@@ -121,12 +150,13 @@ impl Default for LibraryScan {
                 let mut fingerprints = HashMap::new();
                 while let Ok(request) = jobs.recv() {
                     match scan(&request, &fingerprints) {
-                        Ok((items, next_fingerprints)) => {
+                        Ok((items, next_fingerprints, summary)) => {
                             let items = Arc::new(items);
                             let (retirement, retired) = mpsc::sync_channel(1);
                             if finished
                                 .send(Completion::Ready(Publication {
                                     items: items.clone(),
+                                    summary: Arc::new(summary),
                                     retirement,
                                     work: request.work.clone(),
                                 }))
@@ -166,6 +196,7 @@ impl Default for LibraryScan {
                 cancel: Arc::new(AtomicBool::new(false)),
                 progress: Arc::new(Progress::default()),
                 state: ScanState::Idle,
+                summary: None,
             },
             Err(error) => Self {
                 performance: Handle::default(),
@@ -175,6 +206,7 @@ impl Default for LibraryScan {
                 cancel: Arc::new(AtomicBool::new(false)),
                 progress: Arc::new(Progress::default()),
                 state: ScanState::Failed(format!("Could not start library scan: {error}")),
+                summary: None,
             },
         }
     }
@@ -198,7 +230,19 @@ impl LibraryScan {
         baseline: Arc<Vec<LibItem>>,
         options: Options,
     ) -> bool {
+        self.admit(roots, baseline, options, Kind::Roots)
+    }
+
+    pub fn import(&mut self, paths: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>) -> bool {
+        self.admit(paths, baseline, Options::default(), Kind::Import)
+    }
+
+    fn admit(&mut self, roots: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>, options: Options, kind: Kind) -> bool {
         if self.active() {
+            return false;
+        }
+        if roots.len() > MAX_INPUTS || baseline.len() > MAX_ITEMS {
+            self.state = ScanState::Failed("Import/scan exceeds 64 inputs or 100,000 library entries".into());
             return false;
         }
         let work = match self.performance.optional_work() {
@@ -219,9 +263,11 @@ impl LibraryScan {
         };
         self.cancel = work.cancel();
         self.progress = Arc::new(Progress::default());
+        self.summary = None;
         let request = Request {
             work,
             roots,
+            kind,
             baseline,
             cancel: self.cancel.clone(),
             progress: self.progress.clone(),
@@ -256,6 +302,7 @@ impl LibraryScan {
                     self.state = ScanState::Cancelled;
                 } else {
                     self.state = ScanState::Complete(publication.items.len());
+                    self.summary = Some(publication.summary.clone());
                     return Some(publication);
                 }
             }
@@ -279,14 +326,20 @@ impl LibraryScan {
                     2 => "Finishing",
                     _ => "Scanning",
                 };
+                let reasons = [SkipReason::Unsupported, SkipReason::Unreadable, SkipReason::MissingRoot, SkipReason::Symlink, SkipReason::DepthLimit, SkipReason::Capacity, SkipReason::Duplicate, SkipReason::InvalidPath]
+                    .into_iter().filter_map(|reason| { let count = self.progress.reasons[reason as usize].load(Ordering::Relaxed);
+                        (count > 0).then(|| format!("{count} {}", reason.label())) }).collect::<Vec<_>>().join(", ");
                 format!(
-                    "{phase}: {} entries · {} audio files",
+                    "{phase}: {} entries · {} audio files · {} skipped entries{}",
                     self.progress.visited.load(Ordering::Relaxed),
                     self.progress.found.load(Ordering::Relaxed),
+                    self.progress.skipped.load(Ordering::Relaxed),
+                    if reasons.is_empty() { String::new() } else { format!(" ({reasons})") },
                 )
             }
             ScanState::Cancelling => "Cancelling scan…".into(),
-            ScanState::Complete(count) => format!("Scan complete · {count} tracks"),
+            ScanState::Complete(count) => format!("Scan/import complete · {count} tracks · {} skipped entries{}", self.summary.as_ref().map_or(0, |s| s.skipped_count()),
+                if self.summary.as_ref().is_some_and(|s| s.truncated) { " · incomplete coverage" } else { "" }),
             ScanState::Cancelled => "Scan cancelled · crate unchanged".into(),
             ScanState::Failed(error) => format!("Scan failed · {error}"),
         }
@@ -331,89 +384,8 @@ fn io_error(path: &Path, error: impl std::fmt::Display) -> ScanFailure {
 fn scan(
     request: &Request,
     previous_fingerprints: &HashMap<PathBuf, Fingerprint>,
-) -> Result<(Vec<LibItem>, HashMap<PathBuf, Fingerprint>), ScanFailure> {
-    check_cancel(request)?;
-    let previous: HashMap<_, _> = request
-        .baseline
-        .iter()
-        .map(|item| (&item.source, item))
-        .collect();
-    let mut items = builtin_crate_items();
-    for item in &mut items {
-        if let Some(old) = previous.get(&item.source) {
-            preserve_metadata(item, old);
-        }
-    }
-    let mut fingerprints = HashMap::new();
-    let mut seen = HashSet::new();
-    for root in &request.roots {
-        check_cancel(request)?;
-        match std::fs::metadata(root) {
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(error) => return Err(io_error(root, error)),
-            Ok(metadata) if !metadata.is_dir() => {
-                return Err(io_error(root, "scan root is not a directory"));
-            }
-            Ok(_) => {}
-        }
-        for entry in WalkDir::new(root).max_depth(6) {
-            check_cancel(request)?;
-            let entry = entry.map_err(|error| io_error(root, error))?;
-            #[cfg(test)]
-            if let Some(hook) = &request.options.before_entry {
-                hook(entry.path());
-            }
-            check_cancel(request)?;
-            request.progress.visited.fetch_add(1, Ordering::Relaxed);
-            if !entry.file_type().is_file() {
-                continue;
-            }
-            let path = entry.path();
-            let extension = path
-                .extension()
-                .and_then(|extension| extension.to_str())
-                .unwrap_or("")
-                .to_ascii_lowercase();
-            if !matches!(
-                extension.as_str(),
-                "wav" | "mp3" | "flac" | "ogg" | "aiff" | "aif" | "m4a" | "aac"
-            ) || !seen.insert(path.to_path_buf())
-            {
-                continue;
-            }
-            let metadata = entry.metadata().map_err(|error| io_error(path, error))?;
-            let fingerprint = FileFingerprint::from_metadata(&metadata);
-            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("track");
-            let (artist, title) = split_artist_title(stem);
-            let (bpm, key) = parse_tags(stem);
-            let mut item = LibItem {
-                title,
-                artist,
-                bpm: Bpm::hint(bpm),
-                fingerprint: Some(fingerprint),
-                key,
-                length: None,
-                last_play: None,
-                source: LibSource::File(path.to_path_buf()),
-            };
-            if previous_fingerprints
-                .get(path)
-                .is_none_or(|previous| *previous == fingerprint)
-            {
-                if let Some(old) = previous.get(&item.source) {
-                    preserve_metadata(&mut item, old);
-                }
-            }
-            fingerprints.insert(path.to_path_buf(), fingerprint);
-            items.push(item);
-            request.progress.found.fetch_add(1, Ordering::Relaxed);
-        }
-    }
-    check_cancel(request)?;
-    request.progress.phase.store(1, Ordering::Relaxed);
-    sort_crate(&mut items);
-    check_cancel(request)?;
-    Ok((items, fingerprints))
+) -> Result<(Vec<LibItem>, HashMap<PathBuf, Fingerprint>, Summary), ScanFailure> {
+    traversal::scan(request, previous_fingerprints)
 }
 
 fn preserve_metadata(item: &mut LibItem, old: &LibItem) {

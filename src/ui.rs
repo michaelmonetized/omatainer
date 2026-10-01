@@ -119,6 +119,8 @@ pub struct App {
     library_initialized: bool,
     library_close: library_store::Close,
     library_import_path: String,
+    library_media_paths: String,
+    library_media_revision: u64,
     // History can change while a worker holds the immutable crate baseline.
     // Keep those small edits separate from the full library allocation.
     last_played: play_history::History,
@@ -220,6 +222,8 @@ impl App {
             library_initialized: false,
             library_close: library_store::Close::default(),
             library_import_path: String::new(),
+            library_media_paths: String::new(),
+            library_media_revision: 0,
             last_played: play_history::History::default(),
             playback_watches,
             cue_editor: cue_editor::Cues::default(),

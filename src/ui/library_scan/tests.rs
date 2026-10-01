@@ -407,6 +407,51 @@ fn dropping_scanner_never_joins_a_blocked_filesystem_hook_on_the_ui_thread() {
 }
 
 #[test]
+fn explicit_files_and_deep_folders_merge_without_removing_existing_tracks() {
+    let directory = Directory::new(); let existing = directory.file("existing.wav");
+    let mut fixture = Fixture::new(32); let mut baseline = builtin_crate_items(); baseline.push(item(existing.clone(), "retained custom title", 133.0));
+    fixture.app.library = Arc::new(baseline);
+    let folder = directory.0.join("import"); std::fs::create_dir(&folder).unwrap(); let mut deep = folder.clone();
+    for _ in 0..10 { deep.push("nested"); std::fs::create_dir(&deep).unwrap(); }
+    let imported = deep.join("new.wav"); std::fs::write(&imported, b"scan fixture").unwrap();
+    assert!(fixture.app.library_scan.import(vec![folder.clone(), imported.clone(), folder], fixture.app.library.clone())); finish(&mut fixture.app);
+    assert_eq!(fixture.app.library.len(), 4);
+    assert_eq!(fixture.app.library.iter().find(|i| i.source == LibSource::File(existing.clone())).unwrap().title, "retained custom title");
+    assert_eq!(fixture.app.library.iter().filter(|i| i.source == LibSource::File(imported.clone())).count(), 1);
+    assert_eq!(fixture.app.library_scan.summary.as_ref().unwrap().skipped[SkipReason::Duplicate as usize], 2);
+}
+
+#[test]
+fn traversal_limits_and_skipped_reasons_are_explicit_and_samples_bounded() {
+    let directory = Directory::new(); for i in 0..100 { directory.file(&format!("unsupported-{i}.txt")); }
+    let mut deep = directory.0.clone(); for _ in 0..MAX_DEPTH+2 { deep.push("d"); std::fs::create_dir(&deep).unwrap(); }
+    std::fs::write(deep.join("beyond-limit.wav"), b"fixture").unwrap();
+    let mut fixture = Fixture::new(32); start(&mut fixture.app, vec![directory.0.clone(), directory.0.join("unavailable")]); finish(&mut fixture.app);
+    let summary = fixture.app.library_scan.summary.as_ref().unwrap();
+    assert_eq!(summary.skipped[SkipReason::Unsupported as usize], 100);
+    assert_eq!(summary.skipped[SkipReason::MissingRoot as usize], 1);
+    assert_eq!(summary.skipped[SkipReason::DepthLimit as usize], 1);
+    assert_eq!(summary.samples.len(), MAX_SKIP_SAMPLES); assert!(summary.truncated);
+    assert!(summary.samples.iter().all(|s| s.path.len() <= 1024 && s.detail.len() <= 256));
+    assert!(fixture.app.library_scan.label().contains("incomplete coverage"));
+    assert!(fixture.app.library_scan.import(vec![deep.join("beyond-limit.wav")], fixture.app.library.clone())); finish(&mut fixture.app);
+    assert_eq!(fixture.app.library.len(), 3, "explicit file imports are not limited by distance from a folder root");
+}
+
+#[test]
+fn skipped_reason_counts_are_visible_before_completion() {
+    let directory = Directory::new(); let unsupported = directory.file("skip.txt"); let held_path = directory.file("hold.wav");
+    let (entered, ready) = mpsc::sync_channel(1); let (release, held) = mpsc::sync_channel(1); let held = std::sync::Mutex::new(held);
+    let hook_path = held_path.clone(); let mut scanner = LibraryScan::default();
+    assert!(scanner.admit(vec![unsupported, held_path], Arc::new(builtin_crate_items()), Options { before_entry: Some(Arc::new(move |path| {
+        if path == hook_path { entered.send(()).unwrap(); let _ = held.lock().unwrap().recv_timeout(Duration::from_secs(5)); }
+    })) }, Kind::Import));
+    ready.recv_timeout(Duration::from_secs(3)).unwrap();
+    assert!(scanner.label().contains("1 unsupported file type")); release.send(()).unwrap();
+    wait_for(|| { if let Some(publication) = scanner.poll() { publication.discard(); } !scanner.active() });
+}
+
+#[test]
 fn history_merge_requires_verified_identity_even_before_first_worker_scan() {
     let directory = Directory::new();
     let unchanged = directory.file("Unchanged 120.wav");

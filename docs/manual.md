@@ -1634,7 +1634,7 @@ Workflow: Prepare a DJ deck.
 
 Background filesystem discovery
 
-Scan the configured music location. Progress and errors are visible; only a complete result replaces the crate. Existing selection and valid metadata survive.
+Scan configured music folders with bounded traversal. Readable supported entries publish together; skipped reasons and incomplete coverage are visible. Cancellation keeps the prior crate, and the persistent catalog retains saved identities absent from a scan.
 
 Workflow: Prepare a DJ deck.
 
@@ -1979,6 +1979,30 @@ Workflow: Prepare a DJ deck.
 Validated background merge
 
 Merge compatible identities and preparation off the UI thread. Malformed/newer/conflicting data is rejected; unrelated pending edits remain preserved.
+
+Workflow: Prepare a DJ deck.
+
+### Music paths
+
+Explicit file and folder inputs
+
+Enter one absolute local music file or folder per line. The background worker reads at most 64 inputs, 64 folder levels, one million entries and 100,000 library rows. Unsupported, unreadable and truncated entries have visible reasons.
+
+Workflow: Prepare a DJ deck.
+
+### Import music files/folders
+
+Background music discovery
+
+Merge supported readable audio-file identities into the existing library without unloading or moving either deck. Overlapping inputs are deduplicated; cancellation before publication keeps the prior crate.
+
+Workflow: Prepare a DJ deck.
+
+### Manage music folders
+
+Saved library root preferences
+
+Open Preferences to edit and apply the saved music folder list. Removing a root never deletes its audio files or saved catalog tracks.
 
 Workflow: Prepare a DJ deck.
 

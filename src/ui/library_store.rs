@@ -221,6 +221,14 @@ fn reconcile_items(
 }
 
 impl App {
+    fn import_media_paths(&mut self) {
+        let paths: Vec<PathBuf> = self.library_media_paths.lines().filter(|line| !line.is_empty()).map(PathBuf::from).collect();
+        if paths.is_empty() || paths.len() > 64 || paths.iter().any(|p| !p.is_absolute() || p.as_os_str().len() > 4096) {
+            self.status = "Enter 1–64 absolute file or folder paths, one per line (at most 4096 bytes each)".into();
+        } else if self.library_scan.import(paths, self.library.clone()) {
+            self.status = "Music import queued; current decks keep playing".into();
+        } else { self.status = self.library_scan.label(); }
+    }
     pub(super) fn start_library_store(&mut self, path: PathBuf) {
         self.library_metadata = library_metadata::Metadata::new(Some(path));
         self.library_metadata.set_performance(self.engine.cmd.performance().clone());
@@ -317,6 +325,30 @@ impl App {
             // A project CloseGuard seals renderer edits; the same close must
             // also exclude new catalog imports after its durability check.
             if self.project.committing() { ui.disable(); }
+            ui.label("Import music files or folders. Enter one absolute path per line; existing library tracks and playing decks are preserved.");
+            let paths = ui.add(egui::TextEdit::multiline(&mut self.library_media_paths).id_salt("music-import-paths").char_limit(65_536).desired_rows(3).desired_width(420.0));
+            paths.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Music file and folder paths"));
+            help::annotate(ui, &paths, help::Control::MusicImportPaths);
+            if paths.changed() { self.library_media_revision = self.library_media_revision.checked_add(1).unwrap_or(u64::MAX); }
+            let busy = self.library_scan.active();
+            ui.push_id(("music-import", self.library_media_revision), |ui| {
+                let response = ui.add_enabled(!busy && self.library_media_revision != u64::MAX, egui::Button::new("Import music files/folders"));
+                help::annotate(ui, &response, help::Control::MusicImport);
+                if response.clicked() { self.import_media_paths(); }
+            });
+            if busy && ui.button("Cancel music import/scan").clicked() { self.library_scan.cancel(); }
+            if ui.button("Manage music folders in Preferences").help(ui, help::Control::MusicRoots).clicked() { self.settings.open = true; }
+            ui.label(self.library_scan.label());
+            if let Some(summary) = &self.library_scan.summary {
+                if !summary.samples.is_empty() {
+                    ui.label(format!("First {} skipped entries of {}:", summary.samples.len(), summary.skipped_count()));
+                    let scroll = egui::ScrollArea::vertical().id_salt("music-import-skipped").max_height(140.0).show(ui, |ui| {
+                        for sample in &summary.samples { ui.label(format!("{}: {} — {}", sample.reason.label(), sample.path, sample.detail)); }
+                    });
+                    accessibility::scrollbars(ui, "Music import skipped entries", &scroll);
+                }
+            }
+            ui.separator();
             ui.label("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
             ui.label("Local files can play. Removable-volume and provider references remain unavailable until a resolver is supported; no network request is made.");
             let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
@@ -340,6 +372,8 @@ impl App {
 }
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod import_tests;
 
 #[derive(Default)]
 pub(super) struct Close {
