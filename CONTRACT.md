@@ -192,3 +192,15 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   visible failures. An uncaptured legacy renderer request fails explicitly;
   it cannot infer a later GUI selection. File loading uses the existing pending,
   result and diagnostic status, with request-token cancellation rules above.
+
+## Three master FX controls
+
+- Each of the three legacy master FX Wet controls addresses its own supported
+  stereo slot. Initial types are Echo, Reverb and Filter, all at zero wet.
+- The third control (slot index 2) initially blends a two-pole 1 kHz low-pass:
+  minimum is dry audio, maximum is the filtered signal on both channels.
+  Its existing NS7FX channel-1 CC `0x32` mapping has those same endpoints.
+- Select cycles Echo → Reverb → Filter in that slot. Snapshot type and wet
+  values describe the actual processor and mix, including the third slot.
+- Every factory FX binding must resolve to a supported slot and observable
+  renderer state; adding a controller label cannot silently create an inert FX.
