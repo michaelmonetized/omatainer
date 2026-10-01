@@ -5,6 +5,7 @@ use crate::theme::requests::{Applied, Failure, Request};
 pub(super) struct Pending {
     request: Request,
     installed: Option<(u64, crate::preferences::Appearance)>,
+    _commit: Option<crate::engine::performance::ExclusivePermit>,
 }
 impl App {
     pub(super) fn poll_theme_requests(&mut self, ctx: &egui::Context) -> bool {
@@ -33,14 +34,13 @@ impl App {
                 .and_then(|loader| loader.poll_forced())
             {
                 debug_assert_eq!(done.generation, pending.request.generation);
-                match done.result {
+                match done.result.and_then(|candidate| candidate.claim()) {
                     Err(error) => {
-                        pending
-                            .request
-                            .finish(Err(Failure::new("invalid_theme", error)));
+                        pending.request.finish(Err(error));
                         return true;
                     }
-                    Ok(update) if pending.request.begin_apply() => {
+                    Ok((update, guard)) if pending.request.begin_apply() => {
+                        pending._commit = Some(guard);
                         self.settings.theme_update = Some(update);
                         let appearance = self.settings.profile().appearance.clone();
                         self.apply_appearance(ctx);
@@ -72,11 +72,12 @@ impl App {
                         self.theme_request = Some(Pending {
                             request,
                             installed: None,
+                            _commit: None,
                         });
                         ctx.request_repaint_after(std::time::Duration::from_millis(16));
                         return true;
                     }
-                    Err(error) => request.finish(Err(Failure::new("theme_busy", error))),
+                    Err(error) => request.finish(Err(error)),
                 },
                 None => request.finish(Err(Failure::new(
                     "theme_unavailable",

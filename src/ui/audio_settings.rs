@@ -17,15 +17,18 @@ enum Job {
     Preview(String, Audio),
     Apply(Preview),
     Calibrate(Preview),
+    Reset,
 }
 enum Event {
     Preview(Preview),
     Applied(Preview, Result<Arc<owner::Status>, String>),
     Calibrated(Result<Arc<owner::Status>, String>),
     Failed(String),
+    Reset(Result<Arc<owner::Status>, String>),
 }
 struct Worker {
-    sender: Sender<(Job, Arc<AtomicBool>)>,
+    sender: Sender<(Job, Arc<AtomicBool>, Option<crate::engine::performance::ExclusivePermit>)>,
+    handle: owner::Handle,
     receiver: Receiver<Event>,
     cancel: Option<Arc<AtomicBool>>,
 }
@@ -34,12 +37,14 @@ impl Worker {
         handle: owner::Handle,
         discover: impl Fn() -> Result<config::Inventory, String> + Send + 'static,
     ) -> std::io::Result<Self> {
-        let (sender, input) = bounded::<(Job, Arc<AtomicBool>)>(1);
+        let (sender, input) = bounded::<(Job, Arc<AtomicBool>, Option<crate::engine::performance::ExclusivePermit>)>(1);
         let (output, receiver) = bounded(1);
+        let worker_handle = handle.clone();
         std::thread::Builder::new()
             .name("omatainer-audio-settings".into())
             .spawn(move || {
-                while let Ok((job, cancel)) = input.recv() {
+                let handle = worker_handle;
+                while let Ok((job, cancel, permit)) = input.recv() {
                     let event = match job {
                         Job::Preview(profile, saved) => match discover() {
                             Ok(inventory) => {
@@ -82,14 +87,15 @@ impl Worker {
                         },
                         Job::Apply(preview) => {
                             let result = preview.output.clone().and_then(|plan| {
-                                handle.apply_preview(preview.saved.clone(), plan, cancel)
+                                handle.apply_preview_permitted(preview.saved.clone(), plan, cancel, permit.expect("admitted audio change"))
                             });
                             Event::Applied(preview, result)
                         }
+                        Job::Reset => Event::Reset(handle.reset_permitted(cancel, permit.expect("admitted reset"))),
                         Job::Calibrate(preview) => Event::Calibrated(
                             preview
                                 .calibration
-                                .and_then(|request| handle.calibrate(request, cancel)),
+                                .and_then(|request| handle.calibrate_permitted(request, cancel, permit.expect("admitted calibration"))),
                         ),
                     };
                     if output.send(event).is_err() {
@@ -98,6 +104,7 @@ impl Worker {
                 }
             })?;
         Ok(Self {
+            handle,
             sender,
             receiver,
             cancel: None,
@@ -107,9 +114,10 @@ impl Worker {
         if self.cancel.is_some() {
             return Err("An audio operation is already pending".into());
         }
+        let permit = if matches!(job, Job::Preview(..)) { None } else { Some(self.handle.performance_permit()?) };
         let cancel = Arc::new(AtomicBool::new(false));
         self.sender
-            .try_send((job, cancel.clone()))
+            .try_send((job, cancel.clone(), permit))
             .map_err(|_| "Audio settings worker unavailable")?;
         self.cancel = Some(cancel);
         Ok(())
@@ -139,6 +147,7 @@ impl Drop for Worker {
 }
 #[derive(Clone, Copy)]
 enum Confirm {
+    Reset,
     Switch,
     Calibrate,
 }
@@ -205,6 +214,14 @@ impl Panel {
     }
 }
 impl App {
+    pub(super) fn performance_reset_button(&mut self, ui: &mut Ui) {
+        let available = self.audio_settings.handle.is_some() && !self.audio_settings.busy();
+        if ui.add_enabled(available, egui::Button::new("Reset stopped DSP and unmute…")).help(ui, HelpControl::PerformanceReset).clicked() {
+            self.audio_settings.open = true;
+            self.audio_settings.confirm = Some(Confirm::Reset);
+        }
+        if !available { ui.label("Audio owner unavailable or busy; keep output muted, Save, then leave protection deliberately before shutdown."); }
+    }
     pub(super) fn poll_audio_settings(&mut self, ctx: &egui::Context) {
         while let Some(event) = self.audio_settings.worker.as_mut().and_then(Worker::poll) {
             match event {
@@ -225,11 +242,11 @@ impl App {
                     }
                     self.audio_settings.message = status.message.clone();
                 }
-                Event::Calibrated(Ok(status)) => {
+                Event::Reset(Ok(status)) | Event::Calibrated(Ok(status)) => {
                     self.audio_settings.message = status.message.clone()
                 }
                 Event::Applied(_, Err(error))
-                | Event::Calibrated(Err(error))
+                | Event::Reset(Err(error)) | Event::Calibrated(Err(error))
                 | Event::Failed(error) => self.audio_settings.message = error,
             }
         }
@@ -294,11 +311,12 @@ impl App {
                 if let Some(confirm)=panel.confirm {
                     ui.separator();
                     match confirm {
+                        Confirm::Reset => { ui.label("Stop all sources, reclaim the graph on the audio-owner worker, clear voice/effect/filter histories and reopen the current output. Only a successful reset removes emergency mute. Playback remains stopped; input acknowledgment is still required if recovery is latched."); },
                         Confirm::Switch=>{ui.label("Stop decks, clips, recording and held notes, then change output? Previous output will be restored if opening fails. Playback will remain stopped; press Play explicitly when ready.");},
                         Confirm::Calibrate=>{ui.label("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback.");if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label(format!("Confirm route: {} output {} → {} input {}; level {} dBFS",request.output.device,request.output_channel+1,request.input.device,request.input_channel+1,request.level_db));}},
                     }
                     ui.horizontal(|ui|{
-                        if ui.button(match confirm{Confirm::Switch=>"Stop and change output",Confirm::Calibrate=>"Cable ready: stop and measure"}).help(ui,match confirm{Confirm::Switch=>HelpControl::AudioConfirm,Confirm::Calibrate=>HelpControl::AudioProbeConfirm}).clicked(){if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch=>Job::Apply(preview),Confirm::Calibrate=>Job::Calibrate(preview)});}panel.confirm=None;}
+                        if ui.button(match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Switch=>"Stop and change output",Confirm::Calibrate=>"Cable ready: stop and measure"}).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch=>HelpControl::AudioConfirm,Confirm::Calibrate=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch=>Job::Apply(preview),Confirm::Calibrate=>Job::Calibrate(preview),Confirm::Reset=>unreachable!()});}panel.confirm=None;}
                         if ui.button("Keep current audio").help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
                     });
                 }

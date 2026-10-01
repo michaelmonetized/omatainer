@@ -111,14 +111,14 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let (preferences, migrated) = match version {
-        3 => (
+        4 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 => {
+        2 | 3 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
-                Error::Invalid(format!("Invalid version 2 preferences: {error}"))
+                Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
             preferences.version = VERSION;
             (preferences, true)
@@ -210,6 +210,12 @@ fn save_before_commit(
     cancel: &AtomicBool,
     before_commit: impl FnOnce(),
 ) -> Result<Saved, Error> {
+    save_with_gate(path, preferences, overwrite, cancel, before_commit, None)
+}
+pub(crate) fn save_protected(path: &Path, preferences: &Preferences, overwrite: Overwrite, cancel: &AtomicBool, permit: &crate::engine::performance::WorkPermit) -> Result<Saved, Error> {
+    save_with_gate(path, preferences, overwrite, cancel, || {}, Some(permit))
+}
+fn save_with_gate(path: &Path, preferences: &Preferences, overwrite: Overwrite, cancel: &AtomicBool, before_commit: impl FnOnce(), permit: Option<&crate::engine::performance::WorkPermit>) -> Result<Saved, Error> {
     check(cancel)?;
     preferences.validate().map_err(Error::Invalid)?;
     let bytes = serde_json::to_vec_pretty(preferences)
@@ -256,6 +262,7 @@ fn save_before_commit(
         .map_err(|error| io("Synchronize preferences", error))?;
     before_commit();
     check(cancel)?;
+    let _commit = permit.map(|permit| permit.commit().map_err(|error| Error::Invalid(error.to_string()))).transpose()?;
     if revision(path)? != previous {
         return Err(Error::Conflict);
     }
@@ -523,4 +530,31 @@ mod tests {
             .unwrap();
         assert!(load(&dir.file(), &cancel).is_err());
     }
+    #[test]
+    fn performance_publication_race_preserves_prior_file_and_startup_flag_roundtrips() {
+        let dir = Directory::new();
+        let path = dir.0.join("preferences.json");
+        let preferences = Preferences::defaults(&dir.0);
+        let original = save(&path, &preferences, Overwrite::New, &AtomicBool::new(false)).unwrap();
+        let bytes = std::fs::read(&path).unwrap();
+        let performance = crate::engine::performance::Handle::default();
+        let permit = performance.optional_work().unwrap();
+        let mut changed = preferences.clone();
+        changed.profiles.get_mut("Studio").unwrap().startup.performance_mode = true;
+        let result = save_with_gate(&path, &changed, Overwrite::Exact(original.revision), &permit.cancel(), || performance.set_enabled(true).unwrap(), Some(&permit));
+        assert!(result.is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        performance.set_enabled(false).unwrap();
+        let saved = save(&path, &changed, Overwrite::Exact(revision(&path).unwrap()), &AtomicBool::new(false)).unwrap();
+        assert!(saved.revision.is_some());
+        assert!(load(&path, &AtomicBool::new(false)).unwrap().preferences.current().unwrap().startup.performance_mode);
+        let mut legacy = serde_json::to_value(preferences).unwrap();
+        legacy["version"] = 3.into();
+        for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("performance_mode"); }
+        let (legacy, migrated) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert!(migrated);
+        assert_eq!(legacy.version, 4);
+        assert!(legacy.profiles.values().all(|profile| !profile.startup.performance_mode));
+    }
+
 }

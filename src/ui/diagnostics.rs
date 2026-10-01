@@ -187,9 +187,10 @@ impl App {
             "Reopening capture"
         }
         .into();
-        match Worker::start(
+        match Worker::start_for_show(
             PathBuf::from(&self.diagnostics.path),
             report,
+            self.engine.cmd.performance(),
             #[cfg(test)]
             self.diagnostics.file_gate.clone(),
         ) {

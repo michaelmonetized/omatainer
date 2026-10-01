@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -136,6 +136,8 @@ pub struct Shortcut {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Startup {
+    #[serde(default)]
+    pub performance_mode: bool,
     pub scan_library: bool,
     pub show_help: bool,
     pub show_midi: bool,
@@ -168,6 +170,7 @@ impl Profile {
             shortcuts_enabled: true,
             shortcuts: BTreeMap::new(),
             startup: Startup {
+                performance_mode: false,
                 scan_library: true,
                 show_help: false,
                 show_midi: false,
@@ -189,6 +192,7 @@ impl Preferences {
         let studio = Profile::defaults(home);
         let mut performance = studio.clone();
         performance.startup.scan_library = false;
+        performance.startup.performance_mode = true;
         Self {
             version: VERSION,
             active: "Studio".into(),

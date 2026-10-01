@@ -18,6 +18,7 @@ pub enum Retry {
     Queued,
     AlreadyRunning,
     Unavailable,
+    Performance(crate::engine::performance::Error),
 }
 
 struct Activity {
@@ -61,7 +62,7 @@ impl Manager {
             busy: AtomicBool::new(true),
             alive: AtomicBool::new(true),
             retry_pending: AtomicBool::new(false),
-            policy: Control::new(policy),
+            policy: Control::with_performance(policy, cmd.performance().clone()),
         });
         let (requests, receiver) = bounded(1);
         let shared = activity.clone();
@@ -103,6 +104,7 @@ impl Manager {
                     if !worker.refresh(&request) {
                         continue;
                     }
+                    drop(request);
                     shared.busy.store(false, Release);
                     if receiver.recv().is_err() {
                         break;
@@ -152,19 +154,19 @@ impl Manager {
         {
             return Retry::AlreadyRunning;
         }
-        self.activity.retry_pending.store(true, Release);
-        match self.requests.as_ref().map(|tx| tx.try_send(())) {
-            // A stale wake for the now-applied policy is also sufficient to
-            // carry this explicit retry. Keep its flag instead of falsely
-            // declaring a live manager unavailable because the wake is full.
-            Some(Ok(())) | Some(Err(crossbeam_channel::TrySendError::Full(()))) => Retry::Queued,
-            _ => {
-                self.activity.retry_pending.store(false, Release);
+        // Retry is a deliberate device-topology operation too. Reissue the
+        // current policy so it carries the same generation-qualified exclusive
+        // permit through queued discovery, blocked OS calls and completion.
+        let policy = (*self.activity.policy.status().requested_policy).clone();
+        match self.configure(policy) {
+            Ok(_) => Retry::Queued,
+            Err(error) => {
                 self.activity.busy.store(false, Release);
-                Retry::Unavailable
+                if let PolicyError::Performance(error) = error { Retry::Performance(error) } else { Retry::Unavailable }
             }
         }
     }
+
     pub(super) fn busy(&self) -> bool {
         self.activity.busy.load(Acquire) || self.policy_status().pending()
     }

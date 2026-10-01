@@ -38,19 +38,104 @@ impl LibItem {
     }
 }
 
-pub(super) fn reconcile(
+pub(super) fn reconcile_optional(
     store: &mut Store,
     items: &mut Vec<LibItem>,
-    captures: Vec<Capture>,
-    import: Option<PathBuf>,
+    captures: &[Capture],
+    import: Option<&std::path::Path>,
+    import_work: Option<&crate::engine::performance::WorkPermit>,
+    scan_work: Option<&crate::engine::performance::WorkPermit>,
+    fallback: &[LibItem],
 ) -> Result<Option<String>, String> {
-    // Work on a candidate so invalid imports/limits never partly mutate memory.
+    use std::sync::atomic::Ordering;
+    const PROTECTED: &str =
+        "Performance protection cancelled the optional catalog import before commit";
+    let cancelled =
+        |work: &crate::engine::performance::WorkPermit| work.cancel().load(Ordering::Acquire);
     let mut catalog = store.catalog.clone();
-    let import_error = import.and_then(|path| {
-        crate::library::read(&path)
-            .and_then(|other| catalog.merge_import(other))
-            .err()
-    });
+    let mut import_error = None;
+    let mut imported = false;
+    if let Some(path) = import {
+        if import_work.is_some_and(&cancelled) {
+            import_error = Some(PROTECTED.into());
+        } else {
+            match crate::library::read(path).and_then(|other| catalog.merge_import(other)) {
+                Ok(()) => imported = true,
+                Err(error) => import_error = Some(error),
+            }
+        }
+    }
+    let use_scan = scan_work.is_some_and(|work| !cancelled(work));
+    if scan_work.is_some() && !use_scan {
+        *items = fallback.to_vec();
+    }
+    reconcile_items(&mut catalog, items, captures)?;
+    // A single short Studio-only permit orders mode entry against catalog
+    // replacement/rename/fsync. A mode request during an already committed save
+    // reports Changing; it cannot retroactively label the saved import cancelled.
+    let work = if use_scan {
+        scan_work
+    } else if imported {
+        import_work
+    } else {
+        None
+    };
+    let commit = work.map(|work| work.commit());
+    let import_cancelled = imported && import_work.is_some_and(&cancelled);
+    let scan_cancelled = use_scan && scan_work.is_some_and(&cancelled);
+    let mut guard = None;
+    if import_cancelled || scan_cancelled || commit.as_ref().is_some_and(|commit| commit.is_err()) {
+        // Optional candidates never replace essential loaded-media metadata,
+        // preparation or play history. Rebuild only that essential transaction.
+        catalog = store.catalog.clone();
+        if scan_work.is_some() {
+            *items = fallback.to_vec();
+        }
+        reconcile_items(&mut catalog, items, captures)?;
+        if imported {
+            import_error = Some(PROTECTED.into());
+        }
+    } else if let Some(Ok(commit)) = commit {
+        guard = Some(commit);
+    }
+    store.catalog = catalog;
+    store.save()?;
+    *items = store
+        .catalog
+        .tracks
+        .iter()
+        .map(|track| LibItem::from_stored(track.source.clone(), &track.versions[track.current]))
+        .collect();
+    drop(guard);
+    Ok(import_error)
+}
+
+/// A committed optional transaction can outlive the frame that enables
+/// protection. Keep the old visible identities with essential version-qualified
+/// updates until a later Studio rebase exposes the committed catalog additions.
+pub(super) fn restricted_rows(base: &[LibItem], captures: &[Capture]) -> Vec<LibItem> {
+    // Never overlay the full saved catalog here: a completed optional import
+    // can change metadata for an already visible identity too. Reuse the same
+    // merge rules with only the visible baseline and accepted essential edits.
+    let mut catalog = crate::library::Catalog::default();
+    if reconcile_items(&mut catalog, base, captures).is_err() {
+        return base.to_vec();
+    }
+    base.iter()
+        .map(|item| {
+            catalog.version(&item.source, item.fingerprint).map_or_else(
+                || item.clone(),
+                |version| LibItem::from_stored(item.source.clone(), version),
+            )
+        })
+        .collect()
+}
+
+fn reconcile_items(
+    catalog: &mut crate::library::Catalog,
+    items: &[LibItem],
+    captures: &[Capture],
+) -> Result<(), String> {
     for item in items.iter() {
         let current = catalog.track(&item.source).map(|t| t.current);
         catalog.upsert(
@@ -76,7 +161,7 @@ pub(super) fn reconcile(
         let version = catalog.upsert(
             capture.source.clone(),
             capture.fingerprint,
-            capture.metadata,
+            capture.metadata.clone(),
         )?;
         if let Some(preparation) = capture.preparation.filter(|p| p.valid()) {
             version.preparation = preparation;
@@ -94,22 +179,13 @@ pub(super) fn reconcile(
             track.current = current;
         }
     }
-    store.catalog = catalog;
-    store.save()?;
-    // A scan discovers local media; it never deletes persisted entries or
-    // remote namespaces. Missing/unmounted/provider entries remain in the crate.
-    *items = store
-        .catalog
-        .tracks
-        .iter()
-        .map(|track| LibItem::from_stored(track.source.clone(), &track.versions[track.current]))
-        .collect();
-    Ok(import_error)
+    Ok(())
 }
 
 impl App {
     pub(super) fn start_library_store(&mut self, path: PathBuf) {
         self.library_metadata = library_metadata::Metadata::new(Some(path));
+        self.library_metadata.set_performance(self.engine.cmd.performance().clone());
         self.library_initialized = false;
     }
     pub(super) fn library_receipt(

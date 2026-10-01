@@ -287,6 +287,28 @@ def private(binary):
         assert state()['help_lesson'][2] and state()['lesson_notes']==1
         action(named('Cancel lesson'),'click')
         wait_for(lambda:state()['help_lesson'] is None,'cancel guide only')
+        action(named('Enable performance mode'),'click')
+        wait_for(lambda:state()['performance']['protected'],'native performance protection')
+        action(named('Safe stop…'),'click')
+        action(named('Stop all transports and release notes'),'click')
+        wait_for(lambda:state()['performance']['stopped'],'native safe stop acknowledged')
+        assert not state()['performance']['output_muted'],'safe stop silently became emergency mute'
+        action(named('Recover inputs…'),'click')
+        action(named('I have released the physical inputs'),'click')
+        action(named('Inputs released — keep playback stopped'),'click')
+        wait_for(lambda:not state()['performance']['recovery'],'native stopped input recovery')
+        action(named('Emergency silence…'),'click')
+        action(named('Confirm emergency silence'),'click')
+        wait_for(lambda:state()['performance']['stopped'] and state()['performance']['output_muted'],
+                 'native emergency mute acknowledged')
+        action(named('Recover inputs…'),'click')
+        action(named('I have released the physical inputs'),'click')
+        action(named('Inputs released — keep output muted'),'click')
+        wait_for(lambda:not state()['performance']['recovery'],'native keep-muted recovery')
+        action(named('Leave performance mode…'),'click')
+        action(named('Leave protection'),'click')
+        wait_for(lambda:not state()['performance']['protected'],'native deliberate mode exit')
+        assert state()['performance']['output_muted'],'mode exit cleared the emergency latch'
         result=state()
         expected={'Focus','SetValue','Click'}
         assert expected.issubset({a['action'] for a in result['actions']}),result
@@ -303,6 +325,8 @@ def private(binary):
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',
                           'project_workflow':'New -> compose -> Undo -> Redo -> Save -> New -> Open recent',
                           'persisted_notes':result['saved_notes'],'reopened_notes':result['notes'],
+                          'performance_workflow':'enable -> safe stop -> explicit recovery -> emergency silence -> keep-muted recovery -> deliberate exit',
+                          'performance':result['performance'],
                           'scope':'actual App/renderer plus native accessibility API; no window, Orca, desktop setting or hardware QA'},indent=2))
     except BaseException:
         launcher_log.flush();child_log.flush()

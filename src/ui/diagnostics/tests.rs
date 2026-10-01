@@ -352,3 +352,27 @@ fn capture_bounds_do_not_reconstruct_stalled_gui_time_and_files_validate_before_
     );
     assert!(!root.0.join("never.json").exists());
 }
+
+#[test]
+fn performance_cancels_optional_export_and_reopen_but_preserves_committed_capture() {
+    let root = Directory::new();
+    let mut gui = Gui::new(); gui.capture();
+    let path = root.0.join("show.json");
+    let report = gui.f.app.diagnostics.capture.report.clone().unwrap();
+    let handle = gui.f.app.engine.cmd.performance().clone();
+    let gate = Arc::new(std::sync::Barrier::new(2));
+    let worker = capture::Worker::start_for_show(path.clone(), Some(report.clone()), &handle, Some(gate.clone())).unwrap();
+    handle.set_enabled(true).unwrap(); gate.wait();
+    let end = Instant::now() + Duration::from_secs(3);
+    loop { if let Some(result) = worker.poll() { assert!(matches!(result, capture::Completed::Cancelled)); break; } assert!(Instant::now() < end); std::thread::yield_now(); }
+    assert!(!path.exists());
+    assert!(capture::Worker::start_for_show(path.clone(), Some(report.clone()), &handle, None).is_err());
+    assert!(capture::Worker::start_for_show(path.clone(), None, &handle, None).is_err());
+    handle.set_enabled(false).unwrap();
+    let worker = capture::Worker::start_for_show(path.clone(), Some(report), &handle, None).unwrap();
+    loop { if let Some(result) = worker.poll() { assert!(matches!(result, capture::Completed::Exported)); break; } assert!(Instant::now() < end); std::thread::yield_now(); }
+    let committed = std::fs::read(&path).unwrap();
+    handle.set_enabled(true).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), committed);
+    assert!(gui.f.app.diagnostics.capture.report.is_some());
+}

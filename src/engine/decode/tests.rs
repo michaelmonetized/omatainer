@@ -320,3 +320,26 @@ fn truncated_streams_without_reliable_duration_are_rejected_or_explicitly_labell
         }
     }
 }
+
+#[test]
+fn performance_decode_keeps_actual_pcm_but_defers_optional_bpm_analysis() {
+    let file = Fixture::new("wav", &wav(96_000, 48_000, 2));
+    let normal = file.decode().unwrap();
+    let performance = super::super::performance::Handle::default();
+    performance.set_enabled(true).unwrap();
+    let protected = decode_audio_for_show(&file.0, || false, &performance).unwrap();
+    assert_eq!(protected.sample.data, normal.sample.data);
+    assert_eq!(protected.sample.peaks, normal.sample.peaks);
+    assert_eq!(protected.sample.bpm, 0.0);
+    assert!(protected.diagnostics.analysis_deferred);
+    assert!(protected.diagnostics.warning().unwrap().contains("deferred"));
+    performance.set_enabled(false).unwrap();
+    // The analysis loop cooperates during its bounded sample hops, not only at
+    // entry or after a whole long file's correlation pass.
+    let seen = std::cell::Cell::new(0);
+    let result = super::super::dsp::detect_bpm_with_cancel(&normal.sample.data, 2, 48_000, || {
+        let n = seen.get() + 1; seen.set(n); n > 5
+    });
+    assert_eq!(result, None);
+    assert_eq!(seen.get(), 6);
+}
