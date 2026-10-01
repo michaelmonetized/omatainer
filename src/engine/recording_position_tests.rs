@@ -95,7 +95,7 @@ fn pending_targets_monitor_without_writing_and_stopped_targets_use_zero_cursor()
         assert_eq!(rt.tracks[1].clips[2].notes[2].start, 0.0);
     }
     let mut rt = fixture(2.0);
-    rt.compose_armed = true;
+    rt.apply(Command::ComposeArm { track: rt.selected_track, scene: rt.selected_scene });
     rt.apply(Command::SamplerPad { pad: 2, on: true });
     assert_eq!(rt.tracks[1].clips[2].notes[0].start, 0.0);
     assert!(!rt.playing);

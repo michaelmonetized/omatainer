@@ -275,6 +275,7 @@ impl Frame {
         };
         target.selected_track = rt.selected_track;
         target.selected_scene = rt.selected_scene;
+        target.compose_target = rt.compose_target;
         target.selected_deck = rt.selected_deck;
         target.cpu = rt.cpu_acc;
         target.commands = rt.command_stats;
@@ -371,7 +372,7 @@ impl RtEngine {
     }
 
     #[cfg(test)]
-    pub(super) fn publish_for_test(&mut self) {
+    pub(crate) fn publish_for_test(&mut self) {
         let target = self.publisher.sequence + 1;
         let deadline = Instant::now() + Duration::from_secs(5);
         while self.publisher.published.load(Ordering::Acquire) < target {

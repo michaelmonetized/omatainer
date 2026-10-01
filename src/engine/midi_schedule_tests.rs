@@ -202,7 +202,7 @@ fn midi_edits_chase_active_notes_once_and_note_additions_keep_existing_gates() {
         render(&mut rt, 2400, 256);
         rt.tracks[2].midi_schedule.trace = Some(Vec::new());
         if compose {
-            rt.compose_armed = true;
+            rt.apply(Command::ComposeArm { track: rt.selected_track, scene: rt.selected_scene });
             rt.apply(Command::SamplerPad { pad: 0, on: true });
         } else {
             rt.recording = true;
