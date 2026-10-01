@@ -657,3 +657,20 @@ fn routing_distinguishes_default_intent_resolved_backend_and_actual_fixed_channe
             .contains("never export"));
     }
 }
+
+#[test]
+fn offline_contract_rejects_credential_fields_in_preferences_and_support() {
+    let preferences =
+        crate::preferences::Preferences::defaults(std::path::Path::new("/unused-private-root"));
+    let mut value = serde_json::to_value(&preferences).unwrap();
+    value["access_token"] = "OMATAINER_OFFLINE_CREDENTIAL_SENTINEL".into();
+    assert!(crate::preferences::storage::decode(&serde_json::to_vec(&value).unwrap()).is_err());
+    let report = Report::new(Id::digest(b"offline-contract"), true, 1);
+    let mut value = serde_json::to_value(&report).unwrap();
+    value["credentials"] = serde_json::json!({"token":"OMATAINER_OFFLINE_CREDENTIAL_SENTINEL"});
+    assert!(serde_json::from_value::<Report>(value).is_err());
+    let encoded = storage::encode(&report).unwrap();
+    assert!(!String::from_utf8(encoded)
+        .unwrap()
+        .contains("OMATAINER_OFFLINE_CREDENTIAL_SENTINEL"));
+}

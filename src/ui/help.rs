@@ -217,7 +217,7 @@ impl App {
             }});
             ui.heading(self.help.topic.title());
             ui.label(self.help.topic.text());
-            if ui.button("Start this lesson").help(ui, Control::LessonStart).clicked() {
+            if !lessons::steps(self.help.topic).is_empty() && ui.button("Start this lesson").help(ui, Control::LessonStart).clicked() {
                 self.help.lesson = Some(Lesson::new(self.help.topic, &observation));
             }
             if let Some(lesson) = &mut self.help.lesson {
