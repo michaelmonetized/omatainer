@@ -597,6 +597,85 @@ impl Drop for Child {
         let _ = self.0.wait();
     }
 }
+
+// Keep the fork/exec window open deterministically. The child only performs
+// async-signal-safe calls and never runs Rust destructors, allocates, opens a
+// device or writes storage. The parent always kills and reaps this private child.
+struct InheritedDescriptors(libc::pid_t);
+impl InheritedDescriptors {
+    fn hold() -> Self {
+        let pid = unsafe { libc::fork() };
+        assert!(pid >= 0, "fork: {}", std::io::Error::last_os_error());
+        if pid == 0 {
+            loop {
+                unsafe { libc::pause() };
+            }
+        }
+        Self(pid)
+    }
+}
+impl Drop for InheritedDescriptors {
+    fn drop(&mut self) {
+        unsafe { libc::kill(self.0, libc::SIGKILL) };
+        while unsafe { libc::waitpid(self.0, std::ptr::null_mut(), 0) } < 0 {
+            if std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted {
+                break;
+            }
+        }
+    }
+}
+
+#[test]
+fn inherited_descriptors_cannot_extend_finished_root_transaction() {
+    let root = Root::new();
+    let held = files::root_lock(&root.0).unwrap();
+    let child = InheritedDescriptors::hold();
+    assert!(files::root_lock(&root.0).is_err());
+    assert!(Store::open(&root.0).is_err());
+    drop(held);
+    let next = files::root_lock(&root.0)
+        .expect("finished root transaction must unlock while the child still holds its descriptor");
+    assert!(files::root_lock(&root.0).is_err());
+    drop(child);
+    // Closing the old inherited description must not unlock the new writer.
+    assert!(files::root_lock(&root.0).is_err());
+    drop(next);
+    assert!(files::root_lock(&root.0).is_ok());
+}
+
+#[test]
+fn inherited_descriptors_cannot_delay_next_append_or_completed_session_recovery() {
+    let root = Root::new();
+    let audio = sample();
+    let mut store = Store::open(&root.0).unwrap();
+    let mut child = None;
+    let first = store
+        .append_with(&bundle(1, &audio), meta(1), &Config::default(), &no(), |phase| {
+            if phase == Phase::RecordHalfWritten {
+                child = Some(InheritedDescriptors::hold());
+            }
+            Ok(())
+        })
+        .unwrap();
+    assert!(child.is_some());
+    assert!(first.durable);
+    let next = store
+        .append(&bundle(2, &audio), meta(2), &Config::default(), &no())
+        .expect("a completed append cannot leave the root transaction locked in a forked child");
+    assert!(next.durable);
+    assert_eq!(next.sequence, 2);
+    assert!(discover(&root.0, &no()).unwrap().candidates.is_empty());
+    drop(store);
+    // The child's inherited owner descriptor cannot keep a finished session
+    // falsely classified as live after the actual owner has finished.
+    let candidate = latest(&root.0);
+    assert_eq!(candidate.sequence, 2);
+    let recovered: Recovered<State> = recover(&candidate, &no()).unwrap();
+    assert_eq!(recovered.bundle.state, bundle(2, &audio).state);
+    assert_sample(&recovered.bundle.media[0], &audio);
+    drop(child);
+}
+
 #[test]
 fn killed_writer_retains_last_durable_record_at_append_asset_and_checkpoint_boundaries() {
     for boundary in ["append", "asset", "checkpoint"] {
