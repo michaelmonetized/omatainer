@@ -61,7 +61,7 @@ impl TrackRt {
 
 // Command admission reserves at most 256 simultaneously held gates. Keep the
 // matching capture bookkeeping fixed-size as well.
-const CAPTURES: usize = 256;
+pub(super) const CAPTURES: usize = 256;
 
 #[derive(Clone, Copy)]
 struct HeldNote {
@@ -71,6 +71,7 @@ struct HeldNote {
     index: usize,
     onset: f64,
     minimum: f64,
+    history_owner: u64,
 }
 
 pub(super) struct Recording {
@@ -102,6 +103,7 @@ impl RtEngine {
         let Some(slot) = self.note_recording.held.iter().position(Option::is_none) else {
             return;
         };
+        let history_owner = self.recording_history_owner(track, scene);
         let clip = &mut self.tracks[track].clips[scene];
         if clip.kind != ClipKind::Midi {
             return;
@@ -125,9 +127,10 @@ impl RtEngine {
             index,
             onset: self.note_recording.clock,
             minimum,
+            history_owner,
         });
         self.tracks[track].recorded_note_started(scene, index, input, self.beat);
-        self.history_record_changed(track,scene);
+        self.history_record_changed(history_owner);
     }
 
     pub(super) fn finish_recording_input(&mut self, input: InputKey) {
@@ -142,7 +145,9 @@ impl RtEngine {
         self.finish_recording_where(|held| matches!(held.input, InputKey::Pad(_)));
     }
 
-    pub(super) fn finish_recording_clip(&mut self,track:usize,scene:usize) {self.finish_recording_where(|held|held.track==track && held.scene==scene);}
+    pub(super) fn finish_recording_clip(&mut self, track: usize, scene: usize) {
+        self.finish_recording_where(|held| held.track == track && held.scene == scene);
+    }
 
     pub(super) fn finish_recording_all(&mut self) {
         self.finish_recording_where(|_| true);
@@ -160,7 +165,13 @@ impl RtEngine {
                     self.project.edited();
                     note.len = duration as f32;
                     self.tracks[held.track].clip_notes_changed(held.scene, self.beat);
-                    self.history_record_changed(held.track,held.scene);
+                    self.history_record_finished(
+                        held.history_owner,
+                        held.track,
+                        held.scene,
+                        held.index,
+                        duration as f32,
+                    );
                 }
             }
         }
@@ -176,11 +187,16 @@ impl RtEngine {
 }
 
 impl RtEngine {
-    pub(super) fn has_held_project_notes(&self) -> bool { self.note_recording.held.iter().any(Option::is_some) }
+    pub(super) fn has_held_project_notes(&self) -> bool {
+        self.note_recording.held.iter().any(Option::is_some)
+    }
 
     pub(super) fn capture_held_durations(&self, state: &mut super::project::State) {
         for held in self.note_recording.held.iter().flatten() {
-            if let Some(note) = state.tracks[held.track].clips[held.scene].notes.get_mut(held.index) {
+            if let Some(note) = state.tracks[held.track].clips[held.scene]
+                .notes
+                .get_mut(held.index)
+            {
                 note.len = (self.note_recording.clock - held.onset).max(held.minimum) as f32;
             }
         }
@@ -188,5 +204,54 @@ impl RtEngine {
 }
 
 impl Recording {
-    pub(super) fn held_targets(&self)->u64 {self.held.iter().flatten().fold(0,|mask,h|mask | 1u64 << (h.track*8+h.scene))}
+    pub(super) fn held_targets(&self) -> u64 {
+        self.held
+            .iter()
+            .flatten()
+            .fold(0, |mask, h| mask | 1u64 << (h.track * 8 + h.scene))
+    }
+}
+
+impl Recording {
+    pub(super) fn history_owners(&self) -> ([u64; CAPTURES], usize) {
+        let mut owners = [0; CAPTURES];
+        let mut len = 0;
+        for held in self
+            .held
+            .iter()
+            .flatten()
+            .filter(|held| held.history_owner != 0)
+        {
+            owners[len] = held.history_owner;
+            len += 1;
+        }
+        (owners, len)
+    }
+    pub(super) fn active_history(&self) -> [(u64, usize, usize); CAPTURES] {
+        std::array::from_fn(|index| {
+            self.held[index].map_or((0, 0, 0), |held| {
+                (held.history_owner, held.track, held.scene)
+            })
+        })
+    }
+}
+
+impl RtEngine {
+    /// An inverse captured during another note's hold contains its provisional
+    /// duration. Before replay swaps that inverse into view, finalize the held
+    /// notes which are actually present in it. Its own later notes are absent.
+    pub(super) fn capture_held_clip_durations(
+        &self,
+        track: usize,
+        scene: usize,
+        clip: &mut super::Clip,
+    ) {
+        for held in self.note_recording.held.iter().flatten() {
+            if held.track == track && held.scene == scene {
+                if let Some(note) = clip.notes.get_mut(held.index) {
+                    note.len = (self.note_recording.clock - held.onset).max(held.minimum) as f32;
+                }
+            }
+        }
+    }
 }

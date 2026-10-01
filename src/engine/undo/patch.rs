@@ -382,6 +382,7 @@ impl Patch {
                 // Redo retains the actual duration captured up to this undo,
                 // not the temporary quarter-beat onset preview. Only this
                 // target is finalized; its live input voice stays owned.
+                rt.capture_held_clip_durations(t, s, value);
                 rt.finish_recording_clip(t, s);
                 rt.cancel_recording_clip(t, s);
                 let track = &mut rt.tracks[t];
