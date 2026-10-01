@@ -236,6 +236,8 @@ fn large_crate() -> Value {
     let examined = gui.app.library_view.stats.examined;
     gui.frame_ns.clear();
     let mut max_rows = 0;
+    let mut exact_selection = true;
+    let mut expected_row = 49_999usize;
     for n in 0..UI_FRAMES {
         let events = if n % 16 == 0 {
             vec![gui.event(
@@ -251,6 +253,22 @@ fn large_crate() -> Value {
             vec![]
         };
         gui.frame(events);
+        if n % 16 == 0 {
+            expected_row = if n % 32 == 0 { 49_999 } else { 0 };
+        }
+        let expected = LibSource::File(format!("private-fixture/{expected_row}.wav").into());
+        exact_selection &= gui
+            .app
+            .selected_library_item()
+            .is_some_and(|item| item.source == expected);
+        // Publication occurs at the next App frame after the native value action.
+        if n % 16 != 0 {
+            exact_selection &= gui
+                .app
+                .published_selection
+                .as_ref()
+                .is_some_and(|item| item.source == expected);
+        }
         max_rows = max_rows.max(gui.app.library_view.stats.rendered);
     }
     let unchanged = gui.app.library_view.stats.rebuilds == rebuilds
@@ -264,7 +282,7 @@ fn large_crate() -> Value {
         "rejected_commands":gui.app.engine.cmd.stats().rejected},
         "samples":{"frame_wall_ns":samples},"observations":{},
         "checks":{"steady_filter_cached":unchanged,"bounded_visible_rows":max_rows>0 && max_rows<=64,
-            "real_search_applied":filtered==25_000,"selection_matches_published":gui.app.published_selection.is_some()}})
+            "real_search_applied":filtered==25_000,"selection_matches_published":exact_selection}})
 }
 
 fn multi_controller() -> Value {
@@ -281,31 +299,22 @@ fn multi_controller() -> Value {
     ]);
     let inputs: [midi::Input; 5] = ["a", "b", "c", "d", "e"].map(|id| control.connect(id, Ok(())));
     midi::until(|| gui.app.engine.midi.policy_status().unwrap().applied == Some(1));
-    let (mut client, server) = UnixStream::pair().unwrap();
-    client
-        .set_read_timeout(Some(Duration::from_secs(3)))
-        .unwrap();
-    let commands = gui.app.engine.cmd.clone();
-    let snap = gui.app.engine.snap.clone();
-    let ipc = std::thread::spawn(move || {
-        crate::handle_client_with_limits(
-            server,
-            commands,
-            snap,
-            crate::ipc_transport::Limits {
-                requests: UI_FRAMES,
-                idle: Duration::from_secs(3),
-                ..Default::default()
-            },
-        )
-    });
-    let mut reader = BufReader::new(client.try_clone().unwrap());
+    let directory = private_directory("ipc");
+    let socket = directory.join("control.sock");
+    let server = crate::ipc_server::start_at(
+        &socket,
+        gui.app.engine.cmd.clone(),
+        gui.app.engine.snap.clone(),
+    )
+    .unwrap();
+    let mut reader: Option<BufReader<UnixStream>> = None;
     let mut line = String::new();
     let mut ipc_ns = Vec::with_capacity(UI_FRAMES);
     let mut ingress_ns = Vec::with_capacity(UI_FRAMES);
     let before = gui.app.engine.midi.input_stats().dispatched;
     let mut sent = 0;
     let mut held_ownership = true;
+    let mut held_sources: Option<(u64, u64)> = None;
     gui.frame_ns.clear();
     for n in 0..UI_FRAMES {
         let note = 60 + ((n / 2) % 12) as u8;
@@ -332,9 +341,25 @@ fn multi_controller() -> Value {
         midi::until(|| gui.app.engine.midi.input_stats().dispatched == before + sent);
         ingress_ns.push(began.elapsed().as_nanos() as u64);
         let began = Instant::now();
-        writeln!(client, "{{\"id\":\"perf-{n}\",\"op\":\"scene\",\"n\":0}}").unwrap();
+        if n % 32 == 0 {
+            reader.take();
+            let client = UnixStream::connect(&socket).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            client
+                .set_write_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            reader = Some(BufReader::new(client));
+        }
+        let connection = reader.as_mut().unwrap();
+        writeln!(
+            connection.get_mut(),
+            "{{\"id\":\"perf-{n}\",\"op\":\"scene\",\"n\":0}}"
+        )
+        .unwrap();
         line.clear();
-        reader.read_line(&mut line).unwrap();
+        connection.read_line(&mut line).unwrap();
         ipc_ns.push(began.elapsed().as_nanos() as u64);
         let response: Value = serde_json::from_str(&line).unwrap();
         assert_eq!(response["id"], format!("perf-{n}"));
@@ -345,33 +370,59 @@ fn multi_controller() -> Value {
             Some(ActionData::NumericValue(25.0)),
         );
         gui.frame(vec![event]);
-        let held = gui
+        let held: Vec<_> = gui
             .rt
             .tracks
             .iter()
             .flat_map(|t| t.poly.voices.iter())
             .filter(|v| v.input.is_some() && matches!(v.env.stage, 1..=3))
-            .count();
-        if held_ownership && held != if on { 4 } else { 0 } {
-            eprintln!(
-                "held chord mismatch at frame {n}: held={held}, selected={}, voices={:?}",
-                gui.rt.selected_track,
-                gui.rt
-                    .tracks
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(t, track)| track
-                        .poly
-                        .voices
+            .collect();
+        if on {
+            use crate::engine::dsp::{InputKey, VoiceOwner};
+            let source = |channel| {
+                held.iter().find_map(|v| match v.input {
+                    Some(InputKey::Midi { source, ch, .. }) if ch == channel => Some(source),
+                    _ => None,
+                })
+            };
+            let sources = source(9).zip(source(0));
+            if held_sources.is_none() {
+                held_sources = sources;
+            }
+            held_ownership &= held.len() == 4 && sources == held_sources;
+            if let Some((pad_source, keyboard_source)) = held_sources {
+                held_ownership &= pad_source != keyboard_source;
+                for (source, ch, pitch) in [
+                    (pad_source, 9, pad),
+                    (pad_source, 9, pad + 12),
+                    (keyboard_source, 0, note),
+                    (keyboard_source, 0, note + 12),
+                ] {
+                    held_ownership &= held
                         .iter()
-                        .filter(|v| v.env.active())
-                        .map(move |v| (t, v.input, v.env.stage, v.env.level)))
-                    .collect::<Vec<_>>()
-            );
+                        .filter(|voice| {
+                            voice.owner == VoiceOwner::Live
+                                && voice.input
+                                    == Some(InputKey::Midi {
+                                        source,
+                                        ch,
+                                        note: pitch,
+                                    })
+                                && voice.note() == pitch
+                        })
+                        .count()
+                        == 1;
+                }
+            } else {
+                held_ownership = false;
+            }
+        } else {
+            held_ownership &= held.is_empty();
         }
-        held_ownership &= held == if on { 4 } else { 0 };
     }
-    ipc.join().unwrap().unwrap();
+    drop(reader);
+    drop(server);
+    std::fs::remove_dir_all(directory).unwrap();
     let stats = gui.app.engine.midi.input_stats();
     let held = gui
         .rt
