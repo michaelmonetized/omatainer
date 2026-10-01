@@ -307,3 +307,18 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   whose identity changed during decoding receive no unverified path-only credit.
   Built-in stems have stable typed identity. History remains an in-session overlay;
   unchanged identities can reappear after a scan without losing their timestamp.
+
+## Last-play time display
+
+- Unknown playback time remains `—`. Known times show `Just now`, elapsed whole
+  minutes/hours/days, or an ISO calendar date explicitly labeled UTC after seven
+  days. Hovering the crate row shows the precise timestamp including fractional
+  seconds and UTC; the displayed date never wraps modulo epoch seconds.
+- A timestamp later than the computer's current clock shows `Future time` with
+  its precise timestamp and clock-relative annotation. Pre-1970 timestamps retain
+  their actual UTC date. Values outside the platform calendar range keep an exact
+  signed Unix-epoch offset instead of panicking or pretending to be unknown.
+- Only visible cached history cells refresh when their timestamp changes, an age
+  boundary passes, or the civil clock moves backwards. Aging history neither
+  rebuilds the filtered crate nor formats offscreen rows. Far-future repaint
+  deadlines are bounded before conversion to a native timer.

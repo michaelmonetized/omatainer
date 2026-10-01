@@ -28,16 +28,36 @@ pub(super) struct Cells {
     pub length: String,
     pub played: String,
     pub played_at: Option<SystemTime>,
+    pub played_tooltip: String,
+    pub played_refresh_at: Option<SystemTime>,
+    played_clock: SystemTime,
 }
 
 impl Cells {
-    pub fn new(item: &LibItem, played_at: Option<SystemTime>) -> Self {
+    pub fn new(item: &LibItem, played_at: Option<SystemTime>, now: SystemTime) -> Self {
+        let played = play_time::format(played_at, now);
         Self {
             bpm: item.bpm.cell(),
             length: fmt_len(item.length),
-            played: fmt_play(played_at),
+            played: played.label,
+            played_tooltip: played.tooltip,
+            played_refresh_at: played.next_change,
+            played_clock: now,
             played_at,
         }
+    }
+
+    pub fn refresh_play(&mut self, played_at: Option<SystemTime>, now: SystemTime) -> bool {
+        let expired = played_at.is_some() && (now < self.played_clock
+            || self.played_refresh_at.is_some_and(|deadline| now >= deadline));
+        if self.played_at == played_at && !expired { return false; }
+        let played = play_time::format(played_at, now);
+        self.played_at = played_at;
+        self.played = played.label;
+        self.played_tooltip = played.tooltip;
+        self.played_refresh_at = played.next_change;
+        self.played_clock = now;
+        true
     }
 }
 
