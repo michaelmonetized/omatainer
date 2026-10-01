@@ -493,7 +493,15 @@ impl CommandPort {
     /// release is already ordered and no intervening accepted onset exists.
     /// No producer waits for queue capacity; only the small admission section
     /// serializes producers. Construct media/instruments before calling here.
-    pub fn send(&self, mut command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+    pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+        self.send_after_preflight(command, || {})
+    }
+
+    fn send_after_preflight(
+        &self,
+        mut command: Command,
+        after_preflight: impl FnOnce(),
+    ) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::{Acquire, Relaxed};
         let fail = |error| self.shared.reject(error);
         // Covers every route, including GUI browse/load and early failures.
@@ -524,11 +532,18 @@ impl CommandPort {
         {
             return fail(SubmissionError::InvalidTarget);
         }
+        after_preflight();
         let mut state = self.admission.lock();
         // The receiver may have disconnected while this producer waited for
         // another producer's bookkeeping. Never coalesce against dead audio.
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
+        }
+        // A producer may have passed preflight before waiting on this mutex.
+        // Recycler backpressure must also cover that waiting producer, so the
+        // renderer only inherits payloads already admitted before it closed.
+        if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {
+            return fail(SubmissionError::HistoryBusy);
         }
         for lane in 0..STOP_LANES {
             if state.pending_stops[lane] != 0
