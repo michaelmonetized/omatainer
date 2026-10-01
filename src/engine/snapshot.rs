@@ -277,7 +277,8 @@ impl Frame {
         target.selected_scene = rt.selected_scene;
         target.compose_target = rt.compose_target;
         target.selected_deck = rt.selected_deck;
-        target.cpu = rt.cpu_acc;
+        target.audio = rt.telemetry.read();
+        target.cpu = target.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
         target.commands = rt.command_stats;
         target.submissions = rt.cmd_rx.submissions();
         target.fx_wet = rt.fx_wet;
@@ -348,6 +349,8 @@ impl Frame {
 
 impl RtEngine {
     pub fn publish(&mut self) {
+        #[cfg(test)]
+        std::thread::sleep(self.telemetry_delays[2]);
         if let Some(mut frame) = self.publisher.acquire() {
             frame.capture(self);
             self.publisher.submit(frame);
