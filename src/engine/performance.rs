@@ -483,6 +483,7 @@ fn destructive(command: &Command) -> bool {
     match command {
         Command::SetNotes { .. }
         | Command::SamplerEdit(_)
+        | Command::SamplerAudition(_)
         | Command::DeckGrid { .. }
         | Command::Undo
         | Command::Redo
@@ -569,6 +570,7 @@ fn destructive(command: &Command) -> bool {
         | Command::RestartScene { .. }
         | Command::AddScene { .. }
         | Command::SamplerPad { .. }
+        | Command::SamplerAuditionStop { .. }
         | Command::SamplerBank(_)
         | Command::SamplerInst(_)
         | Command::SamplerOct(_)
@@ -589,6 +591,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::SamplerAuditionStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::ComposeDisarm
@@ -712,6 +715,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.sampler_audition = None;
         // Finite sample one-shots keep their existing Arc ownership and natural
         // tails. Emergency silence is applied after the entire output chain.
         for deck in &mut self.decks {

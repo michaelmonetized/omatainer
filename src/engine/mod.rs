@@ -523,6 +523,7 @@ pub struct RtEngine {
     // audio callback when installing a separately prepared project graph.
     sampler_assets: crate::sampler_bank::assets::Owner,
     pub pad_voices: [Option<crate::sampler_bank::resident::Voice>; 16],
+    pub sampler_audition: Option<(u64, crate::sampler_bank::resident::Voice)>,
     pad_destinations: [usize; 16],
     pad_output: [[f32; 2]; TRACKS],
     pad_targets: [Option<PadTarget>; 16],
@@ -664,6 +665,7 @@ pub struct Snapshot {
     pub sampler_banks: Vec<String>,
     #[serde(skip)]
     pub sampler_instances: Vec<sampler::Bank>,
+    pub sampler_audition: Option<u64>,
     pub sampler_revision: u64,
     pub sampler_epoch: u64,
     pub fx_view: i16,
@@ -708,6 +710,7 @@ impl Default for Snapshot {
             sampler_oct: 3,
             sampler_banks: vec!["Kit".into()],
             sampler_instances: Vec::new(),
+            sampler_audition: None,
             sampler_revision: 0,
             sampler_epoch: 0,
             fx_view: -1,
@@ -804,6 +807,8 @@ pub enum Command {
     SamplerPad { pad: u8, on: bool },
     SamplerBank(usize),
     SamplerEdit(sampler::Edit),
+    SamplerAudition(sampler::Audition),
+    SamplerAuditionStop { id: u64 },
     SamplerInst(SamplerInstrument),
     SamplerOct(i8),
     OpenFxTrack(u8),
@@ -927,6 +932,7 @@ impl RtEngine {
             sampler_revision: 1,
             sampler_assets,
             pad_voices: std::array::from_fn(|_| None),
+            sampler_audition: None,
             pad_destinations: [0; 16],
             pad_output: [[0.0; 2]; TRACKS],
             pad_targets: [None; 16],
@@ -972,6 +978,7 @@ impl RtEngine {
         let drums = build_kit(sr);
         self.install_sampler_rate_banks(sampler_banks);
         for voice in &mut self.pad_voices { *voice = None; }
+        self.sampler_audition = None;
         self.pad_output.fill([0.0; 2]);
         self.sampler_poly.set_sample_rate(self.sr);
         for chain in &mut self.scene_fx {
@@ -1568,6 +1575,12 @@ impl RtEngine {
                     *slot = None;
                 }
             }
+        }
+        if let Some((_, voice)) = &mut self.sampler_audition {
+            if let Some((l, r)) = voice.tick(self.sr as f64) {
+                buses[voice.track][0] += l; buses[voice.track][1] += r;
+            }
+            if voice.position >= voice.end { self.sampler_audition = None; }
         }
         buses
     }
@@ -2324,6 +2337,12 @@ impl RtEngine {
             }
             Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
             Command::SamplerEdit(edit) => self.apply_sampler_edit(edit),
+            Command::SamplerAudition(request) => self.apply_sampler_audition(request),
+            Command::SamplerAuditionStop { id } => {
+                if self.sampler_audition.as_ref().is_some_and(|(current, _)| *current == id) {
+                    self.sampler_audition = None;
+                }
+            },
             Command::SamplerInst(i) => {
                 self.sampler_inst = i;
                 if let Some(kind) = i.synth() {

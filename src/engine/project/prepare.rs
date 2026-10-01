@@ -218,6 +218,7 @@ impl Prepared {
             sampler_banks,
             sampler_revision,
             pad_voices,
+            sampler_audition,
             pad_destinations,
             pad_output,
             pad_targets,
