@@ -160,6 +160,62 @@ old path is asserted too long. Additional checks cover cleanup after a failed
 child and preservation of the aggregate byte cap. No workload, deadline,
 jitter ceiling or evaluator changed.
 
-Pending the coordinated network-denied run against the exact packaged release
-executables after the standard release gate. Functional success above makes no
-performance-budget, zero-deadline-exceedance, physical XRUN or listening claim.
+The rebuilt standard release gate passed from 11:14:58.744613 to
+11:18:34.533892 UTC: all eight unchanged workload groups across three sessions,
+plus 123 native actions, 242 nodes and 1,112 App frames. Measured callback/recording
+allocations and frees, rejected commands and MIDI drops were zero. Its four
+callback groups had no observed wall or render-CPU deadline exceedances.
+
+The network-denied performance qualification then passed from
+11:18:55.169371 to 11:22:26.226770 UTC using the exact same release production
+and test executables. All eight #95 groups and all 18 two-keylocked-deck #100
+groups ran three times under inherited network denial. The separate guarded
+native preflight passed 123 actions across 242 nodes in 951 App frames. All four
+guard receipts retained the required network refusals and working private Unix
+IPC. Workloads, evaluators and both policy files were unchanged.
+
+Policy pass does not mean every measured callback met its actual deadline:
+
+- The #95 composer group, second repetition, zero-based block 6,376 took
+  5.570883 ms wall time against a 5.333333 ms deadline. Paired renderer CPU time
+  was 0.704331 ms. This was its only observed wall-time exceedance; none of the
+  four callback groups exceeded a renderer CPU deadline.
+- The #100 44.1 kHz / 128-frame / 0.84-ratio group, third repetition, zero-based
+  block 76 took 3.888867 ms wall time against a 2.902494 ms deadline. Paired full
+  callback CPU time was 0.346128 ms and renderer CPU time 0.340712 ms. This was
+  the only show-load wall-time exceedance; neither CPU measure exceeded a
+  deadline. Every show-load allocation/free and rejected-command count was zero.
+
+Worst network-denied callback wall p99 / maximum, in milliseconds, was producer
+0.800296 / 1.461760, composer 0.847132 / 5.570883, live DJ 0.096459 / 0.221918,
+and hybrid 0.897716 / 3.179153. The show-load overall worst wall p99 was
+1.131759 ms; its maximum is the exceedance above. Actual backend XRUNs, physical
+device latency and perceived quality were not measured. No host scheduling
+cause is inferred from the wall/CPU difference.
+
+Retained network-denied report:
+`/home/michael/Projects/omatainer-work/o103-p2/report.json`, SHA-256
+`1403c42446fde53e0241472701c51cfdb9bde8cd5bf717b24da025aff5fa42c5`.
+It binds 8,351,206 bytes of prior artifacts, raw measurements, strict evaluator
+outputs and guard receipts to unchanged before/after source and executable
+hashes. The earlier setup failure remains separately preserved at `o103-p1`.
+
+- Source manifest:
+  `952b1b5e7324db289549d19f25fa9437244a17e9af0804995da2881859adcd5e`.
+- Release production executable:
+  `8f275d99c20b3053c8bfdbfc3a67f7247a518af3a30f94287760eb564b0eff2f`.
+- Release test executable:
+  `d76edce675c141f22387e095c7137dec32ed576b3279363b33a002b1fdfda3d7`.
+- #95 policy:
+  `fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c`.
+- #100 policy:
+  `c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431`.
+
+The final standard gate report, raw data and log are preserved as
+`/home/michael/Projects/omatainer-work/issue-103-final-performance.*`.
+Independent gate verification, the packaged executable and license inventory,
+seven CLI protocol groups, six persistent-follow groups, five runtime-isolation
+groups and real release safe-startup checks all passed. The package is retained
+at `/home/michael/Projects/omatainer-work/issue-103-final-package`.
+These local software checks leave the user's physical producer, composer and
+live-DJ acceptance pending.
