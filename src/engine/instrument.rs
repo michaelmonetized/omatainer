@@ -1,8 +1,8 @@
 //! Instrument identities shared by the menu, commands, snapshots and voices.
 //! Sample banks are a different source; they never alias a synth implementation.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SynthInstrument {
     Analog,
@@ -30,7 +30,7 @@ impl SynthInstrument {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SamplerInstrument {
     #[default]

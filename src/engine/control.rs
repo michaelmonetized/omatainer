@@ -6,6 +6,8 @@ use serde::Serialize;
 
 #[cfg(test)]
 mod admission_tests;
+#[cfg(test)]
+mod project_gate_tests;
 
 pub const COMMANDS_PER_BLOCK: usize = 32;
 
@@ -21,6 +23,32 @@ pub struct CommandPort {
 
 const STOP_LANES: usize = super::TRACKS + 1;
 pub(super) const MAX_COMMANDS: usize = 256;
+const PROJECT_CLOSED: u64 = 1 << 63;
+
+/// One word makes closing admission atomic with a producer's claim. Only
+/// producers retry a competing CAS; audio performs one fetch_or per block.
+struct ProjectLease<'a>(&'a std::sync::atomic::AtomicU64);
+impl<'a> ProjectLease<'a> {
+    fn acquire(word: &'a std::sync::atomic::AtomicU64, release: bool) -> Option<Self> {
+        use std::sync::atomic::Ordering::{Acquire, AcqRel};
+        let mut state = word.load(Acquire);
+        loop {
+            if (state & PROJECT_CLOSED != 0 && !release)
+                || state & !PROJECT_CLOSED == PROJECT_CLOSED - 1 {
+                return None;
+            }
+            match word.compare_exchange_weak(state, state + 1, AcqRel, Acquire) {
+                Ok(_) => return Some(Self(word)),
+                Err(next) => state = next,
+            }
+        }
+    }
+}
+impl Drop for ProjectLease<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, std::sync::atomic::Ordering::Release);
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GateKey {
@@ -37,6 +65,7 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    project_writers: std::sync::atomic::AtomicU64,
     telemetry: std::sync::Arc<super::audio_metrics::Telemetry>,
     ui_requests: super::ui_requests::Mailbox,
     completed_stops: [std::sync::atomic::AtomicU64; STOP_LANES],
@@ -73,6 +102,7 @@ impl AdmissionShared {
                 5 => Some(SubmissionError::UiUnavailable),
                 6 => Some(SubmissionError::UiFull),
                 7 => Some(SubmissionError::UncapturedSelection),
+                8 => Some(SubmissionError::ProjectChanging),
                 _ => None,
             },
         }
@@ -113,6 +143,36 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    /// Close creative command admission before inspecting/draining the queue for a
+    /// project install. False means a previously admitted producer is still
+    /// finishing; keep admission closed and retry on a later audio block. This
+    /// never acquires a producer mutex, spins, allocates, or waits. Physical
+    /// releases/stops remain admissible, including after this returns true: they
+    /// are safe on a stopped replacement, and must not get lost if install aborts.
+    pub(super) fn begin_project_install(&self) -> bool {
+        self.shared.as_ref().is_none_or(|shared| {
+            shared.project_writers.fetch_or(
+                PROJECT_CLOSED,
+                std::sync::atomic::Ordering::AcqRel,
+            ) & !PROJECT_CLOSED == 0
+        })
+    }
+
+    /// Reopen after commit or abort. The renderer must retain the closed gate
+    /// until earlier leases have retired and their accepted commands drained.
+    pub(super) fn end_project_install(&self) {
+        if let Some(shared) = &self.shared {
+            shared.project_writers.fetch_and(
+                !PROJECT_CLOSED,
+                std::sync::atomic::Ordering::Release,
+            );
+        }
+    }
+
+    pub(super) fn pending_project_ui_requests(&self) -> bool {
+        self.shared.as_ref().is_some_and(|shared| shared.ui_requests.stats().pending != 0)
+    }
+
     pub(super) fn telemetry(&self) -> std::sync::Arc<super::audio_metrics::Telemetry> {
         self.shared.as_ref().map(|shared| shared.telemetry.clone()).unwrap_or_default()
     }
@@ -168,6 +228,7 @@ pub enum SubmissionError {
     UiUnavailable,
     UiFull,
     UncapturedSelection,
+    ProjectChanging,
 }
 
 impl std::fmt::Display for SubmissionError {
@@ -180,6 +241,7 @@ impl std::fmt::Display for SubmissionError {
             Self::UiUnavailable => "Library control is unavailable. Reopen Omatainer before retrying.",
             Self::UiFull => "The library request queue is full. Wait for the interface to catch up, then retry browsing or loading.",
             Self::UncapturedSelection => "Library request could not resolve the visible selection. Select an available crate item, then retry.",
+            Self::ProjectChanging => "A project is being installed. This action was not accepted; retry after the project operation finishes.",
         })
     }
 }
@@ -199,6 +261,7 @@ impl AdmissionShared {
                 SubmissionError::UiUnavailable => 5,
                 SubmissionError::UiFull => 6,
                 SubmissionError::UncapturedSelection => 7,
+                SubmissionError::ProjectChanging => 8,
             },
             Relaxed,
         );
@@ -264,6 +327,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            project_writers: std::sync::atomic::AtomicU64::new(0),
             telemetry: std::sync::Arc::new(super::audio_metrics::Telemetry::default()),
             ui_requests: super::ui_requests::Mailbox::default(),
             completed_stops: std::array::from_fn(|_| std::sync::atomic::AtomicU64::new(0)),
@@ -350,6 +414,14 @@ impl CommandPort {
     pub fn send(&self, mut command: Command) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::{Acquire, Relaxed};
         let fail = |error| self.shared.reject(error);
+        // Covers every route, including GUI browse/load and early failures.
+        // Closing admission races this atomic claim, never the producer mutex.
+        let Some(_project_lease) = ProjectLease::acquire(
+            &self.shared.project_writers,
+            project_release(&command),
+        ) else {
+            return fail(SubmissionError::ProjectChanging);
+        };
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
@@ -451,6 +523,15 @@ impl CommandPort {
             }
         }
     }
+}
+
+fn project_release(command: &Command) -> bool {
+    matches!(command,
+        Command::LiveNoteOff { .. } | Command::LiveNoteOn { vel: 0, .. }
+        | Command::SamplerPad { on: false, .. }
+        | Command::DeckTouch { on: false, .. } | Command::MidiDeckTouch { on: false, .. }
+        | Command::Stop | Command::StopTrack { .. } | Command::ReservedStop { .. }
+    )
 }
 
 #[cfg(test)]

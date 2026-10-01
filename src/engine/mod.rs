@@ -1,3 +1,4 @@
+pub(crate) mod project;
 mod mixer_gain;
 mod arp;
 mod deck_filter;
@@ -117,6 +118,7 @@ pub enum ClipKind {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MidiNote {
     pub pitch: u8,
     pub start: f32,
@@ -173,6 +175,7 @@ pub struct TrackRt {
     pub name: String,
     pub clips: [Clip; SCENES],
     pub playing: Option<PlayingClip>,
+    project_resume: Option<PlayingClip>,
     // The bus stays selected through stops/tails until a new clip starts.
     pub scene_bus: usize,
     pub gain: f32,
@@ -198,7 +201,7 @@ pub struct TrackRt {
 
 impl TrackRt {
     fn clip_notes_changed(&mut self, scene: usize, beat: f64) {
-        if self.playing.is_some_and(|p| p.scene as usize == scene) {
+        if self.playing.or(self.project_resume).is_some_and(|p| p.scene as usize == scene) {
             self.arp_cache.invalidate();
             let arp_active = self.midi_schedule.paused;
             self.rebuild_midi_schedule(beat);
@@ -207,9 +210,9 @@ impl TrackRt {
     }
 
     fn rebuild_midi_schedule(&mut self, beat: f64) {
-        if let Some(playing) = self.playing {
+        if let Some(playing) = self.playing.or(self.project_resume) {
             let clip = &self.clips[playing.scene as usize];
-            let elapsed = (playing.last_beat >= 0.0).then_some(beat - playing.start_beat);
+            let elapsed = (self.project_resume.is_some() || playing.last_beat >= 0.0).then_some(beat - playing.start_beat);
             self.midi_schedule.rebuild(
                 &clip.notes,
                 clip.bars.max(0.25) as f64 * 4.0,
@@ -230,6 +233,7 @@ impl TrackRt {
 
     fn stop_clip(&mut self) {
         self.playing = None;
+        self.project_resume = None;
         self.release_clip_notes();
         // Drum samples are finite one-shots and keep their natural tails.
     }
@@ -435,7 +439,7 @@ impl DeckRt {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FxKind {
     Echo,
@@ -449,6 +453,10 @@ impl FxKind {
 }
 
 pub struct RtEngine {
+    pub project: project::Handle,
+    project_pending: Option<Box<project::Task>>,
+    project_waiting: Option<Box<project::Task>>,
+    project_sealed: bool,
     pub sr: f32,
     pub playing: bool,
     pub recording: bool,
@@ -587,6 +595,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub project_revision: u64,
     pub compose_target: Option<ComposeTarget>,
     pub playing: bool,
     pub recording: bool,
@@ -627,6 +636,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            project_revision: 0,
             compose_target: None,
             playing: false,
             recording: false,
@@ -770,6 +780,7 @@ impl RtEngine {
                 name: names[i].into(),
                 clips: std::array::from_fn(|_| Clip::empty()),
                 playing: None,
+                project_resume: None,
                 scene_bus: 0,
                 gain: 0.8,
                 pan: 0.0,
@@ -796,6 +807,10 @@ impl RtEngine {
             })
             .collect();
         let mut e = Self {
+            project: project::Handle::new(),
+            project_pending: None,
+            project_waiting: None,
+            project_sealed: false,
             sr,
             playing: false,
             recording: false,
@@ -1031,6 +1046,7 @@ impl RtEngine {
         for command in batch.commands.into_iter().flatten() {
             self.apply(command);
         }
+        self.project_tick();
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[0]);
         let cpu_start = audio_metrics::thread_cpu_ns();
@@ -1133,6 +1149,7 @@ impl RtEngine {
         }
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
+        if frames > 0 && self.has_held_project_notes() { self.project.edited(); }
         self.frames_done += frames as u64;
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
             self.publish();
@@ -1563,6 +1580,7 @@ impl RtEngine {
         if scene.is_some_and(|scene| scene >= SCENES) {
             return;
         }
+        if self.project_command_edits(&c) { self.project.edited(); }
         match c {
             Command::ReservedStop { lane, ticket } => {
                 if lane == 0 { self.apply(Command::Stop); }
@@ -1571,6 +1589,7 @@ impl RtEngine {
             }
             Command::MidiClock { source } => self.midi_clock.receive_tick(source),
             Command::Play => {
+                self.resume_project_clips();
                 self.playing = true;
             }
             Command::Stop => {
@@ -1587,6 +1606,7 @@ impl RtEngine {
                 if self.playing {
                     self.apply(Command::Stop);
                 } else {
+                    self.resume_project_clips();
                     self.playing = true;
                     // launch scene 0 if nothing running
                     if self.tracks.iter().all(|t| t.playing.is_none()) {
@@ -1959,7 +1979,7 @@ impl RtEngine {
                     // Replacing the note list cancels captures into that list;
                     // a later physical release must not alter the replacement.
                     self.cancel_recording_clip(t, s);
-                    if self.tracks[t].playing.map(|p| p.scene) == Some(scene) {
+                    if self.tracks[t].playing.or(self.tracks[t].project_resume).map(|p| p.scene) == Some(scene) {
                         self.tracks[t].release_clip_notes();
                     }
                     if self.tracks[t].clips[s].kind == ClipKind::Empty {
@@ -2097,7 +2117,7 @@ impl RtEngine {
                 let active = self.tracks.iter().any(|t| t.playing.map(|p| p.scene) == Some(scene));
                 if active {
                     for t in 0..self.tracks.len() {
-                        if self.tracks[t].playing.map(|p| p.scene) == Some(scene) {
+                        if self.tracks[t].playing.or(self.tracks[t].project_resume).map(|p| p.scene) == Some(scene) {
                             self.finish_recording_track(t);
                             self.tracks[t].stop_clip();
                         }
@@ -2453,6 +2473,7 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
 }
 
 pub struct Engine {
+    pub project: project::Handle,
     pub cmd: CommandPort,
     pub ui_requests: ui_requests::Receiver,
     pub snap: Arc<Mutex<Snapshot>>,
@@ -2470,11 +2491,13 @@ impl Engine {
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(48000.0, rx, snap.clone());
+        let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let audio = audio::start(rt)?;
         let sample_rate = audio.sr;
         let midi = midi::MidiHub::start(tx.clone(), snap.clone())?;
         Ok(Self {
+            project,
             cmd: tx,
             ui_requests,
             snap,
@@ -2491,9 +2514,11 @@ impl Engine {
         let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         (
             Self {
+                project,
                 cmd,
                 ui_requests,
                 snap,

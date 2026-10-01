@@ -1,12 +1,14 @@
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) enum LibSource {
     Builtin(BuiltinStem),
     File(PathBuf),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(crate) enum BuiltinStem {
     Drums,
     Harmony,
@@ -29,7 +31,8 @@ pub(crate) struct Selection {
 
 /// Identity of the bytes inspected by a scan/decode, not just their pathname.
 /// This is cache invalidation metadata, not a cryptographic content identity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct FileFingerprint {
     device: u64,
     inode: u64,

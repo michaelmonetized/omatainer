@@ -31,6 +31,37 @@ The default session is a four-clip house sketch (drums, bass, keys, pad). Press 
 
 Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F** / **→ A** / **→ B**.
 
+## Native projects
+
+Use **Project → Save project as…** to choose a `.omat` path. Native projects embed
+the session's media alongside clips/notes, instruments, mixer/effects, sampler
+banks, deck cues/loops/positions, selections and the crate/panel view. The current
+factory controller mapping schema is recorded; there is no editable mapping
+configuration to save in this build.
+
+**Save project** updates the current file. **Save project as…** changes the current
+path; **Save copy…** writes another file while keeping the current path and unsaved
+state. Path dialogs accept absolute paths or paths relative to the application's
+working directory. Replacing an existing destination in As/Copy requires the
+explicit checkbox. The title marks unsaved edits; changes made during a save stay
+unsaved after that captured version finishes writing.
+
+**New project** creates an empty clip session with the factory sampler resources.
+**Open project…** and **Recent projects** restore a saved session with playback
+stopped. Press **Space** to resume remembered session clips; each deck's play
+button resumes its saved position. New, Open and window close offer
+**Save changes / Discard changes / Cancel** when needed. File operations run in a
+worker and expose cancellation and visible errors; a failed open preserves the
+current session. An unresponsive engine cannot silently authorize a clean close;
+explicit Discard can still exit without saving.
+
+The versioned file includes exact decoded audio, so original source files are not
+required for playback after reopening. Physical held keys, scratch touches,
+connections and DSP tails are transient. Default limits are 8 MiB metadata,
+256 embedded media entries and 1 GiB PCM; unsupported or corrupt projects are
+rejected without replacement. See the [project workflow evidence](docs/validation/issue-82-ui.md)
+and [file format and atomic save rules](docs/validation/issue-82-codec.md).
+
 ## Keybinds (also under `?`)
 
 Omarchy desktop bindings: `SUPER+O` launches/focuses the app;
