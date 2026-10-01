@@ -27,14 +27,18 @@ impl App {
             .show(ctx, |ui| {
                 ui.label("Applies to new clip notes and hits.");
                 ui.label("Held notes and release tails keep their original gain.");
-                let original = edit.value * 100.0;
+                let original_gain = edit.value;
+                let original = original_gain * 100.0;
                 let mut percent = original;
                 let response = ui.add(
                     egui::Slider::new(&mut percent, 0.0..=150.0).text("clip gain").suffix("%").max_decimals(1));
                 let alternate = accessibility::numeric(ui, &response, &format!("Clip track {} scene {}: Gain", edit.track + 1, edit.scene + 1), original, 0.0, 150.0, 1.0, "%");
                 if let Some(value) = alternate { percent = value; }
                 edit.value = percent / 100.0;
-                changed |= response.changed() || alternate.is_some();
+                // Display rounding can change 52.999996% to 53% on an idle
+                // frame while converting back to the identical stored gain.
+                // Only an actual normalized edit belongs in renderer history.
+                changed |= (response.changed() || alternate.is_some()) && edit.value != original_gain;
                 ui.horizontal(|ui| {
                     let zero = ui.button("zero");
                     accessibility::button(ui, &zero, "Set clip gain to zero", None);
@@ -67,6 +71,39 @@ impl App {
 mod tests {
     use super::*;
     use crate::ui::test_support::{label_center, Fixture};
+
+    #[test]
+    fn percent_display_rounding_does_not_add_idle_history_and_one_undo_restores_gain() {
+        use egui::accesskit::{Action, ActionData, ActionRequest};
+        let mut fixture = Fixture::new(64);
+        fixture.app.clip_gain_edit = Some(ClipGainEdit {track:0,scene:0,value:1.0});
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        let mut time = 0.0;
+        let mut run = |fixture: &mut Fixture, events| {
+            fixture.rt.process(&mut [0.0; 128]);
+            fixture.rt.publish_for_test();
+            time += 0.02;
+            ctx.run(egui::RawInput {time:Some(time), screen_rect:Some(Rect::from_min_size(Pos2::ZERO,Vec2::new(1600.0,1200.0))), events, ..Default::default()}, |ctx| fixture.app.update_frame(ctx))
+        };
+        run(&mut fixture, vec![]);
+        let output = run(&mut fixture, vec![]);
+        let id = output.platform_output.accesskit_update.unwrap().nodes.iter()
+            .find(|(_, node)|node.label()==Some("Clip track 1 scene 1: Gain")).unwrap().0;
+        let before = fixture.app.engine.undo.view().cursor;
+        run(&mut fixture, vec![egui::Event::AccessKitActionRequest(ActionRequest {action:Action::SetValue,target:id,data:Some(ActionData::NumericValue(53.0))})]);
+        for _ in 0..20 {run(&mut fixture, vec![]);}
+        assert_eq!(fixture.rt.tracks[0].clips[0].gain, 0.53);
+        assert_eq!(fixture.app.engine.undo.view().cursor, before + 1, "one edit must not grow history on idle frames");
+        fixture.app.history_action(false);
+        for _ in 0..4 {run(&mut fixture, vec![]);}
+        assert_eq!(fixture.rt.tracks[0].clips[0].gain, 1.0);
+        assert_eq!(fixture.app.engine.undo.view().cursor, before);
+        fixture.app.history_action(true);
+        for _ in 0..20 {run(&mut fixture, vec![]);}
+        assert_eq!(fixture.rt.tracks[0].clips[0].gain, 0.53);
+        assert_eq!(fixture.app.engine.undo.view().cursor, before + 1);
+    }
 
     fn frame(
         ctx: &egui::Context,
