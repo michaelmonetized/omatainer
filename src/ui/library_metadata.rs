@@ -387,8 +387,19 @@ impl Metadata {
 impl App {
     pub(super) fn poll_library_metadata(&mut self) {
         self.refresh_library_view(); // capture selection before an Arc swap
+        let selected = self.library_view.indices.get(self.lib_sel).and_then(|&index| {
+            let item = &self.library[index];
+            self.library_metadata.catalog.track_for_version(&item.source, item.fingerprint)
+                .map(|track| (item.source.clone(), track.id.clone()))
+        });
         match self.library_metadata.poll(&mut self.library) {
             Ok(true) => {
+                if let Some((source, id)) = selected {
+                    if let Some(destination) = self.library_metadata.catalog.tracks.iter()
+                        .find(|track| track.id == id && track.source != source).map(|track| track.source.clone()) {
+                        self.follow_library_relocation(&source, &destination);
+                    }
+                }
                 self.refresh_library_view();
                 self.restore_initial_library_preparation();
             }

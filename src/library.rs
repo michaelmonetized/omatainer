@@ -101,6 +101,9 @@ impl Catalog {
         self.index.get(source).copied().filter(|&i| self.tracks[i].versions.iter().any(|v| v.fingerprint == fingerprint))
             .or_else(|| self.relocations.get(&PreviousLocation { source: source.clone(), fingerprint: fingerprint? }).copied())
     }
+    pub(crate) fn track_for_version(&self, source: &LibSource, fingerprint: Option<FileFingerprint>) -> Option<&Track> {
+        self.tracks.get(self.version_track(source, fingerprint)?)
+    }
     fn validate(&mut self) -> Result<(), String> {
         if self.schema != SCHEMA {
             return Err(format!("unsupported library schema {}", self.schema));

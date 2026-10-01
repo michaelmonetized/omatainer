@@ -31,7 +31,7 @@ impl Draft {
         Ok(Style { name, color })
     }
 }
-struct Relocation { request: crate::library::Relocate, path: String, title: String, message: String }
+struct Relocation { request: crate::library::Relocate, path: String, title: String, message: String, pending: bool, saved: bool }
 
 pub(super) fn color(theme: &Theme, style: Style, slot: usize) -> Color32 {
     style.color.map(|[r,g,b]| Color32::from_rgb(r,g,b)).unwrap_or_else(|| theme.track_color(slot))
@@ -72,6 +72,7 @@ impl App {
         self.cue_editor.relocation = Some(Relocation {
             request: crate::library::Relocate { id: track.id.clone(), source: item.source.clone(), fingerprint, destination: PathBuf::new() },
             path: String::new(), title: item.title,
+            pending: false, saved: false,
             message: if track.versions[track.current].content_hash.is_some() { "Original track content is verified.".into() }
                 else { "The original file must still be available for content verification.".into() },
         });
@@ -84,7 +85,7 @@ impl App {
             } else {
                 keyboard::block_for_dialog(ctx);
                 let mut open = true;
-                egui::Window::new(format!("Deck {} cues", (b'A' + editor.deck as u8) as char)).open(&mut open).resizable(true).show(ctx, |ui| {
+                egui::Window::new(format!("Deck {} cues", (b'A' + editor.deck as u8) as char)).open(&mut open).resizable(true).vscroll(true).show(ctx, |ui| {
                     if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                     ui.heading(&snap.title);
                     ui.label(self.cue_storage_status(&editor.receipt));
@@ -136,6 +137,18 @@ impl App {
             }
         }
         if let Some(mut relocation) = self.cue_editor.relocation.take() {
+            if relocation.pending {
+                let destination = LibSource::File(relocation.request.destination.clone());
+                if self.library_metadata.durable && self.library_metadata.catalog.track(&destination)
+                    .is_some_and(|track| track.id == relocation.request.id) {
+                    relocation.pending = false;
+                    relocation.saved = true;
+                    relocation.message = format!("Relocation saved: {}. Track identity and cues were preserved.", relocation.request.destination.display());
+                } else if !self.library_metadata.active() {
+                    relocation.pending = false;
+                    relocation.message = self.library_metadata.label().to_owned();
+                }
+            }
             keyboard::block_for_dialog(ctx);
             let mut open = true;
             egui::Window::new("Relocate library track").open(&mut open).show(ctx, |ui| {
@@ -143,14 +156,15 @@ impl App {
                 ui.heading(&relocation.title);
                 ui.label("Choose the new location after moving or copying the same file. Verification compares every byte before preserving its track identity and cues. This does not move or delete files.");
                 ui.label(&relocation.message);
-                let path = ui.add(egui::TextEdit::singleline(&mut relocation.path).desired_width(420.0).hint_text("/new/location/track.wav"));
+                let path = ui.add_enabled(!relocation.pending && !relocation.saved, egui::TextEdit::singleline(&mut relocation.path).desired_width(420.0).hint_text("/new/location/track.wav"));
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Relocated track path"));
                 help::annotate(ui, &path, HelpControl::CueRelocatePath);
-                let submit = ui.button("Verify and relocate track");
+                let submit = ui.add_enabled(!relocation.pending && !relocation.saved, egui::Button::new("Verify and relocate track"));
                 help::annotate(ui, &submit, HelpControl::CueRelocateApply);
                 if submit.clicked() {
                     relocation.request.destination = PathBuf::from(relocation.path.trim());
                     relocation.message = if self.library_metadata.relocate(relocation.request.clone()) {
+                        relocation.pending = true;
                         "Verifying relocation on the library worker…".into()
                     } else { "Library is busy or unavailable; wait for its save and retry.".into() };
                 }
@@ -160,3 +174,6 @@ impl App {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
