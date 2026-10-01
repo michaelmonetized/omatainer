@@ -103,11 +103,14 @@ impl Backend for Fake {
     }
 }
 pub(crate) fn install(engine: &mut Engine) -> Control {
+    install_with_policy(engine, InputPolicy::All)
+}
+pub(crate) fn install_with_policy(engine: &mut Engine, policy: InputPolicy) -> Control {
     let (attempt_tx, attempts) = bounded(8);
     let (replies, reply_rx) = bounded(8);
     let mut hub = MidiHub::without_devices();
     hub.connections = Some(
-        Manager::start(
+        Manager::start_with_policy(
             Fake {
                 attempts: attempt_tx,
                 replies: reply_rx,
@@ -118,6 +121,7 @@ pub(crate) fn install(engine: &mut Engine) -> Control {
             hub.log.clone(),
             hub.learn.clone(),
             hub.input_counters.clone(),
+            policy,
         )
         .unwrap(),
     );
