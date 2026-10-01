@@ -132,3 +132,51 @@ project/preferences/lesson sequence and both safety/recovery paths. It ended wit
 protection deliberately off, recovery acknowledged, and emergency output mute still
 latched. Production build and source/license validation are recorded in the final
 issue handoff; no installed desktop, physical audio probe, or controller was changed.
+
+### Final assembled release gate
+
+The published layer is based on #95 `ce771d6`. Its independent assembled ordinary
+suite passed **708 tests / 12 ignored** in 17.08 s. The controlled release build,
+mandatory native preflight and all eight fixed workload groups across three fresh
+sessions passed on 2026-10-01 06:31:32–06:34:53 UTC; the workload fixture itself ran
+134.03 s. The native run visited 234 nodes and exercised 88 actions over 857 App
+frames. It persisted/reopened one note and UI scale 1.25 and ended with output
+mute still latched after deliberate protection exit.
+
+The source-bound release binary SHA-256 is
+`96257c7dd03899a4c4d39a4a15a9989f2983c072f3bbeeafa6fbe255a9280f65`.
+`target/performance.json`, its raw samples and log retain full evidence. Independent
+report checking and native package verification passed; the package contains that
+report. Seven CLI envelope checks, six status/follow protocol groups and five
+runtime-isolation groups also passed.
+
+The host was Linux aarch64, Apple M1 Pro (16-inch MacBook Pro, 2021), 10 logical
+CPUs, 16,141,549,568 bytes RAM, kernel `7.1.13-3-2-ARCH`, schedutil, SCHED_OTHER/nice 0
+with CPUs 0–9 available. Other agent builds/tests were paused during qualification;
+unrelated host applications remained running. One-minute load was 3.471 before
+and 1.999 after the timed workload. Every #95 budget remained unchanged.
+
+Worst p99 / maximum across the three sessions, in milliseconds:
+
+| Work | p99 | Maximum |
+| --- | ---: | ---: |
+| Producer callback wall | 2.254 | 8.188 |
+| Composer callback wall | 2.439 | 5.902 |
+| Live DJ callback wall | 0.452 | 0.513 |
+| Hybrid callback wall | 2.842 | 3.127 |
+| 50,000-track App frame | 3.634 | 5.648 |
+| Multi-input App frame | 4.483 | 6.160 |
+| Private IPC roundtrip | 9.099 | 10.344 |
+| MIDI worker dispatch | 3.197 | 8.614 |
+| Project roundtrip App frame | 5.020 | 5.020 |
+| Long recording App frame | 6.240 | 6.240 |
+| Long recording render block | 2.675 | 4.007 |
+
+All measured callback allocation/free, rejection and MIDI-drop counters were zero;
+exact state/audio checks passed. These fixed workloads preserve their #95 operation
+schedule; the separate protected-versus-Studio hybrid regression directly qualifies
+the protection policy's audio/state equivalence. Headless App timings are not
+compositor FPS, host callback work is not physical driver deadline evidence, and
+ten minutes of virtual note recording is not a ten-minute wall-clock set. Real
+controller/audio interaction, human screen-reader use and final listening remain
+for the user's role-based physical QA.
