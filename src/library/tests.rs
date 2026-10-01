@@ -35,6 +35,7 @@ fn metadata() -> Metadata {
 fn preparation() -> Preparation {
     Preparation {
         cue: 4.5,
+        hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
         hotcues: [
             Some(0.0),
             Some(12.25),
@@ -120,7 +121,7 @@ fn migration_preserves_every_v1_field_and_backs_up_original() {
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&fs::read(dir.store()).unwrap()).unwrap()
             ["schema"],
-        2
+        3
     );
 }
 #[test]
@@ -431,4 +432,149 @@ fn retry_after_backup_checkpoint_noop_rename_retires_owned_link_and_allows_later
             .cue,
         50.0
     );
+}
+
+#[test]
+fn eight_named_colored_cues_survive_restart_move_and_late_old_location_receipts() {
+    use crate::engine::cue_metadata::{Name, Style};
+    let dir = Dir::new();
+    let original_path = dir.0.join("original.wav");
+    let moved_path = dir.0.join("moved.wav");
+    fs::write(&original_path, b"same track bytes, regardless of path").unwrap();
+    let source = LibSource::File(original_path.clone());
+    let old_fp = FileFingerprint::read(&original_path).unwrap();
+    let mut store = Store::open(dir.store()).unwrap();
+    let prepared = Preparation {
+        hotcues: std::array::from_fn(|i| Some(i as f64 * 2.25)),
+        hotcue_styles: std::array::from_fn(|i| Style {
+            name: Name::new(&format!("Part {} • 演奏", i + 1)).unwrap(),
+            color: Some([i as u8 * 30, 88, 220]),
+        }),
+        ..Preparation::default()
+    };
+    store.catalog.upsert(source.clone(), Some(old_fp), metadata()).unwrap().preparation = prepared;
+    store.catalog.qualify_cues(&source, Some(old_fp));
+    assert!(store.catalog.version(&source, Some(old_fp)).unwrap().content_hash.is_some());
+    let id = store.catalog.track(&source).unwrap().id.clone();
+    store.save().unwrap();
+    drop(store);
+    fs::rename(&original_path, &moved_path).unwrap();
+    let mut restarted = Store::open(dir.store()).unwrap();
+    assert_eq!(restarted.catalog.version(&source, Some(old_fp)).unwrap().preparation, prepared);
+    restarted.catalog.relocate(&Relocate { id: id.clone(), source: source.clone(), fingerprint: old_fp,
+        destination: moved_path.clone() }).unwrap();
+    restarted.save().unwrap();
+    drop(restarted);
+    let mut restarted = Store::open(dir.store()).unwrap();
+    let moved = LibSource::File(moved_path.clone());
+    let moved_fp = FileFingerprint::read(&moved_path).unwrap();
+    assert_eq!(restarted.catalog.tracks.len(), 1);
+    assert_eq!(restarted.catalog.track(&moved).unwrap().id, id);
+    assert_eq!(restarted.catalog.version(&moved, Some(moved_fp)).unwrap().preparation, prepared);
+    assert_eq!(restarted.catalog.version(&source, Some(old_fp)).unwrap().preparation, prepared);
+    // An old loaded/undo-retained receipt may finish after the move. It must
+    // update the same identity and cannot recreate a duplicate old-path track.
+    let mut late = prepared;
+    late.hotcue_styles[7].name = Name::new("Last chorus").unwrap();
+    restarted.catalog.upsert(source.clone(), Some(old_fp), metadata()).unwrap();
+    restarted.catalog.update_preparation(&source, Some(old_fp), Some(late), None);
+    assert_eq!(restarted.catalog.tracks.len(), 1);
+    assert_eq!(restarted.catalog.version(&moved, Some(moved_fp)).unwrap().preparation, late);
+    // Unrelated bytes newly occupying the old path get a distinct track, never
+    // the relocated preparation. Old receipts still resolve by exact identity.
+    fs::write(&original_path, b"unrelated replacement").unwrap();
+    let replacement_fp = FileFingerprint::read(&original_path).unwrap();
+    restarted.catalog.upsert(source.clone(), Some(replacement_fp), metadata()).unwrap();
+    assert_eq!(restarted.catalog.tracks.len(), 2);
+    assert_ne!(restarted.catalog.track(&source).unwrap().id, id);
+    assert_eq!(restarted.catalog.version(&source, Some(replacement_fp)).unwrap().preparation, Preparation::default());
+    restarted.catalog.update_preparation(&source, Some(old_fp), Some(prepared), None);
+    assert_eq!(restarted.catalog.version(&moved, Some(moved_fp)).unwrap().preparation, prepared);
+    restarted.save().unwrap();
+    drop(restarted);
+    let mut restored = Store::open(dir.store()).unwrap();
+    assert_eq!(restored.catalog.track(&moved).unwrap().id, id);
+    assert_eq!(restored.catalog.equivalent_current(&source, Some(old_fp)),
+        Some((&moved, Some(moved_fp))));
+    // Stable identity does not qualify later replacement bytes at the new path.
+    fs::write(&moved_path, b"different bytes at relocated path").unwrap();
+    let changed = FileFingerprint::read(&moved_path).unwrap();
+    restored.catalog.upsert(moved.clone(), Some(changed), metadata()).unwrap();
+    assert_eq!(restored.catalog.track(&moved).unwrap().id, id);
+    assert!(restored.catalog.equivalent_current(&source, Some(old_fp)).is_none());
+}
+
+#[test]
+fn relocation_rejects_unverified_missing_different_or_conflicting_tracks_without_changes() {
+    let dir = Dir::new();
+    let from = dir.0.join("before.wav");
+    let to = dir.0.join("after.wav");
+    fs::write(&from, b"original").unwrap();
+    fs::write(&to, b"different").unwrap();
+    let source = LibSource::File(from.clone());
+    let fp = FileFingerprint::read(&from).unwrap();
+    let mut catalog = Catalog::default();
+    catalog.upsert(source.clone(), Some(fp), metadata()).unwrap().preparation = preparation();
+    catalog.qualify_cues(&source, Some(fp));
+    let request = Relocate { id: catalog.track(&source).unwrap().id.clone(), source: source.clone(),
+        fingerprint: fp, destination: to.clone() };
+    let unchanged = serde_json::to_value(&catalog).unwrap();
+    assert!(catalog.relocate(&request).unwrap_err().contains("different bytes"));
+    assert_eq!(serde_json::to_value(&catalog).unwrap(), unchanged);
+    fs::write(&to, b"original").unwrap();
+    catalog.upsert(LibSource::File(to.clone()), FileFingerprint::read(&to), metadata()).unwrap();
+    let unchanged = serde_json::to_value(&catalog).unwrap();
+    assert!(catalog.relocate(&request).unwrap_err().contains("already belongs"));
+    assert_eq!(serde_json::to_value(&catalog).unwrap(), unchanged);
+    let mut legacy = Catalog::default();
+    legacy.upsert(source.clone(), Some(fp), metadata()).unwrap().preparation = preparation();
+    let mut request = request;
+    request.id = legacy.track(&source).unwrap().id.clone();
+    fs::remove_file(&from).unwrap();
+    let unchanged = serde_json::to_value(&legacy).unwrap();
+    assert!(legacy.relocate(&request).unwrap_err().contains("not verified before the move"));
+    assert_eq!(serde_json::to_value(&legacy).unwrap(), unchanged);
+}
+
+#[test]
+fn content_hash_checks_exact_bytes_and_cancel_change_and_symlink_boundaries() {
+    let dir = Dir::new();
+    let path = dir.0.join("hash.wav");
+    fs::write(&path, b"abc").unwrap();
+    let fp = FileFingerprint::read(&path).unwrap();
+    let hash = content::hash_file(&path, fp, || true).unwrap();
+    assert_eq!(hash.iter().map(|b| format!("{b:02x}")).collect::<String>(),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    assert!(content::hash_file(&path, fp, || false).unwrap_err().contains("cancelled"));
+    let link = dir.0.join("symlink.wav");
+    std::os::unix::fs::symlink(&path, &link).unwrap();
+    assert!(content::hash_file(&link, fp, || true).is_err());
+    let mut changed = false;
+    assert!(content::hash_file(&path, fp, || {
+        if !changed { fs::write(&path, b"different data").unwrap(); changed = true; }
+        true
+    }).is_err());
+}
+
+#[test]
+fn schema_two_migrates_default_styles_and_no_invented_hash_without_overwriting_old_file() {
+    let dir = Dir::new();
+    let original = mixed(&dir);
+    let mut old = serde_json::to_value(&original).unwrap();
+    old["schema"] = 2.into();
+    for track in old["tracks"].as_array_mut().unwrap() {
+        track.as_object_mut().unwrap().remove("previous_locations");
+        for version in track["versions"].as_array_mut().unwrap() {
+            version.as_object_mut().unwrap().remove("content_hash");
+            version["preparation"].as_object_mut().unwrap().remove("hotcue_styles");
+        }
+    }
+    let bytes = serde_json::to_vec(&old).unwrap();
+    fs::write(dir.store(), &bytes).unwrap();
+    let mut store = Store::open(dir.store()).unwrap();
+    assert_eq!(store.catalog.tracks, original.tracks);
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    store.save().unwrap();
+    assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
+    assert_eq!(read(&dir.store()).unwrap().tracks, original.tracks);
 }

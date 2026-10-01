@@ -36,6 +36,7 @@ pub enum Name {
     RecordNotes,
     Deck,
     DeckSeek,
+    CueStyle,
     LoadMedia,
     AddEffect,
     Effect,
@@ -59,6 +60,7 @@ impl Name {
             Self::RecordNotes => "Record notes",
             Self::Deck => "Edit deck",
             Self::DeckSeek => "Seek deck",
+            Self::CueStyle => "Rename or color cue",
             Self::LoadMedia => "Replace deck media",
             Self::AddEffect => "Add effect",
             Self::Effect => "Edit effect",
@@ -365,7 +367,7 @@ impl Journal {
             shared: self.shared.clone(),
         })
     }
-    fn reject(&mut self, reason: Failure) {
+    pub(super) fn reject(&mut self, reason: Failure) {
         self.failure = Some(reason);
         self.failures = self.failures.wrapping_add(1);
     }
@@ -747,6 +749,8 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckSync { .. }
             | Command::DeckPfl { .. }
             | Command::DeckHotCue { .. }
+            | Command::DeckCueStyle { .. }
+                    | Command::DeckCuePoint { .. }
             | Command::DeckLoop { .. }
             | Command::DeckLoopIn { .. }
             | Command::DeckLoopOut { .. }
@@ -778,6 +782,8 @@ impl Journal {
                     | Command::DeckLoadRequested { .. }
                     | Command::LibraryFence { .. }
                     | Command::DeckRestorePreparation { .. }
+                    | Command::DeckCueStyle { .. }
+                    | Command::DeckCuePoint { .. }
                     | Command::LearnCapture { .. }
             )
         {

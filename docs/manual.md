@@ -809,6 +809,78 @@ Cycle the pitch fader's range. Check the current value after changing range.
 
 Workflow: Prepare a DJ deck.
 
+### Cue names and colors
+
+Eight applied hot cues
+
+Open the loaded track's cue list. Rows show renderer-applied positions, names and colors; fields are drafts until Apply. Changing the track closes the editor.
+
+Workflow: Prepare a DJ deck.
+
+### Cue name
+
+Up to 64 UTF-8 bytes
+
+Draft a name for an existing hot cue. Apply submits the edit to the same loaded track. Empty names display the cue number; control characters are rejected.
+
+Workflow: Prepare a DJ deck.
+
+### Cue color
+
+Opaque #RRGGBB or theme
+
+Draft six hexadecimal color digits. An empty field uses the current theme's cue color. Apply updates pad, waveform marker and cue list together.
+
+Workflow: Prepare a DJ deck.
+
+### Apply cue name and color
+
+One undoable cue edit
+
+Apply this row's validated draft only if its cue and loaded track identity are still current. Queue acceptance is not proof of application or a durable library save.
+
+Workflow: Prepare a DJ deck.
+
+### Reload cue values
+
+Discard editor drafts
+
+Replace the editor's name and color drafts with the currently applied cue values. This changes no audio, cue position or saved library data.
+
+Workflow: Prepare a DJ deck.
+
+### Close cue editor
+
+Discard unapplied drafts
+
+Close the cue list and discard fields that were not applied. Already applied cue positions, names and colors remain in the session and follow the library save status.
+
+Workflow: Prepare a DJ deck.
+
+### Relocate a library track
+
+Local file association
+
+Choose the new path of the selected library track after a file move or copy. The worker must verify identical content before retaining the stable track identity and preparation.
+
+Workflow: Prepare a DJ deck.
+
+### Relocated track path
+
+Absolute local file path
+
+Enter the moved file's path. The original content must have been verified while available, or the original file must still exist. Filenames alone are never a match.
+
+Workflow: Prepare a DJ deck.
+
+### Verify and relocate track
+
+Background content verification and catalog save
+
+Compare complete file hashes and stable file metadata before changing the library association. Different bytes, an occupied destination or a changed source are rejected. Loaded and undo-retained old receipts preserve the same prepared identity. No files are moved or deleted.
+
+Workflow: Prepare a DJ deck.
+
 ### Hot cue
 
 Eight positions per deck

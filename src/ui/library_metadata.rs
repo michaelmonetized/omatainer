@@ -40,6 +40,10 @@ struct Import {
     path: PathBuf,
     work: Arc<WorkPermit>,
 }
+struct Relocation {
+    request: crate::library::Relocate,
+    work: Arc<WorkPermit>,
+}
 struct Staged {
     items: Arc<Vec<LibItem>>,
     work: Arc<WorkPermit>,
@@ -54,8 +58,12 @@ struct Job {
     updates: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
     import: Option<Import>,
+    relocation: Option<Relocation>,
+    qualification_work: Option<WorkPermit>,
 }
 struct Result {
+    relocation: Option<RelocationResult>,
+    qualification_pending: bool,
     base: Weak<Vec<LibItem>>,
     revision: u64,
     items: Arc<Vec<LibItem>>,
@@ -70,8 +78,14 @@ struct Result {
     storage: Option<String>,
     durable: bool,
 }
+struct RelocationResult {
+    request: crate::library::Relocate,
+    outcome: std::result::Result<(), String>,
+}
 
 pub(super) struct Metadata {
+    relocation_result: Option<RelocationResult>,
+    qualification_pending: bool,
     performance: Handle,
     deferred: bool,
     jobs: mpsc::SyncSender<Job>,
@@ -79,6 +93,7 @@ pub(super) struct Metadata {
     pending: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
     import: Option<Import>,
+    relocation: Option<Relocation>,
     pub catalog: Arc<crate::library::Catalog>,
     pub storage: Option<String>,
     pub storage_error: Option<String>,
@@ -115,12 +130,26 @@ impl Metadata {
             .spawn(move || {
                 let mut store = path.map(crate::library::Store::open);
                 let mut cache = HashMap::<LibSource, Patch>::new();
+                // Latest captured file identity per source only. Protection can
+                // defer this optional read while the essential cue save proceeds.
+                let mut qualifications = HashMap::<LibSource, Option<FileFingerprint>>::new();
                 // Retain only accepted overlays for identities still visible.
                 // A stale optional result must not hide an essential capture on
                 // the next protected rebase. This cache is bounded by base rows.
                 let mut essential = HashMap::<LibSource, super::library_store::Capture>::new();
                 while let Ok(job) = work.recv() {
                     before_job();
+                    for capture in &job.captures {
+                        // Excess tracks retain their essential cues and can be
+                        // verified by an explicit relocation while the original
+                        // is available. Never grow optional backlog without bound.
+                        if (qualifications.len() < 256 || qualifications.contains_key(&capture.source))
+                            && matches!(capture.source, LibSource::File(_))
+                            && capture.preparation.is_some_and(|p| p.hotcues.iter().any(Option::is_some)) {
+                            qualifications.insert(capture.source.clone(), capture.fingerprint);
+                        }
+                    }
+                    let qualification_sources: Vec<_> = qualifications.iter().map(|(source, fingerprint)| (source.clone(), *fingerprint)).collect();
                     let visible_identity: HashMap<_, _> = job.base.iter()
                         .map(|item| (&item.source, item.fingerprint)).collect();
                     essential.retain(|source, capture| visible_identity.get(source)
@@ -174,6 +203,8 @@ impl Metadata {
                     }
                     let mut storage = None;
                     let mut durable = false;
+                    let mut qualification_pending = false;
+                    let mut relocation_outcome = None;
                     let catalog = if let Some(store) = &mut store {
                         match store {
                             Ok(store) => {
@@ -183,11 +214,14 @@ impl Metadata {
                                         job.import.as_ref().map(|import| import.path.as_path()),
                                         job.import.as_ref().map(|import| import.work.as_ref()),
                                         job.scan_work.as_deref(), &fallback,
+                                        job.relocation.as_ref().map(|r| (&r.request, r.work.as_ref())), job.qualification_work.as_ref(), &qualification_sources,
                                     ) {
-                                        Ok(import_error) => {
+                                        Ok(result) => {
+                                            qualification_pending = result.qualification_pending;
+                                            relocation_outcome = result.relocation;
                                             durable = true;
-                                            import_error.map_or_else(|| "DJ library saved".into(), |error|
-                                                format!("DJ library saved; import rejected: {error}"))
+                                            result.notice.map_or_else(|| "DJ library saved".into(), |error|
+                                                format!("DJ library saved; {error}"))
                                         },
                                         Err(error) => format!("DJ library NOT saved: {error}"),
                                     },
@@ -204,12 +238,13 @@ impl Metadata {
                     } else {
                         Arc::new(crate::library::Catalog::default())
                     };
+                    if durable && !qualification_pending { qualifications.clear(); }
                     sort_crate(&mut items);
                     // Prepare a second immutable view on the worker. It keeps
                     // prior visible identities and their essential saved metadata,
                     // never optional scan/import changes, even for the same path.
                     let visible: std::collections::HashSet<_> = job.base.iter().map(|item| &item.source).collect();
-                    let optional = job.restricted || job.scan_work.is_some() || job.import.is_some()
+                    let optional = job.restricted || job.scan_work.is_some() || job.import.is_some() || job.relocation.is_some()
                         || items.iter().any(|item| !visible.contains(&item.source));
                     let restricted = optional.then(|| {
                         let mut rows = if persistent { super::library_store::restricted_rows(&fallback, &essential.values().cloned().collect::<Vec<_>>()) }
@@ -219,9 +254,23 @@ impl Metadata {
                     });
                     let items = Arc::new(items);
                     let restricted = restricted.unwrap_or_else(|| items.clone());
+                    let relocation = job.relocation.as_ref().map(|relocation| {
+                        let saved = durable && catalog.track(&LibSource::File(relocation.request.destination.clone()))
+                            .is_some_and(|track| track.id == relocation.request.id);
+                        RelocationResult {
+                            request: relocation.request.clone(),
+                            outcome: match relocation_outcome {
+                                Some(Ok(())) if saved => Ok(()),
+                                Some(Err(error)) => Err(error),
+                                _ => Err(storage.clone().unwrap_or_else(|| "Relocation was not saved: library storage is unavailable".into())),
+                            },
+                        }
+                    });
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
+                            relocation,
+                            qualification_pending,
                             base: Arc::downgrade(&job.base),
                             revision: job.revision,
                             items: items.clone(),
@@ -245,6 +294,8 @@ impl Metadata {
                 }
             });
         Self {
+            relocation_result: None,
+            qualification_pending: false,
             performance: Handle::default(),
             deferred: false,
             jobs,
@@ -252,6 +303,7 @@ impl Metadata {
             pending: Vec::new(),
             captures: Vec::new(),
             import: None,
+            relocation: None,
             catalog: Arc::new(crate::library::Catalog::default()),
             storage: persistent.then(|| "Opening DJ library…".into()),
             storage_error: None,
@@ -303,6 +355,27 @@ impl Metadata {
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
         true
+    }
+    pub fn relocate(&mut self, request: crate::library::Relocate) -> bool {
+        if self.storage.is_none() || self.relocation.is_some() || self.in_flight { return false; }
+        let work = match self.performance.optional_work() {
+            Ok(work) => Arc::new(work),
+            Err(error) => {
+                self.storage_error = Some(format!("Relocation was not accepted: {error}"));
+                return false;
+            }
+        };
+        self.relocation = Some(Relocation { request, work });
+        self.relocation_result = None;
+        self.clear_error = true;
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        true
+    }
+    pub fn relocation_result(&self, request: &crate::library::Relocate) -> Option<&std::result::Result<(), String>> {
+        self.relocation_result.as_ref().filter(|result| result.request.id == request.id
+            && result.request.destination == request.destination && result.request.source == request.source
+            && result.request.fingerprint == request.fingerprint).map(|result| &result.outcome)
     }
     pub fn retry_save(&mut self) {
         self.dirty = true;
@@ -392,11 +465,13 @@ impl Metadata {
         }) {
             self.cancel_scan();
         }
-        if self.deferred && !self.performance.protected() && !self.in_flight && !self.dirty {
+        if (self.deferred || self.qualification_pending) && !self.performance.protected() && !self.in_flight && !self.dirty {
             self.dirty = true;
             self.revision = self.revision.wrapping_add(1);
         }
         if let Ok(result) = self.results.try_recv() {
+            if let Some(relocation) = result.relocation { self.relocation_result = Some(relocation); }
+            self.qualification_pending = result.qualification_pending;
             self.in_flight = false;
             if result
                 .storage
@@ -466,6 +541,8 @@ impl Metadata {
                 updates: std::mem::take(&mut self.pending),
                 captures: std::mem::take(&mut self.captures),
                 import: self.import.take(),
+                relocation: self.relocation.take(),
+                qualification_work: self.performance.optional_work().ok(),
             };
             match self.jobs.try_send(job) {
                 Ok(()) => {
@@ -476,6 +553,7 @@ impl Metadata {
                     self.pending = job.updates;
                     self.captures = job.captures;
                     self.import = job.import;
+                    self.relocation = job.relocation;
                     self.retired_candidates = job._retired_candidates;
                     if self.storage.is_some() {
                         self.durable = false;
@@ -498,8 +576,19 @@ impl Metadata {
 impl App {
     pub(super) fn poll_library_metadata(&mut self) {
         self.refresh_library_view(); // capture selection before an Arc swap
+        let selected = self.library_view.indices.get(self.lib_sel).and_then(|&index| {
+            let item = &self.library[index];
+            self.library_metadata.catalog.track_for_version(&item.source, item.fingerprint)
+                .map(|track| (item.source.clone(), track.id.clone()))
+        });
         match self.library_metadata.poll(&mut self.library) {
             Ok(true) => {
+                if let Some((source, id)) = selected {
+                    if let Some(destination) = self.library_metadata.catalog.tracks.iter()
+                        .find(|track| track.id == id && track.source != source).map(|track| track.source.clone()) {
+                        self.follow_library_relocation(&source, &destination);
+                    }
+                }
                 self.refresh_library_view();
                 self.restore_initial_library_preparation();
             }

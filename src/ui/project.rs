@@ -750,6 +750,8 @@ impl App {
         }
         self.library_view.pending_offset = Some(view.library_offset);
         self.refresh_library_view();
+        self.cue_editor.project_receipts = applied.playback_receipts.clone();
+        self.cue_editor.editor = None;
         for (identity, receipt) in view
             .deck_identities
             .into_iter()

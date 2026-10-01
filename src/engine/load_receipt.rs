@@ -15,7 +15,7 @@ struct Inner {
     history_pins: AtomicU64,
     initial_preparation: Option<super::preparation::Preparation>,
     preparation_sequence: AtomicU64,
-    preparation: [AtomicU64; 12],
+    preparation: [AtomicU64; super::preparation::WORDS],
     last_play: AtomicU64,
     // Capture civil time before callback ownership; only monotonic elapsed
     // time is queried at an actual playback onset, never for every sample.
@@ -78,6 +78,12 @@ impl Receipt {
         std::sync::atomic::fence(Ordering::Acquire);
         (sequence == self.0.preparation_sequence.load(Ordering::Relaxed))
             .then(|| (sequence, super::preparation::Preparation::from_words(words)))
+    }
+    /// Ephemeral in-process snapshot key only. A GUI watch retains its receipt,
+    /// so a different request cannot reuse this address while the key is used.
+    /// Never serialized, persisted, or used as a content identity.
+    pub(crate) fn snapshot_key(&self) -> usize {
+        Arc::as_ptr(&self.0) as usize
     }
     pub fn same_request(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)

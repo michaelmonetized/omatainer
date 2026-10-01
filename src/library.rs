@@ -15,7 +15,10 @@ use std::{
     time::SystemTime,
 };
 
-const SCHEMA: u32 = 2;
+mod content;
+pub(crate) use content::Relocate;
+
+const SCHEMA: u32 = 3;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -39,6 +42,8 @@ pub(crate) struct Version {
     pub fingerprint: Option<FileFingerprint>,
     pub metadata: Metadata,
     pub preparation: Preparation,
+    #[serde(default)]
+    pub content_hash: Option<[u8; 32]>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -49,6 +54,14 @@ pub(crate) struct Track {
     // Replaced bytes do not inherit preparation, but their old prepared version
     // remains durable. This is an archive, not an automatic move/content matcher.
     pub versions: Vec<Version>,
+    #[serde(default)]
+    pub previous_locations: Vec<PreviousLocation>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PreviousLocation {
+    pub source: LibSource,
+    pub fingerprint: FileFingerprint,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -57,6 +70,8 @@ pub(crate) struct Catalog {
     pub tracks: Vec<Track>,
     #[serde(skip)]
     index: HashMap<LibSource, usize>,
+    #[serde(skip)]
+    relocations: HashMap<PreviousLocation, usize>,
 }
 impl Default for Catalog {
     fn default() -> Self {
@@ -64,6 +79,7 @@ impl Default for Catalog {
             schema: SCHEMA,
             tracks: vec![],
             index: HashMap::new(),
+            relocations: HashMap::new(),
         }
     }
 }
@@ -76,10 +92,30 @@ impl Catalog {
         source: &LibSource,
         fingerprint: Option<FileFingerprint>,
     ) -> Option<&Version> {
-        self.track(source)?
+        self.tracks.get(self.version_track(source, fingerprint)?)?
             .versions
             .iter()
             .find(|version| version.fingerprint == fingerprint)
+    }
+    fn version_track(&self, source: &LibSource, fingerprint: Option<FileFingerprint>) -> Option<usize> {
+        self.index.get(source).copied().filter(|&i| self.tracks[i].versions.iter().any(|v| v.fingerprint == fingerprint))
+            .or_else(|| self.relocations.get(&PreviousLocation { source: source.clone(), fingerprint: fingerprint? }).copied())
+    }
+    pub(crate) fn track_for_version(&self, source: &LibSource, fingerprint: Option<FileFingerprint>) -> Option<&Track> {
+        self.tracks.get(self.version_track(source, fingerprint)?)
+    }
+    /// Resolve only a verified byte-equivalent current version. Stable track
+    /// identity alone cannot credit replacement content at a relocated path.
+    pub(crate) fn equivalent_current(
+        &self,
+        source: &LibSource,
+        fingerprint: Option<FileFingerprint>,
+    ) -> Option<(&LibSource, Option<FileFingerprint>)> {
+        let track = self.track_for_version(source, fingerprint)?;
+        let old = track.versions.iter().find(|v| v.fingerprint == fingerprint)?;
+        let current = track.versions.get(track.current)?;
+        (old.content_hash.is_some() && old.content_hash == current.content_hash)
+            .then_some((&track.source, current.fingerprint))
     }
     fn validate(&mut self) -> Result<(), String> {
         if self.schema != SCHEMA {
@@ -91,6 +127,7 @@ impl Catalog {
         let mut ids = HashSet::new();
         let mut versions = 0usize;
         self.index.clear();
+        self.relocations.clear();
         for (i, track) in self.tracks.iter().enumerate() {
             if track.id.0.len() != 32
                 || !track
@@ -108,6 +145,15 @@ impl Catalog {
             }
             if track.versions.is_empty() || track.current >= track.versions.len() {
                 return Err("invalid current media version".into());
+            }
+            if track.previous_locations.len() > 64 { return Err("track relocation history exceeds 64 locations".into()); }
+            for previous in &track.previous_locations {
+                validate_source(&previous.source)?;
+                if !matches!(&previous.source, LibSource::File(_))
+                    || !track.versions.iter().any(|v| v.fingerprint == Some(previous.fingerprint))
+                    || self.relocations.insert(previous.clone(), i).is_some() {
+                    return Err("invalid or conflicting relocated track association".into());
+                }
             }
             let mut fingerprints = HashSet::new();
             versions += track.versions.len();
@@ -130,6 +176,12 @@ impl Catalog {
                 }
             }
         }
+        for (previous, &owner) in &self.relocations {
+            if self.index.get(&previous.source).is_some_and(|&i| i != owner
+                && self.tracks[i].versions.iter().any(|v| v.fingerprint == Some(previous.fingerprint))) {
+                return Err("relocated content belongs to conflicting track identities".into());
+            }
+        }
         Ok(())
     }
     pub fn upsert(
@@ -138,8 +190,9 @@ impl Catalog {
         fingerprint: Option<FileFingerprint>,
         metadata: Metadata,
     ) -> Result<&mut Version, String> {
-        let i = match self.index.get(&source) {
-            Some(&i) => i,
+        let relocated = fingerprint.and_then(|fingerprint| self.relocations.get(&PreviousLocation { source: source.clone(), fingerprint })).copied();
+        let i = match relocated.or_else(|| self.index.get(&source).copied()) {
+            Some(i) => i,
             None => {
                 validate_source(&source)?;
                 if self.tracks.len() >= MAX_TRACKS {
@@ -164,6 +217,7 @@ impl Catalog {
                     source,
                     current: 0,
                     versions: vec![],
+                    previous_locations: vec![],
                 });
                 i
             }
@@ -180,10 +234,11 @@ impl Catalog {
                 fingerprint,
                 metadata: metadata.clone(),
                 preparation: Preparation::default(),
+                content_hash: None,
             });
             track.versions.len() - 1
         };
-        track.current = index;
+        if relocated.is_none() { track.current = index; }
         let version = &mut track.versions[index];
         // Rescanning filename hints cannot erase decoded analysis/user values.
         let old = &version.metadata;
@@ -319,13 +374,18 @@ pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
-        Some(2) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(2 | 3) => {
+            let mut current: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            current.schema = SCHEMA;
+            current
+        },
         Some(1) => {
             let old: V1 = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema, 1);
             Catalog {
                 schema: SCHEMA,
                 index: HashMap::new(),
+            relocations: HashMap::new(),
                 tracks: old
                     .tracks
                     .into_iter()
@@ -333,10 +393,12 @@ pub(crate) fn read(path: &Path) -> Result<Catalog, String> {
                         id: track.id,
                         source: track.source,
                         current: 0,
+                        previous_locations: vec![],
                         versions: vec![Version {
                             fingerprint: track.fingerprint,
                             metadata: track.metadata,
                             preparation: track.preparation,
+                            content_hash: None,
                         }],
                     })
                     .collect(),
