@@ -361,6 +361,10 @@ impl App {
         }
         if self.midi_open {
             egui::Window::new("midi").show(ctx, |ui| {
+                let input = self.engine.midi.input_stats();
+                ui.label(format!("Input: {} received · {} queued · {} handled", input.received, input.queued, input.dispatched));
+                ui.label(format!("Overload: {} coalesced · {} discarded · {} source resets", input.coalesced, input.dropped, input.resets));
+                ui.label(format!("{} oversized · {} disconnected", input.oversized, input.disconnected));
                 for d in &self.snap.midi {
                     ui.label(d);
                 }

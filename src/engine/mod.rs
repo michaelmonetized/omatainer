@@ -213,6 +213,9 @@ pub struct DeckRt {
     pub playing: bool,
     pub cue_pos: f64,
     pub touching: bool,
+    // Admission cannot hold more than MAX_COMMANDS gates across all inputs.
+    // Matching that bound per deck guarantees every accepted owner fits here.
+    touch_sources: [Option<u64>; control::MAX_COMMANDS],
     pub vinyl: bool,
     pub keylock: bool,
     pub sync: bool,
@@ -263,6 +266,7 @@ impl DeckRt {
             playing: false,
             cue_pos: 0.0,
             touching: false,
+            touch_sources: [None; control::MAX_COMMANDS],
             vinyl: true,
             keylock: false,
             sync: false,
@@ -587,6 +591,7 @@ pub enum Command {
     DeckSync { deck: u8 },
     DeckJog { deck: u8, delta: f32 },
     DeckTouch { deck: u8, on: bool },
+    MidiDeckTouch { source: u64, deck: u8, on: bool },
     DeckPitch { deck: u8, value: f32 },
     DeckGain { deck: u8, value: f32 },
     DeckEq { deck: u8, band: u8, value: f32 },
@@ -1301,6 +1306,26 @@ impl RtEngine {
         buses
     }
 
+    fn deck_touch(&mut self, source: u64, deck: u8, on: bool) {
+        let d = &mut self.decks[deck as usize % DECKS];
+        let existing = d.touch_sources.iter().position(|owner| *owner == Some(source));
+        if on {
+            if existing.is_none() {
+                if let Some(empty) = d.touch_sources.iter_mut().find(|owner| owner.is_none()) {
+                    *empty = Some(source);
+                }
+            }
+        } else if let Some(index) = existing {
+            d.touch_sources[index] = None;
+        }
+        let touching = d.touch_sources.iter().any(Option::is_some);
+        if d.touching != touching {
+            d.touching = touching;
+            d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+        }
+        if !touching { d.scratch = 0.0; }
+    }
+
     fn release_input(&mut self, input: InputKey) {
         self.finish_recording_input(input);
         // Voice pools are bounded; their exact gate metadata is the routing
@@ -1465,14 +1490,10 @@ impl RtEngine {
                 }
             }
             Command::DeckTouch { deck, on } => {
-                let d = &mut self.decks[deck as usize % DECKS];
-                if d.touching != on {
-                    d.touching = on;
-                    d.transition_to(d.pos, self.sr, DeckTransition::Jump);
-                }
-                if !on {
-                    d.scratch = 0.0;
-                }
+                self.deck_touch(0, deck, on);
+            }
+            Command::MidiDeckTouch { source, deck, on } => {
+                self.deck_touch(source, deck, on);
             }
             Command::DeckPitch { deck, value } => {
                 self.decks[deck as usize % DECKS].pitch = value.clamp(0.0, 1.0);
