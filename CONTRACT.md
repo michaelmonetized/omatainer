@@ -673,7 +673,7 @@ once before encoding the request.
   serialization and fsync. Scan/import publication is atomic and retains source
   selection. Renderer receipts publish preparation in 87 fixed atomic words;
   terminal receipts remain attributable even after replacement before a GUI poll.
-- Schema 4 is written; schemas 1, 2 and 3 migrate without changing IDs or preparation.
+- Schema 5 is written; schemas 1–4 migrate without changing IDs or preparation.
   Older hot cues default to unnamed, theme-colored slots. Unknown schemas/fields, malformed stores and a missing primary
   with a preserved backup fail closed. Scans and startup defaults cannot replace
   them. Import conflicts reject the import while unrelated pending edits persist.
@@ -972,6 +972,27 @@ publication. Preferences persist startup protection only, not emergency state.
   support and private native accessibility. Its separate performance phase uses
   unchanged #95 and #100 workloads/policies; actual deadline exceedances remain
   distinct from ceiling pass and backend XRUNs remain unavailable.
+## Background track analysis
+
+- Analysis records belong to an exact track version and verified source digest.
+  BPM, duration and waveform each retain an algorithm version and measurement
+  timestamp; completed unknown BPM is distinct from an unmeasured value. User
+  BPM and manual beatgrids remain authoritative even after stale loader or scan
+  publications. Existing source bytes and other versions are unchanged.
+- The single media decoder admits one lowest-priority analysis job, behind deck
+  and sampler loads. Hashing, decoding, tempo estimation and waveform work check
+  cancellation cooperatively; prepared results contain no playable PCM. Source
+  identity is checked on the same descriptor and path before publication.
+- Waveforms are immutable SHA-addressed private cache blobs: at most 2,048 bands
+  and 256 KiB per blob, within 1 GiB and 32,768 retained files. Publication uses
+  no-overwrite links and verified directory/lock ownership. Corrupt blobs remain
+  preserved; reanalysis can publish a new verified reference. Cache quota or
+  ownership failures remain explicit and never evict unrelated files.
+- A performance admission guard and a shared cancellation/publication claim
+  cover the catalog save. Cancellation can win before that claim; afterward
+  the receipt reports the actual save, including post-rename unconfirmed
+  durability. A missing worker cannot turn an unknown result into success.
+
 ### Background analysis queue and inspection
 
 - The GUI captures an immutable crate and filtered-index Arc in constant work,

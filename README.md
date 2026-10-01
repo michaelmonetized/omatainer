@@ -144,8 +144,9 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 3 is the current format; versions 1 and 2 migrate without changing
-IDs or preparation. Conflicting identities or unknown
+worker. Version 5 is the current format; versions 1–4 migrate without changing
+IDs or preparation. Source-qualified analysis results and their algorithm versions
+are retained in the catalog; bounded waveform blobs live in the private cache. Conflicting identities or unknown
 fields/formats are rejected rather than discarded. Removable-volume and provider
 references stay distinct, but loading them is explicitly unavailable until a
 resolver is implemented. No provider/network media is fetched.
