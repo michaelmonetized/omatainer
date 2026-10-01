@@ -244,6 +244,11 @@ impl Frame {
                 .as_ref()
                 .map(|a| a.frames() as f64)
                 .unwrap_or(0.0);
+            out.source_sample_rate = deck.audio.as_ref().map_or(0, |audio| audio.sr);
+            out.playback_rate = deck.rate;
+            out.touching = deck.touching;
+            out.loop_start = deck.loop_start;
+            out.loop_len = deck.loop_len;
             out.bpm = deck.bpm;
             out.pitch = deck.pitch;
             out.gain = deck.gain;

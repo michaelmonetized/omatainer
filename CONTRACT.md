@@ -409,3 +409,18 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   status, discover ports or wait for connection management. Closing the UI does
   not wait for a blocked OS call: its worker retains connection ownership and
   cleans up after that call returns. No automatic OS hotplug detection is claimed.
+
+## Deck time and runout display
+
+- Each platter's time menu independently chooses elapsed source time or
+  estimated remaining wall time, with a visible mode indicator. Remaining uses
+  the renderer's captured actual rate, including sync and smoothing, and applies
+  the source sample rate once. It does not reconstruct rate from a pitch fader.
+- Each deck's lead is configurable from 0 (off) to 300 seconds; the default is
+  30. At or below that estimate a playing forward deck shows RUNOUT plus a red
+  outline/readout, in either time mode. Paused, scratching, stationary, reverse
+  and absent/invalid media states do not warn.
+- A finite, media-contained repeating loop longer than one frame suppresses the
+  warning only while the playhead is inside it. LOOP identifies playing loop
+  suppression; its tooltip explains that the file-end estimate ignores repeats.
+  An invalid loop flag cannot hide a real runout warning.
