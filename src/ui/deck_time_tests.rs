@@ -346,10 +346,12 @@ fn actual_egui_per_deck_menus_change_modes_and_lead_without_transport_commands()
     let popup = gui.frame(vec![]);
     gui.click(label_center(&popup, "Elapsed · source time"));
     assert_eq!(gui.app.deck_time[1].mode, TimeMode::Elapsed);
-    assert!(
-        gui.rt.cmd_rx.is_empty(),
-        "time preferences never play/cue/seek a deck"
-    );
+    while let Ok(command) = gui.rt.cmd_rx.try_recv() {
+        assert!(
+            matches!(command, Command::SelectDeckRequested { .. }),
+            "time preferences may select their deck but never play/cue/seek: {command:?}"
+        );
+    }
 }
 
 #[test]
@@ -511,8 +513,10 @@ fn actual_full_app_time_controls_and_settings_popup_fit_at_1440_by_900() {
         );
         frame(&mut gui, vec![]);
     }
-    assert!(
-        gui.rt.cmd_rx.is_empty(),
-        "popup escape does not leak to performance commands"
-    );
+    while let Ok(command) = gui.rt.cmd_rx.try_recv() {
+        assert!(
+            matches!(command, Command::SelectDeckRequested { .. }),
+            "deck pointer selection is allowed; popup Escape must not leak: {command:?}"
+        );
+    }
 }
