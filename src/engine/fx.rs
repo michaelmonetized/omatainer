@@ -100,6 +100,20 @@ enum FxState {
 }
 
 impl FxSlot {
+    pub(super) fn required_storage(id:FxId,sr:f32)->usize {
+        let frames=match id {
+            FxId::Spread=>2*((sr*0.02) as usize).max(64),FxId::Chorus=>2*((sr*0.05) as usize).max(64),FxId::Delay=>2*((sr*2.0) as usize).max(64),
+            FxId::Reverb=>2*[3011.0,4057.0,5059.0,2333.0].iter().map(|n|((n*sr/48000.0).round() as usize).max(64)).sum::<usize>(),_=>0,
+        };frames*std::mem::size_of::<f32>()
+    }
+    pub(super) fn storage_bytes(&self) -> usize {
+        match &self.state {
+            FxState::Spread(d) | FxState::Delay(d) | FxState::Chorus { delays: d, .. } =>
+                d.iter().map(Delay::storage_bytes).sum(),
+            FxState::Reverb(r) => r.iter().map(Reverb::storage_bytes).sum(),
+            _ => 0,
+        }
+    }
     /// Build the requested processor before inserting it into a chain. No state
     /// is shared by effect type or allocated lazily during sample processing.
     pub fn new(id: FxId, sr: f32) -> Self {

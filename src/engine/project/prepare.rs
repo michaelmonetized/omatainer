@@ -138,6 +138,10 @@ impl Prepared {
             .map(|b| b.media.map(|index| media[index].clone()))
             .collect();
         rt.builtin = state.builtin.map(|index| index.map(|i| media[i].clone()));
+        for track in &mut rt.tracks {
+            track.midi_schedule.prepare_history(8192);
+            track.recorded_playback.reserve(8192);
+        }
         Ok(Self { rt })
     }
 
@@ -156,6 +160,10 @@ impl Prepared {
         }
         for deck in &mut rt.decks {
             *deck = DeckRt::new(output_sr as f32);
+        }
+        for track in &mut rt.tracks {
+            track.midi_schedule.prepare_history(8192);
+            track.recorded_playback.reserve(8192);
         }
         Ok(Self { rt })
     }

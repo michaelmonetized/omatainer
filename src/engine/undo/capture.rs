@@ -1,0 +1,357 @@
+//! Command classification resolves selected targets on the renderer, exactly
+//! where MIDI, IPC and GUI commands become persistent edits.
+use super::*;
+
+#[derive(Clone, Copy)]
+enum Target {
+    Global,
+    Track(u8),
+    Gain(u8, u8),
+    Deck(u8),
+    Seek(u8),
+    Clip(u8, u8),
+    Media(u8),
+    Slot(Rack, usize),
+    Effect(Rack, usize),
+}
+struct Plan {
+    target: Target,
+    name: Name,
+    key: u64,
+}
+impl Plan {
+    fn get(rt: &RtEngine, c: &Command) -> Option<Self> {
+        use Command::*;
+        let (target, name, key) = match c {
+            SetBpm(_) | NudgeBpm(_) | Tap(_) => (Target::Global, Name::Tempo, 1),
+            Quant(_) | ToggleQuant => (Target::Global, Name::Quantization, 2),
+            Metronome => (Target::Global, Name::Metronome, 3),
+            Xfader(_) => (Target::Global, Name::Crossfader, 4),
+            Master(_) => (Target::Global, Name::Master, 5),
+            CueMix(_) => (Target::Global, Name::CueMix, 6),
+            FxWet { slot, .. } | FxSelect { slot } if *slot < 3 => {
+                (Target::Global, Name::MasterEffect, 10 + *slot as u64)
+            }
+            SamplerBank(_) | SamplerInst(_) | SamplerOct(_) => (Target::Global, Name::Sampler, 20),
+            TrackGain { track, .. }
+            | TrackPan { track, .. }
+            | Mute { track }
+            | Solo { track }
+            | Arm { track }
+                if (*track as usize) < TRACKS =>
+            {
+                (Target::Track(*track), Name::Track, 100 + *track as u64)
+            }
+            ClipGain { track, scene, .. }
+                if (*track as usize) < TRACKS && (*scene as usize) < SCENES =>
+            {
+                (
+                    Target::Gain(*track, *scene),
+                    Name::ClipGain,
+                    200 + (*track as u64) * 8 + *scene as u64,
+                )
+            }
+            SetNotes { track, scene, .. }
+                if (*track as usize) < TRACKS && (*scene as usize) < SCENES =>
+            {
+                (
+                    Target::Clip(*track, *scene),
+                    Name::ClipNotes,
+                    300 + (*track as u64) * 8 + *scene as u64,
+                )
+            }
+            ComposeArm { track, scene }
+                if *track < TRACKS
+                    && *scene < SCENES
+                    && rt.tracks[*track].clips[*scene].kind == ClipKind::Empty =>
+            {
+                (
+                    Target::Clip(*track as u8, *scene as u8),
+                    Name::ComposeClip,
+                    300 + (*track as u64) * 8 + *scene as u64,
+                )
+            }
+            DeckAudio { deck, .. } | DeckUnload { deck } => (
+                Target::Media(*deck % 2),
+                Name::LoadMedia,
+                400 + (*deck % 2) as u64,
+            ),
+            DeckSeek { deck, .. } => (
+                Target::Seek(*deck % 2),
+                Name::DeckSeek,
+                410 + (*deck % 2) as u64,
+            ),
+            DeckSync { deck }
+            | DeckPitch { deck, .. }
+            | DeckGain { deck, .. }
+            | DeckEq { deck, .. }
+            | DeckFilter { deck, .. }
+            | DeckPfl { deck }
+            | DeckLoop { deck, .. }
+            | DeckLoopIn { deck }
+            | DeckLoopOut { deck }
+            | DeckVinyl { deck }
+            | DeckKeylock { deck }
+            | DeckLoopDouble { deck }
+            | DeckLoopHalf { deck }
+            | DeckReloop { deck }
+            | DeckEqCut { deck, .. }
+            | DeckEqSolo { deck, .. }
+            | DeckPitchRange { deck } => (
+                Target::Deck(*deck % 2),
+                Name::Deck,
+                420 + (*deck % 2) as u64,
+            ),
+            DeckCue { deck } if !rt.decks[(*deck % 2) as usize].playing => (
+                Target::Deck(*deck % 2),
+                Name::Deck,
+                420 + (*deck % 2) as u64,
+            ),
+            DeckHotCue { deck, pad, del }
+                if *del || !rt.decks[(*deck % 2) as usize].hotcues[(*pad % 8) as usize].set =>
+            {
+                (
+                    Target::Deck(*deck % 2),
+                    Name::Deck,
+                    420 + (*deck % 2) as u64,
+                )
+            }
+            DeckMatch => {
+                let other = if rt.xfader <= 0.5 { 1 } else { 0 };
+                (Target::Seek(other), Name::DeckSeek, 410 + other as u64)
+            }
+            FxAdd(kind) => {
+                let rack = Rack::selected(rt)?;
+                let id = *fx::FxId::all().get(*kind as usize)?;
+                if matches!(rack, Rack::Scene(_)) && !id.supports_scene() {
+                    return None;
+                }
+                (
+                    Target::Slot(rack, rack.get(rt).slots.len()),
+                    Name::AddEffect,
+                    500,
+                )
+            }
+            FxToggle(index) | FxMix { slot: index, .. } | FxParam { slot: index, .. } => {
+                let rack = Rack::selected(rt)?;
+                if *index >= 128 {
+                    return None;
+                }
+                rack.get(rt).slots.get(*index)?;
+                (
+                    Target::Effect(rack, *index),
+                    Name::Effect,
+                    10000
+                        + *index as u64
+                        + match rack {
+                            Rack::Track(t) => t as u64 * 128,
+                            Rack::Scene(s) => (8 + s as u64) * 128,
+                        },
+                )
+            }
+            _ => return None,
+        };
+        Some(Self { target, name, key })
+    }
+}
+
+impl RtEngine {
+    /// Capture an inverse before the first mutation. A rejected command still
+    /// retires its owned payload on the worker, never at this callback boundary.
+    pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if !self.undo.enabled || self.undo.replaying {
+            return Some(c);
+        }
+        if matches!(&c, Command::SetNotes { track, scene, .. }
+            if *track as usize >= TRACKS || *scene as usize >= SCENES)
+        {
+            self.undo.retire_command(c);
+            return None;
+        }
+        if matches!(&c, Command::FxAdd(_))
+            && Rack::selected(self).is_some_and(|r| r.get(self).slots.len() >= 128)
+        {
+            self.history_reject(c, Failure::Effects);
+            return None;
+        }
+        let Some(plan) = Plan::get(self, &c) else {
+            return Some(c);
+        };
+        if !matches!(
+            plan.target,
+            Target::Clip(..) | Target::Media(..) | Target::Slot(..)
+        ) && self.undo.can_group(plan.key, self.frames_done)
+        {
+            self.undo.changed();
+            return Some(c);
+        }
+        if matches!(&c,Command::DeckAudio {audio,..} if audio.name.len()>TEXT_LIMIT) {
+            self.history_reject(c, Failure::Text);
+            return None;
+        }
+        let estimate = match plan.target {
+            Target::Media(d) => {
+                self.decks[d as usize]
+                    .audio
+                    .as_ref()
+                    .map_or(0, |a| sample_bytes(a))
+                    + match &c {
+                        Command::DeckAudio { audio, .. }
+                            if self.decks[d as usize]
+                                .audio
+                                .as_ref()
+                                .is_none_or(|old| !Arc::ptr_eq(old, audio)) =>
+                        {
+                            sample_bytes(audio)
+                        }
+                        _ => 0,
+                    }
+                    + TEXT_LIMIT
+            }
+            Target::Clip(t, s) => {
+                let old = &self.tracks[t as usize].clips[s as usize];
+                if old.name.len() > TEXT_LIMIT {
+                    self.history_reject(c, Failure::Text);
+                    return None;
+                }
+                if old.notes.len() > NOTE_LIMIT
+                    || old.notes.capacity() > NOTE_LIMIT
+                    || matches!(&c,Command::SetNotes { notes,.. } if notes.len()>NOTE_LIMIT || notes.capacity()>NOTE_LIMIT)
+                {
+                    self.history_reject(c, Failure::Notes);
+                    return None;
+                }
+                old.name.capacity().max(TEXT_LIMIT)
+                    + 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>()
+                    + old.audio.as_ref().map_or(0, |a| sample_bytes(a))
+            }
+            Target::Slot(..) => match &c {
+                Command::FxAdd(kind) => {
+                    fx::FxSlot::required_storage(fx::FxId::all()[*kind as usize], self.sr)
+                }
+                _ => 0,
+            },
+            _ => 0,
+        };
+        if let Err(reason) = self.undo.preflight(estimate) {
+            self.history_reject(c, reason);
+            return None;
+        }
+        let mut scratch = if matches!(plan.target, Target::Clip(..) | Target::Media(..)) {
+            match self.undo.scratch.as_ref().unwrap().try_recv() {
+                Ok(s) => Some(s),
+                Err(_) => {
+                    self.history_reject(c, Failure::Capacity);
+                    return None;
+                }
+            }
+        } else {
+            None
+        };
+        let patch = match plan.target {
+            Target::Global => Patch::Global(Global::get(self)),
+            Target::Track(t) => Patch::Track(t, TrackControls::get(&self.tracks[t as usize])),
+            Target::Gain(t, s) => Patch::ClipGain {
+                track: t,
+                scene: s,
+                gain: self.tracks[t as usize].clips[s as usize].gain,
+            },
+            Target::Deck(d) => Patch::Deck(d, DeckControls::get(&self.decks[d as usize])),
+            Target::Seek(d) => {
+                // Seeking updates cue/loop settings too. Both inverse values
+                // belong to the same validated transaction.
+                self.undo.begin(plan.name, plan.key, self.frames_done);
+                self.undo
+                    .append(Patch::Deck(d, DeckControls::get(&self.decks[d as usize])));
+                Patch::Position {
+                    deck: d,
+                    position: self.decks[d as usize].pos,
+                }
+            }
+            Target::Clip(t, s) => {
+                let prepared = scratch.take().unwrap();
+                let clip = &mut self.tracks[t as usize].clips[s as usize];
+                let mut name = prepared.name;
+                name.push_str(&clip.name);
+                let name = std::mem::replace(&mut clip.name, name);
+                let notes = std::mem::take(&mut clip.notes);
+                Patch::Clip {
+                    track: t,
+                    scene: s,
+                    value: Clip {
+                        name,
+                        notes,
+                        kind: clip.kind,
+                        bars: clip.bars,
+                        gain: clip.gain,
+                        audio: clip.audio.clone(),
+                    },
+                    spare_notes: prepared.notes,
+                }
+            }
+            Target::Media(d) => {
+                let prepared = scratch.take().unwrap();
+                let deck = &mut self.decks[d as usize];
+                let patch = Patch::Media {
+                    deck: d,
+                    reserved_original: deck.audio.clone(),
+                    audio: deck.audio.take(),
+                    title: std::mem::replace(&mut deck.title, prepared.name),
+                    bpm: deck.bpm,
+                    position: deck.pos,
+                    controls: DeckControls::get(deck),
+                    receipt: PinnedReceipt::new(deck.load_receipt.clone()),
+                    reserved_media: match &c {
+                        Command::DeckAudio { audio, .. } => Some(audio.clone()),
+                        _ => None,
+                    },
+                };
+                self.undo.retire(
+                    Retired::Notes(prepared.notes),
+                    NOTE_LIMIT * std::mem::size_of::<MidiNote>(),
+                );
+                patch
+            }
+            Target::Slot(rack, index) => Patch::Slot {
+                rack,
+                index,
+                slot: None,
+                reserved_bytes: estimate,
+                id: match &c {
+                    Command::FxAdd(kind) => fx::FxId::all()[*kind as usize],
+                    _ => unreachable!(),
+                },
+            },
+            Target::Effect(rack, index) => Patch::Effect {
+                rack,
+                index,
+                value: Effect::get(&rack.get(self).slots[index]),
+            },
+        };
+        if !matches!(plan.target, Target::Seek(_)) {
+            self.undo.begin(plan.name, plan.key, self.frames_done);
+        }
+        self.undo.append(patch);
+        self.undo.recount();
+        Some(c)
+    }
+    fn history_reject(&mut self, c: Command, reason: Failure) {
+        self.undo.reject(reason);
+        let bytes = command_bytes(&c);
+        self.undo.retire(Retired::Command(c), bytes);
+    }
+}
+pub(super) fn command_bytes(command: &Command) -> usize {
+    match command {
+        Command::SetNotes { notes, .. } => notes.capacity() * std::mem::size_of::<MidiNote>(),
+        Command::DeckAudio { audio, .. }
+        | Command::DeckDecoded { audio, .. }
+        | Command::DeckLoadRequested {
+            media: load_receipt::Media::Decoded { audio, .. },
+            ..
+        } => sample_bytes(audio),
+        Command::LearnCapture { param, .. } => param.capacity(),
+        Command::Gesture { command, .. } => std::mem::size_of::<Command>() + command_bytes(command),
+        _ => 0,
+    }
+}

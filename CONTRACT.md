@@ -511,3 +511,24 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   Late edits reopen Save/Discard/Cancel. A failed clean-close handshake never
   auto-closes; explicit Discard also permits exit when the renderer or project
   worker is unavailable, without claiming pending changes were saved.
+
+## Creative undo history
+
+- Undo/Redo uses renderer-authoritative inverse transactions for supported
+  creative state. It preserves unrelated live voices, physical gate identities
+  and transport. No whole-session replacement is used for an ordinary Undo.
+- Continuous pointer/held-arrow edits carry producer gesture IDs. Only adjacent
+  compatible edits group; another source's edit forms an ordering boundary.
+  A multi-object operation must validate all inverse targets before changing any.
+- History retains referenced media and verified playback identities until their
+  entries are retired. Owned payload destruction runs on a worker. Capacity and
+  memory-limit rejection is visible and preserves the prior musical state.
+- The Edit menu, named History panel and documented shortcuts use the same
+  actions. Queue acceptance is not presented as renderer application. Text and
+  modal controls retain their keyboard ownership.
+- Saves record a coherent content checkpoint. Undo to that content can become
+  clean; later values within the same gesture and persistent nonhistory view
+  changes remain dirty. Replacement authorization still uses a monotonic revision
+  so an edit-and-undo cannot silently authorize a stale Open/New/Close decision.
+- Successful New/Open begins a new process-local history epoch. Saved projects
+  retain the history-panel view, not old undo payloads or pending physical input.
