@@ -152,7 +152,8 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   including any remaining track-level release tail. The old scene FX history
   stays on its original bus and continues receiving zero if no track remains.
   It decays according to its own feedback settings; changing panels/scenes
-  never copies or clears it. Device bypass retains the existing freeze policy.
+  never copies or clears it. Device bypass fades to dry, then freezes that slot's
+  history according to the FX bypass policy below.
 
 ## Local control connection limits
 
@@ -237,3 +238,16 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Arpeggiated drum steps use the largest velocity among active, visible notes
   of the selected pitch. Membership boundaries, edits and loops refresh that
   value; a zero-velocity step is silent. Synth arp velocity is unchanged.
+
+## Neutral FX and bypass
+
+- Empty racks, noon Spread/Balance, flat EQ, and the audio side of Arp pass each
+  channel through exactly. Common dry/wet processing returns exact dry samples
+  at zero mix; enabled processor histories continue advancing at zero mix.
+- A slot's initial enabled/disabled state takes effect immediately. Subsequent
+  bypass changes crossfade processed and dry audio linearly for 5 ms at the
+  output sample rate. Reversing a change continues from the current fade level.
+- Processor history advances during the audible fade, freezes once fully dry,
+  and resumes during the enable fade. Flat EQ keeps history warm; neutral Spread
+  never activates a delay tap. Sample-rate changes rebuild history and restart
+  at the slot's configured enabled/disabled state.
