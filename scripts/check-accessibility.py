@@ -145,9 +145,11 @@ def private(binary,support=False):
                 node=named(name);iface=node.get_action_iface();assert iface is not None
                 index=next(i for i in range(iface.get_n_actions()) if iface.get_action_name(i).lower()=='click')
                 assert iface.do_action(index),name
-            prior=state()['actions'];click('Deck A: Platter play or pause');click('Sampler: Sample pad 1')
+            before=state();prior=before['actions'];click('Deck A: Platter play or pause');click('Sampler: Sample pad 1')
             wait_for(lambda:state()['actions']>=prior+2,'disabled native button attempts delivered')
             assert state()['callbacks']==0 and state()['transport_stopped']
+            assert state()['command_accepted']==before['command_accepted']
+            assert state()['command_rejected']==before['command_rejected']
             click('Project');click('Support and crash reports…')
             wait_for(lambda:state()['support_open'],'native support panel')
             click('Inspect current report')

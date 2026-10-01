@@ -16,13 +16,37 @@ Recovery references contain the full SHA256 of the application-owned session ide
 
 Validation evidence:
 
-- Focused support checks passed (35 groups in the latest filtered run, plus two guarded/opt-in child entries). Their private child fixture executes an actual panic-abort and SIGKILL, with core dumps disabled, then verifies marker classification and exact real durable recovery linkage. The guarded child entry point is not a standalone test.
+- Focused support checks passed (36 groups in the final filtered run, plus two guarded/opt-in child entries). Their private child fixture executes an actual panic-abort and SIGKILL, with core dumps disabled, then verifies marker classification and exact real durable recovery linkage. The guarded child entry point is not a standalone test.
 - Production build passed for the initial checkpoint.
 - `scripts/check-safe-startup.py --binary …` passed against that built binary: real offline capture, zero callbacks, malformed preferences preserved, strict flags, an already-owned runtime refused without focus, and read-only support storage reported without a false clean-marker claim.
 
 - Seven actual App workflow groups passed: inspect/review/export/reopen and invalid-file preservation; Cancel/Discard/Save before restart; optional-work cancellation/protection; actual IPC parser rejection; actual controlled audio-owner fault; real recovery ENOSPC injection followed by confirmed durable linkage; exact linked preview and stopped untitled restore. The audio fixture drives the real callback/owner with a controlled backend, not physical hardware.
 - Actual warmed `OutputCallback` rendering under an attached, saturated support collector measured zero Rust allocations/frees. No new callback logging or filesystem path is introduced.
-- Private Linux AT-SPI support workflow passed: 244 observed native nodes, nine native actions, actual safe App/offline project owner, review/consent/export/reopen/restart request, and zero backend callbacks. No native window or actual process exec is exercised by that bridge. The shipped CLI fixture separately covers startup construction and shutdown.
+- Private Linux AT-SPI support workflow passed: 244 observed native nodes, nine native actions, zero accepted/rejected engine submissions, actual safe App/offline project owner, review/consent/export/reopen/restart request, and zero backend callbacks. No native window or actual process exec is exercised by that bridge. The shipped CLI fixture separately covers startup construction and shutdown.
 - The pinned AccessKit AT-SPI adapter reports disabled custom Buttons as Enabled. Actual egui nodes are disabled, the native slider exposes its disabled state, and native button attempts cannot activate playback or pads. This dependency state discrepancy is disclosed; no Orca/usability fix is claimed.
 
-Final full suite/build, source inventory refresh and combined ordered-stack qualification are pending. No physical device, plugin-host containment, network upload, or human screen-reader testing is claimed.
+The full ordinary suite passed **822 tests / 17 opt-in or maintainer entries ignored** in 95.69 seconds with two test threads. After the narrow route-schema clarification, 36 focused groups passed again; the production build, real private startup CLI, fresh private native support workflow, license inventory validation and exact embedded manifest/notices comparison passed. Combined ordered-stack/release qualification remains with the parent task. No physical device, plugin-host containment, network upload, or human screen-reader testing is claimed.
+
+Reproduction (private Cargo target; no hardware required):
+
+```sh
+cargo test -- --test-threads=2
+cargo test support -- --test-threads=2
+cargo build
+python3 scripts/check-safe-startup.py --binary /path/to/debug/omatainer
+python3 scripts/check-accessibility.py --support --test-binary /path/to/debug/deps/omatainer-TEST_HASH
+python3 scripts/license-manifest.py check
+```
+
+MIDI sample counters are ordered `received, queued, dispatched, coalesced,
+dropped, source resets, oversized, disconnected`; all are cumulative numeric
+observations. Callback wall time and DSP thread CPU retain their distinct units
+and unavailable values from the existing telemetry contract. Requested routes
+identify system-default intent separately from the resolved, redacted backend
+route; mono sum / main stereo pair / remaining silent channels are explicit.
+
+The full-suite result above precedes one isolated route-schema regression and a
+native fixture assertion that disabled button attempts cause no command
+submission; the final focused/native/build runs include both. No unchanged
+performance policy was rerun on this private preparation branch, and it is not
+publication/package evidence for the final assembled stack.

@@ -101,6 +101,7 @@ pub struct Event {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Backend {
+    SystemDefault,
     Alsa,
     Other,
     Unavailable,
@@ -151,6 +152,25 @@ impl Format {
 pub enum DeviceChoice {
     SystemDefault,
     ExplicitRedacted,
+    ResolvedRedacted,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputRoute {
+    Unresolved,
+    MonoSumToOne,
+    MainLeftRightToOneTwo,
+    MainLeftRightToOneTwoOthersSilent,
+}
+impl OutputRoute {
+    fn from_channels(channels: Option<u16>) -> Self {
+        match channels {
+            None => Self::Unresolved,
+            Some(1) => Self::MonoSumToOne,
+            Some(2) => Self::MainLeftRightToOneTwo,
+            Some(_) => Self::MainLeftRightToOneTwoOthersSilent,
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -161,6 +181,7 @@ pub struct Route {
     pub channels: Option<u16>,
     pub format: Format,
     pub requested_buffer_frames: Option<u32>,
+    pub output_route: OutputRoute,
 }
 impl Route {
     pub fn requested(settings: &crate::preferences::Audio) -> Self {
@@ -168,7 +189,7 @@ impl Route {
             backend: settings
                 .backend
                 .as_deref()
-                .map_or(Backend::Unavailable, Backend::from_name),
+                .map_or(Backend::SystemDefault, Backend::from_name),
             device: if settings.device.is_some() {
                 DeviceChoice::ExplicitRedacted
             } else {
@@ -180,19 +201,24 @@ impl Route {
                 .format
                 .map_or(Format::Default, |format| Format::from_cpal(format.cpal())),
             requested_buffer_frames: settings.buffer_frames,
+            output_route: OutputRoute::from_channels(settings.channels),
         }
     }
     pub fn active(plan: &crate::engine::audio::config::Plan) -> Self {
         Self {
             backend: Backend::from_name(&plan.backend),
-            device: DeviceChoice::ExplicitRedacted,
+            device: DeviceChoice::ResolvedRedacted,
             sample_rate: Some(plan.rate),
             channels: Some(plan.channels),
             format: Format::from_cpal(plan.format),
             requested_buffer_frames: plan.buffer,
+            output_route: OutputRoute::from_channels(Some(plan.channels)),
         }
     }
     fn validate(&self) -> Result<(), Error> {
+        if self.output_route != OutputRoute::from_channels(self.channels) {
+            return Err(Error::Invalid("route does not match its channel count"));
+        }
         if self
             .sample_rate
             .is_some_and(|n| !(8000..=384000).contains(&n))
