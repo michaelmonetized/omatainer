@@ -11,7 +11,7 @@ paths resolve against the application working directory on the worker.
 `Document` wraps the strict engine `State`, strict `UiState`, and factory mapping
 schema 1. The engine owns its supported timing, clip/note, track, mixer/effect,
 sampler and deck controls/media references; the GUI adds crate filter, selected
-typed source, scroll offset, key-help/MIDI panel visibility, and verified deck
+typed source, scroll offset, key-help/MIDI/diagnostics panel visibility, and verified deck
 history identities. Save validates the entire document, not just engine state.
 Unknown mapping schema or invalid view fields fail before a destination changes.
 The current build has fixed factory mappings, not an editable mapping document.
@@ -114,7 +114,8 @@ They exercise:
 
 All tests use local Linux private fixtures. This proves the production egui/worker
 control flow and headless renderer integration, not compositor dialogs, audio
-hardware behavior, or the user's future physical-controller QA. The final local full suite passes **465 tests**, with four explicitly ignored
+hardware behavior, or the user's future physical-controller QA. The final local
+full suite on the assembled issue-81 base passes **488 tests**, with five explicitly ignored
 harness/benchmark entries (subprocess probes are exercised by parent tests).
 `cargo build`, new-module `rustfmt --check`, and `git diff --check` pass. Two peer
 reviews covered worker/path identity, close/cancellation and snapshot gating; their
