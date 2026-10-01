@@ -1,6 +1,11 @@
 //! Two reusable frames cross from audio to a snapshot worker. Readers can hold
 //! the public mutex indefinitely: audio runs out of frames and skips updates.
 //! Only the worker grows buffers, builds UI values and retires old payloads.
+//! Capture uses prepared capacity and allocates/frees nothing on audio. Worker
+//! materialization clones variable metadata once per snapshot, proportional to
+//! names/racks/banks, but only shares waveform Arcs: zero peak-data allocations
+//! or copies regardless of media duration. See issue-59 validation for the
+//! measured fixture budget; metadata is not subject to a universal byte cap.
 
 use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
@@ -16,6 +21,7 @@ pub(super) struct Publisher {
     pending: Option<Box<Frame>>,
     disconnected: bool,
     sequence: u64,
+    empty_peaks: Arc<Vec<[f32; 3]>>,
     #[cfg(test)]
     published: Arc<AtomicU64>,
 }
@@ -24,8 +30,11 @@ impl Publisher {
     pub fn new(snapshot: Arc<Mutex<Snapshot>>) -> Self {
         let (free_tx, free) = bounded(FRAMES);
         let (ready, ready_rx) = bounded::<Box<Frame>>(FRAMES);
+        let empty_peaks = Arc::new(Vec::new());
         for _ in 0..FRAMES {
-            free_tx.send(Box::new(Frame::new())).unwrap();
+            free_tx
+                .send(Box::new(Frame::new(empty_peaks.clone())))
+                .unwrap();
         }
         let published = Arc::new(AtomicU64::new(0));
         let worker_published = published.clone();
@@ -56,6 +65,7 @@ impl Publisher {
             pending: None,
             disconnected: false,
             sequence: 0,
+            empty_peaks,
             #[cfg(test)]
             published,
         }
@@ -119,7 +129,7 @@ fn copy(value: &mut String, source: &str) {
 }
 
 impl Frame {
-    fn new() -> Self {
+    fn new(empty_peaks: Arc<Vec<[f32; 3]>>) -> Self {
         let values = Snapshot {
             tracks: (0..TRACKS)
                 .map(|_| TrackSnap {
@@ -127,7 +137,12 @@ impl Frame {
                     ..TrackSnap::default()
                 })
                 .collect(),
-            decks: vec![DeckSnap::default(); DECKS],
+            decks: (0..DECKS)
+                .map(|_| DeckSnap {
+                    peaks: empty_peaks.clone(),
+                    ..DeckSnap::default()
+                })
+                .collect(),
             ..Snapshot::default()
         };
         Self {
@@ -338,12 +353,12 @@ impl Frame {
         next.sampler_banks.truncate(self.bank_count);
         next.fx_slots.truncate(self.fx_count);
         for (deck, sample) in next.decks.iter_mut().zip(&mut self.samples) {
-            deck.peaks = Arc::new(
-                sample
-                    .take()
-                    .map(|sample| sample.peaks.clone())
-                    .unwrap_or_default(),
-            );
+            if let Some(sample) = sample.take() {
+                // One shared reference for the published snapshot, never a peak
+                // vector copy. The temporary media owner also retires here.
+                deck.peaks = sample.peaks.clone();
+            }
+            // Otherwise retain the shared empty waveform captured by new().
         }
         next
     }
@@ -362,7 +377,7 @@ impl RtEngine {
     // Synchronous bootstrap is outside the callback. UI and IPC start with a
     // complete initial state, then accept asynchronously refreshed snapshots.
     pub(super) fn publish_initial(&self) {
-        let mut frame = Frame::new();
+        let mut frame = Frame::new(self.publisher.empty_peaks.clone());
         loop {
             frame.capture(self);
             if frame.complete {
@@ -390,3 +405,6 @@ impl RtEngine {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod waveform_tests;

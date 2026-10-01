@@ -22,7 +22,7 @@ fn load(rt: &mut RtEngine, deck: usize, period: &[[f32; 2]]) {
             sr: rt.sr as u32,
             ch: 2,
             data,
-            peaks: vec![],
+            peaks: vec![].into(),
             bpm: 120.0,
             path: String::new(),
         }),
