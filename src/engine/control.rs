@@ -214,6 +214,10 @@ impl AdmissionShared {
 }
 
 impl CommandPort {
+    pub(crate) fn is_connected(&self) -> bool {
+        self.shared.connected.load(std::sync::atomic::Ordering::Acquire)
+    }
+
     pub fn channel(capacity: usize) -> (Self, CommandReceiver) {
         assert!(
             capacity > STOP_LANES + 1,

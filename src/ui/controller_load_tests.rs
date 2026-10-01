@@ -56,11 +56,11 @@ fn pioneer_loads_both_builtin_sources_on_both_decks_via_actual_app_frames() {
             let output = frame(&mut fixture.app, &ctx, time);
             assert_visible(
                 &output,
-                &format!("queued {title} → {}", (b'A' + deck) as char),
+                &format!("queued {title} → {} · waiting for audio engine", (b'A' + deck) as char),
             );
             let command = fixture.rt.cmd_rx.try_recv().unwrap();
             assert!(
-                matches!(command, Command::LoadBuiltin { deck: actual, stem: selected } if actual == deck && selected == stem)
+                matches!(command, Command::DeckLoadRequested { deck: actual, media: Media::Builtin(selected), .. } if actual == deck && selected == stem)
             );
             fixture.rt.apply(command);
             assert_eq!(fixture.rt.decks[deck as usize].title, title);
@@ -68,10 +68,8 @@ fn pioneer_loads_both_builtin_sources_on_both_decks_via_actual_app_frames() {
                 fixture.rt.decks[deck as usize].audio.as_ref().unwrap(),
                 fixture.rt.builtin[stem as usize].as_ref().unwrap()
             ));
-            assert_eq!(
-                fixture.app.status,
-                format!("queued {title} → {}", (b'A' + deck) as char)
-            );
+            fixture.app.poll_load_receipts();
+            assert!(matches!(fixture.app.loads[deck as usize].as_ref().unwrap().phase, Phase::Loaded));
             assert_eq!(fixture.app.engine.cmd.ui_request_stats().pending, 0);
             assert!(fixture.decoder_jobs.try_recv().is_err());
         }
@@ -169,7 +167,7 @@ fn controller_file_request_reaches_the_production_decoder_and_renderer() {
     assert_eq!(fixture.app.status, "loading production → B");
     fixture.poll_loads();
     let command = fixture.rt.cmd_rx.try_recv().unwrap();
-    assert!(matches!(&command, Command::DeckDecoded { request, audio }
+    assert!(matches!(&command, Command::DeckLoadRequested { media: Media::Decoded { token: request, audio }, .. }
         if request.deck == 1 && audio.path == path.to_string_lossy()));
     fixture.rt.apply(command);
     let sample = fixture.rt.decks[1].audio.as_ref().unwrap();
@@ -248,7 +246,7 @@ fn empty_and_failed_captured_sources_report_failure_without_substituting_later_s
     fixture.app.lib_filter.clear();
     fixture.app.publish_library_selection();
     fixture.app.poll_ui_requests();
-    assert_eq!(fixture.app.status, "load failed: no library item selected");
+    assert!(fixture.app.status.contains("no library item selected"));
     assert!(fixture.rt.cmd_rx.is_empty());
     let directory = Directory::new();
     let missing = directory.0.join("missing.wav");
@@ -309,7 +307,7 @@ fn bounded_handoff_preserves_fifo_sources_and_limits_dispatch_work_per_frame() {
     assert_eq!(fixture.rt.cmd_rx.len(), PER_FRAME);
     for index in 0..PER_FRAME {
         assert!(
-            matches!(fixture.rt.cmd_rx.try_recv().unwrap(), Command::LoadBuiltin { deck, stem } if deck == (index % 2) as u8 && stem == deck)
+            matches!(fixture.rt.cmd_rx.try_recv().unwrap(), Command::DeckLoadRequested { deck, media: Media::Builtin(stem), .. } if deck == (index % 2) as u8 && stem == deck)
         );
     }
     let ctx = egui::Context::default();
@@ -361,7 +359,7 @@ fn audio_admission_failure_and_raw_uncaptured_request_are_visible_without_replac
     {}
     controller_load(&fixture, 0);
     fixture.app.poll_ui_requests();
-    assert_eq!(fixture.app.status, "Load was not accepted");
+    assert!(fixture.app.status.contains("Load was not accepted"));
     assert_eq!(
         fixture.app.submission_error.get(),
         Some(SubmissionError::Full)
