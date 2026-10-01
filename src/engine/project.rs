@@ -23,10 +23,12 @@ pub enum Error {
     Conflict,
     Invalid(String),
     Unavailable,
+    Protected(performance::Error),
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Protected(error) => error.fmt(f),
             Self::Busy => f.write_str("a project operation is still pending"),
             Self::Cancelled => f.write_str("project operation cancelled"),
             Self::Conflict => {
@@ -60,6 +62,7 @@ pub struct Applied {
 /// audio block reopens admission. No graph, media or worker join belongs here.
 pub struct CloseGuard {
     handle: Handle,
+    _performance: Option<performance::ExclusivePermit>,
 }
 impl Drop for CloseGuard {
     fn drop(&mut self) {
@@ -87,6 +90,7 @@ struct Shared {
     busy: AtomicU8,
     revision: AtomicU64,
     release_seal: AtomicBool,
+    performance: performance::Handle,
     #[cfg(test)]
     wait_limit_millis: AtomicU64,
 }
@@ -95,6 +99,7 @@ pub(super) struct Task {
     operation: Operation,
     stage: Arc<AtomicU8>,
     error: Option<Error>,
+    performance: Option<performance::ExclusivePermit>,
 }
 enum Operation {
     Capture(capture::Frame),
@@ -110,7 +115,7 @@ enum Operation {
 }
 
 impl Handle {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(performance: performance::Handle) -> Self {
         let (request, incoming) = bounded(1);
         let (completed, results) = bounded(1);
         Self {
@@ -122,6 +127,7 @@ impl Handle {
                 busy: AtomicU8::new(0),
                 revision: AtomicU64::new(0),
                 release_seal: AtomicBool::new(false),
+                performance,
                 #[cfg(test)]
                 wait_limit_millis: AtomicU64::new(WAIT_LIMIT.as_millis() as u64),
             }),
@@ -199,6 +205,7 @@ impl Handle {
             operation: Operation::Capture(capture::Frame::new()),
             stage: Arc::new(AtomicU8::new(PENDING)),
             error: None,
+            performance: None,
         });
         loop {
             task = self.exchange(task, cancel)?;
@@ -244,6 +251,7 @@ impl Handle {
         expected_revision: Option<u64>,
         cancel: &AtomicBool,
     ) -> Result<CloseGuard, Error> {
+        let performance = self.shared.performance.project_change().map_err(Error::Protected)?;
         self.begin()?;
         if cancel.load(Ordering::Acquire) {
             self.shared.busy.store(0, Ordering::Release);
@@ -256,6 +264,7 @@ impl Handle {
             },
             stage: Arc::new(AtomicU8::new(PENDING)),
             error: None,
+            performance: Some(performance),
         });
         let mut task = self.exchange(task, cancel)?;
         self.shared.busy.store(0, Ordering::Release);
@@ -277,6 +286,7 @@ impl Handle {
         expected_revision: u64,
         cancel: &AtomicBool,
     ) -> Result<Applied, Error> {
+        let performance = self.shared.performance.project_change().map_err(Error::Protected)?;
         self.begin()?;
         if cancel.load(Ordering::Acquire) {
             self.shared.busy.store(0, Ordering::Release);
@@ -290,6 +300,7 @@ impl Handle {
             },
             stage: Arc::new(AtomicU8::new(PENDING)),
             error: None,
+            performance: Some(performance),
         });
         let mut task = self.exchange(task, cancel)?;
         self.shared.busy.store(0, Ordering::Release);
@@ -362,6 +373,8 @@ impl RtEngine {
             .is_err()
         {
             task.error = Some(Error::Cancelled);
+        } else if exclusive && self.performance.status().recovery {
+            task.error = Some(Error::Protected(performance::Error::Recovery));
         } else {
             match &mut task.operation {
                 Operation::Capture(frame) => frame.capture(self),
@@ -380,6 +393,7 @@ impl RtEngine {
                         self.project_sealed = true;
                         *guard = Some(CloseGuard {
                             handle: self.project.clone(),
+                            _performance: task.performance.take(),
                         });
                     }
                 }

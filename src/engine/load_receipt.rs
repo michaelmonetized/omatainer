@@ -31,6 +31,7 @@ pub enum State {
     Unavailable = 2,
     Superseded = 3,
     Applying = 4,
+    Protected = 5,
 }
 
 impl Receipt {
@@ -87,6 +88,7 @@ impl Receipt {
             1 => State::Current,
             2 => State::Unavailable,
             4 => State::Applying,
+            5 => State::Protected,
             _ => State::Superseded,
         }
     }

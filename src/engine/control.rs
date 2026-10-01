@@ -66,9 +66,11 @@ struct Admission {
     held: usize,
     pending_stops: [u64; STOP_LANES],
     next_ticket: u64,
+    safety_epoch: u64,
 }
 
 struct AdmissionShared {
+    performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
     queued_payload_bytes: std::sync::atomic::AtomicUsize,
     payload_limit: usize,
@@ -112,6 +114,11 @@ impl AdmissionShared {
                 8 => Some(SubmissionError::ProjectChanging),
                 9 => Some(SubmissionError::HistoryBusy),
                 10 => Some(SubmissionError::PayloadFull),
+                code @ 11..=16 => Some(SubmissionError::Performance(match code {
+                    11 => super::performance::Error::Protected, 12 => super::performance::Error::PlayingDeck,
+                    13 => super::performance::Error::Recovery, 14 => super::performance::Error::Changing,
+                    15 => super::performance::Error::PendingStop, _ => super::performance::Error::BackgroundBusy,
+                })),
                 _ => None,
             },
         }
@@ -121,6 +128,7 @@ impl AdmissionShared {
 /// Receiver ownership stays with the callback. Completion is a fixed atomic
 /// store, never a producer-mutex operation or a blocking acknowledgment send.
 pub struct CommandReceiver {
+    performance: super::performance::Handle,
     receiver: crossbeam_channel::Receiver<Command>,
     shared: Option<std::sync::Arc<AdmissionShared>>,
 }
@@ -129,6 +137,7 @@ impl From<crossbeam_channel::Receiver<Command>> for CommandReceiver {
     fn from(receiver: crossbeam_channel::Receiver<Command>) -> Self {
         Self {
             receiver,
+            performance: super::performance::Handle::default(),
             shared: None,
         }
     }
@@ -145,6 +154,7 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub(super) fn performance(&self) -> &super::performance::Handle { &self.performance }
     pub fn len(&self) -> usize {
         self.receiver.len()
     }
@@ -277,11 +287,14 @@ pub enum SubmissionError {
     ProjectChanging,
     HistoryBusy,
     PayloadFull,
+    Performance(super::performance::Error),
 }
 
 impl std::fmt::Display for SubmissionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Self::Performance(error) = self { return error.fmt(f); }
         f.write_str(match self {
+            Self::Performance(_) => unreachable!(),
             Self::PayloadFull => "The control queue has reached its media and edit memory limit. Wait for playback to catch up, then retry with a smaller edit or media file.",
             Self::Full => "The control queue is full. Releases remain reserved. Wait for playback to catch up, then retry the action.",
             Self::StopPending => "A stop is still pending for this target. Retry the start after the stop has completed.",
@@ -316,6 +329,7 @@ impl AdmissionShared {
                 SubmissionError::ProjectChanging => 8,
                 SubmissionError::HistoryBusy => 9,
                 SubmissionError::PayloadFull => 10,
+                SubmissionError::Performance(error) => 11 + error as u8,
             },
             Relaxed,
         );
@@ -355,6 +369,7 @@ pub struct QueuePressure {
 }
 
 impl CommandPort {
+    pub fn performance(&self) -> &super::performance::Handle { &self.shared.performance }
     pub fn queue_pressure(&self) -> QueuePressure {
         use std::sync::atomic::Ordering::Relaxed;
         QueuePressure {
@@ -406,6 +421,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
             queued_payload_bytes: std::sync::atomic::AtomicUsize::new(0),
             payload_limit,
@@ -430,12 +446,14 @@ impl CommandPort {
                 held: 0,
                 pending_stops: [0; STOP_LANES],
                 next_ticket: 1,
+                safety_epoch: 0,
             })),
             capacity,
         };
         (
             port,
             CommandReceiver {
+                performance: shared.performance.clone(),
                 receiver,
                 shared: Some(shared),
             },
@@ -504,6 +522,25 @@ impl CommandPort {
     ) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::{Acquire, Relaxed};
         let fail = |error| self.shared.reject(error);
+        // These explicit operator requests use bounded atomic mailboxes, so
+        // they remain available even when ordinary payload/command slots fill.
+        let control = match command {
+            Command::PerformanceMode(enabled) => Some(self.shared.performance.set_enabled(enabled)),
+            Command::SafetyStop(safety) => { self.shared.performance.request_safety(safety); Some(Ok(())) },
+            Command::RecoverPerformance => Some(self.shared.performance.acknowledge_inputs_released()),
+            _ => None,
+        };
+        if let Some(result) = control {
+            return match result {
+                Ok(()) => { self.shared.accepted.fetch_add(1, Relaxed); Ok(SubmissionOutcome::Accepted) },
+                Err(error) => fail(SubmissionError::Performance(error)),
+            };
+        }
+        let _performance_writer = self.shared.performance.writer();
+        if let Err(error) = self.shared.performance.check(&command, None) {
+            self.shared.performance.reject(error);
+            return fail(SubmissionError::Performance(error));
+        }
         // Covers every route, including GUI browse/load and early failures.
         // Closing admission races this atomic claim, never the producer mutex.
         let Some(_project_lease) =
@@ -534,6 +571,17 @@ impl CommandPort {
         }
         after_preflight();
         let mut state = self.admission.lock();
+        if let Err(error) = self.shared.performance.check(&command, None) {
+            self.shared.performance.reject(error);
+            return fail(SubmissionError::Performance(error));
+        }
+        let safety_epoch = self.shared.performance.safety_epoch();
+        if state.safety_epoch != safety_epoch {
+            state.gates.fill(None);
+            state.held = 0;
+            state.safety_epoch = safety_epoch;
+            self.shared.reserved_releases.store(0, Relaxed);
+        }
         // The receiver may have disconnected while this producer waited for
         // another producer's bookkeeping. Never coalesce against dead audio.
         if !self.shared.connected.load(Acquire) {
