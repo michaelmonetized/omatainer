@@ -74,6 +74,19 @@ pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
 }
 
 impl App {
+    pub(super) fn project_watch_identities(&self) -> Vec<super::project::WatchIdentity> {
+        self.playback_watches
+            .iter()
+            .map(|watch| super::project::WatchIdentity {
+                receipt: watch.receipt.clone(),
+                identity: super::project::SavedIdentity {
+                    source: watch.identity.source.clone(),
+                    fingerprint: watch.identity.fingerprint,
+                },
+            })
+            .collect()
+    }
+
     pub(super) fn watch_playback(
         &mut self,
         source: LibSource,

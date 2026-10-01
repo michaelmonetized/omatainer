@@ -25,6 +25,7 @@ use library_view::{LibraryView, Cells};
 mod load_status;
 mod play_history;
 mod play_time;
+mod project;
 mod audio_status;
 mod diagnostics;
 mod master_fx_status;
@@ -67,6 +68,7 @@ mod font_selection_tests;
 pub struct App {
     diagnostics: diagnostics::Diagnostics,
     engine: Engine,
+    project: project::Projects,
     theme: Theme,
     deck_selection: deck_selection::Selection,
 
@@ -132,11 +134,13 @@ impl App {
         theme: Theme,
         loader: Option<Loader>,
     ) -> Self {
+        let project = project::Projects::new(engine.project.clone(), engine.sr());
         let snap = engine.snapshot();
         let playback_watches = play_history::initial_watches(&engine);
         let mut app = Self {
             diagnostics: diagnostics::Diagnostics::default(),
             engine,
+            project,
             theme,
             deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
 
@@ -166,6 +170,7 @@ impl App {
             clip_gain_edit: None,
         };
         app.publish_library_selection();
+        app.initialize_project_baseline();
         app
     }
 
@@ -216,6 +221,7 @@ impl App {
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
+        self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS {
             self.status = "load failed: invalid deck".into();
             return;
@@ -254,6 +260,7 @@ impl App {
     }
 
     fn load_file(&mut self, deck: u8, path: PathBuf, name: &str) {
+        self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
         let selection = Selection { title: name.into(), source: LibSource::File(path.clone()) };
@@ -453,19 +460,22 @@ impl App {
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
-        self.poll_ui_requests();
-        self.poll_library_scan();
+        if !self.project.committing() {
+            self.poll_ui_requests();
+            self.poll_library_scan();
+        } else { keyboard::block_for_dialog(ctx); }
         let submissions = self.engine.cmd.stats();
         if submissions.rejected > self.seen_submission_failures {
             self.seen_submission_failures = submissions.rejected;
             self.submission_error.set(submissions.last_error);
         }
         self.poll_theme(ctx);
-        self.poll_loads();
+        if !self.project.committing() { self.poll_loads(); }
         self.snap = self.engine.snapshot();
+        self.confirm_project_snapshot();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
-            i.raw.dropped_files.iter().find_map(|f| f.path.clone())
+            (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
         }) {
             let x = ctx.input(|i| i.pointer.latest_pos().map(|p| p.x)).unwrap_or(0.0);
             let deck = if x > ctx.screen_rect().center().x { 1u8 } else { 0 };
@@ -473,6 +483,7 @@ impl App {
             self.load_file(deck, p, &name);
         }
 
+        self.project_toolbar(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -480,6 +491,7 @@ impl App {
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(t.bg).inner_margin(6.0))
             .show(ctx, |ui| {
+                if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 let h = ui.available_height();
                 let gap = 4.0;
                 let samp_h = 118.0;
@@ -553,6 +565,8 @@ impl App {
         self.clip_gain_editor(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
+        // Resolve terminal project outcomes after this frame's Cancel/input.
+        self.poll_projects(ctx);
         if animating {
             ctx.request_repaint();
         } else {

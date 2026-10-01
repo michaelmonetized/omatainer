@@ -481,3 +481,33 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   boundary passes, or the civil clock moves backwards. Aging history neither
   rebuilds the filtered crate nor formats offscreen rows. Far-future repaint
   deadlines are bounded before conversion to a native timer.
+
+## Native project workflow
+
+- Project New/Open/Recent/Save/Save As/Save Copy operate on versioned `.omat`
+  documents containing the supported engine model, embedded decoded media and
+  persistent UI view. Fixed factory mapping schema 1 is recorded and validated;
+  no mutable mapping configuration, plugin host or automation editor is implied.
+- A save captures one acknowledged engine revision plus its UI baseline. Save/As
+  mark only that captured version clean and set the current path; later edits
+  remain dirty. Copy changes neither path nor clean baseline. Complete engine and
+  view validation precedes atomic publication. A committed directory-sync warning
+  reports saved-with-warning; a precommit failure/cancellation preserves the file.
+- File reads/writes, recent-path persistence, capture waits, preparation, and
+  retired graph/media destruction stay on the project worker. The GUI never joins
+  that worker. Cancellation respects safe boundaries; an in-progress OS call can
+  complete first, and a committed file/install remains authoritative.
+- Open/New requires a second GUI baseline check after preparation. Media-load
+  intents invalidate that authorization even before audio admission. The renderer
+  seals creative admission, drains earlier commands and rejects replacement if
+  revision or pending controller GUI requests changed. Controls wait for a
+  snapshot carrying the applied project revision before using restored selection.
+- Reopening starts stopped, preserving deck positions and remembered clip launch
+  targets for explicit resume. Physical gates/connections and DSP histories are
+  not restored. Verified source fingerprints accompany matching captured deck
+  receipts; embedded path strings alone never credit replacement-file history.
+- Clean/saved window close seals creative admission through the terminal close
+  command. Current-frame Cancel wins before terminal close receipt processing.
+  Late edits reopen Save/Discard/Cancel. A failed clean-close handshake never
+  auto-closes; explicit Discard also permits exit when the renderer or project
+  worker is unavailable, without claiming pending changes were saved.
