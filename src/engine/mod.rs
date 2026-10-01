@@ -32,6 +32,8 @@ mod control_tests;
 mod quantized_launch_tests;
 pub mod decode;
 pub mod dsp;
+#[cfg(test)]
+mod svf_tests;
 pub mod media_load;
 pub(crate) mod load_receipt;
 pub mod fx;
