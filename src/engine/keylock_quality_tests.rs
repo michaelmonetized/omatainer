@@ -758,7 +758,7 @@ fn export_keylock_quality() {
             .unwrap()
             .stdout
     };
-    let report = json!({"schema":1,"workload":workload,"workload_sha256":workload_sha,"runtime_checkout_commit":String::from_utf8_lossy(&git(&["rev-parse","HEAD"])).trim(),
+    let report = json!({"schema":1,"embedded_manifest":serde_json::from_str::<Value>(crate::licenses::MANIFEST).unwrap(),"workload":workload,"workload_sha256":workload_sha,"runtime_checkout_commit":String::from_utf8_lossy(&git(&["rev-parse","HEAD"])).trim(),
         "build":{"debug_assertions":cfg!(debug_assertions),"rustc":String::from_utf8_lossy(&std::process::Command::new("rustc").arg("--version").output().unwrap().stdout).trim(),"executable_sha256":digest(&fs::read(std::env::current_exe().unwrap()).unwrap())},
         "runtime_tracked_engine_diff_sha256":digest(&git(&["diff","--binary","HEAD","--","src/engine"])),"records":records,"callbacks":callbacks,"transitions":transitions,
         "human_listening_scores":Value::Null,"device_latency":Value::Null,"backend_xruns":Value::Null,

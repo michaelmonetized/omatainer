@@ -9,6 +9,9 @@ Outputs must be fresh descendants of OMATAINER_KEYLOCK_EVIDENCE_ROOT
 import argparse
 import csv
 import hashlib
+import importlib.util
+import datetime as dt
+import platform
 import json
 import os
 from pathlib import Path
@@ -18,6 +21,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 
+REPO = Path(__file__).resolve().parent.parent
 ROOT = Path(os.environ.get('OMATAINER_KEYLOCK_EVIDENCE_ROOT',
             Path(__file__).resolve().parent.parent / 'target/keylock-quality'))
 if not ROOT.is_absolute():
@@ -39,7 +43,36 @@ def write(path, value):
         file.write(value)
 
 
-def document(root):
+def file_digest(path):
+    result = hashlib.sha256()
+    with path.open('rb') as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b''):
+            result.update(chunk)
+    return result.hexdigest()
+
+
+def licenses():
+    spec = importlib.util.spec_from_file_location('quality_licenses', REPO / 'scripts/license-manifest.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def bindings(binary, manifest):
+    return {'source_files': manifest['source_files'], 'binary_sha256': file_digest(binary),
+            'manifest_sha256': file_digest(REPO / 'licenses/manifest.json'),
+            'notices_sha256': file_digest(REPO / 'licenses/notices.json'),
+            'toolchain': manifest['toolchain'], 'target': manifest['target']}
+
+
+def verify_native(result, manifest, before, after):
+    if result.get('embedded_manifest') != manifest:
+        raise ValueError('test executable embeds stale source/dependency/toolchain records')
+    if before != after or result['build']['executable_sha256'] != before['binary_sha256']:
+        raise ValueError('source or executable changed during the measurement run')
+
+
+def document(root, require_binding=True):
     if (root / 'INCOMPLETE').exists():
         raise ValueError('incomplete export: ' + str(root))
     path = root / 'report.json'
@@ -50,6 +83,18 @@ def document(root):
         raise ValueError('unsupported report or fabricated listening scores')
     if len(result['records']) != 630 or len(result['callbacks']) != 126:
         raise ValueError('incomplete fixed workload matrix')
+    if require_binding:
+        receipt_path = root / 'verified-run.json'
+        if receipt_path.stat().st_size > 2 * 1024 ** 2:
+            raise ValueError('run binding exceeds 2 MiB')
+        receipt = json.loads(receipt_path.read_text())
+        manifest = result['embedded_manifest']
+        if (receipt.get('schema') != 1 or receipt['report_sha256'] != file_digest(path)
+                or receipt['bindings']['source_files'] != manifest['source_files']
+                or receipt['bindings']['toolchain'] != manifest['toolchain']
+                or receipt['bindings']['target'] != manifest['target']
+                or receipt['bindings']['binary_sha256'] != result['build']['executable_sha256']):
+            raise ValueError('report does not match the retained source/executable binding')
     return result
 
 
@@ -137,7 +182,7 @@ corpus cannot qualify all music or the physical live setup.
           'candidate_runtime_checkout_commit': candidate['runtime_checkout_commit'],
           'baseline_executable_sha256': baseline['build']['executable_sha256'],
           'candidate_executable_sha256': candidate['build']['executable_sha256'],
-          'source_qualification': 'Runtime checkout is not embedded build provenance; retain matching build receipts', 'pairs': key}, indent=2) + '\n')
+          'source_qualification': 'Both verified-run receipts bind the exact report and executable to the reviewed embedded source inventory', 'pairs': key}, indent=2) + '\n')
     write(operator / 'objective-diagnostics.json', json.dumps({'schema': 1, 'human_scores': None,
           'baseline': measurements(baseline), 'candidate': measurements(candidate),
           'scope': 'Objective diagnostics only; no automated quality winner or listening score'}, indent=2) + '\n')
@@ -169,8 +214,13 @@ def self_test():
                                     levels=[], measurement={}))
             report = dict(schema=1, workload={'test': True}, workload_sha256='synthetic-script-fixture',
                           records=rows, callbacks=[{}] * 126, human_listening_scores=None, runtime_checkout_commit=implementation,
-                          build={'executable_sha256': 'synthetic-' + implementation})
+                          build={'executable_sha256': 'synthetic-' + implementation},
+                          embedded_manifest={'source_files': {}, 'toolchain': {}, 'target': 'synthetic'})
             (folder / 'report.json').write_text(json.dumps(report))
+            receipt = dict(schema=1, report_sha256=file_digest(folder/'report.json'),
+                           bindings=dict(source_files={}, toolchain={}, target='synthetic',
+                                         binary_sha256='synthetic-'+implementation))
+            (folder / 'verified-run.json').write_text(json.dumps(receipt))
             for name in ['README.md', 'sources.json', 'VocalSet-CC-BY-4.0.txt']:
                 (folder / name).write_text('Synthetic orchestration fixture; not corpus evidence.\n')
             reports.append(folder)
@@ -193,9 +243,27 @@ def self_test():
         rejected = SimpleNamespace(**vars(first)); rejected.out=root/'rejected'
         report_path = reports[1]/'report.json'
         report = json.loads(report_path.read_text()); report['workload_sha256']='changed'
-        report_path.write_text(json.dumps(report)); refuses(rejected, 'workloads/corpus differ')
+        report_path.write_text(json.dumps(report))
+        receipt_path = reports[1]/'verified-run.json'
+        receipt = json.loads(receipt_path.read_text()); receipt['report_sha256']=file_digest(report_path)
+        receipt_path.write_text(json.dumps(receipt))
+        refuses(rejected, 'workloads/corpus differ')
         assert not rejected.out.exists()
         report['workload_sha256']='synthetic-script-fixture'; report_path.write_text(json.dumps(report))
+        receipt['report_sha256']=file_digest(report_path); receipt_path.write_text(json.dumps(receipt))
+        native = dict(embedded_manifest={'source_files': {'new.rs': 'new'}}, build={'executable_sha256': 'new'})
+        try:
+            verify_native(native, {'source_files': {'old.rs': 'old'}}, {}, {})
+        except ValueError as error:
+            assert 'stale source' in str(error)
+        else:
+            raise AssertionError('stale executable was accepted')
+        try:
+            verify_native(native, native['embedded_manifest'], {'binary_sha256': 'old'}, {'binary_sha256': 'new'})
+        except ValueError as error:
+            assert 'changed during' in str(error)
+        else:
+            raise AssertionError('changed executable was accepted')
         (reports[1]/'audio.wav').write_bytes(b'corrupt')
         refuses(rejected, 'hash mismatch'); assert not rejected.out.exists()
     print('Script fixtures pass: matched corpus, deterministic blind order, empty scores, no overwrite, mismatched/corrupt refusal.')
@@ -217,10 +285,26 @@ def main():
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     if args.action == 'run':
         destination = fresh(args.out)
+        records = licenses()
+        manifest = records.validate(REPO)
+        binary = args.test_binary.resolve()
+        before = bindings(binary, manifest)
+        started = dt.datetime.now(dt.timezone.utc).isoformat()
+        host = {'system': platform.system(), 'machine': platform.machine(), 'kernel': platform.release(),
+                'logical_cpus': os.cpu_count(), 'load_average_before': list(os.getloadavg())}
         env = dict(os.environ, OMATAINER_KEYLOCK_QUALITY_OUT=str(destination),
                    OMATAINER_KEYLOCK_EVIDENCE_ROOT=str(ROOT))
         subprocess.run([str(args.test_binary.resolve()), '--ignored', '--exact', TEST, '--nocapture', '--test-threads=1'], env=env, check=True)
-        result = document(destination)
+        result = document(destination, require_binding=False)
+        after_manifest = records.validate(REPO)
+        if after_manifest != manifest:
+            raise ValueError('reviewed source manifest changed during measurement')
+        verify_native(result, manifest, before, bindings(binary, after_manifest))
+        host['load_average_after'] = list(os.getloadavg())
+        write(destination/'verified-run.json', json.dumps(dict(schema=1, started_utc=started,
+              finished_utc=dt.datetime.now(dt.timezone.utc).isoformat(), host=host, bindings=before,
+              report_sha256=file_digest(destination/'report.json')), indent=2)+'\n')
+        document(destination)
         print(json.dumps({'workload_sha256': result['workload_sha256'], 'renders': len(result['records']),
                           'callback_cases': len(result['callbacks']), 'human_scores': None}))
     elif args.action == 'compare':
