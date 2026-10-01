@@ -28,6 +28,7 @@ mod mute_lifecycle_tests;
 pub(crate) mod test_alloc;
 pub mod audio;
 pub mod audio_metrics;
+pub(crate) mod history_measurement;
 pub mod performance;
 pub(crate) mod diagnostics;
 mod master_fx;

@@ -132,6 +132,12 @@ impl Delay {
     pub fn reset_history(&mut self) { self.w = 0; self.written = 0; }
 
     pub fn tick(&mut self, x: f32) -> f32 {
+        self.tick_observed(x, |_, _| {})
+    }
+
+    /// Observer-only storage peaks use the same arithmetic and actual written
+    /// value. The normal renderer's empty observer is optimized away.
+    pub(super) fn tick_observed(&mut self, x: f32, written: impl FnOnce(f32, bool)) -> f32 {
         let n = self.buf.len() as f32;
         let t = self.time_samples.clamp(1.0, n - 2.0);
         let r = (self.w as f32 - t + n) % n;
@@ -141,9 +147,11 @@ impl Delay {
         let a = if i < self.written { self.buf[i] } else { 0.0 };
         let b = if next < self.written { self.buf[next] } else { 0.0 };
         let y = a + (b - a) * f;
-        self.buf[self.w] = x + y * self.fb;
+        let value = x + y * self.fb;
+        self.buf[self.w] = value;
         self.w = (self.w + 1) % self.buf.len();
         self.written = (self.written + 1).min(self.buf.len());
+        written(value, self.w == 0);
         x * (1.0 - self.mix) + y * self.mix
     }
 }
@@ -180,10 +188,13 @@ impl Reverb {
         for delay in &mut self.delays { delay.reset_history(); }
     }
     pub fn tick(&mut self, x: f32) -> f32 {
+        self.tick_observed(x, |_, _, _| {})
+    }
+    pub(super) fn tick_observed(&mut self, x: f32, mut written: impl FnMut(usize, f32, bool)) -> f32 {
         let mut y = 0.0;
         for (i, d) in self.delays.iter_mut().enumerate() {
             let s = if i % 2 == 0 { x } else { x * -1.0 };
-            y += d.tick(s);
+            y += d.tick_observed(s, |value, wrapped| written(i, value, wrapped));
         }
         x * (1.0 - self.mix) + (y * 0.25) * self.mix
     }

@@ -51,4 +51,27 @@ impl MasterSlot {
             }
         })
     }
+
+    pub(super) fn process_observed(
+        &mut self,
+        input: [f32; 2],
+        kind: FxKind,
+        wet: f32,
+        bounds: &mut super::history_measurement::SlotBounds,
+    ) -> [f32; 2] {
+        std::array::from_fn(|channel| match kind {
+            FxKind::Echo => self.echo[channel].tick_observed(input[channel], |value, wrapped| {
+                bounds.echo[channel].write(value, wrapped);
+            }),
+            FxKind::Reverb => self.reverb[channel].tick_observed(input[channel], |index, value, wrapped| {
+                bounds.reverb[channel][index].write(value, wrapped);
+            }),
+            FxKind::Filter => {
+                let [first, second] = &mut self.filter[channel];
+                let filtered = second.tick(first.tick(input[channel]));
+                bounds.filter[channel] = [first.z, second.z];
+                input[channel] * (1.0 - wet) + filtered * wet
+            }
+        })
+    }
 }
