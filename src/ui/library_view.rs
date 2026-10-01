@@ -6,7 +6,12 @@ use std::sync::Weak;
 #[derive(Default)]
 pub(super) struct LibraryView {
     library: Weak<Vec<LibItem>>,
+    catalog: Weak<crate::library::Catalog>,
     query: String,
+    crate_id: Option<crate::library::crates::CrateId>,
+    collection_revision: u64,
+    pub generation: u64,
+    pub unavailable: usize,
     pub indices: Arc<Vec<usize>>,
     selected: Option<LibSource>,
     selected_index: usize,
@@ -80,7 +85,14 @@ impl App {
     }
 
     pub(super) fn refresh_library_view(&mut self) {
+        self.refresh_named_crates();
         let view = &mut self.library_view;
+        let selected_crate = &self.library_crates.selected;
+        let collection_revision = self.library_metadata.catalog.crates.revision();
+        let selected_crate_changed = view.crate_id != *selected_crate;
+        let crate_changed = selected_crate_changed
+            || selected_crate.is_some() && view.catalog.as_ptr() != Arc::as_ptr(&self.library_metadata.catalog)
+            || selected_crate.is_some() && view.collection_revision != collection_revision;
         // The weak reference prevents allocation-address reuse and makes
         // Arc::make_mut detach as well. It never owns the old crate's elements,
         // so the scan worker remains responsible for retiring the large Vec.
@@ -104,17 +116,27 @@ impl App {
             }
             view.last_played_index = self.last_play_idx;
         }
-        if library_changed || query_changed {
+        if library_changed || query_changed || crate_changed {
             let q = self.lib_filter.to_lowercase();
             let indices = Arc::make_mut(&mut view.indices);
             indices.clear();
-            indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| {
-                (q.is_empty()
-                    || item.title.to_lowercase().contains(&q)
-                    || item.artist.to_lowercase().contains(&q))
-                .then_some(index)
-            }));
-            // Keep the worker's BPM/key/title order; never sort on a steady frame.
+            let matches = |item: &LibItem| q.is_empty()
+                || item.title.to_lowercase().contains(&q)
+                || item.artist.to_lowercase().contains(&q);
+            view.unavailable = 0;
+            if let Some(node) = selected_crate.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)) {
+                let rows = self.library_metadata.collection_rows();
+                for member in &node.members {
+                    if let Some(index) = rows.row(member, &self.library, &self.library_metadata.catalog) {
+                        if matches(&self.library[index]) { indices.push(index); }
+                    } else { view.unavailable += 1; }
+                }
+            } else {
+                indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| matches(item).then_some(index)));
+            }
+            // All tracks keeps the worker order; named crates keep direct manual
+            // membership order. Filtering never sorts either view.
+            view.generation = view.generation.checked_add(1).expect("library view generation exhausted");
             let find = |source: &LibSource| {
                 view.indices
                     .iter()
@@ -139,7 +161,7 @@ impl App {
                     .position(|&i| identity.matches_current(&self.library[i], &self.library_metadata.catalog)).unwrap_or(0);
             }
             let stride = view.stride.max(18.0);
-            view.pending_offset = Some(if query_changed {
+            view.pending_offset = Some(if query_changed || selected_crate_changed {
                 self.lib_sel as f32 * stride
             } else {
                 view.top
@@ -151,6 +173,9 @@ impl App {
             view.cells.clear();
             view.library = Arc::downgrade(&self.library);
             view.query.clone_from(&self.lib_filter);
+            view.crate_id.clone_from(selected_crate);
+            view.collection_revision = collection_revision;
+            view.catalog = Arc::downgrade(&self.library_metadata.catalog);
             view.selected = view
                 .indices
                 .get(self.lib_sel)
