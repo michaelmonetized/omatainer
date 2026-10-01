@@ -56,6 +56,16 @@ pub struct View {
     /// Bounded queued observations rejected before the worker could collect.
     pub dropped_observations: u64,
 }
+#[derive(Clone)]
+pub struct Client {
+    pub port: Port,
+    view: Arc<ArcSwap<View>>,
+}
+impl Client {
+    pub fn view(&self) -> Arc<View> {
+        self.view.load_full()
+    }
+}
 pub struct Session {
     pub port: Port,
     view: Arc<ArcSwap<View>>,
@@ -139,6 +149,12 @@ impl Session {
             stop,
             run,
         })
+    }
+    pub fn client(&self) -> Client {
+        Client {
+            port: self.port.clone(),
+            view: self.view.clone(),
+        }
     }
     pub fn view(&self) -> Arc<View> {
         self.view.load_full()

@@ -1,5 +1,7 @@
 //! Worker/startup-only private evidence storage. No media or recovery files are
-//! read, copied, pruned or renamed here. A run lock outlives its panic-hook FD.
+//! read, copied, pruned or renamed here. Logical run ownership releases its lock
+//! explicitly after its final logical owner, including the panic hook, retires.
+//! A raw inherited descriptor cannot extend that logical ownership.
 use super::*;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
@@ -38,11 +40,35 @@ pub struct Inventory {
 pub struct Run {
     root: PathBuf,
     dir: PathBuf,
-    marker: Arc<File>,
+    marker: Arc<LockedMarker>,
     panicked: Arc<AtomicBool>,
+    hook_armed: Arc<AtomicBool>,
     pub id: Id,
     pub started_unix_ms: u64,
     pub safe_mode: bool,
+}
+impl Drop for Run {
+    fn drop(&mut self) {
+        self.hook_armed.store(false, Ordering::Release);
+    }
+}
+struct LockedMarker(File);
+impl std::ops::Deref for LockedMarker {
+    type Target = File;
+    fn deref(&self) -> &File {
+        &self.0
+    }
+}
+impl Drop for LockedMarker {
+    fn drop(&mut self) {
+        let _ = self.0.unlock();
+    }
+}
+struct RootLock(File);
+impl Drop for RootLock {
+    fn drop(&mut self) {
+        let _ = self.0.unlock();
+    }
 }
 pub fn unix_ms() -> u64 {
     std::time::SystemTime::now()
@@ -121,7 +147,7 @@ fn try_lock(file: &File) -> Result<bool, Error> {
         Err(std::fs::TryLockError::Error(e)) => Err(Error::io("lock evidence", e)),
     }
 }
-fn root_lock(root: &Path) -> Result<File, Error> {
+fn root_lock(root: &Path) -> Result<RootLock, Error> {
     let path = root.join("storage.lock");
     let file = match open(&path, true, true) {
         Ok(file) => file,
@@ -133,7 +159,7 @@ fn root_lock(root: &Path) -> Result<File, Error> {
     if !try_lock(&file)? {
         return Err(Error::Busy);
     }
-    Ok(file)
+    Ok(RootLock(file))
 }
 fn sync(path: &Path) -> std::io::Result<()> {
     File::open(path)?.sync_all()
@@ -327,12 +353,21 @@ impl Run {
         Ok(Self {
             root: root.into(),
             dir,
-            marker: Arc::new(marker),
+            marker: Arc::new(LockedMarker(marker)),
             panicked: Arc::new(AtomicBool::new(false)),
+            hook_armed: Arc::new(AtomicBool::new(true)),
             id,
             started_unix_ms,
             safe_mode,
         })
+    }
+    #[cfg(test)]
+    pub(super) fn retained_marker_for_test(&self) -> File {
+        self.marker.try_clone().unwrap()
+    }
+    #[cfg(test)]
+    pub(super) fn retained_hook_owner_for_test(&self) -> impl Send {
+        self.marker.clone()
     }
     pub fn report(&self) -> Report {
         Report::new(self.id, self.safe_mode, self.started_unix_ms)
@@ -343,7 +378,11 @@ impl Run {
     pub fn install_panic_hook(&self) {
         let file = self.marker.clone();
         let observed = self.panicked.clone();
+        let armed = self.hook_armed.clone();
         std::panic::set_hook(Box::new(move |_| {
+            if !armed.load(Ordering::Acquire) {
+                return;
+            }
             observed.store(true, Ordering::Release);
             let byte = [2u8];
             unsafe {
@@ -469,6 +508,9 @@ fn publish(
         .unwrap_or(Path::new("."));
     let temporary = parent.join(format!(".pending-{}", nonce().hex()));
     let mut file = open(&temporary, true, true)?;
+    let owned = file
+        .metadata()
+        .map_err(|error| Error::io("inspect temporary report", error))?;
     let result = (|| {
         for chunk in bytes.chunks(4096) {
             check(cancel)?;
@@ -498,7 +540,11 @@ fn publish(
         })
     })();
     drop(file);
-    let _ = fs::remove_file(&temporary);
+    if fs::symlink_metadata(&temporary)
+        .is_ok_and(|current| current.dev() == owned.dev() && current.ino() == owned.ino())
+    {
+        let _ = fs::remove_file(&temporary);
+    }
     result
 }
 pub fn reopen(path: &Path, cancel: &AtomicBool) -> Result<Report, Error> {

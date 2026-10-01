@@ -30,7 +30,7 @@ def wait_for(check, description, seconds=5):
         time.sleep(.025)
     raise AssertionError(f'timed out: {description}; last error: {last}')
 
-def outer(binary):
+def outer(binary,support=False):
     with tempfile.TemporaryDirectory(prefix='omatainer-private-atspi-') as directory:
         root=Path(directory)
         for name in ['runtime','config','data','cache']:(root/name).mkdir(mode=0o700)
@@ -42,7 +42,7 @@ def outer(binary):
                    XDG_RUNTIME_DIR=str(root/'runtime'),XDG_CONFIG_HOME=str(root/'config'),
                    XDG_DATA_HOME=str(root/'data'),XDG_CACHE_HOME=str(root/'cache'),GSETTINGS_BACKEND='memory')
         process=subprocess.Popen(['dbus-run-session','--',sys.executable,str(Path(__file__).resolve()),
-                                  '--private','--test-binary',str(binary.resolve())],
+                                  '--private','--test-binary',str(binary.resolve())]+(['--support'] if support else []),
                                  env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
         try:
             stdout,stderr=process.communicate(timeout=85)
@@ -58,7 +58,7 @@ def outer(binary):
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid,signal.SIGKILL);process.wait(timeout=2)
 
-def private(binary):
+def private(binary,support=False):
     assert os.environ.get('OMATAINER_ATSPI_PRIVATE')=='1'
     root=Path(os.environ['OMATAINER_ATSPI_TEST_DIR'])
     assert (root/'private-harness').is_file()
@@ -101,7 +101,7 @@ def private(binary):
         status(False)
         registry=subprocess.Popen(['/usr/lib/at-spi2-registryd'],stdout=launcher_log,stderr=subprocess.STDOUT)
         wait_for(lambda:bus_call(accessibility,'NameHasOwner','org.a11y.atspi.Registry').unpack()[0],'private accessibility registry')
-        child=subprocess.Popen([str(binary.resolve()),'--exact',CHILD,'--ignored','--nocapture','--test-threads=1'],
+        child=subprocess.Popen([str(binary.resolve()),'--exact','ui::atspi_tests::private_support_bridge_child' if support else CHILD,'--ignored','--nocapture','--test-threads=1'],
                                stdout=child_log,stderr=subprocess.STDOUT)
         def state():
             if child.poll() is not None:raise RuntimeError('Rust bridge exited: '+(root/'child.log').read_text())
@@ -134,6 +134,37 @@ def private(binary):
             return nodes,visited
         def named(name):
             return wait_for(lambda:tree_nodes()[0].get(name),f'native node {name}')
+        if support:
+            nodes,visited=tree_nodes()
+            assert not nodes['Deck A: Pitch'].get_state_set().contains(Atspi.StateType.ENABLED)
+            # accesskit_atspi_common0.12 reports disabled Buttons as Enabled;
+            # assert real egui disabled nodes and ineffective native attempts.
+            assert state()['engine_controls_disabled']
+            assert state()['safe_mode'] and state()['callbacks']==0
+            def click(name):
+                node=named(name);iface=node.get_action_iface();assert iface is not None
+                index=next(i for i in range(iface.get_n_actions()) if iface.get_action_name(i).lower()=='click')
+                assert iface.do_action(index),name
+            prior=state()['actions'];click('Deck A: Platter play or pause');click('Sampler: Sample pad 1')
+            wait_for(lambda:state()['actions']>=prior+2,'disabled native button attempts delivered')
+            assert state()['callbacks']==0 and state()['transport_stopped']
+            click('Project');click('Support and crash reports…')
+            wait_for(lambda:state()['support_open'],'native support panel')
+            click('Inspect current report')
+            wait_for(lambda:'Review the exact' in state()['message'],'native report preview')
+            named('Support report file')
+            click('I reviewed this report and want to export it locally')
+            click('Export reviewed support report')
+            wait_for(lambda:state()['exported_safe_report'] is True,'native consented export')
+            click('Reopen support report')
+            wait_for(lambda:'Review the exact' in state()['message'],'native report reopen')
+            click('Restart normally')
+            wait_for(lambda:state()['closes']>0 and state()['restarting'],'native stopped safe restart')
+            result=state();(root/'done').write_text('done')
+            child.wait(timeout=5);assert child.returncode==0,(root/'child.log').read_text()
+            print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','scope':'actual safe App and offline project owner; native accessibility API; no window, devices, Orca or real process restart',
+                              'native_nodes_visited':visited,'workflow':'disabled engine controls -> inspect redacted report -> explicit consent -> local export -> reopen -> request normal restart',**result},indent=2))
+            return
         nodes,visited=tree_nodes()
         pitch=nodes['Deck A: Pitch'];platter=nodes['Deck A: Platter play or pause']
         pad=nodes['Sampler: Sample pad 1'];cue=nodes['Deck A: Hot cue 1']
@@ -381,8 +412,9 @@ def main():
     signal.signal(signal.SIGTERM,terminate)
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--test-binary',type=Path,required=True)
+    parser.add_argument('--support',action='store_true',help='Exercise the production safe-mode support workflow')
     parser.add_argument('--private',action='store_true',help=argparse.SUPPRESS)
     args=parser.parse_args()
-    if args.private:private(args.test_binary)
-    else:outer(args.test_binary)
+    if args.private:private(args.test_binary,args.support)
+    else:outer(args.test_binary,args.support)
 if __name__=='__main__':main()

@@ -525,3 +525,105 @@ fn actual_safe_owner_keeps_save_open_real_and_rejects_audio_midi_and_playback() 
     assert!(!engine.snapshot().playing);
     assert_eq!(engine.cmd.audio_metrics().callbacks, 0);
 }
+
+#[test]
+fn finished_run_releases_raw_descriptors_but_waits_for_a_live_panic_hook_owner() {
+    let files = Temp::new();
+    let run = storage::Run::begin(&files.root(), true).unwrap();
+    let retained = run.retained_marker_for_test();
+    let hook_owner = run.retained_hook_owner_for_test();
+    run.persist(&run.report(), &uncancelled()).unwrap();
+    run.mark_clean().unwrap();
+    assert_eq!(
+        storage::discover(&files.root(), &uncancelled())
+            .unwrap()
+            .skipped_active,
+        1
+    );
+    drop(run);
+    assert_eq!(
+        storage::discover(&files.root(), &uncancelled())
+            .unwrap()
+            .skipped_active,
+        1
+    );
+    drop(hook_owner);
+    let discovered = storage::discover(&files.root(), &uncancelled()).unwrap();
+    assert_eq!(discovered.skipped_active, 0);
+    assert_eq!(discovered.previous.len(), 1);
+    assert_eq!(discovered.previous[0].report.exit, Exit::Clean);
+    drop(retained);
+}
+
+#[test]
+fn exact_recovery_lookup_and_later_restore_reject_a_replaced_assets_directory() {
+    let temp = Temp::new();
+    let root = temp.0.join("recovery");
+    let mut store = crate::recovery::Store::open(&root).unwrap();
+    let session = store.session_id().to_owned();
+    let digest = crate::recovery::session_digest(&session);
+    let media = std::sync::Arc::new(crate::engine::dsp::Sample {
+        name: "fixture".into(),
+        path: String::new(),
+        sr: 48000,
+        ch: 1,
+        bpm: 120.0,
+        data: vec![0.25; 128],
+        peaks: std::sync::Arc::new(vec![[0.25; 3]]),
+    });
+    store
+        .append(
+            &crate::project_file::Bundle {
+                state: 1u64,
+                media: vec![media],
+            },
+            crate::recovery::RecordMeta {
+                epoch: 7,
+                revision: 1,
+                view_revision: 0,
+                saved_path: None,
+                captured_unix_ms: 1,
+            },
+            &crate::recovery::Config::default(),
+            &uncancelled(),
+        )
+        .unwrap();
+    drop(store);
+    let candidate = crate::recovery::lookup_exact(&root, digest, 7, 1, &uncancelled())
+        .unwrap()
+        .unwrap();
+    let assets = root.join(session).join("assets");
+    let external = temp.0.join("external-assets");
+    fs::rename(&assets, &external).unwrap();
+    std::os::unix::fs::symlink(&external, &assets).unwrap();
+    assert!(crate::recovery::lookup_exact(&root, digest, 7, 1, &uncancelled()).is_err());
+    assert!(crate::recovery::recover::<u64>(&candidate, &uncancelled()).is_err());
+    assert_eq!(fs::read_dir(&external).unwrap().count(), 1);
+}
+
+#[test]
+fn active_collection_and_saturated_observations_add_no_callback_heap_work() {
+    let files = Temp::new();
+    let session = worker::Session::start(&files.root(), false).unwrap();
+    let (mut engine, rt) = crate::engine::Engine::headless_for_test(48000, 256);
+    engine.cmd.attach_support(session.port.clone());
+    let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
+    let mut block = [0.0f32; 256];
+    for _ in 0..128 {
+        callback.render(&mut block);
+    }
+    for _ in 0..10000 {
+        session
+            .port
+            .event(Code::ParserRejected, Some(FailureClass::Invalid));
+    }
+    let counts = crate::engine::test_alloc::measure(|| {
+        for _ in 0..1024 {
+            callback.render(&mut block);
+        }
+    });
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    assert!(block.iter().all(|v| v.is_finite()));
+    assert!(session.finish(Exit::Clean, Duration::from_secs(2)));
+    assert!(session.view().report.events.len() <= MAX_EVENTS);
+}

@@ -89,6 +89,94 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Control reference
 
+### Support and crash reports
+
+Local redacted evidence
+
+Inspect bounded structured events, numeric routing and performance counters. No uploader or audio plugin host exists. Original media, paths, titles, device names, raw errors, credentials and panic payloads are excluded.
+
+Workflow: Stop and recover.
+
+### Inspect current support report
+
+Snapshot of bounded collected evidence
+
+Build a reviewable JSON preview on a worker. Collection may lag the engine; confirmed persistence time is separate from current observations.
+
+Workflow: Stop and recover.
+
+### Support report categories
+
+Explicit included fields
+
+Choose routing, structured events, performance counters and opaque recovery references. Changing inclusion invalidates the old preview and requires another review before export.
+
+Workflow: Stop and recover.
+
+### Find previous support runs
+
+Private retained reports
+
+Read inactive run markers and their last bounded report. An observed Rust panic differs from an unclean exit; a kill or power loss does not identify its cause. Active or unreadable records are reported explicitly.
+
+Workflow: Stop and recover.
+
+### Support report file
+
+Local JSON destination or source
+
+Choose a local .omasupport.json path. Export creates a new private file and refuses existing destinations. Reopen validates bounds and schema without applying project data.
+
+Workflow: Stop and recover.
+
+### Reopen support report
+
+Validated local JSON
+
+Inspect an existing redacted report. Malformed, unsupported, oversized, symlink and non-regular inputs are rejected; the current project is unchanged.
+
+Workflow: Stop and recover.
+
+### Review before local export
+
+User decision
+
+Confirm that you reviewed this exact preview before creating a local report. There is no network upload; sharing a file remains a separate explicit user action.
+
+Workflow: Stop and recover.
+
+### Export reviewed support report
+
+Local create-new publication
+
+Write exactly the reviewed report on a cancellable worker. A completed publication is reported truthfully even after late cancellation; durability warnings stay visible.
+
+Workflow: Stop and recover.
+
+### Cancel support work
+
+Pending optional work
+
+Cancel inspection or export before publication. A committed local file remains exported. Live audio and the current project are unchanged.
+
+Workflow: Stop and recover.
+
+### Find exact linked recovery
+
+Opaque session digest and durable sequence
+
+Verify the exact retained journal record without substituting a newer one. Preview it in Recovery, then use the normal Save/Discard/Cancel restoration workflow. A pruned or corrupt record remains explicitly unavailable.
+
+Workflow: Save and reopen.
+
+### Restart normally
+
+Explicit exit from safe mode
+
+Safe mode opens no audio or MIDI devices and leaves startup settings unapplied. Save, discard or cancel unsaved work before restarting. Only a completed close starts normal device setup; playback does not resume automatically.
+
+Workflow: Stop and recover.
+
 ### Help and lessons
 
 Offline reference

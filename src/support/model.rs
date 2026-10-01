@@ -70,7 +70,12 @@ pub enum Code {
     Startup,
     SafeModeStartup,
     AudioOpenFailed,
+    EngineStartupFailed,
+    PreferencesReadFailed,
+    IpcStartupFailed,
+    GuiStartupFailed,
     AudioBackendFailed,
+    AudioOutputOffline,
     AudioSwitchFailed,
     AudioRollbackFailed,
     MidiConnectionFailed,
@@ -158,6 +163,35 @@ pub struct Route {
     pub requested_buffer_frames: Option<u32>,
 }
 impl Route {
+    pub fn requested(settings: &crate::preferences::Audio) -> Self {
+        Self {
+            backend: settings
+                .backend
+                .as_deref()
+                .map_or(Backend::Unavailable, Backend::from_name),
+            device: if settings.device.is_some() {
+                DeviceChoice::ExplicitRedacted
+            } else {
+                DeviceChoice::SystemDefault
+            },
+            sample_rate: settings.sample_rate,
+            channels: settings.channels,
+            format: settings
+                .format
+                .map_or(Format::Default, |format| Format::from_cpal(format.cpal())),
+            requested_buffer_frames: settings.buffer_frames,
+        }
+    }
+    pub fn active(plan: &crate::engine::audio::config::Plan) -> Self {
+        Self {
+            backend: Backend::from_name(&plan.backend),
+            device: DeviceChoice::ExplicitRedacted,
+            sample_rate: Some(plan.rate),
+            channels: Some(plan.channels),
+            format: Format::from_cpal(plan.format),
+            requested_buffer_frames: plan.buffer,
+        }
+    }
     fn validate(&self) -> Result<(), Error> {
         if self
             .sample_rate
@@ -450,7 +484,10 @@ impl Report {
         }
         self.events.push(event);
     }
-    pub fn sample(&mut self, sample: Sample) {
+    pub fn sample(&mut self, mut sample: Sample) {
+        if let Some(last) = self.samples.last() {
+            sample.elapsed_ms = sample.elapsed_ms.max(last.elapsed_ms);
+        }
         if self.samples.len() == MAX_SAMPLES {
             self.samples.remove(0);
             self.dropped_samples = self.dropped_samples.saturating_add(1);

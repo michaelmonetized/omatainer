@@ -587,6 +587,9 @@ fn verify_assets(
     verified: &mut HashSet<String>,
     remaining_bytes: &mut u64,
 ) -> Result<(), Error> {
+    // Every lookup/restore revalidates the intermediate directory. O_NOFOLLOW
+    // on each final sidecar alone cannot reject an assets-directory symlink.
+    files::private_dir(&path.join("assets"), false)?;
     for id in ids {
         check(cancel)?;
         if verified.contains(id) {

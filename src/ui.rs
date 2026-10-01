@@ -32,6 +32,7 @@ mod project;
 mod undo;
 mod audio_status;
 mod diagnostics;
+mod support;
 pub(crate) mod deck_time;
 use deck_time::{DeckTimeSettings, Readout, TimeMode};
 #[cfg(test)]
@@ -87,6 +88,7 @@ mod theme_requests;
 mod font_selection_tests;
 
 pub struct App {
+    support: support::Panel,
     recovery: recovery::Recovery,
     settings: preferences::Settings,
     performance_panel: performance::Panel,
@@ -183,6 +185,7 @@ impl App {
         let playback_watches = play_history::initial_watches(&engine);
         let theme_requests = engine.cmd.theme_requests().attach();
         let mut app = Self {
+            support: support::Panel::default(),
             recovery: recovery::Recovery::default(),
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             settings: preferences::Settings::default(),
@@ -596,6 +599,7 @@ impl App {
             self.load_file(deck, p, &name);
         }
 
+        self.support_ui(ctx);
         self.performance_ui(ctx);
         self.project_toolbar(ctx);
         self.library_close_ui(ctx);
@@ -624,10 +628,12 @@ impl App {
                 let seq_h = 26.0 + 48.0 + seq_row * SCENES as f32 + gap * (SCENES as f32 + 2.0);
                 let scratch_h = (h - samp_h - crate_h - seq_h - gap * 3.0).max(200.0);
                 ui.allocate_ui(Vec2::new(ui.available_width(), scratch_h), |ui| {
+                    if self.engine.safe_mode() { ui.disable(); }
                     self.scratch_row(ui, &t);
                 });
                 ui.add_space(gap);
                 ui.allocate_ui(Vec2::new(ui.available_width(), samp_h), |ui| {
+                    if self.engine.safe_mode() { ui.disable(); }
                     accessibility::scope(ui, "Sampler", |ui| self.sampler_row(ui, &t));
                 });
                 ui.add_space(gap);
@@ -636,9 +642,10 @@ impl App {
                 });
                 ui.add_space(gap);
                 if self.snap.fx_view >= 0 {
-                    self.fx_row(ui, &t);
+                    ui.add_enabled_ui(!self.engine.safe_mode(), |ui| self.fx_row(ui, &t));
                 } else {
                     ui.allocate_ui(Vec2::new(ui.available_width(), seq_h), |ui| {
+                        if self.engine.safe_mode() { ui.disable(); }
                         self.sequencer_row(ui, &t);
                     });
                 }
@@ -706,6 +713,7 @@ impl App {
         }
         self.publish_library_selection();
         self.diagnostics.ui_update_ns = Some(ui_started.elapsed().as_nanos().min(u64::MAX as u128) as u64);
+        self.observe_support();
     }
 }
 
