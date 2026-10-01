@@ -107,6 +107,64 @@ comparisons were exact, and no callback deadline exceedance was observed in
 this neutral offline workload. Those results do not rescue the musical defect
 or qualify a loaded show/hardware configuration.
 
+## First assembled candidate: retained findings, not musical acceptance
+
+Candidate `5667ac0` ran the identical v1 matrix from 2026-10-01
+08:29:31.898900 to 08:30:19.730646 UTC, with other agent CPU jobs held. The
+source-bound test executable SHA-256 was
+`a517a18283c16fa3079198edd69f00e7520e1109d22d47a5a648c3b1c142030e`;
+the report SHA-256 was
+`82acc8a9811b0d0a11f46121502764fc8e3a917e78d1db473d1b685840d298bb`.
+Evidence is retained in `issue-100-candidate-5667ac0`.
+
+All 765 measured groups had zero Rust allocations/frees, every rendered sample
+and transition observation was finite, and all 420 cross-block comparisons
+were exact. All 315 unlocked render PCM hashes matched the original baseline;
+all 45 locked-unity renders exactly matched their unlocked counterparts.
+At 48 kHz/block 128, both analytical bass peaks remained at their intended
+55/93.75 Hz across all seven ratios. The intended 93.75 Hz projection amplitude
+was 0.349917–0.350586, compared with approximately 0.35 in the source.
+
+The 48 kHz/block-128 one-deck callback had worst CPU p99 132.917 microseconds
+and wall p99 134.877 microseconds across the locked ratios. The full neutral
+callback matrix nevertheless retained **one wall deadline exceedance**:
+96 kHz/block 64, ratio 1.16, lock off, block 73 took 2.055612 ms wall and
+0.039500 ms thread CPU against a 0.666666 ms deadline. The difference indicates
+time outside this thread's CPU execution; no specific external cause was
+established. No locked callback or isolated-render deadline exceedance occurred.
+This outlier was not discarded or represented as a hardware XRUN.
+
+The separate dense two-deck show gate passed all 18 groups × three runs with
+zero actual deadline exceedances, zero callback Rust heap operations/rejected
+commands, exact recorded state and coincident full searches. At 96 kHz/128
+frames its worst wall p99 was 0.6277 ms and maximum 0.7145 ms against a
+1.3333 ms deadline. Across the complete matrix, worst wall p99/maximum were
+1.0056/1.3535 ms. Source-bound evidence is retained in
+`issue-100-show-5667ac0`; raw SHA-256
+`dd23baf9449bb4caa3eb7850b50d028905aa9745728534ec0aa8645cc5ff9d09`.
+
+The ordinary suite passed 803 tests (15 explicit fixtures ignored), and the
+original issue 95 release gate passed all eight groups × three runs, including
+109 native accessibility actions, from 08:32:13 to 08:34:59 UTC. That gate's
+production binary SHA-256 was
+`eb58187112bdb902b96716018547d0f9d29c1bd686a467c6e09391e37f06d9db`.
+Its report/raw/log are retained as `issue-100-initial-performance.*`.
+
+**Musical qualification stopped here.** The v1 transient source is a 5 ms
+alternating-sign burst at the 48 kHz source Nyquist frequency. The rendered
+loss is real: at ratio 0.5, pulse energy relative to unlocked playback fell to
+0.00386–0.0992; at 1.5 it fell to 0.00539–0.0351. Some pulses concentrated
+almost all remaining energy into a single sample. Wide observation windows and
+whole-file energy confirm this is not a missed-window diagnostic. Fractional
+source interpolation can cancel neighboring opposite-sign samples; this extreme
+stress input is not representative evidence of ordinary drum fidelity.
+
+The implementation and musical corpus require further work before publication.
+The next corpus revision retains this stress source and adds an audible-band
+onset train, with a freshly matched original-algorithm baseline. The v1 data
+remain unchanged; the extra case must not erase the discovered failure or be
+compared against a different workload as if it were the same experiment.
+
 ## Listening acceptance
 
 The comparison script creates 35 deterministic blinded A/B pairs at 48 kHz,
