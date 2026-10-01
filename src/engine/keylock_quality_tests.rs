@@ -54,6 +54,39 @@ fn sample(id: &str, sr: u32, data: Vec<f32>) -> Arc<Sample> {
         path: String::new(),
     })
 }
+fn musical_transients() -> Arc<Sample> {
+    const SR: u32 = 48_000;
+    let mut data = vec![0.0; SR as usize * 6 * 2];
+    let alpha = 1.0 - (-std::f64::consts::TAU * 6_000.0 / SR as f64).exp();
+    for pulse in 1..12 {
+        let variant = (pulse - 1) % 4;
+        let length = [144, 336, 720, 1488][variant]; // 3/7/15/31 ms.
+        let tone = [750.0, 1500.0, 3000.0, 6000.0][variant];
+        let mut random = 0x8c31_51e7_u32 ^ pulse as u32;
+        let (mut low1, mut low2, mut kick_phase) = (0.0, 0.0, 0.0_f64);
+        for n in 0..length {
+            random ^= random << 13;
+            random ^= random >> 17;
+            random ^= random << 5;
+            let noise = random as f64 / u32::MAX as f64 * 2.0 - 1.0;
+            low1 += alpha * (noise - low1);
+            low2 += alpha * (low1 - low2);
+            let position = n as f64 / length as f64;
+            kick_phase += std::f64::consts::TAU * (55.0 + 165.0 * (1.0 - position)) / SR as f64;
+            let envelope = (n as f64 / 24.0).min(1.0) * (1.0 - position).powi(2);
+            let value = (0.55
+                * envelope
+                * (0.45 * kick_phase.sin()
+                    + 0.25 * (std::f64::consts::TAU * tone * n as f64 / SR as f64).sin()
+                    + 0.30 * low2)) as f32;
+            for channel in 0..2 {
+                let start = pulse * SR as usize / 2 + channel * 72;
+                data[(start + n) * 2 + channel] = value;
+            }
+        }
+    }
+    sample("musical_transients", SR, data)
+}
 fn corpus() -> Vec<Corpus> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/keylock");
     let provenance: Value =
@@ -131,6 +164,12 @@ fn corpus() -> Vec<Corpus> {
         id: "full_mix",
         kind: "complete original procedural Omatainer16-beat drums+harmony; fixed0.35sum",
         audio: sample("full_mix", sr, mix),
+        original_sha: None,
+    });
+    corpus.push(Corpus {
+        id: "musical_transients",
+        kind: "original3/7/15/31ms kick+750/1500/3000/6000Hz tone+seeded two-stage6kHz low-pass noise;0.5ms attack;right delayed1.5ms",
+        audio: musical_transients(),
         original_sha: None,
     });
     corpus
@@ -407,12 +446,25 @@ fn transient_metrics(data: &[f32], sr: u32, ratio: f32) -> Value {
             }
             let expected = source + ch as f64 * 0.0015;
             channels.push(json!({"energy":energy,"source_onset_displacement_ms":onset.map(|i|(i as f64/sr as f64*ratio as f64-expected)*1000.0),
+                "output_onset_seconds":onset.map(|i|i as f64/sr as f64),
+                "output_energy_centroid_seconds":(energy>1e-12).then(||moment/energy/sr as f64),
                 "source_energy_centroid_seconds":(energy>1e-12).then(||moment/energy/sr as f64*ratio as f64),
                 "output_95percent_energy_width_ms":lo.zip(hi).map(|(a,b)|(b-a) as f64/sr as f64*1000.0)}));
         }
-        pulses.push(json!({"source_onset_seconds":source,"expected_right_delay_source_ms":1.5,"channels":channels}));
+        let gap = |field: &str| {
+            channels[0][field]
+                .as_f64()
+                .zip(channels[1][field].as_f64())
+                .map(|(l, r)| (r - l) * 1000.0)
+        };
+        pulses.push(json!({"source_onset_seconds":source,"expected_right_delay_source_ms":1.5,
+            "unlocked_nominal_right_delay_output_ms":1.5/ratio as f64,
+            "right_onset_delay_output_ms":gap("output_onset_seconds"),
+            "right_centroid_delay_output_ms":gap("output_energy_centroid_seconds"),
+            "right_centroid_delay_source_ms":gap("source_energy_centroid_seconds"),"channels":channels}));
     }
-    json!({"kind":"objective transient displacement/envelope diagnostics, not device latency", "pulses":pulses})
+    json!({"kind":"objective transient displacement/envelope diagnostics, not device latency",
+        "notes":"Source time equals output time multiplied by ratio. Keylock can preserve output-channel delay without preserving the unlocked source-time gap. Zero discrete95%-energy width can mean energy concentrated in one sample, not no signal.","pulses":pulses})
 }
 fn difference(a: &[f32], b: &[f32]) -> Value {
     assert_eq!(a.len(), b.len());
@@ -667,10 +719,10 @@ fn export_keylock_quality() {
         "bounded WAV/timing export exceeds2GiB limit"
     );
     let sources:Vec<_>=corpus.iter().map(|c|json!({"id":c.id,"kind":c.kind,"source_sr":c.audio.sr,"channels":c.audio.ch,"frames":c.audio.frames(),"pcm_sha256":pcm_digest(&c.audio.data),"original_sha256":c.original_sha})).collect();
-    let workload = json!({"schema":1,"ratios":RATIOS,"output_rates":RATES,"blocks":BLOCKS,"sources":sources,
+    let workload = json!({"schema":2,"ratios":RATIOS,"output_rates":RATES,"blocks":BLOCKS,"sources":sources,
         "canonical_block":128,"setup":"off-timing production apply_plain load/reset, empty history, zero transition origin; no admission benchmarking","initial_rate":"fixed target; no fader settling","load_envelope":"production2ms load transition retained",
         "source_lengths":"whole source / ratio; no loop for quality WAVs","callback":"one second after20ms worker settling and16warm blocks; source loop enabled",
-        "diagnostics":"v1; source-time bass windows, transient train, central reference correlation, transition sequence; no human rating"});
+        "diagnostics":"v2; unchanged fivev1sources plus musical transient train; source-time and output stereo-delay diagnostics; Nyquist train remains explicit interpolation stress; no human rating"});
     let workload_sha = digest(&serde_json::to_vec(&workload).unwrap());
     let mut records = Vec::new();
     for sr in RATES {
@@ -727,7 +779,7 @@ fn export_keylock_quality() {
                             if source.id == "bass" {
                                 record["bass"] = bass_metrics(&output, sr, ratio, locked);
                             }
-                            if source.id == "transients" {
+                            if matches!(source.id, "transients" | "musical_transients") {
                                 record["transients"] = transient_metrics(&output, sr, ratio);
                             }
                             canonical = Some(output);
@@ -771,6 +823,49 @@ fn export_keylock_quality() {
         root.display(),
         workload_sha
     );
+}
+
+#[test]
+fn v2_appends_audio_band_onsets_and_preserves_recorded_pcm() {
+    let sources = corpus();
+    assert_eq!(sources.len(), 6);
+    for (source, expected) in sources.iter().zip([
+        "3f67ffb0c98fbef2ad1a68afaa0bf3eefded9cc4334da8e2e92c736ca04ae669",
+        "034653c987b8f7179d2ceee4ae478edecbbc42f980a87dc6742695daffa462b6",
+    ]) {
+        assert_eq!(
+            pcm_digest(&source.audio.data),
+            expected,
+            "{} recorded PCM",
+            source.id
+        );
+    }
+    let audio = &sources[5].audio;
+    assert_eq!(audio.data, musical_transients().data);
+    let metrics = transient_metrics(&audio.data, audio.sr, 1.0);
+    for (index, pulse) in metrics["pulses"].as_array().unwrap().iter().enumerate() {
+        assert!((pulse["right_centroid_delay_output_ms"].as_f64().unwrap() - 1.5).abs() < 1e-8);
+        assert!((pulse["right_onset_delay_output_ms"].as_f64().unwrap() - 1.5).abs() < 1e-8);
+        assert!(pulse["channels"][0]["energy"].as_f64().unwrap() > 0.01);
+        let start = (index + 1) * 24_000;
+        let original = (start..start + 1600)
+            .map(|i| (audio.data[i * 2] as f64).powi(2))
+            .sum::<f64>();
+        let fractional = (start - 1..start + 1600)
+            .map(|i| ((audio.data[i * 2] as f64 + audio.data[(i + 1) * 2] as f64) * 0.5).powi(2))
+            .sum::<f64>();
+        // This musical source must not be another Nyquist-alternation probe:
+        // a half-sample linear read retains most energy before any keylock DSP.
+        assert!(
+            fractional / original > 0.8,
+            "pulse {index}: fractional ratio {}",
+            fractional / original
+        );
+    }
+    assert!(audio
+        .data
+        .iter()
+        .all(|value| value.is_finite() && value.abs() <= 0.55));
 }
 
 #[test]
@@ -821,6 +916,8 @@ fn objective_helpers_distinguish_pitch_energy_and_transient_stereo_delay() {
             .as_f64()
             .unwrap();
         assert!(((right - left) * 1000.0 - 1.5).abs() < 1e-8);
+        assert!((pulse["right_onset_delay_output_ms"].as_f64().unwrap() - 1.5).abs() < 1e-8);
+        assert!((pulse["right_centroid_delay_output_ms"].as_f64().unwrap() - 1.5).abs() < 1e-8);
     }
 }
 

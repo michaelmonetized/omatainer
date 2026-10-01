@@ -29,6 +29,27 @@ if not ROOT.is_absolute():
 ROOT = ROOT.resolve()
 TEST = 'engine::keylock_quality_tests::export_keylock_quality'
 LIMIT = 2 * 1024 ** 3
+V1_SOURCES = ['vocal_f1', 'vocal_m1', 'bass', 'transients', 'full_mix']
+V2_SOURCES = [*V1_SOURCES, 'musical_transients']
+ATTRIBUTIONS = ['README.md', 'sources.json', 'VocalSet-CC-BY-4.0.txt']
+
+
+def matrix_counts(result):
+    workload = result['workload']
+    version = workload.get('schema')
+    if type(version) is not int or version not in (1, 2):
+        raise ValueError('unsupported quality workload version')
+    sources = V1_SOURCES if version == 1 else V2_SOURCES
+    if [item['id'] for item in workload['sources']] != sources:
+        raise ValueError('quality corpus differs from its declared version')
+    return sources, len(sources)*126, len(sources)*7
+
+
+def preserved_v1_corpus(prior, current):
+    if prior['workload']['schema'] != 1 or current['workload']['schema'] != 2:
+        raise ValueError('prior-corpus check requires v1 followed by v2')
+    if prior['workload']['sources'] != current['workload']['sources'][:len(V1_SOURCES)]:
+        raise ValueError('retained v1 source PCM/provenance changed on this qualification host')
 
 
 def fresh(path):
@@ -81,8 +102,14 @@ def document(root, require_binding=True):
     result = json.loads(path.read_text())
     if result.get('schema') != 1 or result.get('human_listening_scores') is not None:
         raise ValueError('unsupported report or fabricated listening scores')
-    if len(result['records']) != 630 or len(result['callbacks']) != 126:
+    sources, renders, _ = matrix_counts(result)
+    if len(result['records']) != renders or len(result['callbacks']) != 126:
         raise ValueError('incomplete fixed workload matrix')
+    expected = {f'{source}_{sr}_{block}_{ratio:.2f}_{mode}' for source in sources
+        for sr in [44100,48000,96000] for block in [64,128,512]
+        for ratio in [.5,.84,.92,1.,1.08,1.16,1.5] for mode in ['locked','unlocked']}
+    if {row['id'] for row in result['records']} != expected:
+        raise ValueError('duplicate or missing fixed render identity')
     if require_binding:
         receipt_path = root / 'verified-run.json'
         if receipt_path.stat().st_size > 2 * 1024 ** 2:
@@ -116,10 +143,11 @@ def compare(args):
         raise ValueError('baseline and candidate workloads/corpus differ; no matched comparison is valid')
     before = {r['id']: r for r in baseline['records']}
     after = {r['id']: r for r in candidate['records']}
-    if len(before) != 630 or before.keys() != after.keys():
+    _, renders, pairs = matrix_counts(candidate)
+    if len(before) != renders or before.keys() != after.keys():
         raise ValueError('duplicate or mismatched render identities')
     selected = [r for r in after.values() if r['locked'] and r['block_frames'] == 128 and r['output_sr'] == 48000]
-    assert len(selected) == 35
+    assert len(selected) == pairs
     order = lambda name: hashlib.sha256((str(args.seed) + '\0' + name).encode()).digest()
     selected.sort(key=lambda r: order(r['id']))
     files = []
@@ -128,8 +156,18 @@ def compare(args):
         unlocked = after[row['id'].removesuffix('_locked') + '_unlocked']
         reference = artifact(args.candidate, unlocked)
         files.append((number, row, old, new, reference))
-    total = sum(path.stat().st_size for _, _, *paths in files for path in paths)
-    if total > LIMIT:
+    attribution_files = []
+    for name in ATTRIBUTIONS:
+        path = args.candidate/name
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 256*1024:
+            raise ValueError('invalid or oversized corpus attribution')
+        expected = candidate['embedded_manifest']['source_files']['tests/fixtures/keylock/'+name]
+        if file_digest(path) != expected:
+            raise ValueError('corpus attribution hash mismatch')
+        attribution_files.append(path)
+    audio_bytes = sum(path.stat().st_size for _, _, *paths in files for path in paths)
+    attribution_bytes = sum(path.stat().st_size for path in attribution_files)
+    if audio_bytes + attribution_bytes + 8*1024*1024 > LIMIT:
         raise ValueError('blind pack exceeds 2 GiB cap')
     out = fresh(args.out)
     out.mkdir(mode=0o700)
@@ -153,14 +191,16 @@ def compare(args):
             key.append({'pair': pair, 'case': row['id'], 'source': row['source'], 'ratio': row['ratio'],
                         'A': 'candidate' if reverse else 'baseline', 'B': 'baseline' if reverse else 'candidate',
                         'baseline_wav_sha256': before[row['id']]['wav_sha256'], 'candidate_wav_sha256': row['wav_sha256']})
-    for file in ['README.md', 'sources.json', 'VocalSet-CC-BY-4.0.txt']:
-        with (args.candidate / file).open('rb') as reader, (listen / ('corpus-' + file)).open('xb') as target:
+    for path in attribution_files:
+        with path.open('rb') as reader, (listen / ('corpus-' + path.name)).open('xb') as target:
             shutil.copyfileobj(reader, target)
-    write(listen / 'LISTENING.md', '''# Unscored blind key-lock comparison
+    write(listen / 'LISTENING.md', f'''# Unscored blind key-lock comparison
 
-These 35 pairs cover two recorded VocalSet singing vowels (CCBY4, see corpus
+These {pairs} pairs cover two recorded VocalSet singing vowels (CCBY4, see corpus
 attribution), original analytical bass/transients and a complete procedural
-Omatainer mix. Audio is stereo Float32 WAV at 48 kHz. A/B order is deterministic
+Omatainer mix. Version2 adds original varied kick/tone/filtered-noise onsets;
+the original alternating transient train remains a Nyquist interpolation stress.
+Audio is stereo Float32 WAV at 48 kHz. A/B order is deterministic
 and blinded; filenames reveal neither implementation. The recordings are
 derivatives processed at the playback ratios recorded in the concealed key. No level normalization
 or alignment correction was applied: note differences when judging. The third
@@ -186,10 +226,18 @@ corpus cannot qualify all music or the physical live setup.
     write(operator / 'objective-diagnostics.json', json.dumps({'schema': 1, 'human_scores': None,
           'baseline': measurements(baseline), 'candidate': measurements(candidate),
           'scope': 'Objective diagnostics only; no automated quality winner or listening score'}, indent=2) + '\n')
-    write(out / 'completion.json', json.dumps({'schema': 1, 'pairs': len(key), 'audio_bytes': total,
-          'workload_sha256': candidate['workload_sha256'], 'human_scores': None}, indent=2) + '\n')
+    completion = dict(schema=1,pairs=len(key),audio_bytes=audio_bytes,attribution_bytes=attribution_bytes,
+          workload_sha256=candidate['workload_sha256'],human_scores=None,total_artifact_bytes=0)
+    subtotal = sum(path.stat().st_size for path in out.rglob('*') if path.is_file() and path.name!='INCOMPLETE')
+    while True:
+        payload=json.dumps(completion,indent=2)+'\n'
+        total=subtotal+len(payload.encode())
+        if completion['total_artifact_bytes']==total:break
+        completion['total_artifact_bytes']=total
+    if total>LIMIT:raise ValueError('complete blind pack exceeds 2 GiB cap')
+    write(out / 'completion.json',payload)
     (out / 'INCOMPLETE').unlink()
-    print('Created 35 deterministic blind pairs and an EMPTY human score sheet:', out)
+    print(f'Created {pairs} deterministic blind pairs and an EMPTY human score sheet:', out)
 
 
 def self_test():
@@ -203,7 +251,7 @@ def self_test():
             payload = b'private synthetic artifact for script tests\n'
             (folder / 'audio.wav').write_bytes(payload)
             rows = []
-            for source in ['vocal_f1', 'vocal_m1', 'bass', 'transients', 'full_mix']:
+            for source in V2_SOURCES:
                 for sr in [44100, 48000, 96000]:
                     for block in [64, 128, 512]:
                         for ratio in [.5, .84, .92, 1., 1.08, 1.16, 1.5]:
@@ -212,17 +260,19 @@ def self_test():
                                     source=source, output_sr=sr, block_frames=block, ratio=ratio,
                                     locked=locked, wav='audio.wav', wav_sha256=hashlib.sha256(payload).hexdigest(),
                                     levels=[], measurement={}))
-            report = dict(schema=1, workload={'test': True}, workload_sha256='synthetic-script-fixture',
+            attribution_hashes = {}
+            for name in ATTRIBUTIONS:
+                (folder/name).write_text('Synthetic orchestration fixture; not corpus evidence.\n')
+                attribution_hashes['tests/fixtures/keylock/'+name] = file_digest(folder/name)
+            report = dict(schema=1, workload={'schema':2,'sources':[{'id':name} for name in V2_SOURCES],'test': True}, workload_sha256='synthetic-script-fixture',
                           records=rows, callbacks=[{}] * 126, human_listening_scores=None, runtime_checkout_commit=implementation,
                           build={'executable_sha256': 'synthetic-' + implementation},
-                          embedded_manifest={'source_files': {}, 'toolchain': {}, 'target': 'synthetic'})
+                          embedded_manifest={'source_files': attribution_hashes, 'toolchain': {}, 'target': 'synthetic'})
             (folder / 'report.json').write_text(json.dumps(report))
             receipt = dict(schema=1, report_sha256=file_digest(folder/'report.json'),
-                           bindings=dict(source_files={}, toolchain={}, target='synthetic',
+                           bindings=dict(source_files=attribution_hashes, toolchain={}, target='synthetic',
                                          binary_sha256='synthetic-'+implementation))
             (folder / 'verified-run.json').write_text(json.dumps(receipt))
-            for name in ['README.md', 'sources.json', 'VocalSet-CC-BY-4.0.txt']:
-                (folder / name).write_text('Synthetic orchestration fixture; not corpus evidence.\n')
             reports.append(folder)
         first = SimpleNamespace(baseline=reports[0], candidate=reports[1], out=root/'pack1', seed=100)
         second = SimpleNamespace(**vars(first)); second.out=root/'pack2'
@@ -230,7 +280,7 @@ def self_test():
         assert (first.out/'operator/key.json').read_bytes() == (second.out/'operator/key.json').read_bytes()
         with (first.out/'listen/scores.csv').open() as file:
             rows = list(csv.reader(file))
-        assert len(rows) == 36 and all(all(not cell for cell in row[1:]) for row in rows[1:])
+        assert len(rows) == 43 and all(all(not cell for cell in row[1:]) for row in rows[1:])
         def refuses(args, text):
             try:
                 compare(args)
@@ -241,6 +291,9 @@ def self_test():
         marker = first.out/'keep'; marker.write_text('preserve')
         refuses(first, 'new evidence directory'); assert marker.read_text() == 'preserve'
         rejected = SimpleNamespace(**vars(first)); rejected.out=root/'rejected'
+        attribution=reports[1]/'README.md';retained=attribution.read_bytes();attribution.write_bytes(b'changed')
+        refuses(rejected, 'attribution hash mismatch');assert not rejected.out.exists()
+        attribution.write_bytes(retained)
         report_path = reports[1]/'report.json'
         report = json.loads(report_path.read_text()); report['workload_sha256']='changed'
         report_path.write_text(json.dumps(report))
@@ -251,6 +304,21 @@ def self_test():
         assert not rejected.out.exists()
         report['workload_sha256']='synthetic-script-fixture'; report_path.write_text(json.dumps(report))
         receipt['report_sha256']=file_digest(report_path); receipt_path.write_text(json.dumps(receipt))
+        legacy=root/'legacy';legacy.mkdir()
+        old=json.loads(json.dumps(report));old['workload']['schema']=1
+        old['workload']['sources']=[{'id':name} for name in V1_SOURCES]
+        old['records']=[row for row in old['records'] if row['source'] in V1_SOURCES]
+        preserved_v1_corpus(old,report)
+        changed=json.loads(json.dumps(report));changed['workload']['sources'][0]['pcm_sha256']='changed'
+        try:preserved_v1_corpus(old,changed)
+        except ValueError as error:assert 'retained v1' in str(error)
+        else:raise AssertionError('modified v1 source accepted')
+        (legacy/'report.json').write_text(json.dumps(old))
+        assert len(document(legacy,require_binding=False)['records'])==630
+        old['workload']['schema']=2;(legacy/'report.json').write_text(json.dumps(old))
+        try:document(legacy,require_binding=False)
+        except ValueError as error:assert 'corpus' in str(error)
+        else:raise AssertionError('v1 corpus accepted as v2')
         native = dict(embedded_manifest={'source_files': {'new.rs': 'new'}}, build={'executable_sha256': 'new'})
         try:
             verify_native(native, {'source_files': {'old.rs': 'old'}}, {}, {})
@@ -276,6 +344,7 @@ def main():
     run = sub.add_parser('run')
     run.add_argument('--test-binary', type=Path, required=True)
     run.add_argument('--out', type=Path, required=True)
+    run.add_argument('--prior-corpus', type=Path, help='retained verified v1 report directory; verifies the unchanged five-source prefix on this host')
     comparison = sub.add_parser('compare')
     comparison.add_argument('--baseline', type=Path, required=True)
     comparison.add_argument('--candidate', type=Path, required=True)
@@ -296,6 +365,11 @@ def main():
                    OMATAINER_KEYLOCK_EVIDENCE_ROOT=str(ROOT))
         subprocess.run([str(args.test_binary.resolve()), '--ignored', '--exact', TEST, '--nocapture', '--test-threads=1'], env=env, check=True)
         result = document(destination, require_binding=False)
+        prior_corpus_hash = None
+        if args.prior_corpus:
+            prior = document(args.prior_corpus)
+            preserved_v1_corpus(prior,result)
+            prior_corpus_hash = file_digest(args.prior_corpus/'report.json')
         after_manifest = records.validate(REPO)
         if after_manifest != manifest:
             raise ValueError('reviewed source manifest changed during measurement')
@@ -303,6 +377,7 @@ def main():
         host['load_average_after'] = list(os.getloadavg())
         write(destination/'verified-run.json', json.dumps(dict(schema=1, started_utc=started,
               finished_utc=dt.datetime.now(dt.timezone.utc).isoformat(), host=host, bindings=before,
+              prior_corpus_report_sha256=prior_corpus_hash,
               report_sha256=file_digest(destination/'report.json')), indent=2)+'\n')
         document(destination)
         print(json.dumps({'workload_sha256': result['workload_sha256'], 'renders': len(result['records']),
