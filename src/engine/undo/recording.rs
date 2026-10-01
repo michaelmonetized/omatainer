@@ -24,10 +24,10 @@ impl RtEngine {
             && self
                 .undo
                 .entries
-                .last()
+                .back()
                 .and_then(Option::as_ref)
                 .is_some_and(|e| e.name == Name::RecordNotes && e.gesture == self.undo.record_take);
-        if grouped && self.undo.entries.last().unwrap().as_ref().unwrap().patches.iter().flatten()
+        if grouped && self.undo.entries.back().unwrap().as_ref().unwrap().patches.iter().flatten()
             .any(|p|matches!(p,Patch::Clip {track:t,scene:s,..} if *t as usize==track && *s as usize==scene)) {return true;}
         let bytes = clip.name.capacity().max(TEXT_LIMIT)
             + 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>()
@@ -79,7 +79,7 @@ impl RtEngine {
         if !self.undo.enabled || self.undo.replaying {
             return 0;
         }
-        self.undo.entries.last().and_then(Option::as_ref).filter(|entry|
+        self.undo.entries.back().and_then(Option::as_ref).filter(|entry|
             entry.name == Name::RecordNotes && entry.patches[..entry.len].iter().flatten().any(|patch|
                 matches!(patch, Patch::Clip { track: t, scene: s, .. } if *t as usize == track && *s as usize == scene)))
             .map_or(0, |entry| entry.id)
@@ -88,8 +88,7 @@ impl RtEngine {
         if !self.undo.enabled || self.undo.replaying || owner == 0 {
             return;
         }
-        if let Some(index) = self.undo.entries[..self.undo.cursor]
-            .iter()
+        if let Some(index) = self.undo.entries.iter().take(self.undo.cursor)
             .position(|entry| entry.as_ref().is_some_and(|entry| entry.id == owner))
         {
             self.undo.changed_from(index);
@@ -109,11 +108,10 @@ impl RtEngine {
         // Later recording inverses may contain this held note. Finalizing its
         // live duration must also finalize those historical snapshots, otherwise
         // undoing a later note would resurrect a provisional quarter-beat hold.
-        if let Some(index) = self.undo.entries[..self.undo.cursor]
-            .iter()
+        if let Some(index) = self.undo.entries.iter().take(self.undo.cursor)
             .position(|entry| entry.as_ref().is_some_and(|entry| entry.id == owner))
         {
-            for entry in self.undo.entries[index + 1..].iter_mut().flatten() {
+            for entry in self.undo.entries.iter_mut().skip(index + 1).flatten() {
                 for patch in entry.patches[..entry.len].iter_mut().flatten() {
                     if let Patch::Clip {
                         track: t,
@@ -138,8 +136,7 @@ impl RtEngine {
         if len == 0 {
             return None;
         }
-        self.undo.entries[..self.undo.cursor]
-            .iter()
+        self.undo.entries.iter().take(self.undo.cursor)
             .position(|entry| {
                 entry
                     .as_ref()

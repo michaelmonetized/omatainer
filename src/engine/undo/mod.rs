@@ -9,6 +9,7 @@ mod tests;
 use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use patch::*;
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
 const MAX_ENTRIES: usize = 256;
@@ -242,7 +243,7 @@ impl Scratch {
 }
 enum Retired {
     Entry(Entry),
-    Timeline(Vec<Option<Entry>>),
+    Timeline(VecDeque<Option<Entry>>),
     Patch(Patch),
     Command(Command),
     Boxed(Box<Command>),
@@ -259,7 +260,9 @@ pub(super) struct Journal {
     gesture: u64,
     record_take: u64,
     protected: Option<u64>,
-    entries: Vec<Option<Entry>>,
+    // Preallocated ring: full-history eviction never shifts unrelated inline
+    // transactions (each can hold all 64 clip inverses plus cue metadata).
+    entries: VecDeque<Option<Entry>>,
     cursor: usize,
     next: u64,
     state: u64,
@@ -286,7 +289,7 @@ impl Default for Journal {
             gesture: 0,
             record_take: 1 << 63,
             protected: None,
-            entries: Vec::new(),
+            entries: VecDeque::new(),
             cursor: 0,
             next: 1,
             state: 0,
@@ -356,7 +359,7 @@ impl Journal {
                 }
                 shared.connected.store(false, Ordering::Release);
             })?;
-        self.entries = Vec::with_capacity(MAX_ENTRIES);
+        self.entries = VecDeque::with_capacity(MAX_ENTRIES);
         self.assets = Vec::with_capacity(MAX_ENTRIES * MAX_PATCHES * 2);
         self.stranded =
             Vec::with_capacity(2 * control::MAX_COMMANDS + 2 * control::COMMANDS_PER_BLOCK + 4);
@@ -437,7 +440,7 @@ impl Journal {
             && self.cursor == self.entries.len()
             && self
                 .entries
-                .last()
+                .back()
                 .and_then(Option::as_ref)
                 .is_some_and(|e| e.gesture == self.gesture && e.key == key && e.len < MAX_PATCHES)
     }
@@ -451,7 +454,7 @@ impl Journal {
                 || self.entries.len() == MAX_ENTRIES
                     && self
                         .entries
-                        .first()
+                        .front()
                         .and_then(Option::as_ref)
                         .is_some_and(|e| Some(e.id) == self.protected))
         {
@@ -468,19 +471,19 @@ impl Journal {
     }
     fn begin(&mut self, name: Name, key: u64, frame: u64) {
         while self.entries.len() > self.cursor {
-            let entry = self.entries.pop().unwrap().unwrap();
+            let entry = self.entries.pop_back().unwrap().unwrap();
             self.retire_entry(entry);
         }
         // Evict whole oldest transactions. The conservative estimate is checked
         // before mutation; recount after adding performs exact live deduplication.
         if self.entries.len() == MAX_ENTRIES {
-            let entry = self.entries.remove(0).unwrap();
+            let entry = self.entries.pop_front().unwrap().unwrap();
             self.retire_entry(entry);
             self.cursor -= 1;
         }
         let id = self.next;
         self.next = self.next.wrapping_add(1).max(1);
-        self.entries.push(Some(Entry::new(
+        self.entries.push_back(Some(Entry::new(
             id,
             name,
             self.gesture,
@@ -532,7 +535,7 @@ impl Journal {
             .sum::<usize>();
         self.bytes = bytes + self.assets.iter().map(|a| a.1).sum::<usize>();
         while self.bytes > self.budget && self.entries.len() > 1 {
-            let entry = self.entries.remove(0).unwrap();
+            let entry = self.entries.pop_front().unwrap().unwrap();
             self.retire_entry(entry);
             self.cursor = self.cursor.saturating_sub(1);
             self.recount();
@@ -547,7 +550,7 @@ impl Journal {
             self.protected = protected;
             return false;
         }
-        while let Some(entry) = self.entries.pop() {
+        while let Some(entry) = self.entries.pop_back() {
             let entry = entry.unwrap();
             self.retire_entry(entry);
         }
@@ -833,9 +836,9 @@ impl Journal {
             // replacement fixed timeline here, and send the entire discarded
             // allocation as one owned message. Never expand old processors
             // beyond the budget merely to discard them immediately afterwards.
-            let mut old = std::mem::replace(&mut self.entries, Vec::with_capacity(MAX_ENTRIES));
+            let mut old = std::mem::replace(&mut self.entries, VecDeque::with_capacity(MAX_ENTRIES));
             self.state = 0;
-            for entry in old[..self.cursor].iter_mut().flatten() {
+            for entry in old.iter_mut().take(self.cursor).flatten() {
                 // Held captures retain this stable owner ID across pruning.
                 // The epoch and before/after checkpoints still describe the new
                 // timeline; entry identity is not a mutable content version.
@@ -857,7 +860,7 @@ impl Journal {
                     kept.after = self.next;
                     self.next = self.next.wrapping_add(1).max(1);
                     self.state = kept.after;
-                    self.entries.push(Some(kept));
+                    self.entries.push_back(Some(kept));
                 }
             }
             let mut bytes = old.capacity() * std::mem::size_of::<Option<Entry>>();
@@ -867,7 +870,7 @@ impl Journal {
             self.retire(Retired::Timeline(old), bytes);
             self.cursor = self.entries.len();
             self.epoch = self.epoch.wrapping_add(1);
-            self.protected = self.entries.first().and_then(Option::as_ref).map(|e| e.id);
+            self.protected = self.entries.front().and_then(Option::as_ref).map(|e| e.id);
             self.reject(Failure::RateHistoryPruned);
             self.publish_checkpoint();
         }
