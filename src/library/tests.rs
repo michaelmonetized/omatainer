@@ -870,3 +870,54 @@ fn schema_four_migrates_without_inventing_cached_analysis_or_modifying_original(
     assert_eq!(fs::read(dir.store().with_extension("backup.json")).unwrap(), bytes);
     assert_eq!(read(&dir.store()).unwrap().schema, 5);
 }
+
+#[test]
+fn analysis_store_receipts_distinguish_precommit_failure_postrename_and_noop() {
+    for checkpoint in [0, 1, 2, 3, 4] {
+        let dir = Dir::new();
+        let mut store = Store::open(dir.store()).unwrap();
+        store.catalog = mixed(&dir);
+        store.save().unwrap();
+        assert!(store.last_save_replaced());
+        store.save().unwrap();
+        assert!(
+            !store.last_save_replaced(),
+            "no-op inherited a previous replacement flag"
+        );
+        let previous = read(&dir.store()).unwrap().tracks;
+        store.catalog.tracks[0].versions[0].preparation.cue = 81.25;
+        let expected = store.catalog.tracks.clone();
+        let failure = store
+            .save_with(|at| {
+                if at == checkpoint {
+                    Err("controlled catalog write failure".into())
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap_err();
+        assert_eq!(store.last_save_replaced(), checkpoint == 3);
+        assert_eq!(
+            read(&dir.store()).unwrap().tracks,
+            if checkpoint == 3 {
+                expected.clone()
+            } else {
+                previous
+            }
+        );
+        if checkpoint == 3 {
+            assert!(failure.contains("replacement committed"));
+        }
+        // Every new save call resets the receipt even if validation rejects
+        // before touching the filesystem; no prior committed flag may leak.
+        store.catalog.schema = 99;
+        assert!(store.save().is_err());
+        assert!(!store.last_save_replaced());
+        store.catalog.schema = SCHEMA;
+        store.save().unwrap();
+        assert!(store.last_save_replaced());
+        assert_eq!(read(&dir.store()).unwrap().tracks, expected);
+        store.save().unwrap();
+        assert!(!store.last_save_replaced());
+    }
+}
