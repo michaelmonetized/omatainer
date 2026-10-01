@@ -143,6 +143,8 @@ pub(super) struct Processor {
     started: bool,
     #[cfg(test)]
     analysis_count: u64,
+    #[cfg(test)]
+    full_search_count: u64,
 }
 impl Processor {
     /// Off-callback construction/rate preparation; reset and render never resize.
@@ -163,11 +165,19 @@ impl Processor {
             started: false,
             #[cfg(test)]
             analysis_count: 0,
+            #[cfg(test)]
+            full_search_count: 0,
         }
     }
     #[cfg(test)]
     pub(super) fn analysis_count(&self) -> u64 {
         self.analysis_count
+    }
+    /// Counts scoring-loop entries, excluding the silent-reference shortcut.
+    /// Like the hop count, this remains cumulative across logical resets.
+    #[cfg(test)]
+    pub(super) fn full_search_count(&self) -> u64 {
+        self.full_search_count
     }
     pub fn reset(&mut self, pos: f64, source_step: f64) {
         self.phase = 0;
@@ -232,6 +242,10 @@ impl Processor {
         }
         if energy < 1e-20 {
             return nominal;
+        }
+        #[cfg(test)]
+        {
+            self.full_search_count = self.full_search_count.wrapping_add(1);
         }
         let radius = self.radius * step;
         let score = |candidate: f64| -> f64 {

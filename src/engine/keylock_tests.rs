@@ -515,3 +515,38 @@ fn upper_band_tones_do_not_alias_the_bounded_correlation_probes() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+#[test]
+fn search_instrumentation_distinguishes_silent_hops_from_correlation_work() {
+    for audible in [false, true] {
+        let mut source = tone(48_000, 93.75);
+        if !audible {
+            Arc::make_mut(&mut source).data.fill(0.0);
+        }
+        let mut rt = engine_with(source, 48_000, 0.84, true);
+        let counts = test_alloc::measure(|| {
+            for _ in 0..8192 {
+                rt.render_deck(0);
+            }
+        });
+        assert_eq!(counts.allocations, 0);
+        assert_eq!(counts.frees, 0);
+        let dsp = &rt.decks[0].keylock_dsp;
+        let hops = dsp.analysis_count();
+        let searches = dsp.full_search_count();
+        assert!(hops > 0);
+        assert_eq!(searches, if audible { hops } else { 0 });
+        let position = rt.decks[0].pos;
+        rt.decks[0].transition_to(position, 48_000.0, DeckTransition::Jump);
+        assert_eq!(rt.decks[0].keylock_dsp.analysis_count(), hops);
+        assert_eq!(rt.decks[0].keylock_dsp.full_search_count(), searches);
+        for _ in 0..=rt.decks[0].keylock_dsp.hop {
+            rt.render_deck(0);
+        }
+        assert_eq!(rt.decks[0].keylock_dsp.analysis_count(), hops + 1);
+        assert_eq!(
+            rt.decks[0].keylock_dsp.full_search_count(),
+            searches + u64::from(audible)
+        );
+    }
+}
