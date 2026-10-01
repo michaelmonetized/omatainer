@@ -110,3 +110,7 @@ as supplied licensed assets.
   the assembled source. No user desktop configuration,
   live socket, real controller, external media license, x86_64 execution, or
   physical power-loss durability was tested by these fixtures.
+
+The isolated scene-input panic-abort probe copies the same embedded license
+records as the native source. Its actual CLI, IPC and renderer scene-boundary
+checks pass after packaging integration; no desktop or hardware is opened.
