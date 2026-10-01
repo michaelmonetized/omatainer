@@ -105,6 +105,13 @@ reload in a background worker, including font-only edits. The next valid update
 replaces the applied style; incomplete writes retain the last valid settings.
 See the [theme reload validation](docs/validation/issue-78-theme-reload.md).
 
+The installed face resolved by `fc-match monospace` is used first for both UI
+text families. Fontconfig may supply an installed substitute for an unavailable
+family. If resolution or font-file validation fails, Omatainer keeps the last
+valid font, or uses its bundled Ubuntu/Hack/emoji fallback before the first valid
+selection. Bundled symbol fallbacks remain available alongside the chosen font.
+See the [selected-font and glyph validation](docs/validation/issue-79-selected-font.md).
+
 ## Layout
 
 ```
