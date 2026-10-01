@@ -259,3 +259,14 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Zero mix emits dry input while processor history keeps advancing; full mix
   emits only the time-effect signal. Intermediate mix changes do not scale the
   stored feedback history or apply the wet coefficient a second time.
+
+## Metronome timing
+
+- Each transport beat starts a 20 ms click with a 1 ms attack and a decay to
+  zero. Beats divisible by four use 1200 Hz at amplitude 0.20; other beats use
+  800 Hz at amplitude 0.12, before existing master/cue processing.
+- Beat scheduling uses half-open sample intervals. Oscillator phase and envelope
+  belong to the click voice, so callback block sizes cannot change the sound.
+- Disabling the metronome or stopping clears its voice immediately. Enabling or
+  resuming between beats waits for the next boundary; starting on a boundary
+  starts that beat's click. A sample-rate change clears and rebuilds the voice.
