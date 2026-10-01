@@ -20,8 +20,20 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 ## C1. Pitch lock (L)
 
 - **Off:** pitch fader changes tempo and pitch together (resample).
-- **On:** pitch fader changes tempo only. Played pitch stays that of the file
-  (OLA grains at 1×, playhead advances at the fader rate).
+- **On, forward rate 0.50–1.50×:** original MIT stereo-linked waveform-similarity
+  overlap-add preserves pitch while the playhead advances at the requested
+  tempo. Source sample rate and output sample rate remain distinct.
+- At exactly 1×, direct source playback avoids overlap coloration. Platter
+  touch uses direct scratch playback (`L~`); release resets overlap history
+  with the existing bounded transition. Seek/cue/load transitions cannot
+  resurrect audio from before the explicit destination.
+- Reverse, stopped-rate transitions and rates beyond the supported interval
+  use direct resampling. A playing deck outside the range shows `L!`; stopped
+  and empty decks show armed status. Match/Sync can exceed the supported range.
+- Resident PCM supplies look-ahead without an output FIFO. Search and overlap
+  can still move content relative to the transport; this displacement must be
+  measured separately from stream/device latency. No converter or hardware
+  latency, transparent listening result or vendor parity is implied.
 - Toggling L is audible at a non-center fader, not just a LED.
 
 ## C2. Match (⇄)

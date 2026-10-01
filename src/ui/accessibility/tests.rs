@@ -103,6 +103,59 @@ impl Gui {
 }
 
 #[test]
+fn pitch_lock_reports_renderer_bypass_and_armed_modes_without_changing_its_action_id() {
+    use crate::engine::keylock::Mode;
+    let mut gui = Gui::new();
+    let name = "Deck A: Pitch lock";
+    let id = gui.node(name).0;
+    let check = |gui: &mut Gui, mode: Mode, detail: &str, mark: &str| {
+        gui.rt.publish_for_test();
+        gui.frame(vec![]);
+        let output = gui.frame(vec![]);
+        assert_eq!(gui.app.snap.decks[0].keylock_mode, mode);
+        let (current, node) = gui.node(name);
+        assert_eq!(current, id, "status changes must preserve the native action target");
+        assert!(node.description().unwrap_or_default().contains(detail), "{detail}");
+        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape,
+            egui::epaint::Shape::Text(text) if text.galley.text() == mark)), "missing {mark}");
+    };
+    check(&mut gui, Mode::Off, "Off: tempo and pitch", "L");
+    gui.action(name, Action::Click, None);
+    check(&mut gui, Mode::Stopped, "Armed: deck stopped", "L");
+    assert!(gui.rt.decks[0].keylock, "the actual native action reached the renderer");
+
+    gui.rt.apply(Command::DeckPlay { deck: 0 });
+    // Natural playback start must actually reach the advertised unity bypass;
+    // do not seed an exact rate or fake a snapshot to make this assertion pass.
+    gui.rt.process(&mut [0.0; 1024]);
+    check(&mut gui, Mode::Unity, "Original rate", "L");
+    gui.rt.apply(Command::DeckPitch { deck: 0, value: 0.9 });
+    gui.rt.process(&mut [0.0; 256]);
+    check(&mut gui, Mode::Locked, "Pitch preservation active", "L");
+
+    gui.rt.apply(Command::DeckTouch { deck: 0, on: true });
+    gui.rt.apply(Command::DeckJog { deck: 0, delta: -0.05 });
+    gui.rt.process(&mut [0.0; 256]);
+    check(&mut gui, Mode::ScratchBypass, "Scratch bypass", "L~");
+    gui.rt.apply(Command::DeckTouch { deck: 0, on: false });
+    gui.rt.process(&mut [0.0; 16_384]);
+    check(&mut gui, Mode::Locked, "Pitch preservation active", "L");
+
+    // Match/Sync may ask for rates beyond the pitch fader's range. Exercise
+    // the real sync renderer against that controlled target, not a fake snap.
+    gui.rt.decks[0].sync_bpm = 400.0;
+    gui.rt.apply(Command::DeckSync { deck: 0 });
+    gui.rt.process(&mut [0.0; 16_384]);
+    check(&mut gui, Mode::UnsupportedRate, "Rate outside pitch-lock range", "L!");
+    gui.action(name, Action::Click, None);
+    check(&mut gui, Mode::Off, "Off: tempo and pitch", "L");
+    assert!(!gui.rt.decks[0].keylock);
+    gui.action(name, Action::Click, None);
+    gui.rt.apply(Command::DeckUnload { deck: 0 });
+    check(&mut gui, Mode::NoMedia, "Armed: no media", "L");
+}
+
+#[test]
 fn actual_surface_has_named_roles_values_actions_and_keyboard_focus() {
     let mut gui = Gui::new();
     for name in [
