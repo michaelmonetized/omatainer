@@ -566,7 +566,7 @@ impl App {
                     applied,
                 } => {
                     self.project.active = None;
-                    self.install_project_view(view, applied);
+                    self.install_project_view(ctx, view, applied);
                     self.project.current_path = path;
                     self.project.message = Some("Project ready, stopped. Space resumes remembered session clips; deck play buttons resume saved deck positions.".into());
                 }
@@ -672,7 +672,7 @@ impl App {
         }
     }
 
-    fn install_project_view(&mut self, view: UiState, applied: Applied) {
+    fn install_project_view(&mut self, ctx: &egui::Context, view: UiState, applied: Applied) {
         self.project.awaiting_snapshot = Some(applied.revision);
         self.poll_play_history();
         self.loads = std::array::from_fn(|_| None);
@@ -683,7 +683,14 @@ impl App {
         self.undo_history.open = view.history_open;
         self.deck_time = view.deck_time;
         self.clip_gain_edit = None;
+        // Retire producer gate reservations before forgetting the old GUI
+        // input owners; later key-up may otherwise see an already-cleared bit.
+        for (pad, held) in self.pad_held.into_iter().enumerate() {
+            if held { self.submit(Command::SamplerPad { pad: pad as u8, on: false }); }
+        }
         self.pad_held = [false; 16];
+        self.pad_inputs = [0; 16];
+        accessibility::cancel_editor(ctx);
 
         self.refresh_library_view();
         self.project.pending_selection = None;
@@ -762,9 +769,11 @@ impl App {
                         ui.menu_button("Project", |ui| {
                             if ui.button("New project").clicked() {
                                 action = Some(Action::New);
+                                ui.close();
                             }
                             if ui.button("Open project…").clicked() {
                                 action = Some(Action::OpenDialog);
+                                ui.close();
                             }
                             ui.menu_button("Open recent", |ui| {
                                 if let Some(warning) = &self.project.recent_warning {
@@ -776,6 +785,7 @@ impl App {
                                 for path in &self.project.recent {
                                     if ui.button(path.display().to_string()).clicked() {
                                         action = Some(Action::Open(path.clone()));
+                                        ui.close();
                                     }
                                 }
                             });
@@ -787,6 +797,7 @@ impl App {
                             ] {
                                 if ui.button(label).clicked() {
                                     save = Some(kind);
+                                    ui.close();
                                 }
                             }
                         });
@@ -859,7 +870,8 @@ impl App {
                     let opening = matches!(kind, PathKind::Open(_));
                     ui.heading(if opening { "Open native project" } else { "Save native project" });
                     ui.label("Project path (.omat). Relative paths use the application working directory.");
-                    ui.add(egui::TextEdit::singleline(text).desired_width(440.0).hint_text("/path/to/session.omat"));
+                    let path_field = ui.add(egui::TextEdit::singleline(text).desired_width(440.0).hint_text("/path/to/session.omat"));
+                    path_field.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Project file path"));
                     if !opening { ui.checkbox(replace, "Replace an existing file at this path"); }
                     ui.horizontal(|ui| {
                         if ui.add_enabled(!text.trim().is_empty(), egui::Button::new(if opening { "Open" } else { "Save" })).clicked() {

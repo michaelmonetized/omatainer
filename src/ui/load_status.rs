@@ -146,13 +146,15 @@ impl App {
                                 self.theme.fg
                             };
                             ui.label(RichText::new(load.text(deck)).color(color));
-                            if failed && load.selection.is_some() && ui.button("Retry").clicked() {
-                                retry = Some((deck as u8, load.selection.clone()));
+                            if failed && load.selection.is_some() {
+                                let response = ui.button("Retry");
+                                accessibility::button(ui, &response, &format!("Deck {}: Retry media load", (b'A' + deck as u8) as char), None);
+                                if response.clicked() { retry = Some((deck as u8, load.selection.clone())); }
                             }
-                            if !matches!(load.phase, Phase::Loading | Phase::Queued)
-                                && ui.button("Dismiss").clicked()
-                            {
-                                dismiss = Some(deck);
+                            if !matches!(load.phase, Phase::Loading | Phase::Queued) {
+                                let response = ui.button("Dismiss");
+                                accessibility::button(ui, &response, &format!("Deck {}: Dismiss load status", (b'A' + deck as u8) as char), None);
+                                if response.clicked() { dismiss = Some(deck); }
                             }
                         });
                         if let Some(Selection {
