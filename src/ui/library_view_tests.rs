@@ -154,7 +154,7 @@ fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells()
     frame(&ctx, &mut fixture.app, 0.2, vec![]);
     assert_eq!(fixture.app.library_view.stats.formatted, 1);
     assert_eq!(fixture.app.library_view.stats.rebuilds, rebuilt);
-    assert_eq!(fixture.app.library_view.cells[&1].played, "555");
+    assert_eq!(fixture.app.library_view.cells[&1].played, "1970-01-01 UTC");
     // Weak cache ownership neither pins the large library nor misses mutation.
     assert_eq!(Arc::strong_count(&fixture.app.library), 1);
     Arc::make_mut(&mut fixture.app.library)[2].length = Some(600.0);

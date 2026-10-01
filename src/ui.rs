@@ -26,6 +26,7 @@ use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
 mod play_history;
+mod play_time;
 mod audio_status;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
@@ -851,6 +852,10 @@ impl App {
     }
 
     fn crate_row(&mut self, ui: &mut Ui, t: &Theme) {
+        self.crate_row_at(ui, t, SystemTime::now());
+    }
+
+    fn crate_row_at(&mut self, ui: &mut Ui, t: &Theme, now: SystemTime) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.label(RichText::new("crate").size(11.0).color(t.fg_dim));
@@ -897,12 +902,17 @@ impl App {
                     let played_at = self.item_last_play(item);
                     let cells = self.library_view.cells.entry(i).or_insert_with(|| {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
-                        Cells::new(item, played_at)
+                        Cells::new(item, played_at, now)
                     });
-                    if cells.played_at != played_at {
-                        cells.played_at = played_at;
-                        cells.played = fmt_play(played_at);
+                    if cells.refresh_play(played_at, now) {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
+                    }
+                    if let Some(deadline) = cells.played_refresh_at {
+                        // Eframe adds this duration to a native Instant. Cap
+                        // distant future dates so malformed clocks cannot overflow it.
+                        let delay = deadline.duration_since(now).unwrap_or_default()
+                            .min(std::time::Duration::from_secs(86400));
+                        ui.ctx().request_repaint_after(delay);
                     }
                     #[cfg(test)] { self.library_view.stats.rendered += 1; }
                     let sel = i == self.lib_sel;
@@ -914,7 +924,10 @@ impl App {
                             *txt, FontId::proportional(11.0), if sel { t.accent } else { t.fg });
                         x += w;
                     }
-                    let resp = resp.on_hover_text(format!("BPM: {}", item.bpm.label()));
+                    let resp = resp.on_hover_ui(|ui| {
+                        ui.label(format!("BPM: {}", item.bpm.label()));
+                        ui.label(&cells.played_tooltip);
+                    });
                     if resp.clicked() || resp.double_clicked() {
                         self.lib_sel = i;
                         ui.memory_mut(|memory| memory.request_focus(focus));
@@ -1170,11 +1183,6 @@ fn fmt_len(seconds: Option<f64>) -> String {
     }
 }
 
-fn fmt_play(t: Option<SystemTime>) -> String {
-    let Some(t) = t else { return "—".into() };
-    let Ok(d) = t.duration_since(SystemTime::UNIX_EPOCH) else { return "—".into() };
-    format!("{}", d.as_secs() % 100000)
-}
 
 fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32) -> (f32, f32, f32, f32) {
     let mut wave_h = (h - fader_h - gap).max(120.0);
