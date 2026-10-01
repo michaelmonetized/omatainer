@@ -80,6 +80,36 @@ impl Grid {
     }
 }
 
+/// One request's renderer acknowledgement, separate from the media receipt's
+/// latest preparation. A later grid edit/Undo cannot erase this completion.
+#[derive(Clone, Debug)]
+pub(crate) struct GridEditAck(std::sync::Arc<std::sync::atomic::AtomicU8>);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GridEditState { Pending, Applied, Rejected }
+impl GridEditAck {
+    pub fn new() -> Self { Self(std::sync::Arc::new(std::sync::atomic::AtomicU8::new(0))) }
+    pub fn state(&self) -> GridEditState {
+        match self.0.load(std::sync::atomic::Ordering::Acquire) {
+            1 => GridEditState::Applied,
+            2 => GridEditState::Rejected,
+            _ => GridEditState::Pending,
+        }
+    }
+    pub(super) fn applied(&self) { self.0.store(1, std::sync::atomic::Ordering::Release); }
+    fn reject_pending(&self) {
+        let _ = self.0.compare_exchange(0, 2, std::sync::atomic::Ordering::AcqRel, std::sync::atomic::Ordering::Acquire);
+    }
+}
+pub(super) fn reject_retired(mut command: &super::Command) {
+    loop {
+        match command {
+            super::Command::DeckGrid { ack, .. } => { ack.reject_pending(); return; }
+            super::Command::Gesture { command: inner, .. } => command = inner,
+            _ => return,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,7 +221,7 @@ mod renderer_tests {
         rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
         rt.clear_undo_for_test();
         let grid = Grid::new(1.25, 127.5).unwrap();
-        let command = Command::DeckGrid { deck: 0, grid: Some(grid), receipt: receipt.clone() };
+        let command = Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: Some(grid), receipt: receipt.clone() };
         assert_eq!(test_alloc::measure(|| rt.apply(command)), test_alloc::Counts::default());
         assert_eq!(rt.decks[0].grid, Some(grid));
         assert_eq!(receipt.preparation().unwrap().1.grid, Some(grid));
@@ -206,28 +236,68 @@ mod renderer_tests {
         assert_eq!(rt.decks[1].grid, Some(grid));
         assert_eq!(rt.decks[1].hotcues[0].pos, 12_000.0);
         assert!(!rt.decks[1].playing);
-        rt.apply(Command::DeckGrid { deck: 0, grid: None, receipt: receipt.clone() });
+        rt.apply(Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: None, receipt: receipt.clone() });
         assert_eq!(rt.decks[0].grid, None);
         assert_eq!(rt.decks[0].hotcues[0].pos, 12_000.0);
         rt.apply(Command::Undo);
         assert_eq!(rt.decks[0].grid, Some(grid));
         let before = engine.undo.checkpoint();
-        let same = Command::DeckGrid { deck: 0, grid: Some(grid), receipt: receipt.clone() };
+        let same = Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: Some(grid), receipt: receipt.clone() };
         assert_eq!(test_alloc::measure(|| rt.apply(same)), test_alloc::Counts::default());
         assert_eq!(engine.undo.checkpoint(), before);
         let commands = [
-            Command::DeckGrid { deck: 255, grid: None, receipt: receipt.clone() },
-            Command::DeckGrid { deck: 0, grid: None, receipt: Receipt::new() },
-            Command::DeckGrid { deck: 0, grid: None, receipt: loaded },
+            Command::DeckGrid { ack: GridEditAck::new(), deck: 255, grid: None, receipt: receipt.clone() },
+            Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: None, receipt: Receipt::new() },
+            Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: None, receipt: loaded },
         ];
         assert_eq!(test_alloc::measure(|| { for command in commands { rt.apply(command); } }), test_alloc::Counts::default());
         assert_eq!(engine.undo.checkpoint(), before);
         assert_eq!(rt.decks[0].grid, Some(grid));
         rt.apply(Command::DeckUnload { deck: 0 });
         let before = engine.undo.checkpoint();
-        rt.apply(Command::DeckGrid { deck: 0, grid: Some(grid), receipt });
+        rt.apply(Command::DeckGrid { ack: GridEditAck::new(), deck: 0, grid: Some(grid), receipt });
         assert_eq!(engine.undo.checkpoint(), before);
         assert_eq!(rt.decks[0].grid, None);
+    }
+
+    #[test]
+    fn request_acknowledgements_survive_later_edits_and_undo_and_reject_retired_work() {
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let receipt = engine.initial_playback[0].clone();
+        let b = Grid::new(0.5, 120.0).unwrap();
+        let c = Grid::new(1.5, 100.0).unwrap();
+        let first = GridEditAck::new();
+        let later = GridEditAck::new();
+        let commands = [
+            Command::DeckGrid { deck: 0, grid: Some(b), receipt: receipt.clone(), ack: first.clone() },
+            Command::DeckGrid { deck: 0, grid: Some(c), receipt: receipt.clone(), ack: later.clone() },
+        ];
+        assert_eq!(first.state(), GridEditState::Pending);
+        assert_eq!(test_alloc::measure(|| { for command in commands { rt.apply(command); } }), test_alloc::Counts::default());
+        assert_eq!(first.state(), GridEditState::Applied);
+        assert_eq!(later.state(), GridEditState::Applied);
+        assert_eq!(receipt.preparation().unwrap().1.grid, Some(c));
+        rt.apply(Command::Undo);
+        assert_eq!(later.state(), GridEditState::Applied);
+        assert_eq!(receipt.preparation().unwrap().1.grid, Some(b));
+        let unchanged = GridEditAck::new();
+        let before = engine.undo.checkpoint();
+        rt.apply(Command::DeckGrid { deck: 0, grid: Some(b), receipt: receipt.clone(), ack: unchanged.clone() });
+        assert_eq!(unchanged.state(), GridEditState::Applied);
+        assert_eq!(engine.undo.checkpoint(), before);
+        let invalid = GridEditAck::new();
+        let rejected = Command::DeckGrid { deck: 0, grid: Some(c), receipt: Receipt::new(), ack: invalid.clone() };
+        assert_eq!(test_alloc::measure(|| rt.apply(rejected)), test_alloc::Counts::default());
+        assert_eq!(invalid.state(), GridEditState::Rejected);
+        let cancelled = GridEditAck::new();
+        let dropped = Command::Gesture { id: 45, command: Box::new(Command::DeckGrid {
+            deck: 0, grid: Some(c), receipt, ack: cancelled.clone(),
+        }) };
+        assert_eq!(test_alloc::measure(|| rt.undo.retire_command(dropped)), test_alloc::Counts::default());
+        assert_eq!(cancelled.state(), GridEditState::Rejected);
+        // Even if the GUI has closed, unique command ownership retires off callback.
+        let unique = Command::DeckGrid { deck: 255, grid: None, receipt: Receipt::new(), ack: GridEditAck::new() };
+        assert_eq!(test_alloc::measure(|| rt.apply(unique)), test_alloc::Counts::default());
     }
 
     #[test]
@@ -236,7 +306,7 @@ mod renderer_tests {
         let a = Grid::new(1.25, 120.0).unwrap();
         let b = Grid::new(0.375, 90.0).unwrap();
         for (deck, grid) in [(0, a), (1, b)] {
-            rt.apply(Command::DeckGrid { deck, grid: Some(grid), receipt: engine.initial_playback[deck as usize].clone() });
+            rt.apply(Command::DeckGrid { ack: GridEditAck::new(), deck, grid: Some(grid), receipt: engine.initial_playback[deck as usize].clone() });
         }
         rt.decks[0].pos = a.seconds_at(3.25).unwrap() * 48_000.0;
         rt.decks[1].pos = b.seconds_at(5.8).unwrap() * 48_000.0;
