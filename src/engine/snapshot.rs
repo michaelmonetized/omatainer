@@ -324,7 +324,7 @@ impl Frame {
         target.sampler_oct = rt.sampler_oct;
         target.sampler_revision = rt.sampler_revision;
         target.sampler_epoch = rt.undo.checkpoint().epoch;
-        target.sampler_audition = rt.sampler_audition.as_ref().map(|(id, _)| *id);
+        target.sampler_audition = rt.sampler_audition.as_ref().map(|active| active.id);
         target.sampler_instances.clear();
         target.sampler_instances.extend(rt.sampler_banks.iter().cloned());
         for (out, source) in target.sampler_banks.iter_mut().zip(&rt.sampler_banks) {
