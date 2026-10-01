@@ -326,3 +326,75 @@ fn rejected_or_still_queued_unload_does_not_claim_current_media_was_replaced() {
         assert!(!visible(&output, &format!("loaded {name}")));
     }
 }
+
+#[test]
+fn cancellation_and_application_have_one_winner_at_controlled_interleavings() {
+    use crate::engine::load_receipt::State;
+    use std::sync::mpsc;
+    let files = Files::new();
+    let path = files.wave("racing.wav");
+    for decoded in [false, true] {
+        for after_claim in [false, true] {
+            let mut f = Fixture::new(32);
+            if decoded {
+                f.app.load_file(0, path.clone(), "racing file");
+                f.decoder_jobs.recv_timeout(Duration::from_secs(3)).unwrap();
+                f.decoder_results
+                    .send((0, crate::engine::dsp::decode_audio(&path)))
+                    .unwrap();
+                f.poll_loads();
+            } else {
+                f.app.lib_filter = "Harmony".into();
+                f.app.load_sel(0);
+            }
+            let before = f.rt.decks[0].audio.clone().unwrap();
+            let command = f.rt.cmd_rx.try_recv().unwrap();
+            let receipt = f.app.loads[0].as_ref().unwrap().receipt.clone().unwrap();
+            let (paused, at_pause) = mpsc::channel();
+            let (resume, resumed) = mpsc::channel();
+            f.rt.load_test_hooks[usize::from(after_claim)] = Some(Box::new(move || {
+                paused.send(()).unwrap();
+                resumed.recv().unwrap();
+            }));
+            let mut rt = f.rt;
+            let renderer = std::thread::spawn(move || {
+                rt.apply(command);
+                rt
+            });
+            at_pause.recv_timeout(Duration::from_secs(3)).unwrap();
+            assert_eq!(
+                receipt.state(),
+                if after_claim {
+                    State::Applying
+                } else {
+                    State::Pending
+                }
+            );
+            assert!(f.app.submit(Command::DeckUnload { deck: 0 }));
+            let output = frame(&mut f.app, &egui::Context::default(), 1.0, vec![]);
+            if after_claim {
+                assert_visible(&output, "queued ");
+                assert!(!visible(&output, "replaced or unloaded"));
+                assert_eq!(receipt.state(), State::Applying);
+            } else {
+                assert_eq!(receipt.state(), State::Superseded);
+            }
+            resume.send(()).unwrap();
+            let mut rt = renderer.join().unwrap();
+            if after_claim {
+                assert_eq!(receipt.state(), State::Current);
+                assert!(!Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &before));
+            } else {
+                assert_eq!(receipt.state(), State::Superseded);
+                assert!(Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &before));
+            }
+            rt.process(&mut [0.0; 2]); // execute the later unload
+            assert!(rt.decks[0].audio.is_none());
+            assert_eq!(receipt.state(), State::Superseded);
+            assert!(!visible(
+                &frame(&mut f.app, &egui::Context::default(), 2.0, vec![]),
+                "loaded racing file"
+            ));
+        }
+    }
+}

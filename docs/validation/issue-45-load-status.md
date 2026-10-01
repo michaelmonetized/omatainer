@@ -14,7 +14,10 @@ Other application status messages continue to render beside the deck records.
 
 Queue admission is not completion. GUI media loads use `DeckLoadRequested` with
 an atomic application receipt. The renderer checks the receipt and, for decoded
-files, the existing #37 generation token before replacing media. It marks the
+files, the existing #37 generation token before replacing media. An atomic
+Pending→Applying claim resolves cancellation against application: cancellation
+that wins prevents media mutation; a claim that wins may finish before the next
+queued replacement/unload. Applying remains visibly queued. It marks the
 receipt current only after replacement. Each deck retains its current receipt
 and retires it on any later media replacement or unload, including raw engine
 commands. Cancelling a pending request does not retire already-applied media:
@@ -26,18 +29,18 @@ obsolete successful state. No renderer mutex or synchronous decode was added.
 
 Validation (local Linux, isolated private Cargo target):
 
-- `cargo test --offline`: **210 passed**, including existing #34/#35/#37/#40
+- `cargo test --offline`: **211 passed**, including existing #34/#35/#37/#40
   loading, cancellation, controller bridge and contract coverage.
-- UI coverage: **31 tests passed** within the full suite.
+- UI coverage: **32 tests passed** within the full suite.
 - `cargo build --offline`: passed.
 - `git diff --check`: passed.
-- Six added regression tests run the real App frame/layout and inspect painted
+- Seven added regression tests run the real App frame/layout and inspect painted
   egui text inside a 1440×900 viewport. Actual pointer events activate Retry and
   Dismiss. Production decoder fixtures cover missing, corrupt and valid WAV
   loads; the resulting media is checked in the real renderer. Tests also cover
   persistent errors with simulated frame time advanced by hours, independent
   deck rows, captured-source retry after browsing, missing built-in recovery,
-  application delayed in the command queue, rejected/queued unloads, same-title reload, renderer
+  application delayed in the command queue, rejected/queued unloads, same-title reload, controlled before/after-claim cancellation races, renderer
   disconnect, unload, and a stale completion delivered after its replacement.
 - Existing warning tests continue to assert the actual painted warning text,
   and controller tests continue to enter through the synthetic Pioneer message.

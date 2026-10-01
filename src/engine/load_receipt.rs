@@ -16,6 +16,7 @@ pub enum State {
     Current = 1,
     Unavailable = 2,
     Superseded = 3,
+    Applying = 4,
 }
 
 impl Receipt {
@@ -27,8 +28,19 @@ impl Receipt {
             0 => State::Pending,
             1 => State::Current,
             2 => State::Unavailable,
+            4 => State::Applying,
             _ => State::Superseded,
         }
+    }
+    pub(super) fn claim(&self) -> bool {
+        self.0
+            .compare_exchange(
+                State::Pending as u8,
+                State::Applying as u8,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
     }
     pub fn cancel_pending(&self) {
         let _ = self.0.compare_exchange(
@@ -42,9 +54,9 @@ impl Receipt {
         self.0.store(State::Superseded as u8, Ordering::Release);
     }
     pub(super) fn finish(&self, state: State) {
-        // Cancellation racing application must never revive an obsolete status.
+        // Only the renderer that claimed this request can finish it.
         let _ = self.0.compare_exchange(
-            State::Pending as u8,
+            State::Applying as u8,
             state as u8,
             Ordering::AcqRel,
             Ordering::Acquire,
