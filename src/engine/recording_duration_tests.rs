@@ -128,7 +128,7 @@ fn stopped_compose_records_audio_time_and_integrates_tempo_and_sample_rate_chang
     render(&mut rt, 12_000); // 0.5 beats at 120 BPM / 48 kHz.
     rt.apply(Command::SetBpm(60.0));
     render(&mut rt, 12_000); // 0.25 beats at 60 BPM / 48 kHz.
-    rt.set_sample_rate(44_100);
+    rt.set_sample_rate(44_100).unwrap();
     render(&mut rt, 22_050); // 0.5 beats at 60 BPM / 44.1 kHz.
     rt.apply(Command::SamplerPad { pad: 0, on: false });
     assert!(!rt.playing);
@@ -253,7 +253,7 @@ fn recorded_holds_across_loop_seams_replay_at_the_synthetic_event_times() {
     // off. The 6.5-beat hold overlaps its next four-beat-loop onset.
     for sample_rate in [44_100, 48_000] {
         let mut playback = fixture(true);
-        playback.set_sample_rate(sample_rate);
+        playback.set_sample_rate(sample_rate).unwrap();
         playback.apply(Command::SetNotes {
             track: 1,
             scene: 2,

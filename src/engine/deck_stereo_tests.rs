@@ -297,7 +297,7 @@ fn deck_sample_rate_change_resets_both_histories_and_preserves_controls() {
                 assert!(deck.filter[channel].history[0] != 0.0);
             }
         }
-        rt.set_sample_rate(sr);
+        rt.set_sample_rate(sr).unwrap();
         for deck in 0..DECKS {
             assert_gains(&mut rt, deck, before);
             assert!(rt.decks[deck].eq_cut[1]);

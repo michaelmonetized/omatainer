@@ -6,7 +6,7 @@ mod model;
 mod prepare;
 use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
-pub use model::State;
+pub use model::{State, STATE_VERSION};
 pub use prepare::Prepared;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
 
@@ -464,6 +464,7 @@ impl RtEngine {
                 } => {
                     if self.project.revision() != *expected
                         || prepared.rt.sr != self.sr
+                        || !self.sampler_assets.same_owner(&prepared.rt.sampler_assets)
                         || self.cmd_rx.pending_project_ui_requests()
                     {
                         task.error = Some(Error::Conflict);
@@ -576,6 +577,7 @@ impl RtEngine {
             | Command::DeckEqSolo { .. }
             | Command::DeckPitchRange { .. }
             | Command::SamplerBank(_)
+            | Command::SamplerEdit(_)
             | Command::SamplerInst(_)
             | Command::SamplerOct(_)
             | Command::FxAdd(_)
