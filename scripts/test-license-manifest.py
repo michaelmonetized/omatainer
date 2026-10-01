@@ -44,7 +44,7 @@ class RecordsTests(unittest.TestCase):
         self.assertTrue(all(entry['notices'] for entry in doc['entries']))
         with self.assertRaisesRegex(records.ManifestError,'already exists'):self.package()
     def test_missing_extra_tampered_source_or_notice_refuses_publication(self):
-        for change in ['extra','missing','altered','notice','rust','script','build','dependency']:
+        for change in ['extra','missing','altered','notice','rust','script','build','dependency','fixture','embedded','manual']:
             with self.subTest(change=change):
                 path=None;before=None
                 if change=='extra':path=self.root/'plugin/unlicensed.wav'
@@ -55,7 +55,10 @@ class RecordsTests(unittest.TestCase):
                 elif change=='script':path=self.root/'scripts/unreviewed.sh'
                 elif change=='build':path=self.root/'build.rs'
                 elif change=='dependency':path=self.root/'Cargo.lock';before=path.read_bytes();path.write_bytes(before+b'\n')
-                if change in ['extra','rust','script','build']:path.write_text('unreviewed')
+                elif change=='fixture':path=self.root/'tests/new-unreviewed.wav'
+                elif change=='embedded':path=self.root/'src/new-unreviewed.bin'
+                elif change=='manual':path=self.root/'docs/manual.md';before=path.read_bytes();path.write_bytes(before+b'\n')
+                if change in ['extra','rust','script','build','fixture','embedded']:path.write_text('unreviewed')
                 with self.assertRaises((records.ManifestError,KeyError)):self.package()
                 self.assertFalse((self.base/'release').exists())
                 if before is None:path.unlink()

@@ -3,6 +3,8 @@
 The release packager and transactional installer require a passing
 `target/performance.json` for the exact binary, source inventory, lockfile,
 license records, target, toolchain and reviewed `benchmarks/policy.json`.
+The inventory includes Rust and embedded assets, test fixtures, scripts, checked
+manual/README/contract and every benchmark input, including unexpected additions.
 A missing, stale, malformed or failing report stops publication before install
 mutations. Package verification recomputes the report from retained raw samples;
 it does not need Cargo, rustc, audio hardware or a running application.
@@ -58,6 +60,9 @@ of 32 correlated requests each. Held chords verify distinct stable source IDs,
 channel/pitch ownership and release; crate selection verifies the exact selected
 and next-frame published sources. Callback capture verifies all 512 added notes
 and all original notes, including pitch, velocity, position and held duration.
+The synthetic names exercise the available DDJ-FLX4, NS7, APC40 mkII, MPD232
+and generic keyboard profile paths. Upper unmapped MPD notes 60–83 supply the
+held chords; this does not identify or qualify the user’s physical Pioneer model.
 Conditions, scalar counters, exact state checks and target
 qualified quantized-audio hashes belong to the reviewed policy. Dense track
 parameter changes and live MIDI capture exercise the currently implemented
