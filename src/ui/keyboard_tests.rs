@@ -97,6 +97,19 @@ fn actual_focused_search_types_all_bound_characters_without_global_commands() {
         (Key::A, "a", egui::Modifiers::NONE),
         (Key::L, "l", egui::Modifiers::NONE),
         (Key::M, "m", egui::Modifiers::NONE),
+        (Key::W, "w", egui::Modifiers::NONE),
+        (Key::O, "o", egui::Modifiers::NONE),
+        (Key::F, "f", egui::Modifiers::NONE),
+        (Key::Num1, "1", egui::Modifiers::NONE),
+        (Key::Num2, "2", egui::Modifiers::NONE),
+        (Key::Num3, "3", egui::Modifiers::NONE),
+        (Key::Num4, "4", egui::Modifiers::NONE),
+        (Key::Num5, "5", egui::Modifiers::NONE),
+        (Key::Num6, "6", egui::Modifiers::NONE),
+        (Key::Num7, "7", egui::Modifiers::NONE),
+        (Key::Num8, "8", egui::Modifiers::NONE),
+        (Key::OpenBracket, "[", egui::Modifiers::NONE),
+        (Key::CloseBracket, "]", egui::Modifiers::NONE),
         (Key::Space, " ", egui::Modifiers::NONE),
         (Key::Slash, "/", egui::Modifiers::NONE),
         (Key::Slash, "?", egui::Modifiers::SHIFT),
@@ -113,6 +126,85 @@ fn actual_focused_search_types_all_bound_characters_without_global_commands() {
     }
     assert!(!gui.fixture.rt.playing);
     assert!(gui.fixture.rt.decks.iter().all(|deck| !deck.playing));
+}
+
+#[test]
+fn restored_scene_sync_and_crossfader_keys_reach_exact_renderer_targets() {
+    for (scene, pressed) in [Key::Num1, Key::Num2, Key::Num3, Key::Num4,
+        Key::Num5, Key::Num6, Key::Num7, Key::Num8].into_iter().enumerate() {
+        let mut gui = Gui::new();
+        let clip = gui.fixture.rt.tracks[0].clips[0].clone();
+        gui.fixture.rt.tracks[0].clips.fill(clip);
+        gui.frame(vec![], Default::default());
+        let before = gui.command_count();
+        gui.stroke(pressed, Default::default(), None);
+        assert_eq!(gui.command_count(), before + 1);
+        assert_eq!(gui.fixture.rt.tracks[0].playing.as_ref().unwrap().scene as usize, scene);
+    }
+    let mut gui = Gui::new();
+    gui.frame(vec![], Default::default());
+    for (pressed, deck) in [(Key::W, 0), (Key::O, 1)] {
+        let original = gui.fixture.rt.decks[deck].sync;
+        let other = gui.fixture.rt.decks[1 - deck].sync;
+        let before = gui.command_count();
+        gui.stroke(pressed, Default::default(), None);
+        assert_eq!(gui.command_count(), before + 1);
+        assert_eq!(gui.fixture.rt.decks[deck].sync, !original);
+        assert_eq!(gui.fixture.rt.decks[1 - deck].sync, other);
+        gui.stroke(pressed, Default::default(), None);
+        assert_eq!(gui.fixture.rt.decks[deck].sync, original);
+    }
+    for (pressed, expected) in [(Key::OpenBracket, 0.0), (Key::CloseBracket, 1.0)] {
+        let before = gui.command_count();
+        gui.stroke(pressed, Default::default(), None);
+        assert_eq!(gui.command_count(), before + 1);
+        assert_eq!(gui.fixture.rt.xfader, expected);
+    }
+}
+
+#[test]
+fn restored_load_key_uses_filtered_selection_and_selected_deck() {
+    let mut gui = Gui::new();
+    gui.fixture.rt.apply(Command::SelectDeck(1));
+    gui.fixture.rt.apply(Command::DeckUnload { deck: 1 });
+    gui.fixture.rt.publish_for_test();
+    gui.fixture.app.lib_filter = "Harmony".into();
+    gui.frame(vec![], Default::default());
+    let a = gui.fixture.rt.decks[0].audio.clone();
+    let before = gui.command_count();
+    gui.stroke(Key::F, Default::default(), None);
+    assert_eq!(gui.command_count(), before + 1);
+    assert!(gui.fixture.rt.decks[1].title.contains("Harmony"));
+    assert!(Arc::ptr_eq(gui.fixture.rt.decks[0].audio.as_ref().unwrap(), a.as_ref().unwrap()));
+    assert!(!gui.fixture.rt.decks[1].playing);
+    assert!(gui.fixture.decoder_jobs.try_recv().is_err(), "builtins do not decode files");
+}
+
+#[test]
+fn restored_bindings_reject_modifiers_and_repeats_outside_text_focus() {
+    let mut gui = Gui::new();
+    gui.frame(vec![], Default::default());
+    let before = gui.command_count();
+    for pressed in [Key::Num1, Key::Num8, Key::W, Key::O, Key::F,
+        Key::OpenBracket, Key::CloseBracket] {
+        for bits in 1..32 {
+            let mods = egui::Modifiers {
+                alt: bits & 1 != 0, ctrl: bits & 2 != 0, shift: bits & 4 != 0,
+                mac_cmd: bits & 8 != 0, command: bits & 16 != 0,
+            };
+            gui.stroke(pressed, mods, None);
+        }
+        // egui derives repeat from held-key state, overriding the input flag.
+        // Hold a modified (suppressed) press, then release Ctrl while the key
+        // keeps repeating; that repeat must not trigger a new global action.
+        gui.frame(vec![key(pressed, true, egui::Modifiers::CTRL)], egui::Modifiers::CTRL);
+        let mut repeated = key(pressed, true, Default::default());
+        if let egui::Event::Key { repeat, .. } = &mut repeated { *repeat = true; }
+        gui.frame(vec![repeated], Default::default());
+        gui.frame(vec![key(pressed, false, Default::default())], Default::default());
+    }
+    assert_eq!(gui.command_count(), before);
+    assert!(gui.fixture.decoder_jobs.try_recv().is_err());
 }
 
 #[test]

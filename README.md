@@ -33,16 +33,39 @@ Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F**
 
 ## Keybinds (also under `?`)
 
+Omarchy desktop bindings: `SUPER+O` launches/focuses the app;
+`SUPER+SHIFT+SPACE` controls session playback while unfocused.
+
+<!-- app-shortcuts:start -->
 | Keys | Action |
 | --- | --- |
-| `SUPER+O` | Launch / focus (Hyprland, listed in the Omarchy keybind UI) |
-| `SUPER+SHIFT+SPACE` | Play / stop even when unfocused |
-| `SPACE` | Play / stop session |
-| `1–8` | Launch scene |
-| `Q A W` / `P L O` | Deck A / B play, cue, sync |
-| `[ ]` | Crossfader |
-| `TAB` | Session → arrange → compose |
-| `?` | In-app cheat sheet |
+| `Space` | Play / stop session |
+| `1` | Launch scene 1 |
+| `2` | Launch scene 2 |
+| `3` | Launch scene 3 |
+| `4` | Launch scene 4 |
+| `5` | Launch scene 5 |
+| `6` | Launch scene 6 |
+| `7` | Launch scene 7 |
+| `8` | Launch scene 8 |
+| `Q` | Play / pause deck A |
+| `A` | Cue deck A |
+| `W` | Toggle deck A tempo sync |
+| `P` | Play / pause deck B |
+| `L` | Cue deck B |
+| `O` | Toggle deck B tempo sync |
+| `[` | Crossfader fully to A |
+| `]` | Crossfader fully to B |
+| `F` | Load selected crate item onto selected deck |
+| `? (Shift+/)` | Show / hide shortcut help |
+| `F1` | Show / hide shortcut help |
+| `Ctrl+M` | Show / hide MIDI window |
+| `Escape` | Close effect chain |
+<!-- app-shortcuts:end -->
+
+The bracket keys choose the crossfader endpoints, with the existing mixer ramp.
+F uses the current filtered crate selection and selected deck. Tab navigation
+between session/arrange/compose views is separate feature work.
 
 Typing in search or another text field owns the keyboard, including the frame
 that editing ends. Blocking dialogs and popups also suppress global shortcuts.
