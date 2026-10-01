@@ -243,3 +243,20 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   status, discover ports or wait for connection management. Closing the UI does
   not wait for a blocked OS call: its worker retains connection ownership and
   cleans up after that call returns. No automatic OS hotplug detection is claimed.
+
+## Theme and font reload
+
+- One background worker reads colors and the sibling `shell.toml`, and resolves
+  fontconfig's current `monospace` selection on every check. Checks occur 800 ms
+  after the previous pass; fontconfig-only and shell-only edits do not depend on
+  a color-file timestamp. Configured source paths are preserved across reloads.
+- The GUI receives at most one latest complete theme/font snapshot and applies
+  styles and font definitions there. Discovery, file reads, validation, process
+  execution and obsolete pending snapshot retirement run on the worker.
+- Invalid/interim files keep the last valid settings for that source and are
+  retried on later checks. Standard text styles honor finite shell base sizes
+  from 4 through 96 points. Selected font bytes or face changes reinstall fonts;
+  size-only changes reuse the font data and update text styles.
+- Text inputs are capped at 64 KiB and font data at 32 MiB. Fontconfig has a
+  500 ms deadline and 4096-byte limits on each output stream. Diagnostics are
+  emitted only when they change. A slow filesystem never blocks GUI teardown.

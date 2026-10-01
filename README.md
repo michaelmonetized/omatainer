@@ -69,6 +69,11 @@ MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
 their accepted count and last source in `midi_clock` status; this reception hook
 does not synchronize tempo or phase. See the [MIDI framing validation](docs/validation/issue-41-midi-realtime.md).
 
+Theme colors, shell base font size, and fontconfig's current monospace font
+reload in a background worker, including font-only edits. The next valid update
+replaces the applied style; incomplete writes retain the last valid settings.
+See the [theme reload validation](docs/validation/issue-78-theme-reload.md).
+
 ## Layout
 
 ```

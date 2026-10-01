@@ -2469,6 +2469,7 @@ dependencies = [
 name = "omatainer"
 version = "0.1.0"
 dependencies = [
+ "ab_glyph",
  "anyhow",
  "arc-swap",
  "cpal",
