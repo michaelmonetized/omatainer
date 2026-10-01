@@ -119,3 +119,32 @@ fn aggregate_pcm_saturation_rejects_before_excess_decode_and_returns_all_reserve
     assert_eq!(owner.available().unwrap(), limits, "failed preparation returns its entire reservation");
     assert!(run(request(definition(&sources[..2]), &catalog), &owner, || false).is_ok());
 }
+
+#[test]
+fn originals_can_be_prepared_without_any_existing_working_factory_bank() {
+    let owner = assets::Owner::isolated_for_test(assets::Budget::limits());
+    let catalog = Arc::new(Catalog::default());
+    let mut prior_ids = Vec::new();
+    for factory in [super::super::Factory::Kit, super::super::Factory::Perc, super::super::Factory::Hits] {
+        for _ in 0..2 {
+            let prepared = run(Request {
+                epoch: 23, revision: 71, sample_rate: 44_100,
+                operation: Operation::Factory { bank: factory, name: "My original copy".into() },
+                catalog: catalog.clone(),
+            }, &owner, || false).unwrap();
+            assert_eq!(prepared.epoch, 23);
+            assert!(matches!(prepared.target, sampler::Target::Append { revision: 71 }));
+            assert!(prepared.bank.factory.is_none(), "the new instance is editable and source-rate owned");
+            assert!(prepared.bank.data.settings.definition.is_none());
+            assert_eq!(prepared.bank.data.settings.name, "My original copy");
+            assert!(prepared.verified_sources.is_empty());
+            assert!(!prior_ids.contains(&prepared.bank.id));
+            prior_ids.push(prepared.bank.id);
+            for slot in 0..SLOTS {
+                assert_eq!(prepared.bank.data.settings.slots[slot].source, Some(Source::Factory { bank: factory, slot: slot as u8 }));
+                assert_eq!(prepared.bank.data.audio[slot].as_ref().unwrap().sr, 44_100);
+                assert!(prepared.bank.data.issues[slot].is_none());
+            }
+        }
+    }
+}

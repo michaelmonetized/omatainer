@@ -24,6 +24,14 @@ pub(crate) struct Store {
     durable: bool,
     identity_unknown: bool,
 }
+impl Drop for Store {
+    fn drop(&mut self) {
+        // Close alone can leave an inherited open-description flock alive
+        // until a concurrent fork child execs. Explicit unlock ends this
+        // writer's authority before a subsequent session attempts to open.
+        let _ = self._lock.unlock();
+    }
+}
 fn identity(path: &Path) -> Result<Option<FileFingerprint>, String> {
     match fs::symlink_metadata(path) {
         Ok(meta) if meta.is_file() => Ok(Some(FileFingerprint::from_metadata(&meta))),

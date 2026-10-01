@@ -313,3 +313,19 @@ fn short_audition_end_receipt_and_final_editor_drop_are_retired_off_callback() {
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
 }
+
+#[test]
+fn registered_factory_payloads_preserve_original_generated_pcm_at_each_output_rate() {
+    let owner = assets::Owner::isolated_for_test(assets::Budget::limits());
+    for rate in [44_100, 48_000, 96_000] {
+        let reference = build_pad_banks(rate);
+        let actual = factory_data(&owner, rate).unwrap();
+        for bank in 0..3 { for slot in 0..16 {
+            let actual = actual[bank].audio[slot].as_ref().unwrap();
+            let expected = &reference[bank][slot];
+            assert_eq!((actual.sr, actual.ch, &actual.name), (expected.sr, expected.ch, &expected.name));
+            assert_eq!(actual.data, expected.data);
+            assert_eq!(actual.peaks, expected.peaks);
+        } }
+    }
+}
