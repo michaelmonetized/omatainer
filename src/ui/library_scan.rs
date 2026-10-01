@@ -397,6 +397,7 @@ fn preserve_metadata(item: &mut LibItem, old: &LibItem) {
     let same_media = item.source == old.source
         && match item.source {
             LibSource::Builtin(_) => true,
+            LibSource::Removable { .. } | LibSource::Provider { .. } => false,
             LibSource::File(_) => item.fingerprint.is_some()
                 && item.fingerprint == old.fingerprint,
         };

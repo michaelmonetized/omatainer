@@ -43,6 +43,7 @@ pub mod dsp;
 mod svf_tests;
 pub mod media_load;
 pub(crate) mod load_receipt;
+pub(crate) mod preparation;
 pub mod fx;
 pub mod midi;
 #[cfg(test)]
@@ -720,6 +721,8 @@ pub enum Command {
     DeckAudio { deck: u8, audio: Arc<Sample> },
     DeckDecoded { request: media_load::LoadToken, audio: Arc<Sample> },
     DeckLoadRequested { deck: u8, media: load_receipt::Media, receipt: load_receipt::Receipt },
+    DeckRestorePreparation { deck: u8, receipt: load_receipt::Receipt, preparation: preparation::Preparation },
+    LibraryFence { acknowledged: Arc<std::sync::atomic::AtomicBool> },
     DeckSeek { deck: u8, frac: f32 },
     DeckUnload { deck: u8 },
     LoadBuiltin { deck: u8, stem: u8 },
@@ -1589,6 +1592,14 @@ impl RtEngine {
         self.apply_plain(c);
     }
     fn apply_plain(&mut self, c: Command) {
+        let preparation_deck = match &c {
+            Command::DeckCue { deck } | Command::DeckHotCue { deck, .. }
+            | Command::DeckLoop { deck, .. } | Command::DeckLoopIn { deck }
+            | Command::DeckLoopOut { deck } | Command::DeckLoopDouble { deck }
+            | Command::DeckLoopHalf { deck } | Command::DeckReloop { deck }
+            | Command::DeckSeek { deck, .. } => Some(*deck as usize % DECKS),
+            _ => None,
+        };
         // Validate before any command can launch, select, or alter another scene.
         // In particular, FireClip must not change a previous clip's looping flag
         // after an invalid LaunchClip, and Select must not clamp into a real cell.
@@ -1828,6 +1839,19 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.keylock = !d.keylock;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+            }
+            Command::LibraryFence { acknowledged } => {
+                acknowledged.store(true, std::sync::atomic::Ordering::Release);
+                self.undo.retire_command(Command::LibraryFence { acknowledged });
+            }
+            Command::DeckRestorePreparation { deck, receipt, preparation } => {
+                if let Some(d) = self.decks.get_mut(deck as usize) {
+                    if d.load_receipt.as_ref().is_some_and(|current| current.same_request(&receipt))
+                        && receipt.preparation().is_some_and(|(revision, _)| revision == 2) {
+                        d.restore_preparation(preparation);
+                        d.publish_preparation();
+                    }
+                }
             }
             command @ Command::DeckLoadRequested { .. } => {
                 if let Command::DeckLoadRequested { deck, media, receipt } = &command {
@@ -2264,6 +2288,7 @@ impl RtEngine {
                 }
             }
         }
+        if let Some(deck) = preparation_deck { self.decks[deck].publish_preparation(); }
     }
 
     fn apply_media_request(&mut self, deck: u8, media: &load_receipt::Media,
@@ -2299,8 +2324,11 @@ impl RtEngine {
                 return;
             };
             self.apply_plain(command);
+            let d = &mut self.decks[deck as usize];
+            if let Some(preparation) = receipt.initial_preparation() { d.restore_preparation(preparation); }
+            d.load_receipt = Some(receipt.clone());
+            d.publish_preparation();
             receipt.finish(State::Current);
-            self.decks[deck as usize].load_receipt=Some(receipt.clone());
         } else { receipt.finish(State::Unavailable); }
     }
 

@@ -75,6 +75,7 @@ impl UiState {
         let valid_source = |source: &LibSource| match source {
             LibSource::Builtin(_) => true,
             LibSource::File(path) => !path.as_os_str().is_empty() && path.as_os_str().len() <= 4096,
+            source => crate::library::validate_source(source).is_ok(),
         };
         if self
             .library_selection
