@@ -2,6 +2,9 @@ use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, Stroke,
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+mod color;
+#[cfg(test)]
+mod tests;
 
 #[derive(Clone, Debug)]
 pub struct Theme {
@@ -81,26 +84,9 @@ impl Theme {
         self.mtime = fs::metadata(&self.path)
             .ok()
             .and_then(|m| m.modified().ok());
-        if let Ok(raw) = fs::read_to_string(&self.path) {
-            if let Ok(v) = raw.parse::<toml::Value>() {
-                self.bg = hex_of(&v, "background", self.bg);
-                self.bg_dark = hex_of(&v, "dark_background", self.bg_dark);
-                self.bg_darker = hex_of(&v, "darker_background", self.bg_darker);
-                self.bg_light = hex_of(&v, "lighter_background", self.bg_light);
-                self.fg = hex_of(&v, "foreground", self.fg);
-                self.fg_dim = hex_of(&v, "dark_foreground", self.fg_dim);
-                self.fg_bright = hex_of(&v, "bright_foreground", self.fg_bright);
-                self.accent = hex_of(&v, "accent", self.accent);
-                self.red = hex_of(&v, "red", self.red);
-                self.green = hex_of(&v, "green", self.green);
-                self.yellow = hex_of(&v, "yellow", self.yellow);
-                self.blue = hex_of(&v, "blue", self.blue);
-                self.magenta = hex_of(&v, "magenta", self.magenta);
-                self.cyan = hex_of(&v, "cyan", self.cyan);
-                self.orange = hex_of(&v, "orange", self.orange);
-                self.selection = hex_of(&v, "selection", self.selection);
-                self.muted = hex_of(&v, "muted", self.muted);
-            }
+        let path = self.path.clone();
+        for diagnostic in self.reload_colors(&path) {
+            eprintln!("omatainer: {}: {diagnostic}", path.display());
         }
         if let Ok(raw) = fs::read_to_string(theme_dir().join("shell.toml")) {
             if let Ok(v) = raw.parse::<toml::Value>() {
@@ -124,6 +110,34 @@ impl Theme {
                 self.font = s;
             }
         }
+    }
+
+    // Keep color parsing separate from font/process discovery so the exact
+    // startup/reload path can be exercised on private theme files.
+    fn reload_colors(&mut self, path: &Path) -> Vec<ColorDiagnostic> {
+        let mut diagnostics = Vec::new();
+        if let Ok(raw) = fs::read_to_string(path) {
+            if let Ok(v) = raw.parse::<toml::Value>() {
+                self.bg = hex_of(&v, "background", self.bg, &mut diagnostics);
+                self.bg_dark = hex_of(&v, "dark_background", self.bg_dark, &mut diagnostics);
+                self.bg_darker = hex_of(&v, "darker_background", self.bg_darker, &mut diagnostics);
+                self.bg_light = hex_of(&v, "lighter_background", self.bg_light, &mut diagnostics);
+                self.fg = hex_of(&v, "foreground", self.fg, &mut diagnostics);
+                self.fg_dim = hex_of(&v, "dark_foreground", self.fg_dim, &mut diagnostics);
+                self.fg_bright = hex_of(&v, "bright_foreground", self.fg_bright, &mut diagnostics);
+                self.accent = hex_of(&v, "accent", self.accent, &mut diagnostics);
+                self.red = hex_of(&v, "red", self.red, &mut diagnostics);
+                self.green = hex_of(&v, "green", self.green, &mut diagnostics);
+                self.yellow = hex_of(&v, "yellow", self.yellow, &mut diagnostics);
+                self.blue = hex_of(&v, "blue", self.blue, &mut diagnostics);
+                self.magenta = hex_of(&v, "magenta", self.magenta, &mut diagnostics);
+                self.cyan = hex_of(&v, "cyan", self.cyan, &mut diagnostics);
+                self.orange = hex_of(&v, "orange", self.orange, &mut diagnostics);
+                self.selection = hex_of(&v, "selection", self.selection, &mut diagnostics);
+                self.muted = hex_of(&v, "muted", self.muted, &mut diagnostics);
+            }
+        }
+        diagnostics
     }
 
     pub fn apply(&self, ctx: &egui::Context) {
@@ -233,21 +247,29 @@ fn rgb(r: u8, g: u8, b: u8) -> Color32 {
     Color32::from_rgb(r, g, b)
 }
 
-fn hex_of(v: &toml::Value, key: &str, fallback: Color32) -> Color32 {
-    v.get(key)
-        .and_then(|x| x.as_str())
-        .and_then(parse_hex)
-        .unwrap_or(fallback)
+#[derive(Debug, PartialEq, Eq)]
+struct ColorDiagnostic {
+    key: &'static str,
+}
+
+impl std::fmt::Display for ColorDiagnostic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid theme color '{}': expected a string of six ASCII hex digits, optionally prefixed with #; keeping the previous color", self.key)
+    }
+}
+
+fn hex_of(v: &toml::Value, key: &'static str, fallback: Color32, diagnostics: &mut Vec<ColorDiagnostic>) -> Color32 {
+    let Some(value) = v.get(key) else { return fallback; };
+    if let Some(color) = value.as_str().and_then(parse_hex) {
+        color
+    } else {
+        diagnostics.push(ColorDiagnostic { key });
+        fallback
+    }
 }
 
 fn parse_hex(s: &str) -> Option<Color32> {
-    let s = s.trim().trim_start_matches('#');
-    if s.len() < 6 {
-        return None;
-    }
-    let r = u8::from_str_radix(&s[0..2], 16).ok()?;
-    let g = u8::from_str_radix(&s[2..4], 16).ok()?;
-    let b = u8::from_str_radix(&s[4..6], 16).ok()?;
+    let [r, g, b] = color::parse_rgb(s)?;
     Some(Color32::from_rgb(r, g, b))
 }
 
