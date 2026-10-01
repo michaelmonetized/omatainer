@@ -9,6 +9,7 @@ mod mute_lifecycle_tests;
 #[cfg(test)]
 pub(crate) mod test_alloc;
 pub mod audio;
+pub mod audio_metrics;
 mod control;
 pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
 pub(crate) mod ui_requests;
@@ -434,7 +435,10 @@ pub struct RtEngine {
     pub snap: Arc<Mutex<Snapshot>>,
     publisher: snapshot::Publisher,
     pub midi_clock: MidiClockInput,
-    cpu_acc: f32,
+    telemetry: Arc<audio_metrics::Telemetry>,
+    render_cpu_ns: Option<u64>,
+    #[cfg(test)]
+    telemetry_delays: [Duration; 3],
     frames_done: u64,
     note_recording: recording::Recording,
     metronome: bool,
@@ -553,7 +557,9 @@ pub struct Snapshot {
     pub decks: Vec<DeckSnap>,
     pub midi: Vec<String>,
     pub midi_clock: MidiClockInput,
+    /// Legacy alias: actual last render-thread CPU divided by callback budget.
     pub cpu: f32,
+    pub audio: audio_metrics::AudioMetrics,
     pub commands: control::CommandStats,
     pub submissions: control::SubmissionStats,
     pub fx_wet: [f32; 3],
@@ -590,6 +596,7 @@ impl Default for Snapshot {
             midi: Vec::new(),
             midi_clock: MidiClockInput::default(),
             cpu: 0.0,
+            audio: audio_metrics::AudioMetrics::default(),
             commands: control::CommandStats::default(),
             submissions: control::SubmissionStats::default(),
             fx_wet: [0.0; 3],
@@ -697,6 +704,8 @@ impl RtEngine {
         cmd_rx: impl Into<control::CommandReceiver>,
         snap: Arc<Mutex<Snapshot>>,
     ) -> Self {
+        let cmd_rx = cmd_rx.into();
+        let telemetry = cmd_rx.telemetry();
         let drums = build_kit(sr as u32);
         let names = [
             "Drums", "Bass", "Keys", "Pad", "Perc", "Vocal", "FX", "Spare",
@@ -750,12 +759,15 @@ impl RtEngine {
             selected_scene: 0,
             selected_deck: 0,
             library_sel: 0,
-            cmd_rx: cmd_rx.into(),
+            cmd_rx,
             command_stats: control::CommandStats::default(),
             publisher: snapshot::Publisher::new(snap.clone()),
             snap,
             midi_clock: MidiClockInput::default(),
-            cpu_acc: 0.0,
+            telemetry,
+            render_cpu_ns: None,
+            #[cfg(test)]
+            telemetry_delays: [Duration::ZERO; 3],
             frames_done: 0,
             note_recording: recording::Recording::default(),
             metronome: false,
@@ -955,7 +967,11 @@ impl RtEngine {
         for command in batch.commands.into_iter().flatten() {
             self.apply(command);
         }
-        let t0 = Instant::now();
+        #[cfg(test)]
+        std::thread::sleep(self.telemetry_delays[0]);
+        let cpu_start = audio_metrics::thread_cpu_ns();
+        #[cfg(test)]
+        std::thread::sleep(self.telemetry_delays[1]);
         let frames = out.len() / 2;
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for channel in 0..2 {
@@ -1039,9 +1055,7 @@ impl RtEngine {
             out[i * 2] = l;
             out[i * 2 + 1] = r;
         }
-        let dt = t0.elapsed().as_secs_f32();
-        let budget = frames as f32 / self.sr;
-        self.cpu_acc = self.cpu_acc * 0.9 + (dt / budget.max(1e-6)) * 0.1;
+        self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
         self.frames_done += frames as u64;
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
             self.publish();
@@ -2355,6 +2369,8 @@ impl Engine {
 
     pub fn snapshot(&self) -> Snapshot {
         let mut s = self.snap.lock().clone();
+        s.audio = self.cmd.audio_metrics();
+        s.cpu = s.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).unwrap_or(0.0) as f32;
         s.midi = self
             .midi
             .devices
