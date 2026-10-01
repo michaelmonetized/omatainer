@@ -96,6 +96,9 @@ The sampler offers **samples**, **analog**, **keys**, and **pad**. Samples use t
 Kit/Perc/Hits banks. Analog is a fast saw/square bass, Keys blend saw and sine with
 a medium release, and Pad blends sine with a detuned saw and a longer envelope.
 Changing the selection affects new presses; held notes keep their original sound.
+Sample pads **1–8** occupy the bottom row and **9–16** the top row, preserving the
+piano layout's natural/accidental positions. Number N triggers bank slot N−1.
+Hover a pad for its slot or piano MIDI note; blank piano positions are inactive.
 
 ## Layout
 

@@ -5,6 +5,7 @@ mod deck_filter;
 mod deck_filter_tests;
 
 pub mod instrument;
+pub(crate) mod sampler_pad;
 #[cfg(test)]
 pub(crate) mod sampler_identity_tests;
 pub use instrument::{SamplerInstrument, SynthInstrument};
@@ -2250,21 +2251,8 @@ impl RtEngine {
     }
 }
 
-fn sampler_pitch(inst: SamplerInstrument, oct: i8, pad: u8) -> u8 {
-    let pad = pad.min(15);
-    let col = (pad % 8) as usize;
-    let sharp = pad >= 8;
-    let bottom = [0, 2, 3, 5, 7, 8, 10, 12];
-    let has_sharp = [true, false, true, true, false, true, true, false];
-    let base = 21 + oct as i32 * 12;
-    let mut n = base + bottom[col];
-    if sharp && has_sharp[col] {
-        n += 1;
-    }
-    if inst.synth().is_some() {
-        n = n.clamp(0, 127);
-    }
-    n as u8
+fn sampler_pitch(_inst: SamplerInstrument, oct: i8, pad: u8) -> u8 {
+    sampler_pad::PadIdentity::new(pad.min(15)).midi_note(oct)
 }
 
 fn eq_gain(v: f32) -> f32 {
