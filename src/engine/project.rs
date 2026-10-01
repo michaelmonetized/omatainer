@@ -191,8 +191,8 @@ impl RtEngine {
 
 impl RtEngine {
     pub(super) fn resume_project_clips(&mut self) {
-        for (track, pending) in self.tracks.iter_mut().zip(&mut self.project_resume) {
-            if let Some(launch) = pending.take() { track.playing = Some(launch); }
+        for track in &mut self.tracks {
+            if let Some(launch) = track.project_resume.take() { track.playing = Some(launch); }
         }
     }
 
@@ -201,7 +201,9 @@ impl RtEngine {
     /// ordinary transport never increment it unless they write recorded notes.
     pub(super) fn project_command_edits(&self, command: &Command) -> bool {
         match command {
-            Command::SetBpm(_) | Command::NudgeBpm(_) | Command::Tap(_)
+            Command::Select { .. } | Command::SelectDeck(_) | Command::SetView(_)
+            | Command::OpenFxTrack(_) | Command::OpenFxScene(_) | Command::CloseFx
+            | Command::SetBpm(_) | Command::NudgeBpm(_) | Command::Tap(_)
             | Command::DeckSync { .. } | Command::DeckPitch { .. }
             | Command::DeckGain { .. } | Command::DeckEq { .. } | Command::DeckFilter { .. }
             | Command::DeckPfl { .. } | Command::DeckLoop { .. } | Command::DeckLoopIn { .. }

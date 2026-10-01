@@ -172,6 +172,8 @@ impl RtEngine {
 }
 
 impl RtEngine {
+    pub(super) fn has_held_project_notes(&self) -> bool { self.note_recording.held.iter().any(Option::is_some) }
+
     pub(super) fn capture_held_durations(&self, state: &mut super::project::State) {
         for held in self.note_recording.held.iter().flatten() {
             if let Some(note) = state.tracks[held.track].clips[held.scene].notes.get_mut(held.index) {
