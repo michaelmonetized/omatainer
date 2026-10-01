@@ -1,4 +1,5 @@
 mod project_file;
+mod licenses;
 mod engine;
 mod library;
 mod theme;
@@ -32,6 +33,16 @@ const STATUS_REQUEST: &str = r#"{"op":"status"}"#;
 
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().map(|s| s.as_str()) == Some("licenses") {
+        std::hint::black_box(licenses::PROTOCOL);
+        let text = match args.get(1).map(String::as_str) {
+            Some("--manifest") if args.len() == 2 => licenses::MANIFEST,
+            Some("--notices") if args.len() == 2 => licenses::NOTICES,
+            _ => anyhow::bail!("usage: omatainer licenses --manifest | --notices"),
+        };
+        print!("{text}");
+        return Ok(());
+    }
     if args.first().map(|s| s.as_str()) == Some("ctl") {
         args.remove(0);
         return ctl(&args);

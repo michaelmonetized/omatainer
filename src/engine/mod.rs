@@ -2933,3 +2933,6 @@ mod drum_velocity_tests;
 
 #[cfg(test)]
 mod mixer_gain_tests;
+
+#[cfg(test)]
+mod license_content_tests;

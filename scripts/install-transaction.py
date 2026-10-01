@@ -23,6 +23,12 @@ SPEC = importlib.util.spec_from_file_location(
 atomic = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(atomic)
 
+LICENSE_SPEC = importlib.util.spec_from_file_location(
+    "license_manifest", Path(__file__).with_name("license-manifest.py")
+)
+licenses = importlib.util.module_from_spec(LICENSE_SPEC)
+LICENSE_SPEC.loader.exec_module(licenses)
+
 BINARY = ".local/bin/omatainer"
 PREVIOUS = BINARY + ".previous"
 PLUGIN = ".config/omarchy/plugins/omatainer"
@@ -38,7 +44,7 @@ BINDINGS = ".config/hypr/bindings.lua"
 SHELL = ".config/omarchy/shell.json"
 MENU = ".config/omarchy/extensions/omarchy-menu.jsonc"
 HOOK = ".config/omarchy/hooks/theme-set.d/omatainer-reload"
-TARGETS = [BINARY, PREVIOUS, *STATIC, HYPR, BINDINGS, SHELL, MENU, HOOK]
+TARGETS = [BINARY, PREVIOUS, *STATIC, *licenses.INSTALLED, licenses.RECEIPT, HYPR, BINDINGS, SHELL, MENU, HOOK]
 EMPTY_DIRECTORIES = [".config/omatainer"]
 
 
@@ -271,7 +277,9 @@ class Transaction:
         self.after_mutation("publish:binary-and-previous")
         for directory in EMPTY_DIRECTORIES:
             self.parents(self.root / directory / ".directory-check")
-        for relative in [*STATIC, HYPR, BINDINGS, SHELL, MENU, HOOK]:
+        for relative in TARGETS:
+            if relative in (BINARY, PREVIOUS):
+                continue
             path = self.attempt(relative)
             os.replace(self.directory / "new" / relative, path)
             sync_directory(path.parent)
@@ -329,6 +337,14 @@ class Transaction:
 
 
 def artifacts(transaction, source):
+    document = licenses.validate(source)
+    if {dest:src for src,dest in document['package'].items()} != STATIC:
+        raise InstallError("installer payload differs from the reviewed license inventory")
+    licenses.verify_binary(source, source / "target/release/omatainer")
+    for relative, source_path in licenses.INSTALLED.items():
+        transaction.stage(relative, (source / source_path).read_bytes())
+    receipt = licenses.release_record(source, source / "target/release/omatainer", document)
+    transaction.stage(licenses.RECEIPT, licenses.encoded(receipt))
     transaction.stage(BINARY, (source / "target/release/omatainer").read_bytes(), 0o755)
     binary = transaction.journal["entries"][BINARY]
     if binary["existed"]:
@@ -399,11 +415,32 @@ def artifacts(transaction, source):
     parse_jsonc(menu)
     transaction.stage(MENU, menu.encode(), preserve_mode=True)
     transaction.stage(HOOK, b'#!/bin/bash\n# Theme files are also watched by omatainer.\nomatainer ctl reload-theme >/dev/null 2>&1 || true\n', 0o755)
+    # Publication moves staged configuration files. Keep an independent complete
+    # release payload so this installation's notices and sources remain paired
+    # with its binary even after later upgrades or rollback.
+    retained = transaction.directory / "release"
+    staged = transaction.directory / "new"
+    for relative in [*receipt["files"], licenses.RECEIPT]:
+        write_file(retained / relative, (staged / relative).read_bytes(),
+                   transaction.journal["entries"][relative]["new_mode"])
+    licenses.verify_package(retained)
+
 
 
 def validate(transaction):
     staged = transaction.directory / "new"
+    licenses.verify_package(transaction.directory / "release")
     binary = staged / BINARY
+    licenses.verify_embedded(binary, {name:(staged / licenses.LICENSE_ROOT / name).read_bytes()
+                                      for name in licenses.RECORD_FILES})
+    receipt = json.loads((staged / licenses.RECEIPT).read_text())
+    manifest = json.loads((staged / licenses.LICENSE_ROOT / "manifest.json").read_text())
+    for source_path, relative in manifest["package"].items():
+        if receipt["files"][relative] != manifest["source_files"][source_path]:
+            raise InstallError(f"licensed source changed during staging: {source_path}")
+    for relative, digest in receipt["files"].items():
+        if sha((staged / relative).read_bytes()) != digest:
+            raise InstallError(f"staged licensed artifact changed: {relative}")
     if binary.read_bytes()[:4] != b"\x7fELF":
         raise InstallError(f"staged binary is not ELF: {binary}")
     json_object((staged / SHELL).read_text(), SHELL)
@@ -431,7 +468,7 @@ def install(source, root, state_root, after_mutation=None):
 
 
 def install_locked(source, root, state_root, after_mutation=None):
-    run(["cargo", "build", "--release", "--manifest-path", str(source / "Cargo.toml")], "build executable")
+    run(["cargo", "build", "--locked", "--release", "--manifest-path", str(source / "Cargo.toml")], "build executable")
     transaction = Transaction(root, state_root, after_mutation)
     reloaded = False
     try:

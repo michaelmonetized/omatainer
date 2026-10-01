@@ -20,6 +20,7 @@ SPEC = importlib.util.spec_from_file_location(
 installer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(installer)
 REPOSITORY = Path(__file__).resolve().parent.parent
+CARGO_METADATA = subprocess.run(['cargo', 'metadata', '--locked', '--offline', '--format-version', '1', '--filter-platform', json.loads((REPOSITORY/'licenses/manifest.json').read_text())['target'], '--manifest-path', str(REPOSITORY/'Cargo.toml')], check=True, capture_output=True).stdout
 
 
 class InstallerTransactionTests(unittest.TestCase):
@@ -34,7 +35,15 @@ class InstallerTransactionTests(unittest.TestCase):
         self.source.mkdir()
         for name in ("contrib", "plugin"):
             shutil.copytree(REPOSITORY / name, self.source / name)
-        (self.source / "Cargo.toml").write_text('[package]\nname="fixture"\nversion="0.0.0"\n')
+        for name in ('Cargo.toml', 'Cargo.lock', 'LICENSE'):
+            shutil.copy2(REPOSITORY/name, self.source/name)
+        shutil.copytree(REPOSITORY/'licenses', self.source/'licenses')
+        manifest = json.loads((self.source/'licenses/manifest.json').read_text())
+        for name in manifest['source_files']:
+            destination = self.source/name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPOSITORY/name, destination)
+        (self.source/'metadata.json').write_bytes(CARGO_METADATA)
         self.new = self.binary("new", 2)
         destination = self.source / "target/release/omatainer"
         destination.parent.mkdir(parents=True)
@@ -55,6 +64,9 @@ class InstallerTransactionTests(unittest.TestCase):
 import json, os, pathlib, sys
 name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
+if name == 'cargo' and args[:1] == ['metadata']:
+    source = pathlib.Path(args[args.index('--manifest-path')+1]).parent
+    print((source/'metadata.json').read_text()); sys.exit(0)
 log = pathlib.Path(os.environ["OMATAINER_TEST_LOG"])
 old = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
 with log.open("a") as stream: stream.write(json.dumps([name, *args]) + "\\n")
@@ -82,7 +94,12 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
 
     def binary(self, name, result):
         source = self.base / f"{name}.c"
-        source.write_text(f"int main(void) {{ return {result}; }}\n")
+        source.write_text('#include <stdio.h>\n#include <string.h>\n' +
+            'int main(int argc, char **argv) { if(argc>1 && !strcmp(argv[1],"omatainer:offline-license-records:v1"))return 7; if(argc==3 && !strcmp(argv[1],"licenses")) { const char *p = NULL;' +
+            'if(!strcmp(argv[2],"--manifest")) p = '+json.dumps(str(REPOSITORY/'licenses/manifest.json'))+';' +
+            'if(!strcmp(argv[2],"--notices")) p = '+json.dumps(str(REPOSITORY/'licenses/notices.json'))+';' +
+            'if(!p)return 8;FILE *f=fopen(p,"rb");if(!f)return 9;int c;while((c=fgetc(f))!=EOF)putchar(c);fclose(f);return 0;}' +
+            f'return {result};' + '}\n')
         destination = self.base / name
         subprocess.run(["cc", str(source), "-o", str(destination)], check=True, capture_output=True)
         return destination
@@ -126,6 +143,11 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
         self.assertEqual(warnings, [])
         first = self.tree()
         self.assertEqual((self.root / installer.BINARY).read_bytes(), self.new.read_bytes())
+        for installed, source in installer.licenses.INSTALLED.items():
+            self.assertEqual((self.root / installed).read_bytes(), (self.source / source).read_bytes())
+        self.assertTrue((self.root / installer.licenses.RECEIPT).is_file())
+        installer.licenses.verify_package(journal.parent / "release")
+
         self.assertEqual((self.root / installer.PREVIOUS).read_bytes(), original[installer.BINARY][1])
         self.assertEqual((self.root / installer.HYPR).stat().st_mode & 0o777, 0o640)
         self.assertEqual((self.root / installer.SHELL).stat().st_mode & 0o777, 0o600)
@@ -279,6 +301,31 @@ if failure == "cache" and name in ("update-desktop-database", "gtk-update-icon-c
         with self.assertRaisesRegex(installer.InstallError, "user root does not match"):
             installer.recover(journal, other)
         self.assertEqual(list(other.iterdir()), [])
+
+    def test_cancellation_after_license_publication_restores_old_records(self):
+        self.prior_install()
+        original = self.tree()
+        def cancel(event):
+            if event == "publish:" + next(iter(installer.licenses.INSTALLED)):
+                raise KeyboardInterrupt("cancel during license publication")
+        with self.assertRaisesRegex(installer.InstallError, "cancel during license"):
+            self.install(cancel)
+        self.assertEqual(self.tree(), original)
+        self.assertEqual(list(self.state.glob("install-*")), [])
+
+    def test_recovery_does_not_require_a_working_rust_toolchain(self):
+        self.prior_install()
+        original = self.tree()
+        journal, _ = self.install()
+        rustc = self.commands / 'rustc'
+        rustc.write_text('#!/bin/sh\necho rustc-must-not-run >&2\nexit 91\n')
+        rustc.chmod(0o755)
+        result = subprocess.run([sys.executable, str(REPOSITORY/'scripts/install-transaction.py'),
+                                 '--user-root', str(self.root), '--recover', str(journal)],
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('rustc-must-not-run', result.stderr)
+        self.assertEqual(self.tree(), original)
 
     def test_commented_require_does_not_prevent_active_integration(self):
         self.write(installer.HYPR, '-- require("hypr.apps.omatainer")\n--[[\nrequire("hypr.apps.omatainer")\n]]\n')

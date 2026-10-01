@@ -248,3 +248,22 @@ entries, memory use and explicit rejected edits; Ctrl+Z and Ctrl+Shift+Z (or
 Ctrl+Y) use the same actions. Text fields keep their own Undo. Returning to saved
 content restores a clean project indicator; New/Open start a new history.
 See [history and save semantics](docs/validation/issue-83-history-ui.md).
+
+### Content provenance and licenses
+
+Open **Content & licenses** in the application for factory sound/preset IDs,
+embedded-font terms, component sources, commercial-use/redistribution summaries
+and complete offline notices. Original factory sounds are generated in code;
+reference-product assets, proprietary SDKs, IR files and ML models are not
+bundled. Imported media and fonts selected from your system retain their own
+terms. See [the provenance records](licenses/manifest.json) and
+[validation details](docs/validation/issue-86-content-license-manifest.md).
+
+Maintainers refresh reviewed records with `python3 scripts/license-manifest.py
+update`, then rebuild. `check` verifies the locked native source/component
+inventory. Create a retained release with `package --binary PATH --destination
+NEW_DIR`, and check it with `verify-package --destination DIR`. The installer
+validates and retains the same records, including an executable hash receipt,
+under `~/.local/share/omatainer/licenses` and its per-install recovery journal.
+`omatainer licenses --manifest` and `omatainer licenses --notices` print the
+records embedded in the executable without opening audio or the desktop.

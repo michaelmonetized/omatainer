@@ -34,6 +34,7 @@ pub(crate) mod deck_time;
 use deck_time::{DeckTimeSettings, Readout, TimeMode};
 #[cfg(test)]
 mod deck_time_tests;
+mod licenses;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -73,6 +74,7 @@ mod font_selection_tests;
 
 pub struct App {
     diagnostics: diagnostics::Diagnostics,
+    licenses: licenses::Licenses,
     engine: Engine,
     project: project::Projects,
     undo_history: undo::History,
@@ -152,6 +154,7 @@ impl App {
         let playback_watches = play_history::initial_watches(&engine);
         let mut app = Self {
             diagnostics: diagnostics::Diagnostics::default(),
+            licenses: licenses::Licenses::default(),
             engine,
             project,
             undo_history: undo::History::default(),
@@ -599,6 +602,7 @@ impl App {
             });
         }
         self.diagnostics_panel(ctx);
+        self.licenses_panel(ctx);
         self.clip_gain_editor(ctx);
         self.undo_panel(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
