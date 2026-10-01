@@ -217,6 +217,7 @@ impl Frame {
                 };
                 copy(&mut out.name, &clip.name);
                 out.bars = clip.bars;
+                out.gain = clip_gain(clip.gain);
             }
         }
         for (index, (out, deck)) in target.decks.iter_mut().zip(&rt.decks).enumerate() {

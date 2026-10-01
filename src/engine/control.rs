@@ -600,6 +600,7 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, u8)> {
         Command::FxMix { slot, .. } => Some((11, slot, 0)),
         Command::FxParam { slot, p, .. } => Some((12, slot, p)),
         Command::Quant(_) => Some((13, 0, 0)),
+        Command::ClipGain { track, scene, .. } => Some((14, track as usize, scene)),
         _ => None,
     }
 }

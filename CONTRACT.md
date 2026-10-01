@@ -205,3 +205,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   selected source disappears, selection clamps to a valid neighboring row.
 - Clicking a row focuses the crate. Up/Down, Page Up/Down and Home/End move and
   reveal selection while that list has focus. Search-field arrows edit text.
+
+## Clip gain
+
+- Supported MIDI, arpeggiated and drum clips capture clip gain independently at
+  each note/hit onset, before track EQ/FX and track gain. Zero silences that
+  clip source; unity keeps its original level. Live input and pads use unity
+  clip gain and remain subject to their ordinary track controls.
+- Gain edits apply to new notes/hits. Held voices, finite drum hits, release
+  envelopes and existing downstream effect tails retain their captured level,
+  including after a different clip launches. Track gain still scales the whole
+  track output.
+- Alt-click an occupied clip to edit its gain from zero to 1.5, with explicit
+  zero/unity controls. Snapshots and serialized clips expose the same value;
+  nonfinite edits are rejected. Audio-clip playback remains a separate feature.

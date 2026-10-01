@@ -253,6 +253,7 @@ pub struct Voice {
     pub owner: VoiceOwner,
     pub input: Option<InputKey>,
     pub vel: f32,
+    pub clip_gain: f32,
     pub phase: f32,
     pub phase2: f32,
     pub env: Env,
@@ -272,6 +273,7 @@ impl Voice {
             owner: VoiceOwner::Live,
             input: None,
             vel: 0.0,
+            clip_gain: 1.0,
             phase: 0.0,
             phase2: 0.0,
             env,
@@ -303,7 +305,7 @@ impl Voice {
         let e = self.env.tick();
         let cf = (cutoff + e * 1800.0).clamp(80.0, sr * 0.42);
         let y = res_svf.process(osc * e * self.vel, cf, 0.35, sr, 0.0);
-        y * 0.35
+        y * 0.35 * self.clip_gain
     }
 }
 
@@ -337,29 +339,36 @@ impl Poly {
         self.filters.fill(Svf::default());
     }
     pub fn note_on(&mut self, note: u8, vel: f32) {
-        self.note_on_owned(note, vel, VoiceOwner::Live, None);
+        self.note_on_owned(note, vel, VoiceOwner::Live, None, 1.0);
     }
     pub fn note_on_clip(&mut self, note: u8, vel: f32) {
-        self.note_on_owned(note, vel, VoiceOwner::Clip, None);
+        self.note_on_clip_with_gain(note, vel, 1.0);
+    }
+    pub fn note_on_clip_with_gain(&mut self, note: u8, vel: f32, gain: f32) {
+        self.note_on_owned(note, vel, VoiceOwner::Clip, None, gain);
     }
     pub fn note_on_input(&mut self, note: u8, vel: f32, input: InputKey) {
-        self.note_on_owned(note, vel, VoiceOwner::Live, Some(input));
+        self.note_on_owned(note, vel, VoiceOwner::Live, Some(input), 1.0);
     }
-    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>) {
+    fn note_on_owned(&mut self, note: u8, vel: f32, owner: VoiceOwner, input: Option<InputKey>, gain: f32) {
         #[cfg(test)]
         { self.note_on_events += 1; }
-        // Prefer a gate's existing voice over an earlier free slot. A repeat
-        // note-on from that gate retriggers it rather than leaving duplicates.
+        // Prefer a held gate's existing voice over an earlier free slot.
+        // A released clip voice belongs to its previous onset and keeps its
+        // captured gain even if a replacement clip starts the same pitch.
+        // Physical input identity retains its existing retrigger behavior.
         let available = self
             .voices
             .iter()
             .position(|v| v.owner == owner && v.input == input
-                && (input.is_some() || v.note == note))
+                && (input.is_some() || v.note == note)
+                && (owner != VoiceOwner::Clip || matches!(v.env.stage, 1..=3)))
             .or_else(|| self.voices.iter().position(|v| !v.env.active()));
         if let Some(i) = available {
             let v = &mut self.voices[i];
             v.owner = owner;
             v.input = input;
+            v.clip_gain = gain;
             v.trig(note, vel);
             return;
         }
@@ -372,6 +381,7 @@ impl Poly {
             .unwrap_or(0);
         self.voices[i].owner = owner;
         self.voices[i].input = input;
+        self.voices[i].clip_gain = gain;
         self.voices[i].trig(note, vel);
     }
     pub fn note_off(&mut self, note: u8) {
