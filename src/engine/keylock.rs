@@ -20,11 +20,15 @@ pub(super) fn boundary_tolerance(rate_smoothing: f32) -> f32 {
     BOUNDARY_SNAP_EPSILON.max(f32::EPSILON * 0.5 / rate_smoothing + f32::EPSILON)
 }
 pub const WINDOW_SECONDS: f64 = 2048.0 / 48_000.0;
-pub const SEARCH_SECONDS: f64 = 0.015;
+// A ±25 ms search spans a full phase cycle at 20 Hz; the narrower initial
+// search lost sub-bass fundamentals even when overall RMS remained strong.
+pub const SEARCH_SECONDS: f64 = 0.025;
 pub const OUTPUT_FIFO_FRAMES: usize = 0;
 const CORRELATION_POINTS: usize = 128;
-const COARSE_STEPS: i32 = 32;
-const REFINE_LEVELS: usize = 4;
+// Spend the same bounded score budget on enough sub-frame refinement to avoid
+// accumulating high-frequency phase error at each hop: 1 + 45 + 6*9 = 100.
+const COARSE_STEPS: i32 = 22;
+const REFINE_LEVELS: usize = 6;
 
 /// Configuration bounds, not measured latency or a perceptual quality score.
 /// Seconds refer to unwrapped source time; looping reads are cyclic. Resident
@@ -39,6 +43,8 @@ pub struct Geometry {
     pub max_content_displacement_seconds: f64,
     pub output_fifo_frames: usize,
     pub boundary_snap_epsilon: f32,
+    pub correlation_points: usize,
+    pub max_correlation_scores: usize,
 }
 fn hop_frames(output_sr: f64) -> usize {
     (WINDOW_SECONDS * output_sr * 0.5).round().max(1.0) as usize
@@ -56,6 +62,8 @@ pub fn geometry(output_sr: u32) -> Geometry {
         max_content_displacement_seconds: SEARCH_SECONDS + hop as f64 / sr,
         output_fifo_frames: OUTPUT_FIFO_FRAMES,
         boundary_snap_epsilon: boundary_tolerance(super::dsp::rate_blend(0.08, sr as f32)),
+        correlation_points: CORRELATION_POINTS,
+        max_correlation_scores: 1 + (2 * COARSE_STEPS + 1) as usize + 9 * REFINE_LEVELS,
     }
 }
 
@@ -207,8 +215,18 @@ impl Processor {
         let mut energy = 0.0_f64;
         let spacing = self.hop as f64 * step / CORRELATION_POINTS as f64;
         let reference_start = self.previous + self.hop as f64 * step;
-        for (index, frame) in reference.iter_mut().enumerate() {
-            let (l, r) = source.at(reference_start + (index as f64 + 0.5) * spacing);
+        // One deterministic stratified point in each overlap bin. Uniform
+        // spacing aliases tones at multiples of the effective probe rate (for
+        // example 6 kHz at the nominal window), leaving correlation blind to
+        // their phase. The coprime permutation covers every fractional stratum
+        // without changing the fixed point/score budget or allocating memory.
+        let offsets: [f64; CORRELATION_POINTS] = std::array::from_fn(|index| {
+            let fraction =
+                ((index * 73 + 19) % CORRELATION_POINTS) as f64 / CORRELATION_POINTS as f64;
+            (index as f64 + fraction) * spacing
+        });
+        for (frame, offset) in reference.iter_mut().zip(&offsets) {
+            let (l, r) = source.at(reference_start + offset);
             *frame = [l, r];
             energy += l as f64 * l as f64 + r as f64 * r as f64;
         }
@@ -225,8 +243,8 @@ impl Processor {
             }
             let mut dot = 0.0_f64;
             let mut candidate_energy = 0.0_f64;
-            for (index, frame) in reference.iter().enumerate() {
-                let (l, r) = source.at(candidate + (index as f64 + 0.5) * spacing);
+            for (frame, offset) in reference.iter().zip(&offsets) {
+                let (l, r) = source.at(candidate + offset);
                 // Sum channel energies/correlations, never L+R samples. A
                 // perfectly anti-phase stereo source must not look like silence.
                 dot += frame[0] as f64 * l as f64 + frame[1] as f64 * r as f64;
@@ -252,8 +270,14 @@ impl Processor {
         };
         let mut spacing = radius / COARSE_STEPS as f64;
         for offset in -COARSE_STEPS..=COARSE_STEPS {
+            // Stratify the coarse candidates too: a uniform candidate spacing
+            // equal to half a tone period can otherwise sample only two phases
+            // and send refinement toward a clipped search boundary.
+            let count = 2 * COARSE_STEPS + 1;
+            let fraction = (((offset + COARSE_STEPS) * 17 + 7) % count) as f64 / count as f64;
+            let jitter = (fraction - 0.5) * 0.5;
             consider(
-                nominal + offset as f64 * spacing,
+                nominal + (offset as f64 + jitter) * spacing,
                 &mut best,
                 &mut best_score,
             );

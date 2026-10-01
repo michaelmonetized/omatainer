@@ -383,7 +383,7 @@ fn declared_geometry_uses_the_actual_rounded_window_at_each_output_rate() {
         assert_eq!(declared.hop_frames, actual.hop);
         assert_eq!(declared.window_frames, 2 * actual.hop);
         assert_eq!(declared.output_fifo_frames, 0);
-        assert_eq!(declared.search_seconds, 0.015);
+        assert_eq!(declared.search_seconds, 0.025);
         assert_eq!(
             declared.max_source_lookahead_seconds,
             declared.search_seconds + 2.0 * actual.hop as f64 / sr as f64
@@ -469,4 +469,49 @@ fn exact_supported_endpoints_converge_from_either_side_but_outside_targets_do_no
             }
         }
     }
+}
+
+#[test]
+fn sub_bass_twenty_to_forty_hz_keeps_fundamental_and_energy_at_supported_ratios() {
+    let mut failures = Vec::new();
+    for (source_sr, output_sr) in [(48_000, 48_000), (44_100, 96_000)] {
+        for ratio in [0.5, 0.84, 1.16, 1.5] {
+            for hz in [20.0, 27.5, 40.0] {
+                let mut rt = engine_with(tone(source_sr, hz), output_sr, ratio, true);
+                for _ in 0..output_sr / 5 {
+                    rt.render_deck(0);
+                }
+                let frames: Vec<_> = (0..output_sr).map(|_| rt.render_deck(0).0).collect();
+                let (amplitude, rms) = harmonic_fit(&frames, output_sr, hz);
+                if !(0.47..0.53).contains(&amplitude) || (rms - 0.5 / 2.0_f64.sqrt()).abs() >= 0.02
+                {
+                    failures.push(format!("{source_sr}/{output_sr} ratio={ratio} hz={hz}: amplitude={amplitude} RMS={rms}"));
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
+fn upper_band_tones_do_not_alias_the_bounded_correlation_probes() {
+    let mut failures = Vec::new();
+    for ratio in [0.5, 0.84, 1.16, 1.5] {
+        for hz in [1000.0, 6000.0, 8000.0, 12_000.0] {
+            let mut rt = engine_with(tone(48_000, hz), 48_000, ratio, true);
+            for _ in 0..9600 {
+                rt.render_deck(0);
+            }
+            let frames: Vec<_> = (0..48_000).map(|_| rt.render_deck(0).0).collect();
+            let (amplitude, rms) = harmonic_fit(&frames, 48_000, hz);
+            // Existing linear source interpolation can attenuate upper-band
+            // amplitude. Require preserved pitch/coherence independently of
+            // that known resampler response, while rejecting lost energy.
+            let coherent_fraction = amplitude / (rms * 2.0_f64.sqrt());
+            if coherent_fraction < 0.95 || rms < 0.16 {
+                failures.push(format!("ratio={ratio} hz={hz}: amplitude={amplitude} RMS={rms} coherence={coherent_fraction}"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
