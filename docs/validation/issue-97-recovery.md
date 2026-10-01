@@ -52,3 +52,57 @@ Base: final performance-mode layer `acceca5`. All Cargo work used the private lo
 The previously intermittent missing-provenance workflow also passed five consecutive isolated repetitions after the UI identity correction.
 
 Local final evidence logs: `/tmp/issue97-full-id-fix.log`, `/tmp/issue97-build-id-fix.log`, `/tmp/issue97-native-id-fix.log`, `/tmp/issue97-license-id-fix.log`, `/tmp/issue97-missing-provenance-fixed-repeat.log`. The pre-fix deterministic failure is `/tmp/issue97-action-race.log`.
+
+
+### Assembled release qualification
+
+The assembled layer is based on #96 `acceca5`. Its ordinary suite passed
+**744 tests / 13 ignored** with four test threads in 36.62 seconds. An earlier
+assembled run and its isolated repeat exposed the Preview/Restore identity race
+described above; the deterministic production fix is included in this passing
+run. No timeout or assertion was relaxed.
+
+The controlled local release build, native preflight and all eight fixed workload
+groups across three fresh sessions passed on 2026-10-01
+07:19:44–07:23:08 UTC. The workload fixture ran for 129.65 seconds. Native AT-SPI
+visited 235 nodes and exercised 88 actions over 889 actual App frames,
+persisting/reopening one note and UI scale 1.25. Recovery-specific UI races and
+restore behavior are covered by the actual App/renderer fixtures above; the native
+preflight preserves the broader existing project/help/performance workflow.
+
+The source-bound release binary SHA-256 is
+`06e315987ae9643ce86caff6d677fb9ac77a3e6113031b5ffe419766a4288244`. Full raw samples, host details and logs
+are retained in `target/performance.json`, `target/performance.raw.json` and
+`target/performance.log`. Independent report checking and native package
+verification passed; the package includes the report and matching binary. Seven
+CLI protocol, six status/follow and five runtime-isolation groups also passed.
+
+The host was local Linux aarch64, Apple M1 Pro (16-inch MacBook Pro, 2021),
+10 logical CPUs, 16,141,549,568 bytes RAM, kernel `7.1.13-3-2-ARCH`, schedutil,
+SCHED_OTHER/nice 0 with CPUs 0–9 available. Other agent builds/tests were paused;
+unrelated host applications remained running. One-minute load was
+3.229 before and 1.783 after the timed workload. All #95 budgets remain unchanged.
+
+Worst p99 / maximum across the three sessions, in milliseconds:
+
+| Work | p99 | Maximum |
+| --- | ---: | ---: |
+| Producer callback wall | 2.245 | 2.681 |
+| Composer callback wall | 2.384 | 2.622 |
+| Live DJ callback wall | 0.444 | 0.512 |
+| Hybrid callback wall | 2.800 | 9.488 |
+| 50,000-track App frame | 3.682 | 7.035 |
+| Multi-input App frame | 3.914 | 6.481 |
+| Private IPC roundtrip | 9.152 | 11.609 |
+| MIDI worker dispatch | 4.216 | 5.295 |
+| Project roundtrip App frame | 3.876 | 3.876 |
+| Long recording App frame | 3.819 | 3.819 |
+| Long recording render block | 2.445 | 3.849 |
+
+All measured callback allocation/free, rejection and MIDI-drop counters were
+zero; exact state/audio checks passed. The fixed #95 workload schedule is
+unchanged. Separate recovery regressions run repeated actual journal writes
+alongside reference-matched callback rendering. Neither these local timings nor
+process-kill/storage injections establish physical driver deadlines, XRUN freedom,
+compositor FPS, power-loss durability, controller compatibility or human listening
+and accessibility quality.
