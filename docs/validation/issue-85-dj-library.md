@@ -93,9 +93,23 @@ counter. GUI reads make one attempt, never spin. A terminal receipt is read befo
 its final preparation/history, so unload/replacement before polling cannot retarget
 or erase the prior load's edits. Unapplied/cancelled/failed requests cannot create
 preparation. Initial builtin restoration checks receipt identity and skips decks
-already edited before background catalog opening finishes.
+already edited before background catalog opening finishes. Queue backpressure
+keeps eligible startup restores pending for retry. Successful restore advances
+the native project's untracked checkpoint; stale receipt identities are inert.
+Undo/redo publishes preparation only after all patches and media receipt swaps,
+so the restored source retains its own preparation. Reopening native projects
+publishes their restored deck preparation to the same library capture path.
+Owned restore and fence commands retire through the undo recycler, including
+stale requests, instead of releasing their final shared allocation on the callback.
 
-Normal close uses a FIFO `LibraryFence` then the worker's save receipt. Neither
+Normal close first resolves the native project's Save/Discard/Cancel decision
+and holds its engine close guard, then uses a FIFO `LibraryFence` and the
+library worker's durable save receipt. The engine acknowledges a successful
+close seal only at the callback tail, after that block's actual source-play
+history publication. A project discard does not discard a library save failure;
+that requires its own explicit decision. Keep working wins even on the same
+frame that library saving completes. Import controls are disabled while close
+is committing. Releasing the guard reopens admission on the next callback. Neither
 renderer nor GUI performs filesystem work or waits for disk. The GUI remains
 open and responsive until ready, with Retry, Keep working and explicit Close
 without saving controls. `prepare_library_close` returns Pending/Ready/Failed for
@@ -128,7 +142,10 @@ committed catalog, not changes that had not reached a successful save receipt.
   frees across 128 rounds of seek/hotcue/loop commands. A concurrent 49,999-update
   receipt test rejects torn cue/hotcue/loop snapshots.
 
-The full local suite passes 412 tests (3 existing opt-in tests ignored), and
-`cargo build` passes. No hardware
+The final assembled local suite passes 565 tests (6 opt-in fixtures ignored).
+It includes actual GUI Save/Discard/Cancel close coordination, library failure
+and same-frame cancellation, startup restoration retry, undo/media identity,
+native project preparation reopening, and final-block close/history ordering.
+The latter verifies zero callback allocations and frees. `cargo build` passes. No hardware
 compatibility, network library access, power-loss simulation or vendor parity is
 claimed.
