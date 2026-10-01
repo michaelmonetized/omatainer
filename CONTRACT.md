@@ -300,3 +300,15 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Nonneutral enabled Spread history advances even at zero mix, so increasing
   mix exposes its current history. Per-slot bypass retains the 5 ms fade/freeze
   policy; each duplicate instance owns its history and mix independently.
+
+## Three master FX controls
+
+- Each of the three legacy master FX Wet controls addresses its own supported
+  stereo slot. Initial types are Echo, Reverb and Filter, all at zero wet.
+- The third control (slot index 2) initially blends a two-pole 1 kHz low-pass:
+  minimum is dry audio, maximum is the filtered signal on both channels.
+  Its existing NS7FX channel-1 CC `0x32` mapping has those same endpoints.
+- Select cycles Echo → Reverb → Filter in that slot. Snapshot type and wet
+  values describe the actual processor and mix, including the third slot.
+- Every factory FX binding must resolve to a supported slot and observable
+  renderer state; adding a controller label cannot silently create an inert FX.
