@@ -1146,6 +1146,7 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
         self.undo.publish();
@@ -2742,6 +2743,7 @@ pub struct Engine {
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
     pub(crate) initial_playback: [load_receipt::Receipt; DECKS],
+    pub(crate) performance_history: Option<history_measurement::control::Handle>,
     pub(crate) sampler_assets: crate::sampler_bank::assets::Owner,
     // Production owns the audio manager; it may retain a stopped graph after
     // backend failure while still serving project Save/Open/Close.
@@ -2764,6 +2766,7 @@ impl Engine {
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let sampler_assets = rt.sampler_assets.clone();
+        let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audio = audio::start_with_settings(rt, &settings.audio)?;
         let midi = midi::MidiHub::start_with_policy(tx.clone(), snap.clone(), settings.midi_inputs.clone())?;
         Ok(Self {
@@ -2774,6 +2777,7 @@ impl Engine {
             snap,
             midi,
             initial_playback,
+            performance_history,
             sampler_assets,
             _audio: Some(audio),
         })
@@ -2797,8 +2801,9 @@ impl Engine {
         let undo=rt.enable_undo()?;
         let project=rt.project.clone();
         let sampler_assets=rt.sampler_assets.clone();
+        let performance_history=rt.history_measurement.as_ref().map(|history|history.handle());
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,sampler_assets,_audio:Some(audio)})
+        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,performance_history,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
@@ -2812,6 +2817,7 @@ impl Engine {
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let sampler_assets = rt.sampler_assets.clone();
+        let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         (
             Self {
                 undo,
@@ -2821,6 +2827,7 @@ impl Engine {
                 snap,
                 midi: midi::MidiHub::without_devices(),
                 initial_playback,
+                performance_history,
                 sampler_assets,
                 _audio: None,
             },

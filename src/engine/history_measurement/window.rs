@@ -11,10 +11,13 @@ pub(in crate::engine) struct Frame {
     pub without_digital: [[f64; 2]; LANES],
     /// Conservative source decomposition/numerical error per analog channel.
     pub error: [[f64; 2]; LANES],
+    pub digital_error: [[f64; 2]; LANES],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(in crate::engine) struct Observation {
+pub(crate) struct Observation {
+    pub session: u64,
+    pub wall_ns: u64,
     pub episode: Episode,
     pub first_frame: u64,
     pub frames: u32,
@@ -28,7 +31,8 @@ struct Energy {
     actual_digital: [f64; 2],
     removal_low: [f64; 2],
     removal_high: [f64; 2],
-    removal_digital: [f64; 2],
+    removal_digital_low: [f64; 2],
+    removal_digital_high: [f64; 2],
     invalid: bool,
 }
 
@@ -40,8 +44,9 @@ impl Energy {
             let without = frame.without_analog[lane][channel];
             let without_digital = frame.without_digital[lane][channel];
             let error = frame.error[lane][channel];
-            if ![actual, digital, without, without_digital, error]
-                .into_iter().all(f64::is_finite) || error < 0.0
+            let digital_error = frame.digital_error[lane][channel];
+            if ![actual, digital, without, without_digital, error, digital_error]
+                .into_iter().all(f64::is_finite) || error < 0.0 || digital_error < 0.0
             {
                 self.invalid = true;
                 continue;
@@ -51,13 +56,15 @@ impl Energy {
             self.actual_digital[channel] += digital * digital;
             self.removal_low[channel] += (removal - error).max(0.0).powi(2);
             self.removal_high[channel] += (removal + error).powi(2);
-            self.removal_digital[channel] += (digital - without_digital).powi(2);
+            let digital_removal = (digital - without_digital).abs();
+            self.removal_digital_low[channel] += (digital_removal - digital_error).max(0.0).powi(2);
+            self.removal_digital_high[channel] += (digital_removal + digital_error).powi(2);
         }
     }
 
     fn classify(&self, frames: u32) -> Classification {
         if self.invalid || [self.actual_analog, self.actual_digital,
-            self.removal_low, self.removal_high, self.removal_digital]
+            self.removal_low, self.removal_high, self.removal_digital_low, self.removal_digital_high]
             .into_iter().flatten().any(|value| !value.is_finite())
         {
             return Classification::Nonfinite;
@@ -69,12 +76,11 @@ impl Energy {
             // caused by an arbitrarily small, certified-negligible tail.
             if self.actual_analog[channel] > minimum
                 && self.actual_digital[channel] > minimum
-                && self.removal_digital[channel] > minimum
             {
-                if self.removal_low[channel] > minimum {
+                if self.removal_low[channel] > minimum && self.removal_digital_low[channel] > minimum {
                     return Classification::Active;
                 }
-                ambiguous |= self.removal_high[channel] >= minimum;
+                ambiguous |= self.removal_high[channel] >= minimum && self.removal_digital_high[channel] >= minimum;
             }
         }
         if ambiguous { Classification::Ambiguous } else { Classification::BelowFloor }
@@ -99,6 +105,7 @@ impl Windows {
         Some(Self { rate, width: rate.div_ceil(100), first, frames: 0,
             episodes, energy: [Energy::default(); LANES], exhausted: false })
     }
+    pub fn confirmed_frame(&self) -> u64 { self.first }
     pub fn push(&mut self, frame: &Frame) -> Option<[Option<Observation>; LANES]> {
         for lane in 0..LANES {
             if self.episodes[lane].is_some() { self.energy[lane].add(frame, lane); }
@@ -109,7 +116,7 @@ impl Windows {
     pub fn finish(&mut self) -> Option<[Option<Observation>; LANES]> {
         if self.frames == 0 { return None; }
         let result = std::array::from_fn(|lane| self.episodes[lane].map(|episode| Observation {
-            episode, first_frame: self.first, frames: self.frames, sample_rate: self.rate,
+            episode, session: 0, wall_ns: 0, first_frame: self.first, frames: self.frames, sample_rate: self.rate,
             classification: if self.exhausted || self.first.checked_add(self.frames as u64).is_none() {
                 Classification::ClockOverflow
             } else { self.energy[lane].classify(self.frames) },

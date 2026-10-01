@@ -348,6 +348,8 @@ def private(binary,support=False):
         analysis_evidence=verify_analysis(named, action, state, wait_for, Atspi)
         from check_crates_accessibility import verify_crates
         crates_evidence=verify_crates(named, action, state, wait_for, Atspi)
+        from check_history_accessibility import verify_history
+        history_evidence=verify_history(named, action, state, wait_for, Atspi)
         action(named('Enable performance mode'),'click')
         wait_for(lambda:state()['performance']['protected'],'native performance protection')
         action(named('Safe stop…'),'click')
@@ -380,7 +382,7 @@ def private(binary,support=False):
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
                           'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
-                          'beatgrid':grid_evidence,'sampler_editor':sampler_evidence,'track_analysis':analysis_evidence,'named_crates':crates_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
+                          'beatgrid':grid_evidence,'sampler_editor':sampler_evidence,'track_analysis':analysis_evidence,'named_crates':crates_evidence,'session_history':history_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'cue_editor_workflow':cue_editor_workflow,

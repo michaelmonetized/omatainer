@@ -5,6 +5,7 @@ mod startup;
 mod licenses;
 mod engine;
 mod library;
+mod performance_history;
 mod sampler_bank;
 mod track_analysis;
 mod preferences;

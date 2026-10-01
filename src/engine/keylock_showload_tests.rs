@@ -63,12 +63,9 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
     for _ in 0..WARMUP {
         callback.render(&mut output);
     }
-    let history_receiver = if history {
-        let observer = callback.renderer_mut_for_test().history_measurement.as_mut().unwrap();
-        let receiver = observer.take_receiver().unwrap();
-        assert!(observer.start());
-        Some(receiver)
-    } else { None };
+    let history_handle = history.then(|| engine.performance_history.clone().unwrap());
+    let history_receiver = history_handle.as_ref().map(|handle| handle.take_observations().unwrap());
+    let history_start = history_handle.as_ref().map(|handle| handle.submit(history_measurement::control::Action::Start(1)).unwrap());
     let mut history_frames = [0_u64; 2];
     let before = callback
         .renderer_for_test()
@@ -134,6 +131,11 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
                 hash = (hash ^ byte as u64).wrapping_mul(0x100000001b3);
             }
         }
+        if block == 0 {
+            if let Some(handle) = &history_handle {
+                assert_eq!(handle.poll(history_start.unwrap()).unwrap().unwrap().outcome, history_measurement::control::Outcome::Started);
+            }
+        }
         if let Some(receiver) = &history_receiver {
             for observation in receiver.try_iter() {
                 if observation.classification == history_measurement::Classification::Active {
@@ -144,9 +146,12 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
         std::thread::yield_now(); // Outside callback, same retirement scheduling as #95.
     }
     if history {
-        let observer = callback.renderer_mut_for_test().history_measurement.as_mut().unwrap();
-        assert!(observer.end());
-        assert!(!observer.incomplete && observer.dropped == 0);
+        let handle = history_handle.as_ref().unwrap();
+        let end = handle.submit(history_measurement::control::Action::End(1)).unwrap();
+        callback.renderer_mut_for_test().process(&mut []);
+        let ack = handle.poll(end).unwrap().unwrap();
+        assert_eq!(ack.outcome, history_measurement::control::Outcome::Ended);
+        assert!(!ack.incomplete && ack.dropped == 0);
         for observation in history_receiver.as_ref().unwrap().try_iter() {
             if observation.classification == history_measurement::Classification::Active {
                 history_frames[observation.episode.deck as usize] += u64::from(observation.frames);

@@ -6,7 +6,7 @@ fn frame(actual: [f64; 2], contribution: [f64; 2], error: f64) -> Frame {
     let without = std::array::from_fn(|c| actual[c] - contribution[c]);
     Frame { analog: actual, digital: actual,
         without_analog: [without; LANES], without_digital: [without; LANES],
-        error: [[error; 2]; LANES] }
+        error: [[error; 2]; LANES], digital_error: [[error; 2]; LANES] }
 }
 fn classify(value: Frame) -> Classification {
     let mut windows = Windows::new(48_000, 0, [Some(episode()), None, None, None]).unwrap();

@@ -185,7 +185,11 @@ impl Handle {
         #[cfg(not(test))]
         let wait_limit = WAIT_LIMIT;
         loop {
-            if let Ok(task) = self.shared.results.recv_timeout(Duration::from_millis(5)) {
+            // Never register a parked receiver on this renderer-written
+            // channel. Its final wake-context Arc can otherwise be freed by
+            // completed.try_send after the worker exits. Polling/sleeping is
+            // worker-only and leaves the callback's handoff heap-free.
+            if let Ok(task) = self.shared.results.try_recv() {
                 return Ok(task);
             }
             let cancelled = cancel.load(Ordering::Acquire);
@@ -204,6 +208,7 @@ impl Handle {
                     });
                 }
             }
+            std::thread::sleep(Duration::from_millis(1));
         }
     }
 

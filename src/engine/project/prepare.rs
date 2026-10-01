@@ -107,7 +107,7 @@ impl Prepared {
             );
             deck.title = saved.title;
             deck.audio = saved.audio.map(|index| media[index].clone());
-            deck.history_key = history_measurement::parts::unresolved_key();
+            deck.history_key = 0;
             deck.eq = [eq(saved.eq, output_sr); 2];
             deck.filter_position = saved.filter_amt;
             deck.cue_styles = saved.cue_styles;
@@ -130,6 +130,7 @@ impl Prepared {
                 let receipt = load_receipt::Receipt::new();
                 receipt.claim();
                 receipt.finish(load_receipt::State::Current);
+                deck.history_key = receipt.history_key();
                 deck.load_receipt = Some(receipt);
                 deck.publish_preparation();
             }

@@ -1,6 +1,7 @@
 //! Only final OutputCallback conversion promotes samples into observations.
 use super::{tracker::{Contribution, Tracker}, Episode, Frame, Observation, Windows, LANES};
 use crate::engine::{performance, FxKind};
+use super::control::{Action, Ack, Endpoint, Handle, Outcome, Progress};
 use crossbeam_channel::{Receiver, Sender};
 
 const MAX_FRAMES: usize = 16_384;
@@ -26,11 +27,14 @@ pub(in crate::engine) struct Measurement {
     capture: bool,
     frame_count: usize,
     active: bool,
+    session: u64,
+    endpoint: Endpoint,
+    callback_wall_ns: u64,
+    window_wall_ns: u64,
     clock: u64,
     windows: Option<Windows>,
     window_episodes: [Option<Episode>; LANES],
     sender: Sender<Observation>,
-    receiver: Option<Receiver<Observation>>,
     pub incomplete: bool,
     pub dropped: u64,
 }
@@ -42,16 +46,35 @@ impl Measurement {
         sidecar.try_reserve_exact(MAX_FRAMES).map_err(|_| "history conversion storage unavailable")?;
         sidecar.resize(MAX_FRAMES, Rendered::default());
         let (sender, receiver) = crossbeam_channel::bounded(EVENTS);
-        Ok(Self { tracker, available: true, rate, sidecar, capture: false, frame_count: 0, active: false,
+        Ok(Self { tracker, available: true, rate, sidecar, capture: false, frame_count: 0, active: false, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
             clock: 0, windows: None, window_episodes: [None; LANES], sender,
-            receiver: Some(receiver), incomplete: false, dropped: 0 })
+            incomplete: false, dropped: 0 })
     }
-    pub fn take_receiver(&mut self) -> Option<Receiver<Observation>> { self.receiver.take() }
+    pub fn take_receiver(&mut self) -> Option<Receiver<Observation>> { self.endpoint.handle.take_observations() }
     /// These are renderer-owned boundary operations; the session service must
     /// acknowledge them through its request mailbox before reporting a start/end.
+    pub fn handle(&self) -> Handle { self.endpoint.handle.clone() }
+    pub fn service_requests(&mut self, current: [u64; 2]) {
+        let Some(request) = self.endpoint.request() else { return; };
+        let session = match request.action { Action::Start(session) | Action::End(session) => session };
+        let wall = self.endpoint.clock();
+        let outcome = match request.action {
+            Action::Start(_) if self.active => Outcome::AlreadyActive,
+            Action::Start(_) if !self.available || wall.is_none() => Outcome::Unavailable,
+            Action::Start(_) if !self.capture || self.frame_count == 0 || self.frame_count > MAX_FRAMES => Outcome::NoOutput,
+            Action::Start(_) => { self.start(); self.session = session; Outcome::Started },
+            Action::End(_) if !self.active || self.session != session => Outcome::WrongSession,
+            Action::End(_) => { self.end(); Outcome::Ended },
+        };
+        let wall_ns = wall.unwrap_or_else(|| { self.incomplete = true; 0 });
+        if outcome == Outcome::Started { self.callback_wall_ns = wall_ns; }
+        self.endpoint.publish_status(if self.active { self.session } else { 0 }, self.incomplete, self.dropped);
+        self.endpoint.acknowledge(Ack { request: request.id, session, outcome, wall_ns,
+            frame: self.clock, rate: self.rate, incomplete: self.incomplete, dropped: self.dropped, current });
+    }
     pub fn start(&mut self) -> bool {
         if self.active { return false; }
-        self.active = true; self.windows = None; self.window_episodes = [None; LANES];
+        self.active = true; self.session = 1; self.windows = None; self.window_episodes = [None; LANES];
         self.incomplete = self.tracker.incomplete; self.dropped = 0;
         true
     }
@@ -75,6 +98,7 @@ impl Measurement {
     }
     pub fn begin_output(&mut self, frames: usize) {
         self.capture = true;
+        self.callback_wall_ns = self.endpoint.clock().unwrap_or(0);
         self.frame_count = frames;
         if self.active && frames > MAX_FRAMES {
             self.flush(); self.windows = None;
@@ -119,6 +143,7 @@ impl Measurement {
                 if self.windows.is_none() || record.episodes != self.window_episodes {
                     self.flush();
                     self.window_episodes = record.episodes;
+                    self.window_wall_ns = self.frame_wall_ns(i);
                     self.windows = self.clock.checked_add(i as u64)
                         .and_then(|first| Windows::new(self.rate, first, record.episodes));
                     if self.windows.is_none() { self.incomplete = true; }
@@ -128,26 +153,51 @@ impl Measurement {
                 let digital = [cpal::Sample::to_sample::<f64>(output[i * channels]),
                     if channels == 1 { 0.0 } else { cpal::Sample::to_sample::<f64>(output[i * channels + 1]) }];
                 let mapped_without = record.without.map(map);
+                let error = record.error.map(|pair| if channels == 1 {
+                    [0.5 * (pair[0] + pair[1]) + (analog[0].abs() + 1.0) * f64::from(f32::EPSILON) * 2.0, 0.0]
+                } else { pair });
+                let without_digital = mapped_without.map(|p| p.map(|v| cpal::Sample::to_sample::<f64>(T::from_sample(v))));
+                let digital_error = std::array::from_fn(|lane| std::array::from_fn(|c| {
+                    if !error[lane][c].is_finite() { return f64::INFINITY; }
+                    let midpoint = f64::from(mapped_without[lane][c]);
+                    let low = cpal::Sample::to_sample::<f64>(T::from_sample((midpoint - error[lane][c]).clamp(-1.0, 1.0) as f32));
+                    let high = cpal::Sample::to_sample::<f64>(T::from_sample((midpoint + error[lane][c]).clamp(-1.0, 1.0) as f32));
+                    (low - without_digital[lane][c]).abs().max((high - without_digital[lane][c]).abs())
+                }));
                 let frame = Frame { analog, digital,
                     without_analog: mapped_without.map(|p| p.map(f64::from)),
-                    without_digital: mapped_without.map(|p| p.map(|v| cpal::Sample::to_sample::<f64>(T::from_sample(v)))),
-                    error: record.error.map(|pair| if channels == 1 {
-                        [0.5 * (pair[0] + pair[1]) + (analog[0].abs() + 1.0) * f64::from(f32::EPSILON) * 2.0, 0.0]
-                    } else { pair }),
+                    without_digital, error, digital_error,
                 };
                 let observations = self.windows.as_mut().and_then(|w| w.push(&frame));
+                let completed = observations.is_some();
                 self.publish(observations);
+                if completed { self.window_wall_ns = self.frame_wall_ns(i + 1); }
             }
         }
         if let Some(clock) = self.clock.checked_add(frames as u64) { self.clock = clock; }
         else { self.incomplete = true; self.active = false; self.flush(); }
+        self.endpoint.publish_status(if self.active { self.session } else { 0 }, self.incomplete, self.dropped);
+        if self.active {
+            let confirmed = self.windows.as_ref().map_or(self.clock, Windows::confirmed_frame);
+            let wall_ns = self.endpoint.clock().unwrap_or(0);
+            self.endpoint.progress(Progress { session: self.session, wall_ns, frame: confirmed, rate: self.rate,
+                incomplete: self.incomplete || wall_ns == 0, dropped: self.dropped });
+        }
+    }
+    fn frame_wall_ns(&self, _index: usize) -> u64 {
+        // Civil timestamps have callback-entry resolution. Frame/rate counts
+        // separately describe submitted digital duration; accelerated fixtures
+        // and unknown driver scheduling cannot fabricate a per-sample wall time.
+        self.callback_wall_ns
     }
     fn flush(&mut self) {
         let observations = self.windows.as_mut().and_then(Windows::finish);
         self.publish(observations);
     }
     fn publish(&mut self, observations: Option<[Option<Observation>; LANES]>) {
-        for observation in observations.into_iter().flatten().flatten() {
+        for mut observation in observations.into_iter().flatten().flatten() {
+            observation.session = self.session; observation.wall_ns = self.window_wall_ns;
+            if observation.wall_ns == 0 { self.incomplete = true; }
             if self.sender.try_send(observation).is_err() {
                 self.incomplete = true; self.dropped = self.dropped.saturating_add(u64::from(observation.frames));
             }

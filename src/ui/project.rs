@@ -268,6 +268,9 @@ impl App {
         self.request_project_action(Action::Close);
     }
     pub(super) fn finish_project_close(&mut self, ctx: &egui::Context) {
+        self.begin_session_history_close(ctx);
+    }
+    pub(super) fn finish_history_exit(&mut self, ctx: &egui::Context) {
         self.project.allow_close = true;
         self.support.restart.store(self.project.restarting,Ordering::Release);
         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -280,6 +283,7 @@ impl App {
         self.project.allow_close = false;
         self.cancel_library_close();
         self.cancel_recovery_close();
+        self.cancel_session_history_close();
     }
     pub(super) fn project_view(&mut self) -> UiState {
         let selection = self.selected_library_item().map(|item| item.source.clone());
@@ -926,6 +930,7 @@ impl App {
                         " · not saved to a file"
                     }
                 ));
+                if ui.button(self.session_history_toolbar_text()).help(ui, HelpControl::HistoryOpen).clicked() { self.session_history.open = true; }
                 let recovery_text = self.recovery_toolbar_text();
                 if ui.button(recovery_text).help(ui, HelpControl::RecoveryOpen).clicked() { self.recovery.open = true; }
                 if self.project.awaiting_snapshot.is_some() {

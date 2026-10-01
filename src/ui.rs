@@ -27,6 +27,7 @@ use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
 mod play_history;
+mod session_history;
 mod cue_editor;
 mod grid_editor;
 mod play_time;
@@ -92,6 +93,7 @@ mod font_selection_tests;
 pub struct App {
     support: support::Panel,
     recovery: recovery::Recovery,
+    session_history: session_history::Panel,
     settings: preferences::Settings,
     performance_panel: performance::Panel,
     audio_settings: audio_settings::Panel,
@@ -174,6 +176,7 @@ impl App {
         app.start_library_store(crate::library::default_path());
         }
         app.start_default_recovery();
+        app.start_default_session_history();
         app
 
     }
@@ -191,6 +194,7 @@ impl App {
         let mut app = Self {
             support: support::Panel::default(),
             recovery: recovery::Recovery::default(),
+            session_history: session_history::Panel::default(),
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             settings: preferences::Settings::default(),
             performance_panel: performance::Panel::default(),
@@ -597,6 +601,7 @@ impl App {
         self.poll_sampler_editor();
         self.poll_library_analysis();
         self.poll_named_crates();
+        self.poll_session_history();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
@@ -617,6 +622,7 @@ impl App {
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.named_crates_ui(ctx);
+        self.session_history_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -715,6 +721,7 @@ impl App {
         // Resolve terminal project outcomes after this frame's Cancel/input.
         self.poll_projects(ctx);
         self.recovery_close_ui(ctx);
+        self.session_history_close_ui(ctx);
         self.sync_recovery();
         if animating {
             ctx.request_repaint();

@@ -199,6 +199,29 @@ the UI for earlier deck edits and the background save. **Close without saving**
 explicitly accepts any uncommitted changes being lost. See the
 [storage schema, recovery policy and validation](docs/validation/issue-85-dj-library.md).
 
+## Performance history
+
+Open **History**, then **Start session** before your set and **End session**
+afterward. Each boundary waits for the output renderer; it does not start or
+stop playback. The history records deck and catalog identity plus measured
+main-output contribution in 10 ms windows above −90 dBFS, including master
+FX tails and this build's cue blend. Review incomplete or uncertain coverage
+and the pending-save status. Hardware delivery and listening require your QA.
+
+**Mark played**, **Mark unplayed**, and **Use measured status** keep measured
+duration intact. Add named external tracks for material played outside the
+engine; these have no measured duration. Sessions survive restart independently
+of projects and Undo. Interrupted sessions retain their last saved prefix.
+**Export session** writes a new local JSON file with labels and opaque catalog
+IDs, omitting media locations and fingerprints. Review labels before sharing;
+existing destinations are refused. Performance protection permits recording,
+ending and automatic saves, and excludes manual edits and export.
+
+Normal exit waits for the actual session end and its save. **Keep working**
+cancels exit; an already ended session remains ended. The explicit close-without-
+confirmed-save action accepts loss of recent history. See the
+[history measurement and persistence evidence](docs/validation/issue-106-history.md).
+
 ## Deck pitch lock
 
 The deck's **L** button preserves pitch during forward playback at 0.50–1.50×
