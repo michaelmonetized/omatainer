@@ -300,7 +300,7 @@ fn recorded_holds_across_loop_seams_replay_at_the_synthetic_event_times() {
             .poly
             .voices
             .iter()
-            .any(|voice| voice.note == 67
+            .any(|voice| voice.note() == 67
                 && voice.owner == dsp::VoiceOwner::Clip
                 && matches!(voice.env.stage, 1..=3)));
     }

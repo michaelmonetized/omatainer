@@ -1,5 +1,8 @@
 //! Real-time-safe DSP primitives used by the mixer, decks, and instruments.
 use super::instrument::SynthInstrument;
+#[cfg(test)]
+#[path = "voice_pitch_tests.rs"]
+mod voice_pitch_tests;
 
 /// Rescale a one-pole blend defined at 48 kHz to the same time constant.
 /// Call during preparation, not per output frame. Preserve the 48 kHz value
@@ -260,7 +263,14 @@ pub enum InputKey {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Voice {
-    pub note: u8,
+    // Private identity enforces trig/set_note cache invalidation.
+    note: u8,
+    sample_rate: f32,
+    tuning_hz: f32,
+    phase_increment: f32,
+    detuned_increment: f32,
+    #[cfg(test)]
+    pitch_updates: u64,
     pub owner: VoiceOwner,
     pub input: Option<InputKey>,
     pub vel: f32,
@@ -276,8 +286,14 @@ impl Voice {
     pub fn new(sr: f32, kind: SynthInstrument) -> Self {
         let [attack, decay, sustain, release] = kind.adsr();
         let env = Env::adsr(sr, attack, decay, sustain, release);
-        Self {
+        let mut voice = Self {
             note: 0,
+            sample_rate: sr,
+            tuning_hz: 440.0,
+            phase_increment: 0.0,
+            detuned_increment: 0.0,
+            #[cfg(test)]
+            pitch_updates: 0,
             owner: VoiceOwner::Live,
             input: None,
             vel: 0.0,
@@ -287,10 +303,41 @@ impl Voice {
             env,
             cutoff: kind.cutoff(),
             kind,
+        };
+        voice.refresh_pitch();
+        voice
+    }
+    fn refresh_pitch(&mut self) {
+        // Preserve the original f32 operation order exactly. The detuned
+        // oscillator's fixed ratio is cached at the same boundary.
+        let hz = self.tuning_hz * 2f32.powf((self.note as f32 - 69.0) / 12.0);
+        self.phase_increment = hz / self.sample_rate;
+        self.detuned_increment = self.phase_increment * 0.997;
+        #[cfg(test)]
+        { self.pitch_updates += 1; }
+    }
+    pub fn note(&self) -> u8 { self.note }
+    pub fn set_note(&mut self, note: u8) {
+        if self.note != note {
+            self.note = note;
+            self.refresh_pitch();
         }
+    }
+    /// A4 tuning in Hz. This DSP hook is not a new UI/MIDI tuning control.
+    /// Retain phase, envelope, ownership and instrument while updating pitch.
+    pub fn set_tuning_hz(&mut self, tuning_hz: f32) -> bool {
+        if !tuning_hz.is_finite() || !(20.0..=20_000.0).contains(&tuning_hz) {
+            return false;
+        }
+        if self.tuning_hz != tuning_hz {
+            self.tuning_hz = tuning_hz;
+            self.refresh_pitch();
+        }
+        true
     }
     pub fn trig(&mut self, note: u8, vel: f32) {
         self.note = note;
+        self.refresh_pitch();
         self.vel = vel;
         self.env.on();
     }
@@ -298,10 +345,14 @@ impl Voice {
         if !self.env.active() {
             return 0.0;
         }
-        let hz = 440.0 * 2f32.powf((self.note as f32 - 69.0) / 12.0);
-        let inc = hz / sr;
-        self.phase = (self.phase + inc) % 1.0;
-        self.phase2 = (self.phase2 + inc * 0.997) % 1.0;
+        // Engine rate preparation rebuilds voices. Keep the direct Voice API
+        // correct too if its caller changes rate while a voice is active.
+        if self.sample_rate != sr {
+            self.sample_rate = sr;
+            self.refresh_pitch();
+        }
+        self.phase = (self.phase + self.phase_increment) % 1.0;
+        self.phase2 = (self.phase2 + self.detuned_increment) % 1.0;
         let saw = self.phase * 2.0 - 1.0;
         let sq = if self.phase < 0.5 { 0.7 } else { -0.7 };
         let sine = (self.phase * std::f32::consts::TAU).sin();
@@ -323,6 +374,7 @@ pub struct Poly {
     pub filters: Vec<Svf>,
     pub kind: SynthInstrument,
     sample_rate: f32,
+    tuning_hz: f32,
     pub cutoff: f32,
     #[cfg(test)]
     pub note_on_events: u64,
@@ -335,6 +387,7 @@ impl Poly {
             filters: vec![Svf::default(); n],
             kind,
             sample_rate: sr,
+            tuning_hz: 440.0,
             cutoff: kind.cutoff(),
             #[cfg(test)]
             note_on_events: 0,
@@ -346,8 +399,17 @@ impl Poly {
         self.sample_rate = sr;
         for voice in &mut self.voices {
             *voice = Voice::new(sr, self.kind);
+            voice.set_tuning_hz(self.tuning_hz);
         }
         self.filters.fill(Svf::default());
+    }
+    pub fn set_tuning_hz(&mut self, tuning_hz: f32) -> bool {
+        if !tuning_hz.is_finite() || !(20.0..=20_000.0).contains(&tuning_hz) {
+            return false;
+        }
+        self.tuning_hz = tuning_hz;
+        for voice in &mut self.voices { voice.set_tuning_hz(tuning_hz); }
+        true
     }
     /// Retain held/releasing voices. The next onset selects this implementation.
     pub fn select_instrument(&mut self, kind: SynthInstrument) {
@@ -377,7 +439,7 @@ impl Poly {
             .voices
             .iter()
             .position(|v| v.owner == owner && v.input == input
-                && (input.is_some() || v.note == note)
+                && (input.is_some() || v.note() == note)
                 && (owner != VoiceOwner::Clip || matches!(v.env.stage, 1..=3)))
             .or_else(|| self.voices.iter().position(|v| !v.env.active()));
         let i = available.unwrap_or_else(|| self
@@ -389,6 +451,7 @@ impl Poly {
             .unwrap_or(0));
         if self.voices[i].kind != self.kind {
             self.voices[i] = Voice::new(self.sample_rate, self.kind);
+            self.voices[i].set_tuning_hz(self.tuning_hz);
             self.filters[i] = Svf::default();
         }
         self.voices[i].owner = owner;
@@ -404,7 +467,7 @@ impl Poly {
     }
     fn note_off_owned(&mut self, note: u8, owner: VoiceOwner) {
         for v in &mut self.voices {
-            if v.note == note && v.owner == owner && v.input.is_none() && matches!(v.env.stage, 1..=3) {
+            if v.note() == note && v.owner == owner && v.input.is_none() && matches!(v.env.stage, 1..=3) {
                 v.env.off();
             }
         }
@@ -419,7 +482,7 @@ impl Poly {
     pub fn transpose_input(&mut self, input: InputKey, semitones: i8) {
         for v in &mut self.voices {
             if v.input == Some(input) && v.env.active() {
-                v.note = (v.note as i16 + semitones as i16).clamp(0, 127) as u8;
+                v.set_note((v.note() as i16 + semitones as i16).clamp(0, 127) as u8);
             }
         }
     }

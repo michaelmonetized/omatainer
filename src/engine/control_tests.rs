@@ -24,7 +24,7 @@ fn command_backlog_defers_note_off_without_reordering_or_dropping_it() {
         .poly
         .voices
         .iter()
-        .any(|v| v.note == 60 && (1..=3).contains(&v.env.stage)));
+        .any(|v| v.note() == 60 && (1..=3).contains(&v.env.stage)));
     assert_eq!(engine.command_stats.backlog, 1);
     assert_eq!(engine.command_stats.applied_last_block, 2);
     engine.publish_for_test();
@@ -34,7 +34,7 @@ fn command_backlog_defers_note_off_without_reordering_or_dropping_it() {
         .poly
         .voices
         .iter()
-        .any(|v| v.note == 60 && (1..=3).contains(&v.env.stage)));
+        .any(|v| v.note() == 60 && (1..=3).contains(&v.env.stage)));
     assert_eq!(engine.command_stats.received, 33);
     assert_eq!(engine.command_stats.applied, 3);
     assert_eq!(engine.command_stats.coalesced, 30);

@@ -275,7 +275,7 @@ fn capture_suppression_preserves_unrelated_same_pitch_events_and_resets_on_relau
             .poly
             .voices
             .iter()
-            .any(|v| v.owner == VoiceOwner::Clip && v.note == 60)
+            .any(|v| v.owner == VoiceOwner::Clip && v.note() == 60)
     );
     input(&mut rt, false, false);
     rt.apply(Command::LaunchClip {
