@@ -415,11 +415,14 @@ fn dismissal_replacement_and_unload_do_not_lose_already_rendered_old_media() {
     assert_eq!(old.state(), State::Superseded);
     f.app.poll_play_history();
     assert_eq!(history(&f, &LibSource::File(path)), Some(final_play));
-    assert!(!f
-        .app
-        .playback_watches
-        .iter()
-        .any(|watch| watch.identity.source == LibSource::File(files.0.join("old.wav"))));
+    assert!(old.retained_by_history());
+    assert!(f.app.playback_watches.iter().any(|watch|watch.identity.source==LibSource::File(files.0.join("old.wav"))));
+    f.rt.clear_undo_for_test();
+    let until=Instant::now()+Duration::from_secs(2);
+    while old.retained_by_history() {assert!(Instant::now()<until);std::thread::sleep(Duration::from_millis(1));}
+    f.app.poll_play_history();
+    assert!(!f.app.playback_watches.iter().any(|watch|watch.identity.source==LibSource::File(files.0.join("old.wav"))));
+    assert_eq!(history(&f,&LibSource::File(files.0.join("old.wav"))),Some(final_play));
     // Loading a second source after an unpolled play does not credit the second.
     builtin_load(&mut f, BuiltinStem::Harmony, 0);
     assert!(load_receipt(&f, 0).last_play().is_none());
@@ -481,7 +484,12 @@ fn chronological_timestamp_wins_over_watch_order_and_deck_unload_order() {
     assert_eq!(history(&f, &drums), Some(last));
     assert_eq!(history(&f, &harmony), Some(first));
     assert_eq!(f.app.last_played.latest_identity().unwrap().source, drums);
-    assert!(f.app.playback_watches.is_empty());
+    assert!(f.app.playback_watches.iter().all(|watch|watch.receipt.retained_by_history()));
+    f.rt.clear_undo_for_test();
+    let until=Instant::now()+Duration::from_secs(2);
+    while f.app.playback_watches.iter().any(|watch|watch.receipt.retained_by_history()) {assert!(Instant::now()<until);std::thread::sleep(Duration::from_millis(1));}
+    f.app.poll_play_history();assert!(f.app.playback_watches.is_empty());
+    assert_eq!(history(&f,&drums),Some(last));assert_eq!(history(&f,&harmony),Some(first));
 }
 
 #[test]

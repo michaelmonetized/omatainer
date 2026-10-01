@@ -36,8 +36,8 @@ impl Plan {
                 (Target::Slot(rack,rack.get(rt).slots.len()),Name::AddEffect,500)
             }
             FxToggle(index) | FxMix { slot:index,.. } | FxParam { slot:index,.. } => {
-                let rack=Rack::selected(rt)?; rack.get(rt).slots.get(*index)?;
-                (Target::Effect(rack,*index),Name::Effect,600+*index as u64 + match rack { Rack::Track(t)=>t as u64*64,Rack::Scene(s)=>512+s as u64*64 })
+                let rack=Rack::selected(rt)?; if *index>=128 {return None;} rack.get(rt).slots.get(*index)?;
+                (Target::Effect(rack,*index),Name::Effect,10000+*index as u64 + match rack { Rack::Track(t)=>t as u64*128,Rack::Scene(s)=>(8+s as u64)*128 })
             }
             _ => return None,
         }; Some(Self { target,name,key })
@@ -49,20 +49,21 @@ impl RtEngine {
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
         if !self.undo.enabled || self.undo.replaying { return Some(c); }
+        if matches!(&c,Command::FxAdd(_)) && Rack::selected(self).is_some_and(|r|r.get(self).slots.len()>=128) {self.history_reject(c,Failure::Effects);return None;}
         let Some(plan)=Plan::get(self,&c) else { return Some(c); };
         if !matches!(plan.target,Target::Clip(..)|Target::Media(..)|Target::Slot(..)) && self.undo.can_group(plan.key,self.frames_done) { self.undo.changed();return Some(c); }
         if matches!(&c,Command::DeckAudio {audio,..} if audio.name.len()>TEXT_LIMIT) { self.history_reject(c,Failure::Text); return None; }
         let estimate=match plan.target {
             Target::Media(d) => self.decks[d as usize].audio.as_ref().map_or(0,|a|sample_bytes(a))
-                + match &c { Command::DeckAudio { audio,.. }=>sample_bytes(audio),_=>0 } + TEXT_LIMIT,
+                + match &c { Command::DeckAudio { audio,.. } if self.decks[d as usize].audio.as_ref().is_none_or(|old|!Arc::ptr_eq(old,audio))=>sample_bytes(audio),_=>0 } + TEXT_LIMIT,
             Target::Clip(t,s)=> {
                 let old=&self.tracks[t as usize].clips[s as usize];
                 if old.name.len()>TEXT_LIMIT { self.history_reject(c,Failure::Text); return None; }
                 if old.notes.len()>NOTE_LIMIT || old.notes.capacity()>NOTE_LIMIT || matches!(&c,Command::SetNotes { notes,.. } if notes.len()>NOTE_LIMIT || notes.capacity()>NOTE_LIMIT) { self.history_reject(c,Failure::Notes); return None; }
-                TEXT_LIMIT+(old.notes.capacity()+NOTE_LIMIT)*std::mem::size_of::<MidiNote>()
+                TEXT_LIMIT+2*NOTE_LIMIT*std::mem::size_of::<MidiNote>()
                     +old.audio.as_ref().map_or(0,|a|sample_bytes(a))
             }
-            Target::Slot(..)=> (self.sr as usize*20+64)*4, // conservative maximum stereo processor storage
+            Target::Slot(..)=>match &c {Command::FxAdd(kind)=>fx::FxSlot::required_storage(fx::FxId::all()[*kind as usize],self.sr),_=>0},
             _=>0,
         };
         if let Err(reason)=self.undo.preflight(estimate) { self.history_reject(c,reason); return None; }

@@ -30,3 +30,15 @@ impl RtEngine {
         self.undo.record_take=self.undo.record_take.wrapping_add(1)|(1<<63);
     }
 }
+
+impl RtEngine {
+    pub(in crate::engine) fn history_record_changed(&mut self,track:usize,scene:usize) {
+        if !self.undo.enabled {return;}
+        if let Some(index)=self.undo.entries[..self.undo.cursor].iter().rposition(|e|e.as_ref().is_some_and(|e|e.name==Name::RecordNotes && e.patches[..e.len].iter().flatten().any(|p|matches!(p,Patch::Clip {track:t,scene:s,..} if *t as usize==track && *s as usize==scene)))) {self.undo.changed_from(index);}
+    }
+    pub(in crate::engine) fn history_held_changed(&mut self) {
+        if !self.undo.enabled {return;}
+        let held=self.note_recording.held_targets();
+        if let Some(index)=self.undo.entries[..self.undo.cursor].iter().position(|e|e.as_ref().is_some_and(|e|e.name==Name::RecordNotes && e.patches[..e.len].iter().flatten().any(|p|matches!(p,Patch::Clip {track,scene,..} if held & (1u64<<(*track as usize*8+*scene as usize))!=0)))) {self.undo.changed_from(index);}
+    }
+}

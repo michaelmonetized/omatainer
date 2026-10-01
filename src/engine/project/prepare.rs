@@ -58,6 +58,7 @@ impl Prepared {
         rt.sampler_banks = state.banks.iter().map(|b| b.name.clone()).collect();
         rt.pad_banks = state.banks.into_iter().map(|b| b.media.map(|index| media[index].clone())).collect();
         rt.builtin = state.builtin.map(|index| index.map(|i| media[i].clone()));
+        for track in &mut rt.tracks {track.midi_schedule.prepare_history(8192);track.recorded_playback.reserve(8192);}
         Ok(Self { rt })
     }
 
@@ -67,6 +68,7 @@ impl Prepared {
         let mut rt = Box::new(RtEngine::new(output_sr as f32, rx, Arc::new(Mutex::new(Snapshot::default()))));
         for track in &mut rt.tracks { track.clips = std::array::from_fn(|_| Clip::empty()); }
         for deck in &mut rt.decks { *deck = DeckRt::new(output_sr as f32); }
+        for track in &mut rt.tracks {track.midi_schedule.prepare_history(8192);track.recorded_playback.reserve(8192);}
         Ok(Self { rt })
     }
 
