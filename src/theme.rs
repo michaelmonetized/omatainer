@@ -1,12 +1,13 @@
-use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, Stroke, Style, Visuals};
+use egui::{Color32, CornerRadius, Stroke, Style, Visuals};
+#[cfg(test)]
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 mod color;
+pub(crate) mod reload;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     pub bg: Color32,
     pub bg_dark: Color32,
@@ -29,7 +30,6 @@ pub struct Theme {
     pub font_size: f32,
     pub rounding: f32,
     pub path: PathBuf,
-    mtime: Option<SystemTime>,
 }
 
 impl Default for Theme {
@@ -52,92 +52,44 @@ impl Default for Theme {
             orange: rgb(0xf6, 0xb6, 0xab),
             selection: rgb(0x45, 0x47, 0x5a),
             muted: rgb(0x58, 0x5b, 0x70),
-            font: "JetBrainsMono Nerd Font".into(),
+            font: "bundled default".into(),
             font_size: 12.0,
             rounding: 6.0,
             path: theme_dir().join("colors.toml"),
-            mtime: None,
         }
     }
 }
 
 impl Theme {
-    pub fn load() -> Self {
-        let mut t = Self::default();
-        t.reload();
-        t
-    }
-
-    pub fn maybe_reload(&mut self) -> bool {
-        let meta = fs::metadata(&self.path).ok();
-        let mtime = meta.and_then(|m| m.modified().ok());
-        if mtime != self.mtime {
-            self.reload();
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn reload(&mut self) {
-        self.path = theme_dir().join("colors.toml");
-        self.mtime = fs::metadata(&self.path)
-            .ok()
-            .and_then(|m| m.modified().ok());
-        let path = self.path.clone();
-        for diagnostic in self.reload_colors(&path) {
-            eprintln!("omatainer: {}: {diagnostic}", path.display());
-        }
-        if let Ok(raw) = fs::read_to_string(theme_dir().join("shell.toml")) {
-            if let Ok(v) = raw.parse::<toml::Value>() {
-                if let Some(n) = v
-                    .get("font")
-                    .and_then(|f| f.get("base-size"))
-                    .and_then(|x| x.as_float().or_else(|| x.as_integer().map(|i| i as f64)))
-                {
-                    if n > 0.0 {
-                        self.font_size = n as f32;
-                    }
-                }
-            }
-        }
-        if let Ok(name) = std::process::Command::new("omarchy")
-            .args(["font", "current"])
-            .output()
-        {
-            let s = String::from_utf8_lossy(&name.stdout).trim().to_string();
-            if !s.is_empty() {
-                self.font = s;
-            }
-        }
-    }
-
-    // Keep color parsing separate from font/process discovery so the exact
-    // startup/reload path can be exercised on private theme files.
+    #[cfg(test)]
     fn reload_colors(&mut self, path: &Path) -> Vec<ColorDiagnostic> {
+        fs::read_to_string(path)
+            .ok()
+            .and_then(|raw| self.apply_colors(&raw).ok())
+            .unwrap_or_default()
+    }
+
+    fn apply_colors(&mut self, raw: &str) -> Result<Vec<ColorDiagnostic>, toml::de::Error> {
+        let v = raw.parse::<toml::Value>()?;
         let mut diagnostics = Vec::new();
-        if let Ok(raw) = fs::read_to_string(path) {
-            if let Ok(v) = raw.parse::<toml::Value>() {
-                self.bg = hex_of(&v, "background", self.bg, &mut diagnostics);
-                self.bg_dark = hex_of(&v, "dark_background", self.bg_dark, &mut diagnostics);
-                self.bg_darker = hex_of(&v, "darker_background", self.bg_darker, &mut diagnostics);
-                self.bg_light = hex_of(&v, "lighter_background", self.bg_light, &mut diagnostics);
-                self.fg = hex_of(&v, "foreground", self.fg, &mut diagnostics);
-                self.fg_dim = hex_of(&v, "dark_foreground", self.fg_dim, &mut diagnostics);
-                self.fg_bright = hex_of(&v, "bright_foreground", self.fg_bright, &mut diagnostics);
-                self.accent = hex_of(&v, "accent", self.accent, &mut diagnostics);
-                self.red = hex_of(&v, "red", self.red, &mut diagnostics);
-                self.green = hex_of(&v, "green", self.green, &mut diagnostics);
-                self.yellow = hex_of(&v, "yellow", self.yellow, &mut diagnostics);
-                self.blue = hex_of(&v, "blue", self.blue, &mut diagnostics);
-                self.magenta = hex_of(&v, "magenta", self.magenta, &mut diagnostics);
-                self.cyan = hex_of(&v, "cyan", self.cyan, &mut diagnostics);
-                self.orange = hex_of(&v, "orange", self.orange, &mut diagnostics);
-                self.selection = hex_of(&v, "selection", self.selection, &mut diagnostics);
-                self.muted = hex_of(&v, "muted", self.muted, &mut diagnostics);
-            }
-        }
-        diagnostics
+        self.bg = hex_of(&v, "background", self.bg, &mut diagnostics);
+        self.bg_dark = hex_of(&v, "dark_background", self.bg_dark, &mut diagnostics);
+        self.bg_darker = hex_of(&v, "darker_background", self.bg_darker, &mut diagnostics);
+        self.bg_light = hex_of(&v, "lighter_background", self.bg_light, &mut diagnostics);
+        self.fg = hex_of(&v, "foreground", self.fg, &mut diagnostics);
+        self.fg_dim = hex_of(&v, "dark_foreground", self.fg_dim, &mut diagnostics);
+        self.fg_bright = hex_of(&v, "bright_foreground", self.fg_bright, &mut diagnostics);
+        self.accent = hex_of(&v, "accent", self.accent, &mut diagnostics);
+        self.red = hex_of(&v, "red", self.red, &mut diagnostics);
+        self.green = hex_of(&v, "green", self.green, &mut diagnostics);
+        self.yellow = hex_of(&v, "yellow", self.yellow, &mut diagnostics);
+        self.blue = hex_of(&v, "blue", self.blue, &mut diagnostics);
+        self.magenta = hex_of(&v, "magenta", self.magenta, &mut diagnostics);
+        self.cyan = hex_of(&v, "cyan", self.cyan, &mut diagnostics);
+        self.orange = hex_of(&v, "orange", self.orange, &mut diagnostics);
+        self.selection = hex_of(&v, "selection", self.selection, &mut diagnostics);
+        self.muted = hex_of(&v, "muted", self.muted, &mut diagnostics);
+        Ok(diagnostics)
     }
 
     pub fn apply(&self, ctx: &egui::Context) {
@@ -159,7 +111,11 @@ impl Theme {
                     noninteractive: widget(self.bg_dark, self.fg_dim, self.muted),
                     inactive: widget(self.bg_light, self.fg, self.muted),
                     hovered: widget(self.selection, self.fg_bright, self.accent),
-                    active: widget(self.accent.gamma_multiply(0.25), self.fg_bright, self.accent),
+                    active: widget(
+                        self.accent.gamma_multiply(0.25),
+                        self.fg_bright,
+                        self.accent,
+                    ),
                     open: widget(self.bg_light, self.fg, self.accent),
                 },
                 window_corner_radius: CornerRadius::same(0),
@@ -169,6 +125,16 @@ impl Theme {
             },
             ..Style::default()
         };
+        // Preserve the default style hierarchy while honoring the shell's
+        // base size for every standard text style, including numeric widgets.
+        let base = self.font_size;
+        for (kind, font) in &mut style.text_styles {
+            font.size = match kind {
+                egui::TextStyle::Heading => base * 1.5,
+                egui::TextStyle::Small => base * (10.0 / 12.0),
+                _ => base,
+            };
+        }
         style.spacing.item_spacing = egui::vec2(6.0, 4.0);
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
         style.spacing.window_margin = egui::Margin::same(8);
@@ -176,39 +142,6 @@ impl Theme {
         style.visuals.widgets.hovered.corner_radius = CornerRadius::same(self.rounding as u8);
         style.visuals.widgets.active.corner_radius = CornerRadius::same(self.rounding as u8);
         ctx.set_style(style);
-    }
-
-    pub fn install_fonts(ctx: &egui::Context) {
-        let mut fonts = FontDefinitions::default();
-        for (name, path) in [
-            (
-                "jb",
-                "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf",
-            ),
-            (
-                "jb-bold",
-                "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Bold.ttf",
-            ),
-        ] {
-            if let Ok(bytes) = fs::read(path) {
-                fonts
-                    .font_data
-                    .insert(name.to_owned(), std::sync::Arc::new(FontData::from_owned(bytes)));
-            }
-        }
-        if fonts.font_data.contains_key("jb") {
-            fonts
-                .families
-                .get_mut(&FontFamily::Proportional)
-                .unwrap()
-                .insert(0, "jb".into());
-            fonts
-                .families
-                .get_mut(&FontFamily::Monospace)
-                .unwrap()
-                .insert(0, "jb".into());
-        }
-        ctx.set_fonts(fonts);
     }
 
     pub fn track_color(&self, i: usize) -> Color32 {
@@ -258,8 +191,15 @@ impl std::fmt::Display for ColorDiagnostic {
     }
 }
 
-fn hex_of(v: &toml::Value, key: &'static str, fallback: Color32, diagnostics: &mut Vec<ColorDiagnostic>) -> Color32 {
-    let Some(value) = v.get(key) else { return fallback; };
+fn hex_of(
+    v: &toml::Value,
+    key: &'static str,
+    fallback: Color32,
+    diagnostics: &mut Vec<ColorDiagnostic>,
+) -> Color32 {
+    let Some(value) = v.get(key) else {
+        return fallback;
+    };
     if let Some(color) = value.as_str().and_then(parse_hex) {
         color
     } else {
@@ -275,8 +215,7 @@ fn parse_hex(s: &str) -> Option<Color32> {
 
 pub fn theme_dir() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    Path::new(&home)
-        .join(".local/state/omarchy/current/theme")
+    Path::new(&home).join(".local/state/omarchy/current/theme")
 }
 
 pub fn config_dir() -> PathBuf {

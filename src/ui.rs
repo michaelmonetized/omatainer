@@ -10,7 +10,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use crate::engine::media_load::Loader;
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
+#[cfg(test)]
+use std::time::Instant;
 mod library_scan;
 mod library_metadata;
 mod bpm;
@@ -57,12 +59,16 @@ mod duration_tests;
 mod midi_connection_tests;
 #[cfg(test)]
 mod sampler_pad_tests;
+#[cfg(test)]
+mod theme_reload_tests;
 
 pub struct App {
     engine: Engine,
     theme: Theme,
-    fonts_set: bool,
     deck_selection: deck_selection::Selection,
+
+    theme_reload: Option<crate::theme::reload::Loader>,
+    theme_fonts: Option<Arc<egui::FontDefinitions>>,
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
     library_scan: LibraryScan,
@@ -81,7 +87,6 @@ pub struct App {
     loads: [Option<LoadState>; DECKS],
     submission_error: Cell<Option<crate::engine::SubmissionError>>,
     seen_submission_failures: u64,
-    last_theme_check: Instant,
     loader: Option<Loader>,
     snap: Snapshot,
     last_play_idx: usize,
@@ -104,13 +109,16 @@ struct LibItem {
 
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, engine: Engine) -> Self {
-        Theme::install_fonts(&cc.egui_ctx);
-        let theme = Theme::load();
+        let theme = Theme::default();
         theme.apply(&cc.egui_ctx);
         let loader = Loader::start();
         let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));
         let mut app = Self::with_loader(engine, theme, loader.ok());
         if let Some(failure) = failure { app.status = failure; }
+        match crate::theme::reload::Loader::start(app.theme.clone()) {
+            Ok(loader) => app.theme_reload = Some(loader),
+            Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
+        }
         app.scan_library();
         app
     }
@@ -125,8 +133,10 @@ impl App {
         let mut app = Self {
             engine,
             theme,
-            fonts_set: true,
             deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
+
+            theme_reload: None,
+            theme_fonts: None,
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
             library_scan: LibraryScan::default(),
@@ -143,7 +153,6 @@ impl App {
             loads: std::array::from_fn(|_| None),
             submission_error: Cell::new(None),
             seen_submission_failures: 0,
-            last_theme_check: Instant::now(),
             loader,
             snap,
             last_play_idx: 0,
@@ -423,6 +432,17 @@ impl eframe::App for App {
 }
 
 impl App {
+    fn poll_theme(&mut self, ctx: &egui::Context) {
+        let Some(update) = self.theme_reload.as_ref().and_then(|loader| loader.poll()) else { return };
+        if !self.theme_fonts.as_ref().is_some_and(|fonts| Arc::ptr_eq(fonts, &update.fonts)) {
+            ctx.set_fonts((*update.fonts).clone());
+            self.theme_fonts = Some(update.fonts.clone());
+        }
+        self.theme = update.theme.clone();
+        self.theme.apply(ctx);
+        ctx.request_repaint();
+    }
+
     fn update_frame(&mut self, ctx: &egui::Context) {
         self.shortcut_focus.begin_frame(ctx);
         self.poll_ui_requests();
@@ -432,16 +452,7 @@ impl App {
             self.seen_submission_failures = submissions.rejected;
             self.submission_error.set(submissions.last_error);
         }
-        if self.last_theme_check.elapsed().as_millis() > 800 {
-            if self.theme.maybe_reload() {
-                self.theme.apply(ctx);
-            }
-            self.last_theme_check = Instant::now();
-        }
-        if !self.fonts_set {
-            Theme::install_fonts(ctx);
-            self.fonts_set = true;
-        }
+        self.poll_theme(ctx);
         self.poll_loads();
         self.snap = self.engine.snapshot();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
