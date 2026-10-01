@@ -203,3 +203,18 @@ fn primary_replacement_between_backup_link_and_refresh_is_never_adopted() {
             .exists());
     }
 }
+
+#[test]
+fn closing_writer_unlocks_even_while_a_duplicate_description_survives() {
+    let files = Files::new();
+    let store = Store::open(files.path()).unwrap();
+    let inherited = store._lock.try_clone().unwrap();
+    assert!(Store::open(files.path()).is_err());
+    drop(store);
+    let next = Store::open(files.path()).unwrap();
+    assert!(Store::open(files.path()).is_err(), "a new active writer still excludes competitors");
+    drop(inherited);
+    assert!(Store::open(files.path()).is_err(), "dropping an old description cannot unlock the new writer");
+    drop(next);
+    assert!(Store::open(files.path()).is_ok());
+}
