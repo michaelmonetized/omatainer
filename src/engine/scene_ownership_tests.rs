@@ -24,7 +24,7 @@ fn every_scene_panel_owns_its_settings_and_publishes_only_its_own_slots() {
         rt.apply(Command::OpenFxScene(scene as u8));
         rt.publish_for_test();
         assert!(rt.snap.lock().fx_slots.is_empty());
-        rt.apply(Command::FxAdd(scene as u8));
+        rt.apply(Command::FxAdd(9)); // Filter has two implemented scene parameters.
         rt.apply(Command::FxMix {
             slot: 0,
             value: scene as f32 / 10.0,
@@ -41,7 +41,7 @@ fn every_scene_panel_owns_its_settings_and_publishes_only_its_own_slots() {
         rt.publish_for_test();
         let slots = rt.snap.lock().fx_slots.clone();
         assert_eq!(slots.len(), 1);
-        assert_eq!(slots[0].0, fx::FxId::all()[scene].name());
+        assert_eq!(slots[0].0, fx::FxId::Filter.name());
         assert_eq!(slots[0].2, scene as f32 / 10.0);
         assert_eq!(slots[0].3[1], scene as f32 / 9.0);
         rt.apply(Command::FxToggle(0));
