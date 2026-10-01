@@ -110,6 +110,7 @@ impl RtEngine {
         // Release replaces it with the full, unwrapped hold duration; even an
         // instantaneous press/release occupies at least one audio frame.
         let minimum = self.bpm as f64 / (60.0 * self.sr as f64);
+        self.project.edited();
         let index = clip.notes.len();
         clip.notes.push(MidiNote {
             pitch,
@@ -153,6 +154,7 @@ impl RtEngine {
                     .notes
                     .get_mut(held.index)
                 {
+                    self.project.edited();
                     note.len = duration as f32;
                     self.tracks[held.track].clip_notes_changed(held.scene, self.beat);
                 }
@@ -164,6 +166,18 @@ impl RtEngine {
         for held in &mut self.note_recording.held {
             if held.is_some_and(|held| held.track == track && held.scene == scene) {
                 *held = None;
+            }
+        }
+    }
+}
+
+impl RtEngine {
+    pub(super) fn has_held_project_notes(&self) -> bool { self.note_recording.held.iter().any(Option::is_some) }
+
+    pub(super) fn capture_held_durations(&self, state: &mut super::project::State) {
+        for held in self.note_recording.held.iter().flatten() {
+            if let Some(note) = state.tracks[held.track].clips[held.scene].notes.get_mut(held.index) {
+                note.len = (self.note_recording.clock - held.onset).max(held.minimum) as f32;
             }
         }
     }
