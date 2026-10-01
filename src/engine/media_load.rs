@@ -2,6 +2,7 @@
 //! Filesystem and decoder calls remain on the worker. Cancellation is observed
 //! at safe decode boundaries; it cannot interrupt an OS read already in progress.
 use super::decode::{decode_audio_with_cancel, DecodeFailure, DecodedAudio};
+use super::media_source::FileFingerprint;
 use super::DECKS;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -24,6 +25,7 @@ struct Request {
     path: PathBuf,
 }
 pub struct Completion {
+    pub fingerprint: Option<FileFingerprint>,
     pub token: LoadToken,
     pub result: Result<DecodedAudio, DecodeFailure>,
 }
@@ -83,7 +85,10 @@ impl Loader {
                 if !request.token.is_current() {
                     continue;
                 }
+                let before = FileFingerprint::read(&request.path);
                 let result = decode(&request.path, &request.token);
+                let after = FileFingerprint::read(&request.path);
+                let fingerprint = before.filter(|before| Some(*before) == after);
                 if !request.token.is_current() {
                     continue;
                 }
@@ -96,6 +101,7 @@ impl Loader {
                         continue;
                     }
                     state.ready[deck].replace(Completion {
+                        fingerprint,
                         token: request.token,
                         result,
                     })

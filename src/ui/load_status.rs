@@ -7,6 +7,8 @@ pub(super) struct LoadState {
     pub phase: Phase,
     pub token: Option<LoadToken>,
     pub receipt: Option<Receipt>,
+    pub bpm: Option<Bpm>,
+    pub metadata: Option<library_metadata::Patch>,
     pub warning: Option<&'static str>,
 }
 
@@ -25,6 +27,8 @@ impl LoadState {
             phase,
             token: None,
             receipt: None,
+            bpm: None,
+            metadata: None,
             warning: None,
         }
     }
@@ -43,6 +47,15 @@ impl LoadState {
             Phase::Failed(error) => format!("load failed on {deck}: {name}: {error}"),
             Phase::Superseded => format!("{name} → {deck} · replaced or unloaded"),
         };
+        if let Some(bpm) = self.bpm {
+            text.push_str(&format!(
+                " · BPM {} ({})",
+                bpm.value()
+                    .map(|v| format!("{v:.1}"))
+                    .unwrap_or_else(|| "unknown".into()),
+                bpm.label()
+            ));
+        }
         if let Some(warning) = self.warning {
             text.push_str(&format!(" · {warning}"));
         }
@@ -102,6 +115,7 @@ impl App {
                 self.status = load.text(deck);
             }
         }
+        self.reconcile_loaded_metadata();
     }
 
     pub(super) fn load_status(&mut self, ctx: &egui::Context) {
