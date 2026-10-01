@@ -37,6 +37,7 @@ pub(super) enum Event {
     Saved {
         path: PathBuf,
         revision: u64,
+        checkpoint: crate::engine::undo::Checkpoint,
         view: UiState,
         warning: Option<String>,
     },
@@ -220,6 +221,7 @@ fn perform(
             #[cfg(test)]
             pause_at(hooks, Stage::Captured);
             let revision = captured.revision;
+            let checkpoint = captured.checkpoint;
             let state = Document {
                 engine: captured.state,
                 view: view.clone(),
@@ -236,6 +238,7 @@ fn perform(
                 Ok(outcome) => Event::Saved {
                     path,
                     revision,
+                    checkpoint,
                     view,
                     warning: match outcome {
                         SaveOutcome::Durable => None,

@@ -49,6 +49,8 @@ pub(crate) struct UiState {
     pub keys_open: bool,
     pub midi_open: bool,
     pub diagnostics_open: bool,
+    #[serde(default)]
+    pub history_open: bool,
     // Verified identities accompany captured receipts. Embedded path strings
     // alone cannot credit a same-path replacement in the live library.
     pub(super) deck_identities: [Option<SavedIdentity>; DECKS],
@@ -89,21 +91,23 @@ impl UiState {
             && self.keys_open == other.keys_open
             && self.midi_open == other.midi_open
             && self.diagnostics_open == other.diagnostics_open
+            && self.history_open == other.history_open
     }
 }
 
 #[derive(Clone)]
 struct Baseline {
     revision: u64,
+    checkpoint: crate::engine::undo::Checkpoint,
     view: UiState,
     edits: u64,
 }
 impl Baseline {
     fn matches(&self, other: &Self) -> bool {
-        self.edits == other.edits && self.saved_matches(other)
+        self.revision == other.revision && self.edits == other.edits && self.saved_matches(other)
     }
     fn saved_matches(&self, other: &Self) -> bool {
-        self.revision == other.revision && self.view.editable_eq(&other.view)
+        self.checkpoint == other.checkpoint && self.view.editable_eq(&other.view)
     }
 }
 #[derive(Clone)]
@@ -247,12 +251,14 @@ impl App {
             keys_open: self.keys_open,
             midi_open: self.midi_open,
             diagnostics_open: self.diagnostics.open,
+            history_open: self.undo_history.open,
             deck_identities: Default::default(),
         }
     }
     fn project_baseline(&mut self) -> Baseline {
         Baseline {
             revision: self.engine.project.revision(),
+            checkpoint: self.engine.undo.checkpoint(),
             view: self.project_view(),
             edits: self.project.local_edits,
         }
@@ -479,6 +485,7 @@ impl App {
                 Event::Saved {
                     path,
                     revision,
+                    checkpoint,
                     view,
                     warning,
                 } => {
@@ -492,6 +499,7 @@ impl App {
                         self.project.current_path = Some(path.clone());
                         self.project.clean = Some(Baseline {
                             revision,
+                            checkpoint,
                             view,
                             edits: self.project.local_edits,
                         });
@@ -645,6 +653,7 @@ impl App {
         self.keys_open = view.keys_open;
         self.midi_open = view.midi_open;
         self.diagnostics.open = view.diagnostics_open;
+        self.undo_history.open = view.history_open;
         self.clip_gain_edit = None;
         self.pad_held = [false; 16];
 
@@ -676,6 +685,7 @@ impl App {
         }
         self.project.clean = Some(Baseline {
             revision: applied.revision,
+            checkpoint: applied.checkpoint,
             view: self.project_view(),
             edits: self.project.local_edits,
         });
@@ -720,6 +730,7 @@ impl App {
                         && !self.project.committing()
                         && self.project.dialog.is_none(),
                     |ui| {
+                        self.undo_menu(ui);
                         ui.menu_button("Project", |ui| {
                             if ui.button("New project").clicked() {
                                 action = Some(Action::New);
