@@ -77,3 +77,55 @@ project, recovery, help and performance workflows. The source/component license
 inventory validated, and the production binary's embedded manifest/notices
 matched the regenerated records exactly. No timed release-gate result is inferred
 from these correctness runs.
+
+## Final assembled verification
+
+On final issue 98 (`e9b8d02`), the complete ordinary suite passed **784 tests**,
+with 13 existing opt-in fixtures ignored, in 46.36 seconds using four threads.
+The source/component inventory check also passed.
+
+The controlled release gate passed all eight fixed workload groups across three
+sessions on 2026-10-01, 08:01:24–08:04:43 UTC. It rebuilt locked/offline release
+and test executables and bound their embedded inventories to the tested source.
+Production executable SHA-256:
+`487da79a6b68cf3b40cf298c305604627401dc65d9f7bedb72ff558ce03ca42a`.
+
+Host: Apple M1 Pro, 10 logical CPUs, 16 GB RAM, aarch64 Linux
+7.1.13-3-2-ARCH; SCHED_OTHER, nice 0, schedutil and affinity CPUs 0–9. Other
+agent CPU jobs were held; unrelated user applications were not changed.
+One-minute load was 3.015 before the workload and 1.727 afterward.
+
+Worst p99 and maximum across the three sessions, in milliseconds:
+
+| Workload / observation | p99 | Maximum |
+| --- | ---: | ---: |
+| callback_producer / callback_wall | 0.8413 | 1.0430 |
+| callback_producer / render_cpu | 0.6867 | 0.7070 |
+| callback_composer / callback_wall | 0.9164 | 1.6926 |
+| callback_composer / render_cpu | 0.6983 | 0.7307 |
+| callback_live_dj / callback_wall | 0.0963 | 0.1650 |
+| callback_live_dj / render_cpu | 0.0600 | 0.0662 |
+| callback_hybrid / callback_wall | 0.8700 | 0.9770 |
+| callback_hybrid / render_cpu | 0.7083 | 0.7207 |
+| large_crate_ui / frame_wall | 3.7575 | 5.5815 |
+| multi_controller_ipc / frame_wall | 4.9847 | 6.3974 |
+| multi_controller_ipc / ipc_roundtrip | 8.9686 | 10.0268 |
+| multi_controller_ipc / midi_dispatch | 2.2938 | 3.5418 |
+| project_roundtrip / frame_wall | 4.2176 | 4.2176 |
+| long_note_recording / frame_wall | 5.2074 | 5.2074 |
+| long_note_recording / renderer_wall | 2.3989 | 3.5629 |
+
+Golden audio hashes, exact notes, project round trips and all other mandatory
+behavioral assertions passed. Callback allocations, frees and rejected commands
+were zero. The native AT-SPI union replay completed 109 actions, visiting 240
+nodes over 953 actual App frames; it retained the original 128-action ceiling.
+The replay covers both cue and grid editors plus existing project, recovery,
+help, preferences and performance-safety flows. It persisted/reopened one note
+and the 1.25 UI scale.
+
+Independent source-bound report verification, exact executable package
+verification, seven CLI protocol, six follow-protocol and five runtime-isolation
+groups passed. The package is retained as `issue-99-final-package`; raw report,
+summary and logs are retained separately from the moving stack worktree.
+These are local software checks. Physical audio/controller operation, hardware
+deadlines and human screen-reader/listening behavior remain for final user QA.
