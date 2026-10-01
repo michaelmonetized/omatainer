@@ -3,6 +3,7 @@ use super::*;
 use crate::engine::performance::{Handle, WorkPermit};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use std::sync::Arc;
+use sha2::{Digest, Sha256};
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Selection {
     pub routes: bool,
@@ -21,6 +22,8 @@ impl Default for Selection {
     }
 }
 pub struct Preview {
+    /// Digest of the exact bounded JSON produced on this worker, not GUI work.
+    pub digest: [u8; 32],
     pub report: Arc<Report>,
     pub json: Arc<str>,
     pub lines: Vec<std::ops::Range<usize>>,
@@ -28,6 +31,7 @@ pub struct Preview {
 impl Preview {
     fn new(report: Report) -> Result<Self, Error> {
         let bytes = storage::encode(&report)?;
+        let digest = Sha256::digest(&bytes).into();
         let json = String::from_utf8(bytes).map_err(|_| Error::Invalid("invalid report text"))?;
         let mut lines = Vec::new();
         let mut start = 0;
@@ -36,6 +40,7 @@ impl Preview {
             start += line.len();
         }
         Ok(Self {
+            digest,
             report: Arc::new(report),
             json: json.into(),
             lines,
