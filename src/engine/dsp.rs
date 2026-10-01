@@ -116,6 +116,7 @@ pub struct Delay {
 }
 
 impl Delay {
+    pub(super) fn storage_bytes(&self) -> usize { self.buf.capacity() * std::mem::size_of::<f32>() }
     pub fn new(max: usize) -> Self {
         Self {
             buf: vec![0.0; max.max(64)],
@@ -154,6 +155,7 @@ pub struct Reverb {
 }
 
 impl Reverb {
+    pub(super) fn storage_bytes(&self) -> usize { self.delays.iter().map(Delay::storage_bytes).sum() }
     pub fn new() -> Self {
         Self::at_sample_rate(48_000.0)
     }

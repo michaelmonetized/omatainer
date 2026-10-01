@@ -42,6 +42,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 pub struct Captured {
+    pub checkpoint: undo::Checkpoint,
     pub state: State,
     pub media: Vec<Arc<Sample>>,
     pub revision: u64,
@@ -49,6 +50,7 @@ pub struct Captured {
 }
 
 pub struct Applied {
+    pub checkpoint: undo::Checkpoint,
     pub revision: u64,
     pub playback_receipts: [Option<load_receipt::Receipt>; DECKS],
 }
@@ -219,6 +221,7 @@ impl Handle {
                 frame.state.deduplicate(&mut frame.media);
                 frame.state.validate(&frame.media).map_err(Error::Invalid)?;
                 return Ok(Captured {
+                    checkpoint: frame.checkpoint,
                     state: frame.state,
                     media: frame.media,
                     revision: frame.revision,
@@ -337,8 +340,11 @@ impl RtEngine {
             // The atomic admission gate closes before inspecting the queue.
             // A producer already holding a lease may finish; audio never waits,
             // and processes those commands on following blocks before commit.
-            let drained =
-                (!exclusive || self.cmd_rx.begin_project_install()) && self.cmd_rx.is_empty();
+            let history_ready =
+                !matches!(task.operation, Operation::Install { .. }) || self.undo.available();
+            let drained = history_ready
+                && (!exclusive || self.cmd_rx.begin_project_install())
+                && self.cmd_rx.is_empty();
             if !drained {
                 self.project_waiting = Some(task);
                 return;
@@ -381,15 +387,20 @@ impl RtEngine {
                     {
                         task.error = Some(Error::Conflict);
                     } else {
-                        prepared.swap_into(self);
-                        self.project.edited();
-                        self.publish();
-                        *applied = Some(Applied {
-                            revision: self.project.revision(),
-                            playback_receipts: std::array::from_fn(|i| {
-                                self.decks[i].load_receipt.clone()
-                            }),
-                        });
+                        if !self.undo.clear() {
+                            task.error = Some(Error::Busy);
+                        } else {
+                            prepared.swap_into(self);
+                            self.project.edited();
+                            self.publish();
+                            *applied = Some(Applied {
+                                checkpoint: self.undo.checkpoint(),
+                                revision: self.project.revision(),
+                                playback_receipts: std::array::from_fn(|i| {
+                                    self.decks[i].load_receipt.clone()
+                                }),
+                            });
+                        }
                     }
                 }
             }

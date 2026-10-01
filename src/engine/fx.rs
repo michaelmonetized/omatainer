@@ -100,6 +100,14 @@ enum FxState {
 }
 
 impl FxSlot {
+    pub(super) fn storage_bytes(&self) -> usize {
+        match &self.state {
+            FxState::Spread(d) | FxState::Delay(d) | FxState::Chorus { delays: d, .. } =>
+                d.iter().map(Delay::storage_bytes).sum(),
+            FxState::Reverb(r) => r.iter().map(Reverb::storage_bytes).sum(),
+            _ => 0,
+        }
+    }
     /// Build the requested processor before inserting it into a chain. No state
     /// is shared by effect type or allocated lazily during sample processing.
     pub fn new(id: FxId, sr: f32) -> Self {
