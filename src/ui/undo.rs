@@ -149,7 +149,7 @@ impl App {
                 .and_then(|index| view.items[index]);
             let redo = view.items.get(view.cursor).copied().flatten();
             let label = undo
-                .map(|item| format!("Undo {}", item.name.label()))
+                .map(|item| format!("Undo {}", item.label()))
                 .unwrap_or_else(|| "Undo".into());
             if ui
                 .add_enabled(
@@ -162,7 +162,7 @@ impl App {
                 ui.close();
             }
             let label = redo
-                .map(|item| format!("Redo {}", item.name.label()))
+                .map(|item| format!("Redo {}", item.label()))
                 .unwrap_or_else(|| "Redo".into());
             if ui
                 .add_enabled(
@@ -209,10 +209,11 @@ impl App {
                 ui.label(format!("History {:.2} MiB / {:.0} MiB · awaiting retirement {:.2} MiB",
                     view.bytes as f64 / 1048576.0, view.budget as f64 / 1048576.0,
                     view.retired_bytes as f64 / 1048576.0));
+                ui.label(format!("Fixed history storage {:.2} MiB", view.fixed_bytes as f64 / 1048576.0));
                 ui.label("Transport and physical gates are not history edits. New and Open begin a new history.");
                 egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
                     for (index, item) in view.items.iter().enumerate().filter_map(|(i, item)| item.map(|item| (i,item))) {
-                        ui.label(format!("{} {}. {}", if index < view.cursor { "Applied" } else { "Redo" }, index + 1, item.name.label()));
+                        ui.label(format!("{} {}. {}", if index < view.cursor { "Applied" } else { "Redo" }, index + 1, item.label()));
                     }
                 });
             });
