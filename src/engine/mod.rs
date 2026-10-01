@@ -726,7 +726,7 @@ pub enum Command {
     DeckFilter { deck: u8, value: f32 },
     DeckPfl { deck: u8 },
     DeckHotCue { deck: u8, pad: u8, del: bool },
-    DeckGrid { deck: u8, grid: Option<beatgrid::Grid>, receipt: load_receipt::Receipt },
+    DeckGrid { deck: u8, grid: Option<beatgrid::Grid>, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
     DeckCuePoint { deck: u8, pad: u8, del: bool, receipt: load_receipt::Receipt },
     DeckCueStyle { deck: u8, pad: u8, style: cue_metadata::Style, receipt: load_receipt::Receipt },
     DeckLoop { deck: u8, beats: f32 },
@@ -1624,7 +1624,7 @@ impl RtEngine {
     }
     fn apply_plain(&mut self, c: Command) {
         let preparation_deck = match &c {
-            Command::DeckCue { deck } | Command::DeckHotCue { deck, .. } | Command::DeckCueStyle { deck, .. } | Command::DeckGrid { deck, .. }
+            Command::DeckCue { deck } | Command::DeckHotCue { deck, .. } | Command::DeckCueStyle { deck, .. }
             | Command::DeckLoop { deck, .. } | Command::DeckLoopIn { deck }
             | Command::DeckLoopOut { deck } | Command::DeckLoopDouble { deck }
             | Command::DeckLoopHalf { deck } | Command::DeckReloop { deck }
@@ -1815,8 +1815,12 @@ impl RtEngine {
                 }
             }
             command @ Command::DeckGrid { .. } => {
-                if let Command::DeckGrid { deck, grid, .. } = &command {
-                    self.decks[*deck as usize].grid = *grid;
+                if let Command::DeckGrid { deck, grid, ack, .. } = &command {
+                    let deck = &mut self.decks[*deck as usize];
+                    deck.grid = *grid;
+                    deck.publish_preparation();
+                    // Release acknowledgement only after coherent preparation is visible.
+                    ack.applied();
                 }
                 self.undo.retire_command(command);
             }

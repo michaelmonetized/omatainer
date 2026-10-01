@@ -163,14 +163,14 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
-        if let Command::DeckGrid { deck, grid, receipt } = &c {
+        if let Command::DeckGrid { deck, grid, receipt, ack } = &c {
             let current = self.decks.get(*deck as usize).filter(|d| d.audio.is_some()
                 && receipt.state() == load_receipt::State::Current
                 && d.load_receipt.as_ref().is_some_and(|r| r.same_request(receipt)));
             let Some(deck) = current else {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
             };
-            if deck.grid == *grid { self.undo.retire_command(c); return None; }
+            if deck.grid == *grid { ack.applied(); self.undo.retire_command(c); return None; }
         }
         if let Command::DeckCueStyle { deck, pad, style, receipt } = &c {
             let current = self.decks.get(*deck as usize).filter(|d| {

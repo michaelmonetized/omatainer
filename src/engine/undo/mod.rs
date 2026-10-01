@@ -753,7 +753,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckHotCue { .. }
             | Command::DeckCueStyle { .. }
             | Command::DeckGrid { .. }
-                    | Command::DeckCuePoint { .. }
+            | Command::DeckCuePoint { .. }
             | Command::DeckLoop { .. }
             | Command::DeckLoopIn { .. }
             | Command::DeckLoopOut { .. }
@@ -775,6 +775,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
+        super::beatgrid::reject_retired(&command);
         if self.enabled
             && matches!(
                 command,
@@ -786,7 +787,7 @@ impl Journal {
                     | Command::LibraryFence { .. }
                     | Command::DeckRestorePreparation { .. }
                     | Command::DeckCueStyle { .. }
-            | Command::DeckGrid { .. }
+                    | Command::DeckGrid { .. }
                     | Command::DeckCuePoint { .. }
                     | Command::LearnCapture { .. }
             )
