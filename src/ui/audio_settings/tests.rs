@@ -292,6 +292,34 @@ fn saved_changes_invalidate_preview_and_invalid_devices_cannot_reach_confirmatio
 }
 
 #[test]
+fn exposed_cancel_action_survives_async_audio_observation_layout_changes() {
+    let mut gui = Gui::new(48000);
+    gui.open();
+    gui.preview();
+    gui.controls.calibration_block.store(true, Ordering::Release);
+    gui.click("Measure loopback");
+    gui.click("Cable ready: stop and measure");
+    let deadline = Instant::now() + std::time::Duration::from_secs(3);
+    while !gui.controls.entering_calibration.load(Ordering::Acquire) {
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let handle = gui.app.audio_settings.handle.clone().unwrap();
+    // Reproduce the actual Running -> Calibrating publication between exposing
+    // a native action and consuming it. The real owner remains blocked inside
+    // calibration until the real UI cancellation token is set.
+    owner::tests::publish_phase_for_ui_test(&handle, owner::Phase::Running);
+    gui.frame(vec![]);
+    let cancel = gui.app.audio_settings.worker.as_ref().unwrap().cancel.clone().unwrap();
+    owner::tests::publish_phase_for_ui_test(&handle, owner::Phase::Calibrating);
+    gui.click("Cancel audio operation");
+    assert!(cancel.load(Ordering::Acquire), "exposed Cancel action was lost when asynchronous status changed the preceding layout");
+    gui.wait();
+    assert!(!gui.app.audio_settings.busy());
+    assert!(gui.app.audio_settings.message.contains("cancelled"));
+}
+
+#[test]
 fn capability_selectors_edit_the_real_preference_draft_and_save_exact_format() {
     let mut gui = Gui::new(48000);
     gui.open();

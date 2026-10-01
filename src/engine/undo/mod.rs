@@ -394,10 +394,11 @@ impl Journal {
     }
     fn retire(&mut self, value: Retired, bytes: usize) {
         // Budget/capacity refusal also reaches this lower-level path directly.
-        // Settle pending grid requests before handing owned payloads to the
-        // worker; an already-applied acknowledgement remains applied.
+        // Settle pending owned requests before handing payloads to the worker;
+        // already-applied acknowledgements remain applied.
         if let Retired::Command(command) = &value {
             super::beatgrid::reject_retired(command);
+            super::sampler::reject(command);
         }
         self.shared
             .retired_bytes
@@ -744,6 +745,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::SamplerBank(_)
             | Command::SamplerInst(_)
             | Command::SamplerOct(_)
+            | Command::SamplerEdit(_)
             | Command::TrackGain { .. }
             | Command::TrackPan { .. }
             | Command::Mute { .. }
@@ -785,6 +787,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
         super::beatgrid::reject_retired(&command);
+        super::sampler::reject(&command);
         if self.enabled
             && matches!(
                 command,
@@ -797,6 +800,8 @@ impl Journal {
                     | Command::DeckRestorePreparation { .. }
                     | Command::DeckCueStyle { .. }
                     | Command::DeckGrid { .. }
+                    | Command::SamplerEdit(_)
+                    | Command::SamplerAudition(_)
                     | Command::DeckCuePoint { .. }
                     | Command::LearnCapture { .. }
             )
@@ -887,6 +892,11 @@ impl Journal {
         }
         for entry in self.entries.iter_mut().flatten() {
             for patch in entry.patches.iter_mut().flatten() {
+                if let Patch::Sampler { value: Some(bank), .. } = patch {
+                    // A historical inverse retains exact embedded PCM after a
+                    // device-rate change, without inferring factory identity.
+                    bank.factory = None;
+                }
                 if let Patch::Slot {
                     slot,
                     reserved_bytes,

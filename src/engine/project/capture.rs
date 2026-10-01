@@ -59,7 +59,9 @@ impl Frame {
         }
         self.state.banks.resize_with(self.shape.banks, || Bank {
             name: String::new(),
-            media: [0; 16],
+            media: [None; 16],
+            instance: None,
+            settings: None,
         });
         for (i, bank) in self.state.banks.iter_mut().enumerate() {
             reserve_string(&mut bank.name, self.shape.bank_names[i]);
@@ -71,8 +73,7 @@ impl Frame {
         self.error = None;
         self.complete = false;
         if rt.tracks.len() != TRACKS
-            || rt.pad_banks.len() != rt.sampler_banks.len()
-            || rt.pad_banks.len() > MAX_BANKS
+            || rt.sampler_banks.len() > MAX_BANKS
         {
             self.error = Some("unsupported track or sample-bank count");
             return;
@@ -123,7 +124,8 @@ impl Frame {
         }
         shape.banks = rt.sampler_banks.len();
         fits &= self.state.banks.len() == shape.banks;
-        for (i, name) in rt.sampler_banks.iter().enumerate() {
+        for (i, working) in rt.sampler_banks.iter().enumerate() {
+            let name = working.name();
             shape.bank_names[i] = name.len();
             if name.len() > MAX_TEXT_BYTES {
                 self.error = Some("bank name exceeds project format limits");
@@ -230,9 +232,12 @@ impl Frame {
             effects(out, rack);
         }
         for (i, bank) in target.banks.iter_mut().enumerate() {
-            copy_string(&mut bank.name, &rt.sampler_banks[i]);
-            for (j, sample) in rt.pad_banks[i].iter().enumerate() {
-                bank.media[j] = media(&mut self.media, sample);
+            let working = &rt.sampler_banks[i];
+            copy_string(&mut bank.name, working.name());
+            bank.instance = Some(working.id);
+            bank.settings = Some(working.data.settings.clone());
+            for (j, sample) in working.data.audio.iter().enumerate() {
+                bank.media[j] = sample.as_ref().map(|sample| media(&mut self.media, sample));
             }
         }
         target.builtin =

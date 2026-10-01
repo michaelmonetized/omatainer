@@ -176,7 +176,8 @@ impl Frame {
         self.fx_count = chain.slots.len();
         self.bank_count = rt.sampler_banks.len();
         let mut fits = self.values.fx_slots.len() >= self.fx_count
-            && self.values.sampler_banks.len() >= self.bank_count;
+            && self.values.sampler_banks.len() >= self.bank_count
+            && self.values.sampler_instances.capacity() >= self.bank_count;
         for (index, track) in rt.tracks.iter().enumerate() {
             self.track_names[index] = track.name.len();
             fits &= self.values.tracks[index].name.capacity() >= track.name.len();
@@ -195,8 +196,8 @@ impl Frame {
             .zip(&self.values.sampler_banks)
             .zip(&rt.sampler_banks)
         {
-            *needed = source.len();
-            fits &= value.capacity() >= source.len();
+            *needed = source.name().len();
+            fits &= value.capacity() >= source.name().len();
         }
         if !fits {
             return;
@@ -322,8 +323,13 @@ impl Frame {
         target.sampler_bank = rt.sampler_bank;
         target.sampler_inst = rt.sampler_inst;
         target.sampler_oct = rt.sampler_oct;
+        target.sampler_revision = rt.sampler_revision;
+        target.sampler_epoch = rt.undo.checkpoint().epoch;
+        target.sampler_audition = rt.sampler_audition.as_ref().map(|active| active.id);
+        target.sampler_instances.clear();
+        target.sampler_instances.extend(rt.sampler_banks.iter().cloned());
         for (out, source) in target.sampler_banks.iter_mut().zip(&rt.sampler_banks) {
-            copy(out, source);
+            copy(out, source.name());
         }
         target.fx_view = rt.fx_view;
         for (out, slot) in target.fx_slots.iter_mut().zip(&chain.slots) {
@@ -351,6 +357,7 @@ impl Frame {
                 .resize_with(self.bank_count, String::new);
             self.bank_names.resize(self.bank_count, 128);
         }
+        self.values.sampler_instances.reserve(self.bank_count.saturating_sub(self.values.sampler_instances.len()));
         for (out, needed) in self.values.sampler_banks.iter_mut().zip(&self.bank_names) {
             reserve(out, *needed);
         }

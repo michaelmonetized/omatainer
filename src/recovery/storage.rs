@@ -37,7 +37,7 @@ pub struct Store {
     root: PathBuf,
     path: PathBuf,
     session: String,
-    _lock: File,
+    _lock: files::Lock,
     epoch: Option<u64>,
     retired: bool,
     sequence: u64,
@@ -531,7 +531,7 @@ fn valid_session(name: &str) -> bool {
             i < 8 || i == 24 || i == 33 || b.is_ascii_digit() || (b'a'..=b'f').contains(b)
         })
 }
-fn session_lock(root: &Path, session: &str) -> Result<Option<(PathBuf, File)>, Error> {
+fn session_lock(root: &Path, session: &str) -> Result<Option<(PathBuf, files::Lock)>, Error> {
     files::private_dir(root, false)?;
     if !valid_session(session) {
         return Err(Error::invalid("invalid recovery session identity"));

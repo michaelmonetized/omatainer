@@ -74,10 +74,10 @@ pub(crate) fn assert_selected_sound(
             .iter()
             .all(|voice| !voice.env.active()));
         let voice = rt.pad_voices[0].as_ref().unwrap();
-        assert!(Arc::ptr_eq(&voice.0, &rt.pad_banks[0][0]));
-        assert_eq!(voice.3, 4);
+        assert!(Arc::ptr_eq(&voice.audio, &rt.sampler_banks[0].data.audio[0].as_ref().unwrap()));
+        assert_eq!(voice.track, 4);
     }
-    let sample = rt.pad_banks[0][0].clone();
+    let sample = rt.sampler_banks[0].data.audio[0].as_ref().unwrap().clone();
     let mut filter = Svf::default();
     let (mut phase, mut detuned) = (0.0f32, 0.0f32);
     let increment = 220.0 / sr; // pad A at octave 3: MIDI 57
@@ -218,8 +218,8 @@ fn held_inputs_retain_original_instrument_envelope_cutoff_and_owner_across_selec
     rt.apply(Command::SamplerInst(SamplerInstrument::Samples));
     rt.apply(Command::SamplerBank(2));
     rt.apply(Command::SamplerPad { pad: 2, on: true });
-    let sample = rt.pad_voices[2].as_ref().unwrap().0.clone();
-    assert!(Arc::ptr_eq(&sample, &rt.pad_banks[2][2]));
+    let sample = rt.pad_voices[2].as_ref().unwrap().audio.clone();
+    assert!(Arc::ptr_eq(&sample, &rt.sampler_banks[2].data.audio[2].as_ref().unwrap()));
     rt.apply(Command::SamplerOct(1));
     assert_eq!(rt.pad_targets[0].unwrap().track, 4);
     assert_eq!(rt.pad_targets[1].unwrap().track, 2);
@@ -246,7 +246,7 @@ fn held_inputs_retain_original_instrument_envelope_cutoff_and_owner_across_selec
     rt.apply(Command::SamplerPad { pad: 1, on: false });
     rt.apply(Command::SamplerPad { pad: 3, on: false });
     rt.apply(Command::SamplerPad { pad: 2, on: false });
-    assert!(Arc::ptr_eq(&rt.pad_voices[2].as_ref().unwrap().0, &sample));
+    assert!(Arc::ptr_eq(&rt.pad_voices[2].as_ref().unwrap().audio, &sample));
     for _ in 0..48_000 {
         rt.tick_pad_sources();
     }

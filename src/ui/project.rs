@@ -704,9 +704,12 @@ impl App {
         }
         if ctx.input(|input| input.viewport().close_requested()) && !self.project.allow_close {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.sampler_editor.stop_for_close(&self.engine);
             if self.settings.busy() {
                 self.settings.open = true;
                 self.settings.message = "Close cancelled while a preferences operation is pending. Wait for its result or cancel it, then close again.".into();
+            } else if self.sampler_editor.blocks_close() {
+                self.sampler_editor.close_pending();
             } else if !self.project.busy() && self.project.dialog.is_none() {
                 self.request_project_action(Action::Close);
             }

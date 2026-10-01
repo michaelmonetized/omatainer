@@ -60,6 +60,7 @@ impl Drop for ProjectLease<'_> {
 enum GateKey {
     Live { source: u64, ch: u8, note: u8 },
     Pad(u8),
+    Audition(u64),
     Touch { source: u64, deck: u8 },
 }
 
@@ -539,7 +540,10 @@ impl CommandPort {
         self.shared.performance.check(command, None)
     }
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
-        self.send_after_preflight(command, || {})
+        let sampler_ack = super::sampler::admission_ack(&command);
+        let result = self.send_after_preflight(command, || {});
+        if result.is_err() { if let Some(ack) = sampler_ack { ack.reject(); } }
+        result
     }
 
     fn send_after_preflight(
@@ -747,6 +751,11 @@ impl AdmissionShared {
 fn owned_payload_bytes(command: &Command) -> usize {
     use std::mem::size_of;
     match command {
+        Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|audio| audio.data.capacity().saturating_mul(4)).sum::<usize>(),
+        Command::SamplerEdit(edit) => edit.bank.data.metadata_bytes() + edit.bank.data.audio.iter().flatten().map(|audio| {
+            size_of::<super::dsp::Sample>() + 4 * size_of::<usize>() + size_of::<Vec<[f32; 3]>>()
+                + audio.data.capacity() * size_of::<f32>() + audio.name.capacity() + audio.path.capacity() + audio.peaks.capacity() * size_of::<[f32; 3]>()
+        }).sum::<usize>(),
         Command::Gesture { command, .. } => {
             size_of::<Command>().saturating_add(owned_payload_bytes(command))
         }
@@ -779,6 +788,7 @@ fn project_release(command: &Command) -> bool {
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::SamplerAuditionStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::Stop
@@ -851,6 +861,8 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
             false,
         )),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
+        Command::SamplerAudition(ref request) => Some((GateKey::Audition(request.id), true)),
+        Command::SamplerAuditionStop { id } => Some((GateKey::Audition(id), false)),
         Command::DeckTouch { deck, on } => Some((
             GateKey::Touch {
                 source: 0,

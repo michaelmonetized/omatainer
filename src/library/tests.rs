@@ -32,6 +32,43 @@ fn metadata() -> Metadata {
         last_play: Some(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1234567)),
     }
 }
+
+#[test]
+fn sampler_verified_content_only_qualifies_its_exact_existing_version() {
+    let dir = Dir::new();
+    let path = dir.0.join("sampler.wav");
+    fs::write(&path, b"original sampler bytes").unwrap();
+    let source = LibSource::File(path.clone());
+    let fingerprint = FileFingerprint::read(&path).unwrap();
+    let hash = content::hash_file(&path, fingerprint, || true).unwrap();
+    let mut catalog = Catalog::default();
+    catalog.upsert(source.clone(), Some(fingerprint), metadata()).unwrap()
+        .preparation = preparation();
+    let id = catalog.track(&source).unwrap().id.clone();
+    let old = catalog.version(&source, Some(fingerprint)).unwrap().clone();
+    fs::write(&path, b"new unrelated replacement content at the same source path").unwrap();
+    let replacement = FileFingerprint::read(&path).unwrap();
+    assert_ne!(replacement, fingerprint);
+    catalog.upsert(source.clone(), Some(replacement), metadata()).unwrap();
+    fs::remove_file(path).unwrap();
+    // The original no longer exists. The already measured proof still belongs
+    // only to its archived version, never the current replacement's content.
+    catalog.qualify_verified_content(&id, &source, fingerprint, hash).unwrap();
+    catalog.qualify_verified_content(&id, &source, fingerprint, hash).unwrap();
+    let track = catalog.track(&source).unwrap();
+    assert_eq!(track.versions[track.current].fingerprint, Some(replacement));
+    assert_eq!(track.versions[track.current].content_hash, None);
+    let mut expected = old;
+    expected.content_hash = Some(hash);
+    assert_eq!(catalog.version(&source, Some(fingerprint)), Some(&expected));
+    let before = catalog.tracks.clone();
+    assert!(catalog.qualify_verified_content(&TrackId("f".repeat(32)), &source, fingerprint, hash).is_err());
+    assert!(catalog.qualify_verified_content(&id, &LibSource::File(dir.0.join("other.wav")), fingerprint, hash).is_err());
+    let mut different = hash;
+    different[0] ^= 1;
+    assert!(catalog.qualify_verified_content(&id, &source, fingerprint, different).is_err());
+    assert_eq!(catalog.tracks, before);
+}
 fn preparation() -> Preparation {
     Preparation {
         grid: None,
@@ -367,6 +404,79 @@ fn missing_primary_with_existing_backup_is_not_initialized_over_prepared_data() 
     assert!(error.contains("primary DJ library is missing"));
     assert!(!dir.store().exists());
     assert_eq!(fs::read(backup).unwrap(), original);
+}
+
+#[test]
+fn external_catalog_changes_during_backup_or_before_commit_are_never_adopted_or_overwritten() {
+    let mut outcomes = Vec::new();
+    for checkpoint in [2, 3, 4] {
+        for replace in [false, true] {
+            let dir = Dir::new();
+            let mut store = Store::open(dir.store()).unwrap();
+            store.catalog = mixed(&dir);
+            store.save().unwrap();
+            let mut external = store.catalog.clone();
+            external.tracks[0].versions[0].preparation.cue = 88.0;
+            let bytes = serde_json::to_vec(&external).unwrap();
+            store.catalog.tracks[0].versions[0].preparation.cue = 99.0;
+            let result = store.save_with(|at| {
+                if at == checkpoint {
+                    if replace {
+                        let swap = dir.0.join("external.json");
+                        fs::write(&swap, &bytes).unwrap();
+                        fs::rename(swap, dir.store()).unwrap();
+                    } else {
+                        fs::write(dir.store(), &bytes).unwrap();
+                    }
+                }
+                Ok(())
+            });
+            let preserved = fs::read(dir.store()).unwrap() == bytes;
+            // A retry must not accept the external writer's identity either.
+            let retry_rejected = store.save().is_err();
+            let still_preserved = fs::read(dir.store()).unwrap() == bytes;
+            outcomes.push((checkpoint, replace, result.is_err(), preserved, retry_rejected, still_preserved));
+        }
+    }
+    assert!(outcomes.iter().all(|(_, _, rejected, kept, retry, kept_again)|
+        *rejected && *kept && *retry && *kept_again), "{outcomes:?}");
+}
+
+#[test]
+fn finished_catalog_writer_unlocks_even_while_its_old_description_is_retained() {
+    let dir = Dir::new();
+    let store = Store::open(dir.store()).unwrap();
+    let inherited = store._lock.try_clone().unwrap();
+    assert!(Store::open(dir.store()).is_err());
+    drop(store);
+    let next = Store::open(dir.store()).unwrap();
+    assert!(Store::open(dir.store()).is_err());
+    drop(inherited);
+    assert!(Store::open(dir.store()).is_err());
+    drop(next);
+    assert!(Store::open(dir.store()).is_ok());
+}
+
+#[test]
+fn changed_catalog_temporary_is_preserved_without_changing_primary_or_adopting_it() {
+    let dir = Dir::new();
+    let mut store = Store::open(dir.store()).unwrap();
+    store.catalog = mixed(&dir);
+    store.save().unwrap();
+    let original = fs::read(dir.store()).unwrap();
+    store.catalog.tracks[0].versions[0].preparation.cue = 99.0;
+    let temporary = dir.store().with_extension(format!("tmp-{}", std::process::id()));
+    let external = b"unrelated file at the temporary pathname";
+    let error = store.save_with(|point| {
+        if point == 2 {
+            fs::remove_file(&temporary).unwrap();
+            fs::write(&temporary, external).unwrap();
+        }
+        Ok(())
+    }).unwrap_err();
+    assert!(error.contains("temporary"));
+    assert_eq!(fs::read(dir.store()).unwrap(), original);
+    assert_eq!(fs::read(temporary).unwrap(), external);
 }
 
 #[test]
