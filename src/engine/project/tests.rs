@@ -667,3 +667,41 @@ fn deferred_controller_loads_remain_on_old_project_when_install_or_clean_close_c
     ))
     .is_ok());
 }
+
+#[test]
+fn close_acknowledgement_waits_for_preceding_first_frame_playback_history() {
+    for clean in [true, false] {
+        let (engine, mut live) = Engine::headless_for_test(48_000, 256);
+        let receipt = engine.initial_playback[0].clone();
+        live.apply(Command::DeckPlay { deck: 0 });
+        assert!(receipt.last_play().is_none());
+        let handle = engine.project.clone();
+        let expected = clean.then(|| handle.revision());
+        let watched = receipt.clone();
+        let (done, received) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            let guard = handle.seal_for_close(expected, &AtomicBool::new(false)).unwrap();
+            done.send((guard, watched.last_play())).unwrap();
+        });
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while live.project.shared.incoming.is_empty() {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        // Exercise the exact pre-render project boundary with no timing race.
+        let counts = test_alloc::measure(|| live.project_tick());
+        assert_eq!((counts.allocations, counts.frees), (0, 0));
+        assert!(live.project_sealed);
+        assert!(received.try_recv().is_err(), "close guard escaped before source playback");
+        assert!(receipt.last_play().is_none());
+        let counts = test_alloc::measure(|| live.process(&mut [0.0; 2]));
+        assert_eq!((counts.allocations, counts.frees), (0, 0));
+        let (guard, observed) = received.recv_timeout(Duration::from_secs(3)).unwrap();
+        assert!(observed.is_some(), "close authorization includes the final first-play stamp");
+        assert_eq!(observed, receipt.last_play());
+        worker.join().unwrap();
+        drop(guard);
+        live.process(&mut []);
+        assert!(engine.send(Command::Master(0.44)).is_ok());
+    }
+}

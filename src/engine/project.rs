@@ -307,6 +307,12 @@ impl Handle {
 impl RtEngine {
     pub(super) fn project_tick(&mut self) {
         if let Some(task) = self.project_pending.take() {
+            if task.stage.load(Ordering::Acquire) != READY {
+                // A successful close seal is acknowledged only after this
+                // block renders its final source-playback receipt.
+                self.project_pending = Some(task);
+                return;
+            }
             if let Err(error) = self.project.shared.completed.try_send(task) {
                 self.project_pending = Some(error.into_inner());
             }
@@ -408,9 +414,25 @@ impl RtEngine {
         if exclusive && !self.project_sealed {
             self.cmd_rx.end_project_install();
         }
+        if task.error.is_none() && matches!(task.operation, Operation::Seal { .. }) {
+            self.project_pending = Some(task);
+            return;
+        }
         task.stage.store(READY, Ordering::Release);
         if let Err(error) = self.project.shared.completed.try_send(task) {
             self.project_pending = Some(error.into_inner());
+        }
+    }
+
+    /// Successful close seals wait for the current audio block, including its
+    /// first-play history writes. The worker's acquired receipt then authorizes
+    /// a library flush without racing already-admitted source playback.
+    pub(super) fn project_finish_block(&mut self) {
+        if let Some(task) = self.project_pending.take() {
+            task.stage.store(READY, Ordering::Release);
+            if let Err(error) = self.project.shared.completed.try_send(task) {
+                self.project_pending = Some(error.into_inner());
+            }
         }
     }
 }
