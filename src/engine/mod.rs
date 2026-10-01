@@ -12,6 +12,7 @@ pub mod audio;
 pub mod audio_metrics;
 mod control;
 pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
+pub(crate) use control::{CommandStats, SubmissionStats};
 pub(crate) mod ui_requests;
 pub(crate) mod media_source;
 #[cfg(test)]

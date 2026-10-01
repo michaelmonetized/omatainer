@@ -159,9 +159,9 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - A request may contain at most 4096 bytes before its newline. Idle reads expire
   after 500 ms, and each complete line has a 2-second total read budget.
 - At most eight clients are handled concurrently; excess connections receive a
-  bounded `server_busy` rejection where possible. A connection closes after 32
-  requests. Responses are at most 8192 bytes before their newline and have a
-  200 ms total write budget.
+  bounded `server_busy` rejection where possible. An ordinary connection closes
+  after 32 requests. Responses are at most 8192 bytes before their newline and
+  have a 200 ms total write budget.
 - Diagnostics do not echo request bodies. Status metadata is capped, with
   `state_truncated` indicating omitted text or device entries. If a snapshot is
   unavailable after 50 ms, an accepted command still receives its receipt;
@@ -219,3 +219,26 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Alt-click an occupied clip to edit its gain from zero to 1.5, with explicit
   zero/unity controls. Snapshots and serialized clips expose the same value;
   nonfinite edits are rejected. Audio-clip playback remains a separate feature.
+
+## Persistent status followers
+
+- `ctl follow` opens one read-only `follow` subscription. Its initial request
+  retains the 4096-byte, 500 ms idle and 2-second total read limits. It then
+  receives at most four current-state frames per second; no updates are queued
+  and later bytes on that connection cannot submit commands.
+- A subscription consumes one of the existing eight tracked client slots. Its
+  lifetime is deliberately independent of the ordinary 32-request cap. Each
+  frame retains the 8192-byte and 200 ms write bounds; a failed write retires the
+  worker. Shutdown closes sockets and joins workers, including subscriptions.
+- Follow frames carry the subscription ID and null `accepted`/`command_status`:
+  they describe published state, never command admission or execution. Snapshot
+  contention reports temporary unavailability without replacing the connection.
+- The server compares only bounded display metadata and scalar telemetry. It
+  reuses the encoded frame while those fields are unchanged; tracks, clips and
+  waveform data are neither copied nor serialized for status. Changed metrics
+  still produce a fresh bounded frame.
+- The CLI has a 2-second initial request write and per-frame read budget,
+  nonblocking connection attempts, and reconnect delays of 250 ms, 500 ms, 1 s,
+  2 s, then at most 4 s.
+  A valid frame resets backoff. Closed output exits successfully; process exit
+  closes the socket. A reconnect never retries a musical control command.
