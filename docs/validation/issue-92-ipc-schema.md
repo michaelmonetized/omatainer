@@ -31,4 +31,6 @@ their field/range diagnostics and pass unchanged.
 
 Peer review found no blocking issue. Fixtures use private sockets and headless
 renderers, not audio devices, controllers or a live application connection.
-Final assembled checks run when this issue reaches its ordered stack position.
+The final assembled stack passes 632 Rust tests (8 opt-in fixtures ignored), a
+fresh production build, the seven native CLI protocol cases, six native follow
+groups, the panic-abort scene CLI/IPC/renderer probe and native package validation.
