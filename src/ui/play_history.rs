@@ -65,6 +65,7 @@ pub(super) struct Watch {
     observed: Option<SystemTime>,
     preparation_revision: u64,
     metadata: crate::library::Metadata,
+    history_registered: bool,
 }
 
 pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
@@ -75,6 +76,7 @@ pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
             identity: Identity::new(LibSource::Builtin(stem), None).unwrap(),
             receipt: receipt.clone(),
             observed: None,
+            history_registered: false,
             preparation_revision: receipt.preparation().map_or(0, |(revision, _)| revision),
             metadata: builtin_crate_items()
                 .into_iter()
@@ -111,6 +113,7 @@ impl App {
                 identity,
                 receipt,
                 observed: None,
+                history_registered: false,
                 preparation_revision: 0,
                 metadata,
             });
@@ -134,6 +137,12 @@ impl App {
         let connected = self.engine.cmd.is_connected();
         let mut latest = None;
         self.playback_watches.retain_mut(|watch| {
+            if !watch.history_registered && self.session_history.worker.is_some() {
+                // Preserve identity before terminal watches retire; catalog saves
+                // can arrive later than the renderer acknowledgement.
+                self.session_history.queue_identity(watch.receipt.history_key(), watch.identity.source.clone(), watch.identity.fingerprint, watch.metadata.clone());
+                watch.history_registered = true;
+            }
             // A terminal state is published after the last possible playback
             // update. Read it first to avoid losing a last event at retirement.
             let state = watch.receipt.state();

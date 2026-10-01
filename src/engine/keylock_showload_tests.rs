@@ -18,6 +18,9 @@ const REPEATS: usize = 3;
 const POLICY: &str = include_str!("../../benchmarks/keylock-show-policy.json");
 
 fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
+    workload_observed(rate, frames, ratio, blocks, false)
+}
+pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: usize, history: bool) -> Value {
     let (engine, mut rt) = performance_workload_tests::prepared_at("hybrid", rate);
     // Identical non-silent media and origins align both decks' expensive hops.
     // This original procedural source is a timing stressor, not listening proof.
@@ -60,6 +63,10 @@ fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
     for _ in 0..WARMUP {
         callback.render(&mut output);
     }
+    let history_handle = history.then(|| engine.performance_history.clone().unwrap());
+    let history_receiver = history_handle.as_ref().map(|handle| handle.take_observations().unwrap());
+    let history_start = history_handle.as_ref().map(|handle| handle.submit(history_measurement::control::Action::Start(1)).unwrap());
+    let mut history_frames = [0_u64; 2];
     let before = callback
         .renderer_for_test()
         .decks
@@ -124,7 +131,33 @@ fn workload(rate: u32, frames: usize, ratio: f32, blocks: usize) -> Value {
                 hash = (hash ^ byte as u64).wrapping_mul(0x100000001b3);
             }
         }
+        if block == 0 {
+            if let Some(handle) = &history_handle {
+                assert_eq!(handle.poll(history_start.unwrap()).unwrap().unwrap().outcome, history_measurement::control::Outcome::Started);
+            }
+        }
+        if let Some(receiver) = &history_receiver {
+            for observation in receiver.try_iter() {
+                if observation.classification == history_measurement::Classification::Active {
+                    history_frames[observation.episode.deck as usize] += u64::from(observation.frames);
+                }
+            }
+        }
         std::thread::yield_now(); // Outside callback, same retirement scheduling as #95.
+    }
+    if history {
+        let handle = history_handle.as_ref().unwrap();
+        let end = handle.submit(history_measurement::control::Action::End(1)).unwrap();
+        callback.renderer_mut_for_test().process(&mut []);
+        let ack = handle.poll(end).unwrap().unwrap();
+        assert_eq!(ack.outcome, history_measurement::control::Outcome::Ended);
+        assert!(!ack.incomplete && ack.dropped == 0);
+        for observation in history_receiver.as_ref().unwrap().try_iter() {
+            if observation.classification == history_measurement::Classification::Active {
+                history_frames[observation.episode.deck as usize] += u64::from(observation.frames);
+            }
+        }
+        assert!(history_frames.into_iter().all(|frames| frames > 0));
     }
     let rt = callback.renderer_for_test();
     let hops = rt.decks.each_ref().map(|d| d.keylock_dsp.analysis_count());

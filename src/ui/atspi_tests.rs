@@ -51,6 +51,7 @@ fn private_atspi_bridge_child() {
     let mut app = App::with_loader(engine, Theme::default(), Some(loader));
     app.sampler_editor.set_store_path(directory.join("sampler-banks.json"));
     app.start_library_store(directory.join("library.json"));
+    app.start_session_history(directory.join("performance-history"));
     let sampler_path = directory.join("sampler.flac");
     std::fs::write(&sampler_path, include_bytes!("../../tests/fixtures/audio/tone.flac")).unwrap();
     let sampler_source = LibSource::File(sampler_path.clone());
@@ -96,6 +97,7 @@ fn private_atspi_bridge_child() {
         Deactivate,
     );
     adapter.update_window_focus_state(true);
+    let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
     let deadline = Instant::now() + Duration::from_secs(70);
     let mut actions = Vec::new();
     let mut frames = 0u64;
@@ -125,7 +127,8 @@ fn private_atspi_bridge_child() {
         tree = frame(&mut app, events);
         *initial.lock().unwrap() = tree.clone();
         adapter.update_if_active(|| tree.clone());
-        rt.process(&mut [0.0; 128]);
+        callback.render(&mut [0.0_f32; 128]);
+        let rt = callback.renderer_mut_for_test();
         rt.publish_for_test();
         frames += 1;
         let focus = tree
@@ -167,6 +170,7 @@ fn private_atspi_bridge_child() {
             "sampler_editor":app.sampler_editor.evidence(),
             "analysis":app.library_analysis.evidence(),
             "named_crates":app.crate_evidence(),
+            "session_history":app.session_history_evidence(),
             "sampler_banks":rt.sampler_banks.iter().map(|b|serde_json::json!({"id":b.id,"name":b.name(),"gain":b.data.settings.slots[0].controls.gain,"frames":b.data.audio[0].as_ref().map(|s|s.frames())})).collect::<Vec<_>>(),
             "sampler_fixture_row":app.library_view.indices.iter().position(|&i|app.library[i].source==sampler_source).map(|i|i+1),
             "sampler_instrument":rt.sampler_inst.label(),"held_pad_voices":held_pad_voices,

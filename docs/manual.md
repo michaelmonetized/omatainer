@@ -94,6 +94,86 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Performance history
+
+Independent saved DJ sessions
+
+Inspect renderer-confirmed digital main-output contribution. Session history is independent of project Save and Undo. Hardware delivery and human listening require separate verification.
+
+Workflow: Prepare a DJ deck.
+
+### Start performance session
+
+Actual output boundary
+
+Begin only when the audio output callback acknowledges the request. Already loaded decks are included as unplayed until measurable main-output contribution. Start never starts playback.
+
+Workflow: Prepare a DJ deck.
+
+### End performance session
+
+Actual output boundary and durable save
+
+Finish pending measurement windows at the renderer boundary and save the session. Playback continues. A save failure remains pending; ending alone is not proof of persistence.
+
+Workflow: Prepare a DJ deck.
+
+### Select performance session
+
+Stable session identity
+
+Inspect one saved or active session without changing playback. Interrupted sessions retain their last saved prefix and are marked incomplete.
+
+Workflow: Prepare a DJ deck.
+
+### Played status override
+
+Played / unplayed / measured
+
+Set a manual assertion on this captured session and entry, or restore automatic status. Measured duration is preserved. Performance protection excludes manual history edits.
+
+Workflow: Prepare a DJ deck.
+
+### External track assertion
+
+Title and artist; at most 1024 UTF-8 bytes each
+
+Add a track played outside this engine. It is explicitly external with no measured deck or duration. A nonempty title is required. Performance protection excludes this optional edit.
+
+Workflow: Prepare a DJ deck.
+
+### Export performance session
+
+New local JSON file
+
+Export labels, opaque catalog IDs, boundaries and measurement counts. Media paths and fingerprints are omitted. Review user-supplied labels before sharing. Existing files are never overwritten. Performance protection excludes exports.
+
+Workflow: Prepare a DJ deck.
+
+### Retry history persistence
+
+Pending essential save or close
+
+Retry buffered history writes without discarding measurements or changing an already confirmed session end. Recording and automatic saves remain available during performance protection.
+
+Workflow: Prepare a DJ deck.
+
+### Keep working after history close
+
+Cancel exit
+
+Cancel exit and reopen history control after any pending boundary completes. An already ended session stays ended; explicitly start another session to record again.
+
+Workflow: Prepare a DJ deck.
+
+### Close without confirmed history save
+
+Explicit loss warning override
+
+Exit despite incomplete history persistence. Recent measurements and edits may be lost. Previously saved history is retained, and an active saved session will be marked interrupted on restart.
+
+Workflow: Prepare a DJ deck.
+
 ### Named ordered crates
 
 Saved collections; All tracks is a virtual view

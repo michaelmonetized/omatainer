@@ -99,6 +99,7 @@ fn build<T>(
 ) -> Result<cpal::Stream, cpal::BuildStreamError>
 where
     T: cpal::SizedSample + cpal::FromSample<f32>,
+    f64: cpal::FromSample<T>,
 {
     device.build_output_stream(
         cfg,
@@ -158,6 +159,8 @@ pub(crate) struct OutputCallback {
 impl OutputCallback {
     #[cfg(test)]
     pub(crate) fn renderer_for_test(&self) -> &RtEngine { &self.rt }
+    #[cfg(test)]
+    pub(crate) fn renderer_mut_for_test(&mut self) -> &mut RtEngine { &mut self.rt }
 
     pub(crate) fn new(rt: RtEngine, channels: usize) -> Self {
         Self {
@@ -198,6 +201,7 @@ impl OutputCallback {
     pub(crate) fn render<T>(&mut self, data: &mut [T])
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
+    f64: cpal::FromSample<T>,
     {
         self.render_timed(data, None);
     }
@@ -205,6 +209,7 @@ impl OutputCallback {
     pub(crate) fn render_timed<T>(&mut self, data: &mut [T], latency: Option<std::time::Duration>)
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
+    f64: cpal::FromSample<T>,
     {
         if self
             .enabled
@@ -226,12 +231,14 @@ impl OutputCallback {
         }
         let slice = &mut self.buffer[..data.len()];
         slice.fill(0.0);
+        if let Some(history) = &mut self.rt.history_measurement { history.begin_output(data.len() / self.channels.max(1)); }
         self.rt.process_interleaved(slice, self.channels);
         #[cfg(test)]
         std::thread::sleep(self.conversion_delay);
         for (destination, source) in data.iter_mut().zip(slice) {
             *destination = T::from_sample(*source);
         }
+        if let Some(history) = &mut self.rt.history_measurement { history.converted(data, self.channels); }
         self.rt.telemetry.record_output(
             started.elapsed(),
             data.len() / self.channels.max(1),

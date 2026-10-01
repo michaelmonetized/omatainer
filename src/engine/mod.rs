@@ -28,6 +28,7 @@ mod mute_lifecycle_tests;
 pub(crate) mod test_alloc;
 pub mod audio;
 pub mod audio_metrics;
+pub(crate) mod history_measurement;
 pub mod performance;
 pub(crate) mod diagnostics;
 mod master_fx;
@@ -301,6 +302,9 @@ pub struct DeckRt {
     keylock_render_mode: keylock::Mode,
     rate_smoothing: f32,
     last_output: [f32; 2],
+    history_key: u64,
+    history_last: history_measurement::parts::Parts,
+    history_transition: history_measurement::parts::Parts,
     transition_from: [f32; 2],
     transition_remaining: u32,
     transition_frames: u32,
@@ -358,6 +362,9 @@ impl DeckRt {
             keylock_render_mode: keylock::Mode::Off,
             rate_smoothing: dsp::rate_blend(0.08, sr),
             last_output: [0.0; 2],
+            history_key: 0,
+            history_last: Default::default(),
+            history_transition: Default::default(),
             transition_from: [0.0; 2],
             transition_remaining: 0,
             transition_frames: 0,
@@ -388,6 +395,7 @@ impl DeckRt {
     }
 
     fn fade_from_last_output(&mut self, sr: f32) {
+        self.history_transition = self.history_last;
         self.transition_from = self.last_output;
         self.transition_frames = (sr as f64 * 0.002).ceil().max(2.0) as u32;
         self.transition_remaining = self.transition_frames;
@@ -405,6 +413,7 @@ impl DeckRt {
 
     fn transition_output(&mut self, input: [f32; 2]) -> [f32; 2] {
         let mut output = input;
+        let mut history_mix = 1.0;
         if self.transition_remaining > 0 {
             let mix = (self.transition_frames - self.transition_remaining) as f32
                 / (self.transition_frames - 1) as f32;
@@ -412,8 +421,11 @@ impl DeckRt {
                 output[channel] = self.transition_from[channel] * (1.0 - mix)
                     + input[channel] * mix;
             }
+            history_mix = mix;
             self.transition_remaining -= 1;
         }
+        self.history_last = history_measurement::parts::Parts::transition(
+            self.history_transition, self.history_key, input, history_mix);
         self.last_output = output;
         output
     }
@@ -489,6 +501,7 @@ pub struct RtEngine {
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
+    history_measurement: Option<history_measurement::capture::Measurement>,
     pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub tap: Vec<Instant>,
@@ -901,6 +914,7 @@ impl RtEngine {
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
+            history_measurement: history_measurement::capture::Measurement::new(sr as u32).ok(),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0, 0.0, 0.0],
             tap: Vec::new(),
@@ -977,6 +991,7 @@ impl RtEngine {
         // Rate changes reconstruct all preallocated master histories; type and
         // wet controls remain intact and are configured on the next block.
         self.master_fx = std::array::from_fn(|_| master_fx::MasterSlot::new(sr as f32));
+        if let Some(history) = &mut self.history_measurement { history.set_rate(sr); }
         let drums = build_kit(sr);
         self.install_sampler_rate_banks(sampler_banks);
         for voice in &mut self.pad_voices { *voice = None; }
@@ -1131,6 +1146,7 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
         self.undo.publish();
@@ -1144,6 +1160,7 @@ impl RtEngine {
         if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
+        if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
 
         let any_solo = self.tracks.iter().any(|t| t.solo);
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
@@ -1230,6 +1247,13 @@ impl RtEngine {
             l = l * (1.0 - cm) + cue_l * cm;
             r = r * (1.0 - cm) + cue_r * cm;
             self.safety_output.observe([l * self.master, r * self.master], self.sr);
+            if let Some(history) = self.history_measurement.as_mut().filter(|history| history.available) {
+                let contribution = history.tracker.process(
+                    [self.decks[0].history_last, self.decks[1].history_last],
+                    [self.decks[0].history_key, self.decks[1].history_key],
+                    [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], cm);
+                history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output);
+            }
             l = limiter(l * self.master);
             r = limiter(r * self.master);
             let [l, r] = self.safety_output.output([l, r]);
@@ -2028,6 +2052,7 @@ impl RtEngine {
                     pos: 0.0,
                 });
                 d.audio = Some(audio);
+                d.history_key = history_measurement::parts::unresolved_key();
                 d.transition_to(0.0, self.sr, DeckTransition::Jump);
             }
             Command::DeckUnload { deck } => {
@@ -2035,6 +2060,7 @@ impl RtEngine {
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.playback_active = false;
                 d.audio = None;
+                d.history_key = 0;
                 d.title.clear();
                 d.playing = false;
                 d.cue_pos = 0.0;
@@ -2479,6 +2505,7 @@ impl RtEngine {
             self.apply_plain(command);
             let d = &mut self.decks[deck as usize];
             if let Some(preparation) = receipt.initial_preparation() { d.restore_preparation(preparation); }
+            d.history_key = receipt.history_key();
             d.load_receipt = Some(receipt.clone());
             d.publish_preparation();
             receipt.finish(State::Current);
@@ -2716,6 +2743,7 @@ pub struct Engine {
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
     pub(crate) initial_playback: [load_receipt::Receipt; DECKS],
+    pub(crate) performance_history: Option<history_measurement::control::Handle>,
     pub(crate) sampler_assets: crate::sampler_bank::assets::Owner,
     // Production owns the audio manager; it may retain a stopped graph after
     // backend failure while still serving project Save/Open/Close.
@@ -2738,6 +2766,7 @@ impl Engine {
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let sampler_assets = rt.sampler_assets.clone();
+        let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audio = audio::start_with_settings(rt, &settings.audio)?;
         let midi = midi::MidiHub::start_with_policy(tx.clone(), snap.clone(), settings.midi_inputs.clone())?;
         Ok(Self {
@@ -2748,6 +2777,7 @@ impl Engine {
             snap,
             midi,
             initial_playback,
+            performance_history,
             sampler_assets,
             _audio: Some(audio),
         })
@@ -2771,8 +2801,9 @@ impl Engine {
         let undo=rt.enable_undo()?;
         let project=rt.project.clone();
         let sampler_assets=rt.sampler_assets.clone();
+        let performance_history=rt.history_measurement.as_ref().map(|history|history.handle());
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,sampler_assets,_audio:Some(audio)})
+        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,performance_history,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
@@ -2786,6 +2817,7 @@ impl Engine {
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let sampler_assets = rt.sampler_assets.clone();
+        let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         (
             Self {
                 undo,
@@ -2795,6 +2827,7 @@ impl Engine {
                 snap,
                 midi: midi::MidiHub::without_devices(),
                 initial_playback,
+                performance_history,
                 sampler_assets,
                 _audio: None,
             },

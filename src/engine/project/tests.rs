@@ -750,3 +750,22 @@ fn version_two_projects_keep_cue_metadata_with_no_invented_manual_grid() {
     assert_eq!(restored.rt.decks[0].cue_styles, original.decks[0].cue_styles);
     assert_eq!(restored.rt.decks[0].hotcues[3].pos, original.decks[0].hotcues[3].pos);
 }
+
+#[test]
+fn prepared_project_history_uses_qualified_receipt_keys_and_empty_decks_have_no_load() {
+    let source = populated();
+    let saved = captured(&source);
+    let prepared = Prepared::from_state(saved.state, saved.media, 48_000).unwrap();
+    for deck in &prepared.rt.decks {
+        assert!(deck.audio.is_some());
+        assert_eq!(deck.history_key, deck.load_receipt.as_ref().unwrap().history_key());
+    }
+    let handle = prepared.rt.history_measurement.as_ref().unwrap().handle();
+    let request = handle.submit(super::super::history_measurement::control::Action::Start(1)).unwrap();
+    let mut callback = super::super::audio::OutputCallback::new(*prepared.rt, 2);
+    callback.render(&mut [0.0_f32; 256]);
+    let ack = handle.poll(request).unwrap().unwrap();
+    assert_eq!(ack.current, callback.renderer_for_test().decks.each_ref().map(|d|d.load_receipt.as_ref().unwrap().history_key()));
+    let empty = Prepared::empty(48_000).unwrap();
+    assert!(empty.rt.decks.iter().all(|d|d.audio.is_none() && d.history_key == 0));
+}
