@@ -407,6 +407,79 @@ fn missing_primary_with_existing_backup_is_not_initialized_over_prepared_data() 
 }
 
 #[test]
+fn external_catalog_changes_during_backup_or_before_commit_are_never_adopted_or_overwritten() {
+    let mut outcomes = Vec::new();
+    for checkpoint in [2, 3, 4] {
+        for replace in [false, true] {
+            let dir = Dir::new();
+            let mut store = Store::open(dir.store()).unwrap();
+            store.catalog = mixed(&dir);
+            store.save().unwrap();
+            let mut external = store.catalog.clone();
+            external.tracks[0].versions[0].preparation.cue = 88.0;
+            let bytes = serde_json::to_vec(&external).unwrap();
+            store.catalog.tracks[0].versions[0].preparation.cue = 99.0;
+            let result = store.save_with(|at| {
+                if at == checkpoint {
+                    if replace {
+                        let swap = dir.0.join("external.json");
+                        fs::write(&swap, &bytes).unwrap();
+                        fs::rename(swap, dir.store()).unwrap();
+                    } else {
+                        fs::write(dir.store(), &bytes).unwrap();
+                    }
+                }
+                Ok(())
+            });
+            let preserved = fs::read(dir.store()).unwrap() == bytes;
+            // A retry must not accept the external writer's identity either.
+            let retry_rejected = store.save().is_err();
+            let still_preserved = fs::read(dir.store()).unwrap() == bytes;
+            outcomes.push((checkpoint, replace, result.is_err(), preserved, retry_rejected, still_preserved));
+        }
+    }
+    assert!(outcomes.iter().all(|(_, _, rejected, kept, retry, kept_again)|
+        *rejected && *kept && *retry && *kept_again), "{outcomes:?}");
+}
+
+#[test]
+fn finished_catalog_writer_unlocks_even_while_its_old_description_is_retained() {
+    let dir = Dir::new();
+    let store = Store::open(dir.store()).unwrap();
+    let inherited = store._lock.try_clone().unwrap();
+    assert!(Store::open(dir.store()).is_err());
+    drop(store);
+    let next = Store::open(dir.store()).unwrap();
+    assert!(Store::open(dir.store()).is_err());
+    drop(inherited);
+    assert!(Store::open(dir.store()).is_err());
+    drop(next);
+    assert!(Store::open(dir.store()).is_ok());
+}
+
+#[test]
+fn changed_catalog_temporary_is_preserved_without_changing_primary_or_adopting_it() {
+    let dir = Dir::new();
+    let mut store = Store::open(dir.store()).unwrap();
+    store.catalog = mixed(&dir);
+    store.save().unwrap();
+    let original = fs::read(dir.store()).unwrap();
+    store.catalog.tracks[0].versions[0].preparation.cue = 99.0;
+    let temporary = dir.store().with_extension(format!("tmp-{}", std::process::id()));
+    let external = b"unrelated file at the temporary pathname";
+    let error = store.save_with(|point| {
+        if point == 2 {
+            fs::remove_file(&temporary).unwrap();
+            fs::write(&temporary, external).unwrap();
+        }
+        Ok(())
+    }).unwrap_err();
+    assert!(error.contains("temporary"));
+    assert_eq!(fs::read(dir.store()).unwrap(), original);
+    assert_eq!(fs::read(temporary).unwrap(), external);
+}
+
+#[test]
 fn symlink_store_or_external_symlink_swap_never_modifies_target_or_backup() {
     let dir = Dir::new();
     let outside = dir.0.join("outside.json");
