@@ -5,6 +5,8 @@ use crate::engine::media_source::FileFingerprint;
 use crate::engine::performance::{Handle, WorkPermit};
 use std::sync::{mpsc, Weak};
 
+const SAMPLER_PROOF_LIMIT: usize = 256;
+
 #[cfg(test)]
 mod tests;
 
@@ -57,6 +59,7 @@ struct Job {
     revision: u64,
     updates: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
+    sampler_sources: Vec<crate::sampler_bank::SourceRef>,
     import: Option<Import>,
     relocation: Option<Relocation>,
     qualification_work: Option<WorkPermit>,
@@ -92,6 +95,7 @@ pub(super) struct Metadata {
     results: mpsc::Receiver<Result>,
     pending: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
+    sampler_sources: Vec<crate::sampler_bank::SourceRef>,
     import: Option<Import>,
     relocation: Option<Relocation>,
     pub catalog: Arc<crate::library::Catalog>,
@@ -208,6 +212,17 @@ impl Metadata {
                     let catalog = if let Some(store) = &mut store {
                         match store {
                             Ok(store) => {
+                                // This is essential persistence of an already
+                                // measured digest, not optional hashing. Apply
+                                // it to the baseline so a cancelled scan/import
+                                // cannot erase it in reconcile_optional's rebase.
+                                let mut proof_error = None;
+                                for proof in &job.sampler_sources {
+                                    let result = proof.content_hash.ok_or_else(|| "sampler content proof has no digest".to_string())
+                                        .and_then(|hash| store.catalog.qualify_verified_content(
+                                            &proof.track, &proof.source, proof.fingerprint, hash));
+                                    if let Err(error) = result { proof_error.get_or_insert(error); }
+                                }
                                 storage = Some(
                                     match super::library_store::reconcile_optional(
                                         store, &mut items, &job.captures,
@@ -226,6 +241,11 @@ impl Metadata {
                                         Err(error) => format!("DJ library NOT saved: {error}"),
                                     },
                                 );
+                                if let Some(error) = proof_error {
+                                    let status = storage.as_mut().unwrap();
+                                    status.push_str("; sampler content proof rejected: ");
+                                    status.push_str(&error);
+                                }
                                 Arc::new(store.catalog.clone())
                             }
                             Err(error) => {
@@ -302,6 +322,7 @@ impl Metadata {
             results,
             pending: Vec::new(),
             captures: Vec::new(),
+            sampler_sources: Vec::new(),
             import: None,
             relocation: None,
             catalog: Arc::new(crate::library::Catalog::default()),
@@ -319,6 +340,32 @@ impl Metadata {
 }
 
 impl Metadata {
+    /// Enqueue only fresh hash/decode proofs from an Applied sampler request.
+    /// A project/definition SourceRef by itself is not a measured content proof.
+    /// At most 256 proofs wait here and one 256-proof job can be in flight.
+    pub fn qualify_sampler(&mut self, proof: crate::sampler_bank::SourceRef) -> std::result::Result<(), String> {
+        if self.storage.is_none() {
+            return Err("sampler source identity is not saved: persistent DJ library unavailable".into());
+        }
+        proof.validate()?;
+        if proof.content_hash.is_none() {
+            return Err("sampler source identity requires a measured content digest".into());
+        }
+        if let Some(old) = self.sampler_sources.iter().find(|old| old.track == proof.track
+            && old.source == proof.source && old.fingerprint == proof.fingerprint) {
+            return if old.content_hash == proof.content_hash { Ok(()) }
+                else { Err("sampler source identity conflicts with an already queued digest".into()) };
+        }
+        if self.sampler_sources.len() == SAMPLER_PROOF_LIMIT {
+            return Err("sampler source identity queue is full (256); retry after the library save".into());
+        }
+        self.sampler_sources.push(proof);
+        self.clear_error = true;
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        Ok(())
+    }
+
     pub fn set_performance(&mut self, performance: Handle) {
         self.performance = performance;
     }
@@ -540,6 +587,7 @@ impl Metadata {
                 revision: self.revision,
                 updates: std::mem::take(&mut self.pending),
                 captures: std::mem::take(&mut self.captures),
+                sampler_sources: std::mem::take(&mut self.sampler_sources),
                 import: self.import.take(),
                 relocation: self.relocation.take(),
                 qualification_work: self.performance.optional_work().ok(),
@@ -552,6 +600,7 @@ impl Metadata {
                 Err(mpsc::TrySendError::Full(job) | mpsc::TrySendError::Disconnected(job)) => {
                     self.pending = job.updates;
                     self.captures = job.captures;
+                    self.sampler_sources = job.sampler_sources;
                     self.import = job.import;
                     self.relocation = job.relocation;
                     self.retired_candidates = job._retired_candidates;
