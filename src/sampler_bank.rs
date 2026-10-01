@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, fmt, io::Read, path::PathBuf};
 
 mod store;
+pub(crate) mod assets;
+pub(crate) mod resident;
 pub(crate) use store::{default_path, Commit, Store};
 #[cfg(test)]
 mod tests;
