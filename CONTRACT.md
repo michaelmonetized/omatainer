@@ -270,3 +270,17 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Disabling the metronome or stopping clears its voice immediately. Enabling or
   resuming between beats waits for the next boundary; starting on a boundary
   starts that beat's click. A sample-rate change clears and rebuilds the voice.
+
+## Mixer control gains
+
+- Crossfader and track pan/gain coefficients are cached at audio-block boundaries.
+  Unchanged controls perform no per-sample powers or square roots. The original
+  crossfader law remains `A=(1-x)^(1+2.5c)`, `B=x^(1+2.5c)` for position `x` and
+  curve `c`; the existing square-root pan law is unchanged at steady settings.
+- After the first rendered frame, crossfader, curve, track gain and pan changes
+  ramp from the currently audible gain pair to the exact new pair over 5 ms
+  (rounded to the nearest sample). A reversal starts from the current pair.
+  These are linear ramps in gain space; steady curve endpoints remain exact.
+- Muted/solo-excluded tracks still advance ramps. The stopped sample-rate reset
+  establishes current target gains directly at the next callback. Initial
+  controls also start at their exact target without an unnecessary fade-in.

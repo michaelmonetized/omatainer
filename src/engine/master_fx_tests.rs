@@ -11,8 +11,10 @@ fn message(hub: &midi::MidiHub, commands: &CommandPort, bytes: &[u8]) {
 }
 
 fn signal(rt: &mut RtEngine, frames: usize) {
-    // Independent channels and frequencies; quiet preroll lets deck transitions settle.
-    let mut data = vec![0.0; 514];
+    // Independent channels and frequencies; quiet preroll settles both deck
+    // transitions and the sample-rate-scaled 5 ms mixer control ramp.
+    let settle = 256.max((rt.sr * 0.005).ceil() as usize);
+    let mut data = vec![0.0; (settle + 1) * 2];
     for frame in 0..frames {
         let phase = std::f32::consts::TAU * frame as f32 / rt.sr;
         data.push((phase * 311.0).sin() * 0.2 + if frame == 0 { 0.15 } else { 0.0 });
@@ -37,7 +39,7 @@ fn signal(rt: &mut RtEngine, frames: usize) {
     rt.decks[1].audio = None;
     rt.master = 1.0;
     rt.xfader = 0.0;
-    rt.process(&mut [0.0; 512]);
+    rt.process(&mut vec![0.0; settle * 2]);
 }
 
 #[test]

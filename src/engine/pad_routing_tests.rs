@@ -161,7 +161,10 @@ fn stereo_sample_and_release_tails_keep_the_original_destination() {
     pad(&mut rt, false);
     assert_eq!(rt.pad_destinations[0], DEST);
     rt.tracks[DEST].gain = 0.0;
-    assert_eq!(frames(&mut rt, 24_000), 0.0);
+    // Mixer gain edits now fade for five milliseconds, while the release
+    // remains routed to its captured destination. Exact silence follows.
+    assert!(frames(&mut rt, 240) > 0.0);
+    assert_eq!(frames(&mut rt, 23_760), 0.0);
     assert!(rt.sampler_poly.voices.iter().all(|v| !v.env.active()));
 }
 
