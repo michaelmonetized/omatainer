@@ -80,3 +80,25 @@ storage/UI groups passed again. Production `cargo build`, new-module rustfmt,
 Python syntax and `git diff --check` passed. The final private native run passed
 with 220 initial nodes, 27 native actions and a saved 1.25 scale; its 292 frames
 are a sequencing observation, not a frame-rate/performance measurement.
+
+## Final assembled stack
+
+The complete stack passes **612 ordinary tests**, with 7 opt-in fixtures ignored,
+and `cargo build --offline`. The private native AT-SPI fixture now combines the
+project workflow (New, compose, Undo, Redo, Save, New, reopen) and preference
+Preview/Apply/Cancel in one run: 228 initial nodes, 51 native actions, one saved
+and reopened note and a saved UI scale of 1.25. Frame count is not an FPS claim.
+
+Integration preserves durable-library opening while honoring the selected
+startup scan flag. Startup Help/MIDI panel defaults establish only their initial
+view values, preserving any prior engine edits and avoiding a falsely dirty fresh
+project. Undo/Redo have stable preference IDs; a saved remap reaches the actual
+renderer and appears in the Edit menu. Native close is cancelled with a visible
+message while preference work is pending; the user can wait for its result or
+cancel the operation before closing again. Project close/dialog states also
+prevent starting a new preferences operation midway through close.
+
+The rebuilt native executable passes license-record/package verification, seven
+ordinary CLI protocol cases, five runtime-isolation groups and the isolated
+panic-abort scene CLI/IPC/engine probe. Physical audio routes, controllers,
+converter latency and human screen-reader use remain unqualified.
