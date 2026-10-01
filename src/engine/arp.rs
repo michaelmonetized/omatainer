@@ -7,6 +7,7 @@ pub(super) struct ChordCache {
     // A pitch is a u8 in the project format. Fixed storage also handles
     // imported values above MIDI's usual 127 without panicking or allocating.
     pitches: [u8; 256],
+    velocities: [u8; 256],
     len: usize,
     next_change: f64,
     clip_beats: f64,
@@ -19,6 +20,7 @@ impl Default for ChordCache {
     fn default() -> Self {
         Self {
             pitches: [0; 256],
+            velocities: [0; 256],
             len: 0,
             next_change: 0.0,
             clip_beats: 0.0,
@@ -56,6 +58,7 @@ impl ChordCache {
         }
 
         let mut present = [false; 256];
+        self.velocities.fill(0);
         self.next_change = clip_beats;
         for (index, note) in notes.iter().enumerate() {
             if !visible(index) {
@@ -65,6 +68,10 @@ impl ChordCache {
             let end = (note.start + note.len) as f64;
             if local >= start && local < end {
                 present[note.pitch as usize] = true;
+                // One arp step represents a deduplicated pitch. The loudest
+                // currently active visible note supplies its drum velocity.
+                let velocity = &mut self.velocities[note.pitch as usize];
+                *velocity = (*velocity).max(note.vel.min(127));
             }
             if start > local {
                 self.next_change = self.next_change.min(start);
@@ -86,6 +93,10 @@ impl ChordCache {
         {
             self.rebuilds += 1;
         }
+    }
+
+    pub fn velocity(&self, pitch: u8) -> u8 {
+        self.velocities[pitch as usize]
     }
 
     pub fn contains(&self, pitch: u8) -> bool {

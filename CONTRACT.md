@@ -227,3 +227,13 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   high-pass attenuation. Each channel has independent filter history.
 - The active response meets bypass continuously, with a bounded 5 ms control
   slew for full-range jumps. Returning to center clears old branch history.
+
+## Drum velocity
+
+- Live MIDI and MIDI-clip drum hits capture normalized velocity independently
+  from clip gain. Overlapping hits retain both values until their one-shots end.
+- Velocity-zero note-on follows the release path and never creates or steals a
+  drum voice. Existing finite drum hits continue under the usual release policy.
+- Arpeggiated drum steps use the largest velocity among active, visible notes
+  of the selected pitch. Membership boundaries, edits and loops refresh that
+  value; a zero-velocity step is silent. Synth arp velocity is unchanged.

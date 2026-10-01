@@ -146,6 +146,7 @@ pub struct DrumVoice {
     pub sample: usize,
     pub position: f64,
     pub clip_gain: f32,
+    pub velocity: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -1142,7 +1143,8 @@ impl RtEngine {
                         let pitch = advance.then(|| track.arp_cache.pitch(step)).flatten();
                         if let Some(pitch) = pitch {
                             if kind == 0 {
-                                self.trig_drum_with_gain(ti, pitch, 1.0, gain);
+                                let velocity = track.arp_cache.velocity(pitch) as f32 / 127.0;
+                                self.trig_drum_with_gain(ti, pitch, velocity, gain);
                             } else {
                                 self.tracks[ti].poly.note_on_clip_with_gain(pitch, 0.9, gain);
                             }
@@ -1214,6 +1216,10 @@ impl RtEngine {
     }
 
     fn trig_drum_with_gain(&mut self, ti: usize, pitch: u8, vel: f32, clip_gain: f32) {
+        // A zero-velocity onset is a release, never a new one-shot or a steal.
+        // Existing finite hits keep playing under the drum release policy.
+        if !vel.is_finite() || vel <= 0.0 { return; }
+        let velocity = vel.min(1.0);
         let idx = match pitch {
             36 | 35 => 0, // kick
             38 | 40 => 1, // snare
@@ -1224,11 +1230,10 @@ impl RtEngine {
         };
         let slots = &mut self.tracks[ti].drum_pos;
         if let Some(slot) = slots.iter_mut().find(|s| s.is_none()) {
-            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain });
+            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain, velocity });
         } else if let Some(slot) = slots.first_mut() {
-            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain });
+            *slot = Some(DrumVoice { sample: idx, position: 0.0, clip_gain, velocity });
         }
-        let _ = vel;
     }
 
     fn tick_drums(&mut self, ti: usize) -> f32 {
@@ -1242,7 +1247,7 @@ impl RtEngine {
             if let Some(voice) = slot {
                 let samp = &samples[voice.sample];
                 let (l, _) = samp.at(voice.position);
-                s += l * voice.clip_gain;
+                s += l * voice.clip_gain * voice.velocity;
                 voice.position += samp.sr as f64 / sr;
                 if voice.position >= samp.frames() as f64 {
                     *slot = None;
@@ -2716,3 +2721,7 @@ fn clip_gain(value: f32) -> f32 {
 mod clip_gain_tests;
 #[cfg(test)]
 mod drum_borrow_tests;
+
+
+#[cfg(test)]
+mod drum_velocity_tests;

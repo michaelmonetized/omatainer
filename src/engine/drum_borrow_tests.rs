@@ -14,7 +14,7 @@ fn previous_tick(rt: &mut RtEngine, track: usize) -> f32 {
     for slot in &mut rt.tracks[track].drum_pos {
         if let Some(voice) = slot {
             let sample = &samples[voice.sample];
-            output += sample.at(voice.position).0 * voice.clip_gain;
+            output += sample.at(voice.position).0 * voice.clip_gain * voice.velocity;
             voice.position += sample.sr as f64 / rt.sr as f64;
             if voice.position >= sample.frames() as f64 {
                 *slot = None;
@@ -29,6 +29,7 @@ fn reset(rt: &mut RtEngine, voices: usize) {
         (index < voices).then_some(DrumVoice {
             sample: index % 6,
             position: 0.0,
+            velocity: 1.0,
             clip_gain: ((index % 3) + 1) as f32 * 0.5,
         })
     });
