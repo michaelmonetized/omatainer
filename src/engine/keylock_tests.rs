@@ -304,7 +304,7 @@ fn unity_and_fallback_retire_overlap_and_restart_from_the_current_transport() {
         );
         if ratio != 1.0 && ratio <= 1.5 {
             assert_eq!(rt.decks[0].keylock_dsp.phase, 1);
-            assert_eq!(rt.decks[0].keylock_dsp.origin, rt.decks[0].pos);
+            assert!((rt.decks[0].keylock_dsp.origin - rt.decks[0].pos).abs() <= 1.0);
         }
         for _ in 0..96 {
             rt.render_deck(0);
@@ -384,13 +384,17 @@ fn declared_geometry_uses_the_actual_rounded_window_at_each_output_rate() {
         assert_eq!(declared.window_frames, 2 * actual.hop);
         assert_eq!(declared.output_fifo_frames, 0);
         assert_eq!(declared.search_seconds, 0.025);
+        assert_eq!(declared.dense_reference_frames, actual.hop);
+        assert_eq!(declared.max_correlation_scores, 101);
+        assert_eq!(declared.max_start_quantization_source_frames, 1.0);
+        assert_eq!(declared.max_start_quantization_output_frames, 1.0);
         assert_eq!(
             declared.max_source_lookahead_seconds,
-            declared.search_seconds + 2.0 * actual.hop as f64 / sr as f64
+            declared.search_seconds + (2.0 * actual.hop as f64 + 1.0) / sr as f64
         );
         assert_eq!(
             declared.max_content_displacement_seconds,
-            declared.search_seconds + actual.hop as f64 / sr as f64
+            declared.search_seconds + (actual.hop as f64 + 1.0) / sr as f64
         );
     }
 }
@@ -548,5 +552,159 @@ fn search_instrumentation_distinguishes_silent_hops_from_correlation_work() {
             rt.decks[0].keylock_dsp.full_search_count(),
             searches + u64::from(audible)
         );
+    }
+}
+
+// Independent onset probes supplement (not replace) the matched quality corpus.
+// Nyquist is deliberately hostile to fractional-phase linear interpolation;
+// musical onsets mix a descending kick, tone and low-passed deterministic noise.
+fn transient_source(carrier: usize) -> Arc<Sample> {
+    let sr = 48_000_u32;
+    let mut source = (*tone(sr, 93.75)).clone();
+    source.data = vec![0.0; sr as usize * 6 * 2];
+    for pulse in 1..12 {
+        for channel in 0..2 {
+            let start = pulse * sr as usize / 2 + channel * 72;
+            let length = if carrier == 3 {
+                [144, 336, 720, 1488][(pulse - 1) % 4]
+            } else {
+                240
+            };
+            let mut random = 0x8c31_51e7_u32 ^ pulse as u32;
+            let (mut low1, mut low2, mut kick_phase) = (0.0, 0.0, 0.0_f64);
+            let alpha = 1.0 - (-std::f64::consts::TAU * 6000.0 / sr as f64).exp();
+            for n in 0..length {
+                let wave = match carrier {
+                    0 => {
+                        if n % 2 == 0 {
+                            1.0
+                        } else {
+                            -1.0
+                        }
+                    }
+                    1 => (std::f64::consts::TAU * 3000.0 * n as f64 / sr as f64).cos(),
+                    2 => {
+                        if n == 0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    _ => {
+                        random ^= random << 13;
+                        random ^= random >> 17;
+                        random ^= random << 5;
+                        low1 += alpha * (random as f64 / u32::MAX as f64 * 2.0 - 1.0 - low1);
+                        low2 += alpha * (low1 - low2);
+                        kick_phase += std::f64::consts::TAU
+                            * (55.0 + 165.0 * (1.0 - n as f64 / length as f64))
+                            / sr as f64;
+                        let tone = [750.0, 1500.0, 3000.0, 6000.0][(pulse - 1) % 4];
+                        (n as f64 / 24.0).min(1.0)
+                            * (0.45 * kick_phase.sin()
+                                + 0.25
+                                    * (std::f64::consts::TAU * tone * n as f64 / sr as f64).sin()
+                                + 0.3 * low2)
+                    }
+                };
+                source.data[(start + n) * 2 + channel] = (if carrier == 3 { 0.55 } else { 0.65 }
+                    * (1.0 - n as f64 / length as f64).powi(2)
+                    * wave) as f32;
+            }
+        }
+    }
+    Arc::new(source)
+}
+fn pulse_energy(source: Arc<Sample>, sr: u32, ratio: f32) -> ([[f64; 2]; 10], [[f64; 2]; 10]) {
+    let mut rt = engine_with(source, sr, ratio, true);
+    let mut energies = [[0.0_f64; 2]; 10];
+    let mut peaks = [[0.0_f64; 2]; 10];
+    let counts = test_alloc::measure(|| {
+        for frame in 0..((5.4 / ratio as f64) * sr as f64) as usize {
+            let out = rt.render_deck(0);
+            assert!(out.0.is_finite() && out.1.is_finite());
+            let seconds = frame as f64 / sr as f64;
+            let nearest = (seconds * ratio as f64 * 2.0).round() as usize;
+            if (1..=10).contains(&nearest) {
+                let center = nearest as f64 * 0.5 / ratio as f64;
+                if (seconds - center).abs() < 0.15 {
+                    for (channel, value) in [out.0, out.1].into_iter().enumerate() {
+                        let square = (value as f64).powi(2);
+                        energies[nearest - 1][channel] += square;
+                        peaks[nearest - 1][channel] = peaks[nearest - 1][channel].max(square);
+                    }
+                }
+            }
+        }
+    });
+    assert_eq!(counts.allocations, 0);
+    assert_eq!(counts.frees, 0);
+    (energies, peaks)
+}
+#[test]
+fn isolated_onsets_keep_energy_and_bursts_do_not_collapse_to_one_sample() {
+    for output_sr in [44_100, 48_000, 96_000] {
+        for carrier in 0..4 {
+            let source = transient_source(carrier);
+            // At a changed output rate, unity includes the same existing source
+            // interpolation response. No ideal brick-wall resampler is implied.
+            let (reference, _) = pulse_energy(source.clone(), output_sr, 1.0);
+            let (mut minimum, mut maximum) = (f64::INFINITY, 0.0_f64);
+            let (mut normalized_min, mut normalized_max) = (f64::INFINITY, 0.0_f64);
+            let mut peak_fraction = 0.0_f64;
+            for ratio in [0.5, 0.84, 0.92, 1.0, 1.08, 1.16, 1.5] {
+                let (energies, peaks) = pulse_energy(source.clone(), output_sr, ratio);
+                for pulse in 0..10 {
+                    for channel in 0..2 {
+                        let raw = energies[pulse][channel] / reference[pulse][channel];
+                        // Regression bounds prevent the observed near-zero event
+                        // loss, not a perceptual transparency/constant-energy claim.
+                        // A one-frame source impulse also changes under downsampling.
+                        let floor = if carrier == 2 { 0.15 } else { 0.30 };
+                        assert!((floor..=2.5).contains(&raw),"output={output_sr} carrier={carrier} ratio={ratio} pulse={pulse} channel={channel} raw_unity_energy={raw}");
+                        let concentrated = peaks[pulse][channel] / energies[pulse][channel];
+                        if carrier != 2 {
+                            assert!(concentrated<0.12,"burst collapsed: output={output_sr} carrier={carrier} ratio={ratio} pulse={pulse} channel={channel} peak_fraction={concentrated}");
+                        }
+                        minimum = minimum.min(raw);
+                        maximum = maximum.max(raw);
+                        normalized_min = normalized_min.min(raw * ratio as f64);
+                        normalized_max = normalized_max.max(raw * ratio as f64);
+                        peak_fraction = peak_fraction.max(concentrated);
+                    }
+                }
+            }
+            eprintln!("ONSET output={output_sr} carrier={carrier} raw_unity_energy={minimum:.6}..{maximum:.6} duration_normalized_context={normalized_min:.6}..{normalized_max:.6} max_single_sample_fraction={peak_fraction:.6}; no perceptual rating");
+        }
+    }
+}
+#[test]
+fn fractional_seek_start_stays_fenced_with_at_most_one_source_and_output_frame_quantization() {
+    for source_sr in [1, 44_100, 48_000, 96_000, 192_000] {
+        for output_sr in [44_100, 96_000] {
+            let step = source_sr as f64 / output_sr as f64;
+            let mut source = (*tone(48_000, 93.75)).clone();
+            source.sr = source_sr;
+            source.data = vec![-0.8; 4096 * 2];
+            source.data[100 * 2..].fill(0.375);
+            let mut rt = engine_with(Arc::new(source), output_sr, 0.84, true);
+            let target = 100.375;
+            rt.decks[0].transition_to(target, output_sr as f32, DeckTransition::Jump);
+            let logical = target + 0.84_f32 as f64 * step;
+            rt.render_deck(0);
+            let dsp = &rt.decks[0].keylock_dsp;
+            assert!((rt.decks[0].pos - logical).abs() < 1e-9);
+            assert!(dsp.origin >= target);
+            assert!((dsp.origin - logical).abs() <= step.min(1.0) + 1e-9);
+            assert!((dsp.previous + dsp.hop as f64 * step - dsp.origin).abs() < 1e-9);
+            for _ in 0..(output_sr / 400) {
+                rt.render_deck(0);
+            }
+            let frame = rt.render_deck(0);
+            assert!(
+                (frame.0 - 0.375).abs() < 1e-5 && (frame.1 - 0.375).abs() < 1e-5,
+                "stale region at {source_sr}/{output_sr}: {frame:?}"
+            );
+        }
     }
 }

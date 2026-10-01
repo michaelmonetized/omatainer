@@ -26,7 +26,8 @@ pub const SEARCH_SECONDS: f64 = 0.025;
 pub const OUTPUT_FIFO_FRAMES: usize = 0;
 const CORRELATION_POINTS: usize = 128;
 // Spend the same bounded score budget on enough sub-frame refinement to avoid
-// accumulating high-frequency phase error at each hop: 1 + 45 + 6*9 = 100.
+// accumulating high-frequency phase error at each hop. Nominal and exact
+// continuation candidates plus 45 coarse and 6*9 refined scores total 101.
 const COARSE_STEPS: i32 = 22;
 const REFINE_LEVELS: usize = 6;
 
@@ -45,6 +46,12 @@ pub struct Geometry {
     pub boundary_snap_epsilon: f32,
     pub correlation_points: usize,
     pub max_correlation_scores: usize,
+    pub dense_reference_frames: usize,
+    /// Initial/silent-grain quantization in SOURCE frame units. The seconds
+    /// bounds above already include its tighter bound of one OUTPUT frame;
+    /// even unusually low source rates cannot cause a large startup skip.
+    pub max_start_quantization_source_frames: f64,
+    pub max_start_quantization_output_frames: f64,
 }
 fn hop_frames(output_sr: f64) -> usize {
     (WINDOW_SECONDS * output_sr * 0.5).round().max(1.0) as usize
@@ -58,12 +65,15 @@ pub fn geometry(output_sr: u32) -> Geometry {
         search_seconds: SEARCH_SECONDS,
         // Conservative bounds cover reference-analysis reads as well as the
         // two emitted overlapping grains throughout the supported ratio range.
-        max_source_lookahead_seconds: SEARCH_SECONDS + 2.0 * hop as f64 / sr,
-        max_content_displacement_seconds: SEARCH_SECONDS + hop as f64 / sr,
+        max_source_lookahead_seconds: SEARCH_SECONDS + (2.0 * hop as f64 + 1.0) / sr,
+        max_content_displacement_seconds: SEARCH_SECONDS + (hop as f64 + 1.0) / sr,
         output_fifo_frames: OUTPUT_FIFO_FRAMES,
         boundary_snap_epsilon: boundary_tolerance(super::dsp::rate_blend(0.08, sr as f32)),
         correlation_points: CORRELATION_POINTS,
-        max_correlation_scores: 1 + (2 * COARSE_STEPS + 1) as usize + 9 * REFINE_LEVELS,
+        max_correlation_scores: 2 + (2 * COARSE_STEPS + 1) as usize + 9 * REFINE_LEVELS,
+        dense_reference_frames: hop,
+        max_start_quantization_source_frames: 1.0,
+        max_start_quantization_output_frames: 1.0,
     }
 }
 
@@ -193,12 +203,24 @@ impl Processor {
     pub fn natural_wrap(&mut self) {
         self.fence = None;
     }
+    fn safe_phase_origin(&self, pos: f64, step: f64) -> f64 {
+        // Standard same-rate WSOLA grains start on source sample boundaries.
+        // A half-frame start otherwise turns an alternating Nyquist burst into
+        // almost silence under linear interpolation. For upsampling, use the
+        // output sampling lattice: this bounds displacement by one OUTPUT frame
+        // too, including unusual very-low-rate source assets. Never round below
+        // an explicit seek/load/cue fence.
+        let quantum = step.min(1.0);
+        let rounded = (pos / quantum).round() * quantum;
+        let minimum = (self.fence.unwrap_or(f64::NEG_INFINITY) / quantum).ceil() * quantum;
+        rounded.max(minimum)
+    }
     pub fn render(&mut self, source: Source<'_>, pos: f64, source_step: f64) -> (f32, f32) {
         if !self.started {
-            // The deck advances before rendering. Start at the actual first
-            // source position, with no stale pre-seek overlap or FIFO pre-roll.
-            self.origin = pos;
-            self.previous = pos - self.hop as f64 * source_step;
+            // The deck advances before rendering. Quantize both contributions
+            // from that current position, with no pre-seek overlap or FIFO.
+            self.origin = self.safe_phase_origin(pos, source_step);
+            self.previous = self.origin - self.hop as f64 * source_step;
             self.phase = 0;
             self.started = true;
         } else if self.phase == self.hop {
@@ -230,18 +252,34 @@ impl Processor {
         // example 6 kHz at the nominal window), leaving correlation blind to
         // their phase. The coprime permutation covers every fractional stratum
         // without changing the fixed point/score budget or allocating memory.
-        let offsets: [f64; CORRELATION_POINTS] = std::array::from_fn(|index| {
+        let mut offsets: [f64; CORRELATION_POINTS] = std::array::from_fn(|index| {
             let fraction =
                 ((index * 73 + 19) % CORRELATION_POINTS) as f64 / CORRELATION_POINTS as f64;
             (index as f64 + fraction) * spacing
         });
+        // Stratified probes alone can miss an isolated one-frame onset. One
+        // bounded scan of the overlap retains each channel's actual peak in
+        // the correlation set, without adding candidate scores or heap work.
+        let mut peaks = [(0.0_f32, 0.0_f64); 2];
+        for index in 0..self.hop {
+            let offset = index as f64 * step;
+            let frame = source.at(reference_start + offset);
+            for (channel, value) in [frame.0, frame.1].into_iter().enumerate() {
+                if value.abs() > peaks[channel].0 {
+                    peaks[channel] = (value.abs(), offset);
+                }
+            }
+        }
+        for channel in 0..2 {
+            offsets[channel] = peaks[channel].1;
+        }
         for (frame, offset) in reference.iter_mut().zip(&offsets) {
             let (l, r) = source.at(reference_start + offset);
             *frame = [l, r];
             energy += l as f64 * l as f64 + r as f64 * r as f64;
         }
         if energy < 1e-20 {
-            return nominal;
+            return self.safe_phase_origin(nominal, step);
         }
         #[cfg(test)]
         {
@@ -267,7 +305,9 @@ impl Processor {
             if candidate_energy < 1e-20 {
                 return f64::NEG_INFINITY;
             }
-            dot / (energy * candidate_energy).sqrt()
+            // Unlike cosine-only correlation, this also penalizes amplitude
+            // loss: a near-silent fractional-phase copy is not a perfect match.
+            2.0 * dot / (energy + candidate_energy)
         };
         let mut best = nominal;
         let mut best_score = score(nominal);
@@ -283,6 +323,9 @@ impl Processor {
             }
         };
         let mut spacing = radius / COARSE_STEPS as f64;
+        // Sparse/nonperiodic attacks may have only one matching origin. Retain
+        // the exact continuation when within the same bounded search interval.
+        consider(reference_start, &mut best, &mut best_score);
         for offset in -COARSE_STEPS..=COARSE_STEPS {
             // Stratify the coarse candidates too: a uniform candidate spacing
             // equal to half a tone period can otherwise sample only two phases
