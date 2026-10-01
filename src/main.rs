@@ -7,6 +7,7 @@ mod theme;
 mod ui;
 mod ipc_server;
 mod ipc_transport;
+mod ipc_request;
 mod ipc_follow;
 mod instance;
 mod runtime;
@@ -124,13 +125,18 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
         return ipc_follow::run(&socket_path()?, &mut std::io::stdout().lock());
     }
 
+    if op == "status" || op == "reload-theme" {
+        let request = ipc_request::encode(&ipc_request::ReadOperation::Status)?;
+        let stream = UnixStream::connect(socket_path()?).context("omatainer is not running")?;
+        println!("{}", exchange_encoded(stream, request)?);
+        return Ok(());
+    }
     let payload = match op {
         "play" => r#"{"op":"play"}"#,
         "stop" => r#"{"op":"stop"}"#,
         "togglePlay" | "toggle" | "toggle-play" => r#"{"op":"togglePlay"}"#,
         "record" => r#"{"op":"record"}"#,
         "tap" => r#"{"op":"tap"}"#,
-        "status" => STATUS_REQUEST,
         "scene" => {
             let s = scene_payload(args)?;
             println!("{}", send_op(&s)?);
@@ -140,7 +146,6 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
         "deckB" => r#"{"op":"deckPlay","deck":1}"#,
         "cueA" => r#"{"op":"deckCue","deck":0}"#,
         "cueB" => r#"{"op":"deckCue","deck":1}"#,
-        "reload-theme" => STATUS_REQUEST,
         other => anyhow::bail!("unknown ctl op {other}"),
     };
     println!("{}", send_op(payload)?);
@@ -171,17 +176,13 @@ fn send_op(payload: &str) -> anyhow::Result<String> {
     exchange_request(stream, payload)
 }
 
-fn exchange_request(mut stream: UnixStream, payload: &str) -> anyhow::Result<String> {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static NEXT_REQUEST: AtomicU64 = AtomicU64::new(1);
-    let mut request: serde_json::Value = serde_json::from_str(payload)?;
-    let object = request.as_object_mut().context("IPC request must be an object")?;
-    let id = serde_json::Value::String(format!(
-        "{}-{}", std::process::id(), NEXT_REQUEST.fetch_add(1, Ordering::Relaxed),
-    ));
-    object.insert("id".into(), id.clone());
-    let payload = format!("{request}\n");
-    anyhow::ensure!(payload.len() - 1 <= ipc_transport::REQUEST_BYTES, "IPC request exceeds byte limit");
+fn exchange_request(stream: UnixStream, payload: &str) -> anyhow::Result<String> {
+    let value: serde_json::Value = serde_json::from_str(payload)?;
+    exchange_encoded(stream, ipc_request::encode(&value)?)
+}
+
+fn exchange_encoded(mut stream: UnixStream, request: ipc_request::Encoded) -> anyhow::Result<String> {
+    let ipc_request::Encoded { id, line: payload } = request;
     ipc_transport::write_all(&mut stream, payload.as_bytes(), Duration::from_millis(800))?;
     let mut reader = BufReader::with_capacity(ipc_transport::RESPONSE_BYTES, stream);
     let mut line = [0; ipc_transport::RESPONSE_BYTES];

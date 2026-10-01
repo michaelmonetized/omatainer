@@ -219,10 +219,10 @@ struct Subscription {
 }
 impl Subscription {
     fn connect(path: &Path) -> anyhow::Result<Self> {
-        let mut stream = crate::instance::connect(path).context("omatainer is not running")?;
-        let id = json!(format!("{}-follow", std::process::id()));
-        let request = format!("{}\n", json!({"op":"follow", "id":id}));
-        ipc_transport::write_all(&mut stream, request.as_bytes(), CLIENT_IO)?;
+        let mut stream = crate::instance::connect(path).context("could not connect to status subscription")?;
+        let request = crate::ipc_request::encode(&crate::ipc_request::ReadOperation::Follow)?;
+        ipc_transport::write_all(&mut stream, request.line.as_bytes(), CLIENT_IO)?;
+        let id = request.id;
         Ok(Self {
             reader: BufReader::with_capacity(ipc_transport::RESPONSE_BYTES, stream),
             id,
@@ -233,11 +233,11 @@ impl Subscription {
         let size =
             ipc_transport::read_line(&mut self.reader, &mut self.line, CLIENT_IO, CLIENT_IO)?
                 .context("status subscription disconnected")?;
-        let line = std::str::from_utf8(&self.line[..size]).context("malformed follow response")?;
-        let response: Value = serde_json::from_str(line).context("malformed follow response")?;
+        let line = std::str::from_utf8(&self.line[..size]).context(ProtocolFailure("malformed follow response"))?;
+        let response: Value = serde_json::from_str(line).context(ProtocolFailure("malformed follow response"))?;
         anyhow::ensure!(
             response.get("id") == Some(&self.id),
-            "follow response request id mismatch"
+            ProtocolFailure("follow response request id mismatch")
         );
         anyhow::ensure!(
             response.get("ok").is_some_and(Value::is_boolean)
@@ -245,9 +245,28 @@ impl Subscription {
                 && response.get("event") == Some(&json!("state"))
                 && response.get("accepted") == Some(&Value::Null)
                 && response.get("command_status") == Some(&Value::Null),
-            "invalid status subscription response"
+            ProtocolFailure("invalid status subscription response")
         );
         Ok(line)
+    }
+}
+
+#[derive(Debug)]
+struct ProtocolFailure(&'static str);
+impl std::fmt::Display for ProtocolFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(self.0) }
+}
+impl std::error::Error for ProtocolFailure {}
+
+fn failure_code(error: &anyhow::Error) -> &'static str {
+    if error.downcast_ref::<ProtocolFailure>().is_some()
+        || matches!(error.downcast_ref::<ipc_transport::ReadFailure>(), Some(ipc_transport::ReadFailure::TooLarge)) {
+        "protocol_error"
+    } else if error.downcast_ref::<io::Error>().is_some_and(|error|
+        matches!(error.kind(), io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused)) {
+        "not_running"
+    } else {
+        "transport_error"
     }
 }
 
@@ -282,7 +301,8 @@ pub(super) fn run(path: &Path, out: &mut impl Write) -> anyhow::Result<()> {
         // Bounded diagnostics preserve the existing shell follower error shape.
         let line = json!({"ok":false, "event":"state", "accepted":null,
             "command_status":null, "state_available":false, "playing":false,
-            "error":ipc_transport::text(&error.to_string())})
+            "error_code":failure_code(&error),
+            "error":ipc_transport::text(&format!("{error:#}"))})
         .to_string();
         if let Err(error) = output(out, &line) {
             return if error.kind() == io::ErrorKind::BrokenPipe {
