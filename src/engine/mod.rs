@@ -898,6 +898,8 @@ impl RtEngine {
             return;
         }
         self.sr = sr as f32;
+        let active_history=self.active_recording_history();
+        self.undo.prepare_sample_rate(self.sr,active_history);
         self.metro = metronome::Click::new(self.sr);
         self.xfader_gain = mixer_gain::GainPair::default();
         for track in &mut self.tracks { track.mixer_gain = mixer_gain::GainPair::default(); }
@@ -1565,6 +1567,7 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        self.refresh_history_protection();
         match c {
             Command::Undo => {self.history_replay(false);return;}
             Command::Redo => {self.history_replay(true);return;}
@@ -1820,41 +1823,21 @@ impl RtEngine {
                 d.keylock = !d.keylock;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
-            Command::DeckLoadRequested { deck, media, receipt } => {
-                use load_receipt::{Media, State};
-                if receipt.state() != State::Pending { return; }
-                if deck as usize >= DECKS {
-                    if receipt.claim() { receipt.finish(State::Unavailable); }
-                    return;
+            command @ Command::DeckLoadRequested { .. } => {
+                if let Command::DeckLoadRequested { deck, media, receipt } = &command {
+                    self.apply_media_request(*deck, media, receipt);
                 }
-                let audio = match media {
-                    Media::Builtin(stem) => self.builtin.get(stem as usize).and_then(Clone::clone),
-                    Media::Decoded { token, audio } => {
-                        if token.deck != deck || !token.is_current() {
-                            receipt.supersede();
-                            return;
-                        }
-                        Some(audio)
-                    }
-                };
-                #[cfg(test)]
-                if let Some(hook) = self.load_test_hooks[0].take() { hook(); }
-                // Cancellation and application race for one atomic transition.
-                // A claimed request may finish; a cancelled request cannot mutate media.
-                if !receipt.claim() { return; }
-                #[cfg(test)]
-                if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
-                if let Some(audio) = audio {
-                    let before=self.undo.failure_count();
-                    self.apply(Command::DeckAudio { deck, audio });
-                    if self.undo.failure_count()!=before {receipt.finish(State::Unavailable);}
-                    else {receipt.finish(State::Current);self.decks[deck as usize].load_receipt=Some(receipt);}
-                } else { receipt.finish(State::Unavailable); }
+                // The request retains any final token, receipt and rejected PCM
+                // references until the recycler owns the complete command.
+                self.undo.retire_command(command);
             }
-            Command::DeckDecoded { request, audio } => {
-                if (request.deck as usize) < DECKS && request.is_current() {
-                    self.apply(Command::DeckAudio { deck: request.deck, audio });
+            command @ Command::DeckDecoded { .. } => {
+                if let Command::DeckDecoded { request, audio } = &command {
+                    if (request.deck as usize) < DECKS && request.is_current() {
+                        self.apply(Command::DeckAudio { deck: request.deck, audio: audio.clone() });
+                    }
                 }
+                self.undo.retire_command(command);
             }
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
@@ -2033,7 +2016,7 @@ impl RtEngine {
                 self.metronome = !self.metronome;
                 self.metro.reset();
             }
-            Command::LearnCapture { .. } => {}
+            command @ Command::LearnCapture { .. } => self.undo.retire_command(command),
             Command::ToggleQuant => {
                 self.quantize = !self.quantize;
                 self.quant = if self.quantize { 1.0 } else { 0.0 };
@@ -2275,6 +2258,44 @@ impl RtEngine {
                 }
             }
         }
+    }
+
+    fn apply_media_request(&mut self, deck: u8, media: &load_receipt::Media,
+        receipt: &load_receipt::Receipt) {
+        use load_receipt::{Media, State};
+        if receipt.state() != State::Pending { return; }
+        if deck as usize >= DECKS {
+            if receipt.claim() { receipt.finish(State::Unavailable); }
+            return;
+        }
+        let audio = match media {
+            Media::Builtin(stem) => self.builtin.get(*stem as usize).and_then(Clone::clone),
+            Media::Decoded { token, audio } => {
+                if token.deck != deck || !token.is_current() {
+                    receipt.supersede();
+                    return;
+                }
+                Some(audio.clone())
+            }
+        };
+        #[cfg(test)]
+        if let Some(hook) = self.load_test_hooks[0].take() { hook(); }
+        // Cancellation and application race for one atomic transition. The
+        // caller still owns the complete request if cancellation wins here.
+        if !receipt.claim() { return; }
+        #[cfg(test)]
+        if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
+        if let Some(audio) = audio {
+            // Application acknowledgement follows the actual mutation outcome,
+            // not an unrelated retirement notice published during the capture.
+            let Some(command) = self.history_before(Command::DeckAudio { deck, audio }) else {
+                receipt.finish(State::Unavailable);
+                return;
+            };
+            self.apply_plain(command);
+            receipt.finish(State::Current);
+            self.decks[deck as usize].load_receipt=Some(receipt.clone());
+        } else { receipt.finish(State::Unavailable); }
     }
 
     // Playing targets use their own launch origin. An unlaunched target has
