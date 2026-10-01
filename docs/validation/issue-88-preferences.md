@@ -83,7 +83,7 @@ are a sequencing observation, not a frame-rate/performance measurement.
 
 ## Final assembled stack
 
-The complete stack passes **612 ordinary tests**, with 7 opt-in fixtures ignored,
+The complete stack passes **613 ordinary tests**, with 7 opt-in fixtures ignored,
 and `cargo build --offline`. The private native AT-SPI fixture now combines the
 project workflow (New, compose, Undo, Redo, Save, New, reopen) and preference
 Preview/Apply/Cancel in one run: 228 initial nodes, 51 native actions, one saved
