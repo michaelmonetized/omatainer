@@ -28,6 +28,8 @@ Item {
   property var lastCommandResult: null
   property int nextRequestId: 1
   readonly property int queueLimit: 64
+  // Keep in sync with engine::SCENES; checked by check-shell-scenes.py.
+  readonly property int sceneCount: 8
   readonly property int pendingCommands: commandQueue.length + (activeCommand ? 1 : 0)
   property string commandOutput: ""
   property string commandStderr: ""
@@ -42,16 +44,24 @@ Item {
 
   // Queued here is distinct from accepted by the engine. Neither proves that
   // an audio callback has applied the command; follow is the observed state.
-  function send(op) {
-    var request = { requestId: String(nextRequestId++), operation: op, status: "queued", applied: null }
-    if (pendingCommands >= queueLimit) {
-      request.status = "rejected"
-      request.accepted = false
-      request.error = "Shell command queue is full"
-      commandError = request.error
-      rememberResult(request)
-      return JSON.stringify(request)
-    }
+  function newCommand(op, args) {
+    return { requestId: String(nextRequestId++), operation: op,
+      arguments: args ? args.slice() : [], status: "queued", applied: null }
+  }
+
+  function rejectCommand(request, message) {
+    request.status = "rejected"
+    request.accepted = false
+    request.error = message
+    commandError = request.error
+    rememberResult(request)
+    return JSON.stringify(request)
+  }
+
+  function send(op, args) {
+    var request = newCommand(op, args)
+    if (pendingCommands >= queueLimit)
+      return rejectCommand(request, "Shell command queue is full")
     commandQueue = commandQueue.concat([request])
     Qt.callLater(startNextCommand)
     return JSON.stringify(request)
@@ -66,7 +76,7 @@ Item {
     commandStderr = ""
     outputOverflow = false
     commandTimedOut = false
-    ctl.command = [root.bin, "ctl", activeCommand.operation]
+    ctl.command = [root.bin, "ctl", activeCommand.operation].concat(activeCommand.arguments)
     ctl.running = true
     commandDeadline.restart()
   }
@@ -95,6 +105,7 @@ Item {
     commandDeadline.stop()
     var result = {
       requestId: activeCommand.requestId, operation: activeCommand.operation,
+      arguments: activeCommand.arguments,
       status: "failed", exitCode: exitCode, exitStatus: exitStatus,
       accepted: null, applied: null, stderr: commandStderr
     }
@@ -134,7 +145,15 @@ Item {
   function deckBPlay() { return send("deckB") }
   function cueA() { return send("cueA") }
   function cueB() { return send("cueB") }
-  function scene(n) { return send("scene") }
+  // Shell and CLI scene numbers are one-based. The CLI converts to zero-based
+  // protocol n exactly once. Strings here are also used by the public IPC call.
+  function scene(n) {
+    var value = typeof n === "number" ? n :
+      (typeof n === "string" && /^[1-9][0-9]*$/.test(n) ? Number(n) : NaN)
+    if (!isFinite(value) || Math.floor(value) !== value || value < 1 || value > sceneCount)
+      return rejectCommand(newCommand("scene", []), "Scene must be an integer from 1 through " + sceneCount)
+    return send("scene", [String(value)])
+  }
 
   function applyState(payload) {
     running = payload.ok === true
@@ -250,6 +269,7 @@ Item {
     function stop(): string { return root.stop() }
     function record(): string { return root.record() }
     function tap(): string { return root.tap() }
+    function scene(n: string): string { return root.scene(n) }
     function deckA(): string { return root.deckAPlay() }
     function deckB(): string { return root.deckBPlay() }
     function launch(): string { root.launch(); return "ok" }
