@@ -32,6 +32,43 @@ fn metadata() -> Metadata {
         last_play: Some(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1234567)),
     }
 }
+
+#[test]
+fn sampler_verified_content_only_qualifies_its_exact_existing_version() {
+    let dir = Dir::new();
+    let path = dir.0.join("sampler.wav");
+    fs::write(&path, b"original sampler bytes").unwrap();
+    let source = LibSource::File(path.clone());
+    let fingerprint = FileFingerprint::read(&path).unwrap();
+    let hash = content::hash_file(&path, fingerprint, || true).unwrap();
+    let mut catalog = Catalog::default();
+    catalog.upsert(source.clone(), Some(fingerprint), metadata()).unwrap()
+        .preparation = preparation();
+    let id = catalog.track(&source).unwrap().id.clone();
+    let old = catalog.version(&source, Some(fingerprint)).unwrap().clone();
+    fs::write(&path, b"new unrelated replacement content at the same source path").unwrap();
+    let replacement = FileFingerprint::read(&path).unwrap();
+    assert_ne!(replacement, fingerprint);
+    catalog.upsert(source.clone(), Some(replacement), metadata()).unwrap();
+    fs::remove_file(path).unwrap();
+    // The original no longer exists. The already measured proof still belongs
+    // only to its archived version, never the current replacement's content.
+    catalog.qualify_verified_content(&id, &source, fingerprint, hash).unwrap();
+    catalog.qualify_verified_content(&id, &source, fingerprint, hash).unwrap();
+    let track = catalog.track(&source).unwrap();
+    assert_eq!(track.versions[track.current].fingerprint, Some(replacement));
+    assert_eq!(track.versions[track.current].content_hash, None);
+    let mut expected = old;
+    expected.content_hash = Some(hash);
+    assert_eq!(catalog.version(&source, Some(fingerprint)), Some(&expected));
+    let before = catalog.tracks.clone();
+    assert!(catalog.qualify_verified_content(&TrackId("f".repeat(32)), &source, fingerprint, hash).is_err());
+    assert!(catalog.qualify_verified_content(&id, &LibSource::File(dir.0.join("other.wav")), fingerprint, hash).is_err());
+    let mut different = hash;
+    different[0] ^= 1;
+    assert!(catalog.qualify_verified_content(&id, &source, fingerprint, different).is_err());
+    assert_eq!(catalog.tracks, before);
+}
 fn preparation() -> Preparation {
     Preparation {
         grid: None,

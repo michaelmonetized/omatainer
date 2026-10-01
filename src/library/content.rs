@@ -60,6 +60,36 @@ pub(crate) struct Relocate {
 }
 
 impl Catalog {
+    /// Retain a digest already measured by the sampler's same-descriptor
+    /// hash/decode operation. Callers must not pass hashes merely read from a
+    /// project or reusable definition. This method does no filesystem work and
+    /// cannot change the current version, visible metadata or preparation.
+    pub(crate) fn qualify_verified_content(
+        &mut self,
+        id: &TrackId,
+        source: &LibSource,
+        fingerprint: FileFingerprint,
+        hash: [u8; 32],
+    ) -> Result<(), String> {
+        if !matches!(source, LibSource::File(_)) {
+            return Err("sampler content proof must refer to a local file".into());
+        }
+        let index = self.version_track(source, Some(fingerprint))
+            .ok_or("sampler content proof no longer matches a catalog version")?;
+        let track = &mut self.tracks[index];
+        if &track.id != id {
+            return Err("sampler content proof belongs to a different track identity".into());
+        }
+        let version = track.versions.iter_mut()
+            .find(|version| version.fingerprint == Some(fingerprint))
+            .ok_or("sampler content proof version is missing")?;
+        if version.content_hash.is_some_and(|old| old != hash) {
+            return Err("sampler content proof conflicts with the saved digest".into());
+        }
+        version.content_hash = Some(hash);
+        Ok(())
+    }
+
     /// Hash only a captured track selected by the metadata worker, never all
     /// imported rows. Missing/unavailable originals keep cues usable and remain
     /// explicitly unverified for relocation.
