@@ -476,7 +476,7 @@ fn sample_rate_preparation_allocates_before_callback_and_keeps_deck_time_constan
         );
         for deck in &rt.decks {
             assert!(
-                (deck.grain_frames as f64 / sr as f64 - 1024.0 / 48_000.0).abs() <= 1.0 / sr as f64
+                (2.0 * deck.keylock_dsp.hop as f64 / sr as f64 - keylock::WINDOW_SECONDS).abs() <= 1.0 / sr as f64
             );
             let frames = (sr as f64 * 0.001).round();
             let decay = (1.0 - deck.rate_smoothing as f64).powf(frames);

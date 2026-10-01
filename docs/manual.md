@@ -787,9 +787,9 @@ Workflow: Stop and recover.
 
 ### Pitch lock
 
-On / off
+On / off; 0.50–1.50× forward rate
 
-On preserves the file's pitch while the pitch fader changes tempo; off changes tempo and pitch together. This is independent of deck tempo sync.
+On preserves pitch while changing tempo within the supported range. L! means the actual rate is outside that range and tempo and pitch change together. L~ means platter touch temporarily uses direct scratch playback. On release, a playing deck resumes pitch lock if its rate is supported; a stopped deck stays stopped. Original-rate playback passes through directly. Stopped or empty decks show armed status. This is independent of deck tempo sync; Match or Sync can exceed the supported range. Listen before a performance: quality varies with material and rate.
 
 Workflow: Prepare a DJ deck.
 

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "suite": "keylock-showload-v1",
+  "test": "engine::keylock_showload_tests::export_keylock_showload",
+  "timeout_seconds": 900,
+  "rates": [44100, 48000, 96000],
+  "frames": [128, 256],
+  "ratios": [0.5, 0.84, 1.5],
+  "blocks": 2048,
+  "warmup_blocks": 128,
+  "repetitions": 3,
+  "conditions": {
+    "tracks": 8, "notes_per_track": 1024, "fx_per_track": 3,
+    "recorded_notes": 128, "locked_decks": 2,
+    "parameter_interval_blocks": 8, "source_sr": 48000
+  },
+  "source": "Original procedural full drums+harmony mix, fixed0.35sum plus0.0001 DC bias to avoid all-silent analysis windows; both decks use the identical loop and start together. Timing stress only.",
+  "events": "Original #95 hybrid track-gain, crossfader and live recording event order; deck jog/pitch sweeps omitted so both declared ratios and search hops stay fixed.",
+  "deadline_rule": "D=floor(frames*1000000000/sample_rate). Reuse #95 ceilings: callback wall p99<=D,max<=2D,p99-p50<=floor(D/2); render CPU p99<=floor(3D/4). Full callback thread CPU also uses the same stronger p99 ceiling. Actual >D counts remain separate diagnostics.",
+  "checks": ["finite_output", "nonzero_output", "original_notes_intact", "exact_recorded_notes", "all_commands_applied", "both_locked_at_fixed_ratio", "coincident_search_hops"],
+  "scope": "Actual offline OutputCallback with simultaneous stereo keylock searches, dense synthesis/effects, control admission and live MIDI note capture. No physical audio driver, hardware deadline, output latency, XRUN or listening-quality qualification. Timings include Rust allocator instrumentation; full CPU also includes wrapper clock overhead. All decode/preparation/report I/O is outside measured callbacks."
+}

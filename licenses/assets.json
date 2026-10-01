@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
+  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "assets": [
     {
       "id": "factory:drum-kit",
@@ -238,6 +238,33 @@
         "generic MIDI"
       ],
       "project_license": true
+    },
+    {
+      "id": "test:vocalset-1.2",
+      "name": "VocalSet 1.2: two recorded vocal qualification fixtures",
+      "category": "test-fixture",
+      "delivery": "Source-tree test fixtures only; not compiled into the production executable or installed as factory samples.",
+      "license": "CC-BY-4.0",
+      "commercial_use": "CC BY 4.0 permits reuse, including commercially, under its attribution and other conditions. See the retained complete legal text and source attribution.",
+      "redistribution": "Retain attribution to Julia Wilkins, Prem Seetharaman, Alison Wahl and Bryan Pardo (2018), the source DOI, CC BY 4.0 link/terms and warranty disclaimer. Identify any modifications to derived renderings. No endorsement is implied.",
+      "sources": [
+        {
+          "location": "https://zenodo.org/records/1442513/files/VocalSet1-2.zip?download=1#data_by_vowel/i/f1_arpeggios_c_slow_forte_i.wav",
+          "sha256": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b"
+        },
+        {
+          "location": "https://zenodo.org/records/1442513/files/VocalSet1-2.zip?download=1#data_by_vowel/i/m1_arpeggios_c_slow_forte_i.wav",
+          "sha256": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa"
+        }
+      ],
+      "notice_files": [
+        "tests/fixtures/keylock/README.md",
+        "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt"
+      ],
+      "members": [
+        "f1_arpeggios_c_slow_forte_i.wav",
+        "m1_arpeggios_c_slow_forte_i.wav"
+      ]
     }
   ],
   "fonts": [

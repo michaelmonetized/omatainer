@@ -160,6 +160,23 @@ the UI for earlier deck edits and the background save. **Close without saving**
 explicitly accepts any uncommitted changes being lost. See the
 [storage schema, recovery policy and validation](docs/validation/issue-85-dj-library.md).
 
+## Deck pitch lock
+
+The deck's **L** button preserves pitch during forward playback at 0.50–1.50×
+the original rate. At the original rate, playback passes through directly.
+**L~** shows direct scratch playback while touching the platter; release returns
+to the supported playback mode, and a stopped deck stays stopped. **L!** means
+the current rate is outside the supported range and both tempo and pitch change.
+Match and Sync can request rates beyond the pitch fader's range. Hover or focus
+the button for the actual renderer state and playback rate.
+
+The implementation is original MIT stereo-linked waveform-similarity
+overlap-add. Its resident-source look-ahead does not insert an output FIFO, but
+can shift musical content relative to the transport. Quality varies with the
+material and rate; the [qualification evidence](docs/validation/issue-100-keylock-quality.md)
+separates objective render/CPU measurements from the pending blind listening
+and physical performance checks.
+
 ## Keybinds (also under `?`)
 
 Omarchy desktop bindings: `SUPER+O` launches/focuses the app;

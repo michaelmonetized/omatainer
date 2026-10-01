@@ -45,9 +45,9 @@ fn fixture(sr: u32, source_sr: u32, keylock: bool) -> RtEngine {
 fn assert_grains_reset(rt: &RtEngine, deck: usize) {
     let d = &rt.decks[deck];
     let ratio = d.audio.as_ref().map_or(rt.sr, |audio| audio.sr as f32) as f64 / rt.sr as f64;
-    assert_eq!(d.grain_i, 0.0);
-    assert_eq!(d.grain_origin, d.pos);
-    assert_eq!(d.prev_origin, d.pos - d.grain_frames as f64 * 0.5 * ratio);
+    assert_eq!(d.keylock_dsp.phase, 0);
+    assert_eq!(d.keylock_dsp.origin, d.pos);
+    assert_eq!(d.keylock_dsp.previous, d.pos - d.keylock_dsp.hop as f64 * ratio);
     assert_eq!(d.transition_remaining, (rt.sr as u32).div_ceil(500));
 }
 
@@ -284,8 +284,8 @@ fn loop_edit_commands_reset_grains_through_the_same_transition() {
             beats: 1.0,
         },
     ] {
-        rt.decks[0].grain_i = 99.0;
-        rt.decks[0].grain_origin = 42.0;
+        rt.decks[0].keylock_dsp.phase = 99;
+        rt.decks[0].keylock_dsp.origin = 42.0;
         rt.apply(command);
         assert_grains_reset(&rt, 0);
     }
@@ -341,7 +341,7 @@ fn transitions_clear_old_channel_filter_history_and_end_of_file_grains() {
     rt.render_deck(0);
     assert!(!rt.decks[0].playing);
     assert_eq!(rt.decks[0].pos, 0.0);
-    assert_eq!(rt.decks[0].grain_origin, 0.0);
+    assert_eq!(rt.decks[0].keylock_dsp.origin, 0.0);
     for _ in 0..96 {
         rt.render_deck(0);
     }

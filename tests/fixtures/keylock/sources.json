@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "title": "VocalSet 1.2 qualification subset",
+  "creators": [
+    "Julia Wilkins",
+    "Prem Seetharaman",
+    "Alison Wahl",
+    "Bryan Pardo"
+  ],
+  "date": "2018",
+  "source": "https://zenodo.org/records/1442513",
+  "doi": "10.5281/zenodo.1442513",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "archive_url": "https://zenodo.org/records/1442513/files/VocalSet1-2.zip?download=1",
+  "retrieved_utc": "2026-10-01",
+  "verification": "Selected archive members fetched from authoritative Zenodo HTTP ranges; local and central names, uncompressed sizes and ZIP CRC32 match. SHA256 pins the retained member bytes. Full archive checksum was not verified.",
+  "scope": "Test-only recorded singing vowels; not factory media and not compiled into the production executable. This small subset does not establish quality for all voices, consonants or production styles.",
+  "files": [
+    {
+      "file": "f1_arpeggios_c_slow_forte_i.wav",
+      "category": "recorded_vocal",
+      "source_member": "data_by_vowel/i/f1_arpeggios_c_slow_forte_i.wav",
+      "sha256": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",
+      "crc32": 3136759813,
+      "size": 723768,
+      "modifications": "None; exact uncompressed archive member bytes.",
+      "anonymous_singer": "f1 (soprano)",
+      "channels": 1,
+      "sample_rate": 44100,
+      "bits_per_sample": 16,
+      "frames": 361862,
+      "duration_seconds": 8.20548752834467
+    },
+    {
+      "file": "m1_arpeggios_c_slow_forte_i.wav",
+      "category": "recorded_vocal",
+      "source_member": "data_by_vowel/i/m1_arpeggios_c_slow_forte_i.wav",
+      "sha256": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa",
+      "crc32": 2919238763,
+      "size": 884602,
+      "modifications": "None; exact uncompressed archive member bytes.",
+      "anonymous_singer": "m1 (baritone)",
+      "channels": 1,
+      "sample_rate": 44100,
+      "bits_per_sample": 16,
+      "frames": 442279,
+      "duration_seconds": 10.029002267573697
+    }
+  ]
+}

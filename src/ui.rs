@@ -44,6 +44,7 @@ mod audio_settings;
 mod recovery_settings;
 mod recovery;
 mod master_fx_status;
+mod keylock_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
 #[cfg(test)]
@@ -804,7 +805,9 @@ impl App {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_width(sq);
             ui.set_min_height(h);
-            if sq_btn(ui, t, "L", snap.keylock, t.cyan, sq).help(ui, HelpControl::PitchLock).clicked() {
+            let (mark, accent, status) = keylock_status::presentation(snap, t);
+            if sq_btn(ui, t, mark, snap.keylock, accent, sq)
+                .help_detail(ui, HelpControl::PitchLock, &status).clicked() {
                 self.send(Command::DeckKeylock { deck: d as u8 });
             }
             let fader_h = (h - sq * 2.0 - 8.0).max(48.0);
@@ -1484,7 +1487,7 @@ fn sq_btn(ui: &mut Ui, t: &Theme, text: &str, on: bool, accent: Color32, size: f
     ui.painter().rect_filled(rect, 4.0, fill);
     ui.painter().rect_stroke(rect, 4.0, st(1.0, if on { accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
     ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, text, FontId::proportional(11.0), t.fg);
-    let name = match text { "L" => "Pitch lock", "Q" => "Quantize", "I/O" => "Loop in", "×2" => "Double loop", "½" => "Halve loop", "↻" => "Reloop", "⇄" => "Match decks", "^" => "Octave up", "v" => "Octave down", text => text };
+    let name = match text { "L" | "L!" | "L~" => "Pitch lock", "Q" => "Quantize", "I/O" => "Loop in", "×2" => "Double loop", "½" => "Halve loop", "↻" => "Reloop", "⇄" => "Match decks", "^" => "Octave up", "v" => "Octave down", text => text };
     accessibility::button(ui, &resp, name, Some(on));
     resp
 }
