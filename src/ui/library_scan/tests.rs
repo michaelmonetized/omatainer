@@ -392,3 +392,92 @@ fn dropping_scanner_never_joins_a_blocked_filesystem_hook_on_the_ui_thread() {
     assert!(began.elapsed() < Duration::from_millis(100));
     release.send(()).unwrap();
 }
+
+#[test]
+fn history_merge_requires_verified_identity_even_before_first_worker_scan() {
+    let directory = Directory::new();
+    let unchanged = directory.file("Unchanged 120.wav");
+    let replaced = directory.file("Replaced 120.wav");
+    let unknown = directory.file("Unknown 120.wav");
+    let mut unchanged_item = item(unchanged.clone(), "Unchanged", 130.0);
+    let mut unknown_item = item(unknown.clone(), "Unknown", 130.0);
+    unknown_item.fingerprint = None;
+    let replaced_item = item(replaced.clone(), "Replaced", 130.0);
+    std::fs::write(&replaced, b"different content, longer than the original synthetic scan fixture").unwrap();
+    assert_ne!(replaced_item.fingerprint, FileFingerprint::read(&replaced));
+    let known = Some(SystemTime::UNIX_EPOCH + Duration::from_secs(456));
+    unchanged_item.last_play = known;
+    let mut baseline = builtin_crate_items();
+    baseline[0].last_play = known;
+    baseline.extend([unchanged_item, replaced_item, unknown_item]);
+    let mut fixture = Fixture::new(32);
+    fixture.app.library = Arc::new(baseline);
+    fixture.app.lib_filter = "Unchanged".into();
+    fixture.app.refresh_library_view();
+    start(&mut fixture.app, vec![directory.0.clone()]);
+    finish(&mut fixture.app);
+    for (source, expected) in [
+        (LibSource::Builtin(BuiltinStem::Drums), known),
+        (LibSource::File(unchanged.clone()), known),
+        (LibSource::File(replaced), None),
+        (LibSource::File(unknown), None),
+    ] {
+        let row = fixture.app.library.iter().find(|row| row.source == source).unwrap();
+        assert_eq!(fixture.app.item_last_play(row), expected, "{source:?}");
+    }
+    assert_eq!(fixture.app.selected_library_item().unwrap().source, LibSource::File(unchanged));
+}
+
+#[test]
+fn repeated_rescans_preserve_history_and_selection_without_moving_history_to_other_files() {
+    use crate::ui::play_history::Identity;
+    let directory = Directory::new();
+    let stable = directory.file("Stable 120.wav");
+    let moved = directory.file("Moved 120.wav");
+    let removed = directory.file("Removed 120.wav");
+    let replaced = directory.file("Replaced 120.wav");
+    let mut baseline = builtin_crate_items();
+    for (path, title) in [(&stable, "Stable"), (&moved, "Moved"), (&removed, "Removed"), (&replaced, "Replaced")] {
+        baseline.push(item(path.clone(), title, 130.0));
+    }
+    let mut fixture = Fixture::new(32);
+    fixture.app.library = Arc::new(baseline);
+    fixture.app.lib_filter = "".into();
+    fixture.app.refresh_library_view();
+    fixture.app.lib_sel = fixture.app.library_view.indices.iter()
+        .position(|&index| fixture.app.library[index].source == LibSource::File(stable.clone())).unwrap();
+    fixture.app.refresh_library_view();
+    start(&mut fixture.app, vec![directory.0.clone()]);
+    finish(&mut fixture.app);
+    let latest = SystemTime::UNIX_EPOCH + Duration::from_secs(789);
+    let stable_identity = Identity::new(LibSource::File(stable.clone()), FileFingerprint::read(&stable)).unwrap();
+    fixture.app.last_played.record(&stable_identity, latest);
+    let moved_source = LibSource::File(moved.clone());
+    let moved_identity = Identity::new(moved_source.clone(), FileFingerprint::read(&moved)).unwrap();
+    fixture.app.last_played.record(&moved_identity, latest - Duration::from_secs(1));
+    let renamed = directory.0.join("Renamed 120.wav");
+    std::fs::rename(&moved, &renamed).unwrap();
+    std::fs::remove_file(&removed).unwrap();
+    std::fs::write(&replaced, b"replacement with different file metadata").unwrap();
+    directory.file("New 100.wav");
+    start(&mut fixture.app, vec![directory.0.clone()]);
+    finish(&mut fixture.app);
+    assert_eq!(fixture.app.selected_library_item().unwrap().source, LibSource::File(stable.clone()));
+    for row in fixture.app.library.iter().filter(|row| matches!(row.source, LibSource::File(_))) {
+        let expected = (row.source == LibSource::File(stable.clone())).then_some(latest);
+        assert_eq!(fixture.app.item_last_play(row), expected, "{:?}", row.source);
+        assert_ne!(row.source, moved_source);
+        assert_ne!(row.source, LibSource::File(removed.clone()));
+    }
+    // A source outside the active roots is absent from the crate, but its
+    // confirmed in-session history remains keyed by its unchanged identity.
+    start(&mut fixture.app, vec![]);
+    finish(&mut fixture.app);
+    assert_eq!(fixture.app.library.len(), 2);
+    assert!(fixture.app.selected_library_item().is_some());
+    start(&mut fixture.app, vec![directory.0.clone()]);
+    finish(&mut fixture.app);
+    let stable_source = LibSource::File(stable);
+    let row = fixture.app.library.iter().find(|row| row.source == stable_source).unwrap();
+    assert_eq!(fixture.app.item_last_play(row), Some(latest));
+}
