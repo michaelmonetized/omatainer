@@ -31,7 +31,6 @@ fn append(rt: &mut RtEngine, bank: sampler::Bank) {
         bank,
         select: true,
         ack: sampler::Ack::new(),
-        cancel: Arc::new(AtomicBool::new(false)),
     }));
 }
 fn drive_without_heap<T: Send + 'static>(

@@ -1,7 +1,7 @@
 //! Renderer bank identities and immutable prepared edit requests.
 use super::*;
 use crate::sampler_bank::{assets, resident, BankId, Factory, Slot, Source, SLOTS};
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 pub(crate) const MAX_BANKS: usize = 16;
 
@@ -56,13 +56,21 @@ impl Ack {
             _ => EditState::Pending,
         }
     }
+    /// A cancellation before renderer ownership wins. Once claimed, the
+    /// renderer reports its actual commit or rejection; late cancellation never
+    /// rewrites an applied edit as a failure.
+    pub fn cancel(&self) -> bool {
+        self.0.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire).is_ok()
+    }
+    pub(in crate::engine) fn claim(&self) -> bool {
+        self.0.compare_exchange(0, 3, Ordering::AcqRel, Ordering::Acquire).is_ok()
+    }
     pub(super) fn applied(&self) {
         self.0.store(1, Ordering::Release);
     }
     pub(crate) fn reject(&self) {
-        let _ = self
-            .0
-            .compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+        let _ = self.0.fetch_update(Ordering::AcqRel, Ordering::Acquire,
+            |state| matches!(state, 0 | 3).then_some(2));
     }
 }
 #[derive(Clone, Debug)]
@@ -72,7 +80,6 @@ pub(crate) struct Edit {
     pub bank: Bank,
     pub select: bool,
     pub ack: Ack,
-    pub cancel: Arc<AtomicBool>,
 }
 
 pub(super) fn factory_data(owner: &assets::Owner, sr: u32) -> Result<[assets::Bank; 3], String> {
@@ -128,7 +135,6 @@ impl RtEngine {
     pub(super) fn sampler_edit_index(&self, edit: &Edit) -> Option<usize> {
         if edit.epoch != self.undo.checkpoint().epoch
             || !self.sampler_assets.owns(&edit.bank.data)
-            || edit.cancel.load(Ordering::Acquire)
             || edit.bank.data.settings.definition == Some(edit.bank.id)
             || self.sampler_revision == u64::MAX
         {

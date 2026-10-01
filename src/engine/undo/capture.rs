@@ -166,7 +166,7 @@ impl RtEngine {
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
         if let Command::SamplerEdit(edit) = &c {
-            if self.sampler_edit_index(edit).is_none() {
+            if self.sampler_edit_index(edit).is_none() || !edit.ack.claim() {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
             }
         }
