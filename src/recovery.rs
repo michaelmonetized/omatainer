@@ -121,7 +121,12 @@ fn now() -> u64 {
 }
 fn report(rows: &mut Vec<String>, message: impl AsRef<str>) {
     if rows.len() < REPORT_LIMIT {
-        rows.push(message.as_ref().chars().take(2048).collect());
+        let text = message.as_ref();
+        let mut end = text.len().min(2048);
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        rows.push(text[..end].to_owned());
     }
 }
 #[cfg(test)]

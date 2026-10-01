@@ -261,36 +261,44 @@ fn storage_cap_includes_other_sessions_and_staging_without_deleting_good_history
 }
 #[test]
 fn missing_or_corrupt_recovery_media_falls_back_with_report_and_preview_is_revalidated() {
-    let root = Root::new();
-    let audio = sample();
-    let mut second = (*audio).clone();
-    second.data[3] = 0.99;
-    let second = Arc::new(second);
-    let mut store = Store::open(&root.0).unwrap();
-    let config = Config::default();
-    store
-        .append(&bundle(1, &audio), meta(1), &config, &no())
-        .unwrap();
-    store
-        .append(&bundle(2, &second), meta(2), &config, &no())
-        .unwrap();
-    let second_id = store.assets[&(Arc::as_ptr(&second) as usize)].id.clone();
-    let path = store.path.join("assets").join(format!("{second_id}.omat"));
-    drop(store);
-    let candidate = latest(&root.0);
-    assert_eq!(candidate.sequence, 2);
-    fs::remove_file(path).unwrap();
-    assert!(recover::<State>(&candidate, &no()).is_err());
-    let inventory = discover(&root.0, &no()).unwrap();
-    assert_eq!(inventory.candidates[0].sequence, 1);
-    assert!(inventory.warnings.iter().any(|s| s.contains("unavailable")));
-    assert_sample(
-        &recover::<State>(&inventory.candidates[0], &no())
-            .unwrap()
-            .bundle
-            .media[0],
-        &audio,
-    );
+    for missing in [true, false] {
+        let root = Root::new();
+        let audio = sample();
+        let mut second = (*audio).clone();
+        second.data[3] = 0.99;
+        let second = Arc::new(second);
+        let mut store = Store::open(&root.0).unwrap();
+        let config = Config::default();
+        store
+            .append(&bundle(1, &audio), meta(1), &config, &no())
+            .unwrap();
+        store
+            .append(&bundle(2, &second), meta(2), &config, &no())
+            .unwrap();
+        let second_id = store.assets[&(Arc::as_ptr(&second) as usize)].id.clone();
+        let path = store.path.join("assets").join(format!("{second_id}.omat"));
+        drop(store);
+        let candidate = latest(&root.0);
+        assert_eq!(candidate.sequence, 2);
+        if missing {
+            fs::remove_file(&path).unwrap();
+        } else {
+            let mut bytes = fs::read(&path).unwrap();
+            *bytes.last_mut().unwrap() ^= 1;
+            fs::write(&path, bytes).unwrap();
+        }
+        assert!(recover::<State>(&candidate, &no()).is_err());
+        let inventory = discover(&root.0, &no()).unwrap();
+        assert_eq!(inventory.candidates[0].sequence, 1);
+        assert!(inventory.warnings.iter().any(|s| s.contains("unavailable")));
+        assert_sample(
+            &recover::<State>(&inventory.candidates[0], &no())
+                .unwrap()
+                .bundle
+                .media[0],
+            &audio,
+        );
+    }
 }
 #[test]
 fn retired_epoch_is_idempotent_rejects_delayed_append_and_explicit_discard_preserves_native_file() {
@@ -560,7 +568,7 @@ fn replay_record_byte_and_schema_bounds_reject_bad_tails_and_automatic_rotation_
         assert!(!found.report.is_empty());
     }
     fs::write(&paths[1], &saved).unwrap();
-    let mut oversize = files::open(&paths[1], true, false).unwrap();
+    let oversize = files::open(&paths[1], true, false).unwrap();
     oversize.set_len(SEGMENT_LIMIT + 1).unwrap();
     assert!(journal::read(&paths[1], &no())
         .unwrap_err()
@@ -691,4 +699,151 @@ fn crash_writer_child() {
         )
         .unwrap();
     panic!("target crash boundary was not reached");
+}
+
+#[test]
+fn aggregate_pcm_and_metadata_limits_reject_before_decoding_the_next_asset() {
+    let root = Root::new();
+    let audio = sample();
+    let mut store = Store::open(&root.0).unwrap();
+    let mut two = bundle(1, &audio);
+    two.media.push(audio.clone());
+    store
+        .append(&two, meta(1), &Config::default(), &no())
+        .unwrap();
+    let asset = store.assets.values().next().unwrap();
+    let metadata_size = (asset.identity.2
+        - project_file::CONTAINER_OVERHEAD
+        - audio.data.len() as u64 * 4) as usize;
+    let state_size = journal::json(&two.state).unwrap().len();
+    drop(store);
+    let candidate = latest(&root.0);
+    let mut limits = Limits::default();
+    limits.max_pcm_bytes = audio.data.len() as u64 * 4 + 1;
+    assert!(recover_with_limits::<State>(&candidate, &no(), limits)
+        .unwrap_err()
+        .to_string()
+        .contains("declared metadata or PCM"));
+    limits = Limits::default();
+    limits.max_metadata_bytes = state_size + metadata_size * 2 - 1;
+    assert!(recover_with_limits::<State>(&candidate, &no(), limits)
+        .unwrap_err()
+        .to_string()
+        .contains("declared metadata or PCM"));
+    limits.max_metadata_bytes += 1;
+    limits.max_pcm_bytes = audio.data.len() as u64 * 8;
+    let restored: Recovered<State> = recover_with_limits(&candidate, &no(), limits).unwrap();
+    assert_eq!(restored.bundle.media.len(), 2);
+    assert_sample(&restored.bundle.media[1], &audio);
+}
+
+#[test]
+fn changed_owned_sidecar_requests_new_session_while_generic_validation_failure_does_not() {
+    for missing in [true, false] {
+        let root = Root::new();
+        let audio = sample();
+        let mut store = Store::open(&root.0).unwrap();
+        store
+            .append(&bundle(1, &audio), meta(1), &Config::default(), &no())
+            .unwrap();
+        let asset = store.assets.values().next().unwrap();
+        let path = store.path.join("assets").join(format!("{}.omat", asset.id));
+        if missing {
+            fs::remove_file(&path).unwrap();
+        } else {
+            let mut bytes = fs::read(&path).unwrap();
+            *bytes.last_mut().unwrap() ^= 1;
+            fs::write(&path, bytes).unwrap();
+        }
+        assert!(store
+            .append(&bundle(2, &audio), meta(2), &Config::default(), &no())
+            .is_err());
+        assert!(store.needs_new_session());
+        let mut fresh = Store::open(&root.0).unwrap();
+        assert!(
+            fresh
+                .append(&bundle(2, &audio), meta(2), &Config::default(), &no())
+                .unwrap()
+                .durable
+        );
+        let invalid = Config {
+            retention: 0,
+            ..Config::default()
+        };
+        assert!(fresh
+            .append(&bundle(3, &audio), meta(3), &invalid, &no())
+            .is_err());
+        assert!(!fresh.needs_new_session());
+    }
+}
+
+#[test]
+fn unicode_diagnostics_and_unrecognized_names_stay_bounded_without_truncation_panics() {
+    let mut rows = Vec::new();
+    for _ in 0..100 {
+        report(&mut rows, "🎛".repeat(4096));
+    }
+    assert_eq!(rows.len(), REPORT_LIMIT);
+    assert!(rows
+        .iter()
+        .all(|s| s.len() <= 2048 && s.chars().all(|c| c == '🎛')));
+    let root = Root::new();
+    let mut store = Store::open(&root.0).unwrap();
+    store
+        .append(&bundle(1, &sample()), meta(1), &Config::default(), &no())
+        .unwrap();
+    // Same byte length as a segment but a multibyte character at the numeric
+    // prefix boundary; no string slicing may assume ASCII before validation.
+    let unusual = store.path.join(format!("{}é.journal", "0".repeat(18)));
+    files::open(&unusual, true, true).unwrap();
+    drop(store);
+    assert_eq!(latest(&root.0).sequence, 1);
+}
+
+#[test]
+fn discovery_hash_budget_is_shared_across_sessions_and_bad_assets_are_charged_once_per_attempt() {
+    let root = Root::new();
+    let audio = sample();
+    let mut size = 0;
+    for _ in 0..2 {
+        let mut store = Store::open(&root.0).unwrap();
+        store
+            .append(&bundle(1, &audio), meta(1), &Config::default(), &no())
+            .unwrap();
+        size = store.assets.values().next().unwrap().identity.2;
+    }
+    let limited = discover_with_budget(&root.0, &no(), size + 1).unwrap();
+    assert_eq!(limited.candidates.len(), 1);
+    assert!(limited
+        .warnings
+        .iter()
+        .any(|s| s.contains("verification byte budget")));
+    let complete = discover_with_budget(&root.0, &no(), 2 * (size + 1)).unwrap();
+    assert_eq!(complete.candidates.len(), 2);
+    assert!(complete.warnings.is_empty());
+    let candidate = &complete.candidates[0];
+    let path = root.0.join(&candidate.session);
+    let record = exact_record(candidate, &path, &no()).unwrap();
+    let asset = path
+        .join("assets")
+        .join(format!("{}.omat", record.body.media[0]));
+    let mut bytes = fs::read(&asset).unwrap();
+    *bytes.last_mut().unwrap() ^= 1;
+    fs::write(&asset, bytes).unwrap();
+    let mut budget = size + 1;
+    let mut verified = HashSet::new();
+    assert!(
+        verify_assets(&path, &record.body.media, &no(), &mut verified, &mut budget)
+            .unwrap_err()
+            .to_string()
+            .contains("SHA256")
+    );
+    assert_eq!(budget, 0);
+    assert!(verified.is_empty());
+    assert!(
+        verify_assets(&path, &record.body.media, &no(), &mut verified, &mut budget)
+            .unwrap_err()
+            .to_string()
+            .contains("verification byte budget")
+    );
 }
