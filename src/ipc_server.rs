@@ -204,13 +204,14 @@ fn start_at_with_limits(
                     };
                     let commands = commands.clone();
                     let snapshot = snapshot.clone();
+                    let client_stop = worker_stop.clone();
                     let permit = ClientPermit::new(worker_clients.clone());
                     match std::thread::Builder::new()
                         .name("omatainer-ipc-client".into())
                         .spawn(move || {
                             let _permit = permit;
-                            let _ = crate::handle_client_with_limits(
-                                stream, commands, snapshot, limits,
+                            let _ = crate::handle_client_with_stop(
+                                stream, commands, snapshot, limits, Some(&client_stop),
                             );
                         }) {
                         Ok(worker) => {

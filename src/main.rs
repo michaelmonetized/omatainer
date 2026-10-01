@@ -128,7 +128,13 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
         return ipc_follow::run(&socket_path()?, &mut std::io::stdout().lock());
     }
 
-    if op == "status" || op == "reload-theme" {
+    if op == "reload-theme" {
+        let request = ipc_request::encode(&serde_json::json!({"op": "reload-theme"}))?;
+        let stream = instance::connect(&socket_path()?).context("omatainer is not running")?;
+        println!("{}", exchange_encoded_with_budget(stream, request, Duration::from_secs(4))?);
+        return Ok(());
+    }
+    if op == "status" {
         let request = ipc_request::encode(&ipc_request::ReadOperation::Status)?;
         let stream = UnixStream::connect(socket_path()?).context("omatainer is not running")?;
         println!("{}", exchange_encoded(stream, request)?);
@@ -174,13 +180,17 @@ fn exchange_request(stream: UnixStream, payload: &str) -> anyhow::Result<String>
     exchange_encoded(stream, ipc_request::encode(&value)?)
 }
 
-fn exchange_encoded(mut stream: UnixStream, request: ipc_request::Encoded) -> anyhow::Result<String> {
+fn exchange_encoded(stream: UnixStream, request: ipc_request::Encoded) -> anyhow::Result<String> {
+    exchange_encoded_with_budget(stream, request, Duration::from_millis(800))
+}
+
+fn exchange_encoded_with_budget(mut stream: UnixStream, request: ipc_request::Encoded, read_budget: Duration) -> anyhow::Result<String> {
     let ipc_request::Encoded { id, line: payload } = request;
     ipc_transport::write_all(&mut stream, payload.as_bytes(), Duration::from_millis(800))?;
     let mut reader = BufReader::with_capacity(ipc_transport::RESPONSE_BYTES, stream);
     let mut line = [0; ipc_transport::RESPONSE_BYTES];
     let size = ipc_transport::read_line(&mut reader, &mut line,
-        Duration::from_millis(800), Duration::from_millis(800))?
+        read_budget, read_budget)?
         .context("empty IPC response")?;
     let line = std::str::from_utf8(&line[..size]).context("malformed IPC response")?;
     let response: serde_json::Value = serde_json::from_str(line)
@@ -225,6 +235,16 @@ fn handle_client_with_limits(
     snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
     limits: ipc_transport::Limits,
 ) -> anyhow::Result<()> {
+    handle_client_with_stop(stream, commands, snap, limits, None)
+}
+
+fn handle_client_with_stop(
+    stream: UnixStream,
+    commands: engine::CommandPort,
+    snap: std::sync::Arc<parking_lot::Mutex<engine::Snapshot>>,
+    limits: ipc_transport::Limits,
+    stopped: Option<&std::sync::atomic::AtomicBool>,
+) -> anyhow::Result<()> {
     let mut reader = BufReader::with_capacity(ipc_transport::REQUEST_BYTES, stream.try_clone()?);
     let mut writer = stream;
     let mut line = [0; ipc_transport::REQUEST_BYTES];
@@ -240,6 +260,7 @@ fn handle_client_with_limits(
         };
         let mut request_id = serde_json::Value::Null;
         let mut follow = false;
+        let mut reload_theme = false;
         let submission: Result<Option<&str>, (&str, anyhow::Error)> = (|| {
             let request: serde_json::Value = serde_json::from_slice(&line[..size])
                 .map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
@@ -247,6 +268,7 @@ fn handle_client_with_limits(
             let operation = ipc_schema::Operation::parse(&request)
                 .map_err(|error| ("invalid_operation", error))?;
             follow = matches!(operation, ipc_schema::Operation::Follow {});
+            reload_theme = matches!(operation, ipc_schema::Operation::ReloadTheme {});
             let command = operation.command();
             match command {
                 Some(command) => commands.send(command)
@@ -262,6 +284,20 @@ fn handle_client_with_limits(
                 continue;
             }
         };
+        if reload_theme {
+            let outcome = commands.theme_requests().request(theme::requests::DEADLINE)
+                .and_then(|request| request.wait(|| stopped.is_some_and(|stop|
+                    stop.load(std::sync::atomic::Ordering::Acquire))));
+            match outcome {
+                Ok(applied) => ipc_transport::reply(&mut writer, &serde_json::json!({
+                    "ok": true, "id": request_id, "event": "theme", "status": "applied",
+                    "theme": applied,
+                }), limits.write)?,
+                Err(error) => ipc_transport::reject(&mut writer, request_id,
+                    error.code, &error.message, limits.write)?,
+            }
+            continue;
+        }
         if follow {
             // This is a read-only stream, not an uncapped command connection.
             drop(reader);
