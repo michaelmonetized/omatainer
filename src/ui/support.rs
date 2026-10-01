@@ -6,12 +6,18 @@ use crate::support::{
 };
 use std::sync::atomic::AtomicBool;
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct PreviewIdentity { generation: u64, digest: [u8; 32] }
+
 pub(super) struct Panel {
     pub open: bool,
     client: Option<model::worker::Client>,
     root: Option<PathBuf>,
     worker: Option<Worker>,
     preview: Option<Preview>,
+    preview_generation: u64,
+    recovery_generation: u64,
+    consent_identity: Option<PreviewIdentity>,
     previous: Vec<model::storage::Previous>,
     found: Option<crate::recovery::Candidate>,
     selection: Selection,
@@ -33,6 +39,9 @@ impl Default for Panel {
             root: None,
             worker: None,
             preview: None,
+            preview_generation: 0,
+            recovery_generation: 0,
+            consent_identity: None,
             previous: Vec::new(),
             found: None,
             selection: Selection::default(),
@@ -53,14 +62,35 @@ impl Panel {
     pub(super) fn message_for_native_test(&self) -> &str {
         &self.message
     }
+    fn retire_preview(&mut self) {
+        self.preview = None;
+        self.consent = false;
+        self.consent_identity = None;
+        self.found = None;
+    }
     fn request(&mut self, job: Job) {
+        let preview = matches!(&job, Job::Preview(..) | Job::Reopen(..));
+        let recovery = matches!(&job, Job::Recovery(..));
+        let generation = if preview { self.preview_generation.checked_add(1) }
+            else if recovery { self.recovery_generation.checked_add(1) } else { Some(0) };
+        let Some(generation) = generation else {
+            self.message = "Support action identity exhausted; reopen the application".into();
+            return;
+        };
         match self
             .worker
             .as_mut()
             .ok_or_else(|| "Support file worker unavailable".to_string())
             .and_then(|worker| worker.request(job))
         {
-            Ok(()) => self.message = "Support work pending; no upload is performed.".into(),
+            Ok(()) => {
+                // Admission retires old review/lookup actions, even when the
+                // new operation later fails or is cancelled. Worker operations
+                // are serialized until their completed event is consumed.
+                if preview { self.preview_generation = generation; self.retire_preview(); }
+                if recovery { self.recovery_generation = generation; self.found = None; }
+                self.message = "Support work pending; no upload is performed.".into();
+            },
             Err(error) => self.message = error,
         }
     }
@@ -76,7 +106,7 @@ impl Panel {
             }
         };
         match done.result {
-            Ok(ResultValue::Preview(preview))=>{self.preview=Some(preview);self.consent=false;self.found=None;self.message="Review the exact redacted JSON below before exporting locally. Nothing is uploaded.".into();},
+            Ok(ResultValue::Preview(preview))=>{self.retire_preview();self.preview=Some(preview);self.message="Review the exact redacted JSON below before exporting locally. Nothing is uploaded.".into();},
             Ok(ResultValue::Previous(inventory))=>{
                 self.message=format!("{} prior reports; {} active runs skipped; {} unreadable; {} incomplete. An unclean exit does not identify its cause.",inventory.previous.len(),inventory.skipped_active,inventory.unreadable,inventory.incomplete);
                 self.previous=inventory.previous;
@@ -216,7 +246,7 @@ impl App {
                     ui.checkbox(&mut self.support.selection.performance,"Performance counters").help(ui,HelpControl::SupportCategories);
                     ui.checkbox(&mut self.support.selection.recovery,"Opaque recovery references").help(ui,HelpControl::SupportCategories);
                 });
-                if before!=self.support.selection{self.support.preview=None;self.support.consent=false;}
+                if before!=self.support.selection{self.support.retire_preview();}
                 ui.horizontal_wrapped(|ui|{
                     if ui.add_enabled(self.support.client.is_some(),egui::Button::new("Inspect current report")).help(ui,HelpControl::SupportInspect).clicked(){job=Some(Job::Preview(self.support.client.as_ref().unwrap().view().report.clone(),self.support.selection));}
                     if ui.button("Find previous runs").help(ui,HelpControl::SupportPrevious).clicked(){if let Some(root)=&self.support.root{job=Some(Job::Previous(root.clone()));}}
@@ -241,6 +271,8 @@ impl App {
                 ctx.request_repaint_after(std::time::Duration::from_millis(40));
             }
             if let Some(preview)=&self.support.preview {
+                let identity=PreviewIdentity { generation:self.support.preview_generation, digest:preview.digest };
+                ui.push_id(("support-reviewed-preview",identity),|ui| {
                 ui.label(format!("Reviewed report: {:?} · {} bytes. Unknown cause stays unclean; an observed Rust panic is not proof of an audio/device fault.",preview.report.exit,preview.json.len()));
                 ui.push_id("support-json",|ui|{
                     let output=egui::ScrollArea::vertical().id_salt("json-scroll").max_height(220.0).show_rows(ui,16.0,preview.lines.len(),|ui,rows|{
@@ -249,18 +281,23 @@ impl App {
                     accessibility::scrollbars(ui,"Support report text",&output);
                 });
                 ui.add_enabled_ui(!busy,|ui|{
-                    ui.checkbox(&mut self.support.consent,"I reviewed this report and want to export it locally").help(ui,HelpControl::SupportConsent);
-                    if ui.add_enabled(self.support.consent&&!self.support.path.trim().is_empty(),egui::Button::new("Export reviewed support report")).help(ui,HelpControl::SupportExport).clicked(){job=Some(Job::Export(PathBuf::from(self.support.path.trim()),preview.report.clone()));}
+                    if ui.checkbox(&mut self.support.consent,"I reviewed this report and want to export it locally").help(ui,HelpControl::SupportConsent).changed(){self.support.consent_identity=self.support.consent.then_some(identity);}
+                    if ui.add_enabled(self.support.consent&&self.support.consent_identity==Some(identity)&&!self.support.path.trim().is_empty(),egui::Button::new("Export reviewed support report")).help(ui,HelpControl::SupportExport).clicked(){job=Some(Job::Export(PathBuf::from(self.support.path.trim()),preview.report.clone()));}
                     for reference in &preview.report.recovery {
+                        ui.push_id(("support-recovery-reference",reference.session,reference.epoch,reference.sequence),|ui| {
                         if ui.button(format!("Find exact recovery record {}",reference.sequence)).help(ui,HelpControl::SupportRecovery).clicked(){
                             if let Some(root)=&recovery_root {job=Some(Job::Recovery(root.clone(),reference.clone()));}
                             else {self.support.message="Recovery storage is unavailable; no original project was opened.".into();}
                         }
+                        });
                     }
+                });
                 });
             }
             if let Some(candidate)=&self.support.found {
+                ui.push_id(("support-linked-candidate",self.support.preview_generation,self.support.recovery_generation,&candidate.session,candidate.sequence,candidate.record_digest()),|ui| {
                 if ui.add_enabled(!busy&&!self.recovery_project_busy(),egui::Button::new("Preview linked recovery")).help(ui,HelpControl::SupportRecovery).clicked(){preview_recovery=Some(candidate.clone());}
+                });
             }
         });
         if let Some(job) = job {

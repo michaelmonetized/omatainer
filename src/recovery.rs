@@ -49,6 +49,11 @@ pub struct Candidate {
     digest: [u8; 32],
     report: Vec<String>,
 }
+impl Candidate {
+    /// Bind local UI actions to the exact verified journal record. This does
+    /// not export project content, paths or a substitute latest candidate.
+    pub(crate) fn record_digest(&self) -> [u8; 32] { self.digest }
+}
 #[derive(Debug, Default)]
 pub struct Inventory {
     pub candidates: Vec<Candidate>,

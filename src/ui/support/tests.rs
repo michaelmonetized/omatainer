@@ -455,3 +455,125 @@ fn support_link_finds_exact_recovery_and_actual_preview_restores_stopped_untitle
     assert!(gui.app.recovery_project_path().is_none());
     assert!(!gui._files.0.join("private-original.omat").exists());
 }
+
+#[test]
+fn retained_consent_and_export_actions_cannot_review_a_new_report() {
+    let mut gui = Gui::safe();
+    gui.open_support();
+    gui.click("Inspect current report");
+    gui.wait(|g| g.app.support.preview.is_some());
+    let first = gui.app.support.preview.as_ref().unwrap().json.clone();
+    let consent = gui.node("I reviewed this report and want to export it locally");
+    gui.click("I reviewed this report and want to export it locally");
+    let export = gui.node("Export reviewed support report");
+    let target = gui._files.0.join("fresh-review-required.omasupport.json");
+    gui.text("Support report file", target.to_str().unwrap());
+    gui.session.port.event(model::Code::ParserRejected, Some(model::FailureClass::Invalid));
+    gui.wait(|g| g.session.view().report.events.iter().any(|event| event.code == model::Code::ParserRejected));
+    gui.click("Inspect current report");
+    gui.wait(|g| g.app.support.preview.as_ref().is_some_and(|preview| preview.json != first));
+    assert!(!gui.app.support.consent);
+    let fresh = gui.app.support.preview.as_ref().unwrap().json.clone();
+    for stale in [consent, export] {
+        gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target: stale, action: Action::Click, data: None,
+        })]);
+    }
+    assert!(!gui.app.support.consent, "old native consent applied to a different report");
+    assert!(!gui.app.support.worker.as_ref().unwrap().busy(), "old native export admitted a different report");
+    assert!(!target.exists());
+    gui.click("I reviewed this report and want to export it locally");
+    gui.click("Export reviewed support report");
+    gui.wait(|g| g.app.support.message.contains("exported and synced"));
+    assert_eq!(std::fs::read(&target).unwrap(), fresh.as_bytes());
+    // Even identical bytes reopened for a new review must retire prior consent
+    // and native action IDs, rather than silently reviving the earlier review.
+    let consent = gui.node("I reviewed this report and want to export it locally");
+    let export = gui.node("Export reviewed support report");
+    gui.click("Reopen support report");
+    gui.wait(|g| !g.app.support.worker.as_ref().unwrap().busy());
+    assert!(!gui.app.support.consent);
+    for stale in [consent, export] {
+        gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target: stale, action: Action::Click, data: None,
+        })]);
+    }
+    assert!(!gui.app.support.consent);
+    assert!(!gui.app.support.worker.as_ref().unwrap().busy());
+    assert_eq!(std::fs::read(&target).unwrap(), fresh.as_bytes());
+}
+
+#[test]
+fn retained_linked_recovery_action_cannot_open_a_new_exact_candidate() {
+    let mut gui = Gui::safe();
+    let root = gui._files.0.join("linked-recovery");
+    let captured = gui.app.engine.project.capture(&AtomicBool::new(false)).unwrap();
+    let mut document = project::Document {
+        engine: captured.state, view: gui.app.project_view(),
+        mapping_schema: project::FACTORY_MAPPING_SCHEMA,
+    };
+    let mut store = crate::recovery::Store::open(&root).unwrap();
+    let mut references = Vec::new();
+    for revision in 1..=2 {
+        document.engine.bpm = 130.0 + revision as f32;
+        let meta = crate::recovery::RecordMeta {
+            epoch: 55, revision, view_revision: revision, saved_path: None,
+            captured_unix_ms: 100 + revision,
+        };
+        let commit = store.append(&crate::project_file::Bundle {
+            state: project::Document { engine: document.engine.clone(), view: document.view.clone(), mapping_schema: document.mapping_schema }, media: captured.media.clone(),
+        }, meta.clone(), &crate::recovery::Config::default(), &AtomicBool::new(false)).unwrap();
+        references.push(model::RecoveryRef {
+            session: crate::recovery::session_digest(store.session_id()), epoch: meta.epoch,
+            sequence: commit.sequence, revision, view_revision: revision,
+            captured_unix_ms: meta.captured_unix_ms, committed_unix_ms: commit.committed_unix_ms,
+        });
+    }
+    drop(store);
+    gui.app.start_recovery(root);
+    for reference in references { gui.session.port.recovery(reference); }
+    gui.wait(|g| g.session.view().report.recovery.len() == 2);
+    gui.open_support();
+    gui.click("Inspect current report");
+    gui.wait(|g| g.app.support.preview.is_some());
+    gui.click("Find exact recovery record 1");
+    gui.wait(|g| g.app.support.found.as_ref().is_some_and(|candidate| candidate.sequence == 1));
+    let old_action = gui.node("Preview linked recovery");
+    gui.click("Find exact recovery record 2");
+    gui.wait(|g| g.app.support.found.as_ref().is_some_and(|candidate| candidate.sequence == 2));
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        target: old_action, action: Action::Click, data: None,
+    })]);
+    assert!(gui.app.support.open, "old linked action opened a different exact recovery");
+    gui.click("Preview linked recovery");
+    gui.wait(|g| g.nodes.iter().any(|(_, node)| node.label() == Some("Restore as untitled copy")));
+    gui.click("Restore as untitled copy");
+    gui.wait(|g| g.app.project_message_for_recovery_test().is_some_and(|message| message.contains("Recovered as an unsaved untitled copy")));
+    assert_eq!(gui.app.engine.project.capture(&AtomicBool::new(false)).unwrap().state.bpm, 132.0);
+}
+
+#[test]
+fn committed_support_export_survives_cancel_before_gui_poll() {
+    let mut gui = Gui::safe();
+    gui.open_support();
+    gui.click("Inspect current report");
+    gui.wait(|g| g.app.support.preview.is_some());
+    let exact = gui.app.support.preview.as_ref().unwrap().json.clone();
+    let path = gui._files.0.join("committed-before-poll.omasupport.json");
+    gui.text("Support report file", path.to_str().unwrap());
+    gui.click("I reviewed this report and want to export it locally");
+    let target = gui.node("Export reviewed support report");
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        target, action: Action::Click, data: None,
+    })]);
+    // Wait for actual create-new publication without polling the GUI receipt.
+    let deadline = Instant::now() + Duration::from_secs(4);
+    while !path.exists() {
+        assert!(Instant::now() < deadline, "support export did not commit");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    gui.app.support.worker.as_ref().unwrap().cancel();
+    gui.wait(|g| !g.app.support.worker.as_ref().unwrap().busy());
+    assert!(gui.app.support.message.contains("exported and synced"));
+    assert_eq!(std::fs::read(path).unwrap(), exact.as_bytes());
+}
