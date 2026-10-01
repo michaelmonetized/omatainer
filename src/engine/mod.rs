@@ -1233,9 +1233,12 @@ impl RtEngine {
 
     fn tick_drums(&mut self, ti: usize) -> f32 {
         let mut s = 0.0;
-        let samples = self.tracks[ti].drum_samples.clone();
         let sr = self.sr as f64;
-        for slot in self.tracks[ti].drum_pos.iter_mut() {
+        // The renderer exclusively owns the track. Borrow its immutable bank
+        // beside the mutable voice slots; inactive slots never access samples.
+        let track = &mut self.tracks[ti];
+        let samples = &track.drum_samples;
+        for slot in &mut track.drum_pos {
             if let Some(voice) = slot {
                 let samp = &samples[voice.sample];
                 let (l, _) = samp.at(voice.position);
@@ -2711,3 +2714,5 @@ fn clip_gain(value: f32) -> f32 {
 
 #[cfg(test)]
 mod clip_gain_tests;
+#[cfg(test)]
+mod drum_borrow_tests;
