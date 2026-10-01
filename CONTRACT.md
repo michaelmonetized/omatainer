@@ -592,3 +592,31 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   or altered artifacts, source/dependency drift and stale embedded license
   records. Every retained installation includes that release's records and
   executable SHA-256 receipt. Refreshing records requires a rebuild.
+
+## Keyboard and native accessibility
+
+- Custom deck, waveform, mixer, sampler, crate and sequencer controls expose
+  semantic names, roles, numeric ranges/values, state, focus and actions through
+  AccessKit. Native effect sliders keep their actual bar bounds and physical
+  units; associated value editors retain their native text editing behavior.
+- Tab/Shift+Tab traversal shows focus and reveals clipped controls in both axes.
+  Numeric arrows, fine Shift steps, Home/End and validated F2 entry use the same
+  command handlers as pointer edits. Nonfinite numeric accessibility requests
+  are discarded before native widgets process them. Focused activation never
+  also toggles global transport, and text/modal shortcut ownership is retained.
+- Pointer modifiers and right-click operations have named Shift+F10 alternatives.
+  Linux's current AccessKit adapter lacks custom-action export, so a visible
+  ordinary Actions button also opens those operations as native clickable menu
+  entries. It retains the focused control identity, retires unavailable targets,
+  and never routes a stale result to a different control.
+- Sampler pointer, Space, Enter and assistive holds have separate local ownership
+  bits around one accepted gate per pad. Only the last release emits note-off;
+  failed admission never creates a local hold. Keyboard focus loss and window
+  loss retire applicable holds. Instrument changes preserve original voice
+  release identity; inactive piano gaps cannot acquire a new gate.
+- The virtual crate exposes its entire filtered range through the selection
+  control while naming/rendering only visible rows. Keyboard, native Value and
+  ordinary menu actions do not require materializing all row widgets.
+- Automated native evidence uses a private D-Bus accessibility bus and actual
+  App output/renderer commands. It does not change the user's desktop bus or
+  preferences, and is not a claim of Orca, human, or physical-controller QA.

@@ -134,6 +134,33 @@ that editing ends. Blocking dialogs and popups also suppress global shortcuts.
 Outside those contexts, letter/space shortcuts require no modifiers; `?` uses
 Shift+Slash, and Ctrl+M opens the MIDI window.
 
+## Keyboard and assistive controls
+
+Tab and Shift+Tab traverse controls; focused custom controls show an outline and
+scroll into view. Space or Enter activates the focused button. A focused pad
+holds its note until that key is released or focus leaves; Space on a focused
+control does not also change the session transport.
+
+Arrow keys adjust a focused numeric control in its displayed units. Shift makes
+fine adjustments, Home/End select the limits, and F2 opens a direct value editor
+with Apply/Cancel. Invalid values stay in the editor for correction. The crate's
+**Crate selection** control supports arrows, Page Up/Down, Home/End and direct
+one-based row numbers through F2, including rows outside the visible viewport.
+Enter loads its selected row onto the selected deck.
+
+Shift+F10 opens the focused control's alternatives: cue deletion, loop out,
+clip launch mode, compose arm, gain editing, mute/solo, and pad Press/Release.
+The **Actions for …** button exposes the same menu to assistive tools through
+ordinary buttons. Focus a control with alternate actions first to choose that menu's target. Assistive
+click on a pad toggles a hold; **Release pad** explicitly ends it. Window focus
+loss releases local pad holds.
+
+Linux accessibility uses the existing eframe/AccessKit AT-SPI bridge. Names
+include deck, track, scene and effect context; values and states are exposed in
+the native tree. The automated private-bus fixture verifies real AT-SPI queries
+and actions; Orca and human workflow qualification remain to be performed.
+See [accessibility validation](docs/validation/issue-87-accessibility.md).
+
 MIDI clock in/out and live notes from any class-compliant USB device hit the selected track. APC grids launch clips. Pioneer relative jog bindings decode forward and reverse movement using their documented centered value. NS7 wheel input is deliberately unmapped: its absolute-position protocol cannot use the old guessed relative-CC/pitch-bend bindings. See the [jog decoder evidence and hardware limits](docs/validation/issue-42-relative-jog.md).
 
 The APC40 original and mkII use separate protocol-based input profiles for eight

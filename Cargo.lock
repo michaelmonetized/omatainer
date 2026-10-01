@@ -2470,6 +2470,7 @@ name = "omatainer"
 version = "0.1.0"
 dependencies = [
  "ab_glyph",
+ "accesskit_unix",
  "anyhow",
  "arc-swap",
  "cpal",

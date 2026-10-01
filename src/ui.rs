@@ -35,6 +35,7 @@ use deck_time::{DeckTimeSettings, Readout, TimeMode};
 #[cfg(test)]
 mod deck_time_tests;
 mod licenses;
+mod accessibility;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -109,6 +110,7 @@ pub struct App {
     snap: Snapshot,
     last_play_idx: usize,
     pad_held: [bool; 16],
+    pad_inputs: [u8; 16],
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
     deck_time: [DeckTimeSettings; DECKS],
@@ -187,6 +189,7 @@ impl App {
             snap,
             last_play_idx: 0,
             pad_held: [false; 16],
+            pad_inputs: [0; 16],
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
@@ -400,38 +403,64 @@ impl App {
         }
     }
 
-    fn pad_gate(&mut self, p: usize, enabled: bool, r: &egui::Response) {
+    fn set_pad_input(&mut self, pad: usize, source: u8, on: bool) {
+        let before = self.pad_inputs[pad];
+        let after = if on { before | source } else { before & !source };
+        if before == after { return; }
+        if before == 0 && after != 0 && !self.submit(Command::SamplerPad { pad: pad as u8, on: true }) { return; }
+        self.pad_inputs[pad] = after;
+        self.pad_held[pad] = after != 0;
+        if before != 0 && after == 0 { self.send(Command::SamplerPad { pad: pad as u8, on: false }); }
+    }
+
+    fn pad_gate(&mut self, ui: &Ui, p: usize, enabled: bool, r: &egui::Response) {
         if p >= self.pad_held.len() { return; }
-        let (pressed, released, down, origin) = r.ctx.input(|input| (
+        let (pressed, released, down, origin, window_focus) = r.ctx.input(|input| (
             input.pointer.button_pressed(PointerButton::Primary),
             input.pointer.button_released(PointerButton::Primary),
             input.pointer.button_down(PointerButton::Primary),
             input.events.iter().rev().find_map(|event| match event {
                 egui::Event::PointerButton { pos, button: PointerButton::Primary, pressed: true, .. } => Some(*pos),
                 _ => None,
-            }),
+            }), input.focused,
         ));
-        // Retire the captured identity even when this cell became a piano gap.
-        // A release followed by another press in this frame ends the old gate.
-        if self.pad_held[p] && (released || !down) {
-            self.pad_held[p] = false;
-            self.send(Command::SamplerPad { pad: p as u8, on: false });
-        }
-        // Egui's final hover/down flags can be false after a complete tap or
-        // release/press handoff. Hit-test the actual press, respecting clipping,
-        // disabled UI and the top interactive layer instead of final hover.
-        let pressed_here = pressed && r.enabled() && origin.is_some_and(|pos|
+        if released || !down || !window_focus || !r.enabled() { self.set_pad_input(p, 1, false); }
+        let pressed_here = pressed && window_focus && r.enabled() && origin.is_some_and(|pos|
             r.interact_rect.contains(pos) && r.ctx.layer_id_at(pos) == Some(r.layer_id));
-        if enabled && pressed_here && !self.pad_held[p] {
-            // Admission owns a matching release reservation. Rejected presses
-            // cannot create local held state or an unmatched release.
-            self.pad_held[p] = self.submit(Command::SamplerPad { pad: p as u8, on: true });
-            if self.pad_held[p] && !down {
-                // A complete quick tap can also arrive in one GUI frame.
-                self.pad_held[p] = false;
-                self.send(Command::SamplerPad { pad: p as u8, on: false });
-            }
+        if enabled && pressed_here {
+            self.set_pad_input(p, 1, true);
+            if !down { self.set_pad_input(p, 1, false); }
         }
+        // Pointer, keyboard and AT holds share one admitted pad gate, with
+        // distinct local ownership so releasing one input cannot cut another.
+        let focused = r.has_focus() && r.enabled() && window_focus;
+        if !focused { self.set_pad_input(p, 2, false); self.set_pad_input(p, 8, false); }
+        if !r.enabled() || !window_focus { self.set_pad_input(p, 4, false); }
+        let keys = r.ctx.input(|input| input.events.iter().filter_map(|event| match event {
+            egui::Event::Key { key: key @ (Key::Space | Key::Enter), pressed, repeat: false, modifiers, .. }
+                if !pressed || !modifiers.ctrl && !modifiers.alt && !modifiers.command => Some((*key, *pressed)),
+            _ => None,
+        }).collect::<Vec<_>>());
+        for (key, pressed) in keys {
+            let source = if key == Key::Space { 2 } else { 8 };
+            if !pressed { self.set_pad_input(p, source, false); }
+            else if focused && enabled { self.set_pad_input(p, source, true); }
+        }
+        let action = accessibility::actions(ui, r, &["Press pad", "Release pad"]);
+        let clicked = r.ctx.input(|input| input.num_accesskit_action_requests(r.id, egui::accesskit::Action::Click) > 0);
+        if enabled && r.enabled() && window_focus && (action == Some(0) || clicked && self.pad_inputs[p] & 4 == 0) {
+            self.set_pad_input(p, 4, true);
+        } else if action == Some(1) || clicked {
+            self.set_pad_input(p, 4, false);
+        }
+        let identity = crate::engine::sampler_pad::PadIdentity::new(p as u8);
+        let name = if self.snap.sampler_inst.synth().is_some() {
+            format!("Pad {}: {} MIDI note {}", p + 1, identity.piano_label(), identity.midi_note(self.snap.sampler_oct))
+        } else { format!("Sample pad {}", p + 1) };
+        accessibility::button(ui, r, &name, Some(self.pad_held[p]));
+        r.ctx.accesskit_node_builder(r.id, |node| {
+            node.set_description(if enabled { "Hold Space or Enter to play; release or move focus to stop. Assistive click toggles a hold; Shift+F10 offers Press and Release." } else { "No piano accidental at this pad; Release pad still releases an existing hold." });
+        });
     }
 
     #[cfg(test)]
@@ -496,6 +525,7 @@ impl App {
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
+        accessibility::begin_frame(ctx);
         self.undo_history.begin_frame(ctx, &self.engine.undo);
         if !self.project.committing() {
             self.poll_ui_requests();
@@ -533,6 +563,11 @@ impl App {
             .show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 let h = ui.available_height();
+                let w = ui.available_width();
+                // Keep every focused control reachable at small window sizes.
+                // Custom focus handlers request scrolling inside this surface.
+                let surface = egui::ScrollArea::both().id_salt("performance-surface").auto_shrink([false, false]).show(ui, |ui| {
+                ui.set_width(w);
                 let gap = 4.0;
                 let samp_h = 118.0;
                 let crate_h = 108.0;
@@ -544,7 +579,7 @@ impl App {
                 });
                 ui.add_space(gap);
                 ui.allocate_ui(Vec2::new(ui.available_width(), samp_h), |ui| {
-                    self.sampler_row(ui, &t);
+                    accessibility::scope(ui, "Sampler", |ui| self.sampler_row(ui, &t));
                 });
                 ui.add_space(gap);
                 ui.allocate_ui(Vec2::new(ui.available_width(), crate_h), |ui| {
@@ -558,6 +593,8 @@ impl App {
                         self.sequencer_row(ui, &t);
                     });
                 }
+                });
+                accessibility::scrollbars(ui, "Performance surface", &surface);
             });
 
         if let Some(error) = self.submission_error.get() {
@@ -605,9 +642,11 @@ impl App {
         self.licenses_panel(ctx);
         self.clip_gain_editor(ctx);
         self.undo_panel(ctx);
+        accessibility::numeric_editor(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
         self.undo_history.end_frame(ctx);
+        accessibility::finish_frame(ctx);
         // Resolve terminal project outcomes after this frame's Cancel/input.
         self.poll_projects(ctx);
         if animating {
@@ -659,8 +698,10 @@ impl App {
                         for d in 0..DECKS {
                             let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
                             let wave = ui.scope(|ui| {
-                                vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
-                                    self.send(Command::DeckSeek { deck: d as u8, frac });
+                                accessibility::scope(ui, &format!("Deck {}", (b'A' + d as u8) as char), |ui| {
+                                    vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
+                                        self.send(Command::DeckSeek { deck: d as u8, frac });
+                                    });
                                 });
                             });
                             self.select_deck_from_pointer(ui, wave.response.rect, d);
@@ -683,7 +724,7 @@ impl App {
         let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
         let col = t.track_color(d);
         let h = wave_h + fader_h + 4.0;
-        let panel = ui.horizontal(|ui| {
+        let panel = accessibility::scope(ui, &format!("Deck {}", (b'A' + d as u8) as char), |ui| ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_min_height(h);
             if d == 0 {
@@ -697,7 +738,7 @@ impl App {
                 self.cue_eq_col(ui, t, d, &snap, col, wave_h, sq);
                 self.speed_col(ui, t, d, &snap, h, sq);
             }
-        });
+        }));
         self.select_deck_from_pointer(ui, panel.response.rect, d);
         if self.snap.selected_deck == d {
             ui.painter().rect_stroke(panel.response.rect.expand(2.0), 3.0,
@@ -714,11 +755,14 @@ impl App {
                 self.send(Command::DeckKeylock { deck: d as u8 });
             }
             let fader_h = (h - sq * 2.0 - 8.0).max(48.0);
-            if let Some(v) = fader(ui, t, snap.pitch, 1.0, 0.0, t.accent, sq, fader_h) {
+            let span = [8.0, 16.0, 50.0][snap.pitch_range.min(2) as usize];
+            if let Some(v) = fader(ui, t, snap.pitch, span, 0.0, t.accent, sq, fader_h) {
                 self.send(Command::DeckPitch { deck: d as u8, value: v });
             }
             let lab = ["8", "16", "50"][snap.pitch_range.min(2) as usize];
-            if sq_btn(ui, t, lab, false, t.orange, sq).on_hover_text("pitch range").clicked() {
+            let range = sq_btn(ui, t, lab, false, t.orange, sq).on_hover_text("pitch range");
+            accessibility::button(ui, &range, &format!("Pitch range ±{span}%"), None);
+            if range.clicked() {
                 self.send(Command::DeckPitchRange { deck: d as u8 });
             }
         });
@@ -737,11 +781,13 @@ impl App {
                         let i = row * 4 + c;
                         let on = snap.hotcues.get(i).copied().unwrap_or(false);
                         let r = sq_btn(ui, t, &format!("{}", i + 1), on, t.track_color(i), cell);
-                        if r.clicked() {
+                        accessibility::button(ui, &r, &format!("Hot cue {}", i + 1), Some(on));
+                        let alternative = accessibility::actions(ui, &r, &["Set or jump to cue", "Delete cue"]);
+                        if r.clicked() || alternative.is_some() {
                             self.send(Command::DeckHotCue {
                                 deck: d as u8,
                                 pad: i as u8,
-                                del: ui.input(|i| i.modifiers.shift),
+                                del: alternative.map(|action| action == 1).unwrap_or_else(|| ui.input(|i| i.modifiers.shift)),
                             });
                         }
                     }
@@ -758,7 +804,7 @@ impl App {
                         (snap.gain / 1.2).clamp(0.0, 1.0)
                     };
                     let c = if cut { t.red } else if solo { t.yellow } else { col };
-                    let resp = rotary(ui, t, lab, v, c, cell + 4.0);
+                    let resp = rotary(ui, t, lab, v, c, cell + 4.0, cut, solo);
                     if resp.changed {
                         if band < 3 {
                             self.send(Command::DeckEq { deck: d as u8, band, value: resp.value });
@@ -824,10 +870,11 @@ impl App {
                 self.send(Command::ToggleQuant);
             }
             let io = sq_btn(ui, t, "I/O", snap.loop_on, t.accent, sq).on_hover_text("loop in · right-click out");
-            if io.clicked() {
+            let alternative = accessibility::actions(ui, &io, &["Loop in", "Loop out"]);
+            if io.clicked() || alternative == Some(0) {
                 self.send(Command::DeckLoopIn { deck: d as u8 });
             }
-            if io.secondary_clicked() {
+            if io.secondary_clicked() || alternative == Some(1) {
                 self.send(Command::DeckLoopOut { deck: d as u8 });
             }
             if sq_btn(ui, t, "×2", false, t.cyan, sq).on_hover_text("double loop").clicked() {
@@ -866,7 +913,7 @@ impl App {
             ui.vertical(|ui| {
                 ui.set_width(108.0);
                 ui.set_min_height(h);
-                egui::ComboBox::from_id_salt("bank")
+                let bank = egui::ComboBox::from_id_salt("bank")
                     .selected_text(
                         self.snap
                             .sampler_banks
@@ -881,7 +928,9 @@ impl App {
                             }
                         }
                     });
-                egui::ComboBox::from_id_salt("inst")
+                bank.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler bank"));
+                ui.ctx().accesskit_node_builder(bank.response.id, |node| node.set_value(self.snap.sampler_banks.get(self.snap.sampler_bank).map(String::as_str).unwrap_or("No bank")));
+                let instrument = egui::ComboBox::from_id_salt("inst")
                     .selected_text(self.snap.sampler_inst.label())
                     .show_ui(ui, |ui| {
                         for instrument in SamplerInstrument::ALL {
@@ -891,6 +940,8 @@ impl App {
                             }
                         }
                     });
+                instrument.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler instrument"));
+                ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(self.snap.sampler_inst.label()));
                 ui.horizontal(|ui| {
                     if sq_btn(ui, t, "^", false, t.accent, 26.0).clicked() {
                         self.send(Command::SamplerOct(1));
@@ -925,7 +976,7 @@ impl App {
                                     ui.label(format!("Sample pad {} · bank slot {}", pad.number(), pad.index()));
                                 }
                             });
-                            self.pad_gate(pad.index(), !empty, &r);
+                            self.pad_gate(ui, pad.index(), !empty, &r);
                         }
                     });
                 }
@@ -941,7 +992,8 @@ impl App {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.label(RichText::new("crate").size(11.0).color(t.fg_dim));
-                ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
+                let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
+                search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
                 if ui.add_enabled(!self.library_scan.active(), egui::Button::new("scan")).clicked() {
                     self.scan_library();
                 }
@@ -950,10 +1002,14 @@ impl App {
                 }
                 self.deck_selectors(ui);
                 if ui.button("library…").clicked() { self.library_import_open = true; }
-                if ui.button("→ A").clicked() {
+                let load_a = ui.button("→ A");
+                accessibility::button(ui, &load_a, "Load selected crate item to deck A", None);
+                if load_a.clicked() {
                     self.load_sel(0);
                 }
-                if ui.button("→ B").clicked() {
+                let load_b = ui.button("→ B");
+                accessibility::button(ui, &load_b, "Load selected crate item to deck B", None);
+                if load_b.clicked() {
                     self.load_sel(1);
                 }
                 ui.label(RichText::new("↓ bpm up   ↑ bpm down   same bpm → key → name").size(10.0).color(t.muted));
@@ -1000,7 +1056,8 @@ impl App {
                     }
                     #[cfg(test)] { self.library_view.stats.rendered += 1; }
                     let sel = i == self.lib_sel;
-                    let (rect, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 18.0), Sense::click());
+                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 18.0), Sense::hover());
+                    let resp = ui.interact(rect, ui.id().with(("crate-source-row", &item.source)), Sense::click());
                     if sel { ui.painter().rect_filled(rect, 2.0, t.accent.gamma_multiply(0.18)); }
                     let mut x = rect.left();
                     for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist].iter().zip(col_w) {
@@ -1009,20 +1066,36 @@ impl App {
                         x += w;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
+                    accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
+                    let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     let resp = resp.on_hover_ui(|ui| {
                         ui.label(format!("BPM: {}", item.bpm.label()));
                         ui.label(&cells.played_tooltip);
                         ui.label(format!("Track ID: {identity}"));
                         ui.label(format!("Location: {:?}", item.source));
                     });
-                    if resp.clicked() || resp.double_clicked() {
+                    if resp.clicked() || resp.double_clicked() || row_action.is_some() {
                         self.lib_sel = i;
                         ui.memory_mut(|memory| memory.request_focus(focus));
                     }
-                    if resp.double_clicked() { self.load_sel(self.load_target() as u8); }
+                    if resp.double_clicked() || row_action == Some(3) { self.load_sel(self.load_target() as u8); }
+                    else if let Some(deck) = row_action.and_then(|action| [None, Some(0), Some(1), None][action]) { self.load_sel(deck); }
                 }
             });
-            ui.interact(output.inner_rect, focus, Sense::focusable_noninteractive());
+            accessibility::scrollbars(ui, "Crate", &output);
+            let navigation = ui.interact(output.inner_rect, focus, Sense::focusable_noninteractive());
+            let count = self.library_view.indices.len();
+            if let Some(row) = accessibility::numeric(ui, &navigation, "Crate selection", (self.lib_sel + 1).min(count) as f32, if count == 0 { 0.0 } else { 1.0 }, count as f32, 1.0, " row") {
+                self.lib_sel = (row.round() as usize).saturating_sub(1).min(count.saturating_sub(1));
+                self.library_view.pending_offset = Some(self.lib_sel as f32 * stride);
+            }
+            let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
+            ui.ctx().accesskit_node_builder(focus, |node| {
+                node.set_value(selected.map(|item| format!("{} of {count}: {}, {}", self.lib_sel + 1, item.title, item.artist)).unwrap_or_else(|| "Empty crate".into()));
+                node.set_description("All filtered rows are available: Up/Down, Page Up/Down, Home/End; F2 enters a row number. Shift+F10 loads the selected row. Search narrows the crate.");
+            });
+            let action = accessibility::actions(ui, &navigation, &["Load to deck A", "Load to deck B", "Load to selected deck"]);
+            if let Some(action) = action { self.load_sel(if action == 2 { self.load_target() as u8 } else { action as u8 }); }
             self.remember_crate_viewport(output.state.offset.y, output.inner_rect.height(), stride);
         });
     }
@@ -1064,10 +1137,15 @@ impl App {
                             ui.painter().rect_stroke(rect, 4.0, st(1.0, t.track_color(tr).gamma_multiply(0.7)), egui::StrokeKind::Inside);
                             let fs = (col_w * 0.12).clamp(10.0, 13.0);
                             ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, name, FontId::proportional(fs), t.track_color(tr));
-                            if resp.clicked() {
+                            accessibility::button(ui, &resp, &format!("Track {} {}: Mute", tr + 1, name), Some(mute));
+                            accessibility::status(ui, &resp, &format!("Mute {}; solo {}", if mute { "on" } else { "off" }, if solo { "on" } else { "off" }));
+                            let action = accessibility::actions(ui, &resp, &["Toggle mute", "Toggle solo", "Open track effects", "Select track"]);
+                            if resp.clicked() || action == Some(0) {
                                 self.send(Command::Mute { track: tr as u8 });
                             }
-                            if resp.secondary_clicked() {
+                            if action == Some(2) { self.send(Command::OpenFxTrack(tr as u8)); }
+                            if action == Some(3) { self.send(Command::Select { track: tr, scene: self.snap.selected_scene }); }
+                            if resp.secondary_clicked() || action == Some(1) {
                                 self.send(Command::Solo { track: tr as u8 });
                             }
                         }
@@ -1081,16 +1159,18 @@ impl App {
                             ui.painter().rect_filled(hr, 4.0, if on { t.accent.gamma_multiply(0.45) } else { t.bg_dark });
                             ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued { t.accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
                             ui.painter().text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{}", sc + 1), FontId::proportional(11.0), t.fg);
-                            if hresp.clicked() {
-                                if ui.input(|i| i.modifiers.shift) {
+                            accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", sc + 1), Some(on));
+                            let action = accessibility::actions(ui, &hresp, &["Toggle scene", "Add scene", "Open scene effects", "Restart scene"]);
+                            if hresp.clicked() || matches!(action, Some(0..=2)) {
+                                if action == Some(1) || action.is_none() && ui.input(|i| i.modifiers.shift) {
                                     self.send(Command::AddScene { scene: sc as u8 });
-                                } else if ui.input(|i| i.modifiers.ctrl) {
+                                } else if action == Some(2) || action.is_none() && ui.input(|i| i.modifiers.ctrl) {
                                     self.send(Command::OpenFxScene(sc as u8));
                                 } else {
                                     self.send(Command::ToggleScene { scene: sc as u8 });
                                 }
                             }
-                            if hresp.secondary_clicked() {
+                            if hresp.secondary_clicked() || action == Some(3) {
                                 self.send(Command::RestartScene { scene: sc as u8 });
                             }
                             for tr in 0..TRACKS {
@@ -1132,21 +1212,25 @@ impl App {
                                         ui.painter().rect_filled(Rect::from_min_size(rect.min, Vec2::new(w, 3.0)), 0.0, t.fg);
                                     }
                                 }
-                                if resp.clicked() {
-                                    if ui.input(|i| i.modifiers.alt) {
+                                accessibility::button(ui, &resp, &format!("Clip track {} scene {}: {}", tr + 1, sc + 1, clip.map(|c| c.name.as_str()).filter(|name| !name.is_empty()).unwrap_or("Empty")), Some(playing));
+                                accessibility::status(ui, &resp, &format!("{}; {}", if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
+                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain"] } else { &["Launch once", "Launch loop", "Arm compose"] };
+                                let action = accessibility::actions(ui, &resp, labels);
+                                if resp.clicked() || matches!(action, Some(0 | 2 | 3)) {
+                                    if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
                                         if filled {
                                             self.clip_gain_edit = Some(ClipGainEdit {
                                                 track: tr as u8, scene: sc as u8,
                                                 value: clip.map(|c| c.gain).unwrap_or(1.0),
                                             });
                                         }
-                                    } else if ui.input(|i| i.modifiers.shift) {
+                                    } else if action == Some(2) || action.is_none() && ui.input(|i| i.modifiers.shift) {
                                         self.send(Command::ComposeArm { track: tr, scene: sc });
                                     } else {
                                         self.send(Command::FireClip { track: tr as u8, scene: sc as u8, looping: false });
                                     }
                                 }
-                                if resp.secondary_clicked() {
+                                if resp.secondary_clicked() || action == Some(1) {
                                     self.send(Command::FireClip { track: tr as u8, scene: sc as u8, looping: true });
                                 }
                             }
@@ -1163,12 +1247,12 @@ impl App {
                             let c = if mute { t.red } else if solo { t.yellow } else { col };
                             let (cell, _) = ui.allocate_exact_size(Vec2::new(col_w, gain_h), Sense::hover());
                             let knob = (col_w.min(gain_h) - 2.0).clamp(28.0, 44.0);
-                            let resp = rotary_in(ui, t, "gain", (g / 1.2).clamp(0.0, 1.0), c, knob, cell, tr);
+                            let resp = rotary_in(ui, t, "gain", (g / 1.2).clamp(0.0, 1.0), c, knob, cell, tr, mute, solo);
                             if resp.changed {
                                 self.send(Command::TrackGain { track: tr as u8, value: resp.value * 1.2 });
                             }
-                            if resp.clicked {
-                                if ui.input(|i| i.modifiers.ctrl) {
+                            if resp.clicked || resp.effects {
+                                if resp.effects {
                                     self.send(Command::OpenFxTrack(tr as u8));
                                 } else {
                                     self.send(Command::Mute { track: tr as u8 });
@@ -1310,6 +1394,7 @@ fn pill(ui: &mut Ui, t: &Theme, text: &str, on: bool, accent: Color32) -> egui::
     ui.painter().rect_filled(rect, 4.0, fill);
     ui.painter().rect_stroke(rect, 4.0, st(1.0, stroke), egui::StrokeKind::Inside);
     ui.painter().galley(Pos2::new(rect.center().x - galley.size().x * 0.5, rect.center().y - galley.size().y * 0.5), galley, t.fg);
+    accessibility::button(ui, &resp, text, Some(on));
     resp
 }
 
@@ -1319,6 +1404,8 @@ fn sq_btn(ui: &mut Ui, t: &Theme, text: &str, on: bool, accent: Color32, size: f
     ui.painter().rect_filled(rect, 4.0, fill);
     ui.painter().rect_stroke(rect, 4.0, st(1.0, if on { accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
     ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, text, FontId::proportional(11.0), t.fg);
+    let name = match text { "L" => "Pitch lock", "Q" => "Quantize", "I/O" => "Loop in", "×2" => "Double loop", "½" => "Halve loop", "↻" => "Reloop", "⇄" => "Match decks", "^" => "Octave up", "v" => "Octave down", text => text };
+    accessibility::button(ui, &resp, name, Some(on));
     resp
 }
 
@@ -1337,6 +1424,7 @@ struct RotaryResp {
     changed: bool,
     clicked: bool,
     secondary: bool,
+    effects: bool,
 }
 
 fn rotary_in(
@@ -1348,6 +1436,8 @@ fn rotary_in(
     size: f32,
     cell: Rect,
     id: usize,
+    mute: bool,
+    solo: bool,
 ) -> RotaryResp {
     let cx = cell.center().x;
     let cy = cell.center().y - 6.0;
@@ -1372,15 +1462,24 @@ fn rotary_in(
         changed: false,
         clicked: resp.clicked(),
         secondary: resp.secondary_clicked(),
+        effects: false,
     };
     if resp.dragged() {
         out.value = (value - resp.drag_delta().y * 0.01).clamp(0.0, 1.0);
         out.changed = true;
     }
+    if let Some(next) = accessibility::numeric(ui, &resp, &format!("Track {}: Gain", id + 1), value * 120.0, 0.0, 120.0, 1.0, "%") {
+        out.value = next / 120.0; out.changed = true;
+    }
+    accessibility::status(ui, &resp, &format!("Mute {}; solo {}", if mute { "on" } else { "off" }, if solo { "on" } else { "off" }));
+    let action = accessibility::actions(ui, &resp, &["Toggle mute", "Toggle solo", "Open track effects"]);
+    out.clicked |= action == Some(0);
+    out.secondary |= action == Some(1);
+    out.effects = action == Some(2) || action.is_none() && resp.clicked() && ui.input(|i| i.modifiers.ctrl);
     out
 }
 
-fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f32) -> RotaryResp {
+fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f32, cut: bool, solo: bool) -> RotaryResp {
     ui.vertical(|ui| {
         ui.set_width(size);
         let (rect, resp) = ui.allocate_exact_size(Vec2::splat(size), Sense::click_and_drag());
@@ -1397,11 +1496,21 @@ fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f
             changed: false,
             clicked: resp.clicked(),
             secondary: resp.secondary_clicked(),
+        effects: false,
         };
         if resp.dragged() {
             out.value = (value - resp.drag_delta().y * 0.01).clamp(0.0, 1.0);
             out.changed = true;
         }
+        let full_label = match label { "b" => "Bass EQ", "m" => "Mid EQ", "t" => "Treble EQ", _ => "Gain" };
+        let gain = if label == "g" { value * 1.2 } else if value <= 0.5 { (value * 2.0).powf(1.4) } else { 1.0 + (value - 0.5) * 4.8 };
+        let maximum = if label == "g" { 120.0 } else { 340.0 };
+        if let Some(next) = accessibility::numeric(ui, &resp, full_label, gain * 100.0, 0.0, maximum, 1.0, "%") {
+            out.value = if label == "g" { next / 120.0 } else { eq_to_knob(next / 100.0) }; out.changed = true;
+        }
+        accessibility::status(ui, &resp, &format!("Cut {}; solo {}", if cut { "on" } else { "off" }, if solo { "on" } else { "off" }));
+        let action = accessibility::actions(ui, &resp, &["Toggle cut", "Toggle solo"]);
+        out.clicked |= action == Some(0); out.secondary |= action == Some(1);
         out
     })
     .inner
@@ -1474,12 +1583,26 @@ fn platter(
     } else if resp.drag_stopped() {
         on_jog(0.0, false);
     }
+    accessibility::button(ui, &resp, "Platter play or pause", Some(snap.playing));
+    accessibility::status(ui, &resp, &format!("{}; {:.1} playing BPM; {} remaining; loop {}. Left/Right arrows jog", snap.title, bpm, platter_remain(snap), if snap.loop_on { "on" } else { "off" }));
+    let action = accessibility::actions(ui, &resp, &["Play or pause", "Cue", "Unload", "Jog backward", "Jog forward"]);
+    if matches!(action, Some(3 | 4)) { on_jog(if action == Some(3) { -0.05 } else { 0.05 }, true); on_jog(0.0, false); }
+    if resp.has_focus() {
+        ui.memory_mut(|memory| memory.set_focus_lock_filter(resp.id, egui::EventFilter { horizontal_arrows: true, ..Default::default() }));
+        let delta = ui.input_mut(|input| {
+            let delta = input.num_presses(Key::ArrowRight) as f32 - input.num_presses(Key::ArrowLeft) as f32;
+            input.consume_key(egui::Modifiers::NONE, Key::ArrowRight);
+            input.consume_key(egui::Modifiers::NONE, Key::ArrowLeft);
+            delta
+        });
+        if delta != 0.0 { on_jog(delta * 0.05, true); on_jog(0.0, false); }
+    }
     let shift = ui.input(|i| i.modifiers.shift);
     let resp = resp.on_hover_text(&readout.tooltip);
     PlatterHit {
-        click: resp.clicked() && !shift,
-        right_click: resp.secondary_clicked(),
-        shift_click: resp.clicked() && shift,
+        click: (resp.clicked() && !shift) || action == Some(0),
+        right_click: resp.secondary_clicked() || action == Some(1),
+        shift_click: (resp.clicked() && shift) || action == Some(2),
     }
 }
 
@@ -1495,6 +1618,10 @@ fn vertical_wave(
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(w, h), Sense::click_and_drag());
     let p = ui.painter_at(rect);
     p.rect_filled(rect, 4.0, t.bg_darker);
+    let position = if snap.frames > 0.0 { ((snap.pos / snap.frames) as f32 * snap.duration).clamp(0.0, snap.duration) } else { 0.0 };
+    if let Some(seconds) = accessibility::numeric(ui, &resp, "Waveform position", position, 0.0, snap.duration.max(0.0), 0.1, " s") {
+        if snap.duration > 0.0 { on_seek(seconds / snap.duration); }
+    }
     if snap.peaks.is_empty() || snap.frames < 1.0 || snap.duration <= 0.01 {
         p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(10.0), t.muted);
         return;
@@ -1532,21 +1659,23 @@ fn vertical_wave(
     }
 }
 
-fn fader(ui: &mut Ui, t: &Theme, value: f32, max: f32, meter: f32, col: Color32, width: f32, height: f32) -> Option<f32> {
+fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32) -> Option<f32> {
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     let p = ui.painter();
     let track = Rect::from_center_size(rect.center(), Vec2::new(7.0, rect.height() - 8.0));
     p.rect_filled(track, 3.0, t.bg_darker);
     let mh = track.height() * meter.clamp(0.0, 1.0);
     p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.green);
-    let y = track.bottom() - (value / max.max(0.001)).clamp(0.0, 1.0) * track.height();
+    let y = track.bottom() - value.clamp(0.0, 1.0) * track.height();
     p.rect_filled(Rect::from_center_size(Pos2::new(rect.center().x, y), Vec2::new(16.0, 7.0)), 2.0, col);
+    let alternate = accessibility::numeric(ui, &resp, "Pitch", (value * 2.0 - 1.0) * span, -span, span, 0.1, "%")
+        .map(|percent| (percent / span + 1.0) * 0.5);
     if resp.clicked() || resp.dragged() {
         if let Some(pos) = resp.interact_pointer_pos() {
-            return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0) * max);
+            return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));
         }
     }
-    None
+    alternate
 }
 
 fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> bool {
@@ -1557,11 +1686,15 @@ fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> b
     p.text(rect.right_center() - Vec2::new(6.0, 0.0), egui::Align2::RIGHT_CENTER, "B", FontId::proportional(10.0), t.track_color(1));
     let x = rect.left() + 16.0 + value.clamp(0.0, 1.0) * (rect.width() - 32.0);
     p.rect_filled(Rect::from_center_size(Pos2::new(x, rect.center().y), Vec2::new(12.0, 14.0)), 2.0, t.accent);
+    let alternate = accessibility::numeric(ui, &resp, "Crossfader", *value * 100.0, 0.0, 100.0, 1.0, "% B");
     if resp.clicked() || resp.dragged() {
         if let Some(pos) = resp.interact_pointer_pos() {
             *value = ((pos.x - rect.left() - 16.0) / (rect.width() - 32.0)).clamp(0.0, 1.0);
             return true;
         }
+    }
+    if let Some(next) = alternate {
+        *value = next / 100.0; return true;
     }
     false
 }
@@ -1601,3 +1734,6 @@ alt-click clip = gain for new notes/hits
 
 #[cfg(test)]
 mod waveform_tests;
+
+#[cfg(test)]
+mod atspi_tests;
