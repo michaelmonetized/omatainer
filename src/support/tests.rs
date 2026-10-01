@@ -627,3 +627,33 @@ fn active_collection_and_saturated_observations_add_no_callback_heap_work() {
     assert!(session.finish(Exit::Clean, Duration::from_secs(2)));
     assert!(session.view().report.events.len() <= MAX_EVENTS);
 }
+
+#[test]
+fn routing_distinguishes_default_intent_resolved_backend_and_actual_fixed_channel_mapping() {
+    let requested = Route::requested(&crate::preferences::Audio::default());
+    assert_eq!(requested.backend, Backend::SystemDefault);
+    assert_eq!(requested.device, DeviceChoice::SystemDefault);
+    assert_eq!(requested.output_route, OutputRoute::Unresolved);
+    for (channels, expected) in [
+        (1, OutputRoute::MonoSumToOne),
+        (2, OutputRoute::MainLeftRightToOneTwo),
+        (4, OutputRoute::MainLeftRightToOneTwoOthersSilent),
+    ] {
+        let plan = crate::engine::audio::config::Plan {
+            backend: "ALSA".into(),
+            device: "never export this device".into(),
+            channels,
+            rate: 48000,
+            format: cpal::SampleFormat::F32,
+            buffer: Some(128),
+            warning: None,
+        };
+        let active = Route::active(&plan);
+        assert_eq!(active.device, DeviceChoice::ResolvedRedacted);
+        assert_eq!(active.backend, Backend::Alsa);
+        assert_eq!(active.output_route, expected);
+        assert!(!serde_json::to_string(&active)
+            .unwrap()
+            .contains("never export"));
+    }
+}
