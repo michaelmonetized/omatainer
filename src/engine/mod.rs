@@ -1164,7 +1164,7 @@ impl RtEngine {
         }
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
-        if frames > 0 && self.has_held_project_notes() { self.project.edited();self.undo.held_change(); }
+        if frames > 0 && self.has_held_project_notes() { self.project.edited();self.history_held_changed(); }
         self.frames_done += frames as u64;
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
             self.publish();
@@ -2254,6 +2254,7 @@ impl RtEngine {
             }
             Command::CloseFx => self.fx_view = -1,
             Command::FxAdd(kind) => {
+                if self.active_chain().slots.len()>=128 {return;}
                 let Some(&id) = fx::FxId::all().get(kind as usize) else { return };
                 if !id.supports_scene() && !(0..TRACKS as i16).contains(&self.fx_view) {
                     return;
