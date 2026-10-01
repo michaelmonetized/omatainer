@@ -52,3 +52,13 @@ Nine actual decoder/store/metadata groups passed in 0.02 seconds after compilati
 Log: `/home/michael/Projects/omatainer-work/issue-104-analysis-publication-tests-v2.log`.
 This is local functional evidence, not a performance, physical-controller,
 hardware-latency, listening or screen-reader qualification.
+
+Four additional pure Catalog regression groups passed in 0.00 seconds and a
+Store receipt group (all checkpoints 0–4, validation failure, retry and no-op)
+passed in 0.01 seconds. Restoring the old automatic-upsert logic made all four
+Catalog groups fail: known and explicitly Unknown BPM reverted to stale values,
+measured duration reverted, and selective BPM analysis was lost. The corrected
+source was restored byte-for-byte before the final focused green checks.
+Retained logs: `issue-104-catalog-old-upsert-red.log`,
+`issue-104-catalog-restored-green.log`, and
+`issue-104-store-receipts-restored-green.log` in the work evidence directory.
