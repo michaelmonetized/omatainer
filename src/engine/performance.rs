@@ -254,7 +254,7 @@ impl Handle {
             if old & EXCLUSIVE != 0 {
                 return Err(self.reject(Error::Changing));
             }
-            let recovery = old & (RECOVERY | STOPPED) == RECOVERY | STOPPED;
+            let recovery = old & (RECOVERY | STOPPED) == RECOVERY | STOPPED || self.status().output_muted;
             if old & (PROTECTED | RECOVERY) != 0 && !(audio && recovery) {
                 return Err(self.reject(Error::Protected));
             }
@@ -566,6 +566,7 @@ pub(super) struct Output {
     observing: bool,
 }
 impl Output {
+    pub(crate) fn retain_mute(&mut self) { self.muted = true; self.ramp = 0; }
     fn stop(&mut self, safety: Safety, sr: f32) {
         self.observed = 0;
         self.quiet = 0;

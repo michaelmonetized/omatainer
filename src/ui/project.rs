@@ -335,7 +335,9 @@ impl App {
             Err(error) => self.project.message = Some(error),
         }
     }
+    pub(super) fn project_performance_message(&mut self, message: String) { self.project.message = Some(message); }
     fn request_project_action(&mut self, action: Action) {
+        if self.reject_protected_project() { return; }
         if self.project.busy() {
             return;
         }
@@ -349,6 +351,7 @@ impl App {
         }
     }
     fn begin_project_action(&mut self, action: Action) {
+        if self.reject_protected_project() { return; }
         match action {
             Action::OpenDialog => {
                 self.project.dialog = Some(Dialog::Path {
@@ -388,6 +391,7 @@ impl App {
         }
     }
     fn begin_project_close(&mut self, discard: bool) {
+        if self.reject_protected_project() { return; }
         let before = self.project_baseline();
         let cancel = Arc::new(AtomicBool::new(false));
         self.begin_project_job(

@@ -222,6 +222,16 @@ fn ipc_deck_index(request: &serde_json::Value) -> anyhow::Result<u8> {
 fn ipc_command(v: &serde_json::Value) -> anyhow::Result<Option<Command>> {
     let op = v.get("op").and_then(|x| x.as_str()).unwrap_or("");
     Ok(Some(match op {
+        "performanceMode" => Command::PerformanceMode(v.get("enabled").and_then(serde_json::Value::as_bool).ok_or_else(|| anyhow::anyhow!("performanceMode requires boolean enabled"))?),
+        "safeStop" => Command::SafetyStop(engine::performance::Safety::Stop),
+        "emergencySilence" => {
+            anyhow::ensure!(v.get("confirm").and_then(serde_json::Value::as_bool) == Some(true), "emergencySilence requires confirm=true");
+            Command::SafetyStop(engine::performance::Safety::Silence)
+        },
+        "recoverPerformance" => {
+            anyhow::ensure!(v.get("inputsReleased").and_then(serde_json::Value::as_bool) == Some(true), "recoverPerformance requires explicit inputsReleased=true");
+            Command::RecoverPerformance
+        },
         "play" => Command::Play,
         "stop" => Command::Stop,
         "togglePlay" => Command::TogglePlay,

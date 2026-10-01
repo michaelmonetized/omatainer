@@ -260,22 +260,30 @@ impl Handle {
         expected_revision: Option<u64>,
         cancel: &AtomicBool,
     ) -> Result<CloseGuard, Error> {
-        self.seal(expected_revision, false, cancel)
+        let permit = self.shared.performance.project_change().map_err(Error::Protected)?;
+        self.seal(expected_revision, false, permit, cancel)
     }
 
     /// Worker only. Audio switching shares the exclusive project gate, without
     /// discarding queued GUI intentions or pretending to be a clean Close.
     pub fn seal_for_audio(&self, cancel: &AtomicBool) -> Result<CloseGuard, Error> {
-        self.seal(None, true, cancel)
+        let permit = self.shared.performance.audio_change().map_err(Error::Protected)?;
+        self.seal_for_audio_permitted(permit, cancel)
+    }
+
+    pub(crate) fn performance(&self) -> &performance::Handle { &self.shared.performance }
+    pub(crate) fn seal_for_audio_permitted(&self, permit: performance::ExclusivePermit, cancel: &AtomicBool) -> Result<CloseGuard, Error> {
+        if !permit.valid_for_audio(&self.shared.performance) { return Err(Error::Protected(performance::Error::Changing)); }
+        self.seal(None, true, permit, cancel)
     }
 
     fn seal(
         &self,
         expected_revision: Option<u64>,
         audio: bool,
+        performance: performance::ExclusivePermit,
         cancel: &AtomicBool,
     ) -> Result<CloseGuard, Error> {
-        let performance = if audio { self.shared.performance.audio_change() } else { self.shared.performance.project_change() }.map_err(Error::Protected)?;
         self.begin()?;
         if cancel.load(Ordering::Acquire) {
             self.shared.busy.store(0, Ordering::Release);
@@ -398,7 +406,7 @@ impl RtEngine {
             .is_err()
         {
             task.error = Some(Error::Cancelled);
-        } else if exclusive && self.performance.status().recovery {
+        } else if exclusive && self.performance.status().recovery && !matches!(&task.operation, Operation::Seal { audio: true, .. }) {
             task.error = Some(Error::Protected(performance::Error::Recovery));
         } else {
             match &mut task.operation {

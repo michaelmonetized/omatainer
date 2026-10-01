@@ -183,8 +183,15 @@ impl Worker {
         report: Option<Report>,
         #[cfg(test)] gate: Option<Arc<std::sync::Barrier>>,
     ) -> std::io::Result<Self> {
+        Self::start_guarded(path, report, None, #[cfg(test)] gate)
+    }
+    pub fn start_for_show(path: PathBuf, report: Option<Report>, performance: &crate::engine::performance::Handle, #[cfg(test)] gate: Option<Arc<std::sync::Barrier>>) -> std::io::Result<Self> {
+        let permit = performance.optional_work().map_err(std::io::Error::other)?;
+        Self::start_guarded(path, report, Some(permit), #[cfg(test)] gate)
+    }
+    fn start_guarded(path: PathBuf, report: Option<Report>, permit: Option<crate::engine::performance::WorkPermit>, #[cfg(test)] gate: Option<Arc<std::sync::Barrier>>) -> std::io::Result<Self> {
         let (sender, result) = crossbeam_channel::bounded(1);
-        let cancel = Arc::new(AtomicBool::new(false));
+        let cancel = permit.as_ref().map_or_else(|| Arc::new(AtomicBool::new(false)), |permit| permit.cancel());
         let cancelled = cancel.clone();
         std::thread::Builder::new()
             .name("omatainer-diagnostics".into())
@@ -194,7 +201,7 @@ impl Worker {
                     gate.wait();
                 }
                 let outcome = match report {
-                    Some(report) => export(&path, &report, &cancelled).map(|_| Completed::Exported),
+                    Some(report) => export_guarded(&path, &report, &cancelled, permit.as_ref()).map(|_| Completed::Exported),
                     None => reopen(&path, &cancelled).map(Completed::Reopened),
                 };
                 let value = match outcome {
@@ -233,6 +240,9 @@ fn check(cancel: &AtomicBool) -> Result<(), String> {
 }
 
 pub(super) fn export(path: &Path, report: &Report, cancel: &AtomicBool) -> Result<(), String> {
+    export_guarded(path, report, cancel, None)
+}
+fn export_guarded(path: &Path, report: &Report, cancel: &AtomicBool, permit: Option<&crate::engine::performance::WorkPermit>) -> Result<(), String> {
     check(cancel)?;
     report.validate()?;
     let bytes = serde_json::to_vec(report).map_err(|error| error.to_string())?;
@@ -264,6 +274,7 @@ pub(super) fn export(path: &Path, report: &Report, cancel: &AtomicBool) -> Resul
         // Same-filesystem atomic publication that never overwrites an existing
         // file or follows a destination symlink. A successful publish wins a
         // concurrent late cancellation and is reported truthfully as exported.
+        let _commit = permit.map(|permit| permit.commit().map_err(|error| error.to_string())).transpose()?;
         fs::hard_link(&temporary, path).map_err(|error| error.to_string())?;
         Ok(())
     })();

@@ -49,6 +49,7 @@ impl Drop for AudioOut {
 enum Operation {
     Switch(crate::preferences::Audio, Option<config::Plan>),
     Calibrate(calibration::Request),
+    Reset,
 }
 struct Request {
     operation: Operation,
@@ -66,7 +67,7 @@ impl Handle {
         settings: crate::preferences::Audio,
         cancel: Arc<AtomicBool>,
     ) -> Result<Arc<Status>, String> {
-        self.transact(Operation::Switch(settings, None), cancel)
+        self.transact(Operation::Switch(settings, None), cancel, self.performance_permit()?)
     }
     pub fn apply_preview(
         &self,
@@ -74,7 +75,7 @@ impl Handle {
         expected: config::Plan,
         cancel: Arc<AtomicBool>,
     ) -> Result<Arc<Status>, String> {
-        self.transact(Operation::Switch(settings, Some(expected)), cancel)
+        self.apply_preview_permitted(settings, expected, cancel, self.performance_permit()?)
     }
     pub fn calibrate(
         &self,
@@ -82,12 +83,26 @@ impl Handle {
         cancel: Arc<AtomicBool>,
     ) -> Result<Arc<Status>, String> {
         request.validate()?;
-        self.transact(Operation::Calibrate(request), cancel)
+        self.calibrate_permitted(request, cancel, self.performance_permit()?)
+    }
+    pub(crate) fn performance_permit(&self) -> Result<crate::engine::performance::ExclusivePermit, String> {
+        self.project.performance().audio_change().map_err(|error| error.to_string())
+    }
+    pub(crate) fn apply_preview_permitted(&self, settings: crate::preferences::Audio, expected: config::Plan, cancel: Arc<AtomicBool>, permit: crate::engine::performance::ExclusivePermit) -> Result<Arc<Status>, String> {
+        self.transact(Operation::Switch(settings, Some(expected)), cancel, permit)
+    }
+    pub(crate) fn calibrate_permitted(&self, request: calibration::Request, cancel: Arc<AtomicBool>, permit: crate::engine::performance::ExclusivePermit) -> Result<Arc<Status>, String> {
+        request.validate()?;
+        self.transact(Operation::Calibrate(request), cancel, permit)
+    }
+    pub(crate) fn reset_permitted(&self, cancel: Arc<AtomicBool>, permit: crate::engine::performance::ExclusivePermit) -> Result<Arc<Status>, String> {
+        self.transact(Operation::Reset, cancel, permit)
     }
     fn transact(
         &self,
         operation: Operation,
         cancel: Arc<AtomicBool>,
+        permit: crate::engine::performance::ExclusivePermit,
     ) -> Result<Arc<Status>, String> {
         if self.busy.swap(true, Ordering::AcqRel) {
             return Err("An audio operation is still pending".into());
@@ -111,7 +126,7 @@ impl Handle {
         });
         let seal = self
             .project
-            .seal_for_audio(&cancel)
+            .seal_for_audio_permitted(permit, &cancel)
             .map_err(|e| e.to_string())?;
         let (result, receipt) = bounded(1);
         self.requests
@@ -282,9 +297,22 @@ impl<B: Backend> Owner<B> {
         } = request;
         match operation {
             Operation::Switch(settings, expected) => {
-                self.switch(settings, expected, seal, cancel, result)
+                self.switch(settings, expected, seal, cancel, result, false)
             }
             Operation::Calibrate(request) => self.calibrate(request, seal, cancel, result),
+            Operation::Reset => {
+                let state = self.status.load_full();
+                let mut settings = state.requested.clone();
+                if let Some(active) = &state.active {
+                    settings.backend = Some(active.plan.backend.clone());
+                    settings.device = Some(active.plan.device.clone());
+                    settings.sample_rate = Some(active.plan.rate);
+                    settings.channels = Some(active.plan.channels);
+                    settings.buffer_frames = active.plan.buffer;
+                    settings.format = crate::preferences::AudioFormat::ALL.into_iter().find(|format| format.cpal() == active.plan.format);
+                }
+                self.switch(settings, state.active.as_ref().map(|active| active.plan.clone()), seal, cancel, result, true);
+            }
         }
     }
     fn switch(
@@ -294,6 +322,7 @@ impl<B: Backend> Owner<B> {
         seal: CloseGuard,
         cancel: Arc<AtomicBool>,
         result: Sender<Result<Arc<Status>, String>>,
+        reset: bool,
     ) {
         if cancel.load(Ordering::Acquire) {
             let _ = result.send(Err("Audio change cancelled; active output preserved".into()));
@@ -321,6 +350,7 @@ impl<B: Backend> Owner<B> {
         let previous = self.reclaim();
         if let Some(graph) = &mut self.graph {
             graph.stop_for_audio();
+            if reset { graph.safety_output = crate::engine::performance::Output::default(); graph.performance.publish_output(&graph.safety_output); }
             graph.cmd_rx.set_audio_offline(false);
         }
         let attempted = self.open(plan, &cancel);
@@ -328,9 +358,10 @@ impl<B: Backend> Owner<B> {
             Ok(()) => self.publish(
                 Phase::Running,
                 settings,
-                "Audio change applied; playback remains stopped".into(),
+                if reset { "Stopped DSP reset completed; output unmuted, playback remains stopped".into() } else { "Audio change applied; playback remains stopped".into() },
             ),
             Err(error) => {
+                if reset { if let Some(graph) = &mut self.graph { graph.safety_output.retain_mute(); graph.performance.publish_output(&graph.safety_output); } }
                 let rollback =
                     previous.and_then(|plan| self.open(plan, &AtomicBool::new(false)).err());
                 if self.active.is_some() {

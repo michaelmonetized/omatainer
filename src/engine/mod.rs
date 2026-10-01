@@ -2614,6 +2614,7 @@ impl Engine {
     pub fn start_with_settings(settings: &crate::preferences::Profile) -> anyhow::Result<Self> {
         settings.validate().map_err(anyhow::Error::msg)?;
         let (tx, rx) = CommandPort::channel(256);
+        if settings.startup.performance_mode { tx.performance().set_enabled(true)?; }
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let mut rt = RtEngine::new(48000.0, rx, snap.clone());

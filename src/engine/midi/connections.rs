@@ -61,7 +61,7 @@ impl Manager {
             busy: AtomicBool::new(true),
             alive: AtomicBool::new(true),
             retry_pending: AtomicBool::new(false),
-            policy: Control::new(policy),
+            policy: Control::with_performance(policy, cmd.performance().clone()),
         });
         let (requests, receiver) = bounded(1);
         let shared = activity.clone();
@@ -103,6 +103,7 @@ impl Manager {
                     if !worker.refresh(&request) {
                         continue;
                     }
+                    drop(request);
                     shared.busy.store(false, Release);
                     if receiver.recv().is_err() {
                         break;

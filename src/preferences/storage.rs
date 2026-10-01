@@ -210,6 +210,12 @@ fn save_before_commit(
     cancel: &AtomicBool,
     before_commit: impl FnOnce(),
 ) -> Result<Saved, Error> {
+    save_with_gate(path, preferences, overwrite, cancel, before_commit, None)
+}
+pub(crate) fn save_protected(path: &Path, preferences: &Preferences, overwrite: Overwrite, cancel: &AtomicBool, permit: &crate::engine::performance::WorkPermit) -> Result<Saved, Error> {
+    save_with_gate(path, preferences, overwrite, cancel, || {}, Some(permit))
+}
+fn save_with_gate(path: &Path, preferences: &Preferences, overwrite: Overwrite, cancel: &AtomicBool, before_commit: impl FnOnce(), permit: Option<&crate::engine::performance::WorkPermit>) -> Result<Saved, Error> {
     check(cancel)?;
     preferences.validate().map_err(Error::Invalid)?;
     let bytes = serde_json::to_vec_pretty(preferences)
@@ -256,6 +262,7 @@ fn save_before_commit(
         .map_err(|error| io("Synchronize preferences", error))?;
     before_commit();
     check(cancel)?;
+    let _commit = permit.map(|permit| permit.commit().map_err(|error| Error::Invalid(error.to_string()))).transpose()?;
     if revision(path)? != previous {
         return Err(Error::Conflict);
     }

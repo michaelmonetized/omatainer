@@ -65,10 +65,12 @@ pub enum PolicyError {
     Invalid(&'static str),
     Unavailable,
     GenerationExhausted,
+    Protected,
 }
 impl std::fmt::Display for PolicyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
+            Self::Protected => "Performance protection refuses MIDI policy changes; leave protection deliberately first.",
             Self::Invalid(reason) => reason,
             Self::Unavailable => {
                 "MIDI input manager is unavailable; restart to apply input preferences."
@@ -104,19 +106,24 @@ impl PolicyStatus {
 pub(super) struct Request {
     pub generation: u64,
     pub policy: Arc<InputPolicy>,
+    permit: Option<Arc<crate::engine::performance::ExclusivePermit>>,
 }
 pub(super) struct Control {
     current: Mutex<Arc<Request>>,
     published: ArcSwap<PolicyStatus>,
     stopped: AtomicBool,
+    performance: crate::engine::performance::Handle,
 }
 impl Control {
-    pub fn new(policy: InputPolicy) -> Self {
+    pub fn new(policy: InputPolicy) -> Self { Self::with_performance(policy, crate::engine::performance::Handle::default()) }
+    pub fn with_performance(policy: InputPolicy, performance: crate::engine::performance::Handle) -> Self {
         let policy = Arc::new(policy);
         Self {
             stopped: AtomicBool::new(false),
+            performance,
             current: Mutex::new(Arc::new(Request {
                 generation: 1,
+                permit: None,
                 policy: policy.clone(),
             })),
             published: ArcSwap::from_pointee(PolicyStatus {
@@ -138,6 +145,7 @@ impl Control {
         if self.stopped() {
             return Err(PolicyError::Unavailable);
         }
+        let permit = match &current.permit { Some(permit) => permit.clone(), None => Arc::new(self.performance.project_change().map_err(|_| PolicyError::Protected)?) };
         let generation = current
             .generation
             .checked_add(1)
@@ -149,7 +157,7 @@ impl Control {
             error: None,
             ..(**old).clone()
         }));
-        *current = Arc::new(Request { generation, policy });
+        *current = Arc::new(Request { generation, policy, permit: Some(permit) });
         Ok(generation)
     }
     // Activation, a newer policy, and shutdown have one ordering point. The
@@ -199,7 +207,7 @@ impl Control {
         let missing = Arc::from(missing);
         let error =
             error.map(|error| Arc::<str>::from(error.chars().take(1024).collect::<String>()));
-        let current = self.current.lock();
+        let mut current = self.current.lock();
         if current.generation != request.generation {
             return false;
         }
@@ -216,6 +224,7 @@ impl Control {
             missing_names: missing,
             error,
         }));
+        *current = Arc::new(Request { generation: request.generation, policy: request.policy.clone(), permit: None });
         true
     }
 }
