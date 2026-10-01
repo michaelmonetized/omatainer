@@ -154,3 +154,26 @@ mod tests {
         }), test_alloc::Counts::default());
     }
 }
+
+impl super::DeckRt {
+    pub(super) fn musical_bpm(&self) -> f32 {
+        self.grid.map_or_else(|| self.audio.as_ref().map_or(self.bpm, |audio| audio.bpm), |grid| grid.bpm() as f32)
+    }
+    pub(super) fn grid_geometry(&self, fallback_sr: f32, fallback_bpm: f32) -> (f64, f64) {
+        if let Some(grid) = self.grid {
+            let sr = self.audio.as_ref().map_or(fallback_sr as f64, |audio| audio.sr as f64);
+            (grid.downbeat() * sr, grid.period() * sr)
+        } else {
+            // Preserve the original arithmetic for unprepared tracks.
+            (0.0, self.audio.as_ref().map(|audio| audio.sr as f64 * 60.0 / audio.bpm.max(1.0) as f64)
+                .unwrap_or(fallback_sr as f64 * 60.0 / fallback_bpm as f64))
+        }
+    }
+    pub(super) fn grid_snap(&self, position: f64, sr: f32, bpm: f32) -> f64 {
+        let (origin, period) = self.grid_geometry(sr, bpm);
+        let snapped = origin + ((position - origin) / period).round() * period;
+        if self.grid.is_some() {
+            snapped.clamp(0.0, self.audio.as_ref().map_or(f64::MAX, |audio| audio.frames() as f64))
+        } else { snapped }
+    }
+}

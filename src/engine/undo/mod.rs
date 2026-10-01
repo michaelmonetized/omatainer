@@ -37,6 +37,7 @@ pub enum Name {
     Deck,
     DeckSeek,
     CueStyle,
+    Grid,
     LoadMedia,
     AddEffect,
     Effect,
@@ -61,6 +62,7 @@ impl Name {
             Self::Deck => "Edit deck",
             Self::DeckSeek => "Seek deck",
             Self::CueStyle => "Rename or color cue",
+            Self::Grid => "Edit beatgrid",
             Self::LoadMedia => "Replace deck media",
             Self::AddEffect => "Add effect",
             Self::Effect => "Edit effect",
@@ -750,6 +752,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckPfl { .. }
             | Command::DeckHotCue { .. }
             | Command::DeckCueStyle { .. }
+                    | Command::DeckGrid { .. }
                     | Command::DeckCuePoint { .. }
             | Command::DeckLoop { .. }
             | Command::DeckLoopIn { .. }
@@ -783,6 +786,7 @@ impl Journal {
                     | Command::LibraryFence { .. }
                     | Command::DeckRestorePreparation { .. }
                     | Command::DeckCueStyle { .. }
+                    | Command::DeckGrid { .. }
                     | Command::DeckCuePoint { .. }
                     | Command::LearnCapture { .. }
             )

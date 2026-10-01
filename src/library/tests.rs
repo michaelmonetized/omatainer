@@ -34,7 +34,7 @@ fn metadata() -> Metadata {
 }
 fn preparation() -> Preparation {
     Preparation {
-        cue: 4.5,
+        grid: None,        cue: 4.5,
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
         hotcues: [
             Some(0.0),
@@ -121,7 +121,7 @@ fn migration_preserves_every_v1_field_and_backs_up_original() {
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&fs::read(dir.store()).unwrap()).unwrap()
             ["schema"],
-        3
+        4
     );
 }
 #[test]

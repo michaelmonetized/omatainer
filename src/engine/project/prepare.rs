@@ -110,6 +110,7 @@ impl Prepared {
             deck.eq = [eq(saved.eq, output_sr); 2];
             deck.filter_position = saved.filter_amt;
             deck.cue_styles = saved.cue_styles;
+            deck.grid = saved.grid;
             deck.hotcues = saved.hotcues.map(|pos| HotCue {
                 set: pos.is_some(),
                 pos: pos.unwrap_or(0.0),

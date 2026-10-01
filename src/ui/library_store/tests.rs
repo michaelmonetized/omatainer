@@ -91,7 +91,7 @@ fn metadata(title: &str) -> Metadata {
 }
 fn prepared() -> Preparation {
     Preparation {
-        cue: 0.25,
+        grid: None,        cue: 0.25,
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
         hotcues: [Some(0.5), None, None, None, None, None, None, Some(1.5)],
         loop_region: Some(crate::engine::preparation::Loop {
