@@ -443,3 +443,98 @@ fn private_ipc_deadline_cancels_unstarted_gui_work_and_reports_started_work_as_u
     assert_eq!(fixture.app.theme.font, "Ubuntu");
     installed(&ctx);
 }
+
+#[test]
+fn performance_private_ipc_rejects_before_apply_and_preserves_already_installing_ack() {
+    let source = Sources::new();
+    let performance = crate::engine::performance::Handle::default();
+    let mut fixture = Fixture::new(64);
+    fixture.app.theme_reload = Some(source.quiet_loader_with_performance(performance.clone()));
+    let ctx = egui::Context::default();
+    let mut time = 0.0;
+    sources::until(|| {
+        frame(&ctx, &mut fixture, &mut time);
+        fixture.app.theme.font == "Hack"
+    });
+    frame(&ctx, &mut fixture, &mut time);
+    let original = fixture.app.theme.clone();
+    let font = installed(&ctx);
+    let (_server, path) = server(&source, &fixture);
+    performance.set_enabled(true).unwrap();
+    source.shell("[font]\nbase-size = 19\n");
+    source.select("Ubuntu", "ubuntu.ttf");
+    let response = settle(&ctx, &mut fixture, &mut time, &request(&path, 201));
+    assert_eq!(response["error_code"], "performance_protected");
+    assert_eq!(response["ok"], false);
+    assert_eq!(fixture.app.theme, original);
+    assert!(Arc::ptr_eq(&font, &installed(&ctx)));
+    performance.set_enabled(false).unwrap();
+    let result = request(&path, 202);
+    sources::until(|| {
+        frame(&ctx, &mut fixture, &mut time);
+        fixture
+            .app
+            .theme_request
+            .as_ref()
+            .is_some_and(|pending| pending.installed.is_some())
+    });
+    assert_eq!(
+        performance.set_enabled(true),
+        Err(crate::engine::performance::Error::Changing)
+    );
+    assert!(result.try_recv().is_err());
+    frame(&ctx, &mut fixture, &mut time);
+    let response = result.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert_eq!(response["ok"], true);
+    assert_eq!(response["status"], "applied");
+    assert_eq!(
+        installed(&ctx).font,
+        fixture
+            .app
+            .settings
+            .theme_update
+            .as_ref()
+            .unwrap()
+            .fonts
+            .font_data["omatainer-selected"]
+            .font
+    );
+    assert_eq!(ctx.style().text_styles[&egui::TextStyle::Body].size, 19.0);
+    performance.set_enabled(true).unwrap();
+}
+
+#[test]
+fn performance_private_ipc_cancels_a_force_held_in_font_resolution_without_style_change() {
+    let source = Sources::new();
+    let performance = crate::engine::performance::Handle::default();
+    let (loader, control) = sources::held_with_performance(&source, performance.clone());
+    control
+        .started
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap();
+    control.release.send(()).unwrap();
+    let mut fixture = Fixture::new(64);
+    fixture.app.theme_reload = Some(loader);
+    let ctx = egui::Context::default();
+    let mut time = 0.0;
+    sources::until(|| {
+        frame(&ctx, &mut fixture, &mut time);
+        fixture.app.theme.font == "Hack"
+    });
+    frame(&ctx, &mut fixture, &mut time);
+    let original = fixture.app.theme.clone();
+    let font = installed(&ctx);
+    let (_server, path) = server(&source, &fixture);
+    source.select("Ubuntu", "ubuntu.ttf");
+    let result = request(&path, 203);
+    sources::until(|| {
+        frame(&ctx, &mut fixture, &mut time);
+        control.started.try_recv().is_ok()
+    });
+    performance.set_enabled(true).unwrap();
+    control.release.send(()).unwrap();
+    let response = settle(&ctx, &mut fixture, &mut time, &result);
+    assert_eq!(response["error_code"], "performance_protected");
+    assert_eq!(fixture.app.theme, original);
+    assert!(Arc::ptr_eq(&font, &installed(&ctx)));
+}

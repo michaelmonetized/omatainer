@@ -100,6 +100,9 @@ impl App {
                         }
                     }
                     State::Current if !matches!(load.phase, Phase::Loaded) => Some(Phase::Loaded),
+                    State::Protected if !matches!(load.phase, Phase::Failed(_)) => Some(Phase::Failed(
+                        "Performance protection refused this load at the renderer; previous media is preserved. Pause/release this deck, then Retry.".into(),
+                    )),
                     State::Unavailable if !matches!(load.phase, Phase::Failed(_)) => Some(
                         Phase::Failed("built-in media is unavailable; media was not loaded".into()),
                     ),

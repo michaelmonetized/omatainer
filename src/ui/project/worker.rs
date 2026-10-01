@@ -21,6 +21,7 @@ pub(super) enum Job {
         cancel: Arc<AtomicBool>,
     },
     Prepare {
+        _work: crate::engine::performance::WorkPermit,
         path: Option<PathBuf>,
         cancel: Arc<AtomicBool>,
         commit: Receiver<u64>,
@@ -250,6 +251,7 @@ fn perform(
             }
         }
         Job::Prepare {
+            _work,
             path,
             cancel,
             commit,

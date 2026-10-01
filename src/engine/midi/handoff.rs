@@ -16,6 +16,7 @@ const EVENTS: usize = 256;
 struct Event {
     epoch: u64,
     sequence: u64,
+    safety: u64,
     len: u16,
     bytes: [u8; EVENT_BYTES],
 }
@@ -24,6 +25,7 @@ impl Event {
         let mut event = Self {
             epoch,
             sequence,
+            safety: 0,
             len: bytes.len() as u16,
             bytes: [0; EVENT_BYTES],
         };
@@ -75,6 +77,7 @@ impl InputCounters {
 
 struct Shared {
     epoch: AtomicU64,
+    performance: crate::engine::performance::Handle,
     stop_pending: AtomicBool,
     shutdown: AtomicBool,
     enabled: AtomicBool,
@@ -206,7 +209,8 @@ impl InputSink {
         }
         let epoch = self.shared.epoch.load(Acquire);
         self.sequence = self.sequence.wrapping_add(1);
-        let event = Event::new(epoch, self.sequence, bytes);
+        let mut event = Event::new(epoch, self.sequence, bytes);
+        event.safety = self.shared.performance.input_epoch();
         let cc = self.rules.coalescible(bytes);
         if cc && self.pending_cc.same_pending_key(&event) {
             if self.pending_cc.publish(event) {
@@ -243,6 +247,7 @@ struct InputWorker {
     consumer: rtrb::Consumer<Event>,
     shared: Arc<Shared>,
     epoch: u64,
+    safety: u64,
     pending_cc: latest::Reader,
     cached_cc: Option<Event>,
     cached_fifo: Option<Event>,
@@ -261,6 +266,8 @@ impl InputWorker {
         self.shared.counters.resets.fetch_add(1, Relaxed);
     }
     fn step(&mut self) -> bool {
+        let safety = self.shared.performance.input_epoch();
+        if self.safety != safety { *self.shift.lock() = [false; 4]; self.safety = safety; }
         let epoch = self.shared.epoch.load(Acquire);
         let reset = epoch != self.epoch;
         if reset {
@@ -273,12 +280,12 @@ impl InputWorker {
         let Some(event) = self.next_event() else {
             return reset;
         };
-        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch {
+        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety {
             handle_msg(
                 event.bytes(),
                 self.source,
                 &self.map,
-                &self.cmd,
+                &self.cmd.for_input_epoch(event.safety),
                 &self.log,
                 &self.learn,
                 &self.shift,
@@ -377,6 +384,7 @@ fn channel(
     let (producer, consumer) = rtrb::RingBuffer::new(capacity);
     let shared = Arc::new(Shared {
         epoch: AtomicU64::new(0),
+        performance: cmd.performance().clone(),
         stop_pending: AtomicBool::new(false),
         shutdown: AtomicBool::new(false),
         enabled: AtomicBool::new(true),
@@ -396,6 +404,7 @@ fn channel(
             consumer,
             shared,
             epoch: 0,
+            safety: cmd.performance().input_epoch(),
             pending_cc: pending_reader,
             cached_cc: None,
             cached_fifo: None,

@@ -347,6 +347,7 @@ fn handle_client_with_stop(
             "master_fx": { "types": s.fx_kind, "wet": s.fx_wet },
             "commands": s.commands,
             "submissions": commands.stats(),
+            "performance": commands.performance().status(),
             "deckA": s.decks.first().map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
             "deckB": s.decks.get(1).map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),

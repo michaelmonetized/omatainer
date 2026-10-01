@@ -1556,3 +1556,27 @@ fn startup_preferences_set_clean_panel_defaults_without_erasing_prior_engine_edi
     gui.app.initialize_preferences(&gui.ctx, startup(), crate::preferences::Audio::default());
     assert!(gui.app.project_dirty(), "startup defaults must not accept a new engine checkpoint");
 }
+
+#[test]
+fn performance_cancels_prepared_open_without_replacing_project_and_keeps_save_available() {
+    let files = Files::new();
+    let path = files.path("protected-open.omat");
+    let mut gui = Gui::new();
+    gui.save_as_ui(&path);
+    gui.app.send(Command::Master(0.37)); gui.rt.process(&mut []);
+    let before = gui.app.engine.undo.checkpoint();
+    let (entered, resume) = gui.app.project.worker.as_ref().unwrap().pause_next(worker::Stage::Prepared);
+    gui.app.begin_project_action(Action::Open(path));
+    let end = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() { gui.frame(vec![]); assert!(Instant::now() < end); }
+    gui.app.engine.send(Command::PerformanceMode(true)).unwrap();
+    assert!(gui.app.project.active.as_ref().unwrap().cancel.load(Ordering::Acquire));
+    resume.send(()).unwrap(); gui.settle();
+    assert_eq!(gui.rt.master, 0.37);
+    assert_eq!(gui.app.engine.undo.checkpoint(), before);
+    assert!(gui.app.engine.cmd.performance().status().protected);
+    gui.save_as_ui(&files.path("save-during-show.omat"));
+    assert!(!gui.app.project_dirty());
+    assert_eq!(gui.rt.master, 0.37);
+    assert!(gui.app.engine.cmd.performance().status().protected);
+}
