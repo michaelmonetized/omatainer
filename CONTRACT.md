@@ -171,3 +171,16 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 - Token validity is checked at decoder boundaries, UI publication and renderer
   application. Cancellation does not interrupt a filesystem syscall in progress;
   it takes effect at the next safe boundary without blocking UI teardown.
+
+## Controller library loads
+
+- Controller load buttons capture the GUI-published typed selection and target
+  deck when the MIDI dispatch worker admits the request. Browsing or rescanning
+  afterward does not substitute another source or move the GUI selection.
+- A separate bounded queue holds 16 library requests; the GUI dispatches at most
+  eight per frame through the same built-in/file loading path as crate buttons.
+  Raw MIDI callbacks and the audio renderer never decode media or resolve paths.
+- Empty selections, unavailable GUI receivers and full request queues report
+  visible failures. An uncaptured legacy renderer request fails explicitly;
+  it cannot infer a later GUI selection. File loading uses the existing pending,
+  result and diagnostic status, with request-token cancellation rules above.

@@ -109,6 +109,25 @@ pub struct MidiHub {
 
 impl MidiHub {
     #[cfg(test)]
+    pub(crate) fn receive_for_test(&self, cmd: &super::CommandPort, source: u64, device: &str, message: &[u8]) {
+        let map = pick_map(&builtin_maps().unwrap(), device);
+        let counters = Arc::new(handoff::InputCounters::default());
+        let (mut callback, worker) = handoff::start(
+            source, map, cmd.clone(), self.log.clone(), self.learn.clone(), device.into(), counters.clone(),
+        ).unwrap();
+        let allocation = super::test_alloc::measure(|| callback.push(message));
+        assert_eq!(allocation.allocations, 0, "raw MIDI callback allocated");
+        assert_eq!(allocation.frees, 0, "raw MIDI callback destroyed source storage");
+        let until = Instant::now() + std::time::Duration::from_secs(2);
+        while counters.snapshot().dispatched == 0 {
+            assert!(Instant::now() < until, "synthetic MIDI worker did not dispatch");
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        drop(callback);
+        drop(worker);
+    }
+
+    #[cfg(test)]
     pub(super) fn without_devices() -> Self {
         Self {
             _ins: Vec::new(),
