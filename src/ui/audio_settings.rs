@@ -272,6 +272,8 @@ impl App {
         let panel = &mut self.audio_settings;
         let mut open = true;
         egui::Window::new("Audio devices and latency").id(egui::Id::new("audio-devices-window")).open(&mut open).default_width(730.0).default_height(650.0).vscroll(true).show(ctx,|ui|{
+            // Keep one parent slot regardless of asynchronous status details.
+            ui.push_id("audio-live-status", |ui| {
             ui.label(format!("Saved profile: {profile}. Save edits in Preferences before previewing."));
             if let Some(handle)=&panel.handle {
                 let status=handle.status();ui.label(&status.message).help(ui, HelpControl::AudioNotice);
@@ -290,22 +292,25 @@ impl App {
                     ui.label(format!("Measured route: {} input {} ← {} output {}; profile {}",evidence.identity.input.device,evidence.identity.input_channel+1,evidence.identity.output.device,evidence.identity.output_channel+1,evidence.identity.profile));
                 } else {ui.label("Measured loopback return unavailable for the current preview; no physical measurement is inferred.").help(ui, HelpControl::AudioMeasurement);}
             }else{ui.label("No audio owner in this session");}
+            });
             ui.label(&panel.message).help(ui, HelpControl::AudioNotice);
-            if !panel.busy() && !panel.message.is_empty() && ui.button("Dismiss audio notice").help(ui, HelpControl::AudioNotice).clicked(){panel.message.clear();}
-            if panel.busy(){if ui.button("Cancel audio operation").help(ui, HelpControl::AudioCancel).clicked(){panel.worker.as_ref().unwrap().cancel();}}
+            ui.push_id("audio-notice-actions", |ui| {
+            if !panel.busy() && !panel.message.is_empty() && audio_action(ui, "Dismiss audio notice", true).help(ui, HelpControl::AudioNotice).clicked(){panel.message.clear();}
+            if panel.busy(){if audio_action(ui, "Cancel audio operation", true).help(ui, HelpControl::AudioCancel).clicked(){panel.worker.as_ref().unwrap().cancel();}}
+            });
             let allowed=!panel.busy()&&!self.project.committing()&&self.project.dialog_is_closed();
             ui.add_enabled_ui(allowed,|ui|{
-                if ui.button("Preview saved audio").help(ui, HelpControl::AudioPreview).clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
+                if audio_action(ui, "Preview saved audio", true).help(ui, HelpControl::AudioPreview).clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
                 if let Some(preview)=panel.preview.clone(){
                     match &preview.output {Ok(plan)=>{ui.label(format!("Proposed output: {} / {} · {} Hz · {} · {} channels · {}",plan.backend,plan.device,plan.rate,plan.format,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},Err(error)=>{ui.colored_label(Color32::YELLOW,error);}}
-                    if ui.add_enabled(preview.output.is_ok(),egui::Button::new("Use saved audio now")).help(ui, HelpControl::AudioUse).clicked(){panel.confirm=Some(Confirm::Switch);}
+                    if audio_action(ui, "Use saved audio now", preview.output.is_ok()).help(ui, HelpControl::AudioUse).clicked(){panel.confirm=Some(Confirm::Switch);}
                     match &preview.calibration {
                         Ok(request)=>{
                             ui.label(format!("Calibration input: {} · {} Hz · {} · {} channels",request.input.device,request.input.rate,request.input.format,request.input.channels));
                             if let (Some(input),Some(output))=(request.input.buffer,request.output.buffer){ui.label(format!("Roundtrip buffer estimate: {:.3} ms (requested buffers only; driver and converter time excluded)",(input as f64+output as f64)*1000.0/request.output.rate as f64)).help(ui, HelpControl::AudioBufferEstimate);}else{ui.label("Roundtrip buffer estimate unavailable: one or both buffer sizes are backend-selected").help(ui, HelpControl::AudioBufferEstimate);}
                         },Err(error)=>{ui.label(format!("Calibration unavailable: {error}"));}
                     }
-                    if ui.add_enabled(preview.calibration.is_ok(),egui::Button::new("Measure loopback")).help(ui, HelpControl::AudioMeasure).clicked(){panel.confirm=Some(Confirm::Calibrate);}
+                    if audio_action(ui, "Measure loopback", preview.calibration.is_ok()).help(ui, HelpControl::AudioMeasure).clicked(){panel.confirm=Some(Confirm::Calibrate);}
                     ui.collapsing("Advertised input and output capabilities",|ui|{capabilities(ui,&preview.inventory);}).header_response.help(ui, HelpControl::AudioCapabilities);
                 }
                 if let Some(confirm)=panel.confirm {
@@ -316,8 +321,8 @@ impl App {
                         Confirm::Calibrate=>{ui.label("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback.");if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label(format!("Confirm route: {} output {} → {} input {}; level {} dBFS",request.output.device,request.output_channel+1,request.input.device,request.input_channel+1,request.level_db));}},
                     }
                     ui.horizontal(|ui|{
-                        if ui.button(match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Switch=>"Stop and change output",Confirm::Calibrate=>"Cable ready: stop and measure"}).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch=>HelpControl::AudioConfirm,Confirm::Calibrate=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch=>Job::Apply(preview),Confirm::Calibrate=>Job::Calibrate(preview),Confirm::Reset=>unreachable!()});}panel.confirm=None;}
-                        if ui.button("Keep current audio").help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
+                        if audio_action(ui, match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Switch=>"Stop and change output",Confirm::Calibrate=>"Cable ready: stop and measure"}, true).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch=>HelpControl::AudioConfirm,Confirm::Calibrate=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch=>Job::Apply(preview),Confirm::Calibrate=>Job::Calibrate(preview),Confirm::Reset=>unreachable!()});}panel.confirm=None;}
+                        if audio_action(ui, "Keep current audio", true).help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
                     });
                 }
             });
@@ -328,6 +333,14 @@ impl App {
         }
     }
 }
+// Status and callback observations change asynchronously. Action identities
+// must not depend on how many status labels preceded them in this frame.
+fn audio_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response {
+    ui.push_id(("audio-action", label), |ui| {
+        ui.add_enabled(enabled, egui::Button::new(label))
+    }).inner
+}
+
 fn capabilities(ui: &mut egui::Ui, inventory: &config::Inventory) {
     ui.label("Device identities use the backend and exact device name. Persistent hardware serial identifiers are unavailable through CPAL; ambiguous duplicate names are rejected.");
     ui.label(format!("Backend: {}. Channel numbers are CPAL's ordered interleaved channels; physical connector names are unavailable.",inventory.backend));

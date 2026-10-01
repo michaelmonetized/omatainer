@@ -24,5 +24,9 @@ lock retry or relaxation of concurrent-writer exclusion is involved.
 The first green library run passed 68 groups with four test threads in 1.15
 seconds, including all four overwrite cases, retained-lock-description ownership,
 unknown temporary preservation, and the existing actual killed-writer checkpoints.
-Final checks additionally cover postcommit external changes and diagnostics;
-those results are recorded after the final combined run.
+The normalized sampler-core run on commit `0bafa84485d70983f24ef65040adca373ec44c69`
+passed 851 ordinary tests with 15 opt-in tests ignored in 51.15 seconds, including
+all six in-place/replacement cases at checkpoints 2, 3 and 4. This covers
+postcommit diagnostics as well as the recovery and sampler ownership changes.
+The retained log is `issue-101-normalized-full.log`; final editor-union and
+release qualification are recorded separately.

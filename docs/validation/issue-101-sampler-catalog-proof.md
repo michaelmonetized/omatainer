@@ -27,3 +27,11 @@ and verified relocation after the original file disappears. The race also proves
 that a late heuristic cannot replace saved user tempo or lose newer play history
 and manual preparation. The sampler editor's real decoder→Applied integration
 and complete assembled sampler suite are validated separately.
+
+The normalized sampler core plus catalog/recovery helpers passed 851 ordinary
+tests with 15 opt-in tests ignored (51.15 seconds), at commit
+`0bafa84485d70983f24ef65040adca373ec44c69`. The separate root helper run
+retained at `issue-101-catalog-final-full.log` passed 820 tests but failed an
+existing audio calibration UI test; investigation and a deterministic fix are
+recorded in [audio action identity](issue-101-audio-action-identity.md). That
+failed run is not counted as a full-suite pass.
