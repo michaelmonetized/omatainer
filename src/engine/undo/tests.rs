@@ -1145,3 +1145,148 @@ fn accepted_media_receipt_follows_mutation_if_retirement_disconnects_after_prefl
     assert!(!rt.undo.available());
     assert_eq!(rt.undo.stranded.len(), 2);
 }
+
+fn begin_owned_history_take(rt: &mut RtEngine) {
+    rt.selected_track = 2;
+    rt.selected_scene = 7;
+    rt.recording = true;
+    rt.playing = true;
+    assert!(rt.tracks[2].clips[7].notes.is_empty());
+}
+fn owned_history_on(source: u64, note: u8) -> Command {
+    Command::LiveNoteOn { source, ch: 0, note, vel: 100 }
+}
+fn owned_history_off(source: u64, note: u8) -> Command {
+    Command::LiveNoteOff { source, ch: 0, note }
+}
+fn owned_history_id(rt: &RtEngine) -> u64 {
+    rt.undo.entries.last().unwrap().as_ref().unwrap().id
+}
+
+#[test]
+fn independent_short_holds_do_not_pin_prior_recording_inverses_during_dense_controls() {
+    let (engine, mut rt) = fixture();
+    begin_owned_history_take(&mut rt);
+    let mut total_allocations = 0;
+    let mut total_frees = 0;
+    for cycle in 0..64 {
+        // Waiting for the real retirement/replenishment worker is outside the
+        // renderer measurement. It must not disguise active-owner pinning.
+        rt.refresh_history_protection();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while rt.undo.preflight(0).is_err() || rt.undo.scratch.as_ref().unwrap().len() < 2 {
+            assert!(Instant::now() < deadline, "history worker failed to settle");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        for on in [true, false] {
+            for track in 0..TRACKS {
+                engine.send(Command::TrackGain { track: track as u8, value: 0.2 + cycle as f32 / 100.0 }).unwrap();
+            }
+            engine.send(if on { owned_history_on(901, 60) } else { owned_history_off(901, 60) }).unwrap();
+            let counts = test_alloc::measure(|| tick(&mut rt));
+            total_allocations += counts.allocations;
+            total_frees += counts.frees;
+            assert_eq!(rt.undo.failures, 0, "cycle {cycle}, on={on}, {:?}", rt.undo.failure);
+            assert_eq!(engine.cmd.len(), 0);
+        }
+        std::thread::yield_now();
+    }
+    assert_eq!((total_allocations, total_frees), (0, 0));
+    assert_eq!(rt.tracks[2].clips[7].notes.len(), 64);
+    assert_eq!(rt.undo.entries.len(), MAX_ENTRIES);
+    assert_eq!(rt.note_recording.held_targets(), 0);
+    for track in &rt.tracks { assert_eq!(track.gain, 0.83); }
+}
+
+#[test]
+fn overlapping_same_cell_owners_finalize_later_inverses_and_release_protection_independently() {
+    let (_engine, mut rt) = fixture();
+    begin_owned_history_take(&mut rt);
+    rt.apply(owned_history_on(1, 60));
+    let first = owned_history_id(&rt);
+    rt.note_recording.clock += 0.4;
+    rt.apply(Command::Master(0.5));
+    rt.apply(owned_history_on(2, 64));
+    let second = owned_history_id(&rt);
+    assert_ne!(first, second);
+    rt.refresh_history_protection();
+    assert_eq!(rt.undo.protected, Some(first));
+    rt.note_recording.clock += 0.8;
+    rt.apply(owned_history_off(1, 60));
+    let first_duration = rt.tracks[2].clips[7].notes[0].len;
+    assert!((first_duration - 1.2).abs() < 1e-6);
+    rt.refresh_history_protection();
+    assert_eq!(rt.undo.protected, Some(second), "a released older note no longer pins its inverse");
+    rt.note_recording.clock += 0.7;
+    let counts = test_alloc::measure(|| rt.apply(Command::Undo));
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    assert_eq!(notes(&rt, 2, 7), [60]);
+    assert_eq!(rt.tracks[2].clips[7].notes[0].len, first_duration, "later inverse must not restore old onset preview");
+    assert_eq!(rt.note_recording.held_targets(), 0);
+    rt.apply(owned_history_off(2, 64));
+    rt.apply(Command::Redo);
+    assert_eq!(notes(&rt, 2, 7), [60, 64]);
+    assert_eq!(rt.tracks[2].clips[7].notes[0].len, first_duration);
+    assert!((rt.tracks[2].clips[7].notes[1].len - 1.5).abs() < 1e-6);
+}
+
+#[test]
+fn undo_of_later_inverse_finalizes_both_still_held_sources_before_swap() {
+    let (_engine, mut rt) = fixture();
+    begin_owned_history_take(&mut rt);
+    rt.apply(owned_history_on(1, 60));
+    rt.note_recording.clock += 0.4;
+    rt.apply(Command::Master(0.5));
+    rt.apply(owned_history_on(2, 60));
+    rt.note_recording.clock += 0.8;
+    let counts = test_alloc::measure(|| rt.apply(Command::Undo));
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    assert_eq!(rt.tracks[2].clips[7].notes.len(), 1);
+    assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
+    assert_eq!(rt.note_recording.held_targets(), 0);
+    rt.note_recording.clock += 2.0;
+    rt.apply(owned_history_off(1, 60));
+    rt.apply(owned_history_off(2, 60));
+    rt.apply(Command::Redo);
+    assert_eq!(rt.tracks[2].clips[7].notes.len(), 2);
+    assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
+    assert!((rt.tracks[2].clips[7].notes[1].len - 0.8).abs() < 1e-6);
+    for _ in 0..3 { rt.apply(Command::Undo); }
+    assert!(rt.tracks[2].clips[7].notes.is_empty());
+    for _ in 0..3 { rt.apply(Command::Redo); }
+    assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
+}
+
+#[test]
+fn rate_pruning_preserves_distinct_held_inverse_owners_in_the_same_cell() {
+    let (engine, mut rt) = fixture();
+    begin_owned_history_take(&mut rt);
+    rt.apply(owned_history_on(1, 60));
+    let first = owned_history_id(&rt);
+    rt.note_recording.clock += 0.4;
+    rt.apply(Command::Master(0.5));
+    rt.apply(owned_history_on(2, 64));
+    let second = owned_history_id(&rt);
+    rt.fx_view = 2;
+    rt.apply(Command::FxAdd(5));
+    let before = engine.undo.checkpoint();
+    rt.undo.budget = 1100 * 1024;
+    rt.set_sample_rate(96000);
+    assert_eq!(rt.undo.failure, Some(Failure::RateHistoryPruned));
+    assert_eq!(rt.undo.cursor, 2, "both actual held inverses survive, even with the same cell");
+    assert_eq!(rt.undo.entries[0].as_ref().unwrap().id, first);
+    assert_eq!(rt.undo.entries[1].as_ref().unwrap().id, second);
+    assert_ne!(engine.undo.checkpoint().epoch, before.epoch);
+    rt.note_recording.clock += 0.8;
+    rt.apply(owned_history_off(1, 60));
+    rt.refresh_history_protection();
+    assert_eq!(rt.undo.protected, Some(second));
+    rt.note_recording.clock += 0.7;
+    rt.apply(owned_history_off(2, 64));
+    for _ in 0..2 { rt.apply(Command::Undo); }
+    assert!(rt.tracks[2].clips[7].notes.is_empty());
+    for _ in 0..2 { rt.apply(Command::Redo); }
+    assert_eq!(notes(&rt, 2, 7), [60, 64]);
+    assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
+    assert!((rt.tracks[2].clips[7].notes[1].len - 1.5).abs() < 1e-6);
+}
