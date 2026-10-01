@@ -31,6 +31,16 @@ impl MidiMap {
                 self.name,
                 binding.data
             );
+            anyhow::ensure!(
+                match (binding.kind, binding.relative) {
+                    (MsgKind::CcRel, Some(spec)) => spec.is_valid(),
+                    (MsgKind::CcRel, None) => false,
+                    (_, None) => true,
+                    (_, Some(_)) => false,
+                },
+                "MIDI profile {:?}: binding {index} has invalid relative encoding/scale metadata",
+                self.name
+            );
             for (previous, other) in self.bindings[..index].iter().enumerate() {
                 anyhow::ensure!(
                     !overlaps(other, binding),

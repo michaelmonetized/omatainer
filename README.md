@@ -7,7 +7,7 @@ Omarchy-native DAW + live DJ surface. One clock, one mixer, one window:
 - **Compose** piano roll
 - **Two decks** with spinning platters, Serato-style waveforms, hot cues, loops, vinyl jog, sync, EQ, filter, and a crossfader
 
-Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK, the original Numark NS7 and NS7FX, and Pioneer DDJ-FX / FLX / SB / 400. Anything else is MIDI-learnable and still plays from the keyboard.
+Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Anything else is MIDI-learnable and still plays from the keyboard.
 
 It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`) and font, registers in the keybind menu, and drops a Quickshell bar chip next to the rest of the shell.
 
@@ -44,7 +44,7 @@ Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F**
 | `TAB` | Session → arrange → compose |
 | `?` | In-app cheat sheet |
 
-MIDI clock in/out and live notes from any class-compliant USB device hit the selected track. APC grids launch clips. Pioneer / Numark jog wheels scratch the platters.
+MIDI clock in/out and live notes from any class-compliant USB device hit the selected track. APC grids launch clips. Pioneer relative jog bindings decode forward and reverse movement using their documented centered value. NS7 wheel input is deliberately unmapped: its absolute-position protocol cannot use the old guessed relative-CC/pitch-bend bindings. See the [jog decoder evidence and hardware limits](docs/validation/issue-42-relative-jog.md).
 
 The APC40 original and mkII use separate protocol-based input profiles for eight
 track faders, the master fader, clip grid and five scene buttons. Other APC40

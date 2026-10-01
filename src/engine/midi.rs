@@ -10,11 +10,17 @@ use std::time::Instant;
 mod profile;
 mod handoff;
 mod framing;
+mod relative;
 pub use handoff::InputStats;
+pub use relative::RelativeSpec;
+#[cfg(test)]
+use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
 #[cfg(test)]
 mod realtime_tests;
+#[cfg(test)]
+mod relative_tests;
 
 static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
 
@@ -38,6 +44,7 @@ pub struct Binding {
     pub action: Action,
     pub deck: u8,
     pub extra: u8,
+    pub relative: Option<RelativeSpec>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -378,11 +385,14 @@ fn dispatch(
     let pressed = status == 0x90 && d2 > 0;
     let rel = match b.kind {
         MsgKind::CcRel => {
-            if d2 >= 0x40 {
-                (d2 as i8 - 0x40) as f32
-            } else {
-                d2 as i8 as f32
+            let Some(delta) = b.relative.and_then(|spec| spec.decode(d2)) else {
+                return;
+            };
+            // A stationary report must not reset an active scratch/nudge.
+            if delta == 0.0 {
+                return;
             }
+            delta
         }
         MsgKind::Pitch => {
             let v = (msg[1] as u16) | ((msg[2] as u16) << 7);
@@ -405,7 +415,11 @@ fn dispatch(
         Action::DeckJog => {
             let _ = cmd.send(Command::DeckJog {
                 deck,
-                delta: rel * 0.35,
+                delta: if b.kind == MsgKind::CcRel {
+                    rel
+                } else {
+                    rel * 0.35
+                },
             });
         }
         Action::DeckJogTouch => {
@@ -558,6 +572,7 @@ fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
         action,
         deck,
         extra,
+        relative: None,
     }
 }
 fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
@@ -568,9 +583,10 @@ fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
         action,
         deck,
         extra,
+        relative: None,
     }
 }
-fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
+fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: RelativeSpec) -> Binding {
     Binding {
         kind: MsgKind::CcRel,
         ch,
@@ -578,6 +594,7 @@ fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
         action,
         deck,
         extra,
+        relative: Some(relative),
     }
 }
 
@@ -614,9 +631,11 @@ fn pioneer_ddj_fx() -> MidiMap {
         b.push(nbind(ch, 0x54, Action::DeckPfl, deck, 0));
         b.push(nbind(ch, 0x02, Action::DeckLoad, deck, 0));
         b.push(nbind(ch, 0x17, Action::DeckVinyl, deck, 0));
-        b.push(rbind(ch, 0x21, Action::DeckJog, deck, 0));
-        b.push(rbind(ch, 0x22, Action::DeckJog, deck, 0));
-        b.push(rbind(ch, 0x23, Action::DeckJog, deck, 0));
+        // DDJ-FLX4 / DDJ-400 / DDJ-SB3 MIDI lists: difference counts
+        // centered on 0x40 for wheel side and platter (vinyl on/off).
+        for cc in [0x21, 0x22, 0x23] {
+            b.push(rbind(ch, cc, Action::DeckJog, deck, 0, RelativeSpec::PIONEER_JOG));
+        }
         b.push(cbind(ch, 0x00, Action::DeckPitch, deck, 0));
         b.push(cbind(ch, 0x13, Action::DeckGain, deck, 0));
         b.push(cbind(ch, 0x10, Action::DeckEqHi, deck, 0));
@@ -649,7 +668,9 @@ fn pioneer_ddj_fx() -> MidiMap {
     }
 }
 
-/// Original NS7 + NS7FX. Platters may arrive as pitch-bend or CC; motor CCs included.
+/// Legacy NS7 / NS7FX controls. Wheel position requires a separate stateful
+/// protocol: do not interpret guessed CC21/pitch-bend as relative movement.
+/// See docs/validation/issue-42-relative-jog.md for evidence and limitations.
 fn numark_ns7(fx: bool) -> MidiMap {
     let mut b = Vec::new();
     for deck in 0..2u8 {
@@ -665,15 +686,6 @@ fn numark_ns7(fx: bool) -> MidiMap {
         b.push(cbind(ch, 0x0C, Action::DeckEqLow, deck, 0));
         b.push(cbind(ch, 0x15, Action::DeckFilter, deck, 0));
         b.push(cbind(ch, 0x09, Action::DeckPitch, deck, 0));
-        b.push(rbind(ch, 0x21, Action::DeckJog, deck, 0));
-        b.push(Binding {
-            kind: MsgKind::Pitch,
-            ch,
-            data: 0,
-            action: Action::DeckJog,
-            deck,
-            extra: 0,
-        });
         for pad in 0..8u8 {
             b.push(nbind(ch, 0x2E + pad, Action::DeckHotCue, deck, pad));
         }
@@ -692,9 +704,9 @@ fn numark_ns7(fx: bool) -> MidiMap {
     }
     MidiMap {
         name: if fx {
-            "Numark NS7FX".into()
+            "Numark NS7FX (legacy; wheels unmapped)".into()
         } else {
-            "Numark NS7".into()
+            "Numark NS7 (legacy; wheels unmapped)".into()
         },
         matchers: if fx {
             vec!["ns7fx".into(), "ns7-fx".into(), "ns7 fx".into()]
@@ -842,8 +854,8 @@ mod tests {
     fn maps_bind_named_hardware() {
         assert!(map_for("Pioneer DDJ-FLX4").contains("DDJ"));
         assert!(map_for("DDJ-400").contains("DDJ"));
-        assert_eq!(map_for("Numark NS7FX"), "Numark NS7FX");
-        assert_eq!(map_for("Numark NS7"), "Numark NS7");
+        assert_eq!(map_for("Numark NS7FX"), "Numark NS7FX (legacy; wheels unmapped)");
+        assert_eq!(map_for("Numark NS7"), "Numark NS7 (legacy; wheels unmapped)");
         assert!(map_for("APC Mini mk2").contains("APC Mini"));
         assert!(map_for("Akai APC40 mk2").contains("APC40"));
         assert!(map_for("MPK Mini Plus").contains("Akai"));

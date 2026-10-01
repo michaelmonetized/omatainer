@@ -1,5 +1,5 @@
 use super::*;
-use crate::engine::midi::{cbind, nbind, rbind, UnmappedNotes};
+use crate::engine::midi::{cbind, nbind, rbind, RelativeSpec, UnmappedNotes};
 use crate::engine::{dsp::InputKey, Engine, RtEngine};
 use std::time::Instant;
 
@@ -13,7 +13,7 @@ fn map() -> MidiMap {
             nbind(0, 30, Action::Shift, 0, 0),
             nbind(0, 31, Action::Stop, 0, 0),
             cbind(0, 7, Action::TrackFader, 0, 0),
-            rbind(0, 8, Action::DeckJog, 0, 0),
+            rbind(0, 8, Action::DeckJog, 0, 0, RelativeSpec::PIONEER_JOG),
         ],
     }
 }
