@@ -459,7 +459,7 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
         .poly
         .voices
         .iter()
-        .any(|voice| voice.note == 60 && voice.env.active()));
+        .any(|voice| voice.note() == 60 && voice.env.active()));
 }
 
 #[test]
