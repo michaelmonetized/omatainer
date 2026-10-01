@@ -37,6 +37,7 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    telemetry: std::sync::Arc<super::audio_metrics::Telemetry>,
     ui_requests: super::ui_requests::Mailbox,
     completed_stops: [std::sync::atomic::AtomicU64; STOP_LANES],
     connected: std::sync::atomic::AtomicBool,
@@ -109,6 +110,10 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub(super) fn telemetry(&self) -> std::sync::Arc<super::audio_metrics::Telemetry> {
+        self.shared.as_ref().map(|shared| shared.telemetry.clone()).unwrap_or_default()
+    }
+
     pub(super) fn reject_uncaptured_ui_load(&self) {
         if let Some(shared) = &self.shared {
             // A raw audio-side command has no captured GUI selection. Report
@@ -214,6 +219,8 @@ impl AdmissionShared {
 }
 
 impl CommandPort {
+    pub fn audio_metrics(&self) -> super::audio_metrics::AudioMetrics { self.shared.telemetry.read() }
+
     pub(crate) fn is_connected(&self) -> bool {
         self.shared.connected.load(std::sync::atomic::Ordering::Acquire)
     }
@@ -229,6 +236,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            telemetry: std::sync::Arc::new(super::audio_metrics::Telemetry::default()),
             ui_requests: super::ui_requests::Mailbox::default(),
             completed_stops: std::array::from_fn(|_| std::sync::atomic::AtomicU64::new(0)),
             connected: std::sync::atomic::AtomicBool::new(true),
