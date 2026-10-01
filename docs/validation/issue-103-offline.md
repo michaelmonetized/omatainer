@@ -45,8 +45,12 @@ desktop setting or application data.
 executables. Use a short private path beneath `/home/michael` on this host:
 Unix-domain socket paths are finite. The destination must not exist; symlink
 ancestors are refused, reports are create-new, process time/output and aggregate
-evidence bytes are bounded. `TMPDIR` and all fixture XDG roots point inside it;
-HOME remains unchanged.
+evidence bytes are bounded. Fixture XDG roots point inside it; each guarded
+stage instead receives a fresh mode-0700 `/tmp/o103-*` directory as `TMPDIR` so
+the unchanged benchmark's unique Unix socket suffix fits Linux's path limit.
+Temporary files still count toward the same aggregate byte cap. The launcher
+removes only its owned directory after the complete child process group has
+terminated, including failure and timeout paths. HOME remains unchanged.
 
 The shipped safe CLI runs cold, including malformed preferences, unavailable
 support storage and existing-instance refusal. Actual App/worker tests and both
@@ -118,7 +122,43 @@ The full ordinary regression suite also passed 895 tests with 19 documented
 opt-in cases ignored in 88.17 seconds; the production debug build passed.
 These checks preceded the release timing phase.
 
+### Fresh functional qualification after the temporary-path fix
+
+The rebuilt debug executables passed all nine guarded stages again from
+11:11:16.681292 to 11:13:19.112517 UTC. The same 312 UI, 24 support and 9 codec
+tests passed; both native workflows and the original-media-absent project
+reopens passed. The normal native workflow performed 123 actions across 242
+nodes in 901 frames. The safe native workflow performed 9 actions across 245 nodes,
+with 93 frames and zero backend callbacks. All six launcher tests and seven
+orchestration tests passed. No Rust application or workload source changed in
+this follow-up; the prior full ordinary suite remains above.
+
+The fresh report is
+`/home/michael/Projects/omatainer-work/o103-f2/report.json`, SHA-256
+`5d367e65e2ef88871b90a040d744f9864a6427715b8d8c59cab4c7b9d800959d`.
+Manifest SHA-256:
+`952b1b5e7324db289549d19f25fa9437244a17e9af0804995da2881859adcd5e`;
+production executable:
+`b5b5de47e19ae6ffaf81b6dea034d32b7824c19c92fff28e44d5c8ca03b576c4`;
+test executable:
+`b3f8a64680184e362631cd77812fc3974585d95cdfebad15c0fdd4644ff24ba7`.
+Before/after bindings match. Retained evidence totals 25,154,763 bytes before
+the report; each stage's temporary directory was cleaned after its child group
+terminated. This remains functional evidence, not a timing result.
+
 ## Release performance qualification
+
+The first release offline attempt, retained at
+`/home/michael/Projects/omatainer-work/o103-p1`, failed during workload setup:
+the benchmark's generated IPC path beneath the original evidence-local
+`TMPDIR` exceeded Linux's Unix socket path limit. It did not produce a timing
+qualification. The standard release gate preceding it passed independently.
+The launcher now uses the short owned temporary directories described above.
+A guarded regression uses the unchanged benchmark's actual PID/nanosecond
+directory naming pattern and binds/connects the Unix endpoint; the equivalent
+old path is asserted too long. Additional checks cover cleanup after a failed
+child and preservation of the aggregate byte cap. No workload, deadline,
+jitter ceiling or evaluator changed.
 
 Pending the coordinated network-denied run against the exact packaged release
 executables after the standard release gate. Functional success above makes no
