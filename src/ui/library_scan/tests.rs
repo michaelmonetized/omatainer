@@ -172,16 +172,29 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
             .1,
         selected
     );
-    fixture.decoder_results.send((0, Ok(crate::engine::decode::DecodedAudio {
-        sample: crate::engine::dsp::Sample {
-            name: "history fixture".into(), sr: 48_000, ch: 1,
-            data: vec![0.25; 1024], peaks: vec![[0.25; 3]; 8].into(), bpm: 120.0,
-            path: selected.to_string_lossy().into(),
-        }, diagnostics: Default::default(),
-    }))).unwrap();
+    fixture
+        .decoder_results
+        .send((
+            0,
+            Ok(crate::engine::decode::DecodedAudio {
+                sample: crate::engine::dsp::Sample {
+                    name: "history fixture".into(),
+                    sr: 48_000,
+                    ch: 1,
+                    data: vec![0.25; 1024],
+                    peaks: vec![[0.25; 3]; 8].into(),
+                    bpm: 120.0,
+                    path: selected.to_string_lossy().into(),
+                },
+                diagnostics: Default::default(),
+            }),
+        ))
+        .unwrap();
     fixture.poll_loads();
     fixture.rt.process(&mut []);
-    fixture.rt.apply(crate::engine::Command::DeckPlay { deck: 0 });
+    fixture
+        .rt
+        .apply(crate::engine::Command::DeckPlay { deck: 0 });
     fixture.rt.process(&mut [0.0; 128]);
     fixture.app.poll_play_history();
     let latest = fixture.app.item_last_play(&fixture.app.library[2]).unwrap();
@@ -403,7 +416,11 @@ fn history_merge_requires_verified_identity_even_before_first_worker_scan() {
     let mut unknown_item = item(unknown.clone(), "Unknown", 130.0);
     unknown_item.fingerprint = None;
     let replaced_item = item(replaced.clone(), "Replaced", 130.0);
-    std::fs::write(&replaced, b"different content, longer than the original synthetic scan fixture").unwrap();
+    std::fs::write(
+        &replaced,
+        b"different content, longer than the original synthetic scan fixture",
+    )
+    .unwrap();
     assert_ne!(replaced_item.fingerprint, FileFingerprint::read(&replaced));
     let known = Some(SystemTime::UNIX_EPOCH + Duration::from_secs(456));
     unchanged_item.last_play = known;
@@ -422,10 +439,18 @@ fn history_merge_requires_verified_identity_even_before_first_worker_scan() {
         (LibSource::File(replaced), None),
         (LibSource::File(unknown), None),
     ] {
-        let row = fixture.app.library.iter().find(|row| row.source == source).unwrap();
+        let row = fixture
+            .app
+            .library
+            .iter()
+            .find(|row| row.source == source)
+            .unwrap();
         assert_eq!(fixture.app.item_last_play(row), expected, "{source:?}");
     }
-    assert_eq!(fixture.app.selected_library_item().unwrap().source, LibSource::File(unchanged));
+    assert_eq!(
+        fixture.app.selected_library_item().unwrap().source,
+        LibSource::File(unchanged)
+    );
 }
 
 #[test]
@@ -437,24 +462,42 @@ fn repeated_rescans_preserve_history_and_selection_without_moving_history_to_oth
     let removed = directory.file("Removed 120.wav");
     let replaced = directory.file("Replaced 120.wav");
     let mut baseline = builtin_crate_items();
-    for (path, title) in [(&stable, "Stable"), (&moved, "Moved"), (&removed, "Removed"), (&replaced, "Replaced")] {
+    for (path, title) in [
+        (&stable, "Stable"),
+        (&moved, "Moved"),
+        (&removed, "Removed"),
+        (&replaced, "Replaced"),
+    ] {
         baseline.push(item(path.clone(), title, 130.0));
     }
     let mut fixture = Fixture::new(32);
     fixture.app.library = Arc::new(baseline);
     fixture.app.lib_filter = "".into();
     fixture.app.refresh_library_view();
-    fixture.app.lib_sel = fixture.app.library_view.indices.iter()
-        .position(|&index| fixture.app.library[index].source == LibSource::File(stable.clone())).unwrap();
+    fixture.app.lib_sel = fixture
+        .app
+        .library_view
+        .indices
+        .iter()
+        .position(|&index| fixture.app.library[index].source == LibSource::File(stable.clone()))
+        .unwrap();
     fixture.app.refresh_library_view();
     start(&mut fixture.app, vec![directory.0.clone()]);
     finish(&mut fixture.app);
     let latest = SystemTime::UNIX_EPOCH + Duration::from_secs(789);
-    let stable_identity = Identity::new(LibSource::File(stable.clone()), FileFingerprint::read(&stable)).unwrap();
+    let stable_identity = Identity::new(
+        LibSource::File(stable.clone()),
+        FileFingerprint::read(&stable),
+    )
+    .unwrap();
     fixture.app.last_played.record(&stable_identity, latest);
     let moved_source = LibSource::File(moved.clone());
-    let moved_identity = Identity::new(moved_source.clone(), FileFingerprint::read(&moved)).unwrap();
-    fixture.app.last_played.record(&moved_identity, latest - Duration::from_secs(1));
+    let moved_identity =
+        Identity::new(moved_source.clone(), FileFingerprint::read(&moved)).unwrap();
+    fixture
+        .app
+        .last_played
+        .record(&moved_identity, latest - Duration::from_secs(1));
     let renamed = directory.0.join("Renamed 120.wav");
     std::fs::rename(&moved, &renamed).unwrap();
     std::fs::remove_file(&removed).unwrap();
@@ -462,10 +505,23 @@ fn repeated_rescans_preserve_history_and_selection_without_moving_history_to_oth
     directory.file("New 100.wav");
     start(&mut fixture.app, vec![directory.0.clone()]);
     finish(&mut fixture.app);
-    assert_eq!(fixture.app.selected_library_item().unwrap().source, LibSource::File(stable.clone()));
-    for row in fixture.app.library.iter().filter(|row| matches!(row.source, LibSource::File(_))) {
+    assert_eq!(
+        fixture.app.selected_library_item().unwrap().source,
+        LibSource::File(stable.clone())
+    );
+    for row in fixture
+        .app
+        .library
+        .iter()
+        .filter(|row| matches!(row.source, LibSource::File(_)))
+    {
         let expected = (row.source == LibSource::File(stable.clone())).then_some(latest);
-        assert_eq!(fixture.app.item_last_play(row), expected, "{:?}", row.source);
+        assert_eq!(
+            fixture.app.item_last_play(row),
+            expected,
+            "{:?}",
+            row.source
+        );
         assert_ne!(row.source, moved_source);
         assert_ne!(row.source, LibSource::File(removed.clone()));
     }
@@ -478,6 +534,64 @@ fn repeated_rescans_preserve_history_and_selection_without_moving_history_to_oth
     start(&mut fixture.app, vec![directory.0.clone()]);
     finish(&mut fixture.app);
     let stable_source = LibSource::File(stable);
-    let row = fixture.app.library.iter().find(|row| row.source == stable_source).unwrap();
+    let row = fixture
+        .app
+        .library
+        .iter()
+        .find(|row| row.source == stable_source)
+        .unwrap();
     assert_eq!(fixture.app.item_last_play(row), Some(latest));
+}
+
+#[test]
+fn performance_protection_refuses_scans_and_retires_held_and_completed_candidates() {
+    let directory = Directory::new();
+    directory.file("Never visible.wav");
+    let performance = Handle::default();
+    let mut scanner = LibraryScan::default();
+    scanner.set_performance(performance.clone());
+    let mut library = Arc::new(builtin_crate_items());
+    let original = library.clone();
+    performance.set_enabled(true).unwrap();
+    assert!(!scanner.start(vec![directory.0.clone()], library.clone()));
+    assert!(matches!(scanner.state, ScanState::Failed(_)));
+    performance.set_enabled(false).unwrap();
+    let (entered, ready) = mpsc::sync_channel(1);
+    let (release, held) = mpsc::sync_channel(1);
+    let held = std::sync::Mutex::new(held);
+    let once = AtomicBool::new(false);
+    assert!(scanner.start_with(
+        vec![directory.0.clone()],
+        library.clone(),
+        Options {
+            before_entry: Some(Arc::new(move |_| {
+                if !once.swap(true, Ordering::AcqRel) {
+                    entered.send(()).unwrap();
+                    held.lock()
+                        .unwrap()
+                        .recv_timeout(Duration::from_secs(2))
+                        .unwrap();
+                }
+            })),
+        }
+    ));
+    ready.recv_timeout(Duration::from_secs(2)).unwrap();
+    performance.set_enabled(true).unwrap();
+    release.send(()).unwrap();
+    wait_for(|| {
+        assert!(scanner.poll().is_none());
+        !scanner.active()
+    });
+    assert!(Arc::ptr_eq(&library, &original));
+    performance.set_enabled(false).unwrap();
+    assert!(scanner.start(vec![directory.0.clone()], library.clone()));
+    let mut publication = None;
+    wait_for(|| {
+        publication = scanner.poll();
+        publication.is_some()
+    });
+    performance.set_enabled(true).unwrap();
+    publication.unwrap().publish(&mut library);
+    assert!(Arc::ptr_eq(&library, &original));
+    wait_for(|| performance.status().optional_active == 0);
 }

@@ -151,19 +151,28 @@ fn forced_reload_is_atomic_revalidates_unchanged_font_and_recovers_only_complete
     let first = reader.read().unwrap();
     let forced = reader.force().unwrap();
     assert_eq!(first.theme, forced.theme);
-    assert!(!Arc::ptr_eq(&first.fonts, &forced.fonts), "force must re-read cached bytes");
+    assert!(
+        !Arc::ptr_eq(&first.fonts, &forced.fonts),
+        "force must re-read cached bytes"
+    );
     fixture.colors("background = '#aabbcc'\n");
     fixture.shell("[font]\nbase-size = 'broken'\n");
     fixture.select("Ubuntu", "ubuntu.ttf");
     assert!(reader.force().err().unwrap().contains("font.base-size"));
     assert_eq!(reader.current.theme, forced.theme);
     assert!(Arc::ptr_eq(&reader.current.fonts, &forced.fonts));
-    assert!(reader.read().is_none(), "watcher cannot leak the valid subset after failure");
+    assert!(
+        reader.read().is_none(),
+        "watcher cannot leak the valid subset after failure"
+    );
     fixture.shell("[font]\nbase-size = 18\n");
     let recovered = reader.read().unwrap();
     assert_eq!(recovered.theme.font_size, 18.0);
     assert_eq!(recovered.theme.font, "Ubuntu");
-    assert_eq!(recovered.theme.bg, egui::Color32::from_rgb(0xaa, 0xbb, 0xcc));
+    assert_eq!(
+        recovered.theme.bg,
+        egui::Color32::from_rgb(0xaa, 0xbb, 0xcc)
+    );
     fixture.colors("background = 'broken'\n");
     assert!(reader.force().is_err());
     fixture.colors("background = '#aabbcc'\n");
@@ -180,8 +189,76 @@ fn automatic_watch_can_publish_valid_resources_after_the_forced_ticket_is_abando
     reader.read().unwrap();
     fixture.select("Ubuntu", "ubuntu.ttf");
     let ignored_ticket = reader.force().unwrap();
-    let automatic = reader.read().expect("an expired GUI ticket cannot suppress the watcher forever");
+    let automatic = reader
+        .read()
+        .expect("an expired GUI ticket cannot suppress the watcher forever");
     assert_eq!(automatic.theme.font, "Ubuntu");
     assert!(Arc::ptr_eq(&automatic.fonts, &ignored_ticket.fonts));
-    assert!(reader.read().is_none(), "one republication, not an ongoing font/style loop");
+    assert!(
+        reader.read().is_none(),
+        "one republication, not an ongoing font/style loop"
+    );
+}
+
+#[test]
+fn performance_protection_defers_first_font_read_and_cancels_held_results() {
+    let fixture = Fixture::new();
+    let performance = Handle::default();
+    performance.set_enabled(true).unwrap();
+    let (loader, control) = held_with_performance(&fixture, performance.clone());
+    assert!(control
+        .started
+        .recv_timeout(Duration::from_millis(60))
+        .is_err());
+    assert!(loader.poll_candidate().is_none());
+    assert_eq!(loader.force(1).unwrap_err().code, "performance_protected");
+    performance.set_enabled(false).unwrap();
+    loader.request();
+    control
+        .started
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap();
+    performance.set_enabled(true).unwrap();
+    control.release.send(()).unwrap();
+    until(|| performance.status().optional_active == 0);
+    assert!(loader.poll_candidate().is_none());
+    performance.set_enabled(false).unwrap();
+    loader.request();
+    control
+        .started
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap();
+    control.release.send(()).unwrap();
+    let mut installed = None;
+    until(|| {
+        installed = loader.poll_candidate();
+        installed.is_some()
+    });
+    let (update, guard) = installed.unwrap().claim().unwrap();
+    assert_eq!(update.theme.font, "Hack");
+    assert_eq!(
+        performance.set_enabled(true),
+        Err(crate::engine::performance::Error::Changing)
+    );
+    drop(guard);
+    performance.set_enabled(true).unwrap();
+}
+
+#[test]
+fn performance_rejected_queued_theme_reappears_after_protection_leaves_between_watcher_ticks() {
+    let fixture = Fixture::new();
+    let performance = Handle::default();
+    let loader = fixture.quiet_loader_with_performance(performance.clone());
+    until(|| !loader.results.is_empty());
+    performance.set_enabled(true).unwrap();
+    performance.set_enabled(false).unwrap();
+    let candidate = loader.poll_candidate().unwrap();
+    assert!(candidate.claim().is_err());
+    loader.request();
+    let mut candidate = None;
+    until(|| {
+        candidate = loader.poll_candidate();
+        candidate.is_some()
+    });
+    assert_eq!(candidate.unwrap().claim().unwrap().0.theme.font, "Hack");
 }

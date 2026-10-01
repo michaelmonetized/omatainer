@@ -34,7 +34,7 @@ impl Startup {
                     Ok(loaded) => {
                         state.preferences = loaded.preferences;
                         state.revision = loaded.revision;
-                        state.diagnostic = loaded.migrated.then(|| "Preferences migrated in memory; Apply saves version 3.".into());
+                        state.diagnostic = loaded.migrated.then(|| format!("Preferences migrated in memory; Apply saves version {}.", super::VERSION));
                     }
                     Err(error) => {
                         state.blocked = true;
@@ -80,7 +80,8 @@ pub enum Event {
     Cancelled,
 }
 pub struct Worker {
-    jobs: Sender<(Job, Arc<AtomicBool>)>,
+    jobs: Sender<(Job, Arc<AtomicBool>, crate::engine::performance::WorkPermit)>,
+    performance: crate::engine::performance::Handle,
     results: Receiver<Event>,
     cancel: Option<Arc<AtomicBool>>,
     #[cfg(test)]
@@ -94,7 +95,7 @@ impl Worker {
         path: PathBuf,
         discover: impl Fn() -> Result<Inventory, String> + Send + 'static,
     ) -> std::io::Result<Self> {
-        let (jobs, input) = bounded::<(Job, Arc<AtomicBool>)>(1);
+        let (jobs, input) = bounded::<(Job, Arc<AtomicBool>, crate::engine::performance::WorkPermit)>(1);
         let (output, results) = bounded(1);
         #[cfg(test)]
         let delay = Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -103,7 +104,7 @@ impl Worker {
         std::thread::Builder::new()
             .name("omatainer-settings".into())
             .spawn(move || {
-                while let Ok((job, cancel)) = input.recv() {
+                while let Ok((job, cancel, permit)) = input.recv() {
                     #[cfg(test)]
                     std::thread::sleep(std::time::Duration::from_millis(
                         delayed.load(Ordering::Acquire),
@@ -111,7 +112,7 @@ impl Worker {
                     let event = if cancel.load(Ordering::Acquire) {
                         Event::Cancelled
                     } else {
-                        execute(&path, job, &cancel, &discover)
+                        execute(&path, job, &cancel, &discover, &permit)
                     };
                     if output.send(event).is_err() {
                         break;
@@ -119,6 +120,7 @@ impl Worker {
                 }
             })?;
         Ok(Self {
+            performance: crate::engine::performance::Handle::default(),
             jobs,
             results,
             cancel: None,
@@ -129,13 +131,15 @@ impl Worker {
     pub fn busy(&self) -> bool {
         self.cancel.is_some()
     }
+    pub fn set_performance(&mut self, performance: crate::engine::performance::Handle) { self.performance = performance; }
     pub fn request(&mut self, job: Job) -> Result<(), String> {
         if self.busy() {
             return Err("A preferences operation is already pending".into());
         }
-        let cancel = Arc::new(AtomicBool::new(false));
+        let permit = self.performance.optional_work().map_err(|error| error.to_string())?;
+        let cancel = permit.cancel();
         self.jobs
-            .try_send((job, cancel.clone()))
+            .try_send((job, cancel.clone(), permit))
             .map_err(|_| "Preferences worker unavailable".to_string())?;
         self.cancel = Some(cancel);
         Ok(())
@@ -178,6 +182,7 @@ fn execute(
     job: Job,
     cancel: &AtomicBool,
     discover: &impl Fn() -> Result<Inventory, String>,
+    permit: &crate::engine::performance::WorkPermit,
 ) -> Event {
     match job {
         Job::Preview(preferences) => {
@@ -218,25 +223,28 @@ fn execute(
         Job::Save {
             preferences,
             revision,
-        } => match storage::save(
+        } => match storage::save_protected(
             path,
             &preferences,
             storage::Overwrite::Exact(revision),
             cancel,
+            permit,
         ) {
             Ok(saved) => Event::Saved { preferences, saved },
             Err(error) => failure(error),
         },
-        Job::Reset(preferences) => match storage::backup_and_reset(path, &preferences, cancel) {
+        Job::Reset(preferences) => {
+            let _commit = match permit.commit() { Ok(guard) => guard, Err(error) => return Event::Failed(error.to_string()) };
+            match storage::backup_and_reset(path, &preferences, cancel) {
             Ok(saved) => Event::Saved { preferences, saved },
             Err(error) => failure(error),
-        },
+        } },
         Job::Import(path) => match storage::load(&path, cancel) {
             Ok(loaded) => Event::Imported(loaded.preferences, loaded.migrated),
             Err(error) => failure(error),
         },
         Job::Export { path, preferences } => {
-            match storage::save(&path, &preferences, storage::Overwrite::New, cancel) {
+            match storage::save_protected(&path, &preferences, storage::Overwrite::New, cancel, permit) {
                 Ok(saved) => Event::Exported(saved),
                 Err(error) => failure(error),
             }

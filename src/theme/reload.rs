@@ -1,5 +1,7 @@
 //! Resolve every theme source off the GUI, publishing only complete valid state.
 use super::Theme;
+use crate::engine::performance::{ExclusivePermit, Handle, WorkPermit};
+use crate::theme::requests::Failure;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use egui::{FontData, FontDefinitions, FontFamily};
 use std::fs::{self, File};
@@ -53,15 +55,36 @@ pub(crate) struct Update {
 }
 enum Job {
     Wake,
-    Force(u64),
+    Force(u64, Arc<WorkPermit>),
+}
+pub(crate) struct Candidate {
+    update: Arc<Update>,
+    work: Arc<WorkPermit>,
+    retry: Arc<AtomicBool>,
+}
+impl Candidate {
+    pub fn claim(self) -> Result<(Arc<Update>, ExclusivePermit), Failure> {
+        let guard = self.work.commit().map_err(|error| {
+            // A quick enter/leave or another exclusive commit can reject a
+            // completed candidate between watcher ticks. Re-read unchanged
+            // resources later instead of losing that latest valid state.
+            self.retry.store(true, Ordering::Release);
+            protected(error)
+        })?;
+        Ok((self.update, guard))
+    }
+}
+fn protected(error: crate::engine::performance::Error) -> Failure {
+    Failure::new("performance_protected", error.to_string())
 }
 pub(crate) struct Forced {
     pub generation: u64,
-    pub result: Result<Arc<Update>, String>,
+    pub result: Result<Candidate, Failure>,
 }
 pub(crate) struct Loader {
+    performance: Handle,
     requests: Option<Sender<Job>>,
-    results: Receiver<Arc<Update>>,
+    results: Receiver<Candidate>,
     forced_results: Receiver<Forced>,
     forced_busy: AtomicBool,
     stop: Arc<AtomicBool>,
@@ -69,12 +92,23 @@ pub(crate) struct Loader {
 }
 impl Loader {
     pub fn start(theme: Theme) -> std::io::Result<Self> {
-        Self::with_resolver(theme, Fontconfig::default(), INTERVAL)
+        Self::start_with_performance(theme, Handle::default())
+    }
+    pub fn start_with_performance(theme: Theme, performance: Handle) -> std::io::Result<Self> {
+        Self::with_resolver_and_performance(theme, Fontconfig::default(), INTERVAL, performance)
     }
     pub(super) fn with_resolver<R: Resolver>(
         theme: Theme,
         resolver: R,
         interval: Duration,
+    ) -> std::io::Result<Self> {
+        Self::with_resolver_and_performance(theme, resolver, interval, Handle::default())
+    }
+    pub(super) fn with_resolver_and_performance<R: Resolver>(
+        theme: Theme,
+        resolver: R,
+        interval: Duration,
+        performance: Handle,
     ) -> std::io::Result<Self> {
         let (requests, jobs) = bounded(1);
         let (output, results) = bounded(1);
@@ -82,21 +116,42 @@ impl Loader {
         let superseded = results.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let stopped = stop.clone();
+        let worker_performance = performance.clone();
         let worker = std::thread::Builder::new()
             .name("omatainer-theme".into())
             .spawn(move || {
                 let mut reader = Reader::new(theme, resolver);
                 let mut next = Job::Wake;
+                let retry = Arc::new(AtomicBool::new(false));
                 loop {
                     if stopped.load(Ordering::Acquire) {
                         break;
                     }
+                    if retry.swap(false, Ordering::AcqRel) {
+                        reader.first = true;
+                    }
                     match next {
-                        Job::Force(generation) => {
+                        Job::Force(generation, work) => {
                             // Supersede only automatic candidates from before this
                             // transaction. A later valid recovery remains publishable.
                             let _ = superseded.try_recv();
-                            let result = reader.force();
+                            let result = if work.cancel().load(Ordering::Acquire) {
+                                Err(protected(crate::engine::performance::Error::Protected))
+                            } else {
+                                reader
+                                    .force()
+                                    .map_err(|error| Failure::new("invalid_theme", error))
+                            };
+                            let result = if work.cancel().load(Ordering::Acquire) {
+                                reader.first = true;
+                                Err(protected(crate::engine::performance::Error::Protected))
+                            } else {
+                                result.map(|update| Candidate {
+                                    update,
+                                    work,
+                                    retry: retry.clone(),
+                                })
+                            };
                             if stopped.load(Ordering::Acquire) {
                                 break;
                             }
@@ -105,13 +160,28 @@ impl Loader {
                             let _ = forced_output.try_send(Forced { generation, result });
                         }
                         Job::Wake => {
-                            if let Some(update) = reader.read() {
-                                if let Err(crossbeam_channel::TrySendError::Full(update)) =
-                                    output.try_send(update)
-                                {
-                                    // Automatic updates coalesce and retire on this worker.
-                                    let _ = superseded.try_recv();
-                                    let _ = output.try_send(update);
+                            if worker_performance.protected() {
+                                // Retire pre-mode candidates on this worker. Read
+                                // no filesystem/fontconfig sources while protected.
+                                let _ = superseded.try_recv();
+                                reader.first = true;
+                            } else if let Ok(work) = worker_performance.optional_work() {
+                                let work = Arc::new(work);
+                                let update = reader.read();
+                                if work.cancel().load(Ordering::Acquire) {
+                                    reader.first = true;
+                                } else if let Some(update) = update {
+                                    let candidate = Candidate {
+                                        update,
+                                        work,
+                                        retry: retry.clone(),
+                                    };
+                                    if let Err(crossbeam_channel::TrySendError::Full(candidate)) =
+                                        output.try_send(candidate)
+                                    {
+                                        let _ = superseded.try_recv();
+                                        let _ = output.try_send(candidate);
+                                    }
                                 }
                             }
                         }
@@ -124,6 +194,7 @@ impl Loader {
                 }
             })?;
         Ok(Self {
+            performance,
             requests: Some(requests),
             results,
             forced_results,
@@ -133,19 +204,33 @@ impl Loader {
         })
     }
     pub fn poll(&self) -> Option<Arc<Update>> {
+        // Compatibility for callers with an unprotected standalone loader.
+        self.poll_candidate()?
+            .claim()
+            .ok()
+            .map(|(update, _guard)| update)
+    }
+    pub fn poll_candidate(&self) -> Option<Candidate> {
         self.results.try_recv().ok()
     }
-    pub fn force(&self, generation: u64) -> Result<(), &'static str> {
+    pub fn force(&self, generation: u64) -> Result<(), Failure> {
+        let work = Arc::new(self.performance.optional_work().map_err(protected)?);
         if self.forced_busy.swap(true, Ordering::AcqRel) {
-            return Err("theme worker already has an outstanding reload");
+            return Err(Failure::new(
+                "theme_busy",
+                "theme worker already has an outstanding reload",
+            ));
         }
         if self
             .requests
             .as_ref()
-            .is_none_or(|send| send.try_send(Job::Force(generation)).is_err())
+            .is_none_or(|send| send.try_send(Job::Force(generation, work)).is_err())
         {
             self.forced_busy.store(false, Ordering::Release);
-            return Err("theme worker request slot is unavailable");
+            return Err(Failure::new(
+                "theme_busy",
+                "theme worker request slot is unavailable",
+            ));
         }
         Ok(())
     }

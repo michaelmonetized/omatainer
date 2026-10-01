@@ -185,6 +185,7 @@ impl App {
         running_audio: model::Audio,
     ) {
         self.settings = Settings::from_startup(startup, true, Some(running_audio));
+        if let Some(worker) = &mut self.settings.worker { worker.set_performance(self.engine.cmd.performance().clone()); }
         self.initialize_project_panels(
             self.settings.profile().startup.show_help,
             self.settings.profile().startup.show_midi,
@@ -223,6 +224,10 @@ impl App {
         ctx.set_zoom_factor(appearance.scale);
     }
     pub(super) fn poll_preferences(&mut self, ctx: &egui::Context) {
+        if self.engine.cmd.performance().protected() {
+            if self.settings.busy() { self.settings.message = "Preferences work is cancelled/deferred by performance protection. A committed file remains saved; its live application waits until protection is deliberately left.".into(); }
+            return;
+        }
         let old = self.settings.profile().clone();
         if self.settings.poll() {
             self.apply_appearance(ctx);
@@ -352,6 +357,7 @@ impl App {
                             if let Some(size) = &mut profile.appearance.font_size { float_control(ui,"Font size",size,8.0,48.0,1.0," pt",HelpControl::PreferenceFont); }
                             float_control(ui,"UI scale",&mut profile.appearance.scale,0.5,3.0,0.05,"×",HelpControl::PreferenceScale);
                             ui.heading("Startup");
+                            ui.checkbox(&mut profile.startup.performance_mode,"Enable performance protection on startup").help(ui, HelpControl::PerformanceMode);
                             ui.checkbox(&mut profile.startup.scan_library,"Scan library on startup").help(ui, HelpControl::PreferenceStartup);
                             ui.checkbox(&mut profile.startup.show_help,"Open help on startup").help(ui, HelpControl::PreferenceStartup);
                             ui.checkbox(&mut profile.startup.show_midi,"Open MIDI panel on startup").help(ui, HelpControl::PreferenceStartup);

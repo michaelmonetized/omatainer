@@ -789,3 +789,18 @@ once before encoding the request.
   remain local; no GitHub compute is used.
 - Headless callback/render/UI budgets do not claim hardware deadlines, XRUN
   freedom, physical controller compatibility, compositor FPS or Orca testing.
+
+## Performance protection (#96)
+
+Show protection is shared by every CommandPort producer and renderer. It protects
+active deck replacement and destructive edits while preserving mixing, composing,
+recording and essential Save/catalog/history/retirement work. Safety requests use
+a fixed priority mailbox; all-notes-off finalizes captures before release, and
+recovery requires explicit input-release acknowledgment plus drained old work.
+Raw MIDI epochs prevent buffered onsets replaying after recovery. Emergency output
+uses a 2 ms ramp and stays muted until an explicit audio-owner stopped DSP reset;
+quiet observation never unmutes. Failed reset retains mute. Project/device and
+optional commit permits serialize mode entry without stealing a CloseGuard.
+Optional cancellation never rewrites an already committed/applied outcome, and
+pre-mode scan/import visibility cannot leak through later essential metadata
+publication. Preferences persist startup protection only, not emergency state.

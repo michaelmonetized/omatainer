@@ -2,6 +2,7 @@
 //! GUI polling only swaps a candidate built from the current base and revision.
 use super::*;
 use crate::engine::media_source::FileFingerprint;
+use crate::engine::performance::{Handle, WorkPermit};
 use std::sync::{mpsc, Weak};
 
 #[cfg(test)]
@@ -35,23 +36,35 @@ impl Patch {
     }
 }
 
+struct Import {
+    path: PathBuf,
+    work: Arc<WorkPermit>,
+}
+struct Staged {
+    items: Arc<Vec<LibItem>>,
+    work: Arc<WorkPermit>,
+}
 struct Job {
     base: Arc<Vec<LibItem>>,
     candidate: Arc<Vec<LibItem>>,
+    scan_work: Option<Arc<WorkPermit>>,
+    restricted: bool,
     _retired_candidates: Vec<Arc<Vec<LibItem>>>,
     revision: u64,
     updates: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
-    import: Option<PathBuf>,
+    import: Option<Import>,
 }
 struct Result {
     base: Weak<Vec<LibItem>>,
     revision: u64,
     items: Arc<Vec<LibItem>>,
+    restricted: Arc<Vec<LibItem>>,
     retire: mpsc::SyncSender<(
         Arc<Vec<LibItem>>,
         Option<Arc<Vec<LibItem>>>,
         Arc<crate::library::Catalog>,
+        Arc<Vec<LibItem>>,
     )>,
     catalog: Arc<crate::library::Catalog>,
     storage: Option<String>,
@@ -59,17 +72,19 @@ struct Result {
 }
 
 pub(super) struct Metadata {
+    performance: Handle,
+    deferred: bool,
     jobs: mpsc::SyncSender<Job>,
     results: mpsc::Receiver<Result>,
     pending: Vec<Patch>,
     captures: Vec<super::library_store::Capture>,
-    import: Option<PathBuf>,
+    import: Option<Import>,
     pub catalog: Arc<crate::library::Catalog>,
     pub storage: Option<String>,
     pub storage_error: Option<String>,
     pub durable: bool,
     clear_error: bool,
-    staged: Option<Arc<Vec<LibItem>>>,
+    staged: Option<Staged>,
     retired_candidates: Vec<Arc<Vec<LibItem>>>,
     revision: u64,
     dirty: bool,
@@ -100,8 +115,32 @@ impl Metadata {
             .spawn(move || {
                 let mut store = path.map(crate::library::Store::open);
                 let mut cache = HashMap::<LibSource, Patch>::new();
+                // Retain only accepted overlays for identities still visible.
+                // A stale optional result must not hide an essential capture on
+                // the next protected rebase. This cache is bounded by base rows.
+                let mut essential = HashMap::<LibSource, super::library_store::Capture>::new();
                 while let Ok(job) = work.recv() {
                     before_job();
+                    let visible_identity: HashMap<_, _> = job.base.iter()
+                        .map(|item| (&item.source, item.fingerprint)).collect();
+                    essential.retain(|source, capture| visible_identity.get(source)
+                        .is_some_and(|fingerprint| *fingerprint == capture.fingerprint));
+                    for capture in &job.captures {
+                        if visible_identity.get(&capture.source) != Some(&capture.fingerprint) { continue; }
+                        let mut next = capture.clone();
+                        if let Some(previous) = essential.get(&capture.source) {
+                            next.metadata.bpm = previous.metadata.bpm.reconcile(next.metadata.bpm);
+                            next.metadata.duration = next.metadata.duration.or(previous.metadata.duration);
+                            next.metadata.last_play = next.metadata.last_play.max(previous.metadata.last_play);
+                            next.played = next.played.max(previous.played);
+                            for (value, old) in [(&mut next.metadata.title, &previous.metadata.title),
+                                (&mut next.metadata.artist, &previous.metadata.artist),
+                                (&mut next.metadata.key, &previous.metadata.key)] {
+                                if !old.is_empty() { *value = old.clone(); }
+                            }
+                        }
+                        essential.insert(capture.source.clone(), next);
+                    }
                     for mut patch in job.updates {
                         // A BPM-only update cannot erase a known duration for
                         // these same bytes; a replacement identity starts fresh.
@@ -116,7 +155,13 @@ impl Metadata {
                         .filter(|item| item.bpm.origin == Origin::User)
                         .map(|item| (&item.source, (item.fingerprint, item.bpm)))
                         .collect();
-                    let mut items = job.candidate.as_ref().clone();
+                    let mut fallback = job.base.as_ref().clone();
+                    for item in &mut fallback {
+                        if let Some(patch) = cache.get(&item.source) { patch.apply(item); }
+                    }
+                    let mut items = if job.scan_work.as_ref().is_some_and(|work| work.cancel().load(std::sync::atomic::Ordering::Acquire)) {
+                        fallback.clone()
+                    } else { job.candidate.as_ref().clone() };
                     for item in &mut items {
                         if let Some((fingerprint, bpm)) = corrections.get(&item.source) {
                             if item.fingerprint == *fingerprint {
@@ -133,11 +178,11 @@ impl Metadata {
                         match store {
                             Ok(store) => {
                                 storage = Some(
-                                    match super::library_store::reconcile(
-                                        store,
-                                        &mut items,
-                                        job.captures,
-                                        job.import,
+                                    match super::library_store::reconcile_optional(
+                                        store, &mut items, &job.captures,
+                                        job.import.as_ref().map(|import| import.path.as_path()),
+                                        job.import.as_ref().map(|import| import.work.as_ref()),
+                                        job.scan_work.as_deref(), &fallback,
                                     ) {
                                         Ok(import_error) => {
                                             durable = true;
@@ -160,13 +205,27 @@ impl Metadata {
                         Arc::new(crate::library::Catalog::default())
                     };
                     sort_crate(&mut items);
+                    // Prepare a second immutable view on the worker. It keeps
+                    // prior visible identities and their essential saved metadata,
+                    // never optional scan/import changes, even for the same path.
+                    let visible: std::collections::HashSet<_> = job.base.iter().map(|item| &item.source).collect();
+                    let optional = job.restricted || job.scan_work.is_some() || job.import.is_some()
+                        || items.iter().any(|item| !visible.contains(&item.source));
+                    let restricted = optional.then(|| {
+                        let mut rows = if persistent { super::library_store::restricted_rows(&fallback, &essential.values().cloned().collect::<Vec<_>>()) }
+                            else { fallback };
+                        sort_crate(&mut rows);
+                        Arc::new(rows)
+                    });
                     let items = Arc::new(items);
+                    let restricted = restricted.unwrap_or_else(|| items.clone());
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
                             base: Arc::downgrade(&job.base),
                             revision: job.revision,
                             items: items.clone(),
+                            restricted: restricted.clone(),
                             retire,
                             catalog: catalog.clone(),
                             storage,
@@ -180,11 +239,14 @@ impl Metadata {
                     // Their final large deallocation therefore stays here.
                     drop(retired.recv());
                     drop(items);
+                    drop(restricted);
                     drop(job.base);
                     drop(job.candidate);
                 }
             });
         Self {
+            performance: Handle::default(),
+            deferred: false,
             jobs,
             results,
             pending: Vec::new(),
@@ -205,6 +267,9 @@ impl Metadata {
 }
 
 impl Metadata {
+    pub fn set_performance(&mut self, performance: Handle) {
+        self.performance = performance;
+    }
     pub fn capture(&mut self, capture: super::library_store::Capture) {
         if self.storage.is_none() {
             return;
@@ -226,7 +291,14 @@ impl Metadata {
         if self.storage.is_none() || self.import.is_some() {
             return false;
         }
-        self.import = Some(path);
+        let work = match self.performance.optional_work() {
+            Ok(work) => Arc::new(work),
+            Err(error) => {
+                self.storage_error = Some(error.to_string());
+                return false;
+            }
+        };
+        self.import = Some(Import { path, work });
         self.clear_error = true;
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -274,10 +346,15 @@ impl Metadata {
         publication: library_scan::Publication,
         library: &Arc<Vec<LibItem>>,
     ) {
-        let mut candidate = library.clone();
-        publication.publish(&mut candidate);
-        if let Some(previous) = self.staged.replace(candidate) {
-            self.retired_candidates.push(previous);
+        let Some((items, work)) = publication.stage(library) else {
+            return;
+        };
+        if let Some(previous) = self.staged.replace(Staged { items, work }) {
+            previous
+                .work
+                .cancel()
+                .store(true, std::sync::atomic::Ordering::Release);
+            self.retired_candidates.push(previous.items);
         }
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
@@ -286,7 +363,13 @@ impl Metadata {
     /// Existing visible rows remain until the new scan succeeds; retirement and
     /// metadata overlays still belong to this worker.
     pub fn cancel_scan(&mut self) {
-        if let Some(candidate) = self.staged.take() { self.retired_candidates.push(candidate); }
+        if let Some(candidate) = self.staged.take() {
+            candidate
+                .work
+                .cancel()
+                .store(true, std::sync::atomic::Ordering::Release);
+            self.retired_candidates.push(candidate.items);
+        }
         self.revision = self.revision.wrapping_add(1);
         self.dirty = true;
     }
@@ -301,6 +384,18 @@ impl Metadata {
         library: &mut Arc<Vec<LibItem>>,
     ) -> std::result::Result<bool, &'static str> {
         let mut published = false;
+        if self.staged.as_ref().is_some_and(|staged| {
+            staged
+                .work
+                .cancel()
+                .load(std::sync::atomic::Ordering::Acquire)
+        }) {
+            self.cancel_scan();
+        }
+        if self.deferred && !self.performance.protected() && !self.in_flight && !self.dirty {
+            self.dirty = true;
+            self.revision = self.revision.wrapping_add(1);
+        }
         if let Ok(result) = self.results.try_recv() {
             self.in_flight = false;
             if result
@@ -319,23 +414,53 @@ impl Metadata {
             self.durable = result.durable;
             let retired_catalog = std::mem::replace(&mut self.catalog, result.catalog);
             if result.revision == self.revision && result.base.as_ptr() == Arc::as_ptr(library) {
-                let previous = std::mem::replace(library, result.items);
-                let _ = result
-                    .retire
-                    .try_send((previous, self.staged.take(), retired_catalog));
+                // New optional rows only become visible under a fresh commit
+                // guard. Already durable results remain truthful while mode
+                // protection selects the worker-built essential-only view.
+                let additional_rows = !Arc::ptr_eq(&result.items, &result.restricted);
+                let permit = (additional_rows && !self.performance.protected())
+                    .then(|| self.performance.optional_work())
+                    .transpose()
+                    .ok()
+                    .flatten();
+                let guard = permit.as_ref().and_then(|permit| permit.commit().ok());
+                self.deferred = additional_rows && guard.is_none();
+                let (next, unused) = if self.deferred {
+                    (result.restricted, result.items)
+                } else {
+                    (result.items, result.restricted)
+                };
+                let previous = std::mem::replace(library, next);
+                let _ = result.retire.try_send((
+                    previous,
+                    self.staged.take().map(|staged| staged.items),
+                    retired_catalog,
+                    unused,
+                ));
+                drop(guard);
                 published = true;
                 self.dirty = false;
             } else {
-                let _ = result
-                    .retire
-                    .try_send((result.items, None, retired_catalog));
+                self.deferred |= !Arc::ptr_eq(&result.items, &result.restricted);
+                let _ = result.retire.try_send((
+                    result.items,
+                    None,
+                    retired_catalog,
+                    result.restricted,
+                ));
                 self.dirty = true;
             }
         }
         if self.dirty && !self.in_flight {
             let job = Job {
                 base: library.clone(),
-                candidate: self.staged.as_ref().unwrap_or(library).clone(),
+                candidate: self
+                    .staged
+                    .as_ref()
+                    .map_or(&*library, |staged| &staged.items)
+                    .clone(),
+                scan_work: self.staged.as_ref().map(|staged| staged.work.clone()),
+                restricted: self.deferred || self.performance.protected(),
                 _retired_candidates: std::mem::take(&mut self.retired_candidates),
                 revision: self.revision,
                 updates: std::mem::take(&mut self.pending),

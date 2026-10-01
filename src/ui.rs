@@ -37,6 +37,7 @@ mod deck_time_tests;
 mod licenses;
 mod accessibility;
 mod preferences;
+mod performance;
 mod audio_settings;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
@@ -81,6 +82,7 @@ mod font_selection_tests;
 
 pub struct App {
     settings: preferences::Settings,
+    performance_panel: performance::Panel,
     audio_settings: audio_settings::Panel,
     diagnostics: diagnostics::Diagnostics,
     licenses: licenses::Licenses,
@@ -144,11 +146,11 @@ impl App {
         let theme = Theme::default();
         cc.egui_ctx.set_fonts(crate::theme::reload::fallback_fonts());
         theme.apply(&cc.egui_ctx);
-        let loader = Loader::start();
+        let loader = Loader::start_with_performance(engine.cmd.performance().clone());
         let failure = loader.as_ref().err().map(|error| format!("load failed: decoder unavailable: {error}"));
         let mut app = Self::with_loader(engine, theme, loader.ok());
         if let Some(failure) = failure { app.status = failure; }
-        match crate::theme::reload::Loader::start(app.theme.clone()) {
+        match crate::theme::reload::Loader::start_with_performance(app.theme.clone(), app.engine.cmd.performance().clone()) {
             Ok(loader) => app.theme_reload = Some(loader),
             Err(error) => eprintln!("omatainer: theme reload worker unavailable: {error}"),
         }
@@ -169,6 +171,7 @@ impl App {
         let mut app = Self {
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             settings: preferences::Settings::default(),
+            performance_panel: performance::Panel::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             licenses: licenses::Licenses::default(),
             engine,
@@ -211,6 +214,8 @@ impl App {
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
         };
+        app.library_scan.set_performance(app.engine.cmd.performance().clone());
+        app.library_metadata.set_performance(app.engine.cmd.performance().clone());
         app.publish_library_selection();
         app.initialize_project_baseline();
         app
@@ -235,6 +240,7 @@ impl App {
     }
 
     fn submit(&self, c: Command) -> bool {
+        if !matches!(c, Command::PerformanceMode(_) | Command::SafetyStop(_) | Command::RecoverPerformance) && !self.performance_allows(&c) { return false; }
         // Replacing or unloading a deck invalidates even a completion that has
         // already entered the audio command queue. The renderer rechecks it.
         if let Command::DeckUnload { deck } | Command::LoadBuiltin { deck, .. } | Command::DeckAudio { deck, .. } = &c {
@@ -262,6 +268,7 @@ impl App {
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
+        if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS {
             self.status = "load failed: invalid deck".into();
@@ -307,6 +314,7 @@ impl App {
     }
 
     fn load_file(&mut self, deck: u8, path: PathBuf, name: &str) {
+        if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
@@ -527,7 +535,9 @@ impl eframe::App for App {
 impl App {
     fn poll_theme(&mut self, ctx: &egui::Context) {
         if self.poll_theme_requests(ctx) { return; }
-        let Some(update) = self.theme_reload.as_ref().and_then(|loader| loader.poll()) else { return };
+        let Some((update, _commit)) = self.theme_reload.as_ref()
+            .and_then(|loader| loader.poll_candidate())
+            .and_then(|candidate| candidate.claim().ok()) else { return };
         self.settings.theme_update = Some(update);
         if self.settings.profile().appearance.follow_theme { self.apply_appearance(ctx); }
         ctx.request_repaint();
@@ -566,6 +576,7 @@ impl App {
             self.load_file(deck, p, &name);
         }
 
+        self.performance_ui(ctx);
         self.project_toolbar(ctx);
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
@@ -629,7 +640,9 @@ impl App {
             egui::Window::new("midi").show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
                 if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
-                    let _ = self.engine.midi.retry_connections();
+                    if let crate::engine::midi::Retry::Performance(error) = self.engine.midi.retry_connections() {
+                        self.submission_error.set(Some(crate::engine::SubmissionError::Performance(error)));
+                    }
                 }
                 if busy {
                     ui.label("Checking MIDI connections…");

@@ -65,10 +65,12 @@ pub enum PolicyError {
     Invalid(&'static str),
     Unavailable,
     GenerationExhausted,
+    Performance(crate::engine::performance::Error),
 }
 impl std::fmt::Display for PolicyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
+            Self::Performance(error) => return std::fmt::Display::fmt(error, f),
             Self::Invalid(reason) => reason,
             Self::Unavailable => {
                 "MIDI input manager is unavailable; restart to apply input preferences."
@@ -104,19 +106,30 @@ impl PolicyStatus {
 pub(super) struct Request {
     pub generation: u64,
     pub policy: Arc<InputPolicy>,
+    permit: Option<Arc<crate::engine::performance::ExclusivePermit>>,
 }
 pub(super) struct Control {
     current: Mutex<Arc<Request>>,
     published: ArcSwap<PolicyStatus>,
     stopped: AtomicBool,
+    performance: crate::engine::performance::Handle,
 }
 impl Control {
-    pub fn new(policy: InputPolicy) -> Self {
+    pub fn new(policy: InputPolicy) -> Self { Self::with_performance(policy, crate::engine::performance::Handle::default()) }
+    pub fn with_performance(policy: InputPolicy, performance: crate::engine::performance::Handle) -> Self {
         let policy = Arc::new(policy);
+        // Startup from Studio is still an in-progress device operation: mode
+        // entry must not overtake a delayed initial connection. A profile that
+        // starts protected deliberately initializes its first inputs under that
+        // already-active protection; every callback still uses central admission.
+        let permit = if performance.protected() { None }
+            else { performance.project_change().ok().map(Arc::new) };
         Self {
             stopped: AtomicBool::new(false),
+            performance,
             current: Mutex::new(Arc::new(Request {
                 generation: 1,
+                permit,
                 policy: policy.clone(),
             })),
             published: ArcSwap::from_pointee(PolicyStatus {
@@ -138,6 +151,10 @@ impl Control {
         if self.stopped() {
             return Err(PolicyError::Unavailable);
         }
+        if self.performance.protected() {
+            return Err(PolicyError::Performance(crate::engine::performance::Error::Protected));
+        }
+        let permit = match &current.permit { Some(permit) => permit.clone(), None => Arc::new(self.performance.project_change().map_err(PolicyError::Performance)?) };
         let generation = current
             .generation
             .checked_add(1)
@@ -149,7 +166,7 @@ impl Control {
             error: None,
             ..(**old).clone()
         }));
-        *current = Arc::new(Request { generation, policy });
+        *current = Arc::new(Request { generation, policy, permit: Some(permit) });
         Ok(generation)
     }
     // Activation, a newer policy, and shutdown have one ordering point. The
@@ -180,7 +197,8 @@ impl Control {
         self.published.load_full()
     }
     pub fn unavailable(&self) {
-        let _current = self.current.lock();
+        let mut current = self.current.lock();
+        *current = Arc::new(Request { generation: current.generation, policy: current.policy.clone(), permit: None });
         let old = self.published.load();
         self.published.store(Arc::new(PolicyStatus {
             error: Some(Arc::from(PolicyError::Unavailable.to_string())),
@@ -199,7 +217,7 @@ impl Control {
         let missing = Arc::from(missing);
         let error =
             error.map(|error| Arc::<str>::from(error.chars().take(1024).collect::<String>()));
-        let current = self.current.lock();
+        let mut current = self.current.lock();
         if current.generation != request.generation {
             return false;
         }
@@ -216,6 +234,7 @@ impl Control {
             missing_names: missing,
             error,
         }));
+        *current = Arc::new(Request { generation: request.generation, policy: request.policy.clone(), permit: None });
         true
     }
 }
@@ -281,4 +300,24 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn performance_policy_guard_lives_until_manager_completion_and_last_request_release() {
+        let performance = crate::engine::performance::Handle::default();
+        let control = Control::with_performance(InputPolicy::All, performance.clone());
+        control.request(InputPolicy::Disabled).unwrap();
+        let request = control.requested();
+        assert_eq!(performance.set_enabled(true), Err(crate::engine::performance::Error::Changing));
+        // A coalesced new policy shares this manager's existing permit.
+        control.request(InputPolicy::All).unwrap();
+        let newer = control.requested();
+        assert!(!control.complete(&request, None, Vec::new(), None));
+        assert!(control.complete(&newer, None, Vec::new(), None));
+        drop(newer);
+        assert_eq!(performance.set_enabled(true), Err(crate::engine::performance::Error::Changing));
+        drop(request);
+        performance.set_enabled(true).unwrap();
+        assert_eq!(control.request(InputPolicy::Disabled), Err(PolicyError::Performance(crate::engine::performance::Error::Protected)));
+        assert_eq!(control.requested().policy.as_ref(), &InputPolicy::All);
+    }
+
 }

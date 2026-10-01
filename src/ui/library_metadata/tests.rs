@@ -354,3 +354,332 @@ fn newer_patch_revision_wins_over_an_already_inflight_candidate() {
     finish(&mut f);
     assert_eq!(find(&f, &path).bpm, Bpm::new(118.0, Origin::Heuristic));
 }
+
+fn settle_metadata(metadata: &mut Metadata, library: &mut Arc<Vec<LibItem>>) {
+    wait(|| {
+        metadata.poll(library).unwrap();
+        !metadata.active()
+    });
+}
+
+#[test]
+fn performance_cancelled_staged_scan_keeps_essential_metadata_durable() {
+    let files = Files::new();
+    let added = files.wave("Optional 143.wav");
+    let path = files.0.join("catalog/library.json");
+    let performance = Handle::default();
+    let (entered, ready) = mpsc::sync_channel(1);
+    let (release, held) = mpsc::sync_channel(1);
+    let mut calls = 0;
+    let mut metadata = Metadata::with_hook(path.clone(), move || {
+        calls += 1;
+        if calls == 2 {
+            entered.send(()).unwrap();
+            held.recv_timeout(Duration::from_secs(3)).unwrap();
+        }
+    });
+    metadata.set_performance(performance.clone());
+    let mut library = Arc::new(builtin_crate_items());
+    settle_metadata(&mut metadata, &mut library);
+    let source = library[0].source.clone();
+    let mut capture = library[0].stored_metadata();
+    capture.bpm = Bpm::new(133.0, Origin::User);
+    metadata.capture(super::super::library_store::Capture {
+        source: source.clone(),
+        fingerprint: None,
+        metadata: capture,
+        preparation: None,
+        played: None,
+    });
+    let mut scanner = library_scan::LibraryScan::default();
+    scanner.set_performance(performance.clone());
+    assert!(scanner.start(vec![files.0.clone()], library.clone()));
+    let mut publication = None;
+    wait(|| {
+        publication = scanner.poll();
+        publication.is_some()
+    });
+    metadata.stage_scan(publication.unwrap(), &library);
+    metadata.poll(&mut library).unwrap();
+    ready.recv_timeout(Duration::from_secs(2)).unwrap();
+    performance.set_enabled(true).unwrap();
+    release.send(()).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.durable);
+    assert!(library
+        .iter()
+        .all(|item| item.source != LibSource::File(added.clone())));
+    let saved = crate::library::read(&path).unwrap();
+    assert!(saved.track(&LibSource::File(added)).is_none());
+    assert_eq!(
+        saved.version(&source, None).unwrap().metadata.bpm,
+        Bpm::new(133.0, Origin::User)
+    );
+    assert_eq!(
+        library
+            .iter()
+            .find(|item| item.source == source)
+            .unwrap()
+            .bpm,
+        Bpm::new(133.0, Origin::User)
+    );
+    wait(|| performance.status().optional_active == 0);
+}
+
+#[test]
+fn performance_preserves_committed_import_but_defers_new_rows_and_cancels_uncommitted_import() {
+    let files = Files::new();
+    let added = files.wave("Imported 142.wav");
+    let source = LibSource::File(added.clone());
+    let import_path = files.0.join("import/library.json");
+    let mut imported = crate::library::Store::open(import_path.clone()).unwrap();
+    let mut details = builtin_crate_items()[0].stored_metadata();
+    details.title = "Imported".into();
+    imported
+        .catalog
+        .upsert(source.clone(), FileFingerprint::read(&added), details)
+        .unwrap();
+    imported.save().unwrap();
+    drop(imported);
+    let performance = Handle::default();
+    let path = files.0.join("destination/library.json");
+    let mut metadata = Metadata::new(Some(path.clone()));
+    metadata.set_performance(performance.clone());
+    let mut library = Arc::new(builtin_crate_items());
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.import(import_path));
+    metadata.poll(&mut library).unwrap();
+    // Observe the real durable transaction without consuming its queued GUI result.
+    wait(|| {
+        crate::library::read(&path)
+            .ok()
+            .is_some_and(|catalog| catalog.track(&source).is_some())
+    });
+    wait(|| performance.set_enabled(true).is_ok());
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.durable);
+    assert!(metadata.catalog.track(&source).is_some());
+    assert!(library.iter().all(|item| item.source != source));
+    assert!(metadata.deferred);
+    assert!(!metadata.import(files.0.join("missing-while-protected")));
+    performance.set_enabled(false).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(library.iter().any(|item| item.source == source));
+
+    // Cancellation precedes any import read; essential capture still persists.
+    assert!(metadata.import(files.0.join("missing-cancelled-before-read")));
+    let stable = library
+        .iter()
+        .find(|item| matches!(item.source, LibSource::Builtin(_)))
+        .unwrap();
+    let stable_source = stable.source.clone();
+    let mut details = stable.stored_metadata();
+    details.bpm = Bpm::new(137.0, Origin::User);
+    metadata.capture(super::super::library_store::Capture {
+        source: stable_source.clone(),
+        fingerprint: None,
+        metadata: details,
+        preparation: None,
+        played: None,
+    });
+    performance.set_enabled(true).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.durable);
+    assert!(
+        metadata
+            .label()
+            .contains("cancelled the optional catalog import"),
+        "{}",
+        metadata.label()
+    );
+    assert_eq!(
+        crate::library::read(&path)
+            .unwrap()
+            .version(&stable_source, None)
+            .unwrap()
+            .metadata
+            .bpm,
+        Bpm::new(137.0, Origin::User)
+    );
+}
+
+#[test]
+fn performance_committed_scan_defers_added_and_replaced_identities_until_studio() {
+    let files = Files::new();
+    let stable = files.wave("Original 140.wav");
+    let performance = Handle::default();
+    let path = files.0.join("catalog/library.json");
+    let mut metadata = Metadata::new(Some(path.clone()));
+    metadata.set_performance(performance.clone());
+    let mut library = Arc::new(builtin_crate_items());
+    let mut scanner = library_scan::LibraryScan::default();
+    scanner.set_performance(performance.clone());
+    settle_metadata(&mut metadata, &mut library);
+    assert!(scanner.start(vec![files.0.clone()], library.clone()));
+    let mut publication = None;
+    wait(|| {
+        publication = scanner.poll();
+        publication.is_some()
+    });
+    metadata.stage_scan(publication.take().unwrap(), &library);
+    settle_metadata(&mut metadata, &mut library);
+    let source = LibSource::File(stable.clone());
+    let original = library
+        .iter()
+        .find(|item| item.source == source)
+        .unwrap()
+        .clone();
+    let added = LibSource::File(files.wave("Added 141.wav"));
+    // Change the identity without changing path: a protected publication cannot
+    // replace the visible old version merely because its source already exists.
+    std::fs::write(&stable, b"different bytes and length").unwrap();
+    let new_fingerprint = FileFingerprint::read(&stable);
+    assert_ne!(new_fingerprint, original.fingerprint);
+    assert!(scanner.start(vec![files.0.clone()], library.clone()));
+    wait(|| {
+        publication = scanner.poll();
+        publication.is_some()
+    });
+    metadata.stage_scan(publication.take().unwrap(), &library);
+    metadata.poll(&mut library).unwrap();
+    wait(|| {
+        crate::library::read(&path)
+            .ok()
+            .is_some_and(|catalog| catalog.track(&added).is_some())
+    });
+    wait(|| performance.set_enabled(true).is_ok());
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.durable);
+    assert!(metadata.catalog.track(&added).is_some());
+    assert!(library.iter().all(|item| item.source != added));
+    assert_eq!(
+        library
+            .iter()
+            .find(|item| item.source == source)
+            .unwrap()
+            .fingerprint,
+        original.fingerprint
+    );
+    performance.set_enabled(false).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(library.iter().any(|item| item.source == added));
+    assert_eq!(
+        library
+            .iter()
+            .find(|item| item.source == source)
+            .unwrap()
+            .fingerprint,
+        new_fingerprint
+    );
+}
+
+#[test]
+fn performance_committed_import_never_leaks_existing_row_metadata_but_keeps_essential_capture() {
+    let files = Files::new();
+    let performance = Handle::default();
+    let path = files.0.join("destination/library.json");
+    let mut metadata = Metadata::new(Some(path.clone()));
+    metadata.set_performance(performance.clone());
+    let mut library = Arc::new(builtin_crate_items());
+    settle_metadata(&mut metadata, &mut library);
+    let imported_source = library[0].source.clone();
+    let essential_source = library[1].source.clone();
+    let original = library[0].clone();
+    let import_path = files.0.join("import/library.json");
+    let mut imported = crate::library::Store::open(import_path.clone()).unwrap();
+    let mut details = original.stored_metadata();
+    details.title = "Imported title".into();
+    details.bpm = Bpm::new(133.0, Origin::User);
+    details.duration = Some(92.0);
+    imported
+        .catalog
+        .upsert(imported_source.clone(), None, details)
+        .unwrap();
+    imported.save().unwrap();
+    drop(imported);
+    assert!(metadata.import(import_path));
+    let mut essential = library[1].stored_metadata();
+    essential.bpm = Bpm::new(137.0, Origin::User);
+    metadata.capture(super::super::library_store::Capture {
+        source: essential_source.clone(),
+        fingerprint: None,
+        metadata: essential,
+        preparation: None,
+        played: Some(std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(300)),
+    });
+    metadata.poll(&mut library).unwrap();
+    wait(|| {
+        crate::library::read(&path).ok().is_some_and(|catalog| {
+            catalog
+                .version(&imported_source, None)
+                .is_some_and(|v| v.metadata.bpm == Bpm::new(133.0, Origin::User))
+        })
+    });
+    wait(|| performance.set_enabled(true).is_ok());
+    // Force the first durable worker result to become stale before GUI polling.
+    // Its essential capture must still reach the protected view on rebase.
+    metadata.retry_save();
+    settle_metadata(&mut metadata, &mut library);
+    assert!(metadata.durable);
+    assert_eq!(
+        metadata
+            .catalog
+            .version(&imported_source, None)
+            .unwrap()
+            .metadata
+            .title,
+        "Imported title"
+    );
+    let visible = library
+        .iter()
+        .find(|item| item.source == imported_source)
+        .unwrap();
+    assert_eq!(visible.bpm, original.bpm);
+    assert_eq!(visible.title, original.title);
+    assert_eq!(visible.length, original.length);
+    let essential = library
+        .iter()
+        .find(|item| item.source == essential_source)
+        .unwrap();
+    assert_eq!(essential.bpm, Bpm::new(137.0, Origin::User));
+    assert_eq!(
+        essential.last_play,
+        Some(std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(300))
+    );
+    // Further essential saves during protection also must not republish the
+    // committed imported version through a normal catalog rebase.
+    let mut subsequent = essential.stored_metadata();
+    subsequent.duration = Some(81.0);
+    metadata.capture(super::super::library_store::Capture {
+        source: essential_source.clone(),
+        fingerprint: None,
+        metadata: subsequent,
+        preparation: None,
+        played: None,
+    });
+    settle_metadata(&mut metadata, &mut library);
+    assert_eq!(
+        library
+            .iter()
+            .find(|item| item.source == imported_source)
+            .unwrap()
+            .bpm,
+        original.bpm
+    );
+    assert_eq!(
+        library
+            .iter()
+            .find(|item| item.source == essential_source)
+            .unwrap()
+            .length,
+        Some(81.0)
+    );
+    performance.set_enabled(false).unwrap();
+    settle_metadata(&mut metadata, &mut library);
+    let visible = library
+        .iter()
+        .find(|item| item.source == imported_source)
+        .unwrap();
+    assert_eq!(visible.bpm, Bpm::new(133.0, Origin::User));
+    assert_eq!(visible.title, "Imported title");
+}

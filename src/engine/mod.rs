@@ -24,6 +24,7 @@ mod mute_lifecycle_tests;
 pub(crate) mod test_alloc;
 pub mod audio;
 pub mod audio_metrics;
+pub mod performance;
 pub(crate) mod diagnostics;
 mod master_fx;
 #[cfg(test)]
@@ -457,6 +458,8 @@ impl FxKind {
 pub struct RtEngine {
     undo: undo::Journal,
     pub project: project::Handle,
+    pub performance: performance::Handle,
+    safety_output: performance::Output,
     project_pending: Option<Box<project::Task>>,
     project_waiting: Option<Box<project::Task>>,
     project_sealed: bool,
@@ -607,6 +610,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub performance: performance::Status,
     pub project_revision: u64,
     pub compose_target: Option<ComposeTarget>,
     pub playing: bool,
@@ -648,6 +652,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            performance: performance::Status::default(),
             project_revision: 0,
             compose_target: None,
             playing: false,
@@ -689,6 +694,9 @@ impl Default for Snapshot {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    PerformanceMode(bool),
+    SafetyStop(performance::Safety),
+    RecoverPerformance,
     Undo,
     Redo,
     Gesture { id: u64, command: Box<Command> },
@@ -787,6 +795,7 @@ impl RtEngine {
     ) -> Self {
         let cmd_rx = cmd_rx.into();
         let telemetry = cmd_rx.telemetry();
+        let performance = cmd_rx.performance().clone();
         let drums = build_kit(sr as u32);
         let names = [
             "Drums", "Bass", "Keys", "Pad", "Perc", "Vocal", "FX", "Spare",
@@ -825,7 +834,9 @@ impl RtEngine {
             .collect();
         let mut e = Self {
             undo: undo::Journal::default(),
-            project: project::Handle::new(sr as u32),
+            project: project::Handle::new(sr as u32, performance.clone()),
+            performance,
+            safety_output: performance::Output::default(),
             project_pending: None,
             project_waiting: None,
             project_sealed: false,
@@ -1062,6 +1073,7 @@ impl RtEngine {
     }
 
     pub fn process(&mut self, out: &mut [f32]) {
+        self.performance_tick();
         let batch = control::CommandBatch::receive(&self.cmd_rx);
         self.command_stats.record(&batch);
         for command in batch.discarded.into_iter().flatten() {self.undo.retire_command(command); }
@@ -1069,6 +1081,8 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        self.performance.publish_decks(self.deck_activity());
+        self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
         self.undo.publish();
         self.cmd_rx.set_history_available(self.undo.available());
         #[cfg(test)]
@@ -1165,8 +1179,10 @@ impl RtEngine {
             let cm = self.cue_mix;
             l = l * (1.0 - cm) + cue_l * cm;
             r = r * (1.0 - cm) + cue_r * cm;
+            self.safety_output.observe([l * self.master, r * self.master], self.sr);
             l = limiter(l * self.master);
             r = limiter(r * self.master);
+            let [l, r] = self.safety_output.output([l, r]);
             out[i * 2] = l;
             out[i * 2 + 1] = r;
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
@@ -1178,6 +1194,8 @@ impl RtEngine {
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
             self.publish();
         }
+        self.performance.publish_output(&self.safety_output);
+        self.performance.publish_decks(self.deck_activity());
         self.project_finish_block();
     }
 
@@ -1581,6 +1599,18 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        match c {
+            Command::PerformanceMode(enabled) => { let _ = self.performance.set_enabled(enabled); return; }
+            Command::SafetyStop(safety) => { self.performance.request_safety(safety); self.performance_tick(); return; }
+            Command::RecoverPerformance => { let _ = self.performance.acknowledge_inputs_released(); return; }
+            _ => {}
+        }
+        if let Err(reason) = self.performance.check(&c, Some(self.deck_activity())) {
+            self.performance.reject(reason);
+            performance::reject_receipt(&c);
+            self.undo.retire_command(c);
+            return;
+        }
         self.refresh_history_protection();
         match c {
             Command::Undo => {self.history_replay(false);return;}
@@ -1632,7 +1662,7 @@ impl RtEngine {
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
-            Command::Undo|Command::Redo|Command::Gesture {..}=>unreachable!(),
+            Command::Undo|Command::Redo|Command::Gesture {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::ReservedStop { lane, ticket } => {
                 if lane == 0 { self.apply(Command::Stop); }
                 else { self.apply(Command::StopTrack { track: lane - 1 }); }
@@ -2584,6 +2614,7 @@ impl Engine {
     pub fn start_with_settings(settings: &crate::preferences::Profile) -> anyhow::Result<Self> {
         settings.validate().map_err(anyhow::Error::msg)?;
         let (tx, rx) = CommandPort::channel(256);
+        if settings.startup.performance_mode { tx.performance().set_enabled(true)?; }
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let mut rt = RtEngine::new(48000.0, rx, snap.clone());
@@ -2634,6 +2665,7 @@ impl Engine {
 
     pub fn snapshot(&self) -> Snapshot {
         let mut s = self.snap.lock().clone();
+        s.performance = self.cmd.performance().status();
         s.audio = self.cmd.audio_metrics();
         s.cpu = s.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
         s
