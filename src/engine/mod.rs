@@ -22,12 +22,13 @@ mod mute_lifecycle_tests;
 pub(crate) mod test_alloc;
 pub mod audio;
 pub mod audio_metrics;
+pub(crate) mod diagnostics;
 mod master_fx;
 #[cfg(test)]
 mod master_fx_tests;
 mod control;
 pub use control::{CommandPort, SubmissionError, SubmissionOutcome};
-pub(crate) use control::{CommandStats, SubmissionStats};
+pub(crate) use control::{CommandStats, SubmissionStats, QueuePressure};
 pub(crate) mod ui_requests;
 pub(crate) mod media_source;
 #[cfg(test)]
@@ -482,6 +483,7 @@ pub struct RtEngine {
     pub(crate) load_test_hooks: [Option<Box<dyn FnOnce() + Send>>; 2],
     telemetry: Arc<audio_metrics::Telemetry>,
     render_cpu_ns: Option<u64>,
+    load_profile: diagnostics::FrameProfile,
     #[cfg(test)]
     telemetry_delays: [Duration; 3],
     frames_done: u64,
@@ -827,6 +829,7 @@ impl RtEngine {
             load_test_hooks: [None, None],
             telemetry,
             render_cpu_ns: None,
+            load_profile: diagnostics::FrameProfile::default(),
             #[cfg(test)]
             telemetry_delays: [Duration::ZERO; 3],
             frames_done: 0,
@@ -1039,8 +1042,10 @@ impl RtEngine {
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
 
         let any_solo = self.tracks.iter().any(|t| t.solo);
+        let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
+            self.load_profile.begin(profiling, self.frames_done + i as u64, self.sr);
             // Compose holds still have a musical duration with the transport
             // stopped. This clock integrates actual tempo and never loops.
             self.note_recording.clock += 1.0 / spb;
@@ -1053,10 +1058,14 @@ impl RtEngine {
             let mut cue_l = 0.0f32;
             let mut cue_r = 0.0f32;
 
+            let timer = self.load_profile.start();
             self.pad_output = self.tick_pad_sources();
+            self.load_profile.pads(timer);
             let mut scene_inputs = [[0.0_f32; 2]; SCENES];
             for ti in 0..self.tracks.len() {
+                let timer = self.load_profile.start();
                 let (tl, tr, pfl) = self.render_track_cached(ti, any_solo);
+                self.load_profile.track(ti, timer);
                 if pfl {
                     cue_l += tl;
                     cue_r += tr;
@@ -1067,14 +1076,20 @@ impl RtEngine {
             }
             // Keep every scene's own history advancing, including zero-input
             // tails after all of its tracks have stopped or moved elsewhere.
-            for (chain, input) in self.scene_fx.iter_mut().zip(scene_inputs) {
-                let [sl, sr] = chain.process_stereo(input, self.sr);
+            for (scene, (chain, input)) in self.scene_fx.iter_mut().zip(scene_inputs).enumerate() {
+                let timer = self.load_profile.start();
+                let [sl, sr] = self.load_profile.chain(chain, input, self.sr, true, scene);
+                self.load_profile.scene(scene, timer);
                 l += sl;
                 r += sr;
             }
 
+            let timer = self.load_profile.start();
             let (al, ar) = self.render_deck(0);
+            self.load_profile.deck(0, timer);
+            let timer = self.load_profile.start();
             let (bl, br) = self.render_deck(1);
+            self.load_profile.deck(1, timer);
             let [ga, gb] = {
                 #[cfg(test)]
                 if self.legacy_gain_math {
@@ -1102,7 +1117,9 @@ impl RtEngine {
 
             // Three legacy controls select real processors in a serial chain.
             for slot in 0..self.master_fx.len() {
+                let timer = self.load_profile.start();
                 [l, r] = self.master_fx[slot].process([l, r], self.fx_kind[slot], self.fx_wet[slot]);
+                self.load_profile.master(slot, timer, self.fx_kind[slot]);
             }
 
             let cm = self.cue_mix;
@@ -1112,7 +1129,9 @@ impl RtEngine {
             r = limiter(r * self.master);
             out[i * 2] = l;
             out[i * 2 + 1] = r;
+            if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
+        self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
         self.frames_done += frames as u64;
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
@@ -1246,7 +1265,7 @@ impl RtEngine {
         track.eq_right.high_g = track.eq.high_g;
         let l = track.eq.tick(s + pad_l);
         let r = track.eq_right.tick(s + pad_r);
-        let [fl, fr] = track.fx.process_stereo([l, r], self.sr);
+        let [fl, fr] = self.load_profile.chain(&mut track.fx, [l, r], self.sr, false, ti);
         track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
         let [gl, gr] = {
             #[cfg(test)]
@@ -2497,6 +2516,8 @@ impl Engine {
         s.cpu = s.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
         s
     }
+
+    pub fn output_info(&self) -> Option<&audio::OutputInfo> { self._audio.as_ref().map(|output| &output.info) }
 
     pub fn sr(&self) -> u32 {
         self.sample_rate

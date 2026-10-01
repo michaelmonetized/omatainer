@@ -2,7 +2,14 @@ use crate::engine::RtEngine;
 use anyhow::Context;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
+#[derive(Clone, Debug)]
+pub struct OutputInfo {
+    pub backend: String,
+    pub format: String,
+}
+
 pub struct AudioOut {
+    pub info: OutputInfo,
     pub sr: u32,
     pub _stream: cpal::Stream,
 }
@@ -14,6 +21,10 @@ pub fn start(mut rt: RtEngine) -> anyhow::Result<AudioOut> {
         .context("no default audio output (PipeWire/ALSA)")?;
     let cfg = device.default_output_config().context("output config")?;
     let sr = cfg.sample_rate().0;
+    let info = OutputInfo {
+        backend: host.id().name().to_owned(),
+        format: cfg.sample_format().to_string(),
+    };
     rt.set_sample_rate(sr);
     let errors = rt.telemetry.clone();
     let err_fn = move |e| errors.error(&e);
@@ -25,6 +36,7 @@ pub fn start(mut rt: RtEngine) -> anyhow::Result<AudioOut> {
     };
     stream.play()?;
     Ok(AudioOut {
+        info,
         sr,
         _stream: stream,
     })
@@ -42,7 +54,10 @@ where
     let mut callback = OutputCallback::new(rt, cfg.channels as usize);
     let stream = device.build_output_stream(
         cfg,
-        move |data: &mut [T], _| callback.render(data),
+        move |data: &mut [T], info| {
+            let timestamp = info.timestamp();
+            callback.render_timed(data, timestamp.playback.duration_since(&timestamp.callback));
+        },
         err_fn,
         None,
     )?;
@@ -51,7 +66,7 @@ where
 
 /// The CPAL closure owns this state. Producers can submit commands and read
 /// snapshots, but cannot lock, inspect or mutate the renderer between blocks.
-pub(super) struct OutputCallback {
+pub(crate) struct OutputCallback {
     rt: RtEngine,
     channels: usize,
     buffer: Vec<f32>,
@@ -60,7 +75,7 @@ pub(super) struct OutputCallback {
 }
 
 impl OutputCallback {
-    pub(super) fn new(rt: RtEngine, channels: usize) -> Self {
+    pub(crate) fn new(rt: RtEngine, channels: usize) -> Self {
         Self {
             rt,
             channels,
@@ -70,7 +85,14 @@ impl OutputCallback {
         }
     }
 
-    pub(super) fn render<T>(&mut self, data: &mut [T])
+    pub(crate) fn render<T>(&mut self, data: &mut [T])
+    where
+        T: cpal::SizedSample + cpal::FromSample<f32>,
+    {
+        self.render_timed(data, None);
+    }
+
+    pub(crate) fn render_timed<T>(&mut self, data: &mut [T], latency: Option<std::time::Duration>)
     where
         T: cpal::SizedSample + cpal::FromSample<f32>,
     {
@@ -86,7 +108,14 @@ impl OutputCallback {
         for (destination, source) in data.iter_mut().zip(slice) {
             *destination = T::from_sample(*source);
         }
-        self.rt.telemetry.record(started.elapsed(), data.len() / self.channels.max(1), self.rt.sr as u32, self.rt.render_cpu_ns);
+        self.rt.telemetry.record_output(
+            started.elapsed(),
+            data.len() / self.channels.max(1),
+            self.rt.sr as u32,
+            self.rt.render_cpu_ns,
+            self.channels as u16,
+            latency,
+        );
     }
 }
 

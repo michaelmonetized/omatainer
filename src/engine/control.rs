@@ -45,6 +45,9 @@ struct AdmissionShared {
     coalesced: std::sync::atomic::AtomicU64,
     rejected: std::sync::atomic::AtomicU64,
     last_error: std::sync::atomic::AtomicU8,
+    observed_high_water: std::sync::atomic::AtomicU64,
+    reserved_releases: std::sync::atomic::AtomicU64,
+    full_rejections: std::sync::atomic::AtomicU64,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
@@ -186,6 +189,7 @@ impl std::error::Error for SubmissionError {}
 impl AdmissionShared {
     fn reject(&self, error: SubmissionError) -> Result<SubmissionOutcome, SubmissionError> {
         use std::sync::atomic::Ordering::Relaxed;
+        if error == SubmissionError::Full { self.full_rejections.fetch_add(1, Relaxed); }
         self.last_error.store(
             match error {
                 SubmissionError::Full => 1,
@@ -218,7 +222,31 @@ impl AdmissionShared {
     }
 }
 
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+pub struct QueuePressure {
+    pub pending: usize,
+    pub capacity: usize,
+    pub observed_high_water: u64,
+    pub reserved_releases: u64,
+    pub full_rejections: u64,
+    pub rejected: u64,
+    pub accepted: u64,
+    pub coalesced: u64,
+}
+
 impl CommandPort {
+    pub fn queue_pressure(&self) -> QueuePressure {
+        use std::sync::atomic::Ordering::Relaxed;
+        QueuePressure { pending: self.sender.len(), capacity: self.capacity,
+            observed_high_water: self.shared.observed_high_water.load(Relaxed),
+            reserved_releases: self.shared.reserved_releases.load(Relaxed),
+            full_rejections: self.shared.full_rejections.load(Relaxed),
+            rejected: self.shared.rejected.load(Relaxed),
+            accepted: self.shared.accepted.load(Relaxed),
+            coalesced: self.shared.coalesced.load(Relaxed) }
+    }
+    pub fn set_profiling(&self, enabled: bool) { self.shared.telemetry.profiler.enabled.store(enabled, std::sync::atomic::Ordering::Relaxed); }
+    pub fn load_profile(&self) -> Option<super::diagnostics::Profile> { self.shared.telemetry.profiler.read() }
     pub fn audio_metrics(&self) -> super::audio_metrics::AudioMetrics { self.shared.telemetry.read() }
 
     pub(crate) fn is_connected(&self) -> bool {
@@ -244,6 +272,9 @@ impl CommandPort {
             coalesced: std::sync::atomic::AtomicU64::new(0),
             rejected: std::sync::atomic::AtomicU64::new(0),
             last_error: std::sync::atomic::AtomicU8::new(0),
+            observed_high_water: std::sync::atomic::AtomicU64::new(0),
+            reserved_releases: std::sync::atomic::AtomicU64::new(0),
+            full_rejections: std::sync::atomic::AtomicU64::new(0),
         });
         let port = Self {
             sender,
@@ -400,6 +431,8 @@ impl CommandPort {
                         state.held -= 1;
                     }
                 }
+                self.shared.observed_high_water.fetch_max(self.sender.len() as u64, Relaxed);
+                self.shared.reserved_releases.store(state.held as u64, Relaxed);
                 self.shared.accepted.fetch_add(1, Relaxed);
                 Ok(SubmissionOutcome::Accepted)
             }

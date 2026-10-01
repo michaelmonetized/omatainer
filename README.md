@@ -170,3 +170,11 @@ Status queries have null `accepted` and `command_status` fields.
 per second. It reconnects after a server restart with bounded backoff (up to four
 seconds), and exits cleanly if its output consumer closes. Followers share the
 eight-client IPC limit; normal command connections retain their 32-request cap.
+
+Performance diagnostics are available from **Diagnostics** in the audio status
+bar. The panel separates callback deadlines, render CPU, UI update wall time,
+predicted output latency and queue pressure. Optional sampled track/device
+costs include their coverage limits. Start a bounded 30-second capture, then
+export a redacted private JSON file or reopen one for inspection. Exact backend
+XRUN counts remain unavailable. See [diagnostic measurement and export
+semantics](docs/validation/issue-81-diagnostics.md).

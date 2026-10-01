@@ -10,9 +10,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use crate::engine::media_load::Loader;
-use std::time::SystemTime;
-#[cfg(test)]
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
 mod bpm;
@@ -28,6 +26,7 @@ mod load_status;
 mod play_history;
 mod play_time;
 mod audio_status;
+mod diagnostics;
 mod master_fx_status;
 use load_status::{LoadState, Phase};
 use crate::engine::load_receipt::{Media, Receipt};
@@ -66,6 +65,7 @@ mod theme_reload_tests;
 mod font_selection_tests;
 
 pub struct App {
+    diagnostics: diagnostics::Diagnostics,
     engine: Engine,
     theme: Theme,
     deck_selection: deck_selection::Selection,
@@ -135,6 +135,7 @@ impl App {
         let snap = engine.snapshot();
         let playback_watches = play_history::initial_watches(&engine);
         let mut app = Self {
+            diagnostics: diagnostics::Diagnostics::default(),
             engine,
             theme,
             deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
@@ -448,6 +449,9 @@ impl App {
     }
 
     fn update_frame(&mut self, ctx: &egui::Context) {
+        let ui_started = Instant::now();
+        #[cfg(test)]
+        std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
         self.poll_ui_requests();
         self.poll_library_scan();
@@ -545,6 +549,7 @@ impl App {
                 }
             });
         }
+        self.diagnostics_panel(ctx);
         self.clip_gain_editor(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
@@ -554,6 +559,7 @@ impl App {
             ctx.request_repaint_after(std::time::Duration::from_millis(80));
         }
         self.publish_library_selection();
+        self.diagnostics.ui_update_ns = Some(ui_started.elapsed().as_nanos().min(u64::MAX as u128) as u64);
     }
 }
 
