@@ -85,6 +85,8 @@ struct Shared {
     busy: AtomicU8,
     revision: AtomicU64,
     release_seal: AtomicBool,
+    #[cfg(test)]
+    wait_limit_millis: AtomicU64,
 }
 
 pub(super) struct Task {
@@ -118,6 +120,8 @@ impl Handle {
                 busy: AtomicU8::new(0),
                 revision: AtomicU64::new(0),
                 release_seal: AtomicBool::new(false),
+                #[cfg(test)]
+                wait_limit_millis: AtomicU64::new(WAIT_LIMIT.as_millis() as u64),
             }),
         }
     }
@@ -127,6 +131,13 @@ impl Handle {
     }
     pub(super) fn edited(&self) {
         self.shared.revision.fetch_add(1, Ordering::Release);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_wait_limit_for_test(&self, limit: Duration) {
+        self.shared
+            .wait_limit_millis
+            .store(limit.as_millis() as u64, Ordering::Release);
     }
 
     /// Worker only. A failed/cancelled prior operation can leave one bounded
@@ -151,12 +162,17 @@ impl Handle {
             return Err(Error::Unavailable);
         }
         let start = Instant::now();
+        #[cfg(test)]
+        let wait_limit =
+            Duration::from_millis(self.shared.wait_limit_millis.load(Ordering::Acquire));
+        #[cfg(not(test))]
+        let wait_limit = WAIT_LIMIT;
         loop {
             if let Ok(task) = self.shared.results.recv_timeout(Duration::from_millis(5)) {
                 return Ok(task);
             }
             let cancelled = cancel.load(Ordering::Acquire);
-            if cancelled || start.elapsed() >= WAIT_LIMIT {
+            if cancelled || start.elapsed() >= wait_limit {
                 // The audio side atomically claims installation. A cancellation
                 // that loses that claim must wait for the authoritative result.
                 if stage
