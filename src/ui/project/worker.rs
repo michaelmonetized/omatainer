@@ -23,6 +23,7 @@ pub(super) enum Job {
     Prepare {
         _work: crate::engine::performance::WorkPermit,
         path: Option<PathBuf>,
+        recovery: Option<crate::recovery::Candidate>,
         cancel: Arc<AtomicBool>,
         commit: Receiver<u64>,
     },
@@ -46,6 +47,8 @@ pub(super) enum Event {
         path: Option<PathBuf>,
         view: UiState,
         applied: Applied,
+        recovered: bool,
+        report: Vec<String>,
     },
     CheckedClose(Option<u64>, CloseGuard),
     CloseChanged,
@@ -83,7 +86,7 @@ fn pause_at(hooks: &Hooks, stage: Stage) {
 pub(super) struct Worker {
     #[cfg(test)]
     hooks: Hooks,
-    jobs: Sender<Job>,
+    jobs: Sender<(Job, Option<Arc<AtomicBool>>)>,
     pub events: Receiver<Event>,
 }
 impl Worker {
@@ -96,7 +99,7 @@ impl Worker {
         let hooks = Hooks::default();
         #[cfg(test)]
         let thread_hooks = hooks.clone();
-        let (jobs, requests) = bounded(1);
+        let (jobs, requests) = bounded::<(Job, Option<Arc<AtomicBool>>)>(1);
         let (events, results) = bounded(4);
         std::thread::Builder::new()
             .name("omatainer-project-io".into())
@@ -116,15 +119,17 @@ impl Worker {
                 {
                     return;
                 }
-                while let Ok(job) = requests.recv() {
-                    let result = perform(
+                while let Ok((job, recovery_fence)) = requests.recv() {
+                    let result = match retire_recovery_capture(&handle, recovery_fence.as_deref(), job.cancel()) {
+                        Err(error) => match &job { Job::CheckClose { .. } => close_error(error), _ => engine_error(error) },
+                        Ok(()) => perform(
                         job,
                         &handle,
                         handle.sample_rate(),
                         &events,
                         #[cfg(test)]
                         &thread_hooks,
-                    );
+                    ) };
                     let successful_path = match &result {
                         Event::Saved { path, .. }
                         | Event::Applied {
@@ -175,9 +180,9 @@ impl Worker {
         drop(sender);
         self.events = receiver;
     }
-    pub fn submit(&self, job: Job) -> Result<(), String> {
+    pub fn submit(&self, job: Job, recovery_fence: Option<Arc<AtomicBool>>) -> Result<(), String> {
         self.jobs
-            .try_send(job)
+            .try_send((job, recovery_fence))
             .map_err(|error| format!("Project worker did not accept the operation: {error}"))
     }
 }
@@ -253,6 +258,7 @@ fn perform(
         Job::Prepare {
             _work,
             path,
+            recovery,
             cancel,
             commit,
         } => {
@@ -260,7 +266,22 @@ fn perform(
                 Ok(path) => path,
                 Err(event) => return event,
             };
-            let (prepared, view) = if let Some(path) = &path {
+            let recovered = recovery.is_some();
+            let mut report = Vec::new();
+            let (prepared, view) = if let Some(candidate) = recovery {
+                let recovered = match crate::recovery::recover::<Document>(&candidate, &cancel) {
+                    Ok(recovered) => recovered,
+                    Err(error) => return Event::Failed(format!("Recovery refused; current session preserved: {error}")),
+                };
+                report = recovered.report;
+                let bundle = recovered.bundle;
+                if let Err(error) = bundle.state.validate() { return Event::Failed(error); }
+                let prepared = match Prepared::from_state(bundle.state.engine, bundle.media, output_sr) {
+                    Ok(prepared) => prepared,
+                    Err(error) => return engine_error(error),
+                };
+                (prepared, bundle.state.view)
+            } else if let Some(path) = &path {
                 let bundle = match project_file::load::<Document>(path, &Limits::default(), &cancel)
                 {
                     Ok(bundle) => bundle,
@@ -310,6 +331,8 @@ fn perform(
                     path,
                     view,
                     applied,
+                    recovered,
+                    report,
                 },
                 Err(error) => engine_error(error),
             }
@@ -333,6 +356,22 @@ fn perform(
             }
         }
     }
+}
+
+impl Job {
+    fn cancel(&self) -> &AtomicBool { match self { Self::Save { cancel, .. } | Self::Prepare { cancel, .. } | Self::CheckClose { cancel, .. } => cancel } }
+}
+// Only the cancelled recovery capture is waited on. An unrelated live project
+// transaction retains its normal Busy result. No callback/GUI thread waits.
+fn retire_recovery_capture(handle: &Handle, fence: Option<&AtomicBool>, cancel: &AtomicBool) -> Result<(), crate::engine::project::Error> {
+    let Some(fence) = fence else { return Ok(()); };
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while fence.load(Ordering::SeqCst) {
+        if cancel.load(Ordering::Acquire) { return Err(crate::engine::project::Error::Cancelled); }
+        if std::time::Instant::now() >= deadline { return Err(crate::engine::project::Error::Unavailable); }
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    handle.retire_cancelled_capture(cancel)
 }
 
 fn close_error(error: crate::engine::project::Error) -> Event {
