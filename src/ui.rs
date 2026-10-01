@@ -14,6 +14,7 @@ use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
 mod library_analysis;
+mod library_crates;
 mod library_store;
 pub(crate) mod bpm;
 use bpm::{Bpm, Origin};
@@ -111,6 +112,7 @@ pub struct App {
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
+    library_crates: library_crates::Crates,
     library_import_open: bool,
     library_initialized: bool,
     library_close: library_store::Close,
@@ -209,6 +211,7 @@ impl App {
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
+            library_crates: library_crates::Crates::default(),
             library_import_open: false,
             library_initialized: false,
             library_close: library_store::Close::default(),
@@ -593,6 +596,7 @@ impl App {
         self.poll_undo();
         self.poll_sampler_editor();
         self.poll_library_analysis();
+        self.poll_named_crates();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
@@ -612,6 +616,7 @@ impl App {
         self.grid_editor_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
+        self.named_crates_ui(ctx);
         self.load_status(ctx);
         self.audio_status(ctx);
         self.master_fx_status(ctx);
@@ -1091,7 +1096,7 @@ impl App {
     fn crate_row_at(&mut self, ui: &mut Ui, t: &Theme, now: SystemTime) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.label(RichText::new("crate").size(11.0).color(t.fg_dim));
+                self.named_crate_selector(ui);
                 let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
                 help::annotate(ui, &search, HelpControl::CrateSearch);
@@ -1117,7 +1122,7 @@ impl App {
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
-                ui.label(RichText::new("↓ bpm up   ↑ bpm down   same bpm → key → name").size(10.0).color(t.muted));
+                ui.label(RichText::new(if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(10.0).color(t.muted));
                 ui.label(RichText::new("file keys: hints").size(10.0).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
@@ -1132,6 +1137,9 @@ impl App {
                 }
             });
             self.refresh_library_view();
+            if self.library_view.unavailable != 0 {
+                ui.label(format!("{} saved members unavailable in this published view; inspect Named crates for their identities.", self.library_view.unavailable));
+            }
             let focus = ui.make_persistent_id("crate-navigation");
             self.crate_navigation(ui, focus);
             let stride = 18.0 + ui.spacing().item_spacing.y;

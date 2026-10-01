@@ -7,6 +7,10 @@ use std::sync::{mpsc, Weak};
 
 const SAMPLER_PROOF_LIMIT: usize = 256;
 mod analysis;
+mod collections;
+mod collection_rows;
+pub(super) use collection_rows::CollectionRows;
+pub(super) use collections::{Action as CollectionAction, Admission as CollectionAdmission, Token as CollectionToken, Receipt as CollectionReceipt, Outcome as CollectionOutcome};
 pub(super) use analysis::{Receipt as AnalysisReceipt, Inspect as AnalysisInspect, Inspected as AnalysisInspected, Cached as AnalysisCached};
 
 #[cfg(test)]
@@ -53,6 +57,7 @@ struct Staged {
     work: Arc<WorkPermit>,
 }
 struct Job {
+    collection: Option<collections::Request>,
     base: Arc<Vec<LibItem>>,
     candidate: Arc<Vec<LibItem>>,
     scan_work: Option<Arc<WorkPermit>>,
@@ -71,6 +76,7 @@ struct Job {
     retired_analysis_inspections: Vec<AnalysisInspected>,
 }
 struct Result {
+    collection: Option<CollectionReceipt>,
     analysis: Option<AnalysisReceipt>,
     inspection: Option<AnalysisInspected>,
     relocation: Option<RelocationResult>,
@@ -79,11 +85,13 @@ struct Result {
     revision: u64,
     items: Arc<Vec<LibItem>>,
     restricted: Arc<Vec<LibItem>>,
+    row_indices: [Arc<CollectionRows>; 3],
     retire: mpsc::SyncSender<(
         Arc<Vec<LibItem>>,
         Option<Arc<Vec<LibItem>>>,
         Arc<crate::library::Catalog>,
         Arc<Vec<LibItem>>,
+        [Arc<CollectionRows>; 3],
     )>,
     catalog: Arc<crate::library::Catalog>,
     storage: Option<String>,
@@ -95,6 +103,11 @@ struct RelocationResult {
 }
 
 pub(super) struct Metadata {
+    collection: Option<collections::Request>,
+    collection_result: Option<CollectionReceipt>,
+    collection_active: Option<CollectionToken>,
+    next_collection: u64,
+    collections_closing: bool,
     analysis: Option<crate::engine::media_load::AnalysisCompletion>,
     inspection: Option<AnalysisInspect>,
     retired_analysis_indices: Vec<Arc<Vec<usize>>>,
@@ -116,6 +129,7 @@ pub(super) struct Metadata {
     import: Option<Import>,
     relocation: Option<Relocation>,
     pub catalog: Arc<crate::library::Catalog>,
+    collection_rows: Arc<CollectionRows>,
     pub storage: Option<String>,
     pub storage_error: Option<String>,
     pub durable: bool,
@@ -159,6 +173,9 @@ impl Metadata {
                 // A stale optional result must not hide an essential capture on
                 // the next protected rebase. This cache is bounded by base rows.
                 let mut essential = HashMap::<LibSource, super::library_store::Capture>::new();
+                // Keep the latest immutable maps pinned until replaced or the
+                // worker exits. GUI teardown cannot free their large tables.
+                let mut row_index_pins: Option<[Arc<CollectionRows>; 3]> = None;
                 while let Ok(mut job) = work.recv() {
                     before_job();
                     for capture in &job.captures {
@@ -229,6 +246,7 @@ impl Metadata {
                     let mut relocation_outcome = None;
                     let mut analysis_result = None;
                     let mut inspection_result = None;
+                    let mut collection_result = None;
                     let mut analysis_committed = false;
                     let catalog = if let Some(store) = &mut store {
                         match store {
@@ -284,6 +302,22 @@ impl Metadata {
                                     }
                                     analysis_result = Some(receipt);
                                 }
+                                if let Some(request) = job.collection.take() {
+                                    let receipt = if durable { collections::apply(store, request) }
+                                        else { CollectionReceipt::refused(request, store.catalog.crates.revision(),
+                                            collections::Failure::Storage("Crate edit requires confirmed essential catalog persistence".into())) };
+                                    match &receipt.outcome {
+                                        CollectionOutcome::CommittedUnconfirmed(error) => {
+                                            durable = false;
+                                            storage = Some(format!("Crate replacement committed; durability unconfirmed: {error}"));
+                                        }
+                                        CollectionOutcome::Rejected(error) => {
+                                            storage = Some(format!("Crate request was not applied: {error}"));
+                                        }
+                                        _ => {}
+                                    }
+                                    collection_result = Some(receipt);
+                                }
                                 if let Some(request) = job.inspection.take() {
                                     inspection_result = Some(if durable {
                                         analysis::inspect(store, analysis_disk.as_mut().unwrap(), request)
@@ -303,6 +337,9 @@ impl Metadata {
                     } else {
                         Arc::new(crate::library::Catalog::default())
                     };
+                    if let Some(request) = job.collection.take() {
+                        collection_result = Some(CollectionReceipt::refused(request, catalog.crates.revision(), collections::Failure::Unavailable));
+                    }
                     if let Some(completion) = job.analysis.take() {
                         analysis_result = Some(AnalysisReceipt::refused(completion,
                             "Analysis was not saved: persistent DJ library is unavailable".into()));
@@ -339,9 +376,15 @@ impl Metadata {
                             },
                         }
                     });
+                    let full_index = Arc::new(CollectionRows::build(&items, &catalog));
+                    let restricted_index = if Arc::ptr_eq(&items, &restricted) { full_index.clone() }
+                        else { Arc::new(CollectionRows::build(&restricted, &catalog)) };
+                    let row_indices = [full_index, restricted_index,
+                        Arc::new(CollectionRows::build(&job.base, &catalog))];
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
+                            collection: collection_result,
                             analysis: analysis_result,
                             inspection: inspection_result,
                             relocation,
@@ -350,6 +393,7 @@ impl Metadata {
                             revision: job.revision,
                             items: items.clone(),
                             restricted: restricted.clone(),
+                            row_indices: row_indices.clone(),
                             retire,
                             catalog: catalog.clone(),
                             storage,
@@ -361,14 +405,23 @@ impl Metadata {
                     }
                     // Hold both candidate and base until GUI publication/discard.
                     // Their final large deallocation therefore stays here.
+                    // The GUI has returned every replaced/unused map before
+                    // we release the previous generation's pins here.
                     drop(retired.recv());
+                    row_index_pins = Some(row_indices);
                     drop(items);
                     drop(restricted);
                     drop(job.base);
                     drop(job.candidate);
                 }
+                drop(row_index_pins);
             });
         Self {
+            collection: None,
+            collection_result: None,
+            collection_active: None,
+            next_collection: 0,
+            collections_closing: false,
             analysis: None,
             inspection: None,
             retired_analysis_indices: Vec::new(),
@@ -390,6 +443,7 @@ impl Metadata {
             import: None,
             relocation: None,
             catalog: Arc::new(crate::library::Catalog::default()),
+            collection_rows: Arc::new(CollectionRows::default()),
             storage: persistent.then(|| "Opening DJ library…".into()),
             storage_error: None,
             durable: !persistent,
@@ -404,6 +458,10 @@ impl Metadata {
 }
 
 impl Metadata {
+    /// The table is prepared and pinned by the owner. Borrow it instead of
+    /// retaining an Arc whose eventual destruction could move to the GUI.
+    pub fn collection_rows(&self) -> &CollectionRows { &self.collection_rows }
+
     /// Bounded handoff: one pending result, plus the worker's one in-flight job.
     pub fn save_analysis(&mut self, completion: crate::engine::media_load::AnalysisCompletion)
         -> std::result::Result<(), crate::engine::media_load::AnalysisCompletion> {
@@ -635,6 +693,11 @@ impl Metadata {
             let error = "DJ library worker unavailable; pending save outcome is unconfirmed";
             self.storage_error = Some(error.into());
             self.durable = false;
+            if self.collection_result.is_none() {
+                if let Some(token) = &self.collection_active {
+                    self.collection_result = Some(CollectionReceipt::unavailable(token, self.catalog.crates.revision()));
+                }
+            }
             if self.analysis_result.is_none() {
                 if let Some(id) = self.analysis_active {
                     self.analysis_result = Some(AnalysisReceipt { id, committed: false,
@@ -650,6 +713,7 @@ impl Metadata {
             return Err(error);
         }
         if let Ok(result) = received {
+            if let Some(collection) = result.collection { self.collection_result = Some(collection); }
             if let Some(analysis) = result.analysis { self.analysis_result = Some(analysis); }
             if let Some(inspection) = result.inspection { self.inspection_result = Some(inspection); }
             if let Some(relocation) = result.relocation { self.relocation_result = Some(relocation); }
@@ -670,6 +734,7 @@ impl Metadata {
             self.storage = result.storage;
             self.durable = result.durable;
             let retired_catalog = std::mem::replace(&mut self.catalog, result.catalog);
+            let [full_index, restricted_index, base_index] = result.row_indices;
             if result.revision == self.revision && result.base.as_ptr() == Arc::as_ptr(library) {
                 // New optional rows only become visible under a fresh commit
                 // guard. Already durable results remain truthful while mode
@@ -682,34 +747,42 @@ impl Metadata {
                     .flatten();
                 let guard = permit.as_ref().and_then(|permit| permit.commit().ok());
                 self.deferred = additional_rows && guard.is_none();
-                let (next, unused) = if self.deferred {
-                    (result.restricted, result.items)
+                let (next, unused, next_index, unused_index) = if self.deferred {
+                    (result.restricted, result.items, restricted_index, full_index)
                 } else {
-                    (result.items, result.restricted)
+                    (result.items, result.restricted, full_index, restricted_index)
                 };
+                let previous_index = std::mem::replace(&mut self.collection_rows, next_index);
                 let previous = std::mem::replace(library, next);
                 let _ = result.retire.try_send((
                     previous,
                     self.staged.take().map(|staged| staged.items),
                     retired_catalog,
                     unused,
+                    [previous_index, unused_index, base_index],
                 ));
                 drop(guard);
                 published = true;
                 self.dirty = false;
             } else {
+                // The catalog receipt remains current even when row publication
+                // is stale. Its base table still gives saved member labels O(1);
+                // row lookup refuses any different actual row allocation.
+                let previous_index = std::mem::replace(&mut self.collection_rows, base_index);
                 self.deferred |= !Arc::ptr_eq(&result.items, &result.restricted);
                 let _ = result.retire.try_send((
                     result.items,
                     None,
                     retired_catalog,
                     result.restricted,
+                    [previous_index, full_index, restricted_index],
                 ));
                 self.dirty = true;
             }
         }
         if self.dirty && !self.in_flight {
             let job = Job {
+                collection: self.collection.take(),
                 base: library.clone(),
                 candidate: self
                     .staged
@@ -737,6 +810,7 @@ impl Metadata {
                     self.in_flight = true;
                 }
                 Err(mpsc::TrySendError::Full(job) | mpsc::TrySendError::Disconnected(job)) => {
+                    self.collection = job.collection;
                     self.analysis = job.analysis;
                     self.inspection = job.inspection;
                     self.retired_analysis_indices = job.retired_analysis_indices;

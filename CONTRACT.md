@@ -673,7 +673,9 @@ once before encoding the request.
   serialization and fsync. Scan/import publication is atomic and retains source
   selection. Renderer receipts publish preparation in 87 fixed atomic words;
   terminal receipts remain attributable even after replacement before a GUI poll.
-- Schema 5 is written; schemas 1–4 migrate without changing IDs or preparation.
+- Schema 6 is written; schemas 1–5 migrate without changing IDs or preparation.
+  Earlier catalogs migrate with an empty named-crate forest; malformed schema 6
+  stores missing that forest are rejected.
   Older hot cues default to unnamed, theme-colored slots. Unknown schemas/fields, malformed stores and a missing primary
   with a preserved backup fail closed. Scans and startup defaults cannot replace
   them. Import conflicts reject the import while unrelated pending edits persist.
@@ -1013,3 +1015,34 @@ publication. Preferences persist startup protection only, not emergency state.
   slots to the metadata owner. The GUI keeps ownership and retries if those
   slots are occupied. No analysis filesystem access or source decoding runs on
   the GUI or audio callback. Closing the panel hides it without cancelling work.
+
+
+## Named and nested crates
+
+- Collections store stable TrackId membership, never file moves or copied audio.
+  Roots, children and direct members retain explicit manual order. A track may
+  belong to several crates once each; children remain separate views. All tracks
+  retains the library sort, and filtering a named crate preserves manual order.
+- The catalog permits 4,096 crates, depth 32, names of at most 256 UTF-8 bytes,
+  100,000 members per crate and 250,000 total memberships, subject to the existing
+  catalog byte/track limits. One GUI edit accepts at most 4,096 selected members.
+  Invalid names, cycles, duplicates, stale revision/anchors and bounds fail
+  before mutation; exact no-op edits retain the collection revision.
+- The existing metadata owner generates crate IDs, validates candidates and
+  saves one explicit operation at a time, including its terminal receipt.
+  Cancellation and performance protection may reject before publication claim.
+  After the claim, actual durable, committed-unconfirmed or unknown outcomes
+  remain distinct. Imports merge tracks and forest as one validated candidate;
+  identity/order conflicts reject the complete import without guessing.
+- Removing membership or deleting a confirmed subtree preserves source bytes,
+  catalog tracks, preparation, analysis, history and sampler banks. Refresh,
+  missing media and verified relocation preserve membership identity.
+- The owner prepares row/track lookup tables for each exact immutable catalog
+  and row publication. A different publication cannot reuse the old mapping.
+  Superseded tables retire on the worker; the GUI virtualizes the tree/member
+  list and retains only the bounded selected-member set.
+- Controller views use the selected crate's filtered manual order and a new
+  epoch after publication changes. Already admitted loads keep their captured
+  source; obsolete Browse requests cannot redirect the new view. Project state
+  saves the selected crate ID only, never the external forest. Missing saved
+  crates fall back explicitly to All tracks without recreating collections.
