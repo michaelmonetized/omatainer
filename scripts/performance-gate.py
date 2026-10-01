@@ -320,10 +320,12 @@ def execute(command, timeout=10, limit=65536, env=None, log=None, cwd=None):
             try: os.killpg(process.pid,signal.SIGTERM)
             except ProcessLookupError: pass
             try: process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                try: os.killpg(process.pid,signal.SIGKILL)
-                except ProcessLookupError: pass
-                process.wait(timeout=2)
+            except subprocess.TimeoutExpired: pass
+            # The direct child may exit on TERM while a descendant ignores it.
+            # Always retire the remaining owned group, not only a live parent.
+            try: os.killpg(process.pid,signal.SIGKILL)
+            except ProcessLookupError: pass
+            process.wait(timeout=2)
         process.stdout.close();process.stderr.close()
 
 def output(command, timeout=10):

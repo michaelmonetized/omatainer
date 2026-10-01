@@ -72,13 +72,22 @@ class PerformanceTests(unittest.TestCase):
             gate.execute([sys.executable,'-c','import os;os.write(1,b"x"*65536)'],limit=1024)
         with tempfile.TemporaryDirectory() as directory:
             pid=Path(directory)/'pid'
-            program='import subprocess,time,pathlib,sys; p=subprocess.Popen([sys.executable,"-c","import time;time.sleep(20)"]); pathlib.Path(sys.argv[1]).write_text(str(p.pid)); time.sleep(20)'
+            # A child that ignores TERM must still be killed after its parent
+            # exits. The readiness line ensures its signal handler is installed.
+            child_code="import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);print('ready',flush=True);time.sleep(20)"
+            program='import subprocess,time,pathlib,sys; p=subprocess.Popen([sys.executable,"-c",sys.argv[2]],stdout=subprocess.PIPE); p.stdout.readline(); pathlib.Path(sys.argv[1]).write_text(str(p.pid)); time.sleep(20)'
             with self.assertRaisesRegex(gate.GateError,'deadline'):
-                gate.execute([sys.executable,'-c',program,str(pid)],timeout=.15)
+                gate.execute([sys.executable,'-c',program,str(pid),child_code],timeout=.15)
             child=int(pid.read_text())
             # A killed grandchild may briefly be an adopted zombie, never running.
             state=Path(f'/proc/{child}/stat')
-            if state.exists():self.assertEqual(state.read_text().split()[2],'Z')
+            until=time.monotonic()+1
+            while True:
+                try: current=state.read_text().split()[2]
+                except FileNotFoundError: break
+                if current=='Z': break
+                self.assertLess(time.monotonic(),until,'owned descendant survived cancellation')
+                time.sleep(.005)
         self.assertLess(time.monotonic()-start,3)
     def test_atomic_failed_attempt_replaces_prior_success_without_partial_json(self):
         with tempfile.TemporaryDirectory() as directory:
