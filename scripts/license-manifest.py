@@ -7,6 +7,7 @@ license grants. Missing upstream notices must be supplied from pinned sources.
 import argparse
 import ctypes
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -26,7 +27,10 @@ def toolchain():
     return fields
 LICENSE_ROOT = '.local/share/omatainer/licenses'
 RECORD_FILES = ('manifest.json', 'notices.json')
+GATE_SPEC = importlib.util.spec_from_file_location('performance_gate', Path(__file__).with_name('performance-gate.py'))
+gate = importlib.util.module_from_spec(GATE_SPEC); GATE_SPEC.loader.exec_module(gate)
 INSTALLED = {f'{LICENSE_ROOT}/{name}': f'licenses/{name}' for name in RECORD_FILES}
+INSTALLED[gate.INSTALLED] = gate.REPORT
 RECEIPT = f'{LICENSE_ROOT}/release.json'
 
 class ManifestError(ValueError):
@@ -172,8 +176,7 @@ def update(root, meta, supplements=None):
         'commercial_use':'The Rust library is open-source software; commercial use is subject to the supplied library and constituent terms.',
         'redistribution':'Retain the library copyright and constituent notices. The exact upstream revision and complete toolchain-supplied library copyright record are retained.',
         'sources':[{'location':source, 'sha256':sha(regular(copyright))}], 'notices':refs, 'members':[]})
-    tracked = list(policy['package'].keys()) + ['LICENSE','Cargo.toml','Cargo.lock','licenses/assets.json',
-        'scripts/license-manifest.py','scripts/install-transaction.py'] + [p.relative_to(root).as_posix() for p in sorted((root/'src').rglob('*.rs'))]
+    tracked = source_paths(root, policy['package'])
     document = {'schema': 1, 'target': rust['host'], 'application': tomllib.loads((root/'Cargo.toml').read_text())['package']['version'],
                 'scope': policy['scope'], 'entries': entries, 'toolchain': rust, 'cargo': cargos, 'package': policy['package'],
                 'external': policy['external'], 'absent': policy['absent'],
@@ -181,6 +184,21 @@ def update(root, meta, supplements=None):
     (root/'licenses/manifest.json').write_bytes(encoded(document))
     (root/'licenses/notices.json').write_bytes(encoded(notes))
     return document
+
+def source_paths(root, package):
+    paths = set(package) | {'LICENSE','Cargo.toml','Cargo.lock','licenses/assets.json',gate.POLICY,
+                            'README.md','CONTRACT.md','docs/manual.md'}
+    paths.update(p.relative_to(root).as_posix() for p in (root/'scripts').glob('*') if p.suffix in ('.py','.sh'))
+    # Test executables also embed media and read the checked manual. Bind these
+    # inputs, including new non-Rust assets, rather than only the Rust modules.
+    for directory in ('src','tests','benchmarks'):
+        paths.update(p.relative_to(root).as_posix() for p in (root/directory).rglob('*')
+                     if p.is_file() or p.is_symlink())
+    build = tomllib.loads((root/'Cargo.toml').read_text())['package'].get('build', 'build.rs')
+    if build is not False:
+        relative(build)
+        if (root/build).exists() or (root/build).is_symlink(): paths.add(build)
+    return paths
 
 def validate(root, meta=None):
     document = load(root/'licenses/manifest.json'); notes = load(root/'licenses/notices.json')
@@ -200,8 +218,7 @@ def validate(root, meta=None):
                 raise ManifestError(f'missing or altered notice for {entry["id"]}')
     if used != set(notes):raise ManifestError('unindexed notice records')
     if document['toolchain'] != toolchain():raise ManifestError('Rust toolchain changed; refresh the retained runtime notices')
-    expected_src = {p.relative_to(root).as_posix() for p in (root/'src').rglob('*.rs')}
-    if expected_src != {name for name in document['source_files'] if name.startswith('src/')}:raise ManifestError('unmanifested or missing Rust source')
+    if source_paths(root, document['package']) != set(document['source_files']):raise ManifestError('unmanifested or missing source/build/gate inventory')
     for name,digest in document['source_files'].items():
         if sha(regular(root/name)) != digest:raise ManifestError(f'source changed; review and refresh license manifest: {name}')
     found={p.relative_to(root).as_posix() for directory in ('contrib','plugin') for p in (root/directory).rglob('*') if p.is_file() or p.is_symlink()}
@@ -231,6 +248,7 @@ def verify_embedded(binary, records):
             raise ManifestError(f'executable embeds different license records: {name}')
 
 def release_record(root, binary, document):
+    gate.check(root, binary, manifest=document)
     try:
         revision=subprocess.run(['git','-C',str(root),'rev-parse','HEAD'],check=True,capture_output=True,text=True).stdout.strip()
         dirty=bool(subprocess.run(['git','-C',str(root),'status','--porcelain','--',*document['source_files']],check=True,capture_output=True,text=True).stdout)
@@ -262,6 +280,9 @@ def verify_package(directory):
     for entry in manifest['entries']:
         for ref in entry['notices']:
             if sha(notes[ref['sha256']].encode()) != ref['sha256']:raise ManifestError('altered package notice')
+    gate.verify(gate.parse(gate.regular(directory/gate.INSTALLED)), manifest,
+                receipt['files']['.local/bin/omatainer'], receipt['files'][f'{LICENSE_ROOT}/manifest.json'],
+                receipt['files'][f'{LICENSE_ROOT}/notices.json'])
     return receipt
 
 def publish_directory(source, destination):
@@ -276,6 +297,7 @@ def publish_directory(source, destination):
 def package(root,binary,destination,meta=None):
     document=validate(root,meta)
     verify_binary(root,binary)
+    gate.check(root,binary,manifest=document)
     if destination.exists():raise ManifestError('package destination already exists')
     destination.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.omatainer-package-',dir=destination.parent) as temporary:

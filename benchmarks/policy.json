@@ -1,0 +1,571 @@
+{
+  "schema": 1,
+  "suite": "supported-workloads-v1",
+  "status": "reviewed",
+  "test": "ui::project::performance_gate_tests::fixed_native_workloads",
+  "timeout_seconds": 900,
+  "scope": "Local release-profile production components driven through implemented App, callback, MIDI and IPC paths. Timing describes headless callback/render/UI work on the recorded Linux host.",
+  "unresolved_limits": [
+    "No physical audio-device deadline, converter latency, XRUN, audible quality or controller hardware compatibility proof.",
+    "Headless egui frame time excludes a window-system compositor and physical display presentation; no Orca or human accessibility certification.",
+    "Dense live control changes exercise implemented commands; no automation-lane editor exists.",
+    "Long note capture exercises implemented MIDI composition; no general microphone or audio-file recording editor exists.",
+    "Ten minutes of musical-time recording is accelerated; this does not certify a ten-minute wall-clock hardware soak."
+  ],
+  "workloads": [
+    {
+      "id": "callback_producer",
+      "conditions": {
+        "blocks": 8192,
+        "channels": 2,
+        "frames": 256,
+        "fx_per_track": 3,
+        "notes_per_track": 1024,
+        "parameter_interval_blocks": 8,
+        "parameter_sweep_tracks": 8,
+        "sample_rate": 48000,
+        "tracks": 8,
+        "warmup_blocks": 128,
+        "live_note_recording": false
+      },
+      "repetitions": 3,
+      "samples": {
+        "callback_wall_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 5333333,
+            "max": 10666666,
+            "p99_minus_p50": 2666666
+          }
+        },
+        "render_cpu_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 3999999
+          }
+        }
+      },
+      "metrics": {
+        "allocations": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "frees": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rms": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        },
+        "peak": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        }
+      },
+      "checks": [
+        "all_commands_applied",
+        "finite_output",
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "26f84beea80f5ec5"
+        }
+      }
+    },
+    {
+      "id": "callback_composer",
+      "conditions": {
+        "blocks": 8192,
+        "channels": 2,
+        "frames": 256,
+        "fx_per_track": 3,
+        "notes_per_track": 1024,
+        "parameter_interval_blocks": 8,
+        "parameter_sweep_tracks": 8,
+        "sample_rate": 48000,
+        "tracks": 8,
+        "warmup_blocks": 128,
+        "live_note_recording": true
+      },
+      "repetitions": 3,
+      "samples": {
+        "callback_wall_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 5333333,
+            "max": 10666666,
+            "p99_minus_p50": 2666666
+          }
+        },
+        "render_cpu_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 3999999
+          }
+        }
+      },
+      "metrics": {
+        "allocations": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "frees": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rms": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        },
+        "peak": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        }
+      },
+      "checks": [
+        "all_commands_applied",
+        "finite_output",
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "e2f197b02633bd3d"
+        }
+      }
+    },
+    {
+      "id": "callback_live_dj",
+      "conditions": {
+        "blocks": 8192,
+        "channels": 2,
+        "frames": 128,
+        "fx_per_track": 0,
+        "notes_per_track": 0,
+        "parameter_interval_blocks": 8,
+        "parameter_sweep_tracks": 0,
+        "sample_rate": 48000,
+        "tracks": 0,
+        "warmup_blocks": 128,
+        "live_note_recording": false
+      },
+      "repetitions": 3,
+      "samples": {
+        "callback_wall_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 2666666,
+            "max": 5333332,
+            "p99_minus_p50": 1333333
+          }
+        },
+        "render_cpu_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 1999999
+          }
+        }
+      },
+      "metrics": {
+        "allocations": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "frees": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rms": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        },
+        "peak": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        }
+      },
+      "checks": [
+        "all_commands_applied",
+        "finite_output",
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "d7711a2dc3b32a39"
+        }
+      }
+    },
+    {
+      "id": "callback_hybrid",
+      "conditions": {
+        "blocks": 8192,
+        "channels": 2,
+        "frames": 256,
+        "fx_per_track": 3,
+        "notes_per_track": 1024,
+        "parameter_interval_blocks": 8,
+        "parameter_sweep_tracks": 8,
+        "sample_rate": 48000,
+        "tracks": 8,
+        "warmup_blocks": 128,
+        "live_note_recording": true
+      },
+      "repetitions": 3,
+      "samples": {
+        "callback_wall_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 5333333,
+            "max": 10666666,
+            "p99_minus_p50": 2666666
+          }
+        },
+        "render_cpu_ns": {
+          "count": 8192,
+          "max": {
+            "p99": 3999999
+          }
+        }
+      },
+      "metrics": {
+        "allocations": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "frees": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rms": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        },
+        "peak": {
+          "unit": "linear amplitude",
+          "min": 0.001,
+          "max": 1
+        }
+      },
+      "checks": [
+        "all_commands_applied",
+        "finite_output",
+        "nonzero_output",
+        "original_notes_intact",
+        "exact_recorded_notes"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {
+          "quantized_audio_hash": "adc9540dab057fed"
+        }
+      }
+    },
+    {
+      "id": "large_crate_ui",
+      "conditions": {
+        "entries": 50000,
+        "frames": 512,
+        "height": 1000,
+        "warmup_frames": 16,
+        "width": 1440
+      },
+      "repetitions": 3,
+      "samples": {
+        "frame_wall_ns": {
+          "count": 512,
+          "max": {
+            "p99": 16670000,
+            "max": 50000000
+          }
+        }
+      },
+      "metrics": {
+        "filtered_tracks": {
+          "unit": "count",
+          "min": 25000,
+          "max": 25000
+        },
+        "max_visible_rows": {
+          "unit": "count",
+          "min": 1,
+          "max": 64
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        }
+      },
+      "checks": [
+        "bounded_visible_rows",
+        "real_search_applied",
+        "selection_matches_published",
+        "steady_filter_cached"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {}
+      }
+    },
+    {
+      "id": "multi_controller_ipc",
+      "conditions": {
+        "events_per_frame": 8,
+        "frames": 512,
+        "height": 1000,
+        "inputs": 5,
+        "ipc_requests": 512,
+        "warmup_frames": 16,
+        "width": 1440,
+        "ipc_connections": 16,
+        "requests_per_connection": 32
+      },
+      "repetitions": 3,
+      "samples": {
+        "frame_wall_ns": {
+          "count": 512,
+          "max": {
+            "p99": 16670000,
+            "max": 50000000
+          }
+        },
+        "ipc_roundtrip_ns": {
+          "count": 512,
+          "max": {
+            "p99": 50000000,
+            "max": 200000000
+          }
+        },
+        "midi_dispatch_ns": {
+          "count": 512,
+          "max": {
+            "p99": 20000000,
+            "max": 100000000
+          }
+        }
+      },
+      "metrics": {
+        "ipc_requests": {
+          "unit": "count",
+          "min": 512,
+          "max": 512
+        },
+        "midi_dispatched": {
+          "unit": "count",
+          "min": 4096,
+          "max": 4096
+        },
+        "midi_dropped": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "midi_received": {
+          "unit": "count",
+          "min": 4096,
+          "max": 4096
+        },
+        "midi_resets": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        }
+      },
+      "checks": [
+        "all_input_events_dispatched",
+        "ipc_scene_applied",
+        "midi_values_applied",
+        "no_history_failure",
+        "no_stuck_notes",
+        "ui_gain_applied",
+        "independent_held_chords"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {}
+      }
+    },
+    {
+      "id": "project_roundtrip",
+      "conditions": {
+        "height": 1000,
+        "notes_per_track": 1024,
+        "tracks": 8,
+        "warmup_frames": 16,
+        "width": 1440
+      },
+      "repetitions": 3,
+      "samples": {
+        "frame_wall_ns": {
+          "count": {
+            "min": 1,
+            "max": 5000
+          },
+          "max": {
+            "p99": 16670000,
+            "max": 50000000
+          }
+        }
+      },
+      "metrics": {
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "reopen_ns": {
+          "unit": "ns",
+          "min": 0,
+          "max": 5000000000
+        },
+        "reopened_notes": {
+          "unit": "count",
+          "min": 8192,
+          "max": 8192
+        },
+        "save_ns": {
+          "unit": "ns",
+          "min": 0,
+          "max": 5000000000
+        },
+        "saved_notes": {
+          "unit": "count",
+          "min": 8192,
+          "max": 8192
+        }
+      },
+      "checks": [
+        "all_notes_exact",
+        "gain_persisted",
+        "opened_clean",
+        "opened_stopped",
+        "redo_applied",
+        "undo_applied"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {}
+      }
+    },
+    {
+      "id": "long_note_recording",
+      "conditions": {
+        "blocks": 6000,
+        "frames": 4800,
+        "height": 1000,
+        "notes": 600,
+        "sample_rate": 48000,
+        "virtual_seconds": 600,
+        "warmup_frames": 16,
+        "width": 1440
+      },
+      "repetitions": 3,
+      "samples": {
+        "frame_wall_ns": {
+          "count": {
+            "min": 1,
+            "max": 5000
+          },
+          "max": {
+            "p99": 16670000,
+            "max": 50000000
+          }
+        },
+        "renderer_wall_ns": {
+          "count": 6000,
+          "max": {
+            "p99": 100000000
+          }
+        }
+      },
+      "metrics": {
+        "allocations": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "frees": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "midi_dispatched": {
+          "unit": "count",
+          "min": 1200,
+          "max": 1200
+        },
+        "midi_dropped": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        },
+        "recorded_notes": {
+          "unit": "count",
+          "min": 600,
+          "max": 600
+        },
+        "rejected_commands": {
+          "unit": "count",
+          "min": 0,
+          "max": 0
+        }
+      },
+      "checks": [
+        "compose_disarmed",
+        "finite_output",
+        "no_history_failure",
+        "recorded_notes_exact",
+        "reopened_notes_exact"
+      ],
+      "expected_observations": {
+        "aarch64-unknown-linux-gnu": {}
+      }
+    }
+  ],
+  "targets": [
+    "aarch64-unknown-linux-gnu"
+  ]
+}

@@ -14,6 +14,8 @@ sys.dont_write_bytecode = True
 
 SPEC=importlib.util.spec_from_file_location('records',Path(__file__).with_name('license-manifest.py'))
 records=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(records)
+FIXTURE_SPEC=importlib.util.spec_from_file_location('performance_fixture',Path(__file__).with_name('performance-test-support.py'))
+performance_fixture=importlib.util.module_from_spec(FIXTURE_SPEC);FIXTURE_SPEC.loader.exec_module(performance_fixture)
 ROOT=Path(__file__).resolve().parent.parent
 META=records.metadata(ROOT)
 class RecordsTests(unittest.TestCase):
@@ -30,18 +32,19 @@ class RecordsTests(unittest.TestCase):
             'if(!strcmp(argv[2],"--notices"))p='+json.dumps(str(self.root/'licenses/notices.json'))+';'+
             'if(!p)return 2;FILE*f=fopen(p,"rb");if(!f)return 3;int c;while((c=fgetc(f))!=EOF)putchar(c);fclose(f);return 0;}')
         subprocess.run(['cc',str(source),'-o',str(self.binary)],check=True,capture_output=True)
+        performance_fixture.report(self.root,self.binary)
     def package(self):
         return records.package(self.root,self.binary,self.base/'release',META)
     def test_exact_inventory_and_notices_survive_release_reopen(self):
         doc=records.validate(self.root,META)
         output=self.package();receipt=records.verify_package(output)
-        self.assertEqual(len(receipt['files']),len(doc['package'])+3)
+        self.assertEqual(len(receipt['files']),len(doc['package'])+4)
         self.assertEqual((output/records.LICENSE_ROOT/'notices.json').read_bytes(),(self.root/'licenses/notices.json').read_bytes())
         self.assertEqual(receipt['source_files'],doc['source_files'])
         self.assertTrue(all(entry['notices'] for entry in doc['entries']))
         with self.assertRaisesRegex(records.ManifestError,'already exists'):self.package()
     def test_missing_extra_tampered_source_or_notice_refuses_publication(self):
-        for change in ['extra','missing','altered','notice','rust','dependency']:
+        for change in ['extra','missing','altered','notice','rust','script','build','dependency','fixture','embedded','manual']:
             with self.subTest(change=change):
                 path=None;before=None
                 if change=='extra':path=self.root/'plugin/unlicensed.wav'
@@ -49,8 +52,13 @@ class RecordsTests(unittest.TestCase):
                 elif change=='altered':path=self.root/'contrib/omatainer.lua';before=path.read_bytes();path.write_bytes(before+b'\n')
                 elif change=='notice':path=self.root/'licenses/notices.json';before=path.read_bytes();path.write_text('{}')
                 elif change=='rust':path=self.root/'src/new_unreviewed_asset.rs'
+                elif change=='script':path=self.root/'scripts/unreviewed.sh'
+                elif change=='build':path=self.root/'build.rs'
                 elif change=='dependency':path=self.root/'Cargo.lock';before=path.read_bytes();path.write_bytes(before+b'\n')
-                if change in ['extra','rust']:path.write_text('unreviewed')
+                elif change=='fixture':path=self.root/'tests/new-unreviewed.wav'
+                elif change=='embedded':path=self.root/'src/new-unreviewed.bin'
+                elif change=='manual':path=self.root/'docs/manual.md';before=path.read_bytes();path.write_bytes(before+b'\n')
+                if change in ['extra','rust','script','build','fixture','embedded']:path.write_text('unreviewed')
                 with self.assertRaises((records.ManifestError,KeyError)):self.package()
                 self.assertFalse((self.base/'release').exists())
                 if before is None:path.unlink()
@@ -99,6 +107,21 @@ class RecordsTests(unittest.TestCase):
             records.update(self.root,changed)
         with patch.object(records.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'host: unsupported-platform\n','')):
             with self.assertRaisesRegex(records.ManifestError,'supports native Linux'):records.toolchain()
+
+    def test_performance_evidence_is_mandatory_and_raw_values_are_rechecked_after_packaging(self):
+        report=self.root/records.gate.REPORT
+        original=report.read_bytes();report.unlink()
+        with self.assertRaisesRegex(ValueError,'regular performance'):self.package()
+        self.assertFalse((self.base/'release').exists())
+        report.write_bytes(original)
+        output=self.package();path=output/records.gate.INSTALLED
+        value=json.loads(path.read_text());value['raw']['workloads'][0]['measurements'][0]['samples']['frame_wall_ns'][0]=999
+        path.write_bytes(records.encoded(value))
+        receipt_path=output/records.RECEIPT;receipt=json.loads(receipt_path.read_text())
+        receipt['files'][records.gate.INSTALLED]=records.sha(path.read_bytes())
+        receipt_path.write_bytes(records.encoded(receipt))
+        # Rehashing the outer file cannot turn false timing summaries into proof.
+        with self.assertRaisesRegex(ValueError,'raw evidence'):records.verify_package(output)
 
     def test_known_mpl_and_font_terms_are_retained_with_primary_sources(self):
         manifest=records.load(self.root/'licenses/manifest.json');notes=records.load(self.root/'licenses/notices.json')

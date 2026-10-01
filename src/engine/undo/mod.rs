@@ -807,7 +807,7 @@ impl RtEngine {
 
 impl Journal {
     /// Called by the existing stopped-device preparation path, never audio.
-    pub(super) fn prepare_sample_rate(&mut self, sr: f32, active: [u64; MAX_PATCHES]) {
+    pub(super) fn prepare_sample_rate(&mut self, sr: f32, active: [(u64, usize, usize); super::recording::CAPTURES]) {
         if !self.enabled {
             return;
         }
@@ -830,8 +830,11 @@ impl Journal {
             let mut old = std::mem::replace(&mut self.entries, Vec::with_capacity(MAX_ENTRIES));
             self.state = 0;
             for entry in old[..self.cursor].iter_mut().flatten() {
+                // Held captures retain this stable owner ID across pruning.
+                // The epoch and before/after checkpoints still describe the new
+                // timeline; entry identity is not a mutable content version.
                 let mut kept = Entry::new(
-                    self.next,
+                    entry.id,
                     Name::RecordNotes,
                     entry.gesture,
                     0,
@@ -839,12 +842,13 @@ impl Journal {
                     self.state,
                 );
                 for patch in &mut entry.patches[..entry.len] {
-                    let keep = matches!(patch,Some(Patch::Clip {track,scene,..}) if active[*track as usize*SCENES+*scene as usize]==entry.id);
+                    let keep = matches!(patch,Some(Patch::Clip {track,scene,..}) if active.iter().any(|(owner,t,s)| *owner == entry.id && *t == *track as usize && *s == *scene as usize));
                     if keep {
                         kept.push(patch.take().unwrap());
                     }
                 }
                 if kept.len != 0 {
+                    kept.after = self.next;
                     self.next = self.next.wrapping_add(1).max(1);
                     self.state = kept.after;
                     self.entries.push(Some(kept));
