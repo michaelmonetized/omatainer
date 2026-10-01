@@ -14,6 +14,8 @@ pub(super) enum Action {
     Help,
     Midi,
     CloseFx,
+    Undo,
+    Redo,
 }
 
 pub(super) struct Binding {
@@ -183,6 +185,27 @@ pub(super) const BINDINGS: &[Binding] = &[
         "Close effect chain",
         Action::CloseFx,
     ),
+    b(
+        Key::Z,
+        Modifiers::CTRL,
+        "Ctrl+Z",
+        "Undo last creative edit",
+        Action::Undo,
+    ),
+    b(
+        Key::Z,
+        Modifiers::CTRL.plus(Modifiers::SHIFT),
+        "Ctrl+Shift+Z",
+        "Redo next creative edit",
+        Action::Redo,
+    ),
+    b(
+        Key::Y,
+        Modifiers::CTRL,
+        "Ctrl+Y",
+        "Redo next creative edit",
+        Action::Redo,
+    ),
 ];
 
 pub(super) fn lookup(key: Key, modifiers: Modifiers, repeat: bool) -> Option<Action> {
@@ -227,6 +250,8 @@ impl App {
             Action::Help => self.keys_open = !self.keys_open,
             Action::Midi => self.midi_open = !self.midi_open,
             Action::CloseFx => self.send(Command::CloseFx),
+            Action::Undo => self.history_action(false),
+            Action::Redo => self.history_action(true),
         }
     }
 }

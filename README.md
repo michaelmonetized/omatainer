@@ -92,6 +92,9 @@ Omarchy desktop bindings: `SUPER+O` launches/focuses the app;
 | `F1` | Show / hide shortcut help |
 | `Ctrl+M` | Show / hide MIDI window |
 | `Escape` | Close effect chain |
+| `Ctrl+Z` | Undo last creative edit |
+| `Ctrl+Shift+Z` | Redo next creative edit |
+| `Ctrl+Y` | Redo next creative edit |
 <!-- app-shortcuts:end -->
 
 The bracket keys choose the crossfader endpoints, with the existing mixer ramp.
@@ -209,3 +212,11 @@ costs include their coverage limits. Start a bounded 30-second capture, then
 export a redacted private JSON file or reopen one for inspection. Exact backend
 XRUN counts remain unavailable. See [diagnostic measurement and export
 semantics](docs/validation/issue-81-diagnostics.md).
+
+**Edit → Undo / Redo / History** reverses supported creative edits while keeping
+transport and physical performance gates separate. Continuous drags form one
+entry unless another source edits between them. History shows applied/redo
+entries, memory use and explicit rejected edits; Ctrl+Z and Ctrl+Shift+Z (or
+Ctrl+Y) use the same actions. Text fields keep their own Undo. Returning to saved
+content restores a clean project indicator; New/Open start a new history.
+See [history and save semantics](docs/validation/issue-83-history-ui.md).
