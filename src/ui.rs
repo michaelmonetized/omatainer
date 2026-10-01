@@ -54,6 +54,8 @@ mod sampler_identity_tests;
 mod duration_tests;
 #[cfg(test)]
 mod midi_connection_tests;
+#[cfg(test)]
+mod sampler_pad_tests;
 
 pub struct App {
     engine: Engine,
@@ -339,22 +341,36 @@ impl App {
     }
 
     fn pad_gate(&mut self, p: usize, enabled: bool, r: &egui::Response) {
-        if !enabled || p >= 16 {
-            return;
-        }
-        let down = r.is_pointer_button_down_on();
-        if down && !self.pad_held[p] {
-            self.pad_held[p] = true;
-            self.send(Command::SamplerPad {
-                pad: p as u8,
-                on: true,
-            });
-        } else if !down && self.pad_held[p] {
+        if p >= self.pad_held.len() { return; }
+        let (pressed, released, down, origin) = r.ctx.input(|input| (
+            input.pointer.button_pressed(PointerButton::Primary),
+            input.pointer.button_released(PointerButton::Primary),
+            input.pointer.button_down(PointerButton::Primary),
+            input.events.iter().rev().find_map(|event| match event {
+                egui::Event::PointerButton { pos, button: PointerButton::Primary, pressed: true, .. } => Some(*pos),
+                _ => None,
+            }),
+        ));
+        // Retire the captured identity even when this cell became a piano gap.
+        // A release followed by another press in this frame ends the old gate.
+        if self.pad_held[p] && (released || !down) {
             self.pad_held[p] = false;
-            self.send(Command::SamplerPad {
-                pad: p as u8,
-                on: false,
-            });
+            self.send(Command::SamplerPad { pad: p as u8, on: false });
+        }
+        // Egui's final hover/down flags can be false after a complete tap or
+        // release/press handoff. Hit-test the actual press, respecting clipping,
+        // disabled UI and the top interactive layer instead of final hover.
+        let pressed_here = pressed && r.enabled() && origin.is_some_and(|pos|
+            r.interact_rect.contains(pos) && r.ctx.layer_id_at(pos) == Some(r.layer_id));
+        if enabled && pressed_here && !self.pad_held[p] {
+            // Admission owns a matching release reservation. Rejected presses
+            // cannot create local held state or an unmatched release.
+            self.pad_held[p] = self.submit(Command::SamplerPad { pad: p as u8, on: true });
+            if self.pad_held[p] && !down {
+                // A complete quick tap can also arrive in one GUI frame.
+                self.pad_held[p] = false;
+                self.send(Command::SamplerPad { pad: p as u8, on: false });
+            }
         }
     }
 
@@ -781,33 +797,29 @@ impl App {
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(4.0);
                 let piano = self.snap.sampler_inst.synth().is_some();
-                let labels_top = if piano {
-                    ["A#", "", "C#", "D#", "", "F#", "G#", ""]
-                } else {
-                    ["1", "2", "3", "4", "5", "6", "7", "8"]
-                };
-                let labels_bot = if piano {
-                    ["A", "B", "C", "D", "E", "F", "G", "A"]
-                } else {
-                    ["9", "10", "11", "12", "13", "14", "15", "16"]
-                };
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::splat(4.0);
-                    for (c, lab) in labels_top.iter().enumerate() {
-                        let p = 8 + c as u8;
-                        let empty = lab.is_empty();
-                        let r = pad_btn(ui, t, lab, empty, t.track_color(c), Vec2::new(pad_w, pad_h));
-                        self.pad_gate(p as usize, !empty, &r);
-                    }
-                });
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::splat(4.0);
-                    for (c, lab) in labels_bot.iter().enumerate() {
-                        let p = c as u8;
-                        let r = pad_btn(ui, t, lab, false, t.track_color(c + 8), Vec2::new(pad_w, pad_h));
-                        self.pad_gate(p as usize, true, &r);
-                    }
-                });
+                for row in [8u8, 0] {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing = Vec2::splat(4.0);
+                        for column in 0..8u8 {
+                            let pad = crate::engine::sampler_pad::PadIdentity::new(row + column);
+                            let label = if piano { pad.piano_label() } else { pad.sample_label() };
+                            let empty = label.is_empty();
+                            let color = t.track_color(column as usize + if row == 0 { 8 } else { 0 });
+                            let r = ui.push_id(("sampler-pad", pad.index()), |ui| {
+                                pad_btn(ui, t, label, empty, color, Vec2::new(pad_w, pad_h))
+                            }).inner.on_hover_ui(|ui| {
+                                if piano && empty {
+                                    ui.label(format!("Pad {} · no piano accidental", pad.number()));
+                                } else if piano {
+                                    ui.label(format!("{} · pad {} · MIDI note {}", label, pad.number(), pad.midi_note(self.snap.sampler_oct)));
+                                } else {
+                                    ui.label(format!("Sample pad {} · bank slot {}", pad.number(), pad.index()));
+                                }
+                            });
+                            self.pad_gate(pad.index(), !empty, &r);
+                        }
+                    });
+                }
             });
         });
     }

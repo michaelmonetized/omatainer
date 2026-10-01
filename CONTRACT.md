@@ -38,6 +38,14 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 - Three banks, **16 samples each**.
 - Switching banks changes which buffer pad N triggers.
+- Visible sample pad N dispatches zero-based bank slot N−1. Bottom-row pads are
+  1–8 (identities 0–7); top-row pads are 9–16 (identities 8–15). Labels, tooltips,
+  and sampler commands share those identities. Piano mode preserves the lower
+  natural notes and upper accidental positions; its three blank cells are inert.
+- Pointer down captures that cell's identity and pointer up releases the same
+  identity, including outside the cell or after a mode switch makes it blank.
+  Mode changes while the pointer is held never create a new gate. A rejected
+  press does not create a held gate or an unmatched release.
 - Samples in a bank are not all the same buffer.
 
 ## C4. Held pads + instrument + octave
