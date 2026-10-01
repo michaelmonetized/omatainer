@@ -51,7 +51,7 @@ field; guide progress itself is session-local and does not modify a project.
   instructions, completes Arm → held note → release → disarm → launch through
   the real Actions menu, and verifies the held stage cannot satisfy release. It
   also retains the prior project persistence and preference round-trip workflow.
-- Final local `cargo test`: **598 passed, 0 failed, 7 ignored** (605 discovered).
+- Final local `cargo test`: **629 passed, 0 failed, 8 ignored** (637 discovered).
   The ignored cases are explicit native/benchmark/manual-generation opt-ins; the
   Linux AT-SPI case was run separately with the expanded script and passed.
   `cargo build`, `git diff --check`, Python syntax, and refreshed license-record
@@ -64,3 +64,5 @@ Learn, external clock synchronization/output, timeline/piano-roll editing,
 audio recording, warp, automation, and third-party hosting are not taught as
 implemented features. The separate clip-gain idle-rounding regression discovered
 by the editing guide is fixed in the preceding accessibility layer.
+
+The assembled stack also passed the native package check and retained the existing preferences close/startup guards, effective remapped Undo/Redo menu hints, and library CloseGuard/cancellation ordering. The private native AT-SPI run visited 230 initial nodes and completed 75 actions through project, preferences, and the recording lesson.
