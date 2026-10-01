@@ -74,48 +74,97 @@ impl RtEngine {
 }
 
 impl RtEngine {
-    pub(in crate::engine) fn history_record_changed(&mut self, track: usize, scene: usize) {
+    /// Called immediately after history_record_target reserved the inverse.
+    pub(in crate::engine) fn recording_history_owner(&self, track: usize, scene: usize) -> u64 {
         if !self.undo.enabled || self.undo.replaying {
+            return 0;
+        }
+        self.undo.entries.last().and_then(Option::as_ref).filter(|entry|
+            entry.name == Name::RecordNotes && entry.patches[..entry.len].iter().flatten().any(|patch|
+                matches!(patch, Patch::Clip { track: t, scene: s, .. } if *t as usize == track && *s as usize == scene)))
+            .map_or(0, |entry| entry.id)
+    }
+    pub(in crate::engine) fn history_record_changed(&mut self, owner: u64) {
+        if !self.undo.enabled || self.undo.replaying || owner == 0 {
             return;
         }
-        if let Some(index)=self.undo.entries[..self.undo.cursor].iter().rposition(|e|e.as_ref().is_some_and(|e|e.name==Name::RecordNotes && e.patches[..e.len].iter().flatten().any(|p|matches!(p,Patch::Clip {track:t,scene:s,..} if *t as usize==track && *s as usize==scene)))) {self.undo.changed_from(index);}
+        if let Some(index) = self.undo.entries[..self.undo.cursor]
+            .iter()
+            .position(|entry| entry.as_ref().is_some_and(|entry| entry.id == owner))
+        {
+            self.undo.changed_from(index);
+        }
+    }
+    pub(in crate::engine) fn history_record_finished(
+        &mut self,
+        owner: u64,
+        track: usize,
+        scene: usize,
+        note_index: usize,
+        duration: f32,
+    ) {
+        if !self.undo.enabled || owner == 0 {
+            return;
+        }
+        // Later recording inverses may contain this held note. Finalizing its
+        // live duration must also finalize those historical snapshots, otherwise
+        // undoing a later note would resurrect a provisional quarter-beat hold.
+        if let Some(index) = self.undo.entries[..self.undo.cursor]
+            .iter()
+            .position(|entry| entry.as_ref().is_some_and(|entry| entry.id == owner))
+        {
+            for entry in self.undo.entries[index + 1..].iter_mut().flatten() {
+                for patch in entry.patches[..entry.len].iter_mut().flatten() {
+                    if let Patch::Clip {
+                        track: t,
+                        scene: s,
+                        value,
+                        ..
+                    } = patch
+                    {
+                        if *t as usize == track && *s as usize == scene {
+                            if let Some(note) = value.notes.get_mut(note_index) {
+                                note.len = duration;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.history_record_changed(owner);
+    }
+    fn held_history_entry(&self) -> Option<usize> {
+        let (owners, len) = self.note_recording.history_owners();
+        if len == 0 {
+            return None;
+        }
+        self.undo.entries[..self.undo.cursor]
+            .iter()
+            .position(|entry| {
+                entry
+                    .as_ref()
+                    .is_some_and(|entry| owners[..len].contains(&entry.id))
+            })
     }
     pub(in crate::engine) fn history_held_changed(&mut self) {
         if !self.undo.enabled || self.undo.replaying {
             return;
         }
-        let held = self.note_recording.held_targets();
-        if let Some(index)=self.undo.entries[..self.undo.cursor].iter().position(|e|e.as_ref().is_some_and(|e|e.name==Name::RecordNotes && e.patches[..e.len].iter().flatten().any(|p|matches!(p,Patch::Clip {track,scene,..} if held & (1u64<<(*track as usize*8+*scene as usize))!=0)))) {self.undo.changed_from(index);}
+        if let Some(index) = self.held_history_entry() {
+            self.undo.changed_from(index);
+        }
     }
-}
-
-impl RtEngine {
     pub(in crate::engine) fn refresh_history_protection(&mut self) {
         if !self.undo.enabled || self.undo.replaying {
             return;
         }
-        let held = self.note_recording.held_targets();
-        self.undo.protected=self.undo.entries[..self.undo.cursor].iter().flatten().find(|e|e.name==Name::RecordNotes && e.patches[..e.len].iter().flatten().any(|p|matches!(p,Patch::Clip {track,scene,..} if held&(1u64<<(*track as usize*8+*scene as usize))!=0))).map(|e|e.id);
+        self.undo.protected = self
+            .held_history_entry()
+            .map(|index| self.undo.entries[index].as_ref().unwrap().id);
     }
-}
-
-impl RtEngine {
-    pub(in crate::engine) fn active_recording_history(&self) -> [u64; MAX_PATCHES] {
-        let mut owners = [0; MAX_PATCHES];
-        let held = self.note_recording.held_targets();
-        for entry in self.undo.entries[..self.undo.cursor].iter().rev().flatten() {
-            if entry.name != Name::RecordNotes {
-                continue;
-            }
-            for patch in entry.patches.iter().flatten() {
-                if let Patch::Clip { track, scene, .. } = patch {
-                    let cell = *track as usize * SCENES + *scene as usize;
-                    if held & (1 << cell) != 0 && owners[cell] == 0 {
-                        owners[cell] = entry.id;
-                    }
-                }
-            }
-        }
-        owners
+    pub(in crate::engine) fn active_recording_history(
+        &self,
+    ) -> [(u64, usize, usize); super::super::recording::CAPTURES] {
+        self.note_recording.active_history()
     }
 }
