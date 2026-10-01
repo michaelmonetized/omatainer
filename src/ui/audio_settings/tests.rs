@@ -482,3 +482,52 @@ fn every_audio_preference_editor_has_explicit_units_and_saved_intent_description
     ] { described(&nodes, name, control); }
     assert_eq!(audio, original);
 }
+
+
+#[test]
+fn retained_route_confirmation_cannot_apply_a_refreshed_default_device() {
+    for (begin, confirm, calibrate) in [
+        ("Use saved audio now", "Stop and change output", false),
+        ("Measure loopback", "Cable ready: stop and measure", true),
+    ] {
+        let mut gui = Gui::new(48000);
+        let controls = gui.controls.clone();
+        gui.app.audio_settings = Panel::with_discovery(gui.app.engine.audio_handle(), move || {
+            let mut devices = inventory();
+            if controls.alternate_device.load(Ordering::Acquire) {
+                devices.devices[0].name = "Alternate fixture".into();
+                devices.inputs[0].name = "Alternate fixture".into();
+            }
+            Ok(devices)
+        });
+        let saved = gui.app.settings.profile().audio.clone();
+        gui.open();
+        gui.preview();
+        gui.click(begin);
+        let old_action = gui.nodes.iter().find_map(|(id, node)|
+            (node.label() == Some(confirm) && node.supports_action(Action::Click)).then_some(*id)).unwrap();
+        gui.controls.alternate_device.store(true, Ordering::Release);
+        gui.preview();
+        assert_eq!(gui.app.settings.profile().audio, saved);
+        assert_eq!(gui.app.audio_settings.preview.as_ref().unwrap().output.as_ref().unwrap().device, "Alternate fixture");
+        assert!(gui.app.audio_settings.confirm.is_none(), "refresh retained consent to the old route");
+        // A fresh confirmation must not reuse the native ID exposed for the old
+        // route. Clear-only fixes are insufficient for this delayed action.
+        gui.click(begin);
+        gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target: old_action, action: Action::Click, data: None,
+        })]);
+        assert!(!gui.app.audio_settings.busy(), "old route action admitted a different route");
+        assert_eq!(gui.controls.opens.load(Ordering::Acquire), 1);
+        assert!(!gui.controls.entering_calibration.load(Ordering::Acquire));
+        assert!(gui.app.audio_settings.confirm.is_some());
+        gui.click(confirm);
+        gui.wait();
+        let status = gui.app.engine.audio_handle().unwrap().status();
+        if calibrate {
+            assert_eq!(status.measurement.as_ref().unwrap().identity.input.device, "Alternate fixture");
+        } else {
+            assert_eq!(status.active.as_ref().unwrap().plan.device, "Alternate fixture");
+        }
+    }
+}
