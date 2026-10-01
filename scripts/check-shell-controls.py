@@ -197,9 +197,11 @@ ShellRoot {
                             request = json.loads(stream.readline(4096))
                         requests.append(request)
                         op = request["op"]
-                        status = None if op == "status" else ("coalesced" if op == "stop" else "accepted")
+                        status = None if op in ("status", "follow") else ("coalesced" if op == "stop" else "accepted")
                         response = {"ok": True, "id": request["id"], "accepted": True if status else None,
                                     "command_status": status, "playing": False, "event": "state"}
+                        if op == "follow":
+                            response["follow"] = True
                         connection.sendall((json.dumps(response) + "\n").encode())
                 except Exception as error:
                     server_errors.append(str(error))
@@ -242,6 +244,6 @@ ShellRoot {
         assert [x["status"] for x in data["receipts"]] == ["queued", "queued"], data
         assert [x["status"] for x in data["results"]] == ["accepted", "accepted"], data
         assert [x["engineStatus"] for x in data["results"]] == ["accepted", "coalesced"], data
-        assert [x["op"] for x in requests if x["op"] != "status"] == ["play", "stop"], requests
+        assert [x["op"] for x in requests if x["op"] not in ("status", "follow")] == ["play", "stop"], requests
         assert all(x["engineRequestId"] and x["applied"] is None for x in data["results"]), data
         print("PASS: real Service -> native CLI -> private IPC bridge, with actual accepted/coalesced labels and request IDs")

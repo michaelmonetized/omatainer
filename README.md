@@ -111,3 +111,8 @@ queued for audio processing. The response's state fields are the latest publishe
 snapshot and may precede execution; use `ctl status` or `ctl follow` for updates.
 Full or disconnected queues return `ok: false`, `accepted: false`, and an error.
 Status queries have null `accepted` and `command_status` fields.
+
+`ctl follow` maintains one read-only status connection, with at most four updates
+per second. It reconnects after a server restart with bounded backoff (up to four
+seconds), and exits cleanly if its output consumer closes. Followers share the
+eight-client IPC limit; normal command connections retain their 32-request cap.

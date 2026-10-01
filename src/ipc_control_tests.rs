@@ -45,7 +45,7 @@ fn ipc_reports_accepted_full_disconnected_and_query_states_truthfully() {
         .contains("queue is full"));
     assert_eq!(tx.len(), 3);
 
-    // ctl follow and ordinary status share this exact wire payload.
+    // Ordinary status is read-only; follow streams the same bounded state fields.
     assert!(ipc_command(&serde_json::from_str(STATUS_REQUEST).unwrap())
         .unwrap()
         .is_none());

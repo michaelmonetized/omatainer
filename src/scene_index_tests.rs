@@ -6,7 +6,7 @@ use engine::{ClipKind, MidiNote, RtEngine, Snapshot, SCENES};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use std::io::BufRead;
+use std::io::{BufRead, Write};
 
 fn engine() -> RtEngine {
     let (_tx, rx) = crossbeam_channel::bounded(16);
