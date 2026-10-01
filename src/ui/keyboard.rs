@@ -3,7 +3,7 @@ use eframe::egui;
 
 const DIALOG_GUARD: &str = "omatainer-global-shortcut-dialog";
 
-fn text_is_focused(ctx: &egui::Context) -> bool {
+pub(super) fn text_is_focused(ctx: &egui::Context) -> bool {
     ctx.memory(|memory| memory.focused())
         .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some())
 }
@@ -40,7 +40,9 @@ impl ShortcutFocus {
 
     pub fn globals_allowed(&mut self, ctx: &egui::Context) -> bool {
         let text_now = text_is_focused(ctx);
-        let allowed = !self.blocked_at_start
+        let focused_activation = ctx.memory(|memory| memory.focused().is_some())
+            && ctx.input(|input| input.key_pressed(egui::Key::Space) || input.key_pressed(egui::Key::Enter));
+        let allowed = !focused_activation && !self.blocked_at_start
             && !text_now
             && !dialog_is_open(ctx)
             && ctx.input(|input| input.focused);

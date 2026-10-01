@@ -145,7 +145,8 @@ impl App {
             }
             ui.horizontal(|ui| {
                 ui.label("Diagnostic file");
-                ui.add(egui::TextEdit::singleline(&mut self.diagnostics.path).id_salt("diagnostic-path").desired_width(490.0));
+                let path = ui.add(egui::TextEdit::singleline(&mut self.diagnostics.path).id_salt("diagnostic-path").desired_width(490.0));
+                path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Diagnostic file path"));
             });
             ui.label("Export creates a new private file; existing files are never overwritten. Reopen displays measurements only.");
             ui.horizontal_wrapped(|ui| {

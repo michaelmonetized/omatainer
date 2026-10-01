@@ -27,19 +27,24 @@ impl App {
             .show(ctx, |ui| {
                 ui.label("Applies to new clip notes and hits.");
                 ui.label("Held notes and release tails keep their original gain.");
-                changed |= ui
-                    .add(
-                        egui::Slider::new(&mut edit.value, 0.0..=1.5)
-                            .text("clip gain")
-                            .fixed_decimals(2),
-                    )
-                    .changed();
+                let original = edit.value * 100.0;
+                let mut percent = original;
+                let response = ui.add(
+                    egui::Slider::new(&mut percent, 0.0..=150.0).text("clip gain").suffix("%").max_decimals(1));
+                let alternate = accessibility::numeric(ui, &response, &format!("Clip track {} scene {}: Gain", edit.track + 1, edit.scene + 1), original, 0.0, 150.0, 1.0, "%");
+                if let Some(value) = alternate { percent = value; }
+                edit.value = percent / 100.0;
+                changed |= response.changed() || alternate.is_some();
                 ui.horizontal(|ui| {
-                    if ui.button("zero").clicked() {
+                    let zero = ui.button("zero");
+                    accessibility::button(ui, &zero, "Set clip gain to zero", None);
+                    if zero.clicked() {
                         edit.value = 0.0;
                         changed = true;
                     }
-                    if ui.button("unity").clicked() {
+                    let unity = ui.button("unity");
+                    accessibility::button(ui, &unity, "Set clip gain to unity", None);
+                    if unity.clicked() {
                         edit.value = 1.0;
                         changed = true;
                     }

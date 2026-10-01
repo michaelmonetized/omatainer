@@ -6,17 +6,23 @@ impl App {
             ui.horizontal_wrapped(|ui| {
                 ui.label("Master FX");
                 for slot in 0..3 {
-                    ui.push_id(("legacy-master-fx", slot), |ui| {
+                    ui.push_id(("legacy-master-fx", slot), |ui| accessibility::group(ui, &format!("Master effect {}", slot + 1), |ui| {
                         let kind = self.snap.fx_kind[slot];
-                        if ui.button(format!("{}: {}", slot + 1, kind.name()))
-                            .on_hover_text("Select Echo → Reverb → Filter. Each slot has independent stereo history; Filter is a 1 kHz low-pass.").clicked() {
+                        let select = ui.button(format!("{}: {}", slot + 1, kind.name()))
+                            .on_hover_text("Select Echo → Reverb → Filter. Each slot has independent stereo history; Filter is a 1 kHz low-pass.");
+                        accessibility::button(ui, &select, &format!("Master effect {}: {}", slot + 1, kind.name()), None);
+                        if select.clicked() {
                             self.send(Command::FxSelect { slot: slot as u8 });
                         }
-                        let mut wet = self.snap.fx_wet[slot];
-                        if ui.add(egui::Slider::new(&mut wet, 0.0..=1.0).text("Wet")).changed() {
-                            self.send(Command::FxWet { slot: slot as u8, value: wet });
+                        let original = self.snap.fx_wet[slot] * 100.0;
+                        let mut wet = original;
+                        let response = ui.add(egui::Slider::new(&mut wet, 0.0..=100.0).text("Wet").suffix("%"));
+                        let alternate = accessibility::numeric(ui, &response, &format!("Master effect {}: Wet", slot + 1), original, 0.0, 100.0, 1.0, "%");
+                        if let Some(value) = alternate { wet = value; }
+                        if response.changed() || alternate.is_some() {
+                            self.send(Command::FxWet { slot: slot as u8, value: wet / 100.0 });
                         }
-                    });
+                    }));
                 }
             });
         });

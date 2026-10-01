@@ -45,7 +45,7 @@ fn every_visible_fx_slider_exposes_its_name_physical_range_and_value_and_routes_
                 f.rt.cmd_rx.try_recv().is_err(),
                 "idle display edited {id:?}"
             );
-            let label = control.label();
+            let label = format!("Track 3 effect 1 {}: {}", id.name(), control.label());
             let tree = output.platform_output.accesskit_update.as_ref().unwrap();
             let node = tree
                 .nodes

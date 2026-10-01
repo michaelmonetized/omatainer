@@ -222,6 +222,9 @@ impl App {
                 self.lib_sel = last;
             }
         });
+        if ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Enter)) {
+            self.load_sel(self.load_target() as u8);
+        }
         if old != self.lib_sel {
             let top = self.lib_sel as f32 * self.library_view.stride;
             let bottom = top + self.library_view.stride;

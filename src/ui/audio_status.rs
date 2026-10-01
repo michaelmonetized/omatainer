@@ -5,6 +5,7 @@ impl App {
         let metrics = self.snap.audio;
         egui::TopBottomPanel::top("audio-status").resizable(false).show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
+                accessibility::action_button(ui);
                 if ui.button("Diagnostics").clicked() { self.diagnostics.open = true; }
                 if let Some(sample) = metrics.last_callback {
                     let cpu = sample.render_cpu_fraction().map(|value| format!("{:.1}%", value * 100.0))

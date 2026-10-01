@@ -34,3 +34,6 @@ opt-level = 1
 lto = false
 codegen-units = 4
 panic = "abort"
+
+[dev-dependencies]
+accesskit_unix = "=0.15.0"
