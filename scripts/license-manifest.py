@@ -106,6 +106,8 @@ def update(root, meta, supplements=None):
     for asset in policy['assets']:
         entry = dict(asset)
         entry['notices'] = [project_notice] if entry.pop('project_license', False) else []
+        for name in entry.pop('notice_files', []):
+            entry['notices'].append(notice(regular(root/relative(name)), name))
         entries.append(entry)
     cargos = graph(meta, root)
     by_name = {(p['name'],p['version']): p for p in meta['packages']}

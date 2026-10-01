@@ -3254,6 +3254,39 @@
       ]
     },
     {
+      "category": "test-fixture",
+      "commercial_use": "CC BY 4.0 permits reuse, including commercially, under its attribution and other conditions. See the retained complete legal text and source attribution.",
+      "delivery": "Source-tree test fixtures only; not compiled into the production executable or installed as factory samples.",
+      "id": "test:vocalset-1.2",
+      "license": "CC-BY-4.0",
+      "members": [
+        "f1_arpeggios_c_slow_forte_i.wav",
+        "m1_arpeggios_c_slow_forte_i.wav"
+      ],
+      "name": "VocalSet 1.2: two recorded vocal qualification fixtures",
+      "notices": [
+        {
+          "location": "tests/fixtures/keylock/README.md",
+          "sha256": "2a07072b3b1333b8ca185222f8a76afbb1412c28c4e92babaa80cab87c0e6f89"
+        },
+        {
+          "location": "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "redistribution": "Retain attribution to Julia Wilkins, Prem Seetharaman, Alison Wahl and Bryan Pardo (2018), the source DOI, CC BY 4.0 link/terms and warranty disclaimer. Identify any modifications to derived renderings. No endorsement is implied.",
+      "sources": [
+        {
+          "location": "https://zenodo.org/records/1442513/files/VocalSet1-2.zip?download=1#data_by_vowel/i/f1_arpeggios_c_slow_forte_i.wav",
+          "sha256": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b"
+        },
+        {
+          "location": "https://zenodo.org/records/1442513/files/VocalSet1-2.zip?download=1#data_by_vowel/i/m1_arpeggios_c_slow_forte_i.wav",
+          "sha256": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa"
+        }
+      ]
+    },
+    {
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
@@ -11170,7 +11203,7 @@
     "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json"
   },
   "schema": 1,
-  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
+  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "01f67aed7419616d9cb4c8c90d86ea42c5a86155a2dc85cfb10ff3804e9b5f4a",
     "Cargo.lock": "f29a50177ed873ee538e23c544d2141494d706ccec6e414b4cbdf5d1e2817b29",
@@ -11182,7 +11215,7 @@
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
     "docs/manual.md": "babdb9786f1a3be92b501bfc8fa5e5cd7ad8acff324b8db41ecb212993e4470e",
-    "licenses/assets.json": "3c632c18d40c7d936cbfd340d29002506e5eba2ca880f04d4772084f7fc816e7",
+    "licenses/assets.json": "a0f9cd9710d065f5f204b37cc124e287a5623e99a0fd2b68baccb44dceff273d",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "887d16395b89b432322fc7562b75a3b35e83c4a30c78c6bc38bdc17c52d5652d",
     "plugin/manifest.json": "bb5da467bd143775315caab141e900274277e4c86420ae7b4da56dcb11751610",
@@ -11199,7 +11232,7 @@
     "scripts/install-executable.py": "b604da014c65202ec8f45561fde366ff67f18191c5f7c71f96fe5e6ae922dff2",
     "scripts/install-omarchy.sh": "f83b47871ab311e7f960863415d2419042b99a3a8a53936f899d68db3d35f5ff",
     "scripts/install-transaction.py": "477cd38ea21784ea5d3a25ae0eafb47caf6feb65f36fa72deb68f5ecd22a2e7b",
-    "scripts/license-manifest.py": "648a6bedb9a25c126bc7ff2d926406886e4b77a678e80b1765330611a5e70b46",
+    "scripts/license-manifest.py": "10cb5dbbdbda320b2a27e5316e8beb35474a427f8b6377e916fb159c6b64a97a",
     "scripts/performance-gate.py": "0171f3d8fd4aba35f22c26a0ac1d6cf3de83e828e72154dc5e63285b906758c5",
     "scripts/performance-test-support.py": "33a6783da423046ec22e696faee6b50ea654637d63c85479bd107047fc2507de",
     "scripts/test-install-executable.py": "d1e310f727540f263fdefae4b2880b1a1b2ca5bbfecf8c645439bdf936be8928",
@@ -11440,7 +11473,12 @@
     "tests/fixtures/audio/tone.flac": "ea440a0e10d78243b7fcd92b3cf5e7998c8b0d95d4100fa18687f7adc931f4a6",
     "tests/fixtures/audio/tone.m4a": "4a24363782935022df775fa038098c857a2bbf740549e109a8f05c377469237d",
     "tests/fixtures/audio/tone.mp3": "09dbd544561b1b38ddd9a64991f8caadfac0cd0644fe45435cb7cdc6cb7170ba",
-    "tests/fixtures/audio/tone.ogg": "ebc85aa6cfc74d049a03ecac2215063a50d2ab02b931abb8e0a15285e0ab2378"
+    "tests/fixtures/audio/tone.ogg": "ebc85aa6cfc74d049a03ecac2215063a50d2ab02b931abb8e0a15285e0ab2378",
+    "tests/fixtures/keylock/README.md": "2a07072b3b1333b8ca185222f8a76afbb1412c28c4e92babaa80cab87c0e6f89",
+    "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+    "tests/fixtures/keylock/f1_arpeggios_c_slow_forte_i.wav": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",
+    "tests/fixtures/keylock/m1_arpeggios_c_slow_forte_i.wav": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa",
+    "tests/fixtures/keylock/sources.json": "84c53b13a5f2c143c6f6345cea892d1e8a94037488f555b041dc339fda8fd1ac"
   },
   "target": "aarch64-unknown-linux-gnu",
   "toolchain": {
