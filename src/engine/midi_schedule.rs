@@ -278,3 +278,8 @@ impl MidiSchedule {
         None
     }
 }
+
+impl MidiSchedule {
+    /// Worker/startup preparation for bounded, allocation-free note undo.
+    pub(super) fn prepare_history(&mut self,notes:usize) {self.events.reserve(notes.saturating_mul(2).saturating_add(512));}
+}

@@ -1,0 +1,339 @@
+//! Bounded, renderer-authoritative inverse transactions. Only affected musical
+//! objects are swapped. A worker retires owned media/notes/processors and
+//! replenishes recording scratch; it never owns or locks the live renderer.
+mod patch;
+mod capture;
+mod recording;
+use super::*;
+use patch::*;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use crossbeam_channel::{bounded, Receiver, Sender};
+
+const MAX_ENTRIES: usize = 256;
+const MAX_PATCHES: usize = TRACKS * SCENES;
+const SCRATCHES: usize = 64;
+const RETIRE_CAPACITY: usize = 1024;
+const RESERVE_RETIRE: usize = control::MAX_COMMANDS + control::COMMANDS_PER_BLOCK + 4;
+const NOTE_LIMIT: usize = 8192;
+const TEXT_LIMIT: usize = 4096;
+const DEFAULT_BYTES: usize = 256 * 1024 * 1024;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Name {
+    Tempo, Quantization, Metronome, Crossfader, Master, CueMix, MasterEffect,
+    Sampler, Track, ClipGain, ClipNotes, RecordNotes, Deck, DeckSeek, LoadMedia,
+    AddEffect, Effect, ComposeClip, Multiple,
+}
+impl Name {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Tempo => "Set tempo", Self::Quantization => "Change quantization",
+            Self::Metronome => "Toggle metronome", Self::Crossfader => "Move crossfader",
+            Self::Master => "Set master gain", Self::CueMix => "Set cue mix",
+            Self::MasterEffect => "Edit master effect", Self::Sampler => "Edit sampler",
+            Self::Track => "Edit track mixer", Self::ClipGain => "Set clip gain",
+            Self::ClipNotes => "Edit clip notes", Self::RecordNotes => "Record notes",
+            Self::Deck => "Edit deck", Self::DeckSeek => "Seek deck",
+            Self::LoadMedia => "Replace deck media", Self::AddEffect => "Add effect",
+            Self::Effect => "Edit effect", Self::ComposeClip => "Create compose clip",
+            Self::Multiple => "Edit objects",
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Failure { Capacity, Budget, Notes, Text, Unavailable, Invalid }
+impl Failure {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Capacity => "Edit not applied: undo storage is busy. Wait for the history worker, then retry.",
+            Self::Budget => "Edit not applied: its retained media or notes exceed the undo memory budget.",
+            Self::Notes => "Recording write not applied: the clip exceeds 8192 notes. Live monitoring continues.",
+            Self::Text => "Edit not applied: clip metadata exceeds the supported history limit.",
+            Self::Unavailable => "Edit not applied: the undo retirement worker is unavailable.",
+            Self::Invalid => "Undo transaction is no longer valid; no objects were changed.",
+        }
+    }
+}
+#[derive(Clone, Copy, Debug)]
+pub struct Item { pub id: u64, pub name: Name, pub patches: usize }
+#[derive(Clone, Debug)]
+pub struct View {
+    pub items: [Option<Item>; MAX_ENTRIES],
+    pub cursor: usize,
+    pub bytes: usize,
+    pub retired_bytes: usize,
+    pub budget: usize,
+    pub failure: Option<Failure>,
+    pub failures: u64,
+    pub state: u64,
+    pub epoch: u64,
+}
+impl Default for View {
+    fn default() -> Self {
+        Self { items: [None; MAX_ENTRIES], cursor: 0, bytes: 0, retired_bytes: 0,
+            budget: DEFAULT_BYTES, failure: None, failures: 0, state: 0, epoch: 0 }
+    }
+}
+struct Shared {
+    view: Mutex<View>,
+    retired_bytes: AtomicUsize,
+    connected: AtomicBool,
+    next_gesture: AtomicU64,
+    sequence:AtomicU64,state:AtomicU64,epoch:AtomicU64,untracked:AtomicU64,
+}
+#[derive(Clone)]
+pub struct Handle { shared: Arc<Shared> }
+impl Handle {
+    pub fn view(&self) -> View { self.shared.view.lock().clone() }
+    /// GUI/control producer only. Pointer gesture IDs never depend on callback
+    /// timing and cannot accidentally absorb another source's untagged edit.
+    pub fn gesture(&self) -> u64 { self.shared.next_gesture.fetch_add(1, Ordering::Relaxed).max(1) }
+}
+
+struct Entry {
+    id: u64,
+    name: Name,
+    gesture: u64,
+    key: u64,
+    frame: u64,
+    before: u64,
+    after: u64,
+    patches: [Option<Patch>; MAX_PATCHES],
+    len: usize,
+}
+impl Entry {
+    fn new(id: u64, name: Name, gesture: u64, key: u64, frame: u64, before: u64) -> Self {
+        Self { id, name, gesture, key, frame, before, after: id,
+            patches: std::array::from_fn(|_| None), len: 0 }
+    }
+    fn push(&mut self, patch: Patch) { self.patches[self.len] = Some(patch); self.len += 1; }
+}
+
+/// Names and note storage are prepared before streaming. A recording takes a
+/// snapshot into this capacity; it never aliases a mutable clip's note vector.
+struct Scratch { name: String, notes: Vec<MidiNote> }
+impl Scratch {
+    fn new() -> Self { Self { name: String::with_capacity(TEXT_LIMIT), notes: Vec::with_capacity(NOTE_LIMIT) } }
+}
+enum Retired { Entry(Entry), Patch(Patch), Command(Command), Boxed(Box<Command>), Notes(Vec<MidiNote>) }
+struct Garbage { value: Retired, bytes: usize }
+
+pub(super) struct Journal {
+    enabled: bool,
+    replaying: bool,
+    gesture: u64,
+    record_take: u64,
+    entries: Vec<Option<Entry>>,
+    cursor: usize,
+    next: u64,
+    state: u64,
+    epoch: u64,
+    untracked:u64,
+    failure: Option<Failure>,
+    failures: u64,
+    bytes: usize,
+    budget: usize,
+    /// Pointer/size pairs are sorted and deduplicated without allocating.
+    assets: Vec<(usize, usize)>,
+    retired: Option<Sender<Garbage>>,
+    scratch: Option<Receiver<Scratch>>,
+    /// Preserve ownership even if a worker disconnects unexpectedly. Once this
+    /// is used, admission closes before any further creative payload is read.
+    stranded: Vec<Garbage>,
+    shared: Arc<Shared>,
+}
+impl Default for Journal {
+    fn default() -> Self {
+        Self { enabled: false, replaying: false, gesture: 0, record_take: 1<<63, entries: Vec::new(), cursor: 0,
+            next: 1, state: 0, epoch: 0, untracked:0, failure: None, failures: 0, bytes: 0,
+            budget: DEFAULT_BYTES, assets: Vec::new(), retired: None, scratch: None,
+            stranded: Vec::new(), shared: Arc::new(Shared { view: Mutex::new(View::default()),
+                retired_bytes: AtomicUsize::new(0), connected: AtomicBool::new(false),
+                next_gesture: AtomicU64::new(1),sequence:AtomicU64::new(0),state:AtomicU64::new(0),epoch:AtomicU64::new(0),untracked:AtomicU64::new(0) }) }
+    }
+}
+impl Journal {
+    /// Called only during Engine setup, before audio takes ownership.
+    pub fn enable(&mut self) -> std::io::Result<Handle> {
+        if self.enabled { return Ok(Handle { shared: self.shared.clone() }); }
+        let (retired, garbage) = bounded::<Garbage>(RETIRE_CAPACITY);
+        let (prepared, scratch) = bounded(SCRATCHES);
+        for _ in 0..SCRATCHES { prepared.try_send(Scratch::new()).ok().unwrap(); }
+        let shared = self.shared.clone();
+        shared.connected.store(true, Ordering::Release);
+        std::thread::Builder::new().name("omatainer-undo-retire".into()).spawn(move || {
+            loop {
+                match garbage.recv_timeout(Duration::from_millis(10)) {
+                    Ok(Garbage { value, bytes }) => {
+                        drop(value);
+                        shared.retired_bytes.fetch_sub(bytes, Ordering::Release);
+                    }
+                    Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
+                    Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
+                }
+                // Replenishment runs here even without a retired payload.
+                while prepared.len() < SCRATCHES {
+                    if prepared.try_send(Scratch::new()).is_err() { break; }
+                }
+            }
+            shared.connected.store(false, Ordering::Release);
+        })?;
+        self.entries = Vec::with_capacity(MAX_ENTRIES);
+        self.assets = Vec::with_capacity(MAX_ENTRIES * MAX_PATCHES * 2);
+        self.stranded = Vec::with_capacity(control::MAX_COMMANDS + 1);
+        self.retired = Some(retired); self.scratch = Some(scratch); self.enabled = true;
+        Ok(Handle { shared: self.shared.clone() })
+    }
+    fn reject(&mut self, reason: Failure) {
+        self.failure = Some(reason); self.failures = self.failures.wrapping_add(1);
+    }
+    fn room(&self, extra: usize) -> Result<(), Failure> {
+        if !self.shared.connected.load(Ordering::Acquire) { return Err(Failure::Unavailable); }
+        if self.retired.as_ref().is_none_or(|queue| queue.len() + extra + RESERVE_RETIRE > RETIRE_CAPACITY) {
+            return Err(Failure::Capacity);
+        }
+        if self.shared.retired_bytes.load(Ordering::Acquire) > self.budget { return Err(Failure::Capacity); }
+        Ok(())
+    }
+    fn retire(&mut self, value: Retired, bytes: usize) {
+        self.shared.retired_bytes.fetch_add(bytes, Ordering::Release);
+        let garbage = Garbage { value, bytes };
+        if let Err(error) = self.retired.as_ref().unwrap().try_send(garbage) {
+            self.stranded.push(error.into_inner());
+            self.reject(Failure::Unavailable);
+        }
+    }
+    pub fn publish(&self) {
+        if let Some(mut view) = self.shared.view.try_lock() {
+            view.items.fill(None);
+            for (out, entry) in view.items.iter_mut().zip(&self.entries) {
+                *out = entry.as_ref().map(|e| Item { id: e.id, name: e.name, patches: e.len });
+            }
+            view.cursor = self.cursor; view.bytes = self.bytes;
+            view.retired_bytes = self.shared.retired_bytes.load(Ordering::Acquire);
+            view.budget = self.budget; view.failure = self.failure; view.failures = self.failures;
+            view.state = self.state; view.epoch = self.epoch;
+        }
+    }
+}
+
+impl Entry {
+    fn bytes(&self)->usize { self.patches[..self.len].iter().flatten().map(Patch::retired_bytes).sum() }
+}
+impl Journal {
+    fn can_group(&self,key:u64,_frame:u64)->bool {
+        self.gesture!=0 && self.cursor==self.entries.len() && self.entries.last().and_then(Option::as_ref)
+            .is_some_and(|e|e.gesture==self.gesture && e.key==key && e.len<MAX_PATCHES)
+    }
+    fn preflight(&self,bytes:usize)->Result<(),Failure> {
+        self.room(self.entries.len()+3)?;
+        if bytes>self.budget { return Err(Failure::Budget); }
+        // Retiring evictions and rejected incoming payloads has its own budget.
+        // Never hide outstanding PCM behind deduplicated live-history totals.
+        let pending=self.shared.retired_bytes.load(Ordering::Acquire);
+        let retiring=self.entries.iter().flatten().map(Entry::bytes).sum::<usize>();
+        if pending.saturating_add(retiring)>self.budget.saturating_mul(2) { return Err(Failure::Capacity); }
+        Ok(())
+    }
+    fn begin(&mut self,name:Name,key:u64,frame:u64) {
+        while self.entries.len()>self.cursor {
+            let entry=self.entries.pop().unwrap().unwrap(); let bytes=entry.bytes(); self.retire(Retired::Entry(entry),bytes);
+        }
+        // Evict whole oldest transactions. The conservative estimate is checked
+        // before mutation; recount after adding performs exact live deduplication.
+        if self.entries.len()==MAX_ENTRIES {
+            let entry=self.entries.remove(0).unwrap(); let bytes=entry.bytes(); self.retire(Retired::Entry(entry),bytes); self.cursor-=1;
+        }
+        let id=self.next; self.next=self.next.wrapping_add(1).max(1);
+        self.entries.push(Some(Entry::new(id,name,self.gesture,key,frame,self.state)));
+        self.cursor=self.entries.len(); self.state=id;self.publish_checkpoint();
+    }
+    fn append(&mut self,patch:Patch) { self.entries[self.cursor-1].as_mut().unwrap().push(patch); }
+    fn recount(&mut self) {
+        self.assets.clear(); let mut bytes=0;
+        for entry in self.entries.iter().flatten() {
+            for patch in entry.patches[..entry.len].iter().flatten() { bytes+=patch.heap_bytes();patch.media_bytes(&mut self.assets); }
+        }
+        self.assets.sort_unstable_by_key(|asset|asset.0);
+        self.assets.dedup_by_key(|asset|asset.0);
+        self.bytes=bytes+self.assets.iter().map(|a|a.1).sum::<usize>();
+        while self.bytes>self.budget && self.entries.len()>1 {
+            let entry=self.entries.remove(0).unwrap();let bytes=entry.bytes();self.retire(Retired::Entry(entry),bytes);
+            self.cursor=self.cursor.saturating_sub(1); self.recount();
+        }
+    }
+    pub(super) fn clear(&mut self)->bool {
+        if !self.enabled { return true; }
+        if self.preflight(0).is_err() { return false; }
+        while let Some(entry)=self.entries.pop() { let entry=entry.unwrap();let bytes=entry.bytes();self.retire(Retired::Entry(entry),bytes); }
+        self.cursor=0;self.bytes=0;self.state=0;self.epoch=self.epoch.wrapping_add(1);self.gesture=0;self.untracked=0;self.publish_checkpoint();true
+    }
+}
+impl RtEngine {
+    pub(crate) fn enable_undo(&mut self)->std::io::Result<Handle> {
+        for track in &mut self.tracks {track.midi_schedule.prepare_history(NOTE_LIMIT);track.recorded_playback.reserve(NOTE_LIMIT);}
+        self.undo.enable()
+    }
+    pub(super) fn history_replay(&mut self,redo:bool) {
+        if !self.undo.enabled || self.undo.replaying { return; }
+        let index=if redo { if self.undo.cursor==self.undo.entries.len(){return;} self.undo.cursor }
+            else { if self.undo.cursor==0{return;} self.undo.cursor-1 };
+        // Validity of every target is checked before any object is changed.
+        if self.undo.entries[index].as_ref().unwrap().patches.iter().flatten().any(|p|!p.valid(self)) {
+            self.undo.reject(Failure::Invalid);return;
+        }
+        let mut entry=self.undo.entries[index].take().unwrap();
+        self.undo.replaying=true;
+        if redo { for patch in entry.patches[..entry.len].iter_mut().flatten(){patch.apply(self);} }
+        else { for patch in entry.patches[..entry.len].iter_mut().rev().flatten(){patch.apply(self);} }
+        self.undo.replaying=false;
+        self.undo.state=if redo{entry.after}else{entry.before};
+        self.undo.cursor=if redo{index+1}else{index};self.undo.gesture=0;
+        self.undo.entries[index]=Some(entry);self.undo.recount();self.undo.publish_checkpoint();self.project.edited();
+    }
+}
+
+#[derive(Clone,Copy,Debug,Default,PartialEq,Eq)]
+pub struct Checkpoint { pub epoch:u64,pub state:u64,pub untracked:u64 }
+impl Handle {
+    pub fn checkpoint(&self)->Checkpoint {
+        loop {
+            let before=self.shared.sequence.load(Ordering::Acquire);if before&1!=0 {std::hint::spin_loop();continue;}
+            let value=Checkpoint {epoch:self.shared.epoch.load(Ordering::Relaxed),state:self.shared.state.load(Ordering::Relaxed),untracked:self.shared.untracked.load(Ordering::Relaxed)};
+            if self.shared.sequence.load(Ordering::Acquire)==before {return value;}
+        }
+    }
+}
+impl Journal {
+    pub(super) fn checkpoint(&self)->Checkpoint {Checkpoint {epoch:self.epoch,state:self.state,untracked:self.untracked}}
+    fn publish_checkpoint(&self) {
+        self.shared.sequence.fetch_add(1,Ordering::AcqRel);
+        self.shared.epoch.store(self.epoch,Ordering::Relaxed);self.shared.state.store(self.state,Ordering::Relaxed);self.shared.untracked.store(self.untracked,Ordering::Relaxed);
+        self.shared.sequence.fetch_add(1,Ordering::Release);
+    }
+    fn changed(&mut self) {
+        self.state=self.next;self.next=self.next.wrapping_add(1).max(1);
+        if let Some(Some(entry))=self.entries.get_mut(self.cursor.saturating_sub(1)) {entry.after=self.state;}
+        self.publish_checkpoint();
+    }
+    pub(super) fn untracked_change(&mut self) {self.untracked=self.untracked.wrapping_add(1);self.publish_checkpoint();}
+    pub(super) fn held_change(&mut self) {if self.enabled {self.changed();}}
+    pub(super) fn available(&self)->bool {!self.enabled || self.room(0).is_ok()}
+    pub(super) fn gesture_id(&self)->u64 {self.gesture}
+    pub(super) fn set_gesture(&mut self,id:u64) {self.gesture=id;}
+    pub(super) fn retire_box(&mut self,command:Box<Command>) {
+        if self.enabled {self.retire(Retired::Boxed(command),std::mem::size_of::<Command>());} else {drop(command);}
+    }
+}
+
+pub(crate) fn is_gesture_edit(command:&Command)->bool {
+    matches!(command,Command::SetBpm(_)|Command::NudgeBpm(_)|Command::Quant(_)|Command::ToggleQuant|Command::Metronome|Command::Xfader(_)|Command::Master(_)|Command::CueMix(_)|Command::FxWet {..}|Command::FxSelect {..}|Command::SamplerBank(_)|Command::SamplerInst(_)|Command::SamplerOct(_)|Command::TrackGain {..}|Command::TrackPan {..}|Command::Mute {..}|Command::Solo {..}|Command::Arm {..}|Command::ClipGain {..}|Command::SetNotes {..}|Command::ComposeArm {..}|Command::DeckSeek {..}|Command::DeckPitch {..}|Command::DeckGain {..}|Command::DeckEq {..}|Command::DeckFilter {..}|Command::DeckSync {..}|Command::DeckPfl {..}|Command::DeckHotCue {..}|Command::DeckLoop {..}|Command::DeckLoopIn {..}|Command::DeckLoopOut {..}|Command::DeckVinyl {..}|Command::DeckKeylock {..}|Command::DeckLoopDouble {..}|Command::DeckLoopHalf {..}|Command::DeckReloop {..}|Command::DeckEqCut {..}|Command::DeckEqSolo {..}|Command::DeckPitchRange {..}|Command::DeckMatch|Command::FxAdd(_)|Command::FxToggle(_)|Command::FxMix {..}|Command::FxParam {..})
+}
+
+impl Journal {
+    pub(super) fn retire_command(&mut self,command:Command) {
+        if self.enabled {let bytes=capture::command_bytes(&command);self.retire(Retired::Command(command),bytes);}else{drop(command);}
+    }
+}
+
+impl Journal {pub(super) fn failure_count(&self)->u64 {self.failures}}

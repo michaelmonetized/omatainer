@@ -13,7 +13,7 @@ fn captured(rt: &RtEngine) -> Captured {
         if frame.complete {
             frame.state.deduplicate(&mut frame.media);
             frame.state.validate(&frame.media).unwrap();
-            return Captured { state: frame.state, media: frame.media, revision: frame.revision, playback_receipts: frame.playback_receipts };
+            return Captured { checkpoint:frame.checkpoint,state: frame.state, media: frame.media, revision: frame.revision, playback_receipts: frame.playback_receipts };
         }
         frame.prepare();
     }

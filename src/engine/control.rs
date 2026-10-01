@@ -66,6 +66,7 @@ struct Admission {
 
 struct AdmissionShared {
     project_writers: std::sync::atomic::AtomicU64,
+    history_available:std::sync::atomic::AtomicBool,
     telemetry: std::sync::Arc<super::audio_metrics::Telemetry>,
     ui_requests: super::ui_requests::Mailbox,
     completed_stops: [std::sync::atomic::AtomicU64; STOP_LANES],
@@ -103,6 +104,7 @@ impl AdmissionShared {
                 6 => Some(SubmissionError::UiFull),
                 7 => Some(SubmissionError::UncapturedSelection),
                 8 => Some(SubmissionError::ProjectChanging),
+                9 => Some(SubmissionError::HistoryBusy),
                 _ => None,
             },
         }
@@ -143,6 +145,8 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub(super) fn set_history_available(&self,available:bool) {if let Some(shared)=&self.shared {shared.history_available.store(available,std::sync::atomic::Ordering::Release);}}
+
     /// Close creative command admission before inspecting/draining the queue for a
     /// project install. False means a previously admitted producer is still
     /// finishing; keep admission closed and retry on a later audio block. This
@@ -229,6 +233,7 @@ pub enum SubmissionError {
     UiFull,
     UncapturedSelection,
     ProjectChanging,
+    HistoryBusy,
 }
 
 impl std::fmt::Display for SubmissionError {
@@ -241,6 +246,7 @@ impl std::fmt::Display for SubmissionError {
             Self::UiUnavailable => "Library control is unavailable. Reopen Omatainer before retrying.",
             Self::UiFull => "The library request queue is full. Wait for the interface to catch up, then retry browsing or loading.",
             Self::UncapturedSelection => "Library request could not resolve the visible selection. Select an available crate item, then retry.",
+            Self::HistoryBusy => "Undo storage is busy. This edit was not accepted; wait for the history worker and retry.",
             Self::ProjectChanging => "A project is being installed. This action was not accepted; retry after the project operation finishes.",
         })
     }
@@ -262,6 +268,7 @@ impl AdmissionShared {
                 SubmissionError::UiFull => 6,
                 SubmissionError::UncapturedSelection => 7,
                 SubmissionError::ProjectChanging => 8,
+                SubmissionError::HistoryBusy => 9,
             },
             Relaxed,
         );
@@ -328,6 +335,7 @@ impl CommandPort {
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
             project_writers: std::sync::atomic::AtomicU64::new(0),
+            history_available:std::sync::atomic::AtomicBool::new(true),
             telemetry: std::sync::Arc::new(super::audio_metrics::Telemetry::default()),
             ui_requests: super::ui_requests::Mailbox::default(),
             completed_stops: std::array::from_fn(|_| std::sync::atomic::AtomicU64::new(0)),
@@ -424,6 +432,10 @@ impl CommandPort {
         };
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
+        }
+        if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {return fail(SubmissionError::HistoryBusy);}
+        if let Command::Gesture {command:inner,..}=&command {
+            if !super::undo::is_gesture_edit(inner) {return fail(SubmissionError::InvalidTarget);}
         }
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
@@ -648,6 +660,7 @@ pub struct CommandStats {
 }
 
 pub struct CommandBatch {
+    pub discarded:[Option<Command>;COMMANDS_PER_BLOCK],
     pub commands: [Option<Command>; COMMANDS_PER_BLOCK],
     pub received: usize,
     pub applied: usize,
@@ -658,6 +671,7 @@ pub struct CommandBatch {
 impl CommandBatch {
     pub fn receive(rx: &Receiver<Command>) -> Self {
         let mut batch = Self {
+            discarded:std::array::from_fn(|_|None),
             commands: std::array::from_fn(|_| None),
             received: 0,
             applied: 0,
@@ -670,15 +684,12 @@ impl CommandBatch {
             // Do not reorder even apparently independent assignments: later
             // controls may acquire coupled semantics. Events are always barriers.
             let duplicate = batch.applied > 0
-                && parameter_key(&command).is_some()
-                && parameter_key(&command)
-                    == batch.commands[batch.applied - 1]
-                        .as_ref()
-                        .and_then(parameter_key);
+                && batch.commands[batch.applied-1].as_ref().is_some_and(|previous|same_parameter(previous,&command));
             if !duplicate {
                 batch.applied += 1;
             }
-            batch.commands[batch.applied - 1] = Some(command);
+            let old=batch.commands[batch.applied - 1].replace(command);
+            if duplicate {batch.discarded[batch.received-1]=old;}
         }
         batch.backlog = rx.len();
         batch
@@ -811,5 +822,17 @@ mod tests {
         stats.record(&CommandBatch::receive(&rx));
         assert_eq!(stats.received_last_block, 0);
         assert_eq!(stats.applied_last_block, 0);
+    }
+}
+
+fn history_monitoring(command:&Command)->bool {
+    matches!(command,Command::LiveNoteOn {..}|Command::LiveNoteOff {..}|Command::SamplerPad {..}|Command::DeckTouch {..}|Command::MidiDeckTouch {..}|Command::Stop|Command::StopTrack {..}|Command::ReservedStop {..}|Command::Play|Command::TogglePlay|Command::MidiClock {..})
+}
+
+fn same_parameter(a:&Command,b:&Command)->bool {
+    match (a,b) {
+        (Command::Gesture {id:a,command:ac},Command::Gesture {id:b,command:bc})=>a==b && parameter_key(ac).is_some() && parameter_key(ac)==parameter_key(bc),
+        (Command::Gesture {..},_)|(_,Command::Gesture {..})=>false,
+        _=>parameter_key(a).is_some() && parameter_key(a)==parameter_key(b),
     }
 }

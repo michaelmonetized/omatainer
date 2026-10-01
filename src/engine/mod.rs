@@ -1,4 +1,5 @@
 pub(crate) mod project;
+pub(crate) mod undo;
 mod mixer_gain;
 mod arp;
 mod deck_filter;
@@ -453,6 +454,7 @@ impl FxKind {
 }
 
 pub struct RtEngine {
+    undo: undo::Journal,
     pub project: project::Handle,
     project_pending: Option<Box<project::Task>>,
     project_waiting: Option<Box<project::Task>>,
@@ -677,6 +679,9 @@ impl Default for Snapshot {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    Undo,
+    Redo,
+    Gesture { id: u64, command: Box<Command> },
     ReservedStop { lane: u8, ticket: u64 },
     Play,
     Stop,
@@ -807,6 +812,7 @@ impl RtEngine {
             })
             .collect();
         let mut e = Self {
+            undo: undo::Journal::default(),
             project: project::Handle::new(),
             project_pending: None,
             project_waiting: None,
@@ -1043,10 +1049,13 @@ impl RtEngine {
     pub fn process(&mut self, out: &mut [f32]) {
         let batch = control::CommandBatch::receive(&self.cmd_rx);
         self.command_stats.record(&batch);
+        for command in batch.discarded.into_iter().flatten() {self.undo.retire_command(command); }
         for command in batch.commands.into_iter().flatten() {
             self.apply(command);
         }
         self.project_tick();
+        self.undo.publish();
+        self.cmd_rx.set_history_available(self.undo.available());
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[0]);
         let cpu_start = audio_metrics::thread_cpu_ns();
@@ -1149,7 +1158,7 @@ impl RtEngine {
         }
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
-        if frames > 0 && self.has_held_project_notes() { self.project.edited(); }
+        if frames > 0 && self.has_held_project_notes() { self.project.edited();self.undo.held_change(); }
         self.frames_done += frames as u64;
         if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
             self.publish();
@@ -1556,6 +1565,21 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        match c {
+            Command::Undo => {self.history_replay(false);return;}
+            Command::Redo => {self.history_replay(true);return;}
+            Command::Gesture {id,mut command} => {
+                let next=std::mem::replace(command.as_mut(),Command::ComposeDisarm);
+                let old=self.undo.gesture_id();self.undo.set_gesture(id);
+                self.apply(next);self.undo.set_gesture(old);
+                self.undo.retire_box(command);return;
+            }
+            _=>{}
+        }
+        let Some(c)=self.history_before(c) else{return;};
+        self.apply_plain(c);
+    }
+    fn apply_plain(&mut self, c: Command) {
         // Validate before any command can launch, select, or alter another scene.
         // In particular, FireClip must not change a previous clip's looping flag
         // after an invalid LaunchClip, and Select must not clamp into a real cell.
@@ -1580,8 +1604,10 @@ impl RtEngine {
         if scene.is_some_and(|scene| scene >= SCENES) {
             return;
         }
+        if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
+            Command::Undo|Command::Redo|Command::Gesture {..}=>unreachable!(),
             Command::ReservedStop { lane, ticket } => {
                 if lane == 0 { self.apply(Command::Stop); }
                 else { self.apply(Command::StopTrack { track: lane - 1 }); }
@@ -1593,6 +1619,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
+                self.history_finish_take();
                 self.finish_recording_all();
                 self.playing = false;
                 self.recording = false;
@@ -1615,6 +1642,7 @@ impl RtEngine {
                 }
             }
             Command::Record => {
+                self.history_finish_take();
                 if self.recording {
                     self.finish_recording_all();
                 }
@@ -1817,9 +1845,10 @@ impl RtEngine {
                 #[cfg(test)]
                 if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
                 if let Some(audio) = audio {
+                    let before=self.undo.failure_count();
                     self.apply(Command::DeckAudio { deck, audio });
-                    receipt.finish(State::Current);
-                    self.decks[deck as usize].load_receipt = Some(receipt);
+                    if self.undo.failure_count()!=before {receipt.finish(State::Unavailable);}
+                    else {receipt.finish(State::Current);self.decks[deck as usize].load_receipt=Some(receipt);}
                 } else { receipt.finish(State::Unavailable); }
             }
             Command::DeckDecoded { request, audio } => {
@@ -1832,7 +1861,8 @@ impl RtEngine {
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.playback_active = false;
                 d.clear_loop();
-                d.title = audio.name.clone();
+                d.title.clear();
+                d.title.push_str(&audio.name);
                 d.bpm = audio.bpm;
                 d.cue_pos = 0.0;
                 d.playing = false;
@@ -1926,11 +1956,12 @@ impl RtEngine {
                 let clip = &mut self.tracks[track].clips[scene];
                 if clip.kind == ClipKind::Empty {
                     clip.kind = ClipKind::Midi;
-                    clip.name = "Clip".into();
+                    clip.name.clear();clip.name.push_str("Clip");
                     clip.bars = 1.0;
                 }
             }
             Command::ComposeDisarm => {
+                self.history_finish_take();
                 if self.compose_target.take().is_some() {
                     self.finish_recording_pads();
                 }
@@ -1956,15 +1987,10 @@ impl RtEngine {
                 if self.recording && self.playing {
                     let scene = self.selected_scene;
                     if self.recording_position(t, scene).is_none() { return; }
+                    if !self.history_record_target(t,scene) {return;}
                     if self.tracks[t].clips[scene].kind == ClipKind::Empty {
-                        self.tracks[t].clips[scene] = Clip {
-                            kind: ClipKind::Midi,
-                            name: "Take".into(),
-                            bars: 1.0,
-                            notes: Vec::new(),
-                            gain: 1.0,
-                            audio: None,
-                        };
+                        let clip=&mut self.tracks[t].clips[scene];
+                        clip.kind=ClipKind::Midi;clip.name.clear();clip.name.push_str("Take");clip.bars=1.0;clip.gain=1.0;
                     }
                     self.begin_recording_note(input, t, scene, note, vel);
                 }
@@ -1984,7 +2010,7 @@ impl RtEngine {
                     }
                     if self.tracks[t].clips[s].kind == ClipKind::Empty {
                         self.tracks[t].clips[s].kind = ClipKind::Midi;
-                        self.tracks[t].clips[s].name = "Clip".into();
+                        self.tracks[t].clips[s].name.clear();self.tracks[t].clips[s].name.push_str("Clip");
                         self.tracks[t].clips[s].bars = 1.0;
                     }
                     self.tracks[t].clips[s].notes = notes;
@@ -2168,10 +2194,11 @@ impl RtEngine {
                         if self.recording_position(
                             destination.track, destination.scene,
                         ).is_none() { return; }
+                        if !self.history_record_target(destination.track,destination.scene) {return;}
                         let clip = &mut self.tracks[destination.track].clips[destination.scene];
                         if clip.kind == ClipKind::Empty {
                             clip.kind = ClipKind::Midi;
-                            clip.name = "Pad".into();
+                            clip.name.clear();clip.name.push_str("Pad");
                             clip.bars = 1.0;
                         }
                         self.begin_recording_note(
@@ -2473,6 +2500,7 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
 }
 
 pub struct Engine {
+    pub undo: undo::Handle,
     pub project: project::Handle,
     pub cmd: CommandPort,
     pub ui_requests: ui_requests::Receiver,
@@ -2490,13 +2518,15 @@ impl Engine {
         let (tx, rx) = CommandPort::channel(256);
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
-        let rt = RtEngine::new(48000.0, rx, snap.clone());
+        let mut rt = RtEngine::new(48000.0, rx, snap.clone());
+        let undo = rt.enable_undo()?;
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         let audio = audio::start(rt)?;
         let sample_rate = audio.sr;
         let midi = midi::MidiHub::start(tx.clone(), snap.clone())?;
         Ok(Self {
+            undo,
             project,
             cmd: tx,
             ui_requests,
@@ -2513,11 +2543,13 @@ impl Engine {
         let (cmd, rx) = CommandPort::channel(capacity);
         let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
-        let rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let mut rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let undo = rt.enable_undo().expect("undo worker");
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
         (
             Self {
+                undo,
                 project,
                 cmd,
                 ui_requests,

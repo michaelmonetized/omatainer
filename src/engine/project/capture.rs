@@ -4,6 +4,7 @@ pub(super) struct Frame {
     pub state: State,
     pub media: Vec<Arc<Sample>>,
     pub revision: u64,
+    pub checkpoint:undo::Checkpoint,
     pub playback_receipts: [Option<load_receipt::Receipt>; DECKS],
     pub complete: bool,
     pub error: Option<&'static str>,
@@ -25,7 +26,7 @@ struct Shape {
 impl Frame {
     pub fn new() -> Self {
         Self { state: State::blank(), media: Vec::with_capacity(MAX_MEDIA_REFS),
-            revision: 0, playback_receipts: [None, None], complete: false, error: None, shape: Shape::default() }
+            checkpoint:undo::Checkpoint::default(),revision: 0, playback_receipts: [None, None], complete: false, error: None, shape: Shape::default() }
     }
 
     /// Worker only. Audio reports the required capacities without growing any
@@ -135,7 +136,7 @@ impl Frame {
         target.builtin = std::array::from_fn(|i| rt.builtin[i].as_ref().map(|s| media(&mut self.media, s)));
         rt.capture_held_durations(target);
         self.playback_receipts = std::array::from_fn(|i| rt.decks[i].load_receipt.clone());
-        self.revision = rt.project.revision();
+        self.revision = rt.project.revision();self.checkpoint=rt.undo.checkpoint();
         self.complete = true;
     }
 }
