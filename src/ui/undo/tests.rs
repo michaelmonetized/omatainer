@@ -248,7 +248,7 @@ fn renderer_rejected_note_edit_is_visible_without_altering_history_or_notes() {
         !gui.app.undo_history.open,
         "automatic error display does not alter saved panel view"
     );
-    gui.click("Dismiss history error");
+    gui.click("Dismiss history message");
     assert!(gui.app.undo_history.failure.is_none());
     assert!(!gui.app.undo_history.open);
 }

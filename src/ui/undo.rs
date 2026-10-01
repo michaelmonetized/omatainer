@@ -190,7 +190,7 @@ impl App {
             .open(&mut open).default_width(370.0).show(ctx, |ui| {
                 if let Some(message) = &self.undo_history.failure {
                     ui.colored_label(self.theme.red, message);
-                    if ui.button("Dismiss history error").clicked() { self.undo_history.failure = None; }
+                    if ui.button("Dismiss history message").clicked() { self.undo_history.failure = None; }
                 }
                 if let Some(queued) = self.undo_history.queued {
                     ui.label(format!("{queued}; the list shows renderer-confirmed history."));
