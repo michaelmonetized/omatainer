@@ -13,7 +13,7 @@ fn engine(gain: f32, kind: u8, arp: bool, live: bool) -> RtEngine {
     rt.selected_scene = 0;
     let track = &mut rt.tracks[TRACK];
     track.kind = kind;
-    track.poly = Poly::new(rt.sr, kind.saturating_sub(1), 16);
+    track.poly = Poly::new(rt.sr, match kind { 0 | 1 => SynthInstrument::Analog, 2 => SynthInstrument::Keys, _ => SynthInstrument::Pad }, 16);
     track.fx.slots.clear();
     if arp {
         track.fx.slots.push(fx::FxSlot::new(fx::FxId::Arp, rt.sr));

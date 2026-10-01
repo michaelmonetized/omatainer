@@ -51,7 +51,7 @@ fn pad(rt: &mut RtEngine, on: bool) {
 
 #[test]
 fn instrument_pad_has_one_source_and_matches_the_selected_instrument_reference() {
-    for instrument in 0..=3 {
+    for instrument in SynthInstrument::ALL.map(SamplerInstrument::Synth) {
         for destination in [0, 1, 4, 7] {
             let mut rt = engine();
             rt.selected_track = destination;
@@ -79,7 +79,7 @@ fn instrument_pad_has_one_source_and_matches_the_selected_instrument_reference()
                 for value in actual {
                     assert!(
                         (value - expected).abs() < 1e-6,
-                        "inst={instrument} destination={destination}: {value} != {expected}"
+                        "inst={instrument:?} destination={destination}: {value} != {expected}"
                     );
                 }
                 audible |= expected.abs() > 1e-4;
@@ -91,7 +91,7 @@ fn instrument_pad_has_one_source_and_matches_the_selected_instrument_reference()
 
 #[test]
 fn both_sample_and_instrument_pads_obey_destination_mute_gain_pan_solo_and_fx() {
-    for instrument in [-1, 1] {
+    for instrument in [SamplerInstrument::Samples, SamplerInstrument::Synth(SynthInstrument::Keys)] {
         for control in 0..5 {
             let mut rt = engine();
             rt.apply(Command::SamplerInst(instrument));
@@ -110,7 +110,7 @@ fn both_sample_and_instrument_pads_obey_destination_mute_gain_pan_solo_and_fx() 
             let mut peak = 0.0f32;
             for _ in 0..1024 {
                 let [l, r] = sample(&mut rt);
-                assert_eq!(r, 0.0, "control={control} inst={instrument}");
+                assert_eq!(r, 0.0, "control={control} inst={instrument:?}");
                 if matches!(control, 0 | 1 | 3) {
                     assert_eq!(l, 0.0);
                 } else {
@@ -154,7 +154,7 @@ fn stereo_sample_and_release_tails_keep_the_original_destination() {
     assert!(rt.pad_voices[0].is_none());
 
     let mut rt = engine();
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     pad(&mut rt, true);
     assert!(frames(&mut rt, 2048) > 0.01);
     rt.selected_track = DEST + 1;
@@ -170,7 +170,7 @@ fn stereo_sample_and_release_tails_keep_the_original_destination() {
 
 fn capture_fixture(arp: bool) -> RtEngine {
     let mut rt = engine();
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.tracks[DEST].clips[0] = Clip {
         kind: ClipKind::Midi,
         name: "capture".into(),
@@ -289,7 +289,7 @@ fn capture_suppression_preserves_unrelated_same_pitch_events_and_resets_on_relau
 #[test]
 fn warmed_pad_routing_and_release_perform_no_heap_work() {
     let mut rt = engine();
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     pad(&mut rt, true);
     rt.process(&mut [0.0; 128]);
     let counts = test_alloc::measure(|| {

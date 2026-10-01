@@ -62,6 +62,11 @@ MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
 their accepted count and last source in `midi_clock` status; this reception hook
 does not synchronize tempo or phase. See the [MIDI framing validation](docs/validation/issue-41-midi-realtime.md).
 
+The sampler offers **samples**, **analog**, **keys**, and **pad**. Samples use the
+Kit/Perc/Hits banks. Analog is a fast saw/square bass, Keys blend saw and sine with
+a medium release, and Pad blends sine with a detuned saw and a longer envelope.
+Changing the selection affects new presses; held notes keep their original sound.
+
 ## Layout
 
 ```

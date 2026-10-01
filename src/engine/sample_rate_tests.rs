@@ -35,7 +35,7 @@ fn envelope_durations(mut env: Env, sr: f32) -> [f64; 3] {
 fn sample_rate_updates_all_instrument_and_sampler_adsrs_and_oscillator_hz() {
     for sr in [44_100, 96_000] {
         let mut rt = engine();
-        rt.apply(Command::SamplerInst(2));
+        rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Pad)));
         rt.sampler_poly.cutoff = 2700.0;
         rt.set_sample_rate(sr);
         for poly in rt
@@ -45,22 +45,22 @@ fn sample_rate_updates_all_instrument_and_sampler_adsrs_and_oscillator_hz() {
             .chain([&rt.sampler_poly])
         {
             let expected = match poly.kind {
-                0 => [0.005, 0.18, 0.12],
-                1 => [0.008, 0.22, 0.28],
-                _ => [0.04, 0.4, 0.8],
+                SynthInstrument::Analog => [0.005, 0.18, 0.12],
+                SynthInstrument::Keys => [0.008, 0.22, 0.28],
+                SynthInstrument::Pad => [0.04, 0.4, 0.8],
             };
             for voice in &poly.voices {
                 let measured = envelope_durations(voice.env, rt.sr);
                 for (actual, expected) in measured.into_iter().zip(expected) {
                     assert!(
                         (actual - expected).abs() < 0.002,
-                        "kind {}, {sr} Hz: {actual} vs {expected} seconds",
+                        "kind {:?}, {sr} Hz: {actual} vs {expected} seconds",
                         poly.kind
                     );
                 }
             }
         }
-        assert_eq!(rt.sampler_poly.kind, 2);
+        assert_eq!(rt.sampler_poly.kind, SynthInstrument::Pad);
         assert_eq!(rt.sampler_poly.cutoff, 2700.0);
         let voice = &mut rt.sampler_poly.voices[0];
         voice.trig(69, 1.0);

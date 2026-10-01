@@ -44,7 +44,11 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
 
 - Pointer **down** = note/sample on, **up** = off. No click-on-then-off.
 - `samples`: pads fire the current bank (one-shots may ring after release).
-- `drums` / `analog` / `keys` / `pad`: pads hold synth voices until release.
+- `analog` / `keys` / `pad`: pads hold their distinct named synth voices until
+  release. Drums are available through the sample banks; there is no drums synth
+  choice until a distinct implementation exists.
+- Changing the instrument affects new pad presses. Held voices keep their
+  original sound, envelope and mixer destination until their matching release.
 - Octave ^/v transposes held instrument notes by 12 semitones, and sample
   playback rate by `2^(oct-3)`.
 

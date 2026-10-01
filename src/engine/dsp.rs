@@ -1,4 +1,5 @@
 //! Real-time-safe DSP primitives used by the mixer, decks, and instruments.
+use super::instrument::SynthInstrument;
 
 /// Rescale a one-pole blend defined at 48 kHz to the same time constant.
 /// Call during preparation, not per output frame. Preserve the 48 kHz value
@@ -269,16 +270,13 @@ pub struct Voice {
     pub phase2: f32,
     pub env: Env,
     pub cutoff: f32,
-    pub kind: u8, // 0 analog bass, 1 keys, 2 pad
+    pub kind: SynthInstrument,
 }
 
 impl Voice {
-    pub fn new(sr: f32, kind: u8) -> Self {
-        let env = match kind {
-            0 => Env::adsr(sr, 0.005, 0.18, 0.35, 0.12),
-            1 => Env::adsr(sr, 0.008, 0.22, 0.45, 0.28),
-            _ => Env::adsr(sr, 0.04, 0.4, 0.7, 0.8),
-        };
+    pub fn new(sr: f32, kind: SynthInstrument) -> Self {
+        let [attack, decay, sustain, release] = kind.adsr();
+        let env = Env::adsr(sr, attack, decay, sustain, release);
         Self {
             note: 0,
             owner: VoiceOwner::Live,
@@ -288,7 +286,7 @@ impl Voice {
             phase: 0.0,
             phase2: 0.0,
             env,
-            cutoff: 1200.0,
+            cutoff: kind.cutoff(),
             kind,
         }
     }
@@ -309,9 +307,9 @@ impl Voice {
         let sq = if self.phase < 0.5 { 0.7 } else { -0.7 };
         let sine = (self.phase * std::f32::consts::TAU).sin();
         let osc = match self.kind {
-            0 => saw * 0.7 + sq * 0.3,
-            1 => saw * 0.35 + sine * 0.65,
-            _ => sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4,
+            SynthInstrument::Analog => saw * 0.7 + sq * 0.3,
+            SynthInstrument::Keys => saw * 0.35 + sine * 0.65,
+            SynthInstrument::Pad => sine * 0.6 + (self.phase2 * 2.0 - 1.0) * 0.4,
         };
         let e = self.env.tick();
         let cf = (cutoff + e * 1800.0).clamp(80.0, sr * 0.42);
@@ -324,19 +322,21 @@ impl Voice {
 pub struct Poly {
     pub voices: Vec<Voice>,
     pub filters: Vec<Svf>,
-    pub kind: u8,
+    pub kind: SynthInstrument,
+    sample_rate: f32,
     pub cutoff: f32,
     #[cfg(test)]
     pub note_on_events: u64,
 }
 
 impl Poly {
-    pub fn new(sr: f32, kind: u8, n: usize) -> Self {
+    pub fn new(sr: f32, kind: SynthInstrument, n: usize) -> Self {
         Self {
             voices: (0..n).map(|_| Voice::new(sr, kind)).collect(),
             filters: vec![Svf::default(); n],
             kind,
-            cutoff: if kind == 0 { 700.0 } else { 1800.0 },
+            sample_rate: sr,
+            cutoff: kind.cutoff(),
             #[cfg(test)]
             note_on_events: 0,
         }
@@ -344,10 +344,16 @@ impl Poly {
     /// Called while output is stopped: discard held/releasing voices and
     /// rebuild their ADSRs. Instrument, cutoff and voice capacity are retained.
     pub fn set_sample_rate(&mut self, sr: f32) {
+        self.sample_rate = sr;
         for voice in &mut self.voices {
             *voice = Voice::new(sr, self.kind);
         }
         self.filters.fill(Svf::default());
+    }
+    /// Retain held/releasing voices. The next onset selects this implementation.
+    pub fn select_instrument(&mut self, kind: SynthInstrument) {
+        self.kind = kind;
+        self.cutoff = kind.cutoff();
     }
     pub fn note_on(&mut self, note: u8, vel: f32) {
         self.note_on_owned(note, vel, VoiceOwner::Live, None, 1.0);
@@ -375,21 +381,17 @@ impl Poly {
                 && (input.is_some() || v.note == note)
                 && (owner != VoiceOwner::Clip || matches!(v.env.stage, 1..=3)))
             .or_else(|| self.voices.iter().position(|v| !v.env.active()));
-        if let Some(i) = available {
-            let v = &mut self.voices[i];
-            v.owner = owner;
-            v.input = input;
-            v.clip_gain = gain;
-            v.trig(note, vel);
-            return;
-        }
-        let i = self
+        let i = available.unwrap_or_else(|| self
             .voices
             .iter()
             .enumerate()
             .min_by(|a, b| a.1.env.level.partial_cmp(&b.1.env.level).unwrap())
             .map(|(i, _)| i)
-            .unwrap_or(0);
+            .unwrap_or(0));
+        if self.voices[i].kind != self.kind {
+            self.voices[i] = Voice::new(self.sample_rate, self.kind);
+            self.filters[i] = Svf::default();
+        }
         self.voices[i].owner = owner;
         self.voices[i].input = input;
         self.voices[i].clip_gain = gain;

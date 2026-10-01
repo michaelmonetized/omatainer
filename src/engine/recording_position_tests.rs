@@ -4,7 +4,7 @@ fn fixture(bars: f32) -> RtEngine {
     let (_tx, rx) = crossbeam_channel::bounded(16);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
     rt.selected_track = 1;
-    rt.apply(Command::SamplerInst(1));
+    rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.selected_scene = 2;
     rt.quant = 0.0;
     rt.bpm = 120.0;

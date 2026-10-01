@@ -38,7 +38,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     for track in &mut rt.tracks {
         track.stop_clip();
         track.clips = std::array::from_fn(|_| Clip::empty());
-        track.poly = Poly::new(rt.sr, 2, 16);
+        track.poly = Poly::new(rt.sr, SynthInstrument::Pad, 16);
         track.fx.slots.clear();
     }
     rt.tracks[1].clips[0] = chord();
@@ -180,7 +180,7 @@ fn one_shot_clip_completion_releases_long_notes_and_arp() {
 #[test]
 fn same_pitch_live_and_clip_note_offs_are_independent_in_either_order() {
     for live_first in [false, true] {
-        let mut poly = Poly::new(48_000.0, 2, 8);
+        let mut poly = Poly::new(48_000.0, SynthInstrument::Pad, 8);
         if live_first {
             poly.note_on(60, 0.8);
             poly.note_on_clip(60, 0.8);
@@ -207,7 +207,7 @@ fn same_pitch_live_and_clip_note_offs_are_independent_in_either_order() {
 
 #[test]
 fn stolen_voices_get_the_new_owners_note_off_policy() {
-    let mut poly = Poly::new(48_000.0, 2, 1);
+    let mut poly = Poly::new(48_000.0, SynthInstrument::Pad, 1);
     poly.note_on_clip(60, 0.8);
     poly.note_on(64, 0.8);
     poly.release_clip();
