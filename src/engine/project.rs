@@ -227,6 +227,7 @@ impl RtEngine {
                     } else {
                         prepared.swap_into(self);
                         self.project.edited();
+                        self.publish();
                         *applied = Some(Applied { revision: self.project.revision(),
                             playback_receipts: std::array::from_fn(|i| self.decks[i].load_receipt.clone()) });
                     }

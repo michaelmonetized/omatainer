@@ -595,6 +595,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub project_revision: u64,
     pub compose_target: Option<ComposeTarget>,
     pub playing: bool,
     pub recording: bool,
@@ -635,6 +636,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            project_revision: 0,
             compose_target: None,
             playing: false,
             recording: false,
