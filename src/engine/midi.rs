@@ -1,18 +1,22 @@
 //! USB-MIDI class-compliant I/O, hardware maps, learn, and clock.
 
 use crate::engine::{Command, DECKS, HOTCUES, SCENES, TRACKS};
-use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use midir::MidiOutputConnection;
 use parking_lot::Mutex;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
+mod connections;
 mod profile;
 mod handoff;
 mod framing;
 mod relative;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
+pub use connections::Retry;
+#[cfg(test)]
+pub(crate) use connections::test_support as connection_test_support;
 pub use relative::RelativeSpec;
 #[cfg(test)]
 pub(crate) use relative::RelativeEncoding;
@@ -102,9 +106,7 @@ pub enum UnmappedNotes {
 }
 
 pub struct MidiHub {
-    _ins: Vec<MidiInputConnection<()>>,
-    // Connections close before worker guards join, ending callback ownership.
-    _workers: Vec<handoff::InputGuard>,
+    connections: Option<connections::Manager>,
     input_counters: Arc<handoff::InputCounters>,
     outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
     pub log: Arc<Mutex<Vec<String>>>,
@@ -140,8 +142,7 @@ impl MidiHub {
     #[cfg(test)]
     pub(super) fn without_devices() -> Self {
         Self {
-            _ins: Vec::new(),
-            _workers: Vec::new(),
+            connections: None,
             input_counters: Arc::new(handoff::InputCounters::default()),
             outs: Arc::new(Mutex::new(Vec::new())),
             log: Arc::new(Mutex::new(Vec::new())),
@@ -156,101 +157,24 @@ impl MidiHub {
         let learn = Arc::new(Mutex::new(None));
         let input_counters = Arc::new(handoff::InputCounters::default());
         let outs = Arc::new(Mutex::new(Vec::new()));
-        let mut ins = Vec::new();
-        let mut workers = Vec::new();
+        let connections = connections::Manager::start(
+            connections::MidirBackend::new(outs.clone()),
+            &snapshot, cmd, maps, log.clone(), learn.clone(), input_counters.clone(),
+        )?;
+        Ok(Self { connections: Some(connections), input_counters, outs, log, learn })
+    }
 
-        let in_ports: Vec<(String, midir::MidiInputPort)> = match MidiInput::new("omatainer") {
-            Ok(probe) => probe
-                .ports()
-                .into_iter()
-                .filter_map(|p| probe.port_name(&p).ok().map(|n| (n, p)))
-                .collect(),
-            Err(error) => {
-                device_status::Status::new(&snapshot, "MIDI input backend", "unavailable").failed(error);
-                Vec::new()
-            }
-        };
-        for (idx, (name, port)) in in_ports.into_iter().enumerate() {
-            if name.to_lowercase().contains("through") {
-                continue;
-            }
-            let map = pick_map(&maps, &name);
-            let status = device_status::Status::new(&snapshot, &name, &map.name);
-            let mut midi_in = match MidiInput::new(&format!("omatainer-in-{idx}")) {
-                Ok(input) => input,
-                Err(error) => {
-                    status.failed(&error);
-                    log.lock().push(format!("in init fail {name}: {error}"));
-                    continue;
-                }
-            };
-            midi_in.ignore(Ignore::None);
-            // Names and channels are not identities: two identical keyboards
-            // can use the same channel and pitch simultaneously.
-            let source = next_source_id();
-            let completed = status.clone();
-            let (mut input, worker) = match handoff::start_with_completion(source, map, cmd.clone(),
-                log.clone(), learn.clone(), name.clone(), input_counters.clone(),
-                move || completed.disconnected()) {
-                Ok(pair) => pair,
-                Err(error) => {
-                    status.failed(&error);
-                    log.lock().push(format!("in worker fail {name}: {error}"));
-                    continue;
-                }
-            };
-            match midi_in.connect(
-                &port,
-                &format!("omatainer-in-{name}"),
-                move |_t, msg, _| {
-                    input.push(msg);
-                },
-                (),
-            ) {
-                Ok(conn) => {
-                    status.connected();
-                    ins.push(conn);
-                    workers.push(worker);
-                }
-                Err(e) => {
-                    status.failed(&e);
-                    log.lock().push(format!("in fail {name}: {e}"));
-                }
-            }
-        }
+    /// Retry admission never waits for OS discovery/connect or a queue slot.
+    pub fn retry_connections(&self) -> Retry {
+        self.connections.as_ref().map_or(Retry::Unavailable, |manager| manager.retry())
+    }
 
-        if let Ok(probe) = MidiOutput::new("omatainer") {
-            let out_ports: Vec<(String, midir::MidiOutputPort)> = probe
-                .ports()
-                .into_iter()
-                .filter_map(|p| probe.port_name(&p).ok().map(|n| (n, p)))
-                .collect();
-            drop(probe);
-            for (name, port) in out_ports {
-                if name.to_lowercase().contains("through") {
-                    continue;
-                }
-                if let Ok(midi_out) = MidiOutput::new("omatainer") {
-                    if let Ok(c) = midi_out.connect(&port, &format!("omatainer-out-{name}")) {
-                        outs.lock().push(c);
-                        break;
-                    }
-                }
-            }
-        }
+    pub fn connections_busy(&self) -> bool {
+        self.connections.as_ref().is_some_and(|manager| manager.busy())
+    }
 
-        if ins.is_empty() {
-            device_status::Status::new(&snapshot, "keyboard + mouse", "built-in").connected();
-        }
-
-        Ok(Self {
-            _ins: ins,
-            _workers: workers,
-            input_counters,
-            outs,
-            log,
-            learn,
-        })
+    pub fn connections_available(&self) -> bool {
+        self.connections.as_ref().is_some_and(|manager| manager.available())
     }
 
     pub fn input_stats(&self) -> InputStats {

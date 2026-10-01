@@ -393,3 +393,19 @@ These clauses are enforced by `cargo test` (`engine::tests::contract_*`):
   if it disappears, selection clamps to a valid row. History arriving during a
   scan remains overlaid on the published crate. Cross-restart history persistence
   is separate work.
+
+## MIDI connection lifecycle
+
+- Device rows distinguish discovered, connecting, connected, failed (with a
+  reason), and disconnected. Only a successful backend connection can publish
+  connected; completion cannot erase a failed attempt or revive an old one.
+- Keyboard and mouse remain available regardless of hardware state. Ctrl+M
+  exposes shared status and **Retry / rescan MIDI**, without opening a log.
+- One management worker owns discovery, connection attempts and teardown. Retry
+  has one bounded request slot and coalesces while work is running; successful
+  connections are retained. Explicit rescans retry failed ports, discover new
+  ones, and release input ownership for ports no longer reported by the backend.
+- Raw MIDI callbacks retain their fixed input-handoff work and never publish
+  status, discover ports or wait for connection management. Closing the UI does
+  not wait for a blocked OS call: its worker retains connection ownership and
+  cleans up after that call returns. No automatic OS hotplug detection is claimed.
