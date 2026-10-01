@@ -291,6 +291,7 @@ impl Lesson {
 
 pub(super) fn steps(topic: Topic) -> &'static [&'static str] {
     match topic {
+        Topic::Offline => &[],
         Topic::Setup => &[
             "Inspect the running output in Preferences, then open Diagnostics and wait for a completed audio callback. If saved audio changes are pending, preview and explicitly confirm them in Audio devices and latency, or restart. A saved profile is not the running output.",
             "Load Drums (session) or Harmony (session) onto a deck and play it. Wait for renderer-confirmed playback of that accepted load.",

@@ -4,6 +4,7 @@ struct Gui {
     fixture: test_support::Fixture,
     ctx: egui::Context,
     time: f64,
+    urls: Vec<String>,
 }
 impl Gui {
     fn new() -> Self {
@@ -13,11 +14,12 @@ impl Gui {
             fixture,
             ctx: egui::Context::default(),
             time: 0.0,
+            urls: Vec::new(),
         }
     }
     fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
         self.time += 0.02;
-        self.ctx.run(
+        let output=self.ctx.run(
             egui::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1500.0, 1100.0))),
                 time: Some(self.time),
@@ -25,7 +27,9 @@ impl Gui {
                 ..Default::default()
             },
             |ctx| self.fixture.app.update_frame(ctx),
-        )
+        );
+        if let Some(url)=&output.platform_output.open_url {self.urls.push(url.url.clone());}
+        output
     }
     fn click(&mut self, label: &str) {
         self.frame(vec![]);
@@ -146,4 +150,25 @@ fn large_runtime_notice_renders_visible_lines_while_commands_keep_progressing() 
         );
         assert_eq!(gui.fixture.rt.bpm, 120.0 + step as f32);
     }
+}
+
+#[test]
+fn offline_notices_emit_no_url_until_explicit_external_browser_action() {
+    let mut gui=Gui::new();
+    gui.ctx.enable_accesskit();
+    gui.click("Content & licenses");gui.settle();
+    gui.fixture.app.licenses.query="font:ubuntu".into();
+    gui.click("font:ubuntu — Ubuntu Light");
+    assert!(gui.frame(vec![]).platform_output.open_url.is_none());
+    gui.click("Full notice 1");
+    assert!(gui.frame(vec![]).platform_output.open_url.is_none());
+    let expected=gui.fixture.app.licenses.catalog.as_ref().unwrap().manifest.entries[gui.fixture.app.licenses.selected]
+        .sources.iter().find(|record|record.location.starts_with("https://")).unwrap().location.clone();
+    assert!(gui.urls.is_empty(),"reading bundled notices must not request external navigation");
+    gui.click("Full notice 1");
+    for _ in 0..12 {gui.frame(vec![]);}
+    gui.click("Source record (external browser)");
+    assert_eq!(gui.urls,vec![expected]);
+    // Platform output is inspected, never passed to a browser or host portal.
+    assert!(gui.fixture.decoder_jobs.try_recv().is_err());
 }
