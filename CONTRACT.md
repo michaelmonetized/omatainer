@@ -778,3 +778,18 @@ once before encoding the request.
   time, with nominal callback resolution at the logical rate and repeat spread. It is
   not converter-only latency, and does not subtract unrelated CPAL stream clocks.
   No physical probe or controller qualification was performed for this change.
+
+## Performance protection (#96)
+
+Show protection is shared by every CommandPort producer and renderer. It protects
+active deck replacement and destructive edits while preserving mixing, composing,
+recording and essential Save/catalog/history/retirement work. Safety requests use
+a fixed priority mailbox; all-notes-off finalizes captures before release, and
+recovery requires explicit input-release acknowledgment plus drained old work.
+Raw MIDI epochs prevent buffered onsets replaying after recovery. Emergency output
+uses a 2 ms ramp and stays muted until an explicit audio-owner stopped DSP reset;
+quiet observation never unmutes. Failed reset retains mute. Project/device and
+optional commit permits serialize mode entry without stealing a CloseGuard.
+Optional cancellation never rewrites an already committed/applied outcome, and
+pre-mode scan/import visibility cannot leak through later essential metadata
+publication. Preferences persist startup protection only, not emergency state.

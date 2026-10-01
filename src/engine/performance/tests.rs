@@ -273,3 +273,80 @@ fn newer_safety_request_cannot_receive_an_older_stopped_publication_or_early_ack
     handle.acknowledge_inputs_released().unwrap();
     assert!(handle.try_recover(|| true));
 }
+
+#[test]
+fn protected_hybrid_render_matches_studio_during_twenty_seconds_of_mixing_and_recording() {
+    use crate::engine::audio::OutputCallback;
+    fn prepare() -> (Engine, OutputCallback) {
+        let (engine, mut rt) = fixture();
+        rt.quant = 0.0;
+        rt.apply(Command::LaunchScene { scene: 0 });
+        rt.apply(Command::ComposeArm { track: 2, scene: 7 });
+        rt.apply(Command::Record);
+        for deck in 0..2 {
+            rt.apply(Command::DeckLoop { deck, beats: 16.0 });
+            if !rt.decks[deck as usize].playing { rt.apply(Command::DeckPlay { deck }); }
+        }
+        let mut callback = OutputCallback::new(rt, 2);
+        callback.render(&mut [0.0f32; 1024]);
+        (engine, callback)
+    }
+    let (protected, mut a) = prepare();
+    let (studio, mut b) = prepare();
+    protected.send(Command::PerformanceMode(true)).unwrap();
+    let (mut out_a, mut out_b) = ([0.0f32; 1024], [0.0f32; 1024]);
+    let mut energy = 0.0f64;
+    for block in 0..2048 {
+        for engine in [&protected, &studio] {
+            if block % 8 == 0 {
+                engine.send(Command::TrackGain { track: 2, value: 0.2 + (block % 32) as f32 / 100.0 }).unwrap();
+                engine.send(Command::Xfader((block % 128) as f32 / 127.0)).unwrap();
+                engine.send(Command::DeckPitch { deck: 1, value: 0.46 + (block % 64) as f32 / 800.0 }).unwrap();
+                engine.send(Command::DeckJog { deck: 0, delta: if block % 32 == 0 { -0.001 } else { 0.001 } }).unwrap();
+            }
+            let note = 57 + ((block / 16) % 12) as u8;
+            for source in [41, 42] {
+                if block % 16 == 0 { engine.send(Command::LiveNoteOn { source, ch: 0, note, vel: 80 }).unwrap(); }
+                if block % 16 == 8 { engine.send(Command::LiveNoteOff { source, ch: 0, note }).unwrap(); }
+            }
+        }
+        let counts = test_alloc::measure(|| a.render(&mut out_a));
+        assert_eq!((counts.allocations, counts.frees), (0, 0), "block {block}");
+        b.render(&mut out_b);
+        assert_eq!(out_a, out_b, "protection altered valid performance audio at block {block}");
+        assert!(out_a.iter().all(|v| v.is_finite()));
+        energy += out_a.iter().map(|v| (*v as f64).powi(2)).sum::<f64>();
+        std::thread::yield_now();
+    }
+    assert!(energy > 1.0);
+    let rt = a.renderer_for_test();
+    assert!(rt.playing && rt.decks.iter().all(|d| d.playing));
+    assert!(!rt.has_held_project_notes());
+    let notes = &rt.tracks[2].clips[7].notes;
+    assert_eq!(notes.len(), 256);
+    let duration = 8.0 * 512.0 / 48_000.0 * rt.bpm / 60.0;
+    for (index, note) in notes.iter().enumerate() {
+        assert_eq!(note.pitch, 57 + ((index / 2) % 12) as u8);
+        assert!((note.len - duration).abs() < 0.00001);
+    }
+    assert_eq!(protected.undo.view().failures, 0);
+    assert!(protected.cmd.performance().status().protected);
+}
+
+#[test]
+fn emergency_envelope_has_exact_bounded_endpoints_at_supported_rates() {
+    for rate in [44_100.0f32, 48_000.0, 96_000.0] {
+        let mut output = Output::default(); output.stop(Safety::Silence, rate);
+        let frames = (rate * 0.002).ceil() as usize;
+        let mut previous = 1.0;
+        for frame in 0..frames {
+            let value = output.output([1.0, -1.0]);
+            let expected = (frames - frame - 1) as f32 / (frames - 1) as f32;
+            assert_eq!(value, [expected, -expected]);
+            assert!(value[0] <= previous); previous = value[0];
+        }
+        assert_eq!(output.output([1.0, -1.0]), [0.0; 2]);
+        output.stop(Safety::Stop, rate);
+        assert_eq!(output.output([f32::NAN, f32::INFINITY]), [0.0; 2]);
+    }
+}

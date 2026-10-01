@@ -549,8 +549,12 @@ mod tests {
         assert!(saved.revision.is_some());
         assert!(load(&path, &AtomicBool::new(false)).unwrap().preferences.current().unwrap().startup.performance_mode);
         let mut legacy = serde_json::to_value(preferences).unwrap();
+        legacy["version"] = 3.into();
         for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("performance_mode"); }
-        assert!(!decode(&serde_json::to_vec(&legacy).unwrap()).unwrap().0.current().unwrap().startup.performance_mode);
+        let (legacy, migrated) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert!(migrated);
+        assert_eq!(legacy.version, 4);
+        assert!(legacy.profiles.values().all(|profile| !profile.startup.performance_mode));
     }
 
 }
