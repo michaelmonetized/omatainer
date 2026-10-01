@@ -127,11 +127,28 @@ impl Delay {
             mix: 0.0,
         }
     }
+    /// Optional observer storage must be fallible and prepared off callback.
+    pub(super) fn try_new(max: usize) -> Result<Self, std::collections::TryReserveError> {
+        let mut buf = Vec::new();
+        buf.try_reserve_exact(max.max(64))?;
+        buf.resize(max.max(64), 0.0);
+        Ok(Self { buf, w: 0, written: 0, time_samples: 12000.0, fb: 0.35, mix: 0.0 })
+    }
+
     /// Invalidate history without touching the backing allocation. Until the
     /// first full wrap, only [0, written) contains samples from this generation.
     pub fn reset_history(&mut self) { self.w = 0; self.written = 0; }
 
     pub fn tick(&mut self, x: f32) -> f32 {
+        self.tick_observed(x, |_, _| {})
+    }
+
+    /// Observer-only storage peaks use the same arithmetic and actual written
+    /// value. The normal renderer's empty observer is optimized away.
+    pub(super) fn tick_observed(&mut self, x: f32, written: impl FnOnce(f32, bool)) -> f32 {
+        self.tick_traced(x, |_, value, wrapped| written(value, wrapped))
+    }
+    pub(super) fn tick_traced(&mut self, x: f32, written: impl FnOnce(f32, f32, bool)) -> f32 {
         let n = self.buf.len() as f32;
         let t = self.time_samples.clamp(1.0, n - 2.0);
         let r = (self.w as f32 - t + n) % n;
@@ -141,9 +158,11 @@ impl Delay {
         let a = if i < self.written { self.buf[i] } else { 0.0 };
         let b = if next < self.written { self.buf[next] } else { 0.0 };
         let y = a + (b - a) * f;
-        self.buf[self.w] = x + y * self.fb;
+        let value = x + y * self.fb;
+        self.buf[self.w] = value;
         self.w = (self.w + 1) % self.buf.len();
         self.written = (self.written + 1).min(self.buf.len());
+        written(y, value, self.w == 0);
         x * (1.0 - self.mix) + y * self.mix
     }
 }
@@ -176,14 +195,32 @@ impl Reverb {
         });
         Self { delays, mix: 0.0 }
     }
+    pub(super) fn try_at_sample_rate(sr: f32) -> Result<Self, std::collections::TryReserveError> {
+        let scale = sr / 48_000.0;
+        let make = |capacity: f32, time: f32| {
+            let mut delay = Delay::try_new((capacity * scale).round() as usize)?;
+            delay.time_samples = (time * scale).round().max(1.0);
+            delay.fb = 0.72;
+            delay.mix = 1.0;
+            Ok::<_, std::collections::TryReserveError>(delay)
+        };
+        Ok(Self { delays: [make(3011.0, 1307.0)?, make(4057.0, 1637.0)?,
+            make(5059.0, 1999.0)?, make(2333.0, 887.0)?], mix: 0.0 })
+    }
     pub fn reset_history(&mut self) {
         for delay in &mut self.delays { delay.reset_history(); }
     }
     pub fn tick(&mut self, x: f32) -> f32 {
+        self.tick_observed(x, |_, _, _| {})
+    }
+    pub(super) fn tick_observed(&mut self, x: f32, mut written: impl FnMut(usize, f32, bool)) -> f32 {
+        self.tick_traced(x, |index, _, value, wrapped| written(index, value, wrapped))
+    }
+    pub(super) fn tick_traced(&mut self, x: f32, mut written: impl FnMut(usize, f32, f32, bool)) -> f32 {
         let mut y = 0.0;
         for (i, d) in self.delays.iter_mut().enumerate() {
             let s = if i % 2 == 0 { x } else { x * -1.0 };
-            y += d.tick(s);
+            y += d.tick_traced(s, |delayed, value, wrapped| written(i, delayed, value, wrapped));
         }
         x * (1.0 - self.mix) + (y * 0.25) * self.mix
     }

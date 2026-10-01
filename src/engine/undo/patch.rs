@@ -449,6 +449,8 @@ impl Patch {
                 d.touching = false;
                 d.scratch = 0.0;
                 receipt.swap(&mut d.load_receipt);
+                d.history_key = d.load_receipt.as_ref().map_or_else(
+                    history_measurement::parts::unresolved_key, load_receipt::Receipt::history_key);
             }
         }
     }

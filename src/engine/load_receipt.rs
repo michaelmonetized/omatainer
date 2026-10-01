@@ -11,6 +11,7 @@ pub struct Receipt(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
+    history_key: u64,
     state: AtomicU8,
     history_pins: AtomicU64,
     initial_preparation: Option<super::preparation::Preparation>,
@@ -47,6 +48,7 @@ impl Receipt {
             .as_nanos()
             .min(u64::MAX as u128) as u64;
         Self(Arc::new(Inner {
+            history_key: super::history_measurement::parts::fresh_key(),
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
             initial_preparation,
@@ -85,6 +87,7 @@ impl Receipt {
     pub(crate) fn snapshot_key(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
     }
+    pub(crate) fn history_key(&self) -> u64 { self.0.history_key }
     pub fn same_request(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }

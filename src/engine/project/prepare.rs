@@ -107,6 +107,7 @@ impl Prepared {
             );
             deck.title = saved.title;
             deck.audio = saved.audio.map(|index| media[index].clone());
+            deck.history_key = history_measurement::parts::unresolved_key();
             deck.eq = [eq(saved.eq, output_sr); 2];
             deck.filter_position = saved.filter_amt;
             deck.cue_styles = saved.cue_styles;

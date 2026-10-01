@@ -28,6 +28,7 @@ mod mute_lifecycle_tests;
 pub(crate) mod test_alloc;
 pub mod audio;
 pub mod audio_metrics;
+pub(crate) mod history_measurement;
 pub mod performance;
 pub(crate) mod diagnostics;
 mod master_fx;
@@ -301,6 +302,9 @@ pub struct DeckRt {
     keylock_render_mode: keylock::Mode,
     rate_smoothing: f32,
     last_output: [f32; 2],
+    history_key: u64,
+    history_last: history_measurement::parts::Parts,
+    history_transition: history_measurement::parts::Parts,
     transition_from: [f32; 2],
     transition_remaining: u32,
     transition_frames: u32,
@@ -358,6 +362,9 @@ impl DeckRt {
             keylock_render_mode: keylock::Mode::Off,
             rate_smoothing: dsp::rate_blend(0.08, sr),
             last_output: [0.0; 2],
+            history_key: 0,
+            history_last: Default::default(),
+            history_transition: Default::default(),
             transition_from: [0.0; 2],
             transition_remaining: 0,
             transition_frames: 0,
@@ -388,6 +395,7 @@ impl DeckRt {
     }
 
     fn fade_from_last_output(&mut self, sr: f32) {
+        self.history_transition = self.history_last;
         self.transition_from = self.last_output;
         self.transition_frames = (sr as f64 * 0.002).ceil().max(2.0) as u32;
         self.transition_remaining = self.transition_frames;
@@ -405,6 +413,7 @@ impl DeckRt {
 
     fn transition_output(&mut self, input: [f32; 2]) -> [f32; 2] {
         let mut output = input;
+        let mut history_mix = 1.0;
         if self.transition_remaining > 0 {
             let mix = (self.transition_frames - self.transition_remaining) as f32
                 / (self.transition_frames - 1) as f32;
@@ -412,8 +421,11 @@ impl DeckRt {
                 output[channel] = self.transition_from[channel] * (1.0 - mix)
                     + input[channel] * mix;
             }
+            history_mix = mix;
             self.transition_remaining -= 1;
         }
+        self.history_last = history_measurement::parts::Parts::transition(
+            self.history_transition, self.history_key, input, history_mix);
         self.last_output = output;
         output
     }
@@ -2028,6 +2040,7 @@ impl RtEngine {
                     pos: 0.0,
                 });
                 d.audio = Some(audio);
+                d.history_key = history_measurement::parts::unresolved_key();
                 d.transition_to(0.0, self.sr, DeckTransition::Jump);
             }
             Command::DeckUnload { deck } => {
@@ -2035,6 +2048,7 @@ impl RtEngine {
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.playback_active = false;
                 d.audio = None;
+                d.history_key = 0;
                 d.title.clear();
                 d.playing = false;
                 d.cue_pos = 0.0;
@@ -2479,6 +2493,7 @@ impl RtEngine {
             self.apply_plain(command);
             let d = &mut self.decks[deck as usize];
             if let Some(preparation) = receipt.initial_preparation() { d.restore_preparation(preparation); }
+            d.history_key = receipt.history_key();
             d.load_receipt = Some(receipt.clone());
             d.publish_preparation();
             receipt.finish(State::Current);
