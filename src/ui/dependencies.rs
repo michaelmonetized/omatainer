@@ -27,9 +27,16 @@ impl Drop for Dependencies { fn drop(&mut self) { self.cancel(); } }
 impl Dependencies {
     fn busy(&self) -> bool { self.active.is_some() }
     pub(super) fn blocks_close(&self) -> bool { self.busy() || self.choices.iter().any(Option::is_some) }
+    /// Keep source choices when a project replacement is requested.
+    /// Returns whether replacement is blocked and opens explicit keep/discard review.
+    pub(super) fn guard_replacement(&mut self) -> bool {
+        if !self.blocks_close() { return false; }
+        self.open = true; self.confirm_discard = true; true
+    }
     pub(super) fn cancel(&self) { if let Some(cancel) = &self.active { cancel.store(true, Ordering::Release); } }
     pub(super) fn install_origins(&mut self, origins: Vec<data::Origin>) {
         self.cancel(); self.origins = origins; self.review = None; self.search = None; self.choices.clear();
+        self.confirm_discard = false; self.discard_when_settled = false; self.message.clear(); self.error = None;
     }
     fn start(&mut self, engine: &Engine, kind: Kind) {
         if self.busy() { return; }
@@ -94,11 +101,12 @@ impl App {
                         self.dependencies.review = Some(review); self.dependencies.search = Some(search);
                         self.dependencies.message = "Search complete. Choose each replacement explicitly before applying the batch.".into(); self.dependencies.error = None;
                     }
-                    Ok(ResultData::Verified(scope, selected)) => {
+                    Ok(ResultData::Verified(scope, selected, keys)) => {
                         let result = (|| {
                             let work = self.engine.cmd.performance().optional_work().map_err(|e| e.to_string())?;
                             if work.cancelled() || !self.dependencies.current(&self.engine, &scope) { return Err("Project or protection changed before relink; current aliases were preserved".into()); }
                             let mut origins = self.dependencies.origins.clone();
+                            origins.retain(|origin| keys.contains(&origin.key));
                             for origin in selected {
                                 origins.retain(|old| old.key != origin.key); origins.push(origin);
                             }
@@ -179,7 +187,7 @@ impl App {
                         editor.start(&self.engine, Kind::Search { review: review.clone(), roots });
                     }
                     if let Some(search) = &editor.search {
-                        ui.label(format!("{} entries · {} files · {}", search.entries, search.files, if search.complete { "Complete search of selected folders" } else { "Partial search; additional matches may exist" }));
+                        ui.label(format!("{} entries · {} files · {} unsupported/non-audio skipped · {}", search.entries, search.files, search.skipped_unsupported, if search.complete { "Complete search of supported audio in selected folders" } else { "Partial search; additional matches may exist" }));
                         for warning in &search.warnings { ui.label(warning); }
                         let choices: Vec<_> = editor.choices.iter().enumerate().filter_map(|(asset, &choice)| choice.map(|choice|
                             (review.inventory.assets[asset].clone(), search.matches[asset][choice].clone()))).collect();

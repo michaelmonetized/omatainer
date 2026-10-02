@@ -112,3 +112,34 @@ fn changed_files_stale_projects_and_explicit_discard_preserve_entire_source_book
     assert!(gui.app.dependencies.error.as_ref().unwrap().contains("cancelled"));
     assert!(gui.app.dependencies.origins.is_empty());
 }
+
+#[test]
+fn clean_project_replacement_requires_explicit_source_review_discard() {
+    let files = Files::new(); let (mut gui, moved) = with_missing_audio(&files);
+    inspect(&mut gui); choose(&mut gui, &moved);
+    let namespace = gui.rt.session.namespace;
+    assert!(!gui.app.project_dirty());
+    for action in ["New project", "Open project…"] {
+        gui.click_text("Project"); gui.click_text(action); gui.frame(vec![]);
+        assert_eq!(gui.rt.session.namespace, namespace); assert!(gui.app.dependencies.confirm_discard);
+        assert!(gui.app.dependencies.choices.iter().any(Option::is_some));
+        gui.click("Keep source review"); assert!(gui.app.dependencies.open);
+    }
+    gui.click("Close dependency report"); gui.click("Discard source review"); settle(&mut gui);
+    gui.click_text("Project"); gui.click_text("New project"); settle(&mut gui);
+    assert_ne!(gui.rt.session.namespace, namespace);
+}
+
+#[test]
+fn reviewed_relink_prunes_a_full_book_of_obsolete_aliases() {
+    let files = Files::new(); let (mut gui, moved) = with_missing_audio(&files);
+    inspect(&mut gui);
+    let current = gui.app.dependencies.review.as_ref().unwrap().inventory.assets.iter().find(|asset| asset.key.original_path.ends_with("original.wav")).unwrap().key.clone();
+    gui.app.dependencies.origins = (0..255).map(|index| data::Origin {
+        key: data::Key { audio_hash: [9;32], original_path: format!("/obsolete/{index}.wav") }, source: LibSource::File(format!("/absent/{index}.wav").into()),
+    }).chain(std::iter::once(data::Origin { key: current.clone(), source: LibSource::File(files.0.join("absent.wav")) })).collect();
+    data::validate_origins(&gui.app.dependencies.origins).unwrap();
+    gui.click("Check dependencies"); settle(&mut gui); choose(&mut gui, &moved); gui.click("Apply reviewed relinks"); settle(&mut gui);
+    assert!(gui.app.dependencies.error.is_none(), "{:?}", gui.app.dependencies.error);
+    assert_eq!(gui.app.dependencies.origins, vec![data::Origin { key: current, source: LibSource::File(moved) }]);
+}

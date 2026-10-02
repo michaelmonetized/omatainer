@@ -1581,3 +1581,21 @@ fn performance_cancels_prepared_open_without_replacing_project_and_keeps_save_av
     assert_eq!(gui.rt.master, 0.37);
     assert!(gui.app.engine.cmd.performance().status().protected);
 }
+
+#[test]
+fn timing_draft_created_during_project_preparation_blocks_its_final_commit() {
+    let mut gui = crate::ui::piano_roll::tests::Gui::new(); gui.frame(vec![]);
+    let namespace = gui.rt.session.namespace;
+    let (entered, resume) = gui.app.project.worker.as_ref().unwrap().pause_next(worker::Stage::Prepared);
+    gui.app.begin_project_action(Action::New);
+    let end = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() { gui.frame(vec![]); assert!(Instant::now() < end); }
+    gui.app.open_timing(); gui.frame(vec![]);
+    gui.action("Tempo points: beat BPM step/ramp", egui::accesskit::Action::Focus, None);
+    gui.key(Key::A, egui::Modifiers { ctrl: true, command: true, ..Default::default() });
+    gui.frame(vec![egui::Event::Text("0 137 step".into())]);
+    assert!(gui.app.timing.blocks_close());
+    resume.send(()).unwrap(); gui.settle();
+    assert_eq!(gui.rt.session.namespace, namespace); assert!(gui.app.timing.blocks_close());
+    gui.click("Keep timing draft"); assert!(gui.app.timing.blocks_close());
+}

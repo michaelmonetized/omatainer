@@ -25,7 +25,7 @@ pub(super) struct Job {
 pub(super) enum ResultData {
     Inspected(Review),
     Searched(Review, data::Search),
-    Verified(Scope, Vec<data::Origin>),
+    Verified(Scope, Vec<data::Origin>, Vec<data::Key>),
 }
 pub(super) struct Event {
     pub baseline: Vec<data::Origin>,
@@ -52,10 +52,10 @@ impl Worker {
                     match kind {
                         Kind::Inspect => Ok(ResultData::Inspected(Review { scope, inventory: Arc::new(data::inspect(&captured.state, &captured.media, &origins, &cancel)?) })),
                         Kind::Search { review, roots } => Ok(ResultData::Searched(review.clone(), data::search(&review.inventory.assets, &roots, &cancel)?)),
-                        Kind::Verify { choices, .. } => {
+                        Kind::Verify { choices, review } => {
                             let verified = data::verify_choices(&choices, &cancel)?;
                             if handle.revision() != scope.revision { return Err("Project changed during source verification; no aliases were changed".into()); }
-                            Ok(ResultData::Verified(scope, verified))
+                            Ok(ResultData::Verified(scope, verified, review.inventory.assets.iter().map(|asset| asset.key.clone()).collect()))
                         }
                     }
                 })();

@@ -122,7 +122,7 @@ pub(crate) fn inspect(state: &State, media: &[Arc<Sample>], origins: &[Origin], 
         let pcm_bytes = sample.data.len() as u64 * 4;
         let availability = if let Some(source) = &source {
             match snapshot.resolve(source).map_err(|e| e.to_string()).and_then(|location|
-                measure(&snapshot, location, pcm_bytes, cancel).and_then(|(hash, _, _)|
+                measure(&snapshot, location, pcm_bytes, cancel).map_err(|error| error.detail).and_then(|(hash, _, _)|
                     if hash == key.audio_hash { Ok(()) } else { Err("Source audio differs from the embedded project audio".into()) }))
             {
                 Ok(()) => Availability::Verified,
@@ -178,7 +178,24 @@ pub(crate) struct Candidate {
     pub file_hash: [u8; 32],
     access: Access,
 }
-fn measure(snapshot: &Snapshot, location: Location, pcm_bytes: u64, cancel: &AtomicBool) -> Result<([u8; 32], Candidate, u64), String> {
+struct MeasureError { detail: String, unsupported: bool, before_decode: bool }
+impl From<String> for MeasureError {
+    fn from(detail: String) -> Self { Self { detail, unsupported: false, before_decode: false } }
+}
+impl From<&str> for MeasureError {
+    fn from(detail: &str) -> Self { detail.to_string().into() }
+}
+/// Recognize headers for the local audio formats supported by this build.
+/// `file` is already verified regular; returns a prefix match without seeking.
+fn audio_header(file: &std::fs::File) -> Result<bool, String> {
+    use std::os::unix::fs::FileExt;
+    let mut bytes = [0u8; 12]; let count = file.read_at(&mut bytes, 0).map_err(|e| e.to_string())?;
+    let bytes = &bytes[..count];
+    Ok([b"RIFF".as_slice(), b"RF64", b"FORM", b"fLaC", b"OggS", b"ID3"].iter().any(|header| bytes.starts_with(header))
+        || bytes.len() >= 2 && bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0
+        || bytes.get(4..8).is_some_and(|kind| [b"ftyp".as_slice(), b"moov", b"mdat"].contains(&kind)))
+}
+fn measure(snapshot: &Snapshot, location: Location, pcm_bytes: u64, cancel: &AtomicBool) -> Result<([u8; 32], Candidate, u64), MeasureError> {
     active(cancel)?;
     location.recheck_with(snapshot).map_err(|e| e.to_string())?;
     let access = snapshot.access(&location.path).map_err(|e| e.to_string())?;
@@ -188,8 +205,17 @@ fn measure(snapshot: &Snapshot, location: Location, pcm_bytes: u64, cancel: &Ato
     let fingerprint = FileFingerprint::from_metadata(&before);
     if !before.is_file() || FileFingerprint::read(&location.path) != Some(fingerprint) { return Err("Source is not a stable regular file".into()); }
     let retained = file.try_clone().map_err(|e| e.to_string())?;
+    let recognizable = audio_header(&file)?;
     let bound = pcm_bytes.saturating_add(4 * 1024 * 1024).min(crate::project_file::DEFAULT_PCM_LIMIT);
-    let decoded = decode::decode_sampler_file(&location.path, file, bound, || cancel.load(Ordering::Acquire)).map_err(|e| e.to_string())?;
+    let decoded = decode::decode_sampler_file(&location.path, file, bound, || cancel.load(Ordering::Acquire)).map_err(|e| {
+        let unsupported = e.kind == decode::DecodeFailureKind::Unsupported
+            || e.kind == decode::DecodeFailureKind::Incomplete && e.stage == decode::DecodeStage::Probe && !recognizable;
+        let stable = !unsupported || retained.metadata().ok().map(|metadata| FileFingerprint::from_metadata(&metadata)) == Some(fingerprint)
+            && FileFingerprint::read(&location.path) == Some(fingerprint)
+            && Snapshot::discover().is_ok_and(|after| access.check(&after, &location.path).is_ok() && location.recheck_with(&after).is_ok());
+        MeasureError { detail: if stable { e.to_string() } else { "Source changed during format verification".into() }, unsupported: unsupported && stable,
+            before_decode: matches!(e.stage, decode::DecodeStage::Probe | decode::DecodeStage::CreateDecoder) }
+    })?;
     let hash = audio_hash(&decoded.sample, cancel)?;
     let decoded_bytes = decoded.sample.data.len() as u64 * 4;
     if FileFingerprint::from_metadata(&retained.metadata().map_err(|e| e.to_string())?) != fingerprint { return Err("Source changed during audio verification".into()); }
@@ -207,6 +233,7 @@ pub(crate) struct Search {
     pub complete: bool,
     pub entries: usize,
     pub files: usize,
+    pub skipped_unsupported: usize,
     pub warnings: Vec<String>,
 }
 impl Search {
@@ -221,7 +248,7 @@ impl Search {
 pub(crate) fn search(assets: &[Asset], roots: &[PathBuf], cancel: &AtomicBool) -> Result<Search, String> {
     if roots.is_empty() || roots.len() > 64 { return Err("Choose 1–64 search folders".into()); }
     let snapshot = Snapshot::discover().map_err(|e| e.to_string())?;
-    let mut result = Search { matches: vec![Vec::new(); assets.len()], complete: true, entries: 0, files: 0, warnings: Vec::new() };
+    let mut result = Search { matches: vec![Vec::new(); assets.len()], complete: true, entries: 0, files: 0, skipped_unsupported: 0, warnings: Vec::new() };
     let mut seen = HashSet::new();
     let mut total_pcm = 0u64;
     let mut total_source = 0u64;
@@ -260,11 +287,20 @@ pub(crate) fn search(assets: &[Asset], roots: &[PathBuf], cancel: &AtomicBool) -
                 result.warning("Search reached its 8 GiB source-file bound; narrow the folders and retry".into()); return Ok(result);
             }
             total_source += source_bytes;
-            total_pcm += pcm_bound.saturating_add(4 * 1024 * 1024).min(crate::project_file::DEFAULT_PCM_LIMIT);
-            let (hash, candidate, _) = match measure(&snapshot, location, pcm_bound, cancel) {
+            let credit = pcm_bound.saturating_add(4 * 1024 * 1024).min(crate::project_file::DEFAULT_PCM_LIMIT);
+            total_pcm += credit;
+            let (hash, candidate, decoded) = match measure(&snapshot, location, pcm_bound, cancel) {
                 Ok(measured) => measured,
-                Err(error) => { active(cancel)?; result.warning(format!("{}: {error}", entry.path().display())); continue; }
+                Err(error) => {
+                    active(cancel)?;
+                    if error.unsupported {
+                        result.skipped_unsupported += 1;
+                        if error.before_decode { total_pcm -= credit; }
+                    } else { result.warning(format!("{}: {}", entry.path().display(), error.detail)); }
+                    continue;
+                }
             };
+            total_pcm = total_pcm - credit + decoded;
             for (index, asset) in assets.iter().enumerate() {
                 if matches!(asset.availability, Availability::Unresolved(_)) && hash == asset.key.audio_hash {
                     if matches == MAX_MATCHES { result.warning("Candidate limit; narrow the search".into()); return Ok(result); }
@@ -288,7 +324,7 @@ pub(crate) fn verify_choices(choices: &[(Asset, Candidate)], cancel: &AtomicBool
         active(cancel)?;
         candidate.access.check(&snapshot, &candidate.location.path).map_err(|e| e.to_string())?;
         if FileFingerprint::read(&candidate.location.path) != Some(candidate.fingerprint) { return Err("A reviewed source changed; search again".into()); }
-        let (hash, current, _) = measure(&snapshot, candidate.location.clone(), asset.pcm_bytes, cancel)?;
+        let (hash, current, _) = measure(&snapshot, candidate.location.clone(), asset.pcm_bytes, cancel).map_err(|error| error.detail)?;
         if hash != asset.key.audio_hash || current.file_hash != candidate.file_hash || current.fingerprint != candidate.fingerprint {
             return Err("A reviewed source no longer matches the project audio; no aliases were changed".into());
         }

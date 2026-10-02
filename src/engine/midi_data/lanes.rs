@@ -448,9 +448,11 @@ impl Conductor {
             if boundary > beat {
                 break;
             }
-            let length =
-                f64::from(meter.numerator) * 4.0 / f64::from(1u32 << meter.denominator_power);
-            bar = bar.saturating_add(((boundary - start) / length).ceil() as u32);
+            let length = f64::from(meter.numerator) * 4.0 / f64::from(1u32 << meter.denominator_power);
+            let bars = (boundary - start) / length;
+            let aligned = bars.round();
+            let bars = if ((bars - aligned) * length).abs() <= super::super::midi_schedule::BEAT_EPSILON { aligned } else { bars.ceil() };
+            bar = bar.saturating_add(bars as u32);
             start = boundary;
             meter = *next;
         }

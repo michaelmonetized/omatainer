@@ -232,6 +232,22 @@ mod tests {
     }
 
     #[test]
+    fn pickup_aligned_meter_changes_do_not_add_a_phantom_bar() {
+        for bars in 1..=8 {
+            let boundary = 1.025 + f64::from(bars) * 3.0;
+            let map = Conductor::native(960, vec![Tempo::new(0, 120.0, false).unwrap()],
+                vec![Meter { tick: 0, numerator: 3, denominator_power: 2, clocks: 24, thirty_seconds: 8 },
+                    Meter { tick: (boundary * 960.0).round() as u64, numerator: 4, denominator_power: 2, clocks: 24, thirty_seconds: 8 }],
+                Settings { pickup: 1.025, ..Settings::default() }).unwrap();
+            assert_eq!(map.position(boundary).0, bars + 1, "{boundary}");
+        }
+        let map = Conductor::native(960, vec![Tempo::new(0, 120.0, false).unwrap()],
+            vec![Meter { tick: 0, numerator: 3, denominator_power: 2, clocks: 24, thirty_seconds: 8 }, Meter { tick: 2976, numerator: 4, denominator_power: 2, clocks: 24, thirty_seconds: 8 }],
+            Settings { pickup: 0.0999, ..Settings::default() }).unwrap();
+        assert_eq!(map.position(3.1).0, 3, "a genuinely fractional previous bar still counts");
+    }
+
+    #[test]
     fn subdivision_clicks_follow_pickup_and_meter_changes_without_duplicate_boundaries() {
         let map = piece(0.5, 2);
         for (beat, accent) in [

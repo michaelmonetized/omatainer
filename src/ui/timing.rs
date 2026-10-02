@@ -172,6 +172,18 @@ impl Editor {
     pub(super) fn blocks_close(&self) -> bool {
         self.busy() || self.draft.as_ref().is_some_and(|draft| draft.dirty)
     }
+    /// Keep a timing draft when a project replacement is requested.
+    /// Returns whether replacement is blocked and opens explicit keep/discard review.
+    pub(super) fn guard_replacement(&mut self) -> bool {
+        if !self.blocks_close() { return false; }
+        self.open = true; self.confirm_discard = true; true
+    }
+    /// Clear the old session's settled editor after a guarded replacement.
+    /// Reopening captures the new namespace and timing; no dirty draft is discarded.
+    pub(super) fn reset_project(&mut self) {
+        self.cancel(); self.draft = None; self.open = false; self.confirm_discard = false;
+        self.discard_when_settled = false; self.message.clear(); self.error = None;
+    }
     pub(super) fn cancel(&self) {
         if let Some(cancel) = &self.active {
             cancel.store(true, Ordering::Release);
