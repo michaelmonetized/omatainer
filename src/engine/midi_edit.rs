@@ -297,6 +297,7 @@ pub(super) fn initialize() -> Result<(), String> {
 #[serde(transparent)]
 pub(crate) struct NoteId([u64; 2]);
 impl NoteId {
+    pub(super) fn words(self) -> [u64; 2] { self.0 }
     pub fn new() -> Self {
         if NAMESPACE.get().is_none() && initialize().is_err() {
             return Self::default();

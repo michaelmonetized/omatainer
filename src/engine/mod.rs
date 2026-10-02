@@ -71,6 +71,7 @@ mod midi_schedule_tests;
 #[cfg(test)]
 mod sample_rate_tests;
 mod snapshot;
+pub mod session;
 #[cfg(test)]
 mod scene_stereo_tests;
 #[cfg(test)]
