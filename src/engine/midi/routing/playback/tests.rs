@@ -175,6 +175,7 @@ fn actual_renderer_emits_all_source_messages_at_exact_frames_with_conductor() {
         let (engine, mut rt) = crate::engine::Engine::headless_for_test(rate, 256);
         let shared = engine.cmd.midi_routing();
         let events = shared.receiver.lock().take().unwrap();
+        shared.bind_identity(&super::super::Routing { enabled:true, routes:vec![super::super::Route {track:2,inputs:vec![],output:None,output_channel:None,monitor:false,thru:false,filter:Default::default()}] });
         shared.mask.store(1 << 2, Release);
         shared.alive.store(true, Release);
         rt.conductor = Some(
@@ -272,7 +273,8 @@ fn recording_first_pass_and_unrelated_cell_edits_do_not_retrigger_external_notes
     let shared = engine.cmd.midi_routing();
     let events = shared.receiver.lock().take().unwrap();
     shared.alive.store(true, Release);
-    shared.mask.store(1 << 2, Release);
+    shared.bind_identity(&super::super::Routing { enabled:true, routes:vec![super::super::Route {track:2,inputs:vec![],output:None,output_channel:None,monitor:false,thru:false,filter:Default::default()}] });
+        shared.mask.store(1 << 2, Release);
     rt.quant = 0.0;
     rt.selected_scene = 0;
     rt.tracks[2].clips[0] = Clip::empty();
@@ -290,6 +292,7 @@ fn recording_first_pass_and_unrelated_cell_edits_do_not_retrigger_external_notes
     engine
         .cmd
         .send(crate::engine::Command::RoutedNoteOn {
+            target: None,
             source: 888,
             ch: 3,
             note: 60,
@@ -349,7 +352,8 @@ fn publication_and_reset_refuse_old_renderer_packets_until_relaunch() {
     let shared = engine.cmd.midi_routing();
     let events = shared.receiver.lock().take().unwrap();
     shared.alive.store(true, Release);
-    shared.mask.store(1 << 2, Release);
+    shared.bind_identity(&super::super::Routing { enabled:true, routes:vec![super::super::Route {track:2,inputs:vec![],output:None,output_channel:None,monitor:false,thru:false,filter:Default::default()}] });
+        shared.mask.store(1 << 2, Release);
     let (_, clip) = fixture();
     rt.tracks[2].clips[0] = clip;
     rt.quant = 0.0;

@@ -1,16 +1,17 @@
 //! Shared routing admission. Only management/input workers take the routing
 //! mutex. Raw MIDI and audio callbacks read atomics and copy bounded packets.
 use super::{packet::Packet, Endpoint, Routing};
-use crate::engine::{Command, CommandPort, TRACKS};
+use crate::engine::{Command, CommandPort, session::MAX_TRACKS as TRACKS};
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering::*};
 use std::sync::Arc;
 
 const OUTPUT_EVENTS: usize = 2048;
 const MAX_SOURCES: usize = 256;
-pub(super) const MAX_PEDALS: usize = MAX_SOURCES * TRACKS * 16 + TRACKS * 16 + 16;
+pub(super) const MAX_PEDALS: usize = 65536;
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Clear {
+    Track,
     Clip,
     Source(u64),
 }
@@ -46,6 +47,7 @@ pub(super) struct Counts {
     pub failed: AtomicU64,
     pub overruns: AtomicU64,
     pub clip_refused: AtomicBool,
+    pub identity_refused: AtomicBool,
     pub malformed: AtomicU64,
     pub last_status: AtomicU8,
     pub last_channel: AtomicU8,
@@ -60,6 +62,7 @@ pub struct Activity {
     pub malformed: u64,
     pub overruns: u64,
     pub clip_refused: bool,
+    pub identity_refused: bool,
     pub last_status: u8,
     pub last_channel: u8,
 }
@@ -74,6 +77,7 @@ impl Counts {
             malformed: self.malformed.load(Relaxed),
             overruns: self.overruns.load(Relaxed),
             clip_refused: self.clip_refused.load(Relaxed),
+            identity_refused: self.identity_refused.load(Relaxed),
             last_status: self.last_status.load(Relaxed),
             last_channel: self.last_channel.load(Relaxed),
         }
@@ -88,6 +92,7 @@ pub(crate) struct Summary {
     pub failed: u64,
     pub overruns: u64,
     pub refused_tracks: u8,
+    pub refused_tracks_extended: [u64; 2],
 }
 #[derive(Clone, Copy)]
 pub(crate) struct Sources {
@@ -104,10 +109,12 @@ pub(super) struct Live {
     pub actual_outputs: Vec<Endpoint>,
 }
 pub(crate) struct Shared {
+    pub(crate) identity: crate::engine::session::Registry,
+    bound: [[AtomicU64; 3]; TRACKS],
     pub(super) live: Mutex<Live>,
     pub generation: AtomicU64,
     pub explicit: AtomicBool,
-    pub(super) mask: AtomicU8,
+    pub(super) mask: super::mask::AtomicMask,
     pub(super) output_epoch: AtomicU64,
     pub(super) alive: AtomicBool,
     pub(super) counts: [Counts; TRACKS],
@@ -119,6 +126,8 @@ impl Default for Shared {
     fn default() -> Self {
         let (output, receiver) = crossbeam_channel::bounded(OUTPUT_EVENTS);
         Self {
+            identity: crate::engine::session::Registry::default(),
+            bound: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU64::new(0))),
             live: Mutex::new(Live {
                 config: Arc::new(Routing::default()),
                 sources: Vec::with_capacity(MAX_SOURCES),
@@ -126,7 +135,7 @@ impl Default for Shared {
             }),
             generation: AtomicU64::new(1),
             explicit: AtomicBool::new(false),
-            mask: AtomicU8::new(0),
+            mask: super::mask::AtomicMask::new(0),
             output_epoch: AtomicU64::new(1),
             alive: AtomicBool::new(false),
             counts: std::array::from_fn(|_| Counts::default()),
@@ -137,12 +146,30 @@ impl Default for Shared {
     }
 }
 impl Shared {
-    pub(crate) fn output_state(&self) -> (u8, u64, u64) {
-        (
-            self.mask.load(Acquire),
-            self.generation.load(Acquire),
-            self.output_epoch.load(Acquire),
-        )
+    pub(super) fn bind_identity(&self, config: &Routing) {
+        for route in &config.routes {
+            let slot = usize::from(route.track);
+            let reference = self.identity.reference(crate::engine::session::Axis::Track, slot);
+            let words = reference.map_or([0;3], |r| [r.namespace[0], r.namespace[1], r.id.0]);
+            for (word, value) in self.bound[slot].iter().zip(words) { word.store(value, Release); }
+            self.counts[slot].identity_refused.store(self.identity.known() && reference.is_none(), Relaxed);
+        }
+    }
+    pub(super) fn target_current(&self, track: u8) -> bool {
+        if !self.identity.known() { return true; }
+        let slot = usize::from(track);
+        let current = self.identity.reference(crate::engine::session::Axis::Track, slot);
+        let bound = crate::engine::session::Reference {namespace:[self.bound[slot][0].load(Acquire),self.bound[slot][1].load(Acquire)],id:crate::engine::session::Id(self.bound[slot][2].load(Acquire))};
+        let valid = current == Some(bound);
+        self.counts[slot].identity_refused.store(!valid, Relaxed);
+        valid
+    }
+    pub(crate) fn output_state(&self) -> (u128, u64, u64) {
+        let before = self.generation.load(Acquire);
+        let mask = self.mask.load(Acquire);
+        let epoch = self.output_epoch.load(Acquire);
+        let after = self.generation.load(Acquire);
+        (if before == after && after != 0 {mask} else {0}, after, epoch)
     }
     pub(crate) fn overrun(&self, track: usize) {
         self.counts[track].overruns.fetch_add(1, Relaxed);
@@ -170,7 +197,8 @@ impl Shared {
             overruns: self.counts.iter().fold(0u64, |total, c| {
                 total.saturating_add(c.overruns.load(Relaxed))
             }),
-            refused_tracks: self.counts.iter().enumerate().fold(0, |mask, (track, c)| {
+            refused_tracks_extended: std::array::from_fn(|word| self.counts[word*64..(word+1)*64].iter().enumerate().fold(0, |mask, (bit, count)| mask | (u64::from(count.clip_refused.load(Relaxed)) << bit))),
+            refused_tracks: self.counts.iter().take(8).enumerate().fold(0, |mask, (track, c)| {
                 if c.clip_refused.load(Relaxed) {
                     mask | (1 << track)
                 } else {
@@ -280,6 +308,9 @@ impl Shared {
             weight,
         })
     }
+    pub(crate) fn clear_track(&self, track: u8) -> bool {
+        self.emit_event(track, Packet::new(&[0xb0, 123, 0]).unwrap(), Owner::Raw, Some(Clear::Track), 0)
+    }
     pub(crate) fn clear_clip(&self, track: u8) -> bool {
         self.emit_event(
             track,
@@ -310,6 +341,7 @@ impl Shared {
     fn enqueue(&self, event: OutputEvent) -> bool {
         if usize::from(event.track) >= TRACKS
             || self.mask.load(Acquire) & (1 << event.track) == 0
+            || event.clear.is_none() && !self.target_current(event.track)
             || !self.alive.load(Acquire)
             || event.generation == 0
             || event.generation != self.generation.load(Acquire)
@@ -372,6 +404,10 @@ impl Shared {
                 counts.filtered.fetch_add(1, Relaxed);
                 continue;
             }
+            if !self.target_current(route.track) {
+                if route.monitor { if let Some((note, _, false)) = packet.note() { let _ = cmd.send(Command::LiveNoteOff { source: sources.tracks[usize::from(route.track)], ch: packet.channel().unwrap(), note }); } }
+                counts.filtered.fetch_add(1, Relaxed); continue;
+            }
             // Controller maps remain separate; only an explicit route supplies
             // an instrument destination. Each track has its own physical key.
             if route.monitor {
@@ -385,6 +421,7 @@ impl Shared {
                             note,
                             vel,
                             track: route.track,
+                            target: self.identity.reference(crate::engine::session::Axis::Track, usize::from(route.track)),
                         }
                     } else {
                         Command::LiveNoteOff { source, ch, note }

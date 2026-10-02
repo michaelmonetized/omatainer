@@ -16,7 +16,7 @@ impl Rack {
         } else if rt.fx_view >= 0 {
             Self::Track((rt.fx_view as usize % rt.tracks.len()) as u8)
         } else {
-            Self::Scene(0)
+            Self::Scene(rt.session.scene_order[0])
         })
     }
     pub fn get(self, rt: &RtEngine) -> &fx::FxChain {
@@ -245,6 +245,7 @@ impl Effect {
 }
 
 pub(super) enum Patch {
+    Session(Box<session::Inverse>),
     Global(Global),
     Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, reserved_bytes: usize },
     Sampler {
@@ -334,7 +335,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -349,6 +350,7 @@ impl Patch {
     }
     pub fn valid(&self, rt: &RtEngine) -> bool {
         match self {
+            Self::Session(value) => value.valid(rt),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
                 && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
                 else { *index < rt.sampler_banks.len() },
@@ -368,6 +370,7 @@ impl Patch {
     }
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
+            Self::Session(value) => value.swap(rt),
             Self::Sampler { index, value, selected, .. } => {
                 let selection = rt.sampler_bank;
                 if let Some(mut prior) = value.take() {
@@ -467,6 +470,7 @@ impl Patch {
 
     pub fn heap_bytes(&self) -> usize {
         match self {
+            Self::Session(value) => value.bytes(),
             Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
             Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()),
             Self::Conductor { reserved_bytes, .. } => *reserved_bytes,

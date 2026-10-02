@@ -497,6 +497,8 @@ impl CommandPort {
 
     pub(crate) fn theme_requests(&self) -> &crate::theme::requests::Port { &self.theme_requests }
 
+    pub(crate) fn session_scene_exists(&self, slot: usize) -> bool { self.shared.midi_routing.identity.scene_exists(slot) }
+    pub(crate) fn session_scene_count(&self) -> usize { self.shared.midi_routing.identity.scene_count() }
     pub fn len(&self) -> usize {
         self.sender.len()
     }
@@ -559,8 +561,9 @@ impl CommandPort {
     }
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
         let sampler_ack = super::sampler::admission_ack(&command);
+        let session_ack = super::session::admission_ack(&command);
         let result = self.send_after_preflight(command, || {});
-        if result.is_err() { if let Some(ack) = sampler_ack { ack.reject(); } }
+        if result.is_err() { if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
         result
     }
 
@@ -624,7 +627,7 @@ impl CommandPort {
         {
             return fail(SubmissionError::InvalidTarget);
         }
-        if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::TRACKS || *ch>15 || *note>127 || *vel>127) {
+        if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::session::MAX_TRACKS || *ch>15 || *note>127 || *vel>127) {
             return fail(SubmissionError::InvalidTarget);
         }
         if !super::midi_edit::qualify_legacy_notes(&mut command) {
@@ -775,6 +778,7 @@ impl AdmissionShared {
 fn owned_payload_bytes(command: &Command) -> usize {
     use std::mem::size_of;
     match command {
+        Command::SessionEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|audio| audio.data.capacity().saturating_mul(4)).sum::<usize>(),

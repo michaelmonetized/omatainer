@@ -145,7 +145,7 @@ impl Request {
             let Some(destination) = mapping.destination else {
                 continue;
             };
-            if destination.0 as usize >= TRACKS || destination.1 as usize >= SCENES {
+            if destination.0 as usize >= session::MAX_TRACKS || destination.1 as usize >= session::MAX_SCENES {
                 return Err("MIDI destination lies outside the 8 by 8 session".into());
             }
             let source = &file.tracks[mapping.source.track];
@@ -320,6 +320,8 @@ impl Request {
                 .map(str::to_owned)
                 .unwrap_or_else(|| format!("MIDI import {}:{}", track + 1, scene + 1));
             let baseline = Arc::new(Document {
+                track_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(session::Axis::Track, track as usize)),
+                scene_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(session::Axis::Scene, scene as usize)),
                 track,
                 scene,
                 epoch: captured.checkpoint.epoch,

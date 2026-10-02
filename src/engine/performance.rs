@@ -481,6 +481,7 @@ fn media_target(command: &Command) -> Option<usize> {
 }
 fn destructive(command: &Command) -> bool {
     match command {
+        Command::SessionEdit(request) => request.disruptive(),
         Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }
@@ -687,6 +688,7 @@ impl Output {
 
 pub(super) fn reject_receipt(command: &Command) {
     match command {
+        Command::SessionEdit(request) => request.ack.reject(),
         Command::DeckLoadRequested { receipt, .. } if receipt.claim() => {
             receipt.finish(super::load_receipt::State::Protected)
         }

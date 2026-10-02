@@ -24,6 +24,7 @@ const DEFAULT_BYTES: usize = 256 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Name {
+    Session,
     Tempo,
     Quantization,
     Metronome,
@@ -49,6 +50,7 @@ pub enum Name {
 impl Name {
     pub fn label(self) -> &'static str {
         match self {
+            Self::Session => "Edit session layout",
             Self::Tempo => "Set tempo",
             Self::Quantization => "Change quantization",
             Self::Metronome => "Toggle metronome",

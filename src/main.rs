@@ -333,6 +333,7 @@ fn handle_client_with_stop(
             request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
             let operation = ipc_schema::Operation::parse(&request)
                 .map_err(|error| ("invalid_operation", error))?;
+            operation.validate_session(&commands).map_err(|error| ("invalid_operation", error))?;
             follow = matches!(operation, ipc_schema::Operation::Follow {});
             reload_theme = matches!(operation, ipc_schema::Operation::ReloadTheme {});
             let command = operation.command();

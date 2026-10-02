@@ -273,8 +273,9 @@ impl App {
         for (t, c) in tracks
             .iter()
             .enumerate()
-            .filter(|(_, c)| c.received > 0 || c.sent > 0 || c.failed > 0 || c.clip_refused)
+            .filter(|(_, c)| c.received > 0 || c.sent > 0 || c.failed > 0 || c.clip_refused || c.identity_refused)
         {
+            if c.identity_refused { ui.label(format!("Track {} routing target changed. Apply/Retry to attach this route to the current track.", t+1)); }
             ui.label(format!("Track {}: {} input · {} routed · {} filtered/merged · {} sent · {} failed · {} overruns · clip refused {} · last {:02X} channel {}",t+1,c.received,c.routed,c.filtered,c.sent,c.failed,c.overruns,c.clip_refused,c.last_status,c.last_channel));
         }
         ui.label(format!("{} invalid/unsupported packets", global.malformed));

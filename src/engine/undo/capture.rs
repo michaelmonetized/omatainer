@@ -167,6 +167,7 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if let Command::SessionEdit(request) = c { self.history_session(request); return None; }
         if let Command::MidiImport(request) = c {
             self.history_midi_import(request); return None;
         }
@@ -409,6 +410,7 @@ impl RtEngine {
 }
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
+        Command::SessionEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),
@@ -428,4 +430,27 @@ pub(super) fn command_bytes(command: &Command) -> usize {
 
 pub(super) fn bank_bytes(bank: &sampler::Bank) -> usize {
     bank.data.metadata_bytes() + bank.data.audio.iter().flatten().map(|audio| sample_bytes(audio)).sum::<usize>()
+}
+
+impl RtEngine {
+    pub(in crate::engine) fn history_session(&mut self, mut request: session::Request) {
+        if !request.current(self) || !request.ack.claim() {
+            request.ack.reject(); self.undo.reject(crate::engine::undo::Failure::Invalid);
+            self.undo.retire_command(Command::SessionEdit(request)); return;
+        }
+        if self.undo.enabled {
+            if let Err(error) = self.undo.preflight(request.bytes()) {
+                request.ack.reject(); self.undo.reject(error);
+                self.undo.retire_command(Command::SessionEdit(request)); return;
+            }
+        }
+        let mut inverse = request.inverse.take().unwrap();
+        inverse.swap(self);
+        if self.undo.enabled {
+            self.undo.begin(crate::engine::undo::Name::Session, 2_000_000, self.frames_done);
+            self.undo.append(crate::engine::undo::patch::Patch::Session(inverse)); self.undo.recount();
+        } else { request.inverse = Some(inverse); }
+        self.project.edited(); request.ack.applied();
+        self.undo.retire_command(Command::SessionEdit(request));
+    }
 }

@@ -240,7 +240,8 @@ fn simultaneous_controllers_route_all_types_and_release_original_track() {
     drop(manager);
     until(|| fixture.closes.load(Relaxed) == 1);
     if let Ok(path) = std::env::var("OMAT_MIDI_ROUTING_TRACE") {
-        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"kind":"software backend and real input worker/renderer; no physical hardware","messages":trace,"activity":engine.cmd.midi_routing().activity()})).unwrap()).unwrap();
+        let activity = engine.cmd.midi_routing().activity();
+        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"kind":"software backend and real input worker/renderer; no physical hardware","messages":trace,"activity":(activity.0.as_slice(),activity.1)})).unwrap()).unwrap();
     }
 }
 #[test]
@@ -550,7 +551,7 @@ fn linux_virtual_ports_deliver_two_controllers_all_types_and_reset() {
                 .any(|p| p.endpoint.name.contains(&token))
     });
     if let Ok(path) = std::env::var("OMAT_MIDI_ROUTING_NATIVE_TRACE") {
-        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"platform":format!("Linux ALSA {}, midir0.10.4",std::env::consts::ARCH),"physical_hardware":false,"private_ports_only":true,"ports_retired":true,"expected_live_packets":expected,"observed_packets":trace.lock().clone(),"activity":activity})).unwrap()).unwrap();
+        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"platform":format!("Linux ALSA {}, midir0.10.4",std::env::consts::ARCH),"physical_hardware":false,"private_ports_only":true,"ports_retired":true,"expected_live_packets":expected,"observed_packets":trace.lock().clone(),"activity":(activity.0.as_slice(),activity.1)})).unwrap()).unwrap();
     }
 }
 

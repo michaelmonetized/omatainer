@@ -505,7 +505,7 @@ impl FxKind {
 
 pub struct RtEngine {
     midi_routing: Arc<midi::routing::Shared>,
-    midi_output_mask:u8,
+    midi_output_mask:u128,
     midi_output_budget:usize,
     undo: undo::Journal,
     pub project: project::Handle,
@@ -781,6 +781,7 @@ impl Default for Snapshot {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    SessionEdit(session::Request),
     PerformanceMode(bool),
     SafetyStop(performance::Safety),
     RecoverPerformance,
@@ -844,7 +845,7 @@ pub enum Command {
     SelectDeckRequested { deck: usize, request: u64 },
     SetView(View),
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
-    RoutedNoteOn { source: u64, ch: u8, note: u8, vel: u8, track: u8 },
+    RoutedNoteOn { source: u64, ch: u8, note: u8, vel: u8, track: u8, target: Option<session::Reference> },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
@@ -1018,6 +1019,7 @@ impl RtEngine {
             scene_fx: (0..SCENES).map(|_| fx::FxChain::new(sr)).collect(),
             compose_target: None,
         };
+        e.midi_routing.identity.publish(&e.session);
         e.seed_demo();
         let (stem_a, stem_b) = demo_stems(sr as u32, e.bpm);
         e.builtin = [Some(stem_a), Some(stem_b)];
@@ -1260,7 +1262,7 @@ impl RtEngine {
 
         let conductor_seconds = self.conductor.as_ref().map(|c| c.seconds_at(self.precise_midi_beat()));
         let mut conductor_spb = spb;
-        let any_solo = self.tracks.iter().any(|t| t.solo);
+        let any_solo = self.tracks.iter().enumerate().any(|(slot,t)| self.session.tracks.get(slot).is_some_and(|item| item.active) && t.solo);
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
@@ -1308,6 +1310,7 @@ impl RtEngine {
             self.load_profile.pads(timer);
             let mut scene_inputs = [[0.0_f32; 2]; session::MAX_SCENES];
             for ti in 0..self.tracks.len() {
+                if !self.session.tracks.get(ti).is_some_and(|item| item.active) { continue; }
                 let timer = self.load_profile.start();
                 let (tl, tr, pfl) = self.render_track_cached(ti, any_solo);
                 self.load_profile.track(ti, timer);
@@ -1322,6 +1325,7 @@ impl RtEngine {
             // Keep every scene's own history advancing, including zero-input
             // tails after all of its tracks have stopped or moved elsewhere.
             for (scene, (chain, input)) in self.scene_fx.iter_mut().zip(scene_inputs).enumerate() {
+                if !self.session.scenes.get(scene).is_some_and(|item| item.active) || chain.slots.is_empty() && input == [0.0,0.0] { continue; }
                 let timer = self.load_profile.start();
                 let [sl, sr] = self.load_profile.chain(chain, input, self.sr, true, scene);
                 self.load_profile.scene(scene, timer);
@@ -1962,7 +1966,7 @@ impl RtEngine {
             }
             _ => None,
         };
-        if scene.is_some_and(|scene| scene >= self.scene_fx.len()) {
+        if scene.is_some_and(|scene| scene >= self.scene_fx.len() || !self.session.scenes[scene].active) {
             return;
         }
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
@@ -2342,8 +2346,8 @@ impl RtEngine {
                 self.selected_deck_request = request;
             }
             Command::SetView(v) => self.view = v,
-            Command::RoutedNoteOn { source, ch, note, vel, track } => {
-                if usize::from(track) < self.tracks.len() && ch<=15 && note<=127 && vel<=127 {
+            Command::RoutedNoteOn { source, ch, note, vel, track, target } => {
+                if usize::from(track) < self.tracks.len() && self.session.tracks[usize::from(track)].active && target.is_none_or(|reference| self.session.resolves(session::Axis::Track, usize::from(track), reference)) && ch<=15 && note<=127 && vel<=127 {
                     self.live_note_on(source,ch,note,vel,usize::from(track));
                 }
             }
@@ -2352,7 +2356,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
+            Command::SessionEdit(_) | Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);
@@ -2713,7 +2717,7 @@ impl RtEngine {
         } else if self.fx_view >= 0 {
             &mut self.tracks[self.fx_view as usize % track_count].fx
         } else {
-            &mut self.scene_fx[0]
+            &mut self.scene_fx[usize::from(self.session.scene_order[0])]
         }
     }
 

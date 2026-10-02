@@ -1,6 +1,10 @@
 //! Persistent display order is separate from storage. Reorder never moves a
 //! clip, processor, recording destination or sounding input gate.
 use serde::{Deserialize, Serialize};
+mod registry;
+mod transaction;
+pub(crate) use registry::{Reference, Registry};
+pub(crate) use transaction::{Action, Inverse, Request};
 
 pub const MAX_TRACKS: usize = 128;
 pub const MAX_SCENES: usize = 512;
@@ -451,5 +455,14 @@ mod tests {
         assert_ne!(id, new);
         assert!(l.item(Axis::Scene, id).is_none());
         l.validate().unwrap();
+    }
+}
+
+/// Producer admission failures settle the same receipt as renderer failures.
+pub(crate) fn admission_ack(command: &super::Command) -> Option<super::midi_edit::Ack> {
+    match command {
+        super::Command::SessionEdit(request) => Some(request.ack.clone()),
+        super::Command::Gesture { command, .. } => admission_ack(command),
+        _ => None,
     }
 }

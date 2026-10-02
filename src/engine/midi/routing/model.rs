@@ -112,14 +112,14 @@ pub struct Routing {
 }
 impl Routing {
     pub fn validate(&self) -> Result<(), String> {
-        if self.routes.len() > crate::engine::TRACKS {
-            return Err("Use at most one MIDI route for each of the eight tracks".into());
+        if self.routes.len() > crate::engine::session::MAX_TRACKS {
+            return Err("Use at most one MIDI route for each of the 128 tracks".into());
         }
-        let mut tracks = 0u16;
+        let mut tracks = 0u128;
         for route in &self.routes {
-            if usize::from(route.track) >= crate::engine::TRACKS || tracks & (1 << route.track) != 0
+            if usize::from(route.track) >= crate::engine::session::MAX_TRACKS || tracks & (1 << route.track) != 0
             {
-                return Err("MIDI route track must be unique and displayed as1–8".into());
+                return Err("MIDI route track must be unique and displayed as1–128".into());
             }
             tracks |= 1 << route.track;
             if route.inputs.len() > 8 || route.output_channel.is_some_and(|ch| ch > 15) {
@@ -160,7 +160,7 @@ impl Routing {
         }
         Ok(())
     }
-    pub fn output_mask(&self) -> u8 {
+    pub fn output_mask(&self) -> u128 {
         if !self.enabled {
             return 0;
         }

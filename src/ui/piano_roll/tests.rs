@@ -586,6 +586,7 @@ fn clip_loop_markers_numeric_view_and_scale_folding_are_real_accessible_controls
 #[test]
 fn draft_operations_keep_existing_identity_and_give_copies_fresh_identity() {
     let baseline = Arc::new(Document {
+        track_identity: None, scene_identity: None,
         lanes: None,
         track: 2,
         scene: 7,

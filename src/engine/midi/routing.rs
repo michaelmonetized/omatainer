@@ -1,4 +1,5 @@
 //! Explicit MIDI device/port/channel routing, independently of GUI selection.
+mod mask;
 mod control;
 mod model;
 mod output;

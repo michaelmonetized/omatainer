@@ -45,7 +45,14 @@ impl Prepared {
             sampler_inst,
             sampler_oct
         );
-        rt.session = state.session.take().unwrap_or_else(|| session::Layout::legacy(state.tracks.iter().map(|t| t.name.clone()), state.scene_fx.len()));
+        rt.session = if let Some(layout) = state.session.take() {layout} else {
+            use sha2::{Digest, Sha256};
+            let mut layout = session::Layout::legacy(state.tracks.iter().map(|t| t.name.clone()), state.scene_fx.len());
+            let bytes = serde_json::to_vec(&state).map_err(|e| Error::Invalid(e.to_string()))?;
+            let hash = Sha256::digest(&bytes);
+            layout.namespace = [u64::from_le_bytes(hash[0..8].try_into().unwrap()) | (1 << 63), u64::from_le_bytes(hash[8..16].try_into().unwrap())];
+            layout
+        };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
         while rt.tracks.len() < state.tracks.len() { let track = rt.tracks[0].clone(); rt.tracks.push(track); }
         rt.tracks.truncate(state.tracks.len());
@@ -253,6 +260,7 @@ impl Prepared {
             scene_fx,
             compose_target
         );
+        rt.midi_routing.identity.publish(&rt.session);
         if let Some(history) = &mut rt.history_measurement { history.reset_dsp(); }
     }
 }

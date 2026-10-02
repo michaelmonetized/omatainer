@@ -531,6 +531,9 @@ impl Poly {
             }
         }
     }
+    pub fn release_all(&mut self) {
+        for voice in &mut self.voices { if matches!(voice.env.stage, 1..=3) { voice.env.off(); } }
+    }
     pub fn release_clip(&mut self) {
         for v in &mut self.voices {
             if v.owner == VoiceOwner::Clip && matches!(v.env.stage, 1..=3) {

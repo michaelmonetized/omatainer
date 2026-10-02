@@ -178,7 +178,7 @@ impl Frame {
             &rt.scene_fx[if rt.fx_view >= crate::engine::session::SCENE_FX_BASE {
                 (rt.fx_view as usize - crate::engine::session::SCENE_FX_BASE as usize).min(rt.scene_fx.len() - 1)
             } else {
-                0
+                usize::from(rt.session.scene_order[0])
             }]
         };
         self.fx_count = chain.slots.len();

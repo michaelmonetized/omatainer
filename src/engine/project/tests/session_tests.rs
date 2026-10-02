@@ -133,3 +133,47 @@ fn legacy_file_migration_is_deterministic_and_preserves_original_cell_storage() 
         base.state.tracks[0].clips[0].notes
     );
 }
+
+#[test]
+fn maximum_set_renders_and_reorders_its_last_populated_track_and_scene_without_callback_heap_work()
+{
+    let (state, media) = large_state();
+    let mut prepared = Prepared::from_state(state, media, 48_000).unwrap();
+    prepared.rt.enable_undo().unwrap();
+    prepared.rt.apply(Command::Play);
+    prepared.rt.process(&mut [0.0; 256]);
+    let track_id = prepared.rt.session.tracks[127].id;
+    let scene_id = prepared.rt.session.scenes[511].id;
+    let notes = prepared.rt.tracks[127].clips[511].notes.clone();
+    for (axis, id, position) in [
+        (session::Axis::Track, track_id, 64),
+        (session::Axis::Scene, scene_id, 255),
+    ] {
+        let (request, ack) = session::Request::metadata(
+            &prepared.rt.session,
+            prepared.rt.undo.checkpoint().epoch,
+            session::Action::Move { axis, id, position },
+        )
+        .unwrap();
+        let counts = test_alloc::measure(|| {
+            prepared.rt.apply(Command::SessionEdit(request));
+            prepared.rt.process(&mut [0.0; 256]);
+        });
+        assert_eq!(counts, test_alloc::Counts::default());
+        assert_eq!(ack.state(), midi_edit::Outcome::Applied);
+        assert_eq!(prepared.rt.tracks[127].playing.unwrap().scene, 511);
+        assert_eq!(prepared.rt.tracks[127].scene_bus, 511);
+        assert_eq!(prepared.rt.tracks[127].clips[511].notes, notes);
+        assert_eq!(prepared.rt.selected_track, 127);
+        assert_eq!(prepared.rt.selected_scene, 511);
+    }
+    let captured = captured(&prepared.rt);
+    assert_eq!(
+        captured.state.session.as_ref().unwrap().track_order[64],
+        127
+    );
+    assert_eq!(
+        captured.state.session.as_ref().unwrap().scene_order[255],
+        511
+    );
+}
