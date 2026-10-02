@@ -265,6 +265,29 @@
         "f1_arpeggios_c_slow_forte_i.wav",
         "m1_arpeggios_c_slow_forte_i.wav"
       ]
+    },
+    {
+      "id": "test:smf-interchange",
+      "name": "Original Standard MIDI File interoperability fixture",
+      "category": "test-fixture",
+      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory material.",
+      "license": "MIT",
+      "commercial_use": "Original project material is covered by the root MIT license.",
+      "redistribution": "Retain the root project copyright and MIT permission notice.",
+      "sources": [
+        {
+          "location": "tests/fixtures/midi/generate.py",
+          "sha256": null
+        },
+        {
+          "location": "tests/fixtures/midi/sixteen-bars-ppqn960.mid",
+          "sha256": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4"
+        }
+      ],
+      "members": [
+        "sixteen-bars-ppqn960.mid"
+      ],
+      "project_license": true
     }
   ],
   "fonts": [

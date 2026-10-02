@@ -3357,6 +3357,34 @@
       ]
     },
     {
+      "category": "test-fixture",
+      "commercial_use": "Original project material is covered by the root MIT license.",
+      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory material.",
+      "id": "test:smf-interchange",
+      "license": "MIT",
+      "members": [
+        "sixteen-bars-ppqn960.mid"
+      ],
+      "name": "Original Standard MIDI File interoperability fixture",
+      "notices": [
+        {
+          "location": "LICENSE",
+          "sha256": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e"
+        }
+      ],
+      "redistribution": "Retain the root project copyright and MIT permission notice.",
+      "sources": [
+        {
+          "location": "tests/fixtures/midi/generate.py",
+          "sha256": null
+        },
+        {
+          "location": "tests/fixtures/midi/sixteen-bars-ppqn960.mid",
+          "sha256": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4"
+        }
+      ]
+    },
+    {
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
@@ -11507,7 +11535,7 @@
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
     "docs/manual.md": "97bcbe567ac2171f175d95bd77374924b809c9afc5fd7d89fd4b6a0303ace680",
-    "licenses/assets.json": "aea8899ea7ec2d3262920bc695dcafda4c3c55daa873fbb2c89edfea57b7b8c0",
+    "licenses/assets.json": "32e1f65fe6917f5be772a5509c8dea7ab0ce680ad3ec8ec507ba4029b917f1aa",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "887d16395b89b432322fc7562b75a3b35e83c4a30c78c6bc38bdc17c52d5652d",
     "plugin/manifest.json": "bb5da467bd143775315caab141e900274277e4c86420ae7b4da56dcb11751610",
@@ -11706,7 +11734,7 @@
     "src/library/watch_roots.rs": "67ab779881590c4ecc4eb0e796779bbf136ac7820544450a4055ab9febf4c8ff",
     "src/library/watch_roots/tests.rs": "68bd98b0ae485533e9f0d5fe340ad8139d41a1fae68218a0a35cdaa8634957b1",
     "src/licenses.rs": "4aa05a206cbee50b76e9ec364c2cf3d627eba6970a87a035a74f52b0422566f7",
-    "src/main.rs": "117c12f811b357ac6cae3b66acd76ecc6faa807bd1f8bd7758e34ca81592fbfb",
+    "src/main.rs": "ae5b54da9b8740148c8508398eee763e952214b117678dc6b9c0aa242edc7b09",
     "src/media_location.rs": "15d89a82a794863114ef2983b80d355482880d2e07cfc8cd69f722c91e4af717",
     "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
     "src/media_location/tests.rs": "df880917798ee04fb1f43d3ee207551d2a21c3124eb64f38133a6c970f920da7",
@@ -11717,6 +11745,7 @@
     "src/media_tags/tests.rs": "40643d30ea0df41a0c9adcecba711c438d32fcdb1cdca33141c84978badc502d",
     "src/media_tags/write.rs": "084c4a3100b912028b3887fff2668cd65330628f71a5cbb0b7baeb916468f015",
     "src/media_tags/write/tests.rs": "e0ca085a21dd65f4cec7d845ed612a6872e60757e0f60525007f5cfc267bbb68",
+    "src/midi_file.rs": "b6630d15223ddcfcf215205313326b9c3cf5ee4dc10c6f7860d5a72edec4c0b0",
     "src/performance_history.rs": "91f19de9e99b0addc879d2f4767bf84bf232ae77b647c5090dedf5ac4b91ec65",
     "src/performance_history/storage.rs": "457e9d012d02ffd816415adb3dd9af5437b3634a810f8c082256b7713bd404d0",
     "src/performance_history/storage/tests.rs": "317062ffb1da682ab0a858c75e945a11229a06ac92dacc34856624e1e31f872c",
@@ -11894,6 +11923,9 @@
     "tests/fixtures/keylock/f1_arpeggios_c_slow_forte_i.wav": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",
     "tests/fixtures/keylock/m1_arpeggios_c_slow_forte_i.wav": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa",
     "tests/fixtures/keylock/sources.json": "84c53b13a5f2c143c6f6345cea892d1e8a94037488f555b041dc339fda8fd1ac",
+    "tests/fixtures/midi/README.md": "3a1592def80d3b33471699cc9d708c251cf283f33c8cc43e095eee30bbf9b6cb",
+    "tests/fixtures/midi/generate.py": "16c30a593146b1b9804e8b21c3c6ae87b0b058b70a15cfe559980551d1b45e49",
+    "tests/fixtures/midi/sixteen-bars-ppqn960.mid": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4",
     "vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
     "vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
     "vendor/symphonia-format-riff/Cargo.toml.orig": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
