@@ -265,6 +265,7 @@ impl TrackRt {
             + self.clips.iter().map(Clip::retained_bytes).sum::<usize>()
             + self.poly.voices.capacity() * std::mem::size_of::<dsp::Voice>()
             + self.poly.filters.capacity() * std::mem::size_of::<dsp::Svf>()
+            + self.poly.offline.as_ref().map_or(0, |device| device.bytes())
             + self.fx.retained_bytes() + self.midi_schedule.retained_bytes()
             + self.recorded_playback.capacity() * std::mem::size_of::<Option<recording::RecordedPlayback>>()
     }
@@ -756,6 +757,7 @@ pub struct Snapshot {
     pub quantize: bool,
     pub sampler_bank: usize,
     pub sampler_inst: SamplerInstrument,
+    pub sampler_unavailable: bool,
     pub sampler_oct: i8,
     pub sampler_banks: Vec<String>,
     #[serde(skip)]
@@ -808,6 +810,7 @@ impl Default for Snapshot {
             quantize: true,
             sampler_bank: 0,
             sampler_inst: SamplerInstrument::Samples,
+            sampler_unavailable: false,
             sampler_oct: 3,
             sampler_banks: vec!["Kit".into()],
             sampler_instances: Vec::new(),
@@ -1457,6 +1460,7 @@ impl RtEngine {
 
     fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
         self.render_midi_output(ti);
+        let mut fallback = [0.0; 2];
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
@@ -1480,6 +1484,14 @@ impl RtEngine {
                 let sample_elapsed = (elapsed - midi_schedule::BEAT_EPSILON).max(0.0);
                 let local = region.map_or_else(|| sample_elapsed.rem_euclid(clip_beats),
                     |region| region.position(sample_elapsed, p.looping).unwrap_or(region.end));
+                if !ending && self.tracks[ti].kind != 0 && self.tracks[ti].poly.offline.is_some() {
+                    let clip = &self.tracks[ti].clips[scene];
+                    if let Some(audio) = &clip.audio {
+                        let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;
+                        let (l, r) = audio.at(phase);
+                        let gain = clip_gain(clip.gain); fallback = [l * gain, r * gain];
+                    }
+                }
                 let prev = p.last_beat;
                 if self.tracks[ti].clips[scene].kind == ClipKind::Midi {
                     let kind = self.tracks[ti].kind;
@@ -1598,8 +1610,8 @@ impl RtEngine {
         track.eq_right.low_g = track.eq.low_g;
         track.eq_right.mid_g = track.eq.mid_g;
         track.eq_right.high_g = track.eq.high_g;
-        let l = track.eq.tick(s + pad_l);
-        let r = track.eq_right.tick(s + pad_r);
+        let l = track.eq.tick(s + pad_l + fallback[0]);
+        let r = track.eq_right.tick(s + pad_r + fallback[1]);
         let [fl, fr] = self.load_profile.chain(&mut track.fx, [l, r], self.sr, false, ti);
         track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
         let [gl, gr] = {
@@ -1816,7 +1828,7 @@ impl RtEngine {
         for (voice, filter) in self.sampler_poly.voices.iter_mut()
             .zip(self.sampler_poly.filters.iter_mut())
         {
-            let sample = voice.tick(self.sr, voice.cutoff, filter);
+            let sample = if self.sampler_poly.offline.is_some() { 0.0 } else { voice.tick(self.sr, voice.cutoff, filter) };
             if let Some(InputKey::Pad(pad)) = voice.input {
                 let bus = &mut buses[self.pad_destinations[pad as usize % 16]];
                 bus[0] += sample;
@@ -2647,6 +2659,12 @@ impl RtEngine {
                 }
             },
             Command::SamplerInst(i) => {
+                if i.synth().is_some() && self.sampler_poly.offline.is_some() {
+                    if !self.undo.can_retire_device(self.sampler_poly.offline.as_ref().unwrap().bytes()) { return; }
+                    let device = self.sampler_poly.offline.take().unwrap();
+                    self.undo.retire_device(device);
+                    self.sampler_poly.set_sample_rate(self.sr);
+                }
                 self.sampler_inst = i;
                 if let Some(kind) = i.synth() {
                     // Selection affects new gates. Held voices keep their

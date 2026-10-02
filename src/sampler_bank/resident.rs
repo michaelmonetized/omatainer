@@ -51,16 +51,8 @@ impl Settings {
                 .slots
                 .iter()
                 .map(|slot| match &slot.source {
-                    Some(Source::Library { reference }) => {
-                        reference.track.0.capacity()
-                            + match &reference.source {
-                                crate::engine::media_source::LibSource::File(path) => {
-                                    path.capacity()
-                                }
-                                crate::engine::media_source::LibSource::Removable {volume_id,relative_path}=>volume_id.capacity()+relative_path.capacity(),
-                                _ => 0,
-                            }
-                    }
+                    Some(Source::Library { reference }) => reference.track.0.capacity() + source_bytes(&reference.source),
+                    Some(Source::Project { source, .. }) => source_bytes(source),
                     _ => 0,
                 })
                 .sum::<usize>()
@@ -221,5 +213,13 @@ impl Voice {
         let right = if channels > 1 { at(1) } else { left };
         self.position += self.rate * self.audio.sr as f64 / output_rate;
         Some((left, right))
+    }
+}
+
+fn source_bytes(source: &crate::engine::media_source::LibSource) -> usize {
+    match source {
+        crate::engine::media_source::LibSource::File(path) => path.capacity(),
+        crate::engine::media_source::LibSource::Removable { volume_id, relative_path } => volume_id.capacity() + relative_path.capacity(),
+        _ => 0,
     }
 }

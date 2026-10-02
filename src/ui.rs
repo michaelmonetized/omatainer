@@ -35,6 +35,7 @@ mod grid_editor;
 mod piano_roll;
 mod midi_files;
 mod timing;
+mod dependencies;
 mod midi_routing;
 mod play_time;
 mod project;
@@ -138,6 +139,7 @@ pub struct App {
     piano_roll: piano_roll::Editor,
     midi_files: midi_files::Editor,
     timing: timing::Editor,
+    dependencies: dependencies::Dependencies,
     sampler_editor: sampler_editor::Editor,
     published_selection: Option<Arc<Selection>>,
     published_indices: std::sync::Weak<Vec<usize>>,
@@ -245,6 +247,7 @@ impl App {
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
             timing: timing::Editor::default(),
+            dependencies: dependencies::Dependencies::default(),
             sampler_editor: sampler_editor::Editor::default(),
             published_selection: None,
             published_indices: std::sync::Weak::new(),
@@ -672,6 +675,7 @@ impl App {
         self.poll_piano_roll();
         self.poll_midi_files();
         self.timing.poll(&self.engine);
+        self.poll_dependencies();
         self.poll_sampler_editor();
         self.poll_library_analysis();
         self.poll_library_tags();
@@ -698,6 +702,7 @@ impl App {
         self.piano_roll_ui(ctx);
         self.midi_files_ui(ctx);
         self.timing_ui(ctx);
+        self.dependencies_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.library_tags_ui(ctx);
@@ -1127,8 +1132,9 @@ impl App {
                 help::annotate(ui, &bank.response, HelpControl::SamplerBank);
                 bank.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler bank"));
                 ui.ctx().accesskit_node_builder(bank.response.id, |node| node.set_value(self.snap.sampler_banks.get(self.snap.sampler_bank).map(String::as_str).unwrap_or("No bank")));
+                let instrument_label = if self.snap.sampler_unavailable { "Unavailable instrument" } else { self.snap.sampler_inst.label() };
                 let instrument = egui::ComboBox::from_id_salt("inst")
-                    .selected_text(self.snap.sampler_inst.label())
+                    .selected_text(instrument_label)
                     .show_ui(ui, |ui| {
                         for instrument in SamplerInstrument::ALL {
                             if ui.selectable_label(self.snap.sampler_inst == instrument, instrument.label())
@@ -1139,7 +1145,7 @@ impl App {
                     });
                 help::annotate(ui, &instrument.response, HelpControl::SamplerInstrument);
                 instrument.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler instrument"));
-                ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(self.snap.sampler_inst.label()));
+                ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(instrument_label));
                 ui.horizontal(|ui| {
                     if sq_btn(ui, t, "^", false, t.accent, 26.0).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(1));

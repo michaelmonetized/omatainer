@@ -226,6 +226,7 @@ impl Editor {
             sample_rate: app.engine.sr(),
             operation,
             catalog: app.library_metadata.catalog.clone(),
+            origins: app.dependencies.origins.clone(),
         };
         let result = app
             .loader
@@ -785,6 +786,7 @@ fn source_label(bank: &Bank, slot: usize) -> String {
             .path()
             .map(|p| p.display().to_string())
             .unwrap_or_else(|e| e),
+        Some(Source::Project { source, .. }) => super::dependencies::source_name(source),
         Some(Source::Factory { bank, slot }) => {
             format!("Original {} / slot {}", bank.name(), slot + 1)
         }

@@ -120,7 +120,7 @@ fn schema_eight_reopens_native_tempo_ramps_and_older_files_refuse_new_timing_fie
     );
     saved.state.validate(&saved.media).unwrap();
     let wire = serde_json::to_value(&saved.state).unwrap();
-    assert_eq!(wire["version"], 8);
+    assert_eq!(wire["version"], STATE_VERSION);
     let reopened: State = serde_json::from_value(wire.clone()).unwrap();
     reopened.validate(&saved.media).unwrap();
     let prepared = Prepared::from_state(reopened, saved.media.clone(), 48000).unwrap();
@@ -128,6 +128,12 @@ fn schema_eight_reopens_native_tempo_ramps_and_older_files_refuse_new_timing_fie
     assert_eq!(serde_json::to_value(&recaptured.state).unwrap(), wire);
     assert_eq!(prepared.rt.conductor.as_ref().unwrap().position(0.0).0, 0);
     assert_eq!(prepared.rt.conductor.as_ref().unwrap().position(8.5).0, 3);
+
+    let mut version_eight = wire.clone();
+    version_eight["version"] = 8.into();
+    let compatible: State = serde_json::from_value(version_eight).unwrap();
+    compatible.validate(&saved.media).unwrap();
+    assert_eq!(compatible.conductor, saved.state.conductor);
 
     let mut old = wire;
     old["version"] = 7.into();

@@ -1,6 +1,7 @@
 use super::model::*;
 use super::*;
 mod sampler_tests;
+mod dependency_tests;
 pub(super) mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {

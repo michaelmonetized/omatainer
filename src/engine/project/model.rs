@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 8;
+pub const STATE_VERSION: u32 = 9;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -89,6 +89,27 @@ impl<'de> Deserialize<'de> for State {
         if version < 8 && raw.get("conductor").and_then(serde_json::Value::as_object).is_some_and(|c| c.contains_key("native") || c.get("tempos").and_then(serde_json::Value::as_array).is_some_and(|points| points.iter().any(|p| p.get("ramp").is_some()))) {
             return Err(serde::de::Error::custom("Legacy projects cannot contain native tempo ramps or timing options"));
         }
+        if version < 9 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .flat_map(|track| track.get("fx").and_then(serde_json::Value::as_array).into_iter().flatten())
+            .chain(raw.get("scene_fx").and_then(serde_json::Value::as_array).into_iter().flatten()
+                .flat_map(|rack| rack.as_array().into_iter().flatten()))
+            .any(|effect| effect.get("state").is_some()
+                || effect.get("id").cloned().and_then(|id| serde_json::from_value::<fx::FxId>(id).ok())
+                    .is_none_or(|id| id == fx::FxId::Unavailable))
+        {
+            return Err(serde::de::Error::custom("Legacy projects cannot contain unavailable devices or serialized device state"));
+        }
+        if version < 9 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .filter_map(|track| track.get("synth")).chain(raw.get("sampler_synth"))
+            .any(|synth| synth.get("state").is_some() || synth.get("kind").cloned()
+                .and_then(|kind| serde_json::from_value::<SynthInstrument>(kind).ok()).is_none()) {
+            return Err(serde::de::Error::custom("Legacy projects cannot contain unavailable instruments or serialized instrument state"));
+        }
+        if version < 9 && raw.get("banks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .filter_map(|bank| bank.get("settings")).filter_map(|settings| settings.get("slots").and_then(serde_json::Value::as_array)).flatten()
+            .any(|slot| slot.get("source").and_then(|source| source.get("kind")).and_then(serde_json::Value::as_str) == Some("project")) {
+            return Err(serde::de::Error::custom("Legacy projects cannot contain relinked project sources"));
+        }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
@@ -167,22 +188,93 @@ pub struct Launch {
     pub looping: bool,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Synth {
     pub kind: SynthInstrument,
     pub voices: usize,
     pub cutoff: f32,
     pub tuning_hz: f32,
+    pub(crate) offline: Option<Arc<fx::OfflineDevice>>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SynthWire {
+    kind: String,
+    voices: usize,
+    cutoff: f32,
+    tuning_hz: f32,
+    #[serde(default)]
+    state: Option<fx::DeviceState>,
+}
+impl Serialize for Synth {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let known = match self.kind { SynthInstrument::Analog => "analog", SynthInstrument::Keys => "keys", SynthInstrument::Pad => "pad" };
+        let kind = self.offline.as_ref().map_or(known, |device| device.identifier.as_str());
+        let state = self.offline.as_ref().and_then(|device| device.state.as_ref());
+        let mut out = serializer.serialize_struct("Synth", 4 + usize::from(state.is_some()))?;
+        out.serialize_field("kind", kind)?; out.serialize_field("voices", &self.voices)?;
+        out.serialize_field("cutoff", &self.cutoff)?; out.serialize_field("tuning_hz", &self.tuning_hz)?;
+        if let Some(state) = state { out.serialize_field("state", state)?; }
+        out.end()
+    }
+}
+impl<'de> Deserialize<'de> for Synth {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let wire = SynthWire::deserialize(deserializer)?;
+        let known = serde_json::from_value::<SynthInstrument>(wire.kind.clone().into()).ok().filter(|_| wire.state.is_none());
+        let (kind, offline) = if let Some(kind) = known { (kind, None) } else {
+            (SynthInstrument::Analog, Some(Arc::new(fx::OfflineDevice::new(wire.kind, wire.state).map_err(serde::de::Error::custom)?)))
+        };
+        Ok(Self { kind, voices: wire.voices, cutoff: wire.cutoff, tuning_hz: wire.tuning_hz, offline })
+    }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Effect {
     pub id: fx::FxId,
     pub on: bool,
     pub mix: f32,
     pub p: [f32; 4],
+    pub(crate) offline: Option<Arc<fx::OfflineDevice>>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EffectWire {
+    id: String,
+    on: bool,
+    mix: f32,
+    p: [f32; 4],
+    #[serde(default)]
+    state: Option<fx::DeviceState>,
+}
+impl Serialize for Effect {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let id = self.offline.as_ref().map_or_else(
+            || if self.id == fx::FxId::Dist { "dist" } else { self.id.name() },
+            |device| device.identifier.as_str());
+        let state = self.offline.as_ref().and_then(|device| device.state.as_ref());
+        let mut out = serializer.serialize_struct("Effect", 4 + usize::from(state.is_some()))?;
+        out.serialize_field("id", id)?;
+        out.serialize_field("on", &self.on)?;
+        out.serialize_field("mix", &self.mix)?;
+        out.serialize_field("p", &self.p)?;
+        if let Some(state) = state { out.serialize_field("state", state)?; }
+        out.end()
+    }
+}
+impl<'de> Deserialize<'de> for Effect {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let wire = EffectWire::deserialize(deserializer)?;
+        let known = serde_json::from_value::<fx::FxId>(serde_json::Value::String(wire.id.clone()))
+            .ok().filter(|id| *id != fx::FxId::Unavailable && wire.state.is_none());
+        let (id, offline) = if let Some(id) = known { (id, None) } else {
+            (fx::FxId::Unavailable, Some(Arc::new(fx::OfflineDevice::new(wire.id, wire.state).map_err(serde::de::Error::custom)?)))
+        };
+        Ok(Self { id, on: wire.on, mix: wire.mix, p: wire.p, offline })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -283,6 +375,7 @@ impl State {
                     voices: 8,
                     cutoff: 700.0,
                     tuning_hz: 440.0,
+                    offline: None,
                 },
                 eq: [1.0; 3],
                 drums: [0; 6],
@@ -326,6 +419,7 @@ impl State {
                 voices: 8,
                 cutoff: 1800.0,
                 tuning_hz: 440.0,
+                offline: None,
             },
             banks: Vec::new(),
             builtin: [None; 2],
@@ -335,13 +429,20 @@ impl State {
     /// Check before constructing delay/reverb buffers. PCM has its own loader limits.
     pub(crate) fn validate_processor_storage(&self, sr: u32) -> Result<(), String> {
         const LIMIT: usize = session::MAX_PROCESSOR_BYTES;
-        let bytes = self.tracks.iter().flat_map(|t| &t.fx).chain(self.scene_fx.iter().flatten())
-            .map(|effect| fx::FxSlot::required_storage(effect.id, sr as f32)).sum::<usize>();
+        let synth_bytes = self.tracks.iter().map(|track| &track.synth).chain(std::iter::once(&self.sampler_synth))
+            .map(|synth| synth.offline.as_ref().map_or(0, |device| device.bytes())).sum::<usize>();
+        let bytes = synth_bytes + self.tracks.iter().flat_map(|t| &t.fx).chain(self.scene_fx.iter().flatten())
+            .map(|effect| fx::FxSlot::required_storage(effect.id, sr as f32)
+                + effect.offline.as_ref().map_or(0, |device| device.bytes())).sum::<usize>();
         if bytes > LIMIT { return Err("Session processor storage exceeds 256 MiB; remove effects or use a lower output rate".into()); }
         Ok(())
     }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
+        if self.version < 9 && (self.sampler_synth.offline.is_some() || self.tracks.iter().any(|track| track.synth.offline.is_some())
+            || self.tracks.iter().flat_map(|track| &track.fx).chain(self.scene_fx.iter().flatten()).any(|effect| effect.offline.is_some())) {
+            return fail("unavailable device in a legacy state");
+        }
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
         if self.version >= 7 && self.session.is_none() {return fail("missing session identity metadata");}
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
@@ -377,7 +478,7 @@ impl State {
             || self.banks.len() > MAX_BANKS
             || self.sampler_bank >= self.banks.len()
             || !(-4..=8).contains(&self.sampler_oct)
-            || !valid_synth(self.sampler_synth)
+            || !valid_synth(&self.sampler_synth)
         {
             return fail("sampler settings");
         }
@@ -395,7 +496,7 @@ impl State {
             if !text_ok(&track.name)
                 || track.scene_bus >= self.scene_fx.len()
                 || track.kind > 4
-                || !valid_synth(track.synth)
+                || !valid_synth(&track.synth)
                 || !finite_range(track.gain as f64, 0.0, 1.5)
                 || !finite_range(track.pan as f64, -1.0, 1.0)
                 || !valid_eq(track.eq)
@@ -455,6 +556,7 @@ impl State {
             if !text_ok(&bank.name) || bank.media.iter().any(|i| !optional(*i)) {
                 return fail("sample bank");
             }
+            if self.version < 9 && bank.settings.as_ref().is_some_and(|settings| settings.slots.iter().any(|slot| matches!(slot.source, Some(crate::sampler_bank::Source::Project { .. })))) { return fail("relinked source in a legacy state"); }
             if self.version < 4 {
                 if bank.instance.is_some() || bank.settings.is_some() || bank.media.iter().any(Option::is_none) {
                     return fail("legacy sample bank must contain embedded media only");
@@ -560,7 +662,7 @@ fn valid_eq(values: [f32; 3]) -> bool {
         .into_iter()
         .all(|v| finite_range(v as f64, 0.0, 16.0))
 }
-fn valid_synth(s: Synth) -> bool {
+fn valid_synth(s: &Synth) -> bool {
     (1..=64).contains(&s.voices)
         && finite_range(s.cutoff as f64, 0.0, 20000.0)
         && finite_range(s.tuning_hz as f64, 20.0, 20000.0)
@@ -569,5 +671,6 @@ fn valid_fx(rack: &[Effect], scene: bool) -> bool {
     rack.len() <= MAX_FX_PER_RACK
         && rack.iter().all(|f| {
             unit(f.mix) && f.p.iter().all(|p| unit(*p)) && (!scene || f.id != fx::FxId::Arp)
+                && (f.id == fx::FxId::Unavailable) == f.offline.is_some()
         })
 }

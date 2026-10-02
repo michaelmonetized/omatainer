@@ -29,7 +29,7 @@ pub(crate) fn wav(frames: usize, sr: u32, channels: u16) -> Vec<u8> {
     for i in 0..frames * channels as usize { out.extend_from_slice(&((i as i16 % 512) * 32).to_le_bytes()); } out
 }
 fn request(definition: Definition, catalog: &Catalog) -> Request {
-    Request { epoch: 9, revision: 4, sample_rate: 48_000, operation: Operation::Definition(definition), catalog: Arc::new(catalog.clone()) }
+    Request { epoch: 9, revision: 4, sample_rate: 48_000, operation: Operation::Definition(definition), origins: Vec::new(), catalog: Arc::new(catalog.clone()) }
 }
 fn definition(sources: &[SourceRef]) -> Definition {
     let mut definition = Definition::empty("Mixed reusable bank".into()).unwrap();
@@ -52,7 +52,7 @@ fn real_mixed_formats_and_verified_moves_keep_source_rates_ranges_and_independen
     let second = run(request(definition.clone(), &catalog), &owner, || false).unwrap();
     assert_eq!(first.verified_sources.len(), 3);
     let copy = run(Request { epoch: 9, revision: 4, sample_rate: 48_000,
-        operation: Operation::Copy { bank: first.bank.clone(), name: "Copy".into() }, catalog: Arc::new(catalog.clone()) }, &owner, || false).unwrap();
+        operation: Operation::Copy { bank: first.bank.clone(), name: "Copy".into() }, origins: Vec::new(), catalog: Arc::new(catalog.clone()) }, &owner, || false).unwrap();
     assert!(copy.verified_sources.is_empty(), "serialized/copied identities are not new measurements");
     assert_ne!(first.bank.id, second.bank.id); assert_ne!(first.bank.id, definition.id);
     assert_eq!(first.bank.data.settings.definition, Some(definition.id));
@@ -88,7 +88,7 @@ fn missing_or_damaged_reusable_sources_are_explicit_and_assignment_failure_keeps
     let prior = loaded.bank.clone();
     let result = run(Request { operation: Operation::Change { settings: (*prior.data.settings).clone(), bank: prior.clone(),
         assignment: Some(Assignment { slot: 0, source: bad.source, fingerprint: bad.fingerprint }), retry: None, clear: None },
-        epoch: 9, revision: 4, sample_rate: 48_000, catalog: Arc::new(catalog) }, &owner, || false);
+        epoch: 9, revision: 4, sample_rate: 48_000, origins: Vec::new(), catalog: Arc::new(catalog) }, &owner, || false);
     assert!(result.is_err()); assert!(Arc::ptr_eq(prior.data.audio[0].as_ref().unwrap(), loaded.bank.data.audio[0].as_ref().unwrap()));
 }
 
@@ -130,7 +130,7 @@ fn originals_can_be_prepared_without_any_existing_working_factory_bank() {
             let prepared = run(Request {
                 epoch: 23, revision: 71, sample_rate: 44_100,
                 operation: Operation::Factory { bank: factory, name: "My original copy".into() },
-                catalog: catalog.clone(),
+                origins: Vec::new(), catalog: catalog.clone(),
             }, &owner, || false).unwrap();
             assert_eq!(prepared.epoch, 23);
             assert!(matches!(prepared.target, sampler::Target::Append { revision: 71 }));
@@ -167,4 +167,31 @@ fn local_block_volume_sampler_prepares_typed_source_and_preserves_old_reference_
     let Some(Source::Library {reference})=&restored.bank.data.settings.slots[0].source else {panic!()};assert_eq!(reference.path().unwrap(),moved);assert_eq!(reference.track,old.track);
     let store_path=files.0.join("saved/library.json");let mut store=crate::library::Store::open(store_path.clone()).unwrap();store.catalog=catalog;store.save().unwrap();drop(store);
     assert!(crate::library::read(&store_path).unwrap().version(&source,Some(old.fingerprint)).is_some());
+}
+
+#[test]
+fn project_relink_retry_survives_native_settings_without_claiming_library_catalog_credit() {
+    let files = Files::new(); let mut catalog = Catalog::default();
+    let original = files.source("project-original.wav", &wav(2048, 48000, 2), &mut catalog);
+    let owner = assets::Owner::isolated_for_test(assets::Budget::limits());
+    let prepared = run(request(definition(&[original.clone()]), &catalog), &owner, || false).unwrap();
+    let sample = prepared.bank.data.audio[0].as_ref().unwrap();
+    let hash = crate::project_dependencies::audio_hash(sample, &Default::default()).unwrap();
+    let moved = files.0.join("new-project-source"); std::fs::rename(original.path().unwrap(), &moved).unwrap();
+    let origin = crate::project_dependencies::Origin { key: crate::project_dependencies::Key { audio_hash: hash, original_path: sample.path.clone() }, source: LibSource::File(moved.clone()) };
+    let change = Request { epoch: 9, revision: 4, sample_rate: 48000, origins: vec![origin], catalog: Arc::new(catalog.clone()),
+        operation: Operation::Change { bank: prepared.bank.clone(), settings: (*prepared.bank.data.settings).clone(), assignment: None, retry: Some(0), clear: None } };
+    let restored = run(change.clone(), &owner, || false).unwrap();
+    assert_eq!(restored.bank.data.audio[0].as_ref().unwrap().data, sample.data);
+    assert!(restored.verified_sources.is_empty());
+    assert_eq!(restored.bank.data.settings.slots[0].source, Some(Source::Project { source: LibSource::File(moved.clone()), audio_hash: hash }));
+    let mut portable = definition(&[]); portable.slots = serde_json::from_slice(&serde_json::to_vec(&restored.bank.data.settings.slots).unwrap()).unwrap();
+    let reopened = run(request(portable.clone(), &Catalog::default()), &owner, || false).unwrap();
+    assert_eq!(reopened.bank.data.audio[0].as_ref().unwrap().data, sample.data);
+    assert!(reopened.verified_sources.is_empty());
+    std::fs::write(&moved, wav(2049, 48000, 2)).unwrap();
+    assert!(run(change, &owner, || false).is_err());
+    let missing = run(request(portable, &Catalog::default()), &owner, || false).unwrap();
+    assert!(missing.bank.data.audio[0].is_none() && missing.bank.data.issues[0].is_some());
+    assert_eq!(prepared.bank.data.audio[0].as_ref().unwrap().data, sample.data);
 }

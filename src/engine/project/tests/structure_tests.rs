@@ -379,12 +379,13 @@ fn excessive_processor_storage_is_refused_before_graph_allocation() {
     let mut saved = captured(&rt());
     let delay = Effect {
         id: fx::FxId::Delay,
+        offline: None,
         on: true,
         mix: 0.5,
         p: [0.5; 4],
     };
     for track in &mut saved.state.tracks {
-        track.fx = vec![delay; 128];
+        track.fx = vec![delay.clone(); 128];
     }
     assert!(saved.state.validate(&saved.media).is_ok());
     let error = Prepared::from_state(saved.state, saved.media, 96000)

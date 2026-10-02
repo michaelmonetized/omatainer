@@ -118,6 +118,7 @@ struct Frame {
     bank_names: Vec<usize>,
     bank_count: usize,
     fx_count: usize,
+    fx_name_length: usize,
     complete: bool,
     sequence: u64,
 }
@@ -162,6 +163,7 @@ impl Frame {
             bank_names: Vec::new(),
             bank_count: 0,
             fx_count: 0,
+            fx_name_length: 16,
             complete: false,
             sequence: 0,
         }
@@ -189,6 +191,10 @@ impl Frame {
         let mut fits = self.values.session.as_ref().is_some_and(|layout| layout.fits(&rt.session)) && self.values.tracks.len() == self.track_count && self.values.fx_slots.len() >= self.fx_count
             && self.values.sampler_banks.len() >= self.bank_count
             && self.values.sampler_instances.capacity() >= self.bank_count;
+        self.fx_name_length = chain.slots.iter().map(|slot| slot.name().len()).max().unwrap_or(16).max(16);
+        for (index, slot) in chain.slots.iter().enumerate() {
+            fits &= self.values.fx_slots.get(index).is_some_and(|out| out.0.capacity() >= slot.name().len());
+        }
         for (index, track) in rt.tracks.iter().take(self.track_count).enumerate() {
             self.track_names[index] = track.name.len().max(rt.session.tracks[index].name.len());
             fits &= self.values.tracks.get(index).is_some_and(|out| out.name.capacity() >= track.name.len() && out.clips.len() == self.scene_count);
@@ -345,6 +351,7 @@ impl Frame {
         target.quantize = rt.quantize;
         target.sampler_bank = rt.sampler_bank;
         target.sampler_inst = rt.sampler_inst;
+        target.sampler_unavailable = rt.sampler_poly.offline.is_some() && rt.sampler_inst.synth().is_some();
         target.sampler_oct = rt.sampler_oct;
         target.sampler_revision = rt.sampler_revision;
         target.sampler_epoch = rt.undo.checkpoint().epoch;
@@ -356,7 +363,7 @@ impl Frame {
         }
         target.fx_view = rt.fx_view;
         for (out, slot) in target.fx_slots.iter_mut().zip(&chain.slots) {
-            copy(&mut out.0, slot.id().name());
+            copy(&mut out.0, slot.name());
             out.1 = slot.on;
             out.2 = slot.mix;
             out.3 = slot.p;
@@ -394,7 +401,7 @@ impl Frame {
                 .resize_with(self.fx_count, Default::default);
         }
         for slot in &mut self.values.fx_slots {
-            reserve(&mut slot.0, 16);
+            reserve(&mut slot.0, self.fx_name_length);
         }
     }
 

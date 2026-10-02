@@ -196,7 +196,7 @@ impl FxId {
             Self::Reverb | Self::Chorus => &[WET],
             Self::Delay => DELAY,
             Self::Gate => GATE,
-            Self::Arp => &[],
+            Self::Arp | Self::Unavailable => &[],
             Self::Dist => DIST,
             Self::Filter => FILTER,
             Self::Eq3 | Self::Eq5 | Self::Eq8 => &[WET, LOW, MID, HIGH],

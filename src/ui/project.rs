@@ -38,6 +38,7 @@ impl Document {
                 self.mapping_schema, FACTORY_MAPPING_SCHEMA
             ));
         }
+        if self.engine.version < 9 && !self.view.media_origins.is_empty() { return Err("Legacy projects cannot contain dependency source aliases".into()); }
         self.view.validate()
     }
 }
@@ -57,6 +58,8 @@ pub(super) struct WatchIdentity {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct UiState {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub media_origins: Vec<crate::project_dependencies::Origin>,
     pub library_filter: String,
     #[serde(default)]
     pub selected_crate: Option<crate::library::crates::CrateId>,
@@ -75,6 +78,7 @@ pub(crate) struct UiState {
 }
 impl UiState {
     pub(super) fn validate(&self) -> Result<(), String> {
+        crate::project_dependencies::validate_origins(&self.media_origins)?;
         if self.selected_crate.as_ref().is_some_and(|id| id.0.len() != 32 || !id.0.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))) {
             return Err("Invalid project view: malformed crate identity".into());
         }
@@ -111,7 +115,8 @@ impl UiState {
         Ok(())
     }
     fn editable_eq(&self, other: &Self) -> bool {
-        self.selected_crate == other.selected_crate
+        self.media_origins == other.media_origins
+            && self.selected_crate == other.selected_crate
             && self.library_filter == other.library_filter
             && self.library_selection == other.library_selection
             && self.library_offset == other.library_offset
@@ -311,6 +316,7 @@ impl App {
             selection
         };
         UiState {
+            media_origins: self.dependencies.origins.clone(),
             library_filter: self.lib_filter.clone(),
             selected_crate: self.library_crates.selected.clone(),
             library_selection: selection,
@@ -751,8 +757,12 @@ impl App {
             self.piano_roll.stop_for_close(&self.engine);
             self.midi_files.cancel();
             self.timing.cancel();
+            self.dependencies.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
-            if self.timing.blocks_close() {
+            if self.dependencies.blocks_close() {
+                self.dependencies.open = true;
+                self.project.message = Some("Close cancelled while source review retains unapplied choices. Apply them or explicitly discard them before closing.".into());
+            } else if self.timing.blocks_close() {
                 self.timing.open = true;
                 self.project.message = Some("Close cancelled while the timing editor retains unapplied work. Apply it or explicitly discard it before closing.".into());
             } else if self.midi_files.busy() {
@@ -774,6 +784,7 @@ impl App {
         self.project.awaiting_snapshot = Some(applied.revision);
         self.poll_play_history();
         self.loads = std::array::from_fn(|_| None);
+        self.dependencies.install_origins(view.media_origins.clone());
         self.lib_filter = view.library_filter.clone();
         self.choose_named_crate(view.selected_crate.clone());
         self.keys_open = view.keys_open;
@@ -897,6 +908,7 @@ impl App {
                             if midi.clicked() { self.open_midi_files(false); ui.close(); }
                             let midi = ui.button("Export MIDI file…").help(ui, HelpControl::MidiFileExport);
                             if midi.clicked() { self.open_midi_files(true); ui.close(); }
+                            if ui.button("Project dependencies…").help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
                             if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);

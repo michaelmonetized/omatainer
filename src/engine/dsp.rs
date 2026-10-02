@@ -413,6 +413,7 @@ pub struct Poly {
     pub voices: Vec<Voice>,
     pub filters: Vec<Svf>,
     pub kind: SynthInstrument,
+    pub(crate) offline: Option<std::sync::Arc<super::fx::OfflineDevice>>,
     sample_rate: f32,
     tuning_hz: f32,
     pub cutoff: f32,
@@ -427,6 +428,7 @@ impl Poly {
             voices: (0..n).map(|_| Voice::new(sr, kind)).collect(),
             filters: vec![Svf::default(); n],
             kind,
+            offline: None,
             sample_rate: sr,
             tuning_hz: 440.0,
             cutoff: kind.cutoff(),
@@ -542,6 +544,7 @@ impl Poly {
         }
     }
     pub fn tick(&mut self, sr: f32) -> f32 {
+        if self.offline.is_some() { return 0.0; }
         let mut s = 0.0;
         let cut = self.cutoff;
         for (v, f) in self.voices.iter_mut().zip(self.filters.iter_mut()) {

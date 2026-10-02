@@ -129,7 +129,7 @@ impl Reference {
                     }
                 }
                 FxId::Dist => (x * (1.0 + self.p[0] * 8.0)).tanh(),
-                FxId::Arp => x,
+                FxId::Arp | FxId::Unavailable => x,
             };
         }
         if self.id == FxId::Spread {

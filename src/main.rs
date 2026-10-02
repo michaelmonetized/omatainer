@@ -1,4 +1,5 @@
 mod project_file;
+mod project_dependencies;
 mod recovery;
 mod support;
 mod startup;

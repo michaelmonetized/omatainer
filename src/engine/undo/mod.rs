@@ -252,6 +252,7 @@ impl Scratch {
     }
 }
 enum Retired {
+    Device(Arc<fx::OfflineDevice>),
     Conductor(Arc<midi_data::Conductor>),
     Entry(Entry),
     Timeline(VecDeque<Option<Entry>>),
@@ -946,6 +947,12 @@ impl Journal {
 }
 
 impl Journal {
+    pub(super) fn can_retire_device(&self, bytes: usize) -> bool {
+        self.enabled && self.room(0).is_ok() && self.shared.retired_bytes.load(Ordering::Acquire).saturating_add(bytes) <= self.budget
+    }
+    pub(super) fn retire_device(&mut self, value: Arc<fx::OfflineDevice>) {
+        let bytes = value.bytes(); self.retire(Retired::Device(value), bytes);
+    }
     pub(super) fn retire_midi_conductor(&mut self, value: Arc<midi_data::Conductor>, bytes: usize) {
         self.retire(Retired::Conductor(value), bytes);
     }

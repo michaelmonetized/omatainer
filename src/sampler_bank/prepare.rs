@@ -35,6 +35,7 @@ pub(crate) struct Request {
     pub sample_rate: u32,
     pub operation: Operation,
     pub catalog: Arc<Catalog>,
+    pub origins: Vec<crate::project_dependencies::Origin>,
 }
 #[derive(Debug)]
 pub(crate) struct Prepared {
@@ -64,6 +65,7 @@ pub(crate) fn run(
 ) -> Result<Prepared, String> {
     let check = || if cancelled() { Err("sampler preparation cancelled".to_string()) } else { Ok(()) };
     check()?;
+    crate::project_dependencies::validate_origins(&request.origins)?;
     let target;
     let id;
     let mut settings;
@@ -177,6 +179,23 @@ pub(crate) fn run(
         if !reload[slot] { continue; }
         let source = settings.slots[slot].source.clone().ok_or("missing slot source")?;
         let result: Result<_, SourceError> = match source {
+            Source::Project { source, audio_hash } => {
+                crate::project_dependencies::load_source(&source, audio_hash, pcm_remaining, &cancelled)
+                    .map(|sample| (Arc::new(sample), Source::Project { source, audio_hash })).map_err(|error| SourceError { message: error.detail, missing: !error.capacity })
+            }
+            Source::Library { reference } if audio[slot].as_ref().is_some_and(|sample| request.origins.iter().any(|origin| origin.key.original_path == sample.path)) => {
+                let sample = audio[slot].as_ref().unwrap();
+                let hash = crate::project_dependencies::audio_hash_cancelled(sample, &cancelled)?;
+                if let Some(origin) = request.origins.iter().find(|origin| origin.key.original_path == sample.path && origin.key.audio_hash == hash) {
+                    crate::project_dependencies::load_source(&origin.source, hash, pcm_remaining, &cancelled)
+                        .map(|sample| (Arc::new(sample), Source::Project { source: origin.source.clone(), audio_hash: hash })).map_err(|error| SourceError { message: error.detail, missing: !error.capacity })
+                } else {
+                    reference.resolve(&request.catalog).map_err(SourceError::from).and_then(|mut reference| {
+                        let (sample, hash) = decode_reference(&reference, pcm_remaining, &cancelled)?;
+                        reference.content_hash = Some(hash); Ok((Arc::new(sample), Source::Library { reference }))
+                    })
+                }
+            }
             Source::Library { reference } => {
                 reference.resolve(&request.catalog).map_err(SourceError::from).and_then(|mut reference| {
                     let (sample, hash) = decode_reference(&reference, pcm_remaining, &cancelled)?;
@@ -195,7 +214,7 @@ pub(crate) fn run(
             Ok((sample, source)) => {
                 let bytes = sample.data.capacity() as u64 * 4;
                 // Shared factory PCM already has its own registered credit.
-                if matches!(source, Source::Library { .. }) {
+                if matches!(source, Source::Library { .. } | Source::Project { .. }) {
                     pcm_remaining = pcm_remaining.checked_sub(bytes).ok_or("sampler aggregate PCM limit exceeded")?;
                     if let Source::Library { reference } = &source { verified_sources.push(reference.clone()); }
                 }
