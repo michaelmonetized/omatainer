@@ -20,7 +20,7 @@ fn engine(gain: f32, kind: u8, arp: bool, live: bool) -> RtEngine {
     }
     track.gain = 1.0;
     track.pan = 0.0;
-    track.clips = std::array::from_fn(|_| Clip::empty());
+    track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
     track.clips[0] = Clip {
         lanes: None,
         region: None,

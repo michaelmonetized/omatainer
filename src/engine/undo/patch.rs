@@ -5,16 +5,16 @@ use super::super::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Rack {
     Track(u8),
-    Scene(u8),
+    Scene(u16),
 }
 impl Rack {
     pub fn selected(rt: &RtEngine) -> Option<Self> {
         // Follow active_chain exactly, including commands received while the
         // panel is closed. History must target the rack the renderer mutates.
-        Some(if rt.fx_view >= 100 {
-            Self::Scene(((rt.fx_view as usize - 100).min(SCENES - 1)) as u8)
+        Some(if rt.fx_view >= crate::engine::session::SCENE_FX_BASE {
+            Self::Scene(((rt.fx_view as usize - crate::engine::session::SCENE_FX_BASE as usize).min(rt.scene_fx.len() - 1)) as u16)
         } else if rt.fx_view >= 0 {
-            Self::Track((rt.fx_view as usize % TRACKS) as u8)
+            Self::Track((rt.fx_view as usize % rt.tracks.len()) as u8)
         } else {
             Self::Scene(0)
         })
@@ -257,7 +257,7 @@ pub(super) enum Patch {
     Track(u8, TrackControls),
     ClipGain {
         track: u8,
-        scene: u8,
+        scene: u16,
         gain: f32,
     },
     Deck(u8, DeckControls),
@@ -280,7 +280,7 @@ pub(super) enum Patch {
     },
     Clip {
         track: u8,
-        scene: u8,
+        scene: u16,
         value: Clip,
         spare_notes: Vec<MidiNote>,
         reserved_midi_bytes: usize,

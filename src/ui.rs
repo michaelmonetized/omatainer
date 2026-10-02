@@ -1355,8 +1355,8 @@ impl App {
                     for sc in 0..SCENES {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
-                            let on = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i8 && !tr.clip_pending);
-                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i8 && tr.clip_pending);
+                            let on = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
+                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending);
                             let (hr, hresp) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::click());
                             ui.painter().rect_filled(hr, 4.0, if on { t.accent.gamma_multiply(0.45) } else { t.bg_dark });
                             ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued { t.accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
@@ -1366,21 +1366,21 @@ impl App {
                             help::annotate(ui, &hresp, HelpControl::Scene);
                             if hresp.clicked() || matches!(action, Some(0..=2)) {
                                 if action == Some(1) || action.is_none() && ui.input(|i| i.modifiers.shift) {
-                                    self.send(Command::AddScene { scene: sc as u8 });
+                                    self.send(Command::AddScene { scene: sc as u16 });
                                 } else if action == Some(2) || action.is_none() && ui.input(|i| i.modifiers.ctrl) {
-                                    self.send(Command::OpenFxScene(sc as u8));
+                                    self.send(Command::OpenFxScene(sc as u16));
                                 } else {
-                                    self.send(Command::ToggleScene { scene: sc as u8 });
+                                    self.send(Command::ToggleScene { scene: sc as u16 });
                                 }
                             }
                             if hresp.secondary_clicked() || action == Some(3) {
-                                self.send(Command::RestartScene { scene: sc as u8 });
+                                self.send(Command::RestartScene { scene: sc as u16 });
                             }
                             for tr in 0..TRACKS {
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
-                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i8 && x.clip_pending);
-                                let playing = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i8 && !x.clip_pending);
+                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending);
+                                let playing = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);
                                 let color = t.track_color(tr);
                                 let (rect, resp) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::click());
@@ -1424,18 +1424,18 @@ impl App {
                                     if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
                                         if filled {
                                             self.clip_gain_edit = Some(ClipGainEdit {
-                                                track: tr as u8, scene: sc as u8,
+                                                track: tr as u8, scene: sc as u16,
                                                 value: clip.map(|c| c.gain).unwrap_or(1.0),
                                             });
                                         }
                                     } else if action == Some(2) || action.is_none() && ui.input(|i| i.modifiers.shift) {
                                         self.send(Command::ComposeArm { track: tr, scene: sc });
                                     } else {
-                                        self.send(Command::FireClip { track: tr as u8, scene: sc as u8, looping: false });
+                                        self.send(Command::FireClip { track: tr as u8, scene: sc as u16, looping: false });
                                     }
                                 }
                                 if resp.secondary_clicked() || action == Some(1) {
-                                    self.send(Command::FireClip { track: tr as u8, scene: sc as u8, looping: true });
+                                    self.send(Command::FireClip { track: tr as u8, scene: sc as u16, looping: true });
                                 }
                             }
                         });
@@ -1474,8 +1474,8 @@ impl App {
 
     fn fx_row(&mut self, ui: &mut Ui, t: &Theme) {
         ui.horizontal(|ui| {
-            let label = if self.snap.fx_view >= 100 {
-                format!("scene {} fx", self.snap.fx_view - 99)
+            let label = if self.snap.fx_view >= crate::engine::session::SCENE_FX_BASE {
+                format!("scene {} fx", self.snap.fx_view - crate::engine::session::SCENE_FX_BASE + 1)
             } else {
                 format!(
                     "{} fx",
@@ -1489,7 +1489,7 @@ impl App {
         });
         ui.horizontal_wrapped(|ui| {
             for (i, id) in FxId::all().iter().enumerate() {
-                if self.snap.fx_view >= 100 && !id.supports_scene() {
+                if self.snap.fx_view >= crate::engine::session::SCENE_FX_BASE && !id.supports_scene() {
                     continue;
                 }
                 if pill(ui, t, id.name(), false, t.cyan).help(ui, HelpControl::FxAdd).clicked() {

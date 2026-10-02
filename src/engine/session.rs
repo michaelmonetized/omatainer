@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub const MAX_TRACKS: usize = 128;
 pub const MAX_SCENES: usize = 512;
 pub const MAX_NAME_BYTES: usize = 4096;
+pub const SCENE_FX_BASE: i16 = 1000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -86,7 +87,7 @@ impl Layout {
             if item.id.0 == 0
                 || item.id.0 >= self.next_id
                 || !ids.insert(item.id)
-                || !valid_name(&item.name)
+                || item.name.len() > MAX_NAME_BYTES
             {
                 return Err("Invalid or repeated session identity or name".into());
             }
@@ -128,6 +129,64 @@ impl Layout {
             Axis::Track => &self.tracks,
             Axis::Scene => &self.scenes,
         }
+    }
+    /// Worker-only capacity preparation for the bounded audio snapshot handoff.
+    pub(super) fn prepare_storage(&mut self, track_names: &[usize], scene_names: &[usize]) {
+        let empty = || Item {
+            id: Id(0),
+            active: false,
+            name: String::new(),
+            color: None,
+        };
+        self.tracks.resize_with(track_names.len(), empty);
+        self.scenes.resize_with(scene_names.len(), empty);
+        for (item, &needed) in self
+            .tracks
+            .iter_mut()
+            .zip(track_names)
+            .chain(self.scenes.iter_mut().zip(scene_names))
+        {
+            item.name.reserve(needed.saturating_sub(item.name.len()));
+        }
+        self.track_order
+            .reserve(MAX_TRACKS.saturating_sub(self.track_order.len()));
+        self.scene_order
+            .reserve(MAX_SCENES.saturating_sub(self.scene_order.len()));
+    }
+    pub(super) fn fits(&self, source: &Self) -> bool {
+        self.tracks.len() == source.tracks.len()
+            && self.scenes.len() == source.scenes.len()
+            && self.track_order.capacity() >= source.track_order.len()
+            && self.scene_order.capacity() >= source.scene_order.len()
+            && self
+                .tracks
+                .iter()
+                .zip(&source.tracks)
+                .chain(self.scenes.iter().zip(&source.scenes))
+                .all(|(a, b)| a.name.capacity() >= b.name.len())
+    }
+    /// Audio only: called after fits, with every string and vector prepared.
+    pub(super) fn copy_from_prepared(&mut self, source: &Self) {
+        debug_assert!(self.fits(source));
+        self.namespace = source.namespace;
+        self.next_id = source.next_id;
+        self.generation = source.generation;
+        for (out, item) in self
+            .tracks
+            .iter_mut()
+            .zip(&source.tracks)
+            .chain(self.scenes.iter_mut().zip(&source.scenes))
+        {
+            out.id = item.id;
+            out.active = item.active;
+            out.color = item.color;
+            out.name.clear();
+            out.name.push_str(&item.name);
+        }
+        self.track_order.clear();
+        self.track_order.extend_from_slice(&source.track_order);
+        self.scene_order.clear();
+        self.scene_order.extend_from_slice(&source.scene_order);
     }
     fn items_mut(&mut self, axis: Axis) -> &mut Vec<Item> {
         match axis {

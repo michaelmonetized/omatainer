@@ -15,7 +15,7 @@ pub(crate) struct Source {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Mapping {
     pub source: Source,
-    pub destination: Option<(u8, u8)>,
+    pub destination: Option<(u8, u16)>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TempoChoice {
@@ -137,7 +137,7 @@ impl Request {
         {
             return Err("MIDI track/channel mapping no longer matches the inspected file".into());
         }
-        let mut mapped = BTreeMap::<(u8, u8), smf::Track>::new();
+        let mut mapped = BTreeMap::<(u8, u16), smf::Track>::new();
         // Every source event receives a unique ordering range when tracks are
         // merged. Channel splitting attaches track metadata to its first row.
         for (row, mapping) in mappings.iter().enumerate() {
@@ -614,14 +614,14 @@ pub(crate) struct ExportOptions {
 }
 pub(crate) fn export(
     state: &project::State,
-    cells: &[(u8, u8)],
+    cells: &[(u8, u16)],
     options: ExportOptions,
 ) -> Result<smf::File, String> {
     export_with_cancel(state, cells, options, || false)
 }
 pub(crate) fn export_with_cancel(
     state: &project::State,
-    cells: &[(u8, u8)],
+    cells: &[(u8, u16)],
     options: ExportOptions,
     mut cancel: impl FnMut() -> bool,
 ) -> Result<smf::File, String> {

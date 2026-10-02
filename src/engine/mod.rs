@@ -188,7 +188,7 @@ impl Clip {
 
 #[derive(Clone, Copy, Debug)]
 pub struct PlayingClip {
-    pub scene: u8,
+    pub scene: u16,
     pub start_beat: f64,
     // Explicit MIDI regions use the compensated clock; legacy clips retain
     // their original transport and rendered audio.
@@ -209,7 +209,7 @@ pub struct DrumVoice {
 #[derive(Clone, Debug)]
 pub struct TrackRt {
     pub name: String,
-    pub clips: [Clip; SCENES],
+    pub clips: Vec<Clip>,
     pub playing: Option<PlayingClip>,
     project_resume: Option<PlayingClip>,
     // The bus stays selected through stops/tails until a new clip starts.
@@ -534,6 +534,7 @@ pub struct RtEngine {
     pub master: f32,
     pub cue_mix: f32,
     pub tracks: Vec<TrackRt>,
+    pub session: session::Layout,
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
@@ -575,11 +576,11 @@ pub struct RtEngine {
     pub pad_voices: [Option<crate::sampler_bank::resident::Voice>; 16],
     pub sampler_audition: Option<sampler::ActiveAudition>,
     pad_destinations: [usize; 16],
-    pad_output: [[f32; 2]; TRACKS],
+    pad_output: [[f32; 2]; session::MAX_TRACKS],
     pad_targets: [Option<PadTarget>; 16],
     pub builtin: [Option<Arc<Sample>>; 2],
     pub fx_view: i16,
-    pub scene_fx: [fx::FxChain; SCENES],
+    pub scene_fx: Vec<fx::FxChain>,
     pub compose_target: Option<ComposeTarget>,
 }
 
@@ -644,7 +645,7 @@ pub struct TrackSnap {
     pub solo: bool,
     pub armed: bool,
     pub meter: f32,
-    pub playing_scene: i8,
+    pub playing_scene: i16,
     pub clip_progress: f32,
     pub clip_pending: bool,
     pub clip_looping: bool,
@@ -679,6 +680,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub session: Option<session::Layout>,
     pub performance: performance::Status,
     pub project_revision: u64,
     pub compose_target: Option<ComposeTarget>,
@@ -729,6 +731,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            session: None,
             performance: performance::Status::default(),
             project_revision: 0,
             compose_target: None,
@@ -792,8 +795,8 @@ pub enum Command {
     Tap(Instant),
     MidiClock { source: u64 },
     SetBpm(f32),
-    LaunchClip { track: u8, scene: u8 },
-    LaunchScene { scene: u8 },
+    LaunchClip { track: u8, scene: u16 },
+    LaunchScene { scene: u16 },
     StopTrack { track: u8 },
     DeckPlay { deck: u8 },
     DeckCue { deck: u8 },
@@ -828,7 +831,7 @@ pub enum Command {
     Master(f32),
     CueMix(f32),
     TrackGain { track: u8, value: f32 },
-    ClipGain { track: u8, scene: u8, value: f32 },
+    ClipGain { track: u8, scene: u16, value: f32 },
     TrackPan { track: u8, value: f32 },
     Mute { track: u8 },
     Solo { track: u8 },
@@ -846,7 +849,7 @@ pub enum Command {
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
     MidiAudition { id: u64, track: u8, note: u8, vel: u8, on: bool },
-    SetNotes { track: u8, scene: u8, notes: Vec<MidiNote> },
+    SetNotes { track: u8, scene: u16, notes: Vec<MidiNote> },
     FxWet { slot: u8, value: f32 },
     FxSelect { slot: u8 },
     Quant(f32),
@@ -861,10 +864,10 @@ pub enum Command {
     DeckEqCut { deck: u8, band: u8 },
     DeckEqSolo { deck: u8, band: u8 },
     DeckPitchRange { deck: u8 },
-    FireClip { track: u8, scene: u8, looping: bool },
-    ToggleScene { scene: u8 },
-    RestartScene { scene: u8 },
-    AddScene { scene: u8 },
+    FireClip { track: u8, scene: u16, looping: bool },
+    ToggleScene { scene: u16 },
+    RestartScene { scene: u16 },
+    AddScene { scene: u16 },
     SamplerPad { pad: u8, on: bool },
     SamplerBank(usize),
     SamplerEdit(sampler::Edit),
@@ -873,7 +876,7 @@ pub enum Command {
     SamplerInst(SamplerInstrument),
     SamplerOct(i8),
     OpenFxTrack(u8),
-    OpenFxScene(u8),
+    OpenFxScene(u16),
     CloseFx,
     FxAdd(u8),
     FxToggle(usize),
@@ -905,10 +908,10 @@ impl RtEngine {
             "Drums", "Bass", "Keys", "Pad", "Perc", "Vocal", "FX", "Spare",
         ];
         let kinds = [0u8, 1, 2, 3, 0, 4, 3, 1];
-        let tracks = (0..TRACKS)
+        let tracks: Vec<TrackRt> = (0..TRACKS)
             .map(|i| TrackRt {
                 name: names[i].into(),
-                clips: std::array::from_fn(|_| Clip::empty()),
+                clips: (0..SCENES).map(|_| Clip::empty()).collect(),
                 playing: None,
                 project_resume: None,
                 scene_bus: 0,
@@ -937,7 +940,9 @@ impl RtEngine {
                 recorded_playback: Vec::new(),
             })
             .collect();
+        let session = session::Layout::fresh(names.iter().map(|n| (*n).into()), SCENES);
         let mut e = Self {
+            session,
             midi_routing:cmd_rx.midi_routing(),
             midi_output_mask:0,
             midi_output_budget:256,
@@ -1006,11 +1011,11 @@ impl RtEngine {
             pad_voices: std::array::from_fn(|_| None),
             sampler_audition: None,
             pad_destinations: [0; 16],
-            pad_output: [[0.0; 2]; TRACKS],
+            pad_output: [[0.0; 2]; session::MAX_TRACKS],
             pad_targets: [None; 16],
             builtin: [None, None],
             fx_view: -1,
-            scene_fx: std::array::from_fn(|_| fx::FxChain::new(sr)),
+            scene_fx: (0..SCENES).map(|_| fx::FxChain::new(sr)).collect(),
             compose_target: None,
         };
         e.seed_demo();
@@ -1301,7 +1306,7 @@ impl RtEngine {
             let timer = self.load_profile.start();
             self.pad_output = self.tick_pad_sources();
             self.load_profile.pads(timer);
-            let mut scene_inputs = [[0.0_f32; 2]; SCENES];
+            let mut scene_inputs = [[0.0_f32; 2]; session::MAX_SCENES];
             for ti in 0..self.tracks.len() {
                 let timer = self.load_profile.start();
                 let (tl, tr, pfl) = self.render_track_cached(ti, any_solo);
@@ -1755,10 +1760,10 @@ impl RtEngine {
         d.keylock_dsp.render(source, d.pos, audio.sr as f64 / sr)
     }
 
-    fn tick_pad_sources(&mut self) -> [[f32; 2]; TRACKS] {
+    fn tick_pad_sources(&mut self) -> [[f32; 2]; session::MAX_TRACKS] {
         // Every source advances once, even when its destination is muted.
         // Routes outlive gate release so release envelopes keep their mixer.
-        let mut buses = [[0.0; 2]; TRACKS];
+        let mut buses = [[0.0; 2]; session::MAX_TRACKS];
         for (voice, filter) in self.sampler_poly.voices.iter_mut()
             .zip(self.sampler_poly.filters.iter_mut())
         {
@@ -1858,9 +1863,9 @@ impl RtEngine {
         }
     }
 
-    fn launch_clip(&mut self, track: usize, scene: u8, start: f64) {
+    fn launch_clip(&mut self, track: usize, scene: u16, start: f64) {
         let scene_index = scene as usize;
-        if track >= self.tracks.len() || scene_index >= SCENES {
+        if track >= self.tracks.len() || scene_index >= self.scene_fx.len() {
             return;
         }
         self.finish_recording_track(track);
@@ -1957,7 +1962,7 @@ impl RtEngine {
             }
             _ => None,
         };
-        if scene.is_some_and(|scene| scene >= SCENES) {
+        if scene.is_some_and(|scene| scene >= self.scene_fx.len()) {
             return;
         }
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
@@ -2338,7 +2343,7 @@ impl RtEngine {
             }
             Command::SetView(v) => self.view = v,
             Command::RoutedNoteOn { source, ch, note, vel, track } => {
-                if usize::from(track) < TRACKS && ch<=15 && note<=127 && vel<=127 {
+                if usize::from(track) < self.tracks.len() && ch<=15 && note<=127 && vel<=127 {
                     self.live_note_on(source,ch,note,vel,usize::from(track));
                 }
             }
@@ -2351,7 +2356,7 @@ impl RtEngine {
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);
-                if on && (track as usize) < TRACKS && note <= 127 && vel <= 127 {
+                if on && (track as usize) < self.tracks.len() && note <= 127 && vel <= 127 {
                     let t = track as usize;
                     if self.tracks[t].kind == 0 { self.trig_drum(t, note, vel as f32 / 127.0); }
                     else { self.tracks[t].poly.note_on_input(note, vel as f32 / 127.0, input); }
@@ -2360,7 +2365,7 @@ impl RtEngine {
             Command::SetNotes { track, scene, notes } => {
                 let t = track as usize;
                 let s = scene as usize;
-                if t < TRACKS && s < SCENES {
+                if t < self.tracks.len() && s < self.scene_fx.len() {
                     // Replacing the note list cancels captures into that list;
                     // a later physical release must not alter the replacement.
                     self.cancel_recording_clip(t, s);
@@ -2610,14 +2615,14 @@ impl RtEngine {
                 self.fx_view = if self.fx_view == t as i16 { -1 } else { t as i16 };
             }
             Command::OpenFxScene(s) => {
-                let id = 100 + s as i16;
+                let id = session::SCENE_FX_BASE + s as i16;
                 self.fx_view = if self.fx_view == id { -1 } else { id };
             }
             Command::CloseFx => self.fx_view = -1,
             Command::FxAdd(kind) => {
                 if self.active_chain().slots.len()>=128 {return;}
                 let Some(&id) = fx::FxId::all().get(kind as usize) else { return };
-                if !id.supports_scene() && !(0..TRACKS as i16).contains(&self.fx_view) {
+                if !id.supports_scene() && !(0..self.tracks.len() as i16).contains(&self.fx_view) {
                     return;
                 }
                 let slot = fx::FxSlot::new(id, self.sr);
@@ -2702,10 +2707,11 @@ impl RtEngine {
     }
 
     fn active_chain(&mut self) -> &mut fx::FxChain {
-        if self.fx_view >= 100 {
-            &mut self.scene_fx[(self.fx_view as usize - 100).min(SCENES - 1)]
+        let scene_count = self.scene_fx.len(); let track_count = self.tracks.len();
+        if self.fx_view >= session::SCENE_FX_BASE {
+            &mut self.scene_fx[(self.fx_view as usize - session::SCENE_FX_BASE as usize).min(scene_count - 1)]
         } else if self.fx_view >= 0 {
-            &mut self.tracks[self.fx_view as usize % TRACKS].fx
+            &mut self.tracks[self.fx_view as usize % track_count].fx
         } else {
             &mut self.scene_fx[0]
         }
@@ -2969,7 +2975,7 @@ impl Engine {
         let initial_playback=std::array::from_fn(|deck|rt.decks[deck].load_receipt.clone().unwrap());
         // Start empty and stopped. Builtin source generation is application
         // code; no external media/project is opened or automatically resumed.
-        for track in &mut rt.tracks {track.clips=std::array::from_fn(|_|Clip::empty());}
+        for track in &mut rt.tracks {track.clips=(0..SCENES).map(|_|Clip::empty()).collect();}
         for deck in &mut rt.decks {
             if let Some(receipt)=&deck.load_receipt {receipt.supersede();}
             *deck=DeckRt::new(48000.0);

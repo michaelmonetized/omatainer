@@ -197,7 +197,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
     };
     rt.apply(Command::LaunchClip {
         track: t as u8,
-        scene: s as u8,
+        scene: s as u16,
     });
     rt.apply(Command::LiveNoteOn {
         source: 44,
@@ -210,7 +210,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
         &mut rt,
         Command::SetNotes {
             track: t as u8,
-            scene: s as u8,
+            scene: s as u16,
             notes: vec![note(61)],
         },
     );
@@ -232,7 +232,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
         })
         && v.env.stage != 4));
     assert!(rt.playing);
-    assert_eq!(rt.tracks[t].playing.unwrap().scene, s as u8);
+    assert_eq!(rt.tracks[t].playing.unwrap().scene, s as u16);
 }
 
 #[test]
@@ -1071,7 +1071,7 @@ fn fallback_effect_targets_are_undoable_and_audio_clip_inputs_only_monitor() {
             note: 67,
         },
     );
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
 }
 
 #[test]
@@ -1273,7 +1273,7 @@ fn independent_short_holds_do_not_pin_prior_recording_inverses_during_dense_cont
     assert_eq!((total_allocations, total_frees), (0, 0));
     assert_eq!(rt.tracks[2].clips[7].notes.len(), 64);
     assert_eq!(rt.undo.entries.len(), MAX_ENTRIES);
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
     for track in &rt.tracks { assert_eq!(track.gain, 0.83); }
 }
 
@@ -1301,7 +1301,7 @@ fn overlapping_same_cell_owners_finalize_later_inverses_and_release_protection_i
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     assert_eq!(notes(&rt, 2, 7), [60]);
     assert_eq!(rt.tracks[2].clips[7].notes[0].len, first_duration, "later inverse must not restore old onset preview");
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
     rt.apply(owned_history_off(2, 64));
     rt.apply(Command::Redo);
     assert_eq!(notes(&rt, 2, 7), [60, 64]);
@@ -1322,7 +1322,7 @@ fn undo_of_later_inverse_finalizes_both_still_held_sources_before_swap() {
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     assert_eq!(rt.tracks[2].clips[7].notes.len(), 1);
     assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
     rt.note_recording.clock += 2.0;
     rt.apply(owned_history_off(1, 60));
     rt.apply(owned_history_off(2, 60));

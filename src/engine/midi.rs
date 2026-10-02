@@ -448,13 +448,13 @@ fn dispatch(
         }
         Action::Scene if pressed => {
             let _ = cmd.send(Command::LaunchScene {
-                scene: b.extra.min((SCENES - 1) as u8),
+                scene: u16::from(b.extra.min((SCENES - 1) as u8)),
             });
         }
         Action::Clip if pressed => {
             let _ = cmd.send(Command::LaunchClip {
                 track: b.deck.min((TRACKS - 1) as u8),
-                scene: b.extra.min((SCENES - 1) as u8),
+                scene: u16::from(b.extra.min((SCENES - 1) as u8)),
             });
         }
         Action::TrackFader => {

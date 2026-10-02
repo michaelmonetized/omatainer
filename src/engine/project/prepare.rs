@@ -45,6 +45,11 @@ impl Prepared {
             sampler_inst,
             sampler_oct
         );
+        rt.session = state.session.take().unwrap_or_else(|| session::Layout::legacy(state.tracks.iter().map(|t| t.name.clone()), state.scene_fx.len()));
+        if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
+        while rt.tracks.len() < state.tracks.len() { let track = rt.tracks[0].clone(); rt.tracks.push(track); }
+        rt.tracks.truncate(state.tracks.len());
+        rt.tracks.reserve(session::MAX_TRACKS - rt.tracks.len());
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
         rt.sync_midi_clock();
         rt.playing = false;
@@ -53,6 +58,7 @@ impl Prepared {
         rt.sampler_poly = synth(state.sampler_synth, output_sr);
         for (i, mut saved) in state.tracks.into_iter().enumerate() {
             for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose().map_err(Error::Invalid)?; }
+            rt.session.tracks[i].name = saved.name.clone();
             let track = &mut rt.tracks[i];
             track.name = saved.name;
             track.scene_bus = saved.scene_bus;
@@ -67,7 +73,7 @@ impl Prepared {
             track.eq_right = track.eq;
             track.drum_samples = saved.drums.map(|index| media[index].clone());
             track.fx = effects(saved.fx, output_sr);
-            track.clips = saved.clips.map(|c| Clip {
+            track.clips = saved.clips.into_iter().map(|c| Clip {
                 region: c.region,
                 lanes: c.lanes,
                 kind: c.kind,
@@ -76,7 +82,8 @@ impl Prepared {
                 notes: c.notes,
                 gain: c.gain,
                 audio: c.audio.map(|index| media[index].clone()),
-            });
+            }).collect();
+            track.clips.reserve(session::MAX_SCENES - track.clips.len());
             // Prepare the note heap off audio, then hold the launch until Play.
             track.project_resume = saved.launch.map(|p| PlayingClip {
                 scene: p.scene,
@@ -142,7 +149,8 @@ impl Prepared {
                 deck.publish_preparation();
             }
         }
-        rt.scene_fx = state.scene_fx.map(|rack| effects(rack, output_sr));
+        rt.scene_fx = state.scene_fx.into_iter().map(|rack| effects(rack, output_sr)).collect();
+        rt.scene_fx.reserve(session::MAX_SCENES - rt.scene_fx.len());
         rt.sampler_banks.clear();
         for saved in state.banks {
             let settings = match saved.settings {
@@ -174,7 +182,8 @@ impl Prepared {
             Arc::new(Mutex::new(Snapshot::default())),
         ).map_err(Error::Invalid)?);
         for track in &mut rt.tracks {
-            track.clips = std::array::from_fn(|_| Clip::empty());
+            track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
+            track.clips.reserve(session::MAX_SCENES - track.clips.len());
         }
         for deck in &mut rt.decks {
             *deck = DeckRt::new(output_sr as f32);
@@ -215,6 +224,7 @@ impl Prepared {
             master,
             cue_mix,
             tracks,
+            session,
             decks,
             master_fx,
             fx_kind,

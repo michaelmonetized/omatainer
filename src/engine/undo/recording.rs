@@ -52,7 +52,7 @@ impl RtEngine {
         let name = std::mem::replace(&mut clip.name, scratch.name);
         let patch = Patch::Clip {
             track: track as u8,
-            scene: scene as u8,
+            scene: scene as u16,
             value: Clip {
                 lanes: clip.lanes.clone(),
                         region: clip.region,

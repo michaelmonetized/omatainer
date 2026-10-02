@@ -109,7 +109,7 @@ pub struct Item {
 enum TargetLabel {
     None,
     Track(u8),
-    Clip(u8, u8),
+    Clip(u8, u16),
     Deck(u8),
     Effect(Rack, usize),
     Multiple,

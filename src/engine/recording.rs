@@ -230,11 +230,13 @@ impl RtEngine {
 }
 
 impl Recording {
-    pub(super) fn held_targets(&self) -> u64 {
-        self.held
-            .iter()
-            .flatten()
-            .fold(0, |mask, h| mask | 1u64 << (h.track * 8 + h.scene))
+    pub(super) fn held_targets(&self) -> [u64; super::session::MAX_TRACKS * super::session::MAX_SCENES / 64] {
+        let mut mask = [0; super::session::MAX_TRACKS * super::session::MAX_SCENES / 64];
+        for h in self.held.iter().flatten() {
+            let cell = h.track * super::session::MAX_SCENES + h.scene;
+            mask[cell / 64] |= 1u64 << (cell % 64);
+        }
+        mask
     }
 }
 

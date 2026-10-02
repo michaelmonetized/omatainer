@@ -40,7 +40,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     rt.bpm = 120.0;
     for track in &mut rt.tracks {
         track.stop_clip();
-        track.clips = std::array::from_fn(|_| Clip::empty());
+        track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
         track.poly = Poly::new(rt.sr, SynthInstrument::Pad, 16);
         track.fx.slots.clear();
     }

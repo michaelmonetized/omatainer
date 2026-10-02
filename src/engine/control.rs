@@ -1021,7 +1021,7 @@ impl CommandStats {
 
 // Only absolute assignments; jog, seek, note, transport, instrument changes,
 // relative controls and target selection must retain every event.
-fn parameter_key(command: &Command) -> Option<(u8, usize, u8)> {
+fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
     match *command {
         Command::SetBpm(_) => Some((0, 0, 0)),
         Command::Xfader(_) => Some((1, 0, 0)),
@@ -1031,13 +1031,13 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, u8)> {
         Command::TrackPan { track, .. } => Some((5, track as usize, 0)),
         Command::DeckPitch { deck, .. } => Some((6, deck as usize, 0)),
         Command::DeckGain { deck, .. } => Some((7, deck as usize, 0)),
-        Command::DeckEq { deck, band, .. } => Some((8, deck as usize, band)),
+        Command::DeckEq { deck, band, .. } => Some((8, deck as usize, band as usize)),
         Command::DeckFilter { deck, .. } => Some((9, deck as usize, 0)),
         Command::FxWet { slot, .. } => Some((10, slot as usize, 0)),
         Command::FxMix { slot, .. } => Some((11, slot, 0)),
-        Command::FxParam { slot, p, .. } => Some((12, slot, p)),
+        Command::FxParam { slot, p, .. } => Some((12, slot, p as usize)),
         Command::Quant(_) => Some((13, 0, 0)),
-        Command::ClipGain { track, scene, .. } => Some((14, track as usize, scene)),
+        Command::ClipGain { track, scene, .. } => Some((14, track as usize, scene as usize)),
         _ => None,
     }
 }

@@ -108,8 +108,11 @@ impl Publisher {
 struct Frame {
     values: Snapshot,
     samples: [Option<Arc<Sample>>; DECKS],
-    track_names: [usize; TRACKS],
-    clip_names: [[usize; SCENES]; TRACKS],
+    track_names: Vec<usize>,
+    scene_names: Vec<usize>,
+    track_count: usize,
+    scene_count: usize,
+    clip_names: Vec<Vec<usize>>,
     deck_titles: [usize; DECKS],
     bank_names: Vec<usize>,
     bank_count: usize,
@@ -131,6 +134,7 @@ fn copy(value: &mut String, source: &str) {
 impl Frame {
     fn new(empty_peaks: Arc<Vec<[f32; 3]>>) -> Self {
         let values = Snapshot {
+            session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
             tracks: (0..TRACKS)
                 .map(|_| TrackSnap {
                     clips: vec![ClipSnap::default(); SCENES],
@@ -148,8 +152,10 @@ impl Frame {
         Self {
             values,
             samples: std::array::from_fn(|_| None),
-            track_names: [0; TRACKS],
-            clip_names: [[0; SCENES]; TRACKS],
+            track_names: vec![0; session::MAX_TRACKS],
+            scene_names: vec![0; session::MAX_SCENES],
+            track_count: TRACKS, scene_count: SCENES,
+            clip_names: vec![vec![0; session::MAX_SCENES]; session::MAX_TRACKS],
             deck_titles: [0; DECKS],
             bank_names: Vec::new(),
             bank_count: 0,
@@ -164,26 +170,28 @@ impl Frame {
     fn capture(&mut self, rt: &RtEngine) {
         debug_assert!(self.samples.iter().all(Option::is_none));
         self.complete = false;
-        let chain = if rt.fx_view >= 0 && rt.fx_view < TRACKS as i16 {
+        self.track_count = rt.session.tracks.len(); self.scene_count = rt.session.scenes.len();
+        for (out, item) in self.scene_names.iter_mut().zip(&rt.session.scenes) { *out = item.name.len(); }
+        let chain = if rt.fx_view >= 0 && rt.fx_view < rt.tracks.len() as i16 {
             &rt.tracks[rt.fx_view as usize].fx
         } else {
-            &rt.scene_fx[if rt.fx_view >= 100 {
-                (rt.fx_view as usize - 100).min(SCENES - 1)
+            &rt.scene_fx[if rt.fx_view >= crate::engine::session::SCENE_FX_BASE {
+                (rt.fx_view as usize - crate::engine::session::SCENE_FX_BASE as usize).min(rt.scene_fx.len() - 1)
             } else {
                 0
             }]
         };
         self.fx_count = chain.slots.len();
         self.bank_count = rt.sampler_banks.len();
-        let mut fits = self.values.fx_slots.len() >= self.fx_count
+        let mut fits = self.values.session.as_ref().is_some_and(|layout| layout.fits(&rt.session)) && self.values.tracks.len() == self.track_count && self.values.fx_slots.len() >= self.fx_count
             && self.values.sampler_banks.len() >= self.bank_count
             && self.values.sampler_instances.capacity() >= self.bank_count;
-        for (index, track) in rt.tracks.iter().enumerate() {
-            self.track_names[index] = track.name.len();
-            fits &= self.values.tracks[index].name.capacity() >= track.name.len();
-            for (scene, clip) in track.clips.iter().enumerate() {
+        for (index, track) in rt.tracks.iter().take(self.track_count).enumerate() {
+            self.track_names[index] = track.name.len().max(rt.session.tracks[index].name.len());
+            fits &= self.values.tracks.get(index).is_some_and(|out| out.name.capacity() >= track.name.len() && out.clips.len() == self.scene_count);
+            for (scene, clip) in track.clips.iter().take(self.scene_count).enumerate() {
                 self.clip_names[index][scene] = clip.name.len();
-                fits &= self.values.tracks[index].clips[scene].name.capacity() >= clip.name.len();
+                fits &= self.values.tracks.get(index).and_then(|t| t.clips.get(scene)).is_some_and(|out| out.name.capacity() >= clip.name.len());
             }
         }
         for (index, deck) in rt.decks.iter().enumerate() {
@@ -204,17 +212,19 @@ impl Frame {
         }
 
         let target = &mut self.values;
+        target.session.as_mut().unwrap().copy_from_prepared(&rt.session);
         target.performance = rt.performance.status();
         let held = rt.note_recording.held_targets();
         for (track_index, (out, track)) in target.tracks.iter_mut().zip(&rt.tracks).enumerate() {
             copy(&mut out.name, &track.name);
+            copy(&mut target.session.as_mut().unwrap().tracks[track_index].name, &track.name);
             out.gain = track.gain;
             out.pan = track.pan;
             out.mute = track.mute;
             out.solo = track.solo;
             out.armed = track.armed;
             out.meter = track.meter;
-            out.playing_scene = track.playing.map(|p| p.scene as i8).unwrap_or(-1);
+            out.playing_scene = track.playing.map(|p| p.scene as i16).unwrap_or(-1);
             out.clip_pending = track.playing.is_some_and(|p| p.last_beat < 0.0);
             out.clip_progress = track
                 .playing
@@ -229,7 +239,7 @@ impl Frame {
             out.clip_looping = track.playing.is_some_and(|p| p.looping);
             for (scene_index, (out, clip)) in out.clips.iter_mut().zip(&track.clips).enumerate() {
                 out.note_count = clip.notes.len();
-                out.recording_held = held & (1u64 << (track_index * SCENES + scene_index)) != 0;
+                out.recording_held = held[(track_index * session::MAX_SCENES + scene_index) / 64] & (1u64 << ((track_index * session::MAX_SCENES + scene_index) % 64)) != 0;
                 out.kind = match clip.kind {
                     ClipKind::Empty => 0,
                     ClipKind::Midi => 1,
@@ -351,6 +361,9 @@ impl Frame {
     }
 
     fn prepare(&mut self) {
+        self.values.tracks.resize_with(self.track_count, TrackSnap::default);
+        for track in &mut self.values.tracks { track.clips.resize_with(self.scene_count, ClipSnap::default); }
+        self.values.session.as_mut().unwrap().prepare_storage(&self.track_names[..self.track_count], &self.scene_names[..self.scene_count]);
         for (index, track) in self.values.tracks.iter_mut().enumerate() {
             reserve(&mut track.name, self.track_names[index]);
             for (scene, clip) in track.clips.iter_mut().enumerate() {

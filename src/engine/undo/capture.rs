@@ -7,10 +7,10 @@ enum Target {
     Global,
     Sampler(usize),
     Track(u8),
-    Gain(u8, u8),
+    Gain(u8, u16),
     Deck(u8),
     Seek(u8),
-    Clip(u8, u8),
+    Clip(u8, u16),
     Media(u8),
     Slot(Rack, usize),
     Effect(Rack, usize),
@@ -40,39 +40,39 @@ impl Plan {
             | Mute { track }
             | Solo { track }
             | Arm { track }
-                if (*track as usize) < TRACKS =>
+                if (*track as usize) < rt.tracks.len() =>
             {
-                (Target::Track(*track), Name::Track, 100 + *track as u64)
+                (Target::Track(*track), Name::Track, 1000 + *track as u64)
             }
             ClipGain { track, scene, .. }
-                if (*track as usize) < TRACKS && (*scene as usize) < SCENES =>
+                if (*track as usize) < rt.tracks.len() && (*scene as usize) < rt.scene_fx.len() =>
             {
                 (
                     Target::Gain(*track, *scene),
                     Name::ClipGain,
-                    200 + (*track as u64) * 8 + *scene as u64,
+                    10000 + (*track as u64) * session::MAX_SCENES as u64 + *scene as u64,
                 )
             }
             MidiEdit(request) => (Target::Clip(request.baseline.track, request.baseline.scene),
-                Name::ClipNotes, 300 + request.baseline.track as u64 * 8 + request.baseline.scene as u64),
+                Name::ClipNotes, 100000 + request.baseline.track as u64 * session::MAX_SCENES as u64 + request.baseline.scene as u64),
             SetNotes { track, scene, .. }
-                if (*track as usize) < TRACKS && (*scene as usize) < SCENES =>
+                if (*track as usize) < rt.tracks.len() && (*scene as usize) < rt.scene_fx.len() =>
             {
                 (
                     Target::Clip(*track, *scene),
                     Name::ClipNotes,
-                    300 + (*track as u64) * 8 + *scene as u64,
+                    100000 + (*track as u64) * session::MAX_SCENES as u64 + *scene as u64,
                 )
             }
             ComposeArm { track, scene }
-                if *track < TRACKS
-                    && *scene < SCENES
+                if *track < rt.tracks.len()
+                    && *scene < rt.scene_fx.len()
                     && rt.tracks[*track].clips[*scene].kind == ClipKind::Empty =>
             {
                 (
-                    Target::Clip(*track as u8, *scene as u8),
+                    Target::Clip(*track as u8, *scene as u16),
                     Name::ComposeClip,
-                    300 + (*track as u64) * 8 + *scene as u64,
+                    100000 + (*track as u64) * session::MAX_SCENES as u64 + *scene as u64,
                 )
             }
             DeckAudio { deck, .. } | DeckUnload { deck } => (
@@ -149,11 +149,11 @@ impl Plan {
                 (
                     Target::Effect(rack, *index),
                     Name::Effect,
-                    10000
+                    1000000
                         + *index as u64
                         + match rack {
                             Rack::Track(t) => t as u64 * 128,
-                            Rack::Scene(s) => (8 + s as u64) * 128,
+                            Rack::Scene(s) => (session::MAX_TRACKS as u64 + s as u64) * 128,
                         },
                 )
             }
@@ -211,7 +211,7 @@ impl RtEngine {
             return Some(c);
         }
         if matches!(&c, Command::SetNotes { track, scene, .. }
-            if *track as usize >= TRACKS || *scene as usize >= SCENES)
+            if *track as usize >= self.tracks.len() || *scene as usize >= self.scene_fx.len())
         {
             self.undo.retire_command(c);
             return None;

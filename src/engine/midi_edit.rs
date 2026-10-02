@@ -11,7 +11,7 @@ use std::sync::{
 #[derive(Clone, Debug)]
 pub(crate) struct Document {
     pub track: u8,
-    pub scene: u8,
+    pub scene: u16,
     pub epoch: u64,
     pub kind: super::ClipKind,
     pub name: String,
@@ -24,7 +24,7 @@ impl Document {
     pub fn capture(
         captured: super::project::Captured,
         track: u8,
-        scene: u8,
+        scene: u16,
     ) -> Result<Arc<Self>, String> {
         let clip = captured
             .state
@@ -258,7 +258,7 @@ impl super::RtEngine {
             .playing
             .or(self.tracks[t].project_resume)
             .map(|p| p.scene)
-            == Some(s as u8)
+            == Some(s as u16)
         {
             self.tracks[t].release_clip_notes();
         }
@@ -474,7 +474,7 @@ pub(super) fn reject_legacy_fields(state: &serde_json::Value) -> Result<(), &'st
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn document(rt: &super::super::RtEngine, track: u8, scene: u8) -> Arc<Document> {
+    fn document(rt: &super::super::RtEngine, track: u8, scene: u16) -> Arc<Document> {
         let clip = &rt.tracks[track as usize].clips[scene as usize];
         Arc::new(Document {
             track,

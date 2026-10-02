@@ -88,7 +88,7 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
             rt.recording = true;
         }
         let before = scene_state(&rt);
-        for scene in SCENES as u8..=u8::MAX {
+        for scene in SCENES as u16..=u16::MAX {
             let commands = [
                 Command::LaunchScene { scene },
                 Command::ToggleScene { scene },
@@ -133,7 +133,7 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
 pub(super) fn check_valid_scene_operations() {
     let mut rt = engine();
     rt.quant = 0.0;
-    for scene in 0..SCENES as u8 {
+    for scene in 0..SCENES as u16 {
         for track in &mut rt.tracks {
             track.clips[scene as usize].kind = ClipKind::Midi;
         }
@@ -158,7 +158,7 @@ pub(super) fn check_valid_scene_operations() {
         rt.apply(Command::ComposeArm { track: 0, scene: scene as usize });
         assert_eq!(rt.compose_target, Some(engine::ComposeTarget { track: 0, scene: scene as usize }));
         rt.apply(Command::OpenFxScene(scene));
-        assert_eq!(rt.fx_view, 100 + scene as i16);
+        assert_eq!(rt.fx_view, crate::engine::session::SCENE_FX_BASE + scene as i16);
 
         rt.apply(Command::LaunchScene { scene });
         assert!(rt

@@ -26,7 +26,7 @@ pub(super) struct Editor {
     tempo: TempoChoice,
     reviewed: bool,
     rounding: bool,
-    cells: BTreeSet<(u8, u8)>,
+    cells: BTreeSet<(u8, u16)>,
     ppqn: u16,
     single_track: bool,
     include_muted: bool,
@@ -92,7 +92,7 @@ impl Editor {
                 Mapping {
                     source,
                     destination: (index < TRACKS * SCENES)
-                        .then_some(((index / SCENES) as u8, (index % SCENES) as u8)),
+                        .then_some(((index / SCENES) as u8, (index % SCENES) as u16)),
                 }
             })
             .collect();
@@ -223,7 +223,7 @@ impl App {
         self.midi_files.cells.clear();
         self.midi_files.cells.insert((
             self.snap.selected_track as u8,
-            self.snap.selected_scene as u8,
+            self.snap.selected_scene as u16,
         ));
         self.midi_files.message = if exporting { "Select clips and choose an unused .mid path. Export uses source note coordinates and retains trailing file silence; clip loop/launch transforms are not flattened." }
             else { "Inspect a Standard MIDI File, then review track/channel mapping and tempo choices." }.into();
@@ -256,10 +256,10 @@ impl App {
                         for t in 0..TRACKS {
                             for s in 0..SCENES {
                                 let midi = self.snap.tracks.get(t).and_then(|t| t.clips.get(s)).is_some_and(|c| c.kind == 1);
-                                let mut checked = editor.cells.contains(&(t as u8, s as u8));
+                                let mut checked = editor.cells.contains(&(t as u8, s as u16));
                                 let response = ui.add_enabled(!busy && midi, egui::Checkbox::new(&mut checked, format!("T{} S{}", t + 1, s + 1))).help(ui, HelpControl::MidiFileMapping);
                                 response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Checkbox, !busy && midi, format!("Track {} scene {}", t + 1, s + 1)));
-                                if response.changed() { if checked { editor.cells.insert((t as u8, s as u8)); } else { editor.cells.remove(&(t as u8, s as u8)); } }
+                                if response.changed() { if checked { editor.cells.insert((t as u8, s as u16)); } else { editor.cells.remove(&(t as u8, s as u16)); } }
                             }
                             ui.end_row();
                         }
@@ -290,13 +290,13 @@ impl App {
                                         ui.label(&label);
                                         let mut used = m.destination.is_some();
                                         if ui.checkbox(&mut used, format!("Import {label}")).help(ui, HelpControl::MidiFileMapping).changed() {
-                                            m.destination = used.then_some((self.snap.selected_track as u8, self.snap.selected_scene as u8));
+                                            m.destination = used.then_some((self.snap.selected_track as u8, self.snap.selected_scene as u16));
                                         }
                                         if let Some((track, scene)) = &mut m.destination {
                                             let mut t = u16::from(*track) + 1; let mut s = u16::from(*scene) + 1;
                                             ui.label("Track"); number(ui, &format!("{label} destination track"), &mut t, 1, TRACKS as u16);
                                             ui.label("Scene"); number(ui, &format!("{label} destination scene"), &mut s, 1, SCENES as u16);
-                                            *track = (t - 1) as u8; *scene = (s - 1) as u8;
+                                            *track = (t - 1) as u8; *scene = (s - 1) as u16;
                                         }
                                     }));
                                 }

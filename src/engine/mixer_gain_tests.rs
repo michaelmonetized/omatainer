@@ -15,7 +15,7 @@ fn fixture(count: usize, legacy: bool) -> RtEngine {
         track.fx.slots.clear();
         track.poly = Poly::new(rt.sr, SynthInstrument::Keys, 8);
         track.poly.note_on(48 + index as u8, 0.4);
-        track.clips = std::array::from_fn(|_| Clip::empty());
+        track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
     }
     for chain in &mut rt.scene_fx {
         chain.slots.clear();

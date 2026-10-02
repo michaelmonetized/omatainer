@@ -8,7 +8,7 @@ pub(super) enum Action {
     Play(u8),
     Cue(u8),
     Sync(u8),
-    Scene(u8),
+    Scene(u16),
     Crossfader(u8),
     Load,
     Help,

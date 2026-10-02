@@ -82,7 +82,7 @@ impl Operation {
             Self::TogglePlay {} => Command::TogglePlay,
             Self::Record {} => Command::Record,
             Self::Tap {} => Command::Tap(std::time::Instant::now()),
-            Self::Scene { n } => Command::LaunchScene { scene: n.0 },
+            Self::Scene { n } => Command::LaunchScene { scene: u16::from(n.0) },
             Self::DeckPlay { deck } => Command::DeckPlay { deck: deck.0 },
             Self::DeckCue { deck } => Command::DeckCue { deck: deck.0 },
         })

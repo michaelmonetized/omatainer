@@ -1,9 +1,12 @@
 use super::model::*;
 use super::*;
 mod sampler_tests;
+mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {
     state.as_object_mut().unwrap().remove("conductor");
+    state.as_object_mut().unwrap().remove("session");
+    if state["fx_view"].as_i64().is_some_and(|v| v >= session::SCENE_FX_BASE as i64) { state["fx_view"] = (state["fx_view"].as_i64().unwrap() - (session::SCENE_FX_BASE as i64 - 100)).into(); }
     for track in state["tracks"].as_array_mut().unwrap() {
         for clip in track["clips"].as_array_mut().unwrap() {
             clip.as_object_mut().unwrap().remove("region");
@@ -127,6 +130,7 @@ fn schema_six_note_channels_and_ticks_roundtrip_and_cannot_impersonate_schema_fi
     assert_eq!(captured(&restored.rt).state.tracks[2].clips[7].notes,exact);
     let mut legacy=serde_json::to_value(&saved.state).unwrap();legacy["version"]=5.into();
     legacy.as_object_mut().unwrap().remove("conductor");
+    legacy.as_object_mut().unwrap().remove("session");
     for track in legacy["tracks"].as_array_mut().unwrap() {for clip in track["clips"].as_array_mut().unwrap() {
         clip.as_object_mut().unwrap().remove("lanes");
         for note in clip["notes"].as_array_mut().unwrap() {for field in ["channel","release_vel","source_timing"] {note.as_object_mut().unwrap().remove(field);}}
@@ -233,7 +237,7 @@ fn populated() -> RtEngine {
     rt.selected_scene = 6;
     rt.selected_deck = 1;
     rt.view = View::Compose;
-    rt.fx_view = 103;
+    rt.fx_view = session::SCENE_FX_BASE + 3;
     rt
 }
 
@@ -862,6 +866,7 @@ fn version_one_projects_migrate_empty_cue_names_and_colors_and_unknown_versions_
     let captured = captured(&original);
     let mut json = serde_json::to_value(&captured.state).unwrap();
     json["version"] = serde_json::json!(1);
+    json.as_object_mut().unwrap().remove("session");
     legacy_midi_fields(&mut json);
     for bank in json["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); }
     for deck in json["decks"].as_array_mut().unwrap() {
@@ -886,6 +891,7 @@ fn version_two_projects_keep_cue_metadata_with_no_invented_manual_grid() {
     let captured = captured(&original);
     let mut json = serde_json::to_value(&captured.state).unwrap();
     json["version"] = serde_json::json!(2);
+    json.as_object_mut().unwrap().remove("session");
     legacy_midi_fields(&mut json);
     for bank in json["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); }
     for deck in json["decks"].as_array_mut().unwrap() { deck.as_object_mut().unwrap().remove("grid"); }

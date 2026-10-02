@@ -3,7 +3,7 @@ use super::*;
 #[derive(Clone, Copy)]
 pub(super) struct ClipGainEdit {
     pub track: u8,
-    pub scene: u8,
+    pub scene: u16,
     pub value: f32,
 }
 

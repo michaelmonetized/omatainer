@@ -26,7 +26,7 @@ pub(super) enum Job {
     },
     Export {
         path: PathBuf,
-        cells: Vec<(u8, u8)>,
+        cells: Vec<(u8, u16)>,
         options: ExportOptions,
         work: WorkPermit,
     },

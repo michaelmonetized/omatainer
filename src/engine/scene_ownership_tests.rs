@@ -5,7 +5,7 @@ fn fixture() -> RtEngine {
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
     rt.quant = 0.0;
     for track in &mut rt.tracks {
-        track.clips = std::array::from_fn(|_| Clip::empty());
+        track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
         track.fx.slots.clear();
     }
     rt.tracks[1].pan = -1.0;
@@ -21,7 +21,7 @@ fn occupy(rt: &mut RtEngine, track: usize, scene: usize) {
 fn every_scene_panel_owns_its_settings_and_publishes_only_its_own_slots() {
     let mut rt = fixture();
     for scene in 0..SCENES {
-        rt.apply(Command::OpenFxScene(scene as u8));
+        rt.apply(Command::OpenFxScene(scene as u16));
         rt.publish_for_test();
         assert!(rt.snap.lock().fx_slots.is_empty());
         rt.apply(Command::FxAdd(9)); // Filter has two implemented scene parameters.
@@ -37,7 +37,7 @@ fn every_scene_panel_owns_its_settings_and_publishes_only_its_own_slots() {
     }
     for scene in (0..SCENES).rev() {
         rt.apply(Command::CloseFx);
-        rt.apply(Command::OpenFxScene(scene as u8));
+        rt.apply(Command::OpenFxScene(scene as u16));
         rt.publish_for_test();
         let slots = rt.snap.lock().fx_slots.clone();
         assert_eq!(slots.len(), 1);

@@ -11,22 +11,28 @@ pub(super) struct Frame {
     shape: Shape,
 }
 
-#[derive(Default)]
 struct Shape {
-    names: [usize; TRACKS],
-    clips: [[usize; SCENES]; TRACKS],
-    notes: [[usize; SCENES]; TRACKS],
-    track_fx: [usize; TRACKS],
-    scene_fx: [usize; SCENES],
+    names: Vec<usize>,
+    clips: Vec<Vec<usize>>,
+    notes: Vec<Vec<usize>>,
+    track_fx: Vec<usize>,
+    scene_fx: Vec<usize>,
     titles: [usize; DECKS],
+    track_count: usize,
+    scene_count: usize,
+    scene_names: Vec<usize>,
     banks: usize,
     bank_names: [usize; MAX_BANKS],
+}
+
+impl Default for Shape {
+    fn default() -> Self { Self { names: vec![0; session::MAX_TRACKS], clips: vec![vec![0;session::MAX_SCENES];session::MAX_TRACKS], notes: vec![vec![0;session::MAX_SCENES];session::MAX_TRACKS], track_fx: vec![0;session::MAX_TRACKS], scene_fx: vec![0;session::MAX_SCENES], titles:[0;DECKS], banks:0, bank_names:[0;MAX_BANKS], track_count:TRACKS, scene_count:SCENES, scene_names:vec![0;session::MAX_SCENES] } }
 }
 
 impl Frame {
     pub fn new() -> Self {
         Self {
-            state: State::blank(),
+            state: { let mut state = State::blank(); state.session = Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)); state },
             media: Vec::with_capacity(MAX_MEDIA_REFS),
             checkpoint: undo::Checkpoint::default(),
             revision: 0,
@@ -40,6 +46,11 @@ impl Frame {
     /// Worker only. Audio reports the required capacities without growing any
     /// storage. A later callback copies one coherent block-boundary state.
     pub fn prepare(&mut self) {
+        let blank = State::blank();
+        self.state.tracks.resize_with(self.shape.track_count, || blank.tracks[0].clone());
+        for track in &mut self.state.tracks { track.clips.resize_with(self.shape.scene_count, || blank.tracks[0].clips[0].clone()); }
+        self.state.scene_fx.resize_with(self.shape.scene_count, Vec::new);
+        self.state.session.as_mut().unwrap().prepare_storage(&self.shape.names[..self.shape.track_count], &self.shape.scene_names[..self.shape.scene_count]);
         for (i, track) in self.state.tracks.iter_mut().enumerate() {
             reserve_string(&mut track.name, self.shape.names[i]);
             track
@@ -72,25 +83,26 @@ impl Frame {
         debug_assert!(self.media.is_empty());
         self.error = None;
         self.complete = false;
-        if rt.tracks.len() != TRACKS
+        if rt.session.tracks.len() > session::MAX_TRACKS || rt.session.scenes.len() > session::MAX_SCENES
             || rt.sampler_banks.len() > MAX_BANKS
         {
             self.error = Some("unsupported track or sample-bank count");
             return;
         }
         let shape = &mut self.shape;
-        let mut fits = true;
+        shape.track_count = rt.session.tracks.len(); shape.scene_count = rt.session.scenes.len();
+        for (out,item) in shape.scene_names.iter_mut().zip(&rt.session.scenes) { *out = item.name.len(); }
+        let mut fits = self.state.tracks.len() == shape.track_count && self.state.scene_fx.len() == shape.scene_count && self.state.session.as_ref().is_some_and(|layout| layout.fits(&rt.session));
         let mut notes = 0;
-        for (i, track) in rt.tracks.iter().enumerate() {
-            shape.names[i] = track.name.len();
+        for (i, track) in rt.tracks.iter().take(shape.track_count).enumerate() {
+            shape.names[i] = track.name.len().max(rt.session.tracks[i].name.len());
             shape.track_fx[i] = track.fx.slots.len();
             if track.name.len() > MAX_TEXT_BYTES || track.fx.slots.len() > MAX_FX_PER_RACK {
                 self.error = Some("track name or rack exceeds project format limits");
                 return;
             }
-            fits &= self.state.tracks[i].name.capacity() >= shape.names[i]
-                && self.state.tracks[i].fx.capacity() >= shape.track_fx[i];
-            for (j, clip) in track.clips.iter().enumerate() {
+            fits &= self.state.tracks.get(i).is_some_and(|out| out.name.capacity() >= shape.names[i] && out.fx.capacity() >= shape.track_fx[i] && out.clips.len() == shape.scene_count);
+            for (j, clip) in track.clips.iter().take(shape.scene_count).enumerate() {
                 shape.clips[i][j] = clip.name.len();
                 shape.notes[i][j] = clip.notes.len();
                 if clip.name.len() > MAX_TEXT_BYTES || clip.notes.len() > MAX_NOTES_PER_CLIP {
@@ -98,8 +110,7 @@ impl Frame {
                     return;
                 }
                 notes += clip.notes.len();
-                fits &= self.state.tracks[i].clips[j].name.capacity() >= clip.name.len()
-                    && self.state.tracks[i].clips[j].notes.capacity() >= clip.notes.len();
+                fits &= self.state.tracks.get(i).and_then(|t| t.clips.get(j)).is_some_and(|out| out.name.capacity() >= clip.name.len() && out.notes.capacity() >= clip.notes.len());
             }
         }
         if notes > MAX_TOTAL_NOTES {
@@ -112,7 +123,7 @@ impl Frame {
                 self.error = Some("scene rack exceeds project format limits");
                 return;
             }
-            fits &= self.state.scene_fx[i].capacity() >= rack.slots.len();
+            fits &= self.state.scene_fx.get(i).is_some_and(|out| out.capacity() >= rack.slots.len());
         }
         for (i, deck) in rt.decks.iter().enumerate() {
             shape.titles[i] = deck.title.len();
@@ -141,6 +152,7 @@ impl Frame {
             return;
         }
         let target = &mut self.state;
+        target.session.as_mut().unwrap().copy_from_prepared(&rt.session);
         macro_rules! scalars { ($($field:ident),* $(,)?) => { $(target.$field = rt.$field;)* }; }
         scalars!(
             bpm,
@@ -165,9 +177,10 @@ impl Frame {
         );
         target.conductor = rt.conductor.clone();
         target.sampler_synth = synth(&rt.sampler_poly);
-        for (i, track) in rt.tracks.iter().enumerate() {
+        for (i, track) in rt.tracks.iter().take(self.shape.track_count).enumerate() {
             let out = &mut target.tracks[i];
             copy_string(&mut out.name, &track.name);
+            copy_string(&mut target.session.as_mut().unwrap().tracks[i].name, &track.name);
             out.scene_bus = track.scene_bus;
             out.launch = track.playing.or(track.project_resume).map(|p| Launch {
                 scene: p.scene,
@@ -184,7 +197,7 @@ impl Frame {
             out.kind = track.kind;
             out.synth = synth(&track.poly);
             out.eq = eq(&track.eq);
-            for (j, clip) in track.clips.iter().enumerate() {
+            for (j, clip) in track.clips.iter().take(self.shape.scene_count).enumerate() {
                 let saved = &mut out.clips[j];
                 saved.kind = clip.kind;
                 saved.region = clip.region;
