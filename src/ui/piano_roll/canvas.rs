@@ -53,7 +53,7 @@ fn note_rect(note: &MidiNote, body: Rect, rows: &[u8], draft: &Draft) -> Option<
         ),
     ))
 }
-pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft) -> Result<(), String> {
+pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option<&crate::engine::midi_data::Conductor>) -> Result<(), String> {
     let (rect, response) = ui.allocate_exact_size(
         Vec2::new(ui.available_width().max(140.0), 290.0),
         Sense::click_and_drag(),
@@ -119,7 +119,8 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft) -> Result<(), 
     for index in 0..=count.min(1024) {
         let beat = first + index as f64 * grid_step;
         let x = body.left() + (beat - draft.view_beat) as f32 * draft.beat_pixels;
-        let bar = (beat / 4.0).fract().abs() < 1e-6;
+        let (bar_number, within) = timing.map_or(((beat / 4.0).floor() as u32 + 1, beat.rem_euclid(4.0) as f32), |map| { let (bar, within, _) = map.position(beat); (bar, within) });
+        let bar = within.abs() < 1e-6;
         painter.line_segment(
             [Pos2::new(x, body.top()), Pos2::new(x, body.bottom())],
             Stroke::new(if bar { 1.0_f32 } else { 0.5_f32 }, theme.fg_dim),
@@ -130,8 +131,8 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft) -> Result<(), 
                 egui::Align2::LEFT_TOP,
                 format!(
                     "{}:{:.2}",
-                    (beat / 4.0).floor() as u32 + 1,
-                    beat.rem_euclid(4.0) + 1.0
+                    bar_number,
+                    within + 1.0
                 ),
                 FontId::monospace(10.0),
                 theme.fg,
@@ -139,6 +140,13 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft) -> Result<(), 
         }
     }
     // Distinct marker lanes keep clip and loop bounds independently draggable.
+    if let Some(map) = timing {
+        for (beat, bar) in map.bar_boundaries(draft.view_beat, visible_end, 1024) {
+            let x = body.left() + (beat - draft.view_beat) as f32 * draft.beat_pixels;
+            painter.line_segment([Pos2::new(x, body.top()), Pos2::new(x, body.bottom())], Stroke::new(1.0, theme.fg_dim));
+            painter.text(Pos2::new(x + 2.0, rect.top() + 7.0), egui::Align2::LEFT_TOP, format!("{bar}:1"), FontId::monospace(10.0), theme.fg);
+        }
+    }
     for (index, label, value) in [
         (0, "Clip start marker", draft.region.start),
         (1, "Clip end marker", draft.region.end),

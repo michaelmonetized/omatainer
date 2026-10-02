@@ -351,6 +351,7 @@ impl Patch {
     pub fn valid(&self, rt: &RtEngine) -> bool {
         match self {
             Self::Session(value) => value.valid(rt),
+            Self::Conductor { .. } | Self::Global(_) => rt.count_in.is_none(),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
                 && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
                 else { *index < rt.sampler_banks.len() },

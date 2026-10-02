@@ -232,6 +232,7 @@ mod tests {
 
 impl super::RtEngine {
     pub(super) fn retire_conductor(&mut self) {
+        self.count_in = None;
         if let Some(conductor) = self.conductor.take() {
             let bytes = conductor.bytes();
             self.undo.retire_midi_conductor(conductor, bytes);

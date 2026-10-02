@@ -473,7 +473,7 @@ impl RtEngine {
         if request.session_namespace.is_some_and(|namespace| namespace != self.session.namespace)
             || request.epoch != self.undo.checkpoint().epoch
             || request.change_conductor
-                && (self.recording
+                && (self.recording || self.count_in.is_some()
                     || self.has_held_project_notes()
                     || (self.conductor.is_none() && self.bpm != request.baseline_bpm)
                     || self.conductor != request.baseline_conductor)
@@ -701,13 +701,14 @@ pub(crate) fn export_with_cancel(
         tracks.push(data);
     }
     if options.session_conductor {
+        let end_tick = tracks.iter().map(|t| t.end_tick).max().unwrap();
         let meta = if let Some(conductor) = &state.conductor {
-            conductor
-                .meta()
+            export_conductor(conductor, options.ppqn, end_tick, &mut cancel)?
                 .into_iter()
                 .map(|mut m| {
-                    m.tick =
-                        convert_tick(m.tick, conductor.ppqn, options.ppqn, options.allow_rounding)?;
+                    if !matches!(m.value, MetaValue::Tempo(_)) || !conductor.tempos.iter().any(|p| p.ramp) {
+                        m.tick = convert_tick(m.tick, conductor.ppqn, options.ppqn, options.allow_rounding)?;
+                    }
                     Ok(m)
                 })
                 .collect::<Result<Vec<_>, String>>()?
@@ -730,7 +731,7 @@ pub(crate) fn export_with_cancel(
                 },
             ]
         };
-        let end_tick = tracks.iter().map(|t| t.end_tick).max().unwrap();
+        let end_tick = end_tick.max(meta.iter().map(|m| m.tick).max().unwrap_or(0));
         tracks.insert(
             0,
             smf::Track {
@@ -781,6 +782,42 @@ pub(crate) fn export_with_cancel(
     };
     smf::encode_with_cancel(&file, false, &mut cancel).map_err(|e| e.to_string())?;
     Ok(file)
+}
+
+/// Encode exact constant tempos and tick-averaged ramp segments.
+/// `map`, `ppqn` and `end_tick` select the conductor and exported time range;
+/// `cancel` stops worker preparation. Returns bounded MIDI metadata or an error.
+fn export_conductor(map: &Conductor, ppqn: u16, end_tick: u64, cancel: &mut impl FnMut() -> bool) -> Result<Vec<smf::Meta>, String> {
+    if !map.tempos.iter().any(|point| point.ramp) { return Ok(map.meta()); }
+    let ratio = f64::from(ppqn) / f64::from(map.ppqn);
+    let samples: u64 = map.tempos.windows(2).filter(|pair| pair[0].ramp).map(|pair| {
+        let start = (pair[0].tick as f64 * ratio).ceil() as u64;
+        let end = (pair[1].tick as f64 * ratio).ceil() as u64;
+        end.min(end_tick.saturating_add(1)).saturating_sub(start)
+    }).sum();
+    if samples > (smf::MAX_EVENTS / 2) as u64 { return Err("MIDI tempo ramp exceeds 131072 sampled ticks; reduce export PPQN or shorten the exported clips".into()); }
+    let mut result: Vec<_> = map.meta().into_iter().filter(|m| matches!(m.value, MetaValue::Meter { .. })).collect();
+    let mut previous = None;
+    let mut tick = 0;
+    while tick <= end_tick {
+        checkpoint(cancel)?;
+        let beat = tick as f64 / f64::from(ppqn);
+        let index = map.tempos.partition_point(|point| point.tick as f64 <= beat * f64::from(map.ppqn)).saturating_sub(1);
+        let point = &map.tempos[index];
+        let micros = if point.ramp {
+            ((map.seconds_at((tick + 1) as f64 / f64::from(ppqn)) - map.seconds_at(beat)) * f64::from(ppqn) * 1_000_000.0).round() as u32
+        } else { point.micros };
+        if previous != Some(micros) {
+            if result.len() >= smf::MAX_EVENTS / 2 { return Err("MIDI tempo ramp exceeds 131072 events; reduce export PPQN or shorten the exported clips".into()); }
+            result.push(smf::Meta { tick, order: result.len() as u32, value: MetaValue::Tempo(micros) });
+            previous = Some(micros);
+        }
+        tick = if point.ramp { tick + 1 } else {
+            map.tempos.get(index + 1).map_or(end_tick.saturating_add(1), |next| ((next.tick as f64 * f64::from(ppqn) / f64::from(map.ppqn)).ceil() as u64).max(tick + 1))
+        };
+    }
+    for (order, event) in result.iter_mut().enumerate() { event.order = order as u32; }
+    Ok(result)
 }
 
 #[cfg(test)]

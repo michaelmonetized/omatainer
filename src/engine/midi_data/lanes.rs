@@ -480,6 +480,28 @@ impl Conductor {
         });
         tempos.chain(meters).collect()
     }
+
+    /// Enumerate visible bar boundaries, including a partial bar at a meter change.
+    /// `start` and `end` are quarter-note coordinates; `limit` bounds UI work.
+    /// Returns each boundary and its pickup-aware bar number, in time order.
+    pub fn bar_boundaries(&self, start: f64, end: f64, limit: usize) -> Vec<(f64, u32)> {
+        let mut result = Vec::new();
+        if !start.is_finite() || !end.is_finite() || end < start { return result; }
+        for (index, meter) in self.meters.iter().enumerate() {
+            let origin = if index == 0 { self.native.map_or(0.0, |s| s.pickup) } else { meter.tick as f64 / f64::from(self.ppqn) };
+            let next = self.meters.get(index + 1).map_or(f64::INFINITY, |m| m.tick as f64 / f64::from(self.ppqn));
+            if next <= start { continue; }
+            if origin > end { break; }
+            let length = f64::from(meter.numerator) * 4.0 / f64::from(1u32 << meter.denominator_power);
+            let first = ((start - origin) / length).ceil().max(0.0);
+            let mut beat = origin + first * length;
+            while beat <= end && beat < next && result.len() < limit {
+                result.push((beat, self.position(beat).0)); beat += length;
+            }
+            if result.len() == limit { break; }
+        }
+        result
+    }
 }
 
 fn is_false(value: &bool) -> bool {

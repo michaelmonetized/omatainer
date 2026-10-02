@@ -309,6 +309,7 @@ impl Frame {
         target.bpm = rt.bpm;
         target.beat = rt.beat;
         target.file_conductor = rt.conductor.is_some();
+        target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {
             let (bar, beat, meter) = conductor.position(rt.precise_midi_beat());
             target.bar = bar; target.beat_in_bar = beat;

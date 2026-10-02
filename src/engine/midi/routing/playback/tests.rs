@@ -1,6 +1,54 @@
 use super::*;
 use crate::engine::{midi_data::Lanes, test_alloc, MidiNote};
 
+#[test]
+fn actual_ramp_controller_lane_emission_matches_an_independent_sample_timestamp_oracle() {
+    use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};
+    use std::sync::atomic::Ordering::Release;
+    let map = Conductor::native(960, vec![Tempo::new(0, 120.0, true).unwrap(), Tempo::new(8160, 180.0, false).unwrap()], vec![
+        Meter { tick: 0, numerator: 7, denominator_power: 3, clocks: 12, thirty_seconds: 8 },
+        Meter { tick: 3360, numerator: 5, denominator_power: 2, clocks: 24, thirty_seconds: 8 },
+        Meter { tick: 8160, numerator: 4, denominator_power: 2, clocks: 24, thirty_seconds: 8 },
+    ], TimingSettings::default()).unwrap();
+    let b = 60000000.0 / f64::from(map.tempos[1].micros);
+    let timestamp = |beat: f64| {
+        let n = 1000; let length = beat.min(8.5); let h = length / f64::from(n);
+        let f = |x: f64| 60.0 / (120.0 + (b - 120.0) * x / 8.5);
+        let mut sum = f(0.0) + f(length);
+        for i in 1..n { sum += f(f64::from(i) * h) * if i % 2 == 0 { 2.0 } else { 4.0 }; }
+        sum * h / 3.0 + (beat - 8.5).max(0.0) * 60.0 / b
+    };
+    let starts = [0.0, 0.5, 3.5, 5.0, 8.5, 12.5];
+    for rate in [44100, 48000, 96000] {
+        let (engine, mut rt) = crate::engine::Engine::headless_for_test(rate, 32);
+        let shared = engine.cmd.midi_routing();
+        let events = shared.receiver.lock().take().unwrap();
+        shared.bind_identity(&super::super::Routing { enabled: true, routes: vec![super::super::Route { track: 2, inputs: vec![], output: None, output_channel: None, monitor: false, thru: false, filter: Default::default() }] });
+        shared.mask.store(1 << 2, Release); shared.alive.store(true, Release);
+        let mut clip = Clip::empty(); clip.kind = crate::engine::ClipKind::Midi;
+        clip.region = Some(Region::full(16.0)); clip.bars = 4.0;
+        clip.lanes = Some(Lanes::new(960, 15360, starts.iter().enumerate().map(|(i, &beat)| crate::midi_file::Message { tick: (beat * 960.0) as u64, order: i as u32, bytes: [0xb3, 74, (20 + i) as u8], length: 3 }).collect(), vec![]).unwrap());
+        rt.tracks[2].clips[0] = clip; rt.conductor = Some(map.clone()); rt.quant = 0.0;
+        rt.tracks[2].midi_output.trace = Some(Vec::with_capacity(16));
+        engine.cmd.send(crate::engine::Command::FireClip { track: 2, scene: 0, looping: false }).unwrap(); rt.process(&mut []);
+        let frames = (timestamp(12.6) * f64::from(rate)).ceil() as usize;
+        let mut output = [0.0; 514]; let mut packets = Vec::with_capacity(16);
+        assert_eq!(test_alloc::measure(|| { for begin in (0..frames).step_by(257) {
+            rt.process(&mut output[..(frames - begin).min(257) * 2]);
+            while let Ok(event) = events.try_recv() { if event.clear.is_none() { packets.push(event.packet); } }
+        } }), test_alloc::Counts::default());
+        let trace = rt.tracks[2].midi_output.trace.take().unwrap(); assert_eq!(trace.len(), starts.len());
+        assert_eq!(packets, trace.iter().map(|(_, p)| *p).collect::<Vec<_>>());
+        for (i, ((elapsed, packet), beat)) in trace.into_iter().zip(&starts).enumerate() {
+            let frame = (timestamp(elapsed) * f64::from(rate) - 1.0).round().max(0.0) as u64;
+            let expected = (timestamp(*beat) * f64::from(rate)).floor() as u64;
+            assert!(frame.abs_diff(expected) <= 1, "{rate} beat{beat}: {frame} vs{expected}");
+            assert_eq!(packet, Packet::new(&[0xb3, 74, (20 + i) as u8]).unwrap());
+        }
+        shared.alive.store(false, Release);
+    }
+}
+
 fn fixture() -> (crate::midi_file::File, Clip) {
     let file = crate::midi_file::decode(include_bytes!(
         "../../../../../tests/fixtures/midi/sixteen-bars-ppqn960.mid"

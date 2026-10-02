@@ -596,6 +596,7 @@ pub struct RtEngine {
     note_recording: recording::Recording,
     metronome: bool,
     metro: metronome::Click,
+    count_in: Option<metronome::CountIn>,
     scratch: Vec<f32>,
     pub quantize: bool,
     pub sampler_bank: usize,
@@ -749,6 +750,8 @@ pub struct Snapshot {
     pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub metronome: bool,
+    #[serde(skip)]
+    pub count_in_remaining: f32,
     pub quant: f32,
     pub quantize: bool,
     pub sampler_bank: usize,
@@ -800,6 +803,7 @@ impl Default for Snapshot {
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0; 3],
             metronome: false,
+            count_in_remaining: 0.0,
             quant: 1.0,
             quantize: true,
             sampler_bank: 0,
@@ -1012,6 +1016,7 @@ impl RtEngine {
             note_recording: recording::Recording::default(),
             metronome: false,
             metro: metronome::Click::new(sr),
+            count_in: None,
             scratch: Vec::new(),
             quantize: true,
             sampler_bank: 0,
@@ -1248,6 +1253,13 @@ impl RtEngine {
         }
     }
 
+    fn start_count_in(&mut self) {
+        if !self.playing {
+            self.count_in = self.conductor.as_ref().and_then(|map| metronome::CountIn::new(map, self.precise_midi_beat(), self.sr as u32));
+            self.metro.reset();
+        }
+    }
+
     pub fn process(&mut self, out: &mut [f32]) {
         self.performance_tick();
         let batch = control::CommandBatch::receive(&self.cmd_rx);
@@ -1276,11 +1288,15 @@ impl RtEngine {
         if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
 
         let conductor_seconds = self.conductor.as_ref().map(|c| c.seconds_at(self.precise_midi_beat()));
+        let mut transport_frames = 0usize;
         let mut conductor_spb = spb;
         let any_solo = self.tracks.iter().enumerate().any(|(slot,t)| self.session.tracks.get(slot).is_some_and(|item| item.active) && t.solo);
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
+            if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
+            let counting_in = self.count_in.is_some();
+            let count_click = self.count_in.as_mut().and_then(|count| count.tick(self.sr as u32));
             #[cfg(test)]
             { self.current_sample_frame = self.frames_done + i as u64; }
             self.load_profile.begin(profiling, self.frames_done + i as u64, self.sr);
@@ -1300,13 +1316,14 @@ impl RtEngine {
             self.last_midi_step = 1.0 / spb;
             // A mapped transport adds its analytically integrated sample span
             // below; recording and playback must share the same ramp interval.
-            if !self.playing || self.conductor.is_none() { self.note_recording.clock += self.last_midi_step; }
+            if !counting_in && (!self.playing || self.conductor.is_none()) { self.note_recording.clock += self.last_midi_step; }
             let beat_start = self.beat;
-            if self.playing {
+            if self.playing && !counting_in {
+                transport_frames += 1;
                 // Compensate accumulated rounding so a long clip cannot move
                 // an exact note boundary to the preceding output sample.
                 if let Some(seconds) = conductor_seconds {
-                    let next = self.conductor.as_ref().unwrap().beat_at_seconds(seconds + (i + 1) as f64 / f64::from(self.sr));
+                    let next = self.conductor.as_ref().unwrap().beat_at_seconds(seconds + transport_frames as f64 / f64::from(self.sr));
                     self.last_midi_step = next - self.midi_beat;
                     self.midi_beat = next; self.beat = next;
                     self.midi_beat_reference = next; self.beat_roundoff = 0.0;
@@ -1319,7 +1336,7 @@ impl RtEngine {
                 self.midi_beat_reference = self.beat;
                 }
             }
-            if self.playing && self.conductor.is_some() { self.note_recording.clock += self.last_midi_step; }
+            if self.playing && !counting_in && self.conductor.is_some() { self.note_recording.clock += self.last_midi_step; }
             let mut l = 0.0f32;
             let mut r = 0.0f32;
             let mut cue_l = 0.0f32;
@@ -1380,8 +1397,12 @@ impl RtEngine {
                 cue_r += br;
             }
 
-            let click = if let Some(conductor) = self.conductor.as_ref().filter(|_| self.metronome && self.playing) {
-                self.metro.tick_event(self.metronome && self.playing, conductor.click_between(beat_start, self.beat))
+            let click = if let Some(conductor) = self.conductor.as_ref().filter(|_| counting_in || self.metronome && self.playing) {
+                let settings = conductor.native.unwrap_or_default();
+                let event = if counting_in { count_click } else { conductor.click_between(beat_start, self.beat) };
+                #[cfg(test)]
+                if let (Some(trace), Some(accent)) = (&mut self.metro.trace, event) { trace.push((self.current_sample_frame, accent)); }
+                self.metro.tick_with_gains(true, event, settings.accent_gain, settings.beat_gain)
             } else {
                 self.metro.tick(self.metronome && self.playing, beat_start, self.beat)
             };
@@ -1442,7 +1463,7 @@ impl RtEngine {
         // engine beat denotes the end of this output sample's beat interval.
         let explicit_region = playing.is_some_and(|p| self.tracks[ti].clips[p.scene as usize].region.is_some());
         let clock = if explicit_region { self.precise_midi_beat() } else { self.beat };
-        if let Some(p) = playing.filter(|p| clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON)
+        if let Some(p) = playing.filter(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON)
         {
             let scene = p.scene as usize;
             self.tracks[ti].scene_bus = scene;
@@ -1908,6 +1929,7 @@ impl RtEngine {
             });
             let midi_beat = self.precise_midi_beat();
             self.tracks[track].rebuild_midi_schedule(self.beat, midi_beat);
+            self.start_count_in();
             self.playing = true;
             self.selected_track = track;
             self.selected_scene = scene_index;
@@ -2014,6 +2036,7 @@ impl RtEngine {
             }
             Command::MidiClock { source } => self.midi_clock.receive_tick(source),
             Command::Play => {
+                self.start_count_in();
                 self.resume_project_clips();
                 self.playing = true;
             }
@@ -2024,6 +2047,7 @@ impl RtEngine {
                 self.recording = false;
                 self.compose_target = None;
                 self.metro.reset();
+                self.count_in = None;
                 for t in &mut self.tracks {
                     t.stop_clip();
                 }
@@ -2033,6 +2057,7 @@ impl RtEngine {
                 if self.playing {
                     self.apply(Command::Stop);
                 } else {
+                    self.start_count_in();
                     self.resume_project_clips();
                     self.playing = true;
                     // launch scene 0 if nothing running
@@ -2733,6 +2758,7 @@ impl RtEngine {
     // Playing targets use their own launch origin. An unlaunched target has
     // an explicit compose cursor at zero; pending targets are monitor-only.
     fn recording_position(&self, track: usize, scene: usize) -> Option<f32> {
+        if self.count_in.is_some() { return None; }
         let t = self.tracks.get(track)?;
         let clip = t.clips.get(scene)?;
         match t.playing.filter(|p| p.scene as usize == scene) {

@@ -37,6 +37,11 @@ fn prepared_native_timing_is_atomic_undoable_cancelled_and_namespace_qualified_w
     assert_eq!(live.conductor.as_ref(), Some(&map));
     assert_eq!(live.tracks[2].clips[0].notes, notes);
     assert_eq!((&*live.tracks[2]) as *const _ as usize, node);
+    live.apply(Command::Play);
+    assert!(live.count_in.is_some());
+    live.apply(Command::Undo);
+    assert_eq!(live.conductor.as_ref(), Some(&map));
+    live.apply(Command::Stop);
     assert_eq!(
         test_alloc::measure(|| live.apply(Command::Undo)),
         test_alloc::Counts::default()

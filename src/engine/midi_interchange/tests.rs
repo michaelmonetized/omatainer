@@ -1,4 +1,40 @@
 use super::*;
+
+#[test]
+fn exported_ramp_roundtrips_midi_ticks_and_agrees_with_independent_timestamp_integration() {
+    use crate::engine::midi_data::{Meter, Tempo, TimingSettings};
+    let map = Conductor::native(960, vec![Tempo::new(0, 120.0, true).unwrap(), Tempo::new(8160, 180.0, false).unwrap()], vec![Meter { tick: 0, numerator: 7, denominator_power: 3, clocks: 12, thirty_seconds: 8 }], TimingSettings::default()).unwrap();
+    let b = 60000000.0 / f64::from(map.tempos[1].micros);
+    for ppqn in [480, 960, 1920] {
+        let mut meta = export_conductor(&map, ppqn, u64::from(ppqn) * 16, &mut || false).unwrap();
+        meta.sort_by_key(|m| (m.tick, m.order));
+        let file = smf::File { format: smf::Format::Single, ppqn, tracks: vec![smf::Track { end_tick: u64::from(ppqn) * 16, meta, ..Default::default() }], warnings: vec![] };
+        let bytes = smf::encode(&file, false).unwrap();
+        let decoded = smf::decode(&bytes).unwrap();
+        assert_eq!(musical(decoded.clone()), musical(file));
+        let tempos: Vec<_> = decoded.tracks[0].meta.iter().filter_map(|m| if let MetaValue::Tempo(micros) = m.value { Some((m.tick, micros)) } else { None }).collect();
+        let exported_seconds = |beat: f64| {
+            let target = beat * f64::from(ppqn); let mut seconds = 0.0; let mut tick = 0.0; let mut micros = 500000;
+            for &(next, value) in &tempos {
+                if next as f64 > target { break; }
+                seconds += (next as f64 - tick) * f64::from(micros) / (f64::from(ppqn) * 1_000_000.0);
+                tick = next as f64; micros = value;
+            }
+            seconds + (target - tick) * f64::from(micros) / (f64::from(ppqn) * 1_000_000.0)
+        };
+        for beat in [0.5_f64, 3.5, 5.0, 8.5, 12.5, 16.0] {
+            let n = 20000; let length = beat.min(8.5); let h = length / f64::from(n);
+            let f = |x: f64| 60.0 / (120.0 + (b - 120.0) * x / 8.5);
+            let mut sum = f(0.0) + f(length);
+            for i in 1..n { sum += f(f64::from(i) * h) * if i % 2 == 0 { 2.0 } else { 4.0 }; }
+            let expected = sum * h / 3.0 + (beat - 8.5).max(0.0) * 60.0 / b;
+            assert!((exported_seconds(beat) - expected).abs() < 1.0 / 96000.0, "{ppqn} beat{beat}: {} vs{expected}", exported_seconds(beat));
+        }
+    }
+    assert!(export_conductor(&map, 960, 15360, &mut || true).is_err());
+    let huge = Conductor::native(960, vec![Tempo::new(0, 40.0, true).unwrap(), Tempo::new(960 * 100, 240.0, false).unwrap()], map.meters.clone(), TimingSettings::default()).unwrap();
+    assert!(export_conductor(&huge, 32767, 32767 * 100, &mut || false).is_err());
+}
 use crate::engine::{midi_edit::Outcome, test_alloc};
 use std::{sync::atomic::AtomicBool, time::Instant};
 

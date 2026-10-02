@@ -193,6 +193,8 @@ mod tests {
         let reopened: Conductor = serde_json::from_slice(&value).unwrap();
         let reopened = reopened.prepare().unwrap();
         assert_eq!(map, reopened);
+        assert_eq!(reopened.bar_boundaries(0.0, 12.5, 32), vec![(0.5, 1), (3.5, 2), (8.5, 3), (12.5, 4)]);
+        assert_eq!(reopened.bar_boundaries(4.0, 65536.0, 2), vec![(8.5, 3), (12.5, 4)]);
         for (beat, bar, within, numerator, denominator) in [
             (0.0, 0, 6.0, 7, 3),
             (0.25, 0, 6.5, 7, 3),
