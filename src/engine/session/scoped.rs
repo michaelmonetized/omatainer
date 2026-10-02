@@ -13,15 +13,26 @@ impl Scoped {
         if !registry.known() {
             return Ok(command);
         }
+        Self::qualify_using(command, &|axis, slot| registry.reference(axis, slot))
+    }
+    pub(crate) fn qualify_layout(
+        command: Command,
+        layout: &super::Layout,
+    ) -> Result<Command, Command> {
+        Self::qualify_using(command, &|axis, slot| layout.reference(axis, slot))
+    }
+    fn qualify_using(
+        command: Command,
+        reference: &dyn Fn(Axis, usize) -> Option<Reference>,
+    ) -> Result<Command, Command> {
         let (track, scene) = match &command {
             Command::Gesture { .. } => {
                 return match command {
-                    Command::Gesture { id, command } => {
-                        Self::qualify(*command, registry).map(|inner| Command::Gesture {
+                    Command::Gesture { id, command } => Self::qualify_using(*command, reference)
+                        .map(|inner| Command::Gesture {
                             id,
                             command: Box::new(inner),
-                        })
-                    }
+                        }),
                     _ => unreachable!(),
                 }
             }
@@ -48,14 +59,14 @@ impl Scoped {
             _ => return Ok(command),
         };
         let track = match track {
-            Some(slot) => match registry.reference(Axis::Track, slot) {
+            Some(slot) => match reference(Axis::Track, slot) {
                 Some(id) => Some((slot, id)),
                 None => return Err(command),
             },
             None => None,
         };
         let scene = match scene {
-            Some(slot) => match registry.reference(Axis::Scene, slot) {
+            Some(slot) => match reference(Axis::Scene, slot) {
                 Some(id) => Some((slot, id)),
                 None => return Err(command),
             },

@@ -34,6 +34,54 @@ fn number(gui: &mut Gui, label: &str, value: f64) {
     );
 }
 #[test]
+fn controls_from_an_old_painted_snapshot_cannot_mutate_a_replacement_project() {
+    let mut gui = Gui::new();
+    let old = gui.app.snap.session.as_ref().unwrap().namespace;
+    let handle = gui.app.engine.project.clone();
+    let revision = handle.revision();
+    let worker = std::thread::spawn(move || {
+        handle.install(
+            crate::engine::project::Prepared::empty(48000).unwrap(),
+            revision,
+            &AtomicBool::new(false),
+        )
+    });
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while !worker.is_finished() {
+        gui.rt.process(&mut [0.0; 2]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    worker.join().unwrap().unwrap();
+    assert_ne!(gui.rt.session.namespace, old);
+    assert_eq!(gui.app.snap.session.as_ref().unwrap().namespace, old);
+    let gain = gui.rt.tracks[2].gain;
+    let focus = (
+        gui.rt.selected_track,
+        gui.rt.selected_scene,
+        gui.rt.compose_target,
+    );
+    assert!(gui.app.submit(Command::TrackGain {
+        track: 2,
+        value: 0.12
+    }));
+    assert!(gui.app.submit(Command::ComposeArm { track: 2, scene: 7 }));
+    assert_eq!(
+        crate::engine::test_alloc::measure(|| gui.rt.process(&mut [0.0; 128])),
+        crate::engine::test_alloc::Counts::default()
+    );
+    assert_eq!(gui.rt.tracks[2].gain, gain);
+    assert_eq!(
+        (
+            gui.rt.selected_track,
+            gui.rt.selected_scene,
+            gui.rt.compose_target
+        ),
+        focus
+    );
+    assert!(!gui.rt.recording);
+}
+#[test]
 fn native_editor_creates_renames_reorders_colors_duplicates_deletes_and_undoes_track_and_scene() {
     let mut gui = Gui::new();
     gui.click("+ Audio track");

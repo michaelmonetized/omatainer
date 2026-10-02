@@ -109,6 +109,8 @@ pub(super) struct Live {
     pub actual_outputs: Vec<Endpoint>,
 }
 pub(crate) struct Shared {
+    #[cfg(test)]
+    pub(super) input_after_target: Mutex<Option<(crossbeam_channel::Sender<()>, crossbeam_channel::Receiver<()>)>>,
     pub(crate) identity: crate::engine::session::Registry,
     bound: [[AtomicU64; 3]; TRACKS],
     pub(super) live: Mutex<Live>,
@@ -126,6 +128,8 @@ impl Default for Shared {
     fn default() -> Self {
         let (output, receiver) = crossbeam_channel::bounded(OUTPUT_EVENTS);
         Self {
+            #[cfg(test)]
+            input_after_target: Mutex::new(None),
             identity: crate::engine::session::Registry::default(),
             bound: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU64::new(0))),
             live: Mutex::new(Live {
@@ -155,14 +159,17 @@ impl Shared {
             self.counts[slot].identity_refused.store(self.identity.known() && reference.is_none(), Relaxed);
         }
     }
-    pub(super) fn target_current(&self, track: u8) -> bool {
-        if !self.identity.known() { return true; }
+    pub(super) fn current_target(&self, track: u8) -> Result<Option<crate::engine::session::Reference>, ()> {
+        if !self.identity.known() { return Ok(None); }
         let slot = usize::from(track);
         let current = self.identity.reference(crate::engine::session::Axis::Track, slot);
         let bound = crate::engine::session::Reference {namespace:[self.bound[slot][0].load(Acquire),self.bound[slot][1].load(Acquire)],id:crate::engine::session::Id(self.bound[slot][2].load(Acquire))};
         let valid = current == Some(bound);
         self.counts[slot].identity_refused.store(!valid, Relaxed);
-        valid
+        if valid {Ok(Some(bound))} else {Err(())}
+    }
+    pub(super) fn target_current(&self, track: u8) -> bool {
+        self.current_target(track).is_ok()
     }
     pub(crate) fn output_state(&self) -> (u128, u64, u64) {
         let before = self.generation.load(Acquire);
@@ -404,9 +411,18 @@ impl Shared {
                 counts.filtered.fetch_add(1, Relaxed);
                 continue;
             }
-            if !self.target_current(route.track) {
+            let target = match self.current_target(route.track) {
+                Ok(target) => target,
+                Err(()) => {
                 if route.monitor { if let Some((note, _, false)) = packet.note() { let _ = cmd.send(Command::LiveNoteOff { source: sources.tracks[usize::from(route.track)], ch: packet.channel().unwrap(), note }); } }
                 counts.filtered.fetch_add(1, Relaxed); continue;
+                }
+            };
+            // Keep this exact configured reference through enqueue. A second
+            // registry lookup can observe a replacement and retarget an onset.
+            #[cfg(test)]
+            if let Some((entered, resume)) = self.input_after_target.lock().take() {
+                let _ = entered.send(()); let _ = resume.recv_timeout(std::time::Duration::from_secs(10));
             }
             // Controller maps remain separate; only an explicit route supplies
             // an instrument destination. Each track has its own physical key.
@@ -421,7 +437,7 @@ impl Shared {
                             note,
                             vel,
                             track: route.track,
-                            target: self.identity.reference(crate::engine::session::Axis::Track, usize::from(route.track)),
+                            target,
                         }
                     } else {
                         Command::LiveNoteOff { source, ch, note }

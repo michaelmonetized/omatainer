@@ -451,6 +451,33 @@ fn last_track_clear_preserves_other_track_shared_pitch_and_sustain_owners() {
     drop(manager);
 }
 
+#[test]
+fn input_project_change_after_route_match_never_restamps_the_queued_note_target() {
+    let (engine, mut rt) = Engine::headless_for_test(48000,256);
+    let fixture = Arc::new(Fixture::default());
+    let manager = Manager::start_backend(engine.cmd.clone(),config(),Fake(fixture.clone())).unwrap();
+    until(|| !manager.status().pending);
+    let old = rt.session.reference(crate::engine::session::Axis::Track,2).unwrap();
+    let (entered, ready) = crossbeam_channel::bounded(1);
+    let (resume, release) = crossbeam_channel::bounded(1);
+    *engine.cmd.midi_routing().input_after_target.lock() = Some((entered,release));
+    let (mut input, guard, counters) = input(&engine,991,"Keyboard A","100:0");
+    input.push(&[0x90,72,100]);
+    ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    // The real input worker has matched the old route but has not enqueued.
+    let mut replacement = crate::engine::project::Prepared::empty(48000).unwrap();
+    assert_eq!(test_alloc::measure(||replacement.swap_into(&mut rt)),test_alloc::Counts::default());
+    assert_ne!(rt.session.reference(crate::engine::session::Axis::Track,2),Some(old));
+    resume.send(()).unwrap();
+    until(||counters.snapshot().dispatched==1);
+    assert_eq!(test_alloc::measure(||rt.process(&mut [0.0;128])),test_alloc::Counts::default());
+    assert_eq!(held(&rt,2),0,"old worker onset played a new project's track");
+    assert_eq!(held(&rt,3),0);
+    assert!(fixture.trace.lock().iter().all(|packet|packet[0]&0xf0!=0x90));
+    drop(input);drop(guard);drop(manager);
+    until(||fixture.closes.load(Relaxed)==1);
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 #[ignore = "Maintainer validation: creates and removes only private ALSA virtual MIDI ports"]

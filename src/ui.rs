@@ -308,6 +308,14 @@ impl App {
                 return false;
             }
         }
+        // A painted control owns the snapshot's object identity. Reading the
+        // latest producer registry here could silently target a replacement.
+        let c = if let Some(layout) = &self.snap.session {
+            match crate::engine::session::Scoped::qualify_layout(c, layout) {
+                Ok(command) => command,
+                Err(_) => {self.submission_error.set(Some(crate::engine::SubmissionError::InvalidTarget));return false;}
+            }
+        } else {c};
         match self.engine.send(self.undo_history.wrap(c)) {
             Ok(_) => true,
             Err(error) => {

@@ -1306,6 +1306,8 @@ publication. Preferences persist startup protection only, not emergency state.
 - Reorder changes display order only. Playing clips, note gates, automation,
   effect racks, compose targets and fixed controller slots retain their identities.
   Explicit queued controls and MIDI editor baselines carry namespace/ID receipts;
+  painted UI controls retain their snapshot receipts. MIDI input captures the
+  configured receipt once through enqueue, never a newly looked-up replacement;
   deleted/reused or foreign-project targets are refused. Track deletion ends its
   captures/voices/output owners; scene deletion ends that scene's clips and moves
   its bus references to an active scene. Undo restores content and metadata but
