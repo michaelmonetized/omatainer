@@ -102,9 +102,44 @@ was removed to accommodate them.
 
 ## Release qualification
 
-Full ordinary tests and source-bound release/package qualification are pending.
-Their exact results and immutable evidence will be recorded before publishing
-this issue's separate reviewable PR.
+The final ordinary suite passed 1,102 tests with the existing 25 opt-in checks
+excluded in 110.96 seconds (`issue-109-full-v3.log`). An intermediate test edit
+attempted to clone a non-Clone scanner state; that compile error was corrected
+without a production change (`issue-109-full-v2.log`).
+
+Frozen source `54a9c2655187c2c2f0bae75eac2b972e423f9e0d` passed the unchanged
+standard gate on 2026-10-02, 01:05:54.127570–01:13:11.990760 UTC. Local aarch64
+affinity was `[6]`, nice 0, SCHED_OTHER, with normal host processes left running.
+All eight fixed groups passed three repetitions, including their audio/state/
+hash/heap checks. Native accessibility passed 158 actions over 245 nodes and
+561 frames using the actual App/renderer and private AT-SPI fixture. The fixed
+workload test took 121.76 seconds; controlled optimized binary/test builds and
+native preflight are also retained. An initial invocation refused the ordinary
+test build's `CARGO_INCREMENTAL` override before executing any workload; the
+qualified invocation removed that override and used the gate's controlled build.
+
+Worst repetition values in milliseconds:
+
+| Callback | Render CPU p99 | Callback wall p99 | Callback wall max |
+| --- | ---: | ---: | ---: |
+| Producer | 0.666542 | 0.785463 | 2.087013 |
+| Composer | 0.675917 | 0.829464 | 0.930590 |
+| Live DJ | 0.156042 | 0.200627 | 0.301335 |
+| Hybrid | 0.873960 | 1.056590 | 1.319675 |
+
+Release SHA-256:
+`2ad371e75affbc54c32f4c47af8a8decc07d2b7491c83b204581342afb1aa614`.
+Release-test SHA-256:
+`e5d848489a09e2959d1bc9264f7e7814512b3abfac2ac9b99bf7e7b2dc55fdaf`.
+Independent gate verification, immutable package creation and verification,
+seven CLI, six follow-protocol, five runtime-isolation and safe-startup checks
+passed. This evidence-only documentation update is outside the source inventory
+and does not change the qualified executable or packaged assets.
+
+Local immutable evidence under `/home/michael/Projects/omatainer-work`:
+`issue-109-final-performance.{json,raw.json,log}`, `issue-109-final-native.json`,
+`issue-109-final-post-results.json`, `issue-109-final-{gate-check,package,
+package-verify,cli,follow,runtime,safe-start}.log`, and `issue-109-final-package`.
 
 ## Acceptance boundary
 
