@@ -1,5 +1,6 @@
 mod project_file;
 mod project_dependencies;
+mod portable_project;
 mod recovery;
 mod support;
 mod startup;

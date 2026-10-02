@@ -79,7 +79,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Save and reopen
 
-Project → New, Open and window close protect unsaved work with Save changes / Discard changes / Cancel. Save project as chooses a .omat path; replacing an existing file requires the checkbox. Save copy leaves the current path and unsaved baseline unchanged. Native projects embed playable media and creative state. Reopen restores playback stopped and excludes physical held keys, connections and DSP tails. Later edits during saving remain dirty. Cancel before commit preserves the old document; a completed commit is reported honestly. Autosave and recovery keeps separate full edit-state batches about every two seconds and compacts checkpoints at the saved profile interval. Capture and disk delays can increase the loss window; read the last confirmed durable age. At restart, preview an inactive recovery and restore as a stopped, unsaved untitled copy without overwriting the original saved version. Full storage stops new writes visibly while preserving existing recovery. Use a private test destination for the guided example.
+Project → New, Open and window close protect unsaved work with Save changes / Discard changes / Cancel. Save project as chooses a .omat path; replacing an existing file requires the checkbox. Save copy leaves the current path and unsaved baseline unchanged. Native projects embed playable media and creative state. Reopen restores playback stopped and excludes physical held keys, connections and DSP tails. Later edits during saving remain dirty. Cancel before commit preserves the old document; a completed commit is reported honestly. Autosave and recovery keeps separate full edit-state batches about every two seconds and compacts checkpoints at the saved profile interval. Capture and disk delays can increase the loss window; read the last confirmed durable age. At restart, preview an inactive recovery and restore as a stopped, unsaved untitled copy without overwriting the original saved version. Full storage stops new writes visibly while preserving existing recovery. Project dependencies checks every embedded source and unavailable device; moved sources require explicit verified choices. Portable project lists samples, saved device and preset identities, retained application dependency notices and unverified audio rights. Export includes all embedded PCM and copies only explicitly selected originals into one checksum-verified .ompack archive. Import verifies and prepares the session in a new folder, refuses existing destinations, and rebinds collected originals locally. Opening the imported session stays stopped and uses the unsaved-work guard. Use a private test destination for the guided example.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -93,6 +93,70 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 
 ## Control reference
+
+### Portable project
+
+Native session and dependency manifest
+
+Open the portable project workflow or a published imported session. Opening a session uses the existing unsaved-work guard and never starts playback automatically. Global device preferences and mappings are unchanged.
+
+Workflow: Save and reopen.
+
+### Inspect portable dependencies
+
+Every sample and device/preset identity
+
+Capture the native session, verify external sources and list every embedded sample, saved device ID and preset/settings checksum. Application dependency records and full distribution notices are retained in the archive. External audio and plugin redistribution rights remain unverified; no plugin binary is copied.
+
+Workflow: Save and reopen.
+
+### Collect original source
+
+One explicit selection per asset
+
+Choose a verified original source to copy into the archive under a relative SHA-256 filename. All embedded audio is included regardless of selection. Selected original reads are limited to 1 GiB; duplicate bytes occupy one archive entry. Originals are never changed.
+
+Workflow: Save and reopen.
+
+### Portable project paths
+
+Absolute archive path and new folder
+
+Choose an absolute archive path or an absolute new imported folder with an existing parent. Existing files and folders are refused. Choose a new name after a conflict.
+
+Workflow: Save and reopen.
+
+### Export portable project
+
+Checksum-verified .ompack archive
+
+Export the inspected musical revision with embedded audio, controls, notes, automation, unknown device state and selected originals. Changed revisions require inspection again. Export leaves the current session and its saved baseline intact.
+
+Workflow: Save and reopen.
+
+### Review portable archive
+
+Untrusted metadata preview
+
+Read the bounded dependency manifest before import. Preview does not prove the payload. Import verifies the complete archive, every entry, embedded PCM, selected source audio and device identities.
+
+Workflow: Save and reopen.
+
+### Import portable project
+
+New private folder; no replacement
+
+Verify and prepare the native session privately, bind collected originals to the new folder and publish it atomically without replacing an existing path. Unavailable effects bypass; unavailable instruments remain silent unless clips retain rendered audio. Uncollected missing originals remain reported, while embedded audio stays playable.
+
+Workflow: Save and reopen.
+
+### Cancel portable operation
+
+Preserve current session and existing destinations
+
+Cancel copying, verification or staging before publication. A package already published remains complete and reports success even if cancellation arrives later. Close waits for the worker result; temporary staging is cleaned up.
+
+Workflow: Save and reopen.
 
 ### Project dependencies
 
