@@ -11807,7 +11807,7 @@
     "src/sampler_bank/store.rs": "afe2c1a50af56166ce424a69c20cc067fb0ba81d6ce713cf52ad1c51ceb59b05",
     "src/sampler_bank/store/tests.rs": "6863efbadbaf9c31038b99a607068e50a2eaade90b2b943306ec4ab45d27ab81",
     "src/sampler_bank/tests.rs": "c5304c972e176c5d0fbc1299c2eab6dac940b551c94ccbba6ade2093bdc641fb",
-    "src/scene_index_tests.rs": "9d56a5f909535ab13aee8a1cbacba2ac08b162e7861d86de803b3d81937f0558",
+    "src/scene_index_tests.rs": "35cb6fbf7e07f369e31d9a2800d195a9af5014693b0adf1f2035ed5f37acb0f8",
     "src/shell_scene_tests.rs": "f55ec156c7d87062e25df1d997d5ab10c737048bf1b8b21f05ccd26a251793b6",
     "src/startup.rs": "516e39399a1050990fc347211980175a3855a409dff7568fd05d12e83aff8de8",
     "src/support.rs": "685740305153aec71cbddf10b9671d06985c678bc84677df4c2d6c03cea49219",

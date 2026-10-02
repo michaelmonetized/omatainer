@@ -10,7 +10,8 @@ use std::io::{BufRead, Write};
 
 fn engine() -> RtEngine {
     let (_tx, rx) = crossbeam_channel::bounded(16);
-    RtEngine::new(48000.0, rx, Arc::new(Mutex::new(Snapshot::default())))
+    RtEngine::try_new(48000.0, rx, Arc::new(Mutex::new(Snapshot::default())))
+        .expect("prepare scene boundary renderer")
 }
 
 fn scene_state(rt: &RtEngine) -> Value {
@@ -201,7 +202,8 @@ pub(super) fn check_ipc_scene_requests() {
     let (tx, rx) = engine::CommandPort::channel(16);
     let commands = tx.clone();
     let snap = Arc::new(Mutex::new(Snapshot::default()));
-    let mut rt = RtEngine::new(48000.0, rx, snap.clone());
+    let mut rt = RtEngine::try_new(48000.0, rx, snap.clone())
+        .expect("prepare IPC scene boundary renderer");
     rt.apply(Command::LaunchScene { scene: 0 });
     let (client, server) = UnixStream::pair().unwrap();
     client
