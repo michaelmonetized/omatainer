@@ -478,7 +478,7 @@ fn invalid_trim_and_stale_target_are_not_silently_retargeted() {
             epoch: g.app.snap.sampler_epoch,
             revision: g.app.snap.sampler_revision,
             sample_rate: 48_000,
-            catalog: g.app.library_metadata.catalog.clone(),
+            origins: Vec::new(), catalog: g.app.library_metadata.catalog.clone(),
             operation: Operation::Empty {
                 name: "External bank".into(),
             },

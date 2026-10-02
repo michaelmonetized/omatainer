@@ -77,7 +77,7 @@ fn foreground_admission_preempts_analysis_on_the_same_worker_for_decks_and_sampl
                             operation: prepare::Operation::Empty {
                                 name: "foreground bank".into(),
                             },
-                            catalog: Arc::new(crate::library::Catalog::default()),
+                            origins: Vec::new(), catalog: Arc::new(crate::library::Catalog::default()),
                         },
                         owner,
                     )

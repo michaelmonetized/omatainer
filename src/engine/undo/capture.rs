@@ -248,7 +248,8 @@ impl RtEngine {
             return None;
         }
         let estimate = match plan.target {
-            Target::Global => self.conductor.as_ref().map_or(0, |c| c.bytes()),
+            Target::Global => self.conductor.as_ref().map_or(0, |c| c.bytes())
+                + self.sampler_poly.offline.as_ref().map_or(0, |device| device.bytes()),
             Target::Sampler(index) => {
                 let Command::SamplerEdit(edit) = &c else { unreachable!() };
                 bank_bytes(&edit.bank) + self.sampler_banks.get(index).map_or(0, bank_bytes)

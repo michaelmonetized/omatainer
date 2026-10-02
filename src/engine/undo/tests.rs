@@ -1383,3 +1383,45 @@ fn rate_pruning_preserves_distinct_held_inverse_owners_in_the_same_cell() {
     assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
     assert!((rt.tracks[2].clips[7].notes[1].len - 1.5).abs() < 1e-6);
 }
+
+#[test]
+fn unavailable_sampler_is_silent_and_explicit_replacement_undo_redo_preserves_state_without_callback_heap() {
+    let (engine, mut rt) = fixture();
+    let device = Arc::new(fx::OfflineDevice::new("org.example.synth".into(), Some(fx::DeviceState { schema: 17, data: vec![42; 65536] })).unwrap());
+    rt.sampler_inst = SamplerInstrument::Synth(SynthInstrument::Analog);
+    rt.sampler_poly.offline = Some(device.clone());
+    send(&engine, &mut rt, Command::SamplerPad { pad: 0, on: true });
+    for _ in 0..128 { assert!(rt.tick_pad_sources().iter().all(|bus| *bus == [0.0; 2])); }
+    rt.publish_for_test(); assert!(engine.snapshot().sampler_unavailable);
+    let before = rt.undo.checkpoint();
+    engine.send(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys))).unwrap();
+    assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
+    assert!(rt.sampler_poly.offline.is_none()); assert_ne!(rt.undo.checkpoint(), before);
+    engine.send(Command::Undo).unwrap();
+    assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
+    assert_eq!(rt.sampler_poly.offline.as_ref(), Some(&device));
+    assert_eq!(rt.sampler_inst, SamplerInstrument::Synth(SynthInstrument::Analog));
+    engine.send(Command::Redo).unwrap();
+    assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
+    assert!(rt.sampler_poly.offline.is_none());
+    send(&engine, &mut rt, Command::SamplerPad { pad: 0, on: false });
+    send(&engine, &mut rt, Command::SamplerPad { pad: 0, on: true });
+    assert!((0..128).any(|_| rt.tick_pad_sources().iter().any(|bus| *bus != [0.0; 2])));
+    let (_, receiver) = crossbeam_channel::bounded(4);
+    let mut unowned = RtEngine::new(48000.0, receiver, Arc::new(Mutex::new(Snapshot::default())));
+    unowned.sampler_poly.offline = Some(device.clone());
+    assert_eq!(test_alloc::measure(|| unowned.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Pad)))), test_alloc::Counts::default());
+    assert_eq!(unowned.sampler_poly.offline, Some(device));
+}
+
+#[test]
+fn unavailable_sampler_state_counts_toward_history_admission_before_any_replacement() {
+    let (engine, mut rt) = fixture();
+    let device = Arc::new(fx::OfflineDevice::new("missing".into(), Some(fx::DeviceState { schema: 1, data: vec![42; 65536] })).unwrap());
+    rt.sampler_poly.offline = Some(device.clone()); rt.undo.budget = 32768;
+    let before = rt.undo.checkpoint();
+    engine.send(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys))).unwrap();
+    assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
+    assert_eq!(rt.sampler_poly.offline, Some(device));
+    assert_eq!(rt.undo.checkpoint(), before); assert_eq!(rt.undo.failure, Some(Failure::Budget));
+}

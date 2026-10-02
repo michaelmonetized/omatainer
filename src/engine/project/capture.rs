@@ -287,6 +287,7 @@ fn synth(poly: &Poly) -> Synth {
         voices: poly.voices.len(),
         cutoff: poly.cutoff,
         tuning_hz: poly.tuning_hz(),
+        offline: poly.offline.clone(),
     }
 }
 fn eq(value: &ThreeBand) -> [f32; 3] {
@@ -299,5 +300,6 @@ fn effects(out: &mut Vec<Effect>, rack: &fx::FxChain) {
         on: s.on,
         mix: s.mix,
         p: s.p,
+        offline: s.offline.clone(),
     }));
 }

@@ -256,6 +256,7 @@ impl Prepared {
 
 fn synth(s: Synth, sr: u32) -> Poly {
     let mut value = Poly::new(sr as f32, s.kind, s.voices);
+    value.offline = s.offline;
     value.cutoff = s.cutoff;
     value.set_tuning_hz(s.tuning_hz);
     value
@@ -274,6 +275,7 @@ pub(in crate::engine) fn effects(values: Vec<Effect>, sr: u32) -> fx::FxChain {
                 slot.on = s.on;
                 slot.mix = s.mix;
                 slot.p = s.p;
+                slot.offline = s.offline;
                 slot
             })
             .collect(),

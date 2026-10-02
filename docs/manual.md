@@ -94,6 +94,62 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Project dependencies
+
+Embedded audio and retained device state
+
+Inspect source availability and unavailable devices. Native projects keep embedded audio, clips, automation and device state. Choose moved sources explicitly and save the project after relinking.
+
+Workflow: Save and reopen.
+
+### Check project dependencies
+
+Captured project revision
+
+Check every embedded source against its exact decoded audio identity and report unavailable device IDs and saved state. Disk work runs in a cancellable worker. Changed projects refuse stale results.
+
+Workflow: Save and reopen.
+
+### Search moved sources
+
+1–64 absolute folders
+
+Search selected folders for exact decoded audio, including renamed files. Symlinks and nested foreign mounts are skipped. Search limits and errors produce a partial result; additional matches may exist.
+
+Workflow: Save and reopen.
+
+### Review replacement source
+
+One explicit choice per asset
+
+Compare candidate paths and choose each replacement. Duplicate matches remain unresolved until you choose. Keep current source reference clears an unapplied choice.
+
+Workflow: Save and reopen.
+
+### Apply reviewed relinks
+
+Verified complete batch
+
+Recheck every chosen file, decoded audio and mount before updating project source aliases as one batch. Failure or cancellation preserves all current references. Save the project to retain completed relinks.
+
+Workflow: Save and reopen.
+
+### Cancel dependency operation
+
+Preserve current source references
+
+Cancel worker inspection, search or verification before its result is applied. Completed relinks remain in the project.
+
+Workflow: Save and reopen.
+
+### Close dependency report
+
+Explicitly retain or discard pending review
+
+Close the report when idle. Pending choices and operations require explicit discard. Discard cancels pending work and preserves previously applied source aliases.
+
+Workflow: Save and reopen.
+
 ### Tempo and meter
 
 Shared quarter-note timeline

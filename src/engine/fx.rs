@@ -1,6 +1,8 @@
 //! Per-track / per-scene FX chain. Slots are stackable; order is the chain.
 
 mod bypass;
+mod offline;
+pub(crate) use offline::{DeviceState, OfflineDevice};
 mod parameters;
 pub use parameters::Control;
 #[cfg(test)]
@@ -33,6 +35,7 @@ pub enum FxId {
     Eq3,
     Eq5,
     Eq8,
+    Unavailable,
 }
 
 impl FxId {
@@ -68,6 +71,7 @@ impl FxId {
             FxId::Eq3 => "eq3",
             FxId::Eq5 => "eq5",
             FxId::Eq8 => "eq8",
+            FxId::Unavailable => "unavailable",
         }
     }
 }
@@ -82,6 +86,7 @@ pub struct FxSlot {
     pub on: bool,
     pub mix: f32,
     pub p: [f32; 4],
+    pub(crate) offline: Option<std::sync::Arc<OfflineDevice>>,
     sample_rate: f32,
     state: FxState,
     bypass: bypass::Bypass,
@@ -107,7 +112,7 @@ impl FxSlot {
         };frames*std::mem::size_of::<f32>()
     }
     pub(super) fn storage_bytes(&self) -> usize {
-        match &self.state {
+        self.offline.as_ref().map_or(0, |device| device.bytes()) + match &self.state {
             FxState::Spread(d) | FxState::Delay(d) | FxState::Chorus { delays: d, .. } =>
                 d.iter().map(Delay::storage_bytes).sum(),
             FxState::Reverb(r) => r.iter().map(Reverb::storage_bytes).sum(),
@@ -129,6 +134,7 @@ impl FxSlot {
             FxId::Dist => [0.25, 0.0, 0.0, 0.0],
             FxId::Filter => [0.5, 0.3, 0.0, 0.0],
             FxId::Eq3 | FxId::Eq5 | FxId::Eq8 => [0.5, 0.5, 0.5, 0.5],
+            FxId::Unavailable => [0.0; 4],
         };
         let state = match id {
             FxId::Comp | FxId::Gate => FxState::Envelope {
@@ -154,13 +160,14 @@ impl FxSlot {
             })),
             FxId::Filter => FxState::Filter([Svf::default(); 2]),
             FxId::Eq3 | FxId::Eq5 | FxId::Eq8 => FxState::Eq([eq_filters(sr); 2]),
-            FxId::Balance | FxId::Arp | FxId::Dist => FxState::None,
+            FxId::Balance | FxId::Arp | FxId::Dist | FxId::Unavailable => FxState::None,
         };
         Self {
             id,
             on: true,
             mix: 0.5,
             p,
+            offline: None,
             sample_rate: sr,
             state,
             bypass: bypass::Bypass::default(),
@@ -184,6 +191,9 @@ impl FxSlot {
     pub fn id(&self) -> FxId {
         self.id
     }
+    pub(crate) fn name(&self) -> &str {
+        self.offline.as_ref().map_or(self.id.name(), |device| device.label())
+    }
 
     /// Output must be stopped. Reallocate only this slot's processor storage,
     /// discard its tail, and preserve effect order, bypass and all controls.
@@ -203,6 +213,7 @@ impl FxSlot {
     }
 
     pub(super) fn tick_stereo(&mut self, input: [f32; 2], sr: f32) -> [f32; 2] {
+        if self.id == FxId::Unavailable { return input; }
         let level = self.bypass.next(self.on, sr);
         if level == 0.0 {
             return input;

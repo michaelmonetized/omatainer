@@ -91,6 +91,7 @@ impl Request {
                     voices: 8,
                     cutoff: crate::engine::SynthInstrument::Keys.cutoff(),
                     tuning_hz: 440.0,
+                    offline: None,
                 };
                 Self::prepare_track_change(
                     &mut state,

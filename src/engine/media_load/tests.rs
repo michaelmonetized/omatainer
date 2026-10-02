@@ -272,7 +272,7 @@ fn sampler_request(name: &str) -> crate::sampler_bank::prepare::Request {
     crate::sampler_bank::prepare::Request {
         epoch: 91, revision: 7, sample_rate: 48_000,
         operation: crate::sampler_bank::prepare::Operation::Empty { name: name.into() },
-        catalog: Arc::new(crate::library::Catalog::default()),
+        origins: Vec::new(), catalog: Arc::new(crate::library::Catalog::default()),
     }
 }
 fn sampler_ready(loader: &Loader) -> SamplerCompletion {

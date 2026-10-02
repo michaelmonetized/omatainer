@@ -190,6 +190,7 @@ impl SourceRef {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Source {
     Library { reference: SourceRef },
+    Project { source: LibSource, audio_hash: [u8; 32] },
     Factory { bank: Factory, slot: u8 },
 }
 
@@ -259,6 +260,7 @@ impl Slot {
         self.controls.validate()?;
         match &self.source {
             Some(Source::Library { reference }) => reference.validate()?,
+            Some(Source::Project { source, .. }) => crate::media_location::validate_root_source(source).map_err(|e| e.to_string())?,
             Some(Source::Factory { slot, .. }) if *slot as usize >= SLOTS => {
                 return Err("factory sampler slot is outside 0–15".into())
             }

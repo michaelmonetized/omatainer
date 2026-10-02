@@ -23,6 +23,12 @@ pub(crate) mod crates;
 pub(crate) mod watch_roots;
 mod collections;
 pub(crate) use content::Relocate;
+/// Verify the encoded bytes of a project source against its captured file.
+/// `path` and `expected` bind identity; `active` stops worker reads.
+/// Returns SHA-256, or refuses a changed, unavailable or oversized file.
+pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active: impl FnMut() -> bool) -> Result<[u8; 32], String> {
+    content::hash_file(path, expected, active)
+}
 
 const SCHEMA: u32 = 8;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;

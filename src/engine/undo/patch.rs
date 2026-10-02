@@ -49,6 +49,7 @@ pub(super) struct Global {
     instrument: SamplerInstrument,
     octave: i8,
     synth: SynthInstrument,
+    offline: Option<Arc<fx::OfflineDevice>>,
     cutoff: f32,
 }
 impl Global {
@@ -68,6 +69,7 @@ impl Global {
             instrument: rt.sampler_inst,
             octave: rt.sampler_oct,
             synth: rt.sampler_poly.kind,
+            offline: rt.sampler_poly.offline.clone(),
             cutoff: rt.sampler_poly.cutoff,
         }
     }
@@ -95,7 +97,9 @@ impl Global {
         if rt.sampler_inst != self.instrument {
             rt.apply(Command::SamplerInst(self.instrument));
         }
+        if rt.sampler_poly.offline != self.offline { rt.sampler_poly.set_sample_rate(rt.sr); }
         rt.sampler_poly.kind = self.synth;
+        rt.sampler_poly.offline = self.offline.clone();
         rt.sampler_poly.cutoff = self.cutoff;
         if rt.sampler_oct != self.octave {
             rt.apply(Command::SamplerOct(self.octave - rt.sampler_oct));
@@ -483,7 +487,7 @@ impl Patch {
         match self {
             Self::Session(value) => value.bytes(),
             Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
-            Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()),
+            Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()) + value.offline.as_ref().map_or(0, |d| d.bytes()),
             Self::Conductor { reserved_bytes, .. } => *reserved_bytes,
             Self::Slot { reserved_bytes, .. } => *reserved_bytes,
             Self::Clip {
