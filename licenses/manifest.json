@@ -11713,7 +11713,7 @@
     "src/engine/undo/mod.rs": "6adfa771809cf3f318179878049c98ab2e42e4dc64928478cc1e306f6272bd60",
     "src/engine/undo/patch.rs": "0ed6cc870c335c8aedf14500952cd4f198ffac84b80c501f15b9fefd7f5979c4",
     "src/engine/undo/recording.rs": "798acdb4c2ff86ae982997890d256b8b0f86a6660e6da2475d92107aa5ace70b",
-    "src/engine/undo/tests.rs": "82db3610f997b6f46f3e39b33b87d57f4f8aee36c458fbf032cd4a51932333c4",
+    "src/engine/undo/tests.rs": "c4da356313bd54fd3815ce8569d86c44f8da3aa1a374fc3011c5e13003448c6e",
     "src/engine/voice_pitch_tests.rs": "0842859db49b0302059622d156153f929f96bd542a7933d90d8929e465d01d4d",
     "src/instance.rs": "23f44d05040770939d3bdcd09b4feeb3c3afc038b5160b9a16741a11e208b7d4",
     "src/instance_tests.rs": "c3281a01779978cfcb72d9964589eaf720dbf5a0d91a596df7f7c772c31999ba",

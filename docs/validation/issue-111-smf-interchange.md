@@ -110,6 +110,14 @@ No Ardour source is bundled in this MIT implementation.
 
 ## Qualification
 
+The first full suite passed 1154 tests and failed two rate-pruning fixtures whose
+fixed 1100 KiB budgets assumed the earlier note struct size. Those fixtures now
+derive their one/two held inverse reservations from `size_of::<MidiNote>()`,
+assert that pruning is still forced, and retain their original ownership, budget,
+saved-checkpoint and Undo/Redo assertions. All 50 rate-filtered tests then passed
+(one maintainer opt-in ignored). No production memory budget, performance policy
+or audio reference was changed to accommodate these failures.
+
 Qualification results are appended after the final source freeze. Focused
 evidence already covers the original and actual DAW-returned native UI workflows,
 worker-held/queued cancellation, source replacement, malformed inspection,

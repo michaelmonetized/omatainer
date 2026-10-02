@@ -954,7 +954,10 @@ fn rate_budget_pruning_preserves_only_current_holds_and_never_claims_saved_conte
     send(&engine, &mut rt, Command::FxAdd(5));
     send(&engine, &mut rt, Command::Master(0.7));
     let original_audio = rt.decks[0].audio.clone().unwrap();
-    rt.undo.budget = 1100 * 1024;
+    // Fit the one mandatory held inverse with the current note layout, while
+    // still forcing eviction of released notes and rate-expanded effects.
+    rt.undo.budget = 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>() + 52 * 1024;
+    assert!(rt.undo.bytes > rt.undo.budget, "The fixture still forces pruning");
     rt.set_sample_rate(96000).unwrap();
     assert_eq!(rt.undo.failure, Some(Failure::RateHistoryPruned));
     assert_eq!(rt.undo.cursor, 1);
@@ -1346,7 +1349,10 @@ fn rate_pruning_preserves_distinct_held_inverse_owners_in_the_same_cell() {
     rt.fx_view = 2;
     rt.apply(Command::FxAdd(5));
     let before = engine.undo.checkpoint();
-    rt.undo.budget = 1100 * 1024;
+    // Two distinct held owners need two full inverse reservations. Do not tie
+    // this pruning fixture to a historical MidiNote struct size.
+    rt.undo.budget = 4 * NOTE_LIMIT * std::mem::size_of::<MidiNote>() + 52 * 1024;
+    assert!(rt.undo.bytes > rt.undo.budget, "The fixture still forces pruning");
     rt.set_sample_rate(96000).unwrap();
     assert_eq!(rt.undo.failure, Some(Failure::RateHistoryPruned));
     assert_eq!(rt.undo.cursor, 2, "both actual held inverses survive, even with the same cell");
