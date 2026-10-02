@@ -417,6 +417,7 @@ impl crate::engine::RtEngine {
     pub(crate) fn render_midi_output(&mut self, track: usize) {
         if self.midi_output_mask & (1 << track) == 0
             || !self.playing
+            || self.count_in.is_some()
             || self.tracks[track].midi_output.refused
         {
             return;

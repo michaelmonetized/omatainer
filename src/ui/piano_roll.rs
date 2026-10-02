@@ -565,7 +565,7 @@ impl App {
                                     let mut zoom = draft.beat_pixels as f64; if number(ui, "Time zoom", &mut zoom, 8.0, 200.0) { draft.beat_pixels = zoom as f32; }
                                     let mut height = draft.row_pixels as f64; if number(ui, "Pitch zoom", &mut height, 12.0, 32.0) { draft.row_pixels = height as f32; }
                                 });
-                                if let Err(error) = canvas::show(ui, &self.theme, draft) { editor.error = Some(error); }
+                                if let Err(error) = canvas::show(ui, &self.theme, draft, self.snap.timing.as_deref()) { editor.error = Some(error); }
                                 let selected = ui.label(draft.selected_label());
                                 accessibility::status(ui, &selected, &draft.selected_label());
                                 ui.label("Focus the roll: arrows move / transpose; Shift+Left/Right resize; Ctrl+A selects all; Ctrl+D duplicates; M mutes; Delete removes. Draw on empty space; drag note bodies to move and right edges to resize. All values use quarter-note beats.");

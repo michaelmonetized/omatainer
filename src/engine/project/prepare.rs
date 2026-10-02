@@ -231,6 +231,7 @@ impl Prepared {
             note_recording,
             metronome,
             metro,
+            count_in,
             quantize,
             sampler_bank,
             sampler_inst,

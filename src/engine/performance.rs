@@ -717,6 +717,7 @@ impl super::RtEngine {
         self.recording = false;
         self.compose_target = None;
         self.metro.reset();
+        self.count_in = None;
         for track in &mut self.tracks {
             track.stop_clip();
             for voice in &mut track.poly.voices {

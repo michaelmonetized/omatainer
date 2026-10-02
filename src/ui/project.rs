@@ -750,8 +750,12 @@ impl App {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.piano_roll.stop_for_close(&self.engine);
             self.midi_files.cancel();
+            self.timing.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
-            if self.midi_files.busy() {
+            if self.timing.blocks_close() {
+                self.timing.open = true;
+                self.project.message = Some("Close cancelled while the timing editor retains unapplied work. Apply it or explicitly discard it before closing.".into());
+            } else if self.midi_files.busy() {
                 self.project.message = Some("Close cancelled while MIDI file work settles. Its pending import was cancelled if the renderer had not claimed it; completed changes remain in History.".into());
             } else if self.settings.busy() {
                 self.settings.open = true;
@@ -893,6 +897,7 @@ impl App {
                             if midi.clicked() { self.open_midi_files(false); ui.close(); }
                             let midi = ui.button("Export MIDI file…").help(ui, HelpControl::MidiFileExport);
                             if midi.clicked() { self.open_midi_files(true); ui.close(); }
+                            if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);
                             if response.clicked() {
@@ -955,8 +960,9 @@ impl App {
                 ));
                 if ui.button(self.session_history_toolbar_text()).help(ui, HelpControl::HistoryOpen).clicked() { self.session_history.open = true; }
                 if self.snap.file_conductor {
-                    ui.label(format!("MIDI conductor · {}/{} · bar {} beat {:.2}", self.snap.meter_numerator, self.snap.meter_denominator, self.snap.bar, self.snap.beat_in_bar + 1.0));
+                    ui.label(format!("Musical timeline · {}/{} · bar {} beat {:.2}", self.snap.meter_numerator, self.snap.meter_denominator, self.snap.bar, self.snap.beat_in_bar + 1.0));
                 }
+                if self.snap.count_in_remaining > 0.0 { ui.label(format!("Count-in · {:.1} s", self.snap.count_in_remaining)); }
                 let recovery_text = self.recovery_toolbar_text();
                 if ui.button(recovery_text).help(ui, HelpControl::RecoveryOpen).clicked() { self.recovery.open = true; }
                 if self.project.awaiting_snapshot.is_some() {

@@ -63,7 +63,7 @@ impl Lanes {
         let mut result = self.clone();
         result.cached_bytes = 0;
         result.messages.shrink_to_fit();
-        result.messages.sort_unstable_by_key(|m|(m.tick,m.order));
+        result.messages.sort_unstable_by_key(|m| (m.tick, m.order));
         result.meta.shrink_to_fit();
         for m in &mut result.meta {
             if let MetaValue::Text { bytes, .. } = &mut m.value {
@@ -129,6 +129,8 @@ impl Lanes {
 pub(crate) struct Tempo {
     pub tick: u64,
     pub micros: u32,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub ramp: bool,
     #[serde(skip)]
     seconds: f64,
 }
@@ -147,23 +149,41 @@ pub(crate) struct Conductor {
     pub ppqn: u16,
     pub tempos: Vec<Tempo>,
     pub meters: Vec<Meter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native: Option<super::TimingSettings>,
 }
 impl PartialEq for Conductor {
     fn eq(&self, other: &Self) -> bool {
         self.ppqn == other.ppqn
             && self.meters == other.meters
+            && self.native == other.native
             && self
                 .tempos
                 .iter()
-                .map(|p| (p.tick, p.micros))
-                .eq(other.tempos.iter().map(|p| (p.tick, p.micros)))
+                .map(|p| (p.tick, p.micros, p.ramp))
+                .eq(other.tempos.iter().map(|p| (p.tick, p.micros, p.ramp)))
     }
 }
 impl Conductor {
+    pub fn native(
+        ppqn: u16,
+        tempos: Vec<Tempo>,
+        meters: Vec<Meter>,
+        settings: super::TimingSettings,
+    ) -> Result<Arc<Self>, String> {
+        Self {
+            ppqn,
+            tempos,
+            meters,
+            native: Some(settings),
+        }
+        .prepare()
+    }
     pub fn from_meta(ppqn: u16, meta: impl Iterator<Item = Meta>) -> Result<Arc<Self>, String> {
         let mut tempos = vec![Tempo {
             tick: 0,
             micros: 500000,
+            ramp: false,
             seconds: 0.0,
         }];
         let mut meters = vec![Meter {
@@ -217,6 +237,7 @@ impl Conductor {
             tempos.push(Tempo {
                 tick,
                 micros,
+                ramp: false,
                 seconds: 0.0,
             });
         }
@@ -230,6 +251,7 @@ impl Conductor {
             ppqn,
             tempos,
             meters,
+            native: None,
         }
         .prepare()
     }
@@ -256,10 +278,23 @@ impl Conductor {
                 .meters
                 .iter()
                 .any(|p| p.tick > max || p.numerator == 0 || p.denominator_power > 7)
+            || self.tempos.last().is_some_and(|p| p.ramp)
             || self.tempos.windows(2).any(|w| w[0].tick >= w[1].tick)
             || self.meters.windows(2).any(|w| w[0].tick >= w[1].tick)
         {
             return Err("Session conductor requires PPQN timing, ordered points, tempos 40–240 BPM and meter denominators through 128; keep session tempo to retain other source values for export".into());
+        }
+        if self.tempos.iter().any(|p| p.ramp) && self.native.is_none() {
+            return Err("Tempo ramps require native timing settings".into());
+        }
+        if let Some(settings) = self.native {
+            let m = self.meters[0];
+            settings.validate(
+                f64::from(m.numerator) * 4.0 / f64::from(1u32 << m.denominator_power),
+                self.meters
+                    .get(1)
+                    .map(|m| m.tick as f64 / f64::from(self.ppqn)),
+            )?;
         }
         Ok(())
     }
@@ -270,31 +305,64 @@ impl Conductor {
         result.tempos[0].seconds = 0.0;
         for i in 1..result.tempos.len() {
             let previous = &result.tempos[i - 1];
-            result.tempos[i].seconds = previous.seconds
-                + (result.tempos[i].tick - previous.tick) as f64 / f64::from(self.ppqn)
-                    * f64::from(previous.micros)
-                    / 1000000.0;
+            let length = (result.tempos[i].tick - previous.tick) as f64 / f64::from(self.ppqn);
+            let duration = if previous.ramp {
+                super::timeline::seconds(
+                    length,
+                    length,
+                    60000000.0 / f64::from(previous.micros),
+                    60000000.0 / f64::from(result.tempos[i].micros),
+                )
+            } else {
+                length * f64::from(previous.micros) / 1000000.0
+            };
+            result.tempos[i].seconds = previous.seconds + duration;
         }
         result.tempos.shrink_to_fit();
         result.meters.shrink_to_fit();
         Ok(Arc::new(result))
     }
     pub fn micros_at(&self, beat: f64) -> u32 {
-        let tick = beat * f64::from(self.ppqn);
-        let i = self
-            .tempos
-            .partition_point(|p| p.tick as f64 <= tick)
-            .saturating_sub(1);
-        self.tempos[i].micros
+        self.micros_exact_at(beat).round() as u32
     }
-    pub fn seconds_at(&self, beat: f64) -> f64 {
-        let tick = beat * f64::from(self.ppqn);
+    pub fn micros_exact_at(&self, beat: f64) -> f64 {
         let i = self
             .tempos
-            .partition_point(|p| p.tick as f64 <= tick)
+            .partition_point(|p| p.tick as f64 <= beat * f64::from(self.ppqn))
             .saturating_sub(1);
         let p = &self.tempos[i];
-        p.seconds + (beat - p.tick as f64 / f64::from(self.ppqn)) * f64::from(p.micros) / 1000000.0
+        if p.ramp && beat >= 0.0 {
+            let next = &self.tempos[i + 1];
+            let fraction = ((beat * f64::from(self.ppqn) - p.tick as f64)
+                / (next.tick - p.tick) as f64)
+                .clamp(0.0, 1.0);
+            let a = 60000000.0 / f64::from(p.micros);
+            let b = 60000000.0 / f64::from(next.micros);
+            60000000.0 / (a + fraction * (b - a))
+        } else {
+            f64::from(p.micros)
+        }
+    }
+    pub fn seconds_at(&self, beat: f64) -> f64 {
+        let i = self
+            .tempos
+            .partition_point(|p| p.tick as f64 <= beat * f64::from(self.ppqn))
+            .saturating_sub(1);
+        let p = &self.tempos[i];
+        let offset = beat - p.tick as f64 / f64::from(self.ppqn);
+        let duration = if p.ramp && beat >= 0.0 {
+            let next = &self.tempos[i + 1];
+            let length = (next.tick - p.tick) as f64 / f64::from(self.ppqn);
+            super::timeline::seconds(
+                offset,
+                length,
+                60000000.0 / f64::from(p.micros),
+                60000000.0 / f64::from(next.micros),
+            )
+        } else {
+            offset * f64::from(p.micros) / 1000000.0
+        };
+        p.seconds + duration
     }
     pub fn beat_at_seconds(&self, seconds: f64) -> f64 {
         let i = self
@@ -302,8 +370,31 @@ impl Conductor {
             .partition_point(|p| p.seconds <= seconds)
             .saturating_sub(1);
         let p = &self.tempos[i];
-        p.tick as f64 / f64::from(self.ppqn)
-            + (seconds - p.seconds) * 1000000.0 / f64::from(p.micros)
+        let offset = seconds - p.seconds;
+        let duration = if p.ramp && seconds >= 0.0 {
+            let next = &self.tempos[i + 1];
+            let length = (next.tick - p.tick) as f64 / f64::from(self.ppqn);
+            super::timeline::beats(
+                offset,
+                length,
+                60000000.0 / f64::from(p.micros),
+                60000000.0 / f64::from(next.micros),
+            )
+        } else {
+            offset * 1000000.0 / f64::from(p.micros)
+        };
+        p.tick as f64 / f64::from(self.ppqn) + duration
+    }
+    pub fn sample_at(&self, beat: f64, sample_rate: u32) -> Result<u64, String> {
+        if !beat.is_finite()
+            || !(0.0..=262144.0).contains(&beat)
+            || !(8000..=384000).contains(&sample_rate)
+        {
+            return Err(
+                "Sample position requires finite beats 0–262144 and a supported output rate".into(),
+            );
+        }
+        Ok((self.seconds_at(beat) * f64::from(sample_rate)).round() as u64)
     }
     pub fn click_between(&self, start: f64, end: f64) -> Option<bool> {
         use super::super::midi_schedule::BEAT_EPSILON;
@@ -315,8 +406,14 @@ impl Conductor {
             .partition_point(|m| m.tick as f64 / f64::from(self.ppqn) <= start)
             .saturating_sub(1);
         let meter = self.meters[index];
-        let origin = meter.tick as f64 / f64::from(self.ppqn);
-        let unit = 4.0 / f64::from(1u32 << meter.denominator_power);
+        let pickup = self.native.map_or(0.0, |s| s.pickup);
+        let origin = if index == 0 && pickup > 0.0 {
+            pickup
+        } else {
+            meter.tick as f64 / f64::from(self.ppqn)
+        };
+        let subdivisions = self.native.map_or(1, |s| s.subdivision);
+        let unit = 4.0 / f64::from(1u32 << meter.denominator_power) / f64::from(subdivisions);
         let number = ((start - origin - BEAT_EPSILON) / unit).ceil();
         let boundary = origin + number * unit;
         let next = self
@@ -327,7 +424,7 @@ impl Conductor {
             return Some(true);
         }
         if boundary < end - BEAT_EPSILON {
-            Some(number.rem_euclid(f64::from(meter.numerator)) == 0.0)
+            Some(number.rem_euclid(f64::from(meter.numerator) * f64::from(subdivisions)) == 0.0)
         } else if next.is_some_and(|change| change < end - BEAT_EPSILON) {
             Some(true)
         } else {
@@ -336,8 +433,16 @@ impl Conductor {
     }
     pub fn position(&self, beat: f64) -> (u32, f32, Meter) {
         let mut bar = 1u32;
-        let mut start = 0.0;
+        let mut start = self.native.map_or(0.0, |s| s.pickup);
         let mut meter = self.meters[0];
+        if beat < start {
+            let unit = 4.0 / f64::from(1u32 << meter.denominator_power);
+            return (
+                0,
+                ((beat + f64::from(meter.numerator) * unit - start) / unit) as f32,
+                meter,
+            );
+        }
         for next in &self.meters[1..] {
             let boundary = next.tick as f64 / f64::from(self.ppqn);
             if boundary > beat {
@@ -374,5 +479,44 @@ impl Conductor {
             },
         });
         tempos.chain(meters).collect()
+    }
+
+    /// Enumerate visible bar boundaries, including a partial bar at a meter change.
+    /// `start` and `end` are quarter-note coordinates; `limit` bounds UI work.
+    /// Returns each boundary and its pickup-aware bar number, in time order.
+    pub fn bar_boundaries(&self, start: f64, end: f64, limit: usize) -> Vec<(f64, u32)> {
+        let mut result = Vec::new();
+        if !start.is_finite() || !end.is_finite() || end < start { return result; }
+        for (index, meter) in self.meters.iter().enumerate() {
+            let origin = if index == 0 { self.native.map_or(0.0, |s| s.pickup) } else { meter.tick as f64 / f64::from(self.ppqn) };
+            let next = self.meters.get(index + 1).map_or(f64::INFINITY, |m| m.tick as f64 / f64::from(self.ppqn));
+            if next <= start { continue; }
+            if origin > end { break; }
+            let length = f64::from(meter.numerator) * 4.0 / f64::from(1u32 << meter.denominator_power);
+            let first = ((start - origin) / length).ceil().max(0.0);
+            let mut beat = origin + first * length;
+            while beat <= end && beat < next && result.len() < limit {
+                result.push((beat, self.position(beat).0)); beat += length;
+            }
+            if result.len() == limit { break; }
+        }
+        result
+    }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+impl Tempo {
+    pub fn new(tick: u64, bpm: f64, ramp: bool) -> Result<Self, String> {
+        if !bpm.is_finite() || !(40.0..=240.0).contains(&bpm) {
+            return Err("Tempo must be finite and between40 and240 BPM".into());
+        }
+        Ok(Self {
+            tick,
+            micros: (60000000.0 / bpm).round() as u32,
+            ramp,
+            seconds: 0.0,
+        })
     }
 }

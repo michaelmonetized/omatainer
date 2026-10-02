@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 7;
+pub const STATE_VERSION: u32 = 8;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -85,7 +85,10 @@ impl<'de> Deserialize<'de> for State {
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
         if version < 7 && raw.get("session").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain session identity metadata")); }
-        if version == 7 && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Version 7 requires session identity metadata")); }
+        if (7..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Supported versions 7 and newer require session identity metadata")); }
+        if version < 8 && raw.get("conductor").and_then(serde_json::Value::as_object).is_some_and(|c| c.contains_key("native") || c.get("tempos").and_then(serde_json::Value::as_array).is_some_and(|points| points.iter().any(|p| p.get("ramp").is_some()))) {
+            return Err(serde::de::Error::custom("Legacy projects cannot contain native tempo ramps or timing options"));
+        }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
@@ -340,7 +343,7 @@ impl State {
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
-        if self.version == 7 && self.session.is_none() {return fail("missing session identity metadata");}
+        if self.version >= 7 && self.session.is_none() {return fail("missing session identity metadata");}
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
         if let Some(layout) = &self.session {
             layout.validate()?;
@@ -379,7 +382,10 @@ impl State {
             return fail("sampler settings");
         }
         if self.version < 6 && self.conductor.is_some() { return fail("legacy conductor"); }
-        if let Some(conductor) = &self.conductor { conductor.validate()?; }
+        if let Some(conductor) = &self.conductor {
+            conductor.validate()?;
+            if self.version < 8 && (conductor.native.is_some() || conductor.tempos.iter().any(|p| p.ramp)) { return fail("legacy native timeline"); }
+        }
         let mut midi_bytes = self.conductor.as_ref().map_or(0, |c| c.bytes());
         let reference = |index: usize| index < media.len();
         let optional = |index: Option<usize>| index.is_none_or(reference);

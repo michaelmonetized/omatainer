@@ -3,6 +3,49 @@
 //! the next sample, independent of callback partitioning.
 use super::midi_schedule::BEAT_EPSILON;
 
+pub(super) struct CountIn {
+    frame: u64,
+    frames: u64,
+    sr: u32,
+    bpm: f64,
+    unit: f64,
+    accents: f64,
+}
+
+impl CountIn {
+    /// Prepare the lead-in at the current meter and tempo.
+    /// `map`, `beat` and `sr` select the musical position and output rate.
+    /// Returns no lead-in when its configured bar count is zero.
+    pub fn new(map: &super::midi_data::Conductor, beat: f64, sr: u32) -> Option<Self> {
+        let settings = map.native?;
+        if settings.count_in == 0 { return None; }
+        let meter = map.position(beat).2;
+        let unit = 4.0 / f64::from(1u32 << meter.denominator_power);
+        let bpm = 60000000.0 / map.micros_exact_at(beat);
+        Some(Self {
+            frame: 0,
+            frames: (f64::from(settings.count_in) * f64::from(meter.numerator) * unit * 60.0 / bpm * f64::from(sr)).round() as u64,
+            sr, bpm, unit: unit / f64::from(settings.subdivision),
+            accents: f64::from(meter.numerator) * f64::from(settings.subdivision),
+        })
+    }
+    pub fn finished(&self) -> bool { self.frame >= self.frames }
+    pub fn remaining(&self) -> f32 { (self.frames.saturating_sub(self.frame) as f64 / f64::from(self.sr)) as f32 }
+    pub fn tick(&mut self, sr: u32) -> Option<bool> {
+        if sr != self.sr {
+            self.frame = (self.frame as f64 * f64::from(sr) / f64::from(self.sr)).round() as u64;
+            self.frames = (self.frames as f64 * f64::from(sr) / f64::from(self.sr)).round() as u64;
+            self.sr = sr;
+        }
+        let step = self.bpm / 60.0 / f64::from(sr);
+        let start = self.frame as f64 * step;
+        let end = (self.frame + 1) as f64 * step;
+        self.frame += 1;
+        let number = ((start - BEAT_EPSILON) / self.unit).ceil();
+        (number * self.unit < end - BEAT_EPSILON).then(|| number.rem_euclid(self.accents) == 0.0)
+    }
+}
+
 pub(super) struct Click {
     sr: f64,
     length: u32,
@@ -13,6 +56,8 @@ pub(super) struct Click {
     amplitude: f32,
     #[cfg(test)]
     triggers: u64,
+    #[cfg(test)]
+    pub trace: Option<Vec<(u64, bool)>>,
 }
 
 impl Click {
@@ -28,6 +73,8 @@ impl Click {
             amplitude: 0.0,
             #[cfg(test)]
             triggers: 0,
+            #[cfg(test)]
+            trace: None,
         }
     }
 
@@ -42,6 +89,9 @@ impl Click {
         self.tick_event(enabled, accent)
     }
     pub fn tick_event(&mut self, enabled: bool, accent: Option<bool>) -> f32 {
+        self.tick_with_gains(enabled, accent, 1.0, 1.0)
+    }
+    pub fn tick_with_gains(&mut self, enabled: bool, accent: Option<bool>, accent_gain: f32, beat_gain: f32) -> f32 {
         if !enabled {
             self.reset();
             return 0.0;
@@ -49,7 +99,7 @@ impl Click {
         if let Some(accent) = accent {
             self.phase = 0.0;
             self.increment = std::f64::consts::TAU * if accent { 1200.0 } else { 800.0 } / self.sr;
-            self.amplitude = if accent { 0.20 } else { 0.12 };
+            self.amplitude = if accent { 0.20 * accent_gain } else { 0.12 * beat_gain };
             self.age = 0;
             #[cfg(test)]
             {
@@ -77,6 +127,84 @@ impl Click {
 mod tests {
     use super::*;
     use crate::engine::*;
+
+    #[test]
+    fn count_in_holds_clip_recording_and_transport_then_starts_at_the_exact_output_sample() {
+        use midi_data::{Conductor, Meter, Tempo, TimingSettings};
+        let mut rt = renderer();
+        rt.apply(Command::Stop);
+        rt.conductor = Some(Conductor::native(960, vec![Tempo::new(0, 120.0, false).unwrap()], vec![Meter { tick: 0, numerator: 7, denominator_power: 3, clocks: 12, thirty_seconds: 8 }], TimingSettings { count_in: 1, subdivision: 2, ..Default::default() }).unwrap());
+        rt.metronome = false;
+        rt.tracks[2].clips[0].region = Some(midi_edit::Region::full(16.0));
+        rt.tracks[2].clips[0].notes.truncate(1);
+        rt.tracks[2].clips[0].notes[0].start = 0.0;
+        rt.tracks[2].midi_schedule.sample_trace = Some(Vec::with_capacity(8));
+        rt.metro.trace = Some(Vec::with_capacity(16));
+        rt.apply(Command::FireClip { track: 2, scene: 0, looping: false });
+        let clock = rt.note_recording.clock;
+        let mut output = vec![0.0; 84000 * 2];
+        assert_eq!(test_alloc::measure(|| rt.process(&mut output)), test_alloc::Counts::default());
+        assert_eq!(rt.beat, 0.0);
+        assert_eq!(rt.note_recording.clock, clock);
+        assert!(rt.recording_position(2, 0).is_none());
+        assert!(rt.tracks[2].midi_schedule.sample_trace.as_ref().unwrap().is_empty());
+        assert_eq!(rt.metro.trace.as_ref().unwrap().len(), 14);
+        assert_eq!(rt.metro.trace.as_ref().unwrap()[0], (0, true));
+        assert!(output.iter().any(|x| x.abs() > 0.001));
+        rt.process(&mut [0.0; 2]);
+        assert!(rt.count_in.is_none());
+        assert_eq!(rt.tracks[2].midi_schedule.sample_trace.as_ref().unwrap()[0].0, 84000);
+        assert!((rt.beat - 1.0 / 24000.0).abs() < 1e-12);
+        rt.apply(Command::Stop); rt.apply(Command::Play);
+        assert!(rt.count_in.is_some()); rt.apply(Command::Stop);
+        assert!(rt.count_in.is_none());
+    }
+
+    #[test]
+    fn actual_odd_meter_ramp_clicks_match_independent_timestamps_with_no_callback_heap() {
+        use midi_data::{Conductor, Meter, Tempo, TimingSettings};
+        let map = Conductor::native(960, vec![Tempo::new(0, 120.0, true).unwrap(), Tempo::new(8160, 180.0, false).unwrap()], vec![
+            Meter { tick: 0, numerator: 7, denominator_power: 3, clocks: 12, thirty_seconds: 8 },
+            Meter { tick: 3360, numerator: 5, denominator_power: 2, clocks: 24, thirty_seconds: 8 },
+            Meter { tick: 8160, numerator: 4, denominator_power: 2, clocks: 24, thirty_seconds: 8 },
+        ], TimingSettings { pickup: 0.5, subdivision: 2, ..Default::default() }).unwrap();
+        let b = 60000000.0 / f64::from(map.tempos[1].micros);
+        let timestamp = |beat: f64| {
+            let length = beat.min(8.5); let n = 10000; let h = length / f64::from(n);
+            let f = |x: f64| 60.0 / (120.0 + (b - 120.0) * x / 8.5);
+            let mut sum = f(0.0) + f(length);
+            for i in 1..n { sum += f(f64::from(i) * h) * if i % 2 == 0 { 2.0 } else { 4.0 }; }
+            sum * h / 3.0 + (beat - 8.5).max(0.0) * 60.0 / b
+        };
+        let boundaries: Vec<_> = (0..14).map(|i| f64::from(i) * 0.25).chain((0..10).map(|i| 3.5 + f64::from(i) * 0.5)).chain((0..9).map(|i| 8.5 + f64::from(i) * 0.5)).collect();
+        for sr in [44100, 48000, 96000] {
+            let (_, mut rt) = Engine::headless_for_test(sr, 32);
+            rt.apply(Command::Stop); rt.conductor = Some(map.clone()); rt.metronome = true;
+            rt.metro.trace = Some(Vec::with_capacity(64)); rt.apply(Command::Play);
+            let mut output = vec![0.0; 514]; let frames = (timestamp(12.6) * f64::from(sr)).ceil() as usize;
+            let counts = test_alloc::measure(|| { for begin in (0..frames).step_by(257) { rt.process(&mut output[..(frames - begin).min(257) * 2]); } });
+            assert_eq!(counts, test_alloc::Counts::default());
+            let trace = rt.metro.trace.take().unwrap(); assert_eq!(trace.len(), boundaries.len());
+            for ((frame, accent), beat) in trace.into_iter().zip(&boundaries) {
+                let expected = (timestamp(*beat) * f64::from(sr)).floor() as u64;
+                assert!(frame.abs_diff(expected) <= 1, "{sr} beat{beat}: {frame} vs {expected}");
+                assert_eq!(accent, [0.5, 3.5, 8.5, 12.5].contains(beat));
+            }
+        }
+    }
+
+    #[test]
+    fn click_gain_changes_are_applied_to_the_next_voice_and_zero_means_silent() {
+        let energy = |accent, a, b| {
+            let mut voice = Click::new(48000.0);
+            voice.tick_with_gains(true, Some(accent), a, b);
+            (0..960).map(|_| voice.tick_with_gains(true, None, a, b).powi(2)).sum::<f32>()
+        };
+        assert_eq!(energy(true, 0.0, 1.0), 0.0);
+        assert_eq!(energy(false, 1.0, 0.0), 0.0);
+        assert!((energy(true, 0.5, 1.0) / energy(true, 1.0, 1.0) - 0.25).abs() < 1e-6);
+        assert!((energy(false, 1.0, 2.0) / energy(false, 1.0, 1.0) - 4.0).abs() < 1e-6);
+    }
 
     fn render_voice(sr: f32, bpm: f64, start: f64, beats: f64) -> (Vec<f32>, Vec<usize>) {
         let mut click = Click::new(sr);

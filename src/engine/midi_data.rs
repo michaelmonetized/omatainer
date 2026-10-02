@@ -2,7 +2,9 @@
 //! is checked, so a stale tick record cannot override an intentional edit.
 use serde::{Deserialize, Serialize};
 mod lanes;
-pub(crate) use lanes::{Conductor, Lanes, MAX_CONDUCTOR_POINTS, MAX_LANE_BYTES};
+mod timeline;
+pub(crate) use timeline::Settings as TimingSettings;
+pub(crate) use lanes::{Conductor, Lanes, Meter, Tempo, MAX_CONDUCTOR_POINTS, MAX_LANE_BYTES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -230,6 +232,7 @@ mod tests {
 
 impl super::RtEngine {
     pub(super) fn retire_conductor(&mut self) {
+        self.count_in = None;
         if let Some(conductor) = self.conductor.take() {
             let bytes = conductor.bytes();
             self.undo.retire_midi_conductor(conductor, bytes);

@@ -94,6 +94,54 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Tempo and meter
+
+Shared quarter-note timeline
+
+Open the native timing draft. Tempo ramps rise or fall linearly in BPM to the next point. Meter markers and pickups change bar labels without moving musical events. Apply is one guarded History entry; save the project to retain it.
+
+Workflow: Edit and undo.
+
+### Tempo and meter points
+
+Ordered beats on the source PPQN grid
+
+Tempo rows contain beat, BPM and step/ramp. Meter rows contain beat and numerator/denominator. Both lists start at zero and allow up to 4096 points. Tempo is 40–240 BPM; the final tempo point uses step. Meter denominators are powers of two through 128. Invalid rows refuse the complete edit.
+
+Workflow: Edit and undo.
+
+### Pickup and click settings
+
+Quarter-note pickup; meter-beat subdivisions; full count-in bars; linear gains
+
+A pickup is shorter than the first bar and precedes its first meter change. Subdivisions are 1, 2 or 4. Count-in is 0–4 full bars at the starting meter and tempo, holding clips and recording while decks continue. Accent and beat gains are 0–2; zero silences that click voice.
+
+Workflow: Record a held note.
+
+### Apply timing
+
+Atomic renderer-confirmed edit
+
+Prepare and validate the whole map on the worker, then apply it as one History entry. Changed project identities, stale timing, active recording, held notes, count-in and performance protection refuse the edit. Queued is not Applied. Save retains exact ramps; MIDI export samples ramps at each MIDI tick with a 131072-tick bound.
+
+Workflow: Edit and undo.
+
+### Cancel timing operation
+
+Cancellation before renderer ownership
+
+Cancel preparation or a queued edit. An already claimed edit reports its actual completed outcome and remains in History. Unapplied drafts survive cancellation and failure.
+
+Workflow: Edit and undo.
+
+### Close or discard timing draft
+
+Explicit unapplied-work decision
+
+Close, Escape and application exit preserve dirty drafts until Keep or Discard. Discard requests cancellation and closes only after pending work settles. Completed edits remain in History; reopen the editor to inspect current timing.
+
+Workflow: Edit and undo.
+
 ### Performance history
 
 Independent saved DJ sessions

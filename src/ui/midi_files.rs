@@ -280,6 +280,7 @@ impl App {
                 if editor.exporting {
                     ui.label("Each selected clip becomes a file track, all at source beat zero. Select only the clips you intend to combine.");
                     ui.label("Select up to 64 clips across all session pages per export. Nothing is silently omitted.");
+                    if self.snap.timing.as_ref().is_some_and(|map| map.tempos.iter().any(|point| point.ramp)) { ui.label("Native tempo ramps are sampled at each exported MIDI tick (up to 131072 ramp ticks). Native projects preserve exact ramps. Sampled files may exceed the 4096-point limit for importing a session conductor; their original-source metadata can still be retained."); }
                     ui.horizontal(|ui| {
                         number(ui,"Export track page",&mut editor.export_track_page,1,track_order.len().div_ceil(8) as u16);
                         number(ui,"Export scene page",&mut editor.export_scene_page,1,scene_order.len().div_ceil(8) as u16);

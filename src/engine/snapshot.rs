@@ -108,6 +108,7 @@ impl Publisher {
 struct Frame {
     values: Snapshot,
     samples: [Option<Arc<Sample>>; DECKS],
+    timing: Option<Arc<midi_data::Conductor>>,
     track_names: Vec<usize>,
     scene_names: Vec<usize>,
     track_count: usize,
@@ -152,6 +153,7 @@ impl Frame {
         Self {
             values,
             samples: std::array::from_fn(|_| None),
+            timing: None,
             track_names: vec![0; session::MAX_TRACKS],
             scene_names: vec![0; session::MAX_SCENES],
             track_count: TRACKS, scene_count: SCENES,
@@ -169,6 +171,7 @@ impl Frame {
     // stays owned by this frame until the worker reserves more capacity.
     fn capture(&mut self, rt: &RtEngine) {
         debug_assert!(self.samples.iter().all(Option::is_none));
+        debug_assert!(self.timing.is_none() && self.values.timing.is_none());
         self.complete = false;
         self.track_count = rt.session.tracks.len(); self.scene_count = rt.session.scenes.len();
         for (out, item) in self.scene_names.iter_mut().zip(&rt.session.scenes) { *out = item.name.len(); }
@@ -306,6 +309,7 @@ impl Frame {
         target.bpm = rt.bpm;
         target.beat = rt.beat;
         target.file_conductor = rt.conductor.is_some();
+        target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {
             let (bar, beat, meter) = conductor.position(rt.precise_midi_beat());
             target.bar = bar; target.beat_in_bar = beat;
@@ -357,6 +361,7 @@ impl Frame {
             out.2 = slot.mix;
             out.3 = slot.p;
         }
+        self.timing = rt.conductor.clone();
         self.complete = true;
     }
 
@@ -396,6 +401,9 @@ impl Frame {
     // Only called before callback ownership or on the snapshot worker.
     fn materialize(&mut self) -> Snapshot {
         let mut next = self.values.clone();
+        // Ownership travels once to the snapshot worker. Audio receives a
+        // cleared frame and cannot retire the last old timeline reference.
+        next.timing = self.timing.take();
         next.sampler_banks.truncate(self.bank_count);
         next.fx_slots.truncate(self.fx_count);
         for (deck, sample) in next.decks.iter_mut().zip(&mut self.samples) {
