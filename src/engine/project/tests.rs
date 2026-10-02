@@ -3,12 +3,15 @@ use super::*;
 mod sampler_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {
+    state.as_object_mut().unwrap().remove("conductor");
     for track in state["tracks"].as_array_mut().unwrap() {
         for clip in track["clips"].as_array_mut().unwrap() {
             clip.as_object_mut().unwrap().remove("region");
+            clip.as_object_mut().unwrap().remove("lanes");
             for note in clip["notes"].as_array_mut().unwrap() {
                 let note = note.as_object_mut().unwrap();
                 note.remove("id"); note.remove("muted");
+                note.remove("channel"); note.remove("release_vel"); note.remove("source_timing");
             }
         }
     }
@@ -78,8 +81,8 @@ fn explicit_region_clock_cursor_survives_capture_install_and_output_rate_change(
     // must capture its own clock origin, while saved state uses transport beat.
     live.midi_beat += 0.125;
     live.apply(Command::SetNotes {track:2, scene:7, notes:vec![
-        MidiNote { id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
-        MidiNote { id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
+        MidiNote { channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
+        MidiNote { channel:0,release_vel:64,source_timing:None, id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
     ]});
     live.tracks[2].clips[7].bars = 16.0;
     live.tracks[2].clips[7].region = Some(midi_edit::Region::full(16.0));
@@ -110,6 +113,31 @@ fn explicit_region_clock_cursor_survives_capture_install_and_output_rate_change(
         .map(|(elapsed,gate)| (((elapsed-cursor)*48_000.0-1.0).round() as usize,gate))
         .collect();
     assert_eq!(events,vec![(48_000,Gate::Off(60)),(144_000,Gate::On(62,90)),(192_000,Gate::Off(62))]);
+}
+
+#[test]
+fn schema_six_note_channels_and_ticks_roundtrip_and_cannot_impersonate_schema_five() {
+    let original=rt();let mut saved=captured(&original);
+    let raw=crate::midi_file::Note {channel:12,pitch:64,velocity:80,release_velocity:21,
+        start_tick:1,duration_ticks:719,start_order:1,end_order:2};
+    saved.state.tracks[2].clips[7].kind=ClipKind::Midi;
+    saved.state.tracks[2].clips[7].notes=vec![MidiNote::from_smf(&raw,960).unwrap()];
+    let exact=saved.state.tracks[2].clips[7].notes.clone();
+    let restored=Prepared::from_state(saved.state.clone(),saved.media.clone(),48000).unwrap();
+    assert_eq!(captured(&restored.rt).state.tracks[2].clips[7].notes,exact);
+    let mut legacy=serde_json::to_value(&saved.state).unwrap();legacy["version"]=5.into();
+    legacy.as_object_mut().unwrap().remove("conductor");
+    for track in legacy["tracks"].as_array_mut().unwrap() {for clip in track["clips"].as_array_mut().unwrap() {
+        clip.as_object_mut().unwrap().remove("lanes");
+        for note in clip["notes"].as_array_mut().unwrap() {for field in ["channel","release_vel","source_timing"] {note.as_object_mut().unwrap().remove(field);}}
+    }}
+    let decoded:State=serde_json::from_value(legacy.clone()).unwrap();decoded.validate(&saved.media).unwrap();
+    for field in ["channel","release_vel","source_timing"] {
+        let mut bad=legacy.clone();bad["tracks"][2]["clips"][7]["notes"][0][field]=serde_json::Value::Null;
+        assert!(serde_json::from_value::<State>(bad).is_err());
+    }
+    let mut invalid=saved.state;invalid.tracks[2].clips[7].notes[0].source_timing.as_mut().unwrap().duration+=1;
+    assert!(invalid.validate(&saved.media).is_err());
 }
 
 fn rt() -> RtEngine {
@@ -156,6 +184,7 @@ fn populated() -> RtEngine {
             .collect();
         for s in 0..SCENES {
             rt.tracks[t].clips[s] = Clip {
+                lanes: None,
                 region: None,
                 kind: if s == 7 {
                     ClipKind::Audio
@@ -166,7 +195,7 @@ fn populated() -> RtEngine {
                 bars: 2.0,
                 gain: 0.7,
                 notes: vec![MidiNote {
-                    id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                    channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: (30 + t + s) as u8,
                     start: 1.125,
                     len: 0.75,
@@ -476,7 +505,7 @@ fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
     for arp in [false, true] {
         let mut source = rt();
         source.tracks[2].clips[0].notes = vec![MidiNote {
-            id: crate::engine::midi_edit::NoteId::new(), muted: false,
+            channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.0,
             len: 2.0,
@@ -495,7 +524,7 @@ fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
             track: 2,
             scene: 0,
             notes: vec![MidiNote {
-                id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 72,
                 start: 0.0,
                 len: 2.0,
@@ -618,7 +647,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
         }
         track.clips[0].notes = vec![
             MidiNote {
-                id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
                 len: 1.0,
@@ -664,7 +693,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
     eprintln!("maximum project capture: {} notes, {} rack slots, 16 banks, 4096-byte names; wall us median={} max={}; zero allocation/free (local copy cost, not stream deadline proof)",
         MAX_TOTAL_NOTES, MAX_FX_PER_RACK * (TRACKS + SCENES), micros[4], micros[8]);
     live.tracks[0].clips[1].notes.push(MidiNote {
-        id: crate::engine::midi_edit::NoteId::new(), muted: false,
+        channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch: 60,
         start: 0.0,
         len: 1.0,

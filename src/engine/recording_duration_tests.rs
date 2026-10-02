@@ -172,7 +172,7 @@ fn recording_note_list_replacement_cancels_only_that_clip_capture() {
         track: 1,
         scene: 2,
         notes: vec![MidiNote {
-            id: crate::engine::midi_edit::NoteId::new(), muted: false,
+            channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 74,
             start: 1.0,
             len: 3.0,

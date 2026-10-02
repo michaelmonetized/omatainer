@@ -167,6 +167,9 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if let Command::MidiImport(request) = c {
+            self.history_midi_import(request); return None;
+        }
         if let Command::MidiEdit(request) = &c {
             if !self.midi_edit_current(request) || !request.ack.claim() {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
@@ -235,6 +238,7 @@ impl RtEngine {
             return None;
         }
         let estimate = match plan.target {
+            Target::Global => self.conductor.as_ref().map_or(0, |c| c.bytes()),
             Target::Sampler(index) => {
                 let Command::SamplerEdit(edit) = &c else { unreachable!() };
                 bank_bytes(&edit.bank) + self.sampler_banks.get(index).map_or(0, bank_bytes)
@@ -273,6 +277,7 @@ impl RtEngine {
                 old.name.capacity().max(TEXT_LIMIT)
                     + 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>()
                     + old.audio.as_ref().map_or(0, |a| sample_bytes(a))
+                    + old.lanes.as_ref().map_or(0, |l| l.bytes())
             }
             Target::Slot(..) => match &c {
                 Command::FxAdd(kind) => {
@@ -336,6 +341,7 @@ impl RtEngine {
                     track: t,
                     scene: s,
                     value: Clip {
+                        lanes: clip.lanes.clone(),
                         region: clip.region,
                         name,
                         notes,
@@ -345,6 +351,7 @@ impl RtEngine {
                         audio: clip.audio.clone(),
                     },
                     spare_notes: prepared.notes,
+                    reserved_midi_bytes: 0,
                 }
             }
             Target::Media(d) => {
@@ -393,7 +400,7 @@ impl RtEngine {
         self.undo.recount();
         Some(c)
     }
-    fn history_reject(&mut self, c: Command, reason: Failure) {
+    pub(super) fn history_reject(&mut self, c: Command, reason: Failure) {
         self.undo.reject(reason);
         super::super::midi_edit::reject_retired(&c);
         let bytes = command_bytes(&c);
@@ -403,6 +410,7 @@ impl RtEngine {
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
         Command::MidiEdit(request) => request.bytes(),
+        Command::MidiImport(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),
         Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|sample| sample_bytes(sample)).sum::<usize>(),
         Command::SetNotes { notes, .. } => notes.capacity() * std::mem::size_of::<MidiNote>(),

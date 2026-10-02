@@ -749,8 +749,11 @@ impl App {
         if ctx.input(|input| input.viewport().close_requested()) && !self.project.allow_close {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.piano_roll.stop_for_close(&self.engine);
+            self.midi_files.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
-            if self.settings.busy() {
+            if self.midi_files.busy() {
+                self.project.message = Some("Close cancelled while MIDI file work settles. Its pending import was cancelled if the renderer had not claimed it; completed changes remain in History.".into());
+            } else if self.settings.busy() {
                 self.settings.open = true;
                 self.settings.message = "Close cancelled while a preferences operation is pending. Wait for its result or cancel it, then close again.".into();
             } else if self.piano_roll.blocks_close() {
@@ -886,6 +889,10 @@ impl App {
                             let recovery = ui.button("Autosave and recovery…");
                             help::annotate(ui, &recovery, help::Control::RecoveryOpen);
                             if recovery.clicked() { self.recovery.open = true; ui.close(); }
+                            let midi = ui.button("Import MIDI file…").help(ui, HelpControl::MidiFileImport);
+                            if midi.clicked() { self.open_midi_files(false); ui.close(); }
+                            let midi = ui.button("Export MIDI file…").help(ui, HelpControl::MidiFileExport);
+                            if midi.clicked() { self.open_midi_files(true); ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);
                             if response.clicked() {
@@ -947,6 +954,9 @@ impl App {
                     }
                 ));
                 if ui.button(self.session_history_toolbar_text()).help(ui, HelpControl::HistoryOpen).clicked() { self.session_history.open = true; }
+                if self.snap.file_conductor {
+                    ui.label(format!("MIDI conductor · {}/{} · bar {} beat {:.2}", self.snap.meter_numerator, self.snap.meter_denominator, self.snap.bar, self.snap.beat_in_bar + 1.0));
+                }
                 let recovery_text = self.recovery_toolbar_text();
                 if ui.button(recovery_text).help(ui, HelpControl::RecoveryOpen).clicked() { self.recovery.open = true; }
                 if self.project.awaiting_snapshot.is_some() {

@@ -343,7 +343,7 @@ impl Gui {
             track: 0,
             scene: 0,
             notes: vec![MidiNote {
-                id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 61,
                 start: 0.25,
                 len: 0.75,

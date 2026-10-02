@@ -458,7 +458,7 @@ fn project_roundtrip() -> Value {
             scene: 0,
             notes: (0..1024)
                 .map(|n| crate::engine::MidiNote {
-                    id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                    channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: 36 + ((n + track) % 48) as u8,
                     start: n as f32 * 0.125,
                     len: 0.1,

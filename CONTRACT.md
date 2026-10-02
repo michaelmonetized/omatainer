@@ -595,7 +595,7 @@ once before encoding the request.
   Clip gain and unrelated mixer edits are retained. Recording into the target
   rejects Apply. Owned request data and acknowledgement references retire on
   the existing worker; renderer application/rejection/Undo/Redo do no heap work.
-- Schema 5 persists stable per-clip note IDs, velocity and mute, and optional
+- Schema 6 persists stable per-clip note IDs, velocity and mute, and optional
   source-beat clip/loop ranges. IDs survive move, resize and value changes;
   drawing/duplication/recording create distinct IDs. Legacy IDs migrate
   deterministically; new fields, including null, are rejected in older schemas.
@@ -612,6 +612,40 @@ once before encoding the request.
   clip/loop spans at a minimum 1/1024 beat. Repeating active note density cannot
   exceed 8192 per beat, including recording additions. This is the existing
   legacy note limit at its minimum supported period, not an unlimited event rate.
+
+- Standard MIDI File interchange supports formats 0/1, PPQN 1–32767, integer
+  note start/duration, channels and on/off velocity, standard channel messages,
+  tempo, meter, key and standard text bytes. Format 2, SMPTE and RMID refuse;
+  SysEx/proprietary data is listed and requires explicit omission approval.
+  Trailing silence and canonical event order survive native save/reopen/export.
+  Unsupported data is never silently approximated into musical events.
+- Import maps tracks/channels into 1–64 MIDI cells, with ignore/replace/merge
+  choices and session/file/authoritative-track conductor choices. Audio targets,
+  ambiguous merged note pairing, stale targets, held target recording and
+  changed conductor baselines refuse before inverse capture. Applying a map
+  also refuses held project notes or recording. One atomic import uses up to
+  65 preallocated inverse patches; apply/reject/Undo/Redo do no callback heap work.
+- Original ticks remain authoritative only while their visible projections
+  match. Musical scheduling uses the exact source values. Controller/program
+  lanes persist for file interchange; the native track instrument retains its
+  selected sound. This feature does not introduce device/channel output routing.
+- File conductor playback uses integer microseconds, with at most 4096 tempo
+  and 4096 meter points, 40–240 BPM, and meter denominators up to 128. Manual
+  tempo edits remove the map with a complete inverse. Kept-session imports retain
+  source conductor metadata even when outside playback limits.
+  Tempo-dependent master effects update at map transitions; metronome beats
+  use the current meter denominator and accent each bar or explicit meter change.
+- Files are bounded at 16 MiB/128 tracks/262144 events; native sessions permit
+  65536 notes and 16 MiB of MIDI lanes. Prospective native project serialization
+  is checked against its 64 MiB metadata bound before import, reserving 128 KiB
+  for the GUI envelope. Schemas before 6 reject presence, including null, of
+  exact timing, channel, release velocity, source lanes or conductor fields.
+- Export selects source cells and SMF form/division, muted-note inclusion and
+  current-session or original-source conductor. Inexact conversion requires
+  explicit rounding. Export never flattens clip loop/launch transforms. A new
+  destination is claimed atomically; existing/racing destinations remain intact.
+  Worker cancellation and changed source/directory paths leave no partial file
+  or partial musical import. Parsing, encoding and adapters poll cancellation.
 
 - Project New/Open/Recent/Save/Save As/Save Copy operate on versioned `.omat`
   documents containing the supported engine model, embedded decoded media and

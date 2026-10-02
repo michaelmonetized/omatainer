@@ -113,7 +113,7 @@ explicit Discard can still exit without saving.
 
 The versioned file includes exact decoded audio, so original source files are not
 required for playback after reopening. Physical held keys, scratch touches,
-connections and DSP tails are transient. Default limits are 8 MiB metadata,
+connections and DSP tails are transient. Default limits are 64 MiB metadata,
 256 embedded media entries and 1 GiB PCM; unsupported or corrupt projects are
 rejected without replacement. See the [project workflow evidence](docs/validation/issue-82-ui.md)
 and [file format and atomic save rules](docs/validation/issue-82-codec.md).
@@ -400,6 +400,35 @@ without recording; stop it with **Stop note audition**, loss of focus or close.
 Cancel and Escape ask before discarding unapplied work. Native project saves
 retain note identity, pitch, timing, velocity, mute and clip ranges. Existing
 projects migrate identities deterministically and retain their original playback.
+
+**Project → Import MIDI file…** inspects Standard MIDI Files before changing the
+session. SMF 0 and 1 with PPQN 1–32767 are supported; format 2, SMPTE and RMID
+require conversion. Map file tracks or individual channels into MIDI cells,
+ignore rows, replace or merge notes, and keep the session conductor or choose
+the complete file or an authoritative conductor track. Conflicting simultaneous
+tempo/meter events require a choice. Applying a file conductor supports 40–240
+BPM; keeping the session retains other source tempos for subsequent export.
+Review unsupported SysEx/proprietary data before accepting its omission.
+
+Native projects retain exact integer source ticks, note channels and on/off
+velocities, controller/program lanes, text, key, tempo, meter and trailing file
+silence. The native instrument uses the track's selected sound; controller and
+program lanes are preserved for file interchange rather than changing that
+sound. The piano roll shows exact source coordinates and retains them through
+pitch/velocity/mute edits; moving or resizing a note replaces its source timing.
+File conductor playback follows integer microseconds per quarter, updates
+tempo-dependent master effects, and displays the current meter/bar/beat. The
+metronome follows its denominator beats and bar accents. Manual tempo changes return to a constant conductor;
+Undo restores the map. An entire mapped import is one Undo operation.
+
+**Project → Export MIDI file…** selects up to 64 MIDI cells, SMF 0/1, PPQN,
+muted-note inclusion and either the session or original source conductor.
+Exports use source coordinates; clip launch/loop transforms are not flattened.
+An inexact PPQN conversion requires explicit nearest-tick rounding. Exports
+publish to an unused path atomically and never replace an existing file.
+Inspection, preparation and publication run on a cancellable worker. Limits are
+16 MiB per SMF, 128 file tracks, 262144 events, 8192 notes per cell, 65536 session
+notes, 16 MiB of session MIDI lanes and 64 MiB of native project metadata.
 
 Open the **Sampler bank editor** to create an empty bank, copy an original factory
 bank, or edit a user bank. Select a local crate file and assign it to one of 16

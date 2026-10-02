@@ -246,7 +246,7 @@ fn lesson_rejects_capacity_failure_and_project_identity_change() {
     // held gate alone must never certify a new note or completed recording.
     g.rt.tracks[4].clips[3].notes = vec![
         crate::engine::MidiNote {
-            id: crate::engine::midi_edit::NoteId::new(), muted: false,
+            channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             vel: 100,
             start: 0.0,

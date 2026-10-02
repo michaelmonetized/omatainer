@@ -32,6 +32,7 @@ mod session_history;
 mod cue_editor;
 mod grid_editor;
 mod piano_roll;
+mod midi_files;
 mod play_time;
 mod project;
 mod undo;
@@ -131,6 +132,7 @@ pub struct App {
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
     piano_roll: piano_roll::Editor,
+    midi_files: midi_files::Editor,
     sampler_editor: sampler_editor::Editor,
     published_selection: Option<Arc<Selection>>,
     published_indices: std::sync::Weak<Vec<usize>>,
@@ -235,6 +237,7 @@ impl App {
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
             piano_roll: piano_roll::Editor::default(),
+            midi_files: midi_files::Editor::default(),
             sampler_editor: sampler_editor::Editor::default(),
             published_selection: None,
             published_indices: std::sync::Weak::new(),
@@ -652,6 +655,7 @@ impl App {
         self.confirm_project_snapshot();
         self.poll_undo();
         self.poll_piano_roll();
+        self.poll_midi_files();
         self.poll_sampler_editor();
         self.poll_library_analysis();
         self.poll_library_tags();
@@ -675,6 +679,7 @@ impl App {
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
         self.piano_roll_ui(ctx);
+        self.midi_files_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.library_tags_ui(ctx);

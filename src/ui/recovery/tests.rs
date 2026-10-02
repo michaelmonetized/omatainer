@@ -1012,12 +1012,15 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
         let mut state = serde_json::to_value(&recovered.bundle.state).unwrap();
         state["engine"]["version"] = version.into();
         if version < 5 {
+            state["engine"].as_object_mut().unwrap().remove("conductor");
             for track in state["engine"]["tracks"].as_array_mut().unwrap() {
                 for clip in track["clips"].as_array_mut().unwrap() {
                     clip.as_object_mut().unwrap().remove("region");
+                    clip.as_object_mut().unwrap().remove("lanes");
                     for note in clip["notes"].as_array_mut().unwrap() {
                         note.as_object_mut().unwrap().remove("id");
                         note.as_object_mut().unwrap().remove("muted");
+                        for field in ["channel","release_vel","source_timing"] {note.as_object_mut().unwrap().remove(field);}
                     }
                 }
             }

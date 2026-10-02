@@ -17,7 +17,7 @@ use std::sync::{
 
 pub const MAGIC: [u8; 8] = *b"OMATPRJ\0";
 pub const FORMAT_VERSION: u32 = 1;
-pub const DEFAULT_METADATA_LIMIT: usize = 8 * 1024 * 1024;
+pub const DEFAULT_METADATA_LIMIT: usize = 64 * 1024 * 1024;
 pub const DEFAULT_MEDIA_LIMIT: usize = 256;
 pub const DEFAULT_PCM_LIMIT: u64 = 1024 * 1024 * 1024;
 pub const MAX_SAMPLE_RATE: u32 = 768_000;

@@ -1534,6 +1534,62 @@ Finalize current pad captures and stop automatic pad writes. Existing monitor vo
 
 Workflow: Record a held note.
 
+### Import Standard MIDI File
+
+SMF 0/1, PPQN 1–32767, 16 MiB
+
+Inspect notes, velocities, release velocities, channels, all channel messages, standard text, key, tempo and time signature events. Map tracks or split channels to session cells. Review unsupported omissions before import. Apply preserves source ticks and creates one guarded Undo entry.
+
+Workflow: Save and reopen.
+
+### Export Standard MIDI File
+
+Source clip coordinates, SMF 0 or 1
+
+Select MIDI cells and an unused destination path. Export writes all selected clips at source beat zero, preserving trailing source silence. Choose muted-note inclusion and original or session conductor events. Clip loops, launch offsets and native mute flags are not SMF fields. Existing destinations produce an error.
+
+Workflow: Save and reopen.
+
+### MIDI file path
+
+Regular local .mid or .midi file
+
+Read and write file bytes on the MIDI worker. Inspection detects source replacement; import uses the inspected contents only while that source remains current. Export uses an atomic exclusive file publication after successful encoding and synchronization.
+
+Workflow: Save and reopen.
+
+### MIDI track and channel mapping
+
+8 tracks by 8 scenes, 8192 notes per clip, 65536 per session
+
+Choose every destination or disable a source row. Several source rows mapped to one cell combine there. Channel splitting attaches file-track metadata to its first row. Replace contents or explicitly merge existing MIDI clips; audio destinations fail before any change. Gains remain unchanged.
+
+Workflow: Save and reopen.
+
+### MIDI conductor choice
+
+Integer microseconds per quarter; meter denominators through 128
+
+Keep the current session conductor or use the complete file map. Conflicting simultaneous values require an authoritative file track. Applying a conductor supports 40–240 BPM and at most 4096 points of each kind; other values remain in original source metadata when keeping the session conductor. Metronome beats follow the meter denominator and accent each bar. A manual tempo edit resumes constant tempo and 4/4 and can be undone.
+
+Workflow: Save and reopen.
+
+### MIDI tick precision
+
+PPQN 1–32767
+
+Original imported notes and events keep exact integer ticks. A different division or newly edited beat may require rounding. Exact export refuses unrepresentable values; allow nearest-tick rounding explicitly to accept at most half a destination tick per boundary. Export can refuse ambiguous overlapping same-channel/pitch note releases instead of changing durations.
+
+Workflow: Save and reopen.
+
+### Cancel MIDI file work
+
+Worker cancellation and atomic renderer claim
+
+Cancel inspection, preparation or encoding before publication. Cancel a queued import before the renderer claims it. After ownership or file publication wins, the actual completed result is reported. Close waits for pending work to settle.
+
+Workflow: Save and reopen.
+
 ### MIDI piano roll
 
 Captured empty or MIDI clip

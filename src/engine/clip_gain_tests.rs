@@ -22,12 +22,13 @@ fn engine(gain: f32, kind: u8, arp: bool, live: bool) -> RtEngine {
     track.pan = 0.0;
     track.clips = std::array::from_fn(|_| Clip::empty());
     track.clips[0] = Clip {
+        lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "gain probe".into(),
         bars: 1.0,
         notes: vec![MidiNote {
-            id: crate::engine::midi_edit::NoteId::new(), muted: false,
+            channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: if kind == 0 { 36 } else { 60 },
             start: 0.0,
             len: 2.0,
@@ -145,10 +146,11 @@ fn edits_and_replacement_preserve_held_notes_release_tails_and_live_gain() {
         }
         let old = changed.tracks[TRACK].clips[0].clone();
         changed.tracks[TRACK].clips[1] = Clip {
+            lanes: None,
             region: None,
             gain: 0.0,
             notes: vec![MidiNote {
-                id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: if same_pitch {
                     old.notes[0].pitch
                 } else if kind == 0 {

@@ -18,6 +18,7 @@ pub(crate) struct Document {
     pub bars: f32,
     pub region: Option<Region>,
     pub notes: Vec<super::MidiNote>,
+    pub lanes: Option<Arc<super::midi_data::Lanes>>,
 }
 impl Document {
     pub fn capture(
@@ -43,6 +44,7 @@ impl Document {
             bars: clip.bars,
             region: clip.region,
             notes: clip.notes.clone(),
+            lanes: clip.lanes.clone(),
         }))
     }
     pub fn playback_region(&self) -> Region {
@@ -52,6 +54,7 @@ impl Document {
         std::mem::size_of::<Self>()
             + self.name.capacity()
             + self.notes.capacity() * std::mem::size_of::<super::MidiNote>()
+            + self.lanes.as_ref().map_or(0, |lanes| lanes.bytes())
     }
 }
 
@@ -65,7 +68,7 @@ pub(crate) enum Outcome {
     Cancelled,
 }
 impl Ack {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self(Arc::new(AtomicU8::new(0)))
     }
     pub fn state(&self) -> Outcome {
@@ -89,7 +92,7 @@ impl Ack {
     pub(super) fn applied(&self) {
         self.0.store(1, Ordering::Release);
     }
-    fn reject(&self) {
+    pub(super) fn reject(&self) {
         let _ = self
             .0
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |v| {
@@ -139,6 +142,7 @@ impl Request {
             bars: (region.end / 4.0) as f32,
             region: Some(region),
             notes: notes.clone(),
+            lanes: baseline.lanes.clone(),
         });
         let ack = Ack::new();
         Ok((
@@ -166,7 +170,8 @@ impl Request {
     }
 }
 fn valid_note(note: &super::MidiNote) -> bool {
-    note.pitch <= 127
+    note.interchange_valid()
+        && note.pitch <= 127
         && note.vel <= 127
         && [note.start, note.len]
             .into_iter()
@@ -175,6 +180,7 @@ fn valid_note(note: &super::MidiNote) -> bool {
 pub(super) fn reject_retired(mut command: &super::Command) {
     loop {
         match command {
+            super::Command::MidiImport(request) => { request.ack.reject(); return; }
             super::Command::MidiEdit(request) => {
                 request.ack.reject();
                 return;
@@ -232,6 +238,7 @@ impl super::RtEngine {
             && clip.bars == baseline.bars
             && clip.region == baseline.region
             && clip.notes == baseline.notes
+            && clip.lanes == baseline.lanes
             && request.name.len() <= 4096
             && request.notes.len() <= super::project::MAX_NOTES_PER_CLIP
             && request.notes.capacity() <= super::project::MAX_NOTES_PER_CLIP
@@ -376,8 +383,8 @@ impl Region {
             .filter(|note| {
                 !note.muted
                     && note.len > 0.0
-                    && note.start as f64 >= self.loop_start
-                    && (note.start as f64) < self.loop_end
+                    && note.source_start() >= self.loop_start
+                    && (note.source_start()) < self.loop_end
             })
             .count();
         !self.loop_enabled
@@ -415,13 +422,13 @@ pub(super) fn qualify_legacy_notes(command: &mut super::Command) -> bool {
 }
 
 pub(super) fn reject_legacy_fields(state: &serde_json::Value) -> Result<(), &'static str> {
-    if state
-        .get("version")
-        .and_then(serde_json::Value::as_u64)
-        .is_none_or(|version| version >= 5)
-    {
+    let Some(version) = state.get("version").and_then(serde_json::Value::as_u64) else {
+        return Ok(());
+    };
+    if version >= 6 {
         return Ok(());
     }
+    if state.get("conductor").is_some() { return Err("Conductor maps require project schema 6"); }
     for track in state
         .get("tracks")
         .and_then(serde_json::Value::as_array)
@@ -434,7 +441,8 @@ pub(super) fn reject_legacy_fields(state: &serde_json::Value) -> Result<(), &'st
             .into_iter()
             .flatten()
         {
-            if clip.get("region").is_some() {
+            if clip.get("lanes").is_some() { return Err("MIDI lanes require project schema 6"); }
+            if version < 5 && clip.get("region").is_some() {
                 return Err("MIDI clip regions are unsupported in legacy project schemas");
             }
             for note in clip
@@ -443,7 +451,15 @@ pub(super) fn reject_legacy_fields(state: &serde_json::Value) -> Result<(), &'st
                 .into_iter()
                 .flatten()
             {
-                if note.get("id").is_some() || note.get("muted").is_some() {
+                if ["channel", "release_vel", "source_timing"]
+                    .iter()
+                    .any(|field| note.get(field).is_some())
+                {
+                    return Err(
+                        "MIDI channel and tick fields are unsupported before project schema 6",
+                    );
+                }
+                if version < 5 && (note.get("id").is_some() || note.get("muted").is_some()) {
                     return Err(
                         "MIDI note identity and mute are unsupported in legacy project schemas",
                     );
@@ -468,6 +484,7 @@ mod tests {
             bars: clip.bars,
             region: clip.region,
             notes: clip.notes.clone(),
+            lanes: clip.lanes.clone(),
         })
     }
     fn tick(rt: &mut super::super::RtEngine) {
@@ -475,6 +492,9 @@ mod tests {
     }
     fn note() -> super::super::MidiNote {
         super::super::MidiNote {
+            channel: 0,
+            release_vel: 64,
+            source_timing: None,
             id: NoteId::new(),
             pitch: 64,
             start: 1.0,

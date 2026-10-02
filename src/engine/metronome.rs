@@ -36,13 +36,17 @@ impl Click {
     }
 
     pub fn tick(&mut self, enabled: bool, start: f64, end: f64) -> f32 {
+        let boundary = (start - BEAT_EPSILON).ceil();
+        let accent = (end > start && boundary < end - BEAT_EPSILON)
+            .then(|| boundary.rem_euclid(4.0) == 0.0);
+        self.tick_event(enabled, accent)
+    }
+    pub fn tick_event(&mut self, enabled: bool, accent: Option<bool>) -> f32 {
         if !enabled {
             self.reset();
             return 0.0;
         }
-        let boundary = (start - BEAT_EPSILON).ceil();
-        if end > start && boundary < end - BEAT_EPSILON {
-            let accent = boundary.rem_euclid(4.0) == 0.0;
+        if let Some(accent) = accent {
             self.phase = 0.0;
             self.increment = std::f64::consts::TAU * if accent { 1200.0 } else { 800.0 } / self.sr;
             self.amplitude = if accent { 0.20 } else { 0.12 };

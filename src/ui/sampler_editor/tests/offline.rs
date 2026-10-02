@@ -94,7 +94,7 @@ fn document_child() {
             track: 0,
             scene: 0,
             notes: vec![crate::engine::MidiNote {
-                id: crate::engine::midi_edit::NoteId::new(), muted: false,
+                channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 64,
                 start: 0.25,
                 len: 1.25,

@@ -2,6 +2,7 @@
 //! conversion to a renderer/editor's musical coordinates belongs to its adapter.
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 pub(crate) const MAX_BYTES: usize = 16 * 1024 * 1024;
 pub(crate) const MAX_TRACKS: usize = 128;
@@ -45,7 +46,8 @@ pub(crate) struct Note {
     pub end_order: u32,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct Message {
     pub tick: u64,
     pub order: u32,
@@ -54,14 +56,16 @@ pub(crate) struct Message {
     pub length: u8,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct Meta {
     pub tick: u64,
     pub order: u32,
     pub value: MetaValue,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) enum MetaValue {
     Tempo(u32), // integer microseconds per quarter note
     Meter {

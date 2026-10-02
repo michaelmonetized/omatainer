@@ -74,8 +74,8 @@ impl ChordCache {
             if note.muted || !visible(index) {
                 continue;
             }
-            let start = note.start as f64;
-            let end = (note.start + note.len) as f64;
+            let start = note.source_start();
+            let end = if note.source_timing.is_some() {start+note.source_duration()} else {(note.start + note.len) as f64};
             if local >= start && local < end {
                 present[note.pitch as usize] = true;
                 // One arp step represents a deduplicated pitch. The loudest

@@ -481,7 +481,8 @@ fn media_target(command: &Command) -> Option<usize> {
 }
 fn destructive(command: &Command) -> bool {
     match command {
-        Command::MidiEdit(_)
+        Command::MidiImport(_)
+        | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }
         | Command::SetNotes { .. }
         | Command::SamplerEdit(_)

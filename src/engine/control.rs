@@ -767,6 +767,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
     use std::mem::size_of;
     match command {
         Command::MidiEdit(request) => request.bytes(),
+        Command::MidiImport(request) => request.bytes(),
         Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|audio| audio.data.capacity().saturating_mul(4)).sum::<usize>(),
         Command::SamplerEdit(edit) => edit.bank.data.metadata_bytes() + edit.bank.data.audio.iter().flatten().map(|audio| {
             size_of::<super::dsp::Sample>() + 4 * size_of::<usize>() + size_of::<Vec<[f32; 3]>>()

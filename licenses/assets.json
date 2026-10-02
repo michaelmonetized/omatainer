@@ -268,7 +268,7 @@
     },
     {
       "id": "test:smf-interchange",
-      "name": "Original Standard MIDI File interoperability fixture",
+      "name": "Original Standard MIDI File and independent DAW return fixtures",
       "category": "test-fixture",
       "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory material.",
       "license": "MIT",
@@ -282,10 +282,15 @@
         {
           "location": "tests/fixtures/midi/sixteen-bars-ppqn960.mid",
           "sha256": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4"
+        },
+        {
+          "location": "tests/fixtures/midi/ardour-9.8-region-ppqn19200.mid",
+          "sha256": "e20b3ab9a40a45b032451df776a7a189bb3e0e886b25f8aeb0be2899ce5aecde"
         }
       ],
       "members": [
-        "sixteen-bars-ppqn960.mid"
+        "sixteen-bars-ppqn960.mid",
+        "ardour-9.8-region-ppqn19200.mid"
       ],
       "project_license": true
     }

@@ -155,16 +155,16 @@ impl MidiSchedule {
             let (start, duration, repeating, phase) = if let Some(region) = region {
                 if !region.valid() { continue; }
                 let end = if looping { region.loop_end } else { region.end };
-                let source_start = note.start as f64;
-                let source_end = (source_start + note.len as f64).min(end);
+                let source_start = note.source_start();
+                let source_end = (source_start + note.source_duration()).min(end);
                 if source_start >= end || source_end <= region.start { continue; }
                 let clipped_start = source_start.max(region.start);
                 (clipped_start - region.start, source_end - clipped_start,
                     looping && source_start >= region.loop_start,
                     source_start - region.loop_start)
             } else {
-                let start = (note.start as f64).rem_euclid(loop_beats);
-                (start, note.len as f64, looping, start)
+                let start = (note.source_start()).rem_euclid(loop_beats);
+                (start, note.source_duration(), looping, start)
             };
             let start = if let Some(policy) = recorded.get(index).and_then(Option::as_ref) {
                 let Some(first) = policy.first_onset(phase, loop_beats, repeating) else {
