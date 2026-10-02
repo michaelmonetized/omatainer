@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 4;
+pub const STATE_VERSION: u32 = 5;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -10,7 +10,7 @@ pub const MAX_TOTAL_NOTES: usize = 65536;
 pub const MAX_TEXT_BYTES: usize = 4096;
 pub const MAX_MEDIA_REFS: usize = TRACKS * (SCENES + 6) + DECKS + 2 + MAX_BANKS * 16;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
@@ -41,6 +41,72 @@ pub struct State {
     pub builtin: [Option<usize>; 2],
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StateWire {
+    version: u32,
+    bpm: f32,
+    beat: f64,
+    quant: f32,
+    quantize: bool,
+    metronome: bool,
+    view: View,
+    xfader: f32,
+    xfader_curve: f32,
+    master: f32,
+    cue_mix: f32,
+    selected_track: usize,
+    selected_scene: usize,
+    selected_deck: usize,
+    fx_view: i16,
+    tracks: [Track; TRACKS],
+    decks: [Deck; DECKS],
+    scene_fx: [Vec<Effect>; SCENES],
+    fx_kind: [FxKind; 3],
+    fx_wet: [f32; 3],
+    sampler_bank: usize,
+    sampler_inst: SamplerInstrument,
+    sampler_oct: i8,
+    sampler_synth: Synth,
+    banks: Vec<Bank>,
+    builtin: [Option<usize>; 2],
+}
+impl<'de> Deserialize<'de> for State {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = serde_json::Value::deserialize(deserializer)?;
+        midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
+        let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
+        Ok(Self {
+            version: wire.version,
+            bpm: wire.bpm,
+            beat: wire.beat,
+            quant: wire.quant,
+            quantize: wire.quantize,
+            metronome: wire.metronome,
+            view: wire.view,
+            xfader: wire.xfader,
+            xfader_curve: wire.xfader_curve,
+            master: wire.master,
+            cue_mix: wire.cue_mix,
+            selected_track: wire.selected_track,
+            selected_scene: wire.selected_scene,
+            selected_deck: wire.selected_deck,
+            fx_view: wire.fx_view,
+            tracks: wire.tracks,
+            decks: wire.decks,
+            scene_fx: wire.scene_fx,
+            fx_kind: wire.fx_kind,
+            fx_wet: wire.fx_wet,
+            sampler_bank: wire.sampler_bank,
+            sampler_inst: wire.sampler_inst,
+            sampler_oct: wire.sampler_oct,
+            sampler_synth: wire.sampler_synth,
+            banks: wire.banks,
+            builtin: wire.builtin,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Track {
@@ -65,6 +131,8 @@ pub struct Track {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SavedClip {
+    #[serde(default)]
+    pub region: Option<midi_edit::Region>,
     pub kind: ClipKind,
     pub name: String,
     pub bars: f32,
@@ -143,6 +211,16 @@ pub struct Deck {
 }
 
 impl State {
+    pub(super) fn migrate_notes(&mut self) {
+        if self.version >= 5 { return; }
+        for (track, data) in self.tracks.iter_mut().enumerate() {
+            for (scene, clip) in data.clips.iter_mut().enumerate() {
+                for (index, note) in clip.notes.iter_mut().enumerate() {
+                    if !note.id.valid() { note.id = midi_edit::NoteId::legacy(track, scene, index); }
+                }
+            }
+        }
+    }
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
@@ -163,6 +241,7 @@ impl State {
             tracks: std::array::from_fn(|_| Track {
                 name: String::new(),
                 clips: std::array::from_fn(|_| SavedClip {
+                    region: None,
                     kind: ClipKind::Empty,
                     name: String::new(),
                     bars: 1.0,
@@ -268,6 +347,7 @@ impl State {
         let reference = |index: usize| index < media.len();
         let optional = |index: Option<usize>| index.is_none_or(reference);
         let mut note_count = 0usize;
+        let mut note_ids = std::collections::HashSet::new();
         for track in &self.tracks {
             if !text_ok(&track.name)
                 || track.scene_bus >= SCENES
@@ -289,11 +369,14 @@ impl State {
                 }
             }
             for clip in &track.clips {
+                note_ids.clear();
                 if !text_ok(&clip.name)
-                    || !finite_range(clip.bars as f64, 0.25, 65536.0)
+                    || !finite_range(clip.bars as f64, if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
                     || !finite_range(clip.gain as f64, 0.0, 1.5)
                     || !optional(clip.audio)
                     || clip.notes.len() > MAX_NOTES_PER_CLIP
+                    || clip.region.is_some_and(|region| !region.allows(&clip.notes) || clip.kind != ClipKind::Midi || clip.bars != (region.end / 4.0) as f32)
+                    || self.version < 5 && clip.region.is_some()
                 {
                     return fail("clip controls or media reference");
                 }
@@ -303,6 +386,8 @@ impl State {
                         || note.vel > 127
                         || !finite_range(note.start as f64, 0.0, 262144.0)
                         || !finite_range(note.len as f64, 0.0, 262144.0)
+                        || self.version >= 5 && (!note.id.valid() || !note_ids.insert(note.id))
+                        || self.version < 5 && note.muted
                     {
                         return fail("MIDI note");
                     }

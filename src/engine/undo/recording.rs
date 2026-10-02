@@ -3,6 +3,10 @@ impl RtEngine {
     /// Reserve the original clip plus a separate writable note buffer before
     /// recording's first mutation. A take can include every one of 64 cells.
     pub(in crate::engine) fn history_record_target(&mut self, track: usize, scene: usize) -> bool {
+        if self.midi_note_count() >= super::super::project::MAX_TOTAL_NOTES
+            || !self.midi_recording_density_available(track, scene) {
+            self.undo.reject(Failure::Notes); return false;
+        }
         if !self.undo.enabled || self.undo.replaying {
             return true;
         }
@@ -49,6 +53,7 @@ impl RtEngine {
             track: track as u8,
             scene: scene as u8,
             value: Clip {
+                region: clip.region,
                 kind: clip.kind,
                 name,
                 bars: clip.bars,

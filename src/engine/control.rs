@@ -62,6 +62,7 @@ enum GateKey {
     Live { source: u64, ch: u8, note: u8 },
     Pad(u8),
     Audition(u64),
+    Piano(u64),
     Touch { source: u64, deck: u8 },
 }
 
@@ -125,6 +126,7 @@ impl AdmissionShared {
                     15 => super::performance::Error::PendingStop, _ => super::performance::Error::BackgroundBusy,
                 })),
                 17 => Some(SubmissionError::AudioUnavailable),
+                18 => Some(SubmissionError::MidiIdentityUnavailable),
                 _ => None,
             },
         }
@@ -301,6 +303,7 @@ pub enum SubmissionError {
     PayloadFull,
     Performance(super::performance::Error),
     AudioUnavailable,
+    MidiIdentityUnavailable,
 }
 
 impl std::fmt::Display for SubmissionError {
@@ -309,6 +312,7 @@ impl std::fmt::Display for SubmissionError {
         f.write_str(match self {
             Self::Performance(_) => unreachable!(),
             Self::AudioUnavailable => "Audio output is unavailable. Save or close the session, or recover an output in Audio settings before performing.",
+            Self::MidiIdentityUnavailable => "MIDI note identity is unavailable. This edit was not accepted; restart to retry.",
             Self::PayloadFull => "The control queue has reached its media and edit memory limit. Wait for playback to catch up, then retry with a smaller edit or media file.",
             Self::Full => "The control queue is full. Releases remain reserved. Wait for playback to catch up, then retry the action.",
             Self::StopPending => "A stop is still pending for this target. Retry the start after the stop has completed.",
@@ -345,6 +349,7 @@ impl AdmissionShared {
                 SubmissionError::PayloadFull => 10,
                 SubmissionError::Performance(error) => 11 + error as u8,
                 SubmissionError::AudioUnavailable => 17,
+                SubmissionError::MidiIdentityUnavailable => 18,
             },
             Relaxed,
         );
@@ -613,6 +618,9 @@ impl CommandPort {
         {
             return fail(SubmissionError::InvalidTarget);
         }
+        if !super::midi_edit::qualify_legacy_notes(&mut command) {
+            return fail(SubmissionError::MidiIdentityUnavailable);
+        }
         after_preflight();
         let mut state = self.admission.lock();
         if let Err(error) = self.performance_check(&command) {
@@ -758,6 +766,7 @@ impl AdmissionShared {
 fn owned_payload_bytes(command: &Command) -> usize {
     use std::mem::size_of;
     match command {
+        Command::MidiEdit(request) => request.bytes(),
         Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|audio| audio.data.capacity().saturating_mul(4)).sum::<usize>(),
         Command::SamplerEdit(edit) => edit.bank.data.metadata_bytes() + edit.bank.data.audio.iter().flatten().map(|audio| {
             size_of::<super::dsp::Sample>() + 4 * size_of::<usize>() + size_of::<Vec<[f32; 3]>>()
@@ -795,6 +804,7 @@ fn project_release(command: &Command) -> bool {
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
@@ -867,6 +877,7 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
             },
             false,
         )),
+        Command::MidiAudition { id, on, .. } => Some((GateKey::Piano(id), on)),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
         Command::SamplerAudition(ref request) => Some((GateKey::Audition(request.id), true)),
         Command::SamplerAuditionStop { id } => Some((GateKey::Audition(id), false)),
@@ -1117,6 +1128,7 @@ fn history_monitoring(command: &Command) -> bool {
         command,
         Command::LiveNoteOn { .. }
             | Command::LiveNoteOff { .. }
+            | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
             | Command::DeckTouch { .. }
             | Command::MidiDeckTouch { .. }

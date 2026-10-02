@@ -173,6 +173,7 @@ fn capture_fixture(arp: bool) -> RtEngine {
     let mut rt = engine();
     rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.tracks[DEST].clips[0] = Clip {
+        region: None,
         kind: ClipKind::Midi,
         name: "capture".into(),
         bars: 0.25,
@@ -260,6 +261,7 @@ fn capture_suppression_preserves_unrelated_same_pitch_events_and_resets_on_relau
         track: DEST as u8,
         scene: 0,
         notes: vec![MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.5,
             len: 0.125,
@@ -316,6 +318,7 @@ fn instantaneous_capture_cannot_replay_in_its_first_cycle_or_one_shot() {
         rt.tracks[DEST].midi_schedule.trace = Some(Vec::new());
         // A subsequent ordinary append/rebuild must not chase that stored note.
         rt.tracks[DEST].clips[0].notes.push(MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 92,
             start: 0.5,
             len: 0.125,

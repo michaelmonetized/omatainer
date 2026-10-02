@@ -184,6 +184,7 @@ impl Frame {
             for (j, clip) in track.clips.iter().enumerate() {
                 let saved = &mut out.clips[j];
                 saved.kind = clip.kind;
+                saved.region = clip.region;
                 copy_string(&mut saved.name, &clip.name);
                 saved.bars = clip.bars;
                 saved.gain = clip.gain;

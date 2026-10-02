@@ -53,6 +53,8 @@ impl Plan {
                     200 + (*track as u64) * 8 + *scene as u64,
                 )
             }
+            MidiEdit(request) => (Target::Clip(request.baseline.track, request.baseline.scene),
+                Name::ClipNotes, 300 + request.baseline.track as u64 * 8 + request.baseline.scene as u64),
             SetNotes { track, scene, .. }
                 if (*track as usize) < TRACKS && (*scene as usize) < SCENES =>
             {
@@ -165,6 +167,12 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if let Command::MidiEdit(request) = &c {
+            if !self.midi_edit_current(request) || !request.ack.claim() {
+                self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+            }
+            if request.unchanged() { request.ack.applied(); self.undo.retire_command(c); return None; }
+        }
         if let Command::SamplerEdit(edit) = &c {
             if self.sampler_edit_index(edit).is_none() || !edit.ack.claim() {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
@@ -328,6 +336,7 @@ impl RtEngine {
                     track: t,
                     scene: s,
                     value: Clip {
+                        region: clip.region,
                         name,
                         notes,
                         kind: clip.kind,
@@ -386,12 +395,14 @@ impl RtEngine {
     }
     fn history_reject(&mut self, c: Command, reason: Failure) {
         self.undo.reject(reason);
+        super::super::midi_edit::reject_retired(&c);
         let bytes = command_bytes(&c);
         self.undo.retire(Retired::Command(c), bytes);
     }
 }
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
+        Command::MidiEdit(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),
         Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|sample| sample_bytes(sample)).sum::<usize>(),
         Command::SetNotes { notes, .. } => notes.capacity() * std::mem::size_of::<MidiNote>(),

@@ -17,10 +17,12 @@ fn engine(sr: u32) -> RtEngine {
 
 fn clip(pitch: u8, length: f32) -> Clip {
     Clip {
+        region: None,
         kind: ClipKind::Midi,
         name: "quantized probe".into(),
         bars: 0.25,
         notes: vec![MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch,
             start: 0.0,
             len: length,

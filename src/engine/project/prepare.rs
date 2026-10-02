@@ -8,11 +8,12 @@ pub struct Prepared {
 
 impl Prepared {
     pub fn from_state(
-        state: State,
+        mut state: State,
         media: Vec<Arc<Sample>>,
         output_sr: u32,
     ) -> Result<Self, Error> {
         state.validate(&media).map_err(Error::Invalid)?;
+        state.migrate_notes();
         if !(8000..=384000).contains(&output_sr) {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
@@ -64,6 +65,7 @@ impl Prepared {
             track.drum_samples = saved.drums.map(|index| media[index].clone());
             track.fx = effects(saved.fx, output_sr);
             track.clips = saved.clips.map(|c| Clip {
+                region: c.region,
                 kind: c.kind,
                 name: c.name,
                 bars: c.bars,

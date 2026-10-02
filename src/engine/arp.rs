@@ -11,6 +11,7 @@ pub(super) struct ChordCache {
     len: usize,
     next_change: f64,
     clip_beats: f64,
+    visibility: u8,
     dirty: bool,
     #[cfg(test)]
     pub rebuilds: usize,
@@ -24,6 +25,7 @@ impl Default for ChordCache {
             len: 0,
             next_change: 0.0,
             clip_beats: 0.0,
+            visibility: 0,
             dirty: true,
             #[cfg(test)]
             rebuilds: 0,
@@ -48,11 +50,19 @@ impl ChordCache {
         clip_beats: f64,
         visible: impl Fn(usize) -> bool,
     ) {
+        self.refresh_region_visible(notes, local, prev, clip_beats, 0, visible);
+    }
+
+    pub fn refresh_region_visible(
+        &mut self, notes: &[MidiNote], local: f64, prev: f64, clip_beats: f64,
+        visibility: u8, visible: impl Fn(usize) -> bool,
+    ) {
         if !self.dirty
             && prev >= 0.0
             && local >= prev
             && local < self.next_change
             && clip_beats == self.clip_beats
+            && visibility == self.visibility
         {
             return;
         }
@@ -61,7 +71,7 @@ impl ChordCache {
         self.velocities.fill(0);
         self.next_change = clip_beats;
         for (index, note) in notes.iter().enumerate() {
-            if !visible(index) {
+            if note.muted || !visible(index) {
                 continue;
             }
             let start = note.start as f64;
@@ -88,6 +98,7 @@ impl ChordCache {
             }
         }
         self.clip_beats = clip_beats;
+        self.visibility = visibility;
         self.dirty = false;
         #[cfg(test)]
         {

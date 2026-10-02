@@ -14,7 +14,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Record a held note
 
-Choose an empty clip cell and use its Arm compose action (Shift-click or Shift+F10), or Arm selected cell. The armed destination is displayed above the sampler and stays fixed while browsing. Choose Keys, Analog or Pad; hold a pad and release it to record its actual duration. Stopped composition starts at local beat zero. Playing clips capture launch-relative positions. Disarm finalizes captures; Stop also disarms. Launch the resulting clip to hear it later. This is MIDI/pad note capture, not microphone or external audio recording. There is no piano-roll editor in this build.
+Choose an empty clip cell and use its Arm compose action (Shift-click or Shift+F10), or Arm selected cell. The armed destination is displayed above the sampler and stays fixed while browsing. Choose Keys, Analog or Pad; hold a pad and release it to record its actual duration. Stopped composition starts at local beat zero. Playing clips capture launch-relative positions. Disarm finalizes captures; Stop also disarms. Launch the resulting clip to hear it later. This is MIDI/pad note capture, not microphone or external audio recording. Open Piano roll on the selected empty or MIDI cell to draw, select, move, resize, transpose, duplicate, mute or delete notes. Apply commits one captured-target MIDI edit; Cancel preserves the current clip. Triplet/free grids, numeric clip/loop bounds and note values, scale folding, zoom and scroll are available. Audition is independent and never records.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -26,7 +26,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Edit and undo
 
-Open a clip's alternate actions and choose Edit clip gain. Gain changes future note onsets; already held notes retain their onset gain. Use Edit → Undo / Redo, or the active shortcut bindings, to compare. A continuous slider gesture is one named history entry. History is bounded; admission failures or truncation are shown explicitly. Transport and physical held gates are not creative edits. This build does not offer a timeline, note-drawing editor, warp editor, automation lanes or plugins.
+Open a clip's alternate actions and choose Edit clip gain. Gain changes future note onsets; already held notes retain their onset gain. Use Edit → Undo / Redo, or the active shortcut bindings, to compare. A continuous slider gesture is one named history entry. History is bounded; admission failures or truncation are shown explicitly. Transport and physical held gates are not creative edits. Piano roll offers note drawing, pointer/keyboard edits and explicit clip/loop ranges with stable note identities. It uses the same session History after Apply. This build does not offer a timeline, warp editor, automation lanes or plugins.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -1531,6 +1531,78 @@ Workflow: Record a held note.
 Armed / disarmed
 
 Finalize current pad captures and stop automatic pad writes. Existing monitor voices stay held until their own releases. Session Stop also disarms.
+
+Workflow: Record a held note.
+
+### MIDI piano roll
+
+Captured empty or MIDI clip
+
+Inspect the selected cell on the project worker. Drawing and numeric changes remain a draft until Apply. Browsing never retargets this editor. Every note has a stable identity and a virtualized accessible list entry.
+
+Workflow: Record a held note.
+
+### MIDI timing grid
+
+Free, straight subdivisions or triplets
+
+Snap drawing and pointer movement to the selected quarter-beat subdivision. Free retains continuous pointer timing. Keyboard movement uses the grid, or 1/64 beat in Free. Numeric fields accept explicit values independently of snapping.
+
+Workflow: Record a held note.
+
+### MIDI note actions
+
+Pitch 0–127; up to 8192 notes
+
+Draw on empty space; select a note, Shift-click to extend, drag its body to move or its right edge to resize. With Draw notes disabled, drag empty space for a rectangular selection. Arrows move or transpose; Shift+Left/Right resize; Ctrl+A selects all, Ctrl+D duplicates, M toggles mute and Delete removes. New and duplicate notes receive fresh IDs.
+
+Workflow: Record a held note.
+
+### MIDI note values
+
+Source quarter-note beats and velocity 1–127
+
+Enter pitch, start, length, velocity and mute. Add note creates a new identity; Set selected note values applies these values to each selected note while retaining its identity. Movement buttons change selected positions relatively.
+
+Workflow: Record a held note.
+
+### MIDI clip and loop bounds
+
+0–262144 source quarter-note beats
+
+Set clip start/end and loop start/end numerically or drag the distinct ruler markers. Start must not exceed loop start; loop end must not exceed clip end. Minimum span is 1/1024 beat. Intro notes play once; looping repeats its active region and gates close at explicit boundaries. Very dense short loops are rejected.
+
+Workflow: Record a held note.
+
+### MIDI pitch and time view
+
+Pitch/time rulers, folding, zoom and scroll
+
+Time scroll chooses the first visible source beat; Top pitch chooses the highest visible pitch. Zoom changes pixels per beat or pitch. Used/major/minor folding keeps existing off-scale notes visible. Hidden notes remain selectable in the native note list.
+
+Workflow: Record a held note.
+
+### Apply MIDI edit
+
+One guarded session History transaction
+
+Commit this captured draft only if its original MIDI content and project epoch still match. Active recording into the target, stale work, performance protection or unavailable History reject the request and retain the draft. Wait for the renderer outcome. Applied changes persist through native project Save and Undo/Redo.
+
+Workflow: Record a held note.
+
+### MIDI note audition
+
+Independent non-recording voice
+
+Audition the note value through the captured track. Stop note audition, focus loss or close releases its own gate without releasing other physical notes. Drum one-shots retain their natural decay. Performance protection excludes new audition presses but accepts releases.
+
+Workflow: Record a held note.
+
+### Cancel or close MIDI editor
+
+Explicit draft discard and pending cancellation
+
+Cancel/Escape and application Close preserve unapplied work until Keep editing or Discard. A pending Apply can be cancelled before renderer ownership; an already claimed edit completes and remains in History. Unconfirmed disconnected outcomes remain visible.
 
 Workflow: Record a held note.
 

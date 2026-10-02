@@ -22,6 +22,7 @@ struct Event {
     gate: Gate,
     note: usize,
     repeating: bool,
+    boundary: bool,
 }
 
 impl Event {
@@ -101,6 +102,19 @@ impl MidiSchedule {
         looping: bool,
         recorded: &[Option<RecordedPlayback>],
     ) {
+        self.rebuild_region(notes, loop_beats, elapsed, looping, recorded, None);
+    }
+    pub fn rebuild_region(
+        &mut self,
+        notes: &[MidiNote],
+        loop_beats: f64,
+        elapsed: Option<f64>,
+        looping: bool,
+        recorded: &[Option<RecordedPlayback>],
+        region: Option<super::midi_edit::Region>,
+    ) {
+        let looping = region.map_or(looping, |region| region.repeating(looping));
+        let loop_beats = region.map_or(loop_beats, |region| region.period());
         // Edits arrive between output samples. Keep boundary gates and edit
         // reconciliations which have been scheduled but not rendered yet.
         let mut pending_on = [false; 256];
@@ -110,8 +124,8 @@ impl MidiSchedule {
             for Reverse(event) in &self.events {
                 if event.beat <= now {
                     match event.gate {
-                        Gate::On(pitch, _) if !event.repeating => pending_on[pitch as usize] = true,
-                        Gate::Off(pitch) if !event.repeating => {
+                        Gate::On(pitch, _) if !event.boundary => pending_on[pitch as usize] = true,
+                        Gate::Off(pitch) if !event.boundary => {
                             pending_release[pitch as usize] = true
                         }
                         Gate::Off(pitch) => pending_offs[pitch as usize] += 1,
@@ -135,26 +149,39 @@ impl MidiSchedule {
         let mut latest: [Option<(f64, usize, u8)>; 256] = [None; 256];
         let elapsed = elapsed.filter(|beat| beat.is_finite() && *beat >= 0.0);
         for (index, note) in notes.iter().enumerate() {
-            if !note.start.is_finite() || !note.len.is_finite() || note.len <= 0.0 {
+            if note.muted || !note.start.is_finite() || !note.len.is_finite() || note.len <= 0.0 {
                 continue;
             }
-            let start = (note.start as f64).rem_euclid(loop_beats);
+            let (start, duration, repeating, phase) = if let Some(region) = region {
+                if !region.valid() { continue; }
+                let end = if looping { region.loop_end } else { region.end };
+                let source_start = note.start as f64;
+                let source_end = (source_start + note.len as f64).min(end);
+                if source_start >= end || source_end <= region.start { continue; }
+                let clipped_start = source_start.max(region.start);
+                (clipped_start - region.start, source_end - clipped_start,
+                    looping && source_start >= region.loop_start,
+                    source_start - region.loop_start)
+            } else {
+                let start = (note.start as f64).rem_euclid(loop_beats);
+                (start, note.len as f64, looping, start)
+            };
             let start = if let Some(policy) = recorded.get(index).and_then(Option::as_ref) {
-                let Some(first) = policy.first_onset(start, loop_beats, looping) else {
+                let Some(first) = policy.first_onset(phase, loop_beats, repeating) else {
                     continue;
                 };
                 first
             } else {
                 start
             };
-            let end = start + note.len as f64;
+            let end = start + duration;
             let mut on = start;
             let mut off = end;
             if let Some(now) = elapsed {
                 let count = |first: f64| -> usize {
                     if now < first {
                         0
-                    } else if looping {
+                    } else if repeating {
                         (((now - first) / loop_beats).floor() as usize).saturating_add(1)
                     } else {
                         1
@@ -173,7 +200,7 @@ impl MidiSchedule {
                 }
                 on += ons as f64 * loop_beats;
                 off += offs as f64 * loop_beats;
-                if !looping {
+                if !repeating {
                     if ons > 0 {
                         on = f64::INFINITY;
                     }
@@ -191,7 +218,8 @@ impl MidiSchedule {
                         beat,
                         gate,
                         note: index,
-                        repeating: true,
+                        repeating,
+                        boundary: true,
                     }));
                 }
             }
@@ -219,6 +247,7 @@ impl MidiSchedule {
                         gate,
                         note: pitch,
                         repeating: false,
+                        boundary: false,
                     }));
                 }
             }
@@ -252,7 +281,7 @@ impl MidiSchedule {
                     self.events.push(Reverse(Event { beat, ..event }));
                 }
             }
-            if event.repeating {
+            if event.boundary {
                 match event.gate {
                     Gate::On(pitch, _) => {
                         self.held[pitch as usize] = self.held[pitch as usize].saturating_add(1);

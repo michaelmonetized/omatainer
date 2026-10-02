@@ -141,6 +141,7 @@ pub(super) fn check_valid_scene_operations() {
             track: 0,
             scene,
             notes: vec![MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
                 len: 1.0,

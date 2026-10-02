@@ -220,6 +220,7 @@ fn renderer_rejected_note_edit_is_visible_without_altering_history_or_notes() {
         scene: 0,
         notes: vec![
             crate::engine::MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
                 len: 0.25,

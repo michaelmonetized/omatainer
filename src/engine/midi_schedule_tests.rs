@@ -3,6 +3,7 @@ use midi_schedule::{Gate, MidiSchedule};
 
 fn note(pitch: u8, start: f32, len: f32) -> MidiNote {
     MidiNote {
+        id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch,
         start,
         len,
@@ -39,6 +40,54 @@ fn render(rt: &mut RtEngine, frames: usize, block: usize) {
         rt.process(&mut output[..count * 2]);
         remaining -= count;
     }
+}
+
+#[test]
+fn explicit_midi_region_chases_pickup_plays_intro_once_and_closes_loop_gates() {
+    let mut muted = note(70, 4.5, 0.5);
+    muted.muted = true;
+    for block in [1, 127, 512] {
+        let mut rt = engine();
+        rt.apply(Command::SetNotes { track: 2, scene: 0, notes: vec![
+            note(59, 0.0, 0.5), note(60, 1.0, 2.0), note(62, 3.0, 0.5),
+            note(64, 4.0, 3.0), note(67, 6.5, 0.5), muted.clone(),
+        ] });
+        rt.tracks[2].clips[0].bars = 2.0;
+        rt.tracks[2].clips[0].region = Some(midi_edit::Region {
+            start: 2.0, end: 8.0, loop_start: 4.0, loop_end: 6.0, loop_enabled: true,
+        });
+        rt.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(32));
+        rt.apply(Command::LaunchClip { track: 2, scene: 0 });
+        render(&mut rt, 144_001, block);
+        assert_eq!(trace(&mut rt, 2), vec![
+            (0, Gate::On(60, 100)), (24_000, Gate::Off(60)),
+            (24_000, Gate::On(62, 100)), (36_000, Gate::Off(62)),
+            (48_000, Gate::On(64, 100)), (96_000, Gate::Off(64)),
+            (96_000, Gate::On(64, 100)), (144_000, Gate::Off(64)),
+            (144_000, Gate::On(64, 100)),
+        ], "block size {block}");
+    }
+}
+
+#[test]
+fn explicit_disabled_loop_plays_after_loop_end_and_stops_at_clip_end() {
+    let mut rt = engine();
+    rt.apply(Command::SetNotes { track: 2, scene: 0, notes: vec![
+        note(60, 1.0, 2.0), note(64, 4.0, 3.0), note(67, 6.5, 3.0),
+    ] });
+    rt.tracks[2].clips[0].bars = 2.0;
+    rt.tracks[2].clips[0].region = Some(midi_edit::Region {
+        start: 2.0, end: 8.0, loop_start: 4.0, loop_end: 6.0, loop_enabled: false,
+    });
+    rt.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(16));
+    rt.apply(Command::LaunchClip { track: 2, scene: 0 });
+    render(&mut rt, 144_001, 257);
+    assert_eq!(trace(&mut rt, 2), vec![
+        (0, Gate::On(60, 100)), (24_000, Gate::Off(60)),
+        (48_000, Gate::On(64, 100)), (108_000, Gate::On(67, 100)),
+        (120_000, Gate::Off(64)), (144_000, Gate::Off(67)),
+    ]);
+    assert!(rt.tracks[2].playing.is_none());
 }
 
 fn reference(notes: &[MidiNote], loop_beats: f64, frames: usize) -> Vec<(usize, Gate)> {

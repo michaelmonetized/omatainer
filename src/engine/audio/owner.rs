@@ -1085,6 +1085,7 @@ pub(crate) mod tests {
         for arp in [false, true] {
             let (_engine, mut rt) = Engine::headless_for_test(48000, 256);
             rt.tracks[1].clips[0].notes = vec![crate::engine::MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
                 len: 4.0,

@@ -419,6 +419,7 @@ fn sample_rate_reset_policy_and_equal_rate_noop_are_explicit() {
         track: 2,
         scene: 0,
         notes: vec![MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.0,
             len: 4.0,
