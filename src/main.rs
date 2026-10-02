@@ -397,9 +397,9 @@ fn handle_client_with_stop(
             "bar": s.bar,
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
-            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, 64)).collect::<Vec<_>>(),
-            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > 64)
-                || s.decks.iter().take(2).any(|deck| deck.title.len() > 256),
+            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
+            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
+                || s.decks.iter().take(2).any(|deck| deck.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES),
             "midi_clock": s.midi_clock,
             "midi_routing": commands.midi_routing().summary(),
             "audio": commands.audio_metrics(),
@@ -407,8 +407,8 @@ fn handle_client_with_stop(
             "commands": s.commands,
             "submissions": commands.stats(),
             "performance": commands.performance().status(),
-            "deckA": s.decks.first().map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
-            "deckB": s.decks.get(1).map(|d| ipc_transport::text(&d.title)).unwrap_or_default(),
+            "deckA": s.decks.first().map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
+            "deckB": s.decks.get(1).map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),
             "deckBPlaying": s.decks.get(1).map(|d| d.playing).unwrap_or(false),
         });

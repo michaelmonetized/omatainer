@@ -362,6 +362,7 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();
     let (commands, _rx) = CommandPort::channel(256);
+    commands.midi_routing().maximum_activity_for_test();
     let worker = std::thread::spawn(move || {
         let mut result = Ok(());
         let counts = crate::engine::test_alloc::measure(|| {
@@ -380,6 +381,10 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
     let reply = response(&mut client);
     assert_eq!(reply["ok"], true);
     assert_eq!(reply["state_truncated"], true);
+    assert_eq!(reply["midi_routing"]["sent"],u64::MAX);
+    assert_eq!(reply["midi_routing"]["refused_tracks"],255);
+    assert_eq!(reply["midi"][0].as_str().unwrap().len(),ipc_transport::STATUS_MIDI_NAME_BYTES);
+    assert_eq!(reply["deckA"].as_str().unwrap().len(),ipc_transport::STATUS_DECK_TITLE_BYTES);
     assert_eq!(reply["midi"].as_array().unwrap().len(), 8);
     drop(client);
     let counts = worker.join().unwrap();

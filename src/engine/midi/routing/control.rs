@@ -83,7 +83,11 @@ impl Counts {
 pub(crate) struct Summary {
     pub enabled: bool,
     pub generation: u64,
-    pub activity: ([Activity; TRACKS], Activity),
+    pub received: u64,
+    pub sent: u64,
+    pub failed: u64,
+    pub overruns: u64,
+    pub refused_tracks: u8,
 }
 #[derive(Clone, Copy)]
 pub(crate) struct Sources {
@@ -155,7 +159,36 @@ impl Shared {
         Summary {
             enabled: self.explicit.load(Acquire),
             generation: self.generation.load(Acquire),
-            activity: self.activity(),
+            received: self.global.received.load(Relaxed),
+            sent: self
+                .counts
+                .iter()
+                .fold(0u64, |total, c| total.saturating_add(c.sent.load(Relaxed))),
+            failed: self.counts.iter().fold(0u64, |total, c| {
+                total.saturating_add(c.failed.load(Relaxed))
+            }),
+            overruns: self.counts.iter().fold(0u64, |total, c| {
+                total.saturating_add(c.overruns.load(Relaxed))
+            }),
+            refused_tracks: self.counts.iter().enumerate().fold(0, |mask, (track, c)| {
+                if c.clip_refused.load(Relaxed) {
+                    mask | (1 << track)
+                } else {
+                    mask
+                }
+            }),
+        }
+    }
+    #[cfg(test)]
+    pub(crate) fn maximum_activity_for_test(&self) {
+        self.explicit.store(true, Release);
+        self.generation.store(u64::MAX, Release);
+        self.global.received.store(u64::MAX, Relaxed);
+        for counts in &self.counts {
+            counts.sent.store(u64::MAX, Relaxed);
+            counts.failed.store(u64::MAX, Relaxed);
+            counts.overruns.store(u64::MAX, Relaxed);
+            counts.clip_refused.store(true, Relaxed);
         }
     }
     pub fn config(&self) -> Arc<Routing> {

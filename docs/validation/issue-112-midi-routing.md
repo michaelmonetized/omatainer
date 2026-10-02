@@ -65,7 +65,13 @@ Preferences exposes native channel/type/port controls and Preview/Cancel/save.
 The MIDI panel displays pending/applied generations, errors, per-track input,
 routing, filtered/merged, sent, failed, overrun and clip-refused activity, plus cancel/reset.
 Both windows scroll within the display height. Ordinary IPC status and follow
-use the same bounded routing summary. Sent means the backend accepted bytes.
+share a compact routing summary: enabled/generation, aggregate received/sent/
+failed/overruns and a refused-track bitmask (bit0 is track1). Aggregate totals
+saturate at u64::MAX. Detailed per-track counts stay in the native MIDI panel.
+The unchanged8 KiB frame reserves telemetry space with56-byte MIDI display names
+and232-byte deck display titles; truncation remains explicit. Native editor
+names/titles are complete. Tests combine maximum routing counters and escaped
+metadata/ids with the original maximum command counters and allocation caps. Sent means the backend accepted bytes.
 
 ## Software evidence
 
@@ -86,7 +92,7 @@ only three task-created private ports, two separate source clients and one
 receiver. All12 expected remapped message packets and route-reset bytes were
 observed, and every private port was retired. No user hardware port was opened.
 Receipts: `/home/michael/Projects/omatainer-work/issue-112-linux-virtual-v1.json`
-and focused logs in the same work directory. Final-source MIDI regression v6 passes132 tests (one opt-in ignored),28.89 s,
+and focused logs in the same work directory. Routing MIDI regression v6 passes132 tests (one opt-in ignored),28.89 s,
 including recording first-pass suppression, stale renderer generation/epoch
 admission, reset refusal/relaunch, unaffected-cell edits and both native UI
 profile/failure workflows. Linux private virtual v2 and captured software trace
@@ -111,3 +117,16 @@ Physical multitimbral/controller compatibility, hardware loop behavior, listenin
 Orca and audio-backend XRUN QA remain for the user's producer/composer/live-DJ
 run with Pioneer DDJ-FX, Numark NS7 MarkII, APC40 mkII, MPD232 and MIDI keyboard.
 No PR is merged and no issue is closed by this layer.
+
+The first complete suite is retained as `issue-112-full-tests-v1.log`:1174
+passed, two IPC-limit failures,26 opt-in ignored,229.48 s. Detailed routing
+activity objects exceeded the unchanged8 KiB response limit with worst escaped
+metadata. The compact summary and explicit display metadata reservation now
+pass18 IPC server/follow tests (one opt-in ignored),11.01 s. Existing tests
+additionally seed maximal routing counters/refused masks beside original
+maximal command counters, escaped128-byte ids and oversized metadata, retaining
+all original response, allocation, equality and zero-allocation cache assertions.
+No response bound, performance policy or audio reference was widened.
+Intermediate IPC v2 failures and native first-layout paint assertion failures
+remain preserved. The native paint fixture waits for window layout to settle;
+current missing-output/panel/reset and profile workflows pass in MIDI v6.

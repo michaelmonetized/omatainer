@@ -548,7 +548,10 @@ once before encoding the request.
   guarantee. Sent activity means backend acceptance, not physical receipt.
 - Native Preferences and MIDI windows expose routes, errors/generations, filters,
   activity, pending cancel and explicit reset, with scrolling on720-line displays.
-  Ordinary status and follow share bounded routing activity. Software fixtures and
+  Ordinary status and follow share compact routing totals/refused-track masks.
+  The unchanged8 KiB frames reserve telemetry space with56-byte MIDI display
+  names and232-byte deck display titles; truncation is explicit, and native
+  names/titles remain complete. Aggregate totals saturate at u64::MAX. Software fixtures and
   private Linux ALSA virtual ports do not claim physical controller qualification.
 
 ## Deck selection and crate destination
