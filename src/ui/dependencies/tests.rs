@@ -143,3 +143,21 @@ fn reviewed_relink_prunes_a_full_book_of_obsolete_aliases() {
     assert!(gui.app.dependencies.error.is_none(), "{:?}", gui.app.dependencies.error);
     assert_eq!(gui.app.dependencies.origins, vec![data::Origin { key: current, source: LibSource::File(moved) }]);
 }
+
+#[test]
+fn one_project_action_reviews_both_pending_editors() {
+    let files = Files::new(); let (mut gui, moved) = with_missing_audio(&files);
+    inspect(&mut gui); choose(&mut gui, &moved);
+    let namespace = gui.rt.session.namespace;
+    gui.app.open_timing(); gui.frame(vec![]);
+    edit(&mut gui, "Tempo points: beat BPM step/ramp", "0 137 step");
+    assert!(gui.app.timing.blocks_close());
+    gui.click_text("Project"); gui.click_text("New project"); gui.frame(vec![]);
+    assert_eq!(gui.rt.session.namespace, namespace);
+    assert!(gui.app.dependencies.confirm_discard);
+    gui.click("Keep timing draft");
+    gui.click("Keep source review");
+    assert!(gui.app.timing.blocks_close());
+    assert!(gui.app.dependencies.choices.iter().any(Option::is_some));
+    assert_eq!(gui.rt.session.namespace, namespace);
+}

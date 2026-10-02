@@ -6,6 +6,46 @@ use std::time::Duration;
 
 mod library_history_tests;
 
+#[test]
+fn cancelled_queued_preparation_does_not_reopen_a_retained_editor() {
+    use crate::ui::piano_roll::tests::Gui as AccessibleGui;
+    use egui::accesskit::Action as NativeAction;
+    let mut gui = AccessibleGui::new();
+    gui.frame(vec![]);
+    let namespace = gui.rt.session.namespace;
+    let (entered, resume) = gui.app.pause_project_prepare_for_recovery_test();
+    gui.app.begin_project_action(Action::New);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+    }
+    gui.app.open_timing(); gui.frame(vec![]);
+    gui.action("Tempo points: beat BPM step/ramp", NativeAction::Focus, None);
+    gui.key(Key::A, egui::Modifiers { ctrl: true, command: true, ..Default::default() });
+    gui.frame(vec![egui::Event::Text("0 137 step".into())]);
+    assert!(gui.app.timing.blocks_close());
+    gui.app.timing.open = false;
+    resume.send(()).unwrap();
+    while gui.app.project.worker.as_ref().unwrap().events.is_empty() {
+        gui.rt.process(&mut [0.0; 128]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    gui.app.project.active.as_ref().unwrap().cancel.store(true, Ordering::Release);
+    gui.app.poll_projects(&gui.ctx);
+    assert!(!gui.app.timing.open);
+    assert!(gui.app.timing.blocks_close());
+    while gui.app.project_pending_for_test() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert!(!gui.app.timing.open);
+    assert_eq!(gui.rt.session.namespace, namespace);
+    assert!(gui.app.project.message.as_deref().unwrap().contains("cancelled"));
+}
+
 fn history_key(gui: &mut Gui, redo: bool) {
     // Closing a text/path dialog owns its closing frame's keys. Start the
     // shortcut only after the normal next-frame focus guard has settled.

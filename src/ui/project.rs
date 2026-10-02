@@ -389,7 +389,9 @@ impl App {
     /// Refuse replacement while editors retain unapplied project-specific work.
     /// Returns whether the user must apply or explicitly discard that work first.
     fn guard_project_drafts(&mut self) -> bool {
-        let blocked = self.dependencies.guard_replacement() || self.timing.guard_replacement();
+        let dependencies = self.dependencies.guard_replacement();
+        let timing = self.timing.guard_replacement();
+        let blocked = dependencies || timing;
         if blocked { self.project.message = Some("Project replacement cancelled while editors retain unapplied work. Apply it or explicitly discard it, then choose the project action again.".into()); }
         blocked
     }
@@ -545,16 +547,17 @@ impl App {
                     self.project.recent_warning = warning;
                 }
                 Event::Ready => {
-                    if self.guard_project_drafts() {
-                        if let Some(active) = &self.project.active { active.cancel.store(true, Ordering::Release); }
-                        continue;
-                    }
                     if self
                         .project
                         .active
                         .as_ref()
-                        .is_none_or(|active| active.cancel.load(Ordering::Acquire))
+                        .is_none_or(|active| active.cancel.load(Ordering::Acquire)
+                            || !matches!(active.operation, Operation::Prepare { .. }))
                     {
+                        continue;
+                    }
+                    if self.guard_project_drafts() {
+                        if let Some(active) = &self.project.active { active.cancel.store(true, Ordering::Release); }
                         continue;
                     }
                     // Finish older controller GUI requests before invalidating
