@@ -10,6 +10,19 @@ use worker::{Event, Job, Worker};
 
 pub(crate) const FACTORY_MAPPING_SCHEMA: u32 = 1;
 
+#[cfg(test)]
+impl App {
+    pub(super) fn project_pending_for_test(&self) -> bool {
+        self.project.busy() || self.project.awaiting_snapshot.is_some()
+    }
+    pub(super) fn project_path_text_for_test(&self) -> Option<String> {
+        match &self.project.dialog { Some(Dialog::Path { text, .. }) => Some(text.clone()), _ => None }
+    }
+    pub(super) fn project_result_for_test(&self) -> (Option<PathBuf>, Option<String>) {
+        (self.project.current_path.clone(), self.project.message.clone())
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Document {
@@ -735,10 +748,13 @@ impl App {
         }
         if ctx.input(|input| input.viewport().close_requested()) && !self.project.allow_close {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.piano_roll.stop_for_close(&self.engine);
             self.sampler_editor.stop_for_close(&self.engine);
             if self.settings.busy() {
                 self.settings.open = true;
                 self.settings.message = "Close cancelled while a preferences operation is pending. Wait for its result or cancel it, then close again.".into();
+            } else if self.piano_roll.blocks_close() {
+                // The editor exposes its own explicit discard / cancel controls.
             } else if self.sampler_editor.blocks_close() {
                 self.sampler_editor.close_pending();
             } else if !self.project.busy() && self.project.dialog.is_none() {

@@ -31,6 +31,7 @@ mod play_history;
 mod session_history;
 mod cue_editor;
 mod grid_editor;
+mod piano_roll;
 mod play_time;
 mod project;
 mod undo;
@@ -129,6 +130,7 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    piano_roll: piano_roll::Editor,
     sampler_editor: sampler_editor::Editor,
     published_selection: Option<Arc<Selection>>,
     published_indices: std::sync::Weak<Vec<usize>>,
@@ -232,6 +234,7 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            piano_roll: piano_roll::Editor::default(),
             sampler_editor: sampler_editor::Editor::default(),
             published_selection: None,
             published_indices: std::sync::Weak::new(),
@@ -648,6 +651,7 @@ impl App {
         self.snap = self.engine.snapshot();
         self.confirm_project_snapshot();
         self.poll_undo();
+        self.poll_piano_roll();
         self.poll_sampler_editor();
         self.poll_library_analysis();
         self.poll_library_tags();
@@ -670,6 +674,7 @@ impl App {
         self.library_store_ui(ctx);
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
+        self.piano_roll_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.library_tags_ui(ctx);
@@ -1053,6 +1058,10 @@ impl App {
             accessibility::button(ui, &edit, "Edit sampler banks", None);
             help::annotate(ui, &edit, HelpControl::SamplerEdit);
             if edit.clicked() { self.open_sampler_editor(); }
+            let midi = ui.button("Piano roll");
+            accessibility::button(ui, &midi, "Edit selected MIDI clip", None);
+            help::annotate(ui, &midi, HelpControl::PianoRoll);
+            if midi.clicked() { self.open_piano_roll(); }
             if let Some(target) = self.snap.compose_target {
                 let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
                 ui.label(RichText::new(format!("Compose armed: {} / scene {}", name, target.scene + 1)).color(t.yellow));

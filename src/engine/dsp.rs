@@ -298,6 +298,7 @@ pub enum VoiceOwner {
 pub enum InputKey {
     Midi { source: u64, ch: u8, note: u8 },
     Pad(u8),
+    Preview(u64),
 }
 
 #[derive(Clone, Copy, Debug)]

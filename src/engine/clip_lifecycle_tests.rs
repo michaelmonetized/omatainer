@@ -14,11 +14,13 @@ fn render(rt: &mut RtEngine, seconds: f32) {
 
 fn chord() -> Clip {
     Clip {
+        region: None,
         kind: ClipKind::Midi,
         name: "Sustained chord".into(),
         bars: 16.0,
         notes: [60, 64, 67]
             .map(|pitch| MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch,
                 start: 0.0,
                 len: 32.0,
@@ -43,6 +45,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     }
     rt.tracks[1].clips[0] = chord();
     rt.tracks[1].clips[1] = Clip {
+        region: None,
         notes: Vec::new(),
         ..chord()
     };

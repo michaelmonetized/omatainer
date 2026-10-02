@@ -481,7 +481,9 @@ fn media_target(command: &Command) -> Option<usize> {
 }
 fn destructive(command: &Command) -> bool {
     match command {
-        Command::SetNotes { .. }
+        Command::MidiEdit(_)
+        | Command::MidiAudition { on: true, .. }
+        | Command::SetNotes { .. }
         | Command::SamplerEdit(_)
         | Command::SamplerAudition(_)
         | Command::DeckGrid { .. }
@@ -570,6 +572,7 @@ fn destructive(command: &Command) -> bool {
         | Command::RestartScene { .. }
         | Command::AddScene { .. }
         | Command::SamplerPad { .. }
+        | Command::MidiAudition { on: false, .. }
         | Command::SamplerAuditionStop { .. }
         | Command::SamplerBank(_)
         | Command::SamplerInst(_)
@@ -591,6 +594,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }

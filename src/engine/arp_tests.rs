@@ -7,6 +7,7 @@ fn engine() -> RtEngine {
 
 fn note(pitch: u8, start: f32, len: f32) -> MidiNote {
     MidiNote {
+        id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch,
         start,
         len,
@@ -48,6 +49,28 @@ fn assert_released(rt: &RtEngine, pitch: u8) {
             .all(|v| v.env.stage == 0 || v.env.stage == 4),
         "pitch {pitch} stayed held"
     );
+}
+
+#[test]
+fn explicit_region_arp_intro_and_muted_notes_do_not_return_in_repeating_chord() {
+    let mut muted = note(70, 4.0, 4.0); muted.muted = true;
+    let mut rt = fixture(vec![note(60, 1.0, 7.0), note(64, 4.0, 4.0), muted]);
+    rt.apply(Command::StopTrack { track: 2 });
+    rt.tracks[2].clips[0].region = Some(midi_edit::Region {
+        start: 2.0, end: 8.0, loop_start: 4.0, loop_end: 6.0, loop_enabled: true,
+    });
+    rt.tracks[2].clips[0].bars = 2.0;
+    rt.apply(Command::LaunchClip { track: 2, scene: 0 });
+    assert_eq!(render_at(&mut rt, 0.0), Some(60));
+    render_at(&mut rt, 2.0);
+    assert!(rt.tracks[2].arp_cache.contains(60));
+    assert!(rt.tracks[2].arp_cache.contains(64));
+    assert!(!rt.tracks[2].arp_cache.contains(70));
+    render_at(&mut rt, 3.75);
+    assert_eq!(render_at(&mut rt, 4.0), Some(64));
+    assert!(!rt.tracks[2].arp_cache.contains(60));
+    assert_released(&rt, 60);
+    assert_eq!(render_at(&mut rt, 6.0), Some(64));
 }
 
 #[test]

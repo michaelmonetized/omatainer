@@ -16,6 +16,7 @@ fn engine() -> RtEngine {
 
 fn clip(notes: Vec<MidiNote>, gain: f32) -> Clip {
     Clip {
+        region: None,
         kind: ClipKind::Midi,
         name: "velocity".into(),
         bars: 1.0,
@@ -26,6 +27,7 @@ fn clip(notes: Vec<MidiNote>, gain: f32) -> Clip {
 }
 fn note(pitch: u8, start: f32, len: f32, vel: u8) -> MidiNote {
     MidiNote {
+        id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch,
         start,
         len,

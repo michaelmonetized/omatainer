@@ -30,6 +30,7 @@ pub(super) fn prepared_at(role: &str, rate: u32) -> (Engine, RtEngine) {
                 scene: 0,
                 notes: (0..1024)
                     .map(|note| MidiNote {
+                        id: crate::engine::midi_edit::NoteId::new(), muted: false,
                         pitch: 36 + ((note + track * 5) % 48) as u8,
                         start: note as f32 * 0.125,
                         len: 0.45,

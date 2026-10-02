@@ -589,6 +589,30 @@ once before encoding the request.
 
 ## Native project workflow
 
+- MIDI piano-roll documents are coherent project-worker captures, never mutable
+  note lists borrowed from the renderer. Apply validates the captured slot,
+  project epoch and exact original MIDI content before capturing an inverse.
+  Clip gain and unrelated mixer edits are retained. Recording into the target
+  rejects Apply. Owned request data and acknowledgement references retire on
+  the existing worker; renderer application/rejection/Undo/Redo do no heap work.
+- Schema 5 persists stable per-clip note IDs, velocity and mute, and optional
+  source-beat clip/loop ranges. IDs survive move, resize and value changes;
+  drawing/duplication/recording create distinct IDs. Legacy IDs migrate
+  deterministically; new fields, including null, are rejected in older schemas.
+  Absent ranges retain legacy playback. Explicit ranges chase crossing start
+  notes, play the intro once, close gates at boundaries and optionally repeat
+  the loop. A compensated beat accumulator preserves exact long-clip boundaries.
+- The editor supports pointer/keyboard note actions, numeric note/range values,
+  triplet/free grids, pitch/time rulers, scale folding, zoom and scroll. Painted
+  work depends on visible geometry; a virtualized native list exposes every
+  note through stable IDs. Audition has a distinct, non-recording input owner
+  and reserved release admission. Focus loss/close stop it. Pending or unapplied
+  work postpones application close until its outcome or explicit discard.
+- MIDI clips remain bounded at 8192 notes, source beats at 262144, and explicit
+  clip/loop spans at a minimum 1/1024 beat. Repeating active note density cannot
+  exceed 8192 per beat, including recording additions. This is the existing
+  legacy note limit at its minimum supported period, not an unlimited event rate.
+
 - Project New/Open/Recent/Save/Save As/Save Copy operate on versioned `.omat`
   documents containing the supported engine model, embedded decoded media and
   persistent UI view. Fixed factory mapping schema 1 is recorded and validated;

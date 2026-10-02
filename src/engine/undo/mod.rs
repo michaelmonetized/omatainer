@@ -752,6 +752,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::Solo { .. }
             | Command::Arm { .. }
             | Command::ClipGain { .. }
+            | Command::MidiEdit(_)
             | Command::SetNotes { .. }
             | Command::ComposeArm { .. }
             | Command::DeckSeek { .. }
@@ -786,12 +787,14 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
+        super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
         super::sampler::reject(&command);
         if self.enabled
             && matches!(
                 command,
                 Command::Gesture { .. }
+                    | Command::MidiEdit(_)
                     | Command::SetNotes { .. }
                     | Command::DeckAudio { .. }
                     | Command::DeckDecoded { .. }
@@ -825,6 +828,7 @@ impl Journal {
 
 #[cfg(test)]
 impl RtEngine {
+    pub(crate) fn set_undo_budget_for_test(&mut self, budget: usize) { self.undo.budget = budget; }
     pub(crate) fn clear_undo_for_test(&mut self) {
         assert!(self.undo.clear());
     }

@@ -2,6 +2,7 @@ pub(crate) mod keylock;
 #[cfg(test)]
 mod keylock_tests;
 pub(crate) mod project;
+pub(crate) mod midi_edit;
 pub(crate) mod undo;
 mod mixer_gain;
 mod arp;
@@ -130,9 +131,13 @@ pub enum ClipKind {
     Audio,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MidiNote {
+    #[serde(default)]
+    pub id: midi_edit::NoteId,
+    #[serde(default)]
+    pub muted: bool,
     pub pitch: u8,
     pub start: f32,
     pub len: f32,
@@ -141,6 +146,8 @@ pub struct MidiNote {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Clip {
+    #[serde(default)]
+    pub region: Option<midi_edit::Region>,
     pub kind: ClipKind,
     pub name: String,
     pub bars: f32,
@@ -153,6 +160,7 @@ pub struct Clip {
 impl Clip {
     pub fn empty() -> Self {
         Self {
+            region: None,
             kind: ClipKind::Empty,
             name: String::new(),
             bars: 1.0,
@@ -170,6 +178,9 @@ impl Clip {
 pub struct PlayingClip {
     pub scene: u8,
     pub start_beat: f64,
+    // Explicit MIDI regions use the compensated clock; legacy clips retain
+    // their original transport and rendered audio.
+    midi_start_beat: f64,
     pub last_beat: f64,
     pub looping: bool,
 }
@@ -213,25 +224,27 @@ pub struct TrackRt {
 }
 
 impl TrackRt {
-    fn clip_notes_changed(&mut self, scene: usize, beat: f64) {
+    fn clip_notes_changed(&mut self, scene: usize, beat: f64, midi_beat: f64) {
         if self.playing.or(self.project_resume).is_some_and(|p| p.scene as usize == scene) {
             self.arp_cache.invalidate();
             let arp_active = self.midi_schedule.paused;
-            self.rebuild_midi_schedule(beat);
+            self.rebuild_midi_schedule(beat, midi_beat);
             self.midi_schedule.paused = arp_active;
         }
     }
 
-    fn rebuild_midi_schedule(&mut self, beat: f64) {
+    fn rebuild_midi_schedule(&mut self, beat: f64, midi_beat: f64) {
         if let Some(playing) = self.playing.or(self.project_resume) {
             let clip = &self.clips[playing.scene as usize];
-            let elapsed = (self.project_resume.is_some() || playing.last_beat >= 0.0).then_some(beat - playing.start_beat);
-            self.midi_schedule.rebuild(
+            let elapsed = (self.project_resume.is_some() || playing.last_beat >= 0.0)
+                .then_some(if clip.region.is_some() { midi_beat - playing.midi_start_beat } else { beat - playing.start_beat });
+            self.midi_schedule.rebuild_region(
                 &clip.notes,
                 clip.bars.max(0.25) as f64 * 4.0,
                 elapsed,
                 playing.looping,
                 &self.recorded_playback,
+                clip.region,
             );
         }
     }
@@ -488,6 +501,9 @@ pub struct RtEngine {
     pub recording: bool,
     pub bpm: f32,
     pub beat: f64,
+    beat_roundoff: f64,
+    midi_beat: f64,
+    midi_beat_reference: f64,
     pub quant: f32,
     pub view: View,
     pub xfader: f32,
@@ -800,6 +816,8 @@ pub enum Command {
     SetView(View),
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
+    MidiEdit(midi_edit::Request),
+    MidiAudition { id: u64, track: u8, note: u8, vel: u8, on: bool },
     SetNotes { track: u8, scene: u8, notes: Vec<MidiNote> },
     FxWet { slot: u8, value: f32 },
     FxSelect { slot: u8 },
@@ -849,6 +867,7 @@ impl RtEngine {
         cmd_rx: impl Into<control::CommandReceiver>,
         snap: Arc<Mutex<Snapshot>>,
     ) -> Result<Self, String> {
+        midi_edit::initialize()?;
         let (sampler_assets, sampler_banks) = sampler::initial(sr as u32)?;
         let cmd_rx = cmd_rx.into();
         let telemetry = cmd_rx.telemetry();
@@ -902,6 +921,9 @@ impl RtEngine {
             recording: false,
             bpm: 124.0,
             beat: 0.0,
+            beat_roundoff: 0.0,
+            midi_beat: 0.0,
+            midi_beat_reference: 0.0,
             quant: 1.0,
             view: View::Session,
             xfader: 0.5,
@@ -1002,6 +1024,7 @@ impl RtEngine {
         for chain in &mut self.scene_fx {
             chain.set_sample_rate(self.sr);
         }
+        let midi_beat = self.precise_midi_beat();
         for t in &mut self.tracks {
             t.poly.set_sample_rate(self.sr);
             t.eq.set_sample_rate(self.sr);
@@ -1010,7 +1033,7 @@ impl RtEngine {
             t.drum_samples = drums.clone();
             t.drum_pos.fill(None);
             t.release_clip_notes();
-            t.rebuild_midi_schedule(self.beat);
+            t.rebuild_midi_schedule(self.beat, midi_beat);
             t.meter = 0.0;
         }
         for d in &mut self.decks {
@@ -1033,18 +1056,21 @@ impl RtEngine {
         let mut drums = Vec::new();
         for b in 0..4 {
             drums.push(MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 36,
                 start: b as f32,
                 len: 0.25,
                 vel: if b % 2 == 0 { 110 } else { 96 },
             });
             drums.push(MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 42,
                 start: b as f32,
                 len: 0.12,
                 vel: 70,
             });
             drums.push(MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 42,
                 start: b as f32 + 0.5,
                 len: 0.12,
@@ -1052,24 +1078,28 @@ impl RtEngine {
             });
         }
         drums.push(MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 38,
             start: 1.0,
             len: 0.25,
             vel: 108,
         });
         drums.push(MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 38,
             start: 3.0,
             len: 0.25,
             vel: 108,
         });
         drums.push(MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 39,
             start: 3.5,
             len: 0.2,
             vel: 90,
         });
         self.tracks[0].clips[0] = Clip {
+            region: None,
             kind: ClipKind::Midi,
             name: "House Kit".into(),
             bars: 1.0,
@@ -1078,43 +1108,46 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[1].clips[0] = Clip {
+            region: None,
             kind: ClipKind::Midi,
             name: "Bassline".into(),
             bars: 1.0,
             notes: vec![
-                MidiNote { pitch: 36, start: 0.0, len: 0.7, vel: 100 },
-                MidiNote { pitch: 36, start: 0.75, len: 0.2, vel: 80 },
-                MidiNote { pitch: 43, start: 1.5, len: 0.45, vel: 96 },
-                MidiNote { pitch: 41, start: 2.5, len: 0.45, vel: 90 },
-                MidiNote { pitch: 36, start: 3.0, len: 0.4, vel: 100 },
-                MidiNote { pitch: 38, start: 3.5, len: 0.4, vel: 86 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 0.0, len: 0.7, vel: 100 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 0.75, len: 0.2, vel: 80 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 43, start: 1.5, len: 0.45, vel: 96 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 41, start: 2.5, len: 0.45, vel: 90 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 36, start: 3.0, len: 0.4, vel: 100 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 38, start: 3.5, len: 0.4, vel: 86 },
             ],
             gain: 0.95,
             audio: None,
         };
         self.tracks[2].clips[0] = Clip {
+            region: None,
             kind: ClipKind::Midi,
             name: "Stab".into(),
             bars: 2.0,
             notes: vec![
-                MidiNote { pitch: 60, start: 0.0, len: 0.45, vel: 78 },
-                MidiNote { pitch: 64, start: 0.0, len: 0.45, vel: 70 },
-                MidiNote { pitch: 67, start: 0.0, len: 0.45, vel: 70 },
-                MidiNote { pitch: 62, start: 4.0, len: 0.45, vel: 74 },
-                MidiNote { pitch: 65, start: 4.0, len: 0.45, vel: 68 },
-                MidiNote { pitch: 69, start: 4.0, len: 0.45, vel: 68 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 60, start: 0.0, len: 0.45, vel: 78 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 64, start: 0.0, len: 0.45, vel: 70 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 67, start: 0.0, len: 0.45, vel: 70 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 62, start: 4.0, len: 0.45, vel: 74 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 65, start: 4.0, len: 0.45, vel: 68 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 69, start: 4.0, len: 0.45, vel: 68 },
             ],
             gain: 0.7,
             audio: None,
         };
         self.tracks[3].clips[0] = Clip {
+            region: None,
             kind: ClipKind::Midi,
             name: "Pad".into(),
             bars: 2.0,
             notes: vec![
-                MidiNote { pitch: 48, start: 0.0, len: 7.5, vel: 64 },
-                MidiNote { pitch: 55, start: 0.0, len: 7.5, vel: 52 },
-                MidiNote { pitch: 60, start: 0.0, len: 7.5, vel: 48 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 48, start: 0.0, len: 7.5, vel: 64 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 55, start: 0.0, len: 7.5, vel: 52 },
+                MidiNote { id: crate::engine::midi_edit::NoteId::new(), muted: false, pitch: 60, start: 0.0, len: 7.5, vel: 48 },
             ],
             gain: 0.55,
             audio: None,
@@ -1122,12 +1155,14 @@ impl RtEngine {
         // scene 2 variation
         let mut d2 = self.tracks[0].clips[0].notes.clone();
         d2.push(MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 46,
             start: 1.75,
             len: 0.3,
             vel: 80,
         });
         self.tracks[0].clips[1] = Clip {
+            region: None,
             kind: ClipKind::Midi,
             name: "Fill".into(),
             bars: 1.0,
@@ -1135,6 +1170,21 @@ impl RtEngine {
             gain: 1.0,
             audio: None,
         };
+    }
+
+    // A separate compensated clock gives new source-time MIDI regions exact
+    // long-run boundaries without changing legacy clip/deck/metronome output.
+    // Project installation and direct numerical fixtures can reposition beat.
+    fn precise_midi_beat(&self) -> f64 {
+        if self.beat == self.midi_beat_reference { self.midi_beat } else { self.beat }
+    }
+
+    fn sync_midi_clock(&mut self) {
+        if self.beat != self.midi_beat_reference {
+            self.midi_beat = self.beat;
+            self.midi_beat_reference = self.beat;
+            self.beat_roundoff = 0.0;
+        }
     }
 
     pub fn process(&mut self, out: &mut [f32]) {
@@ -1146,6 +1196,7 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        self.sync_midi_clock();
         if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
@@ -1172,7 +1223,14 @@ impl RtEngine {
             self.note_recording.clock += 1.0 / spb;
             let beat_start = self.beat;
             if self.playing {
+                // Compensate accumulated rounding so a long clip cannot move
+                // an exact note boundary to the preceding output sample.
+                let step = 1.0 / spb - self.beat_roundoff;
+                let next = self.midi_beat + step;
+                self.beat_roundoff = (next - self.midi_beat) - step;
+                self.midi_beat = next;
                 self.beat += 1.0 / spb;
+                self.midi_beat_reference = self.beat;
             }
             let mut l = 0.0f32;
             let mut r = 0.0f32;
@@ -1287,21 +1345,25 @@ impl RtEngine {
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
         // engine beat denotes the end of this output sample's beat interval.
-        if let Some(p) = playing.filter(|p| self.beat > p.start_beat + midi_schedule::BEAT_EPSILON)
+        let explicit_region = playing.is_some_and(|p| self.tracks[ti].clips[p.scene as usize].region.is_some());
+        let clock = if explicit_region { self.precise_midi_beat() } else { self.beat };
+        if let Some(p) = playing.filter(|p| clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON)
         {
             let scene = p.scene as usize;
             self.tracks[ti].scene_bus = scene;
             let clip_beats = self.tracks[ti].clips[scene].bars.max(0.25) as f64 * 4.0;
-            let elapsed = self.beat - p.start_beat;
-            if !p.looping && elapsed > clip_beats + midi_schedule::BEAT_EPSILON {
-                self.finish_recording_track(ti);
-                self.tracks[ti].stop_clip();
-            } else {
+            let region = self.tracks[ti].clips[scene].region;
+            let repeating = region.map_or(p.looping, |region| region.repeating(p.looping));
+            let duration = region.map_or(clip_beats, |region| region.end - region.start);
+            let period = region.map_or(clip_beats, |region| region.period());
+            let elapsed = clock - if explicit_region { p.midi_start_beat } else { p.start_beat };
+            let ending = !repeating && elapsed > duration + midi_schedule::BEAT_EPSILON;
+            {
                 // Match the event heap's half-open sample interval. An exact
                 // endpoint belongs to the next sample, including arp/loop steps.
-                let local = (elapsed - midi_schedule::BEAT_EPSILON)
-                    .max(0.0)
-                    .rem_euclid(clip_beats);
+                let sample_elapsed = (elapsed - midi_schedule::BEAT_EPSILON).max(0.0);
+                let local = region.map_or_else(|| sample_elapsed.rem_euclid(clip_beats),
+                    |region| region.position(sample_elapsed, p.looping).unwrap_or(region.end));
                 let prev = p.last_beat;
                 if self.tracks[ti].clips[scene].kind == ClipKind::Midi {
                     let kind = self.tracks[ti].kind;
@@ -1320,11 +1382,24 @@ impl RtEngine {
                         }
                         let notes = &track.clips[scene].notes;
                         let recorded = &track.recorded_playback;
-                        let loop_origin = ((elapsed - midi_schedule::BEAT_EPSILON) / clip_beats)
-                            .floor() * clip_beats;
-                        track.arp_cache.refresh_visible(notes, local, prev, clip_beats, |index| {
-                            recorded.get(index).and_then(Option::as_ref).is_none_or(|policy| {
-                                policy.first_onset(notes[index].start as f64, clip_beats, p.looping)
+                        let loop_origin = region.map_or_else(|| (sample_elapsed / clip_beats).floor() * clip_beats,
+                            |region| {
+                                let first = region.loop_end - region.start;
+                                if !repeating || sample_elapsed < first { -region.start }
+                                else { first + ((sample_elapsed - first) / period).floor() * period - region.loop_start }
+                            });
+                        let visibility = if ending { 2 } else if repeating
+                            && region.is_some_and(|region| sample_elapsed >= region.loop_end - region.start) { 1 } else { 0 };
+                        track.arp_cache.refresh_region_visible(notes, local, prev, clip_beats, visibility, |index| {
+                            !ending && region.is_none_or(|region| !repeating
+                                || sample_elapsed < region.loop_end - region.start
+                                || notes[index].start as f64 >= region.loop_start)
+                            && recorded.get(index).and_then(Option::as_ref).is_none_or(|policy| {
+                                let phase = region.map_or(notes[index].start as f64,
+                                    |region| notes[index].start as f64 - region.loop_start);
+                                let recurs = repeating && region.is_none_or(|region|
+                                    notes[index].start as f64 >= region.loop_start && (notes[index].start as f64) < region.loop_end);
+                                policy.first_onset(phase, period, recurs)
                                     .is_some_and(|first| loop_origin + notes[index].start as f64
                                         >= first - midi_schedule::BEAT_EPSILON)
                             })
@@ -1350,15 +1425,17 @@ impl RtEngine {
                             self.tracks[ti].arp_note = Some(pitch);
                         }
                     } else {
-                        let previous_sample = self.beat - self.bpm as f64 / 60.0 / self.sr as f64;
+                        let sample_step = self.bpm as f64 / 60.0 / self.sr as f64;
+                        let previous_sample = self.beat - sample_step;
+                        let previous_midi_sample = self.precise_midi_beat() - sample_step;
                         let track = &mut self.tracks[ti];
                         track.arp_cache.invalidate();
                         if let Some(old) = track.arp_note.take() {
                             track.poly.note_off_clip(old);
                         }
-                        if track.midi_schedule.paused || !track.midi_schedule.has_length(clip_beats)
+                        if track.midi_schedule.paused || !track.midi_schedule.has_length(period)
                         {
-                            track.rebuild_midi_schedule(previous_sample);
+                            track.rebuild_midi_schedule(previous_sample, previous_midi_sample);
                         }
                         while let Some(gate) =
                             self.tracks[ti].midi_schedule.next_due(elapsed, p.looping)
@@ -1383,6 +1460,10 @@ impl RtEngine {
                 if let Some(playing) = self.tracks[ti].playing.as_mut() {
                     playing.last_beat = local;
                 }
+            }
+            if ending {
+                self.finish_recording_track(ti);
+                self.tracks[ti].stop_clip();
             }
         }
         // Mute/solo gates the output, never the musical clock or DSP history.
@@ -1667,9 +1748,10 @@ impl RtEngine {
         self.finish_recording_input(input);
         // Voice pools are bounded; their exact gate metadata is the routing
         // record even after selection changes or a voice is stolen.
+        let midi_beat = self.precise_midi_beat();
         for track in &mut self.tracks {
             track.poly.note_off_input(input);
-            track.recorded_input_released(input, self.beat);
+            track.recorded_input_released(input, self.beat, midi_beat);
         }
         self.sampler_poly.note_off_input(input);
     }
@@ -1698,10 +1780,12 @@ impl RtEngine {
             self.tracks[track].playing = Some(PlayingClip {
                 scene,
                 start_beat: start,
+                midi_start_beat: start + (self.precise_midi_beat() - self.beat),
                 last_beat: -0.0001,
                 looping: true,
             });
-            self.tracks[track].rebuild_midi_schedule(self.beat);
+            let midi_beat = self.precise_midi_beat();
+            self.tracks[track].rebuild_midi_schedule(self.beat, midi_beat);
             self.playing = true;
             self.selected_track = track;
             self.selected_scene = scene_index;
@@ -2183,6 +2267,16 @@ impl RtEngine {
             Command::LiveNoteOff { source, ch, note } => {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
+            Command::MidiEdit(request) => self.apply_midi_edit(request),
+            Command::MidiAudition { id, track, note, vel, on } => {
+                let input = InputKey::Preview(id);
+                self.release_input(input);
+                if on && (track as usize) < TRACKS && note <= 127 && vel <= 127 {
+                    let t = track as usize;
+                    if self.tracks[t].kind == 0 { self.trig_drum(t, note, vel as f32 / 127.0); }
+                    else { self.tracks[t].poly.note_on_input(note, vel as f32 / 127.0, input); }
+                }
+            }
             Command::SetNotes { track, scene, notes } => {
                 let t = track as usize;
                 let s = scene as usize;
@@ -2199,7 +2293,8 @@ impl RtEngine {
                         self.tracks[t].clips[s].bars = 1.0;
                     }
                     self.tracks[t].clips[s].notes = notes;
-                    self.tracks[t].clip_notes_changed(s, self.beat);
+                    let midi_beat = self.precise_midi_beat();
+                    self.tracks[t].clip_notes_changed(s, self.beat, midi_beat);
                 }
             }
             Command::FxWet { slot, value } => {
@@ -2518,10 +2613,11 @@ impl RtEngine {
         let t = self.tracks.get(track)?;
         let clip = t.clips.get(scene)?;
         match t.playing.filter(|p| p.scene as usize == scene) {
-            Some(p) if self.beat < p.start_beat => None,
-            Some(p) => Some((self.beat - p.start_beat)
+            Some(p) if if clip.region.is_some() { self.precise_midi_beat() < p.midi_start_beat } else { self.beat < p.start_beat } => None,
+            Some(p) => clip.region.map_or_else(|| Some((self.beat - p.start_beat)
                 .rem_euclid(clip.bars.max(0.25) as f64 * 4.0) as f32),
-            None => Some(0.0),
+                |region| region.position(self.precise_midi_beat() - p.midi_start_beat, p.looping).map(|position| position as f32)),
+            None => Some(clip.region.map_or(0.0, |region| region.start as f32)),
         }
     }
 

@@ -3,6 +3,7 @@ use midi_schedule::{Gate, MidiSchedule};
 
 fn note(pitch: u8, start: f32, len: f32) -> MidiNote {
     MidiNote {
+        id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch,
         start,
         len,
@@ -39,6 +40,74 @@ fn render(rt: &mut RtEngine, frames: usize, block: usize) {
         rt.process(&mut output[..count * 2]);
         remaining -= count;
     }
+}
+
+#[test]
+fn explicit_midi_region_chases_pickup_plays_intro_once_and_closes_loop_gates() {
+    let mut muted = note(70, 4.5, 0.5);
+    muted.muted = true;
+    for block in [1, 127, 512] {
+        let mut rt = engine();
+        rt.apply(Command::SetNotes { track: 2, scene: 0, notes: vec![
+            note(59, 0.0, 0.5), note(60, 1.0, 2.0), note(62, 3.0, 0.5),
+            note(64, 4.0, 3.0), note(67, 6.5, 0.5), muted.clone(),
+        ] });
+        rt.tracks[2].clips[0].bars = 2.0;
+        rt.tracks[2].clips[0].region = Some(midi_edit::Region {
+            start: 2.0, end: 8.0, loop_start: 4.0, loop_end: 6.0, loop_enabled: true,
+        });
+        rt.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(32));
+        rt.apply(Command::LaunchClip { track: 2, scene: 0 });
+        render(&mut rt, 144_001, block);
+        assert_eq!(trace(&mut rt, 2), vec![
+            (0, Gate::On(60, 100)), (24_000, Gate::Off(60)),
+            (24_000, Gate::On(62, 100)), (36_000, Gate::Off(62)),
+            (48_000, Gate::On(64, 100)), (96_000, Gate::Off(64)),
+            (96_000, Gate::On(64, 100)), (144_000, Gate::Off(64)),
+            (144_000, Gate::On(64, 100)),
+        ], "block size {block}");
+    }
+}
+
+#[test]
+fn explicit_disabled_loop_plays_after_loop_end_and_stops_at_clip_end() {
+    let mut rt = engine();
+    rt.apply(Command::SetNotes { track: 2, scene: 0, notes: vec![
+        note(60, 1.0, 2.0), note(64, 4.0, 3.0), note(67, 6.5, 3.0),
+    ] });
+    rt.tracks[2].clips[0].bars = 2.0;
+    rt.tracks[2].clips[0].region = Some(midi_edit::Region {
+        start: 2.0, end: 8.0, loop_start: 4.0, loop_end: 6.0, loop_enabled: false,
+    });
+    rt.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(16));
+    rt.apply(Command::LaunchClip { track: 2, scene: 0 });
+    render(&mut rt, 144_001, 257);
+    assert_eq!(trace(&mut rt, 2), vec![
+        (0, Gate::On(60, 100)), (24_000, Gate::Off(60)),
+        (48_000, Gate::On(64, 100)), (108_000, Gate::On(67, 100)),
+        (120_000, Gate::Off(64)), (144_000, Gate::Off(67)),
+    ]);
+    assert!(rt.tracks[2].playing.is_none());
+}
+
+#[test]
+fn explicit_region_quantized_launch_retains_shared_transport_grid_with_distinct_clocks() {
+    let mut rt = engine();
+    rt.beat = 10.25;
+    rt.sync_midi_clock();
+    rt.midi_beat += 0.125;
+    rt.playing = true;
+    rt.quant = 1.0;
+    rt.apply(Command::SetNotes {track:2, scene:7, notes:vec![note(60,0.0,0.5)]});
+    rt.tracks[2].clips[7].region = Some(midi_edit::Region::full(1.0));
+    rt.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(8));
+    rt.apply(Command::LaunchClip {track:2, scene:7});
+    assert_eq!(rt.tracks[2].playing.unwrap().start_beat,11.0);
+    assert_eq!(rt.recording_position(2,7),None);
+    render(&mut rt,18_000,257);
+    assert!(rt.tracks[2].midi_schedule.trace.as_ref().unwrap().is_empty());
+    render(&mut rt,1,1);
+    assert_eq!(trace(&mut rt,2),vec![(0,Gate::On(60,100))]);
 }
 
 fn reference(notes: &[MidiNote], loop_beats: f64, frames: usize) -> Vec<(usize, Gate)> {
@@ -231,7 +300,8 @@ fn midi_edits_chase_active_notes_once_and_note_additions_keep_existing_gates() {
         // remains attached only to the captured index through later rebuilds.
         rt.tracks[2].midi_schedule.trace = Some(Vec::new());
         rt.tracks[2].clips[0].notes.push(note(73, 0.0, 1.0));
-        rt.tracks[2].clip_notes_changed(0, rt.beat);
+        let midi_beat = rt.precise_midi_beat();
+        rt.tracks[2].clip_notes_changed(0, rt.beat, midi_beat);
         render(&mut rt, 1, 1);
         assert_eq!(trace(&mut rt, 2), [(9400, Gate::On(73, 100))]);
     }
@@ -245,7 +315,8 @@ fn midi_multiple_edits_at_an_exact_boundary_preserve_pending_gates() {
     rt.tracks[2].midi_schedule.trace = Some(Vec::new());
     for pitch in [65, 67] {
         rt.tracks[2].clips[0].notes.push(note(pitch, 0.5, 0.25));
-        rt.tracks[2].clip_notes_changed(0, rt.beat);
+        let midi_beat = rt.precise_midi_beat();
+        rt.tracks[2].clip_notes_changed(0, rt.beat, midi_beat);
     }
     render(&mut rt, 1, 1);
     assert_eq!(

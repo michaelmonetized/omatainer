@@ -3,7 +3,7 @@
 Omarchy-native DAW + live DJ surface. One clock, one mixer, one window:
 
 - **Session** clip grid with quantized scene and clip launches
-- **Compose** explicitly armed pad-note capture, with held durations and undo
+- **Compose** a MIDI piano roll and explicitly armed pad-note capture, with stable note identities and undo
 - **Two decks** with spinning platters, Serato-style waveforms, hot cues, loops, vinyl jog, sync, EQ, filter, and a crossfader
 
 Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; this build has no editable MIDI-learn mapping UI. Keyboard and pointer controls remain available.
@@ -382,6 +382,24 @@ Changing the selection affects new presses; held notes keep their original sound
 Sample pads **1–8** occupy the bottom row and **9–16** the top row, preserving the
 piano layout's natural/accidental positions. Number N triggers bank slot N−1.
 Hover a pad for its slot or piano MIDI note; blank piano positions are inactive.
+
+Select an empty or MIDI clip cell and open **Piano roll**. Draw notes, drag their
+bodies to move them and right edges to resize them, or use the named note fields
+and action buttons. The focused roll supports arrows for movement/transposition,
+Shift+Left/Right for length, Ctrl+A, Ctrl+D, M and Delete. Timing grids include
+triplets and Free; note values use quarter-note beats. Pitch/time rulers, folding,
+zoom and scroll have keyboard controls, and every note is available in the
+accessible note list even when outside the painted viewport.
+
+Clip start/end and loop start/end are explicit source-beat coordinates. Intro
+notes play once before the repeating region; note gates close at explicit loop
+or clip ends. **Apply MIDI edit** commits one captured-target History transaction.
+Changed targets, active recording, project replacement and performance protection
+reject it while retaining the draft. **Audition note** uses an independent voice
+without recording; stop it with **Stop note audition**, loss of focus or close.
+Cancel and Escape ask before discarding unapplied work. Native project saves
+retain note identity, pitch, timing, velocity, mute and clip ranges. Existing
+projects migrate identities deterministically and retain their original playback.
 
 Open the **Sampler bank editor** to create an empty bank, copy an original factory
 bank, or edit a user bank. Select a local crate file and assign it to one of 16

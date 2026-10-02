@@ -58,7 +58,7 @@ fn state_four_roundtrips_sparse_native_pcm_and_controls_without_reading_missing_
     let handle = engine.project.clone();
     let saved =
         drive_without_heap(&mut live, move || handle.capture(&AtomicBool::new(false))).unwrap();
-    assert_eq!(saved.state.version, 4);
+    assert_eq!(saved.state.version, STATE_VERSION);
     let saved_bank = &saved.state.banks[3];
     assert_eq!(saved_bank.instance, Some(id));
     assert_eq!(saved_bank.media.iter().flatten().count(), 1);
@@ -102,6 +102,7 @@ fn legacy_banks_named_kit_are_embedded_and_never_regenerated_from_the_name() {
     for version in [1, 2, 3] {
         let mut json = serde_json::to_value(&saved.state).unwrap();
         json["version"] = version.into();
+        legacy_midi_fields(&mut json);
         for bank in json["banks"].as_array_mut().unwrap() {
             let bank = bank.as_object_mut().unwrap();
             bank.remove("instance");
@@ -143,7 +144,7 @@ fn legacy_banks_named_kit_are_embedded_and_never_regenerated_from_the_name() {
             .iter()
             .all(|slot| slot.source.is_none() && slot.controls == Controls::default())));
         let recaptured = captured(&restored.rt);
-        assert_eq!(recaptured.state.version, 4);
+        assert_eq!(recaptured.state.version, STATE_VERSION);
         assert!(recaptured
             .state
             .banks

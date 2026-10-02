@@ -2,6 +2,116 @@ use super::model::*;
 use super::*;
 mod sampler_tests;
 
+fn legacy_midi_fields(state: &mut serde_json::Value) {
+    for track in state["tracks"].as_array_mut().unwrap() {
+        for clip in track["clips"].as_array_mut().unwrap() {
+            clip.as_object_mut().unwrap().remove("region");
+            for note in clip["notes"].as_array_mut().unwrap() {
+                let note = note.as_object_mut().unwrap();
+                note.remove("id"); note.remove("muted");
+            }
+        }
+    }
+}
+
+#[test]
+fn version_four_notes_migrate_deterministic_identity_and_new_fields_are_not_legacy_data() {
+    let original = rt();
+    let saved = captured(&original);
+    let mut json = serde_json::to_value(&saved.state).unwrap();
+    json["version"] = 4.into();
+    legacy_midi_fields(&mut json);
+    let legacy: State = serde_json::from_value(json.clone()).unwrap();
+    legacy.validate(&saved.media).unwrap();
+    let first = Prepared::from_state(legacy.clone(), saved.media.clone(), 48_000).unwrap();
+    let second = Prepared::from_state(legacy, saved.media.clone(), 48_000).unwrap();
+    for (a, b) in first.rt.tracks.iter().zip(&second.rt.tracks) {
+        for (a, b) in a.clips.iter().zip(&b.clips) {
+            assert_eq!(a.notes, b.notes);
+            assert!(a.notes.iter().all(|note| note.id.valid() && !note.muted));
+        }
+    }
+    let recaptured = captured(&first.rt);
+    assert_eq!(recaptured.state.version, STATE_VERSION);
+    for field in ["id", "muted"] {
+        let mut invalid = json.clone();
+        invalid["tracks"][0]["clips"][0]["notes"][0][field] = serde_json::Value::Null;
+        assert!(serde_json::from_value::<State>(invalid).is_err());
+    }
+    json["tracks"][0]["clips"][0]["region"] = serde_json::Value::Null;
+    assert!(serde_json::from_value::<State>(json).is_err());
+}
+
+#[test]
+fn current_note_identity_and_regions_validate_before_installation() {
+    let original = rt();
+    let saved = captured(&original);
+    let mut invalid = saved.state.clone();
+    invalid.tracks[0].clips[0].notes[0].id = midi_edit::NoteId::default();
+    assert!(invalid.validate(&saved.media).is_err());
+    let mut invalid = saved.state.clone();
+    invalid.tracks[0].clips[0].notes[1].id = invalid.tracks[0].clips[0].notes[0].id;
+    assert!(invalid.validate(&saved.media).is_err());
+    let mut valid = saved.state.clone();
+    let clip = &mut valid.tracks[0].clips[0];
+    let mut region = midi_edit::Region::full(clip.bars);
+    region.start = 0.125; region.loop_start = 1.0;
+    clip.region = Some(region); clip.notes[0].muted = true;
+    valid.validate(&saved.media).unwrap();
+    let prepared = Prepared::from_state(valid, saved.media.clone(), 48_000).unwrap();
+    assert_eq!(prepared.rt.tracks[0].clips[0].region, Some(region));
+    assert!(prepared.rt.tracks[0].clips[0].notes[0].muted);
+    let mut invalid = saved.state;
+    invalid.tracks[0].clips[0].region = Some(midi_edit::Region {loop_end:f64::NAN,..region});
+    assert!(invalid.validate(&saved.media).is_err());
+}
+
+#[test]
+fn explicit_region_clock_cursor_survives_capture_install_and_output_rate_change() {
+    use super::super::{midi_schedule::Gate, test_alloc};
+    let mut live = rt();
+    live.bpm = 120.0;
+    live.quant = 0.0;
+    live.beat = 1000.0;
+    live.sync_midi_clock();
+    // Make the two clocks observably different. An immediate region launch
+    // must capture its own clock origin, while saved state uses transport beat.
+    live.midi_beat += 0.125;
+    live.apply(Command::SetNotes {track:2, scene:7, notes:vec![
+        MidiNote { id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
+        MidiNote { id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
+    ]});
+    live.tracks[2].clips[7].bars = 16.0;
+    live.tracks[2].clips[7].region = Some(midi_edit::Region::full(16.0));
+    live.apply(Command::LaunchClip {track:2, scene:7});
+    live.process(&mut vec![0.0; 24_000 * 2]);
+    let launch = live.tracks[2].playing.unwrap();
+    let cursor = live.precise_midi_beat() - launch.midi_start_beat;
+    assert!((cursor - 1.0).abs() < 1e-10);
+    let saved = captured(&live);
+    let saved_launch = saved.state.tracks[2].launch.unwrap();
+    assert!((saved.state.beat - saved_launch.start_beat - cursor).abs() < 1e-10);
+    let mut prepared = Prepared::from_state(saved.state, saved.media, 48_000).unwrap();
+    let mut opened = rt();
+    opened.beat = 37.0;
+    opened.sync_midi_clock();
+    opened.midi_beat += 0.5;
+    assert_eq!(test_alloc::measure(|| prepared.swap_into(&mut opened)), test_alloc::Counts::default());
+    opened.set_sample_rate(96_000).unwrap();
+    let resumed = opened.tracks[2].project_resume.unwrap();
+    assert!((opened.precise_midi_beat() - resumed.midi_start_beat - cursor).abs() < 1e-10);
+    opened.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(16));
+    opened.apply(Command::Play);
+    let mut output = vec![0.0; 512 * 2];
+    for _ in 0..376 { opened.process(&mut output); }
+    let trace = opened.tracks[2].midi_schedule.trace.take().unwrap();
+    let events:Vec<_> = trace.into_iter()
+        .filter(|(_,gate)| *gate != Gate::On(60,80)) // initial resume chase
+        .map(|(elapsed,gate)| (((elapsed-cursor)*48_000.0-1.0).round() as usize,gate))
+        .collect();
+    assert_eq!(events,vec![(48_000,Gate::Off(60)),(144_000,Gate::On(62,90)),(192_000,Gate::Off(62))]);
+}
+
 fn rt() -> RtEngine {
     let (_, receiver) = crossbeam_channel::bounded(4);
     RtEngine::new(48000.0, receiver, Arc::new(Mutex::new(Snapshot::default())))
@@ -46,6 +156,7 @@ fn populated() -> RtEngine {
             .collect();
         for s in 0..SCENES {
             rt.tracks[t].clips[s] = Clip {
+                region: None,
                 kind: if s == 7 {
                     ClipKind::Audio
                 } else {
@@ -55,6 +166,7 @@ fn populated() -> RtEngine {
                 bars: 2.0,
                 gain: 0.7,
                 notes: vec![MidiNote {
+                    id: crate::engine::midi_edit::NoteId::new(), muted: false,
                     pitch: (30 + t + s) as u8,
                     start: 1.125,
                     len: 0.75,
@@ -364,6 +476,7 @@ fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
     for arp in [false, true] {
         let mut source = rt();
         source.tracks[2].clips[0].notes = vec![MidiNote {
+            id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: 60,
             start: 0.0,
             len: 2.0,
@@ -382,6 +495,7 @@ fn stopped_resume_edits_replace_scheduled_notes_and_first_arp_step_chases() {
             track: 2,
             scene: 0,
             notes: vec![MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 72,
                 start: 0.0,
                 len: 2.0,
@@ -504,6 +618,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
         }
         track.clips[0].notes = vec![
             MidiNote {
+                id: crate::engine::midi_edit::NoteId::new(), muted: false,
                 pitch: 60,
                 start: 0.0,
                 len: 1.0,
@@ -549,6 +664,7 @@ fn largest_supported_capture_is_bounded_and_has_no_callback_heap_traffic() {
     eprintln!("maximum project capture: {} notes, {} rack slots, 16 banks, 4096-byte names; wall us median={} max={}; zero allocation/free (local copy cost, not stream deadline proof)",
         MAX_TOTAL_NOTES, MAX_FX_PER_RACK * (TRACKS + SCENES), micros[4], micros[8]);
     live.tracks[0].clips[1].notes.push(MidiNote {
+        id: crate::engine::midi_edit::NoteId::new(), muted: false,
         pitch: 60,
         start: 0.0,
         len: 1.0,
@@ -717,6 +833,7 @@ fn version_one_projects_migrate_empty_cue_names_and_colors_and_unknown_versions_
     let captured = captured(&original);
     let mut json = serde_json::to_value(&captured.state).unwrap();
     json["version"] = serde_json::json!(1);
+    legacy_midi_fields(&mut json);
     for bank in json["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); }
     for deck in json["decks"].as_array_mut().unwrap() {
         deck.as_object_mut().unwrap().remove("cue_styles");
@@ -740,6 +857,7 @@ fn version_two_projects_keep_cue_metadata_with_no_invented_manual_grid() {
     let captured = captured(&original);
     let mut json = serde_json::to_value(&captured.state).unwrap();
     json["version"] = serde_json::json!(2);
+    legacy_midi_fields(&mut json);
     for bank in json["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); }
     for deck in json["decks"].as_array_mut().unwrap() { deck.as_object_mut().unwrap().remove("grid"); }
     let legacy: State = serde_json::from_value(json).unwrap();

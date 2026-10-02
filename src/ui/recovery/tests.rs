@@ -1011,6 +1011,17 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
         let variant = files.path(&format!("state-{version}"));
         let mut state = serde_json::to_value(&recovered.bundle.state).unwrap();
         state["engine"]["version"] = version.into();
+        if version < 5 {
+            for track in state["engine"]["tracks"].as_array_mut().unwrap() {
+                for clip in track["clips"].as_array_mut().unwrap() {
+                    clip.as_object_mut().unwrap().remove("region");
+                    for note in clip["notes"].as_array_mut().unwrap() {
+                        note.as_object_mut().unwrap().remove("id");
+                        note.as_object_mut().unwrap().remove("muted");
+                    }
+                }
+            }
+        }
         if version < 4 { for bank in state["engine"]["banks"].as_array_mut().unwrap() { let bank = bank.as_object_mut().unwrap(); bank.remove("instance"); bank.remove("settings"); } }
         for deck in state["engine"]["decks"].as_array_mut().unwrap() {
             if version <= 2 {
