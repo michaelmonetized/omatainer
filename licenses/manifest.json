@@ -380,6 +380,16 @@
       "version": "1.12.1"
     },
     {
+      "checksum": "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b",
+      "features": [
+        "default",
+        "std"
+      ],
+      "license": "Unlicense OR MIT",
+      "name": "byteorder",
+      "version": "1.5.0"
+    },
+    {
       "checksum": "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495",
       "features": [
         "default",
@@ -532,6 +542,17 @@
       "license": "MIT OR Apache-2.0",
       "name": "dasp_sample",
       "version": "0.11.0"
+    },
+    {
+      "checksum": "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06",
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "license": "MIT",
+      "name": "data-encoding",
+      "version": "2.11.1"
     },
     {
       "checksum": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292",
@@ -1311,6 +1332,20 @@
       "version": "0.4.14"
     },
     {
+      "checksum": "dec4feeff6c7d75093278133a06e827d7af6d2bfe20b0f331f9d10338a5ec7ca",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "lofty",
+      "version": "0.24.0"
+    },
+    {
+      "checksum": "458ace39169e4b83c4f77ae3d42d5d1d11c422feef590219a97c973d3b524557",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "lofty_attr",
+      "version": "0.12.0"
+    },
+    {
       "checksum": "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6",
       "features": [
         "alloc",
@@ -1447,6 +1482,13 @@
       "version": "0.2.19"
     },
     {
+      "checksum": "9d36b1d6964c3ac92b7aea701057e02b6b91143d70d83b20abf75a231a3c0216",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "ogg_pager",
+      "version": "0.7.2"
+    },
+    {
       "checksum": "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50",
       "features": [
         "alloc",
@@ -1509,6 +1551,13 @@
       "license": "MIT OR Apache-2.0",
       "name": "parking_lot_core",
       "version": "0.9.12"
+    },
+    {
+      "checksum": "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "paste",
+      "version": "1.0.15"
     },
     {
       "checksum": "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220",
@@ -2094,13 +2143,32 @@
       "version": "0.5.5"
     },
     {
-      "checksum": "c2d7c3df0e7d94efb68401d81906eae73c02b40d5ec1a141962c592d0f11a96f",
+      "checksum": null,
       "features": [
         "aiff",
         "wav"
       ],
       "license": "MPL-2.0",
       "name": "symphonia-format-riff",
+      "vendored_source": {
+        "files": {
+          "vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+          "vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+          "vendor/symphonia-format-riff/Cargo.toml.orig": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+          "vendor/symphonia-format-riff/LICENSE": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+          "vendor/symphonia-format-riff/PATCHES.md": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+          "vendor/symphonia-format-riff/README.md": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+          "vendor/symphonia-format-riff/UPSTREAM.json": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+          "vendor/symphonia-format-riff/src/aiff/chunks.rs": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+          "vendor/symphonia-format-riff/src/aiff/mod.rs": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+          "vendor/symphonia-format-riff/src/common.rs": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+          "vendor/symphonia-format-riff/src/lib.rs": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+          "vendor/symphonia-format-riff/src/wave/chunks.rs": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+          "vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
+        },
+        "path": "vendor/symphonia-format-riff",
+        "upstream_archive_sha256": "c2d7c3df0e7d94efb68401d81906eae73c02b40d5ec1a141962c592d0f11a96f"
+      },
       "version": "0.5.5"
     },
     {
@@ -4380,6 +4448,36 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:byteorder@1.5.0",
+      "license": "Unlicense OR MIT",
+      "members": [],
+      "name": "byteorder 1.5.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/byteorder/byteorder-1.5.0.crate#COPYING",
+          "sha256": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f"
+        },
+        {
+          "location": "https://static.crates.io/crates/byteorder/byteorder-1.5.0.crate#LICENSE-MIT",
+          "sha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        },
+        {
+          "location": "https://static.crates.io/crates/byteorder/byteorder-1.5.0.crate#UNLICENSE",
+          "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/byteorder/byteorder-1.5.0.crate",
+          "sha256": "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:byteorder-lite@0.1.0",
       "license": "Unlicense OR MIT",
       "members": [],
@@ -4825,6 +4923,28 @@
         {
           "location": "https://static.crates.io/crates/dasp_sample/dasp_sample-0.11.0.crate",
           "sha256": "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:data-encoding@2.11.1",
+      "license": "MIT",
+      "members": [],
+      "name": "data-encoding 2.11.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/data-encoding/data-encoding-2.11.1.crate#LICENSE",
+          "sha256": "b68ad1a3367b825447089e1f8d6829b97f47a89eb78d2f4ebaef4672f5606186"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/data-encoding/data-encoding-2.11.1.crate",
+          "sha256": "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
         }
       ]
     },
@@ -6844,6 +6964,58 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:lofty@0.24.0",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "lofty 0.24.0",
+      "notices": [
+        {
+          "location": "https://raw.githubusercontent.com/Serial-ATA/lofty-rs/2341386035be969a5590cd1c488bf91786fc365a/LICENSE-MIT",
+          "sha256": "0884e92e74c08412d08bb7cbd121e3c09cbf2ae357972440b06f81b3305b0176"
+        },
+        {
+          "location": "https://raw.githubusercontent.com/Serial-ATA/lofty-rs/2341386035be969a5590cd1c488bf91786fc365a/LICENSE-APACHE",
+          "sha256": "33ee463a651c2dd0417e68e97d97c811c7bb19280c2116bff9906fe8d2718551"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/lofty/lofty-0.24.0.crate",
+          "sha256": "dec4feeff6c7d75093278133a06e827d7af6d2bfe20b0f331f9d10338a5ec7ca"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:lofty_attr@0.12.0",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "lofty_attr 0.12.0",
+      "notices": [
+        {
+          "location": "https://raw.githubusercontent.com/Serial-ATA/lofty-rs/c3f512327e871779e2be066eecef09bb106a794f/LICENSE-MIT",
+          "sha256": "0884e92e74c08412d08bb7cbd121e3c09cbf2ae357972440b06f81b3305b0176"
+        },
+        {
+          "location": "https://raw.githubusercontent.com/Serial-ATA/lofty-rs/c3f512327e871779e2be066eecef09bb106a794f/LICENSE-APACHE",
+          "sha256": "33ee463a651c2dd0417e68e97d97c811c7bb19280c2116bff9906fe8d2718551"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/lofty_attr/lofty_attr-0.12.0.crate",
+          "sha256": "458ace39169e4b83c4f77ae3d42d5d1d11c422feef590219a97c973d3b524557"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:log@0.4.34",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -7172,6 +7344,32 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:ogg_pager@0.7.2",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "ogg_pager 0.7.2",
+      "notices": [
+        {
+          "location": "https://raw.githubusercontent.com/Serial-ATA/lofty-rs/76ff7093a1f6a98c60297de4695709d04c8c1f47/LICENSE-MIT",
+          "sha256": "0884e92e74c08412d08bb7cbd121e3c09cbf2ae357972440b06f81b3305b0176"
+        },
+        {
+          "location": "https://raw.githubusercontent.com/Serial-ATA/lofty-rs/76ff7093a1f6a98c60297de4695709d04c8c1f47/LICENSE-APACHE",
+          "sha256": "33ee463a651c2dd0417e68e97d97c811c7bb19280c2116bff9906fe8d2718551"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/ogg_pager/ogg_pager-0.7.2.crate",
+          "sha256": "9d36b1d6964c3ac92b7aea701057e02b6b91143d70d83b20abf75a231a3c0216"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:once_cell@1.21.4",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -7343,6 +7541,32 @@
         {
           "location": "https://static.crates.io/crates/parking_lot_core/parking_lot_core-0.9.12.crate",
           "sha256": "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:paste@1.0.15",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "paste 1.0.15",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/paste/paste-1.0.15.crate#LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "location": "https://static.crates.io/crates/paste/paste-1.0.15.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/paste/paste-1.0.15.crate",
+          "sha256": "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
         }
       ]
     },
@@ -8885,22 +9109,74 @@
     {
       "category": "rust-component",
       "commercial_use": "Commercial use is permitted by MPL-2.0.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked; modified vendored component, exact covered source retained in package",
       "id": "crate:symphonia-format-riff@0.5.5",
       "license": "MPL-2.0",
       "members": [],
       "name": "symphonia-format-riff 0.5.5",
       "notices": [
         {
-          "location": "https://raw.githubusercontent.com/pdeljanov/Symphonia/6d533f26150953a882a6a111ebd13f0abf7129d5/LICENSE",
+          "location": "vendor/symphonia-format-riff/LICENSE",
           "sha256": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30"
         }
       ],
-      "redistribution": "Keep notices and MPL-2.0 terms; make the covered source, including modifications, available to recipients. The exact unmodified source archive is linked below.",
+      "redistribution": "Retain MPL-2.0 notices and provide covered source, including modifications. The exact modified source is retained in the package; the upstream archive is also identified.",
       "sources": [
         {
           "location": "https://static.crates.io/crates/symphonia-format-riff/symphonia-format-riff-0.5.5.crate",
           "sha256": "c2d7c3df0e7d94efb68401d81906eae73c02b40d5ec1a141962c592d0f11a96f"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/.cargo_vcs_info.json",
+          "sha256": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml",
+          "sha256": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml.orig",
+          "sha256": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/LICENSE",
+          "sha256": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/PATCHES.md",
+          "sha256": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/README.md",
+          "sha256": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/UPSTREAM.json",
+          "sha256": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/chunks.rs",
+          "sha256": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/mod.rs",
+          "sha256": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/common.rs",
+          "sha256": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs",
+          "sha256": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs",
+          "sha256": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs",
+          "sha256": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
         }
       ]
     },
@@ -11202,23 +11478,36 @@
     "contrib/org.omarchy.omatainer.svg": ".local/share/icons/hicolor/scalable/apps/org.omarchy.omatainer.svg",
     "plugin/BarWidget.qml": ".config/omarchy/plugins/omatainer/BarWidget.qml",
     "plugin/Service.qml": ".config/omarchy/plugins/omatainer/Service.qml",
-    "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json"
+    "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json",
+    "vendor/symphonia-format-riff/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/symphonia-format-riff/.cargo_vcs_info.json",
+    "vendor/symphonia-format-riff/Cargo.toml": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml",
+    "vendor/symphonia-format-riff/Cargo.toml.orig": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml.orig",
+    "vendor/symphonia-format-riff/LICENSE": ".local/share/omatainer/source/vendor/symphonia-format-riff/LICENSE",
+    "vendor/symphonia-format-riff/PATCHES.md": ".local/share/omatainer/source/vendor/symphonia-format-riff/PATCHES.md",
+    "vendor/symphonia-format-riff/README.md": ".local/share/omatainer/source/vendor/symphonia-format-riff/README.md",
+    "vendor/symphonia-format-riff/UPSTREAM.json": ".local/share/omatainer/source/vendor/symphonia-format-riff/UPSTREAM.json",
+    "vendor/symphonia-format-riff/src/aiff/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/chunks.rs",
+    "vendor/symphonia-format-riff/src/aiff/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/mod.rs",
+    "vendor/symphonia-format-riff/src/common.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/common.rs",
+    "vendor/symphonia-format-riff/src/lib.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs",
+    "vendor/symphonia-format-riff/src/wave/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs",
+    "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs"
   },
   "schema": 1,
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
-    "CONTRACT.md": "2b667b9e6522654b03c901feb1b387ae08cc50e3aea3994122e8a590c57f5dd3",
-    "Cargo.lock": "f29a50177ed873ee538e23c544d2141494d706ccec6e414b4cbdf5d1e2817b29",
-    "Cargo.toml": "3e19cfec47965e41a1da0b2d34518378114527176e23d842793a3fb802062c5d",
+    "CONTRACT.md": "e68bac98f8d0b22180e0430006b05c66b11bf55f85fbdadb2c3d7c0e4be33b00",
+    "Cargo.lock": "cdd558568f22c2f474b4b23e07cad617e08e51f8e2a740394d3c7bc8f41d14e6",
+    "Cargo.toml": "7c5f3bbec5b91b9f21ccc810ce5efbcb417e346c78c2b3de75fcd61b6e852ace",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "1348a1b4fcab9c0959e28d6ee42a4c91a522fdcceddc20718f4afd927da9b326",
+    "README.md": "ed98bdffd7642914af0310bb8de5f23b278cdab959329078aeaf91a1f750e1f0",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/manual.md": "75942027936ed672067c2d06483edf087860bb5721c7f7f4395d3502fb991bf5",
-    "licenses/assets.json": "a0f9cd9710d065f5f204b37cc124e287a5623e99a0fd2b68baccb44dceff273d",
+    "docs/manual.md": "325ae5d9f1b9b257ed8627c5303b0e30cf91a3b2d67d9165eb6c1c1e50d94f93",
+    "licenses/assets.json": "aea8899ea7ec2d3262920bc695dcafda4c3c55daa873fbb2c89edfea57b7b8c0",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "887d16395b89b432322fc7562b75a3b35e83c4a30c78c6bc38bdc17c52d5652d",
     "plugin/manifest.json": "bb5da467bd143775315caab141e900274277e4c86420ae7b4da56dcb11751610",
@@ -11244,14 +11533,14 @@
     "scripts/install-executable.py": "b604da014c65202ec8f45561fde366ff67f18191c5f7c71f96fe5e6ae922dff2",
     "scripts/install-omarchy.sh": "f83b47871ab311e7f960863415d2419042b99a3a8a53936f899d68db3d35f5ff",
     "scripts/install-transaction.py": "477cd38ea21784ea5d3a25ae0eafb47caf6feb65f36fa72deb68f5ecd22a2e7b",
-    "scripts/license-manifest.py": "10cb5dbbdbda320b2a27e5316e8beb35474a427f8b6377e916fb159c6b64a97a",
+    "scripts/license-manifest.py": "c69fcfb16b891aed4bb52e7c707c75ebc9bfc18683ed0f01ee4381a3c6305c8b",
     "scripts/offline_guard.py": "1be43f773920f57a5340e9cb69b713f6deea2e17f73a2395fc7d8f48c94765e5",
     "scripts/performance-gate.py": "0171f3d8fd4aba35f22c26a0ac1d6cf3de83e828e72154dc5e63285b906758c5",
     "scripts/performance-test-support.py": "33a6783da423046ec22e696faee6b50ea654637d63c85479bd107047fc2507de",
     "scripts/test-check-analysis.py": "57adbc43e1be64bcc4cf8ded279905c6f37feb5d7dd85a4dcc1fd44c6511fb3f",
     "scripts/test-install-executable.py": "d1e310f727540f263fdefae4b2880b1a1b2ca5bbfecf8c645439bdf936be8928",
     "scripts/test-install-transaction.py": "9cd781f0918503fcea4546dd5afb1fc0c6db20e15c0f2ec2a2a73d0c26e4ddb8",
-    "scripts/test-license-manifest.py": "f59f4fcc170a80a652efaa699248991e29da69e9aaf41ce8aa9e475124a88585",
+    "scripts/test-license-manifest.py": "e1195722aab298b64b2db27060a47d1c3ac0dd353753983812df28ddd544e7b7",
     "scripts/test-performance-gate.py": "e3bca84fae0eff9e098d023645b3b9855749aba7d659c0b260fb1e1283f76631",
     "scripts/test_offline_contract.py": "f26c137eb1ef0aeb1b8aa8f4a320fcdf43945d21eae2f0b858270d28f74d5b8d",
     "scripts/test_offline_guard.py": "092fb8dfdecb2798215aa5a5c1df213f26c8013467e537c09cdb39fccf7f514c",
@@ -11325,7 +11614,7 @@
     "src/engine/master_stereo_tests.rs": "fe70b3fb33b7d455027856abfa84327b4756f48c1b35b8e29ea4be396dd3df1c",
     "src/engine/media_analysis.rs": "39e8791b5806a29686fac6df8c3a53bf49a57c91e105dd012c87cc8dc8954296",
     "src/engine/media_analysis/tests.rs": "8f92ad5016e9cbc0a603d79b42f063396002a2b4013288f5129d80dcfb461f1d",
-    "src/engine/media_load.rs": "92f41ffa750f3cf969378338314cedb92eb69aba4fd23e2f9d06d40814d1fd89",
+    "src/engine/media_load.rs": "2e7fe04af8a52b179c0ba4fa434ea6ee5526d06aa912a382fa17664d8b428443",
     "src/engine/media_load/analysis_tests.rs": "8562895bdd938da5f73fa4473d3b3444d18888cb0d95195ab0b8af22e14a92b7",
     "src/engine/media_load/tests.rs": "c0d737c78f03ce6d6d60b667802e60a1fa8470cd949619e3f870512a9d0bf2c5",
     "src/engine/media_source.rs": "5f51c0ff3a823905339c9c3c54d38bea61d8ed4e6d62c17a8e20c19d2e8ed877",
@@ -11400,24 +11689,33 @@
     "src/ipc_server.rs": "ffebe3a0b4db6c7b0117153d57e69d790f85c6f49e2d59172944ef70f79bbb2d",
     "src/ipc_startup_tests.rs": "51f6f452a5bfd1c8630004fdecd38da38a13fba425d35473b14db6683be77a80",
     "src/ipc_transport.rs": "22bc0358d2828b07099fbee41244e71aeb81cf01f6a383bfbe868e8cba3462a5",
-    "src/library.rs": "2a528775dd23e626e5d35b1d8a0b16cb7e11a9c41b70dc7be7b8f536eb10407b",
-    "src/library/analysis.rs": "48bd88d3fe26816c6a016467af674601c10d0fa381a771cb8a6da5495a467331",
-    "src/library/analysis/tests.rs": "279b49acab9ca206faac180032f099c12162c72a48dd42377cc41520d47c9588",
+    "src/library.rs": "f61774166000d5fa7975e2752d48fd617889cb8125c7be57017b2a5913cb1c5c",
+    "src/library/analysis.rs": "cde5e541f83b2ab3c4de5092d0bd39f58b86d5d041176cfabe39cb5391289328",
+    "src/library/analysis/tests.rs": "abd9f9a957794d5acad51bf960edfbce39ec3174ae2ec374bfc2488aa5b37b86",
     "src/library/collections.rs": "54f4a5ba2895ec3ef676c09f36e53229ae6eae7275abd4431650d92cd376c7ce",
     "src/library/collections/tests.rs": "96ecc2d18e17f63dbe14548ade2646bb512034ffdfb2d6107efe9b4593f423a4",
-    "src/library/content.rs": "4bb955d6f50e5054a8a55e91f5f905ae8e0228aa6f440a6f8665bc295f697c72",
+    "src/library/content.rs": "a3159e5c331356658da79d85fd2ccf220b36010bfafed04ee5988875a5605f7c",
     "src/library/crates.rs": "2a3d629774db35e24a2e1af3bc3bb8c31207dd8fdd61cdb1b837fce6ba9ec18f",
     "src/library/crates/tests.rs": "4b4fc9f143b95199f4941031ca399eee01afdbc9bea726564e0fc8f5c60251ef",
     "src/library/relocation_search.rs": "bd486e5958ce28cf35b4e8126eefd35bb6bce036475ca01fd72ca981c94c3be4",
     "src/library/relocation_search/tests.rs": "d1da64b987ef578cb1d49f1fbe0d7d0ac22541311519cbe43a887a0e4979a073",
+    "src/library/tags.rs": "6c07fdc5ea406d55863fd8eb95dd2cd2fd7904ca8d6f6a0680c4546587142ea1",
+    "src/library/tags/tests.rs": "42fb2986e75016bd48c311b8889f0ec967e3548293a02d85517d84af1733bb8e",
     "src/library/tests.rs": "7d222b9f80f2cccfa0508371548357e97cad0d1e0c096ee7b8a283651d0469e0",
     "src/library/watch_roots.rs": "67ab779881590c4ecc4eb0e796779bbf136ac7820544450a4055ab9febf4c8ff",
     "src/library/watch_roots/tests.rs": "68bd98b0ae485533e9f0d5fe340ad8139d41a1fae68218a0a35cdaa8634957b1",
-    "src/licenses.rs": "1126a82fb6924a1deb01798f6955112ce59b3b0d58219985703347faffbbf4db",
-    "src/main.rs": "ce0bfcefb635bf1b2ae9fc11b5738932c6d5c45a7db1472d63a1534aeb253d99",
+    "src/licenses.rs": "4aa05a206cbee50b76e9ec364c2cf3d627eba6970a87a035a74f52b0422566f7",
+    "src/main.rs": "117c12f811b357ac6cae3b66acd76ecc6faa807bd1f8bd7758e34ca81592fbfb",
     "src/media_location.rs": "15d89a82a794863114ef2983b80d355482880d2e07cfc8cd69f722c91e4af717",
     "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
     "src/media_location/tests.rs": "df880917798ee04fb1f43d3ee207551d2a21c3124eb64f38133a6c970f920da7",
+    "src/media_tags.rs": "8cf2bcb9b1235b1bf4859728f53755c2aa131ba3786ab6f4c9ab77e53b52ce3b",
+    "src/media_tags/payload.rs": "231a7ad2432ae2173f37c1ebf89be32aeb672f98e506f962a87d99f48876df89",
+    "src/media_tags/preservation.rs": "bd815143527198a8611cc7ae791405fecd400a4c4918709ed615539b792a839d",
+    "src/media_tags/preservation/tests.rs": "37ed99bc8c5d6a28578a81c57a656de822446d08ba4b9da8076fb22ce16a0e85",
+    "src/media_tags/tests.rs": "40643d30ea0df41a0c9adcecba711c438d32fcdb1cdca33141c84978badc502d",
+    "src/media_tags/write.rs": "084c4a3100b912028b3887fff2668cd65330628f71a5cbb0b7baeb916468f015",
+    "src/media_tags/write/tests.rs": "e0ca085a21dd65f4cec7d845ed612a6872e60757e0f60525007f5cfc267bbb68",
     "src/performance_history.rs": "91f19de9e99b0addc879d2f4767bf84bf232ae77b647c5090dedf5ac4b91ec65",
     "src/performance_history/storage.rs": "457e9d012d02ffd816415adb3dd9af5437b3634a810f8c082256b7713bd404d0",
     "src/performance_history/storage/tests.rs": "317062ffb1da682ab0a858c75e945a11229a06ac92dacc34856624e1e31f872c",
@@ -11470,14 +11768,14 @@
     "src/track_analysis.rs": "6a32af0a7bbf6f784ddd4c54f13b21dbd2b2dd630a4c7fbca9d01ea9e7afeeef",
     "src/track_analysis/cache.rs": "2350205a7a8de86ef6c2c497a90db3bf8d03d3e514929e138917afedf4b002b8",
     "src/track_analysis/cache/tests.rs": "d3e9f7b86248d794a7b0b088cd92d1af97e45e5a63944b6414f77e0d96aae736",
-    "src/ui.rs": "0f24f2a13000f1a819538498cba9bc198713aa7b687de2b759a9a9c5b121f3d4",
+    "src/ui.rs": "425c7973622866f1c4f9bc4d50398c22a8e96c5fb670df9815865d8faed2a3b3",
     "src/ui/accessibility.rs": "c739ac3d3096bb3b5eaf67b2226a0c844a3d1987af464d7edb46a6bf5618039e",
     "src/ui/accessibility/tests.rs": "ffe083e0cbd7bc08b18c75179f2b5501e51f5fe24fc4168d09e9148585cec908",
     "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
     "src/ui/audio_settings.rs": "2b5d3ce04243d4c4f01ee91d4a567e1071294334ffd169dcf9c64830dbe3623d",
     "src/ui/audio_settings/tests.rs": "026c17ad215e90a5ab7ff3fa6289dff1db49e9454baa2002fe8af76c1711237d",
     "src/ui/audio_status.rs": "27ee343d97e93bf5cbfa0758388d96ec16a885cf1f541a20e9df36be6e3537fe",
-    "src/ui/bpm.rs": "0b024e90b41d8d6db6e44be20a7490cbb49f548b15486a70f32a8f2287ec30ac",
+    "src/ui/bpm.rs": "da23ec98c44eed8e564ffb6438efafc09133b737f6e71f69165a5bbb0458711c",
     "src/ui/clip_gain.rs": "518a546c4acc5900d66f4fa25e7763111391c96eae9c31a0b97f06d19be8c977",
     "src/ui/compose_tests.rs": "019af725537cab11db3db7c901877e73652d10f113f67063abedffc096aa73d2",
     "src/ui/controller_browse_tests.rs": "4dfe048b46aa687e5b8f260075dea93cd9c2a6997af9b0722fe5d567ae2d0c6a",
@@ -11492,14 +11790,14 @@
     "src/ui/diagnostics.rs": "746f4ffc380272f4959b28fc1efe4a2257fda954d200534123696ad808019a9d",
     "src/ui/diagnostics/capture.rs": "2a80471f3a58c9c1dd5d2bd27fd5d40edd8df0f43bb0e88809409dd2b41d5e3d",
     "src/ui/diagnostics/tests.rs": "ba89b6da05e48e6f55f4d231cb55e005fe2c93a9eee2e8f3982c8a51483fca73",
-    "src/ui/duration_tests.rs": "0825d6428d99c324939c4dc6d7ae0b4bdc321bda0114f24bf7445829a82e788a",
+    "src/ui/duration_tests.rs": "ef9051c8d0d25eeff2e0f395929383300545a81cbba294402386ebb439ba5c4e",
     "src/ui/font_selection_tests.rs": "87e72095d8f9ca2f5a103861e3e8f1ebee4ad57dd42d62a3ef2651360f1e883e",
     "src/ui/fx_controls.rs": "4751c3f74bc541b53a23cb256db87a710de1348f66a46a0678f92f69ce4a928a",
     "src/ui/fx_controls/tests.rs": "fe7dda3154d7af83ab20256a21336b908e8d7af20adb8a0e64e71c173095e510",
     "src/ui/grid_editor.rs": "621e4ce736bc6c2a8cf960d868d89219dc6d3ee9554d6f74252303555ae37dc4",
     "src/ui/grid_editor/tests.rs": "f8fe8e65cad1ae3ca0201142822683332026ebaddcba1d72f06b7b4afa471e28",
     "src/ui/help.rs": "2a7b3be1789cc0085f52ac18e22d6bf22ce453e3b42b1dc5fb62ce9fb6cea56f",
-    "src/ui/help/catalogue.rs": "83278d2aa3fbb67ed3f721af95e191d4d7e52096996c1877345eb0c51ce040ae",
+    "src/ui/help/catalogue.rs": "92fb0434f14d2a69aeb6c5112342ff56598a8f8bb0d612f8e2ce60bbf8ebdd11",
     "src/ui/help/lessons.rs": "94d3c3865f5d330d490c79cce07f94351cd882299da79cd646027799c14eb346",
     "src/ui/help/tests.rs": "caad74022fe99a513f5f77b88f800f9c9fcc9dd3ed28f3699a7531a6cd745440",
     "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",
@@ -11511,23 +11809,29 @@
     "src/ui/library_analysis/tests/long.rs": "da9abc6a6d08b798f4435c700be4cd1d8cf3129225f76ec7cfe75dbeb20660f2",
     "src/ui/library_crates.rs": "4b964f4b3b3c06769c48373c059246bf64f4867ce3ca301a053c880ccafcbb88",
     "src/ui/library_crates/tests.rs": "9c6420ea9bb1afe5aa6d4a0426ba36098c5180ceccc2a0bcfe2372170e53071b",
-    "src/ui/library_metadata.rs": "d935a9b617eb3b0f2be5585d8bae90299669859d93dfee6664281037a9da5c19",
+    "src/ui/library_metadata.rs": "15ec5b975df0ee7d387ff62ca1d02a9d3f928b1a62e289758251a04ac02cfcde",
     "src/ui/library_metadata/analysis.rs": "26cc775ade6c00a89be1d3ee171bacbcc8a7436c1713c7ea70069289aa3c555a",
-    "src/ui/library_metadata/analysis/tests.rs": "f3f8a9c9f6a7cc93a79e3bb5b6eaea40bc8b78e1ea76a572c51c934bb7c4835a",
+    "src/ui/library_metadata/analysis/tests.rs": "4e3afd3f0e8130d6de999431fa6d108ee19484b63ea35ea83b5c61af36d63dc0",
     "src/ui/library_metadata/collection_rows.rs": "56d27cc5d866c381579b73e5aa26d68d0888da994af477966dbcf025323307c0",
     "src/ui/library_metadata/collection_rows/tests.rs": "db23264de03f9711745752feee06ac93e23030348a656aa17c3bbe13a8a941bd",
     "src/ui/library_metadata/collections.rs": "45cb2d66aec842ce527cba411c7578218ee87aa924633860561d6401362bd48d",
     "src/ui/library_metadata/collections/tests.rs": "f140d9b2ee57a7ada74680e73108b708210839e71e4c9d1f35af05c24e41587f",
-    "src/ui/library_metadata/tests.rs": "94f9b0cce1d5829208661f74482a5620d2dc0b7fcda9d149403e98a308ea7d3a",
-    "src/ui/library_scan.rs": "4ec1cd43bfd18770675bb0f2d14545fb2963ac354a52823c0a6c084f04989656",
-    "src/ui/library_scan/replacement.rs": "edc7cc6ca0664f87faa8c7f7c1e7bdda35e08303cbd009ed302f2e6a2c6910aa",
+    "src/ui/library_metadata/tags.rs": "69ffbb71c713118cbee76fb45e9d0990bbf4a13073feef8ceea6413c3edd4d15",
+    "src/ui/library_metadata/tags/tests.rs": "4231bd68c0c9cf0f9cc535fe676e24cb1d77aac5bd9c3bc3abd7e4bd91a460a1",
+    "src/ui/library_metadata/tests.rs": "e48ab9f981a490ecbbb12db164f8e838fbeb6ed94fd9b14ddaf39370ed3a4eb4",
+    "src/ui/library_scan.rs": "90793ee6f5423a06e605b262db6bf8089dcc92b26c1d5c80c51591d859e033ac",
+    "src/ui/library_scan/replacement.rs": "9fa87343b7e2800bbeb1bc6ac8d0abf2c62c96f42e8fdfab88c0cc556f33b4b3",
+    "src/ui/library_scan/tag_jobs.rs": "94817b4ce5a8117abb9135b0035bd0559181703f1405bd51db117803fa4fac61",
+    "src/ui/library_scan/tags.rs": "f2774e5aeded44b105f4e2558418d71f0ecd46444d5d31bab7e459cdc9d923a4",
     "src/ui/library_scan/tests.rs": "81a1d9774a764392428fd12b758940fc17ada24fc3a12e078720893c2703b875",
-    "src/ui/library_scan/traversal.rs": "0f3aefc7e3879141c772249af771940587ac2fadec91c2c14e597f76e934931b",
+    "src/ui/library_scan/traversal.rs": "de58e06c3c4af3b9494dd933eb654f665c9f3faefce3b79adf8a29d3a40f43cc",
     "src/ui/library_scan/watch.rs": "9bd29e4e7d98ddbeefcd48e71eb139b700800af06515fece2c1f887f0d1694ef",
-    "src/ui/library_store.rs": "f837f1d6b5ae9954fa3743997249c3c02192d4cf48e4af949d05d5fe3fa353af",
-    "src/ui/library_store/import_tests.rs": "baa7d9e3357cfa2965555f56836bdb7be8dc5402e9bb075e85fb5ead1390b1ee",
+    "src/ui/library_store.rs": "1b4230be055bb0c73195eee4ec61a199c1de176ecde6f301854d8041b3ffe447",
+    "src/ui/library_store/import_tests.rs": "93467ae668b164de2c9415425048858b68697bbe51bf5b33d4ad118a21b65f3b",
     "src/ui/library_store/import_tests/relocation.rs": "28d31e97bcbc9a4337f780635f3b4dcc033eed2cef9a6ea6150287eaf7e3dfaf",
     "src/ui/library_store/tests.rs": "e9ddf468b0245b63542701e880b324d4c58496f3fbfea5089555538e6f91cc7d",
+    "src/ui/library_tags.rs": "dc4e323766003f576f74d6793b77e5d90b04e43234992d310a455e2e3d4bfd31",
+    "src/ui/library_tags/tests.rs": "5be52c52b95b977bd5e7a46e8a78c5fb2c14a5685453f986e810bb8d85d2fd79",
     "src/ui/library_view.rs": "fb98a702e1176939c5cc785e41a769ae70585f8c9199ec17be2a4189e02fca36",
     "src/ui/library_view_tests.rs": "ab8b616f25ee7a78facffeb264fa2d7b2924aad7d9ac7e84ee02900dbdb87f68",
     "src/ui/licenses.rs": "37dad5976d2fa0b8448ee2b783186eaf95fc92605cd590d66e3791fa8ffe2110",
@@ -11571,10 +11875,12 @@
     "src/ui/undo.rs": "0a912061806a91e927c837947e7b1936928371e5a090cd2a64c24be2c9eecd58",
     "src/ui/undo/tests.rs": "cbf83f74bdcc7e7cd761e79920b0772fe1e97177a217013a92a06edeeae75cdf",
     "src/ui/waveform_tests.rs": "ec2e88e7884354c5a3cd3238a4dce8d9c87cf13aae633123da33dc7ec0f49846",
-    "tests/fixtures/audio/README.md": "1bfa71136b0870675b8e878ac8dc727071c57c00978490676132e6349dd922a5",
+    "tests/fixtures/audio/README.md": "2193751dc91424ba222907f959a29d26ad181f73088a60a9599404583df25fda",
     "tests/fixtures/audio/tone-estimated.mp3": "db3476a2c3bfb5c3838b867d819194bfed908240779a9e219514bbf879a052a0",
     "tests/fixtures/audio/tone-long.ogg": "9f10c76485ef7317d06d35a83703e0e77150a8cb05a6e8755ce5347bb051fa6b",
     "tests/fixtures/audio/tone-next.ogg": "108fa8b6b32a42dbad401cdfb6e72afe3f6ec8f8e3634fcb279610305a0bb7fd",
+    "tests/fixtures/audio/tone-tags.aiff": "4996e71df57482a513c46663093b63230a778bf95fe2a64820f7a8669e50df39",
+    "tests/fixtures/audio/tone-tags.wav": "24f1d3712dd61cbfc83f2f8974b92d00a4a3c39e89e00ffadc67a8c5726f0ef7",
     "tests/fixtures/audio/tone.flac": "ea440a0e10d78243b7fcd92b3cf5e7998c8b0d95d4100fa18687f7adc931f4a6",
     "tests/fixtures/audio/tone.m4a": "4a24363782935022df775fa038098c857a2bbf740549e109a8f05c377469237d",
     "tests/fixtures/audio/tone.mp3": "09dbd544561b1b38ddd9a64991f8caadfac0cd0644fe45435cb7cdc6cb7170ba",
@@ -11583,7 +11889,20 @@
     "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
     "tests/fixtures/keylock/f1_arpeggios_c_slow_forte_i.wav": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",
     "tests/fixtures/keylock/m1_arpeggios_c_slow_forte_i.wav": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa",
-    "tests/fixtures/keylock/sources.json": "84c53b13a5f2c143c6f6345cea892d1e8a94037488f555b041dc339fda8fd1ac"
+    "tests/fixtures/keylock/sources.json": "84c53b13a5f2c143c6f6345cea892d1e8a94037488f555b041dc339fda8fd1ac",
+    "vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+    "vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+    "vendor/symphonia-format-riff/Cargo.toml.orig": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+    "vendor/symphonia-format-riff/LICENSE": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+    "vendor/symphonia-format-riff/PATCHES.md": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+    "vendor/symphonia-format-riff/README.md": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+    "vendor/symphonia-format-riff/UPSTREAM.json": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+    "vendor/symphonia-format-riff/src/aiff/chunks.rs": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+    "vendor/symphonia-format-riff/src/aiff/mod.rs": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+    "vendor/symphonia-format-riff/src/common.rs": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+    "vendor/symphonia-format-riff/src/lib.rs": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+    "vendor/symphonia-format-riff/src/wave/chunks.rs": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+    "vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
   },
   "target": "aarch64-unknown-linux-gnu",
   "toolchain": {

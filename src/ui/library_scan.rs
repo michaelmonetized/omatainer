@@ -13,6 +13,8 @@ mod tests;
 mod traversal;
 mod watch;
 mod replacement;
+mod tags;
+pub(super) mod tag_jobs;
 pub(super) use replacement::SearchHandle;
 
 const MAX_INPUTS: usize = 64;
@@ -43,6 +45,9 @@ enum Kind { Roots, Import }
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ScanState {
     Idle,
+    Tags,
+    TagsFinished,
+    TagsCancelling,
     Scanning,
     Searching,
     SearchCancelling,
@@ -66,18 +71,21 @@ struct Progress {
 pub(super) struct Options {
     #[cfg(test)]
     pub before_entry: Option<Arc<dyn Fn(&Path) + Send + Sync>>,
+
 }
 
 #[derive(Clone)]
 struct Watch { profile: String, catalog: Arc<crate::library::Catalog> }
 #[derive(Debug)]
 pub(super) struct ScanRoots {
+    pub tags: Vec<tags::Observed>,
     pub book:Option<crate::library::watch_roots::Batch>,
     pub adoptions:Vec<crate::library::watch_roots::Adoption>,
     pub directories:Vec<PathBuf>,
 }
 type RootBatch = Arc<ScanRoots>;
 struct Request {
+    tags: Option<tag_jobs::Job>,
     replacement: Option<replacement::Task>,
     performance:Handle,
     watch_enabled:bool,
@@ -145,6 +153,7 @@ impl Publication {
 }
 
 enum Completion {
+    Tags(u64, Arc<tag_jobs::Reply>),
     Replacement(u64, Result<Arc<crate::library::relocation_search::Receipt>, String>),
     Ready(Publication),
     Cancelled,
@@ -152,6 +161,9 @@ enum Completion {
 }
 
 pub(super) struct LibraryScan {
+    tag_result: Option<(u64, Arc<tag_jobs::Reply>)>,
+    #[cfg(test)]
+    tag_hook: Arc<std::sync::Mutex<Option<Arc<dyn Fn(&tag_jobs::Task) + Send + Sync>>>>,
     next_search: u64,
     replacement: Option<(u64, Result<Arc<crate::library::relocation_search::Receipt>, String>)>,
     watch_enabled:bool,
@@ -172,6 +184,10 @@ impl Default for LibraryScan {
 }
 impl LibraryScan {
     pub(super) fn with_inventory(mut inventory: impl FnMut() -> Result<crate::media_location::Snapshot, crate::media_location::Failure> + Send + 'static) -> Self {
+        #[cfg(test)]
+        let tag_hook = Arc::new(std::sync::Mutex::new(None::<Arc<dyn Fn(&tag_jobs::Task) + Send + Sync>>));
+        #[cfg(test)]
+        let worker_tag_hook = tag_hook.clone();
         let (requests, jobs) = mpsc::sync_channel::<Request>(1);
         let (finished, completion) = mpsc::sync_channel(1);
         let changed=Arc::new(AtomicBool::new(false));let worker_changed=changed.clone();
@@ -181,15 +197,30 @@ impl LibraryScan {
             .spawn(move || {
                 let mut fingerprints = HashMap::new();
                 let mut search_pins = Vec::new();
+                let mut tag_pins: Vec<Arc<tag_jobs::Reply>> = Vec::new();
                 let mut summary_pin:Option<Arc<Summary>>=None;
                 let mut watcher=watch::Watcher::default();
                 loop {
                     search_pins.retain(|receipt: &Arc<crate::library::relocation_search::Receipt>| Arc::strong_count(receipt) > 1);
-                    let request=match jobs.recv_timeout(std::time::Duration::from_millis(250)) {
+                    tag_pins.retain(|reply| Arc::strong_count(reply) > 1);
+                    let mut request=match jobs.recv_timeout(std::time::Duration::from_millis(250)) {
                         Ok(request)=>request,
                         Err(mpsc::RecvTimeoutError::Timeout)=>{if watcher.poll(&mut inventory) {worker_changed.store(true,Ordering::Release);}continue;},
                         Err(mpsc::RecvTimeoutError::Disconnected)=>break,
                     };
+                    if let Some(job) = request.tags.take() {
+                        #[cfg(test)]
+                        {
+                            let hook = worker_tag_hook.lock().unwrap().clone();
+                            if let Some(hook) = hook { hook(&job.task); }
+                        }
+                        let result = Arc::new(if tag_pins.len() >= 3 {
+                            tag_jobs::Reply::Failed { message: "Close an earlier tag review before continuing".into(), record: None }
+                        } else { tag_jobs::run(job.task, &request.work) });
+                        if tag_pins.len() < 3 { tag_pins.push(result.clone()); }
+                        if finished.send(Completion::Tags(job.id, result)).is_err() { break; }
+                        continue;
+                    }
                     if let Some(task) = &request.replacement {
                         let result = if search_pins.len() >= 2 {
                             Err("Close an earlier replacement review before searching again".into())
@@ -252,6 +283,10 @@ impl LibraryScan {
                 drop(fingerprints);
                 // Receipt rows retire on this worker even when App fields are
                 // dropped in a different order during shutdown.
+                while !tag_pins.is_empty() {
+                    tag_pins.retain(|reply| Arc::strong_count(reply) > 1);
+                    if !tag_pins.is_empty() { std::thread::sleep(std::time::Duration::from_millis(10)); }
+                }
                 while !search_pins.is_empty() {
                     search_pins.retain(|receipt| Arc::strong_count(receipt) > 1);
                     if !search_pins.is_empty() { std::thread::sleep(std::time::Duration::from_millis(10)); }
@@ -259,7 +294,8 @@ impl LibraryScan {
             });
         match worker {
             Ok(worker) => Self {
-                next_search: 0, replacement: None,
+                next_search: 0, replacement: None, tag_result: None,
+                #[cfg(test)] tag_hook,
                 watch_enabled:false,
                 watch_ready,
                 changed,
@@ -273,7 +309,8 @@ impl LibraryScan {
                 summary: None,
             },
             Err(error) => Self {
-                next_search: 0, replacement: None,
+                next_search: 0, replacement: None, tag_result: None,
+                #[cfg(test)] tag_hook,
                 watch_enabled:false,
                 watch_ready,
                 changed,
@@ -291,13 +328,17 @@ impl LibraryScan {
 }
 
 impl LibraryScan {
+    #[cfg(test)]
+    pub fn set_tag_hook(&mut self, hook: impl Fn(&tag_jobs::Task) + Send + Sync + 'static) {
+        *self.tag_hook.lock().unwrap() = Some(Arc::new(hook));
+    }
     pub fn enable_watching(&mut self) {self.watch_enabled=true;}
     pub fn take_watch_hint(&self)->bool {self.changed.swap(false,Ordering::AcqRel)}
     pub fn set_performance(&mut self, performance: Handle) {
         self.performance = performance;
     }
     pub fn active(&self) -> bool {
-        matches!(self.state, ScanState::Scanning | ScanState::Cancelling | ScanState::Searching | ScanState::SearchCancelling)
+        matches!(self.state, ScanState::Scanning | ScanState::Cancelling | ScanState::Searching | ScanState::SearchCancelling | ScanState::Tags | ScanState::TagsCancelling)
     }
 
     pub fn start(&mut self, roots: Vec<PathBuf>, baseline: Arc<Vec<LibItem>>) -> bool {
@@ -351,7 +392,7 @@ impl LibraryScan {
         self.progress = Arc::new(Progress::default());
         self.summary = None;
         let request = Request {
-            replacement: None,
+            replacement: None, tags: None,
             performance:self.performance.clone(),watch_enabled:self.watch_enabled,
             watch,
             work,
@@ -379,12 +420,18 @@ impl LibraryScan {
     pub fn cancel(&mut self) {
         if self.active() {
             self.cancel.store(true, Ordering::Release);
-            self.state = if matches!(self.state, ScanState::Searching | ScanState::SearchCancelling) { ScanState::SearchCancelling } else { ScanState::Cancelling };
+            self.state = if matches!(self.state, ScanState::Tags | ScanState::TagsCancelling) { ScanState::TagsCancelling } else if matches!(self.state, ScanState::Searching | ScanState::SearchCancelling) { ScanState::SearchCancelling } else { ScanState::Cancelling };
         }
     }
 
     pub fn poll(&mut self) -> Option<Publication> {
         match self.completion.try_recv() {
+            Ok(Completion::Tags(id, result)) => {
+                // File replacement can already be committed when cancellation
+                // arrives. Preserve the actual result for catalog recovery.
+                self.state = ScanState::TagsFinished;
+                self.tag_result = Some((id, result));
+            }
             Ok(Completion::Replacement(id, result)) => {
                 let result = if self.cancel.load(Ordering::Acquire) {
                     Err("Replacement search cancelled; library unchanged".into())
@@ -408,6 +455,10 @@ impl LibraryScan {
             Ok(Completion::Cancelled) => self.state = ScanState::Cancelled,
             Ok(Completion::Failed(error)) => self.state = ScanState::Failed(error),
             Err(mpsc::TryRecvError::Disconnected) if self.active() => {
+                if matches!(self.state, ScanState::Tags | ScanState::TagsCancelling) {
+                    self.tag_result = Some((self.next_search, Arc::new(tag_jobs::Reply::Failed {
+                        message: "Tag filesystem worker stopped; media outcome is unconfirmed. Recovery records and originals are retained.".into(), record: None })));
+                }
                 self.state = ScanState::Failed("Library scan worker stopped; retry scan".into());
                 self.requests = None;
             }
@@ -418,6 +469,9 @@ impl LibraryScan {
 
     pub fn label(&self) -> String {
         match &self.state {
+            ScanState::Tags => "Inspecting/saving audio tags…".into(),
+            ScanState::TagsCancelling => "Cancelling tag work; any claimed write still reports its result…".into(),
+            ScanState::TagsFinished => "Tag operation finished".into(),
             ScanState::Searching => "Searching replacement folders…".into(),
             ScanState::SearchCancelling => "Cancelling replacement search…".into(),
             ScanState::SearchFinished(message) => message.clone(),

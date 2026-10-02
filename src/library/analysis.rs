@@ -25,6 +25,7 @@ impl Catalog {
                 patch.bpm.map_or(Bpm::UNKNOWN, |value| Bpm::new(value, Origin::Heuristic)));
         }
         if patch.fields.duration { version.metadata.duration = Some(patch.duration); }
+        tags::reconcile(version);
         Ok(())
     }
 }

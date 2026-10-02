@@ -191,7 +191,7 @@ fn metadata_rebase_cannot_restore_stale_automatic_values_after_analysis_commit()
         let mut owner = Metadata::new(Some(path.clone()));
         owner.set_performance(f.handle.clone());
         wait(|| { owner.poll(&mut rows).unwrap(); !owner.active() });
-        owner.update(OldPatch { source: reference.source.clone(), fingerprint: reference.fingerprint,
+        owner.update(OldPatch { tags: None, source: reference.source.clone(), fingerprint: reference.fingerprint,
             bpm: Bpm::new(99.0, Origin::Heuristic), duration: Some(999.0) });
         wait(|| { owner.poll(&mut rows).unwrap(); !owner.active() });
         assert!(owner.save_analysis(done).is_ok());

@@ -27,6 +27,7 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 symphonia = { version = "0.5", features = ["all"] }
 toml = "0.8"
 walkdir = "2"
+lofty = { version = "=0.24.0", default-features = false }
 
 [profile.dev]
 opt-level = 1
@@ -38,3 +39,6 @@ panic = "abort"
 
 [dev-dependencies]
 accesskit_unix = "=0.15.0"
+
+[patch.crates-io]
+symphonia-format-riff = { path = "vendor/symphonia-format-riff" }

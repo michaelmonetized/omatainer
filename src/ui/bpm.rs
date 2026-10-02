@@ -5,6 +5,7 @@ pub(crate) enum Origin {
     Unknown,
     FilenameHint,
     Heuristic,
+    EmbeddedTag,
     User,
     Builtin,
 }
@@ -31,6 +32,17 @@ impl Bpm {
             Self::UNKNOWN
         }
     }
+    /// A reviewed empty value suppresses tags, estimates and filename hints.
+    pub const USER_CLEARED: Self = Self {
+        value: None,
+        origin: Origin::User,
+    };
+    pub fn valid(self) -> bool {
+        match self.value {
+            Some(value) => self.origin != Origin::Unknown && value.is_finite() && value > 1.0,
+            None => matches!(self.origin, Origin::Unknown | Origin::User),
+        }
+    }
     pub fn hint(value: f32) -> Self {
         Self::new(value, Origin::FilenameHint)
     }
@@ -38,7 +50,20 @@ impl Bpm {
         self.value
     }
     pub fn reconcile(self, analysis: Self) -> Self {
-        if self.origin == Origin::User {
+        let priority = |origin| match origin {
+            Origin::Unknown => 0,
+            Origin::FilenameHint => 1,
+            Origin::Heuristic => 2,
+            Origin::EmbeddedTag => 3,
+            Origin::Builtin => 4,
+            Origin::User => 5,
+        };
+        // An explicit failed/unknown analysis invalidates prior automatic
+        // estimates and filename hints, but cannot erase tags or user values.
+        if priority(self.origin) > priority(analysis.origin)
+            && !(analysis.origin == Origin::Unknown
+                && matches!(self.origin, Origin::FilenameHint | Origin::Heuristic))
+        {
             self
         } else {
             analysis
@@ -49,17 +74,24 @@ impl Bpm {
             Origin::Unknown => "unknown",
             Origin::FilenameHint => "filename hint · unverified",
             Origin::Heuristic => "heuristic estimate · unverified",
+            Origin::EmbeddedTag => "embedded tag",
             Origin::User => "user correction",
             Origin::Builtin => "built-in tempo",
         }
     }
     pub fn cell(self) -> String {
         let Some(value) = self.value else {
-            return "— unknown".into();
+            return if self.origin == Origin::User {
+                "— user cleared"
+            } else {
+                "— unknown"
+            }
+            .into();
         };
         let label = match self.origin {
             Origin::FilenameHint => "hint",
             Origin::Heuristic => "est",
+            Origin::EmbeddedTag => "tag",
             Origin::User => "user",
             Origin::Builtin => "built-in",
             Origin::Unknown => "unknown",

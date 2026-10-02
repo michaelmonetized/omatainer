@@ -156,7 +156,14 @@ mod tests {
                 .count(),
             catalog.manifest.cargo.as_array().unwrap().len()
         );
-        assert_eq!(catalog.manifest.package.len(), 6);
+        let vendor: Vec<_> = catalog.manifest.package.iter().filter(|(source, _)|
+            source.starts_with("vendor/symphonia-format-riff/")).collect();
+        assert_eq!(vendor.len(), 13, "complete modified MPL source must be distributed");
+        assert_eq!(catalog.manifest.package.len(), 6 + vendor.len());
+        for (source, destination) in vendor {
+            assert!(catalog.manifest.source_files.contains_key(source));
+            assert_eq!(destination, &format!(".local/share/omatainer/source/{source}"));
+        }
         assert!(!catalog.manifest.source_files.is_empty());
         assert_eq!(catalog.manifest.absent.len(), 3);
         for id in [
@@ -165,6 +172,10 @@ mod tests {
             "font:noto-emoji",
             "font:emoji-icon",
             "crate:symphonia@0.5.5",
+            "crate:symphonia-format-riff@0.5.5",
+            "crate:lofty@0.24.0",
+            "crate:lofty_attr@0.12.0",
+            "crate:ogg_pager@0.7.2",
         ] {
             let entry = catalog
                 .manifest

@@ -28,6 +28,7 @@ struct Request {
     source: LibSource,
 }
 pub struct Completion {
+    pub tags: Option<Result<crate::media_tags::Observation, String>>,
     pub fingerprint: Option<FileFingerprint>,
     pub content_hash: Option<[u8;32]>,
     pub token: LoadToken,
@@ -245,9 +246,16 @@ impl Loader {
                     let before=FileFingerprint::read(path);let result=decode(path,&request.token,None);
                     let after=FileFingerprint::read(path);(before.filter(|before|Some(*before)==after),None,result)
                 } else {(None,None,Err(source_failure("Unsupported media namespace")))};
-                if !request.token.is_current() {
-                    continue;
+                struct TagCancellation<'a>(&'a LoadToken);
+                impl crate::media_tags::Cancellation for TagCancellation<'_> {
+                    fn cancelled(&self) -> bool { !self.0.is_current() }
                 }
+                let tags = if verified && result.is_ok() {
+                    fingerprint.map(|fingerprint| crate::media_location::Location::resolve(&request.source)
+                        .map_err(|error| error.to_string())
+                        .and_then(|location| crate::media_tags::inspect_cancellable(&location, fingerprint, &TagCancellation(&request.token))))
+                } else { None };
+                if !request.token.is_current() { continue; }
                 let deck = request.token.deck as usize;
                 let old = {
                     let mut state = worker.state.lock().unwrap();
@@ -257,6 +265,7 @@ impl Loader {
                         continue;
                     }
                     state.ready[deck].replace(Completion {
+                        tags,
                         fingerprint,
                         content_hash,
                         token: request.token,

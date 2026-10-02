@@ -38,3 +38,15 @@ Lossless/WAV frame counts and content are exact. Lossy fixtures retain codec
 priming/padding where Symphonia does not trim it; tests assert the bounded
 decoded lengths plus distinct left/right tone content. This change does not
 claim sample-exact gapless support for every codec.
+
+Tag inspection/edit fixtures `tone-tags.wav` and `tone-tags.aiff` decode the
+original generated `tone.flac` losslessly, with metadata stripped. Generated
+locally with FFmpeg; tests require no encoder executable:
+
+```sh
+ffmpeg -i tone.flac -map_metadata -1 -c:a pcm_s16le tone-tags.wav
+ffmpeg -i tone.flac -map_metadata -1 -c:a pcm_s16be tone-tags.aiff
+```
+
+The tag tests copy fixtures into isolated temporary directories before writing
+Unicode title/artist, BPM and key tags, and compare production-decoded PCM.

@@ -152,10 +152,12 @@ fn actual_typed_import_persists_once_without_changing_playing_audio() {
         files.0.display()
     ))]);
     gui.frame(vec![]);
+    assert!(!gui.app.library_scan.active());
+    let before_stale_action = format!("{:?}", gui.app.library_scan.state);
     gui.action(stale, Action::Click);
     assert_eq!(
-        gui.app.library_scan.state,
-        super::super::library_scan::ScanState::Idle
+        format!("{:?}", gui.app.library_scan.state),
+        before_stale_action
     );
     gui.action(gui.node("Import music files/folders"), Action::Click);
     gui.wait(|g| {

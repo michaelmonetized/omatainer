@@ -61,6 +61,7 @@ impl LibraryScan {
         let progress = Arc::new(relocation_search::Progress::default());
         let cancel = work.cancel();
         let request = Request {
+            tags: None,
             replacement: Some(Task {
                 id,
                 catalog,

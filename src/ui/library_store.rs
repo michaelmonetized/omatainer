@@ -94,6 +94,13 @@ pub(super) fn reconcile_optional(
         *items = fallback.to_vec();
     }
     reconcile_items(&mut catalog, items, captures)?;
+    if use_scan {
+        if let Some(roots) = roots {
+            for observed in &roots.tags {
+                observed.reconcile(&mut catalog)?;
+            }
+        }
+    }
     let mut proof_error=qualify_proofs(&mut catalog,proofs);
     let needs_qualification = !qualification_sources.is_empty();
     let mut qualification_pending = needs_qualification && qualification_work.is_none();
@@ -433,7 +440,9 @@ impl App {
     pub(super) fn library_closing(&self) -> bool { self.library_close.requested || self.library_close.allow }
     pub(super) fn prepare_library_close(&mut self) -> CloseState {
         self.library_metadata.set_collections_closing(true);
-        if !self.stop_analysis_for_close() { return CloseState::Pending; }
+        let analysis_stopped = self.stop_analysis_for_close();
+        let tags_stopped = self.stop_tags_for_close();
+        if !analysis_stopped || !tags_stopped { return CloseState::Pending; }
         use std::sync::atomic::{AtomicBool, Ordering};
         if self.library_metadata.storage.is_none() {
             return CloseState::Ready;

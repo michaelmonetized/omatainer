@@ -16,6 +16,7 @@ use std::{
 };
 
 mod content;
+pub(crate) mod tags;
 pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;
@@ -23,7 +24,7 @@ pub(crate) mod watch_roots;
 mod collections;
 pub(crate) use content::Relocate;
 
-const SCHEMA: u32 = 7;
+const SCHEMA: u32 = 8;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -51,6 +52,12 @@ pub(crate) struct Version {
     pub content_hash: Option<[u8; 32]>,
     #[serde(default)]
     pub analysis: Option<crate::track_analysis::Record>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<tags::TagMetadata>,
+    /// Set only by a verified within-track audio-preserving tag transaction,
+    /// or by subsequently verifying an exact byte copy of such a version.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio_identity: Option<crate::media_tags::payload::Identity>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -125,7 +132,7 @@ impl Catalog {
         let track = self.track_for_version(source, fingerprint)?;
         let old = track.versions.iter().find(|v| v.fingerprint == fingerprint)?;
         let current = track.versions.get(track.current)?;
-        (old.content_hash.is_some() && old.content_hash == current.content_hash)
+        tags::equivalent_audio(old, current)
             .then_some((&track.source, current.fingerprint))
     }
     /// Preserve the selected current version after an archived capture/scan.
@@ -199,8 +206,10 @@ impl Catalog {
                         .any(|s| s.len() > 4096)
                     || m.duration
                         .is_some_and(|d| !d.is_finite() || d < 0.0 || d > 1.0e10)
-                    || m.bpm.value().is_some_and(|v| !v.is_finite() || v <= 1.0)
-                    || (m.bpm.origin == Origin::Unknown) != m.bpm.value().is_none()
+                    || !m.bpm.valid()
+                    || version.tags.as_ref().is_some_and(|tags| !tags.valid())
+                    || version.audio_identity.as_ref().is_some_and(|identity|
+                        !identity.valid() || version.fingerprint.is_none() || version.content_hash.is_none())
                 {
                     return Err("invalid library metadata or preparation".into());
                 }
@@ -267,17 +276,29 @@ impl Catalog {
                 preparation: Preparation::default(),
                 content_hash: None,
                 analysis: None,
+                tags: None,
+                audio_identity: None,
             });
             track.versions.len() - 1
         };
-        if relocated.is_none() { track.current = index; }
+        let archived_tag_receipt = index != track.current
+            && track.versions[index].audio_identity.is_some()
+            && tags::equivalent_audio(&track.versions[index], &track.versions[track.current]);
+        if relocated.is_none() && !archived_tag_receipt { track.current = index; }
         let version = &mut track.versions[index];
+        if metadata.bpm.origin == Origin::Heuristic {
+            if let Some(tags) = &mut version.tags { tags.automatic_bpm = metadata.bpm; }
+        }
         // Rescanning filename hints cannot erase decoded analysis/user values.
         let old = &version.metadata;
         let analyzed = version.analysis.as_ref();
         let bpm = if old.bpm.origin == Origin::User {
             old.bpm
         } else if metadata.bpm.origin == Origin::User {
+            metadata.bpm
+        } else if old.bpm.origin == Origin::EmbeddedTag {
+            old.bpm
+        } else if metadata.bpm.origin == Origin::EmbeddedTag {
             metadata.bpm
         } else if let Some(measured) = analyzed.and_then(|record| record.bpm.as_ref()) {
             measured.value.map_or(Bpm::UNKNOWN, |value| Bpm::new(value, Origin::Heuristic))
@@ -309,6 +330,7 @@ impl Catalog {
             last_play: metadata.last_play.max(old.last_play),
             ..metadata
         };
+        tags::reconcile(version);
         Ok(version)
     }
     pub fn merge_import(&mut self, mut other: Catalog) -> Result<(), String> {
@@ -433,8 +455,17 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
         return Err("library exceeds 64 MiB".into());
     }
     let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-    let mut catalog = match header.get("schema").and_then(|v| v.as_u64()) {
-        Some(7) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+    let schema = header.get("schema").and_then(|v| v.as_u64());
+    if schema.is_some_and(|schema| schema < 8) {
+        tags::reject_legacy_fields(&header)?;
+    }
+    let mut catalog = match schema {
+        Some(8) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(7) => {
+            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            old.schema = SCHEMA;
+            old
+        },
         Some(6) => {
             let old: BeforeWatchedRoots = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema,6);
@@ -468,6 +499,8 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
                             preparation: track.preparation,
                             content_hash: None,
                             analysis: None,
+                            tags: None,
+                            audio_identity: None,
                         }],
                     })
                     .collect(),

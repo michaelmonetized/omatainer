@@ -37,6 +37,8 @@ fn fixture() -> (Catalog, SourceRef, Version) {
         },
         content_hash: None,
         analysis: None,
+        tags: None,
+        audio_identity: None,
     };
     let reference = SourceRef {
         track: TrackId("1".repeat(32)),

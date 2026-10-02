@@ -62,15 +62,41 @@ def metadata(root):
                             check=True, capture_output=True)
     return json.loads(result.stdout)
 
+def vendored_component(package, root):
+    if package.get('source') is not None:return None
+    path=Path(package['manifest_path']).parent
+    try:relative_path=path.relative_to(root/'vendor')
+    except ValueError:raise ManifestError('local dependency must be a retained vendor component')
+    record=load(path/'UPSTREAM.json')
+    expected={'name','version','archive','sha256','files','patches'}
+    archive=f"https://static.crates.io/crates/{package['name']}/{package['name']}-{package['version']}.crate"
+    if set(record)!=expected or record['name']!=package['name'] or record['version']!=package['version'] or record['archive']!=archive:
+        raise ManifestError('vendored upstream identity does not match resolved dependency')
+    digest=record['sha256']
+    if not isinstance(digest,str) or len(digest)!=64 or any(c not in '0123456789abcdef' for c in digest):raise ManifestError('invalid upstream archive digest')
+    patches=set(record['patches'])
+    if not patches <= set(record['files']):raise ManifestError('unidentified vendored patch')
+    names={p.relative_to(path).as_posix() for p in path.rglob('*') if p.is_file() or p.is_symlink()}
+    if names != set(record['files']) | {'LICENSE','PATCHES.md','UPSTREAM.json'}:raise ManifestError('unexpected or missing vendored source file')
+    for name,digest in record['files'].items():
+        actual=sha(regular(path/relative(name)))
+        if name not in patches and actual!=digest:raise ManifestError(f'unreviewed upstream source modification: {name}')
+    files={str(Path('vendor')/relative_path/name):sha(regular(path/relative(name))) for name in sorted(names)}
+    return {'path':str(Path('vendor')/relative_path),'upstream_archive_sha256':record['sha256'],'files':files},record
+
 def graph(meta, root):
     lock = tomllib.loads((root/'Cargo.lock').read_text())
     checksums = {(p['name'], p['version']): p.get('checksum') for p in lock['package']}
     nodes = {node['id']: node for node in meta['resolve']['nodes']}
-    return sorted([{'name': p['name'], 'version': p['version'], 'license': p['license'],
-                    'checksum': checksums[(p['name'], p['version'])],
-                    'features': sorted(nodes[p['id']]['features'])}
-                   for p in meta['packages'] if p['name'] != 'omatainer' and p['id'] in nodes],
-                  key=lambda p: (p['name'], p['version']))
+    result=[]
+    for p in meta['packages']:
+        if p['name']=='omatainer' or p['id'] not in nodes:continue
+        row={'name':p['name'],'version':p['version'],'license':p['license'],
+             'checksum':checksums[(p['name'],p['version'])],'features':sorted(nodes[p['id']]['features'])}
+        vendor=vendored_component(p,root)
+        if vendor:row['vendored_source']=vendor[0]
+        result.append(row)
+    return sorted(result,key=lambda p:(p['name'],p['version']))
 
 def rights(expression):
     if expression == 'MPL-2.0':
@@ -115,6 +141,10 @@ def update(root, meta, supplements=None):
         p = by_name[(row['name'],row['version'])]
         path = Path(p['manifest_path']).parent
         archive = f"https://static.crates.io/crates/{p['name']}/{p['name']}-{p['version']}.crate"
+        vendor=vendored_component(p,root)
+        if vendor:
+            missing=set(vendor[0]['files'])-set(policy['package'])
+            if missing:raise ManifestError('vendored covered source must be retained in the package: '+', '.join(sorted(missing)))
         component_id = f"crate:{p['name']}@{p['version']}"
         refs = []
         for file in sorted(path.rglob('*')):
@@ -122,7 +152,7 @@ def update(root, meta, supplements=None):
                                    or (p['name']=='epaint_default_fonts' and file.suffix=='.txt')):
                 if file.stat().st_size > 1_000_000:
                     raise ManifestError(f'notice is unexpectedly large: {file}')
-                refs.append(notice(file.read_bytes(), f"{archive}#{file.relative_to(path).as_posix()}"))
+                refs.append(notice(file.read_bytes(), file.relative_to(root).as_posix() if vendor else f"{archive}#{file.relative_to(path).as_posix()}"))
         if not refs:
             supplied = supplements.get(p['name'], []) if supplements else []
             if supplied:
@@ -132,10 +162,17 @@ def update(root, meta, supplements=None):
             else:
                 raise ManifestError(f'missing pinned upstream license record: {component_id}')
         commercial, redistribution = rights(p['license'])
+        sources=[{'location':archive,'sha256':row['checksum']}]
+        delivery='resolved Linux build/runtime dependency; not a claim that every module is linked'
+        if vendor:
+            sources=[{'location':archive,'sha256':vendor[1]['sha256']}]+[
+                {'location':policy['package'][name],'sha256':digest} for name,digest in vendor[0]['files'].items()]
+            delivery+='; modified vendored component, exact covered source retained in package'
+            if p['license']=='MPL-2.0':redistribution='Retain MPL-2.0 notices and provide covered source, including modifications. The exact modified source is retained in the package; the upstream archive is also identified.'
         entries.append({'id': component_id, 'name': f"{p['name']} {p['version']}", 'category': 'rust-component',
-                        'delivery': 'resolved Linux build/runtime dependency; not a claim that every module is linked',
+                        'delivery': delivery,
                         'license': p['license'], 'commercial_use': commercial, 'redistribution': redistribution,
-                        'sources': [{'location': archive, 'sha256': row['checksum']}], 'notices': refs,
+                        'sources': sources, 'notices': refs,
                         'members': []})
     for font in policy['fonts']:
         refs = [notice((fonts/name).read_bytes(), font_archive+'#'+name) for name in font['notice_files']]
@@ -193,7 +230,7 @@ def source_paths(root, package):
     paths.update(p.relative_to(root).as_posix() for p in (root/'scripts').glob('*') if p.suffix in ('.py','.sh'))
     # Test executables also embed media and read the checked manual. Bind these
     # inputs, including new non-Rust assets, rather than only the Rust modules.
-    for directory in ('src','tests','benchmarks'):
+    for directory in ('src','tests','benchmarks','vendor'):
         paths.update(p.relative_to(root).as_posix() for p in (root/directory).rglob('*')
                      if p.is_file() or p.is_symlink())
     build = tomllib.loads((root/'Cargo.toml').read_text())['package'].get('build', 'build.rs')
@@ -223,7 +260,7 @@ def validate(root, meta=None):
     if source_paths(root, document['package']) != set(document['source_files']):raise ManifestError('unmanifested or missing source/build/gate inventory')
     for name,digest in document['source_files'].items():
         if sha(regular(root/name)) != digest:raise ManifestError(f'source changed; review and refresh license manifest: {name}')
-    found={p.relative_to(root).as_posix() for directory in ('contrib','plugin') for p in (root/directory).rglob('*') if p.is_file() or p.is_symlink()}
+    found={p.relative_to(root).as_posix() for directory in ('contrib','plugin','vendor') for p in (root/directory).rglob('*') if p.is_file() or p.is_symlink()}
     if found != set(document['package']):raise ManifestError('unmanifested or missing integration asset')
     if graph(meta if meta is not None else metadata(root), root) != document['cargo']:
         raise ManifestError('resolved Cargo components/features changed; refresh reviewed license records')
@@ -263,7 +300,7 @@ def release_record(root, binary, document):
             'source_files':document['source_files'],
             'project_source': {'repository':'https://github.com/michaelmonetized/omatainer', 'revision':revision, 'source_tree_modified':dirty, 'identity':'source_files SHA-256 values identify the exact local sources, including reviewed local modifications'},
             'external_configuration': 'Existing user desktop configuration is merged by the installer; it is not re-licensed. The transaction journal retains the exact before/after bytes.',
-            'source_notice': 'Unmodified MPL component sources are available at the exact archive URLs in manifest.json under MPL-2.0. Archive SHA-256s identify the source releases; retained notices contain their full terms.'}
+            'source_notice': 'Unmodified MPL component sources are identified by archive URL and SHA-256 in manifest.json. Modified vendored MPL sources are retained under .local/share/omatainer/source with their exact source hashes and upstream identity. Retained notices contain the terms.'}
 
 def verify_package(directory):
     receipt=load(directory/RECEIPT)

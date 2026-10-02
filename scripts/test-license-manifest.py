@@ -17,7 +17,6 @@ records=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(records)
 FIXTURE_SPEC=importlib.util.spec_from_file_location('performance_fixture',Path(__file__).with_name('performance-test-support.py'))
 performance_fixture=importlib.util.module_from_spec(FIXTURE_SPEC);FIXTURE_SPEC.loader.exec_module(performance_fixture)
 ROOT=Path(__file__).resolve().parent.parent
-META=records.metadata(ROOT)
 class RecordsTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='omatainer-license-test-');self.addCleanup(self.temp.cleanup)
@@ -25,6 +24,7 @@ class RecordsTests(unittest.TestCase):
         manifest=records.load(ROOT/'licenses/manifest.json')
         for name in [*manifest['source_files'],'licenses/manifest.json','licenses/notices.json']:
             out=self.root/name;out.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/name,out)
+        self.meta=records.metadata(self.root)
         # Tiny native ELF fixture preserves the production record-dump protocol.
         source=self.base/'fixture.c';self.binary=self.base/'fixture'
         source.write_text('#include <stdio.h>\n#include <string.h>\nint main(int argc,char**argv){if(argc>1 && !strcmp(argv[1],"omatainer:offline-license-records:v1"))return 7;if(argc!=3)return 1;const char*p=NULL;'+
@@ -34,9 +34,9 @@ class RecordsTests(unittest.TestCase):
         subprocess.run(['cc',str(source),'-o',str(self.binary)],check=True,capture_output=True)
         performance_fixture.report(self.root,self.binary)
     def package(self):
-        return records.package(self.root,self.binary,self.base/'release',META)
+        return records.package(self.root,self.binary,self.base/'release',self.meta)
     def test_exact_inventory_and_notices_survive_release_reopen(self):
-        doc=records.validate(self.root,META)
+        doc=records.validate(self.root,self.meta)
         output=self.package();receipt=records.verify_package(output)
         self.assertEqual(len(receipt['files']),len(doc['package'])+4)
         self.assertEqual((output/records.LICENSE_ROOT/'notices.json').read_bytes(),(self.root/'licenses/notices.json').read_bytes())
@@ -44,7 +44,7 @@ class RecordsTests(unittest.TestCase):
         self.assertTrue(all(entry['notices'] for entry in doc['entries']))
         with self.assertRaisesRegex(records.ManifestError,'already exists'):self.package()
     def test_missing_extra_tampered_source_or_notice_refuses_publication(self):
-        for change in ['extra','missing','altered','notice','rust','script','build','dependency','fixture','embedded','manual']:
+        for change in ['extra','missing','altered','notice','rust','script','build','dependency','fixture','embedded','manual','vendor','extra_vendor']:
             with self.subTest(change=change):
                 path=None;before=None
                 if change=='extra':path=self.root/'plugin/unlicensed.wav'
@@ -57,8 +57,10 @@ class RecordsTests(unittest.TestCase):
                 elif change=='dependency':path=self.root/'Cargo.lock';before=path.read_bytes();path.write_bytes(before+b'\n')
                 elif change=='fixture':path=self.root/'tests/new-unreviewed.wav'
                 elif change=='embedded':path=self.root/'src/new-unreviewed.bin'
+                elif change=='vendor':path=self.root/'vendor/symphonia-format-riff/src/aiff/chunks.rs';before=path.read_bytes();path.write_bytes(before+b'\n')
+                elif change=='extra_vendor':path=self.root/'vendor/symphonia-format-riff/src/unreviewed.rs'
                 elif change=='manual':path=self.root/'docs/manual.md';before=path.read_bytes();path.write_bytes(before+b'\n')
-                if change in ['extra','rust','script','build','fixture','embedded']:path.write_text('unreviewed')
+                if change in ['extra','rust','script','build','fixture','embedded','extra_vendor']:path.write_text('unreviewed')
                 with self.assertRaises((records.ManifestError,KeyError)):self.package()
                 self.assertFalse((self.base/'release').exists())
                 if before is None:path.unlink()
@@ -91,7 +93,7 @@ class RecordsTests(unittest.TestCase):
         old.write_bytes(self.binary.read_bytes().replace(marker,b'x'*len(marker)))
         with patch.object(records.subprocess,'run',side_effect=AssertionError('old executable must not be launched')):
             with self.assertRaisesRegex(records.ManifestError,'predates'):records.verify_binary(self.root,old)
-        changed=json.loads(json.dumps(META));changed['resolve']['nodes'][0]['features'].append('unreviewed')
+        changed=json.loads(json.dumps(self.meta));changed['resolve']['nodes'][0]['features'].append('unreviewed')
         with self.assertRaisesRegex(records.ManifestError,'Cargo components'):records.validate(self.root,changed)
     def test_standalone_verification_needs_no_toolchain_and_font_upgrade_needs_review(self):
         output=self.package()
@@ -99,7 +101,7 @@ class RecordsTests(unittest.TestCase):
             result=subprocess.run([sys.executable,str(ROOT/'scripts/license-manifest.py'),
                                    'verify-package','--destination',str(output)],capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
-        changed=json.loads(json.dumps(META))
+        changed=json.loads(json.dumps(self.meta))
         next(p for p in changed['packages'] if p['name']=='epaint_default_fonts')['version']='99.0.0'
         # The explicit policy guard runs independently before a new font version
         # can be associated with old per-face terms or version strings.

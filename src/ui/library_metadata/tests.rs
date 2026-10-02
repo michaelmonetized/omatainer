@@ -249,6 +249,7 @@ fn pending_metadata_rebases_on_new_arc_and_preserves_intervening_user_correction
     let mut f = Fixture::new(16);
     scan(&mut f, &files);
     let patch = Patch {
+        tags: None,
         source: LibSource::File(path.clone()),
         fingerprint: find(&f, &path).fingerprint.unwrap(),
         bpm: Bpm::new(120.0, Origin::Heuristic),
@@ -341,6 +342,7 @@ fn newer_patch_revision_wins_over_an_already_inflight_candidate() {
     let mut f = Fixture::new(16);
     scan(&mut f, &files);
     let mut patch = Patch {
+        tags: None,
         source: LibSource::File(path.clone()),
         fingerprint: find(&f, &path).fingerprint.unwrap(),
         bpm: Bpm::new(120.0, Origin::Heuristic),
