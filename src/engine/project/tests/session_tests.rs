@@ -182,3 +182,157 @@ fn maximum_set_renders_and_reorders_its_last_populated_track_and_scene_without_c
         511
     );
 }
+
+#[test]
+#[ignore = "frozen release qualification: maximum native container, embedded PCM and automation identity"]
+fn maximum_native_container_reopens_music_automation_and_playback_reorder() {
+    use crate::project_file::{self, Bundle, Limits, Overwrite, SaveOutcome};
+    let (mut state, media) = large_state();
+    state.tracks[127].clips[511].lanes = Some(
+        crate::engine::midi_data::Lanes::new(
+            960,
+            3840,
+            vec![
+                crate::midi_file::Message {
+                    tick: 0,
+                    order: 0,
+                    bytes: [0xcc, 9, 0],
+                    length: 2,
+                },
+                crate::midi_file::Message {
+                    tick: 0,
+                    order: 1,
+                    bytes: [0xbc, 74, 50],
+                    length: 3,
+                },
+                crate::midi_file::Message {
+                    tick: 1440,
+                    order: 2,
+                    bytes: [0xbc, 74, 65],
+                    length: 3,
+                },
+                crate::midi_file::Message {
+                    tick: 1919,
+                    order: 3,
+                    bytes: [0xec, 0, 60],
+                    length: 3,
+                },
+            ],
+            vec![],
+        )
+        .unwrap(),
+    );
+    let expected = serde_json::to_value(&state).unwrap();
+    let evidence = std::env::var_os("OMAT_SESSION_EVIDENCE");
+    let root = evidence
+        .clone()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            std::env::temp_dir().join(format!(
+                "omat113-native-{}",
+                crate::sampler_bank::BankId::new().unwrap()
+            ))
+        });
+    std::fs::create_dir_all(&root).unwrap();
+    struct Directory(std::path::PathBuf, bool);
+    impl Drop for Directory {
+        fn drop(&mut self) {
+            if self.1 {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+    }
+    let directory = Directory(root, evidence.is_none());
+    let path = directory.0.join("maximum-session.omat");
+    let outcome = project_file::save(
+        &path,
+        &Bundle {
+            state,
+            media: media.clone(),
+        },
+        Overwrite::Never,
+        &Limits::default(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert!(matches!(outcome, SaveOutcome::Durable));
+    let reopened: Bundle<State> =
+        project_file::load(&path, &Limits::default(), &AtomicBool::new(false)).unwrap();
+    assert_eq!(serde_json::to_value(&reopened.state).unwrap(), expected);
+    assert_eq!(reopened.media.len(), media.len());
+    for (a, b) in reopened.media.iter().zip(&media) {
+        assert_eq!((a.sr, a.ch), (b.sr, b.ch));
+        assert!(a
+            .data
+            .iter()
+            .map(|v| v.to_bits())
+            .eq(b.data.iter().map(|v| v.to_bits())));
+    }
+    let mut prepared = Prepared::from_state(reopened.state, reopened.media, 48000).unwrap();
+    prepared.rt.enable_undo().unwrap();
+    let rt = &mut prepared.rt;
+    let lane = rt.tracks[127].clips[511].lanes.clone().unwrap();
+    let address = &*rt.tracks[127] as *const _ as usize;
+    let track = rt.session.reference(session::Axis::Track, 127).unwrap();
+    let scene = rt.session.reference(session::Axis::Scene, 511).unwrap();
+    rt.apply(Command::Play);
+    rt.apply(Command::RoutedNoteOn {
+        source: 913,
+        ch: 12,
+        note: 72,
+        vel: 90,
+        track: 127,
+        target: Some(track),
+    });
+    rt.process(&mut [0.0; 256]);
+    let launch = rt.tracks[127].playing.unwrap().start_beat;
+    for (axis, id, position) in [
+        (session::Axis::Track, track.id, 64),
+        (session::Axis::Scene, scene.id, 255),
+    ] {
+        let (request, ack) = session::Request::metadata(
+            &rt.session,
+            rt.undo.checkpoint().epoch,
+            session::Action::Move { axis, id, position },
+        )
+        .unwrap();
+        assert_eq!(
+            test_alloc::measure(|| {
+                rt.apply(Command::SessionEdit(request));
+                rt.process(&mut [0.0; 256]);
+            }),
+            test_alloc::Counts::default()
+        );
+        assert_eq!(ack.state(), midi_edit::Outcome::Applied);
+        assert_eq!(&*rt.tracks[127] as *const _ as usize, address);
+        assert!(Arc::ptr_eq(
+            rt.tracks[127].clips[511].lanes.as_ref().unwrap(),
+            &lane
+        ));
+        assert_eq!(rt.tracks[127].playing.unwrap().start_beat, launch);
+        assert_eq!((rt.selected_track, rt.selected_scene), (127, 511));
+        assert!(rt.tracks[127].poly.voices.iter().any(|v| v.input
+            == Some(crate::engine::dsp::InputKey::Midi {
+                source: 913,
+                ch: 12,
+                note: 72
+            })
+            && v.env.stage < 4));
+    }
+    assert_eq!(lane.messages.len(), 4);
+    assert_eq!(rt.tracks[127].scene_bus, 511);
+    rt.apply(Command::LiveNoteOff {
+        source: 913,
+        ch: 12,
+        note: 72,
+    });
+    if evidence.is_some() {
+        std::fs::write(directory.0.join("native-container.json"),serde_json::to_vec_pretty(&serde_json::json!({
+            "tracks":128,"scenes":512,"cells":65536,"container_bytes":std::fs::metadata(&path).unwrap().len(),
+            "embedded_media":media.len(),"pcm_bits_preserved":true,"all_state_fields_preserved":true,
+            "automation_messages":lane.messages.len(),"lane_identity_preserved":true,"dsp_address_preserved":true,
+            "playing_clip_origin_preserved":true,"live_routed_note_preserved":true,"selected_slots":[127,511],
+            "callback_allocations":0,"callback_frees":0,"physical_hardware":false
+        })).unwrap()).unwrap();
+    }
+}

@@ -11700,7 +11700,7 @@
     "src/engine/project/prepare.rs": "08c041fab543e13117319a88de0a86dd1247627d57d233eb86d4dc051c196d9b",
     "src/engine/project/tests.rs": "ca06e668abf9d320182c82c6685ba69c4bcf5b8f907a8dbe813eb64ec5622939",
     "src/engine/project/tests/sampler_tests.rs": "003069facef7bb751db8f91c6ab92fbc58b0bd4ae3f6d72da9090acd447d8ea6",
-    "src/engine/project/tests/session_tests.rs": "94f407dadbc0a69aa3b1e1b286fd4f482e28f2fa6733781c3d5e677c1ecac8cb",
+    "src/engine/project/tests/session_tests.rs": "5d0bcad3e55693c4808a030fd511b8dd6cf2be98f18d540f9b647685450a0e85",
     "src/engine/project/tests/structure_tests.rs": "944e75d4ea1bfa298a1c888523135b800b8d83d360bcdb454a86cda0e83f464f",
     "src/engine/quantized_launch_tests.rs": "f0100a90be4702a1adbfb606a081f949456ca5b2a06d6879083811f3a8e9c54d",
     "src/engine/recording.rs": "06c78f1a3940e020d83863d635ec16b3610198ab6c245672289d3f61c760c5c3",
