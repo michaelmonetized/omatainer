@@ -27,6 +27,7 @@ const DEFAULT_BYTES: usize = 256 * 1024 * 1024;
 pub enum Name {
     Session,
     Tempo,
+    Timing,
     Quantization,
     Metronome,
     Crossfader,
@@ -53,6 +54,7 @@ impl Name {
         match self {
             Self::Session => "Edit session layout",
             Self::Tempo => "Set tempo",
+            Self::Timing => "Edit tempo and meter",
             Self::Quantization => "Change quantization",
             Self::Metronome => "Toggle metronome",
             Self::Crossfader => "Move crossfader",

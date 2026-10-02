@@ -35,7 +35,8 @@ impl RtEngine {
             self.history_reject(Command::MidiImport(request), reason);
             return;
         }
-        self.undo.begin(Name::Multiple, 0, self.frames_done);
+        let timing_only = request.targets.is_empty() && (request.conductor.as_ref().is_some_and(|c| c.native.is_some()) || request.baseline_conductor.as_ref().is_some_and(|c| c.native.is_some()));
+        self.undo.begin(if timing_only { Name::Timing } else { Name::Multiple }, 0, self.frames_done);
         if request.change_conductor {
             let bytes = self.conductor.as_ref().map_or(0, |c| c.bytes())
                 + request.conductor.as_ref().map_or(0, |c| c.bytes());
@@ -49,7 +50,7 @@ impl RtEngine {
         let midi_beat = self.precise_midi_beat();
         if request.change_conductor {
             if let Some(conductor) = &self.conductor {
-                self.bpm = (60000000.0 / f64::from(conductor.micros_at(midi_beat))) as f32;
+                self.bpm = (60000000.0 / conductor.micros_exact_at(midi_beat)) as f32;
             }
         }
         for target in &mut request.targets {

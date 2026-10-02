@@ -1,6 +1,75 @@
 use super::*;
 
 #[test]
+fn prepared_native_timing_is_atomic_undoable_cancelled_and_namespace_qualified_without_heap() {
+    use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};
+    use crate::engine::{midi_edit::Outcome, midi_interchange::Request};
+    let map = Conductor::native(
+        960,
+        vec![
+            Tempo::new(0, 120.0, true).unwrap(),
+            Tempo::new(8160, 180.0, false).unwrap(),
+        ],
+        vec![Meter {
+            tick: 0,
+            numerator: 7,
+            denominator_power: 3,
+            clocks: 12,
+            thirty_seconds: 8,
+        }],
+        TimingSettings {
+            pickup: 0.5,
+            subdivision: 2,
+            count_in: 2,
+            ..TimingSettings::default()
+        },
+    )
+    .unwrap();
+    let mut live = rt();
+    let _history = live.enable_undo().unwrap();
+    let node = (&*live.tracks[2]) as *const _ as usize;
+    let notes = live.tracks[2].clips[0].notes.clone();
+    let (request, ack) =
+        Request::prepare_timing(captured(&live), Some(map.clone()), || false).unwrap();
+    let counts = test_alloc::measure(|| live.apply(Command::MidiImport(request)));
+    assert_eq!(counts, test_alloc::Counts::default());
+    assert_eq!(ack.state(), Outcome::Applied);
+    assert_eq!(live.conductor.as_ref(), Some(&map));
+    assert_eq!(live.tracks[2].clips[0].notes, notes);
+    assert_eq!((&*live.tracks[2]) as *const _ as usize, node);
+    assert_eq!(
+        test_alloc::measure(|| live.apply(Command::Undo)),
+        test_alloc::Counts::default()
+    );
+    assert!(live.conductor.is_none());
+    assert_eq!(
+        test_alloc::measure(|| live.apply(Command::Redo)),
+        test_alloc::Counts::default()
+    );
+    assert_eq!(live.conductor.as_ref(), Some(&map));
+
+    let (cancelled, cancel_ack) = Request::prepare_timing(captured(&live), None, || false).unwrap();
+    assert!(cancel_ack.cancel());
+    assert_eq!(
+        test_alloc::measure(|| live.apply(Command::MidiImport(cancelled))),
+        test_alloc::Counts::default()
+    );
+    assert_eq!(cancel_ack.state(), Outcome::Cancelled);
+    assert_eq!(live.conductor.as_ref(), Some(&map));
+    assert!(Request::prepare_timing(captured(&live), None, || true).is_err());
+
+    let (stale, stale_ack) = Request::prepare_timing(captured(&live), None, || false).unwrap();
+    live.session.namespace[0] ^= 1;
+    assert_eq!(
+        test_alloc::measure(|| live.apply(Command::MidiImport(stale))),
+        test_alloc::Counts::default()
+    );
+    assert_eq!(stale_ack.state(), Outcome::Rejected);
+    assert_eq!(live.conductor.as_ref(), Some(&map));
+    assert_eq!((&*live.tracks[2]) as *const _ as usize, node);
+}
+
+#[test]
 fn schema_eight_reopens_native_tempo_ramps_and_older_files_refuse_new_timing_fields() {
     use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};
     let mut saved = captured(&rt());

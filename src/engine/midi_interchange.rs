@@ -73,6 +73,7 @@ impl Clone for Target {
 pub(crate) struct Request {
     pub(super) targets: Vec<Target>,
     pub(super) epoch: u64,
+    pub(super) session_namespace: Option<[u64; 2]>,
     pub(super) baseline_bpm: f32,
     pub(super) baseline_conductor: Option<Arc<Conductor>>,
     pub(super) conductor: Option<Arc<Conductor>>,
@@ -407,6 +408,7 @@ impl Request {
             Self {
                 targets,
                 epoch: captured.checkpoint.epoch,
+                session_namespace: captured.state.session.as_ref().map(|s| s.namespace),
                 baseline_bpm,
                 baseline_conductor,
                 conductor,
@@ -415,6 +417,39 @@ impl Request {
             },
             ack,
         ))
+    }
+    /// Native timing uses the same atomic conductor inverse, publication and
+    /// retirement path as a MIDI import, with no unrelated clip replacements.
+    pub fn prepare_timing(
+        mut captured: project::Captured,
+        value: Option<Arc<Conductor>>,
+        mut cancel: impl FnMut() -> bool,
+    ) -> Result<(Self, Ack), String> {
+        checkpoint(&mut cancel)?;
+        let namespace = captured.state.session.as_ref().ok_or("Session identity is unavailable")?.namespace;
+        let baseline_conductor = captured.state.conductor.clone();
+        let baseline_bpm = captured.state.bpm;
+        let conductor = value.map(|c| c.prepare()).transpose()?;
+        captured.state.conductor = conductor.clone();
+        captured.state.validate(&captured.media)?;
+        struct Size<'a, F> { bytes: usize, cancel: &'a mut F }
+        impl<F: FnMut() -> bool> std::io::Write for Size<'_, F> {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                if (self.cancel)() { return Err(std::io::Error::other("Timing edit cancelled")); }
+                self.bytes = self.bytes.checked_add(bytes.len()).ok_or_else(|| std::io::Error::other("Timing metadata overflow"))?;
+                if self.bytes > crate::project_file::DEFAULT_METADATA_LIMIT - 128 * 1024 { return Err(std::io::Error::other("Timing edit exceeds the native project's 64 MiB metadata limit")); }
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+        }
+        serde_json::to_writer(Size { bytes: 0, cancel: &mut cancel }, &captured.state).map_err(|e| e.to_string())?;
+        checkpoint(&mut cancel)?;
+        let ack = Ack::new();
+        Ok((Self {
+            targets: Vec::new(), epoch: captured.checkpoint.epoch,
+            session_namespace: Some(namespace), baseline_bpm, baseline_conductor,
+            conductor, change_conductor: true, ack: ack.clone(),
+        }, ack))
     }
     pub fn bytes(&self) -> usize {
         self.targets.capacity() * std::mem::size_of::<Target>()
@@ -435,7 +470,8 @@ impl Request {
 }
 impl RtEngine {
     pub(super) fn midi_import_current(&self, request: &Request) -> bool {
-        if request.epoch != self.undo.checkpoint().epoch
+        if request.session_namespace.is_some_and(|namespace| namespace != self.session.namespace)
+            || request.epoch != self.undo.checkpoint().epoch
             || request.change_conductor
                 && (self.recording
                     || self.has_held_project_notes()
