@@ -66,6 +66,52 @@ fn current_note_identity_and_regions_validate_before_installation() {
     assert!(invalid.validate(&saved.media).is_err());
 }
 
+#[test]
+fn explicit_region_clock_cursor_survives_capture_install_and_output_rate_change() {
+    use super::super::{midi_schedule::Gate, test_alloc};
+    let mut live = rt();
+    live.bpm = 120.0;
+    live.quant = 0.0;
+    live.beat = 1000.0;
+    live.sync_midi_clock();
+    // Make the two clocks observably different. An immediate region launch
+    // must capture its own clock origin, while saved state uses transport beat.
+    live.midi_beat += 0.125;
+    live.apply(Command::SetNotes {track:2, scene:7, notes:vec![
+        MidiNote { id:midi_edit::NoteId::new(), muted:false, pitch:60, start:0.0, len:2.0, vel:80 },
+        MidiNote { id:midi_edit::NoteId::new(), muted:false, pitch:62, start:4.0, len:1.0, vel:90 },
+    ]});
+    live.tracks[2].clips[7].bars = 16.0;
+    live.tracks[2].clips[7].region = Some(midi_edit::Region::full(16.0));
+    live.apply(Command::LaunchClip {track:2, scene:7});
+    live.process(&mut vec![0.0; 24_000 * 2]);
+    let launch = live.tracks[2].playing.unwrap();
+    let cursor = live.precise_midi_beat() - launch.midi_start_beat;
+    assert!((cursor - 1.0).abs() < 1e-10);
+    let saved = captured(&live);
+    let saved_launch = saved.state.tracks[2].launch.unwrap();
+    assert!((saved.state.beat - saved_launch.start_beat - cursor).abs() < 1e-10);
+    let mut prepared = Prepared::from_state(saved.state, saved.media, 48_000).unwrap();
+    let mut opened = rt();
+    opened.beat = 37.0;
+    opened.sync_midi_clock();
+    opened.midi_beat += 0.5;
+    assert_eq!(test_alloc::measure(|| prepared.swap_into(&mut opened)), test_alloc::Counts::default());
+    opened.set_sample_rate(96_000).unwrap();
+    let resumed = opened.tracks[2].project_resume.unwrap();
+    assert!((opened.precise_midi_beat() - resumed.midi_start_beat - cursor).abs() < 1e-10);
+    opened.tracks[2].midi_schedule.trace = Some(Vec::with_capacity(16));
+    opened.apply(Command::Play);
+    let mut output = vec![0.0; 512 * 2];
+    for _ in 0..376 { opened.process(&mut output); }
+    let trace = opened.tracks[2].midi_schedule.trace.take().unwrap();
+    let events:Vec<_> = trace.into_iter()
+        .filter(|(_,gate)| *gate != Gate::On(60,80)) // initial resume chase
+        .map(|(elapsed,gate)| (((elapsed-cursor)*48_000.0-1.0).round() as usize,gate))
+        .collect();
+    assert_eq!(events,vec![(48_000,Gate::Off(60)),(144_000,Gate::On(62,90)),(192_000,Gate::Off(62))]);
+}
+
 fn rt() -> RtEngine {
     let (_, receiver) = crossbeam_channel::bounded(4);
     RtEngine::new(48000.0, receiver, Arc::new(Mutex::new(Snapshot::default())))

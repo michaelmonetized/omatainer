@@ -89,6 +89,7 @@ fn pending_targets_monitor_without_writing_and_stopped_targets_use_zero_cursor()
         rt.tracks[1].playing = Some(PlayingClip {
             scene: 0,
             start_beat: 100.0,
+            midi_start_beat: 100.0,
             last_beat: 0.0,
             looping: true,
         });

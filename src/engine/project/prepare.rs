@@ -45,6 +45,7 @@ impl Prepared {
             sampler_inst,
             sampler_oct
         );
+        rt.sync_midi_clock();
         rt.playing = false;
         rt.recording = false;
         rt.compose_target = None;
@@ -77,10 +78,11 @@ impl Prepared {
             track.project_resume = saved.launch.map(|p| PlayingClip {
                 scene: p.scene,
                 start_beat: p.start_beat,
+                midi_start_beat: p.start_beat,
                 last_beat: -0.0001,
                 looping: p.looping,
             });
-            track.rebuild_midi_schedule(state.beat);
+            track.rebuild_midi_schedule(state.beat, state.beat);
         }
         for (i, saved) in state.decks.into_iter().enumerate() {
             let deck = &mut rt.decks[i];
@@ -196,6 +198,9 @@ impl Prepared {
             recording,
             bpm,
             beat,
+            beat_roundoff,
+            midi_beat,
+            midi_beat_reference,
             quant,
             view,
             xfader,

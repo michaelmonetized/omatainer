@@ -589,12 +589,13 @@ impl RtEngine {
             self.tracks[i].playing.or(self.tracks[i].project_resume)
         });
         self.apply(crate::engine::Command::Stop);
+        let midi_beat = self.precise_midi_beat();
         for (track, launch) in self.tracks.iter_mut().zip(launches) {
             track.project_resume = launch.map(|mut launch| {
                 launch.last_beat = -0.0001;
                 launch
             });
-            track.rebuild_midi_schedule(self.beat);
+            track.rebuild_midi_schedule(self.beat, midi_beat);
             track.poly.set_sample_rate(self.sr);
             track.eq.set_sample_rate(self.sr);
             track.eq_right.set_sample_rate(self.sr);

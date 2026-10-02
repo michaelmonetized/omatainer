@@ -28,10 +28,10 @@ impl RecordedPlayback {
 }
 
 impl TrackRt {
-    fn recorded_note_started(&mut self, scene: usize, index: usize, input: InputKey, beat: f64) {
+    fn recorded_note_started(&mut self, scene: usize, index: usize, input: InputKey, beat: f64, midi_beat: f64) {
         if let Some(playing) = self.playing.filter(|p| p.scene as usize == scene) {
             let length = self.clips[scene].bars.max(0.25) as f64 * 4.0;
-            let elapsed = (beat - playing.start_beat).max(0.0);
+            let elapsed = (if self.clips[scene].region.is_some() { midi_beat - playing.midi_start_beat } else { beat - playing.start_beat }).max(0.0);
             let next_loop = self.clips[scene].region.map_or_else(|| ((elapsed / length).floor() + 1.0) * length,
                 |region| {
                     let first = region.loop_end - region.start;
@@ -45,21 +45,21 @@ impl TrackRt {
                 released_at: 0.0,
             });
         }
-        self.clip_notes_changed(scene, beat);
+        self.clip_notes_changed(scene, beat, midi_beat);
     }
 
-    pub(super) fn recorded_input_released(&mut self, input: InputKey, beat: f64) {
+    pub(super) fn recorded_input_released(&mut self, input: InputKey, beat: f64, midi_beat: f64) {
         let Some(playing) = self.playing else { return };
         let mut changed = false;
         for policy in self.recorded_playback.iter_mut().flatten() {
             if policy.held == Some(input) {
                 policy.held = None;
-                policy.released_at = beat - playing.start_beat;
+                policy.released_at = if self.clips[playing.scene as usize].region.is_some() { midi_beat - playing.midi_start_beat } else { beat - playing.start_beat };
                 changed = true;
             }
         }
         if changed {
-            self.clip_notes_changed(playing.scene as usize, beat);
+            self.clip_notes_changed(playing.scene as usize, beat, midi_beat);
         }
     }
 }
@@ -148,7 +148,8 @@ impl RtEngine {
             minimum,
             history_owner,
         });
-        self.tracks[track].recorded_note_started(scene, index, input, self.beat);
+        let midi_beat = self.precise_midi_beat();
+        self.tracks[track].recorded_note_started(scene, index, input, self.beat, midi_beat);
         self.history_record_changed(history_owner);
     }
 
@@ -183,7 +184,8 @@ impl RtEngine {
                 {
                     self.project.edited();
                     note.len = duration as f32;
-                    self.tracks[held.track].clip_notes_changed(held.scene, self.beat);
+                    let midi_beat = self.precise_midi_beat();
+                    self.tracks[held.track].clip_notes_changed(held.scene, self.beat, midi_beat);
                     self.history_record_finished(
                         held.history_owner,
                         held.track,

@@ -412,6 +412,7 @@ impl Patch {
                 rt.capture_held_clip_durations(t, s, value);
                 rt.finish_recording_clip(t, s);
                 rt.cancel_recording_clip(t, s);
+                let midi_beat = rt.precise_midi_beat();
                 let track = &mut rt.tracks[t];
                 if track
                     .playing
@@ -421,7 +422,7 @@ impl Patch {
                     track.release_clip_notes();
                 }
                 std::mem::swap(value, &mut track.clips[s]);
-                track.clip_notes_changed(s, rt.beat);
+                track.clip_notes_changed(s, rt.beat, midi_beat);
             }
             Self::Media {
                 deck,

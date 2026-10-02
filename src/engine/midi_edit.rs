@@ -261,7 +261,8 @@ impl super::RtEngine {
         clip.kind = super::ClipKind::Midi;
         clip.bars = (request.region.end / 4.0) as f32;
         clip.region = Some(request.region);
-        self.tracks[t].clip_notes_changed(s, self.beat);
+        let midi_beat = self.precise_midi_beat();
+        self.tracks[t].clip_notes_changed(s, self.beat, midi_beat);
         request.ack.applied();
         self.undo.retire_command(super::Command::MidiEdit(request));
     }

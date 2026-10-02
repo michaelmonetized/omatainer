@@ -178,6 +178,9 @@ impl Clip {
 pub struct PlayingClip {
     pub scene: u8,
     pub start_beat: f64,
+    // Explicit MIDI regions use the compensated clock; legacy clips retain
+    // their original transport and rendered audio.
+    midi_start_beat: f64,
     pub last_beat: f64,
     pub looping: bool,
 }
@@ -221,19 +224,20 @@ pub struct TrackRt {
 }
 
 impl TrackRt {
-    fn clip_notes_changed(&mut self, scene: usize, beat: f64) {
+    fn clip_notes_changed(&mut self, scene: usize, beat: f64, midi_beat: f64) {
         if self.playing.or(self.project_resume).is_some_and(|p| p.scene as usize == scene) {
             self.arp_cache.invalidate();
             let arp_active = self.midi_schedule.paused;
-            self.rebuild_midi_schedule(beat);
+            self.rebuild_midi_schedule(beat, midi_beat);
             self.midi_schedule.paused = arp_active;
         }
     }
 
-    fn rebuild_midi_schedule(&mut self, beat: f64) {
+    fn rebuild_midi_schedule(&mut self, beat: f64, midi_beat: f64) {
         if let Some(playing) = self.playing.or(self.project_resume) {
             let clip = &self.clips[playing.scene as usize];
-            let elapsed = (self.project_resume.is_some() || playing.last_beat >= 0.0).then_some(beat - playing.start_beat);
+            let elapsed = (self.project_resume.is_some() || playing.last_beat >= 0.0)
+                .then_some(if clip.region.is_some() { midi_beat - playing.midi_start_beat } else { beat - playing.start_beat });
             self.midi_schedule.rebuild_region(
                 &clip.notes,
                 clip.bars.max(0.25) as f64 * 4.0,
@@ -498,6 +502,8 @@ pub struct RtEngine {
     pub bpm: f32,
     pub beat: f64,
     beat_roundoff: f64,
+    midi_beat: f64,
+    midi_beat_reference: f64,
     pub quant: f32,
     pub view: View,
     pub xfader: f32,
@@ -916,6 +922,8 @@ impl RtEngine {
             bpm: 124.0,
             beat: 0.0,
             beat_roundoff: 0.0,
+            midi_beat: 0.0,
+            midi_beat_reference: 0.0,
             quant: 1.0,
             view: View::Session,
             xfader: 0.5,
@@ -1016,6 +1024,7 @@ impl RtEngine {
         for chain in &mut self.scene_fx {
             chain.set_sample_rate(self.sr);
         }
+        let midi_beat = self.precise_midi_beat();
         for t in &mut self.tracks {
             t.poly.set_sample_rate(self.sr);
             t.eq.set_sample_rate(self.sr);
@@ -1024,7 +1033,7 @@ impl RtEngine {
             t.drum_samples = drums.clone();
             t.drum_pos.fill(None);
             t.release_clip_notes();
-            t.rebuild_midi_schedule(self.beat);
+            t.rebuild_midi_schedule(self.beat, midi_beat);
             t.meter = 0.0;
         }
         for d in &mut self.decks {
@@ -1163,6 +1172,21 @@ impl RtEngine {
         };
     }
 
+    // A separate compensated clock gives new source-time MIDI regions exact
+    // long-run boundaries without changing legacy clip/deck/metronome output.
+    // Project installation and direct numerical fixtures can reposition beat.
+    fn precise_midi_beat(&self) -> f64 {
+        if self.beat == self.midi_beat_reference { self.midi_beat } else { self.beat }
+    }
+
+    fn sync_midi_clock(&mut self) {
+        if self.beat != self.midi_beat_reference {
+            self.midi_beat = self.beat;
+            self.midi_beat_reference = self.beat;
+            self.beat_roundoff = 0.0;
+        }
+    }
+
     pub fn process(&mut self, out: &mut [f32]) {
         self.performance_tick();
         let batch = control::CommandBatch::receive(&self.cmd_rx);
@@ -1172,6 +1196,7 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        self.sync_midi_clock();
         if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
@@ -1201,9 +1226,11 @@ impl RtEngine {
                 // Compensate accumulated rounding so a long clip cannot move
                 // an exact note boundary to the preceding output sample.
                 let step = 1.0 / spb - self.beat_roundoff;
-                let next = self.beat + step;
-                self.beat_roundoff = (next - self.beat) - step;
-                self.beat = next;
+                let next = self.midi_beat + step;
+                self.beat_roundoff = (next - self.midi_beat) - step;
+                self.midi_beat = next;
+                self.beat += 1.0 / spb;
+                self.midi_beat_reference = self.beat;
             }
             let mut l = 0.0f32;
             let mut r = 0.0f32;
@@ -1318,7 +1345,9 @@ impl RtEngine {
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
         // engine beat denotes the end of this output sample's beat interval.
-        if let Some(p) = playing.filter(|p| self.beat > p.start_beat + midi_schedule::BEAT_EPSILON)
+        let explicit_region = playing.is_some_and(|p| self.tracks[ti].clips[p.scene as usize].region.is_some());
+        let clock = if explicit_region { self.precise_midi_beat() } else { self.beat };
+        if let Some(p) = playing.filter(|p| clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON)
         {
             let scene = p.scene as usize;
             self.tracks[ti].scene_bus = scene;
@@ -1327,7 +1356,7 @@ impl RtEngine {
             let repeating = region.map_or(p.looping, |region| region.repeating(p.looping));
             let duration = region.map_or(clip_beats, |region| region.end - region.start);
             let period = region.map_or(clip_beats, |region| region.period());
-            let elapsed = self.beat - p.start_beat;
+            let elapsed = clock - if explicit_region { p.midi_start_beat } else { p.start_beat };
             let ending = !repeating && elapsed > duration + midi_schedule::BEAT_EPSILON;
             {
                 // Match the event heap's half-open sample interval. An exact
@@ -1396,7 +1425,9 @@ impl RtEngine {
                             self.tracks[ti].arp_note = Some(pitch);
                         }
                     } else {
-                        let previous_sample = self.beat - self.bpm as f64 / 60.0 / self.sr as f64;
+                        let sample_step = self.bpm as f64 / 60.0 / self.sr as f64;
+                        let previous_sample = self.beat - sample_step;
+                        let previous_midi_sample = self.precise_midi_beat() - sample_step;
                         let track = &mut self.tracks[ti];
                         track.arp_cache.invalidate();
                         if let Some(old) = track.arp_note.take() {
@@ -1404,7 +1435,7 @@ impl RtEngine {
                         }
                         if track.midi_schedule.paused || !track.midi_schedule.has_length(period)
                         {
-                            track.rebuild_midi_schedule(previous_sample);
+                            track.rebuild_midi_schedule(previous_sample, previous_midi_sample);
                         }
                         while let Some(gate) =
                             self.tracks[ti].midi_schedule.next_due(elapsed, p.looping)
@@ -1717,9 +1748,10 @@ impl RtEngine {
         self.finish_recording_input(input);
         // Voice pools are bounded; their exact gate metadata is the routing
         // record even after selection changes or a voice is stolen.
+        let midi_beat = self.precise_midi_beat();
         for track in &mut self.tracks {
             track.poly.note_off_input(input);
-            track.recorded_input_released(input, self.beat);
+            track.recorded_input_released(input, self.beat, midi_beat);
         }
         self.sampler_poly.note_off_input(input);
     }
@@ -1748,10 +1780,12 @@ impl RtEngine {
             self.tracks[track].playing = Some(PlayingClip {
                 scene,
                 start_beat: start,
+                midi_start_beat: start + (self.precise_midi_beat() - self.beat),
                 last_beat: -0.0001,
                 looping: true,
             });
-            self.tracks[track].rebuild_midi_schedule(self.beat);
+            let midi_beat = self.precise_midi_beat();
+            self.tracks[track].rebuild_midi_schedule(self.beat, midi_beat);
             self.playing = true;
             self.selected_track = track;
             self.selected_scene = scene_index;
@@ -2259,7 +2293,8 @@ impl RtEngine {
                         self.tracks[t].clips[s].bars = 1.0;
                     }
                     self.tracks[t].clips[s].notes = notes;
-                    self.tracks[t].clip_notes_changed(s, self.beat);
+                    let midi_beat = self.precise_midi_beat();
+                    self.tracks[t].clip_notes_changed(s, self.beat, midi_beat);
                 }
             }
             Command::FxWet { slot, value } => {
@@ -2578,10 +2613,10 @@ impl RtEngine {
         let t = self.tracks.get(track)?;
         let clip = t.clips.get(scene)?;
         match t.playing.filter(|p| p.scene as usize == scene) {
-            Some(p) if self.beat < p.start_beat => None,
+            Some(p) if if clip.region.is_some() { self.precise_midi_beat() < p.midi_start_beat } else { self.beat < p.start_beat } => None,
             Some(p) => clip.region.map_or_else(|| Some((self.beat - p.start_beat)
                 .rem_euclid(clip.bars.max(0.25) as f64 * 4.0) as f32),
-                |region| region.position(self.beat - p.start_beat, p.looping).map(|position| position as f32)),
+                |region| region.position(self.precise_midi_beat() - p.midi_start_beat, p.looping).map(|position| position as f32)),
             None => Some(clip.region.map_or(0.0, |region| region.start as f32)),
         }
     }

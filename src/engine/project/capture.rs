@@ -170,7 +170,9 @@ impl Frame {
             out.scene_bus = track.scene_bus;
             out.launch = track.playing.or(track.project_resume).map(|p| Launch {
                 scene: p.scene,
-                start_beat: p.start_beat,
+                start_beat: if track.clips[p.scene as usize].region.is_some() {
+                    rt.beat - (rt.precise_midi_beat() - p.midi_start_beat)
+                } else { p.start_beat },
                 looping: p.looping,
             });
             out.gain = track.gain;

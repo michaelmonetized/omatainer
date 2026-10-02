@@ -324,7 +324,8 @@ fn instantaneous_capture_cannot_replay_in_its_first_cycle_or_one_shot() {
             len: 0.125,
             vel: 77,
         });
-        rt.tracks[DEST].clip_notes_changed(0, rt.beat);
+        let midi_beat = rt.precise_midi_beat();
+        rt.tracks[DEST].clip_notes_changed(0, rt.beat, midi_beat);
         frames(&mut rt, 18_000);
         let captured_events = |rt: &RtEngine| {
             rt.tracks[DEST]
