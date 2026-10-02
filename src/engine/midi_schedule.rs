@@ -64,6 +64,8 @@ pub(super) struct MidiSchedule {
     pub events_visited: usize,
     #[cfg(test)]
     pub trace: Option<Vec<(f64, Gate)>>,
+    #[cfg(test)]
+    pub sample_trace: Option<Vec<(u64, Gate)>>,
 }
 
 impl Default for MidiSchedule {
@@ -79,6 +81,8 @@ impl Default for MidiSchedule {
             events_visited: 0,
             #[cfg(test)]
             trace: None,
+            #[cfg(test)]
+            sample_trace: None,
         }
     }
 }

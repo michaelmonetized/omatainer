@@ -554,6 +554,8 @@ pub struct RtEngine {
     beat_roundoff: f64,
     midi_beat: f64,
     midi_beat_reference: f64,
+    #[cfg(test)]
+    current_sample_frame: u64,
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
     last_midi_step: f64,
     pub quant: f32,
@@ -725,6 +727,8 @@ pub struct Snapshot {
     pub meter_numerator: u8,
     pub meter_denominator: u16,
     pub file_conductor: bool,
+    #[serde(skip)]
+    pub(crate) timing: Option<Arc<midi_data::Conductor>>,
     pub master: f32,
     pub xfader: f32,
     pub cue_mix: f32,
@@ -776,6 +780,7 @@ impl Default for Snapshot {
             meter_numerator: 4,
             meter_denominator: 4,
             file_conductor: false,
+            timing: None,
             master: 0.85,
             xfader: 0.5,
             cue_mix: 0.0,
@@ -967,6 +972,8 @@ impl RtEngine {
             beat_roundoff: 0.0,
             midi_beat: 0.0,
             midi_beat_reference: 0.0,
+            #[cfg(test)]
+            current_sample_frame: 0,
             conductor: None,
             last_midi_step: 0.0,
             quant: 1.0,
@@ -1274,12 +1281,14 @@ impl RtEngine {
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
+            #[cfg(test)]
+            { self.current_sample_frame = self.frames_done + i as u64; }
             self.load_profile.begin(profiling, self.frames_done + i as u64, self.sr);
             // Compose holds still have a musical duration with the transport
             // stopped. This clock integrates actual tempo and never loops.
             let midi_position = self.precise_midi_beat();
             let spb = self.conductor.as_ref().map_or(spb, |c| {
-                let micros = c.micros_at(midi_position);
+                let micros = c.micros_exact_at(midi_position);
                 self.bpm = (60000000.0 / f64::from(micros)) as f32;
                 f64::from(self.sr) * f64::from(micros) / 1000000.0
             });
@@ -1289,7 +1298,9 @@ impl RtEngine {
                 conductor_spb = spb;
             }
             self.last_midi_step = 1.0 / spb;
-            self.note_recording.clock += self.last_midi_step;
+            // A mapped transport adds its analytically integrated sample span
+            // below; recording and playback must share the same ramp interval.
+            if !self.playing || self.conductor.is_none() { self.note_recording.clock += self.last_midi_step; }
             let beat_start = self.beat;
             if self.playing {
                 // Compensate accumulated rounding so a long clip cannot move
@@ -1308,6 +1319,7 @@ impl RtEngine {
                 self.midi_beat_reference = self.beat;
                 }
             }
+            if self.playing && self.conductor.is_some() { self.note_recording.clock += self.last_midi_step; }
             let mut l = 0.0f32;
             let mut r = 0.0f32;
             let mut cue_l = 0.0f32;
@@ -1523,6 +1535,10 @@ impl RtEngine {
                         while let Some(gate) =
                             self.tracks[ti].midi_schedule.next_due(elapsed, p.looping)
                         {
+                            #[cfg(test)]
+                            if let Some(trace) = &mut self.tracks[ti].midi_schedule.sample_trace {
+                                trace.push((self.current_sample_frame, gate));
+                            }
                             match gate {
                                 midi_schedule::Gate::On(pitch, velocity) if kind == 0 => {
                                     self.trig_drum_with_gain(ti, pitch, velocity as f32 / 127.0, gain);

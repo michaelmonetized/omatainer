@@ -1,5 +1,78 @@
 use super::*;
 
+#[test]
+fn schema_eight_reopens_native_tempo_ramps_and_older_files_refuse_new_timing_fields() {
+    use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};
+    let mut saved = captured(&rt());
+    saved.state.conductor = Some(
+        Conductor::native(
+            960,
+            vec![
+                Tempo::new(0, 120.0, true).unwrap(),
+                Tempo::new(8160, 180.0, false).unwrap(),
+            ],
+            vec![
+                Meter {
+                    tick: 0,
+                    numerator: 7,
+                    denominator_power: 3,
+                    clocks: 12,
+                    thirty_seconds: 8,
+                },
+                Meter {
+                    tick: 3360,
+                    numerator: 5,
+                    denominator_power: 2,
+                    clocks: 24,
+                    thirty_seconds: 8,
+                },
+                Meter {
+                    tick: 8160,
+                    numerator: 4,
+                    denominator_power: 2,
+                    clocks: 24,
+                    thirty_seconds: 8,
+                },
+            ],
+            TimingSettings {
+                pickup: 0.5,
+                subdivision: 2,
+                count_in: 2,
+                accent_gain: 1.5,
+                beat_gain: 0.75,
+            },
+        )
+        .unwrap(),
+    );
+    saved.state.validate(&saved.media).unwrap();
+    let wire = serde_json::to_value(&saved.state).unwrap();
+    assert_eq!(wire["version"], 8);
+    let reopened: State = serde_json::from_value(wire.clone()).unwrap();
+    reopened.validate(&saved.media).unwrap();
+    let prepared = Prepared::from_state(reopened, saved.media.clone(), 48000).unwrap();
+    let recaptured = captured(&prepared.rt);
+    assert_eq!(serde_json::to_value(&recaptured.state).unwrap(), wire);
+    assert_eq!(prepared.rt.conductor.as_ref().unwrap().position(0.0).0, 0);
+    assert_eq!(prepared.rt.conductor.as_ref().unwrap().position(8.5).0, 3);
+
+    let mut old = wire;
+    old["version"] = 7.into();
+    assert!(serde_json::from_value::<State>(old.clone()).is_err());
+    old["conductor"].as_object_mut().unwrap().remove("native");
+    for p in old["conductor"]["tempos"].as_array_mut().unwrap() {
+        p.as_object_mut().unwrap().remove("ramp");
+    }
+    let legacy: State = serde_json::from_value(old.clone()).unwrap();
+    legacy.validate(&saved.media).unwrap();
+    for value in [serde_json::Value::Null, serde_json::json!(false)] {
+        let mut invalid = old.clone();
+        invalid["conductor"]["tempos"][0]["ramp"] = value;
+        assert!(serde_json::from_value::<State>(invalid).is_err());
+    }
+    old["conductor"]["native"] = serde_json::Value::Null;
+    assert!(serde_json::from_value::<State>(old).is_err());
+}
+
 pub(in crate::engine::project) fn large_state() -> (State, Vec<Arc<Sample>>) {
     let base = captured(&rt());
     let mut state = base.state;
