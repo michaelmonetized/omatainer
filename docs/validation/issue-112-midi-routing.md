@@ -130,3 +130,45 @@ No response bound, performance policy or audio reference was widened.
 Intermediate IPC v2 failures and native first-layout paint assertion failures
 remain preserved. The native paint fixture waits for window layout to settle;
 current missing-output/panel/reset and profile workflows pass in MIDI v6.
+
+## Frozen local qualification
+
+Qualified source: `702fa8bf7993c69aa0b753423e613ac600a72004`; routing feature
+`4bede95d508395181ba4f24678af82a0e60508d1`. Linux aarch64, local controlled
+release profile, debug assertions off, loader/incremental overrides unset.
+Policy and original audio hashes are unchanged. The final gate ran on CPU6
+from2026-10-02 11:09:05 UTC through11:16:59 UTC.
+
+- Complete ordinary suite: **1176 passed,0 failed,26 opt-in ignored**,233.21 s.
+- Standard gate: **eight workloads × three repeats passed**; callback allocations
+  and frees zero. Original audio hashes: producer `26f84beea80f5ec5`, composer
+  `e2f197b02633bd3d`, live DJ `d7711a2dc3b32a39`, hybrid `adc9540dab057fed`.
+  All original state/input/crate/recording/project roundtrip checks passed.
+- Native private Linux AT-SPI: **158 actions,246 visited nodes,555 frames**.
+  Actual App/renderer plus native accessibility API; no window, Orca, desktop
+  setting or physical hardware QA is claimed from this adapter.
+- Frozen release test binary: private Linux virtual-port probev3 PASS,0.08 s;
+  software two-source tracev3 PASS,0.07 s; native routing profile UI PASS,0.25 s;
+  native missing-output receipt/retry/reset UI PASS,0.14 s. All12 expected wire
+  packets plus route/teardown reset were captured (173 observed packets); every
+  task-created port retired. No user hardware port was opened.
+- License source inventory/check: **435** bound files with retained pinned notices.
+  All8 license/package script fixtures pass. Frozen gate recheck, immutable
+  package creation/verification,7 CLI groups,6 follow groups, runtime isolation
+  and real headless safe startup pass on the actual packaged executable.
+
+Release binary SHA-256:
+`8abfe66b31f252fae0d7c0e08f039de44c75ff5bcc6c004d6626aa8b9e73c863`.
+Release test binary SHA-256:
+`6685b3904afafe52d74127861816c08c5288aaf24d27f5b3e88eeca4c160d583`.
+Policy SHA-256:
+`fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c`.
+Retained immutable artifact: `/home/michael/Projects/omatainer-work/issue-112-final-package`.
+The source-bound summary and hashes are in `issue-112-final-qualification.json`;
+raw timings and native action receipt are in `issue-112/target/performance.json`.
+Captured final packets are `issue-112-linux-virtual-v3.json` and
+`issue-112-routing-software-trace-v3.json` in the work directory.
+
+No installation over the active application, merge or issue closure occurred.
+The inherited107 supplemental wall-max failures and the user's final physical,
+listening, Orca and backend XRUN QA remain explicitly unresolved.
