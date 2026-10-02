@@ -167,6 +167,15 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if let Command::FxAdd(index)=&c {
+            if let Some(id)=fx::FxId::all().get(*index as usize) {
+                let current=self.tracks.iter().map(|t|t.fx.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>()
+                    + self.scene_fx.iter().map(|r|r.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>();
+                if current.saturating_add(fx::FxSlot::required_storage(*id,self.sr))>session::MAX_PROCESSOR_BYTES {
+                    self.undo.reject(Failure::ProcessorBudget);self.undo.retire_command(c);return None;
+                }
+            }
+        }
         if let Command::SessionEdit(request) = c { self.history_session(request); return None; }
         if let Command::MidiImport(request) = c {
             self.history_midi_import(request); return None;
@@ -410,6 +419,7 @@ impl RtEngine {
 }
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
+        Command::SessionControl(scoped) => std::mem::size_of::<Command>() + command_bytes(&scoped.command),
         Command::SessionEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
@@ -438,8 +448,13 @@ impl RtEngine {
             request.ack.reject(); self.undo.reject(crate::engine::undo::Failure::Invalid);
             self.undo.retire_command(Command::SessionEdit(request)); return;
         }
+        request.inverse.as_mut().unwrap().reserve(self);
+        let inverse = request.inverse.as_ref().unwrap();
         if self.undo.enabled {
-            if let Err(error) = self.undo.preflight(request.bytes()) {
+            let mut new_assets = 0usize;
+            inverse.media_reservations(|pointer, _| { if self.undo.assets.binary_search_by_key(&pointer, |a| a.0).is_err() { new_assets += 1; } });
+            let room = self.undo.assets.len().saturating_add(new_assets) <= self.undo.assets.capacity();
+            if let Err(error) = if room { self.undo.preflight(request.bytes()) } else { Err(Failure::Budget) } {
                 request.ack.reject(); self.undo.reject(error);
                 self.undo.retire_command(Command::SessionEdit(request)); return;
             }

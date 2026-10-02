@@ -1,7 +1,7 @@
 use super::model::*;
 use super::*;
 mod sampler_tests;
-mod session_tests;
+pub(super) mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {
     state.as_object_mut().unwrap().remove("conductor");
@@ -922,3 +922,5 @@ fn prepared_project_history_uses_qualified_receipt_keys_and_empty_decks_have_no_
     let empty = Prepared::empty(48_000).unwrap();
     assert!(empty.rt.decks.iter().all(|d|d.audio.is_none() && d.history_key == 0));
 }
+
+mod structure_tests;

@@ -82,7 +82,13 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
     let inputs = status.map_or(&[][..], |s| s.inputs.as_slice());
     let outputs = status.map_or(&[][..], |s| s.outputs.as_slice());
     ui.add_enabled_ui(routing.enabled, |ui| {
-        for t in 0..TRACKS {
+        let id=egui::Id::new("midi-route-track-page");
+        let mut page=ui.data(|data|data.get_temp::<usize>(id)).unwrap_or(1);
+        let response=ui.add(egui::DragValue::new(&mut page).range(1..=16).speed(1.0).prefix("MIDI track page "));
+        if let Some(next)=accessibility::numeric(ui,&response,"MIDI track page",page as f32,1.0,16.0,1.0,"") {page=next.round() as usize;}
+        ui.data_mut(|data|data.insert_temp(id,page));
+        ui.label(format!("Stable track slots {}–{} of 128. Reordering the session preserves these targets; Apply/Retry attaches a reused slot to its current identity.",(page-1)*8+1,page*8));
+        for t in (page-1)*8..page*8 {
             let mut enabled = routing.routes.iter().any(|r| usize::from(r.track) == t);
             if ui
                 .checkbox(&mut enabled, format!("Route MIDI track {}", t + 1))

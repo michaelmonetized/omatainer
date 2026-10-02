@@ -1,6 +1,6 @@
 use super::*;
 
-fn large_state() -> (State, Vec<Arc<Sample>>) {
+pub(in crate::engine::project) fn large_state() -> (State, Vec<Arc<Sample>>) {
     let base = captured(&rt());
     let mut state = base.state;
     let mut empty = state.tracks[7].clone();
@@ -123,8 +123,13 @@ fn legacy_file_migration_is_deterministic_and_preserves_original_cell_storage() 
     let old: State = serde_json::from_value(raw).unwrap();
     old.validate(&base.media).unwrap();
     let first = Prepared::from_state(old.clone(), base.media.clone(), 48_000).unwrap();
-    let second = Prepared::from_state(old, base.media, 48_000).unwrap();
+    let second = Prepared::from_state(old.clone(), base.media.clone(), 48_000).unwrap();
     assert_eq!(first.rt.session, second.rt.session);
+    let mut different_pcm = base.media.clone();
+    Arc::make_mut(&mut different_pcm[0]).data[0] += 0.03125;
+    let third = Prepared::from_state(old, different_pcm, 48_000).unwrap();
+    assert_ne!(first.rt.session.namespace, third.rt.session.namespace);
+    assert_eq!(first.rt.session.tracks[0].id, third.rt.session.tracks[0].id);
     first.rt.session.validate().unwrap();
     assert_eq!(first.rt.session.track_order, (0..8).collect::<Vec<u8>>());
     assert_eq!(first.rt.session.scene_order, (0..8).collect::<Vec<u16>>());

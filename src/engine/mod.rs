@@ -169,6 +169,11 @@ pub struct Clip {
 }
 
 impl Clip {
+    pub(super) fn retained_bytes(&self) -> usize {
+        self.name.capacity() + self.notes.capacity() * std::mem::size_of::<MidiNote>()
+            + self.lanes.as_ref().map_or(0, |lanes| lanes.bytes())
+    }
+
     pub fn empty() -> Self {
         Self {
             lanes: None,
@@ -237,6 +242,33 @@ pub struct TrackRt {
 }
 
 impl TrackRt {
+    /// Worker/setup only. Reserve structural growth before the graph reaches audio.
+    fn empty(sr: f32, name: String, kind: u8, drums: [Arc<Sample>; 6], scenes: usize) -> Self {
+        let mut clips: Vec<_> = (0..scenes).map(|_| Clip::empty()).collect();
+        clips.reserve(session::MAX_SCENES - clips.len());
+        Self {
+            name, clips, playing: None, project_resume: None, scene_bus: 0,
+            gain: 0.8, pan: 0.0, mixer_gain: mixer_gain::GainPair::default(),
+            mute: false, solo: false, armed: false, kind,
+            poly: Poly::new(sr, match kind { 0 => SynthInstrument::Analog, 1 => SynthInstrument::Keys, _ => SynthInstrument::Pad }, 8),
+            eq: ThreeBand::new(sr), eq_right: ThreeBand::new(sr), meter: 0.0,
+            drum_samples: drums, drum_pos: [None; 16], fx: fx::FxChain::new(sr),
+            arp_note: None, arp_cache: arp::ChordCache::default(),
+            midi_schedule: midi_schedule::MidiSchedule::default(),
+            midi_output: midi::routing::playback::Playback::default(),
+            recorded_playback: Vec::new(),
+        }
+    }
+    pub(super) fn retained_bytes(&self) -> usize {
+        std::mem::size_of::<Self>() + self.name.capacity()
+            + self.clips.capacity() * std::mem::size_of::<Clip>()
+            + self.clips.iter().map(Clip::retained_bytes).sum::<usize>()
+            + self.poly.voices.capacity() * std::mem::size_of::<dsp::Voice>()
+            + self.poly.filters.capacity() * std::mem::size_of::<dsp::Svf>()
+            + self.fx.retained_bytes() + self.midi_schedule.retained_bytes()
+            + self.recorded_playback.capacity() * std::mem::size_of::<Option<recording::RecordedPlayback>>()
+    }
+
     fn clip_notes_changed(&mut self, scene: usize, beat: f64, midi_beat: f64) {
         if self.playing.or(self.project_resume).is_some_and(|p| p.scene as usize == scene) {
             self.midi_output.invalidate();
@@ -533,7 +565,7 @@ pub struct RtEngine {
     legacy_gain_math: bool,
     pub master: f32,
     pub cue_mix: f32,
-    pub tracks: Vec<TrackRt>,
+    pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
@@ -782,13 +814,14 @@ impl Default for Snapshot {
 #[derive(Clone, Debug)]
 pub enum Command {
     SessionEdit(session::Request),
+    SessionControl(session::Scoped),
     PerformanceMode(bool),
     SafetyStop(performance::Safety),
     RecoverPerformance,
     Undo,
     Redo,
     Gesture { id: u64, command: Box<Command> },
-    ReservedStop { lane: u8, ticket: u64 },
+    ReservedStop { lane: u8, ticket: u64, target: Option<session::Reference> },
     Play,
     Stop,
     TogglePlay,
@@ -909,38 +942,10 @@ impl RtEngine {
             "Drums", "Bass", "Keys", "Pad", "Perc", "Vocal", "FX", "Spare",
         ];
         let kinds = [0u8, 1, 2, 3, 0, 4, 3, 1];
-        let tracks: Vec<TrackRt> = (0..TRACKS)
-            .map(|i| TrackRt {
-                name: names[i].into(),
-                clips: (0..SCENES).map(|_| Clip::empty()).collect(),
-                playing: None,
-                project_resume: None,
-                scene_bus: 0,
-                gain: 0.8,
-                pan: 0.0,
-                mixer_gain: mixer_gain::GainPair::default(),
-                mute: false,
-                solo: false,
-                armed: false,
-                kind: kinds[i],
-                poly: Poly::new(sr, match kinds[i] {
-                    0 => SynthInstrument::Analog,
-                    1 => SynthInstrument::Keys,
-                    _ => SynthInstrument::Pad,
-                }, 8),
-                eq: ThreeBand::new(sr),
-                eq_right: ThreeBand::new(sr),
-                meter: 0.0,
-                drum_samples: drums.clone(),
-                drum_pos: [None; 16],
-                fx: fx::FxChain::new(sr),
-                arp_note: None,
-                arp_cache: arp::ChordCache::default(),
-                midi_schedule: midi_schedule::MidiSchedule::default(),
-                midi_output: midi::routing::playback::Playback::default(),
-                recorded_playback: Vec::new(),
-            })
+        let mut tracks: Vec<Box<TrackRt>> = (0..TRACKS)
+            .map(|i| Box::new(TrackRt::empty(sr, names[i].into(), kinds[i], drums.clone(), SCENES)))
             .collect();
+        tracks.reserve(session::MAX_TRACKS - tracks.len());
         let session = session::Layout::fresh(names.iter().map(|n| (*n).into()), SCENES);
         let mut e = Self {
             session,
@@ -1016,7 +1021,7 @@ impl RtEngine {
             pad_targets: [None; 16],
             builtin: [None, None],
             fx_view: -1,
-            scene_fx: (0..SCENES).map(|_| fx::FxChain::new(sr)).collect(),
+            scene_fx: { let mut racks: Vec<_> = (0..SCENES).map(|_| fx::FxChain::new(sr)).collect(); racks.reserve(session::MAX_SCENES - racks.len()); racks },
             compose_target: None,
         };
         e.midi_routing.identity.publish(&e.session);
@@ -1043,6 +1048,9 @@ impl RtEngine {
         if sr == 0 || sr as f32 == self.sr {
             return Ok(());
         }
+        let effect_bytes=self.tracks.iter().flat_map(|t|&t.fx.slots).chain(self.scene_fx.iter().flat_map(|r|&r.slots))
+            .map(|slot|fx::FxSlot::required_storage(slot.id(),sr as f32)).sum::<usize>();
+        if effect_bytes>session::MAX_PROCESSOR_BYTES {return Err("Output rate would exceed the 256 MiB session effect-buffer limit; remove effects or choose a lower rate".into());}
         let sampler_banks = self.sampler_rate_banks(sr)?;
         self.sr = sr as f32;
         self.project.set_sample_rate(sr);
@@ -1920,6 +1928,16 @@ impl RtEngine {
                 self.undo.retire_command(command);
                 return;
             }
+            Command::SessionControl(mut scoped) => {
+                if scoped.current(self) {
+                    let next = std::mem::replace(scoped.command.as_mut(), Command::ComposeDisarm);
+                    self.apply(next);
+                } else {
+                    self.undo.reject(undo::Failure::Invalid);
+                    performance::reject_receipt(&scoped.command);
+                }
+                self.undo.retire_box(scoped.command); return;
+            }
             Command::Gesture {id,mut command} => {
                 let next=std::mem::replace(command.as_mut(),Command::ComposeDisarm);
                 let old=self.undo.gesture_id();self.undo.set_gesture(id);
@@ -1973,9 +1991,9 @@ impl RtEngine {
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
             Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
-            Command::ReservedStop { lane, ticket } => {
+            Command::ReservedStop { lane, ticket, target } => {
                 if lane == 0 { self.apply(Command::Stop); }
-                else { self.apply(Command::StopTrack { track: lane - 1 }); }
+                else if target.is_none_or(|reference| self.session.resolves(session::Axis::Track, usize::from(lane - 1), reference)) { self.apply(Command::StopTrack { track: lane - 1 }); }
                 self.cmd_rx.complete_stop(lane as usize, ticket);
             }
             Command::MidiClock { source } => self.midi_clock.receive_tick(source),
@@ -1993,7 +2011,7 @@ impl RtEngine {
                 for t in &mut self.tracks {
                     t.stop_clip();
                 }
-                for t in 0..TRACKS {self.midi_routing.clear_clip(t as u8);}
+                for t in 0..self.tracks.len() {self.midi_routing.clear_clip(t as u8);}
             }
             Command::TogglePlay => {
                 if self.playing {
@@ -2356,7 +2374,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::SessionEdit(_) | Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
+            Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);

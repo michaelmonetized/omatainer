@@ -745,7 +745,9 @@ fn disconnected_retirement_keeps_last_owned_rejected_payload_and_closes_admissio
         .unwrap();
     let counts = test_alloc::measure(|| tick(&mut rt));
     assert_eq!((counts.allocations, counts.frees), (0, 0));
-    assert_eq!(rt.undo.stranded.len(), 1);
+    // The rejected notes and their producer-qualified target box both retain
+    // their last owner when the recycler disconnects.
+    assert_eq!(rt.undo.stranded.len(), 2);
     assert_eq!(rt.undo.failure, Some(Failure::Unavailable));
     assert_eq!(
         engine.send(Command::Master(0.4)),
@@ -1175,6 +1177,10 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
             d2: 2,
             status: 0xb0,
         },
+    ] {
+        engine.send(command).unwrap();
+    }
+    let raw_invalid = [
         Command::SetNotes {
             track: 255,
             scene: 0,
@@ -1185,10 +1191,15 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
             scene: 255,
             notes: vec![note(60); 256],
         },
-    ] {
-        engine.send(command).unwrap();
+    ];
+    for command in &raw_invalid {
+        assert_eq!(engine.send(command.clone()), Err(SubmissionError::InvalidTarget));
     }
-    let counts = test_alloc::measure(|| tick(&mut rt));
+    let counts = test_alloc::measure(|| {
+        tick(&mut rt);
+        // Exercise defensive renderer retirement as well as public rejection.
+        for command in raw_invalid { rt.apply(command); }
+    });
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     let until = Instant::now() + Duration::from_secs(2);
     while weak_samples.iter().any(|sample| sample.strong_count() != 0) {

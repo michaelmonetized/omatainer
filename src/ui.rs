@@ -29,6 +29,7 @@ use library_view::{LibraryView, Cells};
 mod load_status;
 mod play_history;
 mod session_history;
+mod session_editor;
 mod cue_editor;
 mod grid_editor;
 mod piano_roll;
@@ -132,6 +133,7 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    session_editor: session_editor::Editor,
     piano_roll: piano_roll::Editor,
     midi_files: midi_files::Editor,
     sampler_editor: sampler_editor::Editor,
@@ -237,6 +239,7 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            session_editor: session_editor::Editor::default(),
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
             sampler_editor: sampler_editor::Editor::default(),
@@ -679,6 +682,7 @@ impl App {
         self.library_store_ui(ctx);
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
+        self.session_editor_ui(ctx);
         self.piano_roll_ui(ctx);
         self.midi_files_ui(ctx);
         self.sampler_editor_ui(ctx);
@@ -704,7 +708,7 @@ impl App {
                 let samp_h = 118.0;
                 let crate_h = 108.0;
                 let seq_row = (t.font_size + 10.0).clamp(20.0, 26.0);
-                let seq_h = 26.0 + 48.0 + seq_row * SCENES as f32 + gap * (SCENES as f32 + 2.0);
+                let seq_h = 70.0 + 26.0 + 48.0 + seq_row * SCENES as f32 + gap * (SCENES as f32 + 2.0);
                 let scratch_h = (h - samp_h - crate_h - seq_h - gap * 3.0).max(200.0);
                 ui.allocate_ui(Vec2::new(ui.available_width(), scratch_h), |ui| {
                     if self.engine.safe_mode() { ui.disable(); }
@@ -1302,31 +1306,47 @@ impl App {
     }
 
     fn sequencer_row(&mut self, ui: &mut Ui, t: &Theme) {
+        self.session_toolbar(ui);
+        let Some(layout) = self.snap.session.clone() else { return; };
         let avail = ui.available_size();
         let gap = 4.0;
         let head_h = 26.0;
         let gain_h = 48.0;
-        let scene_w = 28.0;
-        let cols = TRACKS as f32;
-        let rows = SCENES as f32;
-        let col_w = ((avail.x - scene_w - gap * (cols + 1.0)) / cols).max(36.0);
+        let scene_w = 100.0;
+        let cols = layout.track_order.len() as f32;
+        let rows = layout.scene_order.len() as f32;
+        let col_w = if cols <= 8.0 { ((avail.x - scene_w - gap * (cols + 1.0)) / cols).max(36.0) } else { 100.0 };
         let row_h = (t.font_size + 10.0).clamp(20.0, 26.0);
         let pack_w = scene_w + gap + cols * col_w + (cols - 1.0) * gap;
         let pack_h = head_h + gap + rows * row_h + (rows - 1.0) * gap + gap + gain_h;
         ui.spacing_mut().item_spacing = Vec2::splat(gap);
-        ui.with_layout(egui::Layout::left_to_right(Align::Min), |ui| {
-            ui.add_space(((avail.x - pack_w) * 0.5).max(0.0));
-            ui.allocate_ui(Vec2::new(pack_w, pack_h.min(avail.y)), |ui| {
+        let reveal = self.session_editor.reveal.take();
+        let mut grid_gained_focus = false;
+        let mut paint = |ui: &mut Ui, viewport: Rect| {
+                let origin = ui.min_rect().min;
+                ui.set_min_size(Vec2::new(pack_w, pack_h));
+                let column_stride = col_w + gap;
+                let row_stride = row_h + gap;
+                let columns = session_editor::visible_range(viewport.min.x - scene_w - gap, viewport.max.x - scene_w - gap, column_stride, layout.track_order.len());
+                let scenes = session_editor::visible_range(viewport.min.y - head_h - gap, viewport.max.y - head_h - gap, row_stride, layout.scene_order.len());
+                if let Some((track, scene)) = reveal {
+                    if let (Some(x),Some(y)) = (layout.track_order.iter().position(|s|usize::from(*s)==track),layout.scene_order.iter().position(|s|usize::from(*s)==scene)) {
+                        ui.scroll_to_rect(Rect::from_min_size(origin + Vec2::new(scene_w + gap + x as f32 * column_stride, head_h + gap + y as f32 * row_stride), Vec2::new(col_w,row_h)), Some(Align::Center));
+                    }
+                }
                 ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::splat(gap);
                         let _ = ui.allocate_exact_size(Vec2::new(scene_w, head_h), Sense::hover());
-                        for tr in 0..TRACKS {
+                        if columns.start > 0 { ui.add_space(columns.start as f32 * column_stride - gap); }
+                        for display_track in columns.clone() {
+                            let tr = usize::from(layout.track_order[display_track]);
                             let name = self.snap.tracks.get(tr).map(|x| x.name.as_str()).unwrap_or("tr");
                             let mute = self.snap.tracks.get(tr).map(|x| x.mute).unwrap_or(false);
                             let solo = self.snap.tracks.get(tr).map(|x| x.solo).unwrap_or(false);
-                            let (rect, resp) = ui.allocate_exact_size(Vec2::new(col_w, head_h), Sense::click());
+                            let (rect, _) = ui.allocate_exact_size(Vec2::new(col_w, head_h), Sense::hover());
+                            let resp = ui.interact(rect, egui::Id::new(("session-track",layout.namespace,layout.tracks[tr].id.0)), Sense::click());
                             let fill = if mute {
                                 t.red.gamma_multiply(0.35)
                             } else if solo {
@@ -1335,13 +1355,15 @@ impl App {
                                 t.bg_dark
                             };
                             ui.painter().rect_filled(rect, 4.0, fill);
-                            ui.painter().rect_stroke(rect, 4.0, st(1.0, t.track_color(tr).gamma_multiply(0.7)), egui::StrokeKind::Inside);
+                            ui.painter().rect_stroke(rect, 4.0, st(1.0, layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr)).gamma_multiply(0.7)), egui::StrokeKind::Inside);
                             let fs = (col_w * 0.12).clamp(10.0, 13.0);
-                            ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, name, FontId::proportional(fs), t.track_color(tr));
-                            accessibility::button(ui, &resp, &format!("Track {} {}: Mute", tr + 1, name), Some(mute));
+                            ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, name, FontId::proportional(fs), layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr)));
+                            grid_gained_focus |= resp.gained_focus();
+                            accessibility::button(ui, &resp, &format!("Track {} {}: Mute", display_track + 1, name), Some(mute));
                             accessibility::status(ui, &resp, &format!("Mute {}; solo {}", if mute { "on" } else { "off" }, if solo { "on" } else { "off" }));
-                            let action = accessibility::actions(ui, &resp, &["Toggle mute", "Toggle solo", "Open track effects", "Select track"]);
+                            let action = accessibility::actions(ui, &resp, &["Toggle mute", "Toggle solo", "Open track effects", "Select track", "Edit track"]);
                             help::annotate(ui, &resp, HelpControl::Track);
+                            if action == Some(4) {self.send(Command::Select {track:tr,scene:self.snap.selected_scene}); self.session_editor.open=true; self.session_editor.select_axis(crate::engine::session::Axis::Track);}
                             if resp.clicked() || action == Some(0) {
                                 self.send(Command::Mute { track: tr as u8 });
                             }
@@ -1352,18 +1374,25 @@ impl App {
                             }
                         }
                     });
-                    for sc in 0..SCENES {
+                    if scenes.start > 0 { ui.add_space(scenes.start as f32 * row_stride - gap); }
+                    for display_scene in scenes.clone() {
+                        let sc = usize::from(layout.scene_order[display_scene]);
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
                             let on = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
                             let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending);
-                            let (hr, hresp) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::click());
-                            ui.painter().rect_filled(hr, 4.0, if on { t.accent.gamma_multiply(0.45) } else { t.bg_dark });
-                            ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued { t.accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
-                            ui.painter().text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{}", sc + 1), FontId::proportional(11.0), t.fg);
-                            accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", sc + 1), Some(on));
-                            let action = accessibility::actions(ui, &hresp, &["Toggle scene", "Add scene", "Open scene effects", "Restart scene"]);
+                            let (hr, _) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::hover());
+                            let hresp = ui.interact(hr, egui::Id::new(("session-scene",layout.namespace,layout.scenes[sc].id.0)), Sense::click());
+                            let scene_color=layout.scenes[sc].color.map(|c|Color32::from_rgb(c[0],c[1],c[2])).unwrap_or(t.accent);
+                            ui.painter().rect_filled(hr,4.0,if on {scene_color.gamma_multiply(0.45)} else if layout.scenes[sc].color.is_some() {scene_color.gamma_multiply(0.22)} else {t.bg_dark});
+                            ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued || layout.scenes[sc].color.is_some() { scene_color } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
+                            ui.painter().with_clip_rect(hr).text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{} {}",display_scene+1,layout.scenes[sc].name), FontId::proportional(11.0), t.fg);
+                            grid_gained_focus |= hresp.gained_focus();
+                            accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", display_scene + 1), Some(on));
+                            accessibility::status(ui,&hresp,&layout.scenes[sc].name);
+                            let action = accessibility::actions(ui, &hresp, &["Toggle scene", "Add scene", "Open scene effects", "Restart scene", "Edit scene"]);
                             help::annotate(ui, &hresp, HelpControl::Scene);
+                            if action == Some(4) { self.send(Command::Select {track:self.snap.selected_track,scene:sc}); self.session_editor.open=true; self.session_editor.select_axis(crate::engine::session::Axis::Scene); }
                             if hresp.clicked() || matches!(action, Some(0..=2)) {
                                 if action == Some(1) || action.is_none() && ui.input(|i| i.modifiers.shift) {
                                     self.send(Command::AddScene { scene: sc as u16 });
@@ -1376,14 +1405,17 @@ impl App {
                             if hresp.secondary_clicked() || action == Some(3) {
                                 self.send(Command::RestartScene { scene: sc as u16 });
                             }
-                            for tr in 0..TRACKS {
+                            if columns.start > 0 { ui.add_space(columns.start as f32 * column_stride - gap); }
+                        for display_track in columns.clone() {
+                            let tr = usize::from(layout.track_order[display_track]);
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
                                 let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending);
                                 let playing = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);
-                                let color = t.track_color(tr);
-                                let (rect, resp) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::click());
+                                let color = layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr));
+                                let (rect, _) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::hover());
+                                let resp = ui.interact(rect, egui::Id::new(("session-clip",layout.namespace,layout.tracks[tr].id.0,layout.scenes[sc].id.0)), Sense::click());
                                 let fill = if playing {
                                     color.gamma_multiply(0.55)
                                 } else if filled {
@@ -1415,7 +1447,8 @@ impl App {
                                         ui.painter().rect_filled(Rect::from_min_size(rect.min, Vec2::new(w, 3.0)), 0.0, t.fg);
                                     }
                                 }
-                                accessibility::button(ui, &resp, &format!("Clip track {} scene {}: {}", tr + 1, sc + 1, clip.map(|c| c.name.as_str()).filter(|name| !name.is_empty()).unwrap_or("Empty")), Some(playing));
+                                grid_gained_focus |= resp.gained_focus();
+                                accessibility::button(ui, &resp, &format!("Clip track {} scene {}: {}", display_track + 1, display_scene + 1, clip.map(|c| c.name.as_str()).filter(|name| !name.is_empty()).unwrap_or("Empty")), Some(playing));
                                 accessibility::status(ui, &resp, &format!("{}; {}", if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
                                 let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain"] } else { &["Launch once", "Launch loop", "Arm compose"] };
                                 let action = accessibility::actions(ui, &resp, labels);
@@ -1426,6 +1459,7 @@ impl App {
                                             self.clip_gain_edit = Some(ClipGainEdit {
                                                 track: tr as u8, scene: sc as u16,
                                                 value: clip.map(|c| c.gain).unwrap_or(1.0),
+                                                target: layout.reference(crate::engine::session::Axis::Track,tr).zip(layout.reference(crate::engine::session::Axis::Scene,sc)),
                                             });
                                         }
                                     } else if action == Some(2) || action.is_none() && ui.input(|i| i.modifiers.shift) {
@@ -1440,18 +1474,22 @@ impl App {
                             }
                         });
                     }
+                    if scenes.end < layout.scene_order.len() { ui.add_space((layout.scene_order.len() - scenes.end) as f32 * row_stride - gap); }
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::splat(gap);
                         let _ = ui.allocate_exact_size(Vec2::new(scene_w, gain_h), Sense::hover());
-                        for tr in 0..TRACKS {
+                        if columns.start > 0 { ui.add_space(columns.start as f32 * column_stride - gap); }
+                        for display_track in columns.clone() {
+                            let tr = usize::from(layout.track_order[display_track]);
                             let g = self.snap.tracks.get(tr).map(|x| x.gain).unwrap_or(0.8);
                             let mute = self.snap.tracks.get(tr).map(|x| x.mute).unwrap_or(false);
                             let solo = self.snap.tracks.get(tr).map(|x| x.solo).unwrap_or(false);
-                            let col = t.track_color(tr);
+                            let col = layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr));
                             let c = if mute { t.red } else if solo { t.yellow } else { col };
                             let (cell, _) = ui.allocate_exact_size(Vec2::new(col_w, gain_h), Sense::hover());
                             let knob = (col_w.min(gain_h) - 2.0).clamp(28.0, 44.0);
                             let resp = rotary_in(ui, t, "gain", (g / 1.2).clamp(0.0, 1.0), c, knob, cell, tr, mute, solo);
+                            grid_gained_focus |= resp.gained_focus;
                             if resp.changed {
                                 self.send(Command::TrackGain { track: tr as u8, value: resp.value * 1.2 });
                             }
@@ -1468,8 +1506,15 @@ impl App {
                         }
                     });
                 });
-            });
-        });
+            };
+        if cols > 8.0 || rows > 8.0 {
+            let area = egui::ScrollArea::both().id_salt("session-grid").auto_shrink([false, false])
+                .max_width(ui.clip_rect().width().min(avail.x)).max_height(avail.y.max(100.0)).animated(false).show_viewport(ui, &mut paint);
+            if grid_gained_focus || reveal.is_some() { ui.scroll_to_rect_animation(area.inner_rect, Some(Align::Center),egui::style::ScrollAnimation::none()); }
+            accessibility::scrollbars(ui,"Session grid",&area);
+        } else {
+            paint(ui, Rect::from_min_size(Pos2::ZERO, Vec2::new(pack_w,pack_h)));
+        }
     }
 
     fn fx_row(&mut self, ui: &mut Ui, t: &Theme) {
@@ -1624,6 +1669,7 @@ fn pad_btn(ui: &mut Ui, t: &Theme, text: &str, empty: bool, col: Color32, size: 
 }
 
 struct RotaryResp {
+    gained_focus: bool,
     value: f32,
     changed: bool,
     clicked: bool,
@@ -1662,6 +1708,7 @@ fn rotary_in(
         t.fg_dim,
     );
     let mut out = RotaryResp {
+        gained_focus: resp.gained_focus(),
         value,
         changed: false,
         clicked: resp.clicked(),
@@ -1697,6 +1744,7 @@ fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f
         ui.painter().line_segment([c, c + dir * (r - 3.0)], st(2.0, col));
         ui.label(RichText::new(label).size(9.0).color(t.fg_dim));
         let mut out = RotaryResp {
+        gained_focus: resp.gained_focus(),
             value,
             changed: false,
             clicked: resp.clicked(),

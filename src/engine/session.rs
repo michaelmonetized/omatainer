@@ -2,13 +2,16 @@
 //! clip, processor, recording destination or sounding input gate.
 use serde::{Deserialize, Serialize};
 mod registry;
+mod scoped;
+pub(crate) use scoped::Scoped;
 mod transaction;
 pub(crate) use registry::{Reference, Registry};
-pub(crate) use transaction::{Action, Inverse, Request};
+pub(crate) use transaction::{Structure, Action, Inverse, Request};
 
 pub const MAX_TRACKS: usize = 128;
 pub const MAX_SCENES: usize = 512;
 pub const MAX_NAME_BYTES: usize = 4096;
+pub const MAX_PROCESSOR_BYTES: usize = 256 * 1024 * 1024;
 pub const SCENE_FX_BASE: i16 = 1000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

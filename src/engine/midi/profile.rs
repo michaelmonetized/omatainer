@@ -47,6 +47,14 @@ impl MidiMap {
                 "MIDI profile {:?}: binding {index} Browse requires an explicit relative encoding and one row per wire step",
                 self.name
             );
+            anyhow::ensure!(match binding.action {
+                Action::Scene => binding.extra < crate::engine::session::MAX_SCENES as u16,
+                Action::Clip => usize::from(binding.deck) < crate::engine::session::MAX_TRACKS && binding.extra < crate::engine::session::MAX_SCENES as u16,
+                Action::TrackFader | Action::TrackMute => binding.extra < crate::engine::session::MAX_TRACKS as u16,
+                Action::DeckHotCue => usize::from(binding.extra) < crate::engine::HOTCUES,
+                Action::FxWet | Action::FxSelect => binding.extra < 3,
+                _ => true,
+            }, "MIDI profile {:?}: binding {index} target is outside its resource limit", self.name);
             for (previous, other) in self.bindings[..index].iter().enumerate() {
                 anyhow::ensure!(
                     !overlaps(other, binding),

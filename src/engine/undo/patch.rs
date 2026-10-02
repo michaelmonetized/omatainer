@@ -368,6 +368,16 @@ impl Patch {
             _ => true,
         }
     }
+    pub fn processor_delta(&self, rt: &RtEngine) -> i128 {
+        match self {
+            Self::Session(value) => value.processor_delta(rt),
+            Self::Slot {rack,index,slot,..} => match slot {
+                Some(slot) => slot.storage_bytes() as i128,
+                None => -(rack.get(rt).slots[*index].storage_bytes() as i128),
+            },
+            _ => 0,
+        }
+    }
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
             Self::Session(value) => value.swap(rt),
@@ -496,6 +506,7 @@ impl Patch {
             }
         };
         match self {
+            Self::Session(value) => value.media_reservations(add),
             Self::Sampler { original, replacement, .. } => {
                 for bank in original.iter().chain(std::iter::once(replacement)) {
                     for audio in &bank.audio { visit(audio); }
@@ -515,7 +526,7 @@ impl Patch {
     }
 }
 
-pub(super) fn sample_bytes(sample: &Sample) -> usize {
+pub(in crate::engine) fn sample_bytes(sample: &Sample) -> usize {
     std::mem::size_of::<Sample>()
         + 4 * std::mem::size_of::<usize>() // Sample and peaks Arc counters.
         + std::mem::size_of::<Vec<[f32; 3]>>()

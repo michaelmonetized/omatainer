@@ -880,7 +880,7 @@ Workflow: Connect a controller.
 
 ### MIDI destination track
 
-One route per track1–8
+One route per stable track slot1–128
 
 Assign each physical port/channel to a fixed track independently of browsing. Several inputs may feed a track and the same input may feed several tracks. Held notes release their original destination. Track routing belongs to the active profile.
 
@@ -1632,7 +1632,7 @@ Workflow: Save and reopen.
 
 ### MIDI track and channel mapping
 
-8 tracks by 8 scenes, 8192 notes per clip, 65536 per session
+Up to 128 tracks by 512 scenes; 64 mapped/export clips per transaction; 8192 notes per clip, 65536 per session
 
 Choose every destination or disable a source row. Several source rows mapped to one cell combine there. Channel splitting attaches file-track metadata to its first row. Replace contents or explicitly merge existing MIDI clips; audio destinations fail before any change. Gains remain unchanged.
 
@@ -1974,9 +1974,17 @@ Request the captured source on the named deck. Queued/decoding are not Loaded; w
 
 Workflow: Prepare a DJ deck.
 
+### Edit session layout
+
+128 tracks, 512 scenes; worker preparation and bounded Undo
+
+Create audio/MIDI tracks and scenes; rename, reorder by display position, choose RGB colors, duplicate or delete. Go to track and Go to scene reveal any active cell, including offscreen rows and columns. All controls accept keyboard and assistive actions. Reorder preserves playing clips, automation, compose targets and stable controller slots. Duplicates share immutable embedded audio and copy notes/settings with fresh IDs, starting stopped. Delete ends that target's captures and voices; Undo restores content without inventing a held key or restarting playback. Limits are 65536 session notes, 8192 per clip, 16 MiB MIDI lanes, 64 MiB native metadata and 256 MiB prepared effect buffers, plus existing PCM/edit/undo budgets. A refused or cancelled edit preserves current work. MIDI routing Apply/Retry attaches a route to the current track identity after deletion/reuse or project change.
+
+Workflow: Edit and undo.
+
 ### Track header
 
-Eight tracks
+Up to 128 tracks
 
 Click toggles mute; right-click or alternate actions toggle solo. Alternate actions also select the track or open its effect rack. Muted playback keeps advancing.
 
@@ -1992,7 +2000,7 @@ Workflow: Mix a session.
 
 ### Scene launch
 
-Eight scene rows
+Up to 512 scene rows
 
 Primary action launches or stops the scene; Shift adds its clips alongside other scenes; right-click restarts. Alternate actions expose the same choices and the scene effect rack.
 

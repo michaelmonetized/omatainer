@@ -39,7 +39,7 @@ fn scene_state(rt: &RtEngine) -> Value {
 }
 
 pub(super) fn check_cli_scene_arguments() {
-    for n in 1..=SCENES {
+    for n in 1..=engine::session::MAX_SCENES {
         let payload = scene_payload(&["scene".into(), n.to_string()]).unwrap();
         assert_eq!(
             serde_json::from_str::<Value>(&payload).unwrap(),
@@ -52,10 +52,9 @@ pub(super) fn check_cli_scene_arguments() {
     ];
     for n in [
         "0",
-        "9",
-        "255",
-        "256",
-        "257",
+        "513",
+        "65535",
+        "65536",
         "-1",
         "-255",
         "",
@@ -71,7 +70,7 @@ pub(super) fn check_cli_scene_arguments() {
         assert!(
             error
                 .to_string()
-                .contains("usage: omatainer ctl scene <1-8>"),
+                .contains("usage: omatainer ctl scene <1-512>"),
             "{args:?}: {error}"
         );
         // Exercise the actual CLI dispatch too: it must reject before opening

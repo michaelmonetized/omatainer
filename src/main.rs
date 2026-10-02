@@ -227,10 +227,10 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
 }
 
 fn scene_payload(args: &[String]) -> anyhow::Result<String> {
-    let usage = format!("usage: omatainer ctl scene <1-{}>", engine::SCENES);
+    let usage = format!("usage: omatainer ctl scene <1-{}>", engine::session::MAX_SCENES);
     anyhow::ensure!(args.len() == 2, "{usage}");
     let n = args[1].parse::<usize>().with_context(|| usage.clone())?;
-    anyhow::ensure!((1..=engine::SCENES).contains(&n), "{usage}");
+    anyhow::ensure!((1..=engine::session::MAX_SCENES).contains(&n), "{usage}");
     Ok(serde_json::json!({"op": "scene", "n": n - 1}).to_string())
 }
 

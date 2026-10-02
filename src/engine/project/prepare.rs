@@ -13,6 +13,7 @@ impl Prepared {
         output_sr: u32,
     ) -> Result<Self, Error> {
         state.validate(&media).map_err(Error::Invalid)?;
+        state.validate_processor_storage(output_sr).map_err(Error::Invalid)?;
         state.migrate_notes();
         if !(8000..=384000).contains(&output_sr) {
             return Err(Error::Invalid("unsupported output sample rate".into()));
@@ -49,57 +50,44 @@ impl Prepared {
             use sha2::{Digest, Sha256};
             let mut layout = session::Layout::legacy(state.tracks.iter().map(|t| t.name.clone()), state.scene_fx.len());
             let bytes = serde_json::to_vec(&state).map_err(|e| Error::Invalid(e.to_string()))?;
-            let hash = Sha256::digest(&bytes);
+            let mut digest = Sha256::new();
+            digest.update(b"omatainer-legacy-session-v7\0");
+            digest.update((bytes.len() as u64).to_le_bytes());
+            digest.update(&bytes);
+            digest.update((media.len() as u64).to_le_bytes());
+            // Legacy files have no project ID. Include their bounded immutable
+            // PCM so equal metadata with different embedded audio cannot alias.
+            // This runs only on the preparing worker, never on the renderer.
+            for sample in &media {
+                digest.update(sample.sr.to_le_bytes());
+                digest.update(sample.ch.to_le_bytes());
+                digest.update((sample.data.len() as u64).to_le_bytes());
+                for chunk in sample.data.chunks(1024) {
+                    let mut pcm = [0u8; 4096];
+                    for (frame, bytes) in chunk.iter().zip(pcm.chunks_exact_mut(4)) {
+                        bytes.copy_from_slice(&frame.to_bits().to_le_bytes());
+                    }
+                    digest.update(&pcm[..chunk.len() * 4]);
+                }
+            }
+            let hash = digest.finalize();
             layout.namespace = [u64::from_le_bytes(hash[0..8].try_into().unwrap()) | (1 << 63), u64::from_le_bytes(hash[8..16].try_into().unwrap())];
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
-        while rt.tracks.len() < state.tracks.len() { let track = rt.tracks[0].clone(); rt.tracks.push(track); }
-        rt.tracks.truncate(state.tracks.len());
-        rt.tracks.reserve(session::MAX_TRACKS - rt.tracks.len());
+        rt.tracks.clear();
+        rt.tracks.reserve(session::MAX_TRACKS);
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
         rt.sync_midi_clock();
         rt.playing = false;
         rt.recording = false;
         rt.compose_target = None;
         rt.sampler_poly = synth(state.sampler_synth, output_sr);
-        for (i, mut saved) in state.tracks.into_iter().enumerate() {
-            for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose().map_err(Error::Invalid)?; }
+        for (i, saved) in state.tracks.into_iter().enumerate() {
             rt.session.tracks[i].name = saved.name.clone();
-            let track = &mut rt.tracks[i];
-            track.name = saved.name;
-            track.scene_bus = saved.scene_bus;
-            track.gain = saved.gain;
-            track.pan = saved.pan;
-            track.mute = saved.mute;
-            track.solo = saved.solo;
-            track.armed = saved.armed;
-            track.kind = saved.kind;
-            track.poly = synth(saved.synth, output_sr);
-            track.eq = eq(saved.eq, output_sr);
-            track.eq_right = track.eq;
-            track.drum_samples = saved.drums.map(|index| media[index].clone());
-            track.fx = effects(saved.fx, output_sr);
-            track.clips = saved.clips.into_iter().map(|c| Clip {
-                region: c.region,
-                lanes: c.lanes,
-                kind: c.kind,
-                name: c.name,
-                bars: c.bars,
-                notes: c.notes,
-                gain: c.gain,
-                audio: c.audio.map(|index| media[index].clone()),
-            }).collect();
-            track.clips.reserve(session::MAX_SCENES - track.clips.len());
-            // Prepare the note heap off audio, then hold the launch until Play.
-            track.project_resume = saved.launch.map(|p| PlayingClip {
-                scene: p.scene,
-                start_beat: p.start_beat,
-                midi_start_beat: p.start_beat,
-                last_beat: -0.0001,
-                looping: p.looping,
-            });
+            let mut track = prepare_track(saved, &media, output_sr).map_err(Error::Invalid)?;
             track.rebuild_midi_schedule(state.beat, state.beat);
+            rt.tracks.push(track);
         }
         for (i, saved) in state.decks.into_iter().enumerate() {
             let deck = &mut rt.decks[i];
@@ -202,7 +190,7 @@ impl Prepared {
         Ok(Self { rt })
     }
 
-    pub(super) fn swap_into(&mut self, rt: &mut RtEngine) {
+    pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
         rt.midi_routing.reset_outputs();
         if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership
@@ -276,7 +264,7 @@ fn eq(gains: [f32; 3], sr: u32) -> ThreeBand {
     [value.low_g, value.mid_g, value.high_g] = gains;
     value
 }
-fn effects(values: Vec<Effect>, sr: u32) -> fx::FxChain {
+pub(in crate::engine) fn effects(values: Vec<Effect>, sr: u32) -> fx::FxChain {
     fx::FxChain {
         slots: values
             .into_iter()
@@ -289,4 +277,25 @@ fn effects(values: Vec<Effect>, sr: u32) -> fx::FxChain {
             })
             .collect(),
     }
+}
+
+/// Builds only the edited node; existing playing nodes and DSP histories stay live.
+pub(in crate::engine) fn prepare_track(mut saved: Track, media: &[Arc<Sample>], sr: u32) -> Result<Box<TrackRt>, String> {
+    let drums = saved.drums.map(|index| media[index].clone());
+    let mut track = Box::new(TrackRt::empty(sr as f32, saved.name, saved.kind, drums, 0));
+    for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose()?; }
+    track.scene_bus = saved.scene_bus;
+    track.gain = saved.gain; track.pan = saved.pan;
+    track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed;
+    track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
+    track.fx = effects(saved.fx, sr);
+    track.clips = saved.clips.into_iter().map(|c| Clip {
+        region: c.region, lanes: c.lanes, kind: c.kind, name: c.name,
+        bars: c.bars, notes: c.notes, gain: c.gain, audio: c.audio.map(|i| media[i].clone()),
+    }).collect();
+    track.clips.reserve(session::MAX_SCENES - track.clips.len());
+    track.project_resume = saved.launch.map(|p| PlayingClip { scene: p.scene,
+        start_beat: p.start_beat, midi_start_beat: p.start_beat, last_beat: -0.0001, looping: p.looping });
+    track.midi_schedule.prepare_history(8192); track.recorded_playback.reserve(8192);
+    Ok(track)
 }

@@ -27,7 +27,8 @@ pub struct CommandPort {
     capacity: usize,
 }
 
-const STOP_LANES: usize = super::TRACKS + 1;
+const STOP_LANES: usize = super::session::MAX_TRACKS + 1;
+const DEFAULT_STOP_LANES: usize = super::TRACKS + 1;
 pub(super) const MAX_COMMANDS: usize = 256;
 const PROJECT_CLOSED: u64 = 1 << 63;
 
@@ -69,6 +70,7 @@ enum GateKey {
 struct Admission {
     gates: [Option<GateKey>; MAX_COMMANDS],
     held: usize,
+    stop_reserve: usize,
     pending_stops: [u64; STOP_LANES],
     next_ticket: u64,
     safety_epoch: u64,
@@ -442,7 +444,7 @@ impl CommandPort {
         payload_limit: usize,
     ) -> (Self, CommandReceiver) {
         assert!(
-            capacity > STOP_LANES + 1,
+            capacity > DEFAULT_STOP_LANES + 1,
             "queue must fit dedicated stops and a gate pair"
         );
         assert!(
@@ -479,6 +481,7 @@ impl CommandPort {
             admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
                 gates: [None; MAX_COMMANDS],
                 held: 0,
+                stop_reserve: DEFAULT_STOP_LANES,
                 pending_stops: [0; STOP_LANES],
                 next_ticket: 1,
                 safety_epoch: 0,
@@ -669,11 +672,15 @@ impl CommandPort {
         }
         let stop_lane = match command {
             Command::Stop => Some(0),
-            Command::StopTrack { track } if (track as usize) < super::TRACKS => {
+            Command::StopTrack { track } if (track as usize) < super::session::MAX_TRACKS => {
                 Some(track as usize + 1)
             }
             _ => None,
         };
+        let requested = match &command {
+            Command::SessionEdit(request) => request.track_count(), _ => 0,
+        };
+        let stop_reserve = state.stop_reserve.max(self.shared.midi_routing.identity.track_count() + 1).max(requested + 1);
         let gate = gate_change(&command);
         let existing_gate =
             gate.and_then(|(key, _)| state.gates.iter().position(|entry| *entry == Some(key)));
@@ -690,7 +697,7 @@ impl CommandPort {
         let reserves_new_gate = gate.is_some_and(|(_, down)| down && existing_gate.is_none());
         if stop_lane.is_none()
             && !releasing
-            && self.sender.len() + state.held + STOP_LANES + 1 + usize::from(reserves_new_gate)
+            && self.sender.len() + state.held + stop_reserve + 1 + usize::from(reserves_new_gate)
                 > self.capacity
         {
             return fail(SubmissionError::Full);
@@ -700,14 +707,24 @@ impl CommandPort {
             command = Command::ReservedStop {
                 lane: lane as u8,
                 ticket,
+                target: if lane == 0 {None} else {
+                    let identity=&self.shared.midi_routing.identity;
+                    let reference=identity.reference(super::session::Axis::Track,lane-1);
+                    if identity.known() && reference.is_none() {return fail(SubmissionError::InvalidTarget);}
+                    reference
+                },
             };
         }
+        command = match super::session::Scoped::qualify(command, &self.shared.midi_routing.identity) {
+            Ok(command) => command, Err(_) => return fail(SubmissionError::InvalidTarget),
+        };
         let payload_bytes = owned_payload_bytes(&command);
         if !self.shared.reserve_payload(payload_bytes) {
             return fail(SubmissionError::PayloadFull);
         }
         match self.sender.try_send(command) {
             Ok(()) => {
+                state.stop_reserve = stop_reserve;
                 if let Some(lane) = stop_lane {
                     state.pending_stops[lane] = ticket;
                     state.next_ticket = ticket.wrapping_add(1).max(1);
@@ -778,6 +795,7 @@ impl AdmissionShared {
 fn owned_payload_bytes(command: &Command) -> usize {
     use std::mem::size_of;
     match command {
+        Command::SessionControl(scoped) => size_of::<Command>().saturating_add(owned_payload_bytes(&scoped.command)),
         Command::SessionEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
@@ -934,7 +952,7 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
         Command::Play | Command::TogglePlay | Command::Record
     );
     (pending[0] != 0 && (clip_track.is_some() || scene_start || transport_start))
-        || clip_track.is_some_and(|track| track < super::TRACKS && pending[track + 1] != 0)
+        || clip_track.is_some_and(|track| track < super::session::MAX_TRACKS && pending[track + 1] != 0)
         || (scene_start && pending[1..].iter().any(|ticket| *ticket != 0))
         || (matches!(command, Command::TogglePlay)
             && pending[1..].iter().any(|ticket| *ticket != 0))
@@ -1026,6 +1044,7 @@ impl CommandStats {
 // Only absolute assignments; jog, seek, note, transport, instrument changes,
 // relative controls and target selection must retain every event.
 fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
+    if let Command::SessionControl(scoped) = command { return parameter_key(&scoped.command); }
     match *command {
         Command::SetBpm(_) => Some((0, 0, 0)),
         Command::Xfader(_) => Some((1, 0, 0)),
@@ -1162,6 +1181,8 @@ fn history_monitoring(command: &Command) -> bool {
 
 fn same_parameter(a: &Command, b: &Command) -> bool {
     match (a, b) {
+        (Command::SessionControl(a), Command::SessionControl(b)) => a.track == b.track && a.scene == b.scene && same_parameter(&a.command, &b.command),
+        (Command::SessionControl(_), _) | (_, Command::SessionControl(_)) => false,
         (Command::Gesture { id: a, command: ac }, Command::Gesture { id: b, command: bc }) => {
             a == b && parameter_key(ac).is_some() && parameter_key(ac) == parameter_key(bc)
         }

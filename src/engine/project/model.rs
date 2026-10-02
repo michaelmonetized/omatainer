@@ -329,9 +329,18 @@ impl State {
         }
     }
 
+    /// Check before constructing delay/reverb buffers. PCM has its own loader limits.
+    pub(crate) fn validate_processor_storage(&self, sr: u32) -> Result<(), String> {
+        const LIMIT: usize = session::MAX_PROCESSOR_BYTES;
+        let bytes = self.tracks.iter().flat_map(|t| &t.fx).chain(self.scene_fx.iter().flatten())
+            .map(|effect| fx::FxSlot::required_storage(effect.id, sr as f32)).sum::<usize>();
+        if bytes > LIMIT { return Err("Session processor storage exceeds 256 MiB; remove effects or use a lower output rate".into()); }
+        Ok(())
+    }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
         if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
+        if self.version == 7 && self.session.is_none() {return fail("missing session identity metadata");}
         if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
         if let Some(layout) = &self.session {
             layout.validate()?;

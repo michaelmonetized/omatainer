@@ -475,6 +475,7 @@ fn media_target(command: &Command) -> Option<usize> {
         | Command::DeckUnload { deck }
         | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize % super::DECKS),
         Command::DeckDecoded { request, .. } => Some(request.deck as usize % super::DECKS),
+        Command::SessionControl(scoped) => media_target(&scoped.command),
         Command::Gesture { command, .. } => media_target(command),
         _ => None,
     }
@@ -494,6 +495,7 @@ fn destructive(command: &Command) -> bool {
         | Command::FxAdd(_)
         | Command::DeckHotCue { del: true, .. }
         | Command::DeckCuePoint { del: true, .. } => true,
+        Command::SessionControl(scoped) => destructive(&scoped.command),
         Command::Gesture { command, .. } => destructive(command),
         Command::PerformanceMode(_)
         | Command::SafetyStop(_)
@@ -692,6 +694,7 @@ pub(super) fn reject_receipt(command: &Command) {
         Command::DeckLoadRequested { receipt, .. } if receipt.claim() => {
             receipt.finish(super::load_receipt::State::Protected)
         }
+        Command::SessionControl(scoped) => reject_receipt(&scoped.command),
         Command::Gesture { command, .. } => reject_receipt(command),
         _ => {}
     }

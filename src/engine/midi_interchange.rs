@@ -145,8 +145,9 @@ impl Request {
             let Some(destination) = mapping.destination else {
                 continue;
             };
-            if destination.0 as usize >= session::MAX_TRACKS || destination.1 as usize >= session::MAX_SCENES {
-                return Err("MIDI destination lies outside the 8 by 8 session".into());
+            if destination.0 as usize >= captured.state.tracks.len() || destination.1 as usize >= captured.state.scene_fx.len()
+                || captured.state.session.as_ref().is_some_and(|layout| layout.reference(session::Axis::Track, destination.0 as usize).is_none() || layout.reference(session::Axis::Scene,destination.1 as usize).is_none()) {
+                return Err("Unknown or inactive MIDI destination".into());
             }
             let source = &file.tracks[mapping.source.track];
             let out = mapped.entry(destination).or_default();
@@ -646,6 +647,7 @@ pub(crate) fn export_with_cancel(
             .get(track as usize)
             .and_then(|t| t.clips.get(scene as usize))
             .ok_or("Unknown export clip")?;
+        if state.session.as_ref().is_some_and(|layout| layout.reference(session::Axis::Track,track as usize).is_none() || layout.reference(session::Axis::Scene,scene as usize).is_none()) { return Err("Export target was deleted; select active clips".into()); }
         if clip.kind != ClipKind::Midi {
             return Err("Choose a MIDI clip for every export row".into());
         }

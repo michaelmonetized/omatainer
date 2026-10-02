@@ -116,6 +116,7 @@ impl Registry {
             id: Id(id),
         })
     }
+    pub fn track_count(&self) -> usize { self.track_count.load(Acquire) }
     pub fn scene_count(&self) -> usize {
         self.scene_count.load(Acquire)
     }

@@ -483,3 +483,55 @@ fn native_close_cancels_queued_import_before_claim_and_preserves_session() {
     assert!(gui.rt.conductor.is_none());
     assert!(gui.app.midi_files.message.contains("cancelled"));
 }
+
+fn retire_destination_and_create_replacement(gui: &mut Gui, track: usize) {
+    use crate::engine::session::{Action as Edit, Axis, Request};
+    let id = gui.rt.session.tracks[track].id;
+    let (request, ack) = Request::metadata(
+        &gui.rt.session, gui.app.engine.undo.checkpoint().epoch,
+        Edit::Delete { axis: Axis::Track, id },
+    ).unwrap();
+    gui.app.engine.send(Command::SessionEdit(request)).unwrap();
+    gui.frame(vec![]);
+    assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
+    gui.frame(vec![]);
+    gui.click("+ MIDI track");
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while gui.rt.session.tracks[track].id == id || !gui.rt.session.tracks[track].active {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    for _ in 0..4 { gui.frame(vec![]); }
+    assert_eq!(gui.rt.tracks[track].kind, 2);
+    assert!(gui.rt.session.tracks[track].active);
+    assert_ne!(gui.rt.session.tracks[track].id, id);
+}
+
+#[test]
+fn inspected_destination_is_unmapped_when_its_storage_slot_is_reused() {
+    let mut gui = Gui::new();
+    inspect(&mut gui, &fixture_path());
+    assert_eq!(gui.app.midi_files.mappings[0].destination, Some((2, 7)));
+    retire_destination_and_create_replacement(&mut gui, 2);
+    assert_eq!(gui.app.midi_files.mappings[0].destination, None);
+    assert!(gui.app.midi_files.error.as_ref().unwrap().contains("replacement explicitly"));
+    assert!(!gui.app.midi_files.reviewed);
+    assert!(gui.rt.tracks[2].clips[7].notes.is_empty());
+}
+
+#[test]
+fn export_rejects_a_reused_selected_cell_without_creating_a_file_or_history() {
+    let files = Files::new();
+    let mut gui = Gui::new();
+    open(&mut gui, true);
+    assert_eq!(gui.app.midi_files.cells, BTreeSet::from([(2, 7)]));
+    path(&mut gui, &files.path("stale.mid"));
+    retire_destination_and_create_replacement(&mut gui, 2);
+    let before = gui.app.engine.undo.checkpoint();
+    gui.click("Export new MIDI file");
+    settled(&mut gui);
+    assert!(gui.app.midi_files.error.as_ref().unwrap().contains("explicitly select its replacement"));
+    assert!(!files.path("stale.mid").exists());
+    assert_eq!(gui.app.engine.undo.checkpoint(), before);
+}

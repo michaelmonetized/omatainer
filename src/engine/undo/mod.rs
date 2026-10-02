@@ -10,6 +10,7 @@ mod tests;
 use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use patch::*;
+pub(in crate::engine) use patch::sample_bytes;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
@@ -82,6 +83,7 @@ pub enum Failure {
     Notes,
     Text,
     Effects,
+    ProcessorBudget,
     RateHistoryPruned,
     Unavailable,
     Invalid,
@@ -95,6 +97,7 @@ impl Failure {
             Self::Text => "Edit not applied: clip metadata exceeds the supported history limit.",
             Self::RateHistoryPruned => "Output rate changed. Undo history was trimmed to its memory limit; active recording inverses were preserved.",
             Self::Effects => "Edit not applied: an effect rack supports at most 128 slots.",
+            Self::ProcessorBudget => "Edit not applied: the session would exceed 256 MiB of effect buffers. Remove effects or choose a lower stopped output rate, then retry.",
             Self::Unavailable => "Edit not applied: the undo retirement worker is unavailable.",
             Self::Invalid => "Undo transaction is no longer valid; no objects were changed.",
         }
@@ -403,6 +406,7 @@ impl Journal {
         if let Retired::Command(command) = &value {
             super::beatgrid::reject_retired(command);
             super::sampler::reject(command);
+            if let Some(ack) = super::session::admission_ack(command) { ack.reject(); }
         }
         self.shared
             .retired_bytes
@@ -613,6 +617,14 @@ impl RtEngine {
             self.undo.reject(Failure::Invalid);
             return;
         }
+        let current = self.tracks.iter().map(|track| track.fx.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>()
+            + self.scene_fx.iter().map(|rack| rack.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>();
+        let restored = current as i128 + self.undo.entries[index].as_ref().unwrap().patches.iter().flatten()
+            .map(|patch| patch.processor_delta(self)).sum::<i128>();
+        if restored < 0 || restored > session::MAX_PROCESSOR_BYTES as i128 {
+            self.undo.reject(Failure::ProcessorBudget);
+            return;
+        }
         let mut entry = self.undo.entries[index].take().unwrap();
         self.undo.replaying = true;
         if redo {
@@ -795,10 +807,13 @@ impl Journal {
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
         super::sampler::reject(&command);
+        if let Some(ack) = super::session::admission_ack(&command) { ack.reject(); }
         if self.enabled
             && matches!(
                 command,
-                Command::Gesture { .. }
+                Command::SessionControl(_)
+                    | Command::SessionEdit(_)
+                    | Command::Gesture { .. }
                     | Command::MidiImport(_)
             | Command::MidiEdit(_)
                     | Command::SetNotes { .. }
@@ -854,6 +869,7 @@ impl Journal {
                 .flat_map(|e| e.patches.iter().flatten())
                 .map(|p| match p {
                     Patch::Slot { id, .. } => fx::FxSlot::required_storage(*id, sr),
+                    Patch::Session(value) => value.rate_bytes(sr),
                     _ => p.heap_bytes(),
                 })
                 .sum::<usize>();
@@ -902,6 +918,7 @@ impl Journal {
         }
         for entry in self.entries.iter_mut().flatten() {
             for patch in entry.patches.iter_mut().flatten() {
+                if let Patch::Session(value) = patch { value.prepare_rate(sr); }
                 if let Patch::Sampler { value: Some(bank), .. } = patch {
                     // A historical inverse retains exact embedded PCM after a
                     // device-rate change, without inferring factory identity.

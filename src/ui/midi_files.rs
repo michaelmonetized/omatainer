@@ -21,17 +21,21 @@ pub(super) struct Editor {
     pending: Option<Ack>,
     preview: Option<Arc<Preview>>,
     mappings: Vec<Mapping>,
+    targets: Vec<Option<(crate::engine::session::Reference,crate::engine::session::Reference)>>,
     split: bool,
     merge: bool,
     tempo: TempoChoice,
     reviewed: bool,
     rounding: bool,
     cells: BTreeSet<(u8, u16)>,
+    cell_targets: std::collections::BTreeMap<(u8,u16),(crate::engine::session::Reference,crate::engine::session::Reference)>,
     ppqn: u16,
     single_track: bool,
     include_muted: bool,
     session_conductor: bool,
     inspect_track: usize,
+    export_track_page: u16,
+    export_scene_page: u16,
     message: String,
     error: Option<String>,
 }
@@ -46,17 +50,21 @@ impl Default for Editor {
             pending: None,
             preview: None,
             mappings: vec![],
+            targets: vec![],
             split: false,
             merge: false,
             tempo: TempoChoice::KeepSession,
             reviewed: false,
             rounding: false,
             cells: BTreeSet::new(),
+            cell_targets: Default::default(),
             ppqn: 960,
             single_track: false,
             include_muted: true,
             session_conductor: true,
             inspect_track: 0,
+            export_track_page: 1,
+            export_scene_page: 1,
             message: "Choose a MIDI file to inspect its tracks and source events.".into(),
             error: None,
         }
@@ -79,11 +87,14 @@ impl Editor {
             ack.cancel();
         }
     }
-    fn map(&mut self, track: usize, scene: usize) {
+    fn map(&mut self, track: usize, scene: usize, layout: Option<&crate::engine::session::Layout>) {
         let Some(preview) = &self.preview else {
             return;
         };
-        let start = track * SCENES + scene;
+        let track_order: Vec<u8> = layout.map_or_else(||(0..TRACKS as u8).collect(),|l|l.track_order.clone());
+        let scene_order: Vec<u16> = layout.map_or_else(||(0..SCENES as u16).collect(),|l|l.scene_order.clone());
+        let start = track_order.iter().position(|t|usize::from(*t)==track).unwrap_or(0)*scene_order.len()
+            + scene_order.iter().position(|s|usize::from(*s)==scene).unwrap_or(0);
         self.mappings = midi_interchange::sources(&preview.file, self.split)
             .into_iter()
             .enumerate()
@@ -91,13 +102,14 @@ impl Editor {
                 let index = start + i;
                 Mapping {
                     source,
-                    destination: (index < TRACKS * SCENES)
-                        .then_some(((index / SCENES) as u8, (index % SCENES) as u16)),
+                    destination: (index < track_order.len()*scene_order.len())
+                        .then(||(track_order[index / scene_order.len()],scene_order[index % scene_order.len()])),
                 }
             })
             .collect();
+        self.targets=self.mappings.iter().map(|m|m.destination.and_then(|(t,s)|cell_reference(layout,t,s))).collect();
     }
-    fn poll(&mut self, track: usize, scene: usize) {
+    fn poll(&mut self, track: usize, scene: usize, layout: Option<&crate::engine::session::Layout>) {
         if let Some(worker) = &self.worker {
             let event = worker.events.try_recv();
             if matches!(event, Err(crossbeam_channel::TryRecvError::Disconnected)) {
@@ -117,7 +129,7 @@ impl Editor {
                         self.inspect_track = 0;
                         self.reviewed = false;
                         self.error = None;
-                        self.map(track, scene);
+                        self.map(track, scene, layout);
                         self.message = "Inspected file. Review destinations, source events and conductor choice, then import.".into();
                     }
                     Event::Preview(_) => {
@@ -221,22 +233,37 @@ impl App {
         self.midi_files.path.clear();
         self.midi_files.error = None;
         self.midi_files.cells.clear();
+        self.midi_files.cell_targets.clear();
         self.midi_files.cells.insert((
             self.snap.selected_track as u8,
             self.snap.selected_scene as u16,
         ));
+        let cell=(self.snap.selected_track as u8,self.snap.selected_scene as u16);
+        if let Some(target)=cell_reference(self.snap.session.as_ref(),cell.0,cell.1) {self.midi_files.cell_targets.insert(cell,target);}
         self.midi_files.message = if exporting { "Select clips and choose an unused .mid path. Export uses source note coordinates and retains trailing file silence; clip loop/launch transforms are not flattened." }
             else { "Inspect a Standard MIDI File, then review track/channel mapping and tempo choices." }.into();
     }
     pub(super) fn poll_midi_files(&mut self) {
         self.midi_files
-            .poll(self.snap.selected_track, self.snap.selected_scene);
+            .poll(self.snap.selected_track, self.snap.selected_scene, self.snap.session.as_ref());
     }
     pub(super) fn midi_files_ui(&mut self, ctx: &egui::Context) {
         if !self.midi_files.open {
             return;
         }
         let mut editor = std::mem::take(&mut self.midi_files);
+        let mut invalidated=false;
+        for (mapping,target) in editor.mappings.iter_mut().zip(&mut editor.targets) {
+            if let (Some((track,scene)),Some(expected))=(mapping.destination,*target) {
+                if cell_reference(self.snap.session.as_ref(),track,scene)!=Some(expected) {
+                    mapping.destination=None;*target=None;invalidated=true;
+                }
+            }
+        }
+        if invalidated {editor.reviewed=false;editor.error=Some("An inspected MIDI destination was deleted, reused or belongs to another project. Choose its replacement explicitly and review the mapping again.".into());}
+
+        let track_order: Vec<u8> = self.snap.session.as_ref().map_or_else(||(0..TRACKS as u8).collect(),|l|l.track_order.clone());
+        let scene_order: Vec<u16> = self.snap.session.as_ref().map_or_else(||(0..SCENES as u16).collect(),|l|l.scene_order.clone());
         let mut visible = true;
         let busy = editor.busy();
         let allowed =
@@ -252,14 +279,27 @@ impl App {
                 ui.add_enabled_ui(!busy, |ui| text(ui, &mut editor.path, "MIDI file path"));
                 if editor.exporting {
                     ui.label("Each selected clip becomes a file track, all at source beat zero. Select only the clips you intend to combine.");
+                    ui.label("Select up to 64 clips across all session pages per export. Nothing is silently omitted.");
+                    ui.horizontal(|ui| {
+                        number(ui,"Export track page",&mut editor.export_track_page,1,track_order.len().div_ceil(8) as u16);
+                        number(ui,"Export scene page",&mut editor.export_scene_page,1,scene_order.len().div_ceil(8) as u16);
+                    });
+                    editor.export_track_page=editor.export_track_page.clamp(1,track_order.len().div_ceil(8) as u16);
+                    editor.export_scene_page=editor.export_scene_page.clamp(1,scene_order.len().div_ceil(8) as u16);
                     egui::Grid::new("smf-export-cells").show(ui, |ui| {
-                        for t in 0..TRACKS {
-                            for s in 0..SCENES {
+                        let first_track=usize::from(editor.export_track_page-1)*8;
+                        let first_scene=usize::from(editor.export_scene_page-1)*8;
+                        for &t in track_order.iter().skip(first_track).take(8) { let t=usize::from(t);
+                            for &s in scene_order.iter().skip(first_scene).take(8) { let s=usize::from(s);
                                 let midi = self.snap.tracks.get(t).and_then(|t| t.clips.get(s)).is_some_and(|c| c.kind == 1);
                                 let mut checked = editor.cells.contains(&(t as u8, s as u16));
                                 let response = ui.add_enabled(!busy && midi, egui::Checkbox::new(&mut checked, format!("T{} S{}", t + 1, s + 1))).help(ui, HelpControl::MidiFileMapping);
                                 response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Checkbox, !busy && midi, format!("Track {} scene {}", t + 1, s + 1)));
-                                if response.changed() { if checked { editor.cells.insert((t as u8, s as u16)); } else { editor.cells.remove(&(t as u8, s as u16)); } }
+                                if response.changed() {
+                                    let cell=(t as u8,s as u16);
+                                    if checked {editor.cells.insert(cell);if let Some(target)=cell_reference(self.snap.session.as_ref(),cell.0,cell.1) {editor.cell_targets.insert(cell,target);}}
+                                    else {editor.cells.remove(&cell);editor.cell_targets.remove(&cell);}
+                                }
                             }
                             ui.end_row();
                         }
@@ -279,7 +319,7 @@ impl App {
                         ui.label(format!("{} · PPQN {} · {} tracks · {} notes · {} channel events", preview.path.display(), preview.file.ppqn,
                             preview.file.tracks.len(), preview.file.tracks.iter().map(|t| t.notes.len()).sum::<usize>(), preview.file.tracks.iter().map(|t| t.messages.len()).sum::<usize>()));
                         ui.add_enabled_ui(!busy, |ui| {
-                            if ui.checkbox(&mut editor.split, "Split file tracks by MIDI channel").help(ui, HelpControl::MidiFileMapping).changed() { editor.map(self.snap.selected_track, self.snap.selected_scene); }
+                            if ui.checkbox(&mut editor.split, "Split file tracks by MIDI channel").help(ui, HelpControl::MidiFileMapping).changed() { editor.map(self.snap.selected_track, self.snap.selected_scene,self.snap.session.as_ref()); }
                             ui.checkbox(&mut editor.merge, "Merge with existing mapped MIDI clips").help(ui, HelpControl::MidiFileMapping);
                             if !editor.merge { ui.label("Import replaces the mapped MIDI clip contents; clip gain and other track controls are preserved."); }
                             egui::ScrollArea::vertical().id_salt("smf-map").max_height(240.0).show_rows(ui, 28.0, editor.mappings.len(), |ui, rows| {
@@ -291,12 +331,15 @@ impl App {
                                         let mut used = m.destination.is_some();
                                         if ui.checkbox(&mut used, format!("Import {label}")).help(ui, HelpControl::MidiFileMapping).changed() {
                                             m.destination = used.then_some((self.snap.selected_track as u8, self.snap.selected_scene as u16));
+                                            editor.targets[row]=m.destination.and_then(|(t,s)|cell_reference(self.snap.session.as_ref(),t,s));
                                         }
                                         if let Some((track, scene)) = &mut m.destination {
-                                            let mut t = u16::from(*track) + 1; let mut s = u16::from(*scene) + 1;
-                                            ui.label("Track"); number(ui, &format!("{label} destination track"), &mut t, 1, TRACKS as u16);
-                                            ui.label("Scene"); number(ui, &format!("{label} destination scene"), &mut s, 1, SCENES as u16);
-                                            *track = (t - 1) as u8; *scene = (s - 1) as u16;
+                                            let mut t = track_order.iter().position(|value|*value==*track).unwrap_or(0) as u16 + 1;
+                                            let mut s = scene_order.iter().position(|value|*value==*scene).unwrap_or(0) as u16 + 1;
+                                            ui.label("Track"); number(ui, &format!("{label} destination track"), &mut t, 1, track_order.len() as u16);
+                                            ui.label("Scene"); number(ui, &format!("{label} destination scene"), &mut s, 1, scene_order.len() as u16);
+                                            let next=(track_order[usize::from(t-1)],scene_order[usize::from(s-1)]);
+                                            if next!=(*track,*scene) {*track=next.0;*scene=next.1;editor.targets[row]=cell_reference(self.snap.session.as_ref(),*track,*scene);}
                                         }
                                     }));
                                 }
@@ -349,6 +392,7 @@ impl App {
         if import {
             let preview = editor.preview.as_ref().unwrap().clone();
             let mappings = editor.mappings.clone();
+            let targets = editor.targets.clone();
             let (split, merge, tempo, reviewed, rounding) = (
                 editor.split,
                 editor.merge,
@@ -359,6 +403,7 @@ impl App {
             editor.start(&self.engine, |work| Job::Import {
                 preview,
                 mappings,
+                targets,
                 split,
                 merge,
                 tempo,
@@ -369,7 +414,8 @@ impl App {
         }
         if export {
             let path = PathBuf::from(editor.path.trim());
-            let cells = editor.cells.iter().copied().collect();
+            let cells: Vec<_> = editor.cells.iter().copied().collect();
+            let targets=cells.iter().map(|cell|editor.cell_targets.get(cell).copied()).collect();
             let options = ExportOptions {
                 ppqn: editor.ppqn,
                 single_track: editor.single_track,
@@ -380,6 +426,7 @@ impl App {
             editor.start(&self.engine, |work| Job::Export {
                 path,
                 cells,
+                targets,
                 options,
                 work,
             });
@@ -412,4 +459,10 @@ fn number(ui: &mut Ui, label: &str, value: &mut u16, min: u16, max: u16) -> egui
         *value = next.round() as u16;
     }
     response
+}
+
+fn cell_reference(layout: Option<&crate::engine::session::Layout>, track:u8, scene:u16)
+    -> Option<(crate::engine::session::Reference,crate::engine::session::Reference)> {
+    let layout=layout?;
+    Some((layout.reference(crate::engine::session::Axis::Track,track as usize)?,layout.reference(crate::engine::session::Axis::Scene,scene as usize)?))
 }
