@@ -331,7 +331,20 @@
     "contrib/omatainer.lua": ".config/hypr/apps/omatainer.lua",
     "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json",
     "plugin/BarWidget.qml": ".config/omarchy/plugins/omatainer/BarWidget.qml",
-    "plugin/Service.qml": ".config/omarchy/plugins/omatainer/Service.qml"
+    "plugin/Service.qml": ".config/omarchy/plugins/omatainer/Service.qml",
+    "vendor/symphonia-format-riff/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/symphonia-format-riff/.cargo_vcs_info.json",
+    "vendor/symphonia-format-riff/Cargo.toml": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml",
+    "vendor/symphonia-format-riff/Cargo.toml.orig": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml.orig",
+    "vendor/symphonia-format-riff/LICENSE": ".local/share/omatainer/source/vendor/symphonia-format-riff/LICENSE",
+    "vendor/symphonia-format-riff/PATCHES.md": ".local/share/omatainer/source/vendor/symphonia-format-riff/PATCHES.md",
+    "vendor/symphonia-format-riff/README.md": ".local/share/omatainer/source/vendor/symphonia-format-riff/README.md",
+    "vendor/symphonia-format-riff/UPSTREAM.json": ".local/share/omatainer/source/vendor/symphonia-format-riff/UPSTREAM.json",
+    "vendor/symphonia-format-riff/src/aiff/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/chunks.rs",
+    "vendor/symphonia-format-riff/src/aiff/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/mod.rs",
+    "vendor/symphonia-format-riff/src/common.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/common.rs",
+    "vendor/symphonia-format-riff/src/lib.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs",
+    "vendor/symphonia-format-riff/src/wave/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs",
+    "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs"
   },
   "source_files": [
     "src/engine/mod.rs",

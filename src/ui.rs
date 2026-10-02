@@ -14,6 +14,7 @@ use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
 mod library_analysis;
+mod library_tags;
 mod library_crates;
 mod library_store;
 pub(crate) mod bpm;
@@ -114,6 +115,7 @@ pub struct App {
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
+    library_tags: library_tags::Panel,
     library_crates: library_crates::Crates,
     library_import_open: bool,
     library_initialized: bool,
@@ -218,6 +220,7 @@ impl App {
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
+            library_tags: library_tags::Panel::default(),
             library_crates: library_crates::Crates::default(),
             library_import_open: false,
             library_initialized: false,
@@ -439,14 +442,31 @@ impl App {
             match completion.result {
                 Ok(mut report) => {
                     let analysis = Bpm::new(report.sample.bpm, Origin::Heuristic);
+                    if let Some(selection) = &mut state.selection {
+                        let saved = self.library_metadata.catalog.version(&selection.source, completion.fingerprint)
+                            .and_then(|version| version.tags.as_ref()).and_then(|tags| tags.overrides.title.as_ref());
+                        let embedded = completion.tags.as_ref().and_then(|tags| tags.as_ref().ok())
+                            .and_then(|tags| tags.fields.title.as_ref()).map(|field| &field.value);
+                        if let Some(title) = saved.or(embedded) {
+                            selection.title.clone_from(title);
+                            report.sample.name.clone_from(title);
+                        }
+                    }
                     let source = state.selection.as_ref().map(|selection| &selection.source);
-                    let bpm = self.library.iter().find(|item| Some(&item.source) == source
+                    let mut bpm = self.library.iter().find(|item| Some(&item.source) == source
                         && item.fingerprint.is_some() && item.fingerprint == completion.fingerprint)
                         .map(|item| item.bpm.reconcile(analysis)).unwrap_or(analysis);
+                    if bpm.origin != Origin::User {
+                        if let Some(value) = completion.tags.as_ref().and_then(|tags| tags.as_ref().ok())
+                            .and_then(|tags| tags.fields.bpm.as_ref()).and_then(|field| field.value.trim().parse::<f32>().ok()) {
+                            let embedded = Bpm::new(value, Origin::EmbeddedTag);
+                            if embedded.value().is_some() { bpm = embedded; }
+                        }
+                    }
                     report.sample.bpm = bpm.value().unwrap_or(0.0);
                     state.bpm = Some(bpm);
                     state.metadata = completion.fingerprint.zip(source.cloned()).map(|(fingerprint, source)|
-                        library_metadata::Patch { source, fingerprint, bpm, duration: decoded_duration(&report.sample) });
+                        library_metadata::Patch { source, fingerprint, bpm: analysis, duration: decoded_duration(&report.sample), tags: completion.tags.clone() });
                     state.warning = report.diagnostics.warning();
                     let history_source = source.cloned();
                     let captured_metadata = history_source.as_ref().map(|source| {
@@ -630,6 +650,7 @@ impl App {
         self.poll_undo();
         self.poll_sampler_editor();
         self.poll_library_analysis();
+        self.poll_library_tags();
         self.poll_named_crates();
         self.poll_session_history();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
@@ -651,6 +672,7 @@ impl App {
         self.grid_editor_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
+        self.library_tags_ui(ctx);
         self.named_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
@@ -1144,6 +1166,7 @@ impl App {
                     self.library_scan.cancel();
                 }
                 if ui.button("analyze…").help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
+                if ui.button("tags…").help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
                 if ui.button("library…").help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
                 if ui.button("relocate…").help(ui, HelpControl::CueRelocate).clicked() { self.open_cue_relocation(); }
@@ -1160,7 +1183,7 @@ impl App {
                     self.load_sel(1);
                 }
                 ui.label(RichText::new(if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(10.0).color(t.muted));
-                ui.label(RichText::new("file keys: hints").size(10.0).color(t.muted)).on_hover_text(key_hints::HELP);
+                ui.label(RichText::new("metadata: inspect tags…").size(10.0).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
                     .on_hover_text(progress);
@@ -1224,7 +1247,10 @@ impl App {
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
-                        format!("BPM: {}", item.bpm.label()), cells.played_tooltip.clone(),
+                        format!("BPM: {}", item.bpm.label()),
+                        self.library_metadata.catalog.version(&item.source, item.fingerprint).and_then(|v| v.tags.as_ref())
+                            .map_or_else(|| "Title/artist/key: filename or catalog fallback; embedded tags not yet inspected".into(), |tags| tags.describe()),
+                        cells.played_tooltip.clone(),
                         format!("Track ID: {identity}"), format!("Location: {:?}", item.source),
                         help::tooltip_text(HelpControl::CrateRow),
                     ]);

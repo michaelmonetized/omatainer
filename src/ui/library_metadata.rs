@@ -7,6 +7,7 @@ use std::sync::{mpsc, Weak};
 
 const SAMPLER_PROOF_LIMIT: usize = 256;
 mod analysis;
+pub(super) mod tags;
 mod collections;
 mod collection_rows;
 pub(super) use collection_rows::CollectionRows;
@@ -18,6 +19,7 @@ mod tests;
 
 #[derive(Clone, Debug)]
 pub(super) struct Patch {
+    pub tags: Option<std::result::Result<crate::media_tags::Observation, String>>,
     pub source: LibSource,
     pub fingerprint: FileFingerprint,
     pub bpm: Bpm,
@@ -25,7 +27,21 @@ pub(super) struct Patch {
 }
 
 impl Patch {
+    fn filename_item(&self) -> Option<LibItem> {
+        let path = match &self.source {
+            LibSource::File(path) => path,
+            LibSource::Removable { relative_path, .. } => relative_path,
+            _ => return None,
+        };
+        let stem = path.file_stem().and_then(|stem| stem.to_str()).unwrap_or("track");
+        let (artist, title) = split_artist_title(stem);
+        let (bpm, key) = parse_tags(stem);
+        Some(LibItem { title, artist, bpm: Bpm::hint(bpm), key,
+            source: self.source.clone(), fingerprint: Some(self.fingerprint),
+            length: self.duration, last_play: None })
+    }
     fn preserve_duration(&mut self, previous: &Self) {
+        if self.tags.is_none() && self.fingerprint == previous.fingerprint { self.tags = previous.tags.clone(); }
         if self.duration.is_none() && self.fingerprint == previous.fingerprint {
             self.duration = previous.duration;
         }
@@ -34,6 +50,11 @@ impl Patch {
     fn apply(&self, item: &mut LibItem) {
         if item.source == self.source && item.fingerprint == Some(self.fingerprint) {
             item.bpm = item.bpm.reconcile(self.bpm);
+            if let Some(Ok(observation)) = &self.tags {
+                if let Some(field) = &observation.fields.title { item.title.clone_from(&field.value); }
+                if let Some(field) = &observation.fields.artist { item.artist.clone_from(&field.value); }
+                if let Some(field) = &observation.fields.key { item.key.clone_from(&field.value); }
+            }
             if let Some(duration) = self
                 .duration
                 .filter(|value| value.is_finite() && *value >= 0.0)
@@ -59,6 +80,7 @@ struct Staged {
     work: Arc<WorkPermit>,
 }
 struct Job {
+    tags: Option<tags::Save>,
     collection: Option<collections::Request>,
     base: Arc<Vec<LibItem>>,
     candidate: Arc<Vec<LibItem>>,
@@ -80,6 +102,7 @@ struct Job {
     retired_analysis_inspections: Vec<AnalysisInspected>,
 }
 struct Result {
+    tags: Option<tags::Receipt>,
     collection: Option<CollectionReceipt>,
     analysis: Option<AnalysisReceipt>,
     inspection: Option<AnalysisInspected>,
@@ -107,6 +130,11 @@ struct RelocationResult {
 }
 
 pub(super) struct Metadata {
+    pub tag_recovery_root: Option<PathBuf>,
+    tag_reservation: bool,
+    tag_save: Option<tags::Save>,
+    tag_save_id: Option<u64>,
+    tag_result: Option<tags::Receipt>,
     initialized:bool,
     collection: Option<collections::Request>,
     collection_result: Option<CollectionReceipt>,
@@ -162,6 +190,7 @@ impl Metadata {
     }
     fn spawn(path: Option<PathBuf>, mut before_job: impl FnMut() + Send + 'static) -> Self {
         let persistent = path.is_some();
+        let tag_recovery_root = path.as_ref().map(|path| path.with_extension("tag-recovery"));
         let (jobs, work) = mpsc::sync_channel::<Job>(1);
         let (done, results) = mpsc::sync_channel(1);
         // A spawn failure is visible at the next submission. No synchronous
@@ -215,6 +244,8 @@ impl Metadata {
                         }
                         essential.insert(capture.source.clone(), next);
                     }
+                    let loaded: Vec<_> = job.updates.iter().filter(|patch| patch.tags.is_some())
+                        .filter_map(Patch::filename_item).collect();
                     for mut patch in job.updates {
                         // A BPM-only update cannot erase a known duration for
                         // these same bytes; a replacement identity starts fresh.
@@ -236,6 +267,9 @@ impl Metadata {
                     let mut items = if job.scan_work.as_ref().is_some_and(|work| work.cancel().load(std::sync::atomic::Ordering::Acquire)) {
                         fallback.clone()
                     } else { job.candidate.as_ref().clone() };
+                    for item in loaded {
+                        if !items.iter().any(|existing| existing.source == item.source) { items.push(item); }
+                    }
                     for item in &mut items {
                         if let Some((fingerprint, bpm)) = corrections.get(&item.source) {
                             if item.fingerprint == *fingerprint {
@@ -253,6 +287,7 @@ impl Metadata {
                     let mut analysis_result = None;
                     let mut inspection_result = None;
                     let mut collection_result = None;
+                    let mut tag_result = None;
                     let mut analysis_committed = false;
                     let catalog = if let Some(store) = &mut store {
                         match store {
@@ -276,6 +311,30 @@ impl Metadata {
                                         Err(error) => format!("DJ library NOT saved: {error}"),
                                     },
                                 );
+                                if durable {
+                                    if let Err(error) = tags::observe_loaded(store, cache.values()) {
+                                        durable = false;
+                                        storage = Some(format!("Loaded tags require a library save retry: {error}"));
+                                    }
+                                    items = store.catalog.tracks.iter().map(|track|
+                                        LibItem::from_stored(track.source.clone(), &track.versions[track.current])).collect();
+                                }
+                                if let Some(request) = job.tags.take() {
+                                    let media_installed = matches!(request.result.as_ref(), library_scan::tag_jobs::Reply::Applied(_) | library_scan::tag_jobs::Reply::Recover(_));
+                                    let receipt = if durable { tags::save(store, request) } else {
+                                        tags::Receipt { id: request.id, committed: false, durable: false, cleanup: None,
+                                            outcome: Err("Tag catalog save waits for confirmed essential library persistence; any installed media remains journaled".into()) }
+                                    };
+                                    if !receipt.durable && (receipt.committed || media_installed) {
+                                        durable = false;
+                                        storage = Some(format!("Tag catalog save unconfirmed: {}", receipt.outcome.as_ref().err().map(String::as_str).unwrap_or("durability unavailable")));
+                                    }
+                                    if receipt.committed {
+                                        items = store.catalog.tracks.iter().map(|track|
+                                            LibItem::from_stored(track.source.clone(), &track.versions[track.current])).collect();
+                                    }
+                                    tag_result = Some(receipt);
+                                }
                                 if let Some(completion) = job.analysis.take() {
                                     let receipt = if durable {
                                         analysis::save(store, analysis_disk.as_mut().unwrap(), completion)
@@ -328,6 +387,10 @@ impl Metadata {
                     } else {
                         Arc::new(crate::library::Catalog::default())
                     };
+                    if let Some(request) = job.tags.take() {
+                        tag_result = Some(tags::Receipt { id: request.id, committed: false, durable: false, cleanup: None,
+                            outcome: Err("Tag edits require a persistent writable library; media recovery records are retained".into()) });
+                    }
                     if let Some(request) = job.collection.take() {
                         collection_result = Some(CollectionReceipt::refused(request, catalog.crates.revision(), collections::Failure::Unavailable));
                     }
@@ -345,7 +408,7 @@ impl Metadata {
                     // prior visible identities and their essential saved metadata,
                     // never optional scan/import changes, even for the same path.
                     let visible: std::collections::HashSet<_> = job.base.iter().map(|item| &item.source).collect();
-                    let optional = analysis_committed || job.restricted || job.scan_work.is_some() || job.import.is_some() || job.relocation.is_some()
+                    let optional = tag_result.as_ref().is_some_and(|receipt| receipt.committed) || analysis_committed || job.restricted || job.scan_work.is_some() || job.import.is_some() || job.relocation.is_some()
                         || items.iter().any(|item| !visible.contains(&item.source));
                     let restricted = optional.then(|| {
                         let mut rows = if persistent { super::library_store::restricted_rows(&fallback, &essential.values().cloned().collect::<Vec<_>>()) }
@@ -374,6 +437,7 @@ impl Metadata {
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
+                            tags: tag_result,
                             collection: collection_result,
                             analysis: analysis_result,
                             inspection: inspection_result,
@@ -407,6 +471,7 @@ impl Metadata {
                 drop(row_index_pins);
             });
         Self {
+            tag_recovery_root, tag_reservation: false, tag_save: None, tag_save_id: None, tag_result: None,
             collection: None,
             collection_result: None,
             collection_active: None,
@@ -530,6 +595,27 @@ impl Metadata {
         Ok(())
     }
 
+    pub fn reserve_tags(&mut self) -> bool {
+        if self.tag_reservation || self.active() || !self.ready() || self.storage.is_none() || self.collections_closing { return false; }
+        self.tag_reservation = true;
+        true
+    }
+    pub fn release_tags(&mut self) { self.tag_reservation = false; }
+    pub fn save_tags(&mut self, request: tags::Save) -> std::result::Result<(), tags::Save> {
+        if !self.tag_reservation || self.worker_closed || self.tag_save_id.is_some() || self.tag_save.is_some() || self.tag_result.is_some() { return Err(request); }
+        self.tag_save_id = Some(request.id);
+        self.tag_save = Some(request);
+        self.clear_error = true;
+        self.revision = self.revision.wrapping_add(1);
+        self.dirty = true;
+        Ok(())
+    }
+    pub fn take_tag_result(&mut self) -> Option<tags::Receipt> {
+        let receipt = self.tag_result.take();
+        if receipt.is_some() { self.tag_save_id = None; }
+        receipt
+    }
+
     pub fn ready(&self)->bool {self.initialized && !self.worker_closed && (self.storage.is_none() || self.durable)}
     pub fn set_performance(&mut self, performance: Handle) {
         self.performance = performance;
@@ -552,7 +638,7 @@ impl Metadata {
         self.dirty = true;
     }
     pub fn import(&mut self, path: PathBuf) -> bool {
-        if self.storage.is_none() || self.import.is_some() {
+        if self.storage.is_none() || self.import.is_some() || self.tag_reservation {
             return false;
         }
         let work = match self.performance.optional_work() {
@@ -575,7 +661,7 @@ impl Metadata {
         self.relocate_choice(request, Some(candidate))
     }
     fn relocate_choice(&mut self, request: crate::library::Relocate, reviewed: Option<crate::library::relocation_search::Candidate>) -> bool {
-        if self.storage.is_none() || self.relocation.is_some() || self.in_flight { return false; }
+        if self.storage.is_none() || self.relocation.is_some() || self.in_flight || self.tag_reservation { return false; }
         let work = match self.performance.optional_work() {
             Ok(work) => Arc::new(work),
             Err(error) => {
@@ -697,6 +783,9 @@ impl Metadata {
             let error = "DJ library worker unavailable; pending save outcome is unconfirmed";
             self.storage_error = Some(error.into());
             self.durable = false;
+            if self.tag_result.is_none() {
+                if let Some(id) = self.tag_save_id { self.tag_result = Some(tags::Receipt::refused(id, error.into())); }
+            }
             if self.collection_result.is_none() {
                 if let Some(token) = &self.collection_active {
                     self.collection_result = Some(CollectionReceipt::unavailable(token, self.catalog.crates.revision()));
@@ -718,6 +807,7 @@ impl Metadata {
         }
         if let Ok(result) = received {
             self.initialized=true;
+            if let Some(receipt) = result.tags { self.tag_result = Some(receipt); }
             if let Some(collection) = result.collection { self.collection_result = Some(collection); }
             if let Some(analysis) = result.analysis { self.analysis_result = Some(analysis); }
             if let Some(inspection) = result.inspection { self.inspection_result = Some(inspection); }
@@ -787,6 +877,7 @@ impl Metadata {
         }
         if self.dirty && !self.in_flight {
             let job = Job {
+                tags: self.tag_save.take(),
                 collection: self.collection.take(),
                 base: library.clone(),
                 candidate: self
@@ -817,6 +908,7 @@ impl Metadata {
                     self.in_flight = true;
                 }
                 Err(mpsc::TrySendError::Full(job) | mpsc::TrySendError::Disconnected(job)) => {
+                    self.tag_save = job.tags;
                     self.collection = job.collection;
                     self.analysis = job.analysis;
                     self.inspection = job.inspection;
@@ -843,7 +935,7 @@ impl Metadata {
         Ok(published)
     }
     pub(super) fn active(&self) -> bool {
-        self.dirty || self.in_flight
+        self.dirty || self.in_flight || self.tag_reservation
     }
 }
 

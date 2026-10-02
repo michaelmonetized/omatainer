@@ -119,6 +119,28 @@ rejected without replacement. See the [project workflow evidence](docs/validatio
 and [file format and atomic save rules](docs/validation/issue-82-codec.md).
 ## DJ library
 
+Imports, scans and native deck loads read embedded title, artist, BPM and key.
+Use **tags…** to inspect one selected track or a captured filtered batch of up
+to 4,096 tracks. The review shows actual tag values, their source and explicit
+filename fallbacks. Check only fields to change; a checked empty field clears
+that value. Review the changes, then apply to those captured tracks. Browsing
+another filter afterward does not change the batch.
+
+MP3, FLAC, WAV and AIFF support guarded embedded writes when their original tags
+and complete audio can be preserved. Unsupported, read-only, hardlinked or
+otherwise unsafe media keep their bytes and use library sidecars. Fractional BPM
+that a container cannot represent is retained exactly in the sidecar. Embedded
+rewrites are limited to 128 MiB per file; larger files can still use sidecars.
+User values and explicit clears take precedence over tags, analysis and filename
+hints. A tagged BPM is supplied metadata, not a measured tempo or key estimate.
+
+Each file completes separately. Cancellation retains earlier saved edits and
+reports skipped or unconfirmed outcomes. Performance protection stops optional
+work; a media write that already committed still receives its catalog receipt.
+An interrupted embedded write retains its original and a private recovery record
+until the catalog save is confirmed. Startup reconciles these records; conflicts
+remain visible and preserve both versions. Repair/retry is available in **tags…**.
+
 Use **analyze…** beside the crate search to prepare BPM, duration and a bounded
 waveform for selected local files or mounted removable libraries. **Analyze selected row** captures one source;
 **Analyze filtered crate** captures the current filtered order, up to 4,096 rows.

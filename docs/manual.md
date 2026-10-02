@@ -342,6 +342,70 @@ Close the inspector while an admitted queue continues. Use Cancel analysis queue
 
 Workflow: Prepare a DJ deck.
 
+### Read and edit audio metadata
+
+Embedded tags and durable library sidecars
+
+Inspect a selected track or capture a filtered batch. Actual embedded title, artist, BPM and key carry tag provenance; missing fields explicitly use filename fallbacks. User sidecars take precedence. Loaded audio and manual beat grids keep their current performance values.
+
+Workflow: Prepare a DJ deck.
+
+### Inspect captured audio tags
+
+1–4096 saved current local tracks
+
+Read actual tag values and notices off the GUI. Batch review captures exact sources and versions; later browsing, filtering or selection cannot retarget them. Imperfect, unsupported or read-only media remain available for sidecar editing.
+
+Workflow: Prepare a DJ deck.
+
+### Choose changed metadata fields
+
+At most 4096 UTF-8 bytes per field
+
+Check only fields to change. Unchecked keeps each track's value; checked and empty clears it. BPM must be empty or a finite number greater than 1. Review the exact changed values before applying them to the captured tracks.
+
+Workflow: Prepare a DJ deck.
+
+### Embedded tags or sidecar values
+
+MP3, FLAC, WAV and AIFF embedded writes up to 128 MiB
+
+Enable supported embedded rewrites after complete audio and unrelated-metadata preservation checks. Larger, read-only, hard-linked, protected or unsupported metadata uses a durable library sidecar. Fractional BPM unsupported by an integer tag stays precise in the sidecar; no value is silently rounded.
+
+Workflow: Prepare a DJ deck.
+
+### Review metadata changes
+
+Captured fields and media identities
+
+Freeze the selected field changes before applying them. Editing a field or changing storage mode invalidates that review. Inspect the captured source paths and actual embedded values, especially before a batch clear or replacement.
+
+Workflow: Prepare a DJ deck.
+
+### Apply reviewed metadata edits
+
+One durable track transaction at a time
+
+Recheck each captured file and catalog identity. Stage supported rewrites privately, prove unchanged audio and retained unrelated metadata, then journal and atomically replace the file. Retain the original until the library confirms its save. A batch may finish partly; earlier saved tracks remain saved after cancellation.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel metadata work
+
+Truthful partial-batch outcome
+
+Cancel inspection or remaining edits before their file claim. A file already replaced still completes its essential library save, even after Performance protection or close. Failed or unconfirmed writes retain recovery records and originals.
+
+Workflow: Prepare a DJ deck.
+
+### Retry metadata recovery
+
+Durable tag journals and original backups
+
+Retry catalog persistence and inspect pending tag journals on the filesystem owner. Complete verified installed edits or retire verified uninstalled staging. Conflicting external edits are preserved and reported; recovery never blindly overwrites another file.
+
+Workflow: Stop and recover.
+
 ### Background track analysis
 
 Local source/version cache

@@ -193,6 +193,7 @@ fn duration_is_cached_by_bytes_and_cannot_be_rolled_back_by_an_older_scan() {
     assert_eq!(item(&f, &path).length, Some(3.5));
     // A later BPM-only patch retains this duration in the shared worker cache.
     f.app.library_metadata.update(library_metadata::Patch {
+        tags: None,
         source: LibSource::File(path.clone()),
         fingerprint: item(&f, &path).fingerprint.unwrap(),
         bpm: Bpm::new(121.0, Origin::Heuristic),
@@ -303,6 +304,7 @@ fn pending_bpm_only_patch_keeps_duration_but_never_crosses_file_identity() {
     let mut f = Fixture::new(32);
     scan(&mut f, &files);
     let mut patch = library_metadata::Patch {
+        tags: None,
         source: LibSource::File(path.clone()),
         fingerprint: item(&f, &path).fingerprint.unwrap(),
         bpm: Bpm::new(120.0, Origin::Heuristic),

@@ -1120,3 +1120,52 @@ publication. Preferences persist startup protection only, not emergency state.
   Pre-rename persistence failure rolls back the optional association while
   retaining essential edits for retry. A post-rename failure retains the actual
   committed association and reports unconfirmed durability.
+
+## Embedded audio metadata and reviewed edits (#109)
+
+- Import/scan receipts and renderer-accepted native loads carry guarded embedded
+  title, artist, BPM and key observations. Primary tag precedence, duplicate or
+  conflicting values, incomplete parsing and filename fallbacks remain explicit.
+  User overrides and intentional clears win over tags, automatic analysis and
+  filename hints. Supplied tag values are never called measured tempo/key.
+- Inspection uses the existing filesystem/media owners, bounded reads and parser
+  allocations, and cancellation at read/seek boundaries. Tolerant read-only
+  observation cannot authorize rewriting a malformed or incomplete tag set.
+  No filesystem parsing, hashing or container write runs on GUI/audio callbacks.
+- The GUI captures one selected row or at most 4,096 filtered rows via immutable
+  views. Review captures field changes, storage choice, exact track/version and
+  performance generation. Edited drafts invalidate review; later browsing cannot
+  retarget it. Unchecked fields are retained and checked empty values clear.
+- Supported MP3/FLAC/WAV/AIFF writes stage a private same-filesystem replacement,
+  verify requested values, preserve unknown metadata/artwork/ancillary bytes and
+  compare complete playback payloads plus successful full decoding. Rewrites
+  require an exact old fingerprint and whole-file digest. Payload equivalence
+  authorizes only that measured within-track transaction; the new file has its
+  own fingerprint/digest. Stable IDs, crates, preparation and history survive.
+- Rewrites are limited to 128 MiB and refuse read-only, non-owned, hardlinked,
+  special-mode or extended-attribute media. Unsupported/unsafe formats or field
+  precision retain exact catalog sidecars, with actual bytes unchanged. An
+  ambiguous transaction or installed recovery record cannot become a fallback
+  sidecar that conceals an unknown media outcome.
+- Durable intent precedes atomic exchange. The shared short commit claim orders
+  cancellation/protection against that exchange. A write that won reports its
+  installed state even after cancellation; original bytes remain recoverable
+  until the sole catalog writer confirms persistence. External exchange races
+  preserve both files and a conflict record, without speculative rollback.
+- Startup recovery follows catalog ownership. Confirmed installed media receive
+  essential catalog reconciliation, even during Close/protection; an unchanged
+  original permits staged-copy cleanup. Unknown/conflicting journals are retained.
+  UUID-qualified removable recovery requires fresh mount access and exact source
+  bytes; local recovery cannot guess across changed device identities. Backup
+  cleanup follows durable catalog confirmation. A stopped worker or post-rename
+  sync failure reports unconfirmed outcome and remains explicitly retryable.
+- Each reviewed row finishes filesystem, catalog and cleanup receipts before the
+  next. Cancellation retains earlier saved edits; unchanged skips and unconfirmed
+  outcomes have distinct counts. Tag work does not block essential cue/history
+  saves while its filesystem operation waits. Already resident playing PCM is
+  unchanged by tag edits; reload uses current effective metadata.
+- Catalog schema 8 migrates earlier versions while refusing newer-field states
+  falsely labeled as old schemas. A small pinned Symphonia RIFF patch excludes
+  the AIFF SSND header from PCM and rejects incomplete/inconsistent frame extents;
+  source media is unchanged by the decoder, and all modified MPL sources/notices
+  are included in the release provenance/package.

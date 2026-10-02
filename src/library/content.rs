@@ -104,9 +104,12 @@ impl Catalog {
                 version.metadata.duration=version.metadata.duration.or(old.metadata.duration);
                 version.metadata.last_play=version.metadata.last_play.max(old.metadata.last_play);
                 if version.analysis.is_none() {version.analysis=old.analysis;}
+                if version.tags.is_none() {version.tags=old.tags;}
+                version.audio_identity=old.audio_identity;
             }
         }
         version.content_hash = Some(hash);
+        tags::reconcile(version);
         Ok(())
     }
 
@@ -165,10 +168,12 @@ impl Catalog {
             return;
         };
         let hash = version.content_hash;
+        let audio_identity = version.audio_identity.clone();
         // Loaded/history-retained receipts at an old location still refer to
         // this stable track. Exact verified copies share their preparation.
         for version in &mut track.versions {
             if version.fingerprint == fingerprint || hash.is_some() && version.content_hash == hash
+                || audio_identity.is_some() && version.audio_identity == audio_identity
             {
                 if let Some(preparation) = preparation.filter(|p| p.valid()) {
                     version.preparation = preparation;

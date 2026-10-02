@@ -75,6 +75,7 @@ pub(super) fn scan_with_inventory(
     let mut batch = request.watch.as_ref().filter(|_|request.kind==Kind::Roots).map(|watch| crate::library::watch_roots::Batch {
         expected:watch.catalog.watched_roots.revision(), profile:watch.profile.clone(), configured:request.roots.clone(),observed:Vec::new() });
     let mut adoptions=Vec::new();let mut directories=Vec::new();
+    let mut tag_observations=Vec::new();
     let mut guards = Vec::new();
     let mut roots = Vec::new();
     for configured in &request.roots {
@@ -302,6 +303,7 @@ pub(super) fn scan_with_inventory(
                 last_play: None,
                 source,
             };
+            let filename = item.stored_metadata();
             let mut alias=None;
             if matches!(item.source,LibSource::Removable {..}) {
                 let tail=path.strip_prefix(&root).map_err(|e|io_error(path,e))?;
@@ -326,6 +328,9 @@ pub(super) fn scan_with_inventory(
                     preserve_metadata(&mut item, old);
                 }
             }
+            let observed = tags::observe(&mut item, filename, &request.cancel);
+            check_cancel(request)?;
+            tag_observations.push(observed);
             if let Some(position)=positions.get(&item.source).copied().or_else(||alias.as_ref().and_then(|old|positions.remove(old))) {
                 positions.insert(item.source.clone(),position);
                 items[position] = item;
@@ -362,7 +367,7 @@ pub(super) fn scan_with_inventory(
     request.progress.phase.store(1, Ordering::Relaxed);
     sort_crate(&mut items);
     check_cancel(request)?;
-    let receipt=(batch.is_some() || !adoptions.is_empty()).then(||ScanRoots {book:batch,adoptions,directories});
+    let receipt=(batch.is_some() || !adoptions.is_empty() || !tag_observations.is_empty()).then(||ScanRoots {book:batch,adoptions,directories,tags:tag_observations});
     Ok((items, fingerprints, summary, receipt))
 }
 
