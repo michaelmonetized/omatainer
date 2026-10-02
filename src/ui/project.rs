@@ -393,6 +393,9 @@ impl App {
         if blocked { self.project.message = Some("Project replacement cancelled while editors retain unapplied work. Apply it or explicitly discard it, then choose the project action again.".into()); }
         blocked
     }
+    /// Open a published imported session through the existing unsaved-work guard.
+    /// `path` is its native session; installation stays stopped and cancellable.
+    pub(super) fn open_imported_project(&mut self, path: PathBuf) { self.request_project_action(Action::Open(path)); }
     fn request_project_action(&mut self, action: Action) {
         if self.reject_protected_project() { return; }
         if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
@@ -771,8 +774,12 @@ impl App {
             self.midi_files.cancel();
             self.timing.cancel();
             self.dependencies.cancel();
+            self.portability.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
-            if self.dependencies.blocks_close() {
+            if self.portability.busy() {
+                self.portability.open = true;
+                self.project.message = Some("Close cancelled while portable project work settles. Wait for its publication or cancellation result before closing.".into());
+            } else if self.dependencies.blocks_close() {
                 self.dependencies.open = true;
                 self.project.message = Some("Close cancelled while source review retains unapplied choices. Apply them or explicitly discard them before closing.".into());
             } else if self.timing.blocks_close() {
@@ -799,6 +806,7 @@ impl App {
         self.loads = std::array::from_fn(|_| None);
         self.dependencies.install_origins(view.media_origins.clone());
         self.timing.reset_project();
+        self.portability.reset_review();
         self.lib_filter = view.library_filter.clone();
         self.choose_named_crate(view.selected_crate.clone());
         self.keys_open = view.keys_open;
@@ -923,6 +931,7 @@ impl App {
                             let midi = ui.button("Export MIDI file…").help(ui, HelpControl::MidiFileExport);
                             if midi.clicked() { self.open_midi_files(true); ui.close(); }
                             if ui.button("Project dependencies…").help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
+                            if ui.button("Portable project…").help(ui, HelpControl::PortableOpen).clicked() { self.portability.open = true; ui.close(); }
                             if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);

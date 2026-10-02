@@ -70,7 +70,7 @@ backup-and-reset operation instead of silently replacing them.
 
 Use **Help** or the active **F1** binding for focused-control explanations, accessible input, effective shortcuts and guided lessons. Hovered or focused controls include purpose and units; F1 remains available while editing text when it is bound to Help. Lessons observe renderer-confirmed steps and never replace a project or start audio automatically. Cancel lesson closes the guide only. Physical listening/controller checks are explicitly self-reported.
 
-The [offline manual](docs/manual.md) is generated from the same catalogue. This build has no Arrange timeline, piano-roll note editor, external audio recording, warp editor, automation lanes or plugin host. Native projects, pad-note capture, clip gain, history, mixer/FX and DJ preparation are implemented workflows.
+The [offline manual](docs/manual.md) is generated from the same catalogue. This build has no Arrange timeline, external audio recording, warp editor, automation lane editor or plugin host. Native projects, piano roll, pad-note capture, clip gain, history, mixer/FX and DJ preparation are implemented workflows.
 
 ## Play without files
 
@@ -83,8 +83,8 @@ Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F**
 Use **Project → Save project as…** to choose a `.omat` path. Native projects embed
 the session's media alongside clips/notes, instruments, mixer/effects, sampler
 banks, deck cues/loops/positions, selections and the crate/panel view. The current
-factory controller mapping schema is recorded; there is no editable mapping
-configuration to save in this build.
+controller mapping schema is recorded. Global hardware preferences and controller
+profiles remain local to each machine.
 
 **Project → Autosave and recovery…** shows separate recovery copies, including
 untitled sessions. Dirty edit state is normally journaled about every two seconds;
@@ -117,6 +117,27 @@ connections and DSP tails are transient. Default limits are 64 MiB metadata,
 256 embedded media entries and 1 GiB PCM; unsupported or corrupt projects are
 rejected without replacement. See the [project workflow evidence](docs/validation/issue-82-ui.md)
 and [file format and atomic save rules](docs/validation/issue-82-codec.md).
+
+**Project → Portable project…** lists every embedded sample, saved instrument,
+effect and sampler preset, including exact settings hashes and unavailable device
+identifiers. The application dependency catalogue and full distribution notices
+travel with the archive. Audio redistribution rights remain unverified. Inspect, select each
+original source to collect, then export to a new absolute `.ompack` path. Embedded
+PCM is always included; selected originals use relative SHA-256 filenames and
+duplicate source bytes occupy one entry. Original files and the current project's
+saved baseline stay intact. Selected original reads are limited to 1 GiB and the
+complete session/source payload to 3 GiB, with 64 MiB of manifest metadata.
+
+Review an archive, choose a new imported folder with an existing parent, then
+import. Checksums, embedded audio identities, device/preset identities and copied
+source audio are verified before atomic publication. Existing paths are refused;
+choose a new name after a conflict. Collected sources are rebound to that folder.
+**Open imported project** uses the unsaved-work guard and starts stopped. Missing
+effects bypass; unavailable instruments retain their state and notes, and clips
+with rendered audio remain playable. Uncollected missing originals remain visible
+in **Project dependencies…**. Cancel removes unpublished staging; a completed
+publication is reported even if cancellation arrives afterward.
+
 ## DJ library
 
 Imports, scans and native deck loads read embedded title, artist, BPM and key.

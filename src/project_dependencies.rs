@@ -77,6 +77,8 @@ pub(crate) struct Asset {
     pub availability: Availability,
     pub pcm_bytes: u64,
     pub frames: usize,
+    pub sample_rate: u32,
+    pub channels: u16,
     pub uses: usize,
 }
 #[derive(Clone, Debug)]
@@ -130,23 +132,9 @@ pub(crate) fn inspect(state: &State, media: &[Arc<Sample>], origins: &[Origin], 
             }
         } else { Availability::Builtin };
         known.insert(key.clone(), inventory.assets.len());
-        inventory.assets.push(Asset { key, name: sample.name.clone(), source, availability, pcm_bytes, frames: sample.frames(), uses });
+        inventory.assets.push(Asset { key, name: sample.name.clone(), source, availability, pcm_bytes, frames: sample.frames(), sample_rate: sample.sr, channels: sample.ch, uses });
     }
-    for (bank_index, bank) in state.banks.iter().enumerate() {
-        if let Some(settings) = &bank.settings {
-            for (slot, value) in settings.slots.iter().enumerate() {
-                if bank.media[slot].is_some() { continue; }
-                if let Some(source) = &value.source {
-                    let (source, file_hash) = match source {
-                        crate::sampler_bank::Source::Library { reference } => (format!("{:?}", reference.source), reference.content_hash),
-                        crate::sampler_bank::Source::Project { source, .. } => (format!("{source:?}"), None),
-                        crate::sampler_bank::Source::Factory { bank, slot } => (format!("Factory {} · slot {}", bank.name(), slot + 1), None),
-                    };
-                    inventory.missing.push(MissingSource { placement: format!("Bank {} · slot {}", bank_index + 1, slot + 1), source, file_hash });
-                }
-            }
-        }
-    }
+    inventory.missing = missing_sources(state);
     for (placement, effect) in state.tracks.iter().enumerate().flat_map(|(track, value)|
         value.fx.iter().enumerate().map(move |(slot, effect)| (format!("Track {} · device {}", track + 1, slot + 1), effect)))
         .chain(state.scene_fx.iter().enumerate().flat_map(|(scene, rack)| rack.iter().enumerate()
@@ -169,6 +157,28 @@ pub(crate) fn inspect(state: &State, media: &[Arc<Sample>], origins: &[Origin], 
         }
     }
     Ok(inventory)
+}
+
+/// List referenced sampler sources without embedded audio, without opening files.
+/// `state` is validated native state; returns every retained unplayable source.
+pub(crate) fn missing_sources(state: &State) -> Vec<MissingSource> {
+    let mut missing = Vec::new();
+    for (bank_index, bank) in state.banks.iter().enumerate() {
+        if let Some(settings) = &bank.settings {
+            for (slot, value) in settings.slots.iter().enumerate() {
+                if bank.media[slot].is_some() { continue; }
+                if let Some(source) = &value.source {
+                    let (source, file_hash) = match source {
+                        crate::sampler_bank::Source::Library { reference } => (format!("{:?}", reference.source), reference.content_hash),
+                        crate::sampler_bank::Source::Project { source, .. } => (format!("{source:?}"), None),
+                        crate::sampler_bank::Source::Factory { bank, slot } => (format!("Factory {} · slot {}", bank.name(), slot + 1), None),
+                    };
+                    missing.push(MissingSource { placement: format!("Bank {} · slot {}", bank_index + 1, slot + 1), source, file_hash });
+                }
+            }
+        }
+    }
+    missing
 }
 
 #[derive(Clone, Debug)]
