@@ -5,6 +5,11 @@ use std::time::{Duration, Instant};
 
 pub const REQUEST_BYTES: usize = 4096;
 pub const RESPONSE_BYTES: usize = 8192;
+// Reserve room for routing telemetry in the same8 KiB status frame, including
+// six-byte JSON escapes, maximal counters and the full128-byte request id.
+// Native titles and device names remain complete in the editor.
+pub const STATUS_MIDI_NAME_BYTES:usize=56;
+pub const STATUS_DECK_TITLE_BYTES:usize=232;
 pub const CLIENTS: usize = 8;
 
 #[derive(Clone, Copy)]

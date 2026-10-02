@@ -17,6 +17,7 @@ struct Event {
     epoch: u64,
     sequence: u64,
     safety: u64,
+    routing: u64,
     len: u16,
     bytes: [u8; EVENT_BYTES],
 }
@@ -26,6 +27,7 @@ impl Event {
             epoch,
             sequence,
             safety: 0,
+            routing: 0,
             len: bytes.len() as u16,
             bytes: [0; EVENT_BYTES],
         };
@@ -82,6 +84,7 @@ struct Shared {
     shutdown: AtomicBool,
     enabled: AtomicBool,
     counters: Arc<InputCounters>,
+    routing: Arc<super::routing::Shared>,
 }
 
 struct Rules {
@@ -211,7 +214,8 @@ impl InputSink {
         self.sequence = self.sequence.wrapping_add(1);
         let mut event = Event::new(epoch, self.sequence, bytes);
         event.safety = self.shared.performance.input_epoch();
-        let cc = self.rules.coalescible(bytes);
+        event.routing = self.shared.routing.generation.load(Acquire);
+        let cc = !self.shared.routing.explicit.load(Acquire) && self.rules.coalescible(bytes);
         if cc && self.pending_cc.same_pending_key(&event) {
             if self.pending_cc.publish(event) {
                 self.shared.counters.coalesced.fetch_add(1, Relaxed);
@@ -252,16 +256,18 @@ struct InputWorker {
     cached_cc: Option<Event>,
     cached_fifo: Option<Event>,
     source: u64,
+    sources: super::routing::Sources,
     map: MidiMap,
     cmd: CommandPort,
     log: Arc<Mutex<Vec<String>>>,
     learn: Arc<Mutex<Option<String>>>,
     shift: Arc<Mutex<[bool; 4]>>,
     name: String,
+    port_id: String,
 }
 impl InputWorker {
     fn reset(&mut self) {
-        self.cmd.release_midi_source(self.source);
+        self.shared.routing.release(self.sources,&self.cmd);
         *self.shift.lock() = [false; 4];
         self.shared.counters.resets.fetch_add(1, Relaxed);
     }
@@ -281,16 +287,20 @@ impl InputWorker {
             return reset;
         };
         if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety {
-            handle_msg(
-                event.bytes(),
-                self.source,
-                &self.map,
-                &self.cmd.for_input_epoch(event.safety),
-                &self.log,
-                &self.learn,
-                &self.shift,
-                &self.name,
-            );
+            let cmd=self.cmd.for_input_epoch(event.safety);
+            for frame in super::routing::packet::frames(event.bytes()) {
+                match frame {
+                    super::routing::packet::Frame::Musical(packet) => self.shared.routing.input(
+                        self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
+                            if packet.bytes().len()==3 && packet.channel().is_some() {
+                                let frame:[u8;3]=packet.bytes().try_into().unwrap();
+                                super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.learn,&self.shift,&self.name,allow_live);
+                            }
+                        }),
+                    super::routing::packet::Frame::Realtime(status) => handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.learn,&self.shift,&self.name),
+                    super::routing::packet::Frame::Malformed => self.shared.routing.malformed(),
+                }
+            }
             self.shared.counters.dispatched.fetch_add(1, Relaxed);
         } else {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
@@ -379,8 +389,11 @@ fn channel(
     log: Arc<Mutex<Vec<String>>>,
     learn: Arc<Mutex<Option<String>>>,
     name: String,
+    port_id:String,
     counters: Arc<InputCounters>,
-) -> (InputSink, InputWorker) {
+) -> std::io::Result<(InputSink, InputWorker)> {
+    let routing=cmd.midi_routing().clone();
+    let sources=routing.register(source,&name,&port_id)?;
     let (producer, consumer) = rtrb::RingBuffer::new(capacity);
     let shared = Arc::new(Shared {
         epoch: AtomicU64::new(0),
@@ -389,10 +402,11 @@ fn channel(
         shutdown: AtomicBool::new(false),
         enabled: AtomicBool::new(true),
         counters,
+        routing,
     });
     let rules = Rules::new(&map);
     let (pending_writer, pending_reader) = latest::channel();
-    (
+    Ok((
         InputSink {
             producer,
             shared: shared.clone(),
@@ -409,14 +423,16 @@ fn channel(
             cached_cc: None,
             cached_fifo: None,
             source,
+            sources,
             map,
             cmd,
             log,
             learn,
             shift: Arc::new(Mutex::new([false; 4])),
+            port_id,
             name,
         },
-    )
+    ))
 }
 
 pub(super) fn start(
@@ -457,7 +473,14 @@ pub(super) fn start_gated(
     enabled: bool,
     completed: impl FnOnce() + Send + 'static,
 ) -> std::io::Result<(InputSink, InputGuard)> {
-    let (sink, worker) = channel(EVENTS, source, map, cmd, log, learn, name, counters);
+    let id=name.clone();
+    start_on_port(source,map,cmd,log,learn,name,id,counters,enabled,completed)
+}
+pub(super) fn start_on_port(
+    source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,learn:Arc<Mutex<Option<String>>>,
+    name:String,id:String,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
+) -> std::io::Result<(InputSink,InputGuard)> {
+    let (sink, worker) = channel(EVENTS, source, map, cmd, log, learn, name, id, counters)?;
     sink.shared.enabled.store(enabled, Release);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()
@@ -473,6 +496,12 @@ pub(super) fn start_gated(
             worker: Some(worker),
         },
     ))
+}
+impl Drop for InputWorker {
+    fn drop(&mut self) {
+        self.shared.routing.release(self.sources,&self.cmd);
+        self.shared.routing.unregister(self.source);
+    }
 }
 
 #[cfg(test)]

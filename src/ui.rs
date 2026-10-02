@@ -33,6 +33,7 @@ mod cue_editor;
 mod grid_editor;
 mod piano_roll;
 mod midi_files;
+mod midi_routing;
 mod play_time;
 mod project;
 mod undo;
@@ -745,11 +746,15 @@ impl App {
         }
         self.help_panel(ctx);
         if self.midi_open {
-            egui::Window::new("midi").show(ctx, |ui| {
+            egui::Window::new("midi").vscroll(true).max_height((ctx.screen_rect().height()-64.0).max(200.0)).show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
                 if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
-                    if let crate::engine::midi::Retry::Performance(error) = self.engine.midi.retry_connections() {
-                        self.submission_error.set(Some(crate::engine::SubmissionError::Performance(error)));
+                    match self.engine.midi.retry_connections() {
+                        crate::engine::midi::Retry::Queued | crate::engine::midi::Retry::AlreadyRunning => {
+                            if self.engine.midi.routing_status().is_some(){self.settings.routing_pending=true;}
+                        }
+                        crate::engine::midi::Retry::Performance(error) => self.submission_error.set(Some(crate::engine::SubmissionError::Performance(error))),
+                        crate::engine::midi::Retry::Unavailable => {},
                     }
                 }
                 if busy {
@@ -766,6 +771,7 @@ impl App {
                 for d in &self.snap.midi {
                     ui.label(d);
                 }
+                self.midi_routing_status_ui(ui,ctx);
             });
         }
         self.preferences_ui(ctx);

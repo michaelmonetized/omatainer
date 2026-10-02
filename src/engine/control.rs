@@ -75,6 +75,7 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    midi_routing: std::sync::Arc<super::midi::routing::Shared>,
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
     audio_offline: std::sync::atomic::AtomicBool,
@@ -162,6 +163,9 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    pub(crate) fn midi_routing(&self) -> std::sync::Arc<super::midi::routing::Shared> {
+        self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::routing::Shared::default()),|s|s.midi_routing.clone())
+    }
     pub(super) fn performance(&self) -> &super::performance::Handle { &self.performance }
     pub fn len(&self) -> usize {
         self.receiver.len()
@@ -389,6 +393,7 @@ pub struct QueuePressure {
 }
 
 impl CommandPort {
+    pub(crate) fn midi_routing(&self) -> &std::sync::Arc<super::midi::routing::Shared> { &self.shared.midi_routing }
     pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
     /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
     pub(crate) fn support_event(&self,code:crate::support::Code,failure:Option<crate::support::FailureClass>) {
@@ -446,6 +451,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
             audio_offline: std::sync::atomic::AtomicBool::new(false),
@@ -616,6 +622,9 @@ impl CommandPort {
         }
         if matches!(&command, Command::FxSelect { slot } | Command::FxWet { slot, .. } if *slot >= 3)
         {
+            return fail(SubmissionError::InvalidTarget);
+        }
+        if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::TRACKS || *ch>15 || *note>127 || *vel>127) {
             return fail(SubmissionError::InvalidTarget);
         }
         if !super::midi_edit::qualify_legacy_notes(&mut command) {
@@ -804,6 +813,7 @@ fn project_release(command: &Command) -> bool {
         Command::LibraryFence { .. }
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
+            | Command::RoutedNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
@@ -858,10 +868,13 @@ mod gui_routing_tests {
 fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
     match *command {
         Command::LiveNoteOn {
+            source,ch,note,vel,
+        } | Command::RoutedNoteOn {
             source,
             ch,
             note,
             vel,
+            ..
         } => Some((
             GateKey::Live {
                 source,
@@ -1128,6 +1141,7 @@ fn history_monitoring(command: &Command) -> bool {
     matches!(
         command,
         Command::LiveNoteOn { .. }
+            | Command::RoutedNoteOn { .. }
             | Command::LiveNoteOff { .. }
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }

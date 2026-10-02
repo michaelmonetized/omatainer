@@ -870,6 +870,78 @@ Enter explicitly allowed inputs for Selected policy. Missing names remain missin
 
 Workflow: Connect a controller.
 
+### Explicit track MIDI routing
+
+Saved studio/performance profile
+
+In Preferences, choose exact input/output ports and track mappings. Preview and Cancel preserve live routing; Apply and save requests the saved routing. Inspect the applied generation and errors in MIDI. The input policy must also permit each input. Leaving explicit routing off keeps established controller maps and selected-track keyboard notes.
+
+Workflow: Connect a controller.
+
+### MIDI destination track
+
+One route per track1–8
+
+Assign each physical port/channel to a fixed track independently of browsing. Several inputs may feed a track and the same input may feed several tracks. Held notes release their original destination. Track routing belongs to the active profile.
+
+Workflow: Connect a controller.
+
+### MIDI route device and port
+
+Exact case-sensitive name and optional backend id
+
+Choose a discovered port or enter its exact name. Use a backend id to disambiguate identical names. Missing or ambiguous outputs are refused. Configured or active input devices/clients cannot also be an output destination. Select controller inputs explicitly and deselect the output device in Input policy. No first-port fallback is used.
+
+Workflow: Connect a controller.
+
+### MIDI route channels
+
+Input channel mask; output1–16 or Preserve
+
+Choose accepted input channels1–16 and optionally rewrite outgoing channel messages. Preserve retains each source channel; complete SysEx has no channel and is not rewritten.
+
+Workflow: Connect a controller.
+
+### Monitor routed MIDI notes
+
+Internal instrument monitoring
+
+Play accepted notes on this route's fixed internal track. Bank/program, controllers, pressure, bend and SysEx are external MIDI messages; internal monitor does not interpret them as synth controls.
+
+Workflow: Connect a controller.
+
+### Live MIDI thru
+
+Explicit external output only
+
+Send accepted live messages to the route's external port. Controller mappings remain separate. Configured and active input/output device overlap is refused, including controller-map inputs. Review physical MIDI cable/thru connections separately; packet equality cannot distinguish a returned echo from a legitimate repeated note.
+
+Workflow: Connect a controller.
+
+### MIDI route message filters
+
+Notes, CC, bank, program, pressure, bend, SysEx
+
+Filter each type independently. CC0/32 use Bank rather than ordinary CC. Pressure includes polyphonic and channel pressure. SysEx is off by default and accepts complete7-bit-data F0…F7 packets of at most256 bytes; fragmented or larger packets are refused. External clip output plays source notes and channel lanes before the internal arpeggiator/audio mix. Output has2048 queue slots and at most256 renderer messages per audio block; overload resets outputs and refuses that clip until a new launch, clip edit or routing change. Concurrent owners at one port/channel/pitch share one physical gate, retaining the first onset velocity until every owner releases. Sustain combines active owners; disconnect/clip stop releases only its owner. Other channel controls use received order when tracks share an output channel. Past controllers are not chased after a seek/route change.
+
+Workflow: Connect a controller.
+
+### Cancel pending MIDI routing
+
+Before publication claim
+
+Cancel keeps the previous applied routing when it wins before the worker's commit claim. A backend open/send already in progress must return before its receipt. A change that won the claim reports Applied; closing the panel does not undo a committed route.
+
+Workflow: Connect a controller.
+
+### All notes off / reset MIDI outputs
+
+Explicit output-owner reset
+
+Request all-sound-off, all-notes-off, reset controllers, centered bend and zero channel pressure on every connected output channel. Queue overflow and route/device changes also invalidate older outgoing events and request reset. Reset also stops the currently running external clip streams until relaunch, clip edit or routing apply; internal audio transport remains running. Backend errors report unconfirmed reset; this is not proof of physical hardware silence.
+
+Workflow: Stop and recover.
+
 ### Library locations
 
 One local path per line
@@ -2002,7 +2074,7 @@ Workflow: Connect a controller.
 
 Background connection request
 
-Discover current ports and retry the requested input policy. Busy means work is pending; missing/failed ports remain explicit. Keyboard and mouse remain available.
+Discover current ports and retry the requested input policy, then rescan saved output routing. Vanished outputs reset/retire and remain unavailable until an exact reconnect. No automatic hotplug detection is claimed. Busy means work is pending; missing/failed ports remain explicit. Keyboard and mouse remain available.
 
 Workflow: Connect a controller.
 
