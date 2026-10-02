@@ -3,8 +3,9 @@ use super::*;
 #[derive(Clone, Copy)]
 pub(super) struct ClipGainEdit {
     pub track: u8,
-    pub scene: u8,
+    pub scene: u16,
     pub value: f32,
+    pub target: Option<(crate::engine::session::Reference,crate::engine::session::Reference)>,
 }
 
 impl App {
@@ -12,6 +13,11 @@ impl App {
         let Some(mut edit) = self.clip_gain_edit else {
             return;
         };
+        if let Some((track,scene))=edit.target {
+            if self.snap.session.as_ref().is_none_or(|layout| !layout.resolves(crate::engine::session::Axis::Track,edit.track as usize,track) || !layout.resolves(crate::engine::session::Axis::Scene,edit.scene as usize,scene)) {
+                self.clip_gain_edit=None;self.status="Clip gain target was deleted or replaced; reopen its gain control.".into();return;
+            }
+        }
         let mut open = true;
         let mut changed = false;
         let name = self
@@ -57,14 +63,10 @@ impl App {
                     }
                 });
             });
-        if changed
-            && !self.submit(Command::ClipGain {
-                track: edit.track,
-                scene: edit.scene,
-                value: edit.value,
-            })
-        {
-            return;
+        if changed {
+            let command=Command::ClipGain {track:edit.track,scene:edit.scene,value:edit.value};
+            let command=match edit.target { Some((track,scene))=>Command::SessionControl(crate::engine::session::Scoped {track:Some((edit.track as usize,track)),scene:Some((edit.scene as usize,scene)),command:Box::new(command)}),None=>command };
+            if !self.submit(command) {return;}
         }
         self.clip_gain_edit = open.then_some(edit);
     }
@@ -76,10 +78,33 @@ mod tests {
     use crate::ui::test_support::{label_center, Fixture};
 
     #[test]
+    fn open_gain_editor_keeps_reordered_identity_and_closes_on_deletion() {
+        use crate::engine::session::{Action, Axis, Request};
+        let mut gui = crate::ui::piano_roll::tests::Gui::new();
+        let track = gui.rt.session.reference(Axis::Track, 2).unwrap();
+        let scene = gui.rt.session.reference(Axis::Scene, 7).unwrap();
+        gui.app.clip_gain_edit = Some(ClipGainEdit {track:2,scene:7,value:1.0,target:Some((track,scene))});
+        for action in [Action::Move {axis:Axis::Track,id:track.id,position:0}, Action::Delete {axis:Axis::Track,id:track.id}] {
+            let deleting = matches!(action, Action::Delete {..});
+            let (request, ack) = Request::metadata(&gui.rt.session, gui.app.engine.undo.checkpoint().epoch, action).unwrap();
+            gui.app.engine.send(Command::SessionEdit(request)).unwrap();
+            for _ in 0..4 {gui.frame(vec![]);}
+            assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
+            if deleting {
+                assert!(gui.app.clip_gain_edit.is_none());
+                assert!(gui.app.status.contains("deleted or replaced"));
+            } else {
+                assert_eq!(gui.app.clip_gain_edit.unwrap().target, Some((track,scene)));
+                assert_eq!(gui.rt.session.track_order[0], 2);
+            }
+        }
+    }
+
+    #[test]
     fn percent_display_rounding_does_not_add_idle_history_and_one_undo_restores_gain() {
         use egui::accesskit::{Action, ActionData, ActionRequest};
         let mut fixture = Fixture::new(64);
-        fixture.app.clip_gain_edit = Some(ClipGainEdit {track:0,scene:0,value:1.0});
+        fixture.app.clip_gain_edit = Some(ClipGainEdit {track:0,scene:0,value:1.0,target:None});
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
         let mut time = 0.0;

@@ -3,11 +3,11 @@
 //! or swaps an owned graph at a block boundary; it never waits for that worker.
 mod capture;
 mod model;
-mod prepare;
+pub(super) mod prepare;
 use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 pub use model::{State, STATE_VERSION};
-pub(crate) use model::SavedClip;
+pub(crate) use model::{SavedClip, Track, Synth, Effect};
 pub(crate) use model::{MAX_NOTES_PER_CLIP, MAX_TOTAL_NOTES};
 pub use prepare::Prepared;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
@@ -603,3 +603,9 @@ impl RtEngine {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+pub(crate) fn maximum_for_test() -> Prepared {
+    let (state, media) = tests::session_tests::large_state();
+    Prepared::from_state(state,media,48000).unwrap()
+}

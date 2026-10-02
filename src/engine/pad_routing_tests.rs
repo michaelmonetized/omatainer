@@ -16,7 +16,7 @@ fn engine() -> RtEngine {
         track.fx.slots.clear();
         track.gain = 1.0;
         track.pan = 0.0;
-        track.clips = std::array::from_fn(|_| Clip::empty());
+        track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
     }
     for chain in &mut rt.scene_fx { chain.slots.clear(); }
     rt.fx_wet = [0.0; 3];

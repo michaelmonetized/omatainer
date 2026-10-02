@@ -51,7 +51,7 @@ fn prepare(rt: &mut RtEngine, bpm: f32, quant: f32, instrument: Instrument) {
     } else {
         2
     };
-    track.clips = std::array::from_fn(|_| Clip::empty());
+    track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
     let pitch = if matches!(instrument, Instrument::Drums) {
         36
     } else {

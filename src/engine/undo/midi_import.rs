@@ -72,7 +72,7 @@ impl RtEngine {
             );
             self.undo.append(Patch::Clip {
                 track: t as u8,
-                scene: s as u8,
+                scene: s as u16,
                 value,
                 spare_notes: std::mem::take(&mut target.spare_notes),
                 reserved_midi_bytes: target.reserved_lane_bytes,

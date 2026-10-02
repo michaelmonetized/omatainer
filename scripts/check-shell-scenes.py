@@ -40,7 +40,7 @@ ShellRoot {
   }
   Component.onCompleted: {
     test.receipts = [JSON.parse(svc.scene(1)), JSON.parse(svc.scene(4)), JSON.parse(svc.scene(8))]
-    var invalid = [0, 9, -1, 1.5, NaN, Infinity, true, false, null, undefined,
+    var invalid = [0, 513, -1, 1.5, NaN, Infinity, true, false, null, undefined,
                    "", "1.0", "1e0", "01", "2; stop", [], {}, "99999999999999999999999999"]
     for (var i = 0; i < invalid.length; ++i)
       test.receipts = test.receipts.concat([JSON.parse(svc.scene(invalid[i]))])
@@ -78,7 +78,7 @@ ShellRoot {
             assert [x["status"] for x in data["receipts"]] == ["queued"] * 3 + ["rejected"] * 18, data
             invalid = [x for x in data["results"] if x["status"] == "rejected"]
             assert len(invalid) == 18 and all(x["accepted"] is False for x in invalid), data
-            assert all("integer from 1 through 8" in x["error"] for x in invalid), data
+            assert all("integer from 1 through 512" in x["error"] for x in invalid), data
             accepted = [x for x in data["results"] if x["status"] == "accepted"]
             assert [x["arguments"] for x in accepted] == [["1"], ["4"], ["8"]], data
             assert all(x["applied"] is None for x in accepted), data
@@ -86,7 +86,7 @@ ShellRoot {
             # Exercise the public IpcHandler rather than only a local QML call.
             public = ipc("omatainer", "scene", "2")
             assert public["status"] == "queued" and public["arguments"] == ["2"], public
-            for value in ["0", "9", "-1", "1.5", "1e0", "true", "", "2; stop"]:
+            for value in ["0", "513", "-1", "1.5", "1e0", "true", "", "2; stop"]:
                 rejected = ipc("omatainer", "scene", value)
                 assert rejected["status"] == "rejected" and rejected["accepted"] is False, rejected
             deadline = time.monotonic() + 5
@@ -121,9 +121,9 @@ def main():
     parser.add_argument("--runtime", type=Path)
     args = parser.parse_args()
     assert bool(args.cli) == bool(args.runtime), "--cli and --runtime must be used together"
-    engine_count = re.search(r"pub const SCENES: usize = (\d+);", (ROOT / "src/engine/mod.rs").read_text())
+    engine_count = re.search(r"pub const MAX_SCENES: usize = (\d+);", (ROOT / "src/engine/session.rs").read_text())
     shell_count = re.search(r"readonly property int sceneCount: (\d+)", (ROOT / "plugin/Service.qml").read_text())
-    assert engine_count and shell_count and engine_count[1] == shell_count[1] == "8"
+    assert engine_count and shell_count and engine_count[1] == shell_count[1] == "512"
     with tempfile.TemporaryDirectory(prefix="omatainer-shell-scenes-") as directory:
         fixture = Path(directory)
         fixture.chmod(0o700)

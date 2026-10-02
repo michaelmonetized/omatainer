@@ -1,7 +1,7 @@
 //! One output owner performs discovery, connection, send, reset and teardown.
 //! GUI requests and renderer delivery never call a MIDI backend.
 use super::{control::*, Endpoint, Routing};
-use crate::engine::{performance::WorkPermit, CommandPort, TRACKS};
+use crate::engine::{performance::WorkPermit, CommandPort, session::MAX_TRACKS as TRACKS};
 use arc_swap::ArcSwap;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use midir::{MidiInput, MidiOutput, MidiOutputConnection, MidiOutputPort};
@@ -254,6 +254,7 @@ impl<C> Active<C> {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct GateKey {
+    track: u8,
     owner: Owner,
     port: usize,
     channel: u8,
@@ -261,6 +262,7 @@ struct GateKey {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct PedalKey {
+    track: u8,
     owner: Owner,
     port: usize,
     channel: u8,
@@ -517,6 +519,7 @@ impl<B: Backend> Worker<B> {
             self.generation = r.generation;
             self.epoch = shared.output_epoch.fetch_add(1, AcqRel) + 1;
             live.config = r.config.clone();
+            shared.bind_identity(&r.config);
             shared.mask.store(r.config.output_mask(), Release);
             shared.explicit.store(r.config.enabled, Release);
             shared.generation.store(r.generation, Release);
@@ -562,6 +565,9 @@ impl<B: Backend> Worker<B> {
             }
             return;
         }
+        if !self.shared.target_current(event.track) {
+            self.shared.counts[usize::from(event.track)].filtered.fetch_add(1, Relaxed); return;
+        }
         if !route.filter.accepts(event.packet.bytes()) {
             self.shared.counts[usize::from(event.track)]
                 .filtered
@@ -586,6 +592,7 @@ impl<B: Backend> Worker<B> {
         if packet.bytes()[0] & 0xf0 == 0xb0 && packet.bytes()[1] == 64 {
             let channel = packet.channel().unwrap();
             let key = PedalKey {
+                track: event.track,
                 owner: event.owner,
                 port: index,
                 channel,
@@ -613,6 +620,7 @@ impl<B: Backend> Worker<B> {
         if let Some((note, _, on)) = packet.note() {
             let channel = packet.channel().unwrap();
             let key = GateKey {
+                track: event.track,
                 owner: event.owner,
                 port: index,
                 channel,
@@ -712,7 +720,8 @@ impl<B: Backend> Worker<B> {
         }
     }
     fn clear_owned(&mut self, track: u8, index: usize, clear: Clear) {
-        let matches = |owner: Owner| match clear {
+        let matches = |owner: Owner, owner_track: u8| match clear {
+            Clear::Track => owner_track == track,
             Clear::Clip => {
                 matches!(owner,Owner::Clip {track:owner,..}|Owner::ClipLane(owner) if owner==track)
             }
@@ -722,7 +731,7 @@ impl<B: Backend> Worker<B> {
         self.retire.extend(
             self.gates
                 .keys()
-                .filter(|key| key.port == index && matches(key.owner))
+                .filter(|key| key.port == index && matches(key.owner, key.track))
                 .copied(),
         );
         let mut released = [[false; 128]; 16];
@@ -736,7 +745,7 @@ impl<B: Backend> Worker<B> {
         }
         let mut pedals = [false; 16];
         self.pedals.retain(|key, _| {
-            let remove = key.port == index && matches(key.owner);
+            let remove = key.port == index && matches(key.owner, key.track);
             if remove {
                 pedals[usize::from(key.channel)] = true;
             }
@@ -765,7 +774,7 @@ impl<B: Backend> Worker<B> {
                 );
             }
         }
-        if matches!(clear, Clear::Clip) {
+        if matches!(clear, Clear::Clip | Clear::Track) {
             self.active[index].clip_channels[usize::from(track)] = 0;
         }
     }

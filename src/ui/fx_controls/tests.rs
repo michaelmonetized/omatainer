@@ -129,7 +129,7 @@ fn fixed_effect_notes_and_scene_arp_availability_are_visible() {
         let output = render(&mut f.app, &ctx, 0.0, vec![]);
         crate::ui::test_support::label_center(&output, id.fixed_settings().unwrap());
     }
-    f.rt.fx_view = 100;
+    f.rt.fx_view = crate::engine::session::SCENE_FX_BASE;
     refresh(&mut f);
     let output = render(&mut f.app, &ctx, 1.0, vec![]);
     assert!(!output.shapes.iter().any(

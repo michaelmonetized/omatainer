@@ -2,18 +2,20 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 6;
+pub const STATE_VERSION: u32 = 7;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
 pub const MAX_TOTAL_NOTES: usize = 65536;
 pub const MAX_TEXT_BYTES: usize = 4096;
-pub const MAX_MEDIA_REFS: usize = TRACKS * (SCENES + 6) + DECKS + 2 + MAX_BANKS * 16;
+pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6) + DECKS + 2 + MAX_BANKS * 16;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default)]
+    pub session: Option<session::Layout>,
     pub bpm: f32,
     #[serde(default)]
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
@@ -30,9 +32,9 @@ pub struct State {
     pub selected_scene: usize,
     pub selected_deck: usize,
     pub fx_view: i16,
-    pub tracks: [Track; TRACKS],
+    pub tracks: Vec<Track>,
     pub decks: [Deck; DECKS],
-    pub scene_fx: [Vec<Effect>; SCENES],
+    pub scene_fx: Vec<Vec<Effect>>,
     pub fx_kind: [FxKind; 3],
     pub fx_wet: [f32; 3],
     pub sampler_bank: usize,
@@ -47,6 +49,8 @@ pub struct State {
 #[serde(deny_unknown_fields)]
 struct StateWire {
     version: u32,
+    #[serde(default)]
+    session: Option<session::Layout>,
     bpm: f32,
     #[serde(default)]
     conductor: Option<Arc<midi_data::Conductor>>,
@@ -63,9 +67,9 @@ struct StateWire {
     selected_scene: usize,
     selected_deck: usize,
     fx_view: i16,
-    tracks: [Track; TRACKS],
+    tracks: Vec<Track>,
     decks: [Deck; DECKS],
-    scene_fx: [Vec<Effect>; SCENES],
+    scene_fx: Vec<Vec<Effect>>,
     fx_kind: [FxKind; 3],
     fx_wet: [f32; 3],
     sampler_bank: usize,
@@ -79,9 +83,13 @@ impl<'de> Deserialize<'de> for State {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
+        let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 7 && raw.get("session").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain session identity metadata")); }
+        if version == 7 && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Version 7 requires session identity metadata")); }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            session: wire.session,
             bpm: wire.bpm,
             conductor: wire.conductor,
             beat: wire.beat,
@@ -116,7 +124,7 @@ impl<'de> Deserialize<'de> for State {
 #[serde(deny_unknown_fields)]
 pub struct Track {
     pub name: String,
-    pub clips: [SavedClip; SCENES],
+    pub clips: Vec<SavedClip>,
     pub scene_bus: usize,
     // A remembered launch is an explicit resume target. Opening never emits
     // notes or auto-starts transport; Play resumes these targets together.
@@ -151,7 +159,7 @@ pub struct SavedClip {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Launch {
-    pub scene: u8,
+    pub scene: u16,
     pub start_beat: f64,
     pub looping: bool,
 }
@@ -231,6 +239,7 @@ impl State {
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
             conductor: None,
             bpm: 124.0,
             beat: 0.0,
@@ -246,9 +255,9 @@ impl State {
             selected_scene: 0,
             selected_deck: 0,
             fx_view: -1,
-            tracks: std::array::from_fn(|_| Track {
+            tracks: (0..TRACKS).map(|_| Track {
                 name: String::new(),
-                clips: std::array::from_fn(|_| SavedClip {
+                clips: (0..SCENES).map(|_| SavedClip {
                     lanes: None,
                     region: None,
                     kind: ClipKind::Empty,
@@ -257,7 +266,7 @@ impl State {
                     notes: Vec::new(),
                     gain: 1.0,
                     audio: None,
-                }),
+                }).collect(),
                 scene_bus: 0,
                 launch: None,
                 gain: 0.8,
@@ -275,7 +284,7 @@ impl State {
                 eq: [1.0; 3],
                 drums: [0; 6],
                 fx: Vec::new(),
-            }),
+            }).collect(),
             decks: std::array::from_fn(|_| Deck {
                 audio: None,
                 pos: 0.0,
@@ -303,7 +312,7 @@ impl State {
                 pitch_range: 0,
                 sync_bpm: 124.0,
             }),
-            scene_fx: std::array::from_fn(|_| Vec::new()),
+            scene_fx: (0..SCENES).map(|_| Vec::new()).collect(),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
             fx_wet: [0.0; 3],
             sampler_bank: 0,
@@ -320,8 +329,24 @@ impl State {
         }
     }
 
+    /// Check before constructing delay/reverb buffers. PCM has its own loader limits.
+    pub(crate) fn validate_processor_storage(&self, sr: u32) -> Result<(), String> {
+        const LIMIT: usize = session::MAX_PROCESSOR_BYTES;
+        let bytes = self.tracks.iter().flat_map(|t| &t.fx).chain(self.scene_fx.iter().flatten())
+            .map(|effect| fx::FxSlot::required_storage(effect.id, sr as f32)).sum::<usize>();
+        if bytes > LIMIT { return Err("Session processor storage exceeds 256 MiB; remove effects or use a lower output rate".into()); }
+        Ok(())
+    }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
+        if self.tracks.is_empty() || self.tracks.len() > session::MAX_TRACKS || self.scene_fx.is_empty() || self.scene_fx.len() > session::MAX_SCENES || self.tracks.iter().any(|t| t.clips.len() != self.scene_fx.len()) { return fail("session dimensions (1–128 tracks, 1–512 scenes)"); }
+        if self.version == 7 && self.session.is_none() {return fail("missing session identity metadata");}
+        if self.version < 7 && (self.tracks.len() != TRACKS || self.scene_fx.len() != SCENES || self.session.is_some()) { return fail("legacy session dimensions or identity"); }
+        if let Some(layout) = &self.session {
+            layout.validate()?;
+            if layout.tracks.len() != self.tracks.len() || layout.scenes.len() != self.scene_fx.len() { return fail("session identity and storage disagree"); }
+            if !layout.tracks[self.selected_track.min(layout.tracks.len()-1)].active || !layout.scenes[self.selected_scene.min(layout.scenes.len()-1)].active { return fail("inactive session focus"); }
+        }
         if !(1..=STATE_VERSION).contains(&self.version) {
             return Err(format!(
                 "unsupported project state version {}",
@@ -335,12 +360,12 @@ impl State {
             || !unit(self.xfader_curve)
             || !finite_range(self.master as f64, 0.0, 1.5)
             || !unit(self.cue_mix)
-            || self.selected_track >= TRACKS
-            || self.selected_scene >= SCENES
+            || self.selected_track >= self.tracks.len()
+            || self.selected_scene >= self.scene_fx.len()
             || self.selected_deck >= DECKS
             || !(self.fx_view == -1
-                || (0..TRACKS as i16).contains(&self.fx_view)
-                || (100..100 + SCENES as i16).contains(&self.fx_view))
+                || (0..self.tracks.len() as i16).contains(&self.fx_view)
+                || (if self.version < 7 {100} else {session::SCENE_FX_BASE} .. if self.version < 7 {100} else {session::SCENE_FX_BASE} + self.scene_fx.len() as i16).contains(&self.fx_view))
             || self.fx_wet.iter().any(|v| !unit(*v))
         {
             return fail("timing, view or mixer controls");
@@ -362,7 +387,7 @@ impl State {
         let mut note_ids = std::collections::HashSet::new();
         for track in &self.tracks {
             if !text_ok(&track.name)
-                || track.scene_bus >= SCENES
+                || track.scene_bus >= self.scene_fx.len()
                 || track.kind > 4
                 || !valid_synth(track.synth)
                 || !finite_range(track.gain as f64, 0.0, 1.5)
@@ -374,7 +399,7 @@ impl State {
                 return fail("track controls or media reference");
             }
             if let Some(launch) = track.launch {
-                if launch.scene as usize >= SCENES
+                if launch.scene as usize >= self.scene_fx.len()
                     || !finite_range(launch.start_beat, -1.0e12, 1.0e12)
                 {
                     return fail("clip resume target");

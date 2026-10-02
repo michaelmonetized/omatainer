@@ -1,13 +1,13 @@
 //! Typed schema for every shipped IPC opcode; conversion never wraps a target.
-use crate::engine::{Command, DECKS, SCENES};
+use crate::engine::{Command, DECKS, session::MAX_SCENES as SCENES};
 use anyhow::Context;
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
 macro_rules! index {
-    ($type:ident, $count:ident, $field:literal) => {
+    ($type:ident, $count:ident, $field:literal, $width:ty) => {
         #[derive(Clone, Copy, Debug)]
-        pub(crate) struct $type(u8);
+        pub(crate) struct $type($width);
         impl<'de> Deserialize<'de> for $type {
             fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 use serde::de::Error;
@@ -23,13 +23,13 @@ macro_rules! index {
                 if value >= $count as u64 {
                     return Err(D::Error::custom(message()));
                 }
-                Ok(Self(value as u8))
+                Ok(Self(value as $width))
             }
         }
     };
 }
-index!(DeckIndex, DECKS, "deck");
-index!(SceneIndex, SCENES, "n");
+index!(DeckIndex, DECKS, "deck", u8);
+index!(SceneIndex, SCENES, "n", u16);
 
 fn confirmed<'de, D: Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
     use serde::de::Error;
@@ -70,6 +70,10 @@ impl Operation {
         Ok(serde_json::from_value(Value::Object(object))?)
     }
 
+    pub fn validate_session(&self, commands: &crate::engine::CommandPort) -> anyhow::Result<()> {
+        if let Self::Scene { n } = self { anyhow::ensure!(commands.session_scene_exists(n.0 as usize), "n must be a zero-based integer identifying an active scene from 0 through {}", commands.session_scene_count().saturating_sub(1)); }
+        Ok(())
+    }
     pub fn command(self) -> Option<Command> {
         Some(match self {
             Self::Ping {} | Self::Status {} | Self::Follow {} | Self::ReloadTheme {} => return None,

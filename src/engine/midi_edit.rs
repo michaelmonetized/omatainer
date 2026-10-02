@@ -10,8 +10,10 @@ use std::sync::{
 /// GUI selection is intentionally separate from this persisted musical data.
 #[derive(Clone, Debug)]
 pub(crate) struct Document {
+    pub track_identity: Option<super::session::Reference>,
+    pub scene_identity: Option<super::session::Reference>,
     pub track: u8,
-    pub scene: u8,
+    pub scene: u16,
     pub epoch: u64,
     pub kind: super::ClipKind,
     pub name: String,
@@ -24,7 +26,7 @@ impl Document {
     pub fn capture(
         captured: super::project::Captured,
         track: u8,
-        scene: u8,
+        scene: u16,
     ) -> Result<Arc<Self>, String> {
         let clip = captured
             .state
@@ -36,6 +38,8 @@ impl Document {
             return Err("This slot contains audio; choose an empty or MIDI clip".into());
         }
         Ok(Arc::new(Self {
+            track_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(super::session::Axis::Track, track as usize)),
+            scene_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(super::session::Axis::Scene, scene as usize)),
             track,
             scene,
             epoch: captured.checkpoint.epoch,
@@ -134,6 +138,8 @@ impl Request {
         notes.shrink_to_fit();
         name.shrink_to_fit();
         let next = Arc::new(Document {
+            track_identity: baseline.track_identity,
+            scene_identity: baseline.scene_identity,
             track: baseline.track,
             scene: baseline.scene,
             epoch: baseline.epoch,
@@ -180,6 +186,7 @@ fn valid_note(note: &super::MidiNote) -> bool {
 pub(super) fn reject_retired(mut command: &super::Command) {
     loop {
         match command {
+            super::Command::SessionEdit(request) => { request.ack.reject(); return; }
             super::Command::MidiImport(request) => { request.ack.reject(); return; }
             super::Command::MidiEdit(request) => {
                 request.ack.reject();
@@ -231,6 +238,8 @@ impl super::RtEngine {
             return false;
         };
         baseline.epoch == self.undo.checkpoint().epoch
+            && baseline.track_identity.is_none_or(|r| self.session.resolves(super::session::Axis::Track, baseline.track as usize, r))
+            && baseline.scene_identity.is_none_or(|r| self.session.resolves(super::session::Axis::Scene, baseline.scene as usize, r))
             && !self.recording_clip_held(baseline.track as usize, baseline.scene as usize)
             && clip.kind == baseline.kind
             && clip.kind != super::ClipKind::Audio
@@ -258,7 +267,7 @@ impl super::RtEngine {
             .playing
             .or(self.tracks[t].project_resume)
             .map(|p| p.scene)
-            == Some(s as u8)
+            == Some(s as u16)
         {
             self.tracks[t].release_clip_notes();
         }
@@ -297,6 +306,7 @@ pub(super) fn initialize() -> Result<(), String> {
 #[serde(transparent)]
 pub(crate) struct NoteId([u64; 2]);
 impl NoteId {
+    pub(super) fn words(self) -> [u64; 2] { self.0 }
     pub fn new() -> Self {
         if NAMESPACE.get().is_none() && initialize().is_err() {
             return Self::default();
@@ -473,9 +483,11 @@ pub(super) fn reject_legacy_fields(state: &serde_json::Value) -> Result<(), &'st
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn document(rt: &super::super::RtEngine, track: u8, scene: u8) -> Arc<Document> {
+    fn document(rt: &super::super::RtEngine, track: u8, scene: u16) -> Arc<Document> {
         let clip = &rt.tracks[track as usize].clips[scene as usize];
         Arc::new(Document {
+            track_identity: rt.session.reference(super::super::session::Axis::Track, track as usize),
+            scene_identity: rt.session.reference(super::super::session::Axis::Scene, scene as usize),
             track,
             scene,
             epoch: rt.undo.checkpoint().epoch,

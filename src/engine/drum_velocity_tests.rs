@@ -10,7 +10,7 @@ fn engine() -> RtEngine {
     rt.quant = 0.0;
     rt.tracks[0].gain = 1.0;
     rt.tracks[0].fx.slots.clear();
-    rt.tracks[0].clips = std::array::from_fn(|_| Clip::empty());
+    rt.tracks[0].clips = (0..SCENES).map(|_| Clip::empty()).collect();
     rt
 }
 

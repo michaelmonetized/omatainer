@@ -145,7 +145,7 @@ impl Lesson {
             (Topic::Recording, 4) => self.target.is_some_and(|target| {
                 snap.tracks
                     .get(target.track)
-                    .is_some_and(|t| t.playing_scene == target.scene as i8 && !t.clip_pending)
+                    .is_some_and(|t| t.playing_scene == target.scene as i16 && !t.clip_pending)
             }),
             (Topic::Editing, 0) => self.target.is_some_and(|target| {
                 clip(snap, target).is_some_and(|c| c.kind != 0)

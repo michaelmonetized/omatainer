@@ -194,7 +194,7 @@ fn apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons() {
                     [0x90 | track, 0x35 + scene, 127]
                 };
                 assert!(
-                    matches!(observe(&map, &address).as_slice(), [Command::LaunchClip {track: t, scene: s}] if *t == track && *s == scene)
+                    matches!(observe(&map, &address).as_slice(), [Command::LaunchClip {track: t, scene: s}] if *t == track && *s == scene as u16)
                 );
                 if mk2 {
                     // MkII grid notes identify their own track; the MIDI
@@ -202,7 +202,7 @@ fn apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons() {
                     for channel in 0..16 {
                         assert!(
                             matches!(observe(&map, &[0x90 | channel, address[1], 127]).as_slice(),
-                            [Command::LaunchClip {track: t, scene: s}] if *t == track && *s == scene)
+                            [Command::LaunchClip {track: t, scene: s}] if *t == track && *s == scene as u16)
                         );
                     }
                 }
@@ -228,7 +228,7 @@ fn apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons() {
             for channel in 0..16 {
                 assert!(
                     matches!(observe(&map, &[0x90 | channel, 0x52 + scene, 127]).as_slice(),
-                    [Command::LaunchScene {scene:s}] if *s == scene)
+                    [Command::LaunchScene {scene:s}] if *s == scene as u16)
                 );
             }
         }

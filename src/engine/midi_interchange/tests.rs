@@ -25,7 +25,7 @@ fn mapping(file: &smf::File) -> Vec<Mapping> {
         .enumerate()
         .map(|(i, source)| Mapping {
             source,
-            destination: Some((2, (6 + i) as u8)),
+            destination: Some((2, (6 + i) as u16)),
         })
         .collect()
 }
@@ -291,7 +291,7 @@ fn channel_mapping_merge_conflicts_and_export_precision_choices_are_explicit() {
         .enumerate()
         .map(|(i, source)| Mapping {
             source,
-            destination: Some((4, i as u8)),
+            destination: Some((4, i as u16)),
         })
         .collect::<Vec<_>>();
     let (request, ack) = Request::prepare(
@@ -690,7 +690,7 @@ fn all_sixty_four_destinations_plus_conductor_are_one_bounded_inverse() {
         .enumerate()
         .map(|(i, source)| Mapping {
             source,
-            destination: Some(((i / 8) as u8, (i % 8) as u8)),
+            destination: Some(((i / 8) as u8, (i % 8) as u16)),
         })
         .collect::<Vec<_>>();
     let before = capture(&engine, &mut rt);

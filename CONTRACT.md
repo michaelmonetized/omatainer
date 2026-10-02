@@ -231,13 +231,13 @@ No operation accepts undeclared fields.
 | `ping`, `status` | none | Read current status |
 | `follow` | none | Subscribe to bounded status frames |
 | `play`, `stop`, `togglePlay`, `record`, `tap` | none | Existing transport/record/tap action |
-| `scene` | `n`: JSON integer 0–7 | Launch that zero-based scene |
+| `scene` | `n`: JSON integer 0–511, active in the current session | Launch that zero-based scene |
 | `deckPlay`, `deckCue` | `deck`: JSON integer 0–1 | Act on exactly deck A or B |
 
 Missing, null, boolean, string, fractional, negative and out-of-range target
 values fail before command admission. Errors name `n` or `deck`; no default,
 clamp, truncation or modulo selects another target. Unknown operations/fields
-fail before mutation. CLI scene numbers remain one-based 1–8 and are converted
+fail before mutation. CLI scene numbers remain one-based 1–512 and are converted
 once before encoding the request.
 
 ## Local control connection limits
@@ -428,8 +428,8 @@ once before encoding the request.
 ## Shell scene arguments
 
 - `Service.scene(n)` and public shell IPC `omatainer.scene` use one-based scene
-  numbers 1 through 8, matching `omatainer ctl scene <n>`. The CLI alone converts
-  them to the protocol's zero-based `n` and engine scene indexes 0 through 7.
+  numbers 1 through 512, matching `omatainer ctl scene <n>`. The CLI alone converts
+  them to the protocol's zero-based `n` and engine stable scene slots 0 through 511; inactive or absent slots are refused by the running renderer.
 - Every queued shell scene command captures its own separate CLI argument.
   Its receipt and final result retain that argument, even when several different
   scenes are waiting. Command acceptance still does not mean audio application.
@@ -507,7 +507,7 @@ once before encoding the request.
   without rewriting on migration. Older versions reject the presence of routing
   fields, including null. Preview/Cancel preserve live routing and files; durable
   Save queues a separate requested/applied routing receipt after input work settles.
-- Up to eight fixed track routes accept up to eight exact input name/id selections
+- Up to 128 stable-slot track routes accept up to eight exact input name/id selections
   each, with a nonempty channel mask, type filters, optional explicit output and
   channel Preserve or1–16. Input policy must also admit the chosen inputs. Internal
   monitoring plays notes on the route track independently of UI selection. Live
@@ -1280,3 +1280,53 @@ publication. Preferences persist startup protection only, not emergency state.
   the AIFF SSND header from PCM and rejects incomplete/inconsistent frame extents;
   source media is unchanged by the decoder, and all modified MPL sources/notices
   are included in the release provenance/package.
+
+
+## Editable session layout (#113)
+
+- Default projects retain eight tracks and eight scenes. Native state version7
+  persists a project namespace, monotonic track/scene IDs, active storage slots,
+  display orders, names and optional RGB colors. Legacy states1–6 retain exactly
+  their eight-by-eight musical storage; scene effect scopes migrate from100 to1000.
+  Legacy namespaces include metadata and embedded PCM, so distinct audio cannot
+  share a migrated project identity. Scene scopes1000–1511 cannot alias track
+  slots0–127.
+- Sets admit at most128 active tracks and512 active scenes,65536 notes in total,
+  8192 per clip,16 MiB MIDI lanes and64 MiB native project metadata. Project and
+  structural preparation refuses more than256 MiB of track/scene effect buffers
+  before construction. Effect addition, stopped rate changes and undo/redo also
+  refuse an oversized resulting graph before mutation. PCM, queued edits, note
+  owners and undo retain their
+  independent existing limits. Refusals leave current work intact.
+- Worker preparation builds only the edited track or scene. Audio swaps owned
+  nodes/cells and prepared layout metadata at a block boundary; it neither moves
+  unrelated DSP nodes nor allocates/frees their storage. Creation starts empty;
+  duplication shares immutable PCM, copies musical settings and lanes, assigns
+  fresh note/object IDs and never starts the duplicate automatically.
+- Reorder changes display order only. Playing clips, note gates, automation,
+  effect racks, compose targets and fixed controller slots retain their identities.
+  Explicit queued controls and MIDI editor baselines carry namespace/ID receipts;
+  painted UI controls retain their snapshot receipts. MIDI input captures the
+  configured receipt once through enqueue, never a newly looked-up replacement;
+  deleted/reused or foreign-project targets are refused. Track deletion ends its
+  captures/voices/output owners; scene deletion ends that scene's clips and moves
+  its bus references to an active scene. Undo restores content and metadata but
+  does not invent a physical held key or restart deleted playback.
+- All edits have bounded existing history/queue/retirement admission. Structural
+  media reservations pin both swap directions and count unique PCM in the undo
+  registry; an exhausted registry refuses before mutation. IDs are not reused
+  after deletion, undo or a new history branch. Stopped rate preparation updates
+  retained inverse processors before redo.
+- Native Edit session exposes create audio/MIDI tracks and scenes, rename,
+  reorder by display position, RGB color, duplicate, delete and cancellation.
+  Every action is keyboard/AccessKit reachable. Go to track/scene selects any
+  active display position and reveals its cell. Larger grids paint only visible
+  rows/columns; MIDI route and SMF export pages reach all slots without truncation.
+  The inherited64-clip SMF import/export transaction limit remains explicit.
+- Controller preset maps continue to address stable slots; numeric scene shortcuts
+  launch the first eight display rows. CLI/shell addresses are one-based stable
+  scene slots1–512 and must exist in the current set. Routing Apply/Retry qualifies
+  routes to the current namespace/track ID; deletion/reuse/project change refuses
+  the old route rather than silently attaching it to a different track.
+- Software fixtures and native App/renderer/AccessKit checks are not physical
+  controller, real desktop Orca, listening or backend XRUN qualification.

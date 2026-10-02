@@ -49,7 +49,7 @@ fn every_invalid_deck_and_scene_field_is_rejected_before_actual_renderer_mutatio
     for (op, field, limit) in [
         ("deckPlay", "deck", engine::DECKS),
         ("deckCue", "deck", engine::DECKS),
-        ("scene", "n", engine::SCENES),
+        ("scene", "n", engine::session::MAX_SCENES),
     ] {
         let mut invalid = vec![None];
         invalid.extend(

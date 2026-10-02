@@ -84,6 +84,10 @@ impl Default for MidiSchedule {
 }
 
 impl MidiSchedule {
+    pub(super) fn retained_bytes(&self) -> usize {
+        self.events.capacity() * std::mem::size_of::<Reverse<Event>>()
+    }
+
     pub fn has_length(&self, loop_beats: f64) -> bool {
         self.loop_beats == loop_beats
     }

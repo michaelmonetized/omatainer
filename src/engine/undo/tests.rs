@@ -197,7 +197,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
     };
     rt.apply(Command::LaunchClip {
         track: t as u8,
-        scene: s as u8,
+        scene: s as u16,
     });
     rt.apply(Command::LiveNoteOn {
         source: 44,
@@ -210,7 +210,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
         &mut rt,
         Command::SetNotes {
             track: t as u8,
-            scene: s as u8,
+            scene: s as u16,
             notes: vec![note(61)],
         },
     );
@@ -232,7 +232,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
         })
         && v.env.stage != 4));
     assert!(rt.playing);
-    assert_eq!(rt.tracks[t].playing.unwrap().scene, s as u8);
+    assert_eq!(rt.tracks[t].playing.unwrap().scene, s as u16);
 }
 
 #[test]
@@ -745,7 +745,9 @@ fn disconnected_retirement_keeps_last_owned_rejected_payload_and_closes_admissio
         .unwrap();
     let counts = test_alloc::measure(|| tick(&mut rt));
     assert_eq!((counts.allocations, counts.frees), (0, 0));
-    assert_eq!(rt.undo.stranded.len(), 1);
+    // The rejected notes and their producer-qualified target box both retain
+    // their last owner when the recycler disconnects.
+    assert_eq!(rt.undo.stranded.len(), 2);
     assert_eq!(rt.undo.failure, Some(Failure::Unavailable));
     assert_eq!(
         engine.send(Command::Master(0.4)),
@@ -1071,7 +1073,7 @@ fn fallback_effect_targets_are_undoable_and_audio_clip_inputs_only_monitor() {
             note: 67,
         },
     );
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
 }
 
 #[test]
@@ -1175,6 +1177,10 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
             d2: 2,
             status: 0xb0,
         },
+    ] {
+        engine.send(command).unwrap();
+    }
+    let raw_invalid = [
         Command::SetNotes {
             track: 255,
             scene: 0,
@@ -1185,10 +1191,15 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
             scene: 255,
             notes: vec![note(60); 256],
         },
-    ] {
-        engine.send(command).unwrap();
+    ];
+    for command in &raw_invalid {
+        assert_eq!(engine.send(command.clone()), Err(SubmissionError::InvalidTarget));
     }
-    let counts = test_alloc::measure(|| tick(&mut rt));
+    let counts = test_alloc::measure(|| {
+        tick(&mut rt);
+        // Exercise defensive renderer retirement as well as public rejection.
+        for command in raw_invalid { rt.apply(command); }
+    });
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     let until = Instant::now() + Duration::from_secs(2);
     while weak_samples.iter().any(|sample| sample.strong_count() != 0) {
@@ -1273,7 +1284,7 @@ fn independent_short_holds_do_not_pin_prior_recording_inverses_during_dense_cont
     assert_eq!((total_allocations, total_frees), (0, 0));
     assert_eq!(rt.tracks[2].clips[7].notes.len(), 64);
     assert_eq!(rt.undo.entries.len(), MAX_ENTRIES);
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
     for track in &rt.tracks { assert_eq!(track.gain, 0.83); }
 }
 
@@ -1301,7 +1312,7 @@ fn overlapping_same_cell_owners_finalize_later_inverses_and_release_protection_i
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     assert_eq!(notes(&rt, 2, 7), [60]);
     assert_eq!(rt.tracks[2].clips[7].notes[0].len, first_duration, "later inverse must not restore old onset preview");
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
     rt.apply(owned_history_off(2, 64));
     rt.apply(Command::Redo);
     assert_eq!(notes(&rt, 2, 7), [60, 64]);
@@ -1322,7 +1333,7 @@ fn undo_of_later_inverse_finalizes_both_still_held_sources_before_swap() {
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     assert_eq!(rt.tracks[2].clips[7].notes.len(), 1);
     assert!((rt.tracks[2].clips[7].notes[0].len - 1.2).abs() < 1e-6);
-    assert_eq!(rt.note_recording.held_targets(), 0);
+    assert_eq!(rt.note_recording.held_targets(), [0; session::MAX_TRACKS * session::MAX_SCENES / 64]);
     rt.note_recording.clock += 2.0;
     rt.apply(owned_history_off(1, 60));
     rt.apply(owned_history_off(2, 60));

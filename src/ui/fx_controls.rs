@@ -15,7 +15,7 @@ impl App {
             ui.label("Unknown effect");
             return;
         };
-        let scope = if self.snap.fx_view >= 100 { format!("Scene {} effect {} {name}", self.snap.fx_view - 99, slot + 1) } else { format!("Track {} effect {} {name}", self.snap.fx_view.max(0) + 1, slot + 1) };
+        let scope = if self.snap.fx_view >= crate::engine::session::SCENE_FX_BASE { format!("Scene {} effect {} {name}", self.snap.fx_view - crate::engine::session::SCENE_FX_BASE + 1, slot + 1) } else { format!("Track {} effect {} {name}", self.snap.fx_view.max(0) + 1, slot + 1) };
         ui.push_id(("fx-slot", self.snap.fx_view, slot, name), |ui| accessibility::group(ui, &scope, |ui| {
             ui.horizontal_wrapped(|ui| {
                 let toggle = pill(ui, t, name, on, t.green);

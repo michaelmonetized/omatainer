@@ -240,7 +240,8 @@ fn simultaneous_controllers_route_all_types_and_release_original_track() {
     drop(manager);
     until(|| fixture.closes.load(Relaxed) == 1);
     if let Ok(path) = std::env::var("OMAT_MIDI_ROUTING_TRACE") {
-        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"kind":"software backend and real input worker/renderer; no physical hardware","messages":trace,"activity":engine.cmd.midi_routing().activity()})).unwrap()).unwrap();
+        let activity = engine.cmd.midi_routing().activity();
+        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"kind":"software backend and real input worker/renderer; no physical hardware","messages":trace,"activity":(activity.0.as_slice(),activity.1)})).unwrap()).unwrap();
     }
 }
 #[test]
@@ -401,6 +402,82 @@ fn clip_stop_preserves_a_live_gate_on_the_same_external_pitch() {
     drop(manager);
 }
 
+#[test]
+fn last_track_clear_preserves_other_track_shared_pitch_and_sustain_owners() {
+    let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+    let mut prepared = crate::engine::project::maximum_for_test();
+    prepared.swap_into(&mut rt);
+    let fixture = Arc::new(Fixture::default());
+    let mut routes = config();
+    routes.routes[0].track = 127;
+    routes.routes[1].track = 126;
+    routes.routes[1].output_channel = Some(4);
+    let manager = Manager::start_backend(engine.cmd.clone(), routes, Fake(fixture.clone())).unwrap();
+    until(|| !manager.status().pending);
+    assert!(manager.status().error.is_none());
+    assert_eq!(fixture.opens.load(Relaxed), 1);
+    let shared = engine.cmd.midi_routing();
+    let owner = Owner::Live {source: 990, channel: 0};
+    // Even an identical source/pitch/channel has independent track ownership.
+    for track in [127, 126] {
+        for bytes in [[0x90, 60, 100], [0xb0, 64, 127]] {
+            assert!(shared.emit_owned(track, super::super::packet::Packet::new(&bytes).unwrap(), owner));
+        }
+    }
+    until(|| fixture.trace.lock().len() == 3 && shared.activity().0[126].filtered == 1);
+    assert!(shared.clear_track(127));
+    assert!(shared.emit_owned(126, super::super::packet::Packet::new(&[0xb0,1,23]).unwrap(), owner));
+    until(|| fixture.trace.lock().iter().any(|packet| packet == &[0xb4,1,23]));
+    assert!(!fixture.trace.lock().iter().any(|packet| packet[0] & 0xf0 == 0x80 || packet == &[0xb4,64,0] || packet == &[0xb4,123,0]));
+    assert!(shared.clear_track(126));
+    until(|| fixture.trace.lock().iter().any(|packet| packet == &[0xb4,64,0]));
+    assert_eq!(fixture.trace.lock().iter().filter(|packet| packet[0] & 0xf0 == 0x80).count(), 1);
+    // Reorder keeps the configured last track attached to its original ID.
+    let id = rt.session.tracks[127].id;
+    let (request, ack) = crate::engine::session::Request::metadata(&rt.session, rt.undo.checkpoint().epoch,
+        crate::engine::session::Action::Move {axis:crate::engine::session::Axis::Track,id,position:64}).unwrap();
+    engine.send(Command::SessionEdit(request)).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
+    assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
+    assert!(shared.emit_owned(127, super::super::packet::Packet::new(&[0xc0,9]).unwrap(), owner));
+    until(|| fixture.trace.lock().iter().any(|packet| packet == &[0xc4,9]));
+    let (request, ack) = crate::engine::session::Request::metadata(&rt.session, rt.undo.checkpoint().epoch,
+        crate::engine::session::Action::Delete {axis:crate::engine::session::Axis::Track,id}).unwrap();
+    engine.send(Command::SessionEdit(request)).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
+    assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
+    assert!(!shared.emit_owned(127, super::super::packet::Packet::new(&[0x90,62,100]).unwrap(), owner));
+    assert!(shared.activity().0[127].identity_refused);
+    drop(manager);
+}
+
+#[test]
+fn input_project_change_after_route_match_never_restamps_the_queued_note_target() {
+    let (engine, mut rt) = Engine::headless_for_test(48000,256);
+    let fixture = Arc::new(Fixture::default());
+    let manager = Manager::start_backend(engine.cmd.clone(),config(),Fake(fixture.clone())).unwrap();
+    until(|| !manager.status().pending);
+    let old = rt.session.reference(crate::engine::session::Axis::Track,2).unwrap();
+    let (entered, ready) = crossbeam_channel::bounded(1);
+    let (resume, release) = crossbeam_channel::bounded(1);
+    *engine.cmd.midi_routing().input_after_target.lock() = Some((entered,release));
+    let (mut input, guard, counters) = input(&engine,991,"Keyboard A","100:0");
+    input.push(&[0x90,72,100]);
+    ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    // The real input worker has matched the old route but has not enqueued.
+    let mut replacement = crate::engine::project::Prepared::empty(48000).unwrap();
+    assert_eq!(test_alloc::measure(||replacement.swap_into(&mut rt)),test_alloc::Counts::default());
+    assert_ne!(rt.session.reference(crate::engine::session::Axis::Track,2),Some(old));
+    resume.send(()).unwrap();
+    until(||counters.snapshot().dispatched==1);
+    assert_eq!(test_alloc::measure(||rt.process(&mut [0.0;128])),test_alloc::Counts::default());
+    assert_eq!(held(&rt,2),0,"old worker onset played a new project's track");
+    assert_eq!(held(&rt,3),0);
+    assert!(fixture.trace.lock().iter().all(|packet|packet[0]&0xf0!=0x90));
+    drop(input);drop(guard);drop(manager);
+    until(||fixture.closes.load(Relaxed)==1);
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 #[ignore = "Maintainer validation: creates and removes only private ALSA virtual MIDI ports"]
@@ -550,7 +627,7 @@ fn linux_virtual_ports_deliver_two_controllers_all_types_and_reset() {
                 .any(|p| p.endpoint.name.contains(&token))
     });
     if let Ok(path) = std::env::var("OMAT_MIDI_ROUTING_NATIVE_TRACE") {
-        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"platform":format!("Linux ALSA {}, midir0.10.4",std::env::consts::ARCH),"physical_hardware":false,"private_ports_only":true,"ports_retired":true,"expected_live_packets":expected,"observed_packets":trace.lock().clone(),"activity":activity})).unwrap()).unwrap();
+        std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"platform":format!("Linux ALSA {}, midir0.10.4",std::env::consts::ARCH),"physical_hardware":false,"private_ports_only":true,"ports_retired":true,"expected_live_packets":expected,"observed_packets":trace.lock().clone(),"activity":(activity.0.as_slice(),activity.1)})).unwrap()).unwrap();
     }
 }
 

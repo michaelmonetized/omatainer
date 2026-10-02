@@ -5,18 +5,18 @@ use super::super::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Rack {
     Track(u8),
-    Scene(u8),
+    Scene(u16),
 }
 impl Rack {
     pub fn selected(rt: &RtEngine) -> Option<Self> {
         // Follow active_chain exactly, including commands received while the
         // panel is closed. History must target the rack the renderer mutates.
-        Some(if rt.fx_view >= 100 {
-            Self::Scene(((rt.fx_view as usize - 100).min(SCENES - 1)) as u8)
+        Some(if rt.fx_view >= crate::engine::session::SCENE_FX_BASE {
+            Self::Scene(((rt.fx_view as usize - crate::engine::session::SCENE_FX_BASE as usize).min(rt.scene_fx.len() - 1)) as u16)
         } else if rt.fx_view >= 0 {
-            Self::Track((rt.fx_view as usize % TRACKS) as u8)
+            Self::Track((rt.fx_view as usize % rt.tracks.len()) as u8)
         } else {
-            Self::Scene(0)
+            Self::Scene(rt.session.scene_order[0])
         })
     }
     pub fn get(self, rt: &RtEngine) -> &fx::FxChain {
@@ -245,6 +245,7 @@ impl Effect {
 }
 
 pub(super) enum Patch {
+    Session(Box<session::Inverse>),
     Global(Global),
     Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, reserved_bytes: usize },
     Sampler {
@@ -257,7 +258,7 @@ pub(super) enum Patch {
     Track(u8, TrackControls),
     ClipGain {
         track: u8,
-        scene: u8,
+        scene: u16,
         gain: f32,
     },
     Deck(u8, DeckControls),
@@ -280,7 +281,7 @@ pub(super) enum Patch {
     },
     Clip {
         track: u8,
-        scene: u8,
+        scene: u16,
         value: Clip,
         spare_notes: Vec<MidiNote>,
         reserved_midi_bytes: usize,
@@ -334,7 +335,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -349,6 +350,7 @@ impl Patch {
     }
     pub fn valid(&self, rt: &RtEngine) -> bool {
         match self {
+            Self::Session(value) => value.valid(rt),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
                 && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
                 else { *index < rt.sampler_banks.len() },
@@ -366,8 +368,19 @@ impl Patch {
             _ => true,
         }
     }
+    pub fn processor_delta(&self, rt: &RtEngine) -> i128 {
+        match self {
+            Self::Session(value) => value.processor_delta(rt),
+            Self::Slot {rack,index,slot,..} => match slot {
+                Some(slot) => slot.storage_bytes() as i128,
+                None => -(rack.get(rt).slots[*index].storage_bytes() as i128),
+            },
+            _ => 0,
+        }
+    }
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
+            Self::Session(value) => value.swap(rt),
             Self::Sampler { index, value, selected, .. } => {
                 let selection = rt.sampler_bank;
                 if let Some(mut prior) = value.take() {
@@ -467,6 +480,7 @@ impl Patch {
 
     pub fn heap_bytes(&self) -> usize {
         match self {
+            Self::Session(value) => value.bytes(),
             Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
             Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()),
             Self::Conductor { reserved_bytes, .. } => *reserved_bytes,
@@ -492,6 +506,7 @@ impl Patch {
             }
         };
         match self {
+            Self::Session(value) => value.media_reservations(add),
             Self::Sampler { original, replacement, .. } => {
                 for bank in original.iter().chain(std::iter::once(replacement)) {
                     for audio in &bank.audio { visit(audio); }
@@ -511,7 +526,7 @@ impl Patch {
     }
 }
 
-pub(super) fn sample_bytes(sample: &Sample) -> usize {
+pub(in crate::engine) fn sample_bytes(sample: &Sample) -> usize {
     std::mem::size_of::<Sample>()
         + 4 * std::mem::size_of::<usize>() // Sample and peaks Arc counters.
         + std::mem::size_of::<Vec<[f32; 3]>>()

@@ -342,7 +342,7 @@ impl Editor {
         self.message =
             "Unapplied draft discarded. Completed renderer edits remain in History.".into();
     }
-    fn load(&mut self, engine: &Engine, track: u8, scene: u8) {
+    fn load(&mut self, engine: &Engine, track: u8, scene: u16) {
         if self.busy() {
             return;
         }
@@ -489,7 +489,7 @@ impl App {
         self.piano_roll.load(
             &self.engine,
             self.snap.selected_track as u8,
-            self.snap.selected_scene as u8,
+            self.snap.selected_scene as u16,
         );
     }
     pub(super) fn poll_piano_roll(&mut self) {

@@ -10,7 +10,8 @@ use std::io::{BufRead, Write};
 
 fn engine() -> RtEngine {
     let (_tx, rx) = crossbeam_channel::bounded(16);
-    RtEngine::new(48000.0, rx, Arc::new(Mutex::new(Snapshot::default())))
+    RtEngine::try_new(48000.0, rx, Arc::new(Mutex::new(Snapshot::default())))
+        .expect("prepare scene boundary renderer")
 }
 
 fn scene_state(rt: &RtEngine) -> Value {
@@ -39,7 +40,7 @@ fn scene_state(rt: &RtEngine) -> Value {
 }
 
 pub(super) fn check_cli_scene_arguments() {
-    for n in 1..=SCENES {
+    for n in 1..=engine::session::MAX_SCENES {
         let payload = scene_payload(&["scene".into(), n.to_string()]).unwrap();
         assert_eq!(
             serde_json::from_str::<Value>(&payload).unwrap(),
@@ -52,10 +53,9 @@ pub(super) fn check_cli_scene_arguments() {
     ];
     for n in [
         "0",
-        "9",
-        "255",
-        "256",
-        "257",
+        "513",
+        "65535",
+        "65536",
         "-1",
         "-255",
         "",
@@ -71,7 +71,7 @@ pub(super) fn check_cli_scene_arguments() {
         assert!(
             error
                 .to_string()
-                .contains("usage: omatainer ctl scene <1-8>"),
+                .contains("usage: omatainer ctl scene <1-512>"),
             "{args:?}: {error}"
         );
         // Exercise the actual CLI dispatch too: it must reject before opening
@@ -88,7 +88,7 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
             rt.recording = true;
         }
         let before = scene_state(&rt);
-        for scene in SCENES as u8..=u8::MAX {
+        for scene in SCENES as u16..=u16::MAX {
             let commands = [
                 Command::LaunchScene { scene },
                 Command::ToggleScene { scene },
@@ -133,7 +133,7 @@ pub(super) fn check_engine_rejects_invalid_scenes() {
 pub(super) fn check_valid_scene_operations() {
     let mut rt = engine();
     rt.quant = 0.0;
-    for scene in 0..SCENES as u8 {
+    for scene in 0..SCENES as u16 {
         for track in &mut rt.tracks {
             track.clips[scene as usize].kind = ClipKind::Midi;
         }
@@ -158,7 +158,7 @@ pub(super) fn check_valid_scene_operations() {
         rt.apply(Command::ComposeArm { track: 0, scene: scene as usize });
         assert_eq!(rt.compose_target, Some(engine::ComposeTarget { track: 0, scene: scene as usize }));
         rt.apply(Command::OpenFxScene(scene));
-        assert_eq!(rt.fx_view, 100 + scene as i16);
+        assert_eq!(rt.fx_view, crate::engine::session::SCENE_FX_BASE + scene as i16);
 
         rt.apply(Command::LaunchScene { scene });
         assert!(rt
@@ -202,7 +202,8 @@ pub(super) fn check_ipc_scene_requests() {
     let (tx, rx) = engine::CommandPort::channel(16);
     let commands = tx.clone();
     let snap = Arc::new(Mutex::new(Snapshot::default()));
-    let mut rt = RtEngine::new(48000.0, rx, snap.clone());
+    let mut rt = RtEngine::try_new(48000.0, rx, snap.clone())
+        .expect("prepare IPC scene boundary renderer");
     rt.apply(Command::LaunchScene { scene: 0 });
     let (client, server) = UnixStream::pair().unwrap();
     client

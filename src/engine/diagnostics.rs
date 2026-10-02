@@ -1,6 +1,6 @@
 //! Optional bounded attribution. One real sample frame in 2048 is timed; these
 //! wall costs are estimates, not per-track CPU or additive callback accounting.
-use super::{DECKS, SCENES, TRACKS};
+use super::{DECKS, session::{MAX_SCENES as SCENES, MAX_TRACKS as TRACKS}};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;

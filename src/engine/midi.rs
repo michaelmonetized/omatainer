@@ -1,6 +1,6 @@
 //! USB-MIDI class-compliant I/O, hardware maps, learn, and clock.
 
-use crate::engine::{Command, DECKS, HOTCUES, SCENES, TRACKS};
+use crate::engine::{Command, DECKS, HOTCUES};
 use parking_lot::Mutex;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -50,7 +50,7 @@ pub struct Binding {
     pub data: u8,
     pub action: Action,
     pub deck: u8,
-    pub extra: u8,
+    pub extra: u16,
     pub relative: Option<RelativeSpec>,
 }
 
@@ -409,7 +409,7 @@ fn dispatch(
         Action::DeckHotCue if pressed => {
             let _ = cmd.send(Command::DeckHotCue {
                 deck,
-                pad: b.extra.min((HOTCUES - 1) as u8),
+                pad: b.extra.min((HOTCUES - 1) as u16) as u8,
                 del: shift.lock()[deck as usize],
             });
         }
@@ -448,24 +448,24 @@ fn dispatch(
         }
         Action::Scene if pressed => {
             let _ = cmd.send(Command::LaunchScene {
-                scene: b.extra.min((SCENES - 1) as u8),
+                scene: b.extra.min((super::session::MAX_SCENES - 1) as u16),
             });
         }
         Action::Clip if pressed => {
             let _ = cmd.send(Command::LaunchClip {
-                track: b.deck.min((TRACKS - 1) as u8),
-                scene: b.extra.min((SCENES - 1) as u8),
+                track: b.deck.min((super::session::MAX_TRACKS - 1) as u8),
+                scene: b.extra.min((super::session::MAX_SCENES - 1) as u16),
             });
         }
         Action::TrackFader => {
             let _ = cmd.send(Command::TrackGain {
-                track: b.extra.min((TRACKS - 1) as u8),
+                track: b.extra.min((super::session::MAX_TRACKS - 1) as u16) as u8,
                 value: rel,
             });
         }
         Action::TrackMute if pressed => {
             let _ = cmd.send(Command::Mute {
-                track: b.extra.min((TRACKS - 1) as u8),
+                track: b.extra.min((super::session::MAX_TRACKS - 1) as u16) as u8,
             });
         }
         Action::Play if pressed => {
@@ -482,12 +482,12 @@ fn dispatch(
         }
         Action::FxWet => {
             let _ = cmd.send(Command::FxWet {
-                slot: b.extra,
+                slot: b.extra.min(255) as u8,
                 value: rel,
             });
         }
         Action::FxSelect if pressed => {
-            let _ = cmd.send(Command::FxSelect { slot: b.extra });
+            let _ = cmd.send(Command::FxSelect { slot: b.extra.min(255) as u8 });
         }
         _ => {}
     }
@@ -515,7 +515,7 @@ fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
         data: note,
         action,
         deck,
-        extra,
+        extra: u16::from(extra),
         relative: None,
     }
 }
@@ -526,7 +526,7 @@ fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
         data: cc,
         action,
         deck,
-        extra,
+        extra: u16::from(extra),
         relative: None,
     }
 }
@@ -537,7 +537,7 @@ fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: Relative
         data: cc,
         action,
         deck,
-        extra,
+        extra: u16::from(extra),
         relative: Some(relative),
     }
 }

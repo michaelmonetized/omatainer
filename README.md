@@ -430,6 +430,17 @@ Inspection, preparation and publication run on a cancellable worker. Limits are
 16 MiB per SMF, 128 file tracks, 262144 events, 8192 notes per cell, 65536 session
 notes, 16 MiB of session MIDI lanes and 64 MiB of native project metadata.
 
+**Edit session** manages audio/MIDI tracks and scenes: create, rename, reorder,
+color, duplicate and delete, with Undo/Redo. Sets support up to 128 tracks and 512
+scenes. **Go to track** and **Go to scene** use display order and reveal offscreen
+cells; the larger grid renders only its visible rows and columns. Reordering
+preserves playing clips, automation, controller slots and compose targets.
+Duplication keeps musical settings and embedded audio but starts stopped.
+Deleted or reused targets invalidate pending edits and MIDI routes; Apply/Retry
+reattaches routing to the current track. Limits and refusals are visible. These
+track types use the existing MIDI/embedded-audio paths; microphone recording
+remains outside the current feature set.
+
 Open the **Sampler bank editor** to create an empty bank, copy an original factory
 bank, or edit a user bank. Select a local crate file and assign it to one of 16
 slots. Prepare its gain and source-second start/end range, inspect the sampled

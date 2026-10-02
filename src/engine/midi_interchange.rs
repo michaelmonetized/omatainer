@@ -15,7 +15,7 @@ pub(crate) struct Source {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Mapping {
     pub source: Source,
-    pub destination: Option<(u8, u8)>,
+    pub destination: Option<(u8, u16)>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TempoChoice {
@@ -137,7 +137,7 @@ impl Request {
         {
             return Err("MIDI track/channel mapping no longer matches the inspected file".into());
         }
-        let mut mapped = BTreeMap::<(u8, u8), smf::Track>::new();
+        let mut mapped = BTreeMap::<(u8, u16), smf::Track>::new();
         // Every source event receives a unique ordering range when tracks are
         // merged. Channel splitting attaches track metadata to its first row.
         for (row, mapping) in mappings.iter().enumerate() {
@@ -145,8 +145,9 @@ impl Request {
             let Some(destination) = mapping.destination else {
                 continue;
             };
-            if destination.0 as usize >= TRACKS || destination.1 as usize >= SCENES {
-                return Err("MIDI destination lies outside the 8 by 8 session".into());
+            if destination.0 as usize >= captured.state.tracks.len() || destination.1 as usize >= captured.state.scene_fx.len()
+                || captured.state.session.as_ref().is_some_and(|layout| layout.reference(session::Axis::Track, destination.0 as usize).is_none() || layout.reference(session::Axis::Scene,destination.1 as usize).is_none()) {
+                return Err("Unknown or inactive MIDI destination".into());
             }
             let source = &file.tracks[mapping.source.track];
             let out = mapped.entry(destination).or_default();
@@ -320,6 +321,8 @@ impl Request {
                 .map(str::to_owned)
                 .unwrap_or_else(|| format!("MIDI import {}:{}", track + 1, scene + 1));
             let baseline = Arc::new(Document {
+                track_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(session::Axis::Track, track as usize)),
+                scene_identity: captured.state.session.as_ref().and_then(|layout| layout.reference(session::Axis::Scene, scene as usize)),
                 track,
                 scene,
                 epoch: captured.checkpoint.epoch,
@@ -614,14 +617,14 @@ pub(crate) struct ExportOptions {
 }
 pub(crate) fn export(
     state: &project::State,
-    cells: &[(u8, u8)],
+    cells: &[(u8, u16)],
     options: ExportOptions,
 ) -> Result<smf::File, String> {
     export_with_cancel(state, cells, options, || false)
 }
 pub(crate) fn export_with_cancel(
     state: &project::State,
-    cells: &[(u8, u8)],
+    cells: &[(u8, u16)],
     options: ExportOptions,
     mut cancel: impl FnMut() -> bool,
 ) -> Result<smf::File, String> {
@@ -644,6 +647,7 @@ pub(crate) fn export_with_cancel(
             .get(track as usize)
             .and_then(|t| t.clips.get(scene as usize))
             .ok_or("Unknown export clip")?;
+        if state.session.as_ref().is_some_and(|layout| layout.reference(session::Axis::Track,track as usize).is_none() || layout.reference(session::Axis::Scene,scene as usize).is_none()) { return Err("Export target was deleted; select active clips".into()); }
         if clip.kind != ClipKind::Midi {
             return Err("Choose a MIDI clip for every export row".into());
         }

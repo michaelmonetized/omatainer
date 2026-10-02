@@ -126,7 +126,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
     rt.tracks[0].name = "track".repeat(65_536);
     rt.tracks[0].clips[0].name = "clip".repeat(32_768);
     rt.sampler_banks = (0..5).map(|_| sampler::test_bank(&rt, "bank".repeat(1024), std::array::from_fn(|_| None))).collect();
-    rt.fx_view = 103;
+    rt.fx_view = session::SCENE_FX_BASE + 3;
     rt.scene_fx[3].slots = (0..512)
         .map(|index| {
             let mut slot = fx::FxSlot::new(fx::FxId::Dist, rt.sr);

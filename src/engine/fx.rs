@@ -343,6 +343,11 @@ pub struct FxChain {
 }
 
 impl FxChain {
+    pub(super) fn retained_bytes(&self) -> usize {
+        self.slots.capacity() * std::mem::size_of::<FxSlot>()
+            + self.slots.iter().map(FxSlot::storage_bytes).sum::<usize>()
+    }
+
     pub fn new(_sr: f32) -> Self {
         Self { slots: Vec::new() }
     }

@@ -28,8 +28,8 @@ Item {
   property var lastCommandResult: null
   property int nextRequestId: 1
   readonly property int queueLimit: 64
-  // Keep in sync with engine::SCENES; checked by check-shell-scenes.py.
-  readonly property int sceneCount: 8
+  // Keep in sync with engine::session::MAX_SCENES; checked by check-shell-scenes.py.
+  readonly property int sceneCount: 512
   readonly property int pendingCommands: commandQueue.length + (activeCommand ? 1 : 0)
   property string commandOutput: ""
   property string commandStderr: ""

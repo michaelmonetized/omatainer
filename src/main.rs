@@ -227,10 +227,10 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
 }
 
 fn scene_payload(args: &[String]) -> anyhow::Result<String> {
-    let usage = format!("usage: omatainer ctl scene <1-{}>", engine::SCENES);
+    let usage = format!("usage: omatainer ctl scene <1-{}>", engine::session::MAX_SCENES);
     anyhow::ensure!(args.len() == 2, "{usage}");
     let n = args[1].parse::<usize>().with_context(|| usage.clone())?;
-    anyhow::ensure!((1..=engine::SCENES).contains(&n), "{usage}");
+    anyhow::ensure!((1..=engine::session::MAX_SCENES).contains(&n), "{usage}");
     Ok(serde_json::json!({"op": "scene", "n": n - 1}).to_string())
 }
 
@@ -333,6 +333,7 @@ fn handle_client_with_stop(
             request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
             let operation = ipc_schema::Operation::parse(&request)
                 .map_err(|error| ("invalid_operation", error))?;
+            operation.validate_session(&commands).map_err(|error| ("invalid_operation", error))?;
             follow = matches!(operation, ipc_schema::Operation::Follow {});
             reload_theme = matches!(operation, ipc_schema::Operation::ReloadTheme {});
             let command = operation.command();

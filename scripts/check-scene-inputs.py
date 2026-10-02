@@ -25,6 +25,9 @@ with tempfile.TemporaryDirectory(prefix="omatainer-scene-inputs-") as temporary:
     # The actual native implementation embeds the release's offline records.
     # Retain those exact inputs when compiling the isolated production probe.
     shutil.copytree(repo / "licenses", work / "licenses")
+    # Cargo's reviewed RIFF decoder patch is a relative, retained source path.
+    # The isolated probe must compile that same decoder, not lose its patch.
+    shutil.copytree(repo / "vendor", work / "vendor")
     for name in ("Cargo.toml", "Cargo.lock"):
         shutil.copy2(repo / name, work / name)
     source = work / "src/scene_input_probe.rs"

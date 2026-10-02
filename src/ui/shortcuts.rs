@@ -8,7 +8,7 @@ pub(super) enum Action {
     Play(u8),
     Cue(u8),
     Sync(u8),
-    Scene(u8),
+    Scene(u16),
     Crossfader(u8),
     Load,
     Help,
@@ -296,7 +296,10 @@ impl App {
             Action::Play(deck) => self.send(Command::DeckPlay { deck }),
             Action::Cue(deck) => self.send(Command::DeckCue { deck }),
             Action::Sync(deck) => self.send(Command::DeckSync { deck }),
-            Action::Scene(scene) => self.send(Command::LaunchScene { scene }),
+            Action::Scene(position) => {
+                let scene=self.snap.session.as_ref().and_then(|layout|layout.scene_order.get(usize::from(position))).copied();
+                if let Some(scene)=scene { self.send(Command::LaunchScene { scene }); }
+            },
             Action::Crossfader(deck) => self.send(Command::Xfader(deck as f32)),
             Action::Load => self.load_sel(self.load_target() as u8),
             Action::Help => self.keys_open = !self.keys_open,
