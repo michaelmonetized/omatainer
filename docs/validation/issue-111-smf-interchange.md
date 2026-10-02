@@ -118,8 +118,7 @@ saved-checkpoint and Undo/Redo assertions. All 50 rate-filtered tests then passe
 (one maintainer opt-in ignored). No production memory budget, performance policy
 or audio reference was changed to accommodate these failures.
 
-Qualification results are appended after the final source freeze. Focused
-evidence already covers the original and actual DAW-returned native UI workflows,
+Focused evidence covers the original and actual DAW-returned native UI workflows,
 worker-held/queued cancellation, source replacement, malformed inspection,
 exclusive publication races, 64-cell/conductor atomic Undo, precise high-PPQN
 timing, merge rescaling, native save above the previous 8 MiB bound, and every
@@ -131,3 +130,68 @@ The inherited issue 107 supplemental quiet-host wall-max failures remain
 unresolved. A passing unchanged standard gate does not erase them. Final
 producer/composer/live-DJ listening, hardware integration, Orca and backend XRUN
 qualification remain for the user's final run. No issue was closed or PR merged.
+
+
+## Frozen local qualification
+
+Qualified source: `99209d5c90a3207e8da279489c88194d95462f4a`; feature source
+`72d54ad02633f437185e3b5016f70c1644c6b1e3`, codec foundation
+`8e184bad22e623412894ec376c9f2bd80d036473`. Linux aarch64, local release profile,
+debug assertions off. No AppImage/loader override, inherited Cargo incremental
+override or hosted native compute. The unchanged gate used CPU 6 from
+2026-10-02 06:40:14 UTC through 06:47:19 UTC.
+
+- Full ordinary suite: **1156 passed, 0 failed, 25 opt-in ignored**, 235.67 s.
+  This includes six actual MIDI-file App UI workflows and all exact timing,
+  metadata, merge, Undo, cancellation, persistence and IO regressions.
+- Standard gate: **eight workloads × three repeats passed**. Callback allocation
+  and free counts remain zero. The four original audio hashes are unchanged:
+  producer `26f84beea80f5ec5`, composer `e2f197b02633bd3d`, live DJ
+  `d7711a2dc3b32a39`, hybrid `adc9540dab057fed`. State, input, crate, project
+  roundtrip and recording assertions all passed.
+- Native private Linux AT-SPI: **158 actions, 246 visited nodes, 573 frames**.
+  Existing actual App/renderer project/History, sampler, library/analysis,
+  preferences, help and performance recovery flows passed. New file workflows
+  separately use actual App/egui/AccessKit plus the renderer and file workers.
+  Neither receipt claims an Omatainer desktop window, Orca or physical hardware.
+- License inventory/check: **425 bound source files** with pinned notices,
+  source assets and retained upstream supplements. All **8** license/package
+  script fixtures passed, 3.644 s.
+- Frozen gate recheck, immutable package creation, package verification, actual
+  CLI/IPC, follow protocol, runtime isolation and safe startup each returned 0.
+
+| Workload | Maximum measured wall time across three repeats |
+| --- | --- |
+| Producer callback | 1.722 ms |
+| Composer callback | 1.040 ms |
+| Live DJ callback | 0.277 ms |
+| Hybrid callback | 3.978 ms |
+| Large crate frame | 1.825 ms |
+| Controller/IPC frame | 1.869 ms |
+| Project roundtrip frame | 4.256 ms |
+| Long note recording frame / renderer | 4.274 / 4.348 ms |
+
+Release executable SHA-256:
+`df646aaaecb4099d83c17f54008c386851d8ef1d67319a6fbc4e8d3e826a0e14`.
+Controlled test executable SHA-256:
+`a8cd44461277745e340e2a32243ce44080af909b6833187649c8e91c66d9ac5c`.
+The immutable package is `/home/michael/Projects/omatainer-work/issue-111-final-package`.
+It was verified before publication; it was not installed over the user's active app.
+
+Frozen actual UI MIDI artifacts are in `issue-111-native-midi-v4` under the work
+root. Its original export matches Ardour's actual input **byte for byte**:
+`20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4`.
+`issue-111-final-interchange.json` binds the final source, DAW evidence and native
+artifacts. Mido independently reread the final native DAW-return export and
+verified **all 143 channel events**, the retained tempo/meter map, both tracks'
+65-quarter ends and zero remaining proprietary events; receipt is
+`issue-111-final-return-cross-reader.json`. Native velocity-zero notes have no
+SMF note onset and are omitted; zero-velocity file onsets are interpreted as
+releases by the SMF reader.
+
+Additional immutable gate/raw/log/native and post-check evidence uses the
+`/home/michael/Projects/omatainer-work/issue-111-final-*` prefix. The first full
+suite's two fixture failures remain recorded in `issue-111-full-tests-v1.log`;
+the rate regression and corrected full suite are preserved separately. The
+passing standard gate does not resolve the previously stated issue 107
+supplemental wall-max failures or substitute for final user hardware QA.
