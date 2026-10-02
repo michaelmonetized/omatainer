@@ -175,6 +175,35 @@ fn malformed_and_stale_timing_drafts_preserve_current_work_and_close_requires_di
 }
 
 #[test]
+fn clean_project_new_and_open_preserve_unapplied_timing_until_explicit_discard() {
+    let mut gui = Gui::new(); open(&mut gui);
+    edit(&mut gui, "Tempo points: beat BPM step/ramp", "0 137 step");
+    let namespace = gui.rt.session.namespace; assert!(!gui.app.project_dirty());
+    for action in ["New project", "Open project…"] {
+        gui.click_text("Project"); gui.click_text(action); gui.frame(vec![]);
+        assert_eq!(gui.rt.session.namespace, namespace); assert!(gui.app.timing.confirm_discard);
+        assert_eq!(gui.app.timing.draft.as_ref().unwrap().tempos, "0 137 step");
+        gui.click("Keep timing draft");
+    }
+    gui.click("Close timing editor"); gui.click("Discard timing draft"); settle(&mut gui);
+    gui.click_text("Project"); gui.click_text("New project"); settle(&mut gui);
+    assert_ne!(gui.rt.session.namespace, namespace);
+}
+
+#[test]
+fn settled_editor_reopens_with_the_replacement_projects_namespace_and_timing() {
+    let mut gui = Gui::new(); open(&mut gui);
+    edit(&mut gui, "Tempo points: beat BPM step/ramp", "0 137 step");
+    gui.click("Apply timing"); settle(&mut gui); assert!(!gui.app.timing.blocks_close());
+    let old = gui.rt.session.namespace;
+    gui.click_text("Project"); gui.click_text("New project"); gui.click_text("Discard changes"); settle(&mut gui);
+    assert_ne!(gui.rt.session.namespace, old); assert!(gui.app.timing.draft.is_none());
+    open(&mut gui);
+    let draft = gui.app.timing.draft.as_ref().unwrap(); assert_eq!(draft.namespace, gui.rt.session.namespace);
+    assert_eq!(draft.baseline, gui.rt.conductor.as_deref().cloned()); assert!(!draft.dirty);
+}
+
+#[test]
 fn draft_parser_refuses_unordered_off_grid_and_invalid_meter_or_click_settings() {
     let mut gui = Gui::new();
     open(&mut gui);

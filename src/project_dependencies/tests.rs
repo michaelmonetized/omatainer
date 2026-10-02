@@ -89,3 +89,25 @@ fn cancellation_incomplete_roots_alias_bounds_and_bit_identity_are_explicit() {
     let origin = Origin { key: asset.key.clone(), source: LibSource::File(directory.0.join("new.wav")) };
     assert!(validate_origins(&[origin.clone(), origin]).is_err());
 }
+
+#[test]
+fn mixed_folders_skip_sidecars_but_report_truncated_audio_and_charge_successful_pcm() {
+    let directory = Directory::new(); let original = directory.0.join("original.wav"); wave(&original, 101);
+    let saved = project(&original); let root = directory.0.join("moved"); fs::create_dir(&root).unwrap();
+    fs::rename(&original, root.join("renamed-source")).unwrap();
+    for (name, bytes) in [("notes.nfo", b"plain sidecar".as_slice()), ("set.cue", b"FILE original.wav WAVE"), ("cover.png", b"\x89PNG\r\n\x1a\n")] { fs::write(root.join(name), bytes).unwrap(); }
+    let report = inspect(&saved.state, &saved.media, &[], &AtomicBool::new(false)).unwrap();
+    let index = report.assets.iter().position(|asset| asset.key.original_path == original.to_str().unwrap()).unwrap();
+    let found = search(&report.assets, &[root.clone()], &AtomicBool::new(false)).unwrap();
+    assert!(found.complete, "{:?}", found.warnings); assert_eq!(found.skipped_unsupported, 3); assert_eq!(found.matches[index].len(), 1);
+    fs::write(root.join("broken.wav"), b"RIFF\0\0\0\0WAVE").unwrap();
+    let found = search(&report.assets, &[root.clone()], &AtomicBool::new(false)).unwrap();
+    assert!(!found.complete); assert!(found.warnings.iter().any(|line| line.contains("broken.wav")));
+    fs::remove_file(root.join("broken.wav")).unwrap();
+    for index in 0..80 { fs::copy(root.join("renamed-source"), root.join(format!("copy-{index}"))).unwrap(); }
+    let mut large = (*saved.media[saved.state.decks[0].audio.unwrap()]).clone(); large.path = "/missing/large.wav".into(); large.data.resize(32 * 1024 * 1024, 0.25);
+    let mut asset = report.assets[index].clone(); asset.key = Key { audio_hash: audio_hash(&large, &AtomicBool::new(false)).unwrap(), original_path: large.path.clone() }; asset.frames = large.frames(); asset.pcm_bytes = large.data.len() as u64 * 4; asset.source = Some(LibSource::File(large.path.into()));
+    let mut assets = report.assets; assets.push(asset);
+    let found = search(&assets, &[root], &AtomicBool::new(false)).unwrap();
+    assert!(found.complete, "{:?}", found.warnings); assert_eq!(found.matches[index].len(), 81); assert_eq!(found.skipped_unsupported, 3);
+}

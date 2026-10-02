@@ -114,7 +114,7 @@ Workflow: Save and reopen.
 
 1–64 absolute folders
 
-Search selected folders for exact decoded audio, including renamed files. Symlinks and nested foreign mounts are skipped. Search limits and errors produce a partial result; additional matches may exist.
+Search selected folders for exact decoded audio, including renamed files. Unsupported/non-audio files are counted separately. Symlinks, nested foreign mounts, damaged audio and read errors produce a partial result; additional matches may exist. Successful decodes charge their actual PCM size; failed decodes retain conservative work credit.
 
 Workflow: Save and reopen.
 
@@ -146,7 +146,7 @@ Workflow: Save and reopen.
 
 Explicitly retain or discard pending review
 
-Close the report when idle. Pending choices and operations require explicit discard. Discard cancels pending work and preserves previously applied source aliases.
+Close the report when idle. Pending choices and operations require explicit discard before close or project replacement. Discard cancels pending work and preserves previously applied source aliases. Choose the project action again after resolving the review.
 
 Workflow: Save and reopen.
 
@@ -194,7 +194,7 @@ Workflow: Edit and undo.
 
 Explicit unapplied-work decision
 
-Close, Escape and application exit preserve dirty drafts until Keep or Discard. Discard requests cancellation and closes only after pending work settles. Completed edits remain in History; reopen the editor to inspect current timing.
+Close, Escape, application exit and project replacement preserve dirty drafts until Keep or Discard. Discard requests cancellation and closes only after pending work settles. Choose the project action again afterward. Completed edits remain in History; reopen the editor to inspect current timing.
 
 Workflow: Edit and undo.
 

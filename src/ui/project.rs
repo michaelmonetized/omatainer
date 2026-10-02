@@ -386,8 +386,16 @@ impl App {
         }
     }
     pub(super) fn project_performance_message(&mut self, message: String) { self.project.message = Some(message); }
+    /// Refuse replacement while editors retain unapplied project-specific work.
+    /// Returns whether the user must apply or explicitly discard that work first.
+    fn guard_project_drafts(&mut self) -> bool {
+        let blocked = self.dependencies.guard_replacement() || self.timing.guard_replacement();
+        if blocked { self.project.message = Some("Project replacement cancelled while editors retain unapplied work. Apply it or explicitly discard it, then choose the project action again.".into()); }
+        blocked
+    }
     fn request_project_action(&mut self, action: Action) {
         if self.reject_protected_project() { return; }
+        if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
         if self.project.busy() {
             return;
         }
@@ -402,6 +410,7 @@ impl App {
     }
     fn begin_project_action(&mut self, action: Action) {
         if self.reject_protected_project() { return; }
+        if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
         match action {
             Action::OpenDialog => {
                 self.project.dialog = Some(Dialog::Path {
@@ -533,6 +542,10 @@ impl App {
                     self.project.recent_warning = warning;
                 }
                 Event::Ready => {
+                    if self.guard_project_drafts() {
+                        if let Some(active) = &self.project.active { active.cancel.store(true, Ordering::Release); }
+                        continue;
+                    }
                     if self
                         .project
                         .active
@@ -785,6 +798,7 @@ impl App {
         self.poll_play_history();
         self.loads = std::array::from_fn(|_| None);
         self.dependencies.install_origins(view.media_origins.clone());
+        self.timing.reset_project();
         self.lib_filter = view.library_filter.clone();
         self.choose_named_crate(view.selected_crate.clone());
         self.keys_open = view.keys_open;
