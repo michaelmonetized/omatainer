@@ -7,6 +7,8 @@ mod engine;
 mod library;
 mod media_location;
 mod media_tags;
+mod midi_file;
+mod midi_file_io;
 mod performance_history;
 mod sampler_bank;
 mod track_analysis;

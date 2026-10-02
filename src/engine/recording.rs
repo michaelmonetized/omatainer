@@ -100,7 +100,7 @@ impl RtEngine {
         let Some(start) = self.recording_position(track, scene) else { return false; };
         if (start as f64) < region.loop_start || start as f64 >= region.loop_end { return true; }
         let count = clip.notes.iter().filter(|n| !n.muted && n.len > 0.0
-            && n.start as f64 >= region.loop_start && (n.start as f64) < region.loop_end).count();
+            && n.source_start() >= region.loop_start && (n.source_start()) < region.loop_end).count();
         (count + 1) as f64 <= super::project::MAX_NOTES_PER_CLIP as f64 * region.period()
     }
     pub(super) fn begin_recording_note(
@@ -133,6 +133,7 @@ impl RtEngine {
         self.project.edited();
         let index = clip.notes.len();
         clip.notes.push(MidiNote {
+            channel:match input {InputKey::Midi {ch,..}=>ch,_=>0},release_vel:64,source_timing:None,
             id, muted: false,
             pitch,
             start,

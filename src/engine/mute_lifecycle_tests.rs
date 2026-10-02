@@ -9,12 +9,13 @@ fn fixture(drums: bool, arp: bool) -> RtEngine {
     track.kind = if drums { 0 } else { 3 };
     track.poly = Poly::new(rt.sr, SynthInstrument::Pad, 16);
     track.clips[0] = Clip {
+        lanes: None,
         region: None,
         name: "Mute lifecycle".into(),
         kind: ClipKind::Midi,
         bars: 8.0,
         notes: vec![MidiNote {
-            id: crate::engine::midi_edit::NoteId::new(), muted: false,
+            channel:0,release_vel:64,source_timing:None, id: crate::engine::midi_edit::NoteId::new(), muted: false,
             pitch: if drums { 46 } else { 60 },
             start: 0.0,
             len: 0.4,

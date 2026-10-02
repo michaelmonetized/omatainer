@@ -2,6 +2,7 @@
 //! objects are swapped. A worker retires owned media/notes/processors and
 //! replenishes recording scratch; it never owns or locks the live renderer.
 mod capture;
+mod midi_import;
 mod patch;
 mod recording;
 #[cfg(test)]
@@ -13,7 +14,7 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
 const MAX_ENTRIES: usize = 256;
-const MAX_PATCHES: usize = TRACKS * SCENES;
+const MAX_PATCHES: usize = TRACKS * SCENES + 1;
 const SCRATCHES: usize = 64;
 const RETIRE_CAPACITY: usize = 1024;
 const RESERVE_RETIRE: usize = 2 * control::MAX_COMMANDS + 2 * control::COMMANDS_PER_BLOCK + 4;
@@ -244,6 +245,7 @@ impl Scratch {
     }
 }
 enum Retired {
+    Conductor(Arc<midi_data::Conductor>),
     Entry(Entry),
     Timeline(VecDeque<Option<Entry>>),
     Patch(Patch),
@@ -752,6 +754,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::Solo { .. }
             | Command::Arm { .. }
             | Command::ClipGain { .. }
+            | Command::MidiImport(_)
             | Command::MidiEdit(_)
             | Command::SetNotes { .. }
             | Command::ComposeArm { .. }
@@ -794,7 +797,8 @@ impl Journal {
             && matches!(
                 command,
                 Command::Gesture { .. }
-                    | Command::MidiEdit(_)
+                    | Command::MidiImport(_)
+            | Command::MidiEdit(_)
                     | Command::SetNotes { .. }
                     | Command::DeckAudio { .. }
                     | Command::DeckDecoded { .. }
@@ -917,5 +921,11 @@ impl Journal {
         }
         self.recount();
         self.publish();
+    }
+}
+
+impl Journal {
+    pub(super) fn retire_midi_conductor(&mut self, value: Arc<midi_data::Conductor>, bytes: usize) {
+        self.retire(Retired::Conductor(value), bytes);
     }
 }

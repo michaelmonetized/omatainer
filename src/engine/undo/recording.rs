@@ -35,7 +35,8 @@ impl RtEngine {
             .any(|p|matches!(p,Patch::Clip {track:t,scene:s,..} if *t as usize==track && *s as usize==scene)) {return true;}
         let bytes = clip.name.capacity().max(TEXT_LIMIT)
             + 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>()
-            + clip.audio.as_ref().map_or(0, |a| sample_bytes(a));
+            + clip.audio.as_ref().map_or(0, |a| sample_bytes(a))
+            + clip.lanes.as_ref().map_or(0, |l| l.bytes());
         if let Err(reason) = self.undo.preflight(bytes) {
             self.undo.reject(reason);
             return false;
@@ -53,7 +54,8 @@ impl RtEngine {
             track: track as u8,
             scene: scene as u8,
             value: Clip {
-                region: clip.region,
+                lanes: clip.lanes.clone(),
+                        region: clip.region,
                 kind: clip.kind,
                 name,
                 bars: clip.bars,
@@ -62,6 +64,7 @@ impl RtEngine {
                 audio: clip.audio.clone(),
             },
             spare_notes: Vec::new(),
+            reserved_midi_bytes: 0,
         };
         if !grouped {
             let gesture = self.undo.gesture;

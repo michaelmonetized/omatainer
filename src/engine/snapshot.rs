@@ -295,8 +295,17 @@ impl Frame {
         target.recording = rt.recording;
         target.bpm = rt.bpm;
         target.beat = rt.beat;
-        target.bar = (rt.beat / 4.0).floor() as u32 + 1;
-        target.beat_in_bar = (rt.beat % 4.0) as f32;
+        target.file_conductor = rt.conductor.is_some();
+        if let Some(conductor) = &rt.conductor {
+            let (bar, beat, meter) = conductor.position(rt.precise_midi_beat());
+            target.bar = bar; target.beat_in_bar = beat;
+            target.meter_numerator = meter.numerator;
+            target.meter_denominator = 1u16 << meter.denominator_power;
+        } else {
+            target.bar = (rt.beat / 4.0).floor() as u32 + 1;
+            target.beat_in_bar = (rt.beat % 4.0) as f32;
+            target.meter_numerator = 4; target.meter_denominator = 4;
+        }
         target.master = rt.master;
         target.xfader = rt.xfader;
         target.cue_mix = rt.cue_mix;

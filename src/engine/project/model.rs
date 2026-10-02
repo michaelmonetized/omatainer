@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 5;
+pub const STATE_VERSION: u32 = 6;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -15,6 +15,8 @@ pub const MAX_MEDIA_REFS: usize = TRACKS * (SCENES + 6) + DECKS + 2 + MAX_BANKS 
 pub struct State {
     pub version: u32,
     pub bpm: f32,
+    #[serde(default)]
+    pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
     pub beat: f64,
     pub quant: f32,
     pub quantize: bool,
@@ -46,6 +48,8 @@ pub struct State {
 struct StateWire {
     version: u32,
     bpm: f32,
+    #[serde(default)]
+    conductor: Option<Arc<midi_data::Conductor>>,
     beat: f64,
     quant: f32,
     quantize: bool,
@@ -79,6 +83,7 @@ impl<'de> Deserialize<'de> for State {
         Ok(Self {
             version: wire.version,
             bpm: wire.bpm,
+            conductor: wire.conductor,
             beat: wire.beat,
             quant: wire.quant,
             quantize: wire.quantize,
@@ -131,6 +136,8 @@ pub struct Track {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SavedClip {
+    #[serde(default)]
+    pub(crate) lanes: Option<Arc<midi_data::Lanes>>,
     #[serde(default)]
     pub region: Option<midi_edit::Region>,
     pub kind: ClipKind,
@@ -224,6 +231,7 @@ impl State {
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            conductor: None,
             bpm: 124.0,
             beat: 0.0,
             quant: 1.0,
@@ -241,6 +249,7 @@ impl State {
             tracks: std::array::from_fn(|_| Track {
                 name: String::new(),
                 clips: std::array::from_fn(|_| SavedClip {
+                    lanes: None,
                     region: None,
                     kind: ClipKind::Empty,
                     name: String::new(),
@@ -344,6 +353,9 @@ impl State {
         {
             return fail("sampler settings");
         }
+        if self.version < 6 && self.conductor.is_some() { return fail("legacy conductor"); }
+        if let Some(conductor) = &self.conductor { conductor.validate()?; }
+        let mut midi_bytes = self.conductor.as_ref().map_or(0, |c| c.bytes());
         let reference = |index: usize| index < media.len();
         let optional = |index: Option<usize>| index.is_none_or(reference);
         let mut note_count = 0usize;
@@ -369,6 +381,10 @@ impl State {
                 }
             }
             for clip in &track.clips {
+                if let Some(lanes) = &clip.lanes {
+                    if self.version < 6 || clip.kind != ClipKind::Midi { return fail("legacy or non-MIDI lanes"); }
+                    lanes.validate()?; midi_bytes += lanes.bytes();
+                }
                 note_ids.clear();
                 if !text_ok(&clip.name)
                     || !finite_range(clip.bars as f64, if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
@@ -382,7 +398,9 @@ impl State {
                 }
                 note_count += clip.notes.len();
                 for note in &clip.notes {
-                    if note.pitch > 127
+                    if !note.interchange_valid()
+                        || self.version<6 && (note.channel!=0 || note.release_vel!=64 || note.source_timing.is_some())
+                        || note.pitch > 127
                         || note.vel > 127
                         || !finite_range(note.start as f64, 0.0, 262144.0)
                         || !finite_range(note.len as f64, 0.0, 262144.0)
@@ -394,6 +412,7 @@ impl State {
                 }
             }
         }
+        if midi_bytes > midi_data::MAX_LANE_BYTES { return fail("MIDI metadata exceeds 16 MiB"); }
         if note_count > MAX_TOTAL_NOTES {
             return fail("note count (maximum 65536)");
         }

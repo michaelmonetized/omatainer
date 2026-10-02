@@ -163,6 +163,7 @@ impl Frame {
             sampler_inst,
             sampler_oct
         );
+        target.conductor = rt.conductor.clone();
         target.sampler_synth = synth(&rt.sampler_poly);
         for (i, track) in rt.tracks.iter().enumerate() {
             let out = &mut target.tracks[i];
@@ -187,6 +188,7 @@ impl Frame {
                 let saved = &mut out.clips[j];
                 saved.kind = clip.kind;
                 saved.region = clip.region;
+                saved.lanes = clip.lanes.clone();
                 copy_string(&mut saved.name, &clip.name);
                 saved.bars = clip.bars;
                 saved.gain = clip.gain;

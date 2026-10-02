@@ -45,12 +45,14 @@ impl Prepared {
             sampler_inst,
             sampler_oct
         );
+        rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
         rt.sync_midi_clock();
         rt.playing = false;
         rt.recording = false;
         rt.compose_target = None;
         rt.sampler_poly = synth(state.sampler_synth, output_sr);
-        for (i, saved) in state.tracks.into_iter().enumerate() {
+        for (i, mut saved) in state.tracks.into_iter().enumerate() {
+            for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose().map_err(Error::Invalid)?; }
             let track = &mut rt.tracks[i];
             track.name = saved.name;
             track.scene_bus = saved.scene_bus;
@@ -67,6 +69,7 @@ impl Prepared {
             track.fx = effects(saved.fx, output_sr);
             track.clips = saved.clips.map(|c| Clip {
                 region: c.region,
+                lanes: c.lanes,
                 kind: c.kind,
                 name: c.name,
                 bars: c.bars,
@@ -201,6 +204,8 @@ impl Prepared {
             beat_roundoff,
             midi_beat,
             midi_beat_reference,
+            conductor,
+            last_midi_step,
             quant,
             view,
             xfader,

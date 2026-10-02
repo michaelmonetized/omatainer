@@ -3,18 +3,19 @@ use crate::engine::RtEngine;
 use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId};
 use std::time::Duration;
 
-struct Gui {
-    app: App,
-    rt: RtEngine,
-    ctx: egui::Context,
-    nodes: Vec<(NodeId, Node)>,
+pub(crate) struct Gui {
+    pub(crate) app: App,
+    pub(crate) rt: RtEngine,
+    pub(crate) ctx: egui::Context,
+    pub(crate) nodes: Vec<(NodeId, Node)>,
     time: f64,
-    render: bool,
+    pub(crate) render: bool,
     focused: bool,
-    native_close: bool,
+    pub(crate) native_close: bool,
+    pub(crate) screen: Vec2,
 }
 impl Gui {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
         engine.send(Command::Select { track: 2, scene: 7 }).unwrap();
         rt.process(&mut []);
@@ -31,6 +32,7 @@ impl Gui {
             render: true,
             focused: true,
             native_close: false,
+            screen: Vec2::new(1440.0, 1400.0),
         };
         for _ in 0..4 {
             gui.frame(vec![]);
@@ -38,7 +40,7 @@ impl Gui {
         gui.settle();
         gui
     }
-    fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
+    pub(crate) fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
         self.time += 0.02;
         let modifiers = events
             .iter()
@@ -52,7 +54,7 @@ impl Gui {
             })
             .unwrap_or_default();
         let mut input = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1440.0, 1400.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, self.screen)),
             time: Some(self.time),
             focused: self.focused,
             events,
@@ -82,7 +84,7 @@ impl Gui {
         }
         output
     }
-    fn settle(&mut self) {
+    pub(crate) fn settle(&mut self) {
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
             self.frame(vec![]);
@@ -99,7 +101,7 @@ impl Gui {
         }
         self.frame(vec![]);
     }
-    fn node(&self, label: &str) -> (NodeId, &Node) {
+    pub(crate) fn node(&self, label: &str) -> (NodeId, &Node) {
         self.nodes
             .iter()
             .find(|(_, n)| n.label() == Some(label))
@@ -114,7 +116,7 @@ impl Gui {
                 )
             })
     }
-    fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
+    pub(crate) fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
         let target = self.node(label).0;
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             action,
@@ -123,7 +125,7 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
-    fn click(&mut self, label: &str) {
+    pub(crate) fn click(&mut self, label: &str) {
         self.action(label, Action::Click, None);
     }
     fn number(&mut self, label: &str, value: f64) {
@@ -133,7 +135,7 @@ impl Gui {
             Some(ActionData::NumericValue(value)),
         );
     }
-    fn key(&mut self, key: Key, modifiers: egui::Modifiers) {
+    pub(crate) fn key(&mut self, key: Key, modifiers: egui::Modifiers) {
         for pressed in [true, false] {
             self.frame(vec![egui::Event::Key {
                 key,
@@ -155,13 +157,13 @@ impl Gui {
             },
         ]);
     }
-    fn click_text(&mut self, text: &str) {
+    pub(crate) fn click_text(&mut self, text: &str) {
         let output = self.frame(vec![]);
         let pos = test_support::label_center(&output, text);
         self.pointer(pos, true);
         self.pointer(pos, false);
     }
-    fn path(&mut self, path: &PathBuf) {
+    pub(crate) fn path(&mut self, path: &PathBuf) {
         let old = self
             .app
             .project_path_text_for_test()
@@ -584,6 +586,7 @@ fn clip_loop_markers_numeric_view_and_scale_folding_are_real_accessible_controls
 #[test]
 fn draft_operations_keep_existing_identity_and_give_copies_fresh_identity() {
     let baseline = Arc::new(Document {
+        lanes: None,
         track: 2,
         scene: 7,
         epoch: 1,

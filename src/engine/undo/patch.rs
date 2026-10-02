@@ -33,9 +33,10 @@ impl Rack {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Global {
     bpm: f32,
+    conductor: Option<Arc<midi_data::Conductor>>,
     quant: f32,
     quantize: bool,
     metronome: bool,
@@ -54,6 +55,7 @@ impl Global {
     pub fn get(rt: &RtEngine) -> Self {
         Self {
             bpm: rt.bpm,
+            conductor: rt.conductor.clone(),
             quant: rt.quant,
             quantize: rt.quantize,
             metronome: rt.metronome,
@@ -72,6 +74,7 @@ impl Global {
     fn swap(&mut self, rt: &mut RtEngine) {
         let current = Self::get(rt);
         rt.bpm = self.bpm;
+        rt.conductor = self.conductor.clone();
         rt.quant = self.quant;
         rt.quantize = self.quantize;
         if rt.metronome != self.metronome {
@@ -243,6 +246,7 @@ impl Effect {
 
 pub(super) enum Patch {
     Global(Global),
+    Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, reserved_bytes: usize },
     Sampler {
         index: usize,
         value: Option<sampler::Bank>,
@@ -279,6 +283,7 @@ pub(super) enum Patch {
         scene: u8,
         value: Clip,
         spare_notes: Vec<MidiNote>,
+        reserved_midi_bytes: usize,
     },
     Media {
         deck: u8,
@@ -329,7 +334,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::Global(_) | Self::Sampler { .. } => T::None,
+            Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -375,6 +380,10 @@ impl Patch {
                 *selected = selection;
             }
             Self::Global(value) => value.swap(rt),
+            Self::Conductor { bpm, value, .. } => {
+                std::mem::swap(bpm, &mut rt.bpm);
+                std::mem::swap(value, &mut rt.conductor);
+            },
             Self::Track(track, value) => value.swap(&mut rt.tracks[*track as usize]),
             Self::ClipGain { track, scene, gain } => std::mem::swap(
                 gain,
@@ -459,11 +468,13 @@ impl Patch {
     pub fn heap_bytes(&self) -> usize {
         match self {
             Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
+            Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()),
+            Self::Conductor { reserved_bytes, .. } => *reserved_bytes,
             Self::Slot { reserved_bytes, .. } => *reserved_bytes,
             Self::Clip {
-                value, spare_notes, ..
+                value, spare_notes, reserved_midi_bytes, ..
             } => {
-                value.name.capacity()
+                (*reserved_midi_bytes).max(value.lanes.as_ref().map_or(0, |lanes| lanes.bytes())) + value.name.capacity()
                     + (value.notes.capacity() + spare_notes.capacity()).max(2 * super::NOTE_LIMIT)
                         * std::mem::size_of::<MidiNote>()
             }

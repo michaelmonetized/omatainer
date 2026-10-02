@@ -163,6 +163,7 @@ impl Draft {
         }
         let value = self.cursor;
         self.notes.push(MidiNote {
+            channel:0,release_vel:64,source_timing:None,
             id,
             pitch: value.pitch,
             start: value.start,
@@ -204,6 +205,7 @@ impl Draft {
             n.start += beats;
             n.pitch = (n.pitch as i16 + semitones) as u8;
             n.len += length;
+            n.reconcile_timing();
             if mute {
                 n.muted = !n.muted;
             }
@@ -236,6 +238,7 @@ impl Draft {
                 return Err("A note identity could not be created".into());
             }
             n.start += offset;
+            n.reconcile_timing();
             copies.push(n);
         }
         self.selected = copies.iter().map(|n| n.id).collect();
@@ -252,6 +255,7 @@ impl Draft {
             n.pitch = self.cursor.pitch;
             n.start = self.cursor.start;
             n.len = self.cursor.length;
+            n.reconcile_timing();
             n.vel = self.cursor.velocity;
             n.muted = self.cursor.muted;
             self.dirty = true;
@@ -265,13 +269,16 @@ impl Draft {
             );
         };
         format!(
-            "{} selected · {} · start {:.6} beats · length {:.6} beats · velocity {} · {}",
+            "{} selected · {} · start {:.9} beats · length {:.9} beats · velocity {} · channel {} · release {} · {}{}",
             self.selected.len(),
             pitch_name(note.pitch),
-            note.start,
-            note.len,
+            note.source_start(),
+            note.source_duration(),
             note.vel,
-            if note.muted { "muted" } else { "audible" }
+            note.channel + 1,
+            note.release_vel,
+            if note.muted { "muted" } else { "audible" },
+            note.source_timing.map_or(String::new(), |t| format!(" · source PPQN {} tick {} length {}", t.ppqn, t.start, t.duration))
         )
     }
 }
@@ -520,6 +527,9 @@ impl App {
                     if let Some(draft) = &mut editor.draft {
                         ui.label(format!("Captured track {} · scene {} · {} notes · {}", draft.baseline.track + 1,
                             draft.baseline.scene + 1, draft.notes.len(), if draft.dirty { "unapplied changes" } else { "unmodified draft" }));
+                        if let Some(lanes) = &draft.baseline.lanes {
+                            ui.label(format!("Imported source PPQN {} · end tick {} · {} channel messages · {} standard metadata events", lanes.ppqn, lanes.end_tick, lanes.messages.len(), lanes.meta.len()));
+                        }
                         let scroll = egui::ScrollArea::vertical().id_salt("piano-roll-body")
                             .max_height((available.height() - 160.0).max(100.0)).show(ui, |ui| {
                             ui.add_enabled_ui(!busy && !self.project.committing(), |ui| {
@@ -725,4 +735,4 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
