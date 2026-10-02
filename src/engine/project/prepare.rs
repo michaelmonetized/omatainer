@@ -187,6 +187,7 @@ impl Prepared {
     }
 
     pub(super) fn swap_into(&mut self, rt: &mut RtEngine) {
+        rt.midi_routing.reset_outputs();
         if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership
         // in the retired graph until this Prepared is dropped on the worker.

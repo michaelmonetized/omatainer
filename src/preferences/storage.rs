@@ -105,18 +105,28 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
     if bytes.len() as u64 > MAX_BYTES {
         return Err(Error::Invalid("Preferences exceed 1 MiB".into()));
     }
-    let version = serde_json::from_slice::<serde_json::Value>(bytes)
-        .map_err(|error| Error::Invalid(format!("Malformed preferences: {error}")))?
+    let value = serde_json::from_slice::<serde_json::Value>(bytes)
+        .map_err(|error| Error::Invalid(format!("Malformed preferences: {error}")))?;
+    let version = value
         .get("version")
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
+    if version < 6 {
+        let newer = if version == 1 {
+            value.get("profile").is_some_and(|p| p.get("midi_routing").is_some())
+        } else {
+            value.get("profiles").and_then(|v| v.as_object()).is_some_and(|profiles|
+                profiles.values().any(|p| p.get("midi_routing").is_some()))
+        };
+        if newer { return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into())); }
+    }
     let (preferences, migrated) = match version {
-        5 => (
+        6 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 => {
+        2 | 3 | 4 | 5 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -383,6 +393,7 @@ mod tests {
         let mut json = serde_json::to_value(&original).unwrap();
         json["version"] = 4.into();
         for profile in json["profiles"].as_object_mut().unwrap().values_mut() {
+            profile.as_object_mut().unwrap().remove("midi_routing");
             profile.as_object_mut().unwrap().remove("recovery");
         }
         let bytes = serde_json::to_vec(&json).unwrap();
@@ -438,6 +449,7 @@ mod tests {
         let mut value = serde_json::to_value(&prefs).unwrap();
         value["version"] = 2.into();
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() {
+            profile.as_object_mut().unwrap().remove("midi_routing");
             for field in ["backend", "format", "calibration"] {
                 profile["audio"].as_object_mut().unwrap().remove(field);
             }
@@ -475,13 +487,15 @@ mod tests {
     #[test]
     fn migration_is_explicit_and_unknown_or_duplicate_fields_never_disappear() {
         let profile = Profile::defaults(Path::new("/private/user"));
-        let raw = serde_json::to_vec(&serde_json::json!({"version":1,"profile":profile})).unwrap();
+        let mut old_profile = serde_json::to_value(&profile).unwrap();
+        old_profile.as_object_mut().unwrap().remove("midi_routing");
+        let raw = serde_json::to_vec(&serde_json::json!({"version":1,"profile":old_profile})).unwrap();
         let (loaded, migrated) = decode(&raw).unwrap();
         assert!(migrated);
         assert_eq!(loaded.current(), Some(&profile));
         assert_eq!(loaded.profiles["Performance"], profile);
         assert!(decode(br#"{"version":999,"secret":"preserve original"}"#).is_err());
-        let value = serde_json::to_string(&profile).unwrap();
+        let value = serde_json::to_string(&old_profile).unwrap();
         let duplicate = format!(
             r#"{{"version":2,"active":"Studio","profiles":{{"Studio":{value},"Studio":{value}}}}}"#
         );
@@ -574,7 +588,7 @@ mod tests {
         assert!(load(&path, &AtomicBool::new(false)).unwrap().preferences.current().unwrap().startup.performance_mode);
         let mut legacy = serde_json::to_value(preferences).unwrap();
         legacy["version"] = 3.into();
-        for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("performance_mode"); }
+        for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile.as_object_mut().unwrap().remove("midi_routing"); profile["startup"].as_object_mut().unwrap().remove("performance_mode"); }
         let (legacy, migrated) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
         assert!(migrated);
         assert_eq!(legacy.version, VERSION);

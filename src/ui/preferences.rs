@@ -25,6 +25,7 @@ pub(super) struct Settings {
     roots: String,
     midi_names: String,
     pub rescan: bool,
+    pub(super) routing_pending: bool,
     pub theme_update: Option<Arc<crate::theme::reload::Update>>,
 }
 impl Default for Settings {
@@ -78,6 +79,7 @@ impl Settings {
             roots: String::new(),
             midi_names: String::new(),
             rescan: false,
+            routing_pending: false,
             theme_update: None,
         };
         state.editor_strings();
@@ -258,6 +260,16 @@ impl App {
                         .push_str(&format!(" Saved MIDI policy is not applied: {error}")),
                 }
             }
+            if old.midi_routing != self.settings.profile().midi_routing {
+                self.settings.routing_pending=true;
+            }
+        }
+        if self.settings.routing_pending && !self.engine.midi.connections_busy() && self.engine.midi.policy_status().is_none_or(|s|!s.pending()) {
+            self.settings.routing_pending=false;
+            match self.engine.midi.configure_routing(self.settings.profile().midi_routing.clone()) {
+                Ok(generation)=>self.settings.message.push_str(&format!(" MIDI routing request {generation} queued.")),
+                Err(error)=>self.settings.message.push_str(&format!(" Saved MIDI routing is not applied: {error}")),
+            }
         }
         if self.settings.rescan && !self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active() && !self.engine.cmd.performance().protected() && !self.project.committing() {
             self.settings.rescan = false;
@@ -286,7 +298,7 @@ impl App {
         let mut open = true;
         let mut discard = false;
         egui::Window::new("Preferences and profiles").id(egui::Id::new("preferences-window"))
-            .open(&mut open).default_width(680.0).default_height(620.0).show(ctx, |ui| {
+            .open(&mut open).default_width(680.0).default_height(620.0).vscroll(true).max_height((ctx.screen_rect().height()-64.0).max(200.0)).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.label("Apply saves preferences. MIDI, folders, appearance and shortcuts follow that save. Audio can be applied explicitly in Audio devices, or after restart.");
                 if ui.button("Audio devices and latency").help(ui, HelpControl::AudioDevices).clicked() { self.audio_settings.open = true; }
@@ -309,6 +321,14 @@ impl App {
                         match self.engine.midi.configure_inputs(state.profile().midi_inputs.clone()) { Ok(generation)=>state.message=format!("MIDI request {generation} queued"),Err(error)=>state.message=error.to_string() }
                     }
                 } else {ui.label("MIDI input manager unavailable; saved policy will be used after restart.");}
+                if let Some(routing)=self.engine.midi.routing_status(){
+                    if routing.pending{ui.label("MIDI routing is pending; cancel in the MIDI panel.");ctx.request_repaint_after(std::time::Duration::from_millis(50));}
+                    if let Some(error)=&routing.error{ui.colored_label(Color32::YELLOW,error);}
+                    if routing.applied.as_ref()!=&state.profile().midi_routing{ui.colored_label(Color32::YELLOW,"Saved MIDI routing differs from the applied route.");}
+                    if ui.add_enabled(!routing.pending&&!state.routing_pending,egui::Button::new("Retry saved MIDI routing")).help(ui,HelpControl::MidiRouteEnable).clicked(){
+                        state.routing_pending=true;
+                    }
+                }
                 if state.busy() {
                     if ui.button("Cancel pending preferences operation").help(ui, HelpControl::PreferenceCancel).clicked() { state.worker.as_ref().unwrap().cancel(); }
                 }
@@ -363,6 +383,7 @@ impl App {
                             help::annotate(ui, &midi_combo.response, HelpControl::PreferenceMidiPolicy);
                             if mode == 1 { multiline(ui, "Selected MIDI input names (one per line)", &mut state.midi_names, HelpControl::PreferenceMidiNames); }
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
+                            midi_routing::edit(ui,&mut profile.midi_routing,self.engine.midi.routing_status().as_deref());
                             ui.heading("Library folders");
                             multiline(ui, "Library folders (one absolute path per line)", &mut state.roots, HelpControl::PreferenceLibraryRoots);
                             profile.library_roots = state.roots.lines().filter(|s| !s.is_empty()).map(PathBuf::from).collect();
@@ -420,6 +441,9 @@ impl App {
                                 }
                                 let midi = &preview.current().unwrap().midi_inputs;
                                 ui.label(format!("MIDI policy: {midi:?}"));
+                                let routes=&preview.current().unwrap().midi_routing;
+                                ui.label(format!("Explicit track routing: {} · {} configured tracks",routes.enabled,routes.routes.len()));
+                                for route in &routes.routes {ui.label(format!("Track {}: inputs {:?} · output {:?} · channel {:?} · live thru {} · filters {:?}",route.track+1,route.inputs,route.output,route.output_channel.map(|ch|ch+1),route.thru,route.filter));}
                                 if let Some(status)=self.engine.midi.policy_status() {
                                     if status.pending() || status.error.is_some() {ui.colored_label(Color32::YELLOW,"MIDI discovery is pending or failed; availability cannot be fully verified yet.");}
                                     if let model::MidiInputs::Selected(names)=midi {

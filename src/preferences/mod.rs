@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -148,6 +148,8 @@ pub struct Startup {
 pub struct Profile {
     pub audio: Audio,
     pub midi_inputs: MidiInputs,
+    #[serde(default)]
+    pub midi_routing: crate::engine::midi::routing::Routing,
     pub library_roots: Vec<PathBuf>,
     pub appearance: Appearance,
     pub shortcuts_enabled: bool,
@@ -163,6 +165,7 @@ impl Profile {
         Self {
             audio: Audio::default(),
             midi_inputs: MidiInputs::All,
+            midi_routing: crate::engine::midi::routing::Routing::default(),
             library_roots: vec![home.join("Music"), home.join("music")],
             appearance: Appearance {
                 follow_theme: true,
@@ -299,6 +302,7 @@ impl Profile {
         self.midi_inputs
             .validate()
             .map_err(|error| error.to_string())?;
+        self.midi_routing.validate()?;
         if let MidiInputs::Selected(names) = &self.midi_inputs {
             if names.is_empty() || names.len() > 64 {
                 return Err("Select 1–64 MIDI inputs, or choose Disabled".into());

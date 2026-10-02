@@ -27,8 +27,9 @@ fn input(capacity: usize, source: u64, cmd: &CommandPort) -> (InputSink, InputWo
         Arc::new(Mutex::new(Vec::new())),
         Arc::new(Mutex::new(None)),
         "test device".into(),
+        "test device".into(),
         Arc::new(InputCounters::default()),
-    )
+    ).unwrap()
 }
 
 fn drain(worker: &mut InputWorker) {

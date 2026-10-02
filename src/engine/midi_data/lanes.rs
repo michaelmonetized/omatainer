@@ -63,6 +63,7 @@ impl Lanes {
         let mut result = self.clone();
         result.cached_bytes = 0;
         result.messages.shrink_to_fit();
+        result.messages.sort_unstable_by_key(|m|(m.tick,m.order));
         result.meta.shrink_to_fit();
         for m in &mut result.meta {
             if let MetaValue::Text { bytes, .. } = &mut m.value {

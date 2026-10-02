@@ -553,6 +553,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SelectDeckRequested { .. }
         | Command::SetView(_)
         | Command::LiveNoteOn { .. }
+        | Command::RoutedNoteOn { .. }
         | Command::LiveNoteOff { .. }
         | Command::FxWet { .. }
         | Command::FxSelect { .. }
@@ -594,6 +595,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::ReservedStop { .. }
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
+            | Command::RoutedNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }

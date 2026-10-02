@@ -1,7 +1,6 @@
 //! USB-MIDI class-compliant I/O, hardware maps, learn, and clock.
 
 use crate::engine::{Command, DECKS, HOTCUES, SCENES, TRACKS};
-use midir::MidiOutputConnection;
 use parking_lot::Mutex;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,6 +12,7 @@ mod profile;
 mod handoff;
 mod framing;
 mod relative;
+pub(crate) mod routing;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
 pub use connections::Retry;
@@ -32,7 +32,7 @@ mod relative_tests;
 static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
 
 fn next_source_id() -> u64 {
-    NEXT_SOURCE.fetch_add(1, Ordering::Relaxed)
+    NEXT_SOURCE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |id|id.checked_add(1)).unwrap_or(0)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,7 +110,7 @@ pub enum UnmappedNotes {
 pub struct MidiHub {
     connections: Option<connections::Manager>,
     input_counters: Arc<handoff::InputCounters>,
-    outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
+    routing: Option<routing::Manager>,
     pub log: Arc<Mutex<Vec<String>>>,
     pub learn: Arc<Mutex<Option<String>>>,
 }
@@ -146,7 +146,7 @@ impl MidiHub {
         Self {
             connections: None,
             input_counters: Arc::new(handoff::InputCounters::default()),
-            outs: Arc::new(Mutex::new(Vec::new())),
+            routing: None,
             log: Arc::new(Mutex::new(Vec::new())),
             learn: Arc::new(Mutex::new(None)),
         }
@@ -157,19 +157,28 @@ impl MidiHub {
     }
 
     pub fn start_with_policy(cmd: super::CommandPort, snapshot: Arc<Mutex<super::Snapshot>>, policy: InputPolicy) -> anyhow::Result<Self> {
+        Self::start_with_routing(cmd,snapshot,policy,routing::Routing::default())
+    }
+    pub fn start_with_routing(cmd:super::CommandPort,snapshot:Arc<Mutex<super::Snapshot>>,policy:InputPolicy,routes:routing::Routing)->anyhow::Result<Self>{
         policy.validate()?;
         // Fail profile validation before a device callback can dispatch it.
         let maps = builtin_maps()?;
         let log = Arc::new(Mutex::new(Vec::new()));
         let learn = Arc::new(Mutex::new(None));
         let input_counters = Arc::new(handoff::InputCounters::default());
-        let outs = Arc::new(Mutex::new(Vec::new()));
+        let routing=Some(routing::Manager::start(cmd.clone(),routes).map_err(anyhow::Error::msg)?);
         let connections = connections::Manager::start_with_policy(
-            connections::MidirBackend::new(outs.clone()),
+            connections::MidirBackend,
             &snapshot, cmd, maps, log.clone(), learn.clone(), input_counters.clone(), policy,
         )?;
-        Ok(Self { connections: Some(connections), input_counters, outs, log, learn })
+        Ok(Self { connections: Some(connections), input_counters, routing, log, learn })
     }
+
+    pub fn configure_routing(&self,routes:routing::Routing)->Result<u64,String>{
+        self.routing.as_ref().ok_or("MIDI output/routing owner is unavailable")?.configure(routes)
+    }
+    pub fn routing_status(&self)->Option<Arc<routing::Status>>{self.routing.as_ref().map(|r|r.status())}
+    pub fn cancel_routing(&self)->bool{self.routing.as_ref().is_some_and(|r|r.cancel())}
 
     /// Does not wait for discovery, connection teardown, or a queue slot.
     pub fn configure_inputs(&self, policy: InputPolicy) -> Result<u64, PolicyError> {
@@ -197,23 +206,7 @@ impl MidiHub {
         self.input_counters.snapshot()
     }
 
-    pub fn send_clock_tick(&self) {
-        if let Some(out) = self.outs.lock().first_mut() {
-            let _ = out.send(&[0xF8]);
-        }
-    }
 
-    pub fn send_clock_start(&self, start: bool) {
-        if let Some(out) = self.outs.lock().first_mut() {
-            let _ = out.send(&[if start { 0xFA } else { 0xFC }]);
-        }
-    }
-
-    pub fn note_led(&self, ch: u8, note: u8, vel: u8) {
-        if let Some(out) = self.outs.lock().first_mut() {
-            let _ = out.send(&[0x90 | (ch & 0x0F), note, vel]);
-        }
-    }
 }
 
 fn handle_msg(
@@ -242,7 +235,7 @@ fn handle_msg(
                 }
             }
             framing::Message::Channel(frame) => {
-                handle_channel(&frame, source, map, cmd, log, learn, shift, dev);
+                handle_channel(&frame, source, map, cmd, log, learn, shift, dev, true);
             }
         }
     }
@@ -257,6 +250,7 @@ fn handle_channel(
     learn: &Arc<Mutex<Option<String>>>,
     shift: &Arc<Mutex<[bool; 4]>>,
     dev: &str,
+    allow_live: bool,
 ) {
     let st = msg[0];
     let kind_hi = st & 0xF0;
@@ -309,7 +303,7 @@ fn handle_channel(
 
     // Live MIDI notes onto the selected track when no map consumed a note
     // (generic class-compliant keyboards / Akai MPK keys).
-    if !matched && map.unmapped_notes == UnmappedNotes::Live {
+    if allow_live && !matched && map.unmapped_notes == UnmappedNotes::Live {
         if kind_hi == 0x90 && d2 > 0 {
             let _ = cmd.send(Command::LiveNoteOn {
                 source,

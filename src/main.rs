@@ -401,6 +401,7 @@ fn handle_client_with_stop(
             "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > 64)
                 || s.decks.iter().take(2).any(|deck| deck.title.len() > 256),
             "midi_clock": s.midi_clock,
+            "midi_routing": commands.midi_routing().summary(),
             "audio": commands.audio_metrics(),
             "master_fx": { "types": s.fx_kind, "wet": s.fx_wet },
             "commands": s.commands,

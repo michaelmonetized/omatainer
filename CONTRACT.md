@@ -501,6 +501,56 @@ once before encoding the request.
   not wait for a blocked OS call: its worker retains connection ownership and
   cleans up after that call returns. No automatic OS hotplug detection is claimed.
 
+## Explicit MIDI routing (#112)
+
+- Preferences version6 retains routing in named profiles, migrating versions1–5
+  without rewriting on migration. Older versions reject the presence of routing
+  fields, including null. Preview/Cancel preserve live routing and files; durable
+  Save queues a separate requested/applied routing receipt after input work settles.
+- Up to eight fixed track routes accept up to eight exact input name/id selections
+  each, with a nonempty channel mask, type filters, optional explicit output and
+  channel Preserve or1–16. Input policy must also admit the chosen inputs. Internal
+  monitoring plays notes on the route track independently of UI selection. Live
+  thru sends other accepted types externally; controller maps remain separate.
+- Notes preserve both velocities; CC, CC0/32 bank, program, both pressures and bend
+  preserve wire widths/order. Complete7-bit-data SysEx F0…F7 of3–256 bytes is opaque
+  and off by default; a zero manufacturer prefix needs its complete extended id.
+  Larger/fragmented packets refuse. Clock/transport retain the existing path.
+- Configured and active input/output device/client overlap is refused, including
+  controller-map inputs. Port ambiguity/missing destinations never select a
+  fallback. Known software topology cannot establish physical cable/thru topology;
+  physical loop and multitimbral hardware checks belong to final controller QA.
+  No packet-equality echo filter discards legitimate repeated messages.
+- One dedicated output worker owns discovery/open/send/reset/close. Raw input and
+  audio callbacks only copy bounded data/read atomics; renderer delivery never
+  locks routing or performs OS work. Output uses2048 events and256 clip messages
+  per audio block. Explicit output reset stops existing external clip streams
+  until relaunch/edit/routing apply, preserving internal audio transport.
+  Overflow invalidates queued packets, resets outputs, and refuses
+  the clip stream until relaunch/edit/routing apply; activity exposes overruns.
+- Route publication releases registered inputs and resets old output channels
+  before publishing its immutable generation. Source disconnect releases only its
+  own live notes/sustain; clip stop releases only clip owners. Shared port/channel/
+  pitch owners use one physical gate with the first onset velocity until all
+  release. Sustain combines active owners; other channel controls use arrival order.
+  Retry/rescan input work then rescans saved outputs. Vanished outputs reset/retire
+  and require an exact retry; no automatic OS hotplug detection is claimed.
+- Backend errors, pending cancellation and unconfirmed reset remain visible. Cancel
+  before publication preserves previous routing; after its claim the actual apply
+  result remains authoritative. GUI close never waits on blocked OS operations.
+  Teardown/panic disables output admission. Recovery rejects new musical thru
+  and resets output; no physical silence or backend XRUN freedom is inferred.
+- Clip output uses source MIDI before internal arpeggiator/audio mixing, preserving
+  channel/order/release velocity and exact source ticks with the conductor. Audio
+  faders/mute/solo/arp affect internal sound. Active notes are chased after seek or
+  route change; past controllers/programs are not replayed. Worker delivery is
+  immediate/asynchronous, with no calibrated hardware latency or sample-deadline
+  guarantee. Sent activity means backend acceptance, not physical receipt.
+- Native Preferences and MIDI windows expose routes, errors/generations, filters,
+  activity, pending cancel and explicit reset, with scrolling on720-line displays.
+  Ordinary status and follow share bounded routing activity. Software fixtures and
+  private Linux ALSA virtual ports do not claim physical controller qualification.
+
 ## Deck selection and crate destination
 
 - The crate exposes Deck A/B load-target selectors. A pointer press on either

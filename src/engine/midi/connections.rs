@@ -4,7 +4,7 @@ use super::policy::{self, Control, InputPolicy, PolicyError, PolicyStatus, Reque
 use super::{device_status::Status, handoff, next_source_id, pick_map, MidiMap};
 use crate::engine::{CommandPort, Snapshot};
 use crossbeam_channel::{bounded, Sender};
-use midir::{Ignore, MidiInput, MidiInputConnection, MidiOutput, MidiOutputConnection};
+use midir::{Ignore, MidiInput, MidiInputConnection};
 use parking_lot::Mutex;
 use std::sync::atomic::{
     AtomicBool,
@@ -204,7 +204,6 @@ pub(super) trait Backend: Send + 'static {
         name: &str,
         input: handoff::InputSink,
     ) -> Result<Self::Connection, String>;
-    fn refresh_output(&mut self) {}
 }
 struct Active<C> {
     _connection: C, // Field order is intentional: stop callbacks before joining.
@@ -329,13 +328,14 @@ impl<B: Backend> Worker<B> {
             entry.active.take();
             entry.status.connecting();
             let completed = entry.status.clone();
-            let pair = handoff::start_gated(
+            let pair = handoff::start_on_port(
                 next_source_id(),
                 entry.map.clone(),
                 self.cmd.clone(),
                 self.log.clone(),
                 self.learn.clone(),
                 entry.name.clone(),
+                entry.id.clone(),
                 self.counters.clone(),
                 false,
                 move || completed.disconnected(),
@@ -377,9 +377,6 @@ impl<B: Backend> Worker<B> {
                 }
             }
         }
-        if !self.activity.policy.stopped() {
-            self.backend.refresh_output();
-        }
         let mut available = Vec::new();
         let mut truncated = false;
         for entry in self.entries.iter().filter(|entry| entry.present) {
@@ -416,21 +413,7 @@ impl<B: Backend> Worker<B> {
     }
 }
 
-pub(super) struct MidirBackend {
-    outs: Arc<Mutex<Vec<MidiOutputConnection>>>,
-}
-impl MidirBackend {
-    pub(super) fn new(outs: Arc<Mutex<Vec<MidiOutputConnection>>>) -> Self {
-        Self { outs }
-    }
-}
-impl Drop for MidirBackend {
-    fn drop(&mut self) {
-        // Output ownership is also retired by the management worker, even if
-        // MidiHub's public output handle outlives that worker briefly.
-        self.outs.lock().clear();
-    }
-}
+pub(super) struct MidirBackend;
 impl Backend for MidirBackend {
     type Port = midir::MidiInputPort;
     type Connection = MidiInputConnection<()>;
@@ -465,30 +448,7 @@ impl Backend for MidirBackend {
         )
         .map_err(|error| error.to_string())
     }
-    fn refresh_output(&mut self) {
-        if !self.outs.lock().is_empty() {
-            return;
-        }
-        if let Ok(probe) = MidiOutput::new("omatainer-output") {
-            let ports: Vec<_> = probe
-                .ports()
-                .into_iter()
-                .filter_map(|port| probe.port_name(&port).ok().map(|name| (name, port)))
-                .collect();
-            drop(probe);
-            for (name, port) in ports {
-                if name.to_lowercase().contains("through") {
-                    continue;
-                }
-                if let Ok(midi) = MidiOutput::new("omatainer-output") {
-                    if let Ok(connection) = midi.connect(&port, &format!("omatainer-out-{name}")) {
-                        self.outs.lock().push(connection);
-                        break;
-                    }
-                }
-            }
-        }
-    }
+
 }
 
 #[cfg(test)]

@@ -230,6 +230,7 @@ pub struct TrackRt {
     pub arp_note: Option<u8>,
     arp_cache: arp::ChordCache,
     midi_schedule: midi_schedule::MidiSchedule,
+    midi_output: midi::routing::playback::Playback,
     // Capture playback policy belongs only to the current launch.
     recorded_playback: Vec<Option<recording::RecordedPlayback>>,
 }
@@ -237,6 +238,7 @@ pub struct TrackRt {
 impl TrackRt {
     fn clip_notes_changed(&mut self, scene: usize, beat: f64, midi_beat: f64) {
         if self.playing.or(self.project_resume).is_some_and(|p| p.scene as usize == scene) {
+            self.midi_output.invalidate();
             self.arp_cache.invalidate();
             let arp_active = self.midi_schedule.paused;
             self.rebuild_midi_schedule(beat, midi_beat);
@@ -261,6 +263,7 @@ impl TrackRt {
     }
 
     fn release_clip_notes(&mut self) {
+        self.midi_output.invalidate();
         self.poly.release_clip();
         self.arp_note = None;
         self.arp_cache.invalidate();
@@ -500,6 +503,9 @@ impl FxKind {
 }
 
 pub struct RtEngine {
+    midi_routing: Arc<midi::routing::Shared>,
+    midi_output_mask:u8,
+    midi_output_budget:usize,
     undo: undo::Journal,
     pub project: project::Handle,
     pub performance: performance::Handle,
@@ -834,6 +840,7 @@ pub enum Command {
     SelectDeckRequested { deck: usize, request: u64 },
     SetView(View),
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
+    RoutedNoteOn { source: u64, ch: u8, note: u8, vel: u8, track: u8 },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
@@ -925,10 +932,14 @@ impl RtEngine {
                 arp_note: None,
                 arp_cache: arp::ChordCache::default(),
                 midi_schedule: midi_schedule::MidiSchedule::default(),
+                midi_output: midi::routing::playback::Playback::default(),
                 recorded_playback: Vec::new(),
             })
             .collect();
         let mut e = Self {
+            midi_routing:cmd_rx.midi_routing(),
+            midi_output_mask:0,
+            midi_output_budget:256,
             undo: undo::Journal::default(),
             project: project::Handle::new(sr as u32, performance.clone()),
             performance,
@@ -1223,6 +1234,7 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        self.prepare_midi_output_block();
         self.sync_midi_clock();
         if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
@@ -1393,6 +1405,7 @@ impl RtEngine {
     }
 
     fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
+        self.render_midi_output(ti);
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
@@ -1796,6 +1809,29 @@ impl RtEngine {
         if !touching { d.scratch = 0.0; }
     }
 
+    fn live_note_on(&mut self, source:u64, ch:u8, note:u8, vel:u8, t:usize) {
+                let input = InputKey::Midi { source, ch: ch & 15, note };
+                self.release_input(input);
+                if vel == 0 {
+                    return;
+                }
+                if self.tracks[t].kind == 0 {
+                    self.trig_drum(t, note, vel as f32 / 127.0);
+                } else {
+                    self.tracks[t].poly.note_on_input(note, vel as f32 / 127.0, input);
+                }
+                if self.recording && self.playing {
+                    let scene = self.selected_scene;
+                    if self.recording_position(t, scene).is_none() { return; }
+                    if !self.history_record_target(t,scene) {return;}
+                    if self.tracks[t].clips[scene].kind == ClipKind::Empty {
+                        let clip=&mut self.tracks[t].clips[scene];
+                        clip.kind=ClipKind::Midi;clip.name.clear();clip.name.push_str("Take");clip.bars=1.0;clip.gain=1.0;
+                    }
+                    self.begin_recording_note(input, t, scene, note, vel);
+                }
+    }
+
     fn release_input(&mut self, input: InputKey) {
         self.finish_recording_input(input);
         // Voice pools are bounded; their exact gate metadata is the routing
@@ -1947,6 +1983,7 @@ impl RtEngine {
                 for t in &mut self.tracks {
                     t.stop_clip();
                 }
+                for t in 0..TRACKS {self.midi_routing.clear_clip(t as u8);}
             }
             Command::TogglePlay => {
                 if self.playing {
@@ -2299,29 +2336,12 @@ impl RtEngine {
                 self.selected_deck_request = request;
             }
             Command::SetView(v) => self.view = v,
-            Command::LiveNoteOn { source, ch, note, vel } => {
-                let input = InputKey::Midi { source, ch: ch & 15, note };
-                self.release_input(input);
-                if vel == 0 {
-                    return;
-                }
-                let t = self.selected_track;
-                if self.tracks[t].kind == 0 {
-                    self.trig_drum(t, note, vel as f32 / 127.0);
-                } else {
-                    self.tracks[t].poly.note_on_input(note, vel as f32 / 127.0, input);
-                }
-                if self.recording && self.playing {
-                    let scene = self.selected_scene;
-                    if self.recording_position(t, scene).is_none() { return; }
-                    if !self.history_record_target(t,scene) {return;}
-                    if self.tracks[t].clips[scene].kind == ClipKind::Empty {
-                        let clip=&mut self.tracks[t].clips[scene];
-                        clip.kind=ClipKind::Midi;clip.name.clear();clip.name.push_str("Take");clip.bars=1.0;clip.gain=1.0;
-                    }
-                    self.begin_recording_note(input, t, scene, note, vel);
+            Command::RoutedNoteOn { source, ch, note, vel, track } => {
+                if usize::from(track) < TRACKS && ch<=15 && note<=127 && vel<=127 {
+                    self.live_note_on(source,ch,note,vel,usize::from(track));
                 }
             }
+            Command::LiveNoteOn { source, ch, note, vel } => self.live_note_on(source,ch,note,vel,self.selected_track),
             Command::LiveNoteOff { source, ch, note } => {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
@@ -2923,7 +2943,7 @@ impl Engine {
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audio = audio::start_with_settings(rt, &settings.audio)?;
-        let midi = midi::MidiHub::start_with_policy(tx.clone(), snap.clone(), settings.midi_inputs.clone())?;
+        let midi = midi::MidiHub::start_with_routing(tx.clone(), snap.clone(), settings.midi_inputs.clone(),settings.midi_routing.clone())?;
         Ok(Self {
             undo,
             project,

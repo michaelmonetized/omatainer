@@ -9,6 +9,7 @@ struct Gui {
     nodes: Vec<(NodeId, Node)>,
     time: f64,
     dir: PathBuf,
+    height:f32,
 }
 impl Drop for Gui {
     fn drop(&mut self) {
@@ -16,6 +17,14 @@ impl Drop for Gui {
     }
 }
 impl Gui {
+    fn routing_text(&mut self,name:&str,value:&str){
+        let target=self.node(name);
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest{target,action:Action::Focus,data:None})]);
+        let modifiers=egui::Modifiers{ctrl:true,command:true,..Default::default()};
+        self.frame(vec![egui::Event::Key{key:Key::A,physical_key:None,pressed:true,repeat:false,modifiers}]);
+        self.frame(vec![egui::Event::Key{key:Key::A,physical_key:None,pressed:false,repeat:false,modifiers},egui::Event::Text(value.into())]);
+        self.frame(vec![]);
+    }
     fn new() -> Self {
         let dir = std::env::temp_dir().join(format!(
             "omatainer-prefs-ui-{}-{}",
@@ -43,6 +52,7 @@ impl Gui {
             nodes: vec![],
             time: 0.0,
             dir,
+            height:1200.0,
         };
         gui.frame(vec![]);
         gui.frame(vec![]);
@@ -58,7 +68,7 @@ impl Gui {
         self.time += 0.02;
         let out = self.ctx.run(
             {
-                raw.screen_rect = Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 1200.0)));
+                raw.screen_rect = Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, self.height)));
                 raw.time = Some(self.time);
                 raw
             },
@@ -645,4 +655,237 @@ fn protected_pending_root_scan_waits_for_studio_without_losing_the_request() {
         std::thread::sleep(std::time::Duration::from_millis(2));
     }
     assert!(gui.fixture.app.library_metadata.catalog.watched_roots.binding(&active, &gui.dir).is_some());
+}
+#[test]
+fn native_midi_routing_controls_preview_cancel_persist_and_reopen_exact_profile() {
+    let mut gui = Gui::new();
+    crate::engine::midi::routing::install_for_test(&mut gui.fixture.app.engine, Default::default());
+    gui.open();
+    gui.click("Use explicit track MIDI routing");
+    gui.click("Route MIDI track 3");
+    gui.click("Track 3 MIDI ports, channels and filters");
+    gui.click("Track 3: external MIDI output");
+    gui.routing_text("Track 3 output exact name", "Synth");
+    gui.click("Track 3 output: require exact backend port id");
+    gui.routing_text("Track 3 output exact id", "300:0");
+    gui.click("Track 3 output channel: preserve source channel");
+    let target = gui.node("Track 3 output channel");
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        target,
+        action: Action::SetValue,
+        data: Some(egui::accesskit::ActionData::NumericValue(8.0)),
+    })]);
+    gui.click("Add track 3 MIDI input");
+    gui.click("Track 3 input 1");
+    gui.routing_text("Track 3 input 1 exact name", "Keyboard A");
+    gui.click("Track 3 input 1: require exact backend port id");
+    gui.routing_text("Track 3 input 1 exact id", "100:0");
+    gui.click("Track 3 input 1: all channels");
+    gui.click("T3 I1 channel 2");
+    gui.click("T3 I1 channel 1");
+    gui.click("Track 3: Live thru to external output");
+    gui.click("Track 3: Complete SysEx ≤256 bytes");
+    let expected = gui
+        .fixture
+        .app
+        .settings
+        .draft
+        .current()
+        .unwrap()
+        .midi_routing
+        .clone();
+    assert!(expected.enabled);
+    assert_eq!(expected.routes.len(), 1);
+    let route = &expected.routes[0];
+    assert_eq!(route.track, 2);
+    assert_eq!(route.inputs[0].channels, 2);
+    assert_eq!(route.inputs[0].port.name, "Keyboard A");
+    assert_eq!(route.output.as_ref().unwrap().name, "Synth");
+    assert_eq!(route.output_channel, Some(7));
+    assert!(route.thru && route.filter.sysex);
+    assert!(expected.validate().is_ok());
+    gui.click("Preview changes");
+    gui.wait();
+    assert!(
+        !gui.fixture
+            .app
+            .engine
+            .midi
+            .routing_status()
+            .unwrap()
+            .applied
+            .enabled
+    );
+    gui.click("Cancel changes");
+    assert!(!gui.dir.join("preferences.json").exists());
+    gui.open();
+    gui.fixture
+        .app
+        .settings
+        .draft
+        .profiles
+        .get_mut("Studio")
+        .unwrap()
+        .midi_routing = expected.clone();
+    gui.preview_apply();
+    let deadline = Instant::now() + std::time::Duration::from_secs(5);
+    while gui
+        .fixture
+        .app
+        .engine
+        .midi
+        .routing_status()
+        .unwrap()
+        .pending
+    {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    assert_eq!(
+        gui.fixture
+            .app
+            .engine
+            .midi
+            .routing_status()
+            .unwrap()
+            .applied
+            .as_ref(),
+        &expected
+    );
+    let file = gui.dir.join("preferences.json");
+    let bytes = std::fs::read(&file).unwrap();
+    let loaded = storage::load(&file, &AtomicBool::new(false)).unwrap();
+    assert_eq!(loaded.preferences.current().unwrap().midi_routing, expected);
+    let startup = Startup::read(file, gui.dir.clone());
+    assert_eq!(
+        startup.preferences.current().unwrap().midi_routing,
+        expected
+    );
+    gui.fixture
+        .app
+        .settings
+        .draft
+        .profiles
+        .get_mut("Studio")
+        .unwrap()
+        .midi_routing
+        .routes[0]
+        .output_channel = Some(12);
+    gui.click("Cancel changes");
+    assert_eq!(
+        std::fs::read(gui.dir.join("preferences.json")).unwrap(),
+        bytes
+    );
+    assert_eq!(
+        gui.fixture
+            .app
+            .engine
+            .midi
+            .routing_status()
+            .unwrap()
+            .applied
+            .as_ref(),
+        &expected
+    );
+}
+
+#[test]
+fn native_missing_output_receipt_preserves_saved_profile_and_midi_panel_resets() {
+    let mut gui = Gui::new();
+    crate::engine::midi::routing::install_for_test(&mut gui.fixture.app.engine, Default::default());
+    gui.open();
+    gui.fixture
+        .app
+        .settings
+        .draft
+        .profiles
+        .get_mut("Studio")
+        .unwrap()
+        .midi_routing = crate::engine::midi::routing::Routing {
+        enabled: true,
+        routes: vec![crate::engine::midi::routing::Route {
+            track: 2,
+            inputs: vec![],
+            output: Some(crate::engine::midi::routing::Endpoint {
+                name: "Missing synthesizer".into(),
+                id: None,
+            }),
+            output_channel: Some(7),
+            monitor: true,
+            thru: false,
+            filter: Default::default(),
+        }],
+    };
+    gui.preview_apply();
+    let end = Instant::now() + std::time::Duration::from_secs(5);
+    while gui
+        .fixture
+        .app
+        .engine
+        .midi
+        .routing_status()
+        .unwrap()
+        .pending
+    {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    gui.frame(vec![]);
+    let status = gui.fixture.app.engine.midi.routing_status().unwrap();
+    assert!(status.error.as_ref().unwrap().contains("missing"));
+    assert!(!status.applied.enabled);
+    let path = gui.dir.join("preferences.json");
+    let bytes = std::fs::read(&path).unwrap();
+    assert!(
+        storage::load(&path, &AtomicBool::new(false))
+            .unwrap()
+            .preferences
+            .current()
+            .unwrap()
+            .midi_routing
+            .enabled
+    );
+    gui.click("Cancel changes");
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    gui.height = 720.0;
+    gui.fixture.app.midi_open = true;
+    gui.frame(vec![]);
+    gui.frame(vec![]);
+    let output = gui.frame(vec![]);
+    assert!(output.shapes.iter().any(|shape|matches!(&shape.shape,egui::epaint::Shape::Text(text) if text.galley.text().contains("missing"))),"missing destination receipt was not painted in native MIDI panel");
+    let epoch = gui.fixture.app.engine.cmd.midi_routing().output_state().2;
+    gui.click("All notes off / reset MIDI outputs");
+    assert!(gui.fixture.app.engine.cmd.midi_routing().output_state().2 > epoch);
+    gui.click("Edit MIDI routing in Preferences");
+    assert!(gui.fixture.app.settings.open);
+    gui.click("Retry saved MIDI routing");
+    gui.frame(vec![]);
+    while gui
+        .fixture
+        .app
+        .engine
+        .midi
+        .routing_status()
+        .unwrap()
+        .pending
+    {
+        gui.frame(vec![]);
+        assert!(Instant::now() < end);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    assert!(gui
+        .fixture
+        .app
+        .engine
+        .midi
+        .routing_status()
+        .unwrap()
+        .error
+        .as_ref()
+        .unwrap()
+        .contains("missing"));
+    gui.click("Cancel changes");
+    assert_eq!(std::fs::read(path).unwrap(), bytes);
 }
