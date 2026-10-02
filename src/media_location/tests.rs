@@ -213,6 +213,25 @@ fn parser_rejects_malformed_records_duplicates_and_capacity() {
     assert_eq!(parse_mounts(&bytes).unwrap_err(), Failure::Capacity);
 }
 #[test]
+fn namespace_mounts_keep_visible_boundaries_without_rejecting_media_inventory() {
+    let mut s = snapshot("/mnt/a", 1);
+    let mounts = parse_mounts(b"2 1 0:5 net:[4026533175] /mnt/a/network rw shared:501 - nsfs nsfs rw\n").unwrap();
+    assert_eq!(mounts[0].root, Path::new("net:[4026533175]"));
+    assert!(mounts[0].block.is_none());
+    s.mounts.extend(mounts);
+    assert_eq!(s.identify_canonical("/mnt/a/song.wav".into()).unwrap().source, source("song.wav"));
+    assert_eq!(s.resolve(&source("network/song.wav")).unwrap_err(), Failure::NotVisible);
+    let location = s.resolve(&source("")).unwrap();
+    let child = location.child(Path::new("/mnt/a/network/song.wav")).unwrap();
+    assert_eq!(s.inspect(&child).unwrap_err(), Failure::Changed);
+    for bytes in [
+        b"2 1 8:17 net:[4026533175] /mnt/a/network rw - ext4 /dev/sdb1 rw\n".as_slice(),
+        b"2 1 0:5 net:[4026533175] relative rw - nsfs nsfs rw\n",
+    ] {
+        assert_eq!(parse_mounts(bytes).unwrap_err(), Failure::Invalid);
+    }
+}
+#[test]
 fn overmount_ids_are_not_assumed_monotonic_and_absent_uuid_is_explicit() {
     let mut s = snapshot("/mnt/a", 10);
     let mut newer = s.mounts[0].clone();

@@ -614,7 +614,9 @@ fn parse_mounts(bytes: &[u8]) -> Result<Vec<Mount>, Failure> {
         let root = unescape(fields[3])?;
         let point = unescape(fields[4])?;
         let source = unescape(fields[separator + 2])?;
-        if !absolute(&root) || !absolute(&point) {
+        if (!absolute(&root) && !(fields[separator + 1] == b"nsfs" && relative(&root, false)))
+            || !absolute(&point)
+        {
             return Err(Failure::Invalid);
         }
         mounts.push(Mount {
