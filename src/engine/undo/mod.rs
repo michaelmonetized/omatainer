@@ -807,6 +807,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
+        if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
         super::sampler::reject(&command);
@@ -814,7 +815,8 @@ impl Journal {
         if self.enabled
             && matches!(
                 command,
-                Command::SessionControl(_)
+                Command::Remote(_)
+                    | Command::SessionControl(_)
                     | Command::SessionEdit(_)
                     | Command::Gesture { .. }
                     | Command::MidiImport(_)

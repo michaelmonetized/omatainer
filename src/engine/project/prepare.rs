@@ -191,6 +191,7 @@ impl Prepared {
     }
 
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
+        rt.transport_epoch = rt.transport_epoch.wrapping_add(1);
         rt.midi_routing.reset_outputs();
         if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership

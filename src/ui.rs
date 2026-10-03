@@ -53,6 +53,7 @@ mod deck_time_tests;
 mod licenses;
 mod accessibility;
 mod preferences;
+mod automation;
 mod performance;
 mod audio_settings;
 mod recovery_settings;
@@ -105,6 +106,8 @@ pub struct App {
     recovery: recovery::Recovery,
     session_history: session_history::Panel,
     settings: preferences::Settings,
+    automation_panel: automation::Panel,
+    automation_network: crate::automation::osc::Manager,
     performance_panel: performance::Panel,
     audio_settings: audio_settings::Panel,
     diagnostics: diagnostics::Diagnostics,
@@ -218,6 +221,8 @@ impl App {
             session_history: session_history::Panel::default(),
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             settings: preferences::Settings::default(),
+            automation_panel: automation::Panel::default(),
+            automation_network: crate::automation::osc::Manager::new(engine.cmd.clone(),engine.snap.clone()),
             performance_panel: performance::Panel::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             licenses: licenses::Licenses::default(),
@@ -824,6 +829,7 @@ impl App {
                 self.midi_routing_status_ui(ui,ctx);
             });
         }
+        self.automation_ui(ctx);
         self.preferences_ui(ctx);
         self.audio_settings_ui(ctx);
         self.recovery_ui(ctx);

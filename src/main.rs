@@ -19,6 +19,7 @@ mod preferences;
 mod theme;
 mod ui;
 mod ipc_server;
+mod automation;
 mod ipc_transport;
 mod ipc_request;
 mod ipc_schema;
@@ -174,6 +175,7 @@ fn main() -> anyhow::Result<()> {
         options,
         Box::new(|cc| {
             let mut app = ui::App::new(cc, engine);
+            app.automation_endpoint(socket.clone());
             app.initialize_preferences(&cc.egui_ctx, startup, running_audio);
             if let Some((view, metadata)) = initial_view { app.initialize_startup_session(&cc.egui_ctx, view, metadata); }
             app.initialize_support(support_client,support_root,restart.clone());
@@ -208,6 +210,13 @@ fn focus_existing() {
 
 fn ctl(args: &[String]) -> anyhow::Result<()> {
     let op = args.first().map(|s| s.as_str()).unwrap_or("status");
+    if op == "api" {
+        let payload=automation_payload(args)?;
+        if payload["request"]["op"]=="subscribe" {
+            return automation::follow(&socket_path()?,&payload,&mut std::io::stdout().lock());
+        }
+        println!("{}",send_op(&payload.to_string())?);return Ok(());
+    }
     if op == "follow" {
         return ipc_follow::run(&socket_path()?, &mut std::io::stdout().lock());
     }
@@ -243,6 +252,19 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
     };
     println!("{}", send_op(payload)?);
     Ok(())
+}
+
+/// Build a typed version-1 CLI request.
+/// Takes ctl arguments; returns the envelope after validating the JSON request and argument count.
+fn automation_payload(args: &[String]) -> anyhow::Result<serde_json::Value> {
+    anyhow::ensure!(args.len() == 2, "usage: omatainer ctl api '<request JSON>'");
+    anyhow::ensure!(
+        args[1].len() <= ipc_transport::REQUEST_BYTES,
+        "API request exceeds byte limit"
+    );
+    let request: serde_json::Value = serde_json::from_str(&args[1])?;
+    let _: automation::Request = serde_json::from_value(request.clone())?;
+    Ok(serde_json::json!({"op":"api","version":1,"request":request}))
 }
 
 fn scene_payload(args: &[String]) -> anyhow::Result<String> {
@@ -343,12 +365,18 @@ fn handle_client_with_stop(
                 return Ok(());
             }
         };
+        let parsed: Result<serde_json::Value, _> = serde_json::from_slice(&line[..size]);
+        if let Ok(value) = &parsed {
+            if value.get("op").and_then(serde_json::Value::as_str) == Some("api") {
+                if automation::serve(&mut writer,value,&commands,&snap,limits,stopped)? { return Ok(()); }
+                continue;
+            }
+        }
         let mut request_id = serde_json::Value::Null;
         let mut follow = false;
         let mut reload_theme = false;
         let submission: Result<Option<&str>, (&str, anyhow::Error)> = (|| {
-            let request: serde_json::Value = serde_json::from_slice(&line[..size])
-                .map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
+            let request = parsed.map_err(|error| ("invalid_json", anyhow::Error::from(error)))?;
             request_id = ipc_request_id(&request).map_err(|error| ("invalid_id", error))?;
             let operation = ipc_schema::Operation::parse(&request)
                 .map_err(|error| ("invalid_operation", error))?;

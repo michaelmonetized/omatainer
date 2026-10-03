@@ -70,6 +70,8 @@ backup-and-reset operation instead of silently replacing them.
 
 Use **Help** or the active **F1** binding for focused-control explanations, accessible input, effective shortcuts and guided lessons. Hovered or focused controls include purpose and units; F1 remains available while editing text when it is bound to Help. Lessons observe renderer-confirmed steps and never replace a project or start audio automatically. Cancel lesson closes the guide only. Physical listening/controller checks are explicitly self-reported.
 
+**Setup → Automation** exposes the versioned local API and native job inspector. Use `omatainer ctl api` for discovery, state subscriptions, commands, atomic edits and musical scheduling. Optional authenticated loopback OSC is disabled by default. See the [automation protocol and examples](docs/automation-api.md).
+
 The [offline manual](docs/manual.md) is generated from the same catalogue. This build has no Arrange timeline, external audio recording, warp editor, automation lane editor or plugin host. Native projects, piano roll, pad-note capture, clip gain, history, mixer/FX and DJ preparation are implemented workflows.
 
 ## Play without files

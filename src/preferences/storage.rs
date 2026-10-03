@@ -111,36 +111,27 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .get("version")
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
-    if version < 8 {
-        let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
-            else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
-        if profiles.iter().any(|p| p.get("appearance").is_some_and(|a| ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"].iter().any(|field| a.get(field).is_some()))) {
-            return Err(Error::Invalid("Display contrast and motion require preferences version 8; older versions cannot carry newer fields".into()));
-        }
+    let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
+        else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 9 && profiles.iter().any(|p|p.get("automation").is_some()) {
+        return Err(Error::Invalid("Automation configuration requires preferences version 9; older versions cannot carry newer fields".into()));
     }
-    if version < 7 {
-        let newer = if version == 1 { value.get("profile").into_iter().collect::<Vec<_>>() }
-            else { value.get("profiles").and_then(|profiles| profiles.as_object()).map_or(Vec::new(), |profiles| profiles.values().collect()) };
-        if newer.iter().any(|profile| profile.get("startup").and_then(|startup| startup.get("session")).is_some()) {
-            return Err(Error::Invalid("Startup templates require preferences version7; older versions cannot carry newer fields".into()));
-        }
+    if version < 8 && profiles.iter().any(|p|p.get("appearance").is_some_and(|a|["contrast", "reduced_motion", "waveform_contrast", "level_contrast"].iter().any(|field|a.get(field).is_some()))) {
+        return Err(Error::Invalid("Display contrast and motion require preferences version 8; older versions cannot carry newer fields".into()));
     }
-    if version < 6 {
-        let newer = if version == 1 {
-            value.get("profile").is_some_and(|p| p.get("midi_routing").is_some())
-        } else {
-            value.get("profiles").and_then(|v| v.as_object()).is_some_and(|profiles|
-                profiles.values().any(|p| p.get("midi_routing").is_some()))
-        };
-        if newer { return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into())); }
+    if version < 7 && profiles.iter().any(|p|p.get("startup").and_then(|s|s.get("session")).is_some()) {
+        return Err(Error::Invalid("Startup templates require preferences version7; older versions cannot carry newer fields".into()));
+    }
+    if version < 6 && profiles.iter().any(|p|p.get("midi_routing").is_some()) {
+        return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
     let (preferences, migrated) = match version {
-        8 => (
+        9 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -378,7 +369,45 @@ pub fn default_path(config: Option<&std::ffi::OsStr>, home: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn version_eight_migrates_disabled_osc_without_changing_existing_intent() {
+        let mut original = Preferences::defaults(Path::new("/private/api-user"));
+        original
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .audio
+            .sample_rate = Some(96000);
+        original
+            .profiles
+            .get_mut("Studio")
+            .unwrap()
+            .appearance
+            .contrast = crate::theme::Contrast::Light;
+        let mut value = serde_json::to_value(&original).unwrap();
+        value["version"] = 8.into();
+        assert!(decode(&serde_json::to_vec(&value).unwrap())
+            .unwrap_err()
+            .to_string()
+            .contains("Automation"));
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() {
+            profile.as_object_mut().unwrap().remove("automation");
+        }
+        let (loaded, migrated) = decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(migrated);
+        assert_eq!(loaded, original);
+        original.profiles.get_mut("Studio").unwrap().automation = crate::automation::osc::Config {
+            enabled: true,
+            port: 0,
+        };
+        let (reopened, migrated) = decode(&serde_json::to_vec(&original).unwrap()).unwrap();
+        assert!(!migrated);
+        assert_eq!(reopened, original);
+        original.profiles.get_mut("Studio").unwrap().automation.port = 80;
+        assert!(decode(&serde_json::to_vec(&original).unwrap()).is_err());
+    }
     fn strip_appearance(profile: &mut serde_json::Value) {
+        profile.as_object_mut().unwrap().remove("automation");
         for field in ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
     }
     fn strip_display(value: &mut serde_json::Value) {
@@ -390,6 +419,7 @@ mod tests {
         original.profiles.get_mut("Studio").unwrap().startup.session = crate::project_template::Startup::Empty;
         original.profiles.get_mut("Studio").unwrap().audio.sample_rate = Some(96000);
         let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 7.into();
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() {profile.as_object_mut().unwrap().remove("automation");}
         assert!(decode(&serde_json::to_vec(&value).unwrap()).unwrap_err().to_string().contains("Display contrast"));
         strip_display(&mut value);
         let (loaded, migrated) = decode(&serde_json::to_vec(&value).unwrap()).unwrap();

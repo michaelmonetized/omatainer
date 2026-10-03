@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -160,6 +160,8 @@ pub struct Startup {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
+    #[serde(default)]
+    pub(crate) automation: crate::automation::osc::Config,
     pub audio: Audio,
     pub midi_inputs: MidiInputs,
     #[serde(default)]
@@ -177,6 +179,7 @@ pub struct Profile {
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
         Self {
+            automation: crate::automation::osc::Config::default(),
             audio: Audio::default(),
             midi_inputs: MidiInputs::All,
             midi_routing: crate::engine::midi::routing::Routing::default(),
@@ -265,6 +268,7 @@ impl Preferences {
 
 impl Profile {
     pub fn validate(&self) -> Result<(), String> {
+        self.automation.validate()?;
         self.recovery.validate()?;
         self.startup.session.validate()?;
         let calibration = &self.audio.calibration;
