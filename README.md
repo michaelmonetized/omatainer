@@ -124,6 +124,28 @@ The default session is a four-clip house sketch (drums, bass, keys, pad). Press 
 
 Drop wav/mp3/flac onto a platter, or put tracks in `~/Music` and load with **F** / **→ A** / **→ B**.
 
+### Reuse another project's material
+
+**Project → Import from another project…** browses a native `.omat` without
+replacing the current session. Select source tracks and scenes, choose whether
+to copy clips/controller lanes and native instruments/effects, then Review and
+Apply. The import appends new tracks and scenes as one Undo/Redo transaction.
+Existing processors, audio playback and save path remain in place. Source files
+are read only; all referenced clip and drum PCM accompanies the copied material.
+
+Review keeps destination tempo/meter, preserves source beat/tick coordinates,
+converts native playback to the current output sample rate and lists unavailable
+devices that retain serialized state while bypassed. Imported tracks are disarmed,
+not soloed and not auto-launched. Selected scene buses map to new source scenes;
+other buses map to the destination's selected scene. Hardware profiles, decks,
+global sampler banks, picture and the project-wide conductor are outside this
+track selection. Source aliases are not installed into destination preferences.
+
+The storage bounds remain 128 tracks and 512 scenes, including inactive slots.
+Preparation stays on a cancellable worker. Source-file changes and creative
+changes to the reviewed destination reject Apply; review again to use new state.
+
+
 ## Native projects
 
 Use **Project → Save project as…** to choose a `.omat` path. Native projects embed
