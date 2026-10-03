@@ -488,38 +488,38 @@ impl App {
         }
         keyboard::block_for_dialog(ctx);
         let mut open = true;
-        egui::Window::new("Background track analysis").id(egui::Id::new("library-analysis-window"))
+        egui::Window::new(tr!("Background track analysis")).id(egui::Id::new("library-analysis-window"))
             .open(&mut open).default_width(660.0).vscroll(true).show(ctx, |ui| {
-                ui.label("Closing this panel leaves an active queue running. Use Cancel analysis queue to stop it.");
-                ui.label("Local files only. Results are source/version qualified. Manual BPM and locked preparation remain authoritative.");
-                ui.label("Key analysis is unavailable. Existing filename hints and manual key values are not measured keys.");
+                ui.label(tr!("Closing this panel leaves an active queue running. Use Cancel analysis queue to stop it."));
+                ui.label(tr!("Local files only. Results are source/version qualified. Manual BPM and locked preparation remain authoritative."));
+                ui.label(tr!("Key analysis is unavailable. Existing filename hints and manual key values are not measured keys."));
                 ui.add_enabled_ui(!self.library_analysis.busy(), |ui| {
                     ui.horizontal(|ui| {
-                        ui.checkbox(&mut self.library_analysis.fields.bpm, "Analyze BPM").help(ui, HelpControl::AnalysisFields);
-                        ui.checkbox(&mut self.library_analysis.fields.duration, "Analyze duration").help(ui, HelpControl::AnalysisFields);
-                        ui.checkbox(&mut self.library_analysis.fields.waveform, "Analyze waveform").help(ui, HelpControl::AnalysisFields);
+                        ui.checkbox(&mut self.library_analysis.fields.bpm, tr!("Analyze BPM")).help(ui, HelpControl::AnalysisFields);
+                        ui.checkbox(&mut self.library_analysis.fields.duration, tr!("Analyze duration")).help(ui, HelpControl::AnalysisFields);
+                        ui.checkbox(&mut self.library_analysis.fields.waveform, tr!("Analyze waveform")).help(ui, HelpControl::AnalysisFields);
                     });
-                    ui.checkbox(&mut self.library_analysis.force, "Force selected fields").help(ui, HelpControl::AnalysisForce);
+                    ui.checkbox(&mut self.library_analysis.force, tr!("Force selected fields")).help(ui, HelpControl::AnalysisForce);
                     ui.horizontal(|ui| {
-                        if ui.button("Analyze selected row").help(ui, HelpControl::AnalysisSelected).clicked() { self.start_library_analysis(false, Purpose::Analyze); }
-                        if ui.button("Analyze filtered crate").help(ui, HelpControl::AnalysisCrate).clicked() { self.start_library_analysis(true, Purpose::Analyze); }
-                        if ui.button("Inspect selected cache").help(ui, HelpControl::AnalysisInspect).clicked() { self.start_library_analysis(false, Purpose::Inspect); }
+                        if ui.button(tr!("Analyze selected row")).help(ui, HelpControl::AnalysisSelected).clicked() { self.start_library_analysis(false, Purpose::Analyze); }
+                        if ui.button(tr!("Analyze filtered crate")).help(ui, HelpControl::AnalysisCrate).clicked() { self.start_library_analysis(true, Purpose::Analyze); }
+                        if ui.button(tr!("Inspect selected cache")).help(ui, HelpControl::AnalysisInspect).clicked() { self.start_library_analysis(false, Purpose::Inspect); }
                     });
                 });
                 ui.push_id("analysis-status", |ui| {
                     if let Some(queue) = &self.library_analysis.queue {
-                        ui.label(format!("Captured queue: {} / {} rows complete; {} saved, {} cache hits, {} skipped", queue.done(), queue.total(), queue.saved, queue.cached, queue.skipped));
-                        if queue.unconfirmed > 0 { ui.label(format!("{} publication(s) committed without confirmed durability", queue.unconfirmed)); }
+                        ui.label({ let __omatainer_args = (&(queue.done()),&(queue.total()),&(queue.saved),&(queue.cached),&(queue.skipped),); crate::localization::format("Captured queue: {} / {} rows complete; {} saved, {} cache hits, {} skipped", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });
+                        if queue.unconfirmed > 0 { ui.label({ let __omatainer_args = (&(queue.unconfirmed),); crate::localization::format("{} publication(s) committed without confirmed durability", &[format!("{}", __omatainer_args.0)]) }); }
                         ui.label(&self.library_analysis.current_title);
                     }
                     match &self.library_analysis.step {
-                        Step::Inspecting { .. } => { ui.label("Checking the saved source version and waveform cache…"); }
+                        Step::Inspecting { .. } => { ui.label(tr!("Checking the saved source version and waveform cache…")); }
                         Step::Decoding(token) => {
                             let progress = token.progress();
                             let stage = match progress.stage { Stage::Queued => "Queued", Stage::Hashing => "Hashing source", Stage::Decoding => "Decoding", Stage::Tempo => "Estimating BPM", Stage::Waveform => "Building waveform", Stage::Ready => "Prepared; not saved yet" };
                             if let Some(value) = progress.millionths { ui.add(egui::ProgressBar::new(value as f32 / 1_000_000.0).text(stage)); } else { ui.label(stage); }
                         }
-                        Step::Saving(_) => { ui.label("Waiting for the catalog publication and durability result…"); }
+                        Step::Saving(_) => { ui.label(tr!("Waiting for the catalog publication and durability result…")); }
                         Step::Paused(error) => { ui.colored_label(ui.visuals().warn_fg_color, error); }
                         _ => {}
                     }
@@ -530,32 +530,32 @@ impl App {
                     // Keep every action's parent slot present in every phase.
                     ui.push_id("retry", |ui| {
                         if matches!(self.library_analysis.step, Step::Paused(_)) && self.library_analysis.queue.is_some()
-                            && ui.button("Retry current analysis").help(ui, HelpControl::AnalysisRetry).clicked() {
+                            && ui.button(tr!("Retry current analysis")).help(ui, HelpControl::AnalysisRetry).clicked() {
                             self.library_analysis.step = Step::Ready;
                         }
                     });
                     ui.push_id("skip", |ui| {
                         if matches!(self.library_analysis.step, Step::Paused(_)) && self.library_analysis.queue.is_some()
-                            && ui.button("Skip current analysis").help(ui, HelpControl::AnalysisSkip).clicked() {
+                            && ui.button(tr!("Skip current analysis")).help(ui, HelpControl::AnalysisSkip).clicked() {
                             self.library_analysis.queue.as_mut().unwrap().skipped += 1; self.next_analysis_item();
                         }
                     });
                     ui.push_id("cancel", |ui| {
-                        if self.library_analysis.queue.is_some() && ui.button("Cancel analysis queue").help(ui, HelpControl::AnalysisCancel).clicked() { self.library_analysis.cancel(); }
+                        if self.library_analysis.queue.is_some() && ui.button(tr!("Cancel analysis queue")).help(ui, HelpControl::AnalysisCancel).clicked() { self.library_analysis.cancel(); }
                     });
                 });
                 ui.push_id("analysis-cache-preview", |ui| {
                     if let Some(preview) = &self.library_analysis.preview {
-                        ui.separator(); ui.label(format!("Verified cached values: {}", self.library_analysis.preview_title));
+                        ui.separator(); ui.label({ let __omatainer_args = (&(self.library_analysis.preview_title),); crate::localization::format("Verified cached values: {}", &[format!("{}", __omatainer_args.0)]) });
                         if let Ok(cached) = &preview.outcome {
                             if let Some(notice) = &cached.notice { ui.label(notice); }
                             if let Some(record) = &cached.record {
-                                if let Some(bpm) = &record.bpm { ui.label(match bpm.value { Some(value) => format!("Analyzed BPM: {value:.2} (heuristic, unverified; algorithm {})", bpm.algorithm), None => "Analyzed BPM: no usable estimate".into() }); }
-                                if let Some(duration) = &record.duration { ui.label(format!("Analyzed duration: {:.3} seconds", duration.value)); }
+                                if let Some(bpm) = &record.bpm { ui.label(match bpm.value { Some(value) => { let __omatainer_args = (&(bpm.algorithm),); crate::localization::format("Analyzed BPM: {value:.2} (heuristic, unverified; algorithm {})", &[format!("{:.2}", value), format!("{}", __omatainer_args.0)]) }, None => tr!("Analyzed BPM: no usable estimate").into() }); }
+                                if let Some(duration) = &record.duration { ui.label({ let __omatainer_args = (&(duration.value),); crate::localization::format("Analyzed duration: {:.3} seconds", &[format!("{:.3}", __omatainer_args.0)]) }); }
                             }
-                            if cached.needed.valid() { ui.label("Some selected fields require fresh analysis. Inspect alone never decodes a source."); }
+                            if cached.needed.valid() { ui.label(tr!("Some selected fields require fresh analysis. Inspect alone never decodes a source.")); }
                             if let Some(waveform) = &cached.waveform {
-                                ui.label(format!("Cached waveform: {} bins, {:.3} seconds, {} Hz, {} channels", waveform.bands.len(), waveform.frames as f64 / f64::from(waveform.sample_rate), waveform.sample_rate, waveform.channels));
+                                ui.label({ let __omatainer_args = (&(waveform.bands.len()),&(waveform.frames as f64 / f64::from(waveform.sample_rate)),&(waveform.sample_rate),&(waveform.channels),); crate::localization::format("Cached waveform: {} bins, {:.3} seconds, {} Hz, {} channels", &[format!("{}", __omatainer_args.0), format!("{:.3}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
                                 let (rect, response) = ui.allocate_exact_size(Vec2::new(ui.available_width().min(600.0), 80.0), Sense::hover());
                                 response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, "Cached analysis waveform: low, mid and high band mean magnitudes in source order"));
                                 for (index, bands) in waveform.bands.iter().enumerate() {
@@ -568,7 +568,7 @@ impl App {
                         }
                     }
                 });
-                if ui.button("Close analysis panel").help(ui, HelpControl::AnalysisClose).clicked() { self.library_analysis.open = false; }
+                if ui.button(tr!("Close analysis panel")).help(ui, HelpControl::AnalysisClose).clicked() { self.library_analysis.open = false; }
                 if self.library_analysis.busy() { ctx.request_repaint_after(std::time::Duration::from_millis(33)); }
             });
         self.library_analysis.open &= open;

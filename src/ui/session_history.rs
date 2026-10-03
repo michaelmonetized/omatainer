@@ -34,15 +34,8 @@ fn default_root() -> Result<PathBuf, String> {
         .map(|p| p.join("omatainer/performance-history"))
         .ok_or_else(|| "History needs an absolute XDG_STATE_HOME or HOME directory".into())
 }
-fn timestamp(ns: u64) -> String {
-    let Ok(seconds) = libc::time_t::try_from(ns / 1_000_000_000) else { return "time unavailable".into(); };
-    let mut calendar = std::mem::MaybeUninit::<libc::tm>::uninit();
-    if unsafe { libc::gmtime_r(&seconds, calendar.as_mut_ptr()) }.is_null() { return "time unavailable".into(); }
-    let calendar = unsafe { calendar.assume_init() };
-    format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02} UTC", calendar.tm_year + 1900, calendar.tm_mon + 1,
-        calendar.tm_mday, calendar.tm_hour, calendar.tm_min, calendar.tm_sec)
-}
-fn state_name(state: State) -> &'static str { match state { State::Active => "Recording", State::Ended => "Ended", State::Unclean => "Interrupted" } }
+fn timestamp(ns: u64) -> String { crate::localization::timestamp(ns) }
+fn state_name(state: State) -> &'static str { match state { State::Active => tr!("Recording"), State::Ended => tr!("Ended"), State::Unclean => tr!("Interrupted") } }
 fn label(value: &str, fallback: &str) -> String {
     let mut result = String::new();
     for c in value.trim().chars().filter(|c| !c.is_control()) {
@@ -116,50 +109,50 @@ impl App {
         let mut open = panel.open;
         let mut action = None;
         let mut close_panel = false;
-        egui::Window::new("Performance history").open(&mut open).default_width(720.0).show(ctx, |ui| {
-            ui.label("Tracks contributing to digital main output, measured in 10 ms windows above −90 dBFS. Cue blend is part of main output in this build. Hardware delivery and listening are not measured.");
-            ui.label(format!("Output diagnostics since launch: {} late callbacks · {} backend errors · {} device losses. Backend dropped-buffer count unavailable.", output.deadline_overruns, output.backend_errors, output.device_lost));
+        egui::Window::new(tr!("Performance history")).id(egui::Id::new("Performance history")).open(&mut open).default_width(720.0).show(ctx, |ui| {
+            ui.label(tr!("Tracks contributing to digital main output, measured in 10 ms windows above −90 dBFS. Cue blend is part of main output in this build. Hardware delivery and listening are not measured."));
+            ui.label({ let __omatainer_args = (&(output.deadline_overruns),&(output.backend_errors),&(output.device_lost),); crate::localization::format("Output diagnostics since launch: {} late callbacks · {} backend errors · {} device losses. Backend dropped-buffer count unavailable.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
             if !panel.notice.is_empty() { ui.label(&panel.notice); }
-            if ui.button("Close history").help(ui, HelpControl::HistoryOpen).clicked() { close_panel = true; }
-            let Some(worker) = &panel.worker else { ui.label("Performance history unavailable."); return; };
+            if ui.button(tr!("Close history")).help(ui, HelpControl::HistoryOpen).clicked() { close_panel = true; }
+            let Some(worker) = &panel.worker else { ui.label(tr!("Performance history unavailable.")); return; };
             let view = worker.view();
             ui.label(&view.message);
             let idle = !worker.pending() && worker.alive() && !panel.keep_pending;
             ui.horizontal(|ui| {
-                if ui.add_enabled(idle && action.is_none() && view.ready && view.active.is_none() && !sealed && !safe, egui::Button::new("Start session")).help(ui, HelpControl::HistoryStart).clicked() { action = Some(Job::Start); }
+                if ui.add_enabled(idle && action.is_none() && view.ready && view.active.is_none() && !sealed && !safe, egui::Button::new(tr!("Start session"))).help(ui, HelpControl::HistoryStart).clicked() { action = Some(Job::Start); }
                 ui.push_id(("end-history", &view.active), |ui| {
-                    if ui.add_enabled(idle && action.is_none() && view.active.is_some(), egui::Button::new("End session")).help(ui, HelpControl::HistoryEnd).clicked() { action = Some(Job::End); }
+                    if ui.add_enabled(idle && action.is_none() && view.active.is_some(), egui::Button::new(tr!("End session"))).help(ui, HelpControl::HistoryEnd).clicked() { action = Some(Job::End); }
                 });
-                if ui.add_enabled(idle && action.is_none(), egui::Button::new("Retry history save")).help(ui, HelpControl::HistoryRetry).clicked() { action = Some(Job::Retry); }
+                if ui.add_enabled(idle && action.is_none(), egui::Button::new(tr!("Retry history save"))).help(ui, HelpControl::HistoryRetry).clicked() { action = Some(Job::Retry); }
             });
-            if worker.pending() { ui.label("History action pending…"); }
-            ui.label(if view.durable { "All published history changes saved." } else { "History save pending or unavailable; recent history may be lost on interruption." });
-            if let Some(time) = view.durable_at_ns { ui.label(format!("Last history write confirmed at {}", timestamp(time))); }
+            if worker.pending() { ui.label(tr!("History action pending…")); }
+            ui.label(if view.durable { tr!("All published history changes saved.") } else { tr!("History save pending or unavailable; recent history may be lost on interruption.") });
+            if let Some(time) = view.durable_at_ns { ui.label({ let __omatainer_args = (&(timestamp(time)),); crate::localization::format("Last history write confirmed at {}", &[format!("{}", __omatainer_args.0)]) }); }
             let sessions = egui::ScrollArea::vertical().id_salt("history-sessions").max_height(100.0).show_rows(ui, 24.0, view.sessions.len(), |ui, rows| {
                 for row in rows {
                     let session = &view.sessions[row];
                     ui.push_id(&session.id, |ui| {
                         let selected = view.selected.as_ref().is_some_and(|s| s.id == session.id);
-                        if ui.add_enabled(idle && action.is_none(), egui::Button::new(format!("{} · {} · {} tracks · {}", state_name(session.state), timestamp(session.started_ns), session.entries, &session.id[..8])).selected(selected)).help(ui, HelpControl::HistorySelect).clicked() { action = Some(Job::Select(session.id.clone())); }
+                        if ui.add_enabled(idle && action.is_none(), egui::Button::new({ let __omatainer_args = (&(state_name(session.state)),&(timestamp(session.started_ns)),&(session.entries),&(&session.id[..8]),); crate::localization::format("{} · {} · {} tracks · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) }).selected(selected)).help(ui, HelpControl::HistorySelect).clicked() { action = Some(Job::Select(session.id.clone())); }
                     });
                 }
             });
             accessibility::scrollbars(ui, "History sessions", &sessions);
-            let Some(session) = &view.selected else { ui.label("Start a session to record a performance."); return; };
+            let Some(session) = &view.selected else { ui.label(tr!("Start a session to record a performance.")); return; };
             ui.push_id(&session.id, |ui| {
             ui.separator();
-            ui.label(format!("{} · started {} · ended {}", state_name(session.state), timestamp(session.started_ns), session.ended_ns.map(timestamp).unwrap_or_else(|| "recording".into())));
-            ui.label(format!("Output confirmed through {}", timestamp(session.last_confirmed_ns)));
-            if session.incomplete { ui.label(format!("Incomplete measurement · {} dropped per-track observation frames. Durations below cover only classified output.", session.dropped_observation_frames)); }
+            ui.label({ let __omatainer_args = (&(state_name(session.state)),&(timestamp(session.started_ns)),&(session.ended_ns.map(timestamp).unwrap_or_else(|| "recording".into())),); crate::localization::format("{} · started {} · ended {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+            ui.label({ let __omatainer_args = (&(timestamp(session.last_confirmed_ns)),); crate::localization::format("Output confirmed through {}", &[format!("{}", __omatainer_args.0)]) });
+            if session.incomplete { ui.label({ let __omatainer_args = (&(session.dropped_observation_frames),); crate::localization::format("Incomplete measurement · {} dropped per-track observation frames. Durations below cover only classified output.", &[format!("{}", __omatainer_args.0)]) }); }
             let entries = egui::ScrollArea::vertical().id_salt(("history-entries", &session.id)).max_height(220.0).show_rows(ui, 72.0, session.entries.len(), |ui, rows| {
                 for row in rows {
                     let entry = &session.entries[row];
                     ui.push_id((&session.id, session.edit_revision, entry.id), |ui| { ui.allocate_ui(Vec2::new(ui.available_width(), 72.0), |ui| {
                         let origin = match entry.source { Source::External { .. } => "External assertion", Source::Unresolved => "Unresolved source", Source::Catalog { .. } => "Catalog track" };
                         let deck = entry.deck.map(|d| format!("deck {}", char::from(b'A' + d))).unwrap_or_else(|| "no measured deck".into());
-                        ui.add(egui::Label::new(format!("{} · {} · {} · {}", entry.source.title(), entry.source.artist(), origin, deck)).truncate());
+                        ui.add(egui::Label::new({ let __omatainer_args = (&(entry.source.title()),&(entry.source.artist()),&(origin),&(deck),); crate::localization::format("{} · {} · {} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) }).truncate());
                         let uncertain: f64 = entry.rates.iter().map(|r| (r.ambiguous as f64 + r.invalid as f64) / f64::from(r.rate)).sum();
-                        ui.add(egui::Label::new(format!("Measured {:.3} s · uncertain {:.3} s · {}{}", entry.measured_seconds(), uncertain, if entry.played() { "Played" } else { "Unplayed" }, if entry.played_override.is_some() { " (manual)" } else { " (automatic)" })).truncate());
+                        ui.add(egui::Label::new({ let __omatainer_args = (&(entry.measured_seconds()),&(uncertain),&(if entry.played() { "Played" } else { "Unplayed" }),&(if entry.played_override.is_some() { " (manual)" } else { " (automatic)" }),); crate::localization::format("Measured {:.3} s · uncertain {:.3} s · {}{}", &[format!("{:.3}", __omatainer_args.0), format!("{:.3}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) }).truncate());
                         ui.horizontal(|ui| {
                             for (text, played) in [("Mark played", Some(true)), ("Mark unplayed", Some(false)), ("Use measured status", None)] {
                                 let response = ui.add_enabled(idle && action.is_none() && !sealed, egui::Button::new(text)).help(ui, HelpControl::HistoryMark);
@@ -174,18 +167,18 @@ impl App {
             accessibility::scrollbars(ui, "History entries", &entries);
             ui.push_id(session.edit_revision, |ui| {
             ui.horizontal(|ui| {
-                ui.label("Title"); let title = ui.text_edit_singleline(&mut panel.title).help(ui, HelpControl::HistoryExternal);
+                ui.label(tr!("Title")); let title = ui.text_edit_singleline(&mut panel.title).help(ui, HelpControl::HistoryExternal);
                 title.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "External track title"));
-                ui.label("Artist"); let artist = ui.text_edit_singleline(&mut panel.artist).help(ui, HelpControl::HistoryExternal);
+                ui.label(tr!("Artist")); let artist = ui.text_edit_singleline(&mut panel.artist).help(ui, HelpControl::HistoryExternal);
                 artist.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "External track artist"));
             });
-            if ui.add_enabled(idle && action.is_none() && !sealed && !panel.title.trim().is_empty(), egui::Button::new("Add external track")).help(ui, HelpControl::HistoryExternal).clicked() { action = Some(Job::External { session: session.id.clone(), revision: session.edit_revision, title: panel.title.trim().into(), artist: panel.artist.trim().into() }); }
+            if ui.add_enabled(idle && action.is_none() && !sealed && !panel.title.trim().is_empty(), egui::Button::new(tr!("Add external track"))).help(ui, HelpControl::HistoryExternal).clicked() { action = Some(Job::External { session: session.id.clone(), revision: session.edit_revision, title: panel.title.trim().into(), artist: panel.artist.trim().into() }); }
             ui.horizontal(|ui| {
-                ui.label("New JSON file"); let path = ui.text_edit_singleline(&mut panel.export_path).help(ui, HelpControl::HistoryExport);
+                ui.label(tr!("New JSON file")); let path = ui.text_edit_singleline(&mut panel.export_path).help(ui, HelpControl::HistoryExport);
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "History export destination"));
-                if ui.add_enabled(idle && action.is_none() && !panel.export_path.trim().is_empty(), egui::Button::new("Export session")).help(ui, HelpControl::HistoryExport).clicked() { action = Some(Job::Export { session: session.id.clone(), path: PathBuf::from(panel.export_path.trim()) }); }
+                if ui.add_enabled(idle && action.is_none() && !panel.export_path.trim().is_empty(), egui::Button::new(tr!("Export session"))).help(ui, HelpControl::HistoryExport).clicked() { action = Some(Job::Export { session: session.id.clone(), path: PathBuf::from(panel.export_path.trim()) }); }
             });
-            ui.label("Manual marks and external tracks are assertions; they never alter measured duration. Export contains titles, artists and opaque catalog IDs; review these labels before sharing.");
+            ui.label(tr!("Manual marks and external tracks are assertions; they never alter measured duration. Export contains titles, artists and opaque catalog IDs; review these labels before sharing."));
             }); });
         });
         panel.open = open && !close_panel;
@@ -214,14 +207,14 @@ impl App {
             && (w.view().durable || !w.view().ready)
             && w.view().receipt.as_ref().is_some_and(|r| Some(r.id) == panel.close_job && r.applied));
         let mut keep = false; let mut override_close = false; let mut retry = false;
-        egui::Window::new("Finishing performance history before exit").collapsible(false).show(ctx, |ui| { ui.push_id(panel.close_epoch, |ui| {
-            ui.label("Waiting for the actual session end and its history save. An interrupted session retains only the last saved prefix.");
+        egui::Window::new(tr!("Finishing performance history before exit")).id(egui::Id::new("Finishing performance history before exit")).collapsible(false).show(ctx, |ui| { ui.push_id(panel.close_epoch, |ui| {
+            ui.label(tr!("Waiting for the actual session end and its history save. An interrupted session retains only the last saved prefix."));
             if let Some(worker) = &panel.worker { ui.label(&worker.view().message); }
             if !panel.notice.is_empty() { ui.label(&panel.notice); }
-            if ui.add_enabled(panel.worker.as_ref().is_some_and(|w| !w.pending()), egui::Button::new("Retry history close")).help(ui, HelpControl::HistoryRetry).clicked() { retry = true; }
-            let response = ui.button("Keep working").help(ui, HelpControl::HistoryKeep);
+            if ui.add_enabled(panel.worker.as_ref().is_some_and(|w| !w.pending()), egui::Button::new(tr!("Retry history close"))).help(ui, HelpControl::HistoryRetry).clicked() { retry = true; }
+            let response = ui.button(tr!("Keep working")).help(ui, HelpControl::HistoryKeep);
             keep = response.clicked() || response.is_pointer_button_down_on();
-            override_close = ui.button("Close without confirmed history save").help(ui, HelpControl::HistoryClose).clicked();
+            override_close = ui.button(tr!("Close without confirmed history save")).help(ui, HelpControl::HistoryClose).clicked();
         }); });
         if keep { self.cancel_project_close(); }
         else if ready || override_close { self.session_history.closing = false; self.finish_history_exit(ctx); }

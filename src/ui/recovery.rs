@@ -317,10 +317,10 @@ impl App {
         let mut cancel = false;
         let busy = self.recovery.pending.is_some() || self.recovery_project_busy();
         let status = self.recovery.worker.as_ref().map(Worker::status);
-        egui::Window::new("Autosave and recovery").open(&mut open).default_width(570.0).default_height(700.0).vscroll(true).show(ctx, |ui| {
-            ui.label("Recovery keeps batched edit-state copies, including untitled projects. It does not save or overwrite your explicit .omat file.");
-            ui.label("Dirty state is normally captured about every 2 seconds. Capture, queue pressure and storage I/O can increase the loss window; only the confirmed durable time below is evidence of recovery coverage.");
-            if let Some(path) = &self.recovery.root { ui.label(format!("Storage: {}", path.display())); }
+        egui::Window::new(tr!("Autosave and recovery")).id(egui::Id::new("Autosave and recovery")).open(&mut open).default_width(570.0).default_height(700.0).vscroll(true).show(ctx, |ui| {
+            ui.label(tr!("Recovery keeps batched edit-state copies, including untitled projects. It does not save or overwrite your explicit .omat file."));
+            ui.label(tr!("Dirty state is normally captured about every 2 seconds. Capture, queue pressure and storage I/O can increase the loss window; only the confirmed durable time below is evidence of recovery coverage."));
+            if let Some(path) = &self.recovery.root { ui.label({ let __omatainer_args = (&(path.display()),); crate::localization::format("Storage: {}", &[format!("{}", __omatainer_args.0)]) }); }
             // Dynamic labels/spinners stay in one scope. Their auto-ID count
             // must not change the identity of a previously exposed action.
             ui.push_id("recovery-status", |ui| {
@@ -332,24 +332,24 @@ impl App {
                 };
                 ui.label(durable).help(ui, HelpControl::RecoveryStatus);
                 if let Some(durable) = &status.durable {
-                    ui.label(format!("Durable commit acknowledgment: {}", durable_age(worker::unix_ms(), durable.committed_unix_ms)));
+                    ui.label({ let __omatainer_args = (&(durable_age(worker::unix_ms(), durable.committed_unix_ms)),); crate::localization::format("Durable commit acknowledgment: {}", &[format!("{}", __omatainer_args.0)]) });
                 }
                 ui.label(match status.usage_bytes {
-                    Some(bytes) => format!("Last write storage accounting: {:.1} MiB of logical files (may be an upper bound; warnings apply)", bytes as f64 / crate::recovery::MIB as f64),
-                    None => "Current recovery storage usage has not been measured by a successful write.".into(),
+                    Some(bytes) => { let __omatainer_args = (&(bytes as f64 / crate::recovery::MIB as f64),); crate::localization::format("Last write storage accounting: {:.1} MiB of logical files (may be an upper bound; warnings apply)", &[format!("{:.1}", __omatainer_args.0)]) },
+                    None => tr!("Current recovery storage usage has not been measured by a successful write.").into(),
                 });
                 ui.label(&status.message);
                 let unsaved = status.durable.as_ref().is_none_or(|durable| Some(durable.epoch) != self.recovery.epoch || durable.revision != self.engine.project.revision() || durable.view_revision != self.recovery.view_revision);
-                if unsaved { ui.label("Newer current state or recovery metadata is not yet confirmed durable."); }
+                if unsaved { ui.label(tr!("Newer current state or recovery metadata is not yet confirmed durable.")); }
                 if status.busy { ui.spinner(); }
             }
             });
             ui.horizontal(|ui| {
-                if ui.add_enabled(!busy, egui::Button::new("Refresh recovery list")).help(ui, HelpControl::RecoveryRefresh).clicked() { refresh = true; }
-                if ui.add_enabled(!busy && self.recovery.worker.is_some(), egui::Button::new("Journal current edits now")).help(ui, HelpControl::RecoveryNow).clicked() {
+                if ui.add_enabled(!busy, egui::Button::new(tr!("Refresh recovery list"))).help(ui, HelpControl::RecoveryRefresh).clicked() { refresh = true; }
+                if ui.add_enabled(!busy && self.recovery.worker.is_some(), egui::Button::new(tr!("Journal current edits now"))).help(ui, HelpControl::RecoveryNow).clicked() {
                     if let Some(worker) = &self.recovery.worker { worker.force(); }
                 }
-                if ui.add_enabled(self.recovery.pending.is_some(), egui::Button::new("Cancel recovery operation")).help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
+                if ui.add_enabled(self.recovery.pending.is_some(), egui::Button::new(tr!("Cancel recovery operation"))).help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
             });
             ui.push_id("recovery-message", |ui| {
                 if let Some(message) = &self.recovery.message { ui.label(message); }
@@ -357,16 +357,16 @@ impl App {
             show_report(ui, "Recovery discovery report", &self.recovery.warnings);
             ui.separator();
             ui.push_id("recovery-candidate-panel", |ui| {
-            ui.label("Recoverable sessions (active sessions stay locked and are not offered)");
-            if self.recovery.candidates.is_empty() { ui.label(if self.recovery.discovery_complete { "No inactive recovery candidates found." } else { "Recovery candidates have not been verified. Copies may exist; use Refresh recovery list in Studio." }); }
+            ui.label(tr!("Recoverable sessions (active sessions stay locked and are not offered)"));
+            if self.recovery.candidates.is_empty() { ui.label(if self.recovery.discovery_complete { tr!("No inactive recovery candidates found.") } else { tr!("Recovery candidates have not been verified. Copies may exist; use Refresh recovery list in Studio.") }); }
             let scroll = egui::ScrollArea::vertical().id_salt("recovery-candidates").max_height(180.0).show(ui, |ui| {
                 for candidate in &self.recovery.candidates {
                     ui.push_id((&candidate.session, candidate.sequence), |ui| {
-                        ui.label(format!("{} · record {} · revision {}", candidate.session, candidate.sequence, candidate.metadata.revision));
-                        ui.label(candidate.metadata.saved_path.as_ref().map(|path| format!("Original saved path: {}", path.display())).unwrap_or("Untitled project".into()));
+                        ui.label({ let __omatainer_args = (&(candidate.session),&(candidate.sequence),&(candidate.metadata.revision),); crate::localization::format("{} · record {} · revision {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+                        ui.label(candidate.metadata.saved_path.as_ref().map(|path| { let __omatainer_args = (&(path.display()),); crate::localization::format("Original saved path: {}", &[format!("{}", __omatainer_args.0)]) }).unwrap_or(tr!("Untitled project").into()));
                         ui.horizontal(|ui| {
-                            if ui.add_enabled(!busy, egui::Button::new("Preview recovery")).help(ui, HelpControl::RecoveryPreview).clicked() { inspect = Some(candidate.clone()); }
-                            if ui.add_enabled(!busy, egui::Button::new("Delete this recovery session…")).help(ui, HelpControl::RecoveryDelete).clicked() { self.recovery.remove = Some(candidate.clone()); }
+                            if ui.add_enabled(!busy, egui::Button::new(tr!("Preview recovery"))).help(ui, HelpControl::RecoveryPreview).clicked() { inspect = Some(candidate.clone()); }
+                            if ui.add_enabled(!busy, egui::Button::new(tr!("Delete this recovery session…"))).help(ui, HelpControl::RecoveryDelete).clicked() { self.recovery.remove = Some(candidate.clone()); }
                         });
                     });
                 }
@@ -374,13 +374,13 @@ impl App {
             accessibility::scrollbars(ui, "Recovery candidates", &scroll);
             });
             if let Some(preview) = &self.recovery.preview {
-                ui.separator(); ui.heading("Recovery preview");
-                ui.label(format!("{} notes · {} embedded media · {} BPM", preview.notes, preview.media, preview.bpm));
-                ui.label("Restore opens playback stopped as an unsaved untitled copy. Your current unsaved changes get the ordinary Save / Discard / Cancel decision. The original saved file is never overwritten.");
+                ui.separator(); ui.heading(tr!("Recovery preview"));
+                ui.label({ let __omatainer_args = (&(preview.notes),&(preview.media),&(preview.bpm),); crate::localization::format("{} notes · {} embedded media · {} BPM", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+                ui.label(tr!("Restore opens playback stopped as an unsaved untitled copy. Your current unsaved changes get the ordinary Save / Discard / Cancel decision. The original saved file is never overwritten."));
                 show_report(ui, "Recovery preview report", &preview.report);
                 ui.horizontal(|ui| {
-                    if ui.add_enabled(!busy, egui::Button::new("Restore as untitled copy")).help(ui, HelpControl::RecoveryRestore).clicked() { restore = Some(preview.candidate.clone()); }
-                    if ui.button("Close recovery preview").help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
+                    if ui.add_enabled(!busy, egui::Button::new(tr!("Restore as untitled copy"))).help(ui, HelpControl::RecoveryRestore).clicked() { restore = Some(preview.candidate.clone()); }
+                    if ui.button(tr!("Close recovery preview")).help(ui, HelpControl::RecoveryCancel).clicked() { cancel = true; }
                 });
             }
         });
@@ -412,13 +412,13 @@ impl App {
         if let Some(candidate) = self.recovery.remove.clone() {
             keyboard::block_for_dialog(ctx);
             let modal = egui::Modal::new(egui::Id::new("recovery-delete")).show(ctx, |ui| {
-                ui.heading("Delete every recovery generation in this session?");
-                ui.label(format!("Session {}. This permanently deletes its journal, checkpoints and media sidecars. Explicit saved project files are unaffected.", candidate.session));
-                if ui.button("Delete recovery session").help(ui, HelpControl::RecoveryDelete).clicked() { match self.engine.cmd.performance().optional_work() {
+                ui.heading(tr!("Delete every recovery generation in this session?"));
+                ui.label({ let __omatainer_args = (&(candidate.session),); crate::localization::format("Session {}. This permanently deletes its journal, checkpoints and media sidecars. Explicit saved project files are unaffected.", &[format!("{}", __omatainer_args.0)]) });
+                if ui.button(tr!("Delete recovery session")).help(ui, HelpControl::RecoveryDelete).clicked() { match self.engine.cmd.performance().optional_work() {
                     Ok(work) => self.recovery.request(Job::Remove(candidate.clone(), work)),
                     Err(error) => self.recovery.message = Some(format!("Recovery deletion was not accepted: {error}")),
                 } self.recovery.remove = None; }
-                if ui.button("Cancel deletion").help(ui, HelpControl::RecoveryCancel).clicked() { self.recovery.remove = None; }
+                if ui.button(tr!("Cancel deletion")).help(ui, HelpControl::RecoveryCancel).clicked() { self.recovery.remove = None; }
             });
             if modal.should_close() {
                 self.recovery.remove = None;
@@ -475,18 +475,18 @@ impl App {
         let mut retry = false;
         if !ready || self.recovery.close_shown {
             self.recovery.close_shown = true;
-            egui::Window::new("Finishing recovery before exit").collapsible(false).show(ctx, |ui| {
-                ui.label("Your Save / Discard decision was accepted. Retiring this recovery epoch prevents it from being offered as interrupted work after an intentional exit.");
+            egui::Window::new(tr!("Finishing recovery before exit")).id(egui::Id::new("Finishing recovery before exit")).collapsible(false).show(ctx, |ui| {
+                ui.label(tr!("Your Save / Discard decision was accepted. Retiring this recovery epoch prevents it from being offered as interrupted work after an intentional exit."));
                 match &self.recovery.close_result {
-                    None => { ui.label("Waiting for recovery retirement…"); },
-                    Some(Ok(None)) => { ui.label("Recovery retirement confirmed durable."); },
-                    Some(Ok(Some(warning))) => { ui.label(format!("Retirement committed, durability uncertain: {warning}")); },
-                    Some(Err(error)) => { ui.label(format!("Retirement failed: {error}. Recovery may be offered at next startup.")); },
+                    None => { ui.label(tr!("Waiting for recovery retirement…")); },
+                    Some(Ok(None)) => { ui.label(tr!("Recovery retirement confirmed durable.")); },
+                    Some(Ok(Some(warning))) => { ui.label(crate::localization::format("Retirement committed, durability uncertain: {warning}", &[format!("{}", warning)])); },
+                    Some(Err(error)) => { ui.label(crate::localization::format("Retirement failed: {error}. Recovery may be offered at next startup.", &[format!("{}", error)])); },
                 }
-                if ui.add_enabled(self.recovery.pending.is_none(), egui::Button::new("Retry recovery retirement")).help(ui, HelpControl::RecoveryRetry).clicked() { retry = true; }
-                let response = ui.button("Keep working").help(ui, HelpControl::RecoveryKeepWorking);
+                if ui.add_enabled(self.recovery.pending.is_none(), egui::Button::new(tr!("Retry recovery retirement"))).help(ui, HelpControl::RecoveryRetry).clicked() { retry = true; }
+                let response = ui.button(tr!("Keep working")).help(ui, HelpControl::RecoveryKeepWorking);
                 keep = response.clicked() || response.is_pointer_button_down_on();
-                close = ui.button("Close and retain possible recovery").help(ui, HelpControl::RecoveryClose).clicked();
+                close = ui.button(tr!("Close and retain possible recovery")).help(ui, HelpControl::RecoveryClose).clicked();
             });
         }
         if keep {
@@ -518,7 +518,7 @@ fn show_report(ui: &mut Ui, name: &str, rows: &[String]) {
         if rows.is_empty() {
             return;
         }
-        ui.label(format!("{name}: {} notices", rows.len()));
+        ui.label({ let __omatainer_args = (&(rows.len()),); crate::localization::format("{name}: {} notices", &[format!("{}", name), format!("{}", __omatainer_args.0)]) });
         let scroll = egui::ScrollArea::vertical()
             .id_salt(name)
             .max_height(100.0)

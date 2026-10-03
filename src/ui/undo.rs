@@ -141,7 +141,7 @@ impl App {
         }
     }
     pub(super) fn undo_menu(&mut self, ui: &mut Ui) {
-        let menu = ui.menu_button("Edit", |ui| {
+        let menu = ui.menu_button(tr!("Edit"), |ui| {
             let view = &self.undo_history.view;
             let undo = view
                 .cursor
@@ -173,7 +173,7 @@ impl App {
                 ui.close();
             }
             ui.separator();
-            let response = ui.button("History…");
+            let response = ui.button(tr!("History…"));
             help::annotate(ui, &response, help::Control::History);
             if response.clicked() {
                 self.undo_history.open = true;
@@ -187,40 +187,37 @@ impl App {
             return;
         }
         let mut open = self.undo_history.open || self.undo_history.failure.is_some();
-        egui::Window::new("Edit history").id(egui::Id::new("edit-history"))
+        egui::Window::new(tr!("Edit history")).id(egui::Id::new("edit-history"))
             .open(&mut open).default_width(370.0).show(ctx, |ui| {
                 if let Some(message) = &self.undo_history.failure {
                     ui.colored_label(self.theme.red, message);
-                    let response = ui.button("Dismiss history message");
+                    let response = ui.button(tr!("Dismiss history message"));
                     help::annotate(ui, &response, help::Control::HistoryDismiss);
                     if response.clicked() { self.undo_history.failure = None; }
                 }
                 if let Some(queued) = self.undo_history.queued {
-                    ui.label(format!("{queued}; the list shows renderer-confirmed history."));
+                    ui.label(crate::localization::format("{queued}; the list shows renderer-confirmed history.", &[format!("{}", queued)]));
                 }
                 let view = &self.undo_history.view;
                 let can_undo = view.cursor > 0;
                 let can_redo = view.items.get(view.cursor).is_some_and(Option::is_some);
                 ui.horizontal(|ui| {
                     let enabled = !self.project.committing() && self.project.dialog_is_closed();
-                    let response = ui.add_enabled(enabled && can_undo, egui::Button::new("Undo"));
+                    let response = ui.add_enabled(enabled && can_undo, egui::Button::new(tr!("Undo")));
                     help::annotate(ui, &response, help::Control::Undo);
                     if response.clicked() { self.history_action(false); }
-                    let response = ui.add_enabled(enabled && can_redo, egui::Button::new("Redo"));
+                    let response = ui.add_enabled(enabled && can_redo, egui::Button::new(tr!("Redo")));
                     help::annotate(ui, &response, help::Control::Redo);
                     if response.clicked() { self.history_action(true); }
                 });
                 let view = &self.undo_history.view;
-                ui.label(format!("{} edits applied · {} available to redo", view.cursor,
-                    view.items.iter().flatten().count().saturating_sub(view.cursor)));
-                ui.label(format!("History {:.2} MiB / {:.0} MiB · awaiting retirement {:.2} MiB",
-                    view.bytes as f64 / 1048576.0, view.budget as f64 / 1048576.0,
-                    view.retired_bytes as f64 / 1048576.0));
-                ui.label(format!("Fixed history storage {:.2} MiB", view.fixed_bytes as f64 / 1048576.0));
-                ui.label("Transport and physical gates are not history edits. New and Open begin a new history.");
+                ui.label({ let __omatainer_args = (&(view.cursor),&(view.items.iter().flatten().count().saturating_sub(view.cursor)),); crate::localization::format("{} edits applied · {} available to redo", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                ui.label({ let __omatainer_args = (&(view.bytes as f64 / 1048576.0),&(view.budget as f64 / 1048576.0),&(view.retired_bytes as f64 / 1048576.0),); crate::localization::format("History {:.2} MiB / {:.0} MiB · awaiting retirement {:.2} MiB", &[format!("{:.2}", __omatainer_args.0), format!("{:.0}", __omatainer_args.1), format!("{:.2}", __omatainer_args.2)]) });
+                ui.label({ let __omatainer_args = (&(view.fixed_bytes as f64 / 1048576.0),); crate::localization::format("Fixed history storage {:.2} MiB", &[format!("{:.2}", __omatainer_args.0)]) });
+                ui.label(tr!("Transport and physical gates are not history edits. New and Open begin a new history."));
                 egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
                     for (index, item) in view.items.iter().enumerate().filter_map(|(i, item)| item.map(|item| (i,item))) {
-                        ui.label(format!("{} {}. {}", if index < view.cursor { "Applied" } else { "Redo" }, index + 1, item.label()));
+                        ui.label({ let __omatainer_args = (&(if index < view.cursor { "Applied" } else { "Redo" }),&(index + 1),&(item.label()),); crate::localization::format("{} {}. {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                     }
                 });
             });

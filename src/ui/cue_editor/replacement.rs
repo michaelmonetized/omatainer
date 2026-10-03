@@ -45,7 +45,7 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
         }
     }
     ui.separator();
-    ui.label("Or search replacement folders (one absolute folder per line)");
+    ui.label(tr!("Or search replacement folders (one absolute folder per line)"));
     let busy = search.handle.is_some() && !search.finished;
     let editable = !relocation.pending && !relocation.saved && !busy;
     let roots = ui.add_enabled(
@@ -70,7 +70,7 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
         .push_id((&relocation.request.id, &search.roots), |ui| {
             ui.add_enabled(
                 editable && !app.library_scan.active() && !app.library_metadata.active(),
-                egui::Button::new("Search replacement folders"),
+                egui::Button::new(tr!("Search replacement folders")),
             )
         })
         .inner;
@@ -110,15 +110,9 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
             1 => "Searching",
             _ => "Checking discovered locations",
         };
-        ui.label(format!(
-            "{phase}: {} entries · {} files · {} bytes hashed · {} skipped",
-            p.entries.load(Ordering::Relaxed),
-            p.files.load(Ordering::Relaxed),
-            p.bytes.load(Ordering::Relaxed),
-            p.skipped.load(Ordering::Relaxed)
-        ));
+        ui.label({ let __omatainer_args = (&(p.entries.load(Ordering::Relaxed)),&(p.files.load(Ordering::Relaxed)),&(p.bytes.load(Ordering::Relaxed)),&(p.skipped.load(Ordering::Relaxed)),); crate::localization::format("{phase}: {} entries · {} files · {} bytes hashed · {} skipped", &[format!("{}", phase), format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
         if ui
-            .button("Cancel replacement search")
+            .button(tr!("Cancel replacement search"))
             .help(ui, HelpControl::RelocateCancel)
             .clicked()
         {
@@ -129,20 +123,15 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
         return;
     }
     if handle.cancelled() {
-        ui.label("This search was cancelled. Search again before choosing a replacement.");
+        ui.label(tr!("This search was cancelled. Search again before choosing a replacement."));
         return;
     }
     let Some(receipt) = &search.receipt else {
         return;
     };
-    ui.label(format!(
-        "{} byte-identical matches · {} files inspected · {} bytes hashed",
-        receipt.matches.len(),
-        receipt.files,
-        receipt.bytes
-    ));
+    ui.label({ let __omatainer_args = (&(receipt.matches.len()),&(receipt.files),&(receipt.bytes),); crate::localization::format("{} byte-identical matches · {} files inspected · {} bytes hashed", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
     if !receipt.complete {
-        ui.colored_label(ui.visuals().warn_fg_color, "Incomplete search: other matches may exist in skipped folders or beyond search limits.");
+        ui.colored_label(ui.visuals().warn_fg_color, tr!("Incomplete search: other matches may exist in skipped folders or beyond search limits."));
     }
     if !receipt.samples.is_empty() {
         ui.collapsing("Skipped search entries", |ui| {
@@ -157,16 +146,11 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
             ] {
                 let count = receipt.skipped[reason as usize];
                 if count > 0 {
-                    ui.label(format!("{count} {}", reason.label()));
+                    ui.label({ let __omatainer_args = (&(reason.label()),); crate::localization::format("{count} {}", &[format!("{}", count), format!("{}", __omatainer_args.0)]) });
                 }
             }
             for sample in &receipt.samples {
-                ui.label(format!(
-                    "{}: {} — {}",
-                    sample.reason.label(),
-                    sample.path,
-                    sample.detail
-                ));
+                ui.label({ let __omatainer_args = (&(sample.reason.label()),&(sample.path),&(sample.detail),); crate::localization::format("{}: {} — {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
             }
         });
     }
@@ -181,7 +165,7 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
     let qualified =
         current.is_some_and(|t| t.versions[t.current].content_hash == Some(receipt.original_hash));
     if current.is_none() {
-        ui.label("The original library version changed. Search again.");
+        ui.label(tr!("The original library version changed. Search again."));
         return;
     }
     if !qualified && !search.proof_queued {
@@ -200,7 +184,7 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
         }
     }
     if !qualified || app.library_metadata.active() || !app.library_metadata.durable {
-        ui.label("Waiting for verified source identity and current library edits to be saved…");
+        ui.label(tr!("Waiting for verified source identity and current library edits to be saved…"));
     }
     let selectable = !relocation.pending && !relocation.saved;
     ui.push_id((&receipt.target.id, handle.id), |ui| {
@@ -214,10 +198,10 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
         });
         if let Some(index) = search.selected {
             let candidate = &receipt.matches[index];
-            ui.label(format!("Selected replacement: {}", candidate.location.path.display()));
-            if receipt.matches.len() > 1 { ui.label("Several copies contain identical bytes. Only the selected location will be associated with this track."); }
+            ui.label({ let __omatainer_args = (&(candidate.location.path.display()),); crate::localization::format("Selected replacement: {}", &[format!("{}", __omatainer_args.0)]) });
+            if receipt.matches.len() > 1 { ui.label(tr!("Several copies contain identical bytes. Only the selected location will be associated with this track.")); }
             let ready = selectable && qualified && app.library_metadata.durable && !app.library_metadata.active();
-            let commit = ui.push_id(index, |ui| ui.add_enabled(ready, egui::Button::new("Verify and use selected replacement"))).inner;
+            let commit = ui.push_id(index, |ui| ui.add_enabled(ready, egui::Button::new(tr!("Verify and use selected replacement")))).inner;
             help::annotate(ui, &commit, HelpControl::RelocateUse);
             if commit.clicked() {
                 relocation.request.destination = candidate.location.path.clone();
@@ -226,6 +210,6 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
                     relocation.message = "Rechecking the reviewed file and saving its association…".into();
                 } else { relocation.message = format!("Replacement was not queued. {}", app.library_metadata.label()); }
             }
-        } else if !receipt.matches.is_empty() { ui.label("Select a replacement to enable verification and save."); }
+        } else if !receipt.matches.is_empty() { ui.label(tr!("Select a replacement to enable verification and save.")); }
     });
 }

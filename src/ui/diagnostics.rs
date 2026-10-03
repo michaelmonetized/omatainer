@@ -120,54 +120,54 @@ impl App {
         }
         let live = self.diagnostic_sample();
         let mut open = true;
-        egui::Window::new("Performance diagnostics").open(&mut open).default_width(780.0).default_height(800.0).vscroll(true).show(ctx, |ui| {
-            ui.label("Live output device · measured service times; backend XRUN count unavailable");
+        egui::Window::new(tr!("Performance diagnostics")).id(egui::Id::new("Performance diagnostics")).open(&mut open).default_width(780.0).default_height(800.0).vscroll(true).show(ctx, |ui| {
+            ui.label(tr!("Live output device · measured service times; backend XRUN count unavailable"));
             show_sample(ui, &live);
             ui.separator();
-            ui.label("Capture: at most 30 seconds / 120 GUI samples / 2 MiB export. Missing GUI intervals are not reconstructed.");
-            ui.label("Redacted by construction: no media paths, titles, usernames, hostnames, port names or MIDI note data. Project metadata is counts and tempo; hardware is backend, format, rate, channels, OS/CPU architecture and logical CPU count.");
+            ui.label(tr!("Capture: at most 30 seconds / 120 GUI samples / 2 MiB export. Missing GUI intervals are not reconstructed."));
+            ui.label(tr!("Redacted by construction: no media paths, titles, usernames, hostnames, port names or MIDI note data. Project metadata is counts and tempo; hardware is backend, format, rate, channels, OS/CPU architecture and logical CPU count."));
             let running = self.diagnostics.capture.running();
             let busy = self.diagnostics.worker.is_some();
             ui.horizontal_wrapped(|ui| {
-                let response = ui.add_enabled(!busy && !running, egui::Button::new("Start capture"));
+                let response = ui.add_enabled(!busy && !running, egui::Button::new(tr!("Start capture")));
                 help::annotate(ui, &response, help::Control::DiagnosticCapture);
                 if response.clicked() {
                     self.diagnostics.capture.start(self.diagnostic_metadata(), Instant::now());
                     self.diagnostics.status = "Capturing".into();
                 }
-                let response = ui.add_enabled(running, egui::Button::new("Stop capture"));
+                let response = ui.add_enabled(running, egui::Button::new(tr!("Stop capture")));
                 help::annotate(ui, &response, help::Control::DiagnosticStop);
                 if response.clicked() { self.diagnostics.capture.stop(); self.diagnostics.status = "Capture stopped".into(); }
-                let response = ui.add_enabled(running, egui::Button::new("Cancel capture"));
+                let response = ui.add_enabled(running, egui::Button::new(tr!("Cancel capture")));
                 help::annotate(ui, &response, help::Control::DiagnosticCancel);
                 if response.clicked() { self.diagnostics.capture.cancel(); self.diagnostics.status = "Capture cancelled".into(); }
             });
             ui.label(&self.diagnostics.status);
             if let Some(report) = &self.diagnostics.capture.report {
-                ui.label(format!("Captured samples: {} · schema {} · version {}", report.samples.len(), report.schema, report.metadata.app_version));
+                ui.label({ let __omatainer_args = (&(report.samples.len()),&(report.schema),&(report.metadata.app_version),); crate::localization::format("Captured samples: {} · schema {} · version {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                 if let Some(sample) = report.samples.last() {
                     let sample = egui::CollapsingHeader::new("Captured last sample (not live)").show(ui, |ui| show_sample(ui, sample));
                     help::annotate(ui, &sample.header_response, help::Control::Diagnostics);
                 }
             }
             ui.horizontal(|ui| {
-                ui.label("Diagnostic file");
+                ui.label(tr!("Diagnostic file"));
                 let path = ui.add(egui::TextEdit::singleline(&mut self.diagnostics.path).id_salt("diagnostic-path").desired_width(490.0));
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Diagnostic file path"));
                 help::annotate(ui, &path, help::Control::DiagnosticPath);
             });
-            ui.label("Export creates a new private file; existing files are never overwritten. Reopen displays measurements only.");
+            ui.label(tr!("Export creates a new private file; existing files are never overwritten. Reopen displays measurements only."));
             ui.horizontal_wrapped(|ui| {
                 let has_samples = self.diagnostics.capture.report.as_ref().is_some_and(|r| !r.samples.is_empty());
-                let response = ui.add_enabled(!busy && !running && has_samples, egui::Button::new("Export redacted"));
+                let response = ui.add_enabled(!busy && !running && has_samples, egui::Button::new(tr!("Export redacted")));
                 help::annotate(ui, &response, help::Control::DiagnosticExport);
                 if response.clicked() {
                     self.start_diagnostic_file(self.diagnostics.capture.report.clone());
                 }
-                let response = ui.add_enabled(!busy && !running, egui::Button::new("Reopen capture"));
+                let response = ui.add_enabled(!busy && !running, egui::Button::new(tr!("Reopen capture")));
                 help::annotate(ui, &response, help::Control::DiagnosticReopen);
                 if response.clicked() { self.start_diagnostic_file(None); }
-                let response = ui.add_enabled(busy, egui::Button::new("Cancel file operation"));
+                let response = ui.add_enabled(busy, egui::Button::new(tr!("Cancel file operation")));
                 help::annotate(ui, &response, help::Control::DiagnosticFileCancel);
                 if response.clicked() {
                     if let Some(worker) = &self.diagnostics.worker { worker.cancel(); }
@@ -206,36 +206,22 @@ fn show_sample(ui: &mut Ui, sample: &Sample) {
             .render_cpu_fraction()
             .map(|f| format!("{:.2}%", f * 100.0))
             .unwrap_or_else(|| "unavailable".into());
-        ui.label(format!(
-            "Render CPU {cpu} · callback wall {:.3} ms / {:.3} ms deadline",
-            callback.elapsed_ns as f64 / 1e6,
-            callback.budget_ns as f64 / 1e6
-        ));
-        ui.label(format!(
-            "Output {} Hz · {} channels · {} frames",
-            callback.sample_rate, callback.channels, callback.frames
-        ));
-        ui.label(callback.output_latency_ns.map(|ns| format!("Predicted output latency {:.3} ms", ns as f64 / 1e6)).unwrap_or_else(|| "Predicted output latency unavailable".into()))
-            .on_hover_text("CPAL playback timestamp minus callback timestamp. Backend prediction to playback, not measured round-trip latency or UI responsiveness.");
+        ui.label({ let __omatainer_args = (&(callback.elapsed_ns as f64 / 1e6),&(callback.budget_ns as f64 / 1e6),); crate::localization::format("Render CPU {cpu} · callback wall {:.3} ms / {:.3} ms deadline", &[format!("{}", cpu), format!("{:.3}", __omatainer_args.0), format!("{:.3}", __omatainer_args.1)]) });
+        ui.label({ let __omatainer_args = (&(callback.sample_rate),&(callback.channels),&(callback.frames),); crate::localization::format("Output {} Hz · {} channels · {} frames", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+        ui.label(callback.output_latency_ns.map(|ns| { let __omatainer_args = (&(ns as f64 / 1e6),); crate::localization::format("Predicted output latency {:.3} ms", &[format!("{:.3}", __omatainer_args.0)]) }).unwrap_or_else(|| tr!("Predicted output latency unavailable").into()))
+            .on_hover_text(tr!("CPAL playback timestamp minus callback timestamp. Backend prediction to playback, not measured round-trip latency or UI responsiveness."));
     } else {
-        ui.label("Audio callback measurement unavailable");
+        ui.label(tr!("Audio callback measurement unavailable"));
     }
-    ui.label(format!("Callbacks {} · deadline overruns {} · maximum wall {:.3} ms · backend errors {} · device lost {} · XRUNs unavailable", sample.audio.callbacks, sample.audio.deadline_overruns, sample.audio.max_elapsed_ns as f64 / 1e6, sample.audio.backend_errors, sample.audio.device_lost));
-    ui.label(sample.ui_update_ns.map(|ns| format!("UI update wall {:.3} ms", ns as f64 / 1e6)).unwrap_or_else(|| "UI update wall unavailable".into()))
-        .on_hover_text("Previous App update call, including controls/layout. Excludes eframe GPU presentation and frame pacing; not FPS or audio latency.");
+    ui.label({ let __omatainer_args = (&(sample.audio.callbacks),&(sample.audio.deadline_overruns),&(sample.audio.max_elapsed_ns as f64 / 1e6),&(sample.audio.backend_errors),&(sample.audio.device_lost),); crate::localization::format("Callbacks {} · deadline overruns {} · maximum wall {:.3} ms · backend errors {} · device lost {} · XRUNs unavailable", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{:.3}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });
+    ui.label(sample.ui_update_ns.map(|ns| { let __omatainer_args = (&(ns as f64 / 1e6),); crate::localization::format("UI update wall {:.3} ms", &[format!("{:.3}", __omatainer_args.0)]) }).unwrap_or_else(|| tr!("UI update wall unavailable").into()))
+        .on_hover_text(tr!("Previous App update call, including controls/layout. Excludes eframe GPU presentation and frame pacing; not FPS or audio latency."));
     let queue = sample.commands;
-    ui.label(format!("Audio queue {}/{} · observed high-water {} · reserved releases {} · full rejections {} · all rejections {}", queue.pending, queue.capacity, queue.observed_high_water, queue.reserved_releases, queue.full_rejections, queue.rejected));
-    ui.label(format!(
-        "Library queue {}/{} · rejected {} · MIDI discarded {} · source resets {}",
-        sample.library_queue[0],
-        sample.library_queue[1],
-        sample.library_queue[4],
-        sample.midi[4],
-        sample.midi[5]
-    ));
+    ui.label({ let __omatainer_args = (&(queue.pending),&(queue.capacity),&(queue.observed_high_water),&(queue.reserved_releases),&(queue.full_rejections),&(queue.rejected),); crate::localization::format("Audio queue {}/{} · observed high-water {} · reserved releases {} · full rejections {} · all rejections {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{}", __omatainer_args.5)]) });
+    ui.label({ let __omatainer_args = (&(sample.library_queue[0]),&(sample.library_queue[1]),&(sample.library_queue[4]),&(sample.midi[4]),&(sample.midi[5]),); crate::localization::format("Library queue {}/{} · rejected {} · MIDI discarded {} · source resets {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });
     if let Some(profile) = &sample.profile {
-        ui.label(format!("Sampled load at audio frame {}: one frame every {}. First {} devices per chain; {} omitted.", profile.frame, crate::engine::diagnostics::STRIDE, crate::engine::diagnostics::SLOTS, profile.omitted_devices));
-        ui.label("Wall ns per sampled frame; estimated buffer share assumes that frame repeats. Track/scene totals include their devices; do not add them. Scheduling and timer overhead are included. Not per-track CPU or worst-case headroom.");
+        ui.label({ let __omatainer_args = (&(profile.frame),&(crate::engine::diagnostics::STRIDE),&(crate::engine::diagnostics::SLOTS),&(profile.omitted_devices),); crate::localization::format("Sampled load at audio frame {}: one frame every {}. First {} devices per chain; {} omitted.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
+        ui.label(tr!("Wall ns per sampled frame; estimated buffer share assumes that frame repeats. Track/scene totals include their devices; do not add them. Scheduling and timer overhead are included. Not per-track CPU or worst-case headroom."));
         let details = egui::CollapsingHeader::new("Track and device samples")
             .default_open(false)
             .show(ui, |ui| {
@@ -245,20 +231,17 @@ fn show_sample(ui: &mut Ui, sample: &Sample) {
                         for cost in &profile.costs {
                             ui.label(cost.label());
                             ui.label(if cost.elapsed_ns == 0 {
-                                "Below timer resolution".into()
+                                tr!("Below timer resolution").into()
                             } else {
-                                format!("{} ns/frame", cost.elapsed_ns)
+                                { let __omatainer_args = (&(cost.elapsed_ns),); crate::localization::format("{} ns/frame", &[format!("{}", __omatainer_args.0)]) }
                             });
-                            ui.label(format!(
-                                "{:.3}% estimated",
-                                cost.elapsed_ns as f64 * profile.sample_rate as f64 / 1e7
-                            ));
+                            ui.label({ let __omatainer_args = (&(cost.elapsed_ns as f64 * profile.sample_rate as f64 / 1e7),); crate::localization::format("{:.3}% estimated", &[format!("{:.3}", __omatainer_args.0)]) });
                             ui.end_row();
                         }
                     });
             });
         help::annotate(ui, &details.header_response, help::Control::Diagnostics);
     } else {
-        ui.label("Sampled track/device load awaiting audio (profiling is enabled while this window or a capture is active)");
+        ui.label(tr!("Sampled track/device load awaiting audio (profiling is enabled while this window or a capture is active)"));
     }
 }

@@ -212,8 +212,8 @@ impl App {
             egui::TopBottomPanel::top("safe-mode-banner").show(ctx,|ui|{
                 ui.horizontal_wrapped(|ui|{
                     ui.strong("SAFE MODE · Audio and MIDI offline · Engine controls disabled");
-                    ui.label("Project Open, recovery and Save remain available. Saved settings are unchanged.");
-                    if ui.add_enabled(!self.project.committing()&&!self.recovery_project_busy(),egui::Button::new("Restart normally")).help(ui,HelpControl::SupportRestart).clicked(){self.request_normal_restart();}
+                    ui.label(tr!("Project Open, recovery and Save remain available. Saved settings are unchanged."));
+                    if ui.add_enabled(!self.project.committing()&&!self.recovery_project_busy(),egui::Button::new(tr!("Restart normally"))).help(ui,HelpControl::SupportRestart).clicked(){self.request_normal_restart();}
                 });
             });
         }
@@ -226,54 +226,54 @@ impl App {
         let mut job = None;
         let mut preview_recovery = None;
         let recovery_root = self.support_recovery_root();
-        egui::Window::new("Support and crash reports").id(egui::Id::new("support-window")).open(&mut open).default_width(760.0).default_height(730.0).vscroll(true).show(ctx,|ui|{
-            ui.label("Local-only diagnostics. No upload client exists. Review the exact JSON, export it, and choose separately whether to share that file.");
-            ui.label("Always excluded: media/PCM/waveforms, projects/notes, paths/titles, device and MIDI port names, raw errors/panic payloads, environment/credentials and core dumps. Audio plugin hosting is unavailable in this build.");
+        egui::Window::new(tr!("Support and crash reports")).id(egui::Id::new("support-window")).open(&mut open).default_width(760.0).default_height(730.0).vscroll(true).show(ctx,|ui|{
+            ui.label(tr!("Local-only diagnostics. No upload client exists. Review the exact JSON, export it, and choose separately whether to share that file."));
+            ui.label(tr!("Always excluded: media/PCM/waveforms, projects/notes, paths/titles, device and MIDI port names, raw errors/panic payloads, environment/credentials and core dumps. Audio plugin hosting is unavailable in this build."));
             ui.push_id("support-live-status",|ui|{
                 if let Some(client)=&self.support.client {
                     let view=client.view();
-                    ui.label(format!("Run {} · {} structured events · {} counter samples · {} observations dropped before collection",view.report.run.hex(),view.report.events.len(),view.report.samples.len(),view.dropped_observations));
-                    if let Some(failure)=view.storage_failure {ui.label(format!("Persistent support storage unavailable ({failure:?}); in-memory inspection still works."));}
-                    else if view.committed_warning {ui.label("Latest report committed; durability warning. Prior confirmed time remains authoritative.");}
-                    else if let Some(time)=view.durable_unix_ms {ui.label(format!("Last confirmed report persistence: {time} ms since Unix epoch. Crash evidence can lag live state by five seconds or storage delay."));}
-                } else {ui.label("Support collector unavailable; no persistent or current report is claimed.");}
+                    ui.label({ let __omatainer_args = (&(view.report.run.hex()),&(view.report.events.len()),&(view.report.samples.len()),&(view.dropped_observations),); crate::localization::format("Run {} · {} structured events · {} counter samples · {} observations dropped before collection", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
+                    if let Some(failure)=view.storage_failure {ui.label(crate::localization::format("Persistent support storage unavailable ({failure:?}); in-memory inspection still works.", &[format!("{:?}", failure)]));}
+                    else if view.committed_warning {ui.label(tr!("Latest report committed; durability warning. Prior confirmed time remains authoritative."));}
+                    else if let Some(time)=view.durable_unix_ms {ui.label(crate::localization::format("Last confirmed report persistence: {time} ms since Unix epoch. Crash evidence can lag live state by five seconds or storage delay.", &[format!("{}", time)]));}
+                } else {ui.label(tr!("Support collector unavailable; no persistent or current report is claimed."));}
             });
             ui.add_enabled_ui(!busy,|ui|{
                 let before=self.support.selection;
                 ui.horizontal_wrapped(|ui|{
-                    ui.checkbox(&mut self.support.selection.routes,"Audio routing").help(ui,HelpControl::SupportCategories);
-                    ui.checkbox(&mut self.support.selection.events,"Structured events").help(ui,HelpControl::SupportCategories);
-                    ui.checkbox(&mut self.support.selection.performance,"Performance counters").help(ui,HelpControl::SupportCategories);
-                    ui.checkbox(&mut self.support.selection.recovery,"Opaque recovery references").help(ui,HelpControl::SupportCategories);
+                    ui.checkbox(&mut self.support.selection.routes,tr!("Audio routing")).help(ui,HelpControl::SupportCategories);
+                    ui.checkbox(&mut self.support.selection.events,tr!("Structured events")).help(ui,HelpControl::SupportCategories);
+                    ui.checkbox(&mut self.support.selection.performance,tr!("Performance counters")).help(ui,HelpControl::SupportCategories);
+                    ui.checkbox(&mut self.support.selection.recovery,tr!("Opaque recovery references")).help(ui,HelpControl::SupportCategories);
                 });
                 if before!=self.support.selection{self.support.retire_preview();}
                 ui.horizontal_wrapped(|ui|{
-                    if ui.add_enabled(self.support.client.is_some(),egui::Button::new("Inspect current report")).help(ui,HelpControl::SupportInspect).clicked(){job=Some(Job::Preview(self.support.client.as_ref().unwrap().view().report.clone(),self.support.selection));}
-                    if ui.button("Find previous runs").help(ui,HelpControl::SupportPrevious).clicked(){if let Some(root)=&self.support.root{job=Some(Job::Previous(root.clone()));}}
+                    if ui.add_enabled(self.support.client.is_some(),egui::Button::new(tr!("Inspect current report"))).help(ui,HelpControl::SupportInspect).clicked(){job=Some(Job::Preview(self.support.client.as_ref().unwrap().view().report.clone(),self.support.selection));}
+                    if ui.button(tr!("Find previous runs")).help(ui,HelpControl::SupportPrevious).clicked(){if let Some(root)=&self.support.root{job=Some(Job::Previous(root.clone()));}}
                 });
                 ui.push_id("previous-support-reports",|ui|{
                     for (index,previous) in self.support.previous.iter().enumerate(){
                         let report=&previous.report;
-                        if ui.button(format!("Inspect {:?} run {} · {}",report.exit,&report.run.hex()[..8],report.started_unix_ms)).help(ui,HelpControl::SupportPrevious).clicked(){job=Some(Job::Preview(Arc::new(report.clone()),self.support.selection));}
+                        if ui.button({ let __omatainer_args = (&(report.exit),&(&report.run.hex()[..8]),&(report.started_unix_ms),); crate::localization::format("Inspect {:?} run {} · {}", &[format!("{:?}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) }).help(ui,HelpControl::SupportPrevious).clicked(){job=Some(Job::Preview(Arc::new(report.clone()),self.support.selection));}
                         let _=index;
                     }
                 });
-                let label=ui.label("Support report file");
+                let label=ui.label(tr!("Support report file"));
                 let field=ui.text_edit_singleline(&mut self.support.path).labelled_by(label.id);
                 field.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::TextEdit,true,"Support report file"));
                 field.help(ui,HelpControl::SupportPath);
-                if ui.add_enabled(!self.support.path.trim().is_empty(),egui::Button::new("Reopen support report")).help(ui,HelpControl::SupportReopen).clicked(){job=Some(Job::Reopen(PathBuf::from(self.support.path.trim())));}
+                if ui.add_enabled(!self.support.path.trim().is_empty(),egui::Button::new(tr!("Reopen support report"))).help(ui,HelpControl::SupportReopen).clicked(){job=Some(Job::Reopen(PathBuf::from(self.support.path.trim())));}
             });
             ui.push_id("support-outcome",|ui|{ui.label(&self.support.message);});
             if busy {
                 ui.spinner();
-                if ui.button("Cancel support work").help(ui,HelpControl::SupportCancel).clicked(){if let Some(worker)=&self.support.worker{worker.cancel();}}
+                if ui.button(tr!("Cancel support work")).help(ui,HelpControl::SupportCancel).clicked(){if let Some(worker)=&self.support.worker{worker.cancel();}}
                 ctx.request_repaint_after(std::time::Duration::from_millis(40));
             }
             if let Some(preview)=&self.support.preview {
                 let identity=PreviewIdentity { generation:self.support.preview_generation, digest:preview.digest };
                 ui.push_id(("support-reviewed-preview",identity),|ui| {
-                ui.label(format!("Reviewed report: {:?} · {} bytes. Unknown cause stays unclean; an observed Rust panic is not proof of an audio/device fault.",preview.report.exit,preview.json.len()));
+                ui.label({ let __omatainer_args = (&(preview.report.exit),&(preview.json.len()),); crate::localization::format("Reviewed report: {:?} · {} bytes. Unknown cause stays unclean; an observed Rust panic is not proof of an audio/device fault.", &[format!("{:?}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                 ui.push_id("support-json",|ui|{
                     let output=egui::ScrollArea::vertical().id_salt("json-scroll").max_height(220.0).show_rows(ui,16.0,preview.lines.len(),|ui,rows|{
                         for row in rows {ui.monospace(&preview.json[preview.lines[row].clone()]);}
@@ -281,11 +281,11 @@ impl App {
                     accessibility::scrollbars(ui,"Support report text",&output);
                 });
                 ui.add_enabled_ui(!busy,|ui|{
-                    if ui.checkbox(&mut self.support.consent,"I reviewed this report and want to export it locally").help(ui,HelpControl::SupportConsent).changed(){self.support.consent_identity=self.support.consent.then_some(identity);}
-                    if ui.add_enabled(self.support.consent&&self.support.consent_identity==Some(identity)&&!self.support.path.trim().is_empty(),egui::Button::new("Export reviewed support report")).help(ui,HelpControl::SupportExport).clicked(){job=Some(Job::Export(PathBuf::from(self.support.path.trim()),preview.report.clone()));}
+                    if ui.checkbox(&mut self.support.consent,tr!("I reviewed this report and want to export it locally")).help(ui,HelpControl::SupportConsent).changed(){self.support.consent_identity=self.support.consent.then_some(identity);}
+                    if ui.add_enabled(self.support.consent&&self.support.consent_identity==Some(identity)&&!self.support.path.trim().is_empty(),egui::Button::new(tr!("Export reviewed support report"))).help(ui,HelpControl::SupportExport).clicked(){job=Some(Job::Export(PathBuf::from(self.support.path.trim()),preview.report.clone()));}
                     for (reference_index,reference) in preview.report.recovery.iter().enumerate() {
                         ui.push_id(("support-recovery-reference",reference_index,reference.session,reference.epoch,reference.sequence),|ui| {
-                        if ui.button(format!("Find exact recovery record {}",reference.sequence)).help(ui,HelpControl::SupportRecovery).clicked(){
+                        if ui.button({ let __omatainer_args = (&(reference.sequence),); crate::localization::format("Find exact recovery record {}", &[format!("{}", __omatainer_args.0)]) }).help(ui,HelpControl::SupportRecovery).clicked(){
                             if let Some(root)=&recovery_root {job=Some(Job::Recovery(root.clone(),reference.clone()));}
                             else {self.support.message="Recovery storage is unavailable; no original project was opened.".into();}
                         }
@@ -296,7 +296,7 @@ impl App {
             }
             if let Some(candidate)=&self.support.found {
                 ui.push_id(("support-linked-candidate",self.support.preview_generation,self.support.recovery_generation,&candidate.session,candidate.sequence,candidate.record_digest()),|ui| {
-                if ui.add_enabled(!busy&&!self.recovery_project_busy(),egui::Button::new("Preview linked recovery")).help(ui,HelpControl::SupportRecovery).clicked(){preview_recovery=Some(candidate.clone());}
+                if ui.add_enabled(!busy&&!self.recovery_project_busy(),egui::Button::new(tr!("Preview linked recovery"))).help(ui,HelpControl::SupportRecovery).clicked(){preview_recovery=Some(candidate.clone());}
                 });
             }
         });

@@ -158,12 +158,12 @@ impl App {
                 keyboard::block_for_dialog(ctx);
                 let mut open = true;
                 let mut close = false;
-                egui::Window::new(format!("Deck {} cues", (b'A' + editor.deck as u8) as char)).open(&mut open).resizable(true).vscroll(true).show(ctx, |ui| {
+                egui::Window::new({ let __omatainer_args = (&((b'A' + editor.deck as u8) as char),); crate::localization::format("Deck {} cues", &[format!("{}", __omatainer_args.0)]) }).open(&mut open).resizable(true).vscroll(true).show(ctx, |ui| {
                     if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                     ui.heading(&snap.title);
                     ui.label(self.cue_storage_status(&editor.receipt));
-                    ui.label("Cue names: up to 64 UTF-8 bytes. Color: #RRGGBB; empty follows the theme.");
-                    ui.label("Main cue is separate. Empty hot-cue slots must be set before naming them.");
+                    ui.label(tr!("Cue names: up to 64 UTF-8 bytes. Color: #RRGGBB; empty follows the theme."));
+                    ui.label(tr!("Main cue is separate. Empty hot-cue slots must be set before naming them."));
                     for i in 0..8 {
                         ui.push_id(i, |ui| {
                             ui.horizontal(|ui| {
@@ -174,17 +174,17 @@ impl App {
                             });
                             ui.horizontal(|ui| {
                                 let set = snap.hotcues[i];
-                                let action = ui.button(if set { format!("Jump {}", i+1) } else { format!("Set {}", i+1) });
+                                let action = ui.button(if set { { let __omatainer_args = (&(i+1),); crate::localization::format("Jump {}", &[format!("{}", __omatainer_args.0)]) } } else { { let __omatainer_args = (&(i+1),); crate::localization::format("Set {}", &[format!("{}", __omatainer_args.0)]) } });
                                 help::annotate(ui, &action, HelpControl::HotCue);
                                 if action.clicked() { self.send(Command::DeckCuePoint { deck: editor.deck as u8, pad: i as u8, del: false, receipt: editor.receipt.clone() }); }
                                 ui.add_enabled_ui(set, |ui| {
                                     let name = ui.add(egui::TextEdit::singleline(&mut editor.drafts[i].name).desired_width(180.0).char_limit(64));
                                     name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, format!("Cue {} name", i+1)));
                                     help::annotate(ui, &name, HelpControl::CueName);
-                                    let rgb = ui.add(egui::TextEdit::singleline(&mut editor.drafts[i].color).desired_width(80.0).char_limit(7).hint_text("theme"));
+                                    let rgb = ui.add(egui::TextEdit::singleline(&mut editor.drafts[i].color).desired_width(80.0).char_limit(7).hint_text(tr!("theme")));
                                     rgb.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, format!("Cue {} color", i+1)));
                                     help::annotate(ui, &rgb, HelpControl::CueColor);
-                                    let apply = ui.button(format!("Apply {}", i+1));
+                                    let apply = ui.button({ let __omatainer_args = (&(i+1),); crate::localization::format("Apply {}", &[format!("{}", __omatainer_args.0)]) });
                                     help::annotate(ui, &apply, HelpControl::CueApply);
                                     if apply.clicked() {
                                         match editor.drafts[i].style() {
@@ -194,17 +194,17 @@ impl App {
                                             } else { "Cue edit was not accepted; your draft is still here.".into() },
                                         }
                                     }
-                                    let delete = ui.button(format!("Delete {}", i+1));
+                                    let delete = ui.button({ let __omatainer_args = (&(i+1),); crate::localization::format("Delete {}", &[format!("{}", __omatainer_args.0)]) });
                                     help::annotate(ui, &delete, HelpControl::HotCue);
                                     if delete.clicked() { self.send(Command::DeckCuePoint { deck: editor.deck as u8, pad: i as u8, del: true, receipt: editor.receipt.clone() }); }
                                 });
                             });
                         });
                     }
-                    let reset = ui.button("Reload cue values");
+                    let reset = ui.button(tr!("Reload cue values"));
                     help::annotate(ui, &reset, HelpControl::CueReload);
                     if reset.clicked() { editor.drafts = std::array::from_fn(|i| Draft::from_style(snap.cue_styles[i])); editor.message.clear(); }
-                    if ui.button("Close cue editor").help(ui, HelpControl::CueClose).clicked() { close = true; }
+                    if ui.button(tr!("Close cue editor")).help(ui, HelpControl::CueClose).clicked() { close = true; }
                     if !editor.message.is_empty() { ui.label(&editor.message); }
                 });
                 if open && !close {
@@ -229,15 +229,15 @@ impl App {
             }
             keyboard::block_for_dialog(ctx);
             let mut open = true;
-            egui::Window::new("Relocate library track").open(&mut open).show(ctx, |ui| {
+            egui::Window::new(tr!("Relocate library track")).id(egui::Id::new("Relocate library track")).open(&mut open).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.heading(&relocation.title);
-                ui.label("Choose the new location after moving or copying the same file. Verification compares every byte before preserving its track identity and cues. This does not move or delete files.");
+                ui.label(tr!("Choose the new location after moving or copying the same file. Verification compares every byte before preserving its track identity and cues. This does not move or delete files."));
                 ui.label(&relocation.message);
-                let path = ui.add_enabled(!relocation.pending && !relocation.saved, egui::TextEdit::singleline(&mut relocation.path).desired_width(420.0).hint_text("/new/location/track.wav"));
+                let path = ui.add_enabled(!relocation.pending && !relocation.saved, egui::TextEdit::singleline(&mut relocation.path).desired_width(420.0).hint_text(tr!("/new/location/track.wav")));
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Relocated track path"));
                 help::annotate(ui, &path, HelpControl::CueRelocatePath);
-                let submit = ui.push_id((&relocation.request.id, &relocation.path), |ui| ui.add_enabled(!relocation.pending && !relocation.saved, egui::Button::new("Verify and relocate track"))).inner;
+                let submit = ui.push_id((&relocation.request.id, &relocation.path), |ui| ui.add_enabled(!relocation.pending && !relocation.saved, egui::Button::new(tr!("Verify and relocate track")))).inner;
                 help::annotate(ui, &submit, HelpControl::CueRelocateApply);
                 if submit.clicked() {
                     relocation.search.discard();

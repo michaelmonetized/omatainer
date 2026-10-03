@@ -306,3 +306,17 @@ fn extreme_future_ui_deadline_is_bounded_before_native_instant_conversion() {
         .played_tooltip
         .contains("outside calendar range"));
 }
+
+#[test]
+fn visible_last_play_cache_reformats_once_when_language_changes_without_changing_time() {
+    let fixture=crate::ui::test_support::Fixture::new(128);
+    let now=clock();let played=Some(now-Duration::from_secs(7*86400));
+    let mut cells=crate::ui::library_view::Cells::new(&fixture.app.library[0],played,now);
+    assert_eq!(cells.played,"2024-01-01 UTC");
+    let bpm=cells.bpm.clone();
+    { let _locale=crate::localization::scope(crate::localization::Locale::Spanish);
+      assert!(cells.refresh_play(played,now));assert_eq!(cells.played,"01/01/2024 UTC");
+      assert!(cells.played_tooltip.starts_with("Reproducido: "));assert!(!cells.refresh_play(played,now)); }
+    assert!(cells.refresh_play(played,now));assert_eq!(cells.played,"2024-01-01 UTC");
+    assert_eq!(cells.played_at,played);assert_eq!(cells.bpm,bpm);
+}

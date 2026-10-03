@@ -329,3 +329,17 @@ fn malformed_reserved_predicates_are_errors_and_plain_field_names_remain_searcha
     assert_eq!(rule.minimum_rating, 4);
     assert_eq!(rule.color, Some([255, 102, 0]));
 }
+
+#[test]
+fn canonical_search_and_rules_keep_original_international_tags_and_notes_on_roundtrip() {
+    let fields = Annotations { group: "Cafe\u{301}".into(), tags: vec!["Straße".into(),"東京".into()], notes: "Σίσυφος / العربية".into(), ..Default::default() };
+    fields.validate().unwrap();
+    let bytes=serde_json::to_vec(&fields).unwrap();
+    let reopened: Annotations=serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(reopened,fields);
+    assert!(reopened.matches_text(&crate::localization::search_key("CAFÉ")));
+    assert!(reopened.matches_text(&crate::localization::search_key("STRASSE")));
+    let rule=Rule {group:"Café".into(),tag:"STRASSE".into(),notes:"ΣΊΣΥΦΟΣ".into(),..Default::default()};
+    assert!(rule.matches(&reopened));
+    assert_eq!(serde_json::to_vec(&reopened).unwrap(),bytes);
+}

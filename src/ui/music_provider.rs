@@ -122,62 +122,62 @@ impl App {
         let identity = panel.provider.identity();
         let mut open = true;
         let mut operation = None;
-        egui::Window::new("Music providers").id(egui::Id::new("music-provider-window"))
+        egui::Window::new(tr!("Music providers")).id(egui::Id::new("music-provider-window"))
             .open(&mut open).default_width(640.0).vscroll(true)
             .max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 ui.heading(identity.name);
-                ui.label(format!("Provider: {:?} · authentication: {:?}", identity.id, panel.provider.authentication()));
+                ui.label({ let __omatainer_args = (&(identity.id),&(panel.provider.authentication()),); crate::localization::format("Provider: {:?} · authentication: {:?}", &[format!("{:?}", __omatainer_args.0), format!("{:?}", __omatainer_args.1)]) });
                 ui.hyperlink_to("API authorization and app licensing", identity.authorization);
                 ui.hyperlink_to("Read current music license", identity.terms);
-                ui.label("No paid provider license is configured. Commercial music discovery and playback need a license for Omatainer.");
-                ui.label("Free use is limited to non-commercial projects, non-premium music and visible attribution. Your published content needs its own license.");
+                ui.label(tr!("No paid provider license is configured. Commercial music discovery and playback need a license for Omatainer."));
+                ui.label(tr!("Free use is limited to non-commercial projects, non-premium music and visible attribution. Your published content needs its own license."));
                 let mut enabled = panel.license == License::NonCommercialAttribution;
-                if ui.checkbox(&mut enabled, "Enable for non-commercial use; I accept the current license and attribution requirement")
+                if ui.checkbox(&mut enabled, tr!("Enable for non-commercial use; I accept the current license and attribution requirement"))
                     .help_detail(ui, HelpControl::MusicProvider, "Network access is off until enabled. No account or API key is required for the public API. Commercial use and premium music remain unavailable.").changed() {
                     panel.stop(); panel.page = None;
                     panel.license = if enabled { License::NonCommercialAttribution } else { License::Missing };
                 }
                 let caps = panel.provider.capabilities(panel.license, None);
                 restrictions(ui, caps);
-                if !identity.supported_platform { ui.label("Provider support is currently qualified on Linux only."); }
+                if !identity.supported_platform { ui.label(tr!("Provider support is currently qualified on Linux only.")); }
                 let available = caps.search && panel.job.is_none() && !self.engine.safe_mode() && !self.engine.cmd.performance().protected() && !self.project.committing();
-                let label = ui.label("Provider search");
+                let label = ui.label(tr!("Provider search"));
                 ui.add(egui::TextEdit::singleline(&mut panel.query).char_limit(1024)).labelled_by(label.id);
                 ui.horizontal(|ui| {
-                    if ui.add_enabled(available, egui::Button::new("Search provider")).help(ui, HelpControl::MusicProvider).clicked() {
+                    if ui.add_enabled(available, egui::Button::new(tr!("Search provider"))).help(ui, HelpControl::MusicProvider).clicked() {
                         operation = Some(Operation::Search { query: panel.query.clone(), offset: 0 });
                     }
-                    if panel.job.is_some() && ui.button("Cancel provider request").help(ui, HelpControl::MusicProvider).clicked() { panel.stop(); }
-                    if ui.button("Stop provider preview").help(ui, HelpControl::MusicProvider).clicked() { panel.stop(); }
+                    if panel.job.is_some() && ui.button(tr!("Cancel provider request")).help(ui, HelpControl::MusicProvider).clicked() { panel.stop(); }
+                    if ui.button(tr!("Stop provider preview")).help(ui, HelpControl::MusicProvider).clicked() { panel.stop(); }
                 });
                 if let Some(watch) = &panel.preview {
                     ui.label(&watch.credits);
-                    if ui.button("Copy preview credits").help(ui, HelpControl::MusicProvider).clicked() { ctx.copy_text(watch.credits.clone()); }
+                    if ui.button(tr!("Copy preview credits")).help(ui, HelpControl::MusicProvider).clicked() { ctx.copy_text(watch.credits.clone()); }
                 }
                 ui.label(&panel.message);
                 if let Some(page) = &panel.page {
                     ui.horizontal(|ui| {
-                        ui.label(format!("{}–{} of {}", if page.tracks.is_empty() { 0 } else { page.offset + 1 }, page.offset + page.tracks.len() as u32, page.total));
-                        if ui.add_enabled(available && page.offset > 0, egui::Button::new("Previous provider page")).clicked() {
+                        ui.label({ let __omatainer_args = (&(if page.tracks.is_empty() { 0 } else { page.offset + 1 }),&(page.offset + page.tracks.len() as u32),&(page.total),); crate::localization::format("{}–{} of {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+                        if ui.add_enabled(available && page.offset > 0, egui::Button::new(tr!("Previous provider page"))).clicked() {
                             operation = Some(Operation::Search { query: panel.page_query.clone(), offset: page.offset.saturating_sub(provider::freetouse::PAGE_SIZE) });
                         }
                         let next = page.offset + page.tracks.len() as u32;
-                        if ui.add_enabled(available && !page.tracks.is_empty() && next < page.total, egui::Button::new("Next provider page")).clicked() {
+                        if ui.add_enabled(available && !page.tracks.is_empty() && next < page.total, egui::Button::new(tr!("Next provider page"))).clicked() {
                             operation = Some(Operation::Search { query: panel.page_query.clone(), offset: next });
                         }
                     });
                     for track in &page.tracks {
                         ui.separator();
-                        ui.label(format!("{} · {} · {:.0}s{}", track.title, track.artists, track.seconds, if track.premium { " · premium" } else { "" }));
-                        ui.label(format!("Remote ID: {}", track.id.item));
+                        ui.label({ let __omatainer_args = (&(track.title),&(track.artists),&(track.seconds),&(if track.premium { " · premium" } else { "" }),); crate::localization::format("{} · {} · {:.0}s{}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{:.0}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
+                        ui.label({ let __omatainer_args = (&(track.id.item),); crate::localization::format("Remote ID: {}", &[format!("{}", __omatainer_args.0)]) });
                         let caps = panel.provider.capabilities(panel.license, Some(track));
-                        if ui.add_enabled(available && caps.preview, egui::Button::new(format!("Preview {}", track.title)))
+                        if ui.add_enabled(available && caps.preview, egui::Button::new({ let __omatainer_args = (&(track.title),); crate::localization::format("Preview {}", &[format!("{}", __omatainer_args.0)]) }))
                             .help_detail(ui, HelpControl::MusicProvider, "One unchanged-pitch preview; no local-file import, deck loading or audio export. Credits remain visible while it plays.").clicked() {
                             operation = Some(Operation::Preview(track.id.clone()));
                         }
                         if track.premium { ui.label(provider::Failure::PremiumLicenseRequired.to_string()); }
-                        if track.seconds > 300.0 { ui.label("Preview limit: five minutes."); }
-                        if ui.button(format!("Copy credits for {}", track.title)).clicked() { ctx.copy_text(track.attribution()); }
+                        if track.seconds > 300.0 { ui.label(tr!("Preview limit: five minutes.")); }
+                        if ui.button({ let __omatainer_args = (&(track.title),); crate::localization::format("Copy credits for {}", &[format!("{}", __omatainer_args.0)]) }).clicked() { ctx.copy_text(track.attribution()); }
                     }
                 }
             });
@@ -230,15 +230,9 @@ impl App {
 /// Describe the current adapter contract without inventing provider permissions.
 /// Takes native UI and current capabilities; shows the restrictions enforced by this adapter.
 fn restrictions(ui: &mut Ui, caps: provider::Capabilities) {
-    ui.label(format!(
-        "Current adapter capabilities: search {} · preview {} · preview voices {} · DJ decks {}",
-        caps.search, caps.preview, caps.preview_voices, caps.decks
-    ));
-    ui.label(format!(
-        "Offline storage {} · stems {} · recording/export {}",
-        caps.offline, caps.stems, caps.recording
-    ));
-    ui.label("Provider previews are transient and excluded from local crates, sampler banks, project media, recording and portable exports.");
+    ui.label({ let __omatainer_args = (&(caps.search),&(caps.preview),&(caps.preview_voices),&(caps.decks),); crate::localization::format("Current adapter capabilities: search {} · preview {} · preview voices {} · DJ decks {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
+    ui.label({ let __omatainer_args = (&(caps.offline),&(caps.stems),&(caps.recording),); crate::localization::format("Offline storage {} · stems {} · recording/export {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+    ui.label(tr!("Provider previews are transient and excluded from local crates, sampler banks, project media, recording and portable exports."));
 }
 
 #[cfg(test)]

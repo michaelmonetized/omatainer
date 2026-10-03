@@ -514,7 +514,7 @@ impl App {
         let mut stop = false;
         let mut refresh = false;
         let busy = editor.busy();
-        let shown = egui::Window::new("MIDI piano roll").id(egui::Id::new("midi-piano-roll"))
+        let shown = egui::Window::new(tr!("MIDI piano roll")).id(egui::Id::new("midi-piano-roll"))
             .open(&mut open).collapsible(false).resizable(true)
             .default_pos(available.left_top() + Vec2::new(16.0, 32.0))
             .default_width(980.0_f32.min(available.width())).min_width(260.0_f32.min(available.width()))
@@ -525,16 +525,15 @@ impl App {
                     if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
                     if busy { ui.spinner(); ctx.request_repaint_after(std::time::Duration::from_millis(20)); }
                     if let Some(draft) = &mut editor.draft {
-                        ui.label(format!("Captured track {} · scene {} · {} notes · {}", draft.baseline.track + 1,
-                            draft.baseline.scene + 1, draft.notes.len(), if draft.dirty { "unapplied changes" } else { "unmodified draft" }));
+                        ui.label({ let __omatainer_args = (&(draft.baseline.track + 1),&(draft.baseline.scene + 1),&(draft.notes.len()),&(if draft.dirty { "unapplied changes" } else { "unmodified draft" }),); crate::localization::format("Captured track {} · scene {} · {} notes · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
                         if let Some(lanes) = &draft.baseline.lanes {
-                            ui.label(format!("Imported source PPQN {} · end tick {} · {} channel messages · {} standard metadata events", lanes.ppqn, lanes.end_tick, lanes.messages.len(), lanes.meta.len()));
+                            ui.label({ let __omatainer_args = (&(lanes.ppqn),&(lanes.end_tick),&(lanes.messages.len()),&(lanes.meta.len()),); crate::localization::format("Imported source PPQN {} · end tick {} · {} channel messages · {} standard metadata events", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
                         }
                         let scroll = egui::ScrollArea::vertical().id_salt("piano-roll-body")
                             .max_height((available.height() - 160.0).max(100.0)).show(ui, |ui| {
                             ui.add_enabled_ui(!busy && !self.project.committing(), |ui| {
                                 ui.horizontal_wrapped(|ui| {
-                                    ui.label("Clip name"); let name = ui.add(egui::TextEdit::singleline(&mut draft.name).char_limit(4096));
+                                    ui.label(tr!("Clip name")); let name = ui.add(egui::TextEdit::singleline(&mut draft.name).char_limit(4096));
                                     name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "MIDI clip name"));
                                     draft.dirty |= name.changed();
                                 });
@@ -543,17 +542,17 @@ impl App {
                                     draft.dirty |= number(ui, "Clip end", &mut draft.region.end, 0.0, 262_144.0);
                                     draft.dirty |= number(ui, "Loop start", &mut draft.region.loop_start, 0.0, 262_144.0);
                                     draft.dirty |= number(ui, "Loop end", &mut draft.region.loop_end, 0.0, 262_144.0);
-                                    let looping = ui.checkbox(&mut draft.region.loop_enabled, "Loop enabled");
+                                    let looping = ui.checkbox(&mut draft.region.loop_enabled, tr!("Loop enabled"));
                                     accessibility::button(ui, &looping, "Loop enabled", Some(draft.region.loop_enabled));
                                     help::annotate(ui, &looping, HelpControl::MidiRegion);
                                     draft.dirty |= looping.changed();
                                 });
-                                if !draft.region.allows(&draft.notes) { ui.colored_label(self.theme.red, "Set start ≤ loop start < loop end ≤ end. Each range must span at least 1/1024 beat; dense loops need a longer period."); }
+                                if !draft.region.allows(&draft.notes) { ui.colored_label(self.theme.red, tr!("Set start ≤ loop start < loop end ≤ end. Each range must span at least 1/1024 beat; dense loops need a longer period.")); }
                                 ui.horizontal_wrapped(|ui| {
                                     let grid = egui::ComboBox::from_id_salt("midi-grid").selected_text(GRIDS[draft.grid].0)
                                         .show_ui(ui, |ui| { for (i, (name, _)) in GRIDS.iter().enumerate() { ui.selectable_value(&mut draft.grid, i, *name); } });
                                     help::annotate(ui, &grid.response, HelpControl::MidiGrid);
-                                    let draw = ui.checkbox(&mut draft.draw, "Draw notes");
+                                    let draw = ui.checkbox(&mut draft.draw, tr!("Draw notes"));
                                     accessibility::button(ui, &draw, "Draw notes", Some(draft.draw));
                                     help::annotate(ui, &draw, HelpControl::MidiNotes);
                                     let fold = egui::ComboBox::from_id_salt("midi-fold").selected_text(["All pitches", "Used pitches", "Major scale", "Minor scale"][draft.fold])
@@ -568,13 +567,13 @@ impl App {
                                 if let Err(error) = canvas::show(ui, &self.theme, draft, self.snap.timing.as_deref()) { editor.error = Some(error); }
                                 let selected = ui.label(draft.selected_label());
                                 accessibility::status(ui, &selected, &draft.selected_label());
-                                ui.label("Focus the roll: arrows move / transpose; Shift+Left/Right resize; Ctrl+A selects all; Ctrl+D duplicates; M mutes; Delete removes. Draw on empty space; drag note bodies to move and right edges to resize. All values use quarter-note beats.");
+                                ui.label(tr!("Focus the roll: arrows move / transpose; Shift+Left/Right resize; Ctrl+A selects all; Ctrl+D duplicates; M mutes; Delete removes. Draw on empty space; drag note bodies to move and right edges to resize. All values use quarter-note beats."));
                                 ui.horizontal_wrapped(|ui| {
                                     let mut pitch = draft.cursor.pitch as f64; if number(ui, "Note pitch", &mut pitch, 0.0, 127.0) { draft.cursor.pitch = pitch.round() as u8; }
                                     let mut start = draft.cursor.start as f64; if number(ui, "Note start", &mut start, 0.0, 262_144.0) { draft.cursor.start = start as f32; }
                                     let mut length = draft.cursor.length as f64; if number(ui, "Note length", &mut length, 0.0, 262_144.0) { draft.cursor.length = length as f32; }
                                     let mut velocity = draft.cursor.velocity as f64; if number(ui, "Note velocity", &mut velocity, 1.0, 127.0) { draft.cursor.velocity = velocity.round() as u8; }
-                                    let muted = ui.checkbox(&mut draft.cursor.muted, "Note muted");
+                                    let muted = ui.checkbox(&mut draft.cursor.muted, tr!("Note muted"));
                                     accessibility::button(ui, &muted, "Note muted", Some(draft.cursor.muted));
                                     help::annotate(ui, &muted, HelpControl::MidiValues);
                                 });
@@ -613,20 +612,20 @@ impl App {
                         accessibility::scrollbars(ui, "MIDI editor controls", &scroll);
                     }
                     ui.horizontal_wrapped(|ui| {
-                        let response = ui.add_enabled(!busy && editor.draft.is_some() && !self.project.committing(), egui::Button::new("Apply MIDI edit"));
+                        let response = ui.add_enabled(!busy && editor.draft.is_some() && !self.project.committing(), egui::Button::new(tr!("Apply MIDI edit")));
                         help::annotate(ui, &response, HelpControl::MidiApply);
                         accessibility::button(ui, &response, "Apply MIDI edit", None); apply = response.clicked();
-                        let response = ui.add_enabled(!busy && editor.draft.is_some(), egui::Button::new("Audition note"));
+                        let response = ui.add_enabled(!busy && editor.draft.is_some(), egui::Button::new(tr!("Audition note")));
                         help::annotate(ui, &response, HelpControl::MidiAudition);
                         accessibility::button(ui, &response, "Audition note", None); audition = response.clicked();
                         stop = button(ui, "Stop note audition").clicked();
-                        let response = ui.add_enabled(!busy && !editor.draft.as_ref().is_some_and(|d| d.dirty), egui::Button::new("Refresh current clip"));
+                        let response = ui.add_enabled(!busy && !editor.draft.as_ref().is_some_and(|d| d.dirty), egui::Button::new(tr!("Refresh current clip")));
                         help::annotate(ui, &response, HelpControl::PianoRoll);
                         accessibility::button(ui, &response, "Refresh current clip", None); refresh = response.clicked();
                         close |= button(ui, "Cancel / close MIDI editor").clicked();
                     });
                     if editor.confirm_discard {
-                        ui.label("This editor has unapplied or pending work. Discard the draft and cancel Apply before closing? An edit already owned by the renderer must finish and remains in History.");
+                        ui.label(tr!("This editor has unapplied or pending work. Discard the draft and cancel Apply before closing? An edit already owned by the renderer must finish and remains in History."));
                         if button(ui, "Discard MIDI draft").clicked() { editor.discard(&self.engine); }
                         if button(ui, "Keep editing MIDI").clicked() { editor.confirm_discard = false; }
                     }

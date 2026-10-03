@@ -135,85 +135,85 @@ impl App {
         keyboard::block_for_dialog(ctx);
         let mut editor = std::mem::take(&mut self.dependencies);
         let mut open = true; let mut close = false;
-        egui::Window::new("Project dependencies").open(&mut open).default_width(650.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
-            if let Some(picture)=&self.video.clip { ui.label(format!("External picture reference: {}. Open Video to verify its source and frame metadata; native projects retain this reference. Portable export requires clearing it in a saved copy.",picture.path.display())); }
-            ui.label("Native projects retain embedded audio and unavailable device state. Relink verifies decoded audio and updates this project's source references.");
+        egui::Window::new(tr!("Project dependencies")).id(egui::Id::new("Project dependencies")).open(&mut open).default_width(650.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+            if let Some(picture)=&self.video.clip { ui.label({ let __omatainer_args = (&(picture.path.display()),); crate::localization::format("External picture reference: {}. Open Video to verify its source and frame metadata; native projects retain this reference. Portable export requires clearing it in a saved copy.", &[format!("{}", __omatainer_args.0)]) }); }
+            ui.label(tr!("Native projects retain embedded audio and unavailable device state. Relink verifies decoded audio and updates this project's source references."));
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
-                if ui.add_enabled(!editor.choices.iter().any(Option::is_some), egui::Button::new("Check dependencies")).help(ui, HelpControl::DependenciesInspect).clicked() { editor.start(&self.engine, Kind::Inspect); }
+                if ui.add_enabled(!editor.choices.iter().any(Option::is_some), egui::Button::new(tr!("Check dependencies"))).help(ui, HelpControl::DependenciesInspect).clicked() { editor.start(&self.engine, Kind::Inspect); }
                 if let Some(review) = editor.review.clone() {
-                    ui.label(format!("{} embedded assets · {} unavailable devices · {} sources without embedded audio", review.inventory.assets.len(), review.inventory.devices.len(), review.inventory.missing.len()));
+                    ui.label({ let __omatainer_args = (&(review.inventory.assets.len()),&(review.inventory.devices.len()),&(review.inventory.missing.len()),); crate::localization::format("{} embedded assets · {} unavailable devices · {} sources without embedded audio", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                     picker(ui, "Project asset", &mut editor.asset, review.inventory.assets.len());
                     if let Some(asset) = review.inventory.assets.get(editor.asset) {
-                        ui.label(&asset.name); ui.label(format!("Embedded audio: {} frames · {} references", asset.frames, asset.uses));
+                        ui.label(&asset.name); ui.label({ let __omatainer_args = (&(asset.frames),&(asset.uses),); crate::localization::format("Embedded audio: {} frames · {} references", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                         if let Some(source) = &asset.source { ui.label(source_name(source)); }
                         match &asset.availability {
-                            data::Availability::Builtin => { ui.label("Embedded audio has no external source path."); }
-                            data::Availability::Verified => { ui.label("Source audio matches the embedded project audio."); }
-                            data::Availability::Unresolved(reason) => { ui.colored_label(self.theme.red, format!("Unresolved source: {reason}")); }
+                            data::Availability::Builtin => { ui.label(tr!("Embedded audio has no external source path.")); }
+                            data::Availability::Verified => { ui.label(tr!("Source audio matches the embedded project audio.")); }
+                            data::Availability::Unresolved(reason) => { ui.colored_label(self.theme.red, crate::localization::format("Unresolved source: {reason}", &[format!("{}", reason)])); }
                         }
                         if let Some(search) = &editor.search {
                             if let Some(candidates) = search.matches.get(editor.asset) {
-                                ui.label(format!("{} verified replacement candidates", candidates.len()));
+                                ui.label({ let __omatainer_args = (&(candidates.len()),); crate::localization::format("{} verified replacement candidates", &[format!("{}", __omatainer_args.0)]) });
                                 egui::ScrollArea::vertical().id_salt("dependency-candidates").max_height(180.0).show_rows(ui, ui.spacing().interact_size.y, candidates.len(), |ui, rows| {
                                     for index in rows {
                                         let candidate = &candidates[index];
-                                        if ui.button(format!("Use replacement {}: {}", index + 1, source_name(&candidate.location.source))).help(ui, HelpControl::DependenciesChoose).clicked() { editor.choices[editor.asset] = Some(index); }
+                                        if ui.button({ let __omatainer_args = (&(index + 1),&(source_name(&candidate.location.source)),); crate::localization::format("Use replacement {}: {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) }).help(ui, HelpControl::DependenciesChoose).clicked() { editor.choices[editor.asset] = Some(index); }
                                     }
                                 });
-                                if editor.choices.get(editor.asset).copied().flatten().is_some() && ui.button("Keep current source reference").help(ui, HelpControl::DependenciesChoose).clicked() { editor.choices[editor.asset] = None; }
+                                if editor.choices.get(editor.asset).copied().flatten().is_some() && ui.button(tr!("Keep current source reference")).help(ui, HelpControl::DependenciesChoose).clicked() { editor.choices[editor.asset] = None; }
                             }
                         }
                     }
                     picker(ui, "Source without embedded audio", &mut editor.missing, review.inventory.missing.len());
                     if let Some(missing) = review.inventory.missing.get(editor.missing) {
-                        ui.colored_label(self.theme.red, format!("{} · {}", missing.placement, missing.source));
-                        if let Some(hash) = missing.file_hash { ui.label(format!("Retained file SHA-256: {}", hash.iter().map(|byte| format!("{byte:02x}")).collect::<String>())); }
-                        ui.label("No rendered audio is retained in this slot. Restore its source through the library and retry in Edit banks; its saved source and controls remain intact.");
+                        ui.colored_label(self.theme.red, { let __omatainer_args = (&(missing.placement),&(missing.source),); crate::localization::format("{} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                        if let Some(hash) = missing.file_hash { ui.label({ let __omatainer_args = (&(hash.iter().map(|byte| format!("{byte:02x}")).collect::<String>()),); crate::localization::format("Retained file SHA-256: {}", &[format!("{}", __omatainer_args.0)]) }); }
+                        ui.label(tr!("No rendered audio is retained in this slot. Restore its source through the library and retry in Edit banks; its saved source and controls remain intact."));
                     }
                     picker(ui, "Unavailable device", &mut editor.device, review.inventory.devices.len());
                     if let Some(device) = review.inventory.devices.get(editor.device) {
-                        ui.label(format!("{} · {}", device.placement, device.identifier));
-                        ui.label(format!("Retained state: schema {:?}, {} bytes · requested enabled: {}", device.state_schema, device.state_bytes, device.requested_on));
+                        ui.label({ let __omatainer_args = (&(device.placement),&(device.identifier),); crate::localization::format("{} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                        ui.label({ let __omatainer_args = (&(device.state_schema),&(device.state_bytes),&(device.requested_on),); crate::localization::format("Retained state: schema {:?}, {} bytes · requested enabled: {}", &[format!("{:?}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                         if let Some(fallbacks) = device.rendered_fallbacks {
-                            ui.label(format!("Unavailable instrument is silent; {fallbacks} clips have embedded rendered audio for playback. Notes and automation remain editable."));
+                            ui.label(crate::localization::format("Unavailable instrument is silent; {fallbacks} clips have embedded rendered audio for playback. Notes and automation remain editable.", &[format!("{}", fallbacks)]));
                         }
-                        ui.label("Processing is bypassed until a compatible device returns. Its position and saved state remain in the project.");
+                        ui.label(tr!("Processing is bypassed until a compatible device returns. Its position and saved state remain in the project."));
                     }
-                    ui.label("Search folders, one absolute path per line");
+                    ui.label(tr!("Search folders, one absolute path per line"));
                     let response = ui.add(egui::TextEdit::multiline(&mut editor.roots).desired_rows(3).desired_width(f32::INFINITY).char_limit(256 * 1024));
                     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Project dependency search folders"));
                     help::annotate(ui, &response, HelpControl::DependenciesSearch);
-                    if ui.add_enabled(!editor.choices.iter().any(Option::is_some), egui::Button::new("Search moved sources")).help(ui, HelpControl::DependenciesSearch).clicked() {
+                    if ui.add_enabled(!editor.choices.iter().any(Option::is_some), egui::Button::new(tr!("Search moved sources"))).help(ui, HelpControl::DependenciesSearch).clicked() {
                         let roots = editor.roots.lines().filter(|line| !line.trim().is_empty()).map(|line| PathBuf::from(line.trim())).collect();
                         editor.start(&self.engine, Kind::Search { review: review.clone(), roots });
                     }
                     if let Some(search) = &editor.search {
-                        ui.label(format!("{} entries · {} files · {} unsupported/non-audio skipped · {}", search.entries, search.files, search.skipped_unsupported, if search.complete { "Complete search of supported audio in selected folders" } else { "Partial search; additional matches may exist" }));
+                        ui.label({ let __omatainer_args = (&(search.entries),&(search.files),&(search.skipped_unsupported),&(if search.complete { "Complete search of supported audio in selected folders" } else { "Partial search; additional matches may exist" }),); crate::localization::format("{} entries · {} files · {} unsupported/non-audio skipped · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
                         for warning in &search.warnings { ui.label(warning); }
                         let choices: Vec<_> = editor.choices.iter().enumerate().filter_map(|(asset, &choice)| choice.map(|choice|
                             (review.inventory.assets[asset].clone(), search.matches[asset][choice].clone()))).collect();
-                        if ui.add_enabled(!choices.is_empty(), egui::Button::new("Apply reviewed relinks")).help(ui, HelpControl::DependenciesApply).clicked() {
+                        if ui.add_enabled(!choices.is_empty(), egui::Button::new(tr!("Apply reviewed relinks"))).help(ui, HelpControl::DependenciesApply).clicked() {
                             editor.start(&self.engine, Kind::Verify { review, choices });
                         }
                     }
                 }
             });
             if editor.busy() {
-                if ui.button("Cancel dependency operation").help(ui, HelpControl::DependenciesCancel).clicked() { editor.cancel(); }
+                if ui.button(tr!("Cancel dependency operation")).help(ui, HelpControl::DependenciesCancel).clicked() { editor.cancel(); }
                 ctx.request_repaint_after(std::time::Duration::from_millis(20));
             }
             if !editor.message.is_empty() { ui.label(&editor.message); }
             if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
-            if ui.button("Close dependency report").help(ui, HelpControl::DependenciesClose).clicked() { close = true; }
+            if ui.button(tr!("Close dependency report")).help(ui, HelpControl::DependenciesClose).clicked() { close = true; }
         });
         if !open || close || ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Escape)) {
             if editor.blocks_close() { editor.confirm_discard = true; } else { editor.open = false; }
         }
         if editor.confirm_discard {
-            egui::Window::new("Unapplied source choices").collapsible(false).show(ctx, |ui| {
-                ui.label("Keep reviewing or discard the unapplied choices. Completed relinks remain in the project.");
-                if ui.button("Keep source review").help(ui, HelpControl::DependenciesClose).clicked() { editor.confirm_discard = false; }
-                if ui.button("Discard source review").help(ui, HelpControl::DependenciesClose).clicked() { editor.cancel(); editor.confirm_discard = false; editor.discard_when_settled = true; }
+            egui::Window::new(tr!("Unapplied source choices")).id(egui::Id::new("Unapplied source choices")).collapsible(false).show(ctx, |ui| {
+                ui.label(tr!("Keep reviewing or discard the unapplied choices. Completed relinks remain in the project."));
+                if ui.button(tr!("Keep source review")).help(ui, HelpControl::DependenciesClose).clicked() { editor.confirm_discard = false; }
+                if ui.button(tr!("Discard source review")).help(ui, HelpControl::DependenciesClose).clicked() { editor.cancel(); editor.confirm_discard = false; editor.discard_when_settled = true; }
             });
         }
         self.dependencies = editor;

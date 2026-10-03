@@ -274,6 +274,41 @@ fn numeric_setvalue_f2_validation_cancel_and_apply_use_display_units() {
 }
 
 #[test]
+fn native_f2_decimal_comma_validation_cancel_and_apply_preserve_display_units() {
+    use crate::localization::Locale;
+    for locale in [Locale::Spanish, Locale::German] {
+        let mut gui = Gui::new();
+        let active = gui.app.settings.applied.active.clone();
+        gui.app.settings.applied.profiles.get_mut(&active).unwrap().appearance.locale = locale;
+        gui.frame(vec![]);
+        gui.action("Deck A: Pitch", Action::Focus, None);
+        for (input, commit) in [("NaN", false), ("999,5", false), ("2,5", false), ("2,5", true)] {
+            gui.key(Key::F2, Default::default(), true);
+            gui.key(Key::F2, Default::default(), false);
+            gui.key(Key::A, egui::Modifiers::CTRL, true);
+            gui.key(Key::A, egui::Modifiers::CTRL, false);
+            gui.frame(vec![egui::Event::Text(input.into())]);
+            if input != "2,5" || commit {
+                gui.key(Key::Enter, Default::default(), true);
+                gui.key(Key::Enter, Default::default(), false);
+            }
+            if !commit {
+                assert_eq!(gui.rt.decks[0].pitch, 0.5);
+                if input != "2,5" {
+                    assert!(gui.ctx.data(|data| data.get_temp::<NumericEdit>(egui::Id::new(NUMBER))).unwrap().error);
+                }
+                gui.key(Key::Escape, Default::default(), true);
+                gui.key(Key::Escape, Default::default(), false);
+            } else {
+                gui.frame(vec![]);
+                assert!((gui.rt.decks[0].pitch - 0.65625).abs() < 0.0001);
+            }
+            assert!(gui.ctx.data(|data| data.get_temp::<NumericEdit>(egui::Id::new(NUMBER))).is_none());
+        }
+    }
+}
+
+#[test]
 fn assistive_custom_actions_reach_cues_loops_compose_clip_gain_and_solo() {
     let mut gui = Gui::new();
     gui.action("Deck A: Hot cue 1", Action::Click, None);

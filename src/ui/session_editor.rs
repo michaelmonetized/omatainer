@@ -191,17 +191,13 @@ impl App {
         };
         ui.horizontal_wrapped(|ui| {
             if ui
-                .button("Edit session")
+                .button(tr!("Edit session"))
                 .help(ui, HelpControl::SessionLayout)
                 .clicked()
             {
                 self.session_editor.open = true;
             }
-            ui.label(format!(
-                "{} tracks · {} scenes",
-                layout.track_order.len(),
-                layout.scene_order.len()
-            ));
+            ui.label({ let __omatainer_args = (&(layout.track_order.len()),&(layout.scene_order.len()),); crate::localization::format("{} tracks · {} scenes", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
             let mut track = layout
                 .track_order
                 .iter()
@@ -229,7 +225,7 @@ impl App {
             }
             ui.add_enabled_ui(!self.session_editor.busy(), |ui| {
                 if ui
-                    .button("+ MIDI track")
+                    .button(tr!("+ MIDI track"))
                     .help(ui, HelpControl::SessionLayout)
                     .clicked()
                 {
@@ -244,7 +240,7 @@ impl App {
                     );
                 }
                 if ui
-                    .button("+ Audio track")
+                    .button(tr!("+ Audio track"))
                     .help(ui, HelpControl::SessionLayout)
                     .clicked()
                 {
@@ -259,7 +255,7 @@ impl App {
                     );
                 }
                 if ui
-                    .button("+ Scene")
+                    .button(tr!("+ Scene"))
                     .help(ui, HelpControl::SessionLayout)
                     .clicked()
                 {
@@ -273,7 +269,7 @@ impl App {
                     );
                 }
             });
-            if self.session_editor.busy() && ui.button("Cancel session edit").clicked() {
+            if self.session_editor.busy() && ui.button(tr!("Cancel session edit")).clicked() {
                 self.session_editor.cancel();
             }
         });
@@ -293,9 +289,9 @@ impl App {
         };
         keyboard::block_for_dialog(ctx);
         let mut open = true;
-        egui::Window::new("Session editor").id(egui::Id::new("session-editor")).open(&mut open).resizable(true).default_width(560.0).show(ctx, |ui| {
-            ui.label("Stable identities keep playing clips, automation and controller targets attached when reordered. Limits: 128 tracks, 512 scenes, 65,536 notes, 8,192 notes per clip, 16 MiB MIDI lanes, 256 MiB effect buffers and bounded undo storage.");
-            ui.horizontal(|ui| {ui.selectable_value(&mut self.session_editor.axis,Axis::Track,"Track");ui.selectable_value(&mut self.session_editor.axis,Axis::Scene,"Scene");});
+        egui::Window::new(tr!("Session editor")).id(egui::Id::new("session-editor")).open(&mut open).resizable(true).default_width(560.0).show(ctx, |ui| {
+            ui.label(tr!("Stable identities keep playing clips, automation and controller targets attached when reordered. Limits: 128 tracks, 512 scenes, 65,536 notes, 8,192 notes per clip, 16 MiB MIDI lanes, 256 MiB effect buffers and bounded undo storage."));
+            ui.horizontal(|ui| {ui.selectable_value(&mut self.session_editor.axis,Axis::Track,tr!("Track"));ui.selectable_value(&mut self.session_editor.axis,Axis::Scene,tr!("Scene"));});
             let axis=self.session_editor.axis;
             let (slot,position,count)=match axis {
                 Axis::Track => (self.snap.selected_track,layout.track_order.iter().position(|slot|usize::from(*slot)==self.snap.selected_track).unwrap_or(0),layout.track_order.len()),
@@ -308,11 +304,11 @@ impl App {
             }
             let (_,id,name,new_position,color)=self.session_editor.draft.as_mut().unwrap();
             let id=*id;
-            ui.label(format!("Selected {label} {}: {}",position+1,item.name));
+            ui.label({ let __omatainer_args = (&(position+1),&(item.name),); crate::localization::format("Selected {label} {}: {}", &[format!("{}", label), format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
             let response=ui.add(egui::TextEdit::singleline(name).char_limit(session::MAX_NAME_BYTES).desired_width(380.0));
             response.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::TextEdit,response.enabled(),&format!("Session {label} name")));
             number(ui,"Session position",new_position,count);
-            let mut custom=color.is_some(); if ui.checkbox(&mut custom,"Use custom color").changed() {*color=custom.then_some([80,160,240]);}
+            let mut custom=color.is_some(); if ui.checkbox(&mut custom,tr!("Use custom color")).changed() {*color=custom.then_some([80,160,240]);}
             if let Some(rgb)=color {ui.horizontal(|ui| {
                 for (channel,label) in rgb.iter_mut().zip(["Session color red","Session color green","Session color blue"]) {
                     let response=ui.add(egui::DragValue::new(channel).range(0..=255).speed(1.0).prefix(format!("{label} ")));
@@ -322,16 +318,16 @@ impl App {
             let name=name.clone(); let new_position=*new_position; let color=*color;
             ui.add_enabled_ui(!self.session_editor.busy(), |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    if ui.button(format!("Rename {label}")).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Rename {axis,id,name:name.clone()});}
-                    if ui.button(format!("Reorder {label}")).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Move {axis,id,position:new_position-1});}
-                    if ui.button(format!("Color {label}")).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Color {axis,id,color});}
-                    if ui.button(format!("Duplicate {label}")).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.structure(&self.engine,&layout,Structure::Duplicate {axis,id,name:format!("{name} copy"),position:position+1});}
-                    if ui.button(format!("Delete {label}")).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Delete {axis,id});}
+                    if ui.button(crate::localization::format("Rename {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Rename {axis,id,name:name.clone()});}
+                    if ui.button(crate::localization::format("Reorder {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Move {axis,id,position:new_position-1});}
+                    if ui.button(crate::localization::format("Color {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Color {axis,id,color});}
+                    if ui.button(crate::localization::format("Duplicate {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.structure(&self.engine,&layout,Structure::Duplicate {axis,id,name:format!("{name} copy"),position:position+1});}
+                    if ui.button(crate::localization::format("Delete {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Delete {axis,id});}
                 });
             });
-            if self.session_editor.busy() {if ui.button("Cancel session edit").clicked() {self.session_editor.cancel();} ctx.request_repaint_after(std::time::Duration::from_millis(16));}
+            if self.session_editor.busy() {if ui.button(tr!("Cancel session edit")).clicked() {self.session_editor.cancel();} ctx.request_repaint_after(std::time::Duration::from_millis(16));}
             if let Some(error)=&self.session_editor.error {ui.colored_label(self.theme.red,error);} else {ui.label(&self.session_editor.message);}
-            ui.label("Choose any offscreen track or scene using Go to track and Go to scene above the grid. Those numbers follow display order; MIDI routing uses stable track slots.");
+            ui.label(tr!("Choose any offscreen track or scene using Go to track and Go to scene above the grid. Those numbers follow display order; MIDI routing uses stable track slots."));
         });
         if !open {
             self.session_editor.open = false;

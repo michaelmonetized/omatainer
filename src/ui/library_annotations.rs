@@ -143,51 +143,51 @@ impl App {
                 .unwrap_or_default();
             panel.rule_crate = selected_crate.clone();
         }
-        egui::Window::new("Track ratings, colors and annotations").id(egui::Id::new("track-annotations-window"))
+        egui::Window::new(tr!("Track ratings, colors and annotations")).id(egui::Id::new("track-annotations-window"))
             .open(&mut open).default_width(660.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
-                ui.label("These fields live in library metadata. Annotation edits never write embedded audio tags or change loaded sound.");
+                ui.label(tr!("These fields live in library metadata. Annotation edits never write embedded audio tags or change loaded sound."));
                 ui.horizontal(|ui| {
-                    if ui.add_enabled(available,egui::Button::new("Capture selected annotations")).help(ui,HelpControl::TrackAnnotations).clicked() { capture = Some(false); }
-                    if ui.add_enabled(available,egui::Button::new("Capture filtered annotation batch")).help(ui,HelpControl::TrackAnnotations).clicked() { capture = Some(true); }
+                    if ui.add_enabled(available,egui::Button::new(tr!("Capture selected annotations"))).help(ui,HelpControl::TrackAnnotations).clicked() { capture = Some(false); }
+                    if ui.add_enabled(available,egui::Button::new(tr!("Capture filtered annotation batch"))).help(ui,HelpControl::TrackAnnotations).clicked() { capture = Some(true); }
                 });
                 ui.label(&panel.message);
                 let previous = (panel.fields.clone(), panel.change, panel.color.clone(), panel.tags.clone());
                 ui.add_enabled_ui(available, |ui| {
-                    ui.horizontal(|ui| { ui.checkbox(&mut panel.change[0],"Change rating"); ui.add(egui::Slider::new(&mut panel.fields.rating,0..=5).text("Rating (0 = unrated)")); });
+                    ui.horizontal(|ui| { ui.checkbox(&mut panel.change[0],tr!("Change rating")); ui.add(egui::Slider::new(&mut panel.fields.rating,0..=5).text("Rating (0 = unrated)")); });
                     annotation_text(ui,"Color (#RRGGBB; empty clears)",&mut panel.color,&mut panel.change[1],false);
                     annotation_text(ui,"Performance group",&mut panel.fields.group,&mut panel.change[2],false);
                     annotation_text(ui,"Performance tags (one per line)",&mut panel.tags,&mut panel.change[3],true);
                     annotation_text(ui,"Performance notes",&mut panel.fields.notes,&mut panel.change[4],true);
                 });
                 if previous != (panel.fields.clone(), panel.change, panel.color.clone(), panel.tags.clone()) { panel.reviewed = None; }
-                if ui.add_enabled(available && !panel.ids.is_empty(),egui::Button::new("Review annotation changes")).help(ui,HelpControl::TrackAnnotations).clicked() {
+                if ui.add_enabled(available && !panel.ids.is_empty(),egui::Button::new(tr!("Review annotation changes"))).help(ui,HelpControl::TrackAnnotations).clicked() {
                     match panel.patch() { Ok(patch) => { panel.reviewed = Some(patch); panel.message = format!("Reviewed {} captured tracks. Apply replaces only selected fields, including explicit clears.",panel.ids.len()); }, Err(error) => panel.message = error }
                 }
-                if ui.add_enabled(available && panel.reviewed.is_some(),egui::Button::new("Apply reviewed annotations")).help(ui,HelpControl::TrackAnnotations).clicked() {
+                if ui.add_enabled(available && panel.reviewed.is_some(),egui::Button::new(tr!("Apply reviewed annotations"))).help(ui,HelpControl::TrackAnnotations).clicked() {
                     action = Some((panel.expected,CollectionAction::Annotate { ids: panel.ids.clone(), patch: panel.reviewed.take().unwrap() }));
                 }
                 if let Some((token,_)) = &self.library_crates.pending {
-                    if ui.button("Cancel pending annotation or crate edit").clicked() { token.cancel(); }
+                    if ui.button(tr!("Cancel pending annotation or crate edit")).clicked() { token.cancel(); }
                 }
                 ui.label(&self.library_crates.message);
-                ui.separator(); ui.heading("Automatic annotation crate rule");
-                ui.label("Create and select an empty named crate first. All configured conditions are combined. Its membership follows current annotations automatically.");
+                ui.separator(); ui.heading(tr!("Automatic annotation crate rule"));
+                ui.label(tr!("Create and select an empty named crate first. All configured conditions are combined. Its membership follows current annotations automatically."));
                 ui.add(egui::Slider::new(&mut panel.rule.minimum_rating,0..=5).text("Minimum crate rating"));
                 for (name,value) in [("Rule color (#RRGGBB; empty ignores)",&mut panel.rule_color),("Rule group contains",&mut panel.rule.group),("Rule tag equals",&mut panel.rule.tag),("Rule notes contain",&mut panel.rule.notes)] {
                     let label = ui.label(name); let response = ui.add(egui::TextEdit::singleline(value).char_limit(4096)).labelled_by(label.id);
                     ui.ctx().accesskit_node_builder(response.id, |node|node.set_label(name));
                 }
-                if ui.add_enabled(available && selected_crate.is_some(),egui::Button::new("Save annotation rule on selected crate")).help(ui,HelpControl::TrackAnnotationRule).clicked() {
+                if ui.add_enabled(available && selected_crate.is_some(),egui::Button::new(tr!("Save annotation rule on selected crate"))).help(ui,HelpControl::TrackAnnotationRule).clicked() {
                     match parse_color(&panel.rule_color).and_then(|color| { let mut rule = panel.rule.clone(); rule.color = color; rule.validate()?; Ok(rule) }) {
                         Ok(rule) => action = Some((self.library_metadata.catalog.crates.revision(),CollectionAction::Edit(Edit::SetAnnotationRule { id:selected_crate.clone().unwrap(),rule:Some(rule) }))),
                         Err(error) => panel.message = error,
                     }
                 }
-                if ui.add_enabled(available && selected_crate.is_some(),egui::Button::new("Remove annotation rule")).help(ui,HelpControl::TrackAnnotationRule).clicked() {
+                if ui.add_enabled(available && selected_crate.is_some(),egui::Button::new(tr!("Remove annotation rule"))).help(ui,HelpControl::TrackAnnotationRule).clicked() {
                     action = Some((self.library_metadata.catalog.crates.revision(),CollectionAction::Edit(Edit::SetAnnotationRule { id:selected_crate.clone().unwrap(),rule:None })));
                 }
-                ui.label("Search examples: rating>=4 tag:clean color:#FF6600 group:peak note:request. Ordinary text also searches tags, groups and notes. Metadata exports include all annotations and saved rules.");
-                ui.label("Closing this editor preserves any already admitted transaction; use Cancel before its publication claim to stop it.");
+                ui.label(tr!("Search examples: rating>=4 tag:clean color:#FF6600 group:peak note:request. Ordinary text also searches tags, groups and notes. Metadata exports include all annotations and saved rules."));
+                ui.label(tr!("Closing this editor preserves any already admitted transaction; use Cancel before its publication claim to stop it."));
             });
         self.library_annotations.open = open;
         if let Some(filtered) = capture {
@@ -208,7 +208,7 @@ fn annotation_text(
     changed: &mut bool,
     multiline: bool,
 ) {
-    ui.checkbox(changed, format!("Change {label}"));
+    ui.checkbox(changed, crate::localization::format("Change {label}", &[format!("{}", label)]));
     let name = label;
     let label = ui.label(name);
     let edit = if multiline {

@@ -62,44 +62,42 @@ impl App {
         }
         let mut open = true;
         let mut close_requested = ctx.input(|input| input.key_pressed(egui::Key::Escape));
-        egui::Window::new("Content & licenses").id(egui::Id::new("licenses-window"))
+        egui::Window::new(tr!("Content & licenses")).id(egui::Id::new("licenses-window"))
             .open(&mut open).default_size(egui::vec2(840.0, 580.0)).show(ctx, |ui| {
-            let response = ui.button("Close license viewer");
+            let response = ui.button(tr!("Close license viewer"));
             help::annotate(ui, &response, help::Control::ClosePanel);
             if response.clicked() { close_requested = true; }
             if let Some(error) = &self.licenses.error {
                 ui.label(error);
-                ui.label("No license permission can be inferred from an unavailable record. Reinstall a verified package.");
+                ui.label(tr!("No license permission can be inferred from an unavailable record. Reinstall a verified package."));
             }
             let Some(catalog) = &self.licenses.catalog else {
                 if self.licenses.pending.is_some() {
-                    ui.label("Opening offline license records…");
+                    ui.label(tr!("Opening offline license records…"));
                     ctx.request_repaint_after(std::time::Duration::from_millis(20));
                 }
                 return;
             };
-            ui.label(format!("Omatainer {} · {} · {} indexed entries", catalog.manifest.application, catalog.manifest.target, catalog.manifest.entries.len()));
+            ui.label({ let __omatainer_args = (&(catalog.manifest.application),&(catalog.manifest.target),&(catalog.manifest.entries.len()),); crate::localization::format("Omatainer {} · {} · {} indexed entries", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
             ui.label(&catalog.manifest.scope);
-            ui.label(format!("{} Cargo components · {} integration files · rustc {}",
-                catalog.manifest.cargo.as_array().map_or(0, Vec::len), catalog.manifest.package.len(),
-                catalog.manifest.toolchain["release"].as_str().unwrap_or("recorded version")));
+            ui.label({ let __omatainer_args = (&(catalog.manifest.cargo.as_array().map_or(0, Vec::len)),&(catalog.manifest.package.len()),&(catalog.manifest.toolchain["release"].as_str().unwrap_or("recorded version")),); crate::localization::format("{} Cargo components · {} integration files · rustc {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
             let external = egui::CollapsingHeader::new("External media and content not shipped").show(ui, |ui| {
                 for text in catalog.manifest.external.iter().chain(&catalog.manifest.absent) { ui.label(text); }
             });
             help::annotate(ui, &external.header_response, help::Control::License);
-            let label = ui.label("Find content");
-            let search = ui.add(egui::TextEdit::singleline(&mut self.licenses.query).hint_text("Asset ID, font or component")).labelled_by(label.id);
+            let label = ui.label(tr!("Find content"));
+            let search = ui.add(egui::TextEdit::singleline(&mut self.licenses.query).hint_text(tr!("Asset ID, font or component"))).labelled_by(label.id);
             help::annotate(ui, &search, help::Control::LicenseSearch);
             let query = self.licenses.query.to_lowercase();
             let matches: Vec<_> = catalog.manifest.entries.iter().enumerate().filter(|(_, entry)| {
                 entry.id.to_lowercase().contains(&query) || entry.name.to_lowercase().contains(&query)
             }).map(|(index, _)| index).collect();
-            ui.label(format!("{} matches", matches.len()));
+            ui.label({ let __omatainer_args = (&(matches.len()),); crate::localization::format("{} matches", &[format!("{}", __omatainer_args.0)]) });
             egui::ScrollArea::vertical().id_salt("license-index").max_height(130.0).show_rows(ui, 22.0, matches.len(), |ui, rows| {
                 for row in rows {
                     let index = matches[row];
                     let entry = &catalog.manifest.entries[index];
-                    let response = ui.selectable_label(self.licenses.selected == index, format!("{} — {}", entry.id, entry.name));
+                    let response = ui.selectable_label(self.licenses.selected == index, { let __omatainer_args = (&(entry.id),&(entry.name),); crate::localization::format("{} — {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                     help::annotate(ui, &response, help::Control::LicenseEntry);
                     if response.clicked() {
                         self.licenses.selected = index;
@@ -111,11 +109,11 @@ impl App {
             egui::ScrollArea::vertical().id_salt(("license-detail", self.licenses.selected)).max_height(300.0).show(ui, |ui| {
                 ui.heading(&entry.name);
                 ui.monospace(&entry.id);
-                ui.label(format!("{} · {}", entry.category, entry.delivery));
-                ui.label(format!("License: {}", entry.license));
+                ui.label({ let __omatainer_args = (&(entry.category),&(entry.delivery),); crate::localization::format("{} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                ui.label({ let __omatainer_args = (&(entry.license),); crate::localization::format("License: {}", &[format!("{}", __omatainer_args.0)]) });
                 ui.label(&entry.commercial_use);
                 ui.label(&entry.redistribution);
-                if !entry.members.is_empty() { ui.label(format!("Content identities: {}", entry.members.join(", "))); }
+                if !entry.members.is_empty() { ui.label({ let __omatainer_args = (&(entry.members.join(", ")),); crate::localization::format("Content identities: {}", &[format!("{}", __omatainer_args.0)]) }); }
                 for record in &entry.sources {
                     if record.location.starts_with("https://") {
                         let response = ui.hyperlink_to("Source record (external browser)", &record.location);
@@ -142,7 +140,7 @@ impl App {
                     help::annotate(ui, &notice.header_response, help::Control::LicenseNotice);
                 }
             });
-            ui.label("Offline records are embedded in this executable. Installed releases also retain manifest.json, notices.json and release.json under ~/.local/share/omatainer/licenses.");
+            ui.label(tr!("Offline records are embedded in this executable. Installed releases also retain manifest.json, notices.json and release.json under ~/.local/share/omatainer/licenses."));
         });
         self.licenses.open = open && !close_requested;
     }

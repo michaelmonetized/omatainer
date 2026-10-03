@@ -1639,3 +1639,18 @@ fn timing_draft_created_during_project_preparation_blocks_its_final_commit() {
     assert_eq!(gui.rt.session.namespace, namespace); assert!(gui.app.timing.blocks_close());
     gui.click("Keep timing draft"); assert!(gui.app.timing.blocks_close());
 }
+
+#[test]
+fn native_save_open_cancel_preserve_non_latin_drive_paths_and_combining_project_names() {
+    let files=Files::new();let folder=files.path("USB-東京-العربية");std::fs::create_dir(&folder).unwrap();
+    let path=folder.join("Cafe\u{301}-Проект.omat");let mut gui=Gui::new();
+    let name="Cafe\u{301} / Straße / 東京 / مشروع";
+    let layout=gui.rt.session.clone();
+    let (edit,ack)=crate::engine::session::Request::metadata(&layout,gui.app.engine.undo.checkpoint().epoch,crate::engine::session::Action::Rename {axis:crate::engine::session::Axis::Track,id:layout.tracks[0].id,name:name.into()}).unwrap();
+    gui.app.engine.send(Command::SessionEdit(edit)).unwrap();gui.rt.process(&mut []);assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
+    gui.save_as_ui(&path);let bytes=std::fs::read(&path).unwrap();
+    let saved=crate::project_file::load::<Document>(&path,&Limits::default(),&AtomicBool::new(false)).unwrap();assert_eq!(saved.state.engine.tracks[0].name,name);
+    gui.menu("Open project…");gui.enter_path(&path);gui.click_label("Cancel");assert_eq!(gui.rt.tracks[0].name,name);assert_eq!(std::fs::read(&path).unwrap(),bytes);
+    gui.menu("New project");gui.settle();gui.menu("Open project…");gui.enter_path(&path);gui.click_label("Open");gui.settle();
+    assert_eq!(gui.rt.tracks[0].name,name);assert_eq!(gui.app.project.current_path,Some(path.clone()));assert_eq!(std::fs::read(path).unwrap(),bytes);
+}

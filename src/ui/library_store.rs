@@ -369,40 +369,40 @@ impl App {
         }
         keyboard::block_for_dialog(ctx);
         let mut open = true;
-        egui::Window::new("Import DJ library").open(&mut open).show(ctx, |ui| {
+        egui::Window::new(tr!("Import DJ library")).id(egui::Id::new("Import DJ library")).open(&mut open).show(ctx, |ui| {
             // A project CloseGuard seals renderer edits; the same close must
             // also exclude new catalog imports after its durability check.
             if self.project.committing() { ui.disable(); }
-            ui.label("Import music files or folders. Enter one absolute path per line; existing library tracks and playing decks are preserved.");
+            ui.label(tr!("Import music files or folders. Enter one absolute path per line; existing library tracks and playing decks are preserved."));
             let paths = ui.add(egui::TextEdit::multiline(&mut self.library_media_paths).id_salt("music-import-paths").char_limit(65_536).desired_rows(3).desired_width(420.0));
             paths.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Music file and folder paths"));
             help::annotate(ui, &paths, help::Control::MusicImportPaths);
             if paths.changed() { self.library_media_revision = self.library_media_revision.checked_add(1).unwrap_or(u64::MAX); }
             let busy = self.library_scan.active();
             ui.push_id(("music-import", self.library_media_revision), |ui| {
-                let response = ui.add_enabled(!busy && !self.library_metadata.active() && self.library_metadata.ready() && self.library_media_revision != u64::MAX, egui::Button::new("Import music files/folders"));
+                let response = ui.add_enabled(!busy && !self.library_metadata.active() && self.library_metadata.ready() && self.library_media_revision != u64::MAX, egui::Button::new(tr!("Import music files/folders")));
                 help::annotate(ui, &response, help::Control::MusicImport);
                 if response.clicked() { self.import_media_paths(); }
             });
-            if busy && ui.button("Cancel music import/scan").clicked() { self.library_scan.cancel(); }
-            if ui.button("Manage music folders in Preferences").help(ui, help::Control::MusicRoots).clicked() { self.settings.open = true; }
+            if busy && ui.button(tr!("Cancel music import/scan")).clicked() { self.library_scan.cancel(); }
+            if ui.button(tr!("Manage music folders in Preferences")).help(ui, help::Control::MusicRoots).clicked() { self.settings.open = true; }
             ui.label(self.library_scan.label());
             if let Some(summary) = &self.library_scan.summary {
                 if !summary.samples.is_empty() {
-                    ui.label(format!("First {} skipped entries of {}:", summary.samples.len(), summary.skipped_count()));
+                    ui.label({ let __omatainer_args = (&(summary.samples.len()),&(summary.skipped_count()),); crate::localization::format("First {} skipped entries of {}:", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                     let scroll = egui::ScrollArea::vertical().id_salt("music-import-skipped").max_height(140.0).show(ui, |ui| {
-                        for sample in &summary.samples { ui.label(format!("{}: {} — {}", sample.reason.label(), sample.path, sample.detail)); }
+                        for sample in &summary.samples { ui.label({ let __omatainer_args = (&(sample.reason.label()),&(sample.path),&(sample.detail),); crate::localization::format("{}: {} — {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) }); }
                     });
                     accessibility::scrollbars(ui, "Music import skipped entries", &scroll);
                 }
             }
             ui.separator();
-            ui.label("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected.");
-            ui.label("Local files and uniquely identified mounted removable libraries can play. Offline, ambiguous or changed volumes fail explicitly. Provider references remain unavailable locally.");
-            let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text("/path/to/library.json").desired_width(420.0));
+            ui.label(tr!("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected."));
+            ui.label(tr!("Local files and uniquely identified mounted removable libraries can play. Offline, ambiguous or changed volumes fail explicitly. Provider references remain unavailable locally."));
+            let path = ui.add(egui::TextEdit::singleline(&mut self.library_import_path).hint_text(tr!("/path/to/library.json")).desired_width(420.0));
             path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "DJ library import path"));
             help::annotate(ui, &path, help::Control::LibraryImportPath);
-            let response = ui.button("Import catalog");
+            let response = ui.button(tr!("Import catalog"));
             help::annotate(ui, &response, help::Control::LibraryImport);
             if response.clicked() {
                 if self.library_import_path.trim().is_empty() { self.status = "Choose a catalog path".into(); }
@@ -411,7 +411,7 @@ impl App {
                 } else { self.status = "DJ library import unavailable or already pending".into(); }
             }
             ui.label(self.library_metadata.label());
-            let response = ui.button("Retry library save");
+            let response = ui.button(tr!("Retry library save"));
             help::annotate(ui, &response, help::Control::LibraryRetry);
             if response.clicked() { self.library_metadata.retry_save(); }
         });
@@ -508,7 +508,7 @@ impl App {
         // become Ready since the previous frame.
         if !ready || self.library_close.shown {
             self.library_close.shown = true;
-            egui::Window::new("Saving DJ library before exit")
+            egui::Window::new(tr!("Saving DJ library before exit")).id(egui::Id::new("Saving DJ library before exit"))
                 .collapsible(false)
                 .show(ctx, |ui| {
                     match &state {
@@ -516,21 +516,21 @@ impl App {
                             ui.label(error);
                         }
                         CloseState::Ready => {
-                            ui.label("DJ library saved.");
+                            ui.label(tr!("DJ library saved."));
                         }
                         CloseState::Pending => {
                             ui.label(
-                                "Waiting for earlier deck edits and the background library save…",
+                                tr!("Waiting for earlier deck edits and the background library save…"),
                             );
                         }
                     }
-                    let retry = ui.button("Retry library save");
+                    let retry = ui.button(tr!("Retry library save"));
                     help::annotate(ui, &retry, help::Control::LibraryRetry);
                     if retry.clicked() { self.library_metadata.retry_save(); }
-                    let keep = ui.button("Keep working");
+                    let keep = ui.button(tr!("Keep working"));
                     help::annotate(ui, &keep, help::Control::LibraryKeepWorking);
                     keep_working = keep.clicked() || keep.is_pointer_button_down_on();
-                    let close = ui.button("Close without saving");
+                    let close = ui.button(tr!("Close without saving"));
                     help::annotate(ui, &close, help::Control::LibraryCloseWithoutSaving);
                     discard = close.clicked();
                 });

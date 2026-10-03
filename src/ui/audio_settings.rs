@@ -235,11 +235,11 @@ impl Panel {
 impl App {
     pub(super) fn performance_reset_button(&mut self, ui: &mut Ui) {
         let available = self.audio_settings.handle.is_some() && !self.audio_settings.busy();
-        if ui.add_enabled(available, egui::Button::new("Reset stopped DSP and unmute…")).help(ui, HelpControl::PerformanceReset).clicked() {
+        if ui.add_enabled(available, egui::Button::new(tr!("Reset stopped DSP and unmute…"))).help(ui, HelpControl::PerformanceReset).clicked() {
             self.audio_settings.open = true;
             self.audio_settings.confirm = Some(Confirm::Reset);
         }
-        if !available { ui.label("Audio owner unavailable or busy; keep output muted, Save, then leave protection deliberately before shutdown."); }
+        if !available { ui.label(tr!("Audio owner unavailable or busy; keep output muted, Save, then leave protection deliberately before shutdown.")); }
     }
     pub(super) fn poll_audio_settings(&mut self, ctx: &egui::Context) {
         while let Some(event) = self.audio_settings.worker.as_mut().and_then(Worker::poll) {
@@ -288,9 +288,9 @@ impl App {
         keyboard::block_for_dialog(ctx);
         if self.engine.safe_mode() {
             let mut open=true;
-            egui::Window::new("Audio devices and latency").open(&mut open).show(ctx,|ui|{
-                ui.label("Safe mode: audio/MIDI are offline. No devices were enumerated or opened.");
-                ui.label("Playback, live output changes and loopback probes are disabled. Save your project, then explicitly Restart normally to enable device setup.");
+            egui::Window::new(tr!("Audio devices and latency")).id(egui::Id::new("Audio devices and latency")).open(&mut open).show(ctx,|ui|{
+                ui.label(tr!("Safe mode: audio/MIDI are offline. No devices were enumerated or opened."));
+                ui.label(tr!("Playback, live output changes and loopback probes are disabled. Save your project, then explicitly Restart normally to enable device setup."));
             });
             self.audio_settings.open=open;return;
         }
@@ -299,27 +299,27 @@ impl App {
         let metrics = self.engine.cmd.audio_metrics();
         let panel = &mut self.audio_settings;
         let mut open = true;
-        egui::Window::new("Audio devices and latency").id(egui::Id::new("audio-devices-window")).open(&mut open).default_width(730.0).default_height(650.0).vscroll(true).show(ctx,|ui|{
+        egui::Window::new(tr!("Audio devices and latency")).id(egui::Id::new("audio-devices-window")).open(&mut open).default_width(730.0).default_height(650.0).vscroll(true).show(ctx,|ui|{
             // Keep one parent slot regardless of asynchronous status details.
             ui.push_id("audio-live-status", |ui| {
-            ui.label(format!("Saved profile: {profile}. Save edits in Preferences before previewing."));
+            ui.label(crate::localization::format("Saved profile: {profile}. Save edits in Preferences before previewing.", &[format!("{}", profile)]));
             if let Some(handle)=&panel.handle {
                 let status=handle.status();ui.label(&status.message).help(ui, HelpControl::AudioNotice);
                 if let Some(active)=&status.active {
-                    ui.label(format!("Backend-accepted logical output: {} / {} · {} Hz · {} · {} channels · buffer {}",active.backend,active.plan.device,active.plan.rate,active.format,active.plan.channels,active.plan.buffer.map(|n|n.to_string()).unwrap_or("backend default".into()))).help(ui, HelpControl::AudioActive);
+                    ui.label({ let __omatainer_args = (&(active.backend),&(active.plan.device),&(active.plan.rate),&(active.format),&(active.plan.channels),&(active.plan.buffer.map(|n|n.to_string()).unwrap_or("backend default".into())),); crate::localization::format("Backend-accepted logical output: {} / {} · {} Hz · {} · {} channels · buffer {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{}", __omatainer_args.5)]) }).help(ui, HelpControl::AudioActive);
                     ui.label(active.plan.route());
                     if let Some(measured)=metrics.last_callback.filter(|_|status.phase==owner::Phase::Running && metrics.callbacks>status.callback_floor) {
-                        ui.label(format!("Observed output callback: {} frames ({:.3} ms at logical rate)",measured.frames,measured.frames as f64*1000.0/measured.sample_rate.max(1) as f64)).help(ui, HelpControl::AudioTiming);
-                        ui.label(measured.output_latency_ns.map(|ns|format!("Backend output scheduling estimate: {:.3} ms",ns as f64/1e6)).unwrap_or("Backend output scheduling estimate unavailable".into())).help(ui, HelpControl::AudioTiming);
-                    } else {ui.label("Waiting for output callback observations for this stream");}
-                }else{ui.colored_label(ui.visuals().warn_fg_color,"No active output. Session retained; Save, New/Open and Close remain available.");}
-                ui.label("Physical negotiated sample rate, converter latency and exact driver roundtrip are unavailable through this backend API.");
+                        ui.label({ let __omatainer_args = (&(measured.frames),&(measured.frames as f64*1000.0/measured.sample_rate.max(1) as f64),); crate::localization::format("Observed output callback: {} frames ({:.3} ms at logical rate)", &[format!("{}", __omatainer_args.0), format!("{:.3}", __omatainer_args.1)]) }).help(ui, HelpControl::AudioTiming);
+                        ui.label(measured.output_latency_ns.map(|ns|{ let __omatainer_args = (&(ns as f64/1e6),); crate::localization::format("Backend output scheduling estimate: {:.3} ms", &[format!("{:.3}", __omatainer_args.0)]) }).unwrap_or(tr!("Backend output scheduling estimate unavailable").into())).help(ui, HelpControl::AudioTiming);
+                    } else {ui.label(tr!("Waiting for output callback observations for this stream"));}
+                }else{ui.colored_label(ui.visuals().warn_fg_color,tr!("No active output. Session retained; Save, New/Open and Close remain available."));}
+                ui.label(tr!("Physical negotiated sample rate, converter latency and exact driver roundtrip are unavailable through this backend API."));
                 if let Some(evidence)=status.measurement.as_ref().filter(|e|!panel.busy() && e.identity.profile==profile && panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok())==Some(&e.identity)) {
                     let m=&evidence.measured;
-                    ui.label(format!("Measured host callback-to-callback loopback return: {:.3} ms · nominal callback resolution {:.3} ms · repeat spread {:.3} ms",m.host_return_ns as f64/1e6,m.callback_resolution_ns as f64/1e6,m.spread().as_secs_f64()*1000.0)).help(ui, HelpControl::AudioMeasurement);
-                    ui.label(format!("Measured route: {} input {} ← {} output {}; profile {}",evidence.identity.input.device,evidence.identity.input_channel+1,evidence.identity.output.device,evidence.identity.output_channel+1,evidence.identity.profile));
-                } else {ui.label("Measured loopback return unavailable for the current preview; no physical measurement is inferred.").help(ui, HelpControl::AudioMeasurement);}
-            }else{ui.label("No audio owner in this session");}
+                    ui.label({ let __omatainer_args = (&(m.host_return_ns as f64/1e6),&(m.callback_resolution_ns as f64/1e6),&(m.spread().as_secs_f64()*1000.0),); crate::localization::format("Measured host callback-to-callback loopback return: {:.3} ms · nominal callback resolution {:.3} ms · repeat spread {:.3} ms", &[format!("{:.3}", __omatainer_args.0), format!("{:.3}", __omatainer_args.1), format!("{:.3}", __omatainer_args.2)]) }).help(ui, HelpControl::AudioMeasurement);
+                    ui.label({ let __omatainer_args = (&(evidence.identity.input.device),&(evidence.identity.input_channel+1),&(evidence.identity.output.device),&(evidence.identity.output_channel+1),&(evidence.identity.profile),); crate::localization::format("Measured route: {} input {} ← {} output {}; profile {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });
+                } else {ui.label(tr!("Measured loopback return unavailable for the current preview; no physical measurement is inferred.")).help(ui, HelpControl::AudioMeasurement);}
+            }else{ui.label(tr!("No audio owner in this session"));}
             });
             ui.label(&panel.message).help(ui, HelpControl::AudioNotice);
             ui.push_id("audio-notice-actions", |ui| {
@@ -331,13 +331,13 @@ impl App {
                 if audio_action(ui, "Preview saved audio", true).help(ui, HelpControl::AudioPreview).clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
                 if let Some(preview)=panel.preview.clone(){
                     ui.push_id(("audio-preview", panel.preview_generation), |ui| {
-                    match &preview.output {Ok(plan)=>{ui.label(format!("Proposed output: {} / {} · {} Hz · {} · {} channels · {}",plan.backend,plan.device,plan.rate,plan.format,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},Err(error)=>{ui.colored_label(ui.visuals().warn_fg_color,error);}}
+                    match &preview.output {Ok(plan)=>{ui.label({ let __omatainer_args = (&(plan.backend),&(plan.device),&(plan.rate),&(plan.format),&(plan.channels),&(plan.route()),); crate::localization::format("Proposed output: {} / {} · {} Hz · {} · {} channels · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{}", __omatainer_args.5)]) });if let Some(warning)=&plan.warning{ui.label(warning);}},Err(error)=>{ui.colored_label(ui.visuals().warn_fg_color,error);}}
                     if audio_action(ui, "Use saved audio now", preview.output.is_ok()).help(ui, HelpControl::AudioUse).clicked(){panel.confirm=Some(Confirm::Switch(panel.preview_generation));}
                     match &preview.calibration {
                         Ok(request)=>{
-                            ui.label(format!("Calibration input: {} · {} Hz · {} · {} channels",request.input.device,request.input.rate,request.input.format,request.input.channels));
-                            if let (Some(input),Some(output))=(request.input.buffer,request.output.buffer){ui.label(format!("Roundtrip buffer estimate: {:.3} ms (requested buffers only; driver and converter time excluded)",(input as f64+output as f64)*1000.0/request.output.rate as f64)).help(ui, HelpControl::AudioBufferEstimate);}else{ui.label("Roundtrip buffer estimate unavailable: one or both buffer sizes are backend-selected").help(ui, HelpControl::AudioBufferEstimate);}
-                        },Err(error)=>{ui.label(format!("Calibration unavailable: {error}"));}
+                            ui.label({ let __omatainer_args = (&(request.input.device),&(request.input.rate),&(request.input.format),&(request.input.channels),); crate::localization::format("Calibration input: {} · {} Hz · {} · {} channels", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
+                            if let (Some(input),Some(output))=(request.input.buffer,request.output.buffer){ui.label({ let __omatainer_args = (&((input as f64+output as f64)*1000.0/request.output.rate as f64),); crate::localization::format("Roundtrip buffer estimate: {:.3} ms (requested buffers only; driver and converter time excluded)", &[format!("{:.3}", __omatainer_args.0)]) }).help(ui, HelpControl::AudioBufferEstimate);}else{ui.label(tr!("Roundtrip buffer estimate unavailable: one or both buffer sizes are backend-selected")).help(ui, HelpControl::AudioBufferEstimate);}
+                        },Err(error)=>{ui.label(crate::localization::format("Calibration unavailable: {error}", &[format!("{}", error)]));}
                     }
                     if audio_action(ui, "Measure loopback", preview.calibration.is_ok()).help(ui, HelpControl::AudioMeasure).clicked(){panel.confirm=Some(Confirm::Calibrate(panel.preview_generation));}
                     ui.collapsing("Advertised input and output capabilities",|ui|{capabilities(ui,&preview.inventory);}).header_response.help(ui, HelpControl::AudioCapabilities);
@@ -353,9 +353,9 @@ impl App {
                     ui.push_id(("audio-confirmation", confirm), |ui| {
                     ui.separator();
                     match confirm {
-                        Confirm::Reset => { ui.label("Stop all sources, reclaim the graph on the audio-owner worker, clear voice/effect/filter histories and reopen the current output. Only a successful reset removes emergency mute. Playback remains stopped; input acknowledgment is still required if recovery is latched."); },
-                        Confirm::Switch(_)=>{ui.label("Stop decks, clips, recording and held notes, then change output? Previous output will be restored if opening fails. Playback will remain stopped; press Play explicitly when ready.");},
-                        Confirm::Calibrate(_)=>{ui.label("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback.");if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label(format!("Confirm route: {} output {} → {} input {}; level {} dBFS",request.output.device,request.output_channel+1,request.input.device,request.input_channel+1,request.level_db));}},
+                        Confirm::Reset => { ui.label(tr!("Stop all sources, reclaim the graph on the audio-owner worker, clear voice/effect/filter histories and reopen the current output. Only a successful reset removes emergency mute. Playback remains stopped; input acknowledgment is still required if recovery is latched.")); },
+                        Confirm::Switch(_)=>{ui.label(tr!("Stop decks, clips, recording and held notes, then change output? Previous output will be restored if opening fails. Playback will remain stopped; press Play explicitly when ready."));},
+                        Confirm::Calibrate(_)=>{ui.label(tr!("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback."));if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label({ let __omatainer_args = (&(request.output.device),&(request.output_channel+1),&(request.input.device),&(request.input_channel+1),&(request.level_db),); crate::localization::format("Confirm route: {} output {} → {} input {}; level {} dBFS", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });}},
                     }
                     ui.horizontal(|ui|{
                         if audio_action(ui, match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Switch(_)=>"Stop and change output",Confirm::Calibrate(_)=>"Cable ready: stop and measure"}, true).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch(_)=>HelpControl::AudioConfirm,Confirm::Calibrate(_)=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch(_)=>Job::Apply(preview),Confirm::Calibrate(_)=>Job::Calibrate(preview),Confirm::Reset=>unreachable!()});}panel.confirm=None;}
@@ -380,13 +380,13 @@ fn audio_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response
 }
 
 fn capabilities(ui: &mut egui::Ui, inventory: &config::Inventory) {
-    ui.label("Device identities use the backend and exact device name. Persistent hardware serial identifiers are unavailable through CPAL; ambiguous duplicate names are rejected.");
-    ui.label(format!("Backend: {}. Channel numbers are CPAL's ordered interleaved channels; physical connector names are unavailable.",inventory.backend));
+    ui.label(tr!("Device identities use the backend and exact device name. Persistent hardware serial identifiers are unavailable through CPAL; ambiguous duplicate names are rejected."));
+    ui.label({ let __omatainer_args = (&(inventory.backend),); crate::localization::format("Backend: {}. Channel numbers are CPAL's ordered interleaved channels; physical connector names are unavailable.", &[format!("{}", __omatainer_args.0)]) });
     if inventory.truncated {
-        ui.label("Capability inventory truncated at 256 devices / 4096 ranges per device");
+        ui.label(tr!("Capability inventory truncated at 256 devices / 4096 ranges per device"));
     }
     if let Some(error) = &inventory.input_error {
-        ui.label(format!("Input discovery: {error}"));
+        ui.label(crate::localization::format("Input discovery: {error}", &[format!("{}", error)]));
     }
     for (direction, devices) in [("Output", &inventory.devices), ("Input", &inventory.inputs)] {
         for (index, device) in devices.iter().enumerate() {
@@ -408,16 +408,9 @@ fn capabilities(ui: &mut egui::Ui, inventory: &config::Inventory) {
                             |ui, rows| {
                                 for row in rows {
                                     let r = &device.ranges[row];
-                                    ui.label(format!(
-                                        "{} · {} channels · {}–{} Hz · buffer {}",
-                                        r.format,
-                                        r.channels,
-                                        r.min_rate,
-                                        r.max_rate,
-                                        r.buffer
+                                    ui.label({ let __omatainer_args = (&(r.format),&(r.channels),&(r.min_rate),&(r.max_rate),&(r.buffer
                                             .map(|(min, max)| format!("{min}–{max} frames"))
-                                            .unwrap_or("limits unavailable".into())
-                                    )).help(ui, HelpControl::AudioCapabilities);
+                                            .unwrap_or("limits unavailable".into())),); crate::localization::format("{} · {} channels · {}–{} Hz · buffer {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) }).help(ui, HelpControl::AudioCapabilities);
                                 }
                             },
                         );
@@ -436,13 +429,13 @@ pub(super) fn edit_profile(
     inventory: Option<&config::Inventory>,
 ) {
     let Some(inventory) = inventory else {
-        ui.label("Preview the profile to discover audio capabilities. Saved unavailable selections are preserved.");
+        ui.label(tr!("Preview the profile to discover audio capabilities. Saved unavailable selections are preserved."));
         return;
     };
-    egui::ComboBox::from_label("Audio backend")
+    egui::ComboBox::from_label(tr!("Audio backend"))
         .selected_text(audio.backend.as_deref().unwrap_or("System backend"))
         .show_ui(ui, |ui| {
-            ui.selectable_value(&mut audio.backend, None, "System backend").help(ui, HelpControl::AudioBackend);
+            ui.selectable_value(&mut audio.backend, None, tr!("System backend")).help(ui, HelpControl::AudioBackend);
             ui.selectable_value(
                 &mut audio.backend,
                 Some(inventory.backend.clone()),
@@ -488,8 +481,8 @@ pub(super) fn edit_profile(
         "Output",
         [HelpControl::PreferenceAudioChannels, HelpControl::AudioOutputFormat, HelpControl::PreferenceAudioBuffer],
     );
-    ui.label("Main left/right use outputs 1/2 (mono sums both); additional outputs are silent. Independent cue routing is not available.");
-    ui.heading("Optional loopback calibration input");
+    ui.label(tr!("Main left/right use outputs 1/2 (mono sums both); additional outputs are silent. Independent cue routing is not available."));
+    ui.heading(tr!("Optional loopback calibration input"));
     device(
         ui,
         "Calibration input device",
@@ -540,13 +533,13 @@ pub(super) fn edit_profile(
         " dBFS",
         HelpControl::AudioProbeLevel,
     );
-    ui.label("Calibration always uses the active output's logical rate. Preview validates both selected channel numbers before a probe can run.");
+    ui.label(tr!("Calibration always uses the active output's logical rate. Preview validates both selected channel numbers before a probe can run."));
 }
 fn device(ui: &mut egui::Ui, label: &str, value: &mut Option<String>, devices: &[config::Device], control: HelpControl) {
     egui::ComboBox::from_label(label)
         .selected_text(value.as_deref().unwrap_or("System default"))
         .show_ui(ui, |ui| {
-            ui.selectable_value(value, None, "System default").help(ui, control);
+            ui.selectable_value(value, None, tr!("System default")).help(ui, control);
             for device in devices {
                 ui.selectable_value(value, Some(device.name.clone()), &device.name).help(ui, control);
             }
@@ -566,7 +559,7 @@ fn choice<T: Copy + PartialEq + std::fmt::Display>(
                 .unwrap_or("Device default".into()),
         )
         .show_ui(ui, |ui| {
-            ui.selectable_value(value, None, "Device default").help(ui, control);
+            ui.selectable_value(value, None, tr!("Device default")).help(ui, control);
             for n in values {
                 ui.selectable_value(value, Some(*n), n.to_string()).help(ui, control);
             }
@@ -592,14 +585,14 @@ fn layout(
     counts.sort();
     counts.dedup();
     choice(ui, &format!("{direction} channels"), channels, &counts, controls[0]);
-    egui::ComboBox::from_label(format!("{direction} sample format"))
+    egui::ComboBox::from_label(crate::localization::format("{direction} sample format", &[format!("{}", direction)]))
         .selected_text(
             format
                 .map(|f| f.cpal().to_string())
                 .unwrap_or("Device default".into()),
         )
         .show_ui(ui, |ui| {
-            ui.selectable_value(format, None, "Device default").help(ui, controls[1]);
+            ui.selectable_value(format, None, tr!("Device default")).help(ui, controls[1]);
             for f in AudioFormat::ALL {
                 if ranges.iter().any(|r| {
                     r.format == f.cpal()
@@ -629,7 +622,7 @@ fn layout(
     });
     choice(ui, &format!("{direction} buffer frames"), buffer, &sizes, controls[2]);
     if ranges.iter().any(|r| r.buffer.is_none()) {
-        ui.label(format!("{direction} buffer limits are not advertised for some configurations; Device default is available."));
+        ui.label(crate::localization::format("{direction} buffer limits are not advertised for some configurations; Device default is available.", &[format!("{}", direction)]));
     }
 }
 

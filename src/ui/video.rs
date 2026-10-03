@@ -235,30 +235,30 @@ impl App {
             keyboard::block_for_dialog(ctx);
             let mut open = true;
             let panel = &mut self.video;
-            egui::Window::new("Score to video").id(egui::Id::new("score-video-window")).open(&mut open).default_width(740.0).resizable(true).vscroll(true).show(ctx,|ui|{
-                ui.label("One local picture clip. FFmpeg/ffprobe required. Source audio is excluded. Picture follows audio transport seconds; frame numbers are zero-based and trim end is exclusive.");
+            egui::Window::new(tr!("Score to video")).id(egui::Id::new("score-video-window")).open(&mut open).default_width(740.0).resizable(true).vscroll(true).show(ctx,|ui|{
+                ui.label(tr!("One local picture clip. FFmpeg/ffprobe required. Source audio is excluded. Picture follows audio transport seconds; frame numbers are zero-based and trim end is exclusive."));
                 video_text(ui,"Local video path",&mut panel.path);
-                if ui.add_enabled(available,egui::Button::new("Import local video")).help(ui,HelpControl::VideoImport).clicked(){operation=Some(Kind::Import{path:PathBuf::from(&panel.path),expected:None});panel.stop();panel.texture=None;panel.future.clear();panel.validated=false;}
-                if panel.job.is_some() && ui.button("Cancel video job").help(ui,HelpControl::VideoCancel).clicked(){panel.stop();panel.preview_paused=true;panel.pending=None;}
-                ui.checkbox(&mut panel.preview_paused,"Pause picture decoding");
+                if ui.add_enabled(available,egui::Button::new(tr!("Import local video"))).help(ui,HelpControl::VideoImport).clicked(){operation=Some(Kind::Import{path:PathBuf::from(&panel.path),expected:None});panel.stop();panel.texture=None;panel.future.clear();panel.validated=false;}
+                if panel.job.is_some() && ui.button(tr!("Cancel video job")).help(ui,HelpControl::VideoCancel).clicked(){panel.stop();panel.preview_paused=true;panel.pending=None;}
+                ui.checkbox(&mut panel.preview_paused,tr!("Pause picture decoding"));
                 if panel.preview_paused { if let Some(job)=&mut panel.job {if job.decode_start.is_some(){job.cancel();panel.future.clear();}}}
                 ui.label(&panel.message);
                 if let Some(clip)=&mut panel.clip {
                     let rate=clip.info.rate;let frame=rate.frame(seconds);let source=clip.source_frame(seconds);
-                    ui.label(format!("{} · {}×{} · {}/{} fps · {} source frames · project {:.6}s",clip.info.codec,clip.info.width,clip.info.height,rate.numerator,rate.denominator,clip.info.frames,seconds));
-                    ui.label(format!("Project frame {frame}; source timecode {}",source.map(|n|rate.timecode(n as i64+clip.timecode_offset,clip.drop_frame).unwrap()).unwrap_or_else(||"outside picture".into())));
+                    ui.label({ let __omatainer_args = (&(clip.info.codec),&(clip.info.width),&(clip.info.height),&(rate.numerator),&(rate.denominator),&(clip.info.frames),&(seconds),); crate::localization::format("{} · {}×{} · {}/{} fps · {} source frames · project {:.6}s", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{}", __omatainer_args.5), format!("{:.6}", __omatainer_args.6)]) });
+                    ui.label({ let __omatainer_args = (&(source.map(|n|rate.timecode(n as i64+clip.timecode_offset,clip.drop_frame).unwrap()).unwrap_or_else(||"outside picture".into())),); crate::localization::format("Project frame {frame}; source timecode {}", &[format!("{}", frame), format!("{}", __omatainer_args.0)]) });
                     if let Some(draft)=&mut panel.draft {
                         ui.add_enabled_ui(available,|ui|{
                             video_number(ui,"Picture trim in frame",&mut draft.trim_in,0..=clip.info.frames-1);
                             video_number(ui,"Picture trim end frame (exclusive)",&mut draft.trim_out,1..=clip.info.frames);
                             video_number(ui,"Picture placement project frame",&mut draft.placement,0..=data::MAX_FRAMES);
-                            let label=ui.label("Timecode offset frames");let response=ui.add(egui::DragValue::new(&mut draft.timecode_offset).range(-10_000_000..=10_000_000)).labelled_by(label.id);ui.ctx().accesskit_node_builder(response.id,|node|node.set_label("Timecode offset frames"));
-                            ui.checkbox(&mut draft.drop_frame,"Drop-frame timecode");
-                            let label=ui.label("Preview latency offset (ms; negative delays picture)");
+                            let label=ui.label(tr!("Timecode offset frames"));let response=ui.add(egui::DragValue::new(&mut draft.timecode_offset).range(-10_000_000..=10_000_000)).labelled_by(label.id);ui.ctx().accesskit_node_builder(response.id,|node|node.set_label("Timecode offset frames"));
+                            ui.checkbox(&mut draft.drop_frame,tr!("Drop-frame timecode"));
+                            let label=ui.label(tr!("Preview latency offset (ms; negative delays picture)"));
                             let response=ui.add(egui::DragValue::new(&mut draft.preview_offset_ms).range(-2000..=2000)).labelled_by(label.id);
                             ui.ctx().accesskit_node_builder(response.id,|node|node.set_label("Preview latency offset (ms; negative delays picture)"));
-                            ui.label("Calibrate picture against your actual audio output. This saved preview adjustment leaves rendered timing unchanged.");
-                            if ui.button("Apply picture trim and placement").help(ui,HelpControl::VideoPlacement).clicked(){
+                            ui.label(tr!("Calibrate picture against your actual audio output. This saved preview adjustment leaves rendered timing unchanged."));
+                            if ui.button(tr!("Apply picture trim and placement")).help(ui,HelpControl::VideoPlacement).clicked(){
                                 match draft.validate(){Ok(())=>{draft.locators=clip.locators.clone();draft.detached=clip.detached;*clip=draft.clone();if let Some(job)=&mut panel.job{job.cancel();}panel.future.clear();panel.texture=None;panel.message="Picture placement applied; save the native project to retain it".into();},Err(error)=>panel.message=error}
                             }
                         });
@@ -267,22 +267,22 @@ impl App {
                         let mut target=frame.min(clip.end());
                         let response=ui.add(egui::Slider::new(&mut target,0..=clip.end()).text("Scrub project video frame"));
                         if response.changed(){seek=Some(rate.seconds(target));}
-                        ui.horizontal(|ui|{if ui.button("Previous picture frame").clicked(){seek=Some(rate.seconds(frame.saturating_sub(1)));}if ui.button("Next picture frame").clicked(){seek=Some(rate.seconds((frame+1).min(clip.end())));}if ui.button("Seek picture start").clicked(){seek=Some(rate.seconds(clip.placement));}});
+                        ui.horizontal(|ui|{if ui.button(tr!("Previous picture frame")).clicked(){seek=Some(rate.seconds(frame.saturating_sub(1)));}if ui.button(tr!("Next picture frame")).clicked(){seek=Some(rate.seconds((frame+1).min(clip.end())));}if ui.button(tr!("Seek picture start")).clicked(){seek=Some(rate.seconds(clip.placement));}});
                         video_text(ui,"Picture locator name",&mut panel.locator);
-                        if ui.button("Add picture locator").help(ui,HelpControl::VideoLocator).clicked(){
+                        if ui.button(tr!("Add picture locator")).help(ui,HelpControl::VideoLocator).clicked(){
                             let locator=Locator{frame,name:panel.locator.clone()};let mut next=clip.clone();next.locators.push(locator);
                             match next.validate(){Ok(())=>{*clip=next;panel.locator.clear();},Err(error)=>panel.message=error}
                         }
                         let mut remove=None;
-                        for (i,locator) in clip.locators.iter().enumerate(){ui.horizontal(|ui|{if ui.button(format!("Seek locator {} · {}",i+1,locator.name)).clicked(){seek=Some(rate.seconds(locator.frame));}if ui.button(format!("Remove locator {}",i+1)).clicked(){remove=Some(i);}});}
+                        for (i,locator) in clip.locators.iter().enumerate(){ui.horizontal(|ui|{if ui.button({ let __omatainer_args = (&(i+1),&(locator.name),); crate::localization::format("Seek locator {} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) }).clicked(){seek=Some(rate.seconds(locator.frame));}if ui.button({ let __omatainer_args = (&(i+1),); crate::localization::format("Remove locator {}", &[format!("{}", __omatainer_args.0)]) }).clicked(){remove=Some(i);}});}
                         if let Some(i)=remove{clip.locators.remove(i);}
                     });
-                    if ui.add_enabled(available,egui::Button::new("Remove picture reference")).help(ui,HelpControl::VideoPlacement).clicked(){remove=true;}
-                    ui.checkbox(&mut clip.detached,"Detach picture preview").help(ui,HelpControl::VideoPreview);
+                    if ui.add_enabled(available,egui::Button::new(tr!("Remove picture reference"))).help(ui,HelpControl::VideoPlacement).clicked(){remove=true;}
+                    ui.checkbox(&mut clip.detached,tr!("Detach picture preview")).help(ui,HelpControl::VideoPreview);
                     paint(ui,panel.texture.as_ref(),source);
                     video_text(ui,"New score output folder",&mut panel.output);
-                    ui.label("Render loops the selected Session scene from project zero, using fresh native mixer/effect state. It writes 48 kHz stereo float WAV, lossless FFV1/PCM picture and exact alignment metadata in a new folder. Existing output is preserved; WAV is bounded to 2 GiB. Live playback is unchanged.");
-                    if ui.add_enabled(available && panel.validated,egui::Button::new("Render selected scene against picture")).help(ui,HelpControl::VideoRender).clicked(){operation=Some(Kind::Render{clip:clip.clone(),path:PathBuf::from(&panel.output),revision});}
+                    ui.label(tr!("Render loops the selected Session scene from project zero, using fresh native mixer/effect state. It writes 48 kHz stereo float WAV, lossless FFV1/PCM picture and exact alignment metadata in a new folder. Existing output is preserved; WAV is bounded to 2 GiB. Live playback is unchanged."));
+                    if ui.add_enabled(available && panel.validated,egui::Button::new(tr!("Render selected scene against picture"))).help(ui,HelpControl::VideoRender).clicked(){operation=Some(Kind::Render{clip:clip.clone(),path:PathBuf::from(&panel.output),revision});}
                 }
             });
             self.video.open = open;
@@ -299,7 +299,7 @@ impl App {
                         .with_resizable(true),
                     |ctx, class| {
                         if class == egui::ViewportClass::Embedded {
-                            egui::Window::new("Detached picture preview")
+                            egui::Window::new(tr!("Detached picture preview")).id(egui::Id::new("Detached picture preview"))
                                 .open(&mut detached)
                                 .resizable(true)
                                 .show(ctx, |ui| paint(ui, self.video.texture.as_ref(), source));
@@ -335,11 +335,11 @@ fn paint(ui: &mut Ui, texture: Option<&(u64, egui::TextureHandle)>, due: Option<
                 .max_size(ui.available_size().min(Vec2::new(1280.0, 720.0)))
                 .maintain_aspect_ratio(true),
         );
-        ui.label(format!("Decoded source frame {index}"));
+        ui.label(crate::localization::format("Decoded source frame {index}", &[format!("{}", index)]));
     } else {
         ui.label(due.map_or_else(
-            || "Outside trimmed picture".into(),
-            |frame| format!("Waiting for source frame {frame}"),
+            || tr!("Outside trimmed picture").into(),
+            |frame| crate::localization::format("Waiting for source frame {frame}", &[format!("{}", frame)]),
         ));
         let size = Vec2::new(ui.available_width().min(1280.0), 240.0);
         let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());

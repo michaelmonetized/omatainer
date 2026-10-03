@@ -271,16 +271,16 @@ impl App {
         let mut inspect = false;
         let mut import = false;
         let mut export = false;
-        egui::Window::new(if editor.exporting { "Export Standard MIDI File" } else { "Import Standard MIDI File" })
+        egui::Window::new(if editor.exporting { tr!("Export Standard MIDI File") } else { tr!("Import Standard MIDI File") })
             .id(egui::Id::new("standard-midi-file")).open(&mut visible).default_width(800.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 keyboard::block_for_dialog(ctx);
-                ui.label("SMF 0 (one track) and SMF 1 (parallel tracks), PPQN 1–32767. Format 2, SMPTE, RMID and proprietary forms require conversion before import.");
-                ui.label("Controller/program lanes are retained for file interchange. Native notes use the track's selected sound.");
+                ui.label(tr!("SMF 0 (one track) and SMF 1 (parallel tracks), PPQN 1–32767. Format 2, SMPTE, RMID and proprietary forms require conversion before import."));
+                ui.label(tr!("Controller/program lanes are retained for file interchange. Native notes use the track's selected sound."));
                 ui.add_enabled_ui(!busy, |ui| text(ui, &mut editor.path, "MIDI file path"));
                 if editor.exporting {
-                    ui.label("Each selected clip becomes a file track, all at source beat zero. Select only the clips you intend to combine.");
-                    ui.label("Select up to 64 clips across all session pages per export. Nothing is silently omitted.");
-                    if self.snap.timing.as_ref().is_some_and(|map| map.tempos.iter().any(|point| point.ramp)) { ui.label("Native tempo ramps are sampled at each exported MIDI tick (up to 131072 ramp ticks). Native projects preserve exact ramps. Sampled files may exceed the 4096-point limit for importing a session conductor; their original-source metadata can still be retained."); }
+                    ui.label(tr!("Each selected clip becomes a file track, all at source beat zero. Select only the clips you intend to combine."));
+                    ui.label(tr!("Select up to 64 clips across all session pages per export. Nothing is silently omitted."));
+                    if self.snap.timing.as_ref().is_some_and(|map| map.tempos.iter().any(|point| point.ramp)) { ui.label(tr!("Native tempo ramps are sampled at each exported MIDI tick (up to 131072 ramp ticks). Native projects preserve exact ramps. Sampled files may exceed the 4096-point limit for importing a session conductor; their original-source metadata can still be retained.")); }
                     ui.horizontal(|ui| {
                         number(ui,"Export track page",&mut editor.export_track_page,1,track_order.len().div_ceil(8) as u16);
                         number(ui,"Export scene page",&mut editor.export_scene_page,1,scene_order.len().div_ceil(8) as u16);
@@ -306,23 +306,22 @@ impl App {
                         }
                     });
                     ui.add_enabled_ui(!busy, |ui| {
-                        ui.horizontal(|ui| { ui.label("Export PPQN"); number(ui, "Export PPQN", &mut editor.ppqn, 1, 32767).help(ui, HelpControl::MidiFilePrecision); });
-                        ui.checkbox(&mut editor.single_track, "Merge to SMF 0").help(ui, HelpControl::MidiFileExport);
-                        ui.checkbox(&mut editor.include_muted, "Include muted notes").help(ui, HelpControl::MidiFileExport);
-                        ui.checkbox(&mut editor.session_conductor, "Export current session tempo and meter").help(ui, HelpControl::MidiFileTempo);
-                        if !editor.session_conductor { ui.label("Original imported conductor events remain attached to their source clips. Export their conductor clip as well to retain a separate SMF 1 conductor track."); }
-                        ui.checkbox(&mut editor.rounding, "Allow nearest-tick rounding").help(ui, HelpControl::MidiFilePrecision);
+                        ui.horizontal(|ui| { ui.label(tr!("Export PPQN")); number(ui, "Export PPQN", &mut editor.ppqn, 1, 32767).help(ui, HelpControl::MidiFilePrecision); });
+                        ui.checkbox(&mut editor.single_track, tr!("Merge to SMF 0")).help(ui, HelpControl::MidiFileExport);
+                        ui.checkbox(&mut editor.include_muted, tr!("Include muted notes")).help(ui, HelpControl::MidiFileExport);
+                        ui.checkbox(&mut editor.session_conductor, tr!("Export current session tempo and meter")).help(ui, HelpControl::MidiFileTempo);
+                        if !editor.session_conductor { ui.label(tr!("Original imported conductor events remain attached to their source clips. Export their conductor clip as well to retain a separate SMF 1 conductor track.")); }
+                        ui.checkbox(&mut editor.rounding, tr!("Allow nearest-tick rounding")).help(ui, HelpControl::MidiFilePrecision);
                     });
                     if button(ui, "Export new MIDI file", allowed && !editor.path.trim().is_empty() && !editor.cells.is_empty(), HelpControl::MidiFileExport).clicked() { export = true; }
                 } else {
                     if button(ui, "Inspect MIDI file", allowed && !editor.path.trim().is_empty(), HelpControl::MidiFileImport).clicked() { inspect = true; }
                     if let Some(preview) = editor.preview.clone() {
-                        ui.label(format!("{} · PPQN {} · {} tracks · {} notes · {} channel events", preview.path.display(), preview.file.ppqn,
-                            preview.file.tracks.len(), preview.file.tracks.iter().map(|t| t.notes.len()).sum::<usize>(), preview.file.tracks.iter().map(|t| t.messages.len()).sum::<usize>()));
+                        ui.label({ let __omatainer_args = (&(preview.path.display()),&(preview.file.ppqn),&(preview.file.tracks.len()),&(preview.file.tracks.iter().map(|t| t.notes.len()).sum::<usize>()),&(preview.file.tracks.iter().map(|t| t.messages.len()).sum::<usize>()),); crate::localization::format("{} · PPQN {} · {} tracks · {} notes · {} channel events", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });
                         ui.add_enabled_ui(!busy, |ui| {
-                            if ui.checkbox(&mut editor.split, "Split file tracks by MIDI channel").help(ui, HelpControl::MidiFileMapping).changed() { editor.map(self.snap.selected_track, self.snap.selected_scene,self.snap.session.as_ref()); }
-                            ui.checkbox(&mut editor.merge, "Merge with existing mapped MIDI clips").help(ui, HelpControl::MidiFileMapping);
-                            if !editor.merge { ui.label("Import replaces the mapped MIDI clip contents; clip gain and other track controls are preserved."); }
+                            if ui.checkbox(&mut editor.split, tr!("Split file tracks by MIDI channel")).help(ui, HelpControl::MidiFileMapping).changed() { editor.map(self.snap.selected_track, self.snap.selected_scene,self.snap.session.as_ref()); }
+                            ui.checkbox(&mut editor.merge, tr!("Merge with existing mapped MIDI clips")).help(ui, HelpControl::MidiFileMapping);
+                            if !editor.merge { ui.label(tr!("Import replaces the mapped MIDI clip contents; clip gain and other track controls are preserved.")); }
                             egui::ScrollArea::vertical().id_salt("smf-map").max_height(240.0).show_rows(ui, 28.0, editor.mappings.len(), |ui, rows| {
                                 for row in rows {
                                     let m = &mut editor.mappings[row];
@@ -330,15 +329,15 @@ impl App {
                                         let label = format!("File track {}{}", m.source.track + 1, m.source.channel.map_or(String::new(), |c| format!(" channel {}", c + 1)));
                                         ui.label(&label);
                                         let mut used = m.destination.is_some();
-                                        if ui.checkbox(&mut used, format!("Import {label}")).help(ui, HelpControl::MidiFileMapping).changed() {
+                                        if ui.checkbox(&mut used, crate::localization::format("Import {label}", &[format!("{}", label)])).help(ui, HelpControl::MidiFileMapping).changed() {
                                             m.destination = used.then_some((self.snap.selected_track as u8, self.snap.selected_scene as u16));
                                             editor.targets[row]=m.destination.and_then(|(t,s)|cell_reference(self.snap.session.as_ref(),t,s));
                                         }
                                         if let Some((track, scene)) = &mut m.destination {
                                             let mut t = track_order.iter().position(|value|*value==*track).unwrap_or(0) as u16 + 1;
                                             let mut s = scene_order.iter().position(|value|*value==*scene).unwrap_or(0) as u16 + 1;
-                                            ui.label("Track"); number(ui, &format!("{label} destination track"), &mut t, 1, track_order.len() as u16);
-                                            ui.label("Scene"); number(ui, &format!("{label} destination scene"), &mut s, 1, scene_order.len() as u16);
+                                            ui.label(tr!("Track")); number(ui, &format!("{label} destination track"), &mut t, 1, track_order.len() as u16);
+                                            ui.label(tr!("Scene")); number(ui, &format!("{label} destination scene"), &mut s, 1, scene_order.len() as u16);
                                             let next=(track_order[usize::from(t-1)],scene_order[usize::from(s-1)]);
                                             if next!=(*track,*scene) {*track=next.0;*scene=next.1;editor.targets[row]=cell_reference(self.snap.session.as_ref(),*track,*scene);}
                                         }
@@ -347,21 +346,21 @@ impl App {
                             });
                             let label = match editor.tempo { TempoChoice::KeepSession => "Keep session tempo and meter".into(), TempoChoice::File(None) => "Use complete file conductor".into(), TempoChoice::File(Some(i)) => format!("Use file track {} conductor", i + 1) };
                             egui::ComboBox::from_id_salt("smf-conductor").selected_text(label).show_ui(ui, |ui| {
-                                ui.selectable_value(&mut editor.tempo, TempoChoice::KeepSession, "Keep session tempo and meter");
-                                ui.selectable_value(&mut editor.tempo, TempoChoice::File(None), "Use complete file conductor");
-                                for i in 0..preview.file.tracks.len() { ui.selectable_value(&mut editor.tempo, TempoChoice::File(Some(i)), format!("Use file track {} conductor", i + 1)); }
+                                ui.selectable_value(&mut editor.tempo, TempoChoice::KeepSession, tr!("Keep session tempo and meter"));
+                                ui.selectable_value(&mut editor.tempo, TempoChoice::File(None), tr!("Use complete file conductor"));
+                                for i in 0..preview.file.tracks.len() { ui.selectable_value(&mut editor.tempo, TempoChoice::File(Some(i)), { let __omatainer_args = (&(i + 1),); crate::localization::format("Use file track {} conductor", &[format!("{}", __omatainer_args.0)]) }); }
                             }).response.help(ui, HelpControl::MidiFileTempo);
-                            ui.checkbox(&mut editor.rounding, "Allow nearest-tick rounding when merging").help(ui, HelpControl::MidiFilePrecision);
+                            ui.checkbox(&mut editor.rounding, tr!("Allow nearest-tick rounding when merging")).help(ui, HelpControl::MidiFilePrecision);
                             if !preview.file.warnings.is_empty() {
-                                ui.label("Unsupported data requiring explicit omission review:");
+                                ui.label(tr!("Unsupported data requiring explicit omission review:"));
                                 egui::ScrollArea::vertical().id_salt("smf-warnings").max_height(120.0).show_rows(ui, 20.0, preview.file.warnings.len(), |ui, rows| {
-                                    for row in rows { let w = &preview.file.warnings[row]; ui.label(format!("Track {:?}, tick {}: {:?}", w.track.map(|t| t + 1), w.tick, w.kind)); }
+                                    for row in rows { let w = &preview.file.warnings[row]; ui.label({ let __omatainer_args = (&(w.track.map(|t| t + 1)),&(w.tick),&(w.kind),); crate::localization::format("Track {:?}, tick {}: {:?}", &[format!("{:?}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{:?}", __omatainer_args.2)]) }); }
                                 });
-                                ui.checkbox(&mut editor.reviewed, "Accept listed unsupported omissions").help(ui, HelpControl::MidiFileImport);
+                                ui.checkbox(&mut editor.reviewed, tr!("Accept listed unsupported omissions")).help(ui, HelpControl::MidiFileImport);
                             }
                         });
                         ui.collapsing("Inspect note, controller and conductor lanes", |ui| {
-                            ui.horizontal(|ui| { ui.label("File track"); let mut track = editor.inspect_track as u16 + 1; number(ui, "MIDI source inspector track", &mut track, 1, preview.file.tracks.len() as u16); editor.inspect_track = track as usize - 1; });
+                            ui.horizontal(|ui| { ui.label(tr!("File track")); let mut track = editor.inspect_track as u16 + 1; number(ui, "MIDI source inspector track", &mut track, 1, preview.file.tracks.len() as u16); editor.inspect_track = track as usize - 1; });
                             let data = &preview.file.tracks[editor.inspect_track];
                             let count = data.notes.len() + data.messages.len() + data.meta.len();
                             egui::ScrollArea::vertical().id_salt("smf-source-events").max_height(180.0).show_rows(ui, 20.0, count, |ui, rows| {

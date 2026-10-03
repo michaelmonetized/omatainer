@@ -161,31 +161,31 @@ impl App {
                 accessibility::scope(ui, &title, |ui| {
                     ui.label(RichText::new(&snap.title).strong());
                     ui.label(match applied {
-                        Some(grid) => format!("Applied manual grid: {:.3} BPM · downbeat {:.6} s", grid.bpm(), grid.downbeat()),
-                        None => "Applied grid: none. Analysis BPM remains a separate hint.".into(),
+                        Some(grid) => { let __omatainer_args = (&(grid.bpm()),&(grid.downbeat()),); crate::localization::format("Applied manual grid: {:.3} BPM · downbeat {:.6} s", &[format!("{:.3}", __omatainer_args.0), format!("{:.6}", __omatainer_args.1)]) },
+                        None => tr!("Applied grid: none. Analysis BPM remains a separate hint.").into(),
                     });
                     let scroll = egui::ScrollArea::vertical().id_salt("grid-editor-body")
                         .max_height((available.height() - 180.0).max(70.0))
                         .show(ui, |ui| {
-                            ui.label("Solid = applied · dashed = preview · colored markers = absolute cues");
-                            ui.label("Audio envelope: summed low/mid/high mean magnitudes, not raw sample peaks.");
+                            ui.label(tr!("Solid = applied · dashed = preview · colored markers = absolute cues"));
+                            ui.label(tr!("Audio envelope: summed low/mid/high mean magnitudes, not raw sample peaks."));
                             preview(ui, &self.theme, &snap, applied, editor.draft);
                             let playhead = source_seconds(&snap);
                             // One stable parent ID even when a newly valid tempo
                             // makes the beat label appear between native events.
                             ui.push_id("grid-playhead-status", |ui| {
                                 if let Some(beat) = editor.draft.and_then(|g| g.beat_at(playhead)) {
-                                    ui.label(format!("Playhead: {playhead:.6} s · preview beat {beat:.3}"));
+                                    ui.label(crate::localization::format("Playhead: {playhead:.6} s · preview beat {beat:.3}", &[format!("{:.6}", playhead), format!("{:.3}", beat)]));
                                 }
                             });
-                            ui.label("Beat 0 is the first downbeat. Earlier beats are negative pickups. Uniform four-beat bars; changing meters and tempo maps are not supported here.");
-                            ui.label("Manual edits do not replace analyzed BPM or move stored cue positions.");
+                            ui.label(tr!("Beat 0 is the first downbeat. Earlier beats are negative pickups. Uniform four-beat bars; changing meters and tempo maps are not supported here."));
+                            ui.label(tr!("Manual edits do not replace analyzed BPM or move stored cue positions."));
                             ui.add_enabled_ui(editor.pending.is_none() && !self.project.committing() && self.project.dialog_is_closed(), |ui| {
-                                ui.label("Downbeat position in source seconds");
+                                ui.label(tr!("Downbeat position in source seconds"));
                                 let origin = ui.add(egui::TextEdit::singleline(&mut editor.origin).id_salt("grid-origin").char_limit(32).desired_width(220.0));
                                 origin.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, origin.enabled(), format!("{title}: Downbeat seconds")));
                                 accessibility::focus(ui, &origin); help::annotate(ui, &origin, HelpControl::GridOrigin);
-                                ui.label("Stretch tempo (BPM), anchored at the downbeat");
+                                ui.label(tr!("Stretch tempo (BPM), anchored at the downbeat"));
                                 let tempo = ui.add(egui::TextEdit::singleline(&mut editor.tempo).id_salt("grid-tempo").char_limit(32).desired_width(160.0));
                                 tempo.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, tempo.enabled(), format!("{title}: Stretch tempo BPM")));
                                 accessibility::focus(ui, &tempo); help::annotate(ui, &tempo, HelpControl::GridStretch);
@@ -215,9 +215,9 @@ impl App {
                                     }
                                 });
                             });
-                            if let Some(error) = &editor.error { ui.colored_label(self.theme.red, format!("{error}. Preview retains its last valid draft.")); }
+                            if let Some(error) = &editor.error { ui.colored_label(self.theme.red, crate::localization::format("{error}. Preview retains its last valid draft.", &[format!("{}", error)])); }
                             ui.label(&editor.message);
-                            ui.label(format!("Applied grid storage: {}", self.cue_storage_status(&editor.receipt).replace("cues", "grid")));
+                            ui.label({ let __omatainer_args = (&(self.cue_storage_status(&editor.receipt).replace("cues", "grid")),); crate::localization::format("Applied grid storage: {}", &[format!("{}", __omatainer_args.0)]) });
                         });
                     accessibility::scrollbars(ui, "Beatgrid controls", &scroll);
                     ui.separator();

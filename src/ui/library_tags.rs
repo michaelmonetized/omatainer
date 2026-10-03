@@ -544,39 +544,39 @@ impl App {
         let mut open = true;
         let mut inspect = None;
         let mut commit = false;
-        egui::Window::new("Audio metadata").open(&mut open).default_width(680.0).show(ctx, |ui| {
+        egui::Window::new(tr!("Audio metadata")).id(egui::Id::new("Audio metadata")).open(&mut open).default_width(680.0).show(ctx, |ui| {
             let busy = self.library_tags.busy();
             let available = self.library_tags.generation != u64::MAX && !busy && !self.project.committing() && !self.library_closing() && !self.engine.cmd.performance().protected();
-            ui.label("Read actual embedded tags. Missing fields use filename hints; user sidecars take precedence. Changes do not retune loaded audio or replace your beat grid.");
+            ui.label(tr!("Read actual embedded tags. Missing fields use filename hints; user sidecars take precedence. Changes do not retune loaded audio or replace your beat grid."));
             ui.horizontal(|ui| {
-                if ui.add_enabled(available, egui::Button::new("Inspect selected track")).help(ui, help::Control::TagInspect).clicked() { inspect = Some(false); }
-                if ui.add_enabled(available, egui::Button::new("Inspect filtered crate (batch)")).help(ui, help::Control::TagInspect).clicked() { inspect = Some(true); }
-                if ui.add_enabled(busy, egui::Button::new("Cancel tag work")).help(ui, help::Control::TagCancel).clicked() { self.library_tags.cancel(); }
+                if ui.add_enabled(available, egui::Button::new(tr!("Inspect selected track"))).help(ui, help::Control::TagInspect).clicked() { inspect = Some(false); }
+                if ui.add_enabled(available, egui::Button::new(tr!("Inspect filtered crate (batch)"))).help(ui, help::Control::TagInspect).clicked() { inspect = Some(true); }
+                if ui.add_enabled(busy, egui::Button::new(tr!("Cancel tag work"))).help(ui, help::Control::TagCancel).clicked() { self.library_tags.cancel(); }
             });
             ui.add_enabled_ui(available, |ui| {
                 for (index, name) in ["Title", "Artist", "BPM", "Key"].into_iter().enumerate() {
                     ui.horizontal(|ui| {
                         let field = &mut self.library_tags.fields[index];
-                        let check = ui.checkbox(&mut field.change, format!("Change {name}")).help(ui, help::Control::TagField);
+                        let check = ui.checkbox(&mut field.change, crate::localization::format("Change {name}", &[format!("{}", name)])).help(ui, help::Control::TagField);
                         let input = ui.add_enabled(field.change, egui::TextEdit::singleline(&mut field.value).id_salt(("tag-field", index)).char_limit(4096).desired_width(380.0));
                         help::annotate(ui, &input, help::Control::TagField);
                         input.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, format!("New {name}")));
                         if check.changed() || input.changed() { self.library_tags.reviewed = None; self.library_tags.generation = self.library_tags.generation.saturating_add(1); }
                     });
                 }
-                ui.label("Unchecked = keep existing value. Checked and empty = clear that field on every captured track.");
-                if ui.checkbox(&mut self.library_tags.embedded, "Write supported embedded tags; use a library sidecar when writing is unavailable").help(ui, help::Control::TagStorage).changed() { self.library_tags.reviewed = None; }
+                ui.label(tr!("Unchecked = keep existing value. Checked and empty = clear that field on every captured track."));
+                if ui.checkbox(&mut self.library_tags.embedded, tr!("Write supported embedded tags; use a library sidecar when writing is unavailable")).help(ui, help::Control::TagStorage).changed() { self.library_tags.reviewed = None; }
                 ui.small("Embedded rewrites support MP3, FLAC, WAV and AIFF up to 128 MiB, after audio and metadata preservation checks. Read-only, larger, unsupported or imperfect files use sidecars. Fractional BPM that a tag cannot store precisely stays in the sidecar.");
             });
             if let Some(preview) = &self.library_tags.preview {
                 if let Reply::Preview(preview) = preview.reply.as_ref() {
-                    ui.label(format!("Captured targets: {} (browsing or filtering now will not change this list)", preview.rows.len()));
+                    ui.label({ let __omatainer_args = (&(preview.rows.len()),); crate::localization::format("Captured targets: {} (browsing or filtering now will not change this list)", &[format!("{}", __omatainer_args.0)]) });
                     let output = egui::ScrollArea::vertical().id_salt("tag-target-review").max_height(220.0).show_rows(ui, 84.0, preview.rows.len(), |ui, range| {
                         for index in range {
                             let row = &preview.rows[index];
                             ui.push_id(("tag-review-row", index), |ui| {
-                                if ui.selectable_label(self.library_tags.detail_row == index, format!("{} · saved: {} — {}", index + 1, row.metadata.artist, row.metadata.title)).clicked() { self.library_tags.detail_row = index; }
-                                if let Some(target) = &row.target { ui.add(egui::Label::new(format!("{:?}", target.source)).truncate()).on_hover_text(format!("{:?}", target.source)); }
+                                if ui.selectable_label(self.library_tags.detail_row == index, { let __omatainer_args = (&(index + 1),&(row.metadata.artist),&(row.metadata.title),); crate::localization::format("{} · saved: {} — {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) }).clicked() { self.library_tags.detail_row = index; }
+                                if let Some(target) = &row.target { ui.add(egui::Label::new({ let __omatainer_args = (&(target.source),); crate::localization::format("{:?}", &[format!("{:?}", __omatainer_args.0)]) }).truncate()).on_hover_text({ let __omatainer_args = (&(target.source),); crate::localization::format("{:?}", &[format!("{:?}", __omatainer_args.0)]) }); }
                                 match &row.observation {
                                     Ok(observation) => {
                                         let source = |field: &Option<crate::media_tags::Field>| field.as_ref().map_or("filename fallback", |field| field.source.label());
@@ -590,12 +590,12 @@ impl App {
                     });
                     accessibility::scrollbars(ui, "Tag review targets", &output);
                     if let Some(row) = preview.rows.get(self.library_tags.detail_row) {
-                        ui.label(format!("Actual embedded values for captured row {}", self.library_tags.detail_row + 1));
+                        ui.label({ let __omatainer_args = (&(self.library_tags.detail_row + 1),); crate::localization::format("Actual embedded values for captured row {}", &[format!("{}", __omatainer_args.0)]) });
                         match &row.observation {
                             Ok(observation) => {
                                 for (name, field) in [("Title", &observation.fields.title), ("Artist", &observation.fields.artist), ("BPM", &observation.fields.bpm), ("Key", &observation.fields.key)] {
                                     let value = field.as_ref().map_or_else(|| "[missing; filename fallback when no user sidecar]".into(), |field| format!("{} ({})", field.value, field.source.label()));
-                                    ui.add(egui::Label::new(format!("{name}: {value}")).truncate()).on_hover_text(value);
+                                    ui.add(egui::Label::new(crate::localization::format("{name}: {value}", &[format!("{}", name), format!("{}", value)])).truncate()).on_hover_text(value);
                                 }
                                 for notice in &observation.notices { ui.add(egui::Label::new(notice).truncate()).on_hover_text(notice); }
                             }
@@ -610,7 +610,7 @@ impl App {
 
                     let patch = self.library_tags.patch();
                     if let Err(error) = patch.validate() { ui.label(error); }
-                    if ui.add_enabled(available && !patch.is_empty() && patch.validate().is_ok(), egui::Button::new("Review these field changes")).help(ui, help::Control::TagReview).clicked() {
+                    if ui.add_enabled(available && !patch.is_empty() && patch.validate().is_ok(), egui::Button::new(tr!("Review these field changes"))).help(ui, help::Control::TagReview).clicked() {
                         self.library_tags.reviewed = Some(patch);
                         self.library_tags.generation = self.library_tags.generation.saturating_add(1);
                     }
@@ -619,11 +619,11 @@ impl App {
             if let Some(patch) = &self.library_tags.reviewed {
                 ui.separator();
                 for (name, value) in [("Title", &patch.title), ("Artist", &patch.artist), ("BPM", &patch.bpm), ("Key", &patch.key)] {
-                    if let Some(value) = value { ui.label(format!("{name} → {}", if value.is_empty() { "[clear]" } else { value })); }
+                    if let Some(value) = value { ui.label({ let __omatainer_args = (&(if value.is_empty() { "[clear]" } else { value }),); crate::localization::format("{name} → {}", &[format!("{}", name), format!("{}", __omatainer_args.0)]) }); }
                 }
-                ui.label("Each track is saved separately. Cancelling leaves earlier completed tracks saved.");
+                ui.label(tr!("Each track is saved separately. Cancelling leaves earlier completed tracks saved."));
                 ui.push_id(("tag-commit", self.library_tags.generation), |ui| {
-                    commit = ui.add_enabled(available, egui::Button::new("Apply reviewed edits to captured tracks")).help(ui, help::Control::TagApply).clicked();
+                    commit = ui.add_enabled(available, egui::Button::new(tr!("Apply reviewed edits to captured tracks"))).help(ui, help::Control::TagApply).clicked();
                 });
             }
             ui.separator();
@@ -635,7 +635,7 @@ impl App {
                 });
                 accessibility::scrollbars(ui, "Tag save outcomes", &output);
             }
-            if ui.add_enabled(!busy, egui::Button::new("Retry tag recovery")).help(ui, help::Control::TagRecovery).clicked() { self.library_tags.recovery_checked = false; self.library_metadata.retry_save(); }
+            if ui.add_enabled(!busy, egui::Button::new(tr!("Retry tag recovery"))).help(ui, help::Control::TagRecovery).clicked() { self.library_tags.recovery_checked = false; self.library_metadata.retry_save(); }
         });
         self.library_tags.open = open;
         if !open {

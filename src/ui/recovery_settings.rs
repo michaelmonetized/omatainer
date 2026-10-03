@@ -4,7 +4,7 @@ use super::*;
 
 pub(super) fn edit(ui: &mut Ui, config: &mut crate::recovery::Config) {
     use crate::recovery::*;
-    ui.label("Dirty edit state is batched about every 2 seconds. Checkpoints compact that journal separately; the Recovery window reports the age of the last confirmed durable record.");
+    ui.label(tr!("Dirty edit state is batched about every 2 seconds. Checkpoints compact that journal separately; the Recovery window reports the age of the last confirmed durable record."));
     let mut interval = config.checkpoint_seconds as f32;
     preferences::float_control(
         ui,
@@ -44,5 +44,5 @@ pub(super) fn edit(ui: &mut Ui, config: &mut crate::recovery::Config) {
     if storage != displayed_storage {
         config.max_bytes = storage.round() as u64 * MIB;
     }
-    ui.label("The global limit includes embedded media, journals and staging files. At the limit, new writes fail visibly; the only usable recovery is never deleted automatically to make room. Retention applies to generations within a session, not other sessions.");
+    ui.label(tr!("The global limit includes embedded media, journals and staging files. At the limit, new writes fail visibly; the only usable recovery is never deleted automatically to make room. Retention applies to generations within a session, not other sessions."));
 }

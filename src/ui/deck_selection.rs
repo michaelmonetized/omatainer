@@ -64,9 +64,9 @@ impl App {
     pub(super) fn deck_selectors(&mut self, ui: &mut Ui) {
         let queued = self.deck_selection.pending
             .is_some_and(|(request, _)| request > self.snap.selected_deck_request);
-        ui.label(if queued { "load target (queued)" } else { "load target" });
+        ui.label(if queued { tr!("load target (queued)") } else { tr!("load target") });
         for deck in 0..DECKS {
-            if ui.selectable_label(self.load_target() == deck, format!("Deck {}", (b'A' + deck as u8) as char))
+            if ui.selectable_label(self.load_target() == deck, { let __omatainer_args = (&((b'A' + deck as u8) as char),); crate::localization::format("Deck {}", &[format!("{}", __omatainer_args.0)]) })
                 .help(ui, HelpControl::DeckSelect)
                 .clicked() {
                 self.select_deck(deck);
