@@ -12,6 +12,7 @@ pub(super) struct LibraryView {
     collection_revision: u64,
     pub generation: u64,
     pub unavailable: usize,
+    pub annotation_error: String,
     pub indices: Arc<Vec<usize>>,
     selected: Option<LibSource>,
     selected_index: usize,
@@ -35,6 +36,7 @@ pub(super) struct Cells {
     pub played_at: Option<SystemTime>,
     pub played_tooltip: String,
     pub played_refresh_at: Option<SystemTime>,
+    pub annotations: [String; 5],
     played_clock: SystemTime,
 }
 
@@ -48,6 +50,7 @@ impl Cells {
             played_tooltip: played.tooltip,
             played_refresh_at: played.next_change,
             played_clock: now,
+            annotations: std::array::from_fn(|_|String::new()),
             played_at,
         }
     }
@@ -98,6 +101,7 @@ impl App {
         // so the scan worker remains responsible for retiring the large Vec.
         let library_changed = view.library.as_ptr() != Arc::as_ptr(&self.library);
         let query_changed = view.query != self.lib_filter;
+        let annotations_changed = view.catalog.as_ptr() != Arc::as_ptr(&self.library_metadata.catalog);
         if !library_changed {
             let source = view
                 .indices
@@ -116,20 +120,37 @@ impl App {
             }
             view.last_played_index = self.last_play_idx;
         }
-        if library_changed || query_changed || crate_changed {
-            let q = self.lib_filter.to_lowercase();
+        if library_changed || query_changed || crate_changed || annotations_changed {
+            let parsed = crate::library::annotations::Rule::search(&self.lib_filter);
+            view.annotation_error = parsed.as_ref().err().cloned().unwrap_or_default();
+            let valid_query = parsed.is_ok();
+            let (query, rule) = parsed.unwrap_or_default();
+            let q = query.to_lowercase();
+            let rule_active = rule != crate::library::annotations::Rule::default();
+            let annotated = self.library_metadata.catalog.tracks.iter().any(|track|!track.annotations.is_empty());
+            let empty_annotations = crate::library::annotations::Annotations::default();
             let indices = Arc::make_mut(&mut view.indices);
             indices.clear();
-            let matches = |item: &LibItem| q.is_empty()
-                || item.title.to_lowercase().contains(&q)
-                || item.artist.to_lowercase().contains(&q);
+            let matches = |item: &LibItem| {
+                if !valid_query { return false; }
+                let ordinary = q.is_empty() || item.title.to_lowercase().contains(&q) || item.artist.to_lowercase().contains(&q);
+                if !rule_active && ordinary { return true; }
+                if !rule_active && !annotated { return false; }
+                let fields = self.library_metadata.catalog.track(&item.source).map_or(&empty_annotations, |track| &track.annotations);
+                (ordinary || fields.matches_text(&q)) && (!rule_active || rule.matches(fields))
+            };
             view.unavailable = 0;
             if let Some(node) = selected_crate.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)) {
                 let rows = self.library_metadata.collection_rows();
+                if let Some(rule) = &node.annotation_rule {
+                    indices.extend(self.library.iter().enumerate().filter_map(|(index, item)|
+                        (matches(item) && self.library_metadata.catalog.track(&item.source).is_some_and(|track|rule.matches(&track.annotations))).then_some(index)));
+                } else {
                 for member in &node.members {
                     if let Some(index) = rows.row(member, &self.library, &self.library_metadata.catalog) {
                         if matches(&self.library[index]) { indices.push(index); }
                     } else { view.unavailable += 1; }
+                }
                 }
             } else {
                 indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| matches(item).then_some(index)));

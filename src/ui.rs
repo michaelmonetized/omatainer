@@ -15,6 +15,7 @@ mod library_scan;
 mod library_metadata;
 mod library_analysis;
 mod library_tags;
+mod library_annotations;
 mod library_crates;
 mod library_store;
 pub(crate) mod bpm;
@@ -131,6 +132,7 @@ pub struct App {
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
     library_tags: library_tags::Panel,
+    library_annotations: library_annotations::Panel,
     library_crates: library_crates::Crates,
     library_import_open: bool,
     library_initialized: bool,
@@ -246,6 +248,7 @@ impl App {
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
             library_tags: library_tags::Panel::default(),
+            library_annotations: library_annotations::Panel::default(),
             library_crates: library_crates::Crates::default(),
             library_import_open: false,
             library_initialized: false,
@@ -744,6 +747,7 @@ impl App {
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.library_tags_ui(ctx);
+        self.library_annotations_ui(ctx);
         self.named_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
@@ -1248,6 +1252,7 @@ impl App {
                     self.library_scan.cancel();
                 }
                 if ui.button("analyze…").help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
+                if ui.button("annotations…").help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
                 if ui.button("tags…").help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
                 if ui.button("library…").help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
@@ -1264,7 +1269,7 @@ impl App {
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
-                ui.label(RichText::new(if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(t.text_size(10.0)).color(t.muted));
+                ui.label(RichText::new(if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.annotation_rule.is_some()) { "automatic annotation rule" } else if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(t.text_size(10.0)).color(t.muted));
                 ui.label(RichText::new("metadata: inspect tags…").size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(t.text_size(10.0)).color(t.fg_dim)).truncate())
@@ -1275,14 +1280,15 @@ impl App {
             if let Some(state)=selected_source.as_ref().and_then(|source|self.library_scan.summary.as_ref().and_then(|s|s.availability.get(source))) {
                 ui.label(format!("Last scan: {state}. Library records are retained."));
             }
-            let header = ["song", "bpm · source", "key", "length", "last play", "artist"];
-            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0].map(|width| width * (t.text_size(11.0) / 11.0).max(1.0));
+            let header = ["song", "bpm · source", "key", "length", "last play", "artist", "rating", "color", "group", "tags", "notes"];
+            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0, 64.0, 88.0, 128.0, 160.0, 240.0].map(|width| width * (t.text_size(11.0) / 11.0).max(1.0));
             ui.horizontal(|ui| {
                 for (h, w) in header.iter().zip(col_w.iter()) {
                     ui.add_sized(Vec2::new(*w, t.target_size(16.0)), egui::Label::new(RichText::new(*h).size(t.text_size(10.0)).color(t.fg_dim)));
                 }
             });
             self.refresh_library_view();
+            if !self.library_view.annotation_error.is_empty() { ui.colored_label(ui.visuals().warn_fg_color, &self.library_view.annotation_error); }
             if self.library_view.unavailable != 0 {
                 ui.label(format!("{} saved members unavailable in this published view; inspect Named crates for their identities.", self.library_view.unavailable));
             }
@@ -1302,7 +1308,9 @@ impl App {
                     let played_at = self.item_last_play(item);
                     let cells = self.library_view.cells.entry(i).or_insert_with(|| {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
-                        Cells::new(item, played_at, now)
+                        let mut cells = Cells::new(item, played_at, now);
+                        if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); }
+                        cells
                     });
                     if cells.refresh_play(played_at, now) {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
@@ -1321,13 +1329,14 @@ impl App {
                     if sel { ui.painter().rect_filled(rect, 2.0, t.tint(t.accent, 0.18)); }
                     if sel { active_mark(ui.painter(), rect, t.fg); }
                     let mut x = rect.left();
-                    for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist].iter().zip(col_w) {
+                    for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist, &cells.annotations[0], &cells.annotations[1], &cells.annotations[2], &cells.annotations[3], &cells.annotations[4]].iter().zip(col_w) {
                         ui.painter().text(Pos2::new(x + 4.0, rect.center().y), egui::Align2::LEFT_CENTER,
                             *txt, FontId::proportional(t.text_size(11.0)), if sel { t.accent } else { t.fg });
                         x += w;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
                     accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
+                    if let Some(track) = self.library_metadata.catalog.track(&item.source) { accessibility::status(ui, &resp, &track.annotations.description()); }
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
@@ -1335,6 +1344,7 @@ impl App {
                         self.library_metadata.catalog.version(&item.source, item.fingerprint).and_then(|v| v.tags.as_ref())
                             .map_or_else(|| "Title/artist/key: filename or catalog fallback; embedded tags not yet inspected".into(), |tags| tags.describe()),
                         cells.played_tooltip.clone(),
+                        self.library_metadata.catalog.track(&item.source).map(|track|track.annotations.description()).unwrap_or_default(),
                         format!("Track ID: {identity}"), format!("Location: {:?}", item.source),
                         help::tooltip_text(HelpControl::CrateRow),
                     ]);

@@ -18,8 +18,8 @@ pub(super) struct Crates {
     name: String,
     position: usize,
     member_cursor: usize,
-    message: String,
-    pending: Option<(CollectionToken, CollectionAction)>,
+    pub(super) message: String,
+    pub(super) pending: Option<(CollectionToken, CollectionAction)>,
     retry: Option<(u64, CollectionAction)>,
     delete: Option<Deletion>,
     #[cfg(test)]
@@ -100,8 +100,10 @@ impl App {
             if self.library_crates.pending.as_ref().is_some_and(|(token, _)| token.id == receipt.id) {
                 let (_, action) = self.library_crates.pending.take().unwrap();
                 self.library_crates.retry = None;
+                let annotation = matches!(&action, CollectionAction::Annotate { .. });
                 self.library_crates.message = match receipt.outcome {
                     CollectionOutcome::Read => "Crates refreshed from the catalog owner.".into(),
+                    CollectionOutcome::Durable { changed } if annotation => if changed { "Annotations saved.".into() } else { "Annotations already match; no changes needed.".into() },
                     CollectionOutcome::Durable { changed } => if changed { "Crate changes saved.".into() } else { "Crates already match; no changes needed.".into() },
                     CollectionOutcome::CommittedUnconfirmed(error) => format!("Crate changes committed; durability unconfirmed: {error}. Do not repeat this edit."),
                     CollectionOutcome::Unknown(error) => format!("Crate outcome unknown: {error}. Reopen the catalog before repeating this edit."),
@@ -116,7 +118,7 @@ impl App {
         self.refresh_named_crates();
     }
 
-    fn submit_crate_edit(&mut self, revision: u64, action: CollectionAction) {
+    pub(super) fn submit_crate_edit(&mut self, revision: u64, action: CollectionAction) {
         if self.project.committing() || !self.project.dialog_is_closed() || self.library_closing() {
             self.library_crates.message = "Finish or cancel the pending project/library decision before editing crates.".into();
             return;

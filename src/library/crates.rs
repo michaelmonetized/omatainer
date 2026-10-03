@@ -32,6 +32,8 @@ pub(crate) struct Node<K> {
     pub name: String,
     pub children: Vec<CrateId>,
     pub members: Vec<K>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub annotation_rule: Option<crate::library::annotations::Rule>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,6 +62,7 @@ pub(crate) enum Edit<K> {
         parent: Option<CrateId>,
         before: Option<CrateId>,
     },
+    SetAnnotationRule { id: CrateId, rule: Option<crate::library::annotations::Rule> },
     Rename {
         id: CrateId,
         name: String,
@@ -152,6 +155,10 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
                 return Err(Error::Invalid("too many parent edges"));
             }
             validate_name(&node.name)?;
+            if let Some(rule) = &node.annotation_rule {
+                rule.validate().map_err(|_| Error::Invalid("invalid annotation rule"))?;
+                if !node.members.is_empty() { return Err(Error::Invalid("smart annotation crates have no manual members")); }
+            }
             if node.children.len() > MAX_CRATES || node.members.len() > MAX_MEMBERS {
                 return Err(Error::Limit("crate children or 100000 members"));
             }
@@ -216,6 +223,12 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
         self.validate(&known)?;
         edit.validate_payload()?;
         let mut next = self.clone();
+        let member_target = match edit {
+            Edit::AddMembers { id, .. } | Edit::RemoveMembers { id, .. } => self.node(id).is_some_and(|node|node.annotation_rule.is_some()),
+            Edit::MoveMembers { source, destination, .. } => [source, destination].into_iter().any(|id|self.node(id).is_some_and(|node|node.annotation_rule.is_some())),
+            _ => false,
+        };
+        if member_target { return Err(Error::Invalid("Smart annotation crate membership comes from its saved rule")); }
         next.apply_inner(edit)?;
         next.validate(known)?;
         self.commit(next)
@@ -345,8 +358,14 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
                     name: name.clone(),
                     children: vec![],
                     members: vec![],
+                    annotation_rule: None,
                 });
             }
+            Edit::SetAnnotationRule { id, rule } => {
+                let node = self.node_mut(id)?;
+                if rule.is_some() && !node.members.is_empty() { return Err(Error::Invalid("Create an empty crate before enabling an annotation rule; manual members were preserved")); }
+                node.annotation_rule = rule.clone();
+            },
             Edit::Rename { id, name } => self.node_mut(id)?.name.clone_from(name),
             Edit::MoveCrate { id, parent, before } => {
                 if self.node(id).is_none() {
@@ -449,6 +468,7 @@ impl<K: Eq + Hash> Edit<K> {
                 }
                 validate_name(name)
             }
+            Self::SetAnnotationRule { rule, .. } => rule.as_ref().map_or(Ok(()), |rule| rule.validate().map_err(|_| Error::Invalid("invalid annotation rule"))),
             Self::Rename { name, .. } => validate_name(name),
             Self::AddMembers { members, .. }
             | Self::RemoveMembers { members, .. }
