@@ -12530,7 +12530,7 @@
     "src/ui/project/tests/library_history_tests.rs": "b71506dd911a1830a24c9f3b0e35bf65a9292721cfaf2d1a12cc0ae00f7ade48",
     "src/ui/project/worker.rs": "8f628d000ca6189cab37456ea915629dce4395f253eaf30197edeea8e52333d2",
     "src/ui/recovery.rs": "64a7a1bb87f63f78dcffb1631ea49be989ce113a05e292a71d7a49aa5a8f4bd4",
-    "src/ui/recovery/tests.rs": "c9c560487e6f4a2d75b52cc9184e2222615f9debad46ab8ae0d275a15ab143e2",
+    "src/ui/recovery/tests.rs": "5130ce189d052852f1d059bef00b0fae5c4bec00ff84daee238360381f1de6de",
     "src/ui/recovery/worker.rs": "5e73b96a3e7455e1b6e7fa10d61bfcd70d1ffb00c044a4aba544ec46a8551e6f",
     "src/ui/recovery_settings.rs": "7032ecbdeec6ec8f5f6825e1b2c0257cbd4495e93b0e08d059df47964ead406c",
     "src/ui/sampler_editor.rs": "9d24ed22e5de666adab12b07ca1930d3fdb822c868a9abbd6986b6280229aa93",
