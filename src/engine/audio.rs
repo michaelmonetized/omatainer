@@ -57,7 +57,7 @@ impl owner::Backend for Native {
     ) -> Result<Self::Stream, String> {
         let device = config::select_exact(plan).map_err(|e| e.to_string())?;
         if identity.is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected)) {
-            return Err("Physical output changed before opening; no other output was opened".into());
+            return Err("Physical output changed before opening; no other output was activated".into());
         }
         let cfg = plan.config();
         let errors = callback.rt.telemetry.clone();

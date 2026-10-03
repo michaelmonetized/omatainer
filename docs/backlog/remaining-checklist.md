@@ -1,6 +1,6 @@
 # Remaining professional backlog
 
-One implementation branch above PR #499 (`stack/issue-128-workspaces`, `8afc8384c40692ca889730fe83bae973c652c778`). Inventory taken from the GitHub REST API on 2026-10-03. Existing PRs cover issues #2–#128; those issues remain open until the stack merges. Issue #1 tracks the full backlog.
+One implementation branch above PR #501 (`stack/issue-129-audio-recovery`, `665c199acba1b556782188582c90f858c62207e1`). The original #499 base was advanced after a separate audio-recovery PR appeared; its completed commits are incorporated without changing its worktree. Inventory taken from the GitHub REST API on 2026-10-03. Existing PRs cover issues #2–#128; those issues remain open until the stack merges. Issue #1 tracks the full backlog.
 
 229 remaining feature issues. A checked item requires implementation and acceptance evidence. Physical-device and authorized-service validation must be recorded separately from local fixtures.
 

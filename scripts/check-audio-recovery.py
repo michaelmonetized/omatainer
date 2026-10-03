@@ -5,9 +5,9 @@ import datetime as dt
 import hashlib
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
-import tempfile
 import time
 
 TEST = 'engine::audio::owner::recovery_tests::private_native_pipewire_restart_retains_recorded_document_and_requires_explicit_fallback'
@@ -27,12 +27,10 @@ context.objects = [
  { factory = adapter args = { factory.name = support.null-audio-sink node.name = test-sink media.class = Audio/Sink audio.position = [ FL FR ] node.always-process = true adapter.auto-port-config = { mode = dsp monitor = false position = preserve } } }
 ]
 '''
-ALSA = '''ctl.hw { @args [ CARD ] @args.CARD { type string default "0" } type hw card $CARD }
+ALSA = '''pcm_type.pipewire { lib "/usr/lib/alsa-lib/libasound_module_pcm_pipewire.so" }
+ctl.hw { @args [ CARD ] @args.CARD { type string } type hw card $CARD }
 defaults.namehint.showall off
-defaults.namehint.basic on
-defaults.namehint.extended off
-pcm_type.pipewire { lib "/usr/lib/alsa-lib/libasound_module_pcm_pipewire.so" }
-pcm.!default { type pipewire server "omatainer-test" playback_node "test-sink" rate 48000 channels 2 hint { show on description "Private recovery fixture" ioid "Output" } }
+pcm.!default { type pipewire server "omatainer-test" playback_node "test-sink" rate 48000 channels 2 hint { show on description "Private recovery fixture" } }
 '''
 PORTS = '{ direction = Output mode = dsp monitor = false format = { mediaType = audio mediaSubtype = raw format = F32P rate = 48000 channels = 2 position = [ FL FR ] } }'
 
@@ -83,13 +81,15 @@ def connect(env, configured, links):
                     links.add(pair)
 
 
-def run(binary, destination):
+def run(binary, destination, fault):
     """Qualify a native test executable.
-    Takes its path and a new evidence directory; returns a verified restart receipt.
+    Takes its path, a new evidence directory and fault; returns a verified recovery receipt.
     """
     destination.mkdir()
     root = destination.resolve()
     runtime = root / 'runtime'
+    if len(os.fsencode(runtime / 'omatainer-test-manager')) >= 108:
+        raise ValueError('Choose a shorter evidence path for the private Unix socket')
     runtime.mkdir(mode=0o700)
     (root / 'pipewire.conf').write_text(SERVER)
     (root / 'alsa.conf').write_text(ALSA)
@@ -126,10 +126,23 @@ def run(binary, destination):
             if time.monotonic() > deadline:
                 raise RuntimeError('Native recovery test exceeded 40 seconds')
             if (root / 'started.json').exists() and not killed:
-                stop(server)
+                if fault == 'server-restart':
+                    stop(server)
+                elif fault == 'suspend-gap':
+                    child.send_signal(signal.SIGSTOP)
+                    time.sleep(6)
+                    child.send_signal(signal.SIGCONT)
+                else:
+                    nodes = json.loads(command(['pw-dump', '-r', 'omatainer-test'], env).stdout)
+                    playback = [item['id'] for item in nodes if item['type'].endswith(':Node')
+                                and item.get('info', {}).get('props', {}).get('node.name', '').startswith('alsa_playback.')]
+                    if len(playback) != 1:
+                        raise RuntimeError('Expected exactly one private playback stream')
+                    command(['pw-cli', '-r', 'omatainer-test', 'destroy', str(playback[0])], env)
                 killed = True
             if (root / 'offline.json').exists() and not restarted:
-                server = start_server()
+                if fault == 'server-restart':
+                    server = start_server()
                 configured.clear()
                 links.clear()
                 restarted = True
@@ -144,10 +157,11 @@ def run(binary, destination):
             'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
             'pipewire': command(['pipewire', '--version'], env).stdout.decode().strip(),
             'server_pids': [process.pid for process in servers], 'test_pid': child.pid,
+            'fault': fault,
             'started_stream': json.loads((root / 'started.json').read_text()),
             'offline': json.loads((root / 'offline.json').read_text()),
             'restored': json.loads((root / 'done.json').read_text()),
-            'scope': 'Real CPAL/ALSA stream, private PipeWire restart and null sink; no physical interface, USB removal or system suspend',
+            'scope': 'Real CPAL/ALSA stream and private PipeWire null sink; stream removal/reopen, server restart or six-second process freeze. No physical interface, USB removal or system suspend',
         }
     finally:
         stop(child)
@@ -162,5 +176,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--test-binary', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--fault', choices=['server-restart', 'stream-removal', 'suspend-gap'], default='server-restart')
     args = parser.parse_args()
-    print(json.dumps(run(args.test_binary, args.destination), indent=2))
+    print(json.dumps(run(args.test_binary, args.destination, args.fault), indent=2))

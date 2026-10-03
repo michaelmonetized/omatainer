@@ -42,6 +42,7 @@ fn lost_output_finalizes_real_recording_and_preserves_project_route_and_input_re
         engine.cmd.send(command).unwrap();
     }
     wait(|| engine.snapshot().compose_target.is_some() && engine.snapshot().playing);
+    engine.cmd.send(Command::PerformanceMode(true)).unwrap();
     std::thread::sleep(Duration::from_millis(20));
     let before = engine.project.capture(&AtomicBool::new(false)).unwrap();
     fault(&audio, &controls);
@@ -343,6 +344,7 @@ fn private_native_pipewire_restart_retains_recorded_document_and_requires_explic
         engine.cmd.send(command).unwrap();
     }
     wait(|| engine.snapshot().playing && engine.snapshot().compose_target.is_some());
+    engine.cmd.send(Command::PerformanceMode(true)).unwrap();
     std::thread::sleep(Duration::from_millis(30));
     std::fs::write(dir.join("started.json"),serde_json::to_vec(&serde_json::json!({
         "callbacks":engine.cmd.audio_metrics().callbacks,"output":audio.handle.status().active.as_ref().unwrap().plan.device,
