@@ -592,6 +592,10 @@ impl App {
         let name = if self.snap.sampler_inst.synth().is_some() {
             format!("Pad {}: {} MIDI note {}", p + 1, identity.piano_label(), identity.midi_note(self.snap.sampler_oct))
         } else { format!("Sample pad {}", p + 1) };
+        if self.pad_held[p] {
+            active_mark(ui.painter(), r.rect, self.theme.fg);
+            ui.painter().rect_stroke(r.rect.shrink(3.0), 2.0, st(2.0,self.theme.fg), egui::StrokeKind::Inside);
+        }
         accessibility::button(ui, r, &name, Some(self.pad_held[p]));
         r.ctx.accesskit_node_builder(r.id, |node| {
             node.set_description(if enabled { "Hold Space or Enter to play; release or move focus to stop. Assistive click toggles a hold; Shift+F10 offers Press and Release." } else { "No piano accidental at this pad; Release pad still releases an existing hold." });
@@ -701,8 +705,22 @@ impl App {
         }
 
         self.support_ui(ctx);
-        self.performance_ui(ctx);
-        self.project_toolbar(ctx);
+        // Collapsing four tall rows preserves the performance viewport when text is large.
+        let compact = ctx.screen_rect().height() < self.theme.text_size(12.0) * 16.0 + 160.0
+            || ctx.screen_rect().width() < self.theme.text_size(12.0) * 26.0;
+        if compact {
+            egui::TopBottomPanel::top("compact-controls").show(ctx, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    self.performance_controls(ctx, Some(ui));
+                    self.project_controls(ctx, Some(ui));
+                    self.setup_controls(ctx, Some(ui));
+                    self.master_controls(ctx, Some(ui));
+                });
+            });
+        } else {
+            self.performance_ui(ctx);
+            self.project_toolbar(ctx);
+        }
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
         self.cue_editor_ui(ctx);
@@ -720,8 +738,7 @@ impl App {
         self.named_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
-        self.audio_status(ctx);
-        self.master_fx_status(ctx);
+        if !compact { self.audio_status(ctx); self.master_fx_status(ctx); }
         let t = self.theme.clone();
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(t.bg).inner_margin(6.0))
@@ -731,12 +748,12 @@ impl App {
                 let w = ui.available_width();
                 // Keep every focused control reachable at small window sizes.
                 // Custom focus handlers request scrolling inside this surface.
-                let surface = egui::ScrollArea::both().id_salt("performance-surface").auto_shrink([false, false]).show(ui, |ui| {
+                let surface = egui::ScrollArea::both().id_salt("performance-surface").animated(!t.reduced_motion).auto_shrink([false, false]).show(ui, |ui| {
                 ui.set_width(w);
                 let gap = 4.0;
-                let samp_h = 118.0;
-                let crate_h = 108.0;
-                let seq_row = (t.font_size + 10.0).clamp(20.0, 26.0);
+                let samp_h = (118.0_f32).max(t.target_size(32.0) * 5.0 + 20.0);
+                let crate_h = (108.0_f32).max(t.target_size(26.0) * 4.0 + 24.0);
+                let seq_row = t.target_size(26.0);
                 let seq_h = 70.0 + 26.0 + 48.0 + seq_row * SCENES as f32 + gap * (SCENES as f32 + 2.0);
                 let scratch_h = (h - samp_h - crate_h - seq_h - gap * 3.0).max(200.0);
                 ui.allocate_ui(Vec2::new(ui.available_width(), scratch_h), |ui| {
@@ -779,7 +796,7 @@ impl App {
         }
         self.help_panel(ctx);
         if self.midi_open {
-            egui::Window::new("midi").vscroll(true).max_height((ctx.screen_rect().height()-64.0).max(200.0)).show(ctx, |ui| {
+            egui::Window::new("midi").vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
                 if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
                     match self.engine.midi.retry_connections() {
@@ -869,8 +886,8 @@ impl App {
         let h = ui.available_height();
         let w = ui.available_width();
         let gap = 4.0;
-        let fader_h = 28.0;
-        let (sq, wave_h, side_w, mid_w) = scratch_metrics(w, h, fader_h, gap);
+        let fader_h = t.target_size(28.0);
+        let (sq, wave_h, side_w, mid_w) = scratch_metrics(w, h, fader_h, gap, t.target_size(22.0).max(if t.font_size <= 18.0 { t.text_size(11.0) * 2.0 + 8.0 } else { 0.0 }));
         ui.with_layout(egui::Layout::left_to_right(Align::Min), |ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(gap);
             ui.allocate_ui(Vec2::new(side_w, h), |ui| {
@@ -944,9 +961,9 @@ impl App {
                 .help_detail(ui, HelpControl::PitchLock, &status).clicked() {
                 self.send(Command::DeckKeylock { deck: d as u8 });
             }
-            let fader_h = (h - sq * 2.0 - 8.0).max(48.0);
+            let fader_h = (h - sq * 2.0 - 8.0).max(t.target_size(48.0)).min((ui.clip_rect().height() - 8.0).max(t.target_size(24.0)));
             let span = [8.0, 16.0, 50.0][snap.pitch_range.min(2) as usize];
-            if let Some(v) = fader(ui, t, snap.pitch, span, 0.0, t.accent, sq, fader_h) {
+            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h) {
                 self.send(Command::DeckPitch { deck: d as u8, value: v });
             }
             let lab = ["8", "16", "50"][snap.pitch_range.min(2) as usize];
@@ -1048,7 +1065,7 @@ impl App {
             // This row uses the same existing 28 px footer as the wave fader;
             // it does not shrink the platter or add height to the scratch area.
             ui.push_id(("deck-time", d), |ui| {
-                let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(11.0)).help(ui, HelpControl::DeckTime);
+                let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(t.text_size(11.0))).help(ui, HelpControl::DeckTime);
                 egui::Popup::menu(&button)
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
                     .show(|ui| {
@@ -1097,7 +1114,7 @@ impl App {
     }
 
     fn sampler_row(&mut self, ui: &mut Ui, t: &Theme) {
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             let edit = ui.button("Edit banks");
             accessibility::button(ui, &edit, "Edit sampler banks", None);
             help::annotate(ui, &edit, HelpControl::SamplerEdit);
@@ -1158,17 +1175,17 @@ impl App {
                 instrument.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, "Sampler instrument"));
                 ui.ctx().accesskit_node_builder(instrument.response.id, |node| node.set_value(instrument_label));
                 ui.horizontal(|ui| {
-                    if sq_btn(ui, t, "^", false, t.accent, 26.0).help(ui, HelpControl::SamplerOctave).clicked() {
+                    if sq_btn(ui, t, "^", false, t.accent, t.target_size(26.0)).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(1));
                     }
-                    ui.label(RichText::new(format!("C{}", self.snap.sampler_oct)).size(11.0).color(t.fg));
-                    if sq_btn(ui, t, "v", false, t.accent, 26.0).help(ui, HelpControl::SamplerOctave).clicked() {
+                    ui.label(RichText::new(format!("C{}", self.snap.sampler_oct)).size(t.text_size(11.0)).color(t.fg));
+                    if sq_btn(ui, t, "v", false, t.accent, t.target_size(26.0)).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(-1));
                     }
                 });
             });
-            let pad_w = ((w - 120.0 - 8.0) / 8.0).max(36.0);
-            let pad_h = ((h - 4.0) / 2.0).max(32.0);
+            let pad_w = ((w - (108.0_f32).max(t.text_size(12.0) * 14.0) - 14.0) / 8.0).max(t.text_size(12.0) * 4.0);
+            let pad_h = ((h - 4.0) / 2.0).max(t.target_size(32.0));
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(4.0);
                 let piano = self.snap.sampler_inst.synth().is_some();
@@ -1208,7 +1225,7 @@ impl App {
 
     fn crate_row_at(&mut self, ui: &mut Ui, t: &Theme, now: SystemTime) {
         ui.vertical(|ui| {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
                 let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
@@ -1236,22 +1253,22 @@ impl App {
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
-                ui.label(RichText::new(if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(10.0).color(t.muted));
-                ui.label(RichText::new("metadata: inspect tags…").size(10.0).color(t.muted)).on_hover_text(key_hints::HELP);
+                ui.label(RichText::new(if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(t.text_size(10.0)).color(t.muted));
+                ui.label(RichText::new("metadata: inspect tags…").size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
-                ui.add(egui::Label::new(RichText::new(&progress).size(10.0).color(t.fg_dim)).truncate())
+                ui.add(egui::Label::new(RichText::new(&progress).size(t.text_size(10.0)).color(t.fg_dim)).truncate())
                     .on_hover_text(progress);
             });
-            ui.label(RichText::new(self.library_metadata.label()).size(10.0).color(t.fg_dim));
+            ui.label(RichText::new(self.library_metadata.label()).size(t.text_size(10.0)).color(t.fg_dim));
             let selected_source=self.selected_library_item().map(|item|item.source.clone());
             if let Some(state)=selected_source.as_ref().and_then(|source|self.library_scan.summary.as_ref().and_then(|s|s.availability.get(source))) {
                 ui.label(format!("Last scan: {state}. Library records are retained."));
             }
             let header = ["song", "bpm · source", "key", "length", "last play", "artist"];
-            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0];
+            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0].map(|width| width * (t.text_size(11.0) / 11.0).max(1.0));
             ui.horizontal(|ui| {
                 for (h, w) in header.iter().zip(col_w.iter()) {
-                    ui.add_sized(Vec2::new(*w, 16.0), egui::Label::new(RichText::new(*h).size(10.0).color(t.fg_dim)));
+                    ui.add_sized(Vec2::new(*w, t.target_size(16.0)), egui::Label::new(RichText::new(*h).size(t.text_size(10.0)).color(t.fg_dim)));
                 }
             });
             self.refresh_library_view();
@@ -1260,13 +1277,14 @@ impl App {
             }
             let focus = ui.make_persistent_id("crate-navigation");
             self.crate_navigation(ui, focus);
-            let stride = 18.0 + ui.spacing().item_spacing.y;
+            let row_height = t.target_size(18.0);
+            let stride = row_height + ui.spacing().item_spacing.y;
             #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
-            let mut scroll = egui::ScrollArea::vertical().id_salt("crate-rows").auto_shrink([false, false]);
+            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").animated(!t.reduced_motion).auto_shrink([false, false]);
             if let Some(offset) = self.library_view.pending_offset.take() {
                 scroll = scroll.vertical_scroll_offset(offset);
             }
-            let output = scroll.show_rows(ui, 18.0, self.library_view.indices.len(), |ui, rows| {
+            let output = scroll.show_rows(ui, row_height, self.library_view.indices.len(), |ui, rows| {
                 self.library_view.cells.retain(|index, _| rows.contains(index));
                 for i in rows {
                     let item = &self.library[self.library_view.indices[i]];
@@ -1287,13 +1305,14 @@ impl App {
                     }
                     #[cfg(test)] { self.library_view.stats.rendered += 1; }
                     let sel = i == self.lib_sel;
-                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 18.0), Sense::hover());
+                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(col_w.iter().sum()), t.target_size(18.0)), Sense::hover());
                     let resp = ui.interact(rect, ui.id().with(("crate-source-row", &item.source)), Sense::click());
-                    if sel { ui.painter().rect_filled(rect, 2.0, t.accent.gamma_multiply(0.18)); }
+                    if sel { ui.painter().rect_filled(rect, 2.0, t.tint(t.accent, 0.18)); }
+                    if sel { active_mark(ui.painter(), rect, t.fg); }
                     let mut x = rect.left();
                     for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist].iter().zip(col_w) {
                         ui.painter().text(Pos2::new(x + 4.0, rect.center().y), egui::Align2::LEFT_CENTER,
-                            *txt, FontId::proportional(11.0), if sel { t.accent } else { t.fg });
+                            *txt, FontId::proportional(t.text_size(11.0)), if sel { t.accent } else { t.fg });
                         x += w;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
@@ -1340,13 +1359,13 @@ impl App {
         let Some(layout) = self.snap.session.clone() else { return; };
         let avail = ui.available_size();
         let gap = 4.0;
-        let head_h = 26.0;
-        let gain_h = 48.0;
-        let scene_w = 100.0;
+        let head_h = t.target_size(26.0);
+        let gain_h = t.target_size(32.0) + t.text_size(9.0) + 16.0;
+        let scene_w = (100.0_f32).max(t.text_size(11.0) * 9.0);
         let cols = layout.track_order.len() as f32;
         let rows = layout.scene_order.len() as f32;
-        let col_w = if cols <= 8.0 { ((avail.x - scene_w - gap * (cols + 1.0)) / cols).max(36.0) } else { 100.0 };
-        let row_h = (t.font_size + 10.0).clamp(20.0, 26.0);
+        let col_w = if cols <= 8.0 { ((avail.x - scene_w - gap * (cols + 1.0)) / cols).max(t.text_size(11.0) * 7.0) } else { (100.0_f32).max(t.text_size(11.0) * 7.0) };
+        let row_h = t.target_size(26.0);
         let pack_w = scene_w + gap + cols * col_w + (cols - 1.0) * gap;
         let pack_h = head_h + gap + rows * row_h + (rows - 1.0) * gap + gap + gain_h;
         ui.spacing_mut().item_spacing = Vec2::splat(gap);
@@ -1378,16 +1397,15 @@ impl App {
                             let (rect, _) = ui.allocate_exact_size(Vec2::new(col_w, head_h), Sense::hover());
                             let resp = ui.interact(rect, egui::Id::new(("session-track",layout.namespace,layout.tracks[tr].id.0)), Sense::click());
                             let fill = if mute {
-                                t.red.gamma_multiply(0.35)
+                                t.tint(t.red, 0.35)
                             } else if solo {
-                                t.yellow.gamma_multiply(0.35)
+                                t.tint(t.yellow, 0.35)
                             } else {
                                 t.bg_dark
                             };
                             ui.painter().rect_filled(rect, 4.0, fill);
-                            ui.painter().rect_stroke(rect, 4.0, st(1.0, layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr)).gamma_multiply(0.7)), egui::StrokeKind::Inside);
-                            let fs = (col_w * 0.12).clamp(10.0, 13.0);
-                            ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, name, FontId::proportional(fs), layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr)));
+                            ui.painter().rect_stroke(rect, 4.0, st(1.0, t.marker(layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr)), fill)), egui::StrokeKind::Inside);
+                            ui.painter_at(rect).text(rect.center(), egui::Align2::CENTER_CENTER, format!("{}{name}", if mute { "M " } else if solo { "S " } else { "" }), FontId::proportional(t.text_size(11.0)), t.fg);
                             grid_gained_focus |= resp.gained_focus();
                             accessibility::button(ui, &resp, &format!("Track {} {}: Mute", display_track + 1, name), Some(mute));
                             accessibility::status(ui, &resp, &format!("Mute {}; solo {}", if mute { "on" } else { "off" }, if solo { "on" } else { "off" }));
@@ -1414,9 +1432,9 @@ impl App {
                             let (hr, _) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::hover());
                             let hresp = ui.interact(hr, egui::Id::new(("session-scene",layout.namespace,layout.scenes[sc].id.0)), Sense::click());
                             let scene_color=layout.scenes[sc].color.map(|c|Color32::from_rgb(c[0],c[1],c[2])).unwrap_or(t.accent);
-                            ui.painter().rect_filled(hr,4.0,if on {scene_color.gamma_multiply(0.45)} else if layout.scenes[sc].color.is_some() {scene_color.gamma_multiply(0.22)} else {t.bg_dark});
-                            ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued || layout.scenes[sc].color.is_some() { scene_color } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
-                            ui.painter().with_clip_rect(hr).text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{} {}",display_scene+1,layout.scenes[sc].name), FontId::proportional(11.0), t.fg);
+                            ui.painter().rect_filled(hr,4.0,if on {t.tint(scene_color, 0.45)} else if layout.scenes[sc].color.is_some() {t.tint(scene_color, 0.22)} else {t.bg_dark});
+                            ui.painter().rect_stroke(hr, 4.0, st(1.0, if on || queued || layout.scenes[sc].color.is_some() { scene_color } else { t.marker(t.muted, t.bg_dark) }), egui::StrokeKind::Inside);
+                            ui.painter().with_clip_rect(hr).text(hr.center(), egui::Align2::CENTER_CENTER, &format!("{} {} {}", if queued { "Q" } else if on { ">" } else { "[]" }, display_scene+1,layout.scenes[sc].name), FontId::proportional(t.text_size(11.0)), t.fg);
                             grid_gained_focus |= hresp.gained_focus();
                             accessibility::button(ui, &hresp, &format!("Scene {}: Toggle playback", display_scene + 1), Some(on));
                             accessibility::status(ui,&hresp,&layout.scenes[sc].name);
@@ -1447,9 +1465,9 @@ impl App {
                                 let (rect, _) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::hover());
                                 let resp = ui.interact(rect, egui::Id::new(("session-clip",layout.namespace,layout.tracks[tr].id.0,layout.scenes[sc].id.0)), Sense::click());
                                 let fill = if playing {
-                                    color.gamma_multiply(0.55)
+                                    t.tint(color, 0.55)
                                 } else if filled {
-                                    color.gamma_multiply(0.22)
+                                    t.tint(color, 0.22)
                                 } else {
                                     t.bg_dark
                                 };
@@ -1457,19 +1475,17 @@ impl App {
                                 ui.painter().rect_stroke(
                                     rect,
                                     4.0,
-                                    st(if queued || (looping && playing) { 2.0 } else { 1.0 }, color.gamma_multiply(0.65)),
+                                    st(if queued || (looping && playing) { 2.0 } else { 1.0 }, t.marker(color, fill)),
                                     egui::StrokeKind::Inside,
                                 );
                                 if filled {
-                                    let fs = (row_h * 0.38).clamp(10.0, 13.0);
                                     let name = clip.map(|c| c.name.as_str()).unwrap_or("");
-                                    let queued_name = queued.then(|| format!("{name} · queued"));
-                                    let label = queued_name.as_deref().unwrap_or(name);
-                                    ui.painter().text(
+                                    let label = format!("{} {name}", if queued { "Q" } else if playing { ">" } else { "[]" });
+                                    ui.painter_at(rect).text(
                                         rect.center(),
                                         egui::Align2::CENTER_CENTER,
-                                        label,
-                                        FontId::proportional(fs),
+                                        &label,
+                                        FontId::proportional(t.text_size(11.0)),
                                         t.fg,
                                     );
                                     if playing {
@@ -1537,7 +1553,7 @@ impl App {
                     });
                 });
             };
-        if cols > 8.0 || rows > 8.0 {
+        if cols > 8.0 || rows > 8.0 || pack_w > avail.x || pack_h > avail.y {
             let area = egui::ScrollArea::both().id_salt("session-grid").auto_shrink([false, false])
                 .max_width(ui.clip_rect().width().min(avail.x)).max_height(avail.y.max(100.0)).animated(false).show_viewport(ui, &mut paint);
             if grid_gained_focus || reveal.is_some() { ui.scroll_to_rect_animation(area.inner_rect, Some(Align::Center),egui::style::ScrollAnimation::none()); }
@@ -1634,13 +1650,28 @@ fn fmt_len(seconds: Option<f64>) -> String {
 }
 
 
-fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32) -> (f32, f32, f32, f32) {
-    let mut wave_h = (h - fader_h - gap).max(120.0);
+/// Draw a full toolbar, or its scrollable menu in a compact control bar.
+/// `ctx`, optional parent, stable panel ID, caption and contents define the toolbar; returns no value.
+fn toolbar(ctx: &egui::Context, parent: Option<&mut Ui>, id: &'static str, title: &str, draw: impl FnOnce(&mut Ui)) {
+    if let Some(ui) = parent {
+        let menu = ui.menu_button(title, |ui| {
+            egui::ScrollArea::both().id_salt(id).auto_shrink([false,true])
+                .max_width((ctx.screen_rect().width()-32.0).max(80.0))
+                .max_height((ctx.screen_rect().height()*0.7).max(80.0)).show(ui, draw);
+        });
+        help::annotate(ui, &menu.response, HelpControl::DisplayLayout);
+    } else { egui::TopBottomPanel::top(id).resizable(false).show(ctx, draw); }
+}
+/// Compute coherent deck geometry for readable controls.
+/// `w`, `h`, fader height, gap and minimum square are logical units; returns square, waveform, side and center sizes.
+fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32, minimum_square: f32) -> (f32, f32, f32, f32) {
+    let minimum_wave = (minimum_square * 7.0).max(120.0);
+    let mut wave_h = (h - fader_h - gap).max(minimum_wave);
     let mut sq = 26.0;
     let mut side_w = 0.0;
     let mut mid_w = 0.0;
     for _ in 0..12 {
-        sq = (wave_h / 7.0).clamp(22.0, 34.0);
+        sq = (wave_h / 7.0).clamp(minimum_square, minimum_square.max(34.0));
         let cue_w = 4.0 * sq + 9.0;
         side_w = sq + gap + cue_w + gap + wave_h + gap + sq;
         mid_w = w - 2.0 * side_w - 2.0 * gap;
@@ -1648,9 +1679,9 @@ fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32) -> (f32, f32, f32, f3
             break;
         }
         wave_h *= 0.92;
-        if wave_h < 120.0 {
-            wave_h = 120.0;
-            sq = (wave_h / 7.0).clamp(22.0, 34.0);
+        if wave_h < minimum_wave {
+            wave_h = minimum_wave;
+            sq = (wave_h / 7.0).clamp(minimum_square, minimum_square.max(34.0));
             let cue_w = 4.0 * sq + 9.0;
             side_w = sq + gap + cue_w + gap + wave_h + gap + sq;
             mid_w = (w - 2.0 * side_w - 2.0 * gap).max(96.0);
@@ -1660,40 +1691,53 @@ fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32) -> (f32, f32, f32, f3
     (sq, wave_h, side_w, mid_w.max(96.0))
 }
 
+/// Mark an enabled button with a check independent of its hue.
+/// `painter`, control rectangle and foreground define the mark; returns no value.
+fn active_mark(painter: &egui::Painter, rect: Rect, color: Color32) {
+    let p = rect.right_top() + Vec2::new(-9.0, 5.0);
+    painter.line_segment([p + Vec2::new(-4.0, 2.0), p + Vec2::new(-2.0, 4.0)], st(1.5, color));
+    painter.line_segment([p + Vec2::new(-2.0, 4.0), p + Vec2::new(3.0, -1.0)], st(1.5, color));
+}
 fn st(width: f32, color: Color32) -> Stroke {
     Stroke { width, color }
 }
 
 fn pill(ui: &mut Ui, t: &Theme, text: &str, on: bool, accent: Color32) -> egui::Response {
-    let fill = if on { accent.gamma_multiply(0.35) } else { t.bg_light };
-    let stroke = if on { accent } else { t.muted.gamma_multiply(0.5) };
-    let galley = ui.painter().layout_no_wrap(text.to_owned(), FontId::proportional(11.0), if on { t.fg_bright } else { t.fg });
-    let size = Vec2::new((galley.size().x + 12.0).max(28.0), 20.0);
+    let fill = if on { t.tint(accent, 0.35) } else { t.bg_light };
+    let stroke = if on { accent } else { t.marker(t.muted, t.bg_dark) };
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), FontId::proportional(t.text_size(11.0)), if on { t.fg_bright } else { t.fg });
+    let size = Vec2::new((galley.size().x + 28.0).max(t.target_size(28.0)), t.target_size(20.0));
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     ui.painter().rect_filled(rect, 4.0, fill);
     ui.painter().rect_stroke(rect, 4.0, st(1.0, stroke), egui::StrokeKind::Inside);
     ui.painter().galley(Pos2::new(rect.center().x - galley.size().x * 0.5, rect.center().y - galley.size().y * 0.5), galley, t.fg);
+    if on { active_mark(ui.painter(), rect, t.fg); }
     accessibility::button(ui, &resp, text, Some(on));
     resp
 }
 
 fn sq_btn(ui: &mut Ui, t: &Theme, text: &str, on: bool, accent: Color32, size: f32) -> egui::Response {
-    let fill = if on { accent.gamma_multiply(0.4) } else { t.bg_light };
+    let size = t.target_size(size);
+    let fill = if on { t.tint(accent, 0.4) } else { t.bg_light };
     let (rect, resp) = ui.allocate_exact_size(Vec2::splat(size), Sense::click());
     ui.painter().rect_filled(rect, 4.0, fill);
-    ui.painter().rect_stroke(rect, 4.0, st(1.0, if on { accent } else { t.muted.gamma_multiply(0.5) }), egui::StrokeKind::Inside);
-    ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, text, FontId::proportional(11.0), t.fg);
+    ui.painter().rect_stroke(rect, 4.0, st(1.0, if on { accent } else { t.marker(t.muted, t.bg_dark) }), egui::StrokeKind::Inside);
+    // The cue number remains visible at large text sizes; its full name stays in help and accessibility.
+    let visible = if t.font_size > 18.0 { text.lines().next().unwrap_or(text) } else { text };
+    ui.painter_at(rect).text(rect.center(), egui::Align2::CENTER_CENTER, visible, FontId::proportional(t.text_size(11.0)), t.fg);
+    if on { active_mark(ui.painter(), rect, t.fg); }
     let name = match text { "L" | "L!" | "L~" => "Pitch lock", "Q" => "Quantize", "I/O" => "Loop in", "×2" => "Double loop", "½" => "Halve loop", "↻" => "Reloop", "⇄" => "Match decks", "^" => "Octave up", "v" => "Octave down", text => text };
     accessibility::button(ui, &resp, name, Some(on));
     resp
 }
 
 fn pad_btn(ui: &mut Ui, t: &Theme, text: &str, empty: bool, col: Color32, size: Vec2) -> egui::Response {
+    let size = Vec2::new(t.target_size(size.x), t.target_size(size.y));
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click_and_drag());
-    ui.painter().rect_filled(rect, 4.0, if empty { t.bg_darker } else { col.gamma_multiply(0.28) });
-    ui.painter().rect_stroke(rect, 4.0, st(1.0, col.gamma_multiply(0.6)), egui::StrokeKind::Inside);
+    ui.painter().rect_filled(rect, 4.0, if empty { t.bg_darker } else { t.tint(col, 0.28) });
+    ui.painter().rect_stroke(rect, 4.0, st(1.0, t.marker(col, t.bg_darker)), egui::StrokeKind::Inside);
     if !empty {
-        ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, text, FontId::proportional(12.0), t.fg);
+        ui.painter_at(rect).text(rect.center(), egui::Align2::CENTER_CENTER, text, FontId::proportional(t.text_size(12.0)), t.fg);
     }
     resp
 }
@@ -1719,8 +1763,9 @@ fn rotary_in(
     mute: bool,
     solo: bool,
 ) -> RotaryResp {
+    let size = size.min(cell.height() - t.text_size(9.0) - 5.0);
     let cx = cell.center().x;
-    let cy = cell.center().y - 6.0;
+    let cy = cell.top() + size * 0.5;
     let knob = Rect::from_center_size(Pos2::new(cx, cy), Vec2::splat(size));
     let resp = ui.interact(knob, ui.id().with(("rotary", id)), Sense::click_and_drag());
     let c = knob.center();
@@ -1734,7 +1779,7 @@ fn rotary_in(
         Pos2::new(cx, knob.bottom() + 1.0),
         egui::Align2::CENTER_TOP,
         label,
-        FontId::proportional(9.0),
+        FontId::proportional(t.text_size(9.0)),
         t.fg_dim,
     );
     let mut out = RotaryResp {
@@ -1772,7 +1817,7 @@ fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f
         let ang = -2.2 + value.clamp(0.0, 1.0) * 4.4;
         let dir = Vec2::angled(ang);
         ui.painter().line_segment([c, c + dir * (r - 3.0)], st(2.0, col));
-        ui.label(RichText::new(label).size(9.0).color(t.fg_dim));
+        ui.label(RichText::new(format!("{label}{}", if cut { " M" } else if solo { " S" } else { "" })).size(t.text_size(9.0)).color(t.fg_dim));
         let mut out = RotaryResp {
         gained_focus: resp.gained_focus(),
             value,
@@ -1821,31 +1866,31 @@ fn platter(
     let p = ui.painter();
     p.circle_filled(c, r, t.bg_darker);
     p.circle_stroke(c, r, st(if readout.warning { 3.0 } else { 2.0 },
-        if readout.warning { t.red } else { col.gamma_multiply(0.85) }));
+        if readout.warning { t.red } else { t.marker(col, t.bg_darker) }));
     for i in 6..16 {
         p.circle_stroke(c, r * i as f32 / 18.0, st(0.5, t.muted.gamma_multiply(0.35)));
     }
-    p.circle_filled(c, r * 0.38, col.gamma_multiply(0.28));
+    p.circle_filled(c, r * 0.38, t.tint(col, 0.28));
     let bpm = platter_bpm(snap);
     if !readout.status.is_empty() {
         p.text(c + Vec2::new(0.0, -r * 0.68), egui::Align2::CENTER_CENTER,
-            readout.status, FontId::proportional(10.0), if readout.warning { t.red } else { t.fg });
+            readout.status, FontId::proportional(t.text_size(10.0)), if readout.warning { t.red } else { t.fg });
     }
     p.text(
-        c + Vec2::new(0.0, -8.0),
+        c + Vec2::new(0.0, -t.text_size(18.0) * 0.65),
         egui::Align2::CENTER_CENTER,
         format!("{bpm:.1}"),
-        FontId::proportional((size * 0.11).clamp(12.0, 18.0)),
+        FontId::proportional(t.text_size((size * 0.11).clamp(12.0, 18.0))),
         t.fg_bright,
     );
     p.text(
-        c + Vec2::new(0.0, 10.0),
+        c + Vec2::new(0.0, t.text_size(14.0) * 0.65),
         egui::Align2::CENTER_CENTER,
         &readout.text,
-        FontId::monospace((size * 0.08).clamp(10.0, 14.0)),
+        FontId::monospace(t.text_size((size * 0.08).clamp(10.0, 14.0))),
         if readout.warning { t.red } else { t.accent },
     );
-    let angle = if snap.frames > 1.0 {
+    let angle = if !t.reduced_motion && snap.frames > 1.0 {
         (snap.pos / snap.frames) as f32 * std::f32::consts::TAU * 18.0
     } else {
         0.0
@@ -1909,7 +1954,7 @@ fn vertical_wave(
     }
     help::annotate(ui, &resp, HelpControl::Seek);
     if snap.peaks.is_empty() || snap.frames < 1.0 || snap.duration <= 0.01 {
-        p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(10.0), t.muted);
+        p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(t.text_size(10.0)), t.muted);
         return;
     }
     let pos_s = (snap.pos / snap.frames) as f32 * snap.duration;
@@ -1928,9 +1973,9 @@ fn vertical_wave(
     while i < b {
         let y = rect.top() + k as f32 * step as f32 / span as f32 * rect.height();
         let pk = snap.peaks[i];
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid - pk[0] * hw, y)], st(1.0, t.red.gamma_multiply(0.9)));
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid + pk[1] * hw, y)], st(1.0, t.green.gamma_multiply(0.85)));
-        p.line_segment([Pos2::new(mid - pk[2] * hw * 0.35, y), Pos2::new(mid + pk[2] * hw * 0.35, y)], st(1.0, col.gamma_multiply(0.5)));
+        p.line_segment([Pos2::new(mid, y), Pos2::new(mid - pk[0] * hw, y)], st(1.0, t.waveform(t.red, 0.9)));
+        p.line_segment([Pos2::new(mid, y), Pos2::new(mid + pk[1] * hw, y)], st(1.0, t.waveform(t.green, 0.85)));
+        p.line_segment([Pos2::new(mid - pk[2] * hw * 0.35, y), Pos2::new(mid + pk[2] * hw * 0.35, y)], st(1.0, t.waveform(t.marker(col, t.bg_darker), 0.5)));
         i += step;
         k += 1;
     }
@@ -1943,7 +1988,7 @@ fn vertical_wave(
         p.line_segment([Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)], st(1.0, color));
         let name = cue_editor::short_name(snap.cue_styles[i].name.as_str(), 8);
         p.text(Pos2::new(rect.left() + 2.0, y), egui::Align2::LEFT_BOTTOM,
-            format!("{} {}", i + 1, name), FontId::proportional(9.0), t.fg);
+            format!("{} {}", i + 1, name), FontId::proportional(t.text_size(9.0)), t.fg);
     }
     accessibility::status(ui, &resp, &snap.hotcue_positions.iter().enumerate()
         .filter(|(_, pos)| pos.is_some()).map(|(i, _)| cue_editor::description(snap, i)).collect::<Vec<_>>().join("; "));
@@ -1964,11 +2009,12 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
     let track = Rect::from_center_size(rect.center(), Vec2::new(7.0, rect.height() - 8.0));
     p.rect_filled(track, 3.0, t.bg_darker);
     let mh = track.height() * meter.clamp(0.0, 1.0);
-    p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.green);
+    p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.trace(t.green, t.level_contrast));
     let y = track.bottom() - value.clamp(0.0, 1.0) * track.height();
     p.rect_filled(Rect::from_center_size(Pos2::new(rect.center().x, y), Vec2::new(16.0, 7.0)), 2.0, col);
     let alternate = accessibility::numeric(ui, &resp, "Pitch", (value * 2.0 - 1.0) * span, -span, span, 0.1, "%")
         .map(|percent| (percent / span + 1.0) * 0.5);
+    accessibility::status(ui, &resp, &format!("Signal activity {:.0}% (smoothed, not a peak or clipping meter)", meter.clamp(0.0, 1.0) * 100.0));
     help::annotate(ui, &resp, HelpControl::Pitch);
     if resp.clicked() || resp.dragged() {
         if let Some(pos) = resp.interact_pointer_pos() {
@@ -1982,8 +2028,8 @@ fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> b
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     let p = ui.painter();
     p.rect_filled(rect, 4.0, t.bg_darker);
-    p.text(rect.left_center() + Vec2::new(6.0, 0.0), egui::Align2::LEFT_CENTER, "A", FontId::proportional(10.0), t.track_color(0));
-    p.text(rect.right_center() - Vec2::new(6.0, 0.0), egui::Align2::RIGHT_CENTER, "B", FontId::proportional(10.0), t.track_color(1));
+    p.text(rect.left_center() + Vec2::new(6.0, 0.0), egui::Align2::LEFT_CENTER, "A", FontId::proportional(t.text_size(10.0)), t.track_color(0));
+    p.text(rect.right_center() - Vec2::new(6.0, 0.0), egui::Align2::RIGHT_CENTER, "B", FontId::proportional(t.text_size(10.0)), t.track_color(1));
     let x = rect.left() + 16.0 + value.clamp(0.0, 1.0) * (rect.width() - 32.0);
     p.rect_filled(Rect::from_center_size(Pos2::new(x, rect.center().y), Vec2::new(12.0, 14.0)), 2.0, t.accent);
     let alternate = accessibility::numeric(ui, &resp, "Crossfader", *value * 100.0, 0.0, 100.0, 1.0, "% B");
@@ -2023,3 +2069,6 @@ mod waveform_tests;
 
 #[cfg(test)]
 mod atspi_tests;
+
+#[cfg(test)]
+mod display_tests;

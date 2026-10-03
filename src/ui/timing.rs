@@ -337,7 +337,7 @@ impl App {
         let mut editor = std::mem::take(&mut self.timing);
         let mut open = true;
         let mut close = false;
-        egui::Window::new("Tempo and meter").open(&mut open).default_width(580.0).vscroll(true).max_height((ctx.screen_rect().height() - 80.0).max(200.0)).show(ctx, |ui| {
+        egui::Window::new("Tempo and meter").open(&mut open).default_width(580.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
             ui.label("Positions are quarter-note beats. Each list starts at 0. A ramp rises or falls to the next point; the last point must use step.");
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
                 if let Some(draft) = &mut editor.draft {

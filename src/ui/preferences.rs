@@ -258,8 +258,9 @@ impl App {
         if let Some(size) = appearance.font_size {
             self.theme.font_size = size;
         }
-        self.theme.apply(ctx);
+        self.theme.configure_display(&appearance);
         ctx.set_zoom_factor(appearance.scale);
+        self.theme.apply(ctx);
     }
     pub(super) fn poll_preferences(&mut self, ctx: &egui::Context) {
         if self.engine.safe_mode() { return; }
@@ -329,7 +330,7 @@ impl App {
         let mut open = true;
         let mut discard = false;
         egui::Window::new("Preferences and profiles").id(egui::Id::new("preferences-window"))
-            .open(&mut open).default_width(680.0).default_height(620.0).vscroll(true).max_height((ctx.screen_rect().height()-64.0).max(200.0)).show(ctx, |ui| {
+            .open(&mut open).default_width(680.0).default_height(620.0).vscroll(true).hscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.label("Apply saves preferences. MIDI, folders, appearance and shortcuts follow that save. Audio can be applied explicitly in Audio devices, or after restart.");
                 if ui.button("Audio devices and latency").help(ui, HelpControl::AudioDevices).clicked() { self.audio_settings.open = true; }
@@ -424,6 +425,14 @@ impl App {
                             if ui.checkbox(&mut custom,"Override theme font size").help(ui, HelpControl::PreferenceFont).changed() { profile.appearance.font_size = custom.then_some(12.0); }
                             if let Some(size) = &mut profile.appearance.font_size { float_control(ui,"Font size",size,8.0,48.0,1.0," pt",HelpControl::PreferenceFont); }
                             float_control(ui,"UI scale",&mut profile.appearance.scale,0.5,3.0,0.05,"×",HelpControl::PreferenceScale);
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label("Contrast");
+                                for (mode,label) in [(crate::theme::Contrast::Theme,"Desktop colors"),(crate::theme::Contrast::Dark,"High contrast dark"),(crate::theme::Contrast::Light,"High contrast light")] { ui.radio_value(&mut profile.appearance.contrast,mode,label).help(ui,HelpControl::DisplayContrast); }
+                            });
+                            ui.checkbox(&mut profile.appearance.reduced_motion,"Reduce decorative motion").help(ui,HelpControl::DisplayMotion);
+                            float_control(ui,"Waveform contrast",&mut profile.appearance.waveform_contrast,1.0,3.0,0.1,"",HelpControl::DisplayWaveform);
+                            float_control(ui,"Level contrast",&mut profile.appearance.level_contrast,1.0,3.0,0.1,"",HelpControl::DisplayLevel);
+                            ui.label("Appearance changes preserve audio. Playing, queued and active states also use text or shapes. Controls keep a readable minimum as UI scale decreases.");
                             ui.heading("Startup");
                             let mut choice = match profile.startup.session { crate::project_template::Startup::Demo => 0, crate::project_template::Startup::Empty => 1, crate::project_template::Startup::Template { .. } => 2 };
                             let before = choice;

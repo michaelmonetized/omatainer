@@ -66,6 +66,11 @@ macro_rules! controls { ($( $id:ident, $title:literal, $units:literal, $purpose:
     }
 }}
 controls! {
+    DisplayLayout, "Compact control menus", "Small viewports and large text", "Safety (Guard, STOP or MUTE when active), File, Setup and FX menus retain the full controls in scrollable menus when four toolbar rows would crowd the performance surface. Tab focus scrolls performance controls into view. Use Setup or Ctrl+, for Preferences.", Offline;
+    DisplayContrast, "Display contrast", "Desktop, dark or light palette", "Choose a high contrast palette for dark rooms or bright stages. State cues use text and shapes as well as color. Preview and Apply save the choice; Cancel keeps the current display.", Offline;
+    DisplayMotion, "Reduced motion", "Decorative animation", "Stop decorative platter rotation and UI transitions while retaining live transport values, waveform positions and audio. No playback command is sent.", Offline;
+    DisplayWaveform, "Waveform contrast", "1 = original paint; 3 = foreground", "Raise trace visibility without changing audio amplitude, seek positions or waveform geometry.", Dj;
+    DisplayLevel, "Level contrast", "1 = original paint; 3 = foreground", "Raise the visibility of the smoothed signal activity strip. It is not a calibrated peak, loudness or clipping measurement; changing its contrast does not change audio.", Dj;
     TemplateOpen, "Templates", "Native editable templates", "Open native project and track templates. New template files and duplicates never replace an existing file.", Projects;
     TemplatePath, "Template file paths", "Native editable templates", "Choose an absolute .omtemplate file, a new backup archive or a new import folder.", Projects;
     TemplateSave, "Save template", "Native editable templates", "Capture project state or selected-track devices and routing. Track templates exclude notes, clips and launch state.", Projects;

@@ -130,6 +130,10 @@ fn profile_roundtrip_and_legacy_midi_presence_guard() {
     for version in 2..=5 {
         let mut old = serde_json::to_value(&prefs).unwrap();
         old["version"] = version.into();
+        for profile in old["profiles"].as_object_mut().unwrap().values_mut() {
+            for field in ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
+            profile["startup"].as_object_mut().unwrap().remove("session");
+        }
         assert!(crate::preferences::storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
         for p in old["profiles"].as_object_mut().unwrap().values_mut() {
             p.as_object_mut().unwrap().remove("midi_routing");

@@ -94,6 +94,46 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Compact control menus
+
+Small viewports and large text
+
+Safety (Guard, STOP or MUTE when active), File, Setup and FX menus retain the full controls in scrollable menus when four toolbar rows would crowd the performance surface. Tab focus scrolls performance controls into view. Use Setup or Ctrl+, for Preferences.
+
+Workflow: Offline operation.
+
+### Display contrast
+
+Desktop, dark or light palette
+
+Choose a high contrast palette for dark rooms or bright stages. State cues use text and shapes as well as color. Preview and Apply save the choice; Cancel keeps the current display.
+
+Workflow: Offline operation.
+
+### Reduced motion
+
+Decorative animation
+
+Stop decorative platter rotation and UI transitions while retaining live transport values, waveform positions and audio. No playback command is sent.
+
+Workflow: Offline operation.
+
+### Waveform contrast
+
+1 = original paint; 3 = foreground
+
+Raise trace visibility without changing audio amplitude, seek positions or waveform geometry.
+
+Workflow: Prepare a DJ deck.
+
+### Level contrast
+
+1 = original paint; 3 = foreground
+
+Raise the visibility of the smoothed signal activity strip. It is not a calibrated peak, loudness or clipping measurement; changing its contrast does not change audio.
+
+Workflow: Prepare a DJ deck.
+
 ### Templates
 
 Native editable templates

@@ -3,13 +3,22 @@ use egui::{Color32, CornerRadius, Stroke, Style, Visuals};
 use std::fs;
 use std::path::{Path, PathBuf};
 mod color;
+mod display;
+pub use display::Contrast;
 pub(crate) mod reload;
 pub(crate) mod requests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod display_tests;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
+    pub(crate) scale: f32,
+    pub(crate) contrast: Contrast,
+    pub(crate) reduced_motion: bool,
+    pub(crate) waveform_contrast: f32,
+    pub(crate) level_contrast: f32,
     pub bg: Color32,
     pub bg_dark: Color32,
     pub bg_darker: Color32,
@@ -36,6 +45,7 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
+            scale: 1.0, contrast: Contrast::Theme, reduced_motion: false, waveform_contrast: 1.0, level_contrast: 1.0,
             bg: rgb(0x1e, 0x1e, 0x2e),
             bg_dark: rgb(0x16, 0x16, 0x22),
             bg_darker: rgb(0x10, 0x10, 0x19),
@@ -96,7 +106,7 @@ impl Theme {
     pub fn apply(&self, ctx: &egui::Context) {
         let mut style = Style {
             visuals: Visuals {
-                dark_mode: true,
+                dark_mode: self.contrast != Contrast::Light,
                 override_text_color: Some(self.fg),
                 panel_fill: self.bg,
                 window_fill: self.bg,
@@ -105,7 +115,7 @@ impl Theme {
                 code_bg_color: self.bg_dark,
                 hyperlink_color: self.accent,
                 selection: egui::style::Selection {
-                    bg_fill: self.accent.gamma_multiply(0.35),
+                    bg_fill: self.tint(self.accent, 0.35),
                     stroke: st(1.0, self.accent),
                 },
                 widgets: egui::style::Widgets {
@@ -113,14 +123,14 @@ impl Theme {
                     inactive: widget(self.bg_light, self.fg, self.muted),
                     hovered: widget(self.selection, self.fg_bright, self.accent),
                     active: widget(
-                        self.accent.gamma_multiply(0.25),
+                        self.tint(self.accent, 0.25),
                         self.fg_bright,
                         self.accent,
                     ),
                     open: widget(self.bg_light, self.fg, self.accent),
                 },
                 window_corner_radius: CornerRadius::same(0),
-                window_stroke: st(0.0, self.bg),
+                window_stroke: st(if self.contrast == Contrast::Theme { 0.0 } else { 1.0 }, self.muted),
                 menu_corner_radius: CornerRadius::same(self.rounding as u8),
                 ..Visuals::dark()
             },
@@ -128,14 +138,18 @@ impl Theme {
         };
         // Preserve the default style hierarchy while honoring the shell's
         // base size for every standard text style, including numeric widgets.
-        let base = self.font_size;
         for (kind, font) in &mut style.text_styles {
-            font.size = match kind {
-                egui::TextStyle::Heading => base * 1.5,
-                egui::TextStyle::Small => base * (10.0 / 12.0),
-                _ => base,
-            };
+            font.size = self.text_size(match kind {
+                egui::TextStyle::Heading => 18.0,
+                egui::TextStyle::Small => 10.0,
+                _ => 12.0,
+            });
         }
+        if self.reduced_motion {
+            style.animation_time = 0.0;
+            style.scroll_animation = egui::style::ScrollAnimation::none();
+        }
+        style.spacing.interact_size.y = self.target_size(style.spacing.interact_size.y);
         style.spacing.item_spacing = egui::vec2(6.0, 4.0);
         style.spacing.button_padding = egui::vec2(8.0, 4.0);
         style.spacing.window_margin = egui::Margin::same(8);
@@ -170,7 +184,7 @@ fn widget(bg: Color32, fg: Color32, stroke: Color32) -> egui::style::WidgetVisua
     egui::style::WidgetVisuals {
         bg_fill: bg,
         weak_bg_fill: bg,
-        bg_stroke: st(1.0, stroke.gamma_multiply(0.4)),
+        bg_stroke: st(1.0, stroke),
         fg_stroke: st(1.0, fg),
         corner_radius: CornerRadius::same(6),
         expansion: 0.0,

@@ -1,8 +1,9 @@
 use super::*;
 
 impl App {
-    pub(super) fn master_fx_status(&self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("master-fx-status").resizable(false).show(ctx, |ui| {
+    pub(super) fn master_fx_status(&self, ctx: &egui::Context) { self.master_controls(ctx, None); }
+    pub(super) fn master_controls(&self, ctx: &egui::Context, parent: Option<&mut Ui>) {
+        toolbar(ctx, parent, "master-fx-status", "FX", |ui| {
             if self.engine.safe_mode() {ui.disable();}
             ui.horizontal_wrapped(|ui| {
                 ui.label("Master FX");

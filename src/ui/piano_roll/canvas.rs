@@ -41,24 +41,27 @@ fn pitch_at(pos: Pos2, body: Rect, rows: &[u8], height: f32) -> u8 {
     let row = ((pos.y - body.top()).max(0.0) / height).floor() as usize;
     rows[row.min(rows.len().saturating_sub(1))]
 }
-fn note_rect(note: &MidiNote, body: Rect, rows: &[u8], draft: &Draft) -> Option<Rect> {
+fn note_rect(note: &MidiNote, body: Rect, rows: &[u8], draft: &Draft, row_pixels: f32) -> Option<Rect> {
     let row = rows.iter().position(|p| *p == note.pitch)?;
     let left = body.left() + (note.start as f64 - draft.view_beat) as f32 * draft.beat_pixels;
-    let top = body.top() + row as f32 * draft.row_pixels;
+    let top = body.top() + row as f32 * row_pixels;
     Some(Rect::from_min_size(
         Pos2::new(left, top + 1.0),
         Vec2::new(
             (note.len * draft.beat_pixels).max(5.0),
-            draft.row_pixels - 2.0,
+            row_pixels - 2.0,
         ),
     ))
 }
 pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option<&crate::engine::midi_data::Conductor>) -> Result<(), String> {
+    let row_pixels = draft.row_pixels.max(theme.text_size(10.0) * 1.25 + 4.0);
+    let marker_size = theme.target_size(12.0);
+    let ruler_height = theme.text_size(10.0) + marker_size * 2.0 + 12.0;
     let (rect, response) = ui.allocate_exact_size(
-        Vec2::new(ui.available_width().max(140.0), 290.0),
+        Vec2::new(ui.available_width().max(140.0), (290.0_f32).max(ruler_height + row_pixels * 4.0)),
         Sense::click_and_drag(),
     );
-    let body = Rect::from_min_max(rect.min + Vec2::new(94.0, 52.0), rect.max);
+    let body = Rect::from_min_max(rect.min + Vec2::new((94.0_f32).max(theme.text_size(10.0) * 8.0), ruler_height), rect.max);
     if body.width() < 20.0 {
         return Ok(());
     }
@@ -82,14 +85,14 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     let shift = ui.input(|i| i.modifiers.shift);
     let mut note_hit = false;
     let mut focused = response.has_focus();
-    let visible = (body.height() / draft.row_pixels).ceil() as usize;
+    let visible = (body.height() / row_pixels).ceil() as usize;
     for (index, pitch) in rows.iter().take(visible).enumerate() {
-        let y = body.top() + index as f32 * draft.row_pixels;
+        let y = body.top() + index as f32 * row_pixels;
         let black = [1, 3, 6, 8, 10].contains(&(pitch % 12));
         painter.rect_filled(
             Rect::from_min_size(
                 Pos2::new(body.left(), y),
-                Vec2::new(body.width(), draft.row_pixels),
+                Vec2::new(body.width(), row_pixels),
             ),
             0.0,
             if black { theme.bg_dark } else { theme.bg },
@@ -99,10 +102,10 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
             Stroke::new(0.5_f32, theme.fg_dim),
         );
         painter.text(
-            Pos2::new(rect.left() + 4.0, y + draft.row_pixels / 2.0),
+            Pos2::new(rect.left() + 4.0, y + row_pixels / 2.0),
             egui::Align2::LEFT_CENTER,
             pitch_name(*pitch),
-            FontId::monospace(10.0),
+            FontId::monospace(theme.text_size(10.0)),
             theme.fg,
         );
     }
@@ -125,7 +128,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
             [Pos2::new(x, body.top()), Pos2::new(x, body.bottom())],
             Stroke::new(if bar { 1.0_f32 } else { 0.5_f32 }, theme.fg_dim),
         );
-        if bar || grid_step * draft.beat_pixels as f64 >= 45.0 {
+        if bar || grid_step * draft.beat_pixels as f64 >= (45.0_f64).max(f64::from(theme.text_size(10.0) * 7.0)) {
             painter.text(
                 Pos2::new(x + 2.0, rect.top() + 7.0),
                 egui::Align2::LEFT_TOP,
@@ -134,7 +137,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
                     bar_number,
                     within + 1.0
                 ),
-                FontId::monospace(10.0),
+                FontId::monospace(theme.text_size(10.0)),
                 theme.fg,
             );
         }
@@ -143,8 +146,8 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     if let Some(map) = timing {
         for (beat, bar) in map.bar_boundaries(draft.view_beat, visible_end, 1024) {
             let x = body.left() + (beat - draft.view_beat) as f32 * draft.beat_pixels;
-            painter.line_segment([Pos2::new(x, body.top()), Pos2::new(x, body.bottom())], Stroke::new(1.0, theme.fg_dim));
-            painter.text(Pos2::new(x + 2.0, rect.top() + 7.0), egui::Align2::LEFT_TOP, format!("{bar}:1"), FontId::monospace(10.0), theme.fg);
+            painter.line_segment([Pos2::new(x, body.top()), Pos2::new(x, body.bottom())], Stroke::new(1.0_f32, theme.fg_dim));
+            painter.text(Pos2::new(x + 2.0, rect.top() + 7.0), egui::Align2::LEFT_TOP, format!("{bar}:1"), FontId::monospace(theme.text_size(10.0)), theme.fg);
         }
     }
     for (index, label, value) in [
@@ -157,8 +160,8 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
         if x < body.left() || x > body.right() {
             continue;
         }
-        let y = rect.top() + if index < 2 { 26.0 } else { 42.0 };
-        let marker_rect = Rect::from_center_size(Pos2::new(x, y), Vec2::new(12.0, 14.0));
+        let y = rect.top() + theme.text_size(10.0) + 8.0 + marker_size * if index < 2 { 0.5 } else { 1.5 };
+        let marker_rect = Rect::from_center_size(Pos2::new(x, y), Vec2::splat(marker_size));
         let marker = ui.interact(
             marker_rect,
             response.id.with(("marker", index)),
@@ -207,7 +210,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     for index in 0..draft.notes.len() {
         let note = &draft.notes[index];
         let id = note.id;
-        let Some(note_rect) = note_rect(note, body, &rows, draft).filter(|r| r.intersects(body))
+        let Some(note_rect) = note_rect(note, body, &rows, draft, row_pixels).filter(|r| r.intersects(body))
         else {
             continue;
         };
@@ -236,12 +239,14 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
         painter
             .with_clip_rect(body)
             .rect_filled(note_rect, 2.0, color);
+        if selected { painter.with_clip_rect(body).rect_stroke(note_rect.shrink(1.0), 2.0, Stroke::new(2.0_f32, theme.bg), egui::StrokeKind::Inside); }
+        if note.muted { painter.with_clip_rect(body).line_segment([note_rect.left_bottom(),note_rect.right_top()],Stroke::new(1.5_f32,theme.bg)); }
         if note_rect.width() > 36.0 {
             painter.with_clip_rect(body).text(
                 note_rect.left_center() + Vec2::new(3.0, 0.0),
                 egui::Align2::LEFT_CENTER,
                 format!("{}", note.pitch),
-                FontId::monospace(10.0),
+                FontId::monospace(theme.text_size(10.0)),
                 theme.bg,
             );
         }
@@ -257,7 +262,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
                 let resize = origin.x >= note_rect.right() - edge;
                 draft.drag = Some(Drag::Notes {
                     origin,
-                    pitch: pitch_at(origin, body, &rows, draft.row_pixels),
+                    pitch: pitch_at(origin, body, &rows, row_pixels),
                     original: draft.notes.clone(),
                     resize,
                 });
@@ -270,7 +275,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     if response.clicked() && !note_hit && pointer.is_some_and(|p| body.contains(p)) {
         let pos = pointer.unwrap();
         response.request_focus();
-        draft.cursor.pitch = pitch_at(pos, body, &rows, draft.row_pixels);
+        draft.cursor.pitch = pitch_at(pos, body, &rows, row_pixels);
         draft.cursor.start =
             draft.snap(draft.view_beat + (pos.x - body.left()) as f64 / draft.beat_pixels as f64);
         if draft.draw {
@@ -303,7 +308,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
                 resize,
             } => {
                 let delta = draft.snap_delta((pos.x - origin.x) as f64 / draft.beat_pixels as f64);
-                let transpose = pitch_at(pos, body, &rows, draft.row_pixels) as i16 - *pitch as i16;
+                let transpose = pitch_at(pos, body, &rows, row_pixels) as i16 - *pitch as i16;
                 let valid = original
                     .iter()
                     .filter(|n| draft.selected.contains(&n.id))
@@ -340,7 +345,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
                 );
                 draft.selected = extend.clone();
                 for note in &draft.notes {
-                    if note_rect(note, body, &rows, draft)
+                    if note_rect(note, body, &rows, draft, row_pixels)
                         .is_some_and(|r| r.intersects(selection_rect))
                     {
                         draft.selected.insert(note.id);

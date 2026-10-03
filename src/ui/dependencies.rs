@@ -135,7 +135,7 @@ impl App {
         keyboard::block_for_dialog(ctx);
         let mut editor = std::mem::take(&mut self.dependencies);
         let mut open = true; let mut close = false;
-        egui::Window::new("Project dependencies").open(&mut open).default_width(650.0).vscroll(true).max_height((ctx.screen_rect().height() - 80.0).max(200.0)).show(ctx, |ui| {
+        egui::Window::new("Project dependencies").open(&mut open).default_width(650.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
             ui.label("Native projects retain embedded audio and unavailable device state. Relink verifies decoded audio and updates this project's source references.");
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
                 if ui.add_enabled(!editor.choices.iter().any(Option::is_some), egui::Button::new("Check dependencies")).help(ui, HelpControl::DependenciesInspect).clicked() { editor.start(&self.engine, Kind::Inspect); }

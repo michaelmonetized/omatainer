@@ -325,7 +325,10 @@ fn real_pointer_and_keyboard_roll_share_stable_selection_and_triplet_free_edits(
         .1
         .bounds()
         .unwrap();
-    let origin = Pos2::new(bounds.x0 as f32 + 94.0, bounds.y0 as f32 + 52.0);
+    // Locate the painted E4 row instead of assuming a fixed ruler height.
+    let painted = gui.frame(vec![]);
+    let pitch_y = crate::ui::test_support::label_center(&painted, "E4 (MIDI 64)").y;
+    let origin = Pos2::new(bounds.x0 as f32 + 94.0, pitch_y - 8.0 * 18.0 - 9.0);
     let click = origin + Vec2::new(40.0, 8.0 * 18.0 + 9.0);
     gui.pointer(click, true);
     gui.pointer(click, false);
