@@ -11,6 +11,7 @@ impl App {
                 if ui.button("MIDI").help(ui, HelpControl::Midi).clicked() { self.midi_open = true; }
                 if ui.button("Diagnostics").help(ui, HelpControl::Diagnostics).clicked() { self.diagnostics.open = true; }
                 if ui.button("Content & licenses").help(ui, HelpControl::License).clicked() { self.licenses.open = true; }
+                if ui.button("Music providers").help_detail(ui, HelpControl::MusicProvider, "Browse licensed remote music with explicit provider capabilities.").clicked() { self.music_provider.open = true; }
                 if ui.button("Automation").help(ui, HelpControl::AutomationOpen).clicked() { self.automation_panel.open = true; }
                 if ui.button("Preferences").help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; }
                 if !self.settings.open && !self.settings.message.is_empty() {

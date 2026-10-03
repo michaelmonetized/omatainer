@@ -10,7 +10,7 @@ use symphonia::core::codecs::{
 };
 use symphonia::core::errors::Error;
 use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
+use symphonia::core::io::{MediaSource, MediaSourceStream};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
@@ -242,7 +242,7 @@ pub(crate) fn decode_audio_for_show(path: &Path, cancelled: impl Fn() -> bool, p
 /// Foreground deck loading owns and verifies this descriptor on its media
 /// worker. Preserve the existing optional BPM policy without reopening a path.
 pub(crate) fn decode_deck_file(path:&Path,file:std::fs::File,cancelled:impl Fn()->bool,performance:&super::performance::Handle) -> Result<DecodedAudio,DecodeFailure> {
-    decode_source(path,Some(file),None,cancelled,|data,ch,sr| {
+    decode_source(path,Some(Box::new(file)),None,cancelled,|data,ch,sr| {
         let permit=performance.optional_work().ok()?;let cancel=permit.cancel();
         super::dsp::detect_bpm_with_cancel(data,ch,sr,||cancel.load(std::sync::atomic::Ordering::Acquire))
     },true,|_,_|{})
@@ -261,19 +261,19 @@ pub(crate) fn decode_sampler_file(
     pcm_bytes: u64,
     cancelled: impl Fn() -> bool,
 ) -> Result<DecodedAudio, DecodeFailure> {
-    decode_source(path, Some(file), Some(pcm_bytes), cancelled, |_, _, _| None, true, |_, _| {})
+    decode_source(path, Some(Box::new(file)), Some(pcm_bytes), cancelled, |_, _, _| None, true, |_, _| {})
 }
 /// Background analysis shares the strict decoder and exact open descriptor,
 /// but computes only requested optional fields after decoding. No PCM escapes
 /// the analysis worker's result boundary.
 pub(crate) fn decode_analysis_file(path: &Path, file: std::fs::File,
     cancelled: impl Fn() -> bool, progress: impl Fn(u64, Option<u64>)) -> Result<DecodedAudio, DecodeFailure> {
-    decode_source(path, Some(file), Some(crate::track_analysis::MAX_PCM_BYTES), cancelled,
+    decode_source(path, Some(Box::new(file)), Some(crate::track_analysis::MAX_PCM_BYTES), cancelled,
         |_, _, _| None, false, progress)
 }
 fn decode_source(
     path: &Path,
-    supplied: Option<std::fs::File>,
+    supplied: Option<Box<dyn MediaSource>>,
     pcm_limit: Option<u64>,
     cancelled: impl Fn() -> bool,
     analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>,
@@ -282,7 +282,7 @@ fn decode_source(
 ) -> Result<DecodedAudio, DecodeFailure> {
     let mut diagnostics = DecodeDiagnostics::default();
     check_cancel(&cancelled, DecodeStage::Open, &diagnostics)?;
-    let file = supplied.map(Ok).unwrap_or_else(|| std::fs::File::open(path)).map_err(|error| {
+    let file = supplied.map(Ok).unwrap_or_else(|| std::fs::File::open(path).map(|file| Box::new(file) as Box<dyn MediaSource>)).map_err(|error| {
         failure(
             DecodeFailureKind::Io,
             DecodeStage::Open,
@@ -290,7 +290,7 @@ fn decode_source(
             error.to_string(),
         )
     })?;
-    let stream = MediaSourceStream::new(Box::new(file), Default::default());
+    let stream = MediaSourceStream::new(file, Default::default());
     let mut hint = Hint::new();
     if let Some(extension) = path.extension().and_then(|s| s.to_str()) {
         hint.with_extension(extension);
@@ -508,3 +508,12 @@ fn decode_source(
 
 #[cfg(test)]
 mod tests;
+
+/// Decode transient provider bytes without creating a local media identity.
+/// Takes bounded MP3 bytes and cancellation; returns checked PCM with an empty local path.
+pub(crate) fn decode_provider_bytes(bytes: Vec<u8>, cancelled: impl Fn() -> bool) -> Result<DecodedAudio, DecodeFailure> {
+    let mut result = decode_source(Path::new("provider.mp3"), Some(Box::new(std::io::Cursor::new(bytes))),
+        Some(128 * 1024 * 1024), cancelled, |_, _, _| None, false, |_, _| {})?;
+    result.sample.path.clear();
+    Ok(result)
+}

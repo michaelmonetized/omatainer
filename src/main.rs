@@ -8,6 +8,7 @@ mod startup;
 mod licenses;
 mod engine;
 mod library;
+mod music_provider;
 mod media_location;
 mod media_tags;
 mod midi_file;

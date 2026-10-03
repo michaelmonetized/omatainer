@@ -490,6 +490,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SetNotes { .. }
         | Command::SamplerEdit(_)
         | Command::SamplerAudition(_)
+        | Command::ProviderPreview(_)
         | Command::DeckGrid { .. }
         | Command::Undo
         | Command::Redo
@@ -693,6 +694,7 @@ impl Output {
 pub(super) fn reject_receipt(command: &Command) {
     match command {
         Command::Remote(request) => request.ack.reject(),
+        Command::ProviderPreview(request) => request.reject(),
         Command::SessionEdit(request) => request.ack.reject(),
         Command::DeckLoadRequested { receipt, .. } if receipt.claim() => {
             receipt.finish(super::load_receipt::State::Protected)

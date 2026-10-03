@@ -811,6 +811,7 @@ impl Journal {
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
         super::sampler::reject(&command);
+        if let Command::ProviderPreview(request) = &command { request.reject(); }
         if let Some(ack) = super::session::admission_ack(&command) { ack.reject(); }
         if self.enabled
             && matches!(
@@ -831,6 +832,7 @@ impl Journal {
                     | Command::DeckGrid { .. }
                     | Command::SamplerEdit(_)
                     | Command::SamplerAudition(_)
+                    | Command::ProviderPreview(_)
                     | Command::DeckCuePoint { .. }
                     | Command::LearnCapture { .. }
             )

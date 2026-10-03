@@ -425,6 +425,7 @@ pub(super) fn command_bytes(command: &Command) -> usize {
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),
+        Command::ProviderPreview(request) => request.bytes(),
         Command::SamplerAudition(request) => request.bank.metadata_bytes() + request.bank.audio.iter().flatten().map(|sample| sample_bytes(sample)).sum::<usize>(),
         Command::SetNotes { notes, .. } => notes.capacity() * std::mem::size_of::<MidiNote>(),
         Command::DeckAudio { audio, .. }

@@ -94,6 +94,14 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Licensed music providers
+
+Explicit non-commercial consent; one original-pitch preview
+
+Enable the public Free To Use API only after accepting its current non-commercial license and attribution requirement. Search current metadata, copy credits and preview non-premium music. Premium and commercial use need a paid license for this app; none is configured. The adapter supports no offline storage, stems, recording, export or DJ decks. Close or Stop cancels preview audio. Network and decoding run on a bounded worker; safe and performance modes block these jobs.
+
+Workflow: Prepare a DJ deck.
+
 ### Automation API
 
 Versioned local and loopback control
