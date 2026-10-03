@@ -254,6 +254,7 @@ fn native_import_frame_edits_locators_render_and_reopen_keep_picture_and_live_au
     gui.render = true;
     gui.wait(|gui| gui.app.video.job.is_none());
     assert!(!cancelled.exists());
+    assert_eq!(gui.app.video.message, "Video job cancelled before publication");
 
     gui.app.initialize_startup_session(&gui.ctx, restored, None);
     gui.app.video.preview_paused = false;
