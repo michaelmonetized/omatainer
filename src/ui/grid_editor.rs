@@ -333,7 +333,7 @@ pub(super) fn paint_vertical_grid(
             y,
             st(
                 if bar { 1.2 } else { 0.7 },
-                theme.fg_dim.gamma_multiply(if bar { 0.8 } else { 0.35 }),
+                theme.marker(theme.fg_dim, theme.bg_darker),
             ),
         );
         if bar {
@@ -341,7 +341,7 @@ pub(super) fn paint_vertical_grid(
                 Pos2::new(rect.right() - 2.0, y),
                 egui::Align2::RIGHT_BOTTOM,
                 format!("bar {}", marker.beat.div_euclid(4) + 1),
-                FontId::proportional(8.0),
+                FontId::proportional(theme.text_size(8.0)),
                 theme.fg_dim,
             );
         }
@@ -398,7 +398,7 @@ fn preview(
             painter.vline(
                 x(sec),
                 (rect.center().y - magnitude)..=(rect.center().y + magnitude),
-                st(1.0, theme.fg_dim.gamma_multiply(0.45)),
+                st(1.0, theme.waveform(theme.fg_dim, 0.45)),
             );
         }
     }
@@ -431,7 +431,7 @@ fn preview(
                             egui::Align2::LEFT_BOTTOM
                         },
                         format!("bar {}", marker.beat.div_euclid(4) + 1),
-                        FontId::proportional(9.0),
+                        FontId::proportional(theme.text_size(9.0)),
                         color,
                     );
                 }
@@ -454,7 +454,7 @@ fn preview(
             Pos2::new(x(seconds) + 2.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
             format!("cue {}", i + 1),
-            FontId::proportional(9.0),
+            FontId::proportional(theme.text_size(9.0)),
             theme.fg,
         );
     }

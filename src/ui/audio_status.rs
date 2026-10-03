@@ -1,9 +1,10 @@
 use super::*;
 
 impl App {
-    pub(super) fn audio_status(&mut self, ctx: &egui::Context) {
+    pub(super) fn audio_status(&mut self, ctx: &egui::Context) { self.setup_controls(ctx, None); }
+    pub(super) fn setup_controls(&mut self, ctx: &egui::Context, parent: Option<&mut Ui>) {
         let metrics = self.snap.audio;
-        egui::TopBottomPanel::top("audio-status").resizable(false).show(ctx, |ui| {
+        toolbar(ctx, parent, "audio-status", "Setup", |ui| {
             ui.horizontal_wrapped(|ui| {
                 accessibility::action_button(ui);
                 if ui.button("Help").help(ui, HelpControl::Help).clicked() { self.keys_open = true; }

@@ -280,7 +280,7 @@ impl App {
         let mut editor = std::mem::take(&mut self.portability);
         let mut open = true;
         let mut close = false;
-        egui::Window::new("Portable project").open(&mut open).default_width(720.0).max_height((ctx.screen_rect().height() - 80.0).max(200.0)).vscroll(true).show(ctx, |ui| {
+        egui::Window::new("Portable project").open(&mut open).default_width(720.0).max_height(self.theme.window_height(ctx)).vscroll(true).show(ctx, |ui| {
             ui.label("Package the native session with its embedded audio. Selected original files are copied and deduplicated by checksum. Originals and global settings stay intact. Plugin binaries are not included.");
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
                 if ui.button("Inspect portable dependencies").help(ui, HelpControl::PortableInspect).clicked() { let view = self.project_view(); editor.start(&self.engine, Kind::Inspect(view)); }

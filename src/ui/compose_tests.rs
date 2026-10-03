@@ -60,7 +60,7 @@ fn gui_shift_arm_stop_restart_pad_does_not_write_changed_selection() {
     frame(&ctx, &mut f, 0.0, vec![], Default::default());
     let out = frame(&ctx, &mut f, 0.1, vec![], Default::default());
     label_center(&out, "Compose disarmed");
-    let target = label_center(&out, "compose-target");
+    let target = label_center(&out, "[] compose-target");
     click(
         &ctx,
         &mut f,

@@ -938,7 +938,8 @@ impl App {
         (self.project.current_path.clone(), self.project_dirty(), self.project.busy() || self.project.committing())
     }
 
-    pub(super) fn project_toolbar(&mut self, ctx: &egui::Context) {
+    pub(super) fn project_toolbar(&mut self, ctx: &egui::Context) { self.project_controls(ctx, None); }
+    pub(super) fn project_controls(&mut self, ctx: &egui::Context, parent: Option<&mut Ui>) {
         let dirty = self.project_dirty();
         let name = self
             .project
@@ -954,8 +955,8 @@ impl App {
         }
         let mut action = None;
         let mut save = None;
-        egui::TopBottomPanel::top("project-toolbar").show(ctx, |ui| {
-            ui.horizontal(|ui| {
+        toolbar(ctx, parent, "project-toolbar", if dirty { "File *" } else { "File" }, |ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.add_enabled_ui(
                     !self.project.busy()
                         && !self.project.committing()

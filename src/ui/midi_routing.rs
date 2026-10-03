@@ -246,7 +246,7 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
         }
     });
     if let Err(error) = routing.validate() {
-        ui.colored_label(Color32::YELLOW, error);
+        ui.colored_label(ui.visuals().warn_fg_color, error);
     }
 }
 impl App {
@@ -270,7 +270,7 @@ impl App {
                 }
             }
             if let Some(error) = &status.error {
-                ui.colored_label(Color32::YELLOW, error);
+                ui.colored_label(ui.visuals().warn_fg_color, error);
             }
         } else {
             ui.label("MIDI routing/output owner unavailable in this session.");

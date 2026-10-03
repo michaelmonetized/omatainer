@@ -520,7 +520,7 @@ impl App {
                             if let Some(value) = progress.millionths { ui.add(egui::ProgressBar::new(value as f32 / 1_000_000.0).text(stage)); } else { ui.label(stage); }
                         }
                         Step::Saving(_) => { ui.label("Waiting for the catalog publication and durability result…"); }
-                        Step::Paused(error) => { ui.colored_label(Color32::YELLOW, error); }
+                        Step::Paused(error) => { ui.colored_label(ui.visuals().warn_fg_color, error); }
                         _ => {}
                     }
                     ui.label(&self.library_analysis.message);

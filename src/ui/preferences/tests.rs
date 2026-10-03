@@ -926,3 +926,54 @@ fn template_hardware_draft_keeps_exact_missing_ports_and_rejects_reused_track_ta
     gui.fixture.app.review_template_hardware(&metadata, Some(target));
     assert_eq!(gui.fixture.app.settings.draft, original); assert!(gui.fixture.app.templates.error.as_deref().unwrap().contains("replaced or deleted"));
 }
+
+#[test]
+fn display_controls_apply_persist_reopen_and_cancel_without_audio_changes() {
+    let mut gui = Gui::new(); gui.open();
+    let audio = gui.fixture.app.settings.profile().audio.clone();
+    let routing = gui.fixture.app.settings.profile().midi_routing.clone();
+    gui.click("High contrast light"); gui.click("Reduce decorative motion");
+    let display = &mut gui.fixture.app.settings.draft.profiles.get_mut("Studio").unwrap().appearance;
+    display.waveform_contrast = 2.5; display.level_contrast = 3.0;
+    gui.preview_apply();
+    assert_eq!(gui.fixture.app.theme.contrast, crate::theme::Contrast::Light);
+    assert!(gui.fixture.app.theme.reduced_motion);
+    assert_eq!(gui.ctx.style().animation_time, 0.0);
+    assert_eq!(gui.fixture.app.settings.profile().audio, audio);
+    assert_eq!(gui.fixture.app.settings.profile().midi_routing, routing);
+    assert!(!gui.fixture.app.settings.pending_restart());
+    let bytes = std::fs::read(gui.dir.join("preferences.json")).unwrap();
+    let startup = Startup::read(gui.dir.join("preferences.json"), gui.dir.clone());
+    let mut reopened = Fixture::new(64);
+    reopened.app.initialize_preferences(&gui.ctx, startup, audio.clone());
+    assert_eq!(reopened.app.theme, gui.fixture.app.theme);
+    gui.click("High contrast dark"); gui.click("Cancel changes");
+    assert_eq!(std::fs::read(gui.dir.join("preferences.json")).unwrap(), bytes);
+    assert_eq!(gui.fixture.app.theme.contrast, crate::theme::Contrast::Light);
+    gui.open();
+    gui.click("High contrast dark");
+    gui.click("Preview changes"); gui.wait();
+    let mut externally_changed = bytes.clone(); externally_changed.push(b'\n');
+    std::fs::write(gui.dir.join("preferences.json"), &externally_changed).unwrap();
+    gui.click("Apply and save"); gui.wait();
+    assert_eq!(std::fs::read(gui.dir.join("preferences.json")).unwrap(), externally_changed);
+    assert_eq!(gui.fixture.app.theme.contrast, crate::theme::Contrast::Light);
+    assert_eq!(gui.fixture.app.settings.profile().audio, audio);
+}
+
+#[test]
+fn light_contrast_keeps_actual_pending_audio_warning_readable() {
+    let mut gui = Gui::new(); gui.open();
+    let profile = gui.fixture.app.settings.applied.profiles.get_mut("Studio").unwrap();
+    profile.appearance.contrast = crate::theme::Contrast::Light;
+    profile.audio.sample_rate = Some(96000);
+    gui.fixture.app.apply_appearance(&gui.ctx);
+    assert!(gui.fixture.app.settings.pending_restart());
+    let output = gui.frame(vec![]);
+    let color = output.shapes.iter().find_map(|shape| match &shape.shape {
+        egui::Shape::Text(text) if text.galley.text().starts_with("Saved audio differs") => Some(text.galley.job.sections[0].format.color),
+        _ => None,
+    }).expect("pending audio warning is actually painted");
+    assert_eq!(color, gui.fixture.app.theme.yellow);
+    assert!(crate::theme::contrast_ratio(color,gui.fixture.app.theme.bg)>=4.5);
+}

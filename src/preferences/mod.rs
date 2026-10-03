@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -119,10 +119,22 @@ pub use crate::engine::midi::InputPolicy as MidiInputs;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Appearance {
+    #[serde(default)]
+    pub contrast: crate::theme::Contrast,
+    #[serde(default)]
+    pub reduced_motion: bool,
+    #[serde(default = "display_contrast")]
+    pub waveform_contrast: f32,
+    #[serde(default = "display_contrast")]
+    pub level_contrast: f32,
     pub follow_theme: bool,
     pub font_size: Option<f32>,
     pub scale: f32,
 }
+
+/// Preserve the original trace colors for migrated profiles.
+/// Takes no arguments; returns the default visual contrast multiplier.
+fn display_contrast() -> f32 { 1.0 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -170,6 +182,7 @@ impl Profile {
             midi_routing: crate::engine::midi::routing::Routing::default(),
             library_roots: vec![home.join("Music"), home.join("music")],
             appearance: Appearance {
+                contrast: crate::theme::Contrast::Theme, reduced_motion: false, waveform_contrast: 1.0, level_contrast: 1.0,
                 follow_theme: true,
                 font_size: None,
                 scale: 1.0,
@@ -336,6 +349,9 @@ impl Profile {
             {
                 return Err("Library folders must be unique absolute paths".into());
             }
+        }
+        if [self.appearance.waveform_contrast, self.appearance.level_contrast].into_iter().any(|value| !value.is_finite() || !(1.0..=3.0).contains(&value)) {
+            return Err("Waveform and level contrast must be between 1 and 3".into());
         }
         if !self.appearance.scale.is_finite() || !(0.5..=3.0).contains(&self.appearance.scale) {
             return Err("UI scale must be 50–300%".into());

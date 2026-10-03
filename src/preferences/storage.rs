@@ -111,6 +111,13 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .get("version")
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
+    if version < 8 {
+        let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
+            else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+        if profiles.iter().any(|p| p.get("appearance").is_some_and(|a| ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"].iter().any(|field| a.get(field).is_some()))) {
+            return Err(Error::Invalid("Display contrast and motion require preferences version 8; older versions cannot carry newer fields".into()));
+        }
+    }
     if version < 7 {
         let newer = if version == 1 { value.get("profile").into_iter().collect::<Vec<_>>() }
             else { value.get("profiles").and_then(|profiles| profiles.as_object()).map_or(Vec::new(), |profiles| profiles.values().collect()) };
@@ -128,12 +135,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         if newer { return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into())); }
     }
     let (preferences, migrated) = match version {
-        7 => (
+        8 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 => {
+        2 | 3 | 4 | 5 | 6 | 7 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -371,6 +378,34 @@ pub fn default_path(config: Option<&std::ffi::OsStr>, home: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn strip_appearance(profile: &mut serde_json::Value) {
+        for field in ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
+    }
+    fn strip_display(value: &mut serde_json::Value) {
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() { strip_appearance(profile); }
+    }
+    #[test]
+    fn version_seven_migrates_display_defaults_and_rejects_new_fields() {
+        let mut original = Preferences::defaults(Path::new("/private/display-user"));
+        original.profiles.get_mut("Studio").unwrap().startup.session = crate::project_template::Startup::Empty;
+        original.profiles.get_mut("Studio").unwrap().audio.sample_rate = Some(96000);
+        let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 7.into();
+        assert!(decode(&serde_json::to_vec(&value).unwrap()).unwrap_err().to_string().contains("Display contrast"));
+        strip_display(&mut value);
+        let (loaded, migrated) = decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(migrated); assert_eq!(loaded, original);
+        let display = &mut original.profiles.get_mut("Studio").unwrap().appearance;
+        display.contrast = crate::theme::Contrast::Light; display.reduced_motion = true;
+        display.waveform_contrast = 2.5; display.level_contrast = 3.0;
+        let (reopened, migrated) = decode(&serde_json::to_vec(&original).unwrap()).unwrap();
+        assert!(!migrated); assert_eq!(reopened, original);
+        for field in ["waveform_contrast", "level_contrast"] {
+            for invalid in [serde_json::json!(0.99),serde_json::json!(3.01),serde_json::Value::Null] {
+                let mut value = serde_json::to_value(&original).unwrap(); value["profiles"]["Studio"]["appearance"][field] = invalid;
+                assert!(decode(&serde_json::to_vec(&value).unwrap()).is_err());
+            }
+        }
+    }
     struct Directory(PathBuf);
     impl Directory {
         fn new() -> Self {
@@ -395,6 +430,7 @@ mod tests {
     fn version_six_migrates_without_changing_startup_or_audio_and_rejects_new_fields() {
         let original = Preferences::defaults(Path::new("/private/template-user"));
         let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 6.into();
+        strip_display(&mut value);
         assert!(decode(&serde_json::to_vec(&value).unwrap()).is_err());
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("session"); }
         let (loaded, migrated) = decode(&serde_json::to_vec(&value).unwrap()).unwrap();
@@ -412,6 +448,7 @@ mod tests {
         original.profiles.get_mut("Studio").unwrap().startup.performance_mode = true;
         let mut json = serde_json::to_value(&original).unwrap();
         json["version"] = 4.into();
+        strip_display(&mut json);
         for profile in json["profiles"].as_object_mut().unwrap().values_mut() {
             profile.as_object_mut().unwrap().remove("midi_routing");
             profile.as_object_mut().unwrap().remove("recovery");
@@ -469,6 +506,7 @@ mod tests {
         let prefs = Preferences::defaults(Path::new("/private/user"));
         let mut value = serde_json::to_value(&prefs).unwrap();
         value["version"] = 2.into();
+        strip_display(&mut value);
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() {
             profile.as_object_mut().unwrap().remove("midi_routing");
             profile["startup"].as_object_mut().unwrap().remove("session");
@@ -510,6 +548,7 @@ mod tests {
     fn migration_is_explicit_and_unknown_or_duplicate_fields_never_disappear() {
         let profile = Profile::defaults(Path::new("/private/user"));
         let mut old_profile = serde_json::to_value(&profile).unwrap();
+        strip_appearance(&mut old_profile);
         old_profile.as_object_mut().unwrap().remove("midi_routing");
         old_profile["startup"].as_object_mut().unwrap().remove("session");
         let raw = serde_json::to_vec(&serde_json::json!({"version":1,"profile":old_profile})).unwrap();
@@ -611,6 +650,7 @@ mod tests {
         assert!(load(&path, &AtomicBool::new(false)).unwrap().preferences.current().unwrap().startup.performance_mode);
         let mut legacy = serde_json::to_value(preferences).unwrap();
         legacy["version"] = 3.into();
+        strip_display(&mut legacy);
         for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() { profile.as_object_mut().unwrap().remove("midi_routing"); profile["startup"].as_object_mut().unwrap().remove("performance_mode"); profile["startup"].as_object_mut().unwrap().remove("session"); }
         let (legacy, migrated) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
         assert!(migrated);

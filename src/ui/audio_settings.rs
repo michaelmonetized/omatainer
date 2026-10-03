@@ -312,7 +312,7 @@ impl App {
                         ui.label(format!("Observed output callback: {} frames ({:.3} ms at logical rate)",measured.frames,measured.frames as f64*1000.0/measured.sample_rate.max(1) as f64)).help(ui, HelpControl::AudioTiming);
                         ui.label(measured.output_latency_ns.map(|ns|format!("Backend output scheduling estimate: {:.3} ms",ns as f64/1e6)).unwrap_or("Backend output scheduling estimate unavailable".into())).help(ui, HelpControl::AudioTiming);
                     } else {ui.label("Waiting for output callback observations for this stream");}
-                }else{ui.colored_label(Color32::YELLOW,"No active output. Session retained; Save, New/Open and Close remain available.");}
+                }else{ui.colored_label(ui.visuals().warn_fg_color,"No active output. Session retained; Save, New/Open and Close remain available.");}
                 ui.label("Physical negotiated sample rate, converter latency and exact driver roundtrip are unavailable through this backend API.");
                 if let Some(evidence)=status.measurement.as_ref().filter(|e|!panel.busy() && e.identity.profile==profile && panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok())==Some(&e.identity)) {
                     let m=&evidence.measured;
@@ -331,7 +331,7 @@ impl App {
                 if audio_action(ui, "Preview saved audio", true).help(ui, HelpControl::AudioPreview).clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
                 if let Some(preview)=panel.preview.clone(){
                     ui.push_id(("audio-preview", panel.preview_generation), |ui| {
-                    match &preview.output {Ok(plan)=>{ui.label(format!("Proposed output: {} / {} · {} Hz · {} · {} channels · {}",plan.backend,plan.device,plan.rate,plan.format,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},Err(error)=>{ui.colored_label(Color32::YELLOW,error);}}
+                    match &preview.output {Ok(plan)=>{ui.label(format!("Proposed output: {} / {} · {} Hz · {} · {} channels · {}",plan.backend,plan.device,plan.rate,plan.format,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},Err(error)=>{ui.colored_label(ui.visuals().warn_fg_color,error);}}
                     if audio_action(ui, "Use saved audio now", preview.output.is_ok()).help(ui, HelpControl::AudioUse).clicked(){panel.confirm=Some(Confirm::Switch(panel.preview_generation));}
                     match &preview.calibration {
                         Ok(request)=>{

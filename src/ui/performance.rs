@@ -27,9 +27,10 @@ impl App {
             }
         }
     }
-    pub(super) fn performance_ui(&mut self, ctx: &egui::Context) {
+    pub(super) fn performance_ui(&mut self, ctx: &egui::Context) { self.performance_controls(ctx, None); }
+    pub(super) fn performance_controls(&mut self, ctx: &egui::Context, parent: Option<&mut Ui>) {
         let status = self.engine.cmd.performance().status();
-        egui::TopBottomPanel::top("show-protection").show(ctx, |ui| {
+        toolbar(ctx, parent, "show-protection", if status.output_muted { "MUTE" } else if status.recovery { "STOP" } else if status.protected { "Guard" } else { "Safety" }, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.strong(if status.recovery { "RECOVERY · playback stopped" } else if status.protected { "PERFORMANCE · protected" } else { "Studio · protection off" });
                 if ui.button(if status.protected { "Leave performance mode…" } else { "Enable performance mode" }).help(ui, HelpControl::PerformanceMode).clicked() {
@@ -49,7 +50,7 @@ impl App {
             if status.changing { ui.label("A deliberate project/device change is pending; mode entry waits for its completion or cancellation."); }
             if status.recovery && !status.stopped { ui.label("Safety request pending renderer acknowledgment; do not infer silence yet."); }
             if status.output_muted {
-                ui.colored_label(Color32::YELLOW, "EMERGENCY OUTPUT MUTE · remains muted after input recovery. Deliberately reset stopped DSP before unmuting; no playback resumes automatically.");
+                ui.colored_label(ui.visuals().warn_fg_color, "EMERGENCY OUTPUT MUTE · remains muted after input recovery. Deliberately reset stopped DSP before unmuting; no playback resumes automatically.");
                 if status.observation_complete {
                     ui.label(if status.nonfinite_tail { "2 s observation complete: nonfinite tail detected. DSP reset required." }
                         else { "2 s tail observation complete. Quiet samples do not prove delayed/bypassed history is cleared." });

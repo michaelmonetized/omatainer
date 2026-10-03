@@ -130,7 +130,7 @@ impl Gui {
         let theme = self.fixture.app.theme.clone();
         self.ctx.run(
             egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 108.0))),
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 160.0))),
                 time: Some(self.frame as f64 / 60.0),
                 events,
                 ..Default::default()

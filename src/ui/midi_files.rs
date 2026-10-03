@@ -272,7 +272,7 @@ impl App {
         let mut import = false;
         let mut export = false;
         egui::Window::new(if editor.exporting { "Export Standard MIDI File" } else { "Import Standard MIDI File" })
-            .id(egui::Id::new("standard-midi-file")).open(&mut visible).default_width(800.0).vscroll(true).max_height((ctx.screen_rect().height() - 80.0).max(240.0)).show(ctx, |ui| {
+            .id(egui::Id::new("standard-midi-file")).open(&mut visible).default_width(800.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 keyboard::block_for_dialog(ctx);
                 ui.label("SMF 0 (one track) and SMF 1 (parallel tracks), PPQN 1–32767. Format 2, SMPTE, RMID and proprietary forms require conversion before import.");
                 ui.label("Controller/program lanes are retained for file interchange. Native notes use the track's selected sound.");

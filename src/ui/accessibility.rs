@@ -213,7 +213,7 @@ fn name(ui: &Ui, label: &str) -> String {
 
 pub(super) fn focus(ui: &Ui, response: &egui::Response) {
     if response.gained_focus() {
-        response.scroll_to_me(Some(Align::Center));
+        response.scroll_to_me_animation(Some(Align::Center), egui::style::ScrollAnimation::none());
     }
     if response.has_focus() {
         ui.painter().rect_stroke(

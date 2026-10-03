@@ -142,7 +142,7 @@ pub(super) fn panel(app: &mut App, relocation: &mut Relocation, ui: &mut egui::U
         receipt.bytes
     ));
     if !receipt.complete {
-        ui.colored_label(Color32::YELLOW, "Incomplete search: other matches may exist in skipped folders or beyond search limits.");
+        ui.colored_label(ui.visuals().warn_fg_color, "Incomplete search: other matches may exist in skipped folders or beyond search limits.");
     }
     if !receipt.samples.is_empty() {
         ui.collapsing("Skipped search entries", |ui| {
