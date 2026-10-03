@@ -262,7 +262,7 @@ impl Projects {
                 )
             })
     }
-    fn busy(&self) -> bool {
+    pub(super) fn busy(&self) -> bool {
         self.active.is_some() || self.closing_library && !self.allow_close
     }
     pub fn dialog_is_closed(&self) -> bool {
@@ -392,8 +392,11 @@ impl App {
     fn guard_project_drafts(&mut self) -> bool {
         let dependencies = self.dependencies.guard_replacement();
         let timing = self.timing.guard_replacement();
-        let blocked = dependencies || timing;
-        if blocked { self.project.message = Some("Project replacement cancelled while editors retain unapplied work. Apply it or explicitly discard it, then choose the project action again.".into()); }
+        let templates = self.templates.busy();
+        let blocked = dependencies || timing || templates;
+        if blocked { self.project.message = Some(if templates {
+            "Finish or cancel the pending template operation before replacing the project.".into()
+        } else { "Project replacement cancelled while editors retain unapplied work. Apply it or explicitly discard it, then choose the project action again.".into() }); }
         blocked
     }
     /// Open a published imported session through the existing unsaved-work guard.
