@@ -428,3 +428,59 @@ fn imported_media_numbering_matches_native_capture_across_decimal_widths() {
         expected.unwrap()
     );
 }
+
+#[test]
+fn import_preflight_retains_space_for_unjournaled_launches_and_transport_positions() {
+    let (source_engine, mut source_rt) = Engine::headless_for_test(48_000, 256);
+    let source = capture(&source_engine, &mut source_rt);
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let captured = capture(&engine, &mut rt);
+    let revision = captured.revision;
+    let mut before_bytes = 0;
+    let mut reserved_bytes = 0;
+    let (request, ack) = Request::import_with_preflight(
+        captured, &source.state, &source.media, &selection(&source.state), 48_000,
+        |state, media| {
+            before_bytes = serde_json::to_vec(state).unwrap().len();
+            reserved_bytes = crate::project_file::DEFAULT_METADATA_LIMIT - state.import_metadata_limits().max_metadata_bytes;
+            let bundle = crate::project_file::Bundle { state, media: media.to_vec() };
+            let cancel = AtomicBool::new(false);
+            #[derive(serde::Serialize)]
+            struct Envelope<'a> {
+                format_version: u32,
+                state: &'a project::State,
+                media: Vec<crate::project_file::Media>,
+            }
+            let exact = serde_json::to_vec(&Envelope {
+                format_version: crate::project_file::FORMAT_VERSION,
+                state,
+                media: media.iter().map(|s| crate::project_file::Media::from_sample(s)).collect(),
+            }).unwrap().len();
+            let mut limits = crate::project_file::Limits::default();
+            limits.max_metadata_bytes = exact;
+            crate::project_file::validate_metadata(&bundle, &limits, &cancel).unwrap();
+            limits.max_metadata_bytes -= reserved_bytes;
+            assert!(crate::project_file::validate_metadata(&bundle, &limits, &cancel).is_err());
+            crate::project_file::validate_metadata(&bundle, &state.import_metadata_limits(), &cancel).map_err(|e| e.to_string())
+        },
+    ).unwrap();
+    for track in 0..rt.tracks.len() {
+        rt.apply(Command::FireClip { track: track as u8, scene: 0, looping: false });
+    }
+    rt.beat = 12_345_678.123456789;
+    assert_eq!(engine.project.revision(), revision);
+    engine.send(Command::SessionEdit(request)).unwrap();
+    assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
+    assert_eq!(ack.state(), Outcome::Applied);
+    let after = capture(&engine, &mut rt);
+    let after_bytes = serde_json::to_vec(&after.state).unwrap().len();
+    assert!(after_bytes > before_bytes);
+    assert!(after_bytes - before_bytes < reserved_bytes);
+    for start_beat in [-1.0e12, -f64::MIN_POSITIVE, -f64::from_bits(1), 1.2345678901234567e-200, 1.0e12] {
+        let mut launch = after.state.tracks[0].launch.unwrap();
+        launch.scene = (crate::engine::session::MAX_SCENES - 1) as u16;
+        launch.start_beat = start_beat;
+        launch.looping = false;
+        assert!(serde_json::to_vec(&Some(launch)).unwrap().len() < 96);
+    }
+}
