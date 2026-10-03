@@ -719,6 +719,7 @@ impl super::RtEngine {
         // Finalize exact original recording targets before any gate or arm is
         // released. All bounded synth voices enter their normal release stage.
         self.history_finish_take();
+        self.routing_pipe.recorder.invalidate();
         self.finish_recording_all();
         self.playing = false;
         self.recording = false;

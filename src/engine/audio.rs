@@ -3,6 +3,7 @@ pub mod calibration;
 pub mod config;
 pub mod owner;
 pub mod recovery;
+pub(crate) mod routing;
 use cpal::traits::{DeviceTrait, StreamTrait};
 pub use owner::AudioOut;
 use std::sync::{
@@ -266,6 +267,7 @@ impl OutputCallback {
         for (destination, source) in data.iter_mut().zip(slice) {
             *destination = T::from_sample(*source);
         }
+        self.rt.routing_pipe.meters(data, self.channels);
         if let Some(history) = &mut self.rt.history_measurement { history.converted(data, self.channels); }
         self.rt.telemetry.record_output(
             started.elapsed(),

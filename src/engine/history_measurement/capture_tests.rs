@@ -124,3 +124,23 @@ fn output_sidecar_and_disconnected_consumer_fail_explicitly_without_breaking_aud
     let history = callback.renderer_for_test().history_measurement.as_ref().unwrap();
     assert!(history.incomplete); assert!(history.dropped >= 16_865);
 }
+
+#[test]
+fn explicit_routing_retires_stereo_measurements_and_refuses_reusing_their_evidence() {
+    let (mut callback, _receiver, _) = callback(2, false, 1.0, 0.0, false, 0.0);
+    let mut block = [0.0_f32; 256];
+    for _ in 0..8 { callback.render(&mut block); }
+    assert!(callback.renderer_mut_for_test().history_measurement.as_mut().unwrap().start());
+    callback.render(&mut block);
+    let rt = callback.renderer_mut_for_test();
+    rt.routing = Some(Box::new(crate::engine::audio::routing::prepared::Prepared::new(
+        std::sync::Arc::new(crate::engine::audio::routing::model::Model::default()), &rt.session).unwrap()));
+    callback.render(&mut block);
+    let history = callback.renderer_mut_for_test().history_measurement.as_mut().unwrap();
+    assert!(history.incomplete);
+    assert!(history.end());
+    assert!(!history.start());
+    callback.renderer_mut_for_test().routing = None;
+    callback.render(&mut block);
+    assert!(callback.renderer_mut_for_test().history_measurement.as_mut().unwrap().start());
+}

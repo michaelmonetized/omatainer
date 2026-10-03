@@ -4,7 +4,7 @@ Generated from the in-app help catalogue. Hardware observations remain separate 
 
 ## Audio setup
 
-Start with the output quiet. Audio devices and latency reports the backend-accepted logical output, observed callback sizes and fixed main route; physical negotiated rate and converter latency are unavailable through CPAL. Main uses outputs 1/2, mono sums them, and additional outputs are silent. Settings profiles separate saved preferences from running audio: Apply and save persists audio choices without changing the stream. Preview saved audio, Use saved audio now, then Stop and change output explicitly stops performance and changes the stream, or restart to use the saved setup. A failed change restores the prior output when possible; if rollback also fails, the retained session can still Save, New/Open and Close. Playback never resumes automatically. Optional Measure loopback requires a suitable line-level cable/interface route and explicit confirmation; it reports qualified host callback-to-callback return timing only after three reliable probes, not physical converter roundtrip. Cancellation, missing loopback and corrupt evidence produce no current measurement. This build has one stereo main bus; the cue blend does not provide a separate headphone output. Load a built-in stem, play it, then verify sound at your physical output. Connection and meter evidence cannot prove that speakers or headphones are audible.
+Start with the output quiet. Audio devices and latency reports the backend-accepted logical output, observed callback sizes and active project routing; physical negotiated rate and converter latency are unavailable through CPAL. Projects without explicit routing use outputs 1/2, mono sums them, and additional outputs are silent. Audio routing defines stable mono/stereo/multichannel aliases, independent tracks, buses, deck taps and record sources. Review and confirm changes while stopped; Save and Open retain them. Physical channel meters and quiet channel tests help verify connections. Live inputs require separate preview and confirmation. Settings profiles separate saved preferences from running audio: Apply and save persists audio choices without changing the stream. Preview saved audio, Use saved audio now, then Stop and change output explicitly stops performance and changes the stream, or restart to use the saved setup. A failed change restores the prior output when possible; if rollback also fails, the retained session can still Save, New/Open and Close. Playback never resumes automatically. Optional Measure loopback requires a suitable line-level cable/interface route and explicit confirmation; it reports qualified host callback-to-callback return timing only after three reliable probes, not physical converter roundtrip. Cancellation, missing loopback and corrupt evidence produce no current measurement. The main mixer is stereo; independent routing can address additional physical outputs. the cue blend does not provide a separate headphone output. Load a built-in stem, play it, then verify sound at your physical output. Connection and meter evidence cannot prove that speakers or headphones are audible.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -173,6 +173,38 @@ Explicit non-commercial consent; one original-pitch preview
 Enable the public Free To Use API only after accepting its current non-commercial license and attribution requirement. Search current metadata, copy credits and preview non-premium music. Premium and commercial use need a paid license for this app; none is configured. The adapter supports no offline storage, stems, recording, export or DJ decks. Close or Stop cancels preview audio. Network and decoding run on a bounded worker; safe and performance modes block these jobs.
 
 Workflow: Prepare a DJ deck.
+
+### Audio routing
+
+Saved aliases and explicit channel maps
+
+Inspect and edit project routes for tracks, scene effects, decks, buses, inputs, outputs and record sources. Choose pre FX, post FX or post mixer taps. Missing physical channels stay silent; cycles, invalid maps and changed project revisions reject the entire draft. Stop transports before confirmation. Apply is undoable and saved with the project. The pinned Linux backend advertises up to 32 live channels; saved addresses through 64 remain available for absent-channel preservation.
+
+Workflow: Audio setup.
+
+### Live routed input
+
+Exact device at the active output nominal rate
+
+Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. Faults, missing callbacks and output changes disable input and require fresh confirmation. A bounded queue reports missing frames and overflow; separate device clocks are not resampled. Safe mode disables device access.
+
+Workflow: Audio setup.
+
+### Capture a record source
+
+1–26 channels; float WAV; 128 MiB maximum
+
+Apply and refresh routes, choose a record alias and new WAV path, then capture on a worker. Stop keeps completed audio; Cancel removes the partial file. Missing frames, overflow, invalid samples and file failures prevent incomplete publication. Existing files are preserved. Routing, project, audio and emergency-stop changes finish the current capture.
+
+Workflow: Record a held note.
+
+### Test a physical output
+
+One second at −40 dBFS; stopped transports
+
+Play a ramped 997 Hz tone on one active physical channel. Starting playback, cancellation or performance protection ends it. The tone and every independently routed output obey emergency silence. Digital meters and private software loopback do not prove hardware converter or interface behavior.
+
+Workflow: Audio setup.
 
 ### Automation API
 
