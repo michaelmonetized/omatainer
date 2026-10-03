@@ -932,6 +932,7 @@ pub enum Command {
     RestartScene { scene: u16 },
     AddScene { scene: u16 },
     SamplerPad { pad: u8, on: bool },
+    SamplerPadPressure { pad: u8, pressure: f32 },
     SamplerBank(usize),
     SamplerEdit(sampler::Edit),
     SamplerAudition(sampler::Audition),
@@ -2644,50 +2645,10 @@ impl RtEngine {
                     self.apply(Command::DeckAudio { deck, audio: a });
                 }
             }
-            Command::SamplerPad { pad, on } => {
-                let pad = pad % 16;
-                let input = InputKey::Pad(pad);
-                let pitch = sampler_pitch(self.sampler_inst, self.sampler_oct, pad);
-                let destination = self.compose_target.unwrap_or(ComposeTarget {
-                    track: self.selected_track, scene: self.selected_scene,
-                });
-                if on {
-                    self.release_input(input);
-                    self.pad_targets[pad as usize] = None;
-                    if self.sampler_inst == SamplerInstrument::Samples {
-                        if let Some(bank) = self.sampler_banks.get(self.sampler_bank) {
-                            let slot = pad as usize;
-                            self.pad_voices[slot] = bank.data.audio[slot].as_ref().zip(bank.data.ranges[slot]).map(|(sample, range)| {
-                                let rate = 2f32.powi((self.sampler_oct - 3) as i32) as f64;
-                                crate::sampler_bank::resident::Voice::new(sample.clone(), range, bank.data.settings.slots[slot].controls, rate, destination.track)
-                            });
-                        }
-                    } else {
-                        self.sampler_poly.note_on_input(pitch, 0.9, input);
-                        let target = PadTarget { track: destination.track, pitch };
-                        self.pad_destinations[pad as usize] = target.track;
-                        self.pad_targets[pad as usize] = Some(target);
-                    }
-                    if self.compose_target.is_some() || self.recording {
-                        if self.recording_position(
-                            destination.track, destination.scene,
-                        ).is_none() { return; }
-                        if !self.history_record_target(destination.track,destination.scene) {return;}
-                        let clip = &mut self.tracks[destination.track].clips[destination.scene];
-                        if clip.kind == ClipKind::Empty {
-                            clip.kind = ClipKind::Midi;
-                            clip.name.clear();clip.name.push_str("Pad");
-                            clip.bars = 1.0;
-                        }
-                        self.begin_recording_note(
-                            input, destination.track, destination.scene, pitch, 110,
-                        );
-                    }
-                } else {
-                    self.release_input(input);
-                    self.pad_targets[pad as usize] = None;
-                }
-            }
+            Command::SamplerPad { pad, on } => self.apply_sampler_pad(pad % 16, on, 1.0),
+            Command::SamplerPadPressure { pad, pressure } => {
+                if pad < 16 && pressure.is_finite() && (0.0..=1.0).contains(&pressure) { self.apply_sampler_pad(pad, true, pressure); }
+            },
             Command::SamplerBank(i) => self.sampler_bank = i.min(self.sampler_banks.len().saturating_sub(1)),
             Command::SamplerEdit(edit) => self.apply_sampler_edit(edit),
             Command::SamplerAudition(request) => self.apply_sampler_audition(request),

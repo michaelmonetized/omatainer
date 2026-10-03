@@ -40,6 +40,37 @@ fn held(rt: &RtEngine) -> bool {
 }
 
 #[test]
+fn pressure_pads_reject_invalid_attacks_and_reserve_the_ordinary_release_without_heap_work() {
+    let (port,mut rt)=engine();
+    for (pad,pressure) in [(16,0.5),(0,f32::NAN),(0,f32::INFINITY),(0,-0.1),(0,1.1)] {
+        assert_eq!(port.send(Command::SamplerPadPressure {pad,pressure}),Err(SubmissionError::InvalidTarget));
+    }
+    assert_eq!(port.len(),0);
+    assert_eq!(port.admission.lock().held,0);
+    port.send(Command::SamplerPadPressure {pad:0,pressure:0.2}).unwrap();
+    tick(&mut rt);
+    assert!(held(&rt));
+    while port.send(Command::Master(0.8)).is_ok() {}
+    assert_eq!(port.send(Command::SamplerPad {pad:0,on:false}),Ok(SubmissionOutcome::Accepted));
+    assert_eq!(port.admission.lock().held,0);
+    for _ in 0..8 {tick(&mut rt);}
+    assert!(!held(&rt));
+    for instrument in [SamplerInstrument::Synth(SynthInstrument::Keys),SamplerInstrument::Samples] {
+        rt.apply(Command::SamplerInst(instrument));
+        let mut output=[0.0;128];
+        let counts=crate::engine::test_alloc::measure(|| {
+            for _ in 0..256 {
+                port.send(Command::SamplerPadPressure {pad:0,pressure:0.25}).unwrap();
+                port.send(Command::SamplerPad {pad:0,on:false}).unwrap();
+                rt.process(&mut output);
+            }
+        });
+        assert_eq!(counts,crate::engine::test_alloc::Counts::default(),"{instrument:?}");
+        assert!(output.iter().all(|value|value.is_finite()));
+    }
+}
+
+#[test]
 fn equal_pitch_devices_reserve_independent_releases_including_zero_velocity() {
     let (port, mut rt) = engine();
     for source in [11, 22] {

@@ -640,6 +640,9 @@ impl CommandPort {
         if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::session::MAX_TRACKS || *ch>15 || *note>127 || *vel>127) {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command, Command::SamplerPadPressure { pad, pressure } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         if matches!(&command, Command::TimelineSeek(seconds) if !seconds.is_finite() || !(0.0..=86400.0).contains(seconds)) {
             return fail(SubmissionError::InvalidTarget);
         }
@@ -926,6 +929,7 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
         )),
         Command::MidiAudition { id, on, .. } => Some((GateKey::Piano(id), on)),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
+        Command::SamplerPadPressure { pad, .. } => Some((GateKey::Pad(pad), true)),
         Command::SamplerAudition(ref request) => Some((GateKey::Audition(request.id), true)),
         Command::SamplerAuditionStop { id } => Some((GateKey::Audition(id), false)),
         Command::DeckTouch { deck, on } => Some((
@@ -1180,6 +1184,7 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::LiveNoteOff { .. }
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
+            | Command::SamplerPadPressure { .. }
             | Command::DeckTouch { .. }
             | Command::MidiDeckTouch { .. }
             | Command::Stop

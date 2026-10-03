@@ -899,6 +899,7 @@ impl App {
         }
         self.pad_held = [false; 16];
         self.pad_inputs = [0; 16];
+        self.touch_input.clear();
         accessibility::cancel_editor(ctx);
 
         self.refresh_library_view();

@@ -309,3 +309,53 @@ impl RtEngine {
         self.sampler_banks[bank].factory = None;
     }
 }
+
+impl RtEngine {
+    /// Apply a pad gate with bounded attack pressure without changing its input identity.
+    /// Takes pad, gate and normalized pressure; updates playback and records matching note velocity.
+    pub(super) fn apply_sampler_pad(&mut self, pad: u8, on: bool, pressure: f32) {
+        let input = InputKey::Pad(pad);
+        let pitch = sampler_pitch(self.sampler_inst, self.sampler_oct, pad);
+        let destination = self.compose_target.unwrap_or(ComposeTarget {
+            track: self.selected_track, scene: self.selected_scene,
+        });
+        if on {
+            self.release_input(input);
+            self.pad_targets[pad as usize] = None;
+            if self.sampler_inst == SamplerInstrument::Samples {
+                if let Some(bank) = self.sampler_banks.get(self.sampler_bank) {
+                    let slot = pad as usize;
+                    self.pad_voices[slot] = bank.data.audio[slot].as_ref().zip(bank.data.ranges[slot]).map(|(sample, range)| {
+                        let rate = 2f32.powi((self.sampler_oct - 3) as i32) as f64;
+                        let mut voice = crate::sampler_bank::resident::Voice::new(sample.clone(), range, bank.data.settings.slots[slot].controls, rate, destination.track);
+                        voice.gain *= pressure;
+                        voice
+                    });
+                }
+            } else {
+                self.sampler_poly.note_on_input(pitch, 0.9 * pressure, input);
+                let target = PadTarget { track: destination.track, pitch };
+                self.pad_destinations[pad as usize] = target.track;
+                self.pad_targets[pad as usize] = Some(target);
+            }
+            if self.compose_target.is_some() || self.recording {
+                if self.recording_position(
+                    destination.track, destination.scene,
+                ).is_none() { return; }
+                if !self.history_record_target(destination.track,destination.scene) {return;}
+                let clip = &mut self.tracks[destination.track].clips[destination.scene];
+                if clip.kind == ClipKind::Empty {
+                    clip.kind = ClipKind::Midi;
+                    clip.name.clear();clip.name.push_str("Pad");
+                    clip.bars = 1.0;
+                }
+                self.begin_recording_note(
+                    input, destination.track, destination.scene, pitch, (110.0 * pressure).round().clamp(1.0, 127.0) as u8,
+                );
+            }
+        } else {
+            self.release_input(input);
+            self.pad_targets[pad as usize] = None;
+        }
+    }
+}

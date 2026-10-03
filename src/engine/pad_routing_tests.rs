@@ -197,6 +197,27 @@ fn capture_fixture(arp: bool) -> RtEngine {
     rt
 }
 
+#[test]
+fn pressure_pad_attack_scales_live_sound_and_records_matching_velocity() {
+    for pressure in [0.0,0.2,0.5,1.0] {
+        let mut rt=capture_fixture(false);
+        rt.apply(Command::SamplerPadPressure {pad:0,pressure});
+        let voice=rt.sampler_poly.voices.iter().find(|voice|voice.input==Some(InputKey::Pad(0))).unwrap();
+        assert!((voice.vel-0.9*pressure).abs()<1e-6);
+        frames(&mut rt,120);
+        rt.apply(Command::SamplerPad {pad:0,on:false});
+        assert_eq!(rt.tracks[DEST].clips[0].notes.len(),1);
+        assert_eq!(rt.tracks[DEST].clips[0].notes[0].vel,(110.0*pressure).round().max(1.0) as u8);
+        assert!(rt.tracks[DEST].clips[0].notes[0].len>0.0);
+        assert!(rt.sampler_poly.voices.iter().all(|voice|!matches!(voice.env.stage,1..=3)));
+        let mut sample_rt=engine();
+        sample_rt.apply(Command::SamplerPad {pad:0,on:true});
+        let default_gain=sample_rt.pad_voices[0].as_ref().unwrap().gain;
+        sample_rt.apply(Command::SamplerPadPressure {pad:0,pressure});
+        assert!((sample_rt.pad_voices[0].as_ref().unwrap().gain-default_gain*pressure).abs()<1e-6);
+    }
+}
+
 fn input(rt: &mut RtEngine, is_pad: bool, on: bool) {
     if is_pad {
         pad(rt, on);
