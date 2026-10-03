@@ -141,6 +141,45 @@ fn recovery_survives_renumbering_but_refuses_a_different_default_and_never_uses_
 }
 
 #[test]
+fn physical_replacement_during_stream_open_never_activates_the_replacement_and_retains_save() {
+    let (engine, audio, controls) = tests::fixture();
+    fault(&audio, &controls);
+    let callbacks = engine.cmd.audio_metrics().callbacks;
+    let retired = controls.dropped.load(Ordering::Acquire);
+    controls.block_open.store(true, Ordering::Release);
+    let handle = audio.handle.clone();
+    let operation = std::thread::spawn(move || reconnect(&handle));
+    wait(|| controls.entering_open.load(Ordering::Acquire));
+    controls.alternate_device.store(true, Ordering::Release);
+    controls.block_open.store(false, Ordering::Release);
+    let error = operation.join().unwrap().unwrap_err();
+    assert!(
+        error.contains("Physical output changed during opening"),
+        "{error}"
+    );
+    assert_eq!(audio.handle.status().phase, Phase::Offline);
+    assert!(audio.handle.status().active.is_none());
+    assert_eq!(
+        audio
+            .handle
+            .status()
+            .recovery
+            .as_ref()
+            .unwrap()
+            .identity
+            .as_deref(),
+        Some("unit-1")
+    );
+    assert_eq!(engine.cmd.audio_metrics().callbacks, callbacks);
+    assert_eq!(controls.dropped.load(Ordering::Acquire), retired + 1);
+    assert!(engine.cmd.send(Command::Play).is_err());
+    engine.project.capture(&AtomicBool::new(false)).unwrap();
+    controls.alternate_device.store(false, Ordering::Release);
+    assert_eq!(reconnect(&audio.handle).unwrap().phase, Phase::Running);
+    assert!(!engine.snapshot().playing);
+}
+
+#[test]
 fn canceled_or_failed_reconnect_retains_graph_and_target_for_later_retry_and_save() {
     let (engine, audio, controls) = tests::fixture();
     fault(&audio, &controls);

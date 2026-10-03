@@ -290,9 +290,13 @@ impl<B: Backend> Owner<B> {
             }
         };
         let result = self.backend.play(&stream);
+        let identity_matches = identity.as_ref().is_none_or(|expected| {
+            self.backend.identity(&plan).as_ref() == Some(expected)
+        });
         // This RMW is the commit point against cancellation: cancellation
         // ordered before it wins; a later request cannot undo applied output.
         let commit = result.is_ok()
+            && identity_matches
             && !fault.load(Ordering::Acquire)
             && !self.stopped.load(Ordering::Acquire)
             && cancel
@@ -304,6 +308,8 @@ impl<B: Backend> Owner<B> {
             return Err(result.err().unwrap_or_else(|| {
                 if cancel.load(Ordering::Acquire) || self.stopped.load(Ordering::Acquire) {
                     "Audio change cancelled before activation".into()
+                } else if !identity_matches {
+                    "Physical output changed during opening; no other output was activated".into()
                 } else {
                     "Output failed before activation".into()
                 }

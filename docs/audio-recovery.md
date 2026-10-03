@@ -13,6 +13,8 @@ format and buffer. Linux ALSA card routes retain a USB vendor/product/serial and
 interface identity or a fixed onboard/PCI device path. USB devices without a
 serial, ambiguous identities, missing routes and changed capabilities fail closed.
 Card numbering and names may change without selecting a different physical unit.
+Identity is checked again after opening and playing the still-muted stream; a
+replacement during opening is retired before output is enabled.
 The retained anchor belongs to this running session; it is not a portable hardware
 database or a new preference setting.
 
