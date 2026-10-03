@@ -6,9 +6,11 @@ or import acknowledgment is outstanding, and exposes the settled result before
 a later close. Already completed publication remains truthfully reported.
 
 First snapshot initializes a nonexistent or verified empty real directory by
-publishing a complete sibling stage. Empty-directory publication rechecks its
-identity and contents; the kernel refuses replacement of a nonempty directory,
-file or symlink. Existing version stores reopen normally. Foreign contents,
+publishing a complete sibling stage. Empty-directory publication rechecks its identity and contents, atomically
+exchanges it with the complete stage, then verifies the displaced inode before
+accepting publication. Removal makes exchange fail; a swapped or newly nonempty
+destination is restored. Unexpected changes during restoration retain displaced
+contents at the reported recovery path. Existing version stores reopen normally. Foreign contents,
 symlinks and cancellation remain refusals and preserve their input.
 
 Local Linux aarch64 qualification: 21 focused native/model tests pass (nine
@@ -27,3 +29,14 @@ and adjacent `version-close-{versions,import,portable,close,package}.log` files.
 This focused layer does not claim a separate full release gate or physical OS
 window/hardware qualification; the preceding full gate is retained in
 `issue-124-project-versions.md`.
+
+## Destination exchange regression
+
+A subsequent race finding is resolved by checking the inode displaced by
+RENAME_EXCHANGE. The deterministic fixture removes or swaps the destination after
+its original check: a missing path remains absent, and swapped foreign contents
+are restored exactly with no staged files published into them. Fourteen focused
+tests pass on this revision (nine version and five portable storage), together
+with eight license/package fixtures. The earlier close/import qualification
+above remains retained. Updated debug test SHA: `fc31158d0f9f39ed3de219e89554ee969847bfcfc4865aa994c6b67510d752c6`.
+Logs: `/home/michael/Projects/omatainer-work/version-folder-exchange-{tests,versions,portable,package}.log`.

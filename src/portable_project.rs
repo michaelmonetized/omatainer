@@ -587,10 +587,19 @@ pub(crate) fn publish_into_empty(
 }
 
 fn publish_directory(
+    stage: Stage,
+    destination: &Path,
+    cancel: &AtomicBool,
+    empty: Option<(u64, u64)>,
+) -> Result<SaveOutcome, String> {
+    publish_directory_with(stage, destination, cancel, empty, || {})
+}
+fn publish_directory_with(
     mut stage: Stage,
     destination: &Path,
     cancel: &AtomicBool,
     empty: Option<(u64, u64)>,
+    before_exchange: impl FnOnce(),
 ) -> Result<SaveOutcome, String> {
     active(cancel)?;
     stage.recheck()?;
@@ -610,17 +619,39 @@ fn publish_directory(
             return Err("Version destination is no longer the reviewed empty directory".into());
         }
     }
+    before_exchange();
     if unsafe {
         libc::renameat2(
             libc::AT_FDCWD,
             old.as_ptr(),
             libc::AT_FDCWD,
             new.as_ptr(),
-            if empty.is_some() { 0 } else { libc::RENAME_NOREPLACE },
+            if empty.is_some() { libc::RENAME_EXCHANGE } else { libc::RENAME_NOREPLACE },
         )
     } != 0
     {
         return Err(std::io::Error::last_os_error().to_string());
+    }
+    if let Some(identity) = empty {
+        stage.retained = true;
+        let reviewed = fs::symlink_metadata(&stage.path).is_ok_and(|displaced|
+            displaced.is_dir() && (displaced.dev(), displaced.ino()) == identity
+                && fs::read_dir(&stage.path).is_ok_and(|mut entries| entries.next().is_none()));
+        if !reviewed {
+            if !fs::symlink_metadata(destination).is_ok_and(|installed|
+                installed.is_dir() && (installed.dev(), installed.ino()) == stage.identity) {
+                return Err(format!("Version destination changed during exchange; displaced contents retained at {}", stage.path.display()));
+            }
+            if unsafe { libc::renameat2(libc::AT_FDCWD, old.as_ptr(), libc::AT_FDCWD, new.as_ptr(), libc::RENAME_EXCHANGE) } != 0 {
+                return Err(format!("Version exchange could not be restored: {}; displaced contents retained at {}", std::io::Error::last_os_error(), stage.path.display()));
+            }
+            stage.retained = false;
+            return Err("Version destination changed before exchange; original contents restored".into());
+        }
+        stage.retained = true;
+        if let Err(error) = fs::remove_dir(&stage.path) {
+            return Ok(SaveOutcome::CommittedButDirectorySyncFailed(format!("Version folder published; empty displaced directory retained at {}: {error}",stage.path.display())));
+        }
     }
     stage.retained = true;
     Ok(
