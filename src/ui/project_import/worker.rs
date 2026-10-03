@@ -102,7 +102,7 @@ impl Worker {
                             view.deck_identities = std::array::from_fn(|deck| captured.playback_receipts[deck].as_ref().and_then(|r| identities.iter().find(|i| i.receipt.same_request(r)).map(|i| i.identity.clone())));
                             #[derive(serde::Serialize)] struct Destination<'a> { engine: &'a crate::engine::project::State, view: &'a project::UiState, mapping_schema: u32 }
                             let (request, ack) = Request::import_with_preflight(captured, &source.state.engine, &source.media, &selection, rate, |state, media| {
-                                project_file::validate_metadata(&Bundle { state: Destination { engine: state, view: &view, mapping_schema: project::FACTORY_MAPPING_SCHEMA }, media: media.to_vec() }, &Limits::default(), &cancel).map_err(|e| format!("Combined project cannot be saved; no import was applied: {e}"))
+                                project_file::validate_metadata(&Bundle { state: Destination { engine: state, view: &view, mapping_schema: project::FACTORY_MAPPING_SCHEMA }, media: media.to_vec() }, &state.import_metadata_limits(), &cancel).map_err(|e| format!("Combined project cannot be saved; no import was applied: {e}"))
                             })?;
                             if done.send(Event::Reviewed(text, ack.clone())).is_err() { ack.cancel(); return Err("Project import viewer closed".into()); }
                             loop {

@@ -327,6 +327,17 @@ pub struct Deck {
 }
 
 impl State {
+    /// Keep space for transport metadata that can grow without an edit revision.
+    /// Takes this validated import destination; returns native limits with room for
+    /// every launch, clock/deck scalar and up to 256 held-note duration changes.
+    pub(crate) fn import_metadata_limits(&self) -> crate::project_file::Limits {
+        let notes: usize = self.tracks.iter().flat_map(|t| &t.clips).map(|c| c.notes.len()).sum();
+        let reserve = 96 * self.tracks.len()
+            + 32 * (4 + DECKS * 32 + notes.min(super::super::recording::CAPTURES));
+        let mut limits = crate::project_file::Limits::default();
+        limits.max_metadata_bytes -= reserve;
+        limits
+    }
     pub(super) fn migrate_notes(&mut self) {
         if self.version >= 5 { return; }
         for (track, data) in self.tracks.iter_mut().enumerate() {

@@ -161,7 +161,7 @@ impl Request {
                         state,
                         media: media.to_vec(),
                     },
-                    &crate::project_file::Limits::default(),
+                    &state.import_metadata_limits(),
                     &std::sync::atomic::AtomicBool::new(false),
                 )
                 .map_err(|e| e.to_string())
