@@ -291,7 +291,7 @@ impl App {
         let mut review_hardware = None;
         egui::Window::new("Project and track templates").open(&mut open).default_width(760.0).max_height((ctx.screen_rect().height()-80.0).max(200.0)).vscroll(true).show(ctx, |ui| {
             ui.label("Save reusable native projects or one track's devices, mixer and named routing. Templates include embedded audio. Project copies open stopped and unsaved. Track configuration preserves clips and other tracks, stops playback and starts fresh undo history. Source files are never live save destinations.");
-            ui.add_enabled_ui(!panel.busy() && !self.project.committing(), |ui| {
+            ui.add_enabled_ui(!panel.busy() && !self.project.busy() && !self.project.committing(), |ui| {
                 field(ui, "Template name", &mut panel.name, 80); field(ui, "New template file (.omtemplate)", &mut panel.new_path, 4096);
                 for (label, track) in [("Save project template", None), ("Save selected track configuration", Some(self.snap.selected_track))] {
                     if ui.button(label).help(ui, HelpControl::TemplateSave).clicked() {

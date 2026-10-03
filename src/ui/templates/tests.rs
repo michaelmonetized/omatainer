@@ -309,7 +309,10 @@ fn missing_changed_and_conflicting_templates_preserve_session_and_existing_files
     settle(&mut gui);
     assert!(gui.app.templates.error.is_some());
     assert_eq!(std::fs::read(&source).unwrap(), bytes);
-    std::fs::write(&source, b"changed template").unwrap();
+    gui.app.templates.error = None;
+    let (mut changed, _) = worker::load(&source, &std::sync::atomic::AtomicBool::new(false)).unwrap();
+    changed.state.metadata.name = "Changed after inspection".into();
+    crate::project_file::save(&source, &changed, crate::project_file::Overwrite::Replace, &crate::project_file::Limits::default(), &std::sync::atomic::AtomicBool::new(false)).unwrap();
     gui.click("Create project from template");
     if gui
         .nodes
@@ -320,14 +323,9 @@ fn missing_changed_and_conflicting_templates_preserve_session_and_existing_files
     }
     settle(&mut gui);
     assert_eq!(gui.rt.session.namespace, namespace);
-    assert!(
-        gui.app
-            .project_result_for_test()
-            .1
-            .unwrap()
-            .contains("identity")
-            || gui.app.templates.error.is_some()
-    );
+    let message = gui.app.project_result_for_test().1.unwrap_or_default();
+    assert!(message.contains("Template changed since inspection"), "{message}");
+    assert!(gui.app.templates.error.is_none());
 }
 
 #[test]
@@ -487,4 +485,34 @@ fn fresh_process_template_import() {
     gui.rt.process(&mut audio);
     assert!(audio.iter().all(|value| value.is_finite()));
     assert!(audio.iter().any(|value| value.abs() > 0.0001));
+}
+
+#[test]
+fn pending_project_and_template_captures_cannot_cross_session_boundaries() {
+    let files = Files::new(); let mut gui = Gui::new(); gui.frame(vec![]); open(&mut gui);
+    let source = files.path("first.omtemplate"); save(&mut gui, &source, false);
+    let destination = files.path("guarded.omtemplate");
+    edit(&mut gui, "New template file (.omtemplate)", destination.to_str().unwrap());
+    let namespace = gui.rt.session.namespace;
+    let (entered, resume) = gui.app.templates.worker.as_ref().unwrap().pause_next();
+    gui.click("Save project template"); entered.recv_timeout(Duration::from_secs(3)).unwrap();
+    gui.click("Project"); gui.click("New project");
+    assert!(!gui.app.project_pending_for_test());
+    assert!(gui.app.project_result_for_test().1.unwrap().contains("pending template"));
+    assert_eq!(gui.rt.session.namespace, namespace);
+    resume.send(()).unwrap(); settle(&mut gui);
+    assert!(destination.is_file());
+    let (entered, resume) = gui.app.pause_project_prepare_for_recovery_test();
+    gui.click("Project"); gui.click("New project");
+    if gui.nodes.iter().any(|(_,n)|n.label()==Some("Discard changes")) { gui.click("Discard changes"); }
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while entered.try_recv().is_err() { gui.frame(vec![]); assert!(Instant::now()<deadline); }
+    gui.frame(vec![]);
+    for label in ["Save project template", "Save selected track configuration"] {
+        let (_,node)=gui.nodes.iter().find(|(_,n)|n.label()==Some(label)).unwrap();
+        assert!(node.is_disabled());
+        gui.click(label); assert!(!gui.app.templates.busy());
+    }
+    resume.send(()).unwrap(); settle(&mut gui);
+    assert_ne!(gui.rt.session.namespace, namespace);
 }
