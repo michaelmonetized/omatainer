@@ -1,6 +1,7 @@
 # Named project versions
 
-Open Project → Named versions and choose a dedicated, new version storage folder.
+Open Project → Named versions and choose a dedicated new or empty version storage folder.
+An existing nonempty folder must already be an Omatainer version store.
 Enter a version name and revision notes, then Save named snapshot. A snapshot
 captures the complete native musical state and the project view. Saving a version
 keeps the current document's explicit save path and unsaved status.
@@ -44,3 +45,7 @@ are supported. Version folders must use actual directories; symbolic links and
 unexpected filenames in their owned audio/revision directories refuse cleanup. Embedded
 native audio is self-contained; external picture, hardware connections and other
 external resources retain their existing native project requirements.
+
+Application close cancels pending version/import work and waits for its outcome.
+If publication already completed, its result remains visible; close again after
+the worker settles.

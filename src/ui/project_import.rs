@@ -59,7 +59,7 @@ impl Panel {
     pub(super) fn busy(&self) -> bool {
         self.active.is_some() || self.pending.is_some()
     }
-    fn cancel(&self) {
+    pub(super) fn cancel(&self) {
         if let Some(cancel) = &self.active {
             cancel.store(true, Ordering::Release);
         }

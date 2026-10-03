@@ -280,3 +280,21 @@ fn original_byte_limit_and_wrong_audio_are_rejected_without_touching_original() 
     .is_err());
     assert_eq!(fs::read(original).unwrap(), bytes);
 }
+
+#[test]
+fn empty_directory_publication_refuses_removal_and_restores_an_inode_swapped_after_review() {
+    for removed in [true,false] {
+        let files = Files::new();
+        let root = files.0.join("empty");fs::create_dir(&root).unwrap();
+        let metadata=fs::metadata(&root).unwrap();let identity=(metadata.dev(),metadata.ino());
+        let stage=Stage::new(&files.0).unwrap();fs::write(stage.path.join("staged.txt"),b"staged store").unwrap();
+        let retained=files.0.join("reviewed-empty");
+        let result=publish_directory_with(stage,&root,&AtomicBool::new(false),Some(identity),|| {
+            fs::rename(&root,&retained).unwrap();
+            if !removed {fs::create_dir(&root).unwrap();fs::write(root.join("foreign.txt"),b"foreign contents").unwrap();}
+        });
+        assert!(result.is_err());
+        if removed {assert!(!root.exists());} else {assert_eq!(fs::read(root.join("foreign.txt")).unwrap(),b"foreign contents");assert!(!root.join("staged.txt").exists());}
+        assert!(retained.is_dir());assert_eq!(fs::read_dir(&retained).unwrap().count(),0);
+    }
+}

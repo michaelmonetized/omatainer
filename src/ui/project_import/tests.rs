@@ -303,3 +303,30 @@ fn queued_view_change(open: bool) {
 fn native_view_changes_after_apply_cancel_import_before_renderer_claim() { queued_view_change(true); }
 #[test]
 fn native_hidden_import_keeps_view_invalidation_until_renderer_claim() { queued_view_change(false); }
+
+#[test]
+fn native_close_cancels_review_and_unclaimed_import_before_exiting() {
+    for applied in [false, true] {
+        let files = Files::new(); let mut gui = Gui::new(&files); let path = source(&mut gui, &files);
+        let tracks = gui.rt.tracks.len(); gui.browse(&path); gui.review();
+        if applied {
+            let target = gui.nodes.iter().find(|(_, n)| n.label() == Some("Apply reviewed project import")).unwrap().0;
+            gui.frame_with_audio(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::Click, data: None })], false);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while gui.app.project_import.active.is_some() {
+                gui.frame_with_audio(vec![], false);
+                assert!(Instant::now() < deadline);
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            assert_eq!(gui.app.project_import.pending.as_ref().unwrap().state(), Outcome::Pending);
+        }
+        let mut raw = egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1800.0, 1600.0))), ..Default::default() };
+        raw.viewports.get_mut(&egui::ViewportId::ROOT).unwrap().events.push(egui::ViewportEvent::Close);
+        let out = gui.ctx.run(raw, |ctx| gui.app.update_frame(ctx));
+        assert!(out.viewport_output[&egui::ViewportId::ROOT].commands.iter().any(|c| matches!(c, egui::ViewportCommand::CancelClose)));
+        assert!(gui.app.project_result_for_test().1.unwrap().contains("project import settles"));
+        gui.rt.process(&mut [0.0; 256]);
+        gui.wait(|g| !g.app.project_import.busy());
+        assert_eq!(gui.rt.tracks.len(), tracks);
+    }
+}

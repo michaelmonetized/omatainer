@@ -222,3 +222,30 @@ fn foreign_symlink_and_changed_index_refuse_storage_mutation() {
     assert!(Store::open(&root, false, &cancel).is_err());
     assert_eq!(fs::read(&outside).unwrap(), b"preserve this");
 }
+
+#[test]
+fn first_snapshot_initializes_an_existing_empty_folder_and_refuses_foreign_contents() {
+    let dir = Folder::new();
+    let root = dir.0.join("already-created");
+    fs::create_dir(&root).unwrap();
+    let cancel = AtomicBool::new(false);
+    let mut store = Store::open(&root, true, &cancel).unwrap();
+    let entry = store.snapshot(&fixture(0.25), "Existing folder".into(), String::new(), &cancel, || Ok(())).unwrap().0;
+    assert_eq!(store.reopen::<serde_json::Value>(&entry, &cancel).unwrap().media[0].data, fixture(0.25).media[0].data);
+    drop(store);
+    assert_eq!(Store::open(&root, true, &cancel).unwrap().entries(), [entry]);
+    let foreign = dir.0.join("not-empty");
+    fs::create_dir(&foreign).unwrap();
+    fs::write(foreign.join("keep.txt"), b"foreign contents").unwrap();
+    assert!(Store::open(&foreign, true, &cancel).is_err());
+    assert_eq!(fs::read(foreign.join("keep.txt")).unwrap(), b"foreign contents");
+    assert_eq!(fs::read_dir(&foreign).unwrap().count(), 1);
+    let link = dir.0.join("link");
+    std::os::unix::fs::symlink(&foreign, &link).unwrap();
+    assert!(Store::open(&link, true, &cancel).is_err());
+    cancel.store(true, Ordering::Release);
+    let cancelled = dir.0.join("cancelled-empty");
+    fs::create_dir(&cancelled).unwrap();
+    assert!(Store::open(&cancelled, true, &cancel).is_err());
+    assert_eq!(fs::read_dir(&cancelled).unwrap().count(), 0);
+}

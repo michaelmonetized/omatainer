@@ -287,8 +287,24 @@ impl App {
     pub(super) fn allow_project_close(&mut self, ctx: &egui::Context) {
         self.begin_recovery_close(ctx);
     }
+    /// Settle project workers before any close or restart route begins.
+    /// Returns true while cancelled version/import work still needs acknowledgment.
+    fn guard_project_workers_before_close(&mut self) -> bool {
+        self.project_versions.cancel();
+        self.project_import.cancel();
+        if self.project_versions.busy() {
+            self.project_versions.open = true;
+            self.project.message = Some("Close cancelled while named version work settles. Wait for its publication or cancellation result before closing.".into());
+            true
+        } else if self.project_import.busy() {
+            self.project_import.open = true;
+            self.project.message = Some("Close cancelled while project import settles. Wait for its application or cancellation result before closing.".into());
+            true
+        } else { false }
+    }
     pub(super) fn request_normal_restart(&mut self) {
         if !self.engine.safe_mode() || self.project.busy() || self.project.committing() || self.project.dialog.is_some() {return;}
+        if self.guard_project_workers_before_close() { return; }
         self.project.restarting=true;
         self.request_project_action(Action::Close);
     }
@@ -421,6 +437,7 @@ impl App {
     }
     pub(super) fn restore_named_version(&mut self, record: super::project_versions::worker::Record) { self.request_project_action(Action::Version(record)); }
     fn request_project_action(&mut self, action: Action) {
+        if matches!(action, Action::Close) && self.guard_project_workers_before_close() { return; }
         if self.reject_protected_project() { return; }
         if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
         if self.project.busy() {
@@ -489,6 +506,7 @@ impl App {
         }
     }
     fn begin_project_close(&mut self, discard: bool) {
+        if self.guard_project_workers_before_close() { return; }
         if self.reject_protected_project() { return; }
         let before = self.project_baseline();
         let cancel = Arc::new(AtomicBool::new(false));
@@ -820,6 +838,7 @@ impl App {
             self.portability.cancel();
             self.templates.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
+            if self.guard_project_workers_before_close() { return; }
             if self.templates.busy() {
                 self.templates.open = true;
                 self.project.message = Some("Close cancelled while template work settles. Wait for its publication or cancellation result before closing.".into());
