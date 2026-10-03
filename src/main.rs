@@ -10,6 +10,7 @@ mod engine;
 mod library;
 mod music_provider;
 mod video;
+mod project_versions;
 mod media_location;
 mod media_tags;
 mod midi_file;

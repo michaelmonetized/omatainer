@@ -111,9 +111,9 @@ struct Envelope<T> {
     state: T,
     media: Vec<Media>,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Media {
+pub(crate) struct Media {
     name: String,
     path: String,
     sample_rate: u32,
@@ -123,6 +123,51 @@ struct Media {
     peaks_bits: Vec<[u32; 3]>,
 }
 impl Media {
+    /// Capture native metadata separately from immutable decoded audio.
+    /// Takes one sample; returns the existing checked container metadata shape.
+    pub(crate) fn from_sample(sample: &Sample) -> Self {
+        Self {
+            name: sample.name.clone(),
+            path: sample.path.clone(),
+            sample_rate: sample.sr,
+            channels: sample.ch,
+            values: sample.data.len() as u64,
+            bpm_bits: sample.bpm.to_bits(),
+            peaks_bits: sample
+                .peaks
+                .iter()
+                .map(|peak| peak.map(f32::to_bits))
+                .collect(),
+        }
+    }
+    /// Rebind validated metadata to an exact decoded audio shape.
+    /// Takes owned PCM, rate and channels; returns one native sample or a mismatch error.
+    pub(crate) fn into_sample(
+        self,
+        data: Vec<f32>,
+        rate: u32,
+        channels: u16,
+    ) -> Result<Arc<Sample>, Error> {
+        self.validate()?;
+        if self.values != data.len() as u64 || self.sample_rate != rate || self.channels != channels
+        {
+            return Err(invalid("immutable media shape differs from saved metadata"));
+        }
+        Ok(Arc::new(Sample {
+            name: self.name,
+            path: self.path,
+            sr: rate,
+            ch: channels,
+            data,
+            bpm: f32::from_bits(self.bpm_bits),
+            peaks: Arc::new(
+                self.peaks_bits
+                    .into_iter()
+                    .map(|peak| peak.map(f32::from_bits))
+                    .collect(),
+            ),
+        }))
+    }
     fn validate(&self) -> Result<u64, Error> {
         validate_shape(
             self.sample_rate,
@@ -255,19 +300,7 @@ fn encode_metadata<'a, T: Serialize>(
     let media = bundle
         .media
         .iter()
-        .map(|sample| Media {
-            name: sample.name.clone(),
-            path: sample.path.clone(),
-            sample_rate: sample.sr,
-            channels: sample.ch,
-            values: sample.data.len() as u64,
-            bpm_bits: sample.bpm.to_bits(),
-            peaks_bits: sample
-                .peaks
-                .iter()
-                .map(|peak| peak.map(f32::to_bits))
-                .collect(),
-        })
+        .map(|sample| Media::from_sample(sample))
         .collect();
     let envelope = Envelope {
         format_version: FORMAT_VERSION,
@@ -541,21 +574,9 @@ pub(crate) fn load_from_file_measured<T: DeserializeOwned>(
                 data.push(value);
             }
         }
-        media.push(Arc::new(Sample {
-            name: asset.name,
-            path: asset.path,
-            sr: asset.sample_rate,
-            ch: asset.channels,
-            data,
-            bpm: f32::from_bits(asset.bpm_bits),
-            peaks: Arc::new(
-                asset
-                    .peaks_bits
-                    .into_iter()
-                    .map(|peak| peak.map(f32::from_bits))
-                    .collect(),
-            ),
-        }));
+        let rate = asset.sample_rate;
+        let channels = asset.channels;
+        media.push(asset.into_sample(data, rate, channels)?);
     }
     let mut footer = [0; 4];
     read_exact(&mut file, &mut footer)?;

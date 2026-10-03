@@ -310,6 +310,14 @@ Open native project and track templates. New template files and duplicates never
 
 Workflow: Save and reopen.
 
+### Project versions
+
+Named snapshots and alternatives
+
+Save a named snapshot with revision notes and shared immutable audio. Compare tracks, clips, routing and devices before restoring an unsaved copy or branching a new project. Preview unreferenced assets before pruning.
+
+Workflow: Save and reopen.
+
 ### Project import
 
 Reuse selected project material
