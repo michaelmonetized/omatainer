@@ -2,6 +2,7 @@ use super::model::*;
 use super::*;
 mod sampler_tests;
 mod dependency_tests;
+mod template_tests;
 pub(super) mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {
@@ -827,7 +828,7 @@ fn deferred_controller_loads_remain_on_old_project_when_install_or_clean_close_c
 fn close_acknowledgement_waits_for_preceding_first_frame_playback_history() {
     for clean in [true, false] {
         let (engine, mut live) = Engine::headless_for_test(48_000, 256);
-        let receipt = engine.initial_playback[0].clone();
+        let receipt = engine.initial_playback[0].clone().unwrap();
         live.apply(Command::DeckPlay { deck: 0 });
         assert!(receipt.last_play().is_none());
         let handle = engine.project.clone();

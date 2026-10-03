@@ -177,6 +177,13 @@ fn failure(error: storage::Error) -> Event {
         Event::Failed(error.to_string())
     }
 }
+fn validate_startup(preferences: &Preferences, cancel: &AtomicBool) -> Result<(), String> {
+    preferences.validate()?;
+    if let crate::project_template::Startup::Template { .. } = &preferences.current().unwrap().startup.session {
+        crate::ui::startup_session(&preferences.current().unwrap().startup.session, cancel)?;
+    }
+    Ok(())
+}
 fn execute(
     path: &std::path::Path,
     job: Job,
@@ -186,7 +193,7 @@ fn execute(
 ) -> Event {
     match job {
         Job::Preview(preferences) => {
-            if let Err(error) = preferences.validate() {
+            if let Err(error) = validate_startup(&preferences, cancel) {
                 return Event::Failed(error);
             }
             let inventory = discover();
@@ -223,7 +230,9 @@ fn execute(
         Job::Save {
             preferences,
             revision,
-        } => match storage::save_protected(
+        } => {
+            if let Err(error) = validate_startup(&preferences, cancel) { return if cancel.load(Ordering::Acquire) { Event::Cancelled } else { Event::Failed(error) }; }
+            match storage::save_protected(
             path,
             &preferences,
             storage::Overwrite::Exact(revision),
@@ -232,7 +241,7 @@ fn execute(
         ) {
             Ok(saved) => Event::Saved { preferences, saved },
             Err(error) => failure(error),
-        },
+        } },
         Job::Reset(preferences) => {
             let _commit = match permit.commit() { Ok(guard) => guard, Err(error) => return Event::Failed(error.to_string()) };
             match storage::backup_and_reset(path, &preferences, cancel) {

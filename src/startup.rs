@@ -5,12 +5,13 @@ pub(crate) struct Launch {
     pub safe_mode: bool,
     pub startup_check: bool,
     pub defaults_once: bool,
+    pub empty_once: bool,
 }
 impl Launch {
     pub fn parse(args: &[String]) -> anyhow::Result<Self> {
         let mut result = Self::default();
         for arg in args {
-            let slot=match arg.as_str(){"--safe-mode"=>&mut result.safe_mode,"--startup-check"=>&mut result.startup_check,"--defaults-once"=>&mut result.defaults_once,_=>anyhow::bail!("unknown startup argument; usage: omatainer [--safe-mode [--startup-check] | --defaults-once]")};
+            let slot=match arg.as_str(){"--safe-mode"=>&mut result.safe_mode,"--startup-check"=>&mut result.startup_check,"--defaults-once"=>&mut result.defaults_once,"--empty-once"=>&mut result.empty_once,_=>anyhow::bail!("unknown startup argument; usage: omatainer [--safe-mode [--startup-check] | --defaults-once | --empty-once]")};
             anyhow::ensure!(!*slot, "duplicate startup argument");
             *slot = true;
         }

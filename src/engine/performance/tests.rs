@@ -461,7 +461,7 @@ fn combined_optional_commit_rechecks_each_generation_before_cancel_flags_arrive(
 fn manual_grid_edits_are_destructive_and_queued_protected_requests_acknowledge_rejection_without_heap() {
     use crate::engine::beatgrid::{Grid, GridEditAck, GridEditState};
     let (engine, mut rt) = fixture();
-    let receipt = engine.initial_playback[0].clone();
+    let receipt = engine.initial_playback[0].clone().unwrap();
     let grid = Grid::new(1.25, 120.0).unwrap();
     let ack = GridEditAck::new();
     engine.send(Command::DeckGrid { deck: 0, grid: Some(grid), receipt: receipt.clone(), ack: ack.clone() }).unwrap();

@@ -159,7 +159,7 @@ fn successful_startup_preparation_invalidates_earlier_clean_checkpoint_and_retir
     };
     gui.app.send(Command::DeckRestorePreparation {
         deck: 0,
-        receipt: gui.app.engine.initial_playback[0].clone(),
+        receipt: gui.app.engine.initial_playback[0].clone().unwrap(),
         preparation,
     });
     gui.rt.process(&mut []);

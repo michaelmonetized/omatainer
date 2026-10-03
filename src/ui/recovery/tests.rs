@@ -955,7 +955,7 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
     let root = files.path("manual-grid");
     let grid = Grid::new(1.25, 96.0).unwrap();
     let mut original = Gui::new();
-    let receipt = original.app.engine.initial_playback[0].clone();
+    let receipt = original.app.engine.initial_playback[0].clone().unwrap();
     original
         .app
         .engine

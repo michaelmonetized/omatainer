@@ -5,7 +5,7 @@ use std::{
     path::Path,
     sync::atomic::{AtomicBool, Ordering},
 };
-mod worker;
+pub(super) mod worker;
 use worker::{Job, Kind, ResultData, Review, Worker};
 
 #[derive(Default)]

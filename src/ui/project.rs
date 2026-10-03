@@ -149,6 +149,7 @@ enum Action {
     OpenDialog,
     Open(PathBuf),
     Recover(crate::recovery::Candidate),
+    Template(super::templates::worker::Record, Option<usize>),
     Close,
 }
 #[derive(Clone, Copy, PartialEq)]
@@ -398,6 +399,14 @@ impl App {
     /// Open a published imported session through the existing unsaved-work guard.
     /// `path` is its native session; installation stays stopped and cancellable.
     pub(super) fn open_imported_project(&mut self, path: PathBuf) { self.request_project_action(Action::Open(path)); }
+    /// Use a reviewed template without assigning its source as the live save path.
+    /// Project copies use the unsaved guard; track copies retain current music.
+    pub(super) fn use_native_template(&mut self, record: super::templates::worker::Record) {
+        let target = matches!(record.metadata.kind, crate::project_template::Kind::Track { .. }).then_some(self.snap.selected_track);
+        if target.is_some() {
+            if !self.project.busy() { self.begin_project_action(Action::Template(record, target)); }
+        } else { self.request_project_action(Action::Template(record, None)); }
+    }
     fn request_project_action(&mut self, action: Action) {
         if self.reject_protected_project() { return; }
         if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
@@ -429,12 +438,14 @@ impl App {
                     replace: false,
                 });
             }
-            Action::New | Action::Open(_) | Action::Recover(_) => {
+            Action::New | Action::Open(_) | Action::Recover(_) | Action::Template(_, _) => {
                 let before = self.project_baseline();
-                let (path, recovery) = match action {
-                    Action::Open(path) => (Some(path), None),
-                    Action::Recover(candidate) => (None, Some(candidate)),
-                    _ => (None, None),
+                let (path, recovery, template) = match action {
+                    Action::Open(path) => (Some(path), None, None),
+                    Action::Recover(candidate) => (None, Some(candidate), None),
+                    Action::Template(record, target) => (None, None, Some(worker::TemplateUse { record, target,
+                        view: self.project_view(), identities: self.project_watch_identities(), current_path: self.project.current_path.clone() })),
+                    _ => (None, None, None),
                 };
                 let work = match self.engine.cmd.performance().optional_work() {
                     Ok(work) => work,
@@ -452,6 +463,7 @@ impl App {
                         _work: work,
                         path,
                         recovery,
+                        template,
                         cancel: cancel.clone(),
                         commit: receiver,
                     },
@@ -657,11 +669,20 @@ impl App {
                     applied,
                     recovered,
                     report,
+                    template,
                 } => {
                     self.project.active = None;
                     self.install_project_view(ctx, view, applied);
                     self.project.current_path = path;
-                    if recovered {
+                    if let Some((metadata, target)) = template {
+                        self.templates.loaded(metadata, target);
+                        self.project.clean = None;
+                        self.project.message = Some(if target.is_some() {
+                            "Track configuration applied, stopped. Clips and other tracks were retained. Review saved hardware references in Templates before activating them.".into()
+                        } else {
+                            "Template instantiated as an unsaved stopped project. Save as chooses a new destination; the template remains intact. Review hardware references in Templates.".into()
+                        });
+                    } else if recovered {
                         self.project.current_path = None;
                         self.project.clean = None;
                         let notices = self.restored_recovery_report(report);
@@ -778,8 +799,12 @@ impl App {
             self.timing.cancel();
             self.dependencies.cancel();
             self.portability.cancel();
+            self.templates.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
-            if self.portability.busy() {
+            if self.templates.busy() {
+                self.templates.open = true;
+                self.project.message = Some("Close cancelled while template work settles. Wait for its publication or cancellation result before closing.".into());
+            } else if self.portability.busy() {
                 self.portability.open = true;
                 self.project.message = Some("Close cancelled while portable project work settles. Wait for its publication or cancellation result before closing.".into());
             } else if self.dependencies.blocks_close() {
@@ -803,6 +828,15 @@ impl App {
         }
     }
 
+    pub(crate) fn initialize_startup_session(&mut self, ctx: &egui::Context, view: UiState, metadata: Option<crate::project_template::Metadata>) {
+        let applied = Applied { revision: self.engine.project.revision(), checkpoint: self.engine.undo.checkpoint(),
+            playback_receipts: self.engine.initial_playback.clone() };
+        self.install_project_view(ctx, view, applied);
+        self.project.current_path = None;
+        if let Some(metadata) = metadata { self.project.clean = None; self.templates.loaded(metadata, None); }
+        self.project.message = Some("Startup session is stopped and unsaved. Save as a new project; review retained template hardware explicitly.".into());
+    }
+
     fn install_project_view(&mut self, ctx: &egui::Context, view: UiState, applied: Applied) {
         self.project.awaiting_snapshot = Some(applied.revision);
         self.poll_play_history();
@@ -810,6 +844,7 @@ impl App {
         self.dependencies.install_origins(view.media_origins.clone());
         self.timing.reset_project();
         self.portability.reset_review();
+        self.templates.hardware = None;
         self.lib_filter = view.library_filter.clone();
         self.choose_named_crate(view.selected_crate.clone());
         self.keys_open = view.keys_open;
@@ -935,6 +970,7 @@ impl App {
                             if midi.clicked() { self.open_midi_files(true); ui.close(); }
                             if ui.button("Project dependencies…").help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
                             if ui.button("Portable project…").help(ui, HelpControl::PortableOpen).clicked() { self.portability.open = true; ui.close(); }
+                            if ui.button("Project and track templates…").help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
                             if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);

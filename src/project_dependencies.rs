@@ -103,8 +103,27 @@ pub(crate) struct Inventory { pub assets: Vec<Asset>, pub devices: Vec<Device>, 
 /// `state`, `media` and `origins` are one captured project; `cancel` stops I/O.
 /// Returns every embedded dependency and every unavailable effect, or an error.
 pub(crate) fn inspect(state: &State, media: &[Arc<Sample>], origins: &[Origin], cancel: &AtomicBool) -> Result<Inventory, String> {
-    validate_origins(origins)?; state.validate(media)?;
+    let mut inventory = embedded(state, media, origins, cancel)?;
     let snapshot = Snapshot::discover().map_err(|e| e.to_string())?;
+    for asset in &mut inventory.assets {
+        active(cancel)?;
+        if let Some(source) = &asset.source {
+            asset.availability = match snapshot.resolve(source).map_err(|e| e.to_string()).and_then(|location|
+                measure(&snapshot, location, asset.pcm_bytes, cancel).map_err(|error| error.detail).and_then(|(hash, _, _)|
+                    if hash == asset.key.audio_hash { Ok(()) } else { Err("Source audio differs from the embedded project audio".into()) })) {
+                Ok(()) => Availability::Verified,
+                Err(reason) => { active(cancel)?; Availability::Unresolved(reason) }
+            };
+        }
+    }
+    Ok(inventory)
+}
+
+/// List embedded identities, declared sources and unavailable devices without file I/O.
+/// `state`, `media` and `origins` are validated together; `cancel` bounds hashing work.
+/// Returns the full native dependency inventory with original availability unchecked.
+pub(crate) fn embedded(state: &State, media: &[Arc<Sample>], origins: &[Origin], cancel: &AtomicBool) -> Result<Inventory, String> {
+    validate_origins(origins)?; state.validate(media)?;
     let mut inventory = Inventory::default();
     let mut known = HashMap::<Key, usize>::new();
     for (index, sample) in media.iter().enumerate() {
@@ -122,15 +141,7 @@ pub(crate) fn inspect(state: &State, media: &[Arc<Sample>], origins: &[Origin], 
                     .and_then(|source| match source { crate::sampler_bank::Source::Library { reference } => Some(reference.source.clone()), crate::sampler_bank::Source::Project { source, .. } => Some(source.clone()), _ => None }))))
             .or_else(|| Path::new(&sample.path).is_absolute().then(|| LibSource::File(sample.path.clone().into())));
         let pcm_bytes = sample.data.len() as u64 * 4;
-        let availability = if let Some(source) = &source {
-            match snapshot.resolve(source).map_err(|e| e.to_string()).and_then(|location|
-                measure(&snapshot, location, pcm_bytes, cancel).map_err(|error| error.detail).and_then(|(hash, _, _)|
-                    if hash == key.audio_hash { Ok(()) } else { Err("Source audio differs from the embedded project audio".into()) }))
-            {
-                Ok(()) => Availability::Verified,
-                Err(reason) => { active(cancel)?; Availability::Unresolved(reason) }
-            }
-        } else { Availability::Builtin };
+        let availability = if source.is_some() { Availability::Unresolved("Original source availability was not checked".into()) } else { Availability::Builtin };
         known.insert(key.clone(), inventory.assets.len());
         inventory.assets.push(Asset { key, name: sample.name.clone(), source, availability, pcm_bytes, frames: sample.frames(), sample_rate: sample.sr, channels: sample.ch, uses });
     }

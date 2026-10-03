@@ -12,6 +12,14 @@ use std::sync::{
 };
 use std::time::Duration;
 
+pub(super) struct TemplateUse {
+    pub record: super::super::templates::worker::Record,
+    pub identities: Vec<WatchIdentity>,
+    pub target: Option<usize>,
+    pub view: UiState,
+    pub current_path: Option<PathBuf>,
+}
+
 pub(super) enum Job {
     Save {
         path: PathBuf,
@@ -24,6 +32,7 @@ pub(super) enum Job {
         _work: crate::engine::performance::WorkPermit,
         path: Option<PathBuf>,
         recovery: Option<crate::recovery::Candidate>,
+        template: Option<TemplateUse>,
         cancel: Arc<AtomicBool>,
         commit: Receiver<u64>,
     },
@@ -49,6 +58,7 @@ pub(super) enum Event {
         applied: Applied,
         recovered: bool,
         report: Vec<String>,
+        template: Option<(crate::project_template::Metadata, Option<crate::project_template::Target>)>,
     },
     CheckedClose(Option<u64>, CloseGuard),
     CloseChanged,
@@ -259,16 +269,57 @@ fn perform(
             _work,
             path,
             recovery,
+            template,
             cancel,
             commit,
         } => {
-            let path = match path.map(resolve).transpose() {
+            let mut path = match path.map(resolve).transpose() {
                 Ok(path) => path,
                 Err(event) => return event,
             };
             let recovered = recovery.is_some();
             let mut report = Vec::new();
-            let (prepared, view) = if let Some(candidate) = recovery {
+            let mut template_metadata = None;
+            let (prepared, view) = if let Some(use_template) = template {
+                let source = match super::super::templates::worker::reviewed(&use_template.record, &cancel) {
+                    Ok(source) => source, Err(error) => return Event::Failed(error),
+                };
+                let metadata = source.state.metadata;
+                let (state, media, mut view) = if let Some(target) = use_template.target {
+                    let crate::project_template::Kind::Track { bus } = &metadata.kind else { return Event::Failed("Use a track configuration template for this action".into()); };
+                    let captured = match handle.capture(&cancel) { Ok(captured) => captured, Err(error) => return engine_error(error) };
+                    let (state, media) = match captured.state.apply_track_configuration(captured.media,
+                        &source.state.document.engine, &source.media, target, bus) {
+                        Ok(result) => result, Err(error) => return Event::Failed(error),
+                    };
+                    let mut view = use_template.view;
+                    view.deck_identities = std::array::from_fn(|deck| captured.playback_receipts[deck].as_ref()
+                        .and_then(|receipt| use_template.identities.iter().find(|identity| identity.receipt.same_request(receipt)).map(|identity| identity.identity.clone())));
+                    for origin in source.state.document.view.media_origins {
+                        if !view.media_origins.iter().any(|current| current.key == origin.key) { view.media_origins.push(origin); }
+                    }
+                    path = use_template.current_path;
+                    (state, media, view)
+                } else {
+                    if metadata.kind != crate::project_template::Kind::Project { return Event::Failed("A project template is required".into()); }
+                    let mut state = source.state.document.engine;
+                    let layout = state.session.as_mut().unwrap();
+                    layout.namespace = crate::engine::midi_edit::NoteId::new().words();
+                    layout.generation = match layout.generation.checked_add(1) { Some(generation) => generation, None => return Event::Failed("Template session generation exhausted".into()) };
+                    path = None;
+                    (state, source.media, source.state.document.view)
+                };
+                if use_template.target.is_none() { view.deck_identities = std::array::from_fn(|_| None); }
+                let mut document = Document { engine: state, view, mapping_schema: FACTORY_MAPPING_SCHEMA };
+                if let Err(error) = super::super::templates::worker::retain_origins(&mut document, &media, &cancel) { return Event::Failed(error); }
+                if media.len() > project_file::DEFAULT_MEDIA_LIMIT || media.iter().map(|sample| sample.data.len() as u64 * 4).sum::<u64>() > Limits::default().max_pcm_bytes {
+                    return Event::Failed("Template result exceeds native project media limits; no changes were applied".into());
+                }
+                let target = use_template.target.and_then(|target| document.engine.session.as_ref().and_then(|layout| crate::project_template::Target::capture(layout, target)));
+                let prepared = match Prepared::from_state(document.engine, media, output_sr) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
+                template_metadata = Some((metadata, target));
+                (prepared, document.view)
+            } else if let Some(candidate) = recovery {
                 let recovered = match crate::recovery::recover::<Document>(&candidate, &cancel) {
                     Ok(recovered) => recovered,
                     Err(error) => return Event::Failed(format!("Recovery refused; current session preserved: {error}")),
@@ -333,6 +384,7 @@ fn perform(
                     applied,
                     recovered,
                     report,
+                    template: template_metadata,
                 },
                 Err(error) => engine_error(error),
             }

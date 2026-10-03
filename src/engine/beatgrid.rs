@@ -216,7 +216,7 @@ mod renderer_tests {
     #[test]
     fn grid_edit_reset_undo_and_reload_preserve_absolute_cues_without_callback_heap_traffic() {
         let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
-        let receipt = engine.initial_playback[0].clone();
+        let receipt = engine.initial_playback[0].clone().unwrap();
         rt.decks[0].pos = 12_000.0;
         rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
         rt.clear_undo_for_test();
@@ -271,7 +271,7 @@ mod renderer_tests {
     #[test]
     fn request_acknowledgements_survive_later_edits_and_undo_and_reject_retired_work() {
         let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
-        let receipt = engine.initial_playback[0].clone();
+        let receipt = engine.initial_playback[0].clone().unwrap();
         let b = Grid::new(0.5, 120.0).unwrap();
         let c = Grid::new(1.5, 100.0).unwrap();
         let first = GridEditAck::new();
@@ -314,7 +314,7 @@ mod renderer_tests {
         let a = Grid::new(1.25, 120.0).unwrap();
         let b = Grid::new(0.375, 90.0).unwrap();
         for (deck, grid) in [(0, a), (1, b)] {
-            rt.apply(Command::DeckGrid { ack: GridEditAck::new(), deck, grid: Some(grid), receipt: engine.initial_playback[deck as usize].clone() });
+            rt.apply(Command::DeckGrid { ack: GridEditAck::new(), deck, grid: Some(grid), receipt: engine.initial_playback[deck as usize].clone().unwrap() });
         }
         rt.decks[0].pos = a.seconds_at(3.25).unwrap() * 48_000.0;
         rt.decks[1].pos = b.seconds_at(5.8).unwrap() * 48_000.0;

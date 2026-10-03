@@ -679,11 +679,11 @@ fn initial_preparation_retries_full_admission_on_later_actual_ui_frame() {
     f.rt.process(&mut []);
     assert!(f.app.library_initialized);
     assert_eq!(f.rt.decks[0].cue_pos, prepared().cue * 48_000.0);
-    let preparation = f.app.engine.initial_playback[0].preparation().unwrap();
+    let preparation = f.app.engine.initial_playback[0].as_ref().unwrap().preparation().unwrap();
     let _ = ctx.run(Default::default(), |ctx| f.app.update_frame(ctx));
     f.rt.process(&mut []);
     assert_eq!(
-        f.app.engine.initial_playback[0].preparation().unwrap(),
+        f.app.engine.initial_playback[0].as_ref().unwrap().preparation().unwrap(),
         preparation,
         "an admitted restore is not replayed on later frames"
     );

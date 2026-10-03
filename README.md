@@ -138,6 +138,28 @@ with rendered audio remain playable. Uncollected missing originals remain visibl
 in **Project dependencies…**. Cancel removes unpublished staging; a completed
 publication is reported even if cancellation arrives afterward.
 
+**Project → Project and track templates…** saves reusable `.omtemplate` files.
+Project templates retain the complete creative session. Track templates retain
+one track's devices, mixer and exact scene-bus alias while excluding song content.
+Inspect before using or duplicating; all new files refuse replacement. Creating a
+project uses the unsaved-work guard and a fresh session identity. Track application
+keeps clips and other tracks, stops playback and starts fresh undo history.
+The live project never uses the template as its Save destination.
+
+Templates retain requested audio and MIDI names and optional port IDs. Missing
+and ambiguous endpoints stay explicit. **Review template hardware in Preferences**
+creates a draft for Preview / Apply; active connections stay on the current profile
+until that deliberate step. Cancel changes preserves them. Track routing merges
+only into the selected track and refuses stale or deleted target identities.
+
+Preferences → Startup chooses **Demo session**, **Empty session** or a project
+template for the next launch. Invalid or missing templates preserve saved settings
+and offer **Start an empty session this time**. Safe mode ignores external templates.
+Templates can be backed up to `.ompack` and imported into a new folder on another
+profile or machine; embedded PCM remains playable without original source files.
+Archives preserve native device state, desired hardware names and dependency
+notices; existing destinations are refused and unpublished staging is cancelled.
+
 ## DJ library
 
 Imports, scans and native deck loads read embedded title, artist, BPM and key.

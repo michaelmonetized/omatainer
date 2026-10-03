@@ -24,7 +24,7 @@ fn receipt(worker: &mut Worker, callback: &mut OutputCallback, id: u64) {
 fn actual_worker_records_edits_ends_saves_exports_and_reopens_a_performance_session() {
     let files = Files::new();
     let (engine, rt) = Engine::headless_for_test(48_000, 128);
-    let key = engine.initial_playback[0].history_key();
+    let key = engine.initial_playback[0].as_ref().unwrap().history_key();
     engine.send(Command::DeckPlay { deck: 0 }).unwrap();
     let mut callback = OutputCallback::new(rt, 4);
     let mut worker = Worker::start(files.0.clone(), engine.performance_history.clone(), engine.cmd.performance().clone()).unwrap();
@@ -118,7 +118,7 @@ fn durable_prefix_and_end_include_all_queued_events_and_report_queue_overflow() 
 #[test]
 fn ended_ack_survives_graph_loss_and_late_catalog_qualification() {
     let files = Files::new(); let (engine, rt) = Engine::headless_for_test(48_000, 64);
-    let key = engine.initial_playback[0].history_key();
+    let key = engine.initial_playback[0].as_ref().unwrap().history_key();
     let handle = engine.performance_history.clone().unwrap(); let observations = handle.take_observations().unwrap();
     let mut owner = Owner::new(files.0.clone(), Some(handle), Some(observations));
     let mut callback = OutputCallback::new(rt, 2);

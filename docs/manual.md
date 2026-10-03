@@ -94,6 +94,86 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Templates
+
+Native editable templates
+
+Open native project and track templates. New template files and duplicates never replace an existing file.
+
+Workflow: Save and reopen.
+
+### Template file paths
+
+Native editable templates
+
+Choose an absolute .omtemplate file, a new backup archive or a new import folder.
+
+Workflow: Save and reopen.
+
+### Save template
+
+Native editable templates
+
+Capture project state or selected-track devices and routing. Track templates exclude notes, clips and launch state.
+
+Workflow: Save and reopen.
+
+### Inspect template
+
+Native editable templates
+
+Validate the native file and retain its exact fingerprint, dependency manifest and desired hardware names.
+
+Workflow: Save and reopen.
+
+### Use template
+
+Native editable templates
+
+Create a fresh stopped unsaved project, or replace only selected-track configuration. Track application preserves music, stops playback and resets undo history. Hardware requires separate explicit review.
+
+Workflow: Save and reopen.
+
+### Duplicate template
+
+Native editable templates
+
+Write a new named template without changing the source file or active session.
+
+Workflow: Save and reopen.
+
+### Review template hardware
+
+Native editable templates
+
+Copy exact requested endpoints into Preferences draft. Preview and Apply explicitly; Cancel preserves current connections. Missing or ambiguous ports are reported without substitution.
+
+Workflow: Save and reopen.
+
+### Template backup and import
+
+Native editable templates
+
+Export embedded playable audio and metadata in a checksum-verified portable archive. Import into a new folder; existing destinations are refused.
+
+Workflow: Save and reopen.
+
+### Cancel template operation
+
+Native editable templates
+
+Cancel before publication or commit to preserve existing files and the current session. Completed publication is reported honestly.
+
+Workflow: Save and reopen.
+
+### Startup session
+
+Native editable templates
+
+Choose Demo, Empty or a native project template for next launch. Invalid templates preserve settings and offer an explicit empty session for this launch. Hardware remains on the active profile until reviewed.
+
+Workflow: Save and reopen.
+
 ### Portable project
 
 Native session and dependency manifest

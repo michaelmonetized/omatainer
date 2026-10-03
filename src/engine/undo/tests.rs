@@ -41,7 +41,7 @@ fn grid_acknowledges_real_history_budget_rejection_without_callback_heap_work() 
     let ack = GridEditAck::new();
     engine.send(Command::DeckGrid {
         deck: 0, grid: Some(Grid::new(0.375, 127.0).unwrap()),
-        receipt: engine.initial_playback[0].clone(), ack: ack.clone(),
+        receipt: engine.initial_playback[0].clone().unwrap(), ack: ack.clone(),
     }).unwrap();
     assert_eq!(ack.state(), GridEditState::Pending);
     let counts = test_alloc::measure(|| tick(&mut rt));

@@ -2999,6 +2999,18 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
     })
 }
 
+pub(crate) enum InitialSession {
+    Empty,
+    Project { state: project::State, media: Vec<Arc<dsp::Sample>> },
+}
+impl InitialSession {
+    /// Prepare an empty or validated saved graph before backend ownership starts.
+    /// `sample_rate` sets DSP storage; returns a stopped native graph or an error.
+    pub(crate) fn prepare(self, sample_rate: u32) -> Result<project::Prepared, project::Error> {
+        match self { Self::Empty => project::Prepared::empty(sample_rate), Self::Project { state, media } => project::Prepared::from_state(state, media, sample_rate) }
+    }
+}
+
 pub struct Engine {
     pub undo: undo::Handle,
     pub project: project::Handle,
@@ -3006,7 +3018,8 @@ pub struct Engine {
     pub ui_requests: ui_requests::Receiver,
     pub snap: Arc<Mutex<Snapshot>>,
     pub midi: midi::MidiHub,
-    pub(crate) initial_playback: [load_receipt::Receipt; DECKS],
+    pub(crate) initial_builtin: bool,
+    pub(crate) initial_playback: [Option<load_receipt::Receipt>; DECKS],
     pub(crate) performance_history: Option<history_measurement::control::Handle>,
     pub(crate) sampler_assets: crate::sampler_bank::assets::Owner,
     // Production owns the audio manager; it may retain a stopped graph after
@@ -3020,15 +3033,24 @@ impl Engine {
     }
 
     pub fn start_with_settings(settings: &crate::preferences::Profile) -> anyhow::Result<Self> {
+        Self::start_with_session(settings, None)
+    }
+
+    pub(crate) fn start_with_session(settings: &crate::preferences::Profile, initial: Option<InitialSession>) -> anyhow::Result<Self> {
         settings.validate().map_err(anyhow::Error::msg)?;
         let (tx, rx) = CommandPort::channel(256);
         if settings.startup.performance_mode { tx.performance().set_enabled(true)?; }
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let mut rt = RtEngine::try_new(48000.0, rx, snap.clone()).map_err(anyhow::Error::msg)?;
+        let initial_builtin = initial.is_none();
+        if let Some(initial) = initial {
+            let mut prepared = initial.prepare(48000).map_err(anyhow::Error::msg)?;
+            prepared.swap_into(&mut rt);
+        }
         let undo = rt.enable_undo()?;
         let project = rt.project.clone();
-        let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
+        let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone());
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audio = audio::start_with_settings(rt, &settings.audio)?;
@@ -3041,6 +3063,7 @@ impl Engine {
             snap,
             midi,
             initial_playback,
+            initial_builtin,
             performance_history,
             sampler_assets,
             _audio: Some(audio),
@@ -3054,7 +3077,6 @@ impl Engine {
         let ui_requests=cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap=Arc::new(Mutex::new(Snapshot::default()));
         let mut rt=RtEngine::try_new(48000.0,rx,snap.clone()).map_err(anyhow::Error::msg)?;
-        let initial_playback=std::array::from_fn(|deck|rt.decks[deck].load_receipt.clone().unwrap());
         // Start empty and stopped. Builtin source generation is application
         // code; no external media/project is opened or automatically resumed.
         for track in &mut rt.tracks {track.clips=(0..SCENES).map(|_|Clip::empty()).collect();}
@@ -3062,12 +3084,13 @@ impl Engine {
             if let Some(receipt)=&deck.load_receipt {receipt.supersede();}
             *deck=DeckRt::new(48000.0);
         }
+        let initial_playback=std::array::from_fn(|deck|rt.decks[deck].load_receipt.clone());
         let undo=rt.enable_undo()?;
         let project=rt.project.clone();
         let sampler_assets=rt.sampler_assets.clone();
         let performance_history=rt.history_measurement.as_ref().map(|history|history.handle());
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,performance_history,sampler_assets,_audio:Some(audio)})
+        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
@@ -3079,7 +3102,7 @@ impl Engine {
         let mut rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
         let undo = rt.enable_undo().expect("undo worker");
         let project = rt.project.clone();
-        let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone().unwrap());
+        let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone());
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         (
@@ -3091,6 +3114,7 @@ impl Engine {
                 snap,
                 midi: midi::MidiHub::without_devices(),
                 initial_playback,
+                initial_builtin: true,
                 performance_history,
                 sampler_assets,
                 _audio: None,

@@ -69,10 +69,11 @@ pub(super) struct Watch {
 }
 
 pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
+    if !engine.initial_builtin { return Vec::new(); }
     [BuiltinStem::Drums, BuiltinStem::Harmony]
         .into_iter()
         .zip(&engine.initial_playback)
-        .map(|(stem, receipt)| Watch {
+        .filter_map(|(stem, receipt)| { let receipt = receipt.as_ref()?; Some(Watch {
             identity: Identity::new(LibSource::Builtin(stem), None).unwrap(),
             receipt: receipt.clone(),
             observed: None,
@@ -83,7 +84,7 @@ pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
                 .find(|i| i.source == LibSource::Builtin(stem))
                 .unwrap()
                 .stored_metadata(),
-        })
+        }) })
         .collect()
 }
 
