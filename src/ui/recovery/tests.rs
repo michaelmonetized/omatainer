@@ -1011,6 +1011,9 @@ fn journal_grid_state_three_previews_and_restores_with_legacy_defaults_and_futur
         let variant = files.path(&format!("state-{version}"));
         let mut state = serde_json::to_value(&recovered.bundle.state).unwrap();
         state["engine"]["version"] = version.into();
+        if version < 10 {
+            state["engine"].as_object_mut().unwrap().remove("timeline_seconds");
+        }
         if version < 7 {state["engine"].as_object_mut().unwrap().remove("session"); if state["engine"]["fx_view"].as_i64().unwrap_or(-1) >= 1000 {state["engine"]["fx_view"]=(state["engine"]["fx_view"].as_i64().unwrap()-900).into();}}
         if version < 5 {
             state["engine"].as_object_mut().unwrap().remove("conductor");

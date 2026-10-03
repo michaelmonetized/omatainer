@@ -153,6 +153,7 @@ impl Frame {
         }
         let target = &mut self.state;
         target.session.as_mut().unwrap().copy_from_prepared(&rt.session);
+        target.timeline_seconds = rt.timeline_seconds();
         macro_rules! scalars { ($($field:ident),* $(,)?) => { $(target.$field = rt.$field;)* }; }
         scalars!(
             bpm,

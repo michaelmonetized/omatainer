@@ -37,6 +37,37 @@ install prints a recovery journal under `~/.local/state/omatainer/installations`
 restore its saved state with `scripts/install-omarchy.sh --recover /path/to/journal.json`.
 Running app instances retain their executable until you close and relaunch them.
 
+## Score to video
+
+**Setup → Video** imports one local picture using installed `ffmpeg` and
+`ffprobe`. The preview follows the audio callback's project clock and can open
+in a separate resizable window. Frame-based trim, placement, named locators and
+timecode offsets persist in native projects; reopening verifies the same source.
+29.97/59.94 support drop-frame timecode. A saved preview latency adjustment
+accounts for your audio hardware and leaves exported timing unchanged.
+
+Scrub by project frame or use previous/next frame and locator actions. A seek
+ends clip recording and releases clip notes. Optional decoding pauses during
+Performance protection; out-of-range or unavailable picture shows an explicit
+black/waiting state. Video audio is excluded.
+
+**Render selected scene against picture** loops the chosen Session scene from
+project zero with fresh native mixer/effect state. A new output folder receives
+48 kHz stereo float `score.wav`, lossless FFV1/PCM `picture.mkv` and
+`alignment.json`, including exact frame/sample boundaries. Publication preserves
+existing output, and Cancel removes unpublished staging. The live session stays
+intact. **Remove picture reference** clears saved picture metadata while retaining
+its source file. Portable archives currently require a saved copy with that
+external picture reference cleared.
+
+Supported SDR sources include H.264, HEVC, ProRes, VP8/VP9, FFV1 and MPEG-4 in
+allowlisted local MOV/MP4, Matroska/WebM, AVI and MPEG-TS containers. Rates are
+24/25/30/50/60 and 24000/1001, 30000/1001 or 60000/1001. Import checks every decoded
+timestamp and bounds sources to one million frames and 4096×2160. Variable rate,
+rotation, nonsquare pixels, tagged HDR and unsupported formats report errors.
+Preview scales to 1280×720; WAV render is bounded to 2 GiB. FFmpeg is a system
+dependency, not bundled software. See the [video workflow and validation boundary](docs/video-scoring.md).
+
 ## Preferences and profiles
 
 Open **Preferences** in the status bar or press **Ctrl+,** outside an editor.

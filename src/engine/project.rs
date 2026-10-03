@@ -91,6 +91,7 @@ struct Shared {
     results: Receiver<Box<Task>>,
     busy: AtomicU8,
     revision: AtomicU64,
+    timeline_seconds: AtomicU64,
     sample_rate: AtomicU32,
     release_seal: AtomicBool,
     performance: performance::Handle,
@@ -130,6 +131,7 @@ impl Handle {
                 results,
                 busy: AtomicU8::new(0),
                 revision: AtomicU64::new(0),
+                timeline_seconds: AtomicU64::new(0.0f64.to_bits()),
                 sample_rate: AtomicU32::new(sample_rate),
                 release_seal: AtomicBool::new(false),
                 performance,
@@ -142,6 +144,12 @@ impl Handle {
     pub fn revision(&self) -> u64 {
         self.shared.revision.load(Ordering::Acquire)
     }
+    /// Read the latest audio callback's position without waiting for a full UI snapshot.
+    /// Takes this owner; returns the renderer's project seconds.
+    pub(crate) fn timeline_seconds(&self) -> f64 { f64::from_bits(self.shared.timeline_seconds.load(Ordering::Acquire)) }
+    /// Publish the audio-owned clock after a callback or graph installation.
+    /// Takes project seconds; stores one scalar without allocation or a lock.
+    pub(super) fn publish_timeline(&self, seconds:f64) {self.shared.timeline_seconds.store(seconds.to_bits(),Ordering::Release);}
     pub fn sample_rate(&self) -> u32 {
         self.shared.sample_rate.load(Ordering::Acquire)
     }

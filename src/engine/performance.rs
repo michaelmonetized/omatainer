@@ -484,7 +484,8 @@ fn destructive(command: &Command) -> bool {
     match command {
         Command::Remote(request) => destructive(&request.action.command()),
         Command::SessionEdit(request) => request.disruptive(),
-        Command::MidiImport(_)
+        Command::TimelineSeek(_)
+        | Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }
         | Command::SetNotes { .. }

@@ -7,6 +7,7 @@ pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
+mod video_transport;
 pub(crate) mod provider_preview;
 mod arp;
 mod deck_filter;
@@ -555,6 +556,8 @@ pub struct RtEngine {
     pub bpm: f32,
     pub beat: f64,
     pub(crate) transport_epoch: u64,
+    timeline_anchor: f64,
+    timeline_frames: u64,
     remote_schedule: remote::Schedule,
     provider_preview: Option<provider_preview::Active>,
     beat_roundoff: f64,
@@ -731,6 +734,7 @@ pub struct Snapshot {
     pub recording: bool,
     pub bpm: f32,
     pub beat: f64,
+    pub timeline_seconds: f64,
     pub bar: u32,
     pub beat_in_bar: f32,
     pub meter_numerator: u8,
@@ -789,6 +793,7 @@ impl Default for Snapshot {
             recording: false,
             bpm: 124.0,
             beat: 0.0,
+            timeline_seconds: 0.0,
             bar: 1,
             beat_in_bar: 0.0,
             meter_numerator: 4,
@@ -848,6 +853,7 @@ pub enum Command {
     Play,
     Stop,
     TogglePlay,
+    TimelineSeek(f64),
     Record,
     Tap(Instant),
     MidiClock { source: u64 },
@@ -989,6 +995,8 @@ impl RtEngine {
             beat: 0.0,
             beat_roundoff: 0.0,
             transport_epoch: 0,
+            timeline_anchor: 0.0,
+            timeline_frames: 0,
             remote_schedule: remote::Schedule::default(),
             provider_preview: None,
             midi_beat: 0.0,
@@ -1081,6 +1089,8 @@ impl RtEngine {
             .map(|slot|fx::FxSlot::required_storage(slot.id(),sr as f32)).sum::<usize>();
         if effect_bytes>session::MAX_PROCESSOR_BYTES {return Err("Output rate would exceed the 256 MiB session effect-buffer limit; remove effects or choose a lower rate".into());}
         let sampler_banks = self.sampler_rate_banks(sr)?;
+        self.timeline_anchor = self.timeline_seconds();
+        self.timeline_frames = 0;
         self.sr = sr as f32;
         self.project.set_sample_rate(sr);
         let active_history=self.active_recording_history();
@@ -1264,6 +1274,8 @@ impl RtEngine {
 
     fn sync_midi_clock(&mut self) {
         if self.beat != self.midi_beat_reference {
+            self.timeline_anchor = self.conductor.as_ref().map_or(self.beat * 60.0 / f64::from(self.bpm), |map| map.seconds_at(self.beat));
+            self.timeline_frames = 0;
             self.midi_beat = self.beat;
             self.midi_beat_reference = self.beat;
             self.beat_roundoff = 0.0;
@@ -1340,6 +1352,7 @@ impl RtEngine {
             let beat_start = self.beat;
             if self.playing && !counting_in {
                 transport_frames += 1;
+                self.timeline_frames += 1;
                 // Compensate accumulated rounding so a long clip cannot move
                 // an exact note boundary to the preceding output sample.
                 if let Some(seconds) = conductor_seconds {
@@ -1457,6 +1470,7 @@ impl RtEngine {
             out[i * 2 + 1] = r;
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
+        self.project.publish_timeline(self.timeline_seconds());
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
         if frames > 0 && self.has_held_project_notes() { self.project.edited();self.history_held_changed(); }
@@ -2088,6 +2102,7 @@ impl RtEngine {
                 }
                 for t in 0..self.tracks.len() {self.midi_routing.clear_clip(t as u8);}
             }
+            Command::TimelineSeek(seconds) => self.seek_timeline(seconds),
             Command::TogglePlay => {
                 if self.playing {
                     self.apply(Command::Stop);
@@ -3152,6 +3167,7 @@ impl Engine {
 
     pub fn snapshot(&self) -> Snapshot {
         let mut s = self.snap.lock().clone();
+        s.timeline_seconds = self.project.timeline_seconds();
         s.performance = self.cmd.performance().status();
         s.audio = self.cmd.audio_metrics();
         s.cpu = s.audio.last_callback.and_then(|sample| sample.render_cpu_fraction()).map(|value| value as f32);
