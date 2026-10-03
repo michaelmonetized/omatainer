@@ -22,6 +22,8 @@ mod tests {
         let bytes = serde_json::to_vec(&bundle).unwrap();
         assert!(!String::from_utf8_lossy(&bytes).contains("private-library"));
         let mut target = Profile::defaults(std::path::Path::new("/other-library"));
+        target.library_roots.push("unrelated-relative-draft".into());
+        assert!(target.validate().is_err());
         let mut expected = target.clone(); expected.shortcuts = profile.shortcuts.clone();
         Bundle::decode(&bytes).unwrap().apply(&mut target).unwrap();
         assert_eq!(target, expected);
@@ -48,14 +50,20 @@ impl Bundle {
     /// Validate a binding document before changing its destination profile.
     /// Takes the target profile; returns success after replacing only validated bindings.
     pub(crate) fn apply(&self, profile: &mut Profile) -> Result<(), String> {
+        self.validate()?;
+        profile.shortcuts_enabled = self.enabled;
+        profile.shortcuts = self.bindings.clone();
+        Ok(())
+    }
+
+    /// Validate only the shortcut fields carried by this portable document.
+    /// Takes this bundle; returns success or refusal independently of unrelated draft settings.
+    pub(crate) fn validate(&self) -> Result<(), String> {
         if self.version != 1 { return Err("Unsupported shortcut export version; bindings were preserved".into()); }
-        let mut candidate = profile.clone();
+        let mut candidate = Profile::defaults(std::path::Path::new("/tmp"));
         candidate.shortcuts_enabled = self.enabled;
         candidate.shortcuts = self.bindings.clone();
-        candidate.validate()?;
-        profile.shortcuts_enabled = candidate.shortcuts_enabled;
-        profile.shortcuts = candidate.shortcuts;
-        Ok(())
+        candidate.validate()
     }
 
     /// Decode and validate bounded, strict binding JSON without applying it.
@@ -63,7 +71,7 @@ impl Bundle {
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, String> {
         if bytes.len() > 32_768 { return Err("Shortcut export exceeds 32 KiB".into()); }
         let bundle: Self = serde_json::from_slice(bytes).map_err(|error| format!("Invalid shortcut export: {error}"))?;
-        bundle.apply(&mut Profile::defaults(std::path::Path::new("/tmp")))?;
+        bundle.validate()?;
         Ok(bundle)
     }
 }

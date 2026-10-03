@@ -271,7 +271,7 @@ fn execute(
         },
         Job::ExportShortcuts { path, profile } => {
             let bundle = super::shortcuts::Bundle::from_profile(&profile);
-            if let Err(error) = bundle.apply(&mut profile.clone()) { return Event::Failed(error); }
+            if let Err(error) = bundle.validate() { return Event::Failed(error); }
             match serde_json::to_vec_pretty(&bundle) {
                 Ok(bytes) => match storage::publish_new(&path, &bytes, cancel, permit) {
                     Ok(saved) => Event::ShortcutsExported(saved),
