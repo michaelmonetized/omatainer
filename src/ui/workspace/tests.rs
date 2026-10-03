@@ -328,6 +328,13 @@ fn native_window_sizes_use_wayland_screen_dimensions_and_clamp_after_monitor_los
             .clamp_size_to_monitor_size,
         Some(true)
     );
+    assert_eq!(
+        gui.native.borrow().windows[&Panel::Sampler]
+            .builder
+            .app_id
+            .as_deref(),
+        Some(crate::APPLICATION_ID)
+    );
     gui.click(Panel::Sampler, "Return panel to main window");
     assert!(gui.app.workspace.closed.contains(&Panel::Sampler));
 }

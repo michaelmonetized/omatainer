@@ -406,6 +406,7 @@ impl App {
             });
         let builder = egui::ViewportBuilder::default()
             .with_title(&title)
+            .with_app_id(crate::APPLICATION_ID)
             .with_inner_size(size)
             .with_min_inner_size([240.0, 240.0])
             .with_clamp_size_to_monitor_size(true)
