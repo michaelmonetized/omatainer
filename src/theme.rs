@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 mod color;
 mod display;
 pub use display::Contrast;
+#[cfg(test)]
+pub(crate) use display::contrast_ratio;
 pub(crate) mod reload;
 pub(crate) mod requests;
 #[cfg(test)]
@@ -114,6 +116,8 @@ impl Theme {
                 extreme_bg_color: self.bg_darker,
                 code_bg_color: self.bg_dark,
                 hyperlink_color: self.accent,
+                warn_fg_color: self.yellow,
+                error_fg_color: self.red,
                 selection: egui::style::Selection {
                     bg_fill: self.tint(self.accent, 0.35),
                     stroke: st(1.0, self.accent),

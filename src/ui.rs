@@ -1427,7 +1427,7 @@ impl App {
                         let sc = usize::from(layout.scene_order[display_scene]);
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
-                            let on = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
+                            let on = self.snap.playing && self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
                             let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending);
                             let (hr, _) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::hover());
                             let hresp = ui.interact(hr, egui::Id::new(("session-scene",layout.namespace,layout.scenes[sc].id.0)), Sense::click());
@@ -1459,7 +1459,7 @@ impl App {
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
                                 let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending);
-                                let playing = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
+                                let playing = self.snap.playing && self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);
                                 let color = layout.tracks[tr].color.map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr));
                                 let (rect, _) = ui.allocate_exact_size(Vec2::new(col_w, row_h), Sense::hover());

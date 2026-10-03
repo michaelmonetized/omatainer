@@ -960,3 +960,20 @@ fn display_controls_apply_persist_reopen_and_cancel_without_audio_changes() {
     assert_eq!(gui.fixture.app.theme.contrast, crate::theme::Contrast::Light);
     assert_eq!(gui.fixture.app.settings.profile().audio, audio);
 }
+
+#[test]
+fn light_contrast_keeps_actual_pending_audio_warning_readable() {
+    let mut gui = Gui::new(); gui.open();
+    let profile = gui.fixture.app.settings.applied.profiles.get_mut("Studio").unwrap();
+    profile.appearance.contrast = crate::theme::Contrast::Light;
+    profile.audio.sample_rate = Some(96000);
+    gui.fixture.app.apply_appearance(&gui.ctx);
+    assert!(gui.fixture.app.settings.pending_restart());
+    let output = gui.frame(vec![]);
+    let color = output.shapes.iter().find_map(|shape| match &shape.shape {
+        egui::Shape::Text(text) if text.galley.text().starts_with("Saved audio differs") => Some(text.galley.job.sections[0].format.color),
+        _ => None,
+    }).expect("pending audio warning is actually painted");
+    assert_eq!(color, gui.fixture.app.theme.yellow);
+    assert!(crate::theme::contrast_ratio(color,gui.fixture.app.theme.bg)>=4.5);
+}

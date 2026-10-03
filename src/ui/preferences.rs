@@ -338,7 +338,7 @@ impl App {
                 if let Some(info) = self.engine.output_info() {
                     ui.label(format!("Running: {} · {} Hz · {} · {}", info.plan.device, info.plan.rate, info.format, info.plan.route()));
                 } else { ui.label("Audio device unavailable in this session"); }
-                if state.pending_restart() { ui.colored_label(Color32::YELLOW, "Saved audio differs from running intent; use Audio devices or restart"); }
+                if state.pending_restart() { ui.colored_label(ui.visuals().warn_fg_color, "Saved audio differs from running intent; use Audio devices or restart"); }
                 ui.label(&state.message);
                 if !state.message.is_empty() && !state.busy() && ui.button("Dismiss preferences notice").help(ui, HelpControl::PreferenceNotice).clicked() { state.message.clear(); }
 
@@ -346,17 +346,17 @@ impl App {
                     ui.label(format!("MIDI requested generation {}: {:?}",policy.requested,policy.requested_policy));
                     ui.label(format!("MIDI applied generation {:?}: {:?}",policy.applied,policy.applied_policy));
                     if policy.pending() {ui.label("MIDI policy pending; existing permitted connections remain live.");ctx.request_repaint_after(std::time::Duration::from_millis(50));}
-                    if let Some(error)=&policy.error {ui.colored_label(Color32::YELLOW,format!("MIDI: {error}"));}
+                    if let Some(error)=&policy.error {ui.colored_label(ui.visuals().warn_fg_color,format!("MIDI: {error}"));}
                     if !policy.missing_names.is_empty(){ui.label(format!("Missing MIDI inputs: {}",policy.missing_names.join(", ")));}
-                    if policy.requested_policy.as_ref()!=&state.profile().midi_inputs {ui.colored_label(Color32::YELLOW,"Saved MIDI input policy differs from the live request.");}
+                    if policy.requested_policy.as_ref()!=&state.profile().midi_inputs {ui.colored_label(ui.visuals().warn_fg_color,"Saved MIDI input policy differs from the live request.");}
                     if ui.add_enabled(!policy.pending() && self.engine.midi.connections_available(),egui::Button::new("Retry saved MIDI policy")).help(ui, HelpControl::PreferenceMidiRetry).clicked(){
                         match self.engine.midi.configure_inputs(state.profile().midi_inputs.clone()) { Ok(generation)=>state.message=format!("MIDI request {generation} queued"),Err(error)=>state.message=error.to_string() }
                     }
                 } else {ui.label("MIDI input manager unavailable; saved policy will be used after restart.");}
                 if let Some(routing)=self.engine.midi.routing_status(){
                     if routing.pending{ui.label("MIDI routing is pending; cancel in the MIDI panel.");ctx.request_repaint_after(std::time::Duration::from_millis(50));}
-                    if let Some(error)=&routing.error{ui.colored_label(Color32::YELLOW,error);}
-                    if routing.applied.as_ref()!=&state.profile().midi_routing{ui.colored_label(Color32::YELLOW,"Saved MIDI routing differs from the applied route.");}
+                    if let Some(error)=&routing.error{ui.colored_label(ui.visuals().warn_fg_color,error);}
+                    if routing.applied.as_ref()!=&state.profile().midi_routing{ui.colored_label(ui.visuals().warn_fg_color,"Saved MIDI routing differs from the applied route.");}
                     if ui.add_enabled(!routing.pending&&!state.routing_pending,egui::Button::new("Retry saved MIDI routing")).help(ui,HelpControl::MidiRouteEnable).clicked(){
                         state.routing_pending=true;
                     }
@@ -484,7 +484,7 @@ impl App {
                             if ui.button("Reload saved preferences").help(ui, HelpControl::PreferenceReload).clicked() { state.request(Job::Reload); }
                         });
                         if state.blocked {
-                            ui.colored_label(Color32::YELLOW,"Saving is blocked to preserve an unreadable or changed preferences file.");
+                            ui.colored_label(ui.visuals().warn_fg_color,"Saving is blocked to preserve an unreadable or changed preferences file.");
                             if ui.button("Preserve old file and reset all preferences").help(ui, HelpControl::PreferenceRecover).clicked() { state.request(Job::Reset(model::Preferences::defaults(&state.home))); }
                         }
                         if let Some((preview, plan, paths)) = &state.preview {
@@ -492,7 +492,7 @@ impl App {
                                 ui.heading(format!("Preview: {}",preview.active));
                                 match plan {
                                     Ok(plan)=> {ui.label(format!("Saved output proposal: {} · {} Hz · {} channels · {}",plan.device,plan.rate,plan.channels,plan.route()));if let Some(warning)=&plan.warning{ui.label(warning);}},
-                                    Err(error)=> {ui.colored_label(Color32::YELLOW,format!("Audio unavailable: {error}"));},
+                                    Err(error)=> {ui.colored_label(ui.visuals().warn_fg_color,format!("Audio unavailable: {error}"));},
                                 }
                                 let midi = &preview.current().unwrap().midi_inputs;
                                 ui.label(format!("MIDI policy: {midi:?}"));
@@ -500,12 +500,12 @@ impl App {
                                 ui.label(format!("Explicit track routing: {} · {} configured tracks",routes.enabled,routes.routes.len()));
                                 for route in &routes.routes {ui.label(format!("Track {}: inputs {:?} · output {:?} · channel {:?} · live thru {} · filters {:?}",route.track+1,route.inputs,route.output,route.output_channel.map(|ch|ch+1),route.thru,route.filter));}
                                 if let Some(status)=self.engine.midi.policy_status() {
-                                    if status.pending() || status.error.is_some() {ui.colored_label(Color32::YELLOW,"MIDI discovery is pending or failed; availability cannot be fully verified yet.");}
+                                    if status.pending() || status.error.is_some() {ui.colored_label(ui.visuals().warn_fg_color,"MIDI discovery is pending or failed; availability cannot be fully verified yet.");}
                                     if let model::MidiInputs::Selected(names)=midi {
                                         let missing=names.iter().filter(|name|!status.available_inputs.contains(name)).cloned().collect::<Vec<_>>();
-                                        if !missing.is_empty(){ui.colored_label(Color32::YELLOW,format!("Not in current MIDI discovery preview: {}{}",missing.join(", "),if status.available_truncated{" (preview is truncated)"}else{""}));}
+                                        if !missing.is_empty(){ui.colored_label(ui.visuals().warn_fg_color,format!("Not in current MIDI discovery preview: {}{}",missing.join(", "),if status.available_truncated{" (preview is truncated)"}else{""}));}
                                     }
-                                } else {ui.colored_label(Color32::YELLOW,"MIDI manager unavailable; this selection can only apply after restart.");}
+                                } else {ui.colored_label(ui.visuals().warn_fg_color,"MIDI manager unavailable; this selection can only apply after restart.");}
                                 ui.label("Permitted live MIDI connections remain connected; excluded sources are released by the MIDI worker after Apply.");
                                 for path in paths { ui.label(path); }
                                 let current = preview.current().unwrap();

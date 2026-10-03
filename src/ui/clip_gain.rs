@@ -201,7 +201,7 @@ mod tests {
         click(
             &ctx,
             &mut fixture.app,
-            label_center(&output, "Bassline"),
+            label_center(&output, "[] Bassline"),
             0.1,
             egui::Modifiers::ALT,
         );
