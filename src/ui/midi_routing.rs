@@ -16,7 +16,7 @@ fn text(ui: &mut Ui, label: &str, value: &mut String) {
 }
 fn port(ui: &mut Ui, label: &str, value: &mut Endpoint, choices: &[Endpoint]) {
     ui.push_id(label, |ui| {
-        let combo = egui::ComboBox::from_label(format!("Choose {label}"))
+        let combo = egui::ComboBox::from_label(crate::localization::format("Choose {label}", &[format!("{}", label)]))
             .selected_text(&value.name)
             .show_ui(ui, |ui| {
                 for choice in choices {
@@ -36,7 +36,7 @@ fn port(ui: &mut Ui, label: &str, value: &mut Endpoint, choices: &[Endpoint]) {
         if ui
             .checkbox(
                 &mut exact,
-                format!("{label}: require exact backend port id"),
+                crate::localization::format("{label}: require exact backend port id", &[format!("{}", label)]),
             )
             .help(ui, HelpControl::MidiRoutePort)
             .changed()
@@ -51,7 +51,7 @@ fn port(ui: &mut Ui, label: &str, value: &mut Endpoint, choices: &[Endpoint]) {
 fn channel(ui: &mut Ui, label: &str, value: &mut Option<u8>) {
     let mut preserve = value.is_none();
     if ui
-        .checkbox(&mut preserve, format!("{label}: preserve source channel"))
+        .checkbox(&mut preserve, crate::localization::format("{label}: preserve source channel", &[format!("{}", label)]))
         .help(ui, HelpControl::MidiRouteChannel)
         .changed()
     {
@@ -74,11 +74,11 @@ fn channel(ui: &mut Ui, label: &str, value: &mut Option<u8>) {
     }
 }
 pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) {
-    ui.heading("Track MIDI routing");
-    ui.checkbox(&mut routing.enabled, "Use explicit track MIDI routing")
+    ui.heading(tr!("Track MIDI routing"));
+    ui.checkbox(&mut routing.enabled, tr!("Use explicit track MIDI routing"))
         .help(ui, HelpControl::MidiRouteEnable);
-    ui.label("Routes are saved with this profile. Input policy above must also permit each chosen input. Internal monitoring plays notes; other live message types go to the external output when Live thru is enabled. External clip output plays source MIDI; audio faders, mute, solo and the internal arpeggiator affect the internal sound.");
-    ui.label("Feedback guard forbids configured or active inputs on an output device/client. Select controller inputs explicitly and deselect the output device in Input policy. Check physical cable/thru loops separately. Missing or ambiguous destinations stay unavailable.");
+    ui.label(tr!("Routes are saved with this profile. Input policy above must also permit each chosen input. Internal monitoring plays notes; other live message types go to the external output when Live thru is enabled. External clip output plays source MIDI; audio faders, mute, solo and the internal arpeggiator affect the internal sound."));
+    ui.label(tr!("Feedback guard forbids configured or active inputs on an output device/client. Select controller inputs explicitly and deselect the output device in Input policy. Check physical cable/thru loops separately. Missing or ambiguous destinations stay unavailable."));
     let inputs = status.map_or(&[][..], |s| s.inputs.as_slice());
     let outputs = status.map_or(&[][..], |s| s.outputs.as_slice());
     ui.add_enabled_ui(routing.enabled, |ui| {
@@ -87,11 +87,11 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
         let response=ui.add(egui::DragValue::new(&mut page).range(1..=16).speed(1.0).prefix("MIDI track page "));
         if let Some(next)=accessibility::numeric(ui,&response,"MIDI track page",page as f32,1.0,16.0,1.0,"") {page=next.round() as usize;}
         ui.data_mut(|data|data.insert_temp(id,page));
-        ui.label(format!("Stable track slots {}–{} of 128. Reordering the session preserves these targets; Apply/Retry attaches a reused slot to its current identity.",(page-1)*8+1,page*8));
+        ui.label({ let __omatainer_args = (&((page-1)*8+1),&(page*8),); crate::localization::format("Stable track slots {}–{} of 128. Reordering the session preserves these targets; Apply/Retry attaches a reused slot to its current identity.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
         for t in (page-1)*8..page*8 {
             let mut enabled = routing.routes.iter().any(|r| usize::from(r.track) == t);
             if ui
-                .checkbox(&mut enabled, format!("Route MIDI track {}", t + 1))
+                .checkbox(&mut enabled, { let __omatainer_args = (&(t + 1),); crate::localization::format("Route MIDI track {}", &[format!("{}", __omatainer_args.0)]) })
                 .help(ui, HelpControl::MidiRouteTrack)
                 .changed()
             {
@@ -124,19 +124,19 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
             .show(ui, |ui| {
                 ui.checkbox(
                     &mut route.monitor,
-                    format!("Track {}: monitor notes internally", t + 1),
+                    { let __omatainer_args = (&(t + 1),); crate::localization::format("Track {}: monitor notes internally", &[format!("{}", __omatainer_args.0)]) },
                 )
                 .help(ui, HelpControl::MidiRouteMonitor);
                 ui.checkbox(
                     &mut route.thru,
-                    format!("Track {}: Live thru to external output", t + 1),
+                    { let __omatainer_args = (&(t + 1),); crate::localization::format("Track {}: Live thru to external output", &[format!("{}", __omatainer_args.0)]) },
                 )
                 .help(ui, HelpControl::MidiRouteThru);
                 let mut external = route.output.is_some();
                 if ui
                     .checkbox(
                         &mut external,
-                        format!("Track {}: external MIDI output", t + 1),
+                        { let __omatainer_args = (&(t + 1),); crate::localization::format("Track {}: external MIDI output", &[format!("{}", __omatainer_args.0)]) },
                     )
                     .help(ui, HelpControl::MidiRoutePort)
                     .changed()
@@ -172,7 +172,7 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
                             if ui
                                 .checkbox(
                                     &mut all,
-                                    format!("Track {} input {}: all channels", t + 1, n + 1),
+                                    { let __omatainer_args = (&(t + 1),&(n + 1),); crate::localization::format("Track {} input {}: all channels", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) },
                                 )
                                 .help(ui, HelpControl::MidiRouteChannel)
                                 .changed()
@@ -186,7 +186,7 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
                                         if ui
                                             .checkbox(
                                                 &mut on,
-                                                format!("T{} I{} channel {}", t + 1, n + 1, ch + 1),
+                                                { let __omatainer_args = (&(t + 1),&(n + 1),&(ch + 1),); crate::localization::format("T{} I{} channel {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) },
                                             )
                                             .help(ui, HelpControl::MidiRouteChannel)
                                             .changed()
@@ -201,7 +201,7 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
                                 });
                             }
                             if ui
-                                .button(format!("Remove track {} input {}", t + 1, n + 1))
+                                .button({ let __omatainer_args = (&(t + 1),&(n + 1),); crate::localization::format("Remove track {} input {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) })
                                 .help(ui, HelpControl::MidiRoutePort)
                                 .clicked()
                             {
@@ -215,7 +215,7 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
                 if ui
                     .add_enabled(
                         route.inputs.len() < 8,
-                        egui::Button::new(format!("Add track {} MIDI input", t + 1)),
+                        egui::Button::new({ let __omatainer_args = (&(t + 1),); crate::localization::format("Add track {} MIDI input", &[format!("{}", __omatainer_args.0)]) }),
                     )
                     .help(ui, HelpControl::MidiRoutePort)
                     .clicked()
@@ -238,7 +238,7 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
                         ("Pitch bend", &mut route.filter.bend),
                         ("Complete SysEx ≤256 bytes", &mut route.filter.sysex),
                     ] {
-                        ui.checkbox(value, format!("Track {}: {label}", t + 1))
+                        ui.checkbox(value, { let __omatainer_args = (&(t + 1),); crate::localization::format("Track {}: {label}", &[format!("{}", __omatainer_args.0), format!("{}", label)]) })
                             .help(ui, HelpControl::MidiRouteFilter);
                     }
                 });
@@ -252,17 +252,14 @@ pub(super) fn edit(ui: &mut Ui, routing: &mut Routing, status: Option<&Status>) 
 impl App {
     pub(super) fn midi_routing_status_ui(&mut self, ui: &mut Ui, ctx: &egui::Context) {
         ui.separator();
-        ui.heading("Track routing and output activity");
+        ui.heading(tr!("Track routing and output activity"));
         if let Some(status) = self.engine.midi.routing_status() {
-            ui.label(format!(
-                "Routing request {} · applied {}",
-                status.requested_generation, status.applied_generation
-            ));
+            ui.label({ let __omatainer_args = (&(status.requested_generation),&(status.applied_generation),); crate::localization::format("Routing request {} · applied {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
             if status.pending {
-                ui.label("Routing change pending; backend operations finish on their worker.");
+                ui.label(tr!("Routing change pending; backend operations finish on their worker."));
                 ctx.request_repaint_after(std::time::Duration::from_millis(50));
                 if ui
-                    .button("Cancel pending MIDI routing")
+                    .button(tr!("Cancel pending MIDI routing"))
                     .help(ui, HelpControl::MidiRouteCancel)
                     .clicked()
                 {
@@ -273,7 +270,7 @@ impl App {
                 ui.colored_label(ui.visuals().warn_fg_color, error);
             }
         } else {
-            ui.label("MIDI routing/output owner unavailable in this session.");
+            ui.label(tr!("MIDI routing/output owner unavailable in this session."));
         }
         let (tracks, global) = self.engine.cmd.midi_routing().activity();
         for (t, c) in tracks
@@ -281,20 +278,20 @@ impl App {
             .enumerate()
             .filter(|(_, c)| c.received > 0 || c.sent > 0 || c.failed > 0 || c.clip_refused || c.identity_refused)
         {
-            if c.identity_refused { ui.label(format!("Track {} routing target changed. Apply/Retry to attach this route to the current track.", t+1)); }
-            ui.label(format!("Track {}: {} input · {} routed · {} filtered/merged · {} sent · {} failed · {} overruns · clip refused {} · last {:02X} channel {}",t+1,c.received,c.routed,c.filtered,c.sent,c.failed,c.overruns,c.clip_refused,c.last_status,c.last_channel));
+            if c.identity_refused { ui.label({ let __omatainer_args = (&(t+1),); crate::localization::format("Track {} routing target changed. Apply/Retry to attach this route to the current track.", &[format!("{}", __omatainer_args.0)]) }); }
+            ui.label({ let __omatainer_args = (&(t+1),&(c.received),&(c.routed),&(c.filtered),&(c.sent),&(c.failed),&(c.overruns),&(c.clip_refused),&(c.last_status),&(c.last_channel),); crate::localization::format("Track {}: {} input · {} routed · {} filtered/merged · {} sent · {} failed · {} overruns · clip refused {} · last {:02X} channel {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{}", __omatainer_args.5), format!("{}", __omatainer_args.6), format!("{}", __omatainer_args.7), format!("{:02X}", __omatainer_args.8), format!("{}", __omatainer_args.9)]) });
         }
-        ui.label(format!("{} invalid/unsupported packets", global.malformed));
-        ui.label("An explicit reset or output queue/block overrun resets outputs and stops that clip’s external stream until relaunch, MIDI edit, or routing apply. Sent counts mean the backend accepted packets; physical delivery and timing need controller QA.");
+        ui.label({ let __omatainer_args = (&(global.malformed),); crate::localization::format("{} invalid/unsupported packets", &[format!("{}", __omatainer_args.0)]) });
+        ui.label(tr!("An explicit reset or output queue/block overrun resets outputs and stops that clip’s external stream until relaunch, MIDI edit, or routing apply. Sent counts mean the backend accepted packets; physical delivery and timing need controller QA."));
         if ui
-            .button("All notes off / reset MIDI outputs")
+            .button(tr!("All notes off / reset MIDI outputs"))
             .help(ui, HelpControl::MidiRouteReset)
             .clicked()
         {
             self.engine.cmd.midi_routing().reset_outputs();
         }
         if ui
-            .button("Edit MIDI routing in Preferences")
+            .button(tr!("Edit MIDI routing in Preferences"))
             .help(ui, HelpControl::MidiRouteEnable)
             .clicked()
         {

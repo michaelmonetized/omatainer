@@ -6,11 +6,11 @@ impl App {
         toolbar(ctx, parent, "master-fx-status", "FX", |ui| {
             if self.engine.safe_mode() {ui.disable();}
             ui.horizontal_wrapped(|ui| {
-                ui.label("Master FX");
+                ui.label(tr!("Master FX"));
                 for slot in 0..3 {
                     ui.push_id(("legacy-master-fx", slot), |ui| accessibility::group(ui, &format!("Master effect {}", slot + 1), |ui| {
                         let kind = self.snap.fx_kind[slot];
-                        let select = ui.button(format!("{}: {}", slot + 1, kind.name()));
+                        let select = ui.button({ let __omatainer_args = (&(slot + 1),&(kind.name()),); crate::localization::format("{}: {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                         accessibility::button(ui, &select, &format!("Master effect {}: {}", slot + 1, kind.name()), None);
                         help::annotate(ui, &select, HelpControl::MasterFxSelect);
                         if select.clicked() {

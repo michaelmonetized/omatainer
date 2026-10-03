@@ -24,14 +24,14 @@ struct ActionTarget {
 pub(super) fn action_button(ui: &mut Ui) {
     let target = ui.data(|data| data.get_temp::<ActionTarget>(egui::Id::new(ACTION_TARGET)));
     let Some(target) = target else {
-        ui.add_enabled(false, egui::Button::new("Control actions: focus a control")).help(ui, HelpControl::Actions);
+        ui.add_enabled(false, egui::Button::new(tr!("Control actions: focus a control"))).help(ui, HelpControl::Actions);
         return;
     };
     let mut visible = target.label.chars().take(48).collect::<String>();
     if visible.len() < target.label.len() {
         visible.push('…');
     }
-    let menu = ui.menu_button(format!("Actions for {visible}"), |ui| {
+    let menu = ui.menu_button(crate::localization::format("Actions for {visible}", &[format!("{}", visible)]), |ui| {
         keyboard::block_for_dialog(ui.ctx());
         for (index, label) in target.actions.iter().enumerate() {
             if ui.button(label).help(ui, HelpControl::Actions).clicked() {
@@ -393,7 +393,7 @@ pub(super) fn numeric(
         node.set_max_numeric_value(max as f64);
         node.set_numeric_value_step(step as f64);
         if node.role() != Role::TextInput {
-            node.set_value(format!("{value:.2}{unit}"));
+            node.set_value(format!("{}{unit}", crate::localization::number(value as f64, 2)));
         }
         node.set_description(
             "Arrow keys adjust; Shift for fine adjustment; Home/End for limits; F2 enters a value.",
@@ -464,7 +464,7 @@ pub(super) fn numeric(
                     NumericEdit {
                         owner: response.id,
                         label: format!("{label} ({unit})"),
-                        text: value.to_string(),
+                        text: crate::localization::number_input(value),
                         min,
                         max,
                         error: false,
@@ -522,19 +522,22 @@ pub(super) fn numeric_editor(ctx: &egui::Context) {
             field.request_focus();
             edit.focus = false;
         }
-        ui.label(format!("Range {} to {}", edit.min, edit.max));
+        ui.label(crate::localization::format("Range {} to {}", &[
+            crate::localization::number_input(edit.min),
+            crate::localization::number_input(edit.max),
+        ]));
         if edit.error {
-            ui.label("Enter a finite number in the displayed range.");
+            ui.label(tr!("Enter a finite number in the displayed range."));
         }
         ui.horizontal(|ui| {
             let cancel =
-                ui.button("Cancel").help(ui, HelpControl::NumericEditor).clicked() || ui.input(|input| input.key_pressed(Key::Escape));
+                ui.button(tr!("Cancel")).help(ui, HelpControl::NumericEditor).clicked() || ui.input(|input| input.key_pressed(Key::Escape));
             let apply =
-                ui.button("Apply").help(ui, HelpControl::NumericEditor).clicked() || ui.input(|input| input.key_pressed(Key::Enter));
+                ui.button(tr!("Apply")).help(ui, HelpControl::NumericEditor).clicked() || ui.input(|input| input.key_pressed(Key::Enter));
             if cancel {
                 done = true;
             } else if apply {
-                if let Ok(value) = edit.text.parse::<f32>() {
+                if let Some(value) = crate::localization::parse_number(&edit.text).map(|value| value as f32) {
                     if value.is_finite() && (edit.min..=edit.max).contains(&value) {
                         ctx.data_mut(|data| {
                             data.insert_temp(egui::Id::new(RESULT), (edit.owner, value))

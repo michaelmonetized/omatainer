@@ -1,3 +1,5 @@
+#[macro_use]
+mod localization;
 mod project_file;
 mod project_template;
 mod project_dependencies;

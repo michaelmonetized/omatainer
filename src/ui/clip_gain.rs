@@ -26,13 +26,13 @@ impl App {
             .get(edit.track as usize)
             .map(|track| track.name.as_str())
             .unwrap_or("track");
-        egui::Window::new(format!("Clip gain · {name} / scene {}", edit.scene + 1))
+        egui::Window::new({ let __omatainer_args = (&(edit.scene + 1),); crate::localization::format("Clip gain · {name} / scene {}", &[format!("{}", name), format!("{}", __omatainer_args.0)]) })
             .id(egui::Id::new("clip-gain-editor"))
             .open(&mut open)
             .resizable(false)
             .show(ctx, |ui| {
-                ui.label("Applies to new clip notes and hits.");
-                ui.label("Held notes and release tails keep their original gain.");
+                ui.label(tr!("Applies to new clip notes and hits."));
+                ui.label(tr!("Held notes and release tails keep their original gain."));
                 let original_gain = edit.value;
                 let original = original_gain * 100.0;
                 let mut percent = original;
@@ -47,14 +47,14 @@ impl App {
                 // Only an actual normalized edit belongs in renderer history.
                 changed |= (response.changed() || alternate.is_some()) && edit.value != original_gain;
                 ui.horizontal(|ui| {
-                    let zero = ui.button("zero");
+                    let zero = ui.button(tr!("zero"));
                     accessibility::button(ui, &zero, "Set clip gain to zero", None);
                     help::annotate(ui, &zero, HelpControl::ClipGain);
                     if zero.clicked() {
                         edit.value = 0.0;
                         changed = true;
                     }
-                    let unity = ui.button("unity");
+                    let unity = ui.button(tr!("unity"));
                     accessibility::button(ui, &unity, "Set clip gain to unity", None);
                     help::annotate(ui, &unity, HelpControl::ClipGain);
                     if unity.clicked() {

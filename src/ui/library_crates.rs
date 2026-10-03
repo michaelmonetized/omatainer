@@ -176,7 +176,7 @@ impl App {
         self.refresh_named_crates();
         let title = self.library_crates.selected.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id))
             .map(|node| node.name.as_str()).unwrap_or("All tracks");
-        let response = ui.button(format!("{title} ▾"));
+        let response = ui.button(crate::localization::format("{title} ▾", &[format!("{}", title)]));
         accessibility::button(ui, &response, "Choose or edit named crates", None);
         help::annotate(ui, &response, HelpControl::NamedCrates);
         if response.clicked() {
@@ -189,14 +189,14 @@ impl App {
         if !self.library_crates.open { return; }
         self.refresh_named_crates();
         let mut open = true;
-        egui::Window::new("Named crates").id(egui::Id::new("named-crates-window"))
+        egui::Window::new(tr!("Named crates")).id(egui::Id::new("named-crates-window"))
             .open(&mut open).default_size(Vec2::new(700.0, 650.0)).show(ctx, |ui| {
                 keyboard::block_for_dialog(ctx);
                 let revision = self.library_metadata.catalog.crates.revision();
                 // Every changing section consumes one stable parent slot. An old
                 // native action cannot acquire a new meaning after a notice/tree changes.
                 ui.scope(|ui| {
-                    ui.label("Crates store ordered references only. Source audio and sampler banks are never moved or deleted.");
+                    ui.label(tr!("Crates store ordered references only. Source audio and sampler banks are never moved or deleted."));
                     ui.label(&self.library_crates.message);
                 });
                 ui.push_id("crate-tree", |ui| {
@@ -208,7 +208,7 @@ impl App {
                         let chosen = (number.round() as usize).checked_sub(1).and_then(|index| self.library_crates.tree.get(index)).map(|(index, _)| self.library_metadata.catalog.crates.nodes()[*index].id.clone());
                         self.choose_named_crate(chosen);
                     }
-                    if ui.selectable_label(self.library_crates.selected.is_none(), "All tracks").help(ui, HelpControl::NamedCrates).clicked() { self.choose_named_crate(None); }
+                    if ui.selectable_label(self.library_crates.selected.is_none(), tr!("All tracks")).help(ui, HelpControl::NamedCrates).clicked() { self.choose_named_crate(None); }
                     let rows = self.library_crates.tree.len();
                     let mut chosen = None;
                     let output = egui::ScrollArea::vertical().id_salt("named-crate-tree").max_height(150.0).show_rows(ui, 20.0, rows, |ui, range| {
@@ -218,7 +218,7 @@ impl App {
                             ui.push_id((&node.id, "tree-row"), |ui| {
                                 ui.horizontal(|ui| {
                                     ui.add_space(depth as f32 * 12.0);
-                                    if ui.selectable_label(self.library_crates.selected.as_ref() == Some(&node.id), format!("{} · {} tracks", node.name, node.members.len()))
+                                    if ui.selectable_label(self.library_crates.selected.as_ref() == Some(&node.id), { let __omatainer_args = (&(node.name),&(node.members.len()),); crate::localization::format("{} · {} tracks", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) })
                                         .help(ui, HelpControl::NamedCrates).clicked() { chosen = Some(node.id.clone()); }
                                 });
                             });
@@ -231,27 +231,27 @@ impl App {
                 let available = self.library_crates.pending.is_none() && !self.project.committing() && self.project.dialog_is_closed() && !self.library_closing();
                 ui.push_id(("crate-edit", revision, &id), |ui| {
                     ui.horizontal(|ui| {
-                        let label = ui.label("Name");
+                        let label = ui.label(tr!("Name"));
                         let name = ui.add(egui::TextEdit::singleline(&mut self.library_crates.name).char_limit(256).desired_width(190.0)).labelled_by(label.id).help(ui, HelpControl::CrateName);
                         name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Crate name"));
                     });
                     ui.horizontal(|ui| {
-                        if ui.add_enabled(available, egui::Button::new("New root crate")).help(ui, HelpControl::CrateCreate).clicked() {
+                        if ui.add_enabled(available, egui::Button::new(tr!("New root crate"))).help(ui, HelpControl::CrateCreate).clicked() {
                             self.submit_crate_edit(revision, CollectionAction::Create { name: self.library_crates.name.trim().into(), parent: None, before: None });
                         }
-                        if ui.add_enabled(available && id.is_some(), egui::Button::new("New child crate")).help(ui, HelpControl::CrateCreate).clicked() {
+                        if ui.add_enabled(available && id.is_some(), egui::Button::new(tr!("New child crate"))).help(ui, HelpControl::CrateCreate).clicked() {
                             self.submit_crate_edit(revision, CollectionAction::Create { name: self.library_crates.name.trim().into(), parent: id.clone(), before: None });
                         }
-                        if ui.add_enabled(available && id.is_some(), egui::Button::new("Rename crate")).help(ui, HelpControl::CrateName).clicked() {
+                        if ui.add_enabled(available && id.is_some(), egui::Button::new(tr!("Rename crate"))).help(ui, HelpControl::CrateName).clicked() {
                             self.submit_crate_edit(revision, CollectionAction::Edit(Edit::Rename { id: id.clone().unwrap(), name: self.library_crates.name.trim().into() }));
                         }
-                        if ui.add_enabled(available && id.is_some(), egui::Button::new("Delete crate…")).help(ui, HelpControl::CrateDelete).clicked() { self.request_crate_delete(); }
+                        if ui.add_enabled(available && id.is_some(), egui::Button::new(tr!("Delete crate…"))).help(ui, HelpControl::CrateDelete).clicked() { self.request_crate_delete(); }
                     });
                     self.crate_order_buttons(ui, revision, id.as_ref(), available);
                     ui.horizontal(|ui| {
-                        if ui.add_enabled(id.is_some(), egui::Button::new("Use as destination")).help(ui, HelpControl::CrateDestination).clicked() { self.library_crates.destination = id.clone(); }
+                        if ui.add_enabled(id.is_some(), egui::Button::new(tr!("Use as destination"))).help(ui, HelpControl::CrateDestination).clicked() { self.library_crates.destination = id.clone(); }
                         let destination = self.library_crates.destination.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)).map(|node| node.name.as_str()).unwrap_or("none");
-                        ui.label(format!("Destination: {destination}"));
+                        ui.label(crate::localization::format("Destination: {destination}", &[format!("{}", destination)]));
                     });
                     self.refresh_library_view();
                     let target = self.library_crates.destination.clone();
@@ -274,19 +274,19 @@ impl App {
                 ui.scope(|ui| {
                     ui.horizontal(|ui| {
                         ui.push_id("cancel-crate-request", |ui| {
-                            if ui.add_enabled(self.library_crates.pending.is_some(), egui::Button::new("Cancel crate edit")).help(ui, HelpControl::CrateCancelEdit).clicked() {
+                            if ui.add_enabled(self.library_crates.pending.is_some(), egui::Button::new(tr!("Cancel crate edit"))).help(ui, HelpControl::CrateCancelEdit).clicked() {
                                 if let Some((token, _)) = &self.library_crates.pending {
                                     self.library_crates.message = if token.cancel() { "Cancellation requested; waiting for the catalog owner." } else { "Publication has already begun; waiting for its actual outcome." }.into();
                                 }
                             }
                         });
                         ui.push_id("retry-crate-request", |ui| {
-                            if ui.add_enabled(available && self.library_crates.retry.is_some(), egui::Button::new("Retry rejected crate edit")).help(ui, HelpControl::CrateCancelEdit).clicked() {
+                            if ui.add_enabled(available && self.library_crates.retry.is_some(), egui::Button::new(tr!("Retry rejected crate edit"))).help(ui, HelpControl::CrateCancelEdit).clicked() {
                                 let (expected, action) = self.library_crates.retry.take().unwrap();
                                 self.submit_crate_edit(expected, action);
                             }
                         });
-                        if ui.button("Close crates").help(ui, HelpControl::NamedCrates).clicked() { self.library_crates.open = false; }
+                        if ui.button(tr!("Close crates")).help(ui, HelpControl::NamedCrates).clicked() { self.library_crates.open = false; }
                     });
                 });
             });
@@ -305,17 +305,17 @@ impl App {
         let out = parent.as_ref().and_then(|parent| self.library_crates.parents.get(parent)).cloned().flatten();
         let destination = self.library_crates.destination.clone();
         ui.horizontal(|ui| {
-            if ui.add_enabled(available && up.is_some(), egui::Button::new("Crate up")).help(ui, HelpControl::CrateOrder).clicked() {
+            if ui.add_enabled(available && up.is_some(), egui::Button::new(tr!("Crate up"))).help(ui, HelpControl::CrateOrder).clicked() {
                 self.submit_crate_edit(revision, CollectionAction::Edit(Edit::MoveCrate { id: id.unwrap().clone(), parent: parent.clone(), before: up }));
             }
-            if ui.add_enabled(available && down.is_some(), egui::Button::new("Crate down")).help(ui, HelpControl::CrateOrder).clicked() {
+            if ui.add_enabled(available && down.is_some(), egui::Button::new(tr!("Crate down"))).help(ui, HelpControl::CrateOrder).clicked() {
                 self.submit_crate_edit(revision, CollectionAction::Edit(Edit::MoveCrate { id: id.unwrap().clone(), parent: parent.clone(), before: down.flatten() }));
             }
-            if ui.add_enabled(available && parent.is_some(), egui::Button::new("Move crate out")).help(ui, HelpControl::CrateOrder).clicked() {
+            if ui.add_enabled(available && parent.is_some(), egui::Button::new(tr!("Move crate out"))).help(ui, HelpControl::CrateOrder).clicked() {
                 self.submit_crate_edit(revision, CollectionAction::Edit(Edit::MoveCrate { id: id.unwrap().clone(), parent: out, before: None }));
             }
             ui.push_id(&destination, |ui| {
-                if ui.add_enabled(available && id.is_some() && destination.is_some() && id != destination.as_ref(), egui::Button::new("Nest in destination")).help(ui, HelpControl::CrateDestination).clicked() {
+                if ui.add_enabled(available && id.is_some() && destination.is_some() && id != destination.as_ref(), egui::Button::new(tr!("Nest in destination"))).help(ui, HelpControl::CrateDestination).clicked() {
                     self.submit_crate_edit(revision, CollectionAction::Edit(Edit::MoveCrate { id: id.unwrap().clone(), parent: destination.clone(), before: None }));
                 }
             });
@@ -325,17 +325,17 @@ impl App {
     fn crate_members_ui(&mut self, ui: &mut Ui, revision: u64, id: Option<&CrateId>, available: bool) {
         let catalog = self.library_metadata.catalog.clone();
         let Some(node) = id.and_then(|id| catalog.crates.node(id)) else {
-            ui.label("All tracks keeps library sorting. Select a named crate to reorder or remove its direct members.");
+            ui.label(tr!("All tracks keeps library sorting. Select a named crate to reorder or remove its direct members."));
             return;
         };
         ui.push_id(("crate-members", revision, id), |ui| {
-            ui.label(format!("{} direct members; {} selected (maximum 4096). Child crates are separate views.", node.members.len(), self.library_crates.members.len()));
+            ui.label({ let __omatainer_args = (&(node.members.len()),&(self.library_crates.members.len()),); crate::localization::format("{} direct members; {} selected (maximum 4096). Child crates are separate views.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
             let mut cursor = self.library_crates.member_cursor.max(1).min(node.members.len().max(1)) as f32;
             preferences::float_control(ui, "Member row", &mut cursor, 1.0, node.members.len().max(1) as f32, 1.0, " row", HelpControl::CrateMembership);
             self.library_crates.member_cursor = cursor.round() as usize;
             let member = node.members.get(self.library_crates.member_cursor.saturating_sub(1));
             ui.push_id(("toggle-cursor", member), |ui| {
-                if ui.add_enabled(member.is_some(), egui::Button::new("Toggle member at row")).help(ui, HelpControl::CrateMembership).clicked() {
+                if ui.add_enabled(member.is_some(), egui::Button::new(tr!("Toggle member at row"))).help(ui, HelpControl::CrateMembership).clicked() {
                     let member = member.unwrap();
                     let row = self.library_crates.member_cursor.saturating_sub(1);
                     if self.library_crates.members.remove(&row).is_none() {
@@ -355,7 +355,7 @@ impl App {
                     let title = if unavailable { format!("{title} · unavailable in current view · {}", member.0) } else { title.to_owned() };
                     let mut selected = self.library_crates.members.contains_key(&row);
                     ui.push_id(member, |ui| {
-                        let response = ui.checkbox(&mut selected, format!("Member {}: {title}", row + 1)).help(ui, HelpControl::CrateMembership);
+                        let response = ui.checkbox(&mut selected, { let __omatainer_args = (&(row + 1),); crate::localization::format("Member {}: {title}", &[format!("{}", __omatainer_args.0), format!("{}", title)]) }).help(ui, HelpControl::CrateMembership);
                         if response.changed() {
                             if selected && self.library_crates.members.len() < MAX_SELECTION { self.library_crates.members.insert(row, member.clone()); }
                             else if !selected { self.library_crates.members.remove(&row); }
@@ -370,8 +370,8 @@ impl App {
             // Remove cannot later remove a different checkbox selection.
             ui.push_id(&selected, |ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Clear member selection").help(ui, HelpControl::CrateMembership).clicked() { self.library_crates.members.clear(); }
-                    if ui.add_enabled(available && !selected.is_empty(), egui::Button::new("Remove selected memberships")).help(ui, HelpControl::CrateMembership).clicked() {
+                    if ui.button(tr!("Clear member selection")).help(ui, HelpControl::CrateMembership).clicked() { self.library_crates.members.clear(); }
+                    if ui.add_enabled(available && !selected.is_empty(), egui::Button::new(tr!("Remove selected memberships"))).help(ui, HelpControl::CrateMembership).clicked() {
                         self.submit_crate_edit(revision, CollectionAction::Edit(Edit::RemoveMembers { id: node.id.clone(), members: selected.clone() }));
                     }
                 });
@@ -380,7 +380,7 @@ impl App {
                     preferences::float_control(ui, "Insert before row (last + 1 appends)", &mut position, 1.0, (node.members.len() + 1) as f32, 1.0, " row", HelpControl::CrateOrder);
                     self.library_crates.position = position.round() as usize;
                     ui.push_id(self.library_crates.position, |ui| {
-                        if ui.add_enabled(available && !selected.is_empty(), egui::Button::new("Reorder selected members")).help(ui, HelpControl::CrateOrder).clicked() {
+                        if ui.add_enabled(available && !selected.is_empty(), egui::Button::new(tr!("Reorder selected members"))).help(ui, HelpControl::CrateOrder).clicked() {
                             self.submit_crate_edit(revision, CollectionAction::Edit(Edit::MoveMembers {
                                 source: node.id.clone(), destination: node.id.clone(), members: selected.clone(),
                                 before: node.members.get(self.library_crates.position.saturating_sub(1)).cloned(),
@@ -415,8 +415,8 @@ impl App {
             let mut confirm = false;
             let mut cancel = false;
             ui.horizontal(|ui| {
-                confirm = ui.button("Confirm delete crate subtree").help(ui, HelpControl::CrateDelete).clicked();
-                cancel = ui.button("Keep crate").help(ui, HelpControl::CrateDelete).clicked();
+                confirm = ui.button(tr!("Confirm delete crate subtree")).help(ui, HelpControl::CrateDelete).clicked();
+                cancel = ui.button(tr!("Keep crate")).help(ui, HelpControl::CrateDelete).clicked();
             });
             if confirm { self.submit_crate_edit(revision, CollectionAction::Edit(Edit::DeleteSubtree { id: id.clone() })); }
             else if cancel { self.library_crates.delete = None; }

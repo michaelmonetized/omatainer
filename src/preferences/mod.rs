@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -120,6 +120,8 @@ pub use crate::engine::midi::InputPolicy as MidiInputs;
 #[serde(deny_unknown_fields)]
 pub struct Appearance {
     #[serde(default)]
+    pub(crate) locale: crate::localization::Locale,
+    #[serde(default)]
     pub contrast: crate::theme::Contrast,
     #[serde(default)]
     pub reduced_motion: bool,
@@ -185,6 +187,7 @@ impl Profile {
             midi_routing: crate::engine::midi::routing::Routing::default(),
             library_roots: vec![home.join("Music"), home.join("music")],
             appearance: Appearance {
+                locale: crate::localization::Locale::default(),
                 contrast: crate::theme::Contrast::Theme, reduced_motion: false, waveform_contrast: 1.0, level_contrast: 1.0,
                 follow_theme: true,
                 font_size: None,

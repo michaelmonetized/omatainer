@@ -61,7 +61,7 @@ impl App {
         let mut open = true;
         let mut request = None;
         let panel = &mut self.automation_panel;
-        egui::Window::new("Automation and remote control")
+        egui::Window::new(tr!("Automation and remote control")).id(egui::Id::new("Automation and remote control"))
             .id(egui::Id::new("automation-window"))
             .open(&mut open)
             .default_width(660.0)
@@ -69,30 +69,26 @@ impl App {
             .hscroll(true)
             .max_height(self.theme.window_height(ctx))
             .show(ctx, |ui| {
-                ui.heading("Automation API v1");
+                ui.heading(tr!("Automation API v1"));
                 if let Some(path) = &panel.endpoint {
-                    ui.label(format!("Local socket: {}", path.display()));
+                    ui.label({ let __omatainer_args = (&(path.display()),); crate::localization::format("Local socket: {}", &[format!("{}", __omatainer_args.0)]) });
                 } else {
-                    ui.label("The desktop launch publishes its local socket path here.");
+                    ui.label(tr!("The desktop launch publishes its local socket path here."));
                 }
-                ui.label("Linux local control requires the same effective user and socket permissions 0600.");
+                ui.label(tr!("Linux local control requires the same effective user and socket permissions 0600."));
                 ui.label(
-                    "Commands return pending jobs. Refresh the job to see applied, rejected or cancelled.",
+                    tr!("Commands return pending jobs. Refresh the job to see applied, rejected or cancelled."),
                 );
                 if ui
-                    .button("Read API state")
+                    .button(tr!("Read API state"))
                     .help(ui, HelpControl::AutomationState)
                     .clicked()
                 {
                     request = Some(json!({"op":"state"}));
                 }
                 if let Some(layout) = &self.snap.session {
-                    ui.label(format!(
-                        "Session: {} · revision {}",
-                        String::from(SessionKey(layout.namespace)),
-                        self.snap.project_revision
-                    ));
-                    ui.label(format!("Current quarter-note beat: {:.4}", self.snap.beat));
+                    ui.label({ let __omatainer_args = (&(String::from(SessionKey(layout.namespace))),&(self.snap.project_revision),); crate::localization::format("Session: {} · revision {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                    ui.label({ let __omatainer_args = (&(self.snap.beat),); crate::localization::format("Current quarter-note beat: {:.4}", &[format!("{:.4}", __omatainer_args.0)]) });
                     if let Some(item) = layout
                         .tracks
                         .get(self.snap.selected_track)
@@ -103,15 +99,11 @@ impl App {
                             axis: crate::automation::Axis::Track,
                             id: ObjectId(item.id.0),
                         };
-                        ui.label(format!(
-                            "Selected track: {} · id {}",
-                            item.name,
-                            String::from(ObjectId(item.id.0))
-                        ));
+                        ui.label({ let __omatainer_args = (&(item.name),&(String::from(ObjectId(item.id.0))),); crate::localization::format("Selected track: {} · id {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                         ui.add(egui::Slider::new(&mut panel.gain, 0.0..=1.5).text("Scheduled gain"))
                             .help(ui, HelpControl::AutomationGain);
                         ui.horizontal(|ui| {
-                            let label = ui.label("At quarter-note beat");
+                            let label = ui.label(tr!("At quarter-note beat"));
                             let response = ui
                                 .add(
                                     egui::DragValue::new(&mut panel.beat)
@@ -121,7 +113,7 @@ impl App {
                                 .labelled_by(label.id);
                             help::annotate(ui, &response, HelpControl::AutomationBeat);
                             if ui
-                                .button("Next beat")
+                                .button(tr!("Next beat"))
                                 .help(ui, HelpControl::AutomationBeat)
                                 .clicked()
                             {
@@ -131,7 +123,7 @@ impl App {
                         if ui
                             .add_enabled(
                                 self.snap.playing,
-                                egui::Button::new("Schedule selected track gain"),
+                                egui::Button::new(tr!("Schedule selected track gain")),
                             )
                             .help(ui, HelpControl::AutomationSchedule)
                             .clicked()
@@ -140,7 +132,7 @@ impl App {
                                 json!({"op":"schedule","namespace":SessionKey(layout.namespace),"beat":panel.beat,"action":{"op":"track_gain","target":target,"value":panel.gain}}),
                             );
                         }
-                        let label = ui.label("API track name");
+                        let label = ui.label(tr!("API track name"));
                         let response = ui
                             .add(egui::TextEdit::singleline(&mut panel.name).char_limit(1024))
                             .labelled_by(label.id);
@@ -148,7 +140,7 @@ impl App {
                             .accesskit_node_builder(response.id, |node| node.set_label("API track name"));
                         help::annotate(ui, &response, HelpControl::AutomationRename);
                         if ui
-                            .button("Apply API track name")
+                            .button(tr!("Apply API track name"))
                             .help(ui, HelpControl::AutomationRename)
                             .clicked()
                         {
@@ -165,14 +157,14 @@ impl App {
                 }
                 ui.horizontal_wrapped(|ui| {
                     if ui
-                        .add_enabled(!panel.job.is_empty(), egui::Button::new("Refresh API job"))
+                        .add_enabled(!panel.job.is_empty(), egui::Button::new(tr!("Refresh API job")))
                         .help(ui, HelpControl::AutomationJob)
                         .clicked()
                     {
                         request = Some(json!({"op":"job","id":panel.job}));
                     }
                     if ui
-                        .add_enabled(!panel.job.is_empty(), egui::Button::new("Cancel API job"))
+                        .add_enabled(!panel.job.is_empty(), egui::Button::new(tr!("Cancel API job")))
                         .help(ui, HelpControl::AutomationCancel)
                         .clicked()
                     {
@@ -183,29 +175,29 @@ impl App {
                     ui.label(&panel.result);
                 }
                 ui.separator();
-                ui.heading("Optional loopback OSC");
+                ui.heading(tr!("Optional loopback OSC"));
                 if network.pending {
-                    ui.label("Listener configuration is pending");
+                    ui.label(tr!("Listener configuration is pending"));
                     ctx.request_repaint_after(std::time::Duration::from_millis(20));
                 }
                 if let Some(port) = network.port {
-                    ui.label(format!("Listening: 127.0.0.1:{port} · /omatainer/v1 ,sb"));
-                    ui.checkbox(&mut panel.show_token, "Show OSC access token")
+                    ui.label(crate::localization::format("Listening: 127.0.0.1:{port} · /omatainer/v1 ,sb", &[format!("{}", port)]));
+                    ui.checkbox(&mut panel.show_token, tr!("Show OSC access token"))
                         .help(ui, HelpControl::AutomationToken);
                     if panel.show_token {
                         if let Some(token) = &network.token {
-                            ui.label(format!("Access token: {token}"));
+                            ui.label(crate::localization::format("Access token: {token}", &[format!("{}", token)]));
                         }
                     }
                 } else {
-                    ui.label("OSC is disabled");
+                    ui.label(tr!("OSC is disabled"));
                 }
                 if let Some(error) = &network.error {
                     ui.colored_label(ui.visuals().warn_fg_color, error);
                 }
-                ui.label("OSC takes the current token and a UTF-8 API JSON blob. Subscriptions use the Unix stream. Enable or change the loopback listener in Preferences.");
+                ui.label(tr!("OSC takes the current token and a UTF-8 API JSON blob. Subscriptions use the Unix stream. Enable or change the loopback listener in Preferences."));
                 if ui
-                    .button("Preferences")
+                    .button(tr!("Preferences"))
                     .help(ui, HelpControl::Preferences)
                     .clicked()
                 {

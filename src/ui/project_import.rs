@@ -212,7 +212,7 @@ fn choices(
     for (id, name) in items {
         let mut checked = selected.contains(id);
         if ui
-            .checkbox(&mut checked, format!("{prefix}: {name} [{}]", id.0))
+            .checkbox(&mut checked, { let __omatainer_args = (&(id.0),); crate::localization::format("{prefix}: {name} [{}]", &[format!("{}", prefix), format!("{}", name), format!("{}", __omatainer_args.0)]) })
             .changed()
         {
             if checked {
@@ -243,13 +243,13 @@ impl App {
         let revision = self.snap.project_revision;
         let view = self.project_view();
         let identities = self.project_watch_identities();
-        egui::Window::new("Import project material")
+        egui::Window::new(tr!("Import project material")).id(egui::Id::new("Import project material"))
             .open(&mut open)
             .default_width(620.0)
             .show(ctx, |ui| {
                 let panel = &mut self.project_import;
                 ui.add_enabled_ui(enabled && !panel.busy(), |ui| {
-                    ui.label("Source native project path");
+                    ui.label(tr!("Source native project path"));
                     ui.add(
                         egui::TextEdit::singleline(&mut panel.path)
                             .char_limit(4096)
@@ -262,16 +262,11 @@ impl App {
                             "Source native project path",
                         )
                     });
-                    if ui.button("Browse source project").clicked() {
+                    if ui.button(tr!("Browse source project")).clicked() {
                         panel.start(&self.engine, false, revision, view.clone(), identities.clone());
                     }
                     if let Some(catalog) = &panel.catalog {
-                        ui.label(format!(
-                            "Source: {} BPM · {} tracks · {} scenes",
-                            catalog.bpm,
-                            catalog.tracks.len(),
-                            catalog.scenes.len()
-                        ));
+                        ui.label({ let __omatainer_args = (&(catalog.bpm),&(catalog.tracks.len()),&(catalog.scenes.len()),); crate::localization::format("Source: {} BPM · {} tracks · {} scenes", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                         egui::ScrollArea::vertical()
                             .id_salt("project-import-selection")
                             .max_height(300.0)
@@ -282,14 +277,14 @@ impl App {
                             });
                         ui.checkbox(
                             &mut panel.clips,
-                            "Include clips and MIDI controller automation",
+                            tr!("Include clips and MIDI controller automation"),
                         );
-                        ui.checkbox(&mut panel.devices, "Include instruments and effects");
+                        ui.checkbox(&mut panel.devices, tr!("Include instruments and effects"));
                         ui.checkbox(
                             &mut panel.keep_timing,
-                            "Keep destination tempo and meter; use source beat positions",
+                            tr!("Keep destination tempo and meter; use source beat positions"),
                         );
-                        if ui.button("Review selected project material").clicked() {
+                        if ui.button(tr!("Review selected project material")).clicked() {
                             panel.start(&self.engine, true, revision, view.clone(), identities.clone());
                         }
                     }
@@ -307,7 +302,7 @@ impl App {
                     if ui
                         .add_enabled(
                             enabled && panel.ready,
-                            egui::Button::new("Apply reviewed project import"),
+                            egui::Button::new(tr!("Apply reviewed project import")),
                         )
                         .clicked()
                     {
@@ -318,7 +313,7 @@ impl App {
                         }
                     }
                     if ui
-                        .add_enabled(panel.busy(), egui::Button::new("Cancel project import"))
+                        .add_enabled(panel.busy(), egui::Button::new(tr!("Cancel project import")))
                         .clicked()
                     {
                         panel.cancel();

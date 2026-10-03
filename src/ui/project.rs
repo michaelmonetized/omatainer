@@ -999,39 +999,39 @@ impl App {
                         && self.project.dialog.is_none(),
                     |ui| {
                         self.undo_menu(ui);
-                        let menu = ui.menu_button("Project", |ui| {
-                            if ui.button("Support and crash reports…").help(ui,HelpControl::SupportOpen).clicked(){self.support.open=true;ui.close();}
-                            let recovery = ui.button("Autosave and recovery…");
+                        let menu = ui.menu_button(tr!("Project"), |ui| {
+                            if ui.button(tr!("Support and crash reports…")).help(ui,HelpControl::SupportOpen).clicked(){self.support.open=true;ui.close();}
+                            let recovery = ui.button(tr!("Autosave and recovery…"));
                             help::annotate(ui, &recovery, help::Control::RecoveryOpen);
                             if recovery.clicked() { self.recovery.open = true; ui.close(); }
-                            let midi = ui.button("Import MIDI file…").help(ui, HelpControl::MidiFileImport);
+                            let midi = ui.button(tr!("Import MIDI file…")).help(ui, HelpControl::MidiFileImport);
                             if midi.clicked() { self.open_midi_files(false); ui.close(); }
-                            let midi = ui.button("Export MIDI file…").help(ui, HelpControl::MidiFileExport);
+                            let midi = ui.button(tr!("Export MIDI file…")).help(ui, HelpControl::MidiFileExport);
                             if midi.clicked() { self.open_midi_files(true); ui.close(); }
-                            if ui.button("Project dependencies…").help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
-                            if ui.button("Portable project…").help(ui, HelpControl::PortableOpen).clicked() { self.portability.open = true; ui.close(); }
-                            if ui.button("Project and track templates…").help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
-                            if ui.button("Named versions…").help(ui, HelpControl::ProjectVersionsOpen).clicked() { self.project_versions.open = true; ui.close(); }
-                            if ui.button("Import from another project…").help(ui, HelpControl::ProjectImportOpen).clicked() { self.project_import.open = true; ui.close(); }
-                            if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
-                            let response = ui.button("New project");
+                            if ui.button(tr!("Project dependencies…")).help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
+                            if ui.button(tr!("Portable project…")).help(ui, HelpControl::PortableOpen).clicked() { self.portability.open = true; ui.close(); }
+                            if ui.button(tr!("Project and track templates…")).help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
+                            if ui.button(tr!("Named versions…")).help(ui, HelpControl::ProjectVersionsOpen).clicked() { self.project_versions.open = true; ui.close(); }
+                            if ui.button(tr!("Import from another project…")).help(ui, HelpControl::ProjectImportOpen).clicked() { self.project_import.open = true; ui.close(); }
+                            if ui.button(tr!("Tempo and meter…")).help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
+                            let response = ui.button(tr!("New project"));
                             help::annotate(ui, &response, help::Control::ProjectNew);
                             if response.clicked() {
                                 action = Some(Action::New);
                                 ui.close();
                             }
-                            let response = ui.button("Open project…");
+                            let response = ui.button(tr!("Open project…"));
                             help::annotate(ui, &response, help::Control::ProjectOpen);
                             if response.clicked() {
                                 action = Some(Action::OpenDialog);
                                 ui.close();
                             }
-                            let recent = ui.menu_button("Open recent", |ui| {
+                            let recent = ui.menu_button(tr!("Open recent"), |ui| {
                                 if let Some(warning) = &self.project.recent_warning {
                                     ui.label(warning);
                                 }
                                 if self.project.recent.is_empty() {
-                                    ui.label("No recent projects");
+                                    ui.label(tr!("No recent projects"));
                                 }
                                 for path in &self.project.recent {
                                     let response = ui.button(path.display().to_string());
@@ -1064,36 +1064,33 @@ impl App {
                         help::annotate(ui, &menu.response, help::Control::ProjectMenu);
                     },
                 );
-                ui.label(format!(
-                    "{name}{}",
-                    if dirty {
+                ui.label({ let __omatainer_args = (&(if dirty {
                         " · unsaved"
                     } else if self.project.current_path.is_some() {
                         " · saved"
                     } else {
                         " · not saved to a file"
-                    }
-                ));
+                    }),); crate::localization::format("{name}{}", &[format!("{}", name), format!("{}", __omatainer_args.0)]) });
                 if ui.button(self.session_history_toolbar_text()).help(ui, HelpControl::HistoryOpen).clicked() { self.session_history.open = true; }
                 if self.snap.file_conductor {
-                    ui.label(format!("Musical timeline · {}/{} · bar {} beat {:.2}", self.snap.meter_numerator, self.snap.meter_denominator, self.snap.bar, self.snap.beat_in_bar + 1.0));
+                    ui.label({ let __omatainer_args = (&(self.snap.meter_numerator),&(self.snap.meter_denominator),&(self.snap.bar),&(self.snap.beat_in_bar + 1.0),); crate::localization::format("Musical timeline · {}/{} · bar {} beat {:.2}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{:.2}", __omatainer_args.3)]) });
                 }
-                if self.snap.count_in_remaining > 0.0 { ui.label(format!("Count-in · {:.1} s", self.snap.count_in_remaining)); }
+                if self.snap.count_in_remaining > 0.0 { ui.label({ let __omatainer_args = (&(self.snap.count_in_remaining),); crate::localization::format("Count-in · {:.1} s", &[format!("{:.1}", __omatainer_args.0)]) }); }
                 let recovery_text = self.recovery_toolbar_text();
                 if ui.button(recovery_text).help(ui, HelpControl::RecoveryOpen).clicked() { self.recovery.open = true; }
                 if self.project.awaiting_snapshot.is_some() {
-                    ui.label("Waiting for project display…");
+                    ui.label(tr!("Waiting for project display…"));
                 }
                 if let Some(active) = &self.project.active {
                     ui.label(match active.operation {
-                        Operation::Save { .. } => "Saving…",
+                        Operation::Save { .. } => tr!("Saving…"),
                         Operation::Prepare {
                             committing: true, ..
-                        } => "Applying project…",
-                        Operation::Prepare { .. } => "Preparing project…",
-                        Operation::CloseCheck { .. } => "Checking pending edits…",
+                        } => tr!("Applying project…"),
+                        Operation::Prepare { .. } => tr!("Preparing project…"),
+                        Operation::CloseCheck { .. } => tr!("Checking pending edits…"),
                     });
-                    let cancel = ui.button("Cancel project operation");
+                    let cancel = ui.button(tr!("Cancel project operation"));
                     help::annotate(ui, &cancel, help::Control::ProjectCancel);
                     if cancel.clicked() || cancel.is_pointer_button_down_on() {
                         active.cancel.store(true, Ordering::Release);
@@ -1128,33 +1125,33 @@ impl App {
         let response = egui::Modal::new(egui::Id::new("project-dialog")).show(ctx, |ui| {
             match &mut dialog {
                 Dialog::Unsaved(next) => {
-                    ui.heading("Unsaved project changes");
-                    ui.label("Save the current project before continuing?");
+                    ui.heading(tr!("Unsaved project changes"));
+                    ui.label(tr!("Save the current project before continuing?"));
                     ui.horizontal(|ui| {
-                        let response = ui.button("Save changes");
+                        let response = ui.button(tr!("Save changes"));
                         help::annotate(ui, &response, help::Control::ProjectSave);
                         if response.clicked() { save = Some((SaveKind::Save, Some(next.clone()))); retain = false; }
-                        let response = ui.button("Discard changes");
+                        let response = ui.button(tr!("Discard changes"));
                         help::annotate(ui, &response, help::Control::ProjectDiscard);
                         if response.clicked() { action = Some(next.clone()); retain = false; }
-                        let response = ui.button("Cancel");
+                        let response = ui.button(tr!("Cancel"));
                         help::annotate(ui, &response, help::Control::ProjectCancel);
                         if response.clicked() { retain = false; }
                     });
                 }
                 Dialog::Path { kind, text, replace } => {
                     let opening = matches!(kind, PathKind::Open(_));
-                    ui.heading(if opening { "Open native project" } else { "Save native project" });
-                    ui.label("Project path (.omat). Relative paths use the application working directory.");
-                    let path_field = ui.add(egui::TextEdit::singleline(text).desired_width(440.0).hint_text("/path/to/session.omat"));
+                    ui.heading(if opening { tr!("Open native project") } else { tr!("Save native project") });
+                    ui.label(tr!("Project path (.omat). Relative paths use the application working directory."));
+                    let path_field = ui.add(egui::TextEdit::singleline(text).desired_width(440.0).hint_text(tr!("/path/to/session.omat")));
                     path_field.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Project file path"));
                     help::annotate(ui, &path_field, help::Control::ProjectPath);
                     if !opening {
-                        let response = ui.checkbox(replace, "Replace an existing file at this path");
+                        let response = ui.checkbox(replace, tr!("Replace an existing file at this path"));
                         help::annotate(ui, &response, help::Control::ProjectReplace);
                     }
                     ui.horizontal(|ui| {
-                        let response = ui.add_enabled(!text.trim().is_empty(), egui::Button::new(if opening { "Open" } else { "Save" }));
+                        let response = ui.add_enabled(!text.trim().is_empty(), egui::Button::new(if opening { tr!("Open") } else { tr!("Save") }));
                         help::annotate(ui, &response, if opening { help::Control::ProjectOpen } else {
                             match kind { PathKind::Save(SaveKind::As, _) => help::Control::ProjectSaveAs,
                                 PathKind::Save(SaveKind::Copy, _) => help::Control::ProjectSaveCopy, _ => help::Control::ProjectSave }
@@ -1170,7 +1167,7 @@ impl App {
                             } }
                             retain = false;
                         }
-                        let response = ui.button("Cancel");
+                        let response = ui.button(tr!("Cancel"));
                         help::annotate(ui, &response, help::Control::ProjectCancel);
                         if response.clicked() { retain = false; }
                     });

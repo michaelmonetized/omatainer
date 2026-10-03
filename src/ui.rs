@@ -624,13 +624,13 @@ impl App {
 
     #[cfg(test)]
     fn filtered(&self) -> Vec<&LibItem> {
-        let q = self.lib_filter.to_lowercase();
+        let q = crate::localization::search_key(&self.lib_filter);
         self.library
             .iter()
             .filter(|i| {
                 q.is_empty()
-                    || i.title.to_lowercase().contains(&q)
-                    || i.artist.to_lowercase().contains(&q)
+                    || crate::localization::search_key(&i.title).contains(&q)
+                    || crate::localization::search_key(&i.artist).contains(&q)
             })
             .collect()
     }
@@ -679,6 +679,7 @@ impl App {
     }
 
     fn update_frame(&mut self, ctx: &egui::Context) {
+        let _locale = crate::localization::scope(self.settings.profile().appearance.locale);
         let ui_started = Instant::now();
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
@@ -811,21 +812,21 @@ impl App {
 
         if let Some(error) = self.submission_error.get() {
             keyboard::block_for_dialog(ctx);
-            egui::Window::new("Action was not accepted")
+            egui::Window::new(tr!("Action was not accepted")).id(egui::Id::new("Action was not accepted"))
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(error.to_string());
-                    if ui.button("Dismiss").help(ui, HelpControl::AdmissionDismiss).clicked() {
+                    if ui.button(tr!("Dismiss")).help(ui, HelpControl::AdmissionDismiss).clicked() {
                         self.submission_error.set(None);
                     }
                 });
         }
         self.help_panel(ctx);
         if self.midi_open {
-            egui::Window::new("midi").vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+            egui::Window::new(tr!("midi")).id(egui::Id::new("midi")).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 let busy = self.engine.midi.connections_busy();
-                if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new("Retry / rescan MIDI")).help(ui, HelpControl::MidiRetry).clicked() {
+                if ui.add_enabled(!busy && self.engine.midi.connections_available(), egui::Button::new(tr!("Retry / rescan MIDI"))).help(ui, HelpControl::MidiRetry).clicked() {
                     match self.engine.midi.retry_connections() {
                         crate::engine::midi::Retry::Queued | crate::engine::midi::Retry::AlreadyRunning => {
                             if self.engine.midi.routing_status().is_some(){self.settings.routing_pending=true;}
@@ -835,16 +836,16 @@ impl App {
                     }
                 }
                 if busy {
-                    ui.label("Checking MIDI connections…");
+                    ui.label(tr!("Checking MIDI connections…"));
                     ctx.request_repaint_after(std::time::Duration::from_millis(50));
                 } else if !self.engine.midi.connections_available() {
-                    ui.label("MIDI connection worker unavailable; restart to retry.");
+                    ui.label(tr!("MIDI connection worker unavailable; restart to retry."));
                 }
-                ui.label("Keyboard and mouse remain available. Retry checks current ports.");
+                ui.label(tr!("Keyboard and mouse remain available. Retry checks current ports."));
                 let input = self.engine.midi.input_stats();
-                ui.label(format!("Input: {} received · {} queued · {} handled", input.received, input.queued, input.dispatched));
-                ui.label(format!("Overload: {} coalesced · {} discarded · {} source resets", input.coalesced, input.dropped, input.resets));
-                ui.label(format!("{} oversized · {} disconnected", input.oversized, input.disconnected));
+                ui.label({ let __omatainer_args = (&(input.received),&(input.queued),&(input.dispatched),); crate::localization::format("Input: {} received · {} queued · {} handled", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+                ui.label({ let __omatainer_args = (&(input.coalesced),&(input.dropped),&(input.resets),); crate::localization::format("Overload: {} coalesced · {} discarded · {} source resets", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+                ui.label({ let __omatainer_args = (&(input.oversized),&(input.disconnected),); crate::localization::format("{} oversized · {} disconnected", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                 for d in &self.snap.midi {
                     ui.label(d);
                 }
@@ -1040,8 +1041,8 @@ impl App {
                 });
             }
             ui.horizontal_wrapped(|ui| {
-                if ui.small_button("cues…").help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
-                let grid = ui.small_button("grid…");
+                if ui.small_button(tr!("cues…")).help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
+                let grid = ui.small_button(tr!("grid…"));
                 accessibility::button(ui, &grid, "Beatgrid editor", None);
                 help::annotate(ui, &grid, HelpControl::GridEditor);
                 if grid.clicked() { self.open_grid_editor(d); }
@@ -1100,11 +1101,11 @@ impl App {
                 egui::Popup::menu(&button)
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
                     .show(|ui| {
-                    ui.label(format!("Deck {} time", (b'A' + d as u8) as char));
-                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Elapsed, "Elapsed · source time").help(ui, HelpControl::DeckTime);
-                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Remaining, "Remaining · wall estimate").help(ui, HelpControl::DeckTime);
+                    ui.label({ let __omatainer_args = (&((b'A' + d as u8) as char),); crate::localization::format("Deck {} time", &[format!("{}", __omatainer_args.0)]) });
+                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Elapsed, tr!("Elapsed · source time")).help(ui, HelpControl::DeckTime);
+                    ui.selectable_value(&mut self.deck_time[d].mode, TimeMode::Remaining, tr!("Remaining · wall estimate")).help(ui, HelpControl::DeckTime);
                     ui.separator();
-                    ui.label("Warn before file end (seconds)");
+                    ui.label(tr!("Warn before file end (seconds)"));
                     ui.add(egui::DragValue::new(&mut self.deck_time[d].warning_lead_seconds)
                         .range(0..=deck_time::MAX_WARNING_LEAD_SECONDS).suffix(" s")).help(ui, HelpControl::RunoutWarning);
                     ui.small("0 = off · repeating loops suppress alerts");
@@ -1146,25 +1147,25 @@ impl App {
 
     fn sampler_row(&mut self, ui: &mut Ui, t: &Theme) {
         ui.horizontal_wrapped(|ui| {
-            let edit = ui.button("Edit banks");
+            let edit = ui.button(tr!("Edit banks"));
             accessibility::button(ui, &edit, "Edit sampler banks", None);
             help::annotate(ui, &edit, HelpControl::SamplerEdit);
             if edit.clicked() { self.open_sampler_editor(); }
-            let midi = ui.button("Piano roll");
+            let midi = ui.button(tr!("Piano roll"));
             accessibility::button(ui, &midi, "Edit selected MIDI clip", None);
             help::annotate(ui, &midi, HelpControl::PianoRoll);
             if midi.clicked() { self.open_piano_roll(); }
             if let Some(target) = self.snap.compose_target {
                 let name = self.snap.tracks.get(target.track).map(|tr| tr.name.as_str()).unwrap_or("track");
-                ui.label(RichText::new(format!("Compose armed: {} / scene {}", name, target.scene + 1)).color(t.yellow));
-                if ui.button("Disarm compose").help(ui, HelpControl::ComposeDisarm).clicked() { self.send(Command::ComposeDisarm); }
+                ui.label(RichText::new({ let __omatainer_args = (&(name),&(target.scene + 1),); crate::localization::format("Compose armed: {} / scene {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) }).color(t.yellow));
+                if ui.button(tr!("Disarm compose")).help(ui, HelpControl::ComposeDisarm).clicked() { self.send(Command::ComposeDisarm); }
             } else {
-                ui.label("Compose disarmed");
-                if ui.button("Arm selected cell").help(ui, HelpControl::ComposeArm).clicked() {
+                ui.label(tr!("Compose disarmed"));
+                if ui.button(tr!("Arm selected cell")).help(ui, HelpControl::ComposeArm).clicked() {
                     self.send(Command::ComposeArm { track: self.snap.selected_track, scene: self.snap.selected_scene });
                 }
             }
-            if self.snap.recording { ui.label(RichText::new("Recording pads").color(t.red)); }
+            if self.snap.recording { ui.label(RichText::new(tr!("Recording pads")).color(t.red)); }
         });
         let h = ui.available_height();
         let w = ui.available_width();
@@ -1209,7 +1210,7 @@ impl App {
                     if sq_btn(ui, t, "^", false, t.accent, t.target_size(26.0)).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(1));
                     }
-                    ui.label(RichText::new(format!("C{}", self.snap.sampler_oct)).size(t.text_size(11.0)).color(t.fg));
+                    ui.label(RichText::new({ let __omatainer_args = (&(self.snap.sampler_oct),); crate::localization::format("C{}", &[format!("{}", __omatainer_args.0)]) }).size(t.text_size(11.0)).color(t.fg));
                     if sq_btn(ui, t, "v", false, t.accent, t.target_size(26.0)).help(ui, HelpControl::SamplerOctave).clicked() {
                         self.send(Command::SamplerOct(-1));
                     }
@@ -1258,35 +1259,35 @@ impl App {
         ui.vertical(|ui| {
             ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
-                let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text("search").desired_width(180.0));
+                let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text(tr!("search")).desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
                 help::annotate(ui, &search, HelpControl::CrateSearch);
-                if ui.add_enabled(!self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active(), egui::Button::new("scan")).help(ui, HelpControl::CrateScan).clicked() {
+                if ui.add_enabled(!self.library_scan.active() && self.library_metadata.ready() && !self.library_metadata.active(), egui::Button::new(tr!("scan"))).help(ui, HelpControl::CrateScan).clicked() {
                     self.scan_library();
                 }
-                if self.library_scan.active() && ui.button("cancel scan").help(ui, HelpControl::CrateCancel).clicked() {
+                if self.library_scan.active() && ui.button(tr!("cancel scan")).help(ui, HelpControl::CrateCancel).clicked() {
                     self.library_scan.cancel();
                 }
-                if ui.button("analyze…").help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
-                if ui.button("annotations…").help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
-                if ui.button("tags…").help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
+                if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
+                if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
+                if ui.button(tr!("tags…")).help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
-                if ui.button("library…").help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
-                if ui.button("relocate…").help(ui, HelpControl::CueRelocate).clicked() { self.open_cue_relocation(); }
-                let load_a = ui.button("→ A");
+                if ui.button(tr!("library…")).help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
+                if ui.button(tr!("relocate…")).help(ui, HelpControl::CueRelocate).clicked() { self.open_cue_relocation(); }
+                let load_a = ui.button(tr!("→ A"));
                 accessibility::button(ui, &load_a, "Load selected crate item to deck A", None);
                 help::annotate(ui, &load_a, HelpControl::DeckLoad);
                 if load_a.clicked() {
                     self.load_sel(0);
                 }
-                let load_b = ui.button("→ B");
+                let load_b = ui.button(tr!("→ B"));
                 accessibility::button(ui, &load_b, "Load selected crate item to deck B", None);
                 help::annotate(ui, &load_b, HelpControl::DeckLoad);
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
-                ui.label(RichText::new(if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.annotation_rule.is_some()) { "automatic annotation rule" } else if self.library_crates.selected.is_some() { "manual crate order" } else { "↓ bpm up   ↑ bpm down   same bpm → key → name" }).size(t.text_size(10.0)).color(t.muted));
-                ui.label(RichText::new("metadata: inspect tags…").size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
+                ui.label(RichText::new(if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.annotation_rule.is_some()) { tr!("automatic annotation rule") } else if self.library_crates.selected.is_some() { tr!("manual crate order") } else { tr!("↓ bpm up   ↑ bpm down   same bpm → key → name") }).size(t.text_size(10.0)).color(t.muted));
+                ui.label(RichText::new(tr!("metadata: inspect tags…")).size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(t.text_size(10.0)).color(t.fg_dim)).truncate())
                     .on_hover_text(progress);
@@ -1294,7 +1295,7 @@ impl App {
             ui.label(RichText::new(self.library_metadata.label()).size(t.text_size(10.0)).color(t.fg_dim));
             let selected_source=self.selected_library_item().map(|item|item.source.clone());
             if let Some(state)=selected_source.as_ref().and_then(|source|self.library_scan.summary.as_ref().and_then(|s|s.availability.get(source))) {
-                ui.label(format!("Last scan: {state}. Library records are retained."));
+                ui.label(crate::localization::format("Last scan: {state}. Library records are retained.", &[format!("{}", state)]));
             }
             let header = ["song", "bpm · source", "key", "length", "last play", "artist", "rating", "color", "group", "tags", "notes"];
             let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0, 64.0, 88.0, 128.0, 160.0, 240.0].map(|width| width * (t.text_size(11.0) / 11.0).max(1.0));
@@ -1306,7 +1307,7 @@ impl App {
             self.refresh_library_view();
             if !self.library_view.annotation_error.is_empty() { ui.colored_label(ui.visuals().warn_fg_color, &self.library_view.annotation_error); }
             if self.library_view.unavailable != 0 {
-                ui.label(format!("{} saved members unavailable in this published view; inspect Named crates for their identities.", self.library_view.unavailable));
+                ui.label({ let __omatainer_args = (&(self.library_view.unavailable),); crate::localization::format("{} saved members unavailable in this published view; inspect Named crates for their identities.", &[format!("{}", __omatainer_args.0)]) });
             }
             let focus = ui.make_persistent_id("crate-navigation");
             self.crate_navigation(ui, focus);
@@ -1630,7 +1631,7 @@ impl App {
                 self.fx_slot_controls(ui, t, i, &name, on, mix, p);
             }
             if self.snap.fx_slots.is_empty() {
-                ui.label(RichText::new("add a device — chain runs top to bottom").color(t.muted));
+                ui.label(RichText::new(tr!("add a device — chain runs top to bottom")).color(t.muted));
             }
         });
     }
@@ -1663,7 +1664,7 @@ fn sort_crate(items: &mut [LibItem]) {
         ba.partial_cmp(&bb)
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.key.cmp(&b.key))
-            .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+            .then_with(|| crate::localization::search_key(&a.title).cmp(&crate::localization::search_key(&b.title)))
     });
 }
 
@@ -1854,7 +1855,7 @@ fn rotary(ui: &mut Ui, t: &Theme, label: &str, value: f32, col: Color32, size: f
         let ang = -2.2 + value.clamp(0.0, 1.0) * 4.4;
         let dir = Vec2::angled(ang);
         ui.painter().line_segment([c, c + dir * (r - 3.0)], st(2.0, col));
-        ui.label(RichText::new(format!("{label}{}", if cut { " M" } else if solo { " S" } else { "" })).size(t.text_size(9.0)).color(t.fg_dim));
+        ui.label(RichText::new({ let __omatainer_args = (&(if cut { " M" } else if solo { " S" } else { "" }),); crate::localization::format("{label}{}", &[format!("{}", label), format!("{}", __omatainer_args.0)]) }).size(t.text_size(9.0)).color(t.fg_dim));
         let mut out = RotaryResp {
         gained_focus: resp.gained_focus(),
             value,

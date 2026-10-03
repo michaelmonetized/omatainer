@@ -492,19 +492,19 @@ impl App {
         let mut open = true;
         let available = ctx.screen_rect().shrink(8.0);
         let mut action = None;
-        egui::Window::new("Sampler bank editor").id(egui::Id::new("sampler-bank-editor"))
+        egui::Window::new(tr!("Sampler bank editor")).id(egui::Id::new("sampler-bank-editor"))
             .open(&mut open).collapsible(false).default_width(630.0).min_width(250.0_f32.min(available.width()))
             .max_width(available.width()).max_height(available.height()).constrain_to(available)
             .show(ctx, |ui| accessibility::scope(ui, "Sampler editor", |ui| {
                 ui.push_id("sampler-status", |ui| {
                     ui.label(&editor.message);
-                    if editor.awaiting_snapshot.is_some() { ui.label("Renderer Applied; waiting for the current bank snapshot before another edit."); }
+                    if editor.awaiting_snapshot.is_some() { ui.label(tr!("Renderer Applied; waiting for the current bank snapshot before another edit.")); }
                     if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
                 });
                 let allowed = !editor.busy() && !self.project.committing() && self.project.dialog_is_closed();
                 let scroll = egui::ScrollArea::both().id_salt("sampler-editor-body")
                     .max_height((available.height() - 155.0).max(60.0)).show(ui, |ui| {
-                    ui.label("Working project banks (factory originals are read-only)");
+                    ui.label(tr!("Working project banks (factory originals are read-only)"));
                     ui.horizontal_wrapped(|ui| {
                         for bank in &self.snap.sampler_instances {
                             let id = bank.id.to_string();
@@ -532,8 +532,8 @@ impl App {
                     if let Some(draft) = &mut editor.draft {
                         ui.separator();
                         ui.push_id("draft-target-status", |ui| {
-                        ui.label(format!("Draft: {} · {}", draft.bank.name(), if draft.bank.factory.is_some() { "factory: copy to edit" } else { "captured working identity" }));
-                        if !draft.current(&self.snap) && !draft.applied { ui.colored_label(self.theme.yellow, "Target changed since this draft began. Apply is disabled; reopen the current bank."); }
+                        ui.label({ let __omatainer_args = (&(draft.bank.name()),&(if draft.bank.factory.is_some() { "factory: copy to edit" } else { "captured working identity" }),); crate::localization::format("Draft: {} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                        if !draft.current(&self.snap) && !draft.applied { ui.colored_label(self.theme.yellow, tr!("Target changed since this draft began. Apply is disabled; reopen the current bank.")); }
                         });
                         let editable = allowed && draft.editable();
                         ui.add_enabled_ui(editable, |ui| {
@@ -545,11 +545,11 @@ impl App {
                         });
                         let slot = editor.slot;
                         ui.push_id("slot-source-status", |ui| {
-                        ui.label(format!("Slot {} source: {}", slot + 1, source_label(&draft.bank, slot)));
-                        if let Some(issue) = &draft.bank.data.issues[slot] { ui.colored_label(self.theme.red, format!("Missing/unavailable: {issue}. No replacement sound is substituted.")); }
+                        ui.label({ let __omatainer_args = (&(slot + 1),&(source_label(&draft.bank, slot)),); crate::localization::format("Slot {} source: {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+                        if let Some(issue) = &draft.bank.data.issues[slot] { ui.colored_label(self.theme.red, crate::localization::format("Missing/unavailable: {issue}. No replacement sound is substituted.", &[format!("{}", issue)])); }
                         });
                         let picked = self.selected_library_item();
-                        ui.label(format!("Selected crate source: {}", picked.map_or("none", |item| item.title.as_str())));
+                        ui.label({ let __omatainer_args = (&(picked.map_or("none", |item| item.title.as_str())),); crate::localization::format("Selected crate source: {}", &[format!("{}", __omatainer_args.0)]) });
                         ui.horizontal_wrapped(|ui| {
                             let local = picked.is_some_and(|item| matches!(item.source, LibSource::File(_) | LibSource::Removable {..}) && item.fingerprint.is_some());
                             if button(ui, "Assign selected local source", "Assign selected local source", HelpControl::SamplerAssign, editable && local).clicked() { action = Some(Action::Assign); }
@@ -567,8 +567,8 @@ impl App {
                         });
                         ui.push_id("slot-waveform", |ui| waveform(ui, &draft.bank, slot, &self.theme));
                         ui.push_id("preview-status", |ui| {
-                        if draft.prepared && !draft.applied && draft.token.as_ref().is_some_and(|t| !t.is_current()) { ui.label("This preview request was invalidated. Prepare again before Apply; the installed bank is unchanged."); }
-                        if !draft.prepared { ui.label("Values changed: prepare the preview before audition, Apply or reusable Save."); }
+                        if draft.prepared && !draft.applied && draft.token.as_ref().is_some_and(|t| !t.is_current()) { ui.label(tr!("This preview request was invalidated. Prepare again before Apply; the installed bank is unchanged.")); }
+                        if !draft.prepared { ui.label(tr!("Values changed: prepare the preview before audition, Apply or reusable Save.")); }
                         });
                         ui.horizontal_wrapped(|ui| {
                             if button(ui, "Prepare preview", "Prepare slot preview", HelpControl::SamplerPreview, editable).clicked() { action = Some(Action::Prepare); }
@@ -579,16 +579,16 @@ impl App {
                     });
                     ui.push_id("audition-status", |ui| {
                     if let Some((id, ack)) = &editor.audition { ui.label(match ack.state() {
-                        EditState::Pending => "Audition queued; waiting for renderer.", EditState::Rejected => "Audition rejected.",
-                        EditState::Applied if self.snap.sampler_audition == Some(*id) => "Audition is active on the captured track.",
-                        EditState::Applied => "Audition was accepted; awaiting current playback observation.",
+                        EditState::Pending => tr!("Audition queued; waiting for renderer."), EditState::Rejected => tr!("Audition rejected."),
+                        EditState::Applied if self.snap.sampler_audition == Some(*id) => tr!("Audition is active on the captured track."),
+                        EditState::Applied => tr!("Audition was accepted; awaiting current playback observation."),
                     }); }
                     });
                     ui.separator();
-                    ui.label("Reusable definitions reference local files or removable volumes. Project Save embeds playable audio.");
+                    ui.label(tr!("Reusable definitions reference local files or removable volumes. Project Save embeds playable audio."));
                     if let Some(store) = &editor.store {
                         ui.push_id("store-status", |ui| {
-                        if store.busy { ui.label("Reusable store operation pending…"); }
+                        if store.busy { ui.label(tr!("Reusable store operation pending…")); }
                         if let Some(error) = &store.error { ui.colored_label(self.theme.red, error); }
                         });
                         ui.push_id("store-definitions", |ui| {
@@ -596,7 +596,7 @@ impl App {
                             for definition in &collection.banks {
                                 ui.push_id(definition.id, |ui| {
                                     let id = definition.id.to_string();
-                                    let r = ui.add_enabled(!store.busy, egui::Button::new(format!("{} · {}", definition.name, &id[..8])).selected(editor.definition == Some(definition.id)));
+                                    let r = ui.add_enabled(!store.busy, egui::Button::new({ let __omatainer_args = (&(definition.name),&(&id[..8]),); crate::localization::format("{} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) }).selected(editor.definition == Some(definition.id)));
                                     accessibility::button(ui, &r, &format!("Reusable definition {} ({id})", definition.name), Some(editor.definition == Some(definition.id)));
                                     help::annotate(ui, &r, HelpControl::SamplerDefinition);
                                     if r.clicked() { editor.definition = Some(definition.id); editor.overwrite = false; }
@@ -797,7 +797,7 @@ fn source_label(bank: &Bank, slot: usize) -> String {
     }
 }
 fn waveform(ui: &mut Ui, bank: &Bank, slot: usize, theme: &Theme) {
-    ui.label("Sampled PCM waveform: left above / right below (narrow peaks may be missed)");
+    ui.label(tr!("Sampled PCM waveform: left above / right below (narrow peaks may be missed)"));
     let (rect, response) = ui.allocate_exact_size(
         Vec2::new(ui.available_width().clamp(160.0, 570.0), 82.0),
         Sense::hover(),
@@ -837,13 +837,7 @@ fn waveform(ui: &mut Ui, bank: &Bank, slot: usize, theme: &Theme) {
                 .vline(x, rect.y_range(), Stroke::new(2.0_f32, theme.yellow));
         }
     }
-    ui.label(format!(
-        "{} frames · {} Hz · {} channels · {:.6} s",
-        frames,
-        sample.sr,
-        sample.ch,
-        frames as f64 / sample.sr as f64
-    ));
+    ui.label({ let __omatainer_args = (&(frames),&(sample.sr),&(sample.ch),&(frames as f64 / sample.sr as f64),); crate::localization::format("{} frames · {} Hz · {} channels · {:.6} s", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{:.6}", __omatainer_args.3)]) });
 }
 
 #[cfg(test)]

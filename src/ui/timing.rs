@@ -337,8 +337,8 @@ impl App {
         let mut editor = std::mem::take(&mut self.timing);
         let mut open = true;
         let mut close = false;
-        egui::Window::new("Tempo and meter").open(&mut open).default_width(580.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
-            ui.label("Positions are quarter-note beats. Each list starts at 0. A ramp rises or falls to the next point; the last point must use step.");
+        egui::Window::new(tr!("Tempo and meter")).id(egui::Id::new("Tempo and meter")).open(&mut open).default_width(580.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+            ui.label(tr!("Positions are quarter-note beats. Each list starts at 0. A ramp rises or falls to the next point; the last point must use step."));
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
                 if let Some(draft) = &mut editor.draft {
                     draft.dirty |= text(ui, "Tempo points: beat BPM step/ramp", &mut draft.tempos);
@@ -355,16 +355,16 @@ impl App {
                         if number(ui, "Beat gain", &mut gain, 0.0, 2.0) { draft.settings.beat_gain = gain as f32; draft.dirty = true; }
                     });
                 }
-                if ui.button("Apply timing").help(ui, HelpControl::TimingApply).clicked() { editor.apply(&self.engine); }
+                if ui.button(tr!("Apply timing")).help(ui, HelpControl::TimingApply).clicked() { editor.apply(&self.engine); }
             });
-            ui.label("Count-in holds clips and recording at the current position. It uses the starting meter and tempo; DJ decks keep playing. Native project files retain exact ramps. MIDI export samples ramps at each MIDI tick.");
+            ui.label(tr!("Count-in holds clips and recording at the current position. It uses the starting meter and tempo; DJ decks keep playing. Native project files retain exact ramps. MIDI export samples ramps at each MIDI tick."));
             if editor.busy() {
-                if ui.button("Cancel timing operation").help(ui, HelpControl::TimingCancel).clicked() { editor.cancel(); }
+                if ui.button(tr!("Cancel timing operation")).help(ui, HelpControl::TimingCancel).clicked() { editor.cancel(); }
                 ctx.request_repaint_after(Duration::from_millis(20));
             }
             if !editor.message.is_empty() { ui.label(&editor.message); }
             if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
-            if ui.button("Close timing editor").help(ui, HelpControl::TimingClose).clicked() { close = true; }
+            if ui.button(tr!("Close timing editor")).help(ui, HelpControl::TimingClose).clicked() { close = true; }
         });
         if !open
             || close
@@ -378,10 +378,10 @@ impl App {
             }
         }
         if editor.confirm_discard {
-            egui::Window::new("Unapplied timing").collapsible(false).show(ctx, |ui| {
-                ui.label("Keep editing or discard the unapplied draft. Completed edits remain in History.");
-                if ui.button("Keep timing draft").help(ui, HelpControl::TimingClose).clicked() { editor.confirm_discard = false; }
-                if ui.button("Discard timing draft").help(ui, HelpControl::TimingClose).clicked() {
+            egui::Window::new(tr!("Unapplied timing")).id(egui::Id::new("Unapplied timing")).collapsible(false).show(ctx, |ui| {
+                ui.label(tr!("Keep editing or discard the unapplied draft. Completed edits remain in History."));
+                if ui.button(tr!("Keep timing draft")).help(ui, HelpControl::TimingClose).clicked() { editor.confirm_discard = false; }
+                if ui.button(tr!("Discard timing draft")).help(ui, HelpControl::TimingClose).clicked() {
                     editor.cancel(); editor.confirm_discard = false; editor.discard_when_settled = true;
                     if !editor.busy() { editor.draft = None; editor.open = false; }
                 }

@@ -11,36 +11,36 @@ pub(super) fn format(played: Option<SystemTime>, now: SystemTime) -> Formatted {
     let Some(played) = played else {
         return Formatted {
             label: "—".into(),
-            tooltip: "No recorded playback time".into(),
+            tooltip: tr!("No recorded playback time").into(),
             next_change: None,
         };
     };
     let stamp = utc_timestamp(played);
-    let mut tooltip = format!("Played: {}", stamp.precise);
+    let mut tooltip = crate::localization::format("Played: {}", &[stamp.precise]);
     let Ok(age) = now.duration_since(played) else {
-        tooltip.push_str("\nFuture timestamp relative to this computer's clock");
+        tooltip.push_str(tr!("\nFuture timestamp relative to this computer's clock"));
         return Formatted {
-            label: "Future time".into(),
+            label: tr!("Future time").into(),
             tooltip,
             next_change: Some(played),
         };
     };
     let seconds = age.as_secs();
     let (label, next_seconds) = if seconds < 60 {
-        ("Just now".into(), Some(60))
+        (tr!("Just now").into(), Some(60))
     } else if seconds < 3600 {
         (
-            format!("{} min ago", seconds / 60),
+            crate::localization::format("{} min ago", &[format!("{}",seconds / 60)]),
             Some((seconds / 60 + 1) * 60),
         )
     } else if seconds < 86400 {
         (
-            format!("{} h ago", seconds / 3600),
+            crate::localization::format("{} h ago", &[format!("{}",seconds / 3600)]),
             Some((seconds / 3600 + 1) * 3600),
         )
     } else if seconds < 7 * 86400 {
         (
-            format!("{} d ago", seconds / 86400),
+            crate::localization::format("{} d ago", &[format!("{}",seconds / 86400)]),
             Some((seconds / 86400 + 1) * 86400),
         )
     } else {
@@ -48,7 +48,7 @@ pub(super) fn format(played: Option<SystemTime>, now: SystemTime) -> Formatted {
             stamp
                 .date
                 .map(|date| format!("{date} UTC"))
-                .unwrap_or_else(|| "Long ago".into()),
+                .unwrap_or_else(|| tr!("Long ago").into()),
             None,
         )
     };
@@ -81,12 +81,7 @@ fn utc_timestamp(time: SystemTime) -> Timestamp {
         if !result.is_null() {
             let calendar = unsafe { calendar.assume_init() };
             let year = calendar.tm_year as i64 + 1900;
-            let year = if (0..=9999).contains(&year) {
-                format!("{year:04}")
-            } else {
-                format!("{year:+07}")
-            };
-            let date = format!("{year}-{:02}-{:02}", calendar.tm_mon + 1, calendar.tm_mday);
+            let date = crate::localization::calendar_date(year, calendar.tm_mon+1, calendar.tm_mday);
             let precise = format!(
                 "{date} {:02}:{:02}:{:02}.{fraction:09} UTC",
                 calendar.tm_hour, calendar.tm_min, calendar.tm_sec

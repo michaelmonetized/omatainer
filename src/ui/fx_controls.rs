@@ -13,7 +13,7 @@ impl App {
     ) {
         let Some(id) = FxId::from_name(name) else {
             ui.label(name);
-            ui.label("Device unavailable. Its position, controls and serialized state are retained; the audio passes through unchanged.");
+            ui.label(tr!("Device unavailable. Its position, controls and serialized state are retained; the audio passes through unchanged."));
             return;
         };
         let scope = if self.snap.fx_view >= crate::engine::session::SCENE_FX_BASE { format!("Scene {} effect {} {name}", self.snap.fx_view - crate::engine::session::SCENE_FX_BASE + 1, slot + 1) } else { format!("Track {} effect {} {name}", self.snap.fx_view.max(0) + 1, slot + 1) };

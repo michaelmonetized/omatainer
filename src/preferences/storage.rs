@@ -113,6 +113,9 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 10 && profiles.iter().any(|p| p.get("appearance").is_some_and(|a| a.get("locale").is_some())) {
+        return Err(Error::Invalid("Display language requires preferences version 10".into()));
+    }
     if version < 9 && profiles.iter().any(|p|p.get("automation").is_some()) {
         return Err(Error::Invalid("Automation configuration requires preferences version 9; older versions cannot carry newer fields".into()));
     }
@@ -126,12 +129,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
     let (preferences, migrated) = match version {
-        9 => (
+        10 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -385,7 +388,7 @@ mod tests {
             .appearance
             .contrast = crate::theme::Contrast::Light;
         let mut value = serde_json::to_value(&original).unwrap();
-        value["version"] = 8.into();
+        value["version"] = 8.into(); strip_language(&mut value);
         assert!(decode(&serde_json::to_vec(&value).unwrap())
             .unwrap_err()
             .to_string()
@@ -406,9 +409,12 @@ mod tests {
         original.profiles.get_mut("Studio").unwrap().automation.port = 80;
         assert!(decode(&serde_json::to_vec(&original).unwrap()).is_err());
     }
+    fn strip_language(value: &mut serde_json::Value) {
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile["appearance"].as_object_mut().unwrap().remove("locale"); }
+    }
     fn strip_appearance(profile: &mut serde_json::Value) {
         profile.as_object_mut().unwrap().remove("automation");
-        for field in ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
+        for field in ["locale", "contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
     }
     fn strip_display(value: &mut serde_json::Value) {
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() { strip_appearance(profile); }
@@ -418,7 +424,7 @@ mod tests {
         let mut original = Preferences::defaults(Path::new("/private/display-user"));
         original.profiles.get_mut("Studio").unwrap().startup.session = crate::project_template::Startup::Empty;
         original.profiles.get_mut("Studio").unwrap().audio.sample_rate = Some(96000);
-        let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 7.into();
+        let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 7.into(); strip_language(&mut value);
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() {profile.as_object_mut().unwrap().remove("automation");}
         assert!(decode(&serde_json::to_vec(&value).unwrap()).unwrap_err().to_string().contains("Display contrast"));
         strip_display(&mut value);
@@ -459,7 +465,7 @@ mod tests {
     #[test]
     fn version_six_migrates_without_changing_startup_or_audio_and_rejects_new_fields() {
         let original = Preferences::defaults(Path::new("/private/template-user"));
-        let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 6.into();
+        let mut value = serde_json::to_value(&original).unwrap(); value["version"] = 6.into(); strip_language(&mut value);
         strip_display(&mut value);
         assert!(decode(&serde_json::to_vec(&value).unwrap()).is_err());
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile["startup"].as_object_mut().unwrap().remove("session"); }
@@ -535,7 +541,7 @@ mod tests {
     fn version_two_audio_migrates_and_version_three_retains_exact_input_output_settings() {
         let prefs = Preferences::defaults(Path::new("/private/user"));
         let mut value = serde_json::to_value(&prefs).unwrap();
-        value["version"] = 2.into();
+        value["version"] = 2.into(); strip_language(&mut value);
         strip_display(&mut value);
         for profile in value["profiles"].as_object_mut().unwrap().values_mut() {
             profile.as_object_mut().unwrap().remove("midi_routing");
@@ -686,6 +692,16 @@ mod tests {
         assert!(migrated);
         assert_eq!(legacy.version, VERSION);
         assert!(legacy.profiles.values().all(|profile| !profile.startup.performance_mode));
+    }
+
+    #[test]
+    fn version_nine_migrates_english_and_unknown_language_never_rewrites_preferences() {
+        let original = Preferences::defaults(Path::new("/private/international"));
+        let mut value=serde_json::to_value(&original).unwrap();value["version"]=9.into();strip_language(&mut value);
+        let (loaded,migrated)=decode(&serde_json::to_vec(&value).unwrap()).unwrap();assert!(migrated);assert_eq!(loaded,original);
+        let mut invalid=serde_json::to_value(&original).unwrap();invalid["profiles"]["Studio"]["appearance"]["locale"]="unsupported".into();
+        assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+        value["profiles"]["Studio"]["appearance"]["locale"]="spanish".into();assert!(decode(&serde_json::to_vec(&value).unwrap()).is_err());
     }
 
 }

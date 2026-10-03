@@ -1056,3 +1056,31 @@ fn osc_preferences_apply_reopen_cancel_and_conflict_preserve_the_actual_listener
         applied.token
     );
 }
+
+#[test]
+fn native_language_preview_cancel_apply_reopen_and_translated_layout_preserve_music() {
+    use crate::localization::Locale;
+    for (locale, name, menu, cancel) in [(Locale::Spanish,"Español","Proyecto","Cancelar cambios"),(Locale::German,"Deutsch","Projekt","Änderungen verwerfen")] {
+        let mut gui = Gui::new(); gui.open();
+        let musical = (gui.fixture.rt.bpm, gui.fixture.rt.master, gui.fixture.rt.quant, gui.fixture.rt.xfader);
+        gui.click(name);
+        assert_eq!(gui.fixture.app.settings.profile().appearance.locale, Locale::English);
+        gui.click("Cancel changes");
+        assert_eq!(gui.fixture.app.settings.profile().appearance.locale, Locale::English);
+        gui.open(); gui.click(name); gui.preview_apply();
+        assert_eq!(gui.fixture.app.settings.profile().appearance.locale, locale);
+        assert_eq!((gui.fixture.rt.bpm, gui.fixture.rt.master, gui.fixture.rt.quant, gui.fixture.rt.xfader), musical);
+        assert!(gui.nodes.iter().any(|(_,n)| n.label()==Some(menu)));
+        assert!(gui.nodes.iter().any(|(_,n)| n.label()==Some(cancel)));
+        let loaded=storage::load(&gui.dir.join("preferences.json"),&AtomicBool::new(false)).unwrap();
+        assert_eq!(loaded.preferences.current().unwrap().appearance.locale,locale);
+        let startup=Startup::read(gui.dir.join("preferences.json"),gui.dir.clone());
+        let mut reopened=Fixture::new(64);reopened.app.initialize_preferences(&gui.ctx,startup,loaded.preferences.current().unwrap().audio.clone());
+        assert_eq!(reopened.app.settings.profile().appearance.locale,locale);
+        let out=gui.frame(vec![]);
+        for shape in &out.shapes {
+            if let egui::Shape::Text(text)=&shape.shape { assert!(text.galley.rect.width().is_finite());assert!(text.galley.rect.height().is_finite()); }
+        }
+        gui.click(cancel);
+    }
+}

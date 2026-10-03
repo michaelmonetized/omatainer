@@ -38,6 +38,7 @@ pub(super) struct Cells {
     pub played_refresh_at: Option<SystemTime>,
     pub annotations: [String; 5],
     played_clock: SystemTime,
+    locale: crate::localization::Locale,
 }
 
 impl Cells {
@@ -50,6 +51,7 @@ impl Cells {
             played_tooltip: played.tooltip,
             played_refresh_at: played.next_change,
             played_clock: now,
+            locale: crate::localization::current(),
             annotations: std::array::from_fn(|_|String::new()),
             played_at,
         }
@@ -58,13 +60,14 @@ impl Cells {
     pub fn refresh_play(&mut self, played_at: Option<SystemTime>, now: SystemTime) -> bool {
         let expired = played_at.is_some() && (now < self.played_clock
             || self.played_refresh_at.is_some_and(|deadline| now >= deadline));
-        if self.played_at == played_at && !expired { return false; }
+        if self.played_at == played_at && !expired && self.locale == crate::localization::current() { return false; }
         let played = play_time::format(played_at, now);
         self.played_at = played_at;
         self.played = played.label;
         self.played_tooltip = played.tooltip;
         self.played_refresh_at = played.next_change;
         self.played_clock = now;
+        self.locale = crate::localization::current();
         true
     }
 }
@@ -125,7 +128,7 @@ impl App {
             view.annotation_error = parsed.as_ref().err().cloned().unwrap_or_default();
             let valid_query = parsed.is_ok();
             let (query, rule) = parsed.unwrap_or_default();
-            let q = query.to_lowercase();
+            let q = crate::localization::search_key(&query);
             let rule_active = rule != crate::library::annotations::Rule::default();
             let annotated = self.library_metadata.catalog.tracks.iter().any(|track|!track.annotations.is_empty());
             let empty_annotations = crate::library::annotations::Annotations::default();
@@ -133,7 +136,7 @@ impl App {
             indices.clear();
             let matches = |item: &LibItem| {
                 if !valid_query { return false; }
-                let ordinary = q.is_empty() || item.title.to_lowercase().contains(&q) || item.artist.to_lowercase().contains(&q);
+                let ordinary = q.is_empty() || crate::localization::search_key(&item.title).contains(&q) || crate::localization::search_key(&item.artist).contains(&q);
                 if !rule_active && ordinary { return true; }
                 if !rule_active && !annotated { return false; }
                 let fields = self.library_metadata.catalog.track(&item.source).map_or(&empty_annotations, |track| &track.annotations);

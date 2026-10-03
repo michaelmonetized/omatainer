@@ -763,3 +763,5 @@ viewer; bundled notices stay available offline. Remote filesystems, display or
 audio servers and host Unix proxies are separate dependencies. Building from
 source can require previously obtained packages. See Help → Offline operation
 and the [network-denied qualification boundary](docs/validation/issue-103-offline.md).
+
+Interface language and Unicode search are described in [international text](docs/localization.md). Preferences retain English, Spanish or German per profile; untranslated technical text has an English fallback.

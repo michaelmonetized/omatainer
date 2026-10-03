@@ -132,13 +132,8 @@ fn report(
     notice: &mut usize,
     scope: &str,
 ) {
-    ui.label(format!("Created by: {}", manifest.application));
-    ui.label(format!(
-        "{} embedded samples · {} devices/presets · {} sources without audio",
-        manifest.media.len(),
-        manifest.devices.len(),
-        manifest.unresolved.len()
-    ));
+    ui.label({ let __omatainer_args = (&(manifest.application),); crate::localization::format("Created by: {}", &[format!("{}", __omatainer_args.0)]) });
+    ui.label({ let __omatainer_args = (&(manifest.media.len()),&(manifest.devices.len()),&(manifest.unresolved.len()),); crate::localization::format("{} embedded samples · {} devices/presets · {} sources without audio", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
     index(
         ui,
         &format!("Portable {scope} sample"),
@@ -146,21 +141,15 @@ fn report(
         manifest.media.len(),
     );
     if let Some(media) = manifest.media.get(*asset) {
-        ui.label(format!(
-            "{} · {} frames · {} Hz · {} channels",
-            media.name, media.frames, media.sample_rate, media.channels
-        ));
+        ui.label({ let __omatainer_args = (&(media.name),&(media.frames),&(media.sample_rate),&(media.channels),); crate::localization::format("{} · {} frames · {} Hz · {} channels", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3)]) });
         ui.label(
             media
                 .source
                 .as_deref()
-                .unwrap_or("Embedded sample; no external source path"),
+                .unwrap_or(tr!("Embedded sample; no external source path")),
         );
-        ui.label(format!(
-            "Collected relative path: {}",
-            media.collected.as_deref().unwrap_or("not collected")
-        ));
-        ui.label(format!("Audio rights note (unverified): {}", media.rights));
+        ui.label({ let __omatainer_args = (&(media.collected.as_deref().unwrap_or("not collected")),); crate::localization::format("Collected relative path: {}", &[format!("{}", __omatainer_args.0)]) });
+        ui.label({ let __omatainer_args = (&(media.rights),); crate::localization::format("Audio rights note (unverified): {}", &[format!("{}", __omatainer_args.0)]) });
     }
     index(
         ui,
@@ -169,16 +158,16 @@ fn report(
         manifest.devices.len(),
     );
     if let Some(device) = manifest.devices.get(*device) {
-        ui.label(format!("{} · {}", device.placement, device.identifier));
+        ui.label({ let __omatainer_args = (&(device.placement),&(device.identifier),); crate::localization::format("{} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
         let hash = device
             .settings_sha256
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
-        ui.label(format!("Saved preset/settings SHA-256: {hash}"));
+        ui.label(crate::localization::format("Saved preset/settings SHA-256: {hash}", &[format!("{}", hash)]));
         ui.label(&device.rights);
         if device.unavailable {
-            ui.label("Unavailable device: effect processing is bypassed; instruments are silent unless a clip retains rendered audio. Saved notes, automation and device state remain intact.");
+            ui.label(tr!("Unavailable device: effect processing is bypassed; instruments are silent unless a clip retains rendered audio. Saved notes, automation and device state remain intact."));
         }
     }
     index(
@@ -188,13 +177,10 @@ fn report(
         catalog.manifest.entries.len(),
     );
     if let Some(entry) = catalog.manifest.entries.get(*notice) {
-        ui.label(format!(
-            "Recorded distribution notice: {} · {} · {}",
-            entry.name, entry.category, entry.license
-        ));
+        ui.label({ let __omatainer_args = (&(entry.name),&(entry.category),&(entry.license),); crate::localization::format("Recorded distribution notice: {} · {} · {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
         ui.label(&entry.redistribution);
     }
-    ui.label("Full application distribution notices are retained in this archive. These records do not grant rights to user audio or external plugins.");
+    ui.label(tr!("Full application distribution notices are retained in this archive. These records do not grant rights to user audio or external plugins."));
     if !manifest.unresolved.is_empty() {
         egui::ScrollArea::vertical()
             .id_salt(("portable-unresolved", scope))
@@ -280,44 +266,44 @@ impl App {
         let mut editor = std::mem::take(&mut self.portability);
         let mut open = true;
         let mut close = false;
-        egui::Window::new("Portable project").open(&mut open).default_width(720.0).max_height(self.theme.window_height(ctx)).vscroll(true).show(ctx, |ui| {
-            ui.label("Package the native session with its embedded audio. Selected original files are copied and deduplicated by checksum. Originals and global settings stay intact. Plugin binaries are not included.");
+        egui::Window::new(tr!("Portable project")).id(egui::Id::new("Portable project")).open(&mut open).default_width(720.0).max_height(self.theme.window_height(ctx)).vscroll(true).show(ctx, |ui| {
+            ui.label(tr!("Package the native session with its embedded audio. Selected original files are copied and deduplicated by checksum. Originals and global settings stay intact. Plugin binaries are not included."));
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
-                if ui.button("Inspect portable dependencies").help(ui, HelpControl::PortableInspect).clicked() { let view = self.project_view(); editor.start(&self.engine, Kind::Inspect(view)); }
+                if ui.button(tr!("Inspect portable dependencies")).help(ui, HelpControl::PortableInspect).clicked() { let view = self.project_view(); editor.start(&self.engine, Kind::Inspect(view)); }
                 if let Some(review) = editor.review.clone() {
                     report(ui, &review.manifest, &review.catalog, &mut editor.asset, &mut editor.device, &mut editor.notice, "export");
                     if let Some(asset) = review.inventory.assets.get(editor.asset) {
                         let available = asset.source.is_some() && matches!(asset.availability, dependencies::Availability::Verified);
                         ui.add_enabled(available, egui::Checkbox::new(&mut editor.selected[editor.asset], "Collect this original source")).help(ui, HelpControl::PortableCollect);
-                        if let dependencies::Availability::Unresolved(reason) = &asset.availability { ui.label(format!("Original source unresolved: {reason}. Embedded audio is still included.")); }
+                        if let dependencies::Availability::Unresolved(reason) = &asset.availability { ui.label(crate::localization::format("Original source unresolved: {reason}. Embedded audio is still included.", &[format!("{}", reason)])); }
                     }
-                    ui.label(format!("{} original sources selected", editor.selected.iter().filter(|&&selected| selected).count()));
-                    field(ui, "New archive path (.ompack)", &mut editor.export_path);
-                    if ui.button("Export portable project").help(ui, HelpControl::PortableExport).clicked() {
+                    ui.label({ let __omatainer_args = (&(editor.selected.iter().filter(|&&selected| selected).count()),); crate::localization::format("{} original sources selected", &[format!("{}", __omatainer_args.0)]) });
+                    field(ui, tr!("New archive path (.ompack)"), &mut editor.export_path);
+                    if ui.button(tr!("Export portable project")).help(ui, HelpControl::PortableExport).clicked() {
                         let selected = editor.selected.iter().enumerate().filter_map(|(index, &selected)| selected.then_some(index)).collect();
                         let view = self.project_view(); editor.start(&self.engine, Kind::Export { review, selected, view, path: PathBuf::from(&editor.export_path) });
                     }
                 }
-                ui.separator(); field(ui, "Archive to import", &mut editor.archive_path);
-                if ui.button("Review portable archive").help(ui, HelpControl::PortableReview).clicked() { editor.start(&self.engine, Kind::Preview(PathBuf::from(&editor.archive_path))); }
+                ui.separator(); field(ui, tr!("Archive to import"), &mut editor.archive_path);
+                if ui.button(tr!("Review portable archive")).help(ui, HelpControl::PortableReview).clicked() { editor.start(&self.engine, Kind::Preview(PathBuf::from(&editor.archive_path))); }
                 if let Some((path, manifest, catalog)) = &editor.preview {
                     if path == Path::new(&editor.archive_path) {
                         report(ui, manifest, catalog, &mut editor.asset, &mut editor.device, &mut editor.notice, "import");
-                        field(ui, "New imported project folder", &mut editor.destination);
-                        if ui.button("Import into new folder").help(ui, HelpControl::PortableImport).clicked() { editor.start(&self.engine, Kind::Import { archive: path.clone(), destination: PathBuf::from(&editor.destination), reviewed: manifest.clone() }); }
+                        field(ui, tr!("New imported project folder"), &mut editor.destination);
+                        if ui.button(tr!("Import into new folder")).help(ui, HelpControl::PortableImport).clicked() { editor.start(&self.engine, Kind::Import { archive: path.clone(), destination: PathBuf::from(&editor.destination), reviewed: manifest.clone() }); }
                     }
                 }
                 if let Some(path) = &editor.imported {
-                    if ui.button("Open imported project").help(ui, HelpControl::PortableOpen).clicked() { self.open_imported_project(path.clone()); editor.open = false; }
+                    if ui.button(tr!("Open imported project")).help(ui, HelpControl::PortableOpen).clicked() { self.open_imported_project(path.clone()); editor.open = false; }
                 }
             });
             if editor.busy() {
-                if ui.button("Cancel portable operation").help(ui, HelpControl::PortableCancel).clicked() { editor.cancel(); }
+                if ui.button(tr!("Cancel portable operation")).help(ui, HelpControl::PortableCancel).clicked() { editor.cancel(); }
                 ctx.request_repaint_after(std::time::Duration::from_millis(20));
             }
             if !editor.message.is_empty() { ui.label(&editor.message); }
             if let Some(error) = &editor.error { ui.colored_label(self.theme.red, error); }
-            if ui.button("Close portable project").help(ui, HelpControl::PortableCancel).clicked() { close = true; }
+            if ui.button(tr!("Close portable project")).help(ui, HelpControl::PortableCancel).clicked() { close = true; }
         });
         if !open
             || close

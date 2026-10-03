@@ -268,12 +268,12 @@ pub(super) fn action_label(profile: &crate::preferences::Profile, action: Action
 }
 
 pub(super) fn show_help_with(ui: &mut Ui, profile: &crate::preferences::Profile) {
-    ui.label("Ctrl+, opens Preferences and profiles. This setup shortcut is always available outside text editing and dialogs.");
-    ui.label("Tab / Shift+Tab traverses controls. Enter or Space activates the focused control.");
-    ui.label("Numeric controls: arrows adjust, Shift is fine adjustment, Home/End choose limits, F2 enters a value.");
-    ui.label("Shift+F10 opens alternate actions, including cue deletion, looping, solo, compose arming and clip gain.");
-    ui.label("Pads: hold Space or Enter; release or move focus to stop. Assistive click toggles a hold; Press/Release actions are also available.");
-    ui.label("Crate: Up/Down, Page Up/Down, Home/End browse all filtered rows; F2 enters a row number, Enter loads the selected deck.");
+    ui.label(tr!("Ctrl+, opens Preferences and profiles. This setup shortcut is always available outside text editing and dialogs."));
+    ui.label(tr!("Tab / Shift+Tab traverses controls. Enter or Space activates the focused control."));
+    ui.label(tr!("Numeric controls: arrows adjust, Shift is fine adjustment, Home/End choose limits, F2 enters a value."));
+    ui.label(tr!("Shift+F10 opens alternate actions, including cue deletion, looping, solo, compose arming and clip gain."));
+    ui.label(tr!("Pads: hold Space or Enter; release or move focus to stop. Assistive click toggles a hold; Press/Release actions are also available."));
+    ui.label(tr!("Crate: Up/Down, Page Up/Down, Home/End browse all filtered rows; F2 enters a row number, Enter loads the selected deck."));
     egui::Grid::new("shortcut-help")
         .striped(true)
         .show(ui, |ui| {

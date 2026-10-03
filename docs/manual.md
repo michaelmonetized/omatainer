@@ -94,6 +94,14 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Interface language
+
+English, Español or Deutsch; saved per profile
+
+Select the display language for this profile. Preview and Cancel retain the applied language; Apply saves it and changes labels on the next frame. Musical values and stored names/paths remain unchanged. Advanced text without a translation uses English. Mixed-direction shaping is limited by the native renderer.
+
+Workflow: Audio setup.
+
 ### Track ratings, colors and annotations
 
 Stable track metadata; ratings 0–5

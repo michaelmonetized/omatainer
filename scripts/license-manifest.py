@@ -230,7 +230,7 @@ def source_paths(root, package):
     paths.update(p.relative_to(root).as_posix() for p in (root/'scripts').glob('*') if p.suffix in ('.py','.sh'))
     # Test executables also embed media and read the checked manual. Bind these
     # inputs, including new non-Rust assets, rather than only the Rust modules.
-    for directory in ('src','tests','benchmarks','vendor'):
+    for directory in ('src','tests','benchmarks','vendor','locales'):
         paths.update(p.relative_to(root).as_posix() for p in (root/directory).rglob('*')
                      if p.is_file() or p.is_symlink())
     build = tomllib.loads((root/'Cargo.toml').read_text())['package'].get('build', 'build.rs')

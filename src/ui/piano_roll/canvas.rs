@@ -205,7 +205,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
             2.0,
             if index < 2 { theme.yellow } else { theme.cyan },
         );
-        marker.on_hover_text(format!("{label}: {value:.6} beats"));
+        marker.on_hover_text(crate::localization::format("{label}: {value:.6} beats", &[format!("{}", label), format!("{:.6}", value)]));
     }
     for index in 0..draft.notes.len() {
         let note = &draft.notes[index];
@@ -268,9 +268,7 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
                 });
             }
         }
-        note_response.on_hover_text(format!(
-            "{label}. Drag body to move; drag right edge to resize. Shift-click extends selection."
-        ));
+        note_response.on_hover_text(crate::localization::format("{label}. Drag body to move; drag right edge to resize. Shift-click extends selection.", &[format!("{}", label)]));
     }
     if response.clicked() && !note_hit && pointer.is_some_and(|p| body.contains(p)) {
         let pos = pointer.unwrap();

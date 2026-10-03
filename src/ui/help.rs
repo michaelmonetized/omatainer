@@ -201,15 +201,15 @@ impl App {
             self.help.context = Some(context.control);
         }
         let mut open = self.keys_open;
-        egui::Window::new("Help and lessons").open(&mut open).default_pos(Pos2::new(30.0, 60.0)).default_width(590.0).default_height(620.0).show(ctx, |ui| {
+        egui::Window::new(tr!("Help and lessons")).id(egui::Id::new("Help and lessons")).open(&mut open).default_pos(Pos2::new(30.0, 60.0)).default_width(590.0).default_height(620.0).show(ctx, |ui| {
             let content = egui::ScrollArea::vertical().id_salt("offline-help-content").max_height(ui.available_height().max(160.0)).show(ui, |ui| {
-            ui.label("Offline · implementation-specific · hardware checks remain your observations");
+            ui.label(tr!("Offline · implementation-specific · hardware checks remain your observations"));
             if let Some(control) = self.help.context {
                 let definition = control.definition();
-                ui.heading(format!("Control: {}", definition.title));
+                ui.heading({ let __omatainer_args = (&(definition.title),); crate::localization::format("Control: {}", &[format!("{}", __omatainer_args.0)]) });
                 ui.label(definition.units);
                 ui.label(definition.purpose);
-                if ui.button(format!("Read: {}", definition.topic.title())).help(ui, Control::HelpTopic).clicked() { self.help.topic = definition.topic; }
+                if ui.button({ let __omatainer_args = (&(definition.topic.title()),); crate::localization::format("Read: {}", &[format!("{}", __omatainer_args.0)]) }).help(ui, Control::HelpTopic).clicked() { self.help.topic = definition.topic; }
             }
             ui.separator();
             ui.horizontal_wrapped(|ui| { for topic in Topic::ALL {
@@ -217,33 +217,33 @@ impl App {
             }});
             ui.heading(self.help.topic.title());
             ui.label(self.help.topic.text());
-            if !lessons::steps(self.help.topic).is_empty() && ui.button("Start this lesson").help(ui, Control::LessonStart).clicked() {
+            if !lessons::steps(self.help.topic).is_empty() && ui.button(tr!("Start this lesson")).help(ui, Control::LessonStart).clicked() {
                 self.help.lesson = Some(Lesson::new(self.help.topic, &observation));
             }
             if let Some(lesson) = &mut self.help.lesson {
                 ui.separator();
-                ui.heading(format!("Lesson: {}", lesson.topic.title()));
+                ui.heading({ let __omatainer_args = (&(lesson.topic.title()),); crate::localization::format("Lesson: {}", &[format!("{}", __omatainer_args.0)]) });
                 if lesson.invalidated {
-                    ui.label("Lesson target or document/history identity changed. Restart the lesson to capture a fresh target; earlier progress cannot certify the new document.");
+                    ui.label(tr!("Lesson target or document/history identity changed. Restart the lesson to capture a fresh target; earlier progress cannot certify the new document."));
                 } else if lesson.complete() {
-                    ui.label("Lesson complete: the required software states were observed. Physical checks, where requested, are self-reported only.");
+                    ui.label(tr!("Lesson complete: the required software states were observed. Physical checks, where requested, are self-reported only."));
                 } else {
-                    ui.label(format!("Step {} of {}", lesson.step + 1, lesson.steps().len()));
+                    ui.label({ let __omatainer_args = (&(lesson.step + 1),&(lesson.steps().len()),); crate::localization::format("Step {} of {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
                     ui.label(lesson.steps()[lesson.step]);
                     if lesson.needs_physical_ack() {
-                        ui.checkbox(&mut lesson.physical_ack, "I personally verified this physical check").help(ui, Control::LessonPhysical);
+                        ui.checkbox(&mut lesson.physical_ack, tr!("I personally verified this physical check")).help(ui, Control::LessonPhysical);
                     }
-                    ui.label(if lesson.ready { "Observed — ready for Next" } else { "Waiting for the stated evidence; queued or rejected actions do not count" });
-                    if ui.add_enabled(lesson.ready, egui::Button::new("Next lesson step")).help(ui, Control::LessonNext).clicked() { lesson.next(); }
+                    ui.label(if lesson.ready { tr!("Observed — ready for Next") } else { tr!("Waiting for the stated evidence; queued or rejected actions do not count") });
+                    if ui.add_enabled(lesson.ready, egui::Button::new(tr!("Next lesson step"))).help(ui, Control::LessonNext).clicked() { lesson.next(); }
                 }
-                if ui.button("Cancel lesson").help(ui, Control::LessonCancel).clicked() { self.help.lesson = None; }
+                if ui.button(tr!("Cancel lesson")).help(ui, Control::LessonCancel).clicked() { self.help.lesson = None; }
             }
             ui.separator();
             let shortcuts = ui.collapsing("Active shortcuts and accessible input", |ui| shortcuts::show_help_with(ui, self.settings.profile()));
             annotate(ui, &shortcuts.header_response, Control::HelpShortcuts);
             ui.separator();
-            ui.label("Control reference");
-            ui.add(egui::TextEdit::singleline(&mut self.help.filter).hint_text("Search help controls")).help(ui, Control::HelpSearch).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search help controls"));
+            ui.label(tr!("Control reference"));
+            ui.add(egui::TextEdit::singleline(&mut self.help.filter).hint_text(tr!("Search help controls"))).help(ui, Control::HelpSearch).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search help controls"));
             let filter = self.help.filter.to_lowercase();
             for &control in Control::ALL {
                 let definition = control.definition();

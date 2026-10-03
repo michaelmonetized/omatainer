@@ -150,30 +150,23 @@ fn field(ui: &mut Ui, label: &str, text: &mut String, limit: usize) {
     help::annotate(ui, &response, HelpControl::TemplatePath);
 }
 fn hardware(ui: &mut Ui, metadata: &model::Metadata, engine: &Engine) {
-    ui.label(format!("Template: {}", metadata.name));
+    ui.label({ let __omatainer_args = (&(metadata.name),); crate::localization::format("Template: {}", &[format!("{}", __omatainer_args.0)]) });
     if let model::Kind::Track { bus } = &metadata.kind {
-        ui.label(format!("Exact scene-bus alias: {bus}"));
+        ui.label(crate::localization::format("Exact scene-bus alias: {bus}", &[format!("{}", bus)]));
     }
-    ui.label(format!(
-        "Requested audio backend: {} · output: {}",
-        metadata
+    ui.label({ let __omatainer_args = (&(metadata
             .hardware
             .audio
             .backend
             .as_deref()
-            .unwrap_or("System default"),
-        metadata
+            .unwrap_or("System default")),&(metadata
             .hardware
             .audio
             .device
             .as_deref()
-            .unwrap_or("System default")
-    ));
-    ui.label("Hardware references retain exact names and optional MIDI IDs. Missing and ambiguous destinations are never substituted. Current hardware remains on the active profile until explicitly reviewed and applied. Review audio activation in Preferences; its backend preview checks the actual host.");
-    ui.label(format!(
-        "Requested MIDI input policy: {:?}",
-        metadata.hardware.midi_inputs
-    ));
+            .unwrap_or("System default")),); crate::localization::format("Requested audio backend: {} · output: {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
+    ui.label(tr!("Hardware references retain exact names and optional MIDI IDs. Missing and ambiguous destinations are never substituted. Current hardware remains on the active profile until explicitly reviewed and applied. Review audio activation in Preferences; its backend preview checks the actual host."));
+    ui.label({ let __omatainer_args = (&(metadata.hardware.midi_inputs),); crate::localization::format("Requested MIDI input policy: {:?}", &[format!("{:?}", __omatainer_args.0)]) });
     if let crate::preferences::MidiInputs::Selected(names) = &metadata.hardware.midi_inputs {
         let discovery = engine.midi.policy_status();
         for name in names {
@@ -191,7 +184,7 @@ fn hardware(ui: &mut Ui, metadata: &model::Metadata, engine: &Engine) {
                 Some(_) => "unavailable",
                 None => "unverified; discovery unavailable or incomplete",
             };
-            ui.label(format!("MIDI input policy alias: {name} · {availability}"));
+            ui.label(crate::localization::format("MIDI input policy alias: {name} · {availability}", &[format!("{}", name), format!("{}", availability)]));
         }
     }
     let status = engine.midi.routing_status();
@@ -224,12 +217,7 @@ fn hardware(ui: &mut Ui, metadata: &model::Metadata, engine: &Engine) {
                 Some(_) => "ambiguous",
                 None => "unverified; MIDI discovery is unavailable, pending or incomplete",
             };
-            ui.label(format!(
-                "MIDI track {} {direction}: {} [{}] · {availability}",
-                route.track + 1,
-                endpoint.name,
-                endpoint.id.as_deref().unwrap_or("exact name only")
-            ));
+            ui.label({ let __omatainer_args = (&(route.track + 1),&(endpoint.name),&(endpoint.id.as_deref().unwrap_or("exact name only")),); crate::localization::format("MIDI track {} {direction}: {} [{}] · {availability}", &[format!("{}", __omatainer_args.0), format!("{}", direction), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", availability)]) });
         }
     }
 }
@@ -289,44 +277,44 @@ impl App {
         let mut close = false;
         let mut use_template = None;
         let mut review_hardware = None;
-        egui::Window::new("Project and track templates").open(&mut open).default_width(760.0).max_height(self.theme.window_height(ctx)).vscroll(true).show(ctx, |ui| {
-            ui.label("Save reusable native projects or one track's devices, mixer and named routing. Templates include embedded audio. Project copies open stopped and unsaved. Track configuration preserves clips and other tracks, stops playback and starts fresh undo history. Source files are never live save destinations.");
+        egui::Window::new(tr!("Project and track templates")).id(egui::Id::new("Project and track templates")).open(&mut open).default_width(760.0).max_height(self.theme.window_height(ctx)).vscroll(true).show(ctx, |ui| {
+            ui.label(tr!("Save reusable native projects or one track's devices, mixer and named routing. Templates include embedded audio. Project copies open stopped and unsaved. Track configuration preserves clips and other tracks, stops playback and starts fresh undo history. Source files are never live save destinations."));
             ui.add_enabled_ui(!panel.busy() && !self.project.busy() && !self.project.committing(), |ui| {
-                field(ui, "Template name", &mut panel.name, 80); field(ui, "New template file (.omtemplate)", &mut panel.new_path, 4096);
+                field(ui, tr!("Template name"), &mut panel.name, 80); field(ui, tr!("New template file (.omtemplate)"), &mut panel.new_path, 4096);
                 for (label, track) in [("Save project template", None), ("Save selected track configuration", Some(self.snap.selected_track))] {
                     if ui.button(label).help(ui, HelpControl::TemplateSave).clicked() {
                         let view = self.project_view();
                         panel.start(&self.engine, Kind::Save { path: PathBuf::from(&panel.new_path), name: panel.name.clone(), track, hardware: model::Hardware::capture(self.settings.profile()), view });
                     }
                 }
-                ui.separator(); field(ui, "Template to inspect", &mut panel.source_path, 4096);
-                if ui.button("Inspect template").help(ui, HelpControl::TemplateInspect).clicked() { panel.start(&self.engine, Kind::Inspect(PathBuf::from(&panel.source_path))); }
+                ui.separator(); field(ui, tr!("Template to inspect"), &mut panel.source_path, 4096);
+                if ui.button(tr!("Inspect template")).help(ui, HelpControl::TemplateInspect).clicked() { panel.start(&self.engine, Kind::Inspect(PathBuf::from(&panel.source_path))); }
                 if let Some(record) = panel.record.clone().filter(|record| record.path == Path::new(&panel.source_path)) {
                     hardware(ui, &record.metadata, &self.engine);
-                    ui.label(format!("{} embedded samples · {} device/preset records · {} unresolved sources", record.manifest.media.len(), record.manifest.devices.len(), record.manifest.unresolved.len()));
+                    ui.label({ let __omatainer_args = (&(record.manifest.media.len()),&(record.manifest.devices.len()),&(record.manifest.unresolved.len()),); crate::localization::format("{} embedded samples · {} device/preset records · {} unresolved sources", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
                     let label = if matches!(record.metadata.kind, model::Kind::Project) { "Create project from template" } else { "Apply to selected track" };
                     if ui.button(label).help(ui, HelpControl::TemplateUse).clicked() { use_template = Some(record.clone()); }
-                    if ui.button("Duplicate template to new file").help(ui, HelpControl::TemplateDuplicate).clicked() { panel.start(&self.engine, Kind::Duplicate { record: record.clone(), path: PathBuf::from(&panel.new_path), name: panel.name.clone() }); }
-                    if ui.button("Review template hardware in Preferences").help(ui, HelpControl::TemplateHardware).clicked() {
+                    if ui.button(tr!("Duplicate template to new file")).help(ui, HelpControl::TemplateDuplicate).clicked() { panel.start(&self.engine, Kind::Duplicate { record: record.clone(), path: PathBuf::from(&panel.new_path), name: panel.name.clone() }); }
+                    if ui.button(tr!("Review template hardware in Preferences")).help(ui, HelpControl::TemplateHardware).clicked() {
                         let target = matches!(record.metadata.kind, model::Kind::Track {..}).then(|| self.snap.session.as_ref().and_then(|layout| model::Target::capture(layout, self.snap.selected_track))).flatten();
                         review_hardware = Some((record.metadata.clone(), target));
                     }
-                    field(ui, "New template backup archive (.ompack)", &mut panel.backup_path, 4096);
-                    if ui.button("Back up inspected template").help(ui, HelpControl::TemplateBackup).clicked() { panel.start(&self.engine, Kind::Backup { record, path: PathBuf::from(&panel.backup_path) }); }
+                    field(ui, tr!("New template backup archive (.ompack)"), &mut panel.backup_path, 4096);
+                    if ui.button(tr!("Back up inspected template")).help(ui, HelpControl::TemplateBackup).clicked() { panel.start(&self.engine, Kind::Backup { record, path: PathBuf::from(&panel.backup_path) }); }
                 }
-                if let Some((metadata, target)) = &panel.hardware { hardware(ui, metadata, &self.engine); if ui.button("Review loaded template hardware").help(ui, HelpControl::TemplateHardware).clicked() { review_hardware = Some((metadata.clone(), *target)); } }
-                ui.separator(); field(ui, "Template archive to import", &mut panel.archive_path, 4096);
-                if ui.button("Review template archive").help(ui, HelpControl::TemplateBackup).clicked() { panel.start(&self.engine, Kind::ReviewArchive(PathBuf::from(&panel.archive_path))); }
+                if let Some((metadata, target)) = &panel.hardware { hardware(ui, metadata, &self.engine); if ui.button(tr!("Review loaded template hardware")).help(ui, HelpControl::TemplateHardware).clicked() { review_hardware = Some((metadata.clone(), *target)); } }
+                ui.separator(); field(ui, tr!("Template archive to import"), &mut panel.archive_path, 4096);
+                if ui.button(tr!("Review template archive")).help(ui, HelpControl::TemplateBackup).clicked() { panel.start(&self.engine, Kind::ReviewArchive(PathBuf::from(&panel.archive_path))); }
                 if let Some((archive, manifest)) = panel.archive.clone().filter(|(path,_)| path == Path::new(&panel.archive_path)) {
-                    ui.label(format!("{} · {} embedded samples · {} device/preset records", manifest.application, manifest.media.len(), manifest.devices.len()));
-                    field(ui, "New imported template folder", &mut panel.destination, 4096);
-                    if ui.button("Import portable template").help(ui, HelpControl::TemplateBackup).clicked() { panel.start(&self.engine, Kind::Import { archive, destination: PathBuf::from(&panel.destination), reviewed: manifest }); }
+                    ui.label({ let __omatainer_args = (&(manifest.application),&(manifest.media.len()),&(manifest.devices.len()),); crate::localization::format("{} · {} embedded samples · {} device/preset records", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+                    field(ui, tr!("New imported template folder"), &mut panel.destination, 4096);
+                    if ui.button(tr!("Import portable template")).help(ui, HelpControl::TemplateBackup).clicked() { panel.start(&self.engine, Kind::Import { archive, destination: PathBuf::from(&panel.destination), reviewed: manifest }); }
                 }
             });
-            if panel.busy() { if ui.button("Cancel template operation").help(ui, HelpControl::TemplateCancel).clicked() { panel.cancel(); } ctx.request_repaint_after(Duration::from_millis(20)); }
+            if panel.busy() { if ui.button(tr!("Cancel template operation")).help(ui, HelpControl::TemplateCancel).clicked() { panel.cancel(); } ctx.request_repaint_after(Duration::from_millis(20)); }
             if !panel.message.is_empty() { ui.label(&panel.message); }
             if let Some(error) = &panel.error { ui.colored_label(self.theme.red, error); }
-            if ui.button("Close templates").help(ui, HelpControl::TemplateCancel).clicked() { close = true; }
+            if ui.button(tr!("Close templates")).help(ui, HelpControl::TemplateCancel).clicked() { close = true; }
         });
         if !open
             || close

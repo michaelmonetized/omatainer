@@ -74,12 +74,12 @@ impl Annotations {
     /// Search user text without allocating a combined metadata string.
     /// Takes a lowercase query; matches group, notes or any tag.
     pub fn matches_text(&self, query: &str) -> bool {
-        self.group.to_lowercase().contains(query)
-            || self.notes.to_lowercase().contains(query)
+        crate::localization::search_key(&self.group).contains(query)
+            || crate::localization::search_key(&self.notes).contains(query)
             || self
                 .tags
                 .iter()
-                .any(|tag| tag.to_lowercase().contains(query))
+                .any(|tag| crate::localization::search_key(&tag).contains(query))
     }
 }
 
@@ -139,19 +139,15 @@ impl Rule {
     pub fn matches(&self, fields: &Annotations) -> bool {
         fields.rating >= self.minimum_rating
             && self.color.is_none_or(|color| fields.color == Some(color))
-            && fields
-                .group
-                .to_lowercase()
-                .contains(&self.group.to_lowercase())
-            && fields
-                .notes
-                .to_lowercase()
-                .contains(&self.notes.to_lowercase())
+            && crate::localization::search_key(&fields.group)
+                .contains(&crate::localization::search_key(&self.group))
+            && crate::localization::search_key(&fields.notes)
+                .contains(&crate::localization::search_key(&self.notes))
             && (self.tag.is_empty()
                 || fields
                     .tags
                     .iter()
-                    .any(|tag| tag.to_lowercase() == self.tag.to_lowercase()))
+                    .any(|tag| crate::localization::search_key(&tag) == crate::localization::search_key(&self.tag)))
     }
     /// Parse explicit annotation search fields while preserving ordinary search text.
     /// Takes the search string; returns free text plus a rule, or a visible syntax error.
