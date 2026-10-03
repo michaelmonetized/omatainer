@@ -102,6 +102,7 @@ fn equal_beat_actions_stay_in_order_and_cancelled_actions_do_not_apply() {
 fn stops_replacement_and_deleted_targets_reject_pending_actions() {
     for change in 0..3 {
         let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+        rt.transport_epoch = u64::MAX;
         rt.process(&mut []);
         rt.playing = true;
         let job = request(&rt, gain(&rt, 0.17), Some(2.0));

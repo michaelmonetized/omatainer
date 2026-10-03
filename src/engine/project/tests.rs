@@ -926,3 +926,65 @@ fn prepared_project_history_uses_qualified_receipt_keys_and_empty_decks_have_no_
 }
 
 mod structure_tests;
+
+#[test]
+fn reinstalling_the_same_project_rejects_old_musical_jobs_before_playback_resumes() {
+    use crate::engine::remote;
+    for epoch in [0, u64::MAX] {
+        let (engine, mut live) = Engine::headless_for_test(48000, 256);
+        live.transport_epoch = epoch;
+        live.apply(Command::Play);
+        live.process(&mut []);
+        let handle = engine.project.clone();
+        let saved = drive(&mut live, move || handle.capture(&AtomicBool::new(false))).unwrap();
+        let namespace = live.session.namespace;
+        let target = live.session.reference(session::Axis::Track, 2).unwrap();
+        let before = live.tracks[2].gain;
+        let at = live.beat + 4.0;
+        let ack = midi_edit::Ack::new();
+        engine
+            .send(Command::Remote(remote::Request {
+                namespace,
+                transport_epoch: live.transport_epoch,
+                safety_epoch: live.performance.safety_epoch(),
+                at: Some(at),
+                action: remote::Action::Gain {
+                    slot: 2,
+                    target,
+                    value: 0.17,
+                },
+                ack: ack.clone(),
+            }))
+            .unwrap();
+        live.process(&mut []);
+        assert_eq!(ack.state(), midi_edit::Outcome::Pending);
+        let prepared = Prepared::from_state(saved.state, saved.media, 48000).unwrap();
+        let handle = engine.project.clone();
+        let revision = handle.revision();
+        let worker =
+            std::thread::spawn(move || handle.install(prepared, revision, &AtomicBool::new(false)));
+        wait_until(|| {
+            assert_eq!(
+                crate::engine::test_alloc::measure(|| live.process(&mut [])),
+                crate::engine::test_alloc::Counts::default()
+            );
+            worker.is_finished()
+        });
+        worker.join().unwrap().unwrap();
+        assert_eq!(live.session.namespace, namespace);
+        assert_eq!(
+            live.session.reference(session::Axis::Track, 2).unwrap(),
+            target
+        );
+        assert_ne!(live.transport_epoch, epoch);
+        assert_eq!(ack.state(), midi_edit::Outcome::Rejected);
+        assert!(!live.playing);
+        live.apply(Command::Play);
+        live.beat = at + 1.0;
+        assert_eq!(
+            crate::engine::test_alloc::measure(|| live.process(&mut [0.0; 128])),
+            crate::engine::test_alloc::Counts::default()
+        );
+        assert_eq!(live.tracks[2].gain, before);
+    }
+}

@@ -2066,7 +2066,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
-                self.transport_epoch = self.transport_epoch.saturating_add(1);
+                self.transport_epoch = self.transport_epoch.wrapping_add(1);
                 self.history_finish_take();
                 self.finish_recording_all();
                 self.playing = false;
