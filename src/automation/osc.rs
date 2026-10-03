@@ -140,72 +140,72 @@ fn start(
     let thread = std::thread::Builder::new()
         .name("omatainer-osc".into())
         .spawn(move || {
-        let mut socket: Option<UdpSocket> = None;
-        let mut access = String::new();
-        let mut packet = [0u8; ipc_transport::REQUEST_BYTES + 1];
-        while !stopped.load(Ordering::Acquire) {
-            if let Ok(config) = incoming.try_recv() {
-                if !config.enabled {
-                    socket = None;
-                    access.clear();
-                    *status.lock() = Status {
-                        requested: config,
-                        applied: Some(config),
-                        ..Default::default()
-                    };
-                } else if status.lock().applied == Some(config) && socket.is_some() {
-                    let mut state = status.lock();
-                    state.requested = config;
-                    state.error = None;
-                } else {
-                    let prepared = (|| -> std::io::Result<(UdpSocket, String)> {
-                        let socket = UdpSocket::bind((std::net::Ipv4Addr::LOCALHOST, config.port))?;
-                        socket.set_nonblocking(true)?;
-                        Ok((socket, token()?))
-                    })();
-                    match prepared {
-                        Ok((next, next_access)) => {
-                            let port = next.local_addr().ok().map(|address| address.port());
-                            socket = Some(next);
-                            access = next_access;
-                            *status.lock() = Status {
-                                requested: config,
-                                applied: Some(config),
-                                port,
-                                token: Some(access.clone()),
-                                ..Default::default()
-                            };
-                        }
-                        Err(error) => {
-                            let mut state = status.lock();
-                            state.requested = config;
-                            state.error = Some(format!("OSC listener was not changed: {error}"));
+            let mut socket: Option<UdpSocket> = None;
+            let mut access = String::new();
+            let mut packet = [0u8; ipc_transport::REQUEST_BYTES + 1];
+            while !stopped.load(Ordering::Acquire) {
+                if let Ok(config) = incoming.try_recv() {
+                    if !config.enabled {
+                        socket = None;
+                        access.clear();
+                        *status.lock() = Status {
+                            requested: config,
+                            applied: Some(config),
+                            ..Default::default()
+                        };
+                    } else if status.lock().applied == Some(config) && socket.is_some() {
+                        let mut state = status.lock();
+                        state.requested = config;
+                        state.error = None;
+                    } else {
+                        let prepared = (|| -> std::io::Result<(UdpSocket, String)> {
+                            let socket = UdpSocket::bind((std::net::Ipv4Addr::LOCALHOST, config.port))?;
+                            socket.set_nonblocking(true)?;
+                            Ok((socket, token()?))
+                        })();
+                        match prepared {
+                            Ok((next, next_access)) => {
+                                let port = next.local_addr().ok().map(|address| address.port());
+                                socket = Some(next);
+                                access = next_access;
+                                *status.lock() = Status {
+                                    requested: config,
+                                    applied: Some(config),
+                                    port,
+                                    token: Some(access.clone()),
+                                    ..Default::default()
+                                };
+                            }
+                            Err(error) => {
+                                let mut state = status.lock();
+                                state.requested = config;
+                                state.error = Some(format!("OSC listener was not changed: {error}"));
+                            }
                         }
                     }
                 }
-            }
-            if let Some(socket) = &socket {
-                match socket.recv_from(&mut packet) {
-                    Ok((size, peer)) => {
-                        let response=(|| {
-                                if !peer.ip().is_loopback() {return Err("permission_denied");}
-                                if size>ipc_transport::REQUEST_BYTES {return Err("request_too_large");}
-                                let (supplied,payload)=decode(&packet[..size]).map_err(|_|"invalid_osc")?;
-                                if !same_token(supplied,&access) {return Err("permission_denied");}
-                                let value=serde_json::from_slice::<Value>(payload).map_err(|_|"invalid_json")?;
-                                Ok(super::reply(&value,&commands,&snapshot,Limits::default(),false).0)
-                            })().unwrap_or_else(|code|json!({"ok":false,"id":null,"version":VERSION,"error_code":code,"error":"OSC request rejected"}));
-                        let payload = serde_json::to_vec(&response).unwrap();
-                        if payload.len() <= ipc_transport::RESPONSE_BYTES {
-                            let _ = socket.send_to(&encode_reply(&payload), peer);
+                if let Some(socket) = &socket {
+                    match socket.recv_from(&mut packet) {
+                        Ok((size, peer)) => {
+                            let response=(|| {
+                                    if !peer.ip().is_loopback() {return Err("permission_denied");}
+                                    if size>ipc_transport::REQUEST_BYTES {return Err("request_too_large");}
+                                    let (supplied,payload)=decode(&packet[..size]).map_err(|_|"invalid_osc")?;
+                                    if !same_token(supplied,&access) {return Err("permission_denied");}
+                                    let value=serde_json::from_slice::<Value>(payload).map_err(|_|"invalid_json")?;
+                                    Ok(super::reply(&value,&commands,&snapshot,Limits::default(),false).0)
+                                })().unwrap_or_else(|code|json!({"ok":false,"id":null,"version":VERSION,"error_code":code,"error":"OSC request rejected"}));
+                            let payload = serde_json::to_vec(&response).unwrap();
+                            if payload.len() <= ipc_transport::RESPONSE_BYTES {
+                                let _ = socket.send_to(&encode_reply(&payload), peer);
+                            }
                         }
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+                        Err(error) => status.lock().error = Some(format!("OSC receive failed: {error}")),
                     }
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
-                    Err(error) => status.lock().error = Some(format!("OSC receive failed: {error}")),
                 }
+                std::thread::park_timeout(Duration::from_millis(5));
             }
-            std::thread::park_timeout(Duration::from_millis(5));
-        }
         })
         .map_err(|e| e.to_string())?;
     Ok(Worker {

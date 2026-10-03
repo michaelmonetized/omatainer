@@ -555,21 +555,30 @@ pub(crate) fn reply(
     let mut page = None;
     let result = (|| {
         id = crate::ipc_request_id(value).map_err(|e| Error::new("invalid_id", e))?;
-        let crate::ipc_schema::Operation::Api { version, request } =
-            crate::ipc_schema::Operation::parse(value)
-                .map_err(|e| Error::new("invalid_operation", e))?
-        else {
+        if value["op"] != "api" {
             return Err(Error::new(
                 "invalid_operation",
                 "OSC accepts only versioned API envelopes",
             ));
-        };
-        if version != VERSION {
+        }
+        let version = value["version"].as_u64().ok_or_else(|| {
+            Error::new(
+                "invalid_operation",
+                "API version must be an unsigned integer",
+            )
+        })?;
+        if version != u64::from(VERSION) {
             return Err(Error::new(
                 "unsupported_version",
                 "Only automation version 1 is supported",
             ));
         }
+        let crate::ipc_schema::Operation::Api { request, .. } =
+            crate::ipc_schema::Operation::parse(value)
+                .map_err(|e| Error::new("invalid_operation", e))?
+        else {
+            unreachable!("validated API envelope")
+        };
         match request {
             Request::Job { id } => job(commands, id, false),
             Request::Cancel { id } => job(commands, id, true),
@@ -663,7 +672,8 @@ pub(crate) fn follow(
             "API subscription correlation or version mismatch"
         );
         anyhow::ensure!(
-            frame["ok"] != false || frame["error_code"] == "snapshot_unavailable",
+            frame["ok"] == true
+                || (frame["ok"] == false && frame["error_code"] == "snapshot_unavailable"),
             "API subscription rejected [{}]: {}",
             frame["error_code"],
             frame["error"]

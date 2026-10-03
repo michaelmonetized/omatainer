@@ -66,6 +66,43 @@ fn shipped_cli_exchange_and_subscription_use_the_actual_api_socket() {
     assert_eq!(frames[1]["event"], "state");
 }
 
+#[test]
+fn shipped_subscription_rejects_malformed_success_fields_before_emitting_state() {
+    let service = Service::new();
+    for (index, invalid) in [json!(null), json!("yes"), json!(1)]
+        .into_iter()
+        .enumerate()
+    {
+        let path = service.root.join(format!("malformed-{index}.sock"));
+        let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut line = String::new();
+            BufReader::new(stream.try_clone().unwrap())
+                .read_line(&mut line)
+                .unwrap();
+            let request: Value = serde_json::from_str(&line).unwrap();
+            writeln!(
+                stream,
+                "{}",
+                json!({"version":1,"id":request["id"],"ok":invalid,"result":{}})
+            )
+            .unwrap();
+        });
+        let mut output = Vec::new();
+        let error = follow(
+            &path,
+            &json!({"op":"api","version":1,"request":{"op":"subscribe"}}),
+            &mut output,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("subscription rejected"));
+        assert!(output.is_empty());
+        server.join().unwrap();
+    }
+}
+
 struct Service {
     engine: Engine,
     rt: RtEngine,
@@ -254,6 +291,17 @@ fn malformed_versions_values_targets_confirmation_and_blocked_snapshots_fail_exp
         client.envelope(json!({"op":"api","version":2,"request":{"op":"discover"}}))["error_code"],
         "unsupported_version"
     );
+    for request in [
+        json!({"op":"future_operation"}),
+        json!({"op":"discover","future_field":true}),
+    ] {
+        assert_eq!(
+            service
+                .client()
+                .envelope(json!({"op":"api","version":99,"request":request}))["error_code"],
+            "unsupported_version"
+        );
+    }
     assert_eq!(
         service.query(json!({"op":"state","extra":1}))["error_code"],
         "invalid_operation"
