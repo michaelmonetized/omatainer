@@ -262,6 +262,8 @@ impl Frame {
         for (index, (out, deck)) in target.decks.iter_mut().zip(&rt.decks).enumerate() {
             copy(&mut out.title, &deck.title);
             out.playing = deck.playing;
+            out.load_locked = deck.load_locked;
+            out.media_key = deck.history_key;
             out.pos = deck.pos;
             out.frames = deck
                 .audio

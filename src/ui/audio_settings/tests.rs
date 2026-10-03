@@ -1,4 +1,5 @@
 use super::*;
+use std::time::Duration;
 use egui::accesskit::{Action, ActionRequest, Node, NodeId};
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -153,6 +154,52 @@ impl Drop for Gui {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.dir);
     }
+}
+#[test]
+fn native_reconnect_confirmation_cancel_and_resume_keep_saved_settings_and_finalize_held_input() {
+    let mut gui=Gui::new(48000);gui.open();
+    let saved=std::fs::read(gui.dir.join("preferences.json")).unwrap();
+    let handle=gui.app.audio_settings.handle.clone().unwrap();
+    gui.app.engine.cmd.send(Command::Play).unwrap();
+    gui.controls.active_fault.lock().as_ref().unwrap().store(true,Ordering::Release);
+    let deadline=Instant::now()+Duration::from_secs(3);
+    while handle.status().phase!=owner::Phase::Offline {
+        gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));
+    }
+    gui.frame(vec![]);let opens=gui.controls.opens.load(Ordering::Acquire);
+    gui.click("Reconnect retained output…");gui.click("Keep current audio");
+    assert_eq!(gui.controls.opens.load(Ordering::Acquire),opens);
+    gui.controls.device_renamed.store(true,Ordering::Release);
+    gui.click("Reconnect retained output…");gui.click("Confirm retained output reconnect");gui.wait();
+    assert_eq!(handle.status().phase,owner::Phase::Running);
+    assert_eq!(handle.status().active.as_ref().unwrap().plan.device,"Renumbered fixture");
+    assert!(!gui.app.engine.snapshot().playing);
+    assert!(gui.app.engine.cmd.performance().status().recovery);
+    assert!(gui.app.engine.cmd.send(Command::Play).is_err());
+    gui.app.audio_settings.open=false;gui.app.settings.open=false;gui.frame(vec![]);
+    gui.click("Recover inputs…");gui.click("I have released the physical inputs");
+    gui.click("Inputs released — keep playback stopped");
+    let deadline=Instant::now()+Duration::from_secs(3);
+    while gui.app.engine.cmd.performance().status().recovery {gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
+    gui.app.engine.cmd.send(Command::Play).unwrap();
+    assert_eq!(std::fs::read(gui.dir.join("preferences.json")).unwrap(),saved);
+}
+#[test]
+fn native_reconnect_failure_and_stale_consent_never_open_a_different_output() {
+    let mut gui=Gui::new(48000);gui.open();let handle=gui.app.audio_settings.handle.clone().unwrap();
+    gui.controls.active_fault.lock().as_ref().unwrap().store(true,Ordering::Release);
+    let deadline=Instant::now()+Duration::from_secs(3);
+    while handle.status().phase!=owner::Phase::Offline {gui.frame(vec![]);assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1));}
+    gui.frame(vec![]);let opens=gui.controls.opens.load(Ordering::Acquire);
+    gui.controls.alternate_device.store(true,Ordering::Release);
+    gui.click("Reconnect retained output…");gui.click("Confirm retained output reconnect");gui.wait();
+    assert_eq!(handle.status().phase,owner::Phase::Offline);
+    assert_eq!(gui.controls.opens.load(Ordering::Acquire),opens);
+    assert!(gui.app.audio_settings.message.contains("unavailable"));
+    gui.click("Reconnect retained output…");
+    owner::tests::publish_phase_for_ui_test(&handle,owner::Phase::Running);gui.frame(vec![]);
+    assert!(gui.app.audio_settings.confirm.is_none());
+    assert_eq!(gui.controls.opens.load(Ordering::Acquire),opens);
 }
 #[test]
 fn real_ui_requires_confirmation_preserves_cancel_and_reopens_saved_supported_rates() {
@@ -525,7 +572,10 @@ fn retained_route_confirmation_cannot_apply_a_refreshed_default_device() {
         gui.wait();
         let status = gui.app.engine.audio_handle().unwrap().status();
         if calibrate {
-            assert_eq!(status.measurement.as_ref().unwrap().identity.input.device, "Alternate fixture");
+            assert_eq!(status.phase,owner::Phase::Offline);
+            assert!(status.measurement.is_none());
+            assert_eq!(status.recovery.as_ref().unwrap().plan.device,"Fixture");
+            assert!(status.message.contains("could not reopen"));
         } else {
             assert_eq!(status.active.as_ref().unwrap().plan.device, "Alternate fixture");
         }

@@ -18,6 +18,7 @@ use std::{
 mod content;
 pub(crate) mod tags;
 pub(crate) mod annotations;
+pub(crate) mod search;
 pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;

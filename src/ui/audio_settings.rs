@@ -18,6 +18,7 @@ enum Job {
     Apply(Preview),
     Calibrate(Preview),
     Reset,
+    Reconnect(u64),
 }
 enum Event {
     Preview(Preview),
@@ -25,6 +26,7 @@ enum Event {
     Calibrated(Result<Arc<owner::Status>, String>),
     Failed(String),
     Reset(Result<Arc<owner::Status>, String>),
+    Reconnected(Result<Arc<owner::Status>, String>),
 }
 struct Worker {
     sender: Sender<(Job, Arc<AtomicBool>, Option<crate::engine::performance::ExclusivePermit>)>,
@@ -92,6 +94,7 @@ impl Worker {
                             Event::Applied(preview, result)
                         }
                         Job::Reset => Event::Reset(handle.reset_permitted(cancel, permit.expect("admitted reset"))),
+                        Job::Reconnect(generation) => Event::Reconnected(handle.reconnect_permitted(cancel, permit.expect("admitted reconnect"), generation)),
                         Job::Calibrate(preview) => Event::Calibrated(
                             preview
                                 .calibration
@@ -149,6 +152,7 @@ impl Drop for Worker {
 #[derive(Clone, Copy, Hash)]
 enum Confirm {
     Reset,
+    Reconnect(u64),
     Switch(u64),
     Calibrate(u64),
 }
@@ -262,11 +266,11 @@ impl App {
                     }
                     self.audio_settings.message = status.message.clone();
                 }
-                Event::Reset(Ok(status)) | Event::Calibrated(Ok(status)) => {
+                Event::Reset(Ok(status)) | Event::Reconnected(Ok(status)) | Event::Calibrated(Ok(status)) => {
                     self.audio_settings.message = status.message.clone()
                 }
                 Event::Applied(_, Err(error))
-                | Event::Reset(Err(error)) | Event::Calibrated(Err(error))
+                | Event::Reset(Err(error)) | Event::Reconnected(Err(error)) | Event::Calibrated(Err(error))
                 | Event::Failed(error) => self.audio_settings.message = error,
             }
         }
@@ -328,6 +332,14 @@ impl App {
             });
             let allowed=!panel.busy()&&!self.project.committing()&&self.project.dialog_is_closed();
             ui.add_enabled_ui(allowed,|ui|{
+                if let Some(status)=panel.handle.as_ref().map(owner::Handle::status).filter(|status|status.phase==owner::Phase::Offline) {
+                    if let Some(target)=&status.recovery {
+                        ui.label(format!("Retained output: {} / {} · {}",target.plan.backend,target.plan.device,target.plan.route())).help(ui,HelpControl::AudioNotice);
+                        if target.identity.is_some() {
+                            if audio_action(ui,"Reconnect retained output…",true).help(ui,HelpControl::AudioReconnect).clicked(){panel.confirm=Some(Confirm::Reconnect(status.generation));}
+                        } else {ui.label(tr!("This output has no verifiable physical identity. Preview saved audio or choose a fallback in Preferences, then confirm it explicitly."));}
+                    }
+                }
                 if audio_action(ui, "Preview saved audio", true).help(ui, HelpControl::AudioPreview).clicked(){panel.request(Job::Preview(profile.clone(),saved.clone()));}
                 if let Some(preview)=panel.preview.clone(){
                     ui.push_id(("audio-preview", panel.preview_generation), |ui| {
@@ -345,6 +357,7 @@ impl App {
                 }
                 if panel.confirm.is_some_and(|confirm| match confirm {
                     Confirm::Reset => false,
+                    Confirm::Reconnect(generation) => panel.handle.as_ref().is_none_or(|handle| {let status=handle.status();status.generation!=generation || status.phase!=owner::Phase::Offline}),
                     Confirm::Switch(generation) | Confirm::Calibrate(generation) => generation != panel.preview_generation || panel.preview.is_none(),
                 }) { panel.confirm = None; }
                 if let Some(confirm)=panel.confirm {
@@ -354,11 +367,12 @@ impl App {
                     ui.separator();
                     match confirm {
                         Confirm::Reset => { ui.label(tr!("Stop all sources, reclaim the graph on the audio-owner worker, clear voice/effect/filter histories and reopen the current output. Only a successful reset removes emergency mute. Playback remains stopped; input acknowledgment is still required if recovery is latched.")); },
+                        Confirm::Reconnect(_) => {ui.label(tr!("Reconnect only the retained physical output with the same route, rate, format and buffer. No fallback opens. Playback stays stopped and emergency mute stays latched. Release physical inputs and acknowledge recovery before pressing Play; transport starts use a 2 ms output ramp."));},
                         Confirm::Switch(_)=>{ui.label(tr!("Stop decks, clips, recording and held notes, then change output? Previous output will be restored if opening fails. Playback will remain stopped; press Play explicitly when ready."));},
                         Confirm::Calibrate(_)=>{ui.label(tr!("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback."));if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label({ let __omatainer_args = (&(request.output.device),&(request.output_channel+1),&(request.input.device),&(request.input_channel+1),&(request.level_db),); crate::localization::format("Confirm route: {} output {} → {} input {}; level {} dBFS", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });}},
                     }
                     ui.horizontal(|ui|{
-                        if audio_action(ui, match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Switch(_)=>"Stop and change output",Confirm::Calibrate(_)=>"Cable ready: stop and measure"}, true).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch(_)=>HelpControl::AudioConfirm,Confirm::Calibrate(_)=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch(_)=>Job::Apply(preview),Confirm::Calibrate(_)=>Job::Calibrate(preview),Confirm::Reset=>unreachable!()});}panel.confirm=None;}
+                        if audio_action(ui, match confirm{Confirm::Reset=>"Confirm stopped DSP reset and unmute",Confirm::Reconnect(_)=>"Confirm retained output reconnect",Confirm::Switch(_)=>"Stop and change output",Confirm::Calibrate(_)=>"Cable ready: stop and measure"}, true).help(ui,match confirm{Confirm::Reset=>HelpControl::PerformanceReset,Confirm::Switch(_)|Confirm::Reconnect(_)=>HelpControl::AudioConfirm,Confirm::Calibrate(_)=>HelpControl::AudioProbeConfirm}).clicked(){if matches!(confirm, Confirm::Reset) { panel.request(Job::Reset); } else if let Confirm::Reconnect(generation)=confirm {panel.request(Job::Reconnect(generation));} else if let Some(preview)=panel.preview.clone(){panel.request(match confirm{Confirm::Switch(_)=>Job::Apply(preview),Confirm::Calibrate(_)=>Job::Calibrate(preview),Confirm::Reset|Confirm::Reconnect(_)=>unreachable!()});}panel.confirm=None;}
                         if audio_action(ui, "Keep current audio", true).help(ui, HelpControl::AudioKeep).clicked(){panel.confirm=None;}
                     });
                     });
@@ -380,7 +394,7 @@ fn audio_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response
 }
 
 fn capabilities(ui: &mut egui::Ui, inventory: &config::Inventory) {
-    ui.label(tr!("Device identities use the backend and exact device name. Persistent hardware serial identifiers are unavailable through CPAL; ambiguous duplicate names are rejected."));
+    ui.label(tr!("Audio setup uses exact backend/device names. During this session, recovery also retains verified ALSA physical identity and route where Linux exposes them. Default/server aliases and USB devices without serials require explicit fallback confirmation; duplicate identities are refused."));
     ui.label({ let __omatainer_args = (&(inventory.backend),); crate::localization::format("Backend: {}. Channel numbers are CPAL's ordered interleaved channels; physical connector names are unavailable.", &[format!("{}", __omatainer_args.0)]) });
     if inventory.truncated {
         ui.label(tr!("Capability inventory truncated at 256 devices / 4096 ranges per device"));

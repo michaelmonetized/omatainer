@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "decided": "2026-10-03",
+  "music_source": "FreeToUse public keyless API",
+  "excluded_issues": [
+    158,
+    159,
+    160,
+    171,
+    172,
+    206,
+    266,
+    357
+  ],
+  "scope_note": "Michael excludes other third-party provider integrations from this release. FreeToUse catalog/preview remains optional. Generic capability/error handling in #221 remains in scope. Exclusion is not issue completion.",
+  "hardware": [
+    "Pioneer DDJ-FX (exact model pending USB descriptors)",
+    "Numark NS7 (exact generation pending USB descriptors)",
+    "Akai MPD232",
+    "Akai APC40 (exact generation pending USB descriptors)",
+    "88-key USB MIDI keyboard (exact vendor/model pending USB descriptors)"
+  ]
+}

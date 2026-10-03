@@ -28,6 +28,7 @@ mod clip_gain;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
+mod deck_load_lock;
 mod play_history;
 mod session_history;
 mod session_editor;
@@ -174,6 +175,7 @@ pub struct App {
     midi_open: bool,
     status: String,
     loads: [Option<LoadState>; DECKS],
+    deck_load_review: Option<deck_load_lock::Review>,
     submission_error: Cell<Option<crate::engine::SubmissionError>>,
     seen_submission_failures: u64,
     loader: Option<Loader>,
@@ -300,6 +302,7 @@ impl App {
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
             loads: std::array::from_fn(|_| None),
+            deck_load_review: None,
             submission_error: Cell::new(None),
             seen_submission_failures: 0,
             loader,
@@ -381,7 +384,11 @@ impl App {
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
-        if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
+        if self.review_locked_load(deck, picked.cloned()) { return; }
+        self.load_source_authorized(deck, picked, None);
+    }
+    fn load_source_authorized(&mut self, deck: u8, picked: Option<&Selection>, expected: Option<u64>) {
+        if !self.deck_load_allowed(deck, expected) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS {
             self.status = "load failed: invalid deck".into();
@@ -395,7 +402,7 @@ impl App {
                     if let Some(error) = self.loader.as_ref().and_then(|loader| loader.invalidate(deck).err()) {
                         state.phase = Phase::Failed(error);
                     } else {
-                        let receipt = self.library_receipt(&picked.source, None);
+                        let receipt = self.library_receipt_authorized(&picked.source, None, expected);
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
                         } else {
@@ -405,8 +412,8 @@ impl App {
                     }
                     self.set_load_state(deck, state);
                 }
-                LibSource::File(path) => self.load_file(deck, path.clone(), &picked.title),
-                LibSource::Removable { .. } => self.load_reference(deck,picked.source.clone(),&picked.title),
+                LibSource::File(path) => self.load_reference_authorized(deck, LibSource::File(path.clone()), &picked.title, expected),
+                LibSource::Removable { .. } => self.load_reference_authorized(deck,picked.source.clone(),&picked.title,expected),
                 LibSource::Provider { .. } => {
                     self.supersede_load(deck);
                     if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
@@ -431,12 +438,17 @@ impl App {
         self.load_reference(deck,LibSource::File(path),name);
     }
     fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
-        if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
+        if self.review_locked_load(deck, Some(Selection { title: name.into(), source: source.clone() })) { return; }
+        self.load_reference_authorized(deck, source, name, None);
+    }
+    fn load_reference_authorized(&mut self, deck:u8,source:LibSource,name:&str,expected:Option<u64>) {
+        if !self.deck_load_allowed(deck, expected) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
         let selection = Selection { title: name.into(), source:source.clone() };
         let mut state = LoadState::new(Some(selection), Phase::Loading);
+        state.override_key = expected;
         match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
             .and_then(|loader| loader.request_source(deck, source)) {
             Ok(token) => state.token = Some(token),
@@ -544,8 +556,8 @@ impl App {
                     });
                     let measured=history_source.as_ref().zip(completion.fingerprint).zip(completion.content_hash);
                     let receipt=if let Some(((source,fp),hash))=measured {
-                        Receipt::with_preparation(self.library_metadata.catalog.preparation_for_content(source,fp,hash))
-                    } else {history_source.as_ref().map(|source|self.library_receipt(source,completion.fingerprint)).unwrap_or_else(Receipt::new)};
+                        Receipt::with_override(self.library_metadata.catalog.preparation_for_content(source,fp,hash), state.override_key)
+                    } else {history_source.as_ref().map(|source|self.library_receipt_authorized(source, completion.fingerprint, state.override_key)).unwrap_or_else(||Receipt::with_override(None,state.override_key))};
                     if let Some(((source,fingerprint),hash))=measured {
                         if let Some(track)=self.library_metadata.catalog.track(source) {
                             let proof=crate::sampler_bank::SourceRef {track:track.id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};
@@ -1065,12 +1077,19 @@ impl App {
     fn platter_col(&mut self, ui: &mut Ui, t: &Theme, d: usize, snap: &crate::engine::DeckSnap, col: Color32, wave_h: f32) {
         ui.vertical(|ui| {
             ui.set_width(wave_h);
+            let mut locked = snap.load_locked;
+            let response = ui.checkbox(&mut locked, tr!("Lock playing deck"));
+            response.widget_info(||egui::WidgetInfo::selected(egui::WidgetType::Checkbox, response.enabled(), locked, crate::localization::format("Deck {}: Lock playing deck", &[((b'A' + d as u8) as char).to_string()])));
+            help::annotate(ui, &response, HelpControl::DeckLoadLock);
+            accessibility::focus(ui, &response);
+            if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             let readout = Readout::from_snapshot(snap, self.deck_time[d]);
             let hit = platter(ui, t, snap, &readout, col, wave_h, |delta, touch| {
                 self.send(Command::DeckTouch { deck: d as u8, on: touch });
                 self.send(Command::DeckJog { deck: d as u8, delta });
             });
             if hit.shift_click {
+                if self.review_locked_eject(d as u8) { return; }
                 self.status = if self.submit(Command::DeckUnload { deck: d as u8 }) {
                     format!("queued unload → {}", (b'A' + d as u8) as char)
                 } else { "Unload was not accepted".into() };
@@ -1244,6 +1263,10 @@ impl App {
         ui.vertical(|ui| {
             ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
+                let mut all = self.library_view.search_all;
+                let scope = ui.checkbox(&mut all, tr!("Search all library"));
+                help::annotate(ui, &scope, HelpControl::CrateSearchScope);
+                if scope.changed() { self.set_library_search_all(all); }
                 let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text(tr!("search")).desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
                 help::annotate(ui, &search, HelpControl::CrateSearch);

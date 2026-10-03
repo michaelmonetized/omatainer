@@ -73,6 +73,7 @@ pub enum Action {
     DeckLoopIn,
     DeckLoopOut,
     DeckLoad,
+    DeckLoadLock,
     DeckVinyl,
     Xfader,
     Master,
@@ -424,6 +425,10 @@ fn dispatch(
         }
         Action::DeckLoad if pressed => {
             let _ = cmd.send(Command::DeckLoadSelected { deck });
+        }
+        Action::DeckLoadLock if pressed => {
+            let enabled = !cmd.performance().deck_load_locked(deck as usize);
+            let _ = cmd.send(Command::DeckLoadLock { deck, enabled });
         }
         Action::DeckVinyl if pressed => {
             let _ = cmd.send(Command::DeckVinyl { deck });

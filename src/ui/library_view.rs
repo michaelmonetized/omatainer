@@ -8,6 +8,11 @@ pub(super) struct LibraryView {
     library: Weak<Vec<LibItem>>,
     catalog: Weak<crate::library::Catalog>,
     query: String,
+    pub search_all: bool,
+    searched_all: bool,
+    played_filter: bool,
+    played_revision: u64,
+    crate_return: Option<(Option<crate::library::crates::CrateId>, String, Option<LibSource>, f32)>,
     crate_id: Option<crate::library::crates::CrateId>,
     collection_revision: u64,
     pub generation: u64,
@@ -27,6 +32,12 @@ pub(super) struct LibraryView {
     pub pending_offset: Option<f32>,
     #[cfg(test)]
     pub stats: ViewStats,
+}
+
+impl LibraryView {
+    /// Follow deliberate crate selection.
+    /// Takes mutable view state; discards whole-library mode and its old return context.
+    pub fn reset_search_scope(&mut self) { self.search_all = false; self.crate_return = None; }
 }
 
 pub(super) struct Cells {
@@ -90,10 +101,34 @@ impl App {
         if view.top.as_ref() == Some(from) { view.top = Some(to.clone()); }
     }
 
+    /// Change search scope while retaining the named crate's navigation.
+    /// Takes the requested whole-library mode; restores the prior crate query, row and scroll when returning.
+    pub(super) fn set_library_search_all(&mut self, enabled: bool) {
+        if self.library_view.search_all == enabled { return; }
+        self.refresh_library_view();
+        if enabled {
+            let source = self.library_view.indices.get(self.lib_sel).map(|index|self.library[*index].source.clone());
+            self.library_view.crate_return = Some((self.library_crates.selected.clone(), self.lib_filter.clone(), source, self.library_view.offset));
+            self.library_view.search_all = true;
+            self.refresh_library_view();
+        } else {
+            self.library_view.search_all = false;
+            let previous = self.library_view.crate_return.take().filter(|(crate_id, ..)|*crate_id == self.library_crates.selected);
+            if let Some((_,query,_,_)) = &previous { self.lib_filter.clone_from(query); }
+            self.refresh_library_view();
+            if let Some((_,_,source,offset)) = previous {
+                if let Some(index) = source.and_then(|source|self.library_view.indices.iter().position(|index|self.library[*index].source==source)) { self.lib_sel=index; }
+                self.library_view.pending_offset=Some(offset);
+            }
+        }
+    }
+
     pub(super) fn refresh_library_view(&mut self) {
         self.refresh_named_crates();
         let view = &mut self.library_view;
-        let selected_crate = &self.library_crates.selected;
+        let selected_scope = if view.search_all { None } else { self.library_crates.selected.clone() };
+        let selected_crate = &selected_scope;
+        let scope_changed = view.search_all != view.searched_all;
         let collection_revision = self.library_metadata.catalog.crates.revision();
         let selected_crate_changed = view.crate_id != *selected_crate;
         let crate_changed = selected_crate_changed
@@ -104,6 +139,8 @@ impl App {
         // so the scan worker remains responsible for retiring the large Vec.
         let library_changed = view.library.as_ptr() != Arc::as_ptr(&self.library);
         let query_changed = view.query != self.lib_filter;
+        let played_revision = self.last_played.membership_revision();
+        let played_changed = view.played_filter && view.played_revision != played_revision;
         let annotations_changed = view.catalog.as_ptr() != Arc::as_ptr(&self.library_metadata.catalog);
         if !library_changed {
             let source = view
@@ -123,24 +160,21 @@ impl App {
             }
             view.last_played_index = self.last_play_idx;
         }
-        if library_changed || query_changed || crate_changed || annotations_changed {
-            let parsed = crate::library::annotations::Rule::search(&self.lib_filter);
+        if library_changed || query_changed || crate_changed || annotations_changed || scope_changed || played_changed {
+            let parsed = crate::library::search::Query::parse(&self.lib_filter);
+            view.played_filter = parsed.as_ref().is_ok_and(|query|query.uses_play_history());
+            view.played_revision = played_revision;
             view.annotation_error = parsed.as_ref().err().cloned().unwrap_or_default();
-            let valid_query = parsed.is_ok();
-            let (query, rule) = parsed.unwrap_or_default();
-            let q = crate::localization::search_key(&query);
-            let rule_active = rule != crate::library::annotations::Rule::default();
-            let annotated = self.library_metadata.catalog.tracks.iter().any(|track|!track.annotations.is_empty());
             let empty_annotations = crate::library::annotations::Annotations::default();
             let indices = Arc::make_mut(&mut view.indices);
             indices.clear();
             let matches = |item: &LibItem| {
-                if !valid_query { return false; }
-                let ordinary = q.is_empty() || crate::localization::search_key(&item.title).contains(&q) || crate::localization::search_key(&item.artist).contains(&q);
-                if !rule_active && ordinary { return true; }
-                if !rule_active && !annotated { return false; }
                 let fields = self.library_metadata.catalog.track(&item.source).map_or(&empty_annotations, |track| &track.annotations);
-                (ordinary || fields.matches_text(&q)) && (!rule_active || rule.matches(fields))
+                parsed.as_ref().is_ok_and(|query|query.matches(crate::library::search::Row {
+                    title: &item.title, artist: &item.artist, key: &item.key,
+                    bpm: item.bpm.value(), seconds: item.length,
+                    played: self.last_played.get(item).or(item.last_play).is_some(), annotations: fields,
+                }))
             };
             view.unavailable = 0;
             if let Some(node) = selected_crate.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)) {
@@ -197,6 +231,7 @@ impl App {
             view.cells.clear();
             view.library = Arc::downgrade(&self.library);
             view.query.clone_from(&self.lib_filter);
+            view.searched_all = view.search_all;
             view.crate_id.clone_from(selected_crate);
             view.collection_revision = collection_revision;
             view.catalog = Arc::downgrade(&self.library_metadata.catalog);

@@ -518,6 +518,10 @@ impl Metadata {
     /// The table is prepared and pinned by the owner. Borrow it instead of
     /// retaining an Arc whose eventual destruction could move to the GUI.
     pub fn collection_rows(&self) -> &CollectionRows { &self.collection_rows }
+    #[cfg(test)]
+    pub(in crate::ui) fn bind_test_rows(&mut self, rows: &Arc<Vec<LibItem>>) {
+        self.collection_rows = Arc::new(CollectionRows::build(rows, &self.catalog));
+    }
 
     /// Bounded handoff: one pending result, plus the worker's one in-flight job.
     pub fn save_analysis(&mut self, completion: crate::engine::media_load::AnalysisCompletion)

@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "release": "Unreleased combined stack above #499",
+  "reviewed": "2026-10-03",
+  "references": [
+    {
+      "name": "Ableton Live",
+      "stable": "12.4.6",
+      "published": "2026-09-15",
+      "url": "https://www.ableton.com/en/release-notes/live-12/",
+      "scope": "Stable release review only. No beta or separately paid pack parity claim."
+    },
+    {
+      "name": "Serato DJ Pro",
+      "stable": "4.0.10",
+      "url": "https://serato.com/dj/pro/downloads",
+      "scope": "Stable release review only. Video, DVS, stems and other expansions are tracked separately as planned capabilities."
+    }
+  ],
+  "compatibility": [
+    {
+      "name": "Linux aarch64 / Asahi MacBook Pro J316",
+      "status": "local software fixtures",
+      "versions": "Linux 7.1.13-3-2-ARCH; Rust/Cargo 1.98.0; CPAL 0.15.3",
+      "limits": "Physical converter timing, external audio paths and sustained listening are not qualified by unit tests."
+    },
+    {
+      "name": "ALSA → private PipeWire null sink",
+      "status": "backend restart exercised",
+      "versions": "ALSA 1.2.16.1; PipeWire 1.6.8",
+      "limits": "Owned private server and real CPAL callbacks; no USB unplug, converter or system suspend evidence."
+    },
+    {
+      "name": "MacBook built-in AppleJ316 / AppleJ316HPAI",
+      "status": "discovered",
+      "versions": "sysfs/proc inventory 2026-10-03",
+      "limits": "Discovery is not a captured audio or listening test."
+    },
+    {
+      "name": "Pioneer DDJ-FX; Numark NS7; Akai MPD232; Akai APC40; 88-key USB keyboard",
+      "status": "user available; pending attachment",
+      "versions": "Exact model, firmware and endpoint descriptors pending",
+      "limits": "No physical controller profile or custom NS7 driver is qualified yet."
+    },
+    {
+      "name": "FreeToUse",
+      "status": "public keyless test source",
+      "versions": "API v3; current API/license reviewed 2026-10-03",
+      "limits": "No paid account or music grant configured. Catalog tests and generated private-fixture audio are separate from provider music playback. Other provider integrations are excluded from this release."
+    },
+    {
+      "name": "Audio plugins",
+      "status": "planned",
+      "versions": "No hosted plugin formats or vendor versions qualified",
+      "limits": "Built-in effect racks are not VST3/CLAP/LV2 plugin hosting."
+    },
+    {
+      "name": "Windows / macOS",
+      "status": "unqualified",
+      "versions": "No native build/device qualification for this release",
+      "limits": "This run is Linux aarch64 only."
+    }
+  ],
+  "issues": {
+    "129": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/audio_settings.rs",
+          "entry": "Audio devices → reconnect review"
+        },
+        {
+          "kind": "audio owner",
+          "file": "src/engine/audio/owner.rs",
+          "entry": "Audio owner recovery state"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::owner::recovery_tests",
+        "ui::audio_settings::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-129-audio-recovery.md"
+      ],
+      "limits": "USB unplug/replug and real suspend/resume remain pending."
+    },
+    "131": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/deck_load_lock.rs",
+          "entry": "Platter lock → captured load/eject review"
+        },
+        {
+          "kind": "MIDI",
+          "file": "src/engine/midi.rs",
+          "entry": "Action::DeckLoadLock; existing load/eject producers"
+        },
+        {
+          "kind": "CLI/IPC",
+          "file": "src/main.rs",
+          "entry": "ctl deck-lock; ctl deck-eject; status lock fields"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_load_lock_tests",
+        "ui::deck_load_lock::tests",
+        "ipc_schema_tests::deck_protection_cli_validates_target_and_action_before_connecting"
+      ],
+      "evidence": [
+        "docs/validation/issue-131-deck-load-lock.md"
+      ],
+      "limits": "Physical MIDI/controller display testing is pending; software producers and actual native egui interactions are exercised."
+    },
+    "137": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "release tooling",
+          "file": "scripts/capability-matrix.py",
+          "entry": "generate / check"
+        }
+      ],
+      "fixtures": [
+        "scripts/test-capability-matrix.py"
+      ],
+      "evidence": [
+        "docs/capability-matrix.md"
+      ],
+      "limits": "The registry records observed status and pending work. Each implementation needs acceptance evidence before promotion."
+    },
+    "139": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_view.rs",
+          "entry": "Crate search; Search all library"
+        },
+        {
+          "kind": "query",
+          "file": "src/library/search.rs",
+          "entry": "Query::parse / matches"
+        }
+      ],
+      "fixtures": [
+        "library::search::tests",
+        "ui::library_view_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-139-library-search.md"
+      ],
+      "limits": "Local 100000-track synthetic catalog; search fields reflect implemented title/artist/key/annotation metadata."
+    },
+    "221": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/music_provider.rs",
+          "entry": "FreeToUse search and preview"
+        },
+        {
+          "kind": "provider policy",
+          "file": "src/music_provider.rs",
+          "entry": "Capabilities and authorize"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/provider_preview.rs",
+          "entry": "Epoch-bound transient preview"
+        }
+      ],
+      "fixtures": [
+        "music_provider::tests",
+        "music_provider::freetouse::tests",
+        "engine::provider_preview::tests",
+        "ui::music_provider::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-120-providers.md"
+      ],
+      "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
+    }
+  }
+}

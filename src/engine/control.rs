@@ -627,6 +627,9 @@ impl CommandPort {
                 return fail(SubmissionError::InvalidTarget);
             }
         }
+        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckEjectConfirmed { deck, .. } if *deck as usize >= super::DECKS) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
         }

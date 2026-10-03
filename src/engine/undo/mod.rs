@@ -608,6 +608,14 @@ impl RtEngine {
             }
             self.undo.cursor - 1
         };
+        if self.undo.entries[index].as_ref().unwrap().patches.iter().flatten().any(|patch| {
+            matches!(patch, Patch::Media { deck, .. } if self.decks[*deck as usize].load_locked
+                && (self.decks[*deck as usize].playing || self.decks[*deck as usize].touching))
+        }) {
+            self.performance.reject(super::performance::Error::PlayingDeck);
+            self.undo.reject(Failure::Invalid);
+            return;
+        }
         // Validity of every target is checked before any object is changed.
         if self.undo.entries[index]
             .as_ref()

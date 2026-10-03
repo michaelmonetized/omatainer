@@ -332,6 +332,7 @@ pub struct DeckRt {
     pub target_rate: f32,
     pub pitch: f32, // -1..1 mapped around 1.0
     pub playing: bool,
+    pub load_locked: bool,
     pub cue_pos: f64,
     pub touching: bool,
     // Admission cannot hold more than MAX_COMMANDS gates across all inputs.
@@ -391,6 +392,7 @@ impl DeckRt {
             target_rate: 1.0,
             pitch: 0.5,
             playing: false,
+            load_locked: false,
             cue_pos: 0.0,
             touching: false,
             touch_sources: [None; control::MAX_COMMANDS],
@@ -642,6 +644,8 @@ struct PadTarget {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
+    pub load_locked: bool,
+    pub media_key: u64,
     pub title: String,
     pub playing: bool,
     pub pos: f64,
@@ -880,6 +884,8 @@ pub enum Command {
     DeckLoopIn { deck: u8 },
     DeckLoopOut { deck: u8 },
     DeckLoadSelected { deck: u8 },
+    DeckLoadLock { deck: u8, enabled: bool },
+    DeckEjectConfirmed { deck: u8, expected: u64 },
     DeckVinyl { deck: u8 },
     DeckKeylock { deck: u8 },
     DeckAudio { deck: u8, audio: Arc<Sample> },
@@ -1990,6 +1996,7 @@ impl RtEngine {
             Command::RecoverPerformance => { let _ = self.performance.acknowledge_inputs_released(); return; }
             _ => {}
         }
+        self.publish_deck_guards();
         if let Err(reason) = self.performance.check(&c, Some(self.deck_activity())) {
             self.performance.reject(reason);
             performance::reject_receipt(&c);
@@ -2378,6 +2385,12 @@ impl RtEngine {
                 d.transition_to((frac.clamp(0.0, 1.0) as f64 * frames).max(0.0), self.sr, DeckTransition::Jump);
                 d.cue_pos = d.pos;
             }
+            Command::DeckLoadLock { deck, enabled } => {
+                if let Some(target) = self.decks.get_mut(deck as usize) { target.load_locked = enabled; }
+            }
+            Command::DeckEjectConfirmed { deck, .. } => {
+                if let Some(command) = self.history_before(Command::DeckUnload { deck }) { self.apply_plain(command); }
+            }
             Command::DeckLoadSelected { .. } => {
                 // Producers capture selection before routing to the GUI.
                 // A raw renderer call without that capture must fail visibly.
@@ -2728,6 +2741,7 @@ impl RtEngine {
             }
         }
         if let Some(deck) = preparation_deck { self.decks[deck].publish_preparation(); }
+        self.publish_deck_guards();
     }
 
     fn apply_media_request(&mut self, deck: u8, media: &load_receipt::Media,
@@ -3441,3 +3455,6 @@ mod license_content_tests;
 
 #[cfg(test)]
 pub(crate) mod performance_workload_tests;
+
+#[cfg(test)]
+mod deck_load_lock_tests;

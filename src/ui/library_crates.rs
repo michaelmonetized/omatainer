@@ -81,6 +81,7 @@ impl App {
     }
 
     pub(super) fn choose_named_crate(&mut self, id: Option<CrateId>) {
+        self.library_view.reset_search_scope();
         self.refresh_named_crates();
         if id.as_ref().is_some_and(|id| self.library_metadata.catalog.crates.node(id).is_none()) {
             self.library_crates.message = "This crate is unavailable; showing All tracks. The project does not recreate catalog collections.".into();

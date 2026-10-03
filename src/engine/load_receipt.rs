@@ -12,6 +12,7 @@ pub struct Receipt(Arc<Inner>);
 #[derive(Debug)]
 struct Inner {
     history_key: u64,
+    override_key: Option<u64>,
     state: AtomicU8,
     history_pins: AtomicU64,
     initial_preparation: Option<super::preparation::Preparation>,
@@ -42,6 +43,11 @@ impl Receipt {
     pub(crate) fn with_preparation(
         initial_preparation: Option<super::preparation::Preparation>,
     ) -> Self {
+        Self::with_override(initial_preparation, None)
+    }
+    /// Capture consent to replace one current deck track.
+    /// Takes preparation and an optional reviewed media key; returns a new single-use load receipt.
+    pub(crate) fn with_override(initial_preparation: Option<super::preparation::Preparation>, override_key: Option<u64>) -> Self {
         let wall_origin = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -49,6 +55,7 @@ impl Receipt {
             .min(u64::MAX as u128) as u64;
         Self(Arc::new(Inner {
             history_key: super::history_measurement::parts::fresh_key(),
+            override_key,
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
             initial_preparation,
@@ -88,6 +95,7 @@ impl Receipt {
         Arc::as_ptr(&self.0) as usize
     }
     pub(crate) fn history_key(&self) -> u64 { self.0.history_key }
+    pub(crate) fn override_key(&self) -> Option<u64> { self.0.override_key }
     pub fn same_request(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }

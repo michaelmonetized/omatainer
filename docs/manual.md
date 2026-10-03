@@ -1190,6 +1190,14 @@ Review the proposed output before choosing Stop and change output. This first bu
 
 Workflow: Audio setup.
 
+### Reconnect retained output
+
+Explicit physical-identity recovery
+
+After device loss, reconnect only the retained physical identity and accepted route. Default/server aliases need explicit preview and fallback confirmation. Playback remains stopped, emergency mute remains latched and physical inputs need acknowledgment before Play. Native transport starts ramp output over 2 ms.
+
+Workflow: Audio setup.
+
 ### Stop and change output
 
 Explicit disruptive operation
@@ -2408,9 +2416,17 @@ Workflow: Record a held note.
 
 ### Search crate
 
-Text filter
+AND terms and explicit fields
 
-Filter the crate without changing loaded media. Text editing owns its keys; clearing the filter restores the available rows.
+Combine ordinary words or quoted field values with AND. Text fields: title, artist, key (exact), tag (exact), group and note. Use bpm:120..128, bpm>=120, length:3:00..4:00, rating>=4, played:yes/no or color:#RRGGBB. Length also accepts seconds; ranges include both ends. Unknown fields and malformed values show an error and no results. Played means renderer-confirmed playback of the current source/version. Text editing owns its keys; filtering never changes loaded media.
+
+Workflow: Prepare a DJ deck.
+
+### Search all library
+
+Current crate / whole library
+
+Broaden the current query without changing the named crate. Returning restores that crate's saved query, selected source and scroll. Changing the selected crate deliberately discards the old return context. This switch changes only library navigation.
 
 Workflow: Prepare a DJ deck.
 
@@ -2443,6 +2459,14 @@ Workflow: Prepare a DJ deck.
 A / B
 
 Choose the destination for F, Enter and controller Load selected. Explicit →A/→B always use their named deck. Browsing later does not redirect an already accepted load.
+
+Workflow: Prepare a DJ deck.
+
+### Lock playing deck
+
+Per-deck replacement protection
+
+Prevent mouse, keyboard, drop, MIDI and IPC load/eject while this deck plays or is touched. Native deliberate replacement captures the current track and chosen source for review; the existing track remains until decoding succeeds. Changing the track invalidates approval. Performance mode still requires pausing and releasing the deck. Lock state is a runtime safety setting; a restarted engine starts unlocked.
 
 Workflow: Prepare a DJ deck.
 

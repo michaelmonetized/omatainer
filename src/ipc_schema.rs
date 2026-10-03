@@ -58,6 +58,8 @@ pub(crate) enum Operation {
     Scene { n: SceneIndex },
     DeckPlay { deck: DeckIndex },
     DeckCue { deck: DeckIndex },
+    DeckLoadLock { deck: DeckIndex, enabled: bool },
+    DeckEject { deck: DeckIndex },
 }
 
 impl Operation {
@@ -90,6 +92,8 @@ impl Operation {
             Self::Scene { n } => Command::LaunchScene { scene: n.0 },
             Self::DeckPlay { deck } => Command::DeckPlay { deck: deck.0 },
             Self::DeckCue { deck } => Command::DeckCue { deck: deck.0 },
+            Self::DeckLoadLock { deck, enabled } => Command::DeckLoadLock { deck: deck.0, enabled },
+            Self::DeckEject { deck } => Command::DeckUnload { deck: deck.0 },
         })
     }
 }

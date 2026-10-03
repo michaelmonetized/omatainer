@@ -281,11 +281,9 @@ impl App {
         self.library_metadata.set_performance(self.engine.cmd.performance().clone());
         self.library_initialized = false;
     }
-    pub(super) fn library_receipt(
-        &self,
-        source: &LibSource,
-        fingerprint: Option<FileFingerprint>,
-    ) -> Receipt {
+    /// Bind preparation and optional consent to one captured source.
+    /// Takes its current identity and reviewed deck key; returns a single-use renderer receipt.
+    pub(super) fn library_receipt_authorized(&self, source: &LibSource, fingerprint: Option<FileFingerprint>, expected: Option<u64>) -> Receipt {
         let preparation = if matches!(source, LibSource::File(_) | LibSource::Removable {..}) && fingerprint.is_none() {
             None
         } else {
@@ -294,7 +292,7 @@ impl App {
                 .version(source, fingerprint)
                 .map(|v| v.preparation)
         };
-        Receipt::with_preparation(preparation)
+        Receipt::with_override(preparation, expected)
     }
     pub(super) fn restore_initial_library_preparation(&mut self) {
         if self.library_initialized

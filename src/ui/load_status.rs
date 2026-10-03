@@ -10,6 +10,7 @@ pub(super) struct LoadState {
     pub bpm: Option<Bpm>,
     pub metadata: Option<library_metadata::Patch>,
     pub warning: Option<&'static str>,
+    pub override_key: Option<u64>,
 }
 
 pub(super) enum Phase {
@@ -30,6 +31,7 @@ impl LoadState {
             bpm: None,
             metadata: None,
             warning: None,
+            override_key: None,
         }
     }
 
@@ -101,7 +103,7 @@ impl App {
                     }
                     State::Current if !matches!(load.phase, Phase::Loaded) => Some(Phase::Loaded),
                     State::Protected if !matches!(load.phase, Phase::Failed(_)) => Some(Phase::Failed(
-                        "Performance protection refused this load at the renderer; previous media is preserved. Pause/release this deck, then Retry.".into(),
+                        "Deck load protection refused this load at the renderer; previous media is preserved. Pause/release the deck or review a new replacement.".into(),
                     )),
                     State::Unavailable if !matches!(load.phase, Phase::Failed(_)) => Some(
                         Phase::Failed("built-in media is unavailable; media was not loaded".into()),
@@ -123,6 +125,7 @@ impl App {
     }
 
     pub(super) fn load_status(&mut self, ctx: &egui::Context) {
+        self.deck_load_confirmation(ctx);
         // Recheck immediately before rendering, including unloads/replacements
         // processed since the last regular frame poll.
         self.poll_load_receipts();
