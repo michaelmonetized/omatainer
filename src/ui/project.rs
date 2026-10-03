@@ -154,6 +154,7 @@ enum Action {
     OpenDialog,
     Open(PathBuf),
     Recover(crate::recovery::Candidate),
+    Version(super::project_versions::worker::Record),
     Template(super::templates::worker::Record, Option<usize>),
     Close,
 }
@@ -398,10 +399,12 @@ impl App {
     fn guard_project_drafts(&mut self) -> bool {
         let dependencies = self.dependencies.guard_replacement();
         let timing = self.timing.guard_replacement();
-        let templates = self.templates.busy() || self.project_import.busy();
+        let templates = self.templates.busy() || self.project_import.busy() || self.project_versions.busy();
         let blocked = dependencies || timing || templates;
-        if blocked { self.project.message = Some(if templates {
+        if blocked { self.project.message = Some(if self.templates.busy() {
             "Finish or cancel the pending template operation before replacing the project.".into()
+        } else if templates {
+            "Finish or cancel the pending project operation before replacing the project.".into()
         } else { "Project replacement cancelled while editors retain unapplied work. Apply it or explicitly discard it, then choose the project action again.".into() }); }
         blocked
     }
@@ -416,6 +419,7 @@ impl App {
             if !self.project.busy() { self.begin_project_action(Action::Template(record, target)); }
         } else { self.request_project_action(Action::Template(record, None)); }
     }
+    pub(super) fn restore_named_version(&mut self, record: super::project_versions::worker::Record) { self.request_project_action(Action::Version(record)); }
     fn request_project_action(&mut self, action: Action) {
         if self.reject_protected_project() { return; }
         if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
@@ -447,14 +451,15 @@ impl App {
                     replace: false,
                 });
             }
-            Action::New | Action::Open(_) | Action::Recover(_) | Action::Template(_, _) => {
+            Action::New | Action::Open(_) | Action::Recover(_) | Action::Version(_) | Action::Template(_, _) => {
                 let before = self.project_baseline();
-                let (path, recovery, template) = match action {
-                    Action::Open(path) => (Some(path), None, None),
-                    Action::Recover(candidate) => (None, Some(candidate), None),
+                let (path, recovery, template, version) = match action {
+                    Action::Open(path) => (Some(path), None, None, None),
+                    Action::Recover(candidate) => (None, Some(candidate), None, None),
                     Action::Template(record, target) => (None, None, Some(worker::TemplateUse { record, target,
-                        view: self.project_view(), identities: self.project_watch_identities(), current_path: self.project.current_path.clone() })),
-                    _ => (None, None, None),
+                        view: self.project_view(), identities: self.project_watch_identities(), current_path: self.project.current_path.clone() }), None),
+                    Action::Version(record) => (None, None, None, Some(record)),
+                    _ => (None, None, None, None),
                 };
                 let work = match self.engine.cmd.performance().optional_work() {
                     Ok(work) => work,
@@ -473,6 +478,7 @@ impl App {
                         path,
                         recovery,
                         template,
+                        version,
                         cancel: cancel.clone(),
                         commit: receiver,
                     },
@@ -677,6 +683,7 @@ impl App {
                     view,
                     applied,
                     recovered,
+                    version_name,
                     report,
                     template,
                 } => {
@@ -691,6 +698,9 @@ impl App {
                         } else {
                             "Template instantiated as an unsaved stopped project. Save as chooses a new destination; the template remains intact. Review hardware references in Templates.".into()
                         });
+                    } else if let Some(name) = version_name {
+                        self.project.current_path = None; self.project.clean = None;
+                        self.project.message = Some(format!("Named version {name} restored, stopped, as an unsaved copy. Save as selects a new destination."));
                     } else if recovered {
                         self.project.current_path = None;
                         self.project.clean = None;
@@ -982,6 +992,7 @@ impl App {
                             if ui.button("Project dependencies…").help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
                             if ui.button("Portable project…").help(ui, HelpControl::PortableOpen).clicked() { self.portability.open = true; ui.close(); }
                             if ui.button("Project and track templates…").help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
+                            if ui.button("Named versions…").help(ui, HelpControl::ProjectVersionsOpen).clicked() { self.project_versions.open = true; ui.close(); }
                             if ui.button("Import from another project…").help(ui, HelpControl::ProjectImportOpen).clicked() { self.project_import.open = true; ui.close(); }
                             if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button("New project");

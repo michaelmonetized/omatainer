@@ -146,6 +146,10 @@ Preparation stays on a cancellable worker. Source-file changes and creative
 changes to the reviewed destination reject Apply; review again to use new state.
 
 
+## Named project versions
+
+Project → Named versions saves named snapshots and revision notes with shared immutable audio. Compare musical changes before restoring an unsaved copy or branching a new native project. Preview unreferenced assets before pruning. See [the version workflow](docs/project-versions.md).
+
 ## Native projects
 
 Use **Project → Save project as…** to choose a `.omat` path. Native projects embed

@@ -33,6 +33,7 @@ pub(super) enum Job {
         path: Option<PathBuf>,
         recovery: Option<crate::recovery::Candidate>,
         template: Option<TemplateUse>,
+        version: Option<super::super::project_versions::worker::Record>,
         cancel: Arc<AtomicBool>,
         commit: Receiver<u64>,
     },
@@ -57,6 +58,7 @@ pub(super) enum Event {
         view: UiState,
         applied: Applied,
         recovered: bool,
+        version_name: Option<String>,
         report: Vec<String>,
         template: Option<(crate::project_template::Metadata, Option<crate::project_template::Target>)>,
     },
@@ -270,6 +272,7 @@ fn perform(
             path,
             recovery,
             template,
+            version,
             cancel,
             commit,
         } => {
@@ -278,6 +281,7 @@ fn perform(
                 Err(event) => return event,
             };
             let recovered = recovery.is_some();
+            let version_name = version.as_ref().map(|v| v.entry.name.clone());
             let mut report = Vec::new();
             let mut template_metadata = None;
             let (prepared, view) = if let Some(use_template) = template {
@@ -319,6 +323,10 @@ fn perform(
                 let prepared = match Prepared::from_state(document.engine, media, output_sr) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
                 template_metadata = Some((metadata, target));
                 (prepared, document.view)
+            } else if let Some(record) = version {
+                let bundle = match super::super::project_versions::worker::reviewed(&record, &cancel) { Ok(bundle) => bundle, Err(error) => return Event::Failed(error) };
+                let prepared = match Prepared::from_state(bundle.state.engine, bundle.media, output_sr) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
+                (prepared, bundle.state.view)
             } else if let Some(candidate) = recovery {
                 let recovered = match crate::recovery::recover::<Document>(&candidate, &cancel) {
                     Ok(recovered) => recovered,
@@ -383,6 +391,7 @@ fn perform(
                     view,
                     applied,
                     recovered,
+                    version_name,
                     report,
                     template: template_metadata,
                 },
