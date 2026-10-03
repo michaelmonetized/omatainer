@@ -159,7 +159,13 @@ mod tests {
         let vendor: Vec<_> = catalog.manifest.package.iter().filter(|(source, _)|
             source.starts_with("vendor/symphonia-format-riff/")).collect();
         assert_eq!(vendor.len(), 13, "complete modified MPL source must be distributed");
-        assert_eq!(catalog.manifest.package.len(), 6 + vendor.len());
+        let native:Vec<_>=catalog.manifest.package.iter().filter(|(source,_)|source.starts_with("vendor/egui-winit/")).collect();
+        assert_eq!(native.len(),11,"complete patched native adapter source must be distributed");
+        assert_eq!(catalog.manifest.package.len(), 6 + vendor.len() + native.len());
+        for (source,destination) in native {
+            assert!(catalog.manifest.source_files.contains_key(source));
+            assert_eq!(destination,&format!(".local/share/omatainer/source/{source}"));
+        }
         for (source, destination) in vendor {
             assert!(catalog.manifest.source_files.contains_key(source));
             assert_eq!(destination, &format!(".local/share/omatainer/source/{source}"));

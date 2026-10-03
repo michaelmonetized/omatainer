@@ -702,11 +702,11 @@
           "vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
           "vendor/egui-winit/Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
           "vendor/egui-winit/LICENSE": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
-          "vendor/egui-winit/PATCHES.md": "d30ef5730b9f92f6a469fc6e77178c55bf071e47af634bf490b79ce4e8df4e56",
+          "vendor/egui-winit/PATCHES.md": "94d95ac11b549ae3766d0987c8c3d19b2651e8549bb95165506274b2e9902c9d",
           "vendor/egui-winit/README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
           "vendor/egui-winit/UPSTREAM.json": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
           "vendor/egui-winit/src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
-          "vendor/egui-winit/src/lib.rs": "fd3958e8c1d78ed70fc31582915595c2b596922b0de4cdb8e1c1b761d5c5d1c4",
+          "vendor/egui-winit/src/lib.rs": "a0aadd5116a503bb4486878eb84e48ee8830d4a52ca6b5cb0c5e29ffa035912f",
           "vendor/egui-winit/src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de"
         },
         "path": "vendor/egui-winit",
@@ -5551,7 +5551,7 @@
         },
         {
           "location": ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md",
-          "sha256": "d30ef5730b9f92f6a469fc6e77178c55bf071e47af634bf490b79ce4e8df4e56"
+          "sha256": "94d95ac11b549ae3766d0987c8c3d19b2651e8549bb95165506274b2e9902c9d"
         },
         {
           "location": ".local/share/omatainer/source/vendor/egui-winit/README.md",
@@ -5567,7 +5567,7 @@
         },
         {
           "location": ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs",
-          "sha256": "fd3958e8c1d78ed70fc31582915595c2b596922b0de4cdb8e1c1b761d5c5d1c4"
+          "sha256": "a0aadd5116a503bb4486878eb84e48ee8830d4a52ca6b5cb0c5e29ffa035912f"
         },
         {
           "location": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs",
@@ -12576,7 +12576,7 @@
     "src/library/tests.rs": "7d222b9f80f2cccfa0508371548357e97cad0d1e0c096ee7b8a283651d0469e0",
     "src/library/watch_roots.rs": "67ab779881590c4ecc4eb0e796779bbf136ac7820544450a4055ab9febf4c8ff",
     "src/library/watch_roots/tests.rs": "68bd98b0ae485533e9f0d5fe340ad8139d41a1fae68218a0a35cdaa8634957b1",
-    "src/licenses.rs": "4aa05a206cbee50b76e9ec364c2cf3d627eba6970a87a035a74f52b0422566f7",
+    "src/licenses.rs": "ceaccf567edf45d474add759018ac094a6b9eff37d2320fefbe817f4f1a1a9fb",
     "src/localization.rs": "6adf674b76f671256579864460444a9a39e5214dbe3a95e85886bf4bf558aaa3",
     "src/localization/tests.rs": "f6dba5b95ae73bc793b358e2b823ac31e438935fb4e259ee53a1daa47a79b306",
     "src/main.rs": "93af91f3402b60bbe4486f62d8afe0932fb2aba0c11551509eb47fdb4ebc857d",
@@ -12779,7 +12779,7 @@
     "src/ui/sampler_editor/tests.rs": "fd87ff58b1722673de39d5a46d7f5ab0094c46caecb6e4944a10320b7ddb6e25",
     "src/ui/sampler_editor/tests/offline.rs": "2fbd804f238c70942214005af56d23649114a1a385641babb7818c33a3f20832",
     "src/ui/sampler_identity_tests.rs": "166b57b422c091ad0e1e24ece3d42c29f869ba5fc35538d4ebdd7123a120f4ad",
-    "src/ui/sampler_pad_tests.rs": "02f3f6323dbc68ecb41fe458b05fe9bb7b9b5c481a66cb4454975c770642e401",
+    "src/ui/sampler_pad_tests.rs": "4810378ef8a426c018ecd6838a49a4f8a4bec3e9cb658f47a8fd883ffb07e4f3",
     "src/ui/session_editor.rs": "556125873855c4249c37eb0ae04bdfbc4bfca646e0e10733b3fb131d0a85a22a",
     "src/ui/session_editor/tests.rs": "03257a161554f07dfb2ff8fc3c856d460b29db15d850c237da84177f7e0bb75c",
     "src/ui/session_editor/worker.rs": "bca125b408b675c26a0734a08e841218972b202d929af2913ac40e9a44d97a75",
@@ -12836,11 +12836,11 @@
     "vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
     "vendor/egui-winit/Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
     "vendor/egui-winit/LICENSE": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
-    "vendor/egui-winit/PATCHES.md": "d30ef5730b9f92f6a469fc6e77178c55bf071e47af634bf490b79ce4e8df4e56",
+    "vendor/egui-winit/PATCHES.md": "94d95ac11b549ae3766d0987c8c3d19b2651e8549bb95165506274b2e9902c9d",
     "vendor/egui-winit/README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
     "vendor/egui-winit/UPSTREAM.json": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
     "vendor/egui-winit/src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
-    "vendor/egui-winit/src/lib.rs": "fd3958e8c1d78ed70fc31582915595c2b596922b0de4cdb8e1c1b761d5c5d1c4",
+    "vendor/egui-winit/src/lib.rs": "a0aadd5116a503bb4486878eb84e48ee8830d4a52ca6b5cb0c5e29ffa035912f",
     "vendor/egui-winit/src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
     "vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
     "vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",

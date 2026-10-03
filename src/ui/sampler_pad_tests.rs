@@ -50,6 +50,7 @@ impl Pads {
                 ..Default::default()
             },
             |ctx| {
+                self.f.app.touch_input.begin(ctx);
                 if let Some(center) = self.cover {
                     egui::Area::new(egui::Id::new("pad-test-occlusion"))
                         .order(egui::Order::Foreground)
@@ -59,6 +60,7 @@ impl Pads {
                         });
                 }
                 egui::CentralPanel::default().show(ctx, |ui| self.f.app.sampler_row(ui, &theme));
+                self.f.app.finish_touch_input(ctx);
             },
         );
         let mut gates = Vec::new();
@@ -282,7 +284,9 @@ fn rejected_pointer_press_has_no_held_identity_or_unmatched_release() {
             ..Default::default()
         },
         |ctx| {
+            pads.f.app.touch_input.begin(ctx);
             egui::CentralPanel::default().show(ctx, |ui| pads.f.app.sampler_row(ui, &theme));
+            pads.f.app.finish_touch_input(ctx);
         },
     );
     assert!(pads.f.app.submission_error.get().is_some());

@@ -566,6 +566,7 @@ impl State {
         if release { self.on_mouse_button_input(winit::event::ElementState::Released,winit::event::MouseButton::Left); }
         self.pointer_pos_in_points = self.mouse_pos_in_points.filter(|_|self.mouse_inside);
         self.egui_input.events.push(egui::Event::PointerGone);
+        if let Some(pos) = self.pointer_pos_in_points { self.egui_input.events.push(egui::Event::PointerMoved(pos)); }
     }
 
     fn on_mouse_button_input(
@@ -1913,6 +1914,18 @@ mod mixed_pointer_tests {
             assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerButton {pos,pressed:false,..}) if *pos==mouse));
             assert_eq!(state.pointer_touch_id,None);
         }
+    }
+    #[test]
+    fn touch_end_and_cancel_restore_hover_only_for_an_inside_physical_cursor() {
+        for release in [true,false] { for inside in [true,false] {
+            let mut state=State::new(egui::Context::default(),ViewportId::ROOT,&NoDisplay,Some(1.0),None,None);
+            let mouse=egui::pos2(10.0,20.0);state.mouse_pos_in_points=Some(mouse);state.mouse_inside=inside;
+            state.pointer_touch_id=Some(1);state.pointer_pos_in_points=Some(egui::pos2(100.0,200.0));
+            state.finish_pointer_touch(release);
+            if inside { assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerMoved(pos)) if *pos==mouse));
+                assert!(matches!(state.egui_input.events[state.egui_input.events.len()-2],egui::Event::PointerGone)); }
+            else { assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerGone))); }
+        }}
     }
     #[test]
     fn cursor_departure_retains_release_coordinates_without_allowing_a_new_press() {
