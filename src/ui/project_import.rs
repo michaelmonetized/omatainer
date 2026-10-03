@@ -295,7 +295,7 @@ impl App {
                 if let Some(error) = &panel.error {
                     ui.colored_label(Color32::LIGHT_RED, error);
                 }
-                if panel.ready && panel.review_view.as_ref() != Some(&view) { panel.cancel(); panel.ready = false; panel.error = Some("Project view changed after review; review the import again".into()); }
+                if panel.pending.as_ref().is_some_and(|ack| ack.state() == Outcome::Pending) && panel.review_view.as_ref() != Some(&view) { panel.cancel(); panel.ready = false; panel.error = Some("Project view changed after review; review the import again".into()); }
                 ui.horizontal(|ui| {
                     if ui
                         .add_enabled(
