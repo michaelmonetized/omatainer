@@ -287,3 +287,58 @@ fn imported_audio_and_unavailable_devices_survive_output_rate_changes_and_empty_
         .iter()
         .all(|clip| clip.kind == crate::engine::ClipKind::Empty));
 }
+
+#[test]
+fn two_saveable_projects_cannot_import_into_an_unsaveable_metadata_envelope() {
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let mut source = capture(&engine, &mut rt);
+    let device = Arc::new(
+        fx::OfflineDevice::new(
+            "org.example.serialized".into(),
+            Some(fx::DeviceState {
+                schema: 1,
+                data: vec![255; 1024 * 1024],
+            }),
+        )
+        .unwrap(),
+    );
+    source.state.tracks[2].fx = vec![
+        project::Effect {
+            id: fx::FxId::Unavailable,
+            on: true,
+            mix: 0.5,
+            p: [0.2; 4],
+            offline: Some(device)
+        };
+        9
+    ];
+    let mut destination = capture(&engine, &mut rt);
+    destination.state.tracks[2].fx = source.state.tracks[2].fx.clone();
+    let cancel = AtomicBool::new(false);
+    let limits = crate::project_file::Limits::default();
+    for state in [&source.state, &destination.state] {
+        crate::project_file::validate_metadata(
+            &crate::project_file::Bundle {
+                state,
+                media: source.media.clone(),
+            },
+            &limits,
+            &cancel,
+        )
+        .unwrap();
+    }
+    let tracks = rt.tracks.len();
+    let revision = engine.project.revision();
+    let error = Request::import(
+        destination,
+        &source.state,
+        &source.media,
+        &selection(&source.state),
+        48_000,
+    )
+    .err()
+    .unwrap();
+    assert!(error.contains("metadata serialization"), "{error}");
+    assert_eq!(rt.tracks.len(), tracks);
+    assert_eq!(engine.project.revision(), revision);
+}

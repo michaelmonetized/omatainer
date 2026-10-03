@@ -24,6 +24,7 @@ pub(super) struct Panel {
     pending: Option<Ack>,
     decision: Option<crossbeam_channel::Sender<()>>,
     ready: bool,
+    review_view: Option<project::UiState>,
     message: String,
     error: Option<String>,
 }
@@ -43,6 +44,7 @@ impl Default for Panel {
             pending: None,
             decision: None,
             ready: false,
+            review_view: None,
             message: String::new(),
             error: None,
         }
@@ -135,7 +137,7 @@ impl Panel {
             }
         }
     }
-    fn start(&mut self, engine: &Engine, review: bool, revision: u64) {
+    fn start(&mut self, engine: &Engine, review: bool, revision: u64, view: project::UiState, identities: Vec<project::WatchIdentity>) {
         if self.busy() {
             return;
         }
@@ -156,6 +158,7 @@ impl Panel {
                     .ok_or("Browse a source project first")?;
                 let (decision, waiting) = crossbeam_channel::bounded(1);
                 self.decision = Some(decision);
+                self.review_view = Some(view.clone());
                 Job::Review {
                     catalog,
                     selection: session::ImportSelection {
@@ -166,6 +169,8 @@ impl Panel {
                         keep_timing: self.keep_timing,
                     },
                     revision,
+                    view,
+                    identities,
                     decision: waiting,
                     work,
                 }
@@ -228,6 +233,8 @@ impl App {
             && !self.project.committing()
             && !self.engine.cmd.performance().protected();
         let revision = self.snap.project_revision;
+        let view = self.project_view();
+        let identities = self.project_watch_identities();
         egui::Window::new("Import project material")
             .open(&mut open)
             .default_width(620.0)
@@ -248,7 +255,7 @@ impl App {
                         )
                     });
                     if ui.button("Browse source project").clicked() {
-                        panel.start(&self.engine, false, revision);
+                        panel.start(&self.engine, false, revision, view.clone(), identities.clone());
                     }
                     if let Some(catalog) = &panel.catalog {
                         ui.label(format!(
@@ -275,7 +282,7 @@ impl App {
                             "Keep destination tempo and meter; use source beat positions",
                         );
                         if ui.button("Review selected project material").clicked() {
-                            panel.start(&self.engine, true, revision);
+                            panel.start(&self.engine, true, revision, view.clone(), identities.clone());
                         }
                     }
                 });
@@ -288,6 +295,7 @@ impl App {
                 if let Some(error) = &panel.error {
                     ui.colored_label(Color32::LIGHT_RED, error);
                 }
+                if panel.ready && panel.review_view.as_ref() != Some(&view) { panel.cancel(); panel.ready = false; panel.error = Some("Project view changed after review; review the import again".into()); }
                 ui.horizontal(|ui| {
                     if ui
                         .add_enabled(

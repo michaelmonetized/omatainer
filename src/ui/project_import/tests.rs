@@ -275,3 +275,12 @@ fn native_cancellation_and_source_or_destination_changes_refuse_reviewed_import(
         .unwrap()
         .contains("Source project changed"));
 }
+
+#[test]
+fn native_project_view_change_invalidates_reviewed_saveability() {
+    let files=Files::new();let mut gui=Gui::new(&files);let path=source(&mut gui,&files);
+    let tracks=gui.rt.tracks.len();gui.browse(&path);gui.review();
+    gui.app.lib_filter="View changed after review".into();gui.frame(vec![]);
+    gui.wait(|g| !g.app.project_import.busy());assert_eq!(gui.rt.tracks.len(),tracks);
+    assert!(!gui.app.project_import.ready);
+}
