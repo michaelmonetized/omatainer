@@ -310,6 +310,14 @@ Open native project and track templates. New template files and duplicates never
 
 Workflow: Save and reopen.
 
+### Project import
+
+Reuse selected project material
+
+Browse a native project, select tracks and scenes, review timing and device conflicts, then apply one undoable import. Source files and existing tracks remain intact.
+
+Workflow: Save and reopen.
+
 ### Template file paths
 
 Native editable templates

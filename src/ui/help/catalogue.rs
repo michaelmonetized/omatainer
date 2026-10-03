@@ -93,6 +93,7 @@ controls! {
     DisplayWaveform, "Waveform contrast", "1 = original paint; 3 = foreground", "Raise trace visibility without changing audio amplitude, seek positions or waveform geometry.", Dj;
     DisplayLevel, "Level contrast", "1 = original paint; 3 = foreground", "Raise the visibility of the smoothed signal activity strip. It is not a calibrated peak, loudness or clipping measurement; changing its contrast does not change audio.", Dj;
     TemplateOpen, "Templates", "Native editable templates", "Open native project and track templates. New template files and duplicates never replace an existing file.", Projects;
+    ProjectImportOpen, "Project import", "Reuse selected project material", "Browse a native project, select tracks and scenes, review timing and device conflicts, then apply one undoable import. Source files and existing tracks remain intact.", Projects;
     TemplatePath, "Template file paths", "Native editable templates", "Choose an absolute .omtemplate file, a new backup archive or a new import folder.", Projects;
     TemplateSave, "Save template", "Native editable templates", "Capture project state or selected-track devices and routing. Track templates exclude notes, clips and launch state.", Projects;
     TemplateInspect, "Inspect template", "Native editable templates", "Validate the native file and retain its exact fingerprint, dependency manifest and desired hardware names.", Projects;

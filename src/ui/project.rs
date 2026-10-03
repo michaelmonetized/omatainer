@@ -398,7 +398,7 @@ impl App {
     fn guard_project_drafts(&mut self) -> bool {
         let dependencies = self.dependencies.guard_replacement();
         let timing = self.timing.guard_replacement();
-        let templates = self.templates.busy();
+        let templates = self.templates.busy() || self.project_import.busy();
         let blocked = dependencies || timing || templates;
         if blocked { self.project.message = Some(if templates {
             "Finish or cancel the pending template operation before replacing the project.".into()
@@ -982,6 +982,7 @@ impl App {
                             if ui.button("Project dependencies…").help(ui, HelpControl::DependenciesOpen).clicked() { self.dependencies.open = true; ui.close(); }
                             if ui.button("Portable project…").help(ui, HelpControl::PortableOpen).clicked() { self.portability.open = true; ui.close(); }
                             if ui.button("Project and track templates…").help(ui, HelpControl::TemplateOpen).clicked() { self.templates.open = true; ui.close(); }
+                            if ui.button("Import from another project…").help(ui, HelpControl::ProjectImportOpen).clicked() { self.project_import.open = true; ui.close(); }
                             if ui.button("Tempo and meter…").help(ui, HelpControl::TimingOpen).clicked() { self.open_timing(); ui.close(); }
                             let response = ui.button("New project");
                             help::annotate(ui, &response, help::Control::ProjectNew);
