@@ -304,3 +304,28 @@ fn bounded_international_fields_and_query_errors_are_explicit() {
     .validate()
     .is_err());
 }
+
+#[test]
+fn malformed_reserved_predicates_are_errors_and_plain_field_names_remain_searchable() {
+    for query in [
+        "color:red",
+        "color:",
+        "rating>4",
+        "rating<4",
+        "rating=4",
+        "rating:4",
+        "rating!=4",
+        "rating>=bad",
+    ] {
+        assert!(Rule::search(query).is_err(), "{query}");
+    }
+    for query in ["rating", "color", "colorful track", "rating day"] {
+        assert_eq!(
+            Rule::search(query).unwrap(),
+            (query.into(), Rule::default())
+        );
+    }
+    let (_, rule) = Rule::search("rating>=4 color:#FF6600 tag:clean").unwrap();
+    assert_eq!(rule.minimum_rating, 4);
+    assert_eq!(rule.color, Some([255, 102, 0]));
+}
