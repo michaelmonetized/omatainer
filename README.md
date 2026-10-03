@@ -765,3 +765,5 @@ source can require previously obtained packages. See Help → Offline operation
 and the [network-denied qualification boundary](docs/validation/issue-103-offline.md).
 
 Interface language and Unicode search are described in [international text](docs/localization.md). Preferences retain English, Spanish or German per profile; untranslated technical text has an English fallback.
+
+Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions, capture logical keys, reset defaults and export bindings without other profile settings.

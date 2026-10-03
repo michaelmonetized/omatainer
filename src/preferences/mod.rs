@@ -1,6 +1,7 @@
 //! Versioned user preferences. Profiles contain supported app behavior only;
 //! audio selection is consumed at startup or by the confirmed audio-owner workflow.
 pub mod recovery;
+pub(crate) mod shortcuts;
 pub mod storage;
 pub mod worker;
 use serde::{Deserialize, Serialize};

@@ -86,6 +86,52 @@ impl Gui {
 }
 
 #[test]
+fn keyboard_only_palette_search_cancel_and_run_never_dispatch_typing_as_music() {
+    let mut gui = Gui::new();
+    gui.frame(vec![], Default::default());
+    let before = gui.command_count();
+    let chord = egui::Modifiers { ctrl: true, command: true, shift: true, ..Default::default() };
+    gui.stroke(Key::P, chord, None);
+    assert!(gui.fixture.app.command_palette.open);
+    for (key, text) in [(Key::Q,"q"), (Key::Space," "), (Key::Num1,"1"), (Key::A,"a")] {
+        gui.stroke(key, Default::default(), Some(text));
+        assert_eq!(gui.command_count(), before);
+    }
+    gui.stroke(Key::Escape, Default::default(), None);
+    assert!(!gui.fixture.app.command_palette.open);
+    assert_eq!(gui.command_count(), before);
+    gui.frame(vec![], Default::default());
+    gui.frame(vec![], Default::default());
+    gui.stroke(Key::P, chord, None);
+    gui.frame(vec![egui::Event::Text("Play / stop session".into())], Default::default());
+    assert_eq!(gui.command_count(), before);
+    gui.stroke(Key::Enter, Default::default(), None);
+    assert_eq!(gui.command_count(), before + 1);
+    assert!(gui.fixture.rt.playing);
+    assert!(!gui.fixture.app.command_palette.open);
+}
+
+#[test]
+fn palette_respects_saved_chord_collisions_and_keyboard_layout_logical_keys() {
+    let mut gui = Gui::new();
+    let active = gui.fixture.app.settings.applied.active.clone();
+    gui.fixture.app.settings.applied.profiles.get_mut(&active).unwrap().shortcuts.insert("play_a".into(), Some(crate::preferences::Shortcut { key:"P".into(),ctrl:true,shift:true,alt:false }));
+    assert_eq!(command_palette::chord(gui.fixture.app.settings.profile()), Some(Key::K));
+    gui.frame(vec![], Default::default());
+    let before = gui.command_count();
+    let modifiers = egui::Modifiers { ctrl: true, command: true, shift: true, ..Default::default() };
+    gui.frame(vec![egui::Event::Key { key:Key::K, physical_key:Some(Key::Q), pressed:true, repeat:false, modifiers }], modifiers);
+    gui.frame(vec![egui::Event::Key { key:Key::K, physical_key:Some(Key::Q), pressed:false, repeat:false, modifiers }], modifiers);
+    assert!(gui.fixture.app.command_palette.open);
+    assert_eq!(gui.command_count(), before);
+    gui.frame(vec![egui::Event::Ime(egui::ImeEvent::Preedit("東京".into()))], Default::default());
+    gui.stroke(Key::Enter, Default::default(), None);
+    assert!(gui.fixture.app.command_palette.open);
+    assert_eq!(gui.command_count(), before);
+    gui.stroke(Key::Escape, Default::default(), None);
+}
+
+#[test]
 fn actual_focused_search_types_all_bound_characters_without_global_commands() {
     let mut gui = Gui::new();
     gui.focus_search();
