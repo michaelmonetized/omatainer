@@ -160,9 +160,12 @@ impl Rule {
         let mut ordinary = Vec::new();
         let mut seen = HashSet::new();
         for term in query.split_whitespace() {
-            let kind = if term.starts_with("rating>=") {
+            let kind = if term
+                .strip_prefix("rating")
+                .is_some_and(|suffix| suffix.starts_with(['>', '<', '=', ':', '!']))
+            {
                 Some("rating")
-            } else if term.starts_with("color:#") {
+            } else if term.starts_with("color:") {
                 Some("color")
             } else if term.starts_with("group:") {
                 Some("group")
@@ -178,11 +181,15 @@ impl Rule {
                     "Use each annotation search field once; all supplied fields combine".into(),
                 );
             }
+            if kind == Some("rating") && !term.starts_with("rating>=") {
+                return Err("Use rating>=0 through rating>=5".into());
+            }
             if let Some(rating) = term.strip_prefix("rating>=") {
                 rule.minimum_rating = rating
                     .parse()
                     .map_err(|_| "Use rating>=0 through rating>=5")?;
-            } else if let Some(color) = term.strip_prefix("color:#") {
+            } else if let Some(color) = term.strip_prefix("color:") {
+                let color = color.strip_prefix('#').ok_or("Use color:#RRGGBB")?;
                 if color.len() != 6 {
                     return Err("Use color:#RRGGBB".into());
                 }
