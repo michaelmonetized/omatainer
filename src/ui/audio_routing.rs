@@ -669,7 +669,7 @@ impl App {
                 ui.label(format!("Captured input frames: {} · missing frames: {} · queue overflow: {}", handle.shared().captured.load(Ordering::Relaxed), handle.shared().underrun.load(Ordering::Relaxed), handle.shared().overflow.load(Ordering::Relaxed)));
                 ui.collapsing(tr!("Physical channel meters"), |ui| {
                     let channels = self.engine.output_info().map_or(0, |output| usize::from(output.plan.channels));
-                    for channel in 0..channels { ui.horizontal(|ui| {
+                    for channel in 0..channels.min(MAX_PHYSICAL_CHANNELS) { ui.horizontal(|ui| {
                         ui.label(format!("Output {}: {:.5}", channel + 1, f32::from_bits(handle.shared().output[channel].load(Ordering::Relaxed))));
                         if ui.button(format!("Test output {} at −40 dBFS", channel + 1)).clicked() { if let Err(error) = self.engine.test_output(channel as u16) { panel.error = Some(error); } }
                     }); }

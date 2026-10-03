@@ -12677,7 +12677,7 @@
     "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
     "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
     "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
-    "src/ui/audio_routing.rs": "ce9b139686bbd4fee45de41e9ab0533edfb345fb92c8193b6a7b968f79078e51",
+    "src/ui/audio_routing.rs": "32188c5391c2237d0c48b48370b13f97ca4669eef8bad65b080efb0970f93d72",
     "src/ui/audio_routing/tests.rs": "dda5649f85cf86ad740f0b897a827d89925109f8aedab8f9de500a1df00ce2c0",
     "src/ui/audio_routing/worker.rs": "fcd339b113571c06dfaaef917d67134553c6f87ec6a281c76e12b27c7aa973b9",
     "src/ui/audio_settings.rs": "71f07e2b1dce6309dc73b351fc7b4aac682c50979b8a2b7256a27d62a5867a77",
