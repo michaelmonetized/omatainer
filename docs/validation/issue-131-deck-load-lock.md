@@ -1,6 +1,6 @@
 # Playing deck load protection: issue 131
 
-Each platter has a Lock playing deck checkbox. Mouse, keyboard, dropped-file, MIDI, IPC and queued renderer loads/ejects respect the same lock while the deck plays or is touched. Undo/Redo cannot replace that active locked media. Admission is checked again at the renderer, so locking a deck after a load is queued still protects it.
+Each platter footer has a Lock checkbox with the full deck-specific name in accessibility and help. Mouse, keyboard, dropped-file, MIDI, IPC and queued renderer loads/ejects respect the same lock while the deck plays or is touched. Undo/Redo cannot replace that active locked media. Admission is checked again at the renderer, so locking a deck after a load is queued still protects it.
 
 A native replacement review captures the current deck track and selected replacement. Cancel keeps playing. Explicit acknowledgement authorizes one receipt bound to the reviewed current media key. Decoding proceeds while the old track stays loaded and playing. Failed decoding preserves the old track. A successful replacement stops the target deck, and a stale approval cannot replace another track. Global Performance mode still requires pausing and releasing the deck.
 

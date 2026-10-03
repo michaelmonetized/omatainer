@@ -1077,12 +1077,6 @@ impl App {
     fn platter_col(&mut self, ui: &mut Ui, t: &Theme, d: usize, snap: &crate::engine::DeckSnap, col: Color32, wave_h: f32) {
         ui.vertical(|ui| {
             ui.set_width(wave_h);
-            let mut locked = snap.load_locked;
-            let response = ui.checkbox(&mut locked, tr!("Lock playing deck"));
-            response.widget_info(||egui::WidgetInfo::selected(egui::WidgetType::Checkbox, response.enabled(), locked, crate::localization::format("Deck {}: Lock playing deck", &[((b'A' + d as u8) as char).to_string()])));
-            help::annotate(ui, &response, HelpControl::DeckLoadLock);
-            accessibility::focus(ui, &response);
-            if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             let readout = Readout::from_snapshot(snap, self.deck_time[d]);
             let hit = platter(ui, t, snap, &readout, col, wave_h, |delta, touch| {
                 self.send(Command::DeckTouch { deck: d as u8, on: touch });
@@ -1098,8 +1092,7 @@ impl App {
             } else if hit.click {
                 self.send(Command::DeckPlay { deck: d as u8 });
             }
-            // This row uses the same existing 28 px footer as the wave fader;
-            // it does not shrink the platter or add height to the scratch area.
+            ui.horizontal(|ui| {
             ui.push_id(("deck-time", d), |ui| {
                 let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(t.text_size(11.0))).help(ui, HelpControl::DeckTime);
                 egui::Popup::menu(&button)
@@ -1114,6 +1107,13 @@ impl App {
                         .range(0..=deck_time::MAX_WARNING_LEAD_SECONDS).suffix(" s")).help(ui, HelpControl::RunoutWarning);
                     ui.small("0 = off · repeating loops suppress alerts");
                 });
+            });
+            let mut locked = snap.load_locked;
+            let response = ui.checkbox(&mut locked, RichText::new(tr!("Lock")).size(t.text_size(11.0)));
+            response.widget_info(||egui::WidgetInfo::selected(egui::WidgetType::Checkbox, response.enabled(), locked, crate::localization::format("Deck {}: Lock playing deck", &[((b'A' + d as u8) as char).to_string()])));
+            help::annotate(ui, &response, HelpControl::DeckLoadLock);
+            accessibility::focus(ui, &response);
+            if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             });
         });
     }

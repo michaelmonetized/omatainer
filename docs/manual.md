@@ -2416,7 +2416,7 @@ Workflow: Record a held note.
 
 ### Search crate
 
-AND terms and explicit fields
+Text filter · AND terms and explicit fields
 
 Combine ordinary words or quoted field values with AND. Text fields: title, artist, key (exact), tag (exact), group and note. Use bpm:120..128, bpm>=120, length:3:00..4:00, rating>=4, played:yes/no or color:#RRGGBB. Length also accepts seconds; ranges include both ends. Unknown fields and malformed values show an error and no results. Played means renderer-confirmed playback of the current source/version. Text editing owns its keys; filtering never changes loaded media.
 

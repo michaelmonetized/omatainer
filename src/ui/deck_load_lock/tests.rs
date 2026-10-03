@@ -74,6 +74,36 @@ fn selection() -> Selection {
     }
 }
 #[test]
+fn actual_native_checkbox_has_deck_identity_and_toggles_only_its_renderer_lock() {
+    use egui::accesskit::{Action, ActionRequest, Role};
+    let mut fixture = Fixture::new(256);
+    sync(&mut fixture);
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let mut time = 1.0;
+    let mut run = |fixture: &mut Fixture, events| {
+        time += 0.1;
+        ctx.run(egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
+            time: Some(time), events, ..Default::default()
+        }, |ctx|fixture.app.update_frame(ctx))
+    };
+    let _ = run(&mut fixture, vec![]);
+    let output = run(&mut fixture, vec![]);
+    let (id, node) = output.platform_output.accesskit_update.as_ref().unwrap().nodes.iter()
+        .find(|(_, node)|node.label() == Some("Deck A: Lock playing deck")).unwrap();
+    assert_eq!(node.role(), Role::CheckBox);
+    let id = *id;
+    for expected in [true, false] {
+        let _ = run(&mut fixture, vec![egui::Event::AccessKitActionRequest(ActionRequest { target: id, action: Action::Click, data: None })]);
+        fixture.rt.process(&mut [0.0; 512]);
+        sync(&mut fixture);
+        assert_eq!(fixture.rt.decks[0].load_locked, expected);
+        assert!(!fixture.rt.decks[1].load_locked);
+        let _ = run(&mut fixture, vec![]);
+    }
+}
+#[test]
 fn actual_mouse_keyboard_drop_and_factory_midi_load_routes_keep_the_locked_deck_playing() {
     use crate::ui::test_support::{crate_frame, click as crate_click};
     let mut fixture = fixture();

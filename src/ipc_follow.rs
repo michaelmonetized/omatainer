@@ -41,6 +41,10 @@ struct SmallStatus {
     deck_a_playing: bool,
     #[serde(rename = "deckBPlaying")]
     deck_b_playing: bool,
+    #[serde(rename = "deckALoadLocked")]
+    deck_a_load_locked: bool,
+    #[serde(rename = "deckBLoadLocked")]
+    deck_b_load_locked: bool,
 }
 impl SmallStatus {
     fn capture(snapshot: &Snapshot, commands: &CommandPort) -> Self {
@@ -63,6 +67,8 @@ impl SmallStatus {
             performance: commands.performance().status(),
             deck_a_playing: snapshot.decks.first().is_some_and(|d| d.playing),
             deck_b_playing: snapshot.decks.get(1).is_some_and(|d| d.playing),
+            deck_a_load_locked: snapshot.decks.first().is_some_and(|d| d.load_locked),
+            deck_b_load_locked: snapshot.decks.get(1).is_some_and(|d| d.load_locked),
         }
     }
 }

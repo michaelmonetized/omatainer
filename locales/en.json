@@ -948,6 +948,7 @@
   "Local socket: {}": "Local socket: {0}",
   "Local source/version cache": "Local source/version cache",
   "Local-only diagnostics. No upload client exists. Review the exact JSON, export it, and choose separately whether to share that file.": "Local-only diagnostics. No upload client exists. Review the exact JSON, export it, and choose separately whether to share that file.",
+  "Lock": "Lock",
   "Lock playing deck": "Lock playing deck",
   "Logical device configuration": "Logical device configuration",
   "Long ago": "Long ago",

@@ -152,6 +152,15 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
     assert_eq!(changed["master_fx"]["types"][2], "echo");
     assert_eq!(changed["master_fx"]["wet"][2], 0.75);
     assert_eq!(cache.serializations, 4);
+    snapshot.decks[0].load_locked = true;
+    let changed: Value = serde_json::from_str(cache.update(&snapshot, &commands, &id).unwrap()).unwrap();
+    assert_eq!(changed["deckALoadLocked"], true);
+    assert_eq!(changed["deckBLoadLocked"], false);
+    assert_eq!(cache.serializations, 5);
+    let counts = crate::engine::test_alloc::measure(|| {
+        for _ in 0..1000 { assert!(cache.update(&snapshot, &commands, &id).is_ok()); }
+    });
+    assert_eq!(counts, crate::engine::test_alloc::Counts::default());
 }
 
 #[test]
