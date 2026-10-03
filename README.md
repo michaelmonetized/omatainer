@@ -237,6 +237,20 @@ crate as a view preference; they never replace this independent catalog. A
 missing saved crate falls back to All tracks. Collection edits are unavailable
 during Performance protection; browsing existing crates remains available.
 
+**annotations…** stores ratings (0–5), colors, performance groups, tags and notes
+against stable track IDs. Capture the selected track or the filtered batch,
+select the fields to replace, review, then apply. Unselected fields keep each
+track's values. Clearing a selected field is explicit. Edits use the catalog
+save receipt and never write audio files or change loaded sound.
+
+The crate table includes these fields. Ordinary search includes groups, tags and
+notes; combine `rating>=4 tag:clean color:#FF6600 group:peak note:request` for
+annotation filters. Each field accepts one predicate; search terms after a colon
+are single words. Invalid predicates show an error. Saved annotation rules on
+empty named crates update membership from the published library automatically.
+The rule editor accepts phrases and preserves existing manual crates. Ratings,
+notes and rules survive restart, relocation and library metadata export/import.
+
 **library… → Import music files/folders** accepts one absolute path per line,
 including individual files and nested folders. It merges readable supported audio
 without stopping either deck. Progress shows skipped reasons and incomplete

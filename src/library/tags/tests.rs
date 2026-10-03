@@ -211,7 +211,7 @@ fn embedded_observations_win_filename_analysis_and_user_clears_survive_restart()
     }
     let reopened = Store::open(dir.path()).unwrap();
     assert_eq!(reopened.catalog.tracks, catalog.tracks);
-    assert_eq!(reopened.catalog.schema, 8);
+    assert_eq!(reopened.catalog.schema, Catalog::default().schema);
 }
 
 #[test]

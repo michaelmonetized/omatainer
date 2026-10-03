@@ -32,6 +32,7 @@ pub(in crate::ui) enum Action {
         before: Option<CrateId>,
     },
     Edit(Edit<TrackId>),
+    Annotate { ids: Vec<TrackId>, patch: crate::library::annotations::Patch },
     Read,
 }
 impl Action {
@@ -39,6 +40,13 @@ impl Action {
         // Only bounded shape checks at UI admission. Duplicate membership and
         // whole-forest validation/allocation remain on the metadata worker.
         let invalid = |text: &str| Admission::Invalid(text.into());
+        if let Self::Annotate { ids, patch } = self {
+            if ids.is_empty() || ids.len() > 100000 || patch.is_empty() || ids.iter().any(|id| id.0.len() != 32 || !id.0.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) { return Err(invalid("Select 1–100000 stable tracks and at least one changed annotation field")); }
+            patch.apply(&crate::library::annotations::Annotations::default()).map_err(|e|invalid(&e))?;
+            return Ok(());
+        }
+        if let Self::Edit(Edit::SetAnnotationRule { rule: Some(rule), .. }) = self { rule.validate().map_err(|e|invalid(&e))?; }
+
         let name = match self {
             Self::Create { name, .. } | Self::Edit(Edit::Rename { name, .. }) => Some(name),
             Self::Edit(Edit::Create { .. }) => {
@@ -81,7 +89,7 @@ impl Action {
         let anchor = |id: &Option<CrateId>| id.as_ref().is_none_or(crate_id);
         let shape = match self {
             Self::Create { parent, before, .. } => anchor(parent) && anchor(before),
-            Self::Edit(Edit::Rename { id, .. } | Edit::DeleteSubtree { id }) => crate_id(id),
+            Self::Edit(Edit::Rename { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. }) => crate_id(id),
             Self::Edit(Edit::MoveCrate { id, parent, before }) => {
                 crate_id(id) && anchor(parent) && anchor(before)
             }
@@ -100,6 +108,7 @@ impl Action {
                     && before.as_ref().is_none_or(|id| valid(&id.0))
             }
             Self::Read => true,
+            Self::Annotate { .. } => unreachable!(),
             Self::Edit(Edit::Create { .. }) => false,
         };
         if !shape || members.is_some_and(|members| members.iter().any(|id| !valid(&id.0))) {
@@ -321,6 +330,10 @@ fn apply_using(
             return Ok(());
         }
         let mut candidate = store.catalog.clone();
+        let changed = if let Action::Annotate { ids, patch } = &action {
+            if expected != candidate.crates.revision() { return Err(Failure::Invalid("Crate selection changed; review the batch again".into())); }
+            candidate.annotate(ids, patch).map_err(Failure::Invalid)?
+        } else {
         let edit = match action {
             Action::Create {
                 name,
@@ -341,11 +354,10 @@ fn apply_using(
                 }
             }
             Action::Edit(edit) => edit,
-            Action::Read => unreachable!(),
+            Action::Read | Action::Annotate { .. } => unreachable!(),
         };
-        let changed = candidate
-            .edit_crates(expected, &edit)
-            .map_err(Failure::Invalid)?;
+        candidate.edit_crates(expected, &edit).map_err(Failure::Invalid)?
+        };
         checkpoint(0);
         check()?;
         let guard = work

@@ -94,6 +94,22 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Track ratings, colors and annotations
+
+Stable track metadata; ratings 0–5
+
+Capture selected or filtered stable IDs, select changed fields, Review and Apply. Ratings, colors, groups, tags and multiline notes are stored in library metadata; audio bytes and loaded sound are unchanged. Unselected fields preserve each track’s own values. Search also matches annotations; explicit filters include rating>=4, tag:clean, color:#FF6600, group:peak and note:request. Cancel can stop a pending write before its publication claim; closing keeps admitted writes running.
+
+Workflow: Prepare a DJ deck.
+
+### Automatic annotation crate rules
+
+Saved predicates over current library annotations
+
+Select an empty named crate, choose minimum rating, optional color, group substring, exact tag and notes substring, then save its rule. Conditions combine and membership updates with annotations after reload or restart. Manual member edits are unavailable on a rule crate. Removing the rule leaves an empty manual crate; populated manual crates are protected from conversion.
+
+Workflow: Prepare a DJ deck.
+
 ### Licensed music providers
 
 Explicit non-commercial consent; one original-pitch preview

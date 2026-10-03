@@ -17,6 +17,7 @@ use std::{
 
 mod content;
 pub(crate) mod tags;
+pub(crate) mod annotations;
 pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;
@@ -30,7 +31,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 8;
+const SCHEMA: u32 = 9;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -69,6 +70,8 @@ pub(crate) struct Version {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Track {
     pub id: TrackId,
+    #[serde(default, skip_serializing_if = "annotations::Annotations::is_empty")]
+    pub annotations: annotations::Annotations,
     pub source: LibSource,
     pub current: usize,
     // Replaced bytes do not inherit preparation, but their old prepared version
@@ -180,6 +183,7 @@ impl Catalog {
             {
                 return Err("invalid or duplicate track identity".into());
             }
+            track.annotations.validate()?;
             validate_source(&track.source)?;
             if self.index.insert(track.source.clone(), i).is_some() {
                 return Err("duplicate library location".into());
@@ -259,6 +263,7 @@ impl Catalog {
                 let i = self.tracks.len();
                 self.index.insert(source.clone(), i);
                 self.tracks.push(Track {
+                    annotations: Default::default(),
                     id,
                     source,
                     current: 0,
@@ -348,7 +353,7 @@ impl Catalog {
                 let existing = &mut candidate.tracks[index];
                 if existing != &track {
                     let pristine = |t: &Track| {
-                        t.versions.len() == 1
+                        t.annotations.is_empty() && t.versions.len() == 1
                             && t.versions[0].preparation == Preparation::default()
                             && t.versions[0].metadata.last_play.is_none()
                             && t.versions[0].metadata.bpm.origin == Origin::Builtin
@@ -465,8 +470,18 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     if schema.is_some_and(|schema| schema < 8) {
         tags::reject_legacy_fields(&header)?;
     }
+    if schema.is_some_and(|version| version < 9) && (
+        header.get("tracks").and_then(|v|v.as_array()).is_some_and(|tracks| tracks.iter().any(|track|track.get("annotations").is_some()))
+        || header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("annotation_rule").is_some()))) {
+        return Err("Track annotations and smart annotation rules require library schema 9; original file preserved".into());
+    }
     let mut catalog = match schema {
-        Some(8) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(9) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(8) => {
+            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            old.schema = SCHEMA;
+            old
+        },
         Some(7) => {
             let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
@@ -495,6 +510,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
                     .tracks
                     .into_iter()
                     .map(|track| Track {
+                        annotations: Default::default(),
                         id: track.id,
                         source: track.source,
                         current: 0,

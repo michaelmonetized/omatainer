@@ -405,6 +405,7 @@ fn node_and_membership_limits_are_validated_before_commit() {
     for value in 0..MAX_CRATES as u32 {
         forest.roots.push(id(value));
         forest.nodes.push(Node {
+            annotation_rule: None,
             id: id(value),
             name: value.to_string(),
             children: vec![],

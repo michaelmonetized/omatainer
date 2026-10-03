@@ -48,6 +48,7 @@ fn fixture() -> (Catalog, SourceRef, Version) {
     };
     let mut catalog = Catalog::default();
     catalog.tracks.push(Track {
+        annotations: Default::default(),
         id: reference.track.clone(),
         source,
         current: 0,
