@@ -8,6 +8,8 @@ Physical MouseInput uses those coordinates even while touch is active. Touch
 end/cancel retains the physical position after emitting its ordinary PointerGone,
 so a stationary physical release is still forwarded. An inside physical cursor
 regains hover after the touch's gone sequence; outside cursors stay gone. CursorLeft removes hover and refuses new presses, but retains the last physical
-coordinates for release.
+coordinates for release. Physical buttons preserve active touch coordinates;
+finishing a touch uses its native event location even after physical cursor movement.
+An outside physical release ends with PointerGone so it cannot leave stale hover.
 The adapter tests cover stationary release after end/cancel and stationary press
 during touch. No pressure driver or new platform input backend is added.

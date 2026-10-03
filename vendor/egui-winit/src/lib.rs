@@ -555,14 +555,18 @@ impl State {
     /// Forward a physical button using the physical cursor, independently of touch.
     /// Takes native button state and button; returns no value and appends its pointer event.
     fn on_physical_mouse_button_input(&mut self, state: winit::event::ElementState, button: winit::event::MouseButton) {
+        let touch_pos = self.pointer_pos_in_points;
         self.pointer_pos_in_points = if self.mouse_inside || state == winit::event::ElementState::Released { self.mouse_pos_in_points } else { None };
         self.on_mouse_button_input(state,button);
+        self.pointer_pos_in_points = if self.pointer_touch_id.is_some() && self.mouse_inside { touch_pos } else { self.mouse_pos_in_points.filter(|_|self.mouse_inside) };
+        if !self.mouse_inside && state == winit::event::ElementState::Released { self.egui_input.events.push(egui::Event::PointerGone); }
     }
 
     /// Finish emulated pointer ownership while retaining coordinates for stationary mouse releases.
-    /// Takes whether to emit a touch release; returns no value and removes touch hover.
-    fn finish_pointer_touch(&mut self, release: bool) {
+    /// Takes whether to release and the native touch location; returns no value and removes touch hover.
+    fn finish_pointer_touch(&mut self, release: bool, touch_pos: egui::Pos2) {
         self.pointer_touch_id = None;
+        self.pointer_pos_in_points = Some(touch_pos);
         if release { self.on_mouse_button_input(winit::event::ElementState::Released,winit::event::MouseButton::Left); }
         self.pointer_pos_in_points = self.mouse_pos_in_points.filter(|_|self.mouse_inside);
         self.egui_input.events.push(egui::Event::PointerGone);
@@ -650,6 +654,7 @@ impl State {
 
     fn on_touch(&mut self, window: &Window, touch: &winit::event::Touch) {
         let pixels_per_point = pixels_per_point(&self.egui_ctx, window);
+        let pos = egui::pos2(touch.location.x as f32 / pixels_per_point, touch.location.y as f32 / pixels_per_point);
 
         // Emit touch event
         self.egui_input.events.push(egui::Event::Touch {
@@ -661,10 +666,7 @@ impl State {
                 winit::event::TouchPhase::Ended => egui::TouchPhase::End,
                 winit::event::TouchPhase::Cancelled => egui::TouchPhase::Cancel,
             },
-            pos: egui::pos2(
-                touch.location.x as f32 / pixels_per_point,
-                touch.location.y as f32 / pixels_per_point,
-            ),
+            pos,
             force: match touch.force {
                 Some(winit::event::Force::Normalized(force)) => Some(force as f32),
                 Some(winit::event::Force::Calibrated {
@@ -693,8 +695,8 @@ impl State {
                 winit::event::TouchPhase::Moved => {
                     self.on_cursor_moved(window, touch.location);
                 }
-                winit::event::TouchPhase::Ended => self.finish_pointer_touch(true),
-                winit::event::TouchPhase::Cancelled => self.finish_pointer_touch(false),
+                winit::event::TouchPhase::Ended => self.finish_pointer_touch(true, pos),
+                winit::event::TouchPhase::Cancelled => self.finish_pointer_touch(false, pos),
             }
         }
     }
@@ -1909,7 +1911,7 @@ mod mixed_pointer_tests {
             let mouse=egui::pos2(10.0,20.0);state.mouse_pos_in_points=Some(mouse);state.mouse_inside=true;
             state.on_physical_mouse_button_input(winit::event::ElementState::Pressed,winit::event::MouseButton::Left);
             state.pointer_touch_id=Some(1);state.pointer_pos_in_points=Some(egui::pos2(100.0,200.0));
-            state.finish_pointer_touch(release);
+            state.finish_pointer_touch(release,egui::pos2(100.0,200.0));
             state.on_physical_mouse_button_input(winit::event::ElementState::Released,winit::event::MouseButton::Left);
             assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerButton {pos,pressed:false,..}) if *pos==mouse));
             assert_eq!(state.pointer_touch_id,None);
@@ -1921,7 +1923,7 @@ mod mixed_pointer_tests {
             let mut state=State::new(egui::Context::default(),ViewportId::ROOT,&NoDisplay,Some(1.0),None,None);
             let mouse=egui::pos2(10.0,20.0);state.mouse_pos_in_points=Some(mouse);state.mouse_inside=inside;
             state.pointer_touch_id=Some(1);state.pointer_pos_in_points=Some(egui::pos2(100.0,200.0));
-            state.finish_pointer_touch(release);
+            state.finish_pointer_touch(release,egui::pos2(100.0,200.0));
             if inside { assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerMoved(pos)) if *pos==mouse));
                 assert!(matches!(state.egui_input.events[state.egui_input.events.len()-2],egui::Event::PointerGone)); }
             else { assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerGone))); }
@@ -1934,7 +1936,9 @@ mod mixed_pointer_tests {
         state.on_physical_mouse_button_input(winit::event::ElementState::Pressed,winit::event::MouseButton::Left);
         assert!(state.egui_input.events.is_empty());
         state.on_physical_mouse_button_input(winit::event::ElementState::Released,winit::event::MouseButton::Left);
-        assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerButton {pos,pressed:false,..}) if *pos==mouse));
+        assert!(matches!(state.egui_input.events[state.egui_input.events.len()-2],egui::Event::PointerButton {pos,pressed:false,..} if pos==mouse));
+        assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerGone)));
+        assert_eq!(state.pointer_pos_in_points,None);
     }
     #[test]
     fn stationary_physical_press_during_touch_uses_its_own_position() {
@@ -1944,5 +1948,20 @@ mod mixed_pointer_tests {
         state.on_physical_mouse_button_input(winit::event::ElementState::Pressed,winit::event::MouseButton::Left);
         assert!(matches!(state.egui_input.events.last(),Some(egui::Event::PointerButton {pos,pressed:true,..}) if *pos==mouse));
         assert_eq!(state.pointer_touch_id,Some(1));
+        assert_eq!(state.pointer_pos_in_points,Some(egui::pos2(100.0,200.0)));
+    }
+    #[test]
+    fn touch_release_uses_native_location_after_physical_motion_and_button_events() {
+        for inside in [true,false] {
+            let mut state=State::new(egui::Context::default(),ViewportId::ROOT,&NoDisplay,Some(1.0),None,None);
+            let mouse=egui::pos2(10.0,20.0);state.mouse_pos_in_points=Some(mouse);state.mouse_inside=inside;
+            state.pointer_touch_id=Some(1);state.pointer_pos_in_points=Some(egui::pos2(100.0,200.0));
+            state.on_physical_mouse_button_input(winit::event::ElementState::Released,winit::event::MouseButton::Left);
+            state.pointer_pos_in_points=Some(mouse);
+            let before=state.egui_input.events.len();let touch=egui::pos2(110.0,220.0);
+            state.finish_pointer_touch(true,touch);
+            assert!(matches!(state.egui_input.events[before],egui::Event::PointerButton {pos,pressed:false,..} if pos==touch));
+            assert_eq!(state.pointer_pos_in_points,if inside{Some(mouse)}else{None});
+        }
     }
 }
