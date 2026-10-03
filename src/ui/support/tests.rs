@@ -336,6 +336,13 @@ fn actual_audio_owner_fault_is_collected_without_device_names_or_backend_error_t
         .any(|sample| sample.audio.callbacks > 0));
     assert_eq!(
         gui.app.engine.cmd.send(Command::Play).unwrap_err(),
+        crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Recovery)
+    );
+    gui.app.engine.project.capture(&AtomicBool::new(false)).unwrap();
+    gui.app.engine.cmd.performance().acknowledge_inputs_released().unwrap();
+    gui.wait(|g| !g.app.engine.cmd.performance().status().recovery);
+    assert_eq!(
+        gui.app.engine.cmd.send(Command::Play).unwrap_err(),
         crate::engine::SubmissionError::AudioUnavailable
     );
 }
