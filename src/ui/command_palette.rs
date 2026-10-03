@@ -12,6 +12,14 @@ pub(super) struct Palette {
 }
 
 impl Palette {
+    /// Close commands when their native window retires.
+    /// Takes the retiring viewport; returns no value and preserves another window's commands.
+    pub(super) fn close_for_viewport(&mut self, viewport: egui::ViewportId) {
+        if self.viewport == viewport {
+            self.open = false;
+        }
+    }
+
     pub fn open(&mut self,viewport:egui::ViewportId) {
         self.viewport=viewport;
         self.open = true;

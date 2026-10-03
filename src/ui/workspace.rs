@@ -187,6 +187,7 @@ impl App {
                 self.release_workspace_panel(Panel::Sampler);
                 self.release_workspace_panel(Panel::Decks);
                 self.touch_input.retire();
+                self.command_palette.open = false;
                 accessibility::cancel_editor(ctx);
                 self.workspace.inputs.clear();
             }
@@ -508,6 +509,7 @@ impl App {
             }
         });
         if close {
+            self.command_palette.close_for_viewport(id);
             self.release_workspace_panel(panel);
             self.workspace.closed.insert(panel);
             self.workspace.inputs.remove(&panel);

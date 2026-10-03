@@ -530,3 +530,75 @@ fn moving_workspace_panels_releases_gui_deck_touch_and_preserves_controller_owne
     gui.frame(vec![]);
     assert!(!gui.rt.decks[0].touching);
 }
+
+#[test]
+fn closing_native_palette_owner_or_changing_workspace_restores_root_keyboard_controls() {
+    for change_layout in [false, true] {
+        let mut gui = Gui::new(&[Panel::Sampler, Panel::Session]);
+        let chord = egui::Modifiers {
+            ctrl: true,
+            command: true,
+            shift: true,
+            ..Default::default()
+        };
+        gui.input(
+            Panel::Session,
+            vec![egui::Event::Key {
+                key: Key::P,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: chord,
+            }],
+        );
+        assert!(gui.app.command_palette.open);
+        gui.native
+            .borrow_mut()
+            .windows
+            .get_mut(&Panel::Sampler)
+            .unwrap()
+            .close = true;
+        gui.frame(vec![]);
+        assert!(
+            gui.app.command_palette.open,
+            "closing another window keeps commands open"
+        );
+        if change_layout {
+            gui.app
+                .settings
+                .applied
+                .profiles
+                .get_mut("Studio")
+                .unwrap()
+                .workspaces
+                .active = "DJ".into();
+        } else {
+            gui.native
+                .borrow_mut()
+                .windows
+                .get_mut(&Panel::Session)
+                .unwrap()
+                .close = true;
+        }
+        gui.frame(vec![]);
+        assert!(
+            !gui.app.command_palette.open,
+            "no command dialog survives its retired controls"
+        );
+        gui.root_focused = true;
+        for window in gui.native.borrow_mut().windows.values_mut() {
+            window.focused = false;
+        }
+        gui.frame(vec![egui::Event::Key {
+            key: Key::Space,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Default::default(),
+        }]);
+        assert!(
+            gui.rt.playing,
+            "the actual root transport shortcut is usable again"
+        );
+    }
+}
