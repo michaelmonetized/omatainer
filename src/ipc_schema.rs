@@ -40,6 +40,7 @@ fn confirmed<'de, D: Deserializer<'de>>(deserializer: D) -> Result<bool, D::Erro
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) enum Operation {
+    Api { version: u32, request: crate::automation::Request },
     Ping {},
     Status {},
     Follow {},
@@ -76,7 +77,7 @@ impl Operation {
     }
     pub fn command(self) -> Option<Command> {
         Some(match self {
-            Self::Ping {} | Self::Status {} | Self::Follow {} | Self::ReloadTheme {} => return None,
+            Self::Api { .. } | Self::Ping {} | Self::Status {} | Self::Follow {} | Self::ReloadTheme {} => return None,
             Self::PerformanceMode { enabled } => Command::PerformanceMode(enabled),
             Self::SafeStop {} => Command::SafetyStop(crate::engine::performance::Safety::Stop),
             Self::EmergencySilence { confirm } => { debug_assert!(confirm); Command::SafetyStop(crate::engine::performance::Safety::Silence) },

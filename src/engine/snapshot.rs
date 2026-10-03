@@ -338,6 +338,8 @@ impl Frame {
         target.selected_scene = rt.selected_scene;
         target.compose_target = rt.compose_target;
         target.project_revision = rt.project.revision();
+        target.sample_rate = rt.sr as u32;
+        target.transport_epoch = rt.transport_epoch;
         target.selected_deck = rt.selected_deck;
         target.selected_deck_request = rt.selected_deck_request;
         target.audio = rt.telemetry.read();

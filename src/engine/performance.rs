@@ -367,7 +367,7 @@ impl Handle {
         self.0.recover.store(request, Ordering::Release);
         Ok(())
     }
-    pub(super) fn safety_epoch(&self) -> u64 {
+    pub(crate) fn safety_epoch(&self) -> u64 {
         self.0.safety.load(Ordering::Acquire) >> 2
     }
     pub(super) fn safety_request(&self) -> Option<(u64, Safety)> {
@@ -482,6 +482,7 @@ fn media_target(command: &Command) -> Option<usize> {
 }
 fn destructive(command: &Command) -> bool {
     match command {
+        Command::Remote(request) => destructive(&request.action.command()),
         Command::SessionEdit(request) => request.disruptive(),
         Command::MidiImport(_)
         | Command::MidiEdit(_)
@@ -591,6 +592,7 @@ fn destructive(command: &Command) -> bool {
     }
 }
 pub(super) fn recovery_safe(command: &Command) -> bool {
+    if let Command::Remote(request) = command { return recovery_safe(&request.action.command()); }
     matches!(
         command,
         Command::Stop
@@ -690,6 +692,7 @@ impl Output {
 
 pub(super) fn reject_receipt(command: &Command) {
     match command {
+        Command::Remote(request) => request.ack.reject(),
         Command::SessionEdit(request) => request.ack.reject(),
         Command::DeckLoadRequested { receipt, .. } if receipt.claim() => {
             receipt.finish(super::load_receipt::State::Protected)

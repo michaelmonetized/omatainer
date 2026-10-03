@@ -33,6 +33,7 @@ pub mod audio;
 pub mod audio_metrics;
 pub(crate) mod history_measurement;
 pub mod performance;
+pub(crate) mod remote;
 pub(crate) mod diagnostics;
 mod master_fx;
 #[cfg(test)]
@@ -552,6 +553,8 @@ pub struct RtEngine {
     pub recording: bool,
     pub bpm: f32,
     pub beat: f64,
+    pub(crate) transport_epoch: u64,
+    remote_schedule: remote::Schedule,
     beat_roundoff: f64,
     midi_beat: f64,
     midi_beat_reference: f64,
@@ -719,6 +722,8 @@ pub struct Snapshot {
     pub session: Option<session::Layout>,
     pub performance: performance::Status,
     pub project_revision: u64,
+    pub(crate) sample_rate: u32,
+    pub(crate) transport_epoch: u64,
     pub compose_target: Option<ComposeTarget>,
     pub playing: bool,
     pub recording: bool,
@@ -775,6 +780,8 @@ impl Default for Snapshot {
             session: None,
             performance: performance::Status::default(),
             project_revision: 0,
+            sample_rate: 0,
+            transport_epoch: 0,
             compose_target: None,
             playing: false,
             recording: false,
@@ -825,6 +832,7 @@ impl Default for Snapshot {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    Remote(remote::Request),
     SessionEdit(session::Request),
     SessionControl(session::Scoped),
     PerformanceMode(bool),
@@ -977,6 +985,8 @@ impl RtEngine {
             bpm: 124.0,
             beat: 0.0,
             beat_roundoff: 0.0,
+            transport_epoch: 0,
+            remote_schedule: remote::Schedule::default(),
             midi_beat: 0.0,
             midi_beat_reference: 0.0,
             #[cfg(test)]
@@ -1274,6 +1284,7 @@ impl RtEngine {
         self.project_tick();
         self.prepare_midi_output_block();
         self.sync_midi_clock();
+        self.remote_maintain();
         if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
@@ -1297,6 +1308,7 @@ impl RtEngine {
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
+            self.remote_tick();
             if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
             let counting_in = self.count_in.is_some();
             let count_click = self.count_in.as_mut().and_then(|count| count.tick(self.sr as u32));
@@ -1963,6 +1975,7 @@ impl RtEngine {
         }
         self.refresh_history_protection();
         match c {
+            Command::Remote(request) => { self.remote_request(request); return; }
             Command::Undo => {self.history_replay(false);return;}
             Command::Redo => {self.history_replay(true);return;}
             command @ Command::DeckCuePoint { .. } => {
@@ -2053,6 +2066,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
+                self.transport_epoch = self.transport_epoch.saturating_add(1);
                 self.history_finish_take();
                 self.finish_recording_all();
                 self.playing = false;
@@ -2427,7 +2441,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
+            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);

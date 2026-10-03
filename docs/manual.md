@@ -94,6 +94,102 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Automation API
+
+Versioned local and loopback control
+
+Inspect the private local socket, stable session IDs and API results. Command acceptance is pending until its job reports applied. The native inspector uses the same typed API as scripts.
+
+Workflow: Audio setup.
+
+### Read API state
+
+Stable IDs and reviewed revision
+
+Read a bounded state page from automation version 1. Names may be shortened here; native project data stays complete.
+
+Workflow: Audio setup.
+
+### Schedule API action
+
+Absolute quarter-note beat
+
+While transport plays, schedule selected-track gain on a future musical beat. Stops, safety changes and project replacement invalidate pending actions. Audio executes from fixed storage without network IO.
+
+Workflow: Audio setup.
+
+### Scheduled API gain
+
+0–1.5
+
+Choose the selected track gain for an explicitly submitted future action. Moving this slider does not change audio.
+
+Workflow: Audio setup.
+
+### API action beat
+
+Absolute quarter-note beat
+
+Choose a future beat within 16384 quarter notes. Next beat fills a conservative upcoming boundary; past or stopped-transport scheduling is rejected.
+
+Workflow: Audio setup.
+
+### API track name
+
+Atomic reviewed edit
+
+Rename the selected native track through the version-1 API using its stable ID and the displayed project revision. Stale concurrent edits reject; an applied rename is undoable.
+
+Workflow: Audio setup.
+
+### Refresh API job
+
+Pending/applied/rejected/cancelled
+
+Read the last submitted job. Receipts survive controller reconnect while retained in this launch. Pending jobs are never evicted; completed results may expire as new jobs arrive.
+
+Workflow: Audio setup.
+
+### Cancel API job
+
+Before audio claims the commit
+
+Cancel a pending job atomically. Completed or claimed commits refuse cancellation rather than reporting an undo.
+
+Workflow: Audio setup.
+
+### Show OSC access token
+
+Current loopback adapter only
+
+Reveal the current 128-bit access token for an explicitly enabled loopback client. It changes after disable/re-enable or app restart and is never saved in preferences.
+
+Workflow: Audio setup.
+
+### Enable loopback OSC
+
+127.0.0.1 UDP; saved profile
+
+Preview and Apply explicitly to enable the authenticated OSC adapter. It binds only loopback, requires the current token and carries typed API JSON in an OSC blob. No LAN listener is opened. Cancel preserves the live listener.
+
+Workflow: Audio setup.
+
+### OSC port
+
+0 automatic; otherwise 1024–65535
+
+Save the loopback UDP port. Bind failure reports the error and preserves the previous listener. The actual selected port is shown in Automation.
+
+Workflow: Audio setup.
+
+### Retry OSC settings
+
+Saved intent versus actual listener
+
+Retry the saved listener intent after a bind or worker failure. Existing live configuration remains until a replacement is ready.
+
+Workflow: Audio setup.
+
 ### Compact control menus
 
 Small viewports and large text

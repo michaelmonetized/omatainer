@@ -977,3 +977,82 @@ fn light_contrast_keeps_actual_pending_audio_warning_readable() {
     assert_eq!(color, gui.fixture.app.theme.yellow);
     assert!(crate::theme::contrast_ratio(color,gui.fixture.app.theme.bg)>=4.5);
 }
+
+#[test]
+fn osc_preferences_apply_reopen_cancel_and_conflict_preserve_the_actual_listener() {
+    let mut gui = Gui::new();
+    gui.open();
+    gui.click("Enable loopback OSC");
+    let target = gui.node("OSC port (0 = automatic)");
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        target,
+        action: Action::SetValue,
+        data: Some(egui::accesskit::ActionData::NumericValue(0.0)),
+    })]);
+    gui.preview_apply();
+    let config = crate::automation::osc::Config {
+        enabled: true,
+        port: 0,
+    };
+    let deadline = Instant::now() + std::time::Duration::from_secs(3);
+    let applied = loop {
+        gui.frame(vec![]);
+        let status = gui.fixture.app.automation_network.status();
+        if status.applied == Some(config) && !status.pending {
+            break status;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
+    assert!(applied.port.is_some());
+    assert!(applied.error.is_none());
+    let path = gui.dir.join("preferences.json");
+    let bytes = std::fs::read(&path).unwrap();
+    let saved = storage::load(&path, &AtomicBool::new(false)).unwrap();
+    assert_eq!(saved.preferences.current().unwrap().automation, config);
+    assert!(!String::from_utf8_lossy(&bytes).contains(applied.token.as_ref().unwrap()));
+    gui.click("Enable loopback OSC");
+    gui.click("Cancel changes");
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    assert_eq!(
+        gui.fixture.app.automation_network.status().port,
+        applied.port
+    );
+    assert_eq!(
+        gui.fixture.app.automation_network.status().token,
+        applied.token
+    );
+    let mut reopened = Gui::new();
+    reopened.fixture.app.initialize_preferences(
+        &reopened.ctx,
+        Startup::read(path.clone(), gui.dir.clone()),
+        model::Audio::default(),
+    );
+    let deadline = Instant::now() + std::time::Duration::from_secs(3);
+    let restarted = loop {
+        reopened.frame(vec![]);
+        let status = reopened.fixture.app.automation_network.status();
+        if status.applied == Some(config) && !status.pending {
+            break status;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
+    assert_ne!(restarted.token, applied.token);
+    gui.open();
+    gui.click("Enable loopback OSC");
+    gui.click("Preview changes");
+    gui.wait();
+    let mut external = bytes.clone();
+    external.push(b'\n');
+    std::fs::write(&path, &external).unwrap();
+    gui.click("Apply and save");
+    gui.wait();
+    assert!(gui.fixture.app.settings.message.contains("changed on disk"));
+    assert_eq!(std::fs::read(&path).unwrap(), external);
+    assert_eq!(gui.fixture.app.settings.profile().automation, config);
+    assert_eq!(
+        gui.fixture.app.automation_network.status().token,
+        applied.token
+    );
+}

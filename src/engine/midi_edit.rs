@@ -72,7 +72,7 @@ pub(crate) enum Outcome {
     Cancelled,
 }
 impl Ack {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(Arc::new(AtomicU8::new(0)))
     }
     pub fn state(&self) -> Outcome {

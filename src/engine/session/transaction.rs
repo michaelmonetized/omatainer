@@ -146,6 +146,12 @@ impl Request {
             ack,
         ))
     }
+    /// Require the reviewed project revision when this edit applies.
+    /// Takes the revision and sample rate; returns the prepared edit with its atomic conflict guard.
+    pub(crate) fn at_revision(mut self, revision: u64, rate: u32) -> Self {
+        self.receipt = Some((revision, rate)); self
+    }
+
     pub(crate) fn track_count(&self) -> usize {
         self.inverse
             .as_ref()

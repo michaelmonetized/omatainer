@@ -131,6 +131,7 @@ fn profile_roundtrip_and_legacy_midi_presence_guard() {
         let mut old = serde_json::to_value(&prefs).unwrap();
         old["version"] = version.into();
         for profile in old["profiles"].as_object_mut().unwrap().values_mut() {
+            profile.as_object_mut().unwrap().remove("automation");
             for field in ["contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
             profile["startup"].as_object_mut().unwrap().remove("session");
         }

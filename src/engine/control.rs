@@ -21,6 +21,7 @@ pub struct CommandPort {
     support: Option<crate::support::worker::Port>,
     input_epoch: Option<u64>,
     theme_requests: crate::theme::requests::Port,
+    remote_jobs: std::sync::Arc<super::remote::Jobs>,
     sender: crossbeam_channel::Sender<Command>,
     shared: std::sync::Arc<AdmissionShared>,
     admission: std::sync::Arc<parking_lot::Mutex<Admission>>,
@@ -476,6 +477,7 @@ impl CommandPort {
             support: None,
             input_epoch: None,
             theme_requests: crate::theme::requests::Port::default(),
+            remote_jobs: std::sync::Arc::new(super::remote::Jobs::default()),
             sender,
             shared: shared.clone(),
             admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
@@ -497,6 +499,10 @@ impl CommandPort {
             },
         )
     }
+
+    /// Return the shared bounded automation job registry.
+    /// Takes this producer; returns reconnectable receipts without touching the renderer.
+    pub(crate) fn remote_jobs(&self) -> &super::remote::Jobs { &self.remote_jobs }
 
     pub(crate) fn theme_requests(&self) -> &crate::theme::requests::Port { &self.theme_requests }
 
@@ -565,8 +571,9 @@ impl CommandPort {
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
         let sampler_ack = super::sampler::admission_ack(&command);
         let session_ack = super::session::admission_ack(&command);
+        let remote_ack = match &command { Command::Remote(request) => Some(request.ack.clone()), _ => None };
         let result = self.send_after_preflight(command, || {});
-        if result.is_err() { if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
+        if result.is_err() { if let Some(ack) = remote_ack { ack.reject(); } if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
         result
     }
 
@@ -936,6 +943,7 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
 }
 
 fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
+    if let Command::Remote(request) = command { return blocked_by_stop(&request.action.command(), pending); }
     let clip_track = match *command {
         Command::LaunchClip { track, .. } | Command::FireClip { track, .. } => Some(track as usize),
         _ => None,

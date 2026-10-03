@@ -3,7 +3,8 @@ use crate::ipc_transport::{self, Limits};
 use anyhow::Context;
 use parking_lot::Mutex;
 use std::io;
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
+use std::os::fd::AsRawFd;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -166,6 +167,7 @@ fn start_at_with_limits(
     // particular, a bind conflict never gives us ownership of the old path.
     let listener = bind(path)?;
     let endpoint = OwnedEndpoint::capture(path)?;
+    std::fs::set_permissions(path,std::fs::Permissions::from_mode(0o600))?;
     listener.set_nonblocking(true)?;
     let stop = Arc::new(AtomicBool::new(false));
     let worker_stop = stop.clone();
@@ -186,6 +188,10 @@ fn start_at_with_limits(
             }
             match listener.accept() {
                 Ok((mut stream, _)) => {
+                    if authorize_peer(&stream,crate::instance::effective_uid()).is_err() {
+                        let _=ipc_transport::reject(&mut stream,serde_json::Value::Null,"permission_denied","Local automation requires the effective user",limits.write);
+                        continue;
+                    }
                     #[cfg(test)]
                     worker_clients.accepted.fetch_add(1, Ordering::Relaxed);
                     if handlers.len() == ipc_transport::CLIENTS {
@@ -263,4 +269,54 @@ fn start_at_with_limits(
         _endpoint: endpoint,
         clients,
     })
+}
+
+/// Authorize a local control peer.
+/// Takes its socket and the allowed effective UID; returns success only for that Linux peer identity.
+#[cfg(target_os = "linux")]
+fn authorize_peer(stream: &UnixStream, allowed: u32) -> io::Result<()> {
+    let mut credentials: libc::ucred = unsafe { std::mem::zeroed() };
+    let mut size = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
+    let result = unsafe {
+        libc::getsockopt(
+            stream.as_raw_fd(),
+            libc::SOL_SOCKET,
+            libc::SO_PEERCRED,
+            (&mut credentials as *mut libc::ucred).cast(),
+            &mut size,
+        )
+    };
+    if result != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if size as usize != std::mem::size_of::<libc::ucred>() || credentials.uid != allowed {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "Control peer UID differs from the effective user",
+        ));
+    }
+    Ok(())
+}
+/// Reject control peers on platforms without the verified identity check.
+/// Takes the socket and allowed UID; returns an explicit unsupported-platform error.
+#[cfg(not(target_os = "linux"))]
+fn authorize_peer(_stream: &UnixStream, _allowed: u32) -> io::Result<()> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "Automation peer authorization is supported on Linux",
+    ))
+}
+
+#[cfg(all(test, target_os = "linux"))]
+#[test]
+fn local_peer_identity_accepts_the_effective_uid_and_rejects_a_different_uid() {
+    let (left, _right) = UnixStream::pair().unwrap();
+    let uid = crate::instance::effective_uid();
+    authorize_peer(&left, uid).unwrap();
+    assert_eq!(
+        authorize_peer(&left, uid.wrapping_add(1))
+            .unwrap_err()
+            .kind(),
+        io::ErrorKind::PermissionDenied
+    );
 }

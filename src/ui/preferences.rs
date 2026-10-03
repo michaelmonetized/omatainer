@@ -197,6 +197,7 @@ impl App {
             self.settings.profile().startup.show_midi,
         );
         self.apply_appearance(ctx);
+        self.apply_automation();
         if self.settings.profile().startup.scan_library {
             self.scan_library();
         }
@@ -271,6 +272,7 @@ impl App {
         let old = self.settings.profile().clone();let old_profile=self.settings.applied.active.clone();
         if self.settings.poll() {
             self.apply_appearance(ctx);
+            self.apply_automation();
             if old.library_roots != self.settings.profile().library_roots || old_profile!=self.settings.applied.active {
                 self.library_scan.cancel();
                 self.library_metadata.cancel_scan();
@@ -339,6 +341,14 @@ impl App {
                     ui.label(format!("Running: {} · {} Hz · {} · {}", info.plan.device, info.plan.rate, info.format, info.plan.route()));
                 } else { ui.label("Audio device unavailable in this session"); }
                 if state.pending_restart() { ui.colored_label(ui.visuals().warn_fg_color, "Saved audio differs from running intent; use Audio devices or restart"); }
+                let network=self.automation_network.status();
+                if network.pending {ui.label("OSC configuration is pending");ctx.request_repaint_after(std::time::Duration::from_millis(20));}
+                if let Some(error)=&network.error {ui.colored_label(ui.visuals().warn_fg_color,error);}
+                if network.error.is_some() || network.applied!=Some(state.profile().automation) {
+                    if ui.button("Retry saved OSC settings").help(ui,HelpControl::AutomationRetry).clicked() {
+                        if let Err(error)=self.automation_network.configure(state.profile().automation) {state.message=error;}
+                    }
+                }
                 ui.label(&state.message);
                 if !state.message.is_empty() && !state.busy() && ui.button("Dismiss preferences notice").help(ui, HelpControl::PreferenceNotice).clicked() { state.message.clear(); }
 
@@ -416,6 +426,15 @@ impl App {
                             if mode == 1 { multiline(ui, "Selected MIDI input names (one per line)", &mut state.midi_names, HelpControl::PreferenceMidiNames); }
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
                             midi_routing::edit(ui,&mut profile.midi_routing,self.engine.midi.routing_status().as_deref());
+                            ui.heading("Automation and remote control");
+                            ui.checkbox(&mut profile.automation.enabled,"Enable loopback OSC").help(ui,HelpControl::AutomationOscEnable);
+                            ui.horizontal(|ui| {
+                                let label=ui.label("OSC port (0 = automatic)");
+                                let response=ui.add(egui::DragValue::new(&mut profile.automation.port).range(0..=65535)).labelled_by(label.id);
+                                ui.ctx().accesskit_node_builder(response.id, |node| node.set_label("OSC port (0 = automatic)"));
+                                help::annotate(ui,&response,HelpControl::AutomationOscPort);
+                            });
+                            ui.label("Apply saves the listener intent. The actual listener and access token are shown in Automation. Cancel keeps the current listener.");
                             ui.heading("Library folders");
                             multiline(ui, "Library folders (one absolute path per line)", &mut state.roots, HelpControl::PreferenceLibraryRoots);
                             profile.library_roots = state.roots.lines().filter(|s| !s.is_empty()).map(PathBuf::from).collect();
