@@ -1,0 +1,19 @@
+{
+  "name": "egui-winit",
+  "version": "0.32.3",
+  "archive": "https://static.crates.io/crates/egui-winit/egui-winit-0.32.3.crate",
+  "sha256": "f95d0a91f9cb0dc2e732d49c2d521ac8948e1f0b758f306fb7b14d6f5db3927f",
+  "files": {
+    ".cargo_vcs_info.json": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+    "Cargo.lock": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+    "Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+    "Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+    "README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+    "src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+    "src/lib.rs": "b289316f850ba3c6d33497aa6921d1ca74a43bfc9fa1cfaad3c807fa0148e88d",
+    "src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de"
+  },
+  "patches": [
+    "src/lib.rs"
+  ]
+}

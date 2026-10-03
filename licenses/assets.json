@@ -372,7 +372,18 @@
     "vendor/symphonia-format-riff/src/common.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/common.rs",
     "vendor/symphonia-format-riff/src/lib.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs",
     "vendor/symphonia-format-riff/src/wave/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs",
-    "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs"
+    "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs",
+    "vendor/egui-winit/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json",
+    "vendor/egui-winit/Cargo.lock": ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock",
+    "vendor/egui-winit/Cargo.toml": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml",
+    "vendor/egui-winit/Cargo.toml.orig": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml.orig",
+    "vendor/egui-winit/README.md": ".local/share/omatainer/source/vendor/egui-winit/README.md",
+    "vendor/egui-winit/LICENSE": ".local/share/omatainer/source/vendor/egui-winit/LICENSE",
+    "vendor/egui-winit/UPSTREAM.json": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
+    "vendor/egui-winit/PATCHES.md": ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md",
+    "vendor/egui-winit/src/clipboard.rs": ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs",
+    "vendor/egui-winit/src/lib.rs": ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs",
+    "vendor/egui-winit/src/window_settings.rs": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs"
   },
   "source_files": [
     "src/engine/mod.rs",

@@ -27,11 +27,13 @@ ignores pressure. Pressure changes after attack do not retrigger notes. Invalid
 position or pressure cancels that contact; end/cancel still releases it even when
 the final position is invalid. Missing pressure uses the previous full attack.
 
-The pinned egui-winit 0.32.3 adapter forwards device/contact identity, start/move/
+The pinned, locally patched egui-winit 0.32.3 adapter forwards device/contact identity, start/move/
 end/cancel and reported winit force, while emulating a mouse for the first touch.
 Performance controls separate the adapter's adjacent emulated pointer messages
 from physical mouse input to prevent duplicate attacks. Physical mouse button
-ownership survives a touch start, move, end or cancellation.
+ownership survives a touch start, move, end or cancellation. The adapter retains
+physical mouse coordinates independently, so a stationary release after touch
+ends or the cursor leaves the window still reaches the pad release path.
 The pinned winit 0.30.13 Linux Wayland and X11 touch handlers explicitly emit
 `force: None`; pressure is unavailable on these backends. A pen presented as an
 ordinary mouse retains mouse controls. This change does not add a tablet driver.
