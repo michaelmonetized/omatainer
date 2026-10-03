@@ -46,6 +46,10 @@ impl Prepared {
             sampler_inst,
             sampler_oct
         );
+        rt.timeline_anchor = state.timeline_seconds;
+        rt.timeline_frames = 0;
+        rt.midi_beat = rt.beat;
+        rt.midi_beat_reference = rt.beat;
         rt.session = if let Some(layout) = state.session.take() {layout} else {
             use sha2::{Digest, Sha256};
             let mut layout = session::Layout::legacy(state.tracks.iter().map(|t| t.name.clone()), state.scene_fx.len());
@@ -190,6 +194,10 @@ impl Prepared {
         Ok(Self { rt })
     }
 
+    /// Give a preparing worker sole ownership of an offline graph.
+    /// Takes this prepared graph; returns its renderer without device or GUI ownership.
+    pub(crate) fn into_offline(self) -> Box<RtEngine> { self.rt }
+
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
         rt.transport_epoch = rt.transport_epoch.wrapping_add(1);
         rt.midi_routing.reset_outputs();
@@ -208,6 +216,8 @@ impl Prepared {
             bpm,
             beat,
             beat_roundoff,
+            timeline_anchor,
+            timeline_frames,
             midi_beat,
             midi_beat_reference,
             conductor,

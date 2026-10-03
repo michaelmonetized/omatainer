@@ -6,6 +6,7 @@ mod template_tests;
 pub(super) mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {
+    state.as_object_mut().unwrap().remove("timeline_seconds");
     state.as_object_mut().unwrap().remove("conductor");
     state.as_object_mut().unwrap().remove("session");
     if state["fx_view"].as_i64().is_some_and(|v| v >= session::SCENE_FX_BASE as i64) { state["fx_view"] = (state["fx_view"].as_i64().unwrap() - (session::SCENE_FX_BASE as i64 - 100)).into(); }
@@ -131,6 +132,7 @@ fn schema_six_note_channels_and_ticks_roundtrip_and_cannot_impersonate_schema_fi
     let restored=Prepared::from_state(saved.state.clone(),saved.media.clone(),48000).unwrap();
     assert_eq!(captured(&restored.rt).state.tracks[2].clips[7].notes,exact);
     let mut legacy=serde_json::to_value(&saved.state).unwrap();legacy["version"]=5.into();
+    legacy.as_object_mut().unwrap().remove("timeline_seconds");
     legacy.as_object_mut().unwrap().remove("conductor");
     legacy.as_object_mut().unwrap().remove("session");
     for track in legacy["tracks"].as_array_mut().unwrap() {for clip in track["clips"].as_array_mut().unwrap() {
@@ -987,4 +989,18 @@ fn reinstalling_the_same_project_rejects_old_musical_jobs_before_playback_resume
         );
         assert_eq!(live.tracks[2].gain, before);
     }
+}
+
+#[test]
+fn sample_based_position_roundtrips_and_legacy_headers_cannot_hide_it() {
+    let mut original=rt();original.apply(Command::Play);original.process(&mut vec![0.0;96000]);
+    original.apply(Command::SetBpm(200.0));original.process(&mut vec![0.0;48000]);
+    let saved=captured(&original);assert_eq!(saved.state.timeline_seconds,1.5);
+    let prepared=Prepared::from_state(saved.state.clone(),saved.media.clone(),48000).unwrap();
+    assert_eq!(prepared.rt.timeline_seconds(),1.5);
+    let mut wire=serde_json::to_value(&saved.state).unwrap();wire["version"]=9.into();
+    assert!(serde_json::from_value::<State>(wire.clone()).is_err());
+    wire.as_object_mut().unwrap().remove("timeline_seconds");
+    let legacy:State=serde_json::from_value(wire).unwrap();
+    assert_eq!(legacy.timeline_seconds,saved.state.beat*60.0/f64::from(saved.state.bpm));
 }

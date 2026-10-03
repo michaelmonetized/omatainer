@@ -219,6 +219,7 @@ fn perform(kind: Kind, handle: &Handle, cancel: &AtomicBool) -> Result<ResultDat
                 } => (view, Some((review, selected, path))),
                 _ => unreachable!(),
             };
+            if view.video.is_some() { return Err("Portable archives currently contain native audio only; clear the external picture reference in a saved copy before exporting. Native projects retain it.".into()); }
             let captured = handle.capture(cancel).map_err(|e| e.to_string())?;
             let namespace = captured
                 .state

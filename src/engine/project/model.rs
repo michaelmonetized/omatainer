@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 9;
+pub const STATE_VERSION: u32 = 10;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -20,6 +20,7 @@ pub struct State {
     #[serde(default)]
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
     pub beat: f64,
+    pub timeline_seconds: f64,
     pub quant: f32,
     pub quantize: bool,
     pub metronome: bool,
@@ -55,6 +56,8 @@ struct StateWire {
     #[serde(default)]
     conductor: Option<Arc<midi_data::Conductor>>,
     beat: f64,
+    #[serde(default)]
+    timeline_seconds: Option<f64>,
     quant: f32,
     quantize: bool,
     metronome: bool,
@@ -110,13 +113,16 @@ impl<'de> Deserialize<'de> for State {
             .any(|slot| slot.get("source").and_then(|source| source.get("kind")).and_then(serde_json::Value::as_str) == Some("project")) {
             return Err(serde::de::Error::custom("Legacy projects cannot contain relinked project sources"));
         }
+        if version < 10 && raw.get("timeline_seconds").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain sample-based timeline positions")); }
+        if version == 10 && !raw.get("timeline_seconds").is_some_and(serde_json::Value::is_number) { return Err(serde::de::Error::custom("Project schema 10 requires a timeline position")); }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
             session: wire.session,
             bpm: wire.bpm,
-            conductor: wire.conductor,
             beat: wire.beat,
+            timeline_seconds: wire.timeline_seconds.unwrap_or_else(|| wire.conductor.as_ref().map_or(wire.beat * 60.0 / f64::from(wire.bpm), |map| map.seconds_at(wire.beat))),
+            conductor: wire.conductor,
             quant: wire.quant,
             quantize: wire.quantize,
             metronome: wire.metronome,
@@ -338,6 +344,7 @@ impl State {
             conductor: None,
             bpm: 124.0,
             beat: 0.0,
+            timeline_seconds: 0.0,
             quant: 1.0,
             quantize: true,
             metronome: false,
@@ -459,6 +466,7 @@ impl State {
         }
         if !(40.0..=240.0).contains(&self.bpm)
             || !finite_range(self.beat, 0.0, 1.0e12)
+            || !finite_range(self.timeline_seconds, 0.0, 1.0e12)
             || !finite_range(self.quant as f64, 0.0, 64.0)
             || !unit(self.xfader)
             || !unit(self.xfader_curve)

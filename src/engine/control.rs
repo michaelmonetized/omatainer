@@ -640,6 +640,9 @@ impl CommandPort {
         if matches!(&command,Command::RoutedNoteOn {track,ch,note,vel,..} if usize::from(*track)>=super::session::MAX_TRACKS || *ch>15 || *note>127 || *vel>127) {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command, Command::TimelineSeek(seconds) if !seconds.is_finite() || !(0.0..=86400.0).contains(seconds)) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         if !super::midi_edit::qualify_legacy_notes(&mut command) {
             return fail(SubmissionError::MidiIdentityUnavailable);
         }

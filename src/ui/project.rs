@@ -39,6 +39,7 @@ impl Document {
             ));
         }
         if self.engine.version < 9 && !self.view.media_origins.is_empty() { return Err("Legacy projects cannot contain dependency source aliases".into()); }
+        if self.engine.version < 10 && self.view.video.is_some() { return Err("Picture state requires project schema 10".into()); }
         self.view.validate()
     }
 }
@@ -58,6 +59,8 @@ pub(super) struct WatchIdentity {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct UiState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video: Option<crate::video::Clip>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub media_origins: Vec<crate::project_dependencies::Origin>,
     pub library_filter: String,
@@ -78,6 +81,7 @@ pub(crate) struct UiState {
 }
 impl UiState {
     pub(super) fn validate(&self) -> Result<(), String> {
+        if let Some(video) = &self.video { video.validate()?; }
         crate::project_dependencies::validate_origins(&self.media_origins)?;
         if self.selected_crate.as_ref().is_some_and(|id| id.0.len() != 32 || !id.0.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))) {
             return Err("Invalid project view: malformed crate identity".into());
@@ -115,7 +119,8 @@ impl UiState {
         Ok(())
     }
     fn editable_eq(&self, other: &Self) -> bool {
-        self.media_origins == other.media_origins
+        self.video == other.video
+            && self.media_origins == other.media_origins
             && self.selected_crate == other.selected_crate
             && self.library_filter == other.library_filter
             && self.library_selection == other.library_selection
@@ -317,6 +322,7 @@ impl App {
             selection
         };
         UiState {
+            video: self.video.clip.clone(),
             media_origins: self.dependencies.origins.clone(),
             library_filter: self.lib_filter.clone(),
             selected_crate: self.library_crates.selected.clone(),
@@ -845,6 +851,7 @@ impl App {
         self.poll_play_history();
         self.loads = std::array::from_fn(|_| None);
         self.dependencies.install_origins(view.media_origins.clone());
+        self.video.install(view.video.clone());
         self.timing.reset_project();
         self.portability.reset_review();
         self.templates.hardware = None;

@@ -131,12 +131,14 @@ fn schema_eight_reopens_native_tempo_ramps_and_older_files_refuse_new_timing_fie
 
     let mut version_eight = wire.clone();
     version_eight["version"] = 8.into();
+    version_eight.as_object_mut().unwrap().remove("timeline_seconds");
     let compatible: State = serde_json::from_value(version_eight).unwrap();
     compatible.validate(&saved.media).unwrap();
     assert_eq!(compatible.conductor, saved.state.conductor);
 
     let mut old = wire;
     old["version"] = 7.into();
+    old.as_object_mut().unwrap().remove("timeline_seconds");
     assert!(serde_json::from_value::<State>(old.clone()).is_err());
     old["conductor"].as_object_mut().unwrap().remove("native");
     for p in old["conductor"]["tempos"].as_array_mut().unwrap() {
@@ -272,6 +274,7 @@ fn legacy_file_migration_is_deterministic_and_preserves_original_cell_storage() 
     let base = captured(&rt());
     let mut raw = serde_json::to_value(&base.state).unwrap();
     raw["version"] = 6.into();
+    raw.as_object_mut().unwrap().remove("timeline_seconds");
     raw.as_object_mut().unwrap().remove("session");
     let old: State = serde_json::from_value(raw).unwrap();
     old.validate(&base.media).unwrap();

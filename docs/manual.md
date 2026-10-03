@@ -26,7 +26,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Edit and undo
 
-Open a clip's alternate actions and choose Edit clip gain. Gain changes future note onsets; already held notes retain their onset gain. Use Edit → Undo / Redo, or the active shortcut bindings, to compare. A continuous slider gesture is one named history entry. History is bounded; admission failures or truncation are shown explicitly. Transport and physical held gates are not creative edits. Piano roll offers note drawing, pointer/keyboard edits and explicit clip/loop ranges with stable note identities. It uses the same session History after Apply. This build does not offer a timeline, warp editor, automation lanes or plugins.
+Open a clip's alternate actions and choose Edit clip gain. Gain changes future note onsets; already held notes retain their onset gain. Use Edit → Undo / Redo, or the active shortcut bindings, to compare. A continuous slider gesture is one named history entry. History is bounded; admission failures or truncation are shown explicitly. Transport and physical held gates are not creative edits. Piano roll offers note drawing, pointer/keyboard edits and explicit clip/loop ranges with stable note identities. It uses the same session History after Apply. This build offers frame-based picture placement alongside Session transport; it does not offer an Arrange timeline, warp editor, automation lanes or plugins.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -109,6 +109,54 @@ Saved predicates over current library annotations
 Select an empty named crate, choose minimum rating, optional color, group substring, exact tag and notes substring, then save its rule. Conditions combine and membership updates with annotations after reload or restart. Manual member edits are unavailable on a rule crate. Removing the rule leaves an empty manual crate; populated manual crates are protected from conversion.
 
 Workflow: Prepare a DJ deck.
+
+### Import local picture
+
+FFmpeg/ffprobe; supported constant frame rates
+
+Import one local SDR video after checking every decoded timestamp. Variable rate, rotation, unsupported codecs or missing tools produce an error. Audio from the picture is excluded. Save the native project to retain its external picture reference.
+
+Workflow: Edit and undo.
+
+### Picture preview
+
+Resizable native preview and detached viewport
+
+Picture follows the per-callback audio seconds clock. A saved preview latency adjustment (-2000 to 2000 ms; negative delays picture) can account for audio hardware; it does not shift exports. Outside trim is black; decoder latency shows a waiting frame rather than stale picture. Performance protection suspends optional decoding.
+
+Workflow: Edit and undo.
+
+### Picture trim and placement
+
+Zero-based video frames; exclusive trim end
+
+Apply a valid source trim and project placement. Timecode offset is signed frames; 29.97 and 59.94 support drop-frame timecode. Seek ends clip recording and releases clip notes while preserving physical input ownership.
+
+Workflow: Edit and undo.
+
+### Picture locators
+
+128 named project-frame locators
+
+Add or seek saved frame positions. Names contain 1–128 control-free UTF-8 bytes. Native project reopen verifies the same picture source before decoding.
+
+Workflow: Edit and undo.
+
+### Render selected scene against picture
+
+New output folder; 48 kHz stereo float score
+
+Render the selected Session scene from project zero with fresh DSP state, including native mixer/effects. Publish score.wav, lossless FFV1/PCM picture.mkv and alignment.json together. Picture audio is excluded. WAV is limited to 2 GiB; source and live project remain intact.
+
+Workflow: Edit and undo.
+
+### Cancel video work
+
+Pending decoder or render
+
+Stop and reap the owned decoder on its worker. Cancellation before publication removes staging output. A directory already published retains its committed result. Existing output folders are never overwritten.
+
+Workflow: Edit and undo.
 
 ### Licensed music providers
 

@@ -314,6 +314,7 @@ impl Frame {
         target.recording = rt.recording;
         target.bpm = rt.bpm;
         target.beat = rt.beat;
+        target.timeline_seconds = rt.timeline_seconds();
         target.file_conductor = rt.conductor.is_some();
         target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {
@@ -429,6 +430,7 @@ impl Frame {
 
 impl RtEngine {
     pub fn publish(&mut self) {
+        self.project.publish_timeline(self.timeline_seconds());
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[2]);
         if let Some(mut frame) = self.publisher.acquire() {

@@ -136,6 +136,7 @@ impl App {
         let mut editor = std::mem::take(&mut self.dependencies);
         let mut open = true; let mut close = false;
         egui::Window::new("Project dependencies").open(&mut open).default_width(650.0).vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
+            if let Some(picture)=&self.video.clip { ui.label(format!("External picture reference: {}. Open Video to verify its source and frame metadata; native projects retain this reference. Portable export requires clearing it in a saved copy.",picture.path.display())); }
             ui.label("Native projects retain embedded audio and unavailable device state. Relink verifies decoded audio and updates this project's source references.");
             ui.add_enabled_ui(!editor.busy() && !self.project.committing(), |ui| {
                 if ui.add_enabled(!editor.choices.iter().any(Option::is_some), egui::Button::new("Check dependencies")).help(ui, HelpControl::DependenciesInspect).clicked() { editor.start(&self.engine, Kind::Inspect); }
