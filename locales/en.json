@@ -1469,7 +1469,7 @@
   "Restore the previous recorded creative edit while preserving unrelated transport and input gates. Availability is renderer-confirmed, bounded and separate from queue admission.": "Restore the previous recorded creative edit while preserving unrelated transport and input gates. Availability is renderer-confirmed, bounded and separate from queue admission.",
   "Retain checkpoint generations within each session, preserving a known-valid prior generation until a newer durable commit. This does not silently delete another session's recovery history.": "Retain checkpoint generations within each session, preserving a known-valid prior generation until a newer durable commit. This does not silently delete another session's recovery history.",
   "Retained file SHA-256: {}": "Retained file SHA-256: {0}",
-  "Retained output: {} / {} · {}": "Retained output: {} / {} · {}",
+  "Retained output: {} / {} · {}": "Retained output: {0} / {1} · {2}",
   "Retained state: schema {:?}, {} bytes · requested enabled: {}": "Retained state: schema {0}, {1} bytes · requested enabled: {2}",
   "Retirement committed, durability uncertain: {warning}": "Retirement committed, durability uncertain: {0}",
   "Retirement failed: {error}. Recovery may be offered at next startup.": "Retirement failed: {0}. Recovery may be offered at next startup.",

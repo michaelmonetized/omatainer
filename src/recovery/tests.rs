@@ -69,6 +69,39 @@ fn latest(root: &Path) -> Candidate {
     assert_eq!(inventory.candidates.len(), 1, "{:?}", inventory.warnings);
     inventory.candidates.remove(0)
 }
+
+#[test]
+fn concurrent_recovery_readers_allow_exact_lookup_and_restore_but_exclude_writers_and_deletion() {
+    let root=Root::new();let audio=sample();let mut store=Store::open(&root.0).unwrap();
+    let commit=store.append(&bundle(1,&audio),meta(1),&Config::default(),&no()).unwrap();
+    let session=store.session_id().to_owned();let digest=session_digest(&session);
+    assert!(session_read_lock(&root.0,&session).unwrap().is_none());
+    assert!(lookup_exact(&root.0,digest,7,commit.sequence,&no()).is_err());
+    drop(store);
+    let (_,reader)=session_read_lock(&root.0,&session).unwrap().unwrap();
+    let second=session_read_lock(&root.0,&session).unwrap().unwrap();
+    assert!(session_lock(&root.0,&session).unwrap().is_none());
+    let candidate=lookup_exact(&root.0,digest,7,commit.sequence,&no()).unwrap().unwrap();
+    let discovered=discover(&root.0,&no()).unwrap();assert_eq!(discovered.candidates.len(),1);
+    assert_eq!(discovered.candidates[0].record_digest(),candidate.record_digest());
+    let recovered:Recovered<State>=recover(&candidate,&no()).unwrap();assert_eq!(recovered.bundle.state,bundle(1,&audio).state);assert_sample(&audio,&recovered.bundle.media[0]);
+    assert!(discard(&candidate,&no()).is_err());
+    assert!(lookup_exact(&root.0,digest,7,commit.sequence,&no()).unwrap().is_some());
+    drop(second);drop(reader);
+    discard(&candidate,&no()).unwrap();assert!(lookup_exact(&root.0,digest,7,commit.sequence,&no()).unwrap().is_none());
+}
+
+#[test]
+fn retired_recovery_cleanup_waits_for_readers_and_finishes_after_their_release() {
+    let root=Root::new();let audio=sample();let mut store=Store::open(&root.0).unwrap();
+    let commit=store.append(&bundle(1,&audio),meta(1),&Config::default(),&no()).unwrap();
+    let session=store.session_id().to_owned();drop(store);
+    let path=root.0.join(&session);retire_marker(&path,7,commit.sequence,&no()).unwrap();
+    let (_,reader)=session_read_lock(&root.0,&session).unwrap().unwrap();
+    let inventory=discover(&root.0,&no()).unwrap();
+    assert!(inventory.candidates.is_empty());assert!(inventory.warnings.iter().any(|warning|warning.contains("being read; cleanup deferred")));assert!(path.exists());
+    drop(reader);let inventory=discover(&root.0,&no()).unwrap();assert!(inventory.candidates.is_empty());assert!(!path.exists());
+}
 fn assert_sample(a: &Sample, b: &Sample) {
     assert_eq!(
         (a.sr, a.ch, a.bpm, &a.name, &a.path),

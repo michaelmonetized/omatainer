@@ -334,7 +334,7 @@ impl App {
             ui.add_enabled_ui(allowed,|ui|{
                 if let Some(status)=panel.handle.as_ref().map(owner::Handle::status).filter(|status|status.phase==owner::Phase::Offline) {
                     if let Some(target)=&status.recovery {
-                        ui.label(format!("Retained output: {} / {} · {}",target.plan.backend,target.plan.device,target.plan.route())).help(ui,HelpControl::AudioNotice);
+                        ui.label(crate::localization::format("Retained output: {} / {} · {}",&[target.plan.backend.clone(),target.plan.device.clone(),target.plan.route()])).help(ui,HelpControl::AudioNotice);
                         if target.identity.is_some() {
                             if audio_action(ui,"Reconnect retained output…",true).help(ui,HelpControl::AudioReconnect).clicked(){panel.confirm=Some(Confirm::Reconnect(status.generation));}
                         } else {ui.label(tr!("This output has no verifiable physical identity. Preview saved audio or choose a fallback in Preferences, then confirm it explicitly."));}
@@ -389,7 +389,7 @@ impl App {
 // must not depend on how many status labels preceded them in this frame.
 fn audio_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response {
     ui.push_id(("audio-action", label), |ui| {
-        ui.add_enabled(enabled, egui::Button::new(label))
+        ui.add_enabled(enabled, egui::Button::new(crate::localization::text_dynamic(label)))
     }).inner
 }
 

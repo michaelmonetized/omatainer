@@ -77,7 +77,9 @@ MIDI input policy and folder availability. **Apply and save** commits the draft;
 **Cancel changes** keeps the current setup.
 
 Audio device, sample format, rate, channel count and buffer size are saved separately
-from the running output. Open **Audio devices and latency**, select **Preview saved
+from the running output. Device loss retains the project and stops playback.
+See [Recovering lost audio](docs/audio-recovery.md) for reconnect, fallback and
+pending physical qualification. Open **Audio devices and latency**, select **Preview saved
 audio**, then **Use saved audio now** and **Stop and change output** to apply without
 restarting. This stops performance and tries to restore the prior output on failure;
 it never resumes playback automatically. If both devices fail, the stopped session

@@ -176,7 +176,9 @@ pub(super) trait Backend: 'static {
         fault: Arc<AtomicBool>,
         identity: Option<&str>,
     ) -> Result<Self::Stream, String>;
+    /// Resolve accepted output identity. Takes its plan; returns a verified key or none.
     fn identity(&mut self, plan: &config::Plan) -> Option<String>;
+    /// Rediscover a retained route. Takes its identity; returns a verified plan or refusal.
     fn reconnect(&mut self, target: &recovery::Target) -> Result<config::Plan, String>;
     fn play(&mut self, stream: &Self::Stream) -> Result<(), String>;
     fn calibrate(
@@ -257,7 +259,7 @@ impl<B: Backend> Owner<B> {
         }
         let identity = self.backend.identity(&plan);
         if required.is_some_and(|expected| identity.as_deref() != Some(expected)) {
-            return Err("Retained physical output changed; no other output was opened".into());
+            return Err("Retained physical output changed; no other output was activated".into());
         }
         let mut graph = self
             .graph
@@ -288,9 +290,13 @@ impl<B: Backend> Owner<B> {
             }
         };
         let result = self.backend.play(&stream);
+        let identity_matches = identity.as_ref().is_none_or(|expected| {
+            self.backend.identity(&plan).as_ref() == Some(expected)
+        });
         // This RMW is the commit point against cancellation: cancellation
         // ordered before it wins; a later request cannot undo applied output.
         let commit = result.is_ok()
+            && identity_matches
             && !fault.load(Ordering::Acquire)
             && !self.stopped.load(Ordering::Acquire)
             && cancel
@@ -302,6 +308,8 @@ impl<B: Backend> Owner<B> {
             return Err(result.err().unwrap_or_else(|| {
                 if cancel.load(Ordering::Acquire) || self.stopped.load(Ordering::Acquire) {
                     "Audio change cancelled before activation".into()
+                } else if !identity_matches {
+                    "Physical output changed during opening; no other output was activated".into()
                 } else {
                     "Output failed before activation".into()
                 }
@@ -538,7 +546,7 @@ impl<B: Backend> Owner<B> {
                 self.publish(
                     Phase::Offline,
                     self.status.load().requested.clone(),
-                    "Audio output was lost or stopped calling back. Session retained and recording finalized; reconnect the retained output or explicitly preview a fallback. Release physical inputs before resuming. Save and Close remain available."
+                    "Audio output stopped responding. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available."
                         .into(),
                 );
             }

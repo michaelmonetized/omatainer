@@ -169,6 +169,32 @@ fn canceled_or_failed_reconnect_retains_graph_and_target_for_later_retry_and_sav
 }
 
 #[test]
+fn replacement_during_open_stays_muted_and_retains_the_original_target_and_project() {
+    let (engine,audio,controls)=tests::fixture();
+    engine.cmd.send(Command::Master(0.37)).unwrap();
+    wait(||engine.snapshot().master==0.37);
+    fault(&audio,&controls);
+    let before=engine.project.capture(&AtomicBool::new(false)).unwrap();
+    let callbacks=engine.cmd.audio_metrics().callbacks;
+    controls.block_open.store(true,Ordering::Release);
+    let handle=audio.handle.clone();
+    let operation=std::thread::spawn(move||reconnect(&handle));
+    wait(||controls.entering_open.load(Ordering::Acquire));
+    controls.alternate_device.store(true,Ordering::Release);
+    controls.block_open.store(false,Ordering::Release);
+    assert!(operation.join().unwrap().unwrap_err().contains("changed during opening"));
+    let status=audio.handle.status();assert_eq!(status.phase,Phase::Offline);
+    assert_eq!(status.recovery.as_ref().unwrap().identity.as_deref(),Some("unit-1"));
+    assert_eq!(engine.cmd.audio_metrics().callbacks,callbacks);
+    let after=engine.project.capture(&AtomicBool::new(false)).unwrap();
+    assert_eq!(serde_json::to_value(after.state).unwrap(),serde_json::to_value(before.state).unwrap());
+    assert!(engine.cmd.performance().status().recovery);
+    controls.alternate_device.store(false,Ordering::Release);
+    assert_eq!(reconnect(&audio.handle).unwrap().phase,Phase::Running);
+    assert!(!engine.snapshot().playing);
+}
+
+#[test]
 fn callback_stall_retires_the_actual_callback_without_a_backend_error_and_aliases_need_explicit_fallback(
 ) {
     let (engine, audio, controls) = tests::fixture();

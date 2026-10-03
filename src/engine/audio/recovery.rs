@@ -145,9 +145,9 @@ pub(super) fn discover(target: &Target) -> Result<Plan, String> {
         .filter(|name| identity(name).as_ref() == Some(expected));
     let name = names
         .next()
-        .ok_or("Retained physical output is unavailable; no other output was opened")?;
+        .ok_or("Retained physical output is unavailable; no other output was activated")?;
     if names.next().is_some() {
-        return Err("Retained identity is ambiguous; no output was opened".into());
+        return Err("Retained identity is ambiguous; no output was activated".into());
     }
     let mut settings = settings(&target.plan);
     settings.device = Some(name);

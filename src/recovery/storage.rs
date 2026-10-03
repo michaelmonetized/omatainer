@@ -542,6 +542,16 @@ fn session_lock(root: &Path, session: &str) -> Result<Option<(PathBuf, files::Lo
     files::private_dir(&path, false)?;
     Ok(files::lock(&path.join("owner.lock"), false)?.map(|lock| (path, lock)))
 }
+
+/// Read a closed recovery session without excluding another reader.
+/// Takes the private root and stable session name; active writers and cleanup still exclude inspection.
+fn session_read_lock(root: &Path, session: &str) -> Result<Option<(PathBuf, files::Lock)>, Error> {
+    files::private_dir(root, false)?;
+    if !valid_session(session) { return Err(Error::invalid("invalid recovery session identity")); }
+    let path = root.join(session);
+    files::private_dir(&path, false)?;
+    Ok(files::read_lock(&path.join("owner.lock"))?.map(|lock|(path,lock)))
+}
 fn retired(path: &Path, cancel: &AtomicBool) -> Result<bool, Error> {
     let marker = path.join("retired.json");
     match fs::symlink_metadata(&marker) {
@@ -640,7 +650,7 @@ pub fn lookup_exact(root:&Path,digest:[u8;32],epoch:u64,sequence:u64,cancel:&Ato
         }
     }
     let Some(session)=session else {return Ok(None)};
-    let (path,_lock)=session_lock(root,&session)?.ok_or_else(||Error::invalid("referenced recovery session is still active"))?;
+    let (path,_lock)=session_read_lock(root,&session)?.ok_or_else(||Error::invalid("referenced recovery session is still active"))?;
     if retired(&path,cancel)? {return Ok(None);}
     let mut candidate=None;let mut warnings=Vec::new();
     let mut budget=project_file::DEFAULT_PCM_LIMIT + project_file::DEFAULT_METADATA_LIMIT as u64
@@ -703,7 +713,7 @@ fn discover_with_budget(
             );
             continue;
         }
-        let Some((path, _lock)) = (match session_lock(root, session) {
+        let Some((path, read_lock)) = (match session_read_lock(root, session) {
             Ok(value) => value,
             Err(error) => {
                 report(&mut result.warnings, format!("{session}: {error}"));
@@ -714,7 +724,11 @@ fn discover_with_budget(
         };
         match retired(&path, cancel) {
             Ok(true) => {
+                drop(read_lock);
                 let cleanup = (|| {
+                    let Some((path, _exclusive)) = session_lock(root,session)? else {
+                        return Err(Error::invalid("retired recovery is being read; cleanup deferred"));
+                    };
                     let _root_lock = files::root_lock(root)?;
                     files::sync(&path)?;
                     cleanup_session(root, &path)
@@ -874,7 +888,7 @@ fn recover_with_limits<T: DeserializeOwned>(
     mut remaining: Limits,
 ) -> Result<Recovered<T>, Error> {
     check(cancel)?;
-    let (path, _lock) = session_lock(&candidate.root, &candidate.session)?
+    let (path, _lock) = session_read_lock(&candidate.root, &candidate.session)?
         .ok_or_else(|| Error::invalid("recovery session is active in another process"))?;
     let record = exact_record(candidate, &path, cancel)?;
     if record.body.media.len() > remaining.max_media {
