@@ -72,12 +72,12 @@ impl App {
                 Decision::Silence => ("Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy.", "Confirm emergency silence"),
                 Decision::Recover => ("Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched.", if status.output_muted { "Inputs released — keep output muted" } else { "Inputs released — keep playback stopped" }),
             };
-            ui.label(text);
+            ui.label(crate::localization::text_dynamic(text));
             if matches!(decision, Decision::Recover) {
                 ui.checkbox(&mut self.performance_panel.inputs_released, tr!("I have released the physical inputs")).help(ui, HelpControl::PerformanceRecovery);
             }
             let enabled = !matches!(decision, Decision::Recover) || (self.performance_panel.inputs_released && status.stopped);
-            if ui.add_enabled(enabled, egui::Button::new(action)).help(ui, HelpControl::PerformanceRecovery).clicked() {
+            if ui.add_enabled(enabled, egui::Button::new(crate::localization::text_dynamic(action))).help(ui, HelpControl::PerformanceRecovery).clicked() {
                 let command = match decision { Decision::Leave => Command::PerformanceMode(false), Decision::Stop => Command::SafetyStop(Safety::Stop), Decision::Silence => Command::SafetyStop(Safety::Silence), Decision::Recover => Command::RecoverPerformance };
                 if self.submit(command) { close = true; }
             }

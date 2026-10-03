@@ -84,6 +84,51 @@ impl Gui {
     }
 }
 #[test]
+fn localized_safety_decisions_keep_cancel_acknowledgment_and_latched_mute() {
+    use crate::localization::{self, Locale};
+    for locale in [Locale::Spanish,Locale::German] {
+        let mut gui = Gui::new();
+        let active = gui.fixture.app.settings.applied.active.clone();
+        gui.fixture.app.settings.applied.profiles.get_mut(&active).unwrap().appearance.locale = locale;
+        gui.frame(vec![]);
+        let translated = |key| { let _locale = localization::scope(locale); localization::text(key) };
+        gui.click(translated("Enable performance mode"));
+        gui.click(translated("Leave performance mode…"));
+        gui.click(translated("Keep current safety state"));
+        assert!(gui.fixture.app.engine.cmd.performance().status().protected);
+        gui.click(translated("Leave performance mode…"));
+        gui.click(translated("Leave protection"));
+        assert!(!gui.fixture.app.engine.cmd.performance().status().protected);
+        gui.click(translated("Safe stop…"));
+        gui.click(translated("Stop all transports and release notes"));
+        assert!(gui.fixture.app.engine.cmd.performance().status().recovery);
+        gui.frame(vec![]);
+        gui.click(translated("Recover inputs…"));
+        let label = translated("Inputs released — keep playback stopped");
+        assert!(gui.nodes.iter().find(|(_,node)| node.label()==Some(label)).unwrap().1.is_disabled());
+        gui.click(translated("I have released the physical inputs"));
+        gui.click(label);
+        assert!(!gui.fixture.app.engine.cmd.performance().status().recovery);
+        assert!(!gui.fixture.rt.playing);
+        gui.click(translated("Emergency silence…"));
+        gui.click(translated("Keep current safety state"));
+        assert!(!gui.fixture.app.engine.cmd.performance().status().output_muted);
+        gui.click(translated("Emergency silence…"));
+        gui.click(translated("Confirm emergency silence"));
+        gui.frame(vec![]);
+        assert!(gui.fixture.app.engine.cmd.performance().status().output_muted);
+        gui.click(translated("Recover inputs…"));
+        let label = translated("Inputs released — keep output muted");
+        assert!(gui.nodes.iter().find(|(_,node)| node.label()==Some(label)).unwrap().1.is_disabled());
+        gui.click(translated("I have released the physical inputs"));
+        gui.click(label);
+        let status = gui.fixture.app.engine.cmd.performance().status();
+        assert!(!status.recovery && status.output_muted);
+        assert!(!gui.fixture.rt.playing);
+    }
+}
+
+#[test]
 fn actual_safety_controls_require_deliberate_decisions_and_keep_emergency_mute() {
     let mut gui = Gui::new();
     gui.click("Enable performance mode");
