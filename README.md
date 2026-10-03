@@ -681,8 +681,10 @@ not native GUI or hardware QA. See [support/privacy and validation boundaries](d
 local media, native projects, built-in DSP, sampler banks, Help or license
 notices. Native projects embed playable PCM; reusable bank definitions keep
 source references, so unavailable files remain visibly missing until restored
-or verified as relocated. Plugin hosting, provider streaming/downloads,
-authentication and cloud transfer are not implemented. No credential store is
+or verified as relocated. Explicitly enabled Free To Use search and licensed
+non-premium previews require internet access; provider offline storage is
+unavailable. Plugin hosting, account authentication and cloud transfer are
+not implemented. No credential store is
 advertised or stubbed. Support exports are reviewed local files, not uploads.
 
 License **Source record (external browser)** links deliberately leave the local

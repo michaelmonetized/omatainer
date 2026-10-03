@@ -140,7 +140,7 @@ impl App {
                 let caps = panel.provider.capabilities(panel.license, None);
                 restrictions(ui, caps);
                 if !identity.supported_platform { ui.label("Provider support is currently qualified on Linux only."); }
-                let available = caps.search && panel.job.is_none() && !self.engine.safe_mode() && !self.engine.cmd.performance().protected();
+                let available = caps.search && panel.job.is_none() && !self.engine.safe_mode() && !self.engine.cmd.performance().protected() && !self.project.committing();
                 let label = ui.label("Provider search");
                 ui.add(egui::TextEdit::singleline(&mut panel.query).char_limit(1024)).labelled_by(label.id);
                 ui.horizontal(|ui| {
@@ -186,6 +186,11 @@ impl App {
             panel.stop();
         }
         if let Some(operation) = operation {
+            if self.project.committing() {
+                panel.stop();
+                panel.message = "Provider requests wait for the project commit".into();
+                return;
+            }
             if let Operation::Search { query, .. } = &operation {
                 panel.pending_query = query.clone();
             }
