@@ -293,7 +293,8 @@ impl Request {
             .iter()
             .map(|id| fx::FxSlot::required_storage(*id, rate as f32))
             .sum();
-        let heap_bytes = nodes.capacity() * std::mem::size_of::<Box<TrackRt>>()
+        let heap_bytes = fx_storage.len() * std::mem::size_of::<fx::FxId>()
+            + nodes.capacity() * std::mem::size_of::<Box<TrackRt>>()
             + nodes.iter().map(|t| t.retained_bytes()).sum::<usize>()
             + racks.capacity() * std::mem::size_of::<fx::FxChain>()
             + racks.iter().map(fx::FxChain::retained_bytes).sum::<usize>()

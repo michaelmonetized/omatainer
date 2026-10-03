@@ -12299,7 +12299,7 @@
     "src/engine/session/registry.rs": "77462fea738c2e11b10ff128cb23e88804310c4ac6a3c36876e4e5b4d453f831",
     "src/engine/session/scoped.rs": "700b054a9fc72817f95ef9956e4711cfe5d9779d970e4a97176bea1f3abe4328",
     "src/engine/session/transaction.rs": "ca8a370bfbf0667d1855a77e90c706dacca45d1579d1e54dec577577890a8242",
-    "src/engine/session/transaction/import.rs": "1b83c433e349566790d1e25b7a8041d39c82d222ea69609dfc4a5b0a3373aef2",
+    "src/engine/session/transaction/import.rs": "a7d30615538d982d5f55240607c62e9fa7e56ddb7731bebfcc5c6cb23dc5bf36",
     "src/engine/session/transaction/import/tests.rs": "fff21619c3f036c4291a4ab32d4c310be7695c7646aa175b8896845abe2f0d25",
     "src/engine/session/transaction/structural.rs": "0d77e8df9e7d6844161db09e68205a1cc206896ca13a5f7675fd6a0515ad29be",
     "src/engine/session/transaction/tests.rs": "b35acffbcec3021aa30ccfe51c9e07fba614813e58b7b7f9be478c990829d53a",
