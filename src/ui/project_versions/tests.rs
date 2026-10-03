@@ -185,6 +185,7 @@ fn native_named_versions_compare_branch_restore_reopen_and_preview_prune() {
     let original_bytes = std::fs::read(&original).unwrap();
     let original_bpm = gui.rt.bpm;
     let root = files.0.join("named");
+    std::fs::create_dir(&root).unwrap();
     gui.named(&root);
     gui.snapshot("First mix");
     let shared_audio_count = std::fs::read_dir(root.join("audio")).unwrap().count();
@@ -362,4 +363,45 @@ fn comparison_reports_stable_track_clip_routing_and_device_changes() {
     assert!(text.contains("cutoff:"));
     assert!(text.contains("Edited clip"));
     assert!(worker::compare(&current, &saved, &AtomicBool::new(true)).is_err());
+}
+
+#[test]
+fn native_close_cancels_and_waits_for_snapshot_branch_and_prune_workers() {
+    let files = Files::new();
+    let mut gui = Gui::new(&files);
+    let root = files.0.join("close-versions");
+    gui.named(&root);
+    gui.snapshot("Original");
+    gui.select("Original");
+    gui.compare();
+    let record = gui.app.project_versions.compared.as_ref().unwrap().0.clone();
+    let store = crate::project_versions::Store::open(&root, false, &AtomicBool::new(false)).unwrap();
+    let review = store.review_prune(&[record.entry.id.clone()], &AtomicBool::new(false)).unwrap();
+    drop(store);
+    let before = std::fs::read(root.join("versions.omat")).unwrap();
+    let branch = files.0.join("cancelled-branch.omat");
+    let tasks = [
+        Task::Snapshot { name: "Cancelled".into(), notes: String::new(), view: gui.app.project_view(), identities: gui.app.project_watch_identities() },
+        Task::Branch { record, path: branch.clone() },
+        Task::Prune { review },
+    ];
+    for task in tasks {
+        let (entered, resume) = gui.app.project_versions.worker.as_ref().unwrap().pause_next();
+        gui.app.project_versions.start(&gui.app.engine, task);
+        entered.recv_timeout(Duration::from_secs(2)).unwrap();
+        let cancel = gui.app.project_versions.active.as_ref().unwrap().clone();
+        let mut raw = egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1800.0, 1600.0))), ..Default::default() };
+        raw.viewports.get_mut(&egui::ViewportId::ROOT).unwrap().events.push(egui::ViewportEvent::Close);
+        let out = gui.ctx.run(raw, |ctx| gui.app.update_frame(ctx));
+        assert!(out.viewport_output[&egui::ViewportId::ROOT].commands.iter().any(|c| matches!(c, egui::ViewportCommand::CancelClose)));
+        assert!(cancel.load(Ordering::Acquire));
+        assert!(gui.app.project_versions.busy());
+        assert!(!out.viewport_output[&egui::ViewportId::ROOT].commands.iter().any(|c| matches!(c, egui::ViewportCommand::Close)));
+        assert!(gui.app.project_result_for_test().1.unwrap().contains("named version work settles"));
+        resume.send(()).unwrap();
+        gui.wait(|g| !g.app.project_versions.busy());
+        assert_eq!(std::fs::read(root.join("versions.omat")).unwrap(), before);
+        assert!(!branch.exists());
+    }
+    assert!(std::fs::read_dir(root.join("audio")).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().contains(".tmp")));
 }

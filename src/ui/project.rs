@@ -819,8 +819,16 @@ impl App {
             self.dependencies.cancel();
             self.portability.cancel();
             self.templates.cancel();
+            self.project_versions.cancel();
+            self.project_import.cancel();
             self.sampler_editor.stop_for_close(&self.engine);
-            if self.templates.busy() {
+            if self.project_versions.busy() {
+                self.project_versions.open = true;
+                self.project.message = Some("Close cancelled while named version work settles. Wait for its publication or cancellation result before closing.".into());
+            } else if self.project_import.busy() {
+                self.project_import.open = true;
+                self.project.message = Some("Close cancelled while project import settles. Wait for its application or cancellation result before closing.".into());
+            } else if self.templates.busy() {
                 self.templates.open = true;
                 self.project.message = Some("Close cancelled while template work settles. Wait for its publication or cancellation result before closing.".into());
             } else if self.portability.busy() {

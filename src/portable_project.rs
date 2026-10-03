@@ -567,9 +567,30 @@ pub(crate) fn collect(
 /// Cancellation before rename preserves the destination; later sync failure
 /// reports a committed warning. Linux renameat2 supplies atomic conflict refusal.
 pub(crate) fn publish(
+    stage: Stage,
+    destination: &Path,
+    cancel: &AtomicBool,
+) -> Result<SaveOutcome, String> {
+    publish_directory(stage, destination, cancel, None)
+}
+
+/// Publish a complete staged directory into a verified empty real directory.
+/// Takes its original device/inode and cancellation flag; refuses changed or
+/// nonempty destinations and returns the same durable publication outcome.
+pub(crate) fn publish_into_empty(
+    stage: Stage,
+    destination: &Path,
+    identity: (u64, u64),
+    cancel: &AtomicBool,
+) -> Result<SaveOutcome, String> {
+    publish_directory(stage, destination, cancel, Some(identity))
+}
+
+fn publish_directory(
     mut stage: Stage,
     destination: &Path,
     cancel: &AtomicBool,
+    empty: Option<(u64, u64)>,
 ) -> Result<SaveOutcome, String> {
     active(cancel)?;
     stage.recheck()?;
@@ -581,13 +602,21 @@ pub(crate) fn publish(
     let new =
         std::ffi::CString::new(destination.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
     active(cancel)?;
+    if let Some(identity) = empty {
+        let metadata = fs::symlink_metadata(destination).map_err(|e| e.to_string())?;
+        if !metadata.is_dir() || (metadata.dev(), metadata.ino()) != identity
+            || fs::read_dir(destination).map_err(|e| e.to_string())?.next().is_some()
+        {
+            return Err("Version destination is no longer the reviewed empty directory".into());
+        }
+    }
     if unsafe {
         libc::renameat2(
             libc::AT_FDCWD,
             old.as_ptr(),
             libc::AT_FDCWD,
             new.as_ptr(),
-            libc::RENAME_NOREPLACE,
+            if empty.is_some() { 0 } else { libc::RENAME_NOREPLACE },
         )
     } != 0
     {

@@ -33,7 +33,7 @@ impl Panel {
     pub(super) fn busy(&self) -> bool {
         self.active.is_some()
     }
-    fn cancel(&self) {
+    pub(super) fn cancel(&self) {
         if let Some(c) = &self.active {
             c.store(true, Ordering::Release);
         }

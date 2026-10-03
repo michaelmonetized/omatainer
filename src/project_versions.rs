@@ -151,7 +151,12 @@ impl Store {
             return Err("Choose an absolute version folder".into());
         }
         let mut creation_warning = None;
-        if !root.exists() && create {
+        let empty = if create && root.exists() {
+            let metadata = directory(root)?;
+            fs::read_dir(root).map_err(|e| e.to_string())?.next().is_none()
+                .then_some((metadata.dev(), metadata.ino()))
+        } else { None };
+        if create && (!root.exists() || empty.is_some()) {
             let stage = crate::portable_project::Stage::new(
                 root.parent().ok_or("Version folder needs a parent")?,
             )?;
@@ -171,8 +176,10 @@ impl Store {
                     .and_then(|f| f.sync_all())
                     .map_err(|e| e.to_string())?;
             }
-            if let SaveOutcome::CommittedButDirectorySyncFailed(w) =
-                crate::portable_project::publish(stage, root, cancel)?
+            let published = if let Some(identity) = empty {
+                crate::portable_project::publish_into_empty(stage, root, identity, cancel)?
+            } else { crate::portable_project::publish(stage, root, cancel)? };
+            if let SaveOutcome::CommittedButDirectorySyncFailed(w) = published
             {
                 creation_warning = Some(w);
             }
