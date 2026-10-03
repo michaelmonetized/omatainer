@@ -22,7 +22,8 @@ struct ActionTarget {
 /// Linux's current AccessKit adapter exports Click but not custom actions.
 /// This ordinary menu button is the native AT-SPI route to all alternatives.
 pub(super) fn action_button(ui: &mut Ui) {
-    let target = ui.data(|data| data.get_temp::<ActionTarget>(egui::Id::new(ACTION_TARGET)));
+    let viewport = ui.ctx().viewport_id();
+    let target = ui.data(|data| data.get_temp::<ActionTarget>(viewport_key(viewport, ACTION_TARGET)));
     let Some(target) = target else {
         ui.add_enabled(false, egui::Button::new(tr!("Control actions: focus a control"))).help(ui, HelpControl::Actions);
         return;
@@ -36,7 +37,7 @@ pub(super) fn action_button(ui: &mut Ui) {
         for (index, label) in target.actions.iter().enumerate() {
             if ui.button(label).help(ui, HelpControl::Actions).clicked() {
                 ui.data_mut(|data| {
-                    data.insert_temp(egui::Id::new(ACTION_RESULT), (target.owner, index))
+                    data.insert_temp(viewport_key(viewport, ACTION_RESULT), (target.owner, index))
                 });
                 ui.close();
             }
@@ -53,6 +54,7 @@ pub(super) fn action_button(ui: &mut Ui) {
 }
 
 pub(super) fn begin_frame(ctx: &egui::Context) {
+    let viewport = ctx.viewport_id();
     // Native sliders process AccessKit before our shared value handler. Filter
     // invalid numbers first so their internal edit cannot reach a command.
     ctx.input_mut(|input| input.events.retain(|event| !matches!(event,
@@ -64,7 +66,7 @@ pub(super) fn begin_frame(ctx: &egui::Context) {
     // only once it has retired, before handling this frame's control keys.
     if ctx.memory(|memory| memory.top_modal_layer().is_none()) {
         let restore = ctx.data_mut(|data| {
-            let key = egui::Id::new(RESTORE);
+            let key = viewport_key(viewport, RESTORE);
             let owner = data.get_temp::<egui::Id>(key);
             data.remove::<egui::Id>(key);
             owner
@@ -167,21 +169,23 @@ pub(super) fn scrollbars<R>(ui: &Ui, label: &str, area: &egui::scroll_area::Scro
 }
 
 pub(super) fn finish_frame(ctx: &egui::Context) {
+    let viewport = ctx.viewport_id();
     let pass = ctx.cumulative_pass_nr();
     ctx.data_mut(|data| {
-        let key = egui::Id::new(ACTION_TARGET);
+        let key = viewport_key(viewport, ACTION_TARGET);
         if data
             .get_temp::<ActionTarget>(key)
             .is_some_and(|target| target.seen != pass)
         {
             data.remove::<ActionTarget>(key);
-            data.remove::<(egui::Id, usize)>(egui::Id::new(ACTION_RESULT));
+            data.remove::<(egui::Id, usize)>(viewport_key(viewport, ACTION_RESULT));
         }
     });
 }
 
 pub(super) fn scope<R>(ui: &mut Ui, name: &str, draw: impl FnOnce(&mut Ui) -> R) -> R {
-    let key = egui::Id::new(PREFIX);
+    let viewport = ui.ctx().viewport_id();
+    let key = viewport_key(viewport, PREFIX);
     let previous = ui.data_mut(|data| data.get_temp::<String>(key));
     ui.data_mut(|data| data.insert_temp(key, name.to_owned()));
     let result = group(ui, name, draw);
@@ -206,7 +210,8 @@ pub(super) fn group<R>(ui: &mut Ui, label: &str, draw: impl FnOnce(&mut Ui) -> R
 }
 
 fn name(ui: &Ui, label: &str) -> String {
-    ui.data(|data| data.get_temp::<String>(egui::Id::new(PREFIX)))
+    let viewport = ui.ctx().viewport_id();
+    ui.data(|data| data.get_temp::<String>(viewport_key(viewport, PREFIX)))
         .map(|prefix| format!("{prefix}: {label}"))
         .unwrap_or_else(|| label.to_owned())
 }
@@ -260,10 +265,11 @@ pub(super) fn status(ui: &Ui, response: &egui::Response, status: &str) {
 /// are AccessKit custom actions and a keyboard menu (Shift+F10). Linux
 /// also exposes them through the ordinary contextual action button.
 pub(super) fn actions(ui: &Ui, response: &egui::Response, labels: &[&str]) -> Option<usize> {
+    let viewport = ui.ctx().viewport_id();
     if labels.is_empty() {
         return None;
     }
-    let key = egui::Id::new(ACTION_TARGET);
+    let key = viewport_key(viewport, ACTION_TARGET);
     let selected = ui
         .data(|data| data.get_temp::<ActionTarget>(key))
         .is_some_and(|target| target.owner == response.id);
@@ -307,7 +313,7 @@ pub(super) fn actions(ui: &Ui, response: &egui::Response, labels: &[&str]) -> Op
         return None;
     }
     let menu_action = ui.data_mut(|data| {
-        let key = egui::Id::new(ACTION_RESULT);
+        let key = viewport_key(viewport, ACTION_RESULT);
         data.get_temp::<(egui::Id, usize)>(key)
             .and_then(|(owner, index)| {
                 if owner == response.id {
@@ -379,6 +385,7 @@ pub(super) fn numeric(
     step: f32,
     unit: &str,
 ) -> Option<f32> {
+    let viewport = ui.ctx().viewport_id();
     let label = name(ui, label);
     ui.data_mut(|data| data.insert_temp(response.id.with("accessible-name"), label.clone()));
     // Standard Slider responses span the bar, value field and label. Preserve
@@ -409,7 +416,7 @@ pub(super) fn numeric(
         return None;
     }
     let mut result = ui.data_mut(|data| {
-        let key = egui::Id::new(RESULT);
+        let key = viewport_key(viewport, RESULT);
         data.get_temp::<(egui::Id, f32)>(key)
             .and_then(|(owner, value)| {
                 if owner == response.id {
@@ -460,7 +467,7 @@ pub(super) fn numeric(
         if ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::F2)) {
             ui.data_mut(|data| {
                 data.insert_temp(
-                    egui::Id::new(NUMBER),
+                    viewport_key(viewport, NUMBER),
                     NumericEdit {
                         owner: response.id,
                         label: format!("{label} ({unit})"),
@@ -494,18 +501,24 @@ pub(super) fn numeric(
         .filter(|next| *next != value)
 }
 
+/// Cancel old control editors across this app's native windows before replacing their targets.
+/// Takes the current context; returns no value and removes pending values and focus restoration.
 pub(super) fn cancel_editor(ctx: &egui::Context) {
-    ctx.data_mut(|data| {
-        data.remove::<NumericEdit>(egui::Id::new(NUMBER));
-        data.remove::<(egui::Id, f32)>(egui::Id::new(RESULT));
-        data.remove::<egui::Id>(egui::Id::new(RESTORE));
-        data.remove::<ActionTarget>(egui::Id::new(ACTION_TARGET));
-        data.remove::<(egui::Id, usize)>(egui::Id::new(ACTION_RESULT));
-    });
+    let viewports=ctx.input(|input|input.raw.viewports.keys().copied().collect::<Vec<_>>());
+    for viewport in viewports {
+        ctx.data_mut(|data| {
+            data.remove::<NumericEdit>(viewport_key(viewport,NUMBER));
+            data.remove::<(egui::Id,f32)>(viewport_key(viewport,RESULT));
+            data.remove::<egui::Id>(viewport_key(viewport,RESTORE));
+            data.remove::<ActionTarget>(viewport_key(viewport,ACTION_TARGET));
+            data.remove::<(egui::Id,usize)>(viewport_key(viewport,ACTION_RESULT));
+        });
+    }
 }
 
 pub(super) fn numeric_editor(ctx: &egui::Context) {
-    let key = egui::Id::new(NUMBER);
+    let viewport = ctx.viewport_id();
+    let key = viewport_key(viewport, NUMBER);
     let Some(mut edit) = ctx.data(|data| data.get_temp::<NumericEdit>(key)) else {
         return;
     };
@@ -540,7 +553,7 @@ pub(super) fn numeric_editor(ctx: &egui::Context) {
                 if let Some(value) = crate::localization::parse_number(&edit.text).map(|value| value as f32) {
                     if value.is_finite() && (edit.min..=edit.max).contains(&value) {
                         ctx.data_mut(|data| {
-                            data.insert_temp(egui::Id::new(RESULT), (edit.owner, value))
+                            data.insert_temp(viewport_key(viewport, RESULT), (edit.owner, value))
                         });
                         done = true;
                     } else {
@@ -560,7 +573,7 @@ pub(super) fn numeric_editor(ctx: &egui::Context) {
         }
     });
     if done {
-        ctx.data_mut(|data| data.insert_temp(egui::Id::new(RESTORE), edit.owner));
+        ctx.data_mut(|data| data.insert_temp(viewport_key(viewport, RESTORE), edit.owner));
         ctx.request_repaint();
     }
 }

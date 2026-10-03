@@ -54,6 +54,7 @@ use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 const STATUS_REQUEST: &str = r#"{"op":"status"}"#;
+const APPLICATION_ID: &str = "org.omarchy.omatainer";
 
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -172,7 +173,7 @@ fn main() -> anyhow::Result<()> {
             .with_inner_size([1540.0, 960.0])
             .with_min_inner_size([860.0, 640.0])
             .with_title("omatainer")
-            .with_app_id("org.omarchy.omatainer"),
+            .with_app_id(APPLICATION_ID),
         ..Default::default()
     };
     let gui_result=eframe::run_native(

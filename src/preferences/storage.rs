@@ -113,6 +113,9 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 11 && profiles.iter().any(|p|p.get("workspaces").is_some()) {
+        return Err(Error::Invalid("Workspaces require preferences version 11".into()));
+    }
     if version < 10 && profiles.iter().any(|p| p.get("appearance").is_some_and(|a| a.get("locale").is_some())) {
         return Err(Error::Invalid("Display language requires preferences version 10".into()));
     }
@@ -129,12 +132,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
     let (preferences, migrated) = match version {
-        10 => (
+        11 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -421,9 +424,10 @@ mod tests {
         assert!(decode(&serde_json::to_vec(&original).unwrap()).is_err());
     }
     fn strip_language(value: &mut serde_json::Value) {
-        for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile["appearance"].as_object_mut().unwrap().remove("locale"); }
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile.as_object_mut().unwrap().remove("workspaces"); profile["appearance"].as_object_mut().unwrap().remove("locale"); }
     }
     fn strip_appearance(profile: &mut serde_json::Value) {
+        profile.as_object_mut().unwrap().remove("workspaces");
         profile.as_object_mut().unwrap().remove("automation");
         for field in ["locale", "contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
     }
@@ -715,4 +719,26 @@ mod tests {
         value["profiles"]["Studio"]["appearance"]["locale"]="spanish".into();assert!(decode(&serde_json::to_vec(&value).unwrap()).is_err());
     }
 
+}
+
+
+#[cfg(test)]
+mod workspace_migration_tests {
+    use super::*;
+    #[test]
+    fn version_ten_migrates_to_default_layouts_and_cannot_smuggle_new_workspace_fields() {
+        let current=Preferences::defaults(Path::new("/tmp"));
+        let mut legacy=serde_json::to_value(&current).unwrap();
+        legacy["version"]=10.into();
+        for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() {
+            profile.as_object_mut().unwrap().remove("workspaces");
+        }
+        let (migrated,changed)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert!(changed); assert_eq!(migrated,current);
+        legacy["profiles"]["Studio"]["workspaces"]=serde_json::to_value(&current.current().unwrap().workspaces).unwrap();
+        assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());
+        let mut invalid=serde_json::to_value(&current).unwrap();
+        invalid["profiles"]["Studio"]["workspaces"]["active"]="missing".into();
+        assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+    }
 }

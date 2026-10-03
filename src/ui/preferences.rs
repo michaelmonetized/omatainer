@@ -23,6 +23,8 @@ pub(super) struct Settings {
     profile_name: String,
     file_path: String,
     shortcut_capture: Option<String>,
+    pub(super) workspace_open: bool,
+    workspace_name: String,
     roots: String,
     midi_names: String,
     pub rescan: bool,
@@ -78,6 +80,8 @@ impl Settings {
             home: start.home,
             file_path: String::new(),
             shortcut_capture: None,
+            workspace_open: false,
+            workspace_name: String::new(),
             roots: String::new(),
             midi_names: String::new(),
             rescan: false,
@@ -447,6 +451,12 @@ impl App {
                             }
                         });
                         if let Some(profile) = state.draft.profiles.get_mut(&state.edited) {
+                            if ui.button(tr!("Configure panel layout")).help(ui,HelpControl::Preferences).clicked() {state.workspace_open=!state.workspace_open;}
+                            if state.workspace_open {
+                                let before=profile.workspaces.clone();
+                                workspace::edit(ui,&mut profile.workspaces,&mut state.workspace_name,&mut state.message,&self.workspace.sizes);
+                                if before!=profile.workspaces {state.preview=None;}
+                            }
                             ui.separator(); ui.heading(tr!("Saved audio and calibration settings"));
                             audio_settings::edit_profile(ui, &mut profile.audio, state.inventory.as_ref());
                             ui.heading(tr!("MIDI inputs"));

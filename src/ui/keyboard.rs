@@ -10,10 +10,11 @@ pub(super) fn text_is_focused(ctx: &egui::Context) -> bool {
 }
 
 fn dialog_is_open(ctx: &egui::Context) -> bool {
+    let viewport = ctx.viewport_id();
     ctx.memory(|memory| memory.top_modal_layer().is_some())
         || egui::Popup::is_any_open(ctx)
         || ctx.data(|data| {
-            data.get_temp::<bool>(egui::Id::new(DIALOG_GUARD))
+            data.get_temp::<bool>(super::viewport_key(viewport, DIALOG_GUARD))
                 .unwrap_or(false)
         })
 }
@@ -27,13 +28,15 @@ pub(super) fn dialogs_block_input(ctx: &egui::Context) -> bool {
 /// Blocking dialogs call this before rendering, including on their first and
 /// closing frames. egui's modal-layer query describes the *previous* frame.
 pub(super) fn block_for_dialog(ctx: &egui::Context) {
-    ctx.data_mut(|data| data.insert_temp(egui::Id::new(DIALOG_GUARD), true));
+    let viewport = ctx.viewport_id();
+    ctx.data_mut(|data| data.insert_temp(super::viewport_key(viewport, DIALOG_GUARD), true));
 }
 
 /// Keep a focused keyboard action from also reaching global shortcuts.
 /// Takes the native context; returns no value and leaves independent touch gestures available.
 pub(super) fn block_for_activation(ctx: &egui::Context) {
-    ctx.data_mut(|data| data.insert_temp(egui::Id::new(ACTIVATION_GUARD), true));
+    let viewport = ctx.viewport_id();
+    ctx.data_mut(|data| data.insert_temp(super::viewport_key(viewport, ACTIVATION_GUARD), true));
 }
 
 #[derive(Default)]
@@ -44,8 +47,9 @@ pub(super) struct ShortcutFocus {
 
 impl ShortcutFocus {
     pub fn begin_frame(&mut self, ctx: &egui::Context) {
-        ctx.data_mut(|data| data.remove::<bool>(egui::Id::new(DIALOG_GUARD)));
-        ctx.data_mut(|data| data.remove::<bool>(egui::Id::new(ACTIVATION_GUARD)));
+        let viewport = ctx.viewport_id();
+        ctx.data_mut(|data| data.remove::<bool>(super::viewport_key(viewport, DIALOG_GUARD)));
+        ctx.data_mut(|data| data.remove::<bool>(super::viewport_key(viewport, ACTIVATION_GUARD)));
         // Escape can surrender text focus in egui's begin_pass, before App
         // runs. Retain that frame's editing ownership so Escape never leaks
         // through into CloseFx, and Enter/Tab cannot activate global actions.
@@ -53,11 +57,12 @@ impl ShortcutFocus {
     }
 
     pub fn globals_allowed(&mut self, ctx: &egui::Context) -> bool {
+        let viewport = ctx.viewport_id();
         let text_now = text_is_focused(ctx);
         let focused_activation = ctx.memory(|memory| memory.focused().is_some())
             && ctx.input(|input| input.key_pressed(egui::Key::Space) || input.key_pressed(egui::Key::Enter));
         let allowed = !focused_activation && !self.blocked_at_start
-            && !ctx.data(|data| data.get_temp::<bool>(egui::Id::new(ACTIVATION_GUARD)).unwrap_or(false))
+            && !ctx.data(|data| data.get_temp::<bool>(super::viewport_key(viewport, ACTIVATION_GUARD)).unwrap_or(false))
             && !text_now
             && !dialog_is_open(ctx)
             && ctx.input(|input| input.focused);

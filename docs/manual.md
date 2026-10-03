@@ -1482,7 +1482,7 @@ Workflow: Audio setup.
 
 Validated atomic local file
 
-Persist the validated draft before applying appearance/library/MIDI changes. Audio choices remain saved intent until the separate Audio devices confirmation or restart. Failure keeps running preferences unchanged.
+Persist the validated draft before applying appearance/library/MIDI changes. Audio choices remain saved intent until the separate Audio devices confirmation or restart. Failure keeps running preferences unchanged. Configure panel layout copies named workspaces, reorders/hides/resizes panels and opens secondary windows. Use current window sizes before Preview and Apply. Cancel retains the applied layout; closing a panel window returns it to the main window for this session.
 
 Workflow: Audio setup.
 

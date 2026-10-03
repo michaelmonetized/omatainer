@@ -2,13 +2,14 @@
 //! audio selection is consumed at startup or by the confirmed audio-owner workflow.
 pub mod recovery;
 pub(crate) mod shortcuts;
+pub(crate) mod workspaces;
 pub mod storage;
 pub mod worker;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -164,6 +165,8 @@ pub struct Startup {
 #[serde(deny_unknown_fields)]
 pub struct Profile {
     #[serde(default)]
+    pub(crate) workspaces: workspaces::Config,
+    #[serde(default)]
     pub(crate) automation: crate::automation::osc::Config,
     pub audio: Audio,
     pub midi_inputs: MidiInputs,
@@ -182,6 +185,7 @@ pub struct Profile {
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
         Self {
+            workspaces: workspaces::Config::default(),
             automation: crate::automation::osc::Config::default(),
             audio: Audio::default(),
             midi_inputs: MidiInputs::All,
@@ -272,6 +276,7 @@ impl Preferences {
 
 impl Profile {
     pub fn validate(&self) -> Result<(), String> {
+        self.workspaces.validate()?;
         self.automation.validate()?;
         self.recovery.validate()?;
         self.startup.session.validate()?;
