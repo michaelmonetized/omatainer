@@ -289,7 +289,7 @@ impl Request {
             state.tracks.push(track);
         }
         state.session = Some(next.clone());
-        state.validate(&media)?;
+        state.capture_media_order(&mut media)?;
         state.validate_processor_storage(rate)?;
         let bytes: u64 = media.iter().map(|s| s.data.len() as u64 * 4).sum();
         if media.len() > crate::project_file::DEFAULT_MEDIA_LIMIT

@@ -342,3 +342,89 @@ fn two_saveable_projects_cannot_import_into_an_unsaveable_metadata_envelope() {
     assert_eq!(rt.tracks.len(), tracks);
     assert_eq!(engine.project.revision(), revision);
 }
+
+#[test]
+fn imported_media_numbering_matches_native_capture_across_decimal_widths() {
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let baseline = capture(&engine, &mut rt);
+    let target = if baseline.media.len() < 10 { 9 } else { 99 };
+    let extra = target - baseline.media.len();
+    let mut added = 0;
+    for track in &mut rt.tracks {
+        for clip in &mut track.clips {
+            if added == extra {
+                break;
+            }
+            let mut sample = (*baseline.media[0]).clone();
+            sample.name = format!("Numbering {added}");
+            sample.path = format!("/virtual/numbering-{added}.wav");
+            clip.kind = crate::engine::ClipKind::Audio;
+            clip.notes.clear();
+            clip.region = None;
+            clip.lanes = None;
+            clip.audio = Some(Arc::new(sample));
+            added += 1;
+        }
+    }
+    assert_eq!(added, extra);
+    let (source_engine, mut source_rt) = Engine::headless_for_test(48_000, 256);
+    let mut source = capture(&source_engine, &mut source_rt);
+    let mut sample = (*source.media[0]).clone();
+    sample.name = "Separate clip audio".into();
+    sample.path = "/virtual/separate.wav".into();
+    let source_index = source.media.len();
+    source.media.push(Arc::new(sample));
+    let clip = &mut source.state.tracks[2].clips[0];
+    clip.kind = crate::engine::ClipKind::Audio;
+    clip.notes.clear();
+    clip.region = None;
+    clip.lanes = None;
+    clip.audio = Some(source_index);
+    source.state.tracks[2].drums = [0; 6];
+    let mut expected = None;
+    let (request, ack) = Request::import_with_preflight(
+        capture(&engine, &mut rt),
+        &source.state,
+        &source.media,
+        &selection(&source.state),
+        48_000,
+        |state, media| {
+            let refs = state
+                .tracks
+                .iter()
+                .map(|t| (t.drums, t.clips.iter().map(|c| c.audio).collect::<Vec<_>>()))
+                .collect::<Vec<_>>();
+            expected = Some((
+                refs,
+                media
+                    .iter()
+                    .map(|s| Arc::as_ptr(s) as usize)
+                    .collect::<Vec<_>>(),
+            ));
+            Ok(())
+        },
+    )
+    .unwrap();
+    engine.send(Command::SessionEdit(request)).unwrap();
+    rt.process(&mut []);
+    assert_eq!(ack.state(), Outcome::Applied);
+    let actual = capture(&engine, &mut rt);
+    let refs = actual
+        .state
+        .tracks
+        .iter()
+        .map(|t| (t.drums, t.clips.iter().map(|c| c.audio).collect::<Vec<_>>()))
+        .collect::<Vec<_>>();
+    assert!(actual.media.len() >= 10);
+    assert_eq!(
+        (
+            refs,
+            actual
+                .media
+                .iter()
+                .map(|s| Arc::as_ptr(s) as usize)
+                .collect::<Vec<_>>()
+        ),
+        expected.unwrap()
+    );
+}

@@ -286,8 +286,7 @@ fn native_project_view_change_invalidates_reviewed_saveability() {
     assert!(!gui.app.project_import.ready);
 }
 
-#[test]
-fn native_view_changes_after_apply_cancel_import_before_renderer_claim() {
+fn queued_view_change(open: bool) {
     let files=Files::new();let mut gui=Gui::new(&files);let path=source(&mut gui,&files);
     let tracks=gui.rt.tracks.len();gui.browse(&path);gui.review();
     let target=gui.nodes.iter().find(|(_,n)| n.label()==Some("Apply reviewed project import")).unwrap().0;
@@ -295,6 +294,12 @@ fn native_view_changes_after_apply_cancel_import_before_renderer_claim() {
     let deadline=Instant::now()+Duration::from_secs(5);
     while gui.app.project_import.active.is_some() { gui.frame_with_audio(vec![],false); assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(1)); }
     assert_eq!(gui.app.project_import.pending.as_ref().unwrap().state(),Outcome::Pending);
+    gui.app.project_import.open = open;
     gui.app.lib_filter="View edited after Apply".into();gui.frame_with_audio(vec![],false);
     gui.rt.process(&mut [0.0;256]);gui.wait(|g| !g.app.project_import.busy());assert_eq!(gui.rt.tracks.len(),tracks);
 }
+
+#[test]
+fn native_view_changes_after_apply_cancel_import_before_renderer_claim() { queued_view_change(true); }
+#[test]
+fn native_hidden_import_keeps_view_invalidation_until_renderer_claim() { queued_view_change(false); }
