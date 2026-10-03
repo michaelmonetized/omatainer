@@ -221,9 +221,15 @@ impl Request {
                 .get(&track.scene_bus)
                 .copied()
                 .unwrap_or(state.selected_scene);
-            track.drums = track.drums.map(&mut index);
+            track.drums = if selection.devices {
+                track.drums.map(&mut index)
+            } else {
+                state.tracks[0].drums
+            };
             if !selection.devices {
                 track.fx.clear();
+                track.kind = if track.kind == 4 { 4 } else { 2 };
+                track.eq = [1.0; 3];
                 track.synth = project::Synth {
                     kind: crate::engine::SynthInstrument::Keys,
                     voices: 8,

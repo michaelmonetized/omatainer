@@ -271,12 +271,14 @@ fn imported_audio_and_unavailable_devices_survive_output_rate_changes_and_empty_
     settings.clips = false;
     settings.devices = false;
     settings.scenes.clear();
+    settings.tracks = vec![source.state.session.as_ref().unwrap().tracks[0].id];
     let (request, ack) =
         Request::import(imported, &source.state, &source.media, &settings, 44_100).unwrap();
     engine.send(Command::SessionEdit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Applied);
     assert!(rt.tracks.last().unwrap().fx.slots.is_empty());
+    assert_eq!(rt.tracks.last().unwrap().kind, 2);
     assert!(rt
         .tracks
         .last()
