@@ -493,3 +493,33 @@ fn manually_small_root_panel_clips_content_and_focus_scrolls_pads_back_into_reac
         "small panels expose named scroll controls"
     );
 }
+
+#[test]
+fn moving_workspace_panels_releases_gui_deck_touch_and_preserves_controller_owners() {
+    let mut gui = Gui::new(&[Panel::Decks]);
+    gui.app.send(Command::DeckTouch { deck: 0, on: true });
+    gui.app.send(Command::MidiDeckTouch {
+        source: 99,
+        deck: 0,
+        on: true,
+    });
+    gui.frame(vec![]);
+    assert!(gui.rt.decks[0].touching);
+    gui.app
+        .settings
+        .applied
+        .profiles
+        .get_mut("Studio")
+        .unwrap()
+        .workspaces
+        .active = "Mix".into();
+    gui.frame(vec![]);
+    assert!(gui.rt.decks[0].touching);
+    gui.app.send(Command::MidiDeckTouch {
+        source: 99,
+        deck: 0,
+        on: false,
+    });
+    gui.frame(vec![]);
+    assert!(!gui.rt.decks[0].touching);
+}

@@ -865,6 +865,7 @@ impl App {
 
 impl App {
     fn handle_keys(&mut self, ctx: &egui::Context) {
+        let viewport=ctx.viewport_id();
         // A bound function-key Help action is safe in text/dialog contexts.
         // Letter and punctuation bindings keep the ordinary typing protection.
         let help = ctx.input_mut(|input| {
@@ -883,7 +884,7 @@ impl App {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
                     if Some(*key) == command_palette::chord(self.settings.profile()) && mods.ctrl && mods.shift && !mods.alt && !mods.mac_cmd && !repeat {
-                        self.command_palette.open(ctx.viewport_id());
+                        self.command_palette.open(viewport);
                         return;
                     }
                     if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }

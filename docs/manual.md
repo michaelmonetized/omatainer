@@ -1482,7 +1482,7 @@ Workflow: Audio setup.
 
 Validated atomic local file
 
-Persist the validated draft before applying appearance/library/MIDI changes. Audio choices remain saved intent until the separate Audio devices confirmation or restart. Failure keeps running preferences unchanged.
+Persist the validated draft before applying appearance/library/MIDI changes. Audio choices remain saved intent until the separate Audio devices confirmation or restart. Failure keeps running preferences unchanged. Configure panel layout copies named workspaces, reorders/hides/resizes panels and opens secondary windows. Use current window sizes before Preview and Apply. Cancel retains the applied layout; closing a panel window returns it to the main window for this session.
 
 Workflow: Audio setup.
 
@@ -2907,7 +2907,3 @@ The in-app Help window shows the active bindings. Defaults follow; text fields a
 - Ctrl+Z: Undo last creative edit
 - Ctrl+Shift+Z: Redo next creative edit
 - Ctrl+Y: Redo next creative edit
-
-## Workspaces
-
-Setup → Workspaces opens panel layouts in the preference draft. Copy Production, Mix or DJ, resize/hide/reorder panels and open secondary windows. Preview and Apply saves the selected layout; Cancel retains the applied layout. Resize windows, then Use current window sizes before Apply. Closing a secondary window returns its panel to the main window for this session. Transport and safety warnings stay outside panel scrolling. See [Workspaces and panel windows](workspaces.md).
