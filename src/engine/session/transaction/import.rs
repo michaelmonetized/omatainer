@@ -149,6 +149,35 @@ impl Request {
         selection: &Selection,
         rate: u32,
     ) -> Result<(Self, Ack), String> {
+        Self::import_with_preflight(
+            captured,
+            source,
+            source_media,
+            selection,
+            rate,
+            |state, media| {
+                crate::project_file::validate_metadata(
+                    &crate::project_file::Bundle {
+                        state,
+                        media: media.to_vec(),
+                    },
+                    &crate::project_file::Limits::default(),
+                    &std::sync::atomic::AtomicBool::new(false),
+                )
+                .map_err(|e| e.to_string())
+            },
+        )
+    }
+    /// Prepare an import only after the complete destination passes its document preflight.
+    /// Takes the same musical inputs plus a worker-side saveability check; returns one atomic edit.
+    pub(crate) fn import_with_preflight(
+        captured: project::Captured,
+        source: &project::State,
+        source_media: &[Arc<Sample>],
+        selection: &Selection,
+        rate: u32,
+        preflight: impl FnOnce(&project::State, &[Arc<Sample>]) -> Result<(), String>,
+    ) -> Result<(Self, Ack), String> {
         source.validate(source_media)?;
         let project::Captured {
             mut state,
@@ -260,7 +289,7 @@ impl Request {
             state.tracks.push(track);
         }
         state.session = Some(next.clone());
-        state.validate(&media)?;
+        state.capture_media_order(&mut media)?;
         state.validate_processor_storage(rate)?;
         let bytes: u64 = media.iter().map(|s| s.data.len() as u64 * 4).sum();
         if media.len() > crate::project_file::DEFAULT_MEDIA_LIMIT
@@ -268,6 +297,7 @@ impl Request {
         {
             return Err("Imported dependencies exceed native project limits".into());
         }
+        preflight(&state, &media)?;
         let nodes = state
             .tracks
             .into_iter()

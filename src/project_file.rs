@@ -196,6 +196,12 @@ impl Write for BoundedJson {
     }
 }
 
+/// Verify that native metadata and media can be saved within the container limits.
+/// Takes a document bundle, limits and cancellation flag; returns without writing a file.
+pub(crate) fn validate_metadata<T: Serialize>(bundle: &Bundle<T>, limits: &Limits, cancel: &AtomicBool) -> Result<(), Error> {
+    encode_metadata(bundle, limits, cancel).map(|_| ())
+}
+
 fn encode_metadata<'a, T: Serialize>(
     bundle: &'a Bundle<T>,
     limits: &Limits,

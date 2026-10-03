@@ -652,6 +652,16 @@ impl State {
         for index in self.builtin.iter_mut().flatten() { visit(index); }
     }
 
+    /// Number media in the same attachment order as a native renderer capture.
+    /// Takes validated state and owned media; preserves samples while matching save metadata indices.
+    pub(crate) fn capture_media_order(&mut self, media: &mut Vec<Arc<Sample>>) -> Result<(), String> {
+        self.validate(media)?;
+        let previous = std::mem::take(media);
+        self.media_indices(|index| { media.push(previous[*index].clone()); *index = media.len() - 1; });
+        self.deduplicate(media);
+        Ok(())
+    }
+
     /// Keep and reindex only audio referenced by validated native state.
     /// `media` is compacted off audio; duplicate shared samples use one entry.
     pub(crate) fn compact_media(&mut self, media: &mut Vec<Arc<Sample>>) -> Result<(), String> {

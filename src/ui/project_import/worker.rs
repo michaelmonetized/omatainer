@@ -20,6 +20,8 @@ pub(super) enum Job {
         catalog: Catalog,
         selection: session::ImportSelection,
         revision: u64,
+        view: project::UiState,
+        identities: Vec<project::WatchIdentity>,
         decision: Receiver<()>,
         work: WorkPermit,
     },
@@ -71,7 +73,7 @@ impl Worker {
                                 tracks: layout.track_order.iter().map(|&slot| { let item = &layout.tracks[slot as usize]; (item.id, item.name.clone()) }).collect(),
                                 scenes: layout.scene_order.iter().map(|&slot| { let item = &layout.scenes[slot as usize]; (item.id, item.name.clone()) }).collect() }))
                         }
-                        Job::Review { catalog, selection, revision, decision, work: _work } => {
+                        Job::Review { catalog, selection, revision, mut view, identities, decision, work: _work } => {
                             let (source, _) = load(&catalog.path, Some(catalog.fingerprint), &cancel)?;
                             let captured = handle.capture(&cancel).map_err(|e| e.to_string())?;
                             if captured.revision != revision { return Err("Destination changed before review; review the import again".into()); }
@@ -97,7 +99,11 @@ impl Worker {
                             let mut text = format!("Import {} tracks and {} new scenes. Existing tracks, deck audio, tempo, meter and output routing remain. Source tempo: {} BPM; destination: {} BPM. Clips retain beat/tick positions and play at destination timing. Source audio rates: {:?}; native playback converts to {} Hz. Imported tracks are disarmed, not soloed and not auto-launched. Scene buses use imported source scenes when selected; other buses use the current selected destination scene. Available native devices are restored; unavailable devices retain serialized state and remain bypassed. Picture, decks, global sampler banks, hardware profiles and project-wide conductor automation are outside this selection. Embedded clip/drum audio and clip MIDI controller lanes accompany their tracks.", selection.tracks.len(), selection.scenes.len(), source.state.engine.bpm, captured.state.bpm, source_rates, rate);
                             if !selection.devices { text.push_str("\nInstrument/effect settings omitted: MIDI tracks use native Keys, neutral EQ and destination drum defaults."); }
                             if !unavailable.is_empty() { text.push_str(&format!("\nUnavailable device identifiers ({}): {}", unavailable.len(), unavailable.join(", "))); }
-                            let (request, ack) = Request::import(captured, &source.state.engine, &source.media, &selection, rate)?;
+                            view.deck_identities = std::array::from_fn(|deck| captured.playback_receipts[deck].as_ref().and_then(|r| identities.iter().find(|i| i.receipt.same_request(r)).map(|i| i.identity.clone())));
+                            #[derive(serde::Serialize)] struct Destination<'a> { engine: &'a crate::engine::project::State, view: &'a project::UiState, mapping_schema: u32 }
+                            let (request, ack) = Request::import_with_preflight(captured, &source.state.engine, &source.media, &selection, rate, |state, media| {
+                                project_file::validate_metadata(&Bundle { state: Destination { engine: state, view: &view, mapping_schema: project::FACTORY_MAPPING_SCHEMA }, media: media.to_vec() }, &Limits::default(), &cancel).map_err(|e| format!("Combined project cannot be saved; no import was applied: {e}"))
+                            })?;
                             if done.send(Event::Reviewed(text, ack.clone())).is_err() { ack.cancel(); return Err("Project import viewer closed".into()); }
                             loop {
                                 if cancel.load(Ordering::Acquire) { ack.cancel(); return Err("Project import cancelled before application".into()); }

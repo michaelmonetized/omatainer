@@ -872,6 +872,7 @@ impl App {
             ctx.request_repaint_after(std::time::Duration::from_millis(80));
         }
         self.publish_library_selection();
+        self.guard_project_import_view();
         self.diagnostics.ui_update_ns = Some(ui_started.elapsed().as_nanos().min(u64::MAX as u128) as u64);
         self.observe_support();
     }
