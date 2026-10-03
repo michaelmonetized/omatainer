@@ -681,7 +681,7 @@
       "version": "0.32.3"
     },
     {
-      "checksum": "f95d0a91f9cb0dc2e732d49c2d521ac8948e1f0b758f306fb7b14d6f5db3927f",
+      "checksum": null,
       "features": [
         "accesskit",
         "arboard",
@@ -695,6 +695,23 @@
       ],
       "license": "MIT OR Apache-2.0",
       "name": "egui-winit",
+      "vendored_source": {
+        "files": {
+          "vendor/egui-winit/.cargo_vcs_info.json": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+          "vendor/egui-winit/Cargo.lock": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+          "vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+          "vendor/egui-winit/Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+          "vendor/egui-winit/LICENSE": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+          "vendor/egui-winit/PATCHES.md": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+          "vendor/egui-winit/README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+          "vendor/egui-winit/UPSTREAM.json": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+          "vendor/egui-winit/src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+          "vendor/egui-winit/src/lib.rs": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+          "vendor/egui-winit/src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de"
+        },
+        "path": "vendor/egui-winit",
+        "upstream_archive_sha256": "f95d0a91f9cb0dc2e732d49c2d521ac8948e1f0b758f306fb7b14d6f5db3927f"
+      },
       "version": "0.32.3"
     },
     {
@@ -5495,19 +5512,15 @@
     {
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked; modified vendored component, exact covered source retained in package",
       "id": "crate:egui-winit@0.32.3",
       "license": "MIT OR Apache-2.0",
       "members": [],
       "name": "egui-winit 0.32.3",
       "notices": [
         {
-          "location": "https://raw.githubusercontent.com/emilk/egui/af96e0373c18477b77236e2bfc89735af007b1c2/LICENSE-MIT",
-          "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c"
-        },
-        {
-          "location": "https://raw.githubusercontent.com/emilk/egui/af96e0373c18477b77236e2bfc89735af007b1c2/LICENSE-APACHE",
-          "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90"
+          "location": "vendor/egui-winit/LICENSE",
+          "sha256": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af"
         }
       ],
       "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
@@ -5515,6 +5528,50 @@
         {
           "location": "https://static.crates.io/crates/egui-winit/egui-winit-0.32.3.crate",
           "sha256": "f95d0a91f9cb0dc2e732d49c2d521ac8948e1f0b758f306fb7b14d6f5db3927f"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json",
+          "sha256": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock",
+          "sha256": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml",
+          "sha256": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml.orig",
+          "sha256": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/LICENSE",
+          "sha256": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md",
+          "sha256": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/README.md",
+          "sha256": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
+          "sha256": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs",
+          "sha256": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs",
+          "sha256": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs",
+          "sha256": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de"
         }
       ]
     },
@@ -12239,6 +12296,17 @@
     "plugin/BarWidget.qml": ".config/omarchy/plugins/omatainer/BarWidget.qml",
     "plugin/Service.qml": ".config/omarchy/plugins/omatainer/Service.qml",
     "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json",
+    "vendor/egui-winit/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json",
+    "vendor/egui-winit/Cargo.lock": ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock",
+    "vendor/egui-winit/Cargo.toml": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml",
+    "vendor/egui-winit/Cargo.toml.orig": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml.orig",
+    "vendor/egui-winit/LICENSE": ".local/share/omatainer/source/vendor/egui-winit/LICENSE",
+    "vendor/egui-winit/PATCHES.md": ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md",
+    "vendor/egui-winit/README.md": ".local/share/omatainer/source/vendor/egui-winit/README.md",
+    "vendor/egui-winit/UPSTREAM.json": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
+    "vendor/egui-winit/src/clipboard.rs": ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs",
+    "vendor/egui-winit/src/lib.rs": ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs",
+    "vendor/egui-winit/src/window_settings.rs": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs",
     "vendor/symphonia-format-riff/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/symphonia-format-riff/.cargo_vcs_info.json",
     "vendor/symphonia-format-riff/Cargo.toml": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml",
     "vendor/symphonia-format-riff/Cargo.toml.orig": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml.orig",
@@ -12257,8 +12325,8 @@
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "cc95253db30ed9b07df980667755ee183c5fdef3f99b03ca8010d0343da0d1b8",
-    "Cargo.toml": "0fcc24ceaf0f84e50bbb93050983f6766468651d59cb144c31958d1aa9b44372",
+    "Cargo.lock": "69bf7598239f85a793b71a851a6d793ad0cc6c5d7e4fb64d90fef12fe72b12b3",
+    "Cargo.toml": "e661fe8a3eab9ebe62f132b1909780995bbce788f7e326038fb4b519bb2689ec",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
     "README.md": "66dae8c118a0cfc17b679664ddcd004441ed6f13edce945b405875cfbc0ff238",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
@@ -12267,7 +12335,7 @@
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
     "docs/manual.md": "e8ab4b0f74c0545b0922b03a48d97eff046b7ee02c32346cdb7a1e5839195632",
-    "licenses/assets.json": "f346e365531bd57e59f2b8fe6309df9ae445e08ff6d9d43dbffe79f89c94566c",
+    "licenses/assets.json": "14cf60030d4a9db3a4aeee3df1da26411705b4a59d08a9632cb4c377b35adeb0",
     "locales/de.json": "5ca01c7d8e9d62191d5a668f636915945258813b5c64014000ba860ec37cd502",
     "locales/en.json": "2606bb9bec3fa072bb932f60cda2d58e5344e2ea97d8afd26e4706820b5e6644",
     "locales/es.json": "bff584a8370023761665563a3384780de2e5a1cdd384cf591a2602abac85402d",
@@ -12508,7 +12576,7 @@
     "src/library/tests.rs": "7d222b9f80f2cccfa0508371548357e97cad0d1e0c096ee7b8a283651d0469e0",
     "src/library/watch_roots.rs": "67ab779881590c4ecc4eb0e796779bbf136ac7820544450a4055ab9febf4c8ff",
     "src/library/watch_roots/tests.rs": "68bd98b0ae485533e9f0d5fe340ad8139d41a1fae68218a0a35cdaa8634957b1",
-    "src/licenses.rs": "4aa05a206cbee50b76e9ec364c2cf3d627eba6970a87a035a74f52b0422566f7",
+    "src/licenses.rs": "ceaccf567edf45d474add759018ac094a6b9eff37d2320fefbe817f4f1a1a9fb",
     "src/localization.rs": "6adf674b76f671256579864460444a9a39e5214dbe3a95e85886bf4bf558aaa3",
     "src/localization/tests.rs": "f6dba5b95ae73bc793b358e2b823ac31e438935fb4e259ee53a1daa47a79b306",
     "src/main.rs": "93af91f3402b60bbe4486f62d8afe0932fb2aba0c11551509eb47fdb4ebc857d",
@@ -12711,7 +12779,7 @@
     "src/ui/sampler_editor/tests.rs": "fd87ff58b1722673de39d5a46d7f5ab0094c46caecb6e4944a10320b7ddb6e25",
     "src/ui/sampler_editor/tests/offline.rs": "2fbd804f238c70942214005af56d23649114a1a385641babb7818c33a3f20832",
     "src/ui/sampler_identity_tests.rs": "166b57b422c091ad0e1e24ece3d42c29f869ba5fc35538d4ebdd7123a120f4ad",
-    "src/ui/sampler_pad_tests.rs": "02f3f6323dbc68ecb41fe458b05fe9bb7b9b5c481a66cb4454975c770642e401",
+    "src/ui/sampler_pad_tests.rs": "4810378ef8a426c018ecd6838a49a4f8a4bec3e9cb658f47a8fd883ffb07e4f3",
     "src/ui/session_editor.rs": "556125873855c4249c37eb0ae04bdfbc4bfca646e0e10733b3fb131d0a85a22a",
     "src/ui/session_editor/tests.rs": "03257a161554f07dfb2ff8fc3c856d460b29db15d850c237da84177f7e0bb75c",
     "src/ui/session_editor/worker.rs": "bca125b408b675c26a0734a08e841218972b202d929af2913ac40e9a44d97a75",
@@ -12763,6 +12831,17 @@
     "tests/fixtures/midi/ardour-9.8-region-ppqn19200.mid": "e20b3ab9a40a45b032451df776a7a189bb3e0e886b25f8aeb0be2899ce5aecde",
     "tests/fixtures/midi/generate.py": "16c30a593146b1b9804e8b21c3c6ae87b0b058b70a15cfe559980551d1b45e49",
     "tests/fixtures/midi/sixteen-bars-ppqn960.mid": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4",
+    "vendor/egui-winit/.cargo_vcs_info.json": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+    "vendor/egui-winit/Cargo.lock": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+    "vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+    "vendor/egui-winit/Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+    "vendor/egui-winit/LICENSE": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+    "vendor/egui-winit/PATCHES.md": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+    "vendor/egui-winit/README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+    "vendor/egui-winit/UPSTREAM.json": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+    "vendor/egui-winit/src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+    "vendor/egui-winit/src/lib.rs": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+    "vendor/egui-winit/src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
     "vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
     "vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
     "vendor/symphonia-format-riff/Cargo.toml.orig": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
