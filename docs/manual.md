@@ -1190,6 +1190,14 @@ Review the proposed output before choosing Stop and change output. This first bu
 
 Workflow: Audio setup.
 
+### Reconnect retained output
+
+Explicit physical-identity recovery
+
+After device loss, reconnect only the retained physical identity and accepted route. Default/server aliases need explicit preview and fallback confirmation. Playback remains stopped, emergency mute remains latched and physical inputs need acknowledgment before Play. Native transport starts ramp output over 2 ms.
+
+Workflow: Audio setup.
+
 ### Stop and change output
 
 Explicit disruptive operation

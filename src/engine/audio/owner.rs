@@ -27,6 +27,7 @@ pub struct Status {
     pub message: String,
     pub measurement: Option<Arc<calibration::Evidence>>,
     pub callback_floor: u64,
+    pub recovery: Option<recovery::Target>,
 }
 #[derive(Clone)]
 pub struct Handle {
@@ -51,6 +52,7 @@ enum Operation {
     Switch(crate::preferences::Audio, Option<config::Plan>),
     Calibrate(calibration::Request),
     Reset,
+    Reconnect(u64),
 }
 struct Request {
     operation: Operation,
@@ -100,6 +102,11 @@ impl Handle {
     }
     pub(crate) fn reset_permitted(&self, cancel: Arc<AtomicBool>, permit: crate::engine::performance::ExclusivePermit) -> Result<Arc<Status>, String> {
         self.transact(Operation::Reset, cancel, permit)
+    }
+    /// Reconnect the retained physical output without resuming playback.
+    /// Takes cancellation and an admitted audio permit; returns actual owner status.
+    pub(crate) fn reconnect_permitted(&self, cancel: Arc<AtomicBool>, permit: crate::engine::performance::ExclusivePermit, generation:u64) -> Result<Arc<Status>, String> {
+        self.transact(Operation::Reconnect(generation), cancel, permit)
     }
     fn transact(
         &self,
@@ -167,7 +174,12 @@ pub(super) trait Backend: 'static {
         plan: &config::Plan,
         callback: OutputCallback,
         fault: Arc<AtomicBool>,
+        identity: Option<&str>,
     ) -> Result<Self::Stream, String>;
+    /// Resolve accepted output identity. Takes its plan; returns a verified key or none.
+    fn identity(&mut self, plan: &config::Plan) -> Option<String>;
+    /// Rediscover a retained route. Takes its identity; returns a verified plan or refusal.
+    fn reconnect(&mut self, target: &recovery::Target) -> Result<config::Plan, String>;
     fn play(&mut self, stream: &Self::Stream) -> Result<(), String>;
     fn calibrate(
         &mut self,
@@ -186,6 +198,9 @@ struct Active<S> {
     fault: Arc<AtomicBool>,
     plan: config::Plan,
     callback_floor: u64,
+    identity: Option<String>,
+    telemetry: Arc<crate::engine::audio_metrics::Telemetry>,
+    watchdog: recovery::Watchdog,
 }
 struct Owner<B: Backend> {
     backend: B,
@@ -194,6 +209,7 @@ struct Owner<B: Backend> {
     status: Arc<ArcSwap<Status>>,
     stopped: Arc<AtomicBool>,
     last_offline_publish: std::time::Instant,
+    recovery: Option<recovery::Target>,
 }
 impl<B: Backend> Owner<B> {
     fn publish(
@@ -218,6 +234,7 @@ impl<B: Backend> Owner<B> {
                 .as_ref()
                 .map(|a| a.callback_floor)
                 .unwrap_or(u64::MAX),
+            recovery: self.recovery.clone(),
         });
         self.status.store(value.clone());
         value
@@ -234,8 +251,15 @@ impl<B: Backend> Owner<B> {
         Some(active.plan)
     }
     fn open(&mut self, plan: config::Plan, cancel: &AtomicBool) -> Result<(), String> {
+        self.open_bound(plan, cancel, None)
+    }
+    fn open_bound(&mut self, plan: config::Plan, cancel: &AtomicBool, required: Option<&str>) -> Result<(), String> {
         if self.stopped.load(Ordering::Acquire) || cancel.load(Ordering::Acquire) {
             return Err("Audio operation cancelled or owner shutting down".into());
+        }
+        let identity = self.backend.identity(&plan);
+        if required.is_some_and(|expected| identity.as_deref() != Some(expected)) {
+            return Err("Retained physical output changed; no other output was activated".into());
         }
         let mut graph = self
             .graph
@@ -249,6 +273,8 @@ impl<B: Backend> Owner<B> {
         let enabled = Arc::new(AtomicBool::new(false));
         let fault = Arc::new(AtomicBool::new(false));
         let callback_floor = graph.telemetry.read().callbacks;
+        let telemetry = graph.telemetry.clone();
+        graph.cmd_rx.set_audio_offline(false);
         let callback = OutputCallback::managed(
             graph,
             plan.channels as usize,
@@ -256,7 +282,7 @@ impl<B: Backend> Owner<B> {
             enabled.clone(),
             self.stopped.clone(),
         );
-        let stream = match self.backend.open(&plan, callback, fault.clone()) {
+        let stream = match self.backend.open(&plan, callback, fault.clone(), identity.as_deref()) {
             Ok(stream) => stream,
             Err(error) => {
                 self.graph = receiver.recv().ok();
@@ -264,9 +290,13 @@ impl<B: Backend> Owner<B> {
             }
         };
         let result = self.backend.play(&stream);
+        let identity_matches = identity.as_ref().is_none_or(|expected| {
+            self.backend.identity(&plan).as_ref() == Some(expected)
+        });
         // This RMW is the commit point against cancellation: cancellation
         // ordered before it wins; a later request cannot undo applied output.
         let commit = result.is_ok()
+            && identity_matches
             && !fault.load(Ordering::Acquire)
             && !self.stopped.load(Ordering::Acquire)
             && cancel
@@ -278,6 +308,8 @@ impl<B: Backend> Owner<B> {
             return Err(result.err().unwrap_or_else(|| {
                 if cancel.load(Ordering::Acquire) || self.stopped.load(Ordering::Acquire) {
                     "Audio change cancelled before activation".into()
+                } else if !identity_matches {
+                    "Physical output changed during opening; no other output was activated".into()
                 } else {
                     "Output failed before activation".into()
                 }
@@ -287,6 +319,8 @@ impl<B: Backend> Owner<B> {
         // held. Releasing that seal is separately acknowledged by the callback.
         // The graph cannot be touched here after transfer.
         enabled.store(true, Ordering::Release);
+        let watchdog = recovery::Watchdog::new(recovery::boot_time().unwrap_or_default(), callback_floor,
+            Duration::from_secs_f64(plan.buffer.unwrap_or(0) as f64 / plan.rate.max(1) as f64));
         self.active = Some(Active {
             stream,
             graph: receiver,
@@ -294,7 +328,11 @@ impl<B: Backend> Owner<B> {
             fault,
             plan,
             callback_floor,
+            identity,
+            telemetry,
+            watchdog,
         });
+        self.recovery = None;
         Ok(())
     }
     fn dispatch(&mut self, request: Request) {
@@ -309,18 +347,38 @@ impl<B: Backend> Owner<B> {
                 self.switch(settings, expected, seal, cancel, result, false)
             }
             Operation::Calibrate(request) => self.calibrate(request, seal, cancel, result),
+            Operation::Reconnect(generation) => {
+                let state=self.status.load_full();
+                if state.generation!=generation || state.phase!=Phase::Offline {drop(seal);let _=result.send(Err("Recovery output changed; review it again".into()));return;}
+                let requested = state.requested.clone();
+                let target = self.recovery.clone();
+                let attempted = if self.active.is_some() {
+                    Err("Output is already active; reconnect refused".into())
+                } else {
+                    target.as_ref().ok_or_else(|| "No retained output; preview and confirm an output explicitly".into())
+                        .and_then(|target| self.backend.reconnect(target)
+                            .and_then(|plan| self.open_bound(plan, &cancel, target.identity.as_deref())))
+                };
+                let status = match attempted {
+                    Ok(()) => {
+                        self.publish(Phase::Running, requested, "Retained physical output reconnected. Playback remains stopped; release physical inputs and acknowledge recovery before pressing Play.".into())
+                    }
+                    Err(error) => {
+                        if self.active.is_none() {
+                            if let Some(graph)=&mut self.graph {graph.cmd_rx.set_audio_offline(true);}
+                            self.publish(Phase::Offline, requested, format!("Reconnect failed: {error}. Session retained; no fallback was opened"));
+                        }
+                        drop(seal); let _=result.send(Err(error)); return;
+                    }
+                };
+                drop(seal); let _=result.send(Ok(status));
+            }
             Operation::Reset => {
                 let state = self.status.load_full();
-                let mut settings = state.requested.clone();
-                if let Some(active) = &state.active {
-                    settings.backend = Some(active.plan.backend.clone());
-                    settings.device = Some(active.plan.device.clone());
-                    settings.sample_rate = Some(active.plan.rate);
-                    settings.channels = Some(active.plan.channels);
-                    settings.buffer_frames = active.plan.buffer;
-                    settings.format = crate::preferences::AudioFormat::ALL.into_iter().find(|format| format.cpal() == active.plan.format);
-                }
-                self.switch(settings, state.active.as_ref().map(|active| active.plan.clone()), seal, cancel, result, true);
+                let Some(active) = &state.active else {
+                    drop(seal); let _=result.send(Err("Reconnect the retained output or preview and confirm a fallback before resetting DSP".into())); return;
+                };
+                self.switch(recovery::settings(&active.plan), Some(active.plan.clone()), seal, cancel, result, true);
             }
         }
     }
@@ -337,6 +395,7 @@ impl<B: Backend> Owner<B> {
             let _ = result.send(Err("Audio change cancelled; active output preserved".into()));
             return;
         }
+        let identity=if reset {self.active.as_ref().and_then(|active|active.identity.clone())} else {None};
         // Validate against current backend capabilities before stopping audio.
         let plan = match self.backend.select(&settings) {
             Ok(plan) if expected.as_ref().is_none_or(|expected| expected == &plan) => plan,
@@ -356,13 +415,14 @@ impl<B: Backend> Owner<B> {
             settings.clone(),
             "Stopping playback for confirmed device change".into(),
         );
+        let previous_target=self.active.as_ref().map(|active| recovery::Target {plan:active.plan.clone(),identity:active.identity.clone()});
         let previous = self.reclaim();
         if let Some(graph) = &mut self.graph {
             graph.stop_for_audio();
             if reset { graph.safety_output = crate::engine::performance::Output::default(); }
             graph.cmd_rx.set_audio_offline(false);
         }
-        let attempted = self.open(plan, &cancel);
+        let attempted = self.open_bound(plan, &cancel, identity.as_deref());
         let status = match attempted {
             Ok(()) => self.publish(
                 Phase::Running,
@@ -372,10 +432,11 @@ impl<B: Backend> Owner<B> {
             Err(error) => {
                 if reset { if let Some(graph) = &mut self.graph { graph.safety_output.retain_mute(); graph.performance.publish_output(&graph.safety_output); } }
                 let rollback =
-                    previous.and_then(|plan| self.open(plan, &AtomicBool::new(false)).err());
+                    previous.and_then(|plan| self.open_bound(plan, &AtomicBool::new(false),previous_target.as_ref().and_then(|target|target.identity.as_deref())).err());
                 if self.active.is_some() {
                     self.publish(Phase::Running, settings, format!("Audio change failed: {error}. Previous output restored; playback remains stopped"))
                 } else {
+                    self.recovery=previous_target;
                     if let Some(graph) = &mut self.graph {
                         graph.cmd_rx.set_audio_offline(true);
                     }
@@ -412,12 +473,13 @@ impl<B: Backend> Owner<B> {
             settings.clone(),
             "Confirmed loopback calibration; session playback stopped".into(),
         );
+        let identity=self.active.as_ref().and_then(|active|active.identity.clone());
         let previous = self.reclaim().expect("validated active stream");
         if let Some(graph) = &mut self.graph {
             graph.stop_for_audio();
         }
         let measurement = self.backend.calibrate(&request, &cancel, &self.stopped);
-        let restored = self.open(previous, &AtomicBool::new(false));
+        let restored = self.open_bound(previous.clone(), &AtomicBool::new(false), identity.as_deref());
         let mut status = match restored {
             Ok(()) => (*self.publish(
                 Phase::Running,
@@ -426,6 +488,7 @@ impl<B: Backend> Owner<B> {
             ))
             .clone(),
             Err(error) => {
+                self.recovery=Some(recovery::Target {plan:previous,identity});
                 if let Some(graph) = &mut self.graph {
                     graph.cmd_rx.set_audio_offline(true);
                 }
@@ -464,20 +527,23 @@ impl<B: Backend> Owner<B> {
     }
     fn run(&mut self, requests: Receiver<Request>) {
         while !self.stopped.load(Ordering::Acquire) {
-            if self
-                .active
-                .as_ref()
-                .is_some_and(|active| active.fault.load(Ordering::Acquire))
+            if self.active.as_mut().is_some_and(|active| active.fault.load(Ordering::Acquire)
+                || recovery::boot_time().is_some_and(|now| active.watchdog.lost(now, active.telemetry.read().callbacks)))
             {
+                self.recovery = self.active.as_ref().map(|active| recovery::Target {
+                    plan: active.plan.clone(), identity: active.identity.clone(),
+                });
                 self.reclaim();
                 if let Some(graph) = &mut self.graph {
                     graph.cmd_rx.set_audio_offline(true);
+                    graph.performance.request_safety(crate::engine::performance::Safety::Stop);
                     graph.stop_for_audio();
+                    graph.process(&mut []);
                 }
                 self.publish(
                     Phase::Offline,
                     self.status.load().requested.clone(),
-                    "Backend output failed. Session retained; recover audio or save and close"
+                    "Audio output stopped responding. Your project and recorded notes are retained. Reconnect the previous output or preview and confirm another output. Release keys, pads and platters before resuming. Save and Close remain available."
                         .into(),
                 );
             }
@@ -511,7 +577,9 @@ struct Unavailable;
 impl Backend for Unavailable {
     type Stream=();
     fn select(&mut self,_:&crate::preferences::Audio)->Result<config::Plan,String>{Err("Safe mode has no audio backend".into())}
-    fn open(&mut self,_:&config::Plan,_:OutputCallback,_:Arc<AtomicBool>)->Result<(),String>{Err("Safe mode has no audio backend".into())}
+    fn open(&mut self,_:&config::Plan,_:OutputCallback,_:Arc<AtomicBool>,_:Option<&str>)->Result<(),String>{Err("Safe mode has no audio backend".into())}
+    fn identity(&mut self,_:&config::Plan)->Option<String>{None}
+    fn reconnect(&mut self,_:&recovery::Target)->Result<config::Plan,String>{Err("Safe mode has no audio backend".into())}
     fn play(&mut self,_:&())->Result<(),String>{Err("Safe mode has no audio backend".into())}
     fn calibrate(&mut self,_:&calibration::Request,_:&AtomicBool,_:&Arc<AtomicBool>)->Result<calibration::Measurement,String>{Err("Safe mode has no audio backend".into())}
 }
@@ -530,6 +598,7 @@ fn start_owned<B:Backend>(
         message: "Opening configured output".into(),
         measurement: None,
         callback_floor: u64::MAX,
+        recovery: None,
     }));
     let stopped = Arc::new(AtomicBool::new(false));
     let (send, requests) = bounded(1);
@@ -552,6 +621,7 @@ fn start_owned<B:Backend>(
                 status,
                 stopped,
                 last_offline_publish: std::time::Instant::now(),
+                recovery: None,
             };
             if safe_mode {
                 let graph=owner.graph.as_mut().expect("safe owner keeps its graph");
@@ -588,6 +658,7 @@ impl RtEngine {
         let launches = std::array::from_fn::<_, { crate::engine::TRACKS }, _>(|i| {
             self.tracks[i].playing.or(self.tracks[i].project_resume)
         });
+        self.performance_tick();
         self.apply(crate::engine::Command::Stop);
         let midi_beat = self.precise_midi_beat();
         for (track, launch) in self.tracks.iter_mut().zip(launches) {
@@ -650,6 +721,10 @@ impl RtEngine {
 }
 
 #[cfg(test)]
+#[path = "recovery_tests.rs"]
+mod recovery_tests;
+
+#[cfg(test)]
 pub(crate) mod tests {
     use super::*;
     use crate::engine::{Command, CommandPort, Engine, SubmissionError};
@@ -668,6 +743,9 @@ pub(crate) mod tests {
         pub entering_calibration: AtomicBool,
         pub opens: AtomicUsize,
         pub alternate_device: AtomicBool,
+        pub device_renamed: AtomicBool,
+        pub identity_unavailable: AtomicBool,
+        pub stalled: AtomicBool,
         pub renders: AtomicUsize,
         pub dropped: AtomicUsize,
     }
@@ -689,7 +767,8 @@ pub(crate) mod tests {
     impl Backend for Fake {
         type Stream = Stream;
         fn select(&mut self, settings: &crate::preferences::Audio) -> Result<config::Plan, String> {
-            let device = if self.controls.alternate_device.load(Ordering::Acquire) { "Alternate fixture" } else { "Fixture" };
+            let device = if self.controls.alternate_device.load(Ordering::Acquire) { "Alternate fixture" }
+                else if self.controls.device_renamed.load(Ordering::Acquire) { "Renumbered fixture" } else { "Fixture" };
             if settings
                 .device
                 .as_deref()
@@ -716,7 +795,11 @@ pub(crate) mod tests {
             _plan: &config::Plan,
             mut callback: OutputCallback,
             fault: Arc<AtomicBool>,
+            identity: Option<&str>,
         ) -> Result<Stream, String> {
+            if identity.is_some_and(|expected| self.identity(_plan).as_deref() != Some(expected)) {
+                return Err("Fixture identity changed before opening".into());
+            }
             self.controls.opens.fetch_add(1, Ordering::AcqRel);
             self.controls.entering_open.store(true, Ordering::Release);
             while self.controls.block_open.load(Ordering::Acquire) {
@@ -733,8 +816,10 @@ pub(crate) mod tests {
             let join = std::thread::spawn(move || {
                 let mut out = [0.0_f32; 256];
                 while !stopped.load(Ordering::Acquire) {
-                    callback.render(&mut out);
-                    controls.renders.fetch_add(1, Ordering::Relaxed);
+                    if !controls.stalled.load(Ordering::Acquire) {
+                        callback.render(&mut out);
+                        controls.renders.fetch_add(1, Ordering::Relaxed);
+                    }
                     std::thread::sleep(Duration::from_millis(1));
                 }
                 drop(callback);
@@ -744,6 +829,17 @@ pub(crate) mod tests {
                 stop,
                 join: Some(join),
             })
+        }
+        fn identity(&mut self,_:&config::Plan)->Option<String> {
+            if self.controls.identity_unavailable.load(Ordering::Acquire) {None}
+            else {Some(if self.controls.alternate_device.load(Ordering::Acquire) {"unit-2"} else {"unit-1"}.into())}
+        }
+        fn reconnect(&mut self,target:&recovery::Target)->Result<config::Plan,String> {
+            let expected=target.identity.as_ref().ok_or("No verified fixture identity")?;
+            let mut settings=recovery::settings(&target.plan);settings.device=None;
+            let plan=self.select(&settings)?;
+            if self.identity(&plan).as_ref()!=Some(expected) {return Err("Retained fixture identity unavailable".into());}
+            Ok(plan)
         }
         fn play(&mut self, _stream: &Stream) -> Result<(), String> {
             if self
@@ -1062,11 +1158,13 @@ pub(crate) mod tests {
             .unwrap()
             .store(true, Ordering::Release);
         wait(|| audio.handle.status().phase == Phase::Offline);
-        assert_eq!(
-            engine.cmd.send(Command::Master(0.2)),
-            Err(SubmissionError::ProjectChanging)
-        );
+        assert!(engine.cmd.performance().status().recovery);
+        assert!(engine.cmd.performance().status().changing);
+        assert_eq!(engine.cmd.send(Command::Master(0.2)), Err(SubmissionError::Performance(crate::engine::performance::Error::Recovery)));
         drop(guard);
+        wait(|| !engine.cmd.performance().status().changing);
+        engine.cmd.performance().acknowledge_inputs_released().unwrap();
+        wait(|| !engine.cmd.performance().status().recovery);
         engine.project.capture(&AtomicBool::new(false)).unwrap();
         assert_eq!(
             engine.cmd.send(Command::Master(0.2)),
