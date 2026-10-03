@@ -24,7 +24,38 @@ struct Hit {
 #[derive(Clone, Default)]
 struct Frame {
     hits: Vec<Hit>,
-    touch_pointer: bool,
+    mouse: Mouse,
+}
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct Mouse {
+    pos: Option<Pos2>,
+    origin: Option<Pos2>,
+    pub down: bool,
+    pub pressed: bool,
+    pub released: bool,
+    moved: bool,
+}
+impl Mouse {
+    /// Check whether the physical pointer started on this visible widget.
+    /// Takes its response; returns whether the press belongs to its current layer.
+    pub fn starts_here(&self, response: &egui::Response) -> bool {
+        response.enabled()
+            && self.origin.is_some_and(|pos| {
+                response.interact_rect.contains(pos)
+                    && response.ctx.layer_id_at(pos) == Some(response.layer_id)
+            })
+    }
+    /// Read an independent physical mouse click or drag on this widget.
+    /// Takes its response; returns the latest position only during its own gesture.
+    pub fn position(&self, response: &egui::Response) -> Option<Pos2> {
+        if (self.pressed || self.down && self.moved || self.released) && self.starts_here(response)
+        {
+            self.pos
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -45,6 +76,8 @@ struct Contact {
 pub(super) struct Input {
     contacts: Vec<Contact>,
     events: Vec<egui::Event>,
+    mouse: Mouse,
+    pointer_touch: Option<egui::TouchId>,
     focused: bool,
     viewport: Option<(Rect, f32)>,
     pub open: bool,
@@ -52,15 +85,15 @@ pub(super) struct Input {
     pub rejected: u64,
 }
 
-/// Register a current, clipped performance target and suppress its emulated mouse input.
-/// Takes the rendered response, target and value track; returns whether this frame belongs to touch.
+/// Register a current performance target and read its independent physical pointer.
+/// Takes the rendered response, target and value track; returns mouse input without touch emulation.
 pub(super) fn register(
     ui: &Ui,
     response: &egui::Response,
     target: Target,
     track: Rect,
     enabled: bool,
-) -> bool {
+) -> Mouse {
     let hit = Hit {
         target,
         rect: response.interact_rect.intersect(ui.clip_rect()),
@@ -73,7 +106,7 @@ pub(super) fn register(
         if hit.rect.is_positive() && frame.hits.len() < MAX_CONTACTS {
             frame.hits.push(hit);
         }
-        frame.touch_pointer
+        frame.mouse
     })
 }
 
@@ -93,18 +126,98 @@ impl Input {
                         .take(MAX_EVENTS + 1)
                         .cloned(),
                 );
+                self.read_mouse(&input.events);
+                if !input.focused {
+                    self.mouse = Mouse::default();
+                    self.pointer_touch = None;
+                }
             });
         }
-        let touch_pointer = !self.contacts.is_empty() || !self.events.is_empty();
         ctx.data_mut(|data| {
             data.insert_temp(
                 egui::Id::new(FRAME),
                 Frame {
                     hits: Vec::with_capacity(20),
-                    touch_pointer,
+                    mouse: self.mouse,
                 },
             )
         });
+    }
+
+    /// Separate the pinned native backend's adjacent touch emulation from physical mouse events.
+    /// Takes ordered native events; returns no value and retains independent mouse button ownership.
+    fn read_mouse(&mut self, events: &[egui::Event]) {
+        self.mouse.pressed = false;
+        self.mouse.released = false;
+        self.mouse.moved = false;
+        let mut index = 0;
+        while let Some(event) = events.get(index) {
+            index += 1;
+            match event {
+                egui::Event::Touch { id, phase, pos, .. }
+                    if self.pointer_touch.is_none() || self.pointer_touch == Some(*id) =>
+                {
+                    let start = *phase == egui::TouchPhase::Start;
+                    let end = *phase == egui::TouchPhase::End;
+                    if start {
+                        self.pointer_touch = Some(*id);
+                    }
+                    if matches!(phase, egui::TouchPhase::End | egui::TouchPhase::Cancel) {
+                        self.pointer_touch = None;
+                    }
+                    let moved = matches!(events.get(index), Some(egui::Event::PointerMoved(next)) if next == pos);
+                    let pressed = matches!(events.get(index + 1), Some(egui::Event::PointerButton {
+                        button: PointerButton::Primary, pressed: true, pos: next, ..
+                    }) if next == pos);
+                    if start && moved && pressed {
+                        index += 2;
+                    } else if *phase == egui::TouchPhase::Move && moved {
+                        index += 1;
+                    }
+                    if end
+                        && matches!(
+                            events.get(index),
+                            Some(egui::Event::PointerButton {
+                                button: PointerButton::Primary,
+                                pressed: false,
+                                ..
+                            })
+                        )
+                        && matches!(events.get(index + 1), Some(egui::Event::PointerGone))
+                    {
+                        index += 1;
+                    }
+                    if matches!(phase, egui::TouchPhase::End | egui::TouchPhase::Cancel)
+                        && matches!(events.get(index), Some(egui::Event::PointerGone))
+                    {
+                        index += 1;
+                    }
+                }
+                egui::Event::PointerMoved(pos) => {
+                    self.mouse.pos = Some(*pos);
+                    self.mouse.moved = true;
+                }
+                egui::Event::PointerButton {
+                    pos,
+                    button: PointerButton::Primary,
+                    pressed,
+                    ..
+                } => {
+                    self.mouse.pos = Some(*pos);
+                    self.mouse.down = *pressed;
+                    if *pressed {
+                        self.mouse.origin = Some(*pos);
+                        self.mouse.pressed = true;
+                    } else {
+                        self.mouse.released = true;
+                    }
+                }
+                egui::Event::PointerGone => {
+                    self.mouse.pos = None;
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Forget input ownership when the project, focus or input device cancels it.

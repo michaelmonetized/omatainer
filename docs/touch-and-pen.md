@@ -9,8 +9,8 @@ input device, so equal contact numbers from different devices stay independent.
 Pads and faders claim their drag. Touches outside them retain ordinary platform
 scrolling and single-pointer controls. Preferences → UI scale enlarges the existing
 hit targets. Mouse dragging, focused Space/Enter, numeric keyboard entry and
-assistive actions remain available. Keyboard and touch pad owners release only
-their own hold. Setup → Touch & pen explains these gestures.
+assistive actions remain available. Mouse, keyboard and touch pad owners release only
+their own hold. A touch does not block mouse presses or fader drags on other controls. Setup → Touch & pen explains these gestures.
 
 Opening a blocking editor or menu, losing window focus, changing target geometry
 or DPI, project replacement and safety recovery release touch holds. Moves from
@@ -29,7 +29,9 @@ the final position is invalid. Missing pressure uses the previous full attack.
 
 The pinned egui-winit 0.32.3 adapter forwards device/contact identity, start/move/
 end/cancel and reported winit force, while emulating a mouse for the first touch.
-Performance controls suppress that emulated mouse to prevent duplicate attacks.
+Performance controls separate the adapter's adjacent emulated pointer messages
+from physical mouse input to prevent duplicate attacks. Physical mouse button
+ownership survives a touch start, move, end or cancellation.
 The pinned winit 0.30.13 Linux Wayland and X11 touch handlers explicitly emit
 `force: None`; pressure is unavailable on these backends. A pen presented as an
 ordinary mouse retains mouse controls. This change does not add a tablet driver.

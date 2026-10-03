@@ -126,7 +126,6 @@ fn native_contacts_hold_independent_pads_and_share_same_pad_across_devices() {
     let pos = gui.hit(Target::Pad(0)).rect.center();
     gui.frame(vec![
         gui.start(10, 1, Target::Pad(0), Some(0.2)),
-        gui.start(10, 2, Target::Pad(1), None),
         egui::Event::PointerMoved(pos),
         egui::Event::PointerButton {
             pos,
@@ -134,6 +133,7 @@ fn native_contacts_hold_independent_pads_and_share_same_pad_across_devices() {
             pressed: true,
             modifiers: Default::default(),
         },
+        gui.start(10, 2, Target::Pad(1), None),
     ]);
     assert!(gui.held(0) && gui.held(1));
     assert_eq!(
@@ -494,4 +494,131 @@ fn native_pad_drag_does_not_scroll_and_preferences_cancel_the_hold() {
     gui.click("Preferences");
     assert!(gui.app.settings.open);
     assert!(!gui.held(0) && gui.app.touch_input.contacts.is_empty());
+}
+
+fn mouse_button(pos: Pos2, pressed: bool) -> egui::Event {
+    egui::Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Default::default(),
+    }
+}
+fn emulated_start(gui: &Gui, target: Target) -> Vec<egui::Event> {
+    let pos = gui.hit(target).rect.center();
+    vec![
+        gui.start(1, 1, target, Some(0.2)),
+        egui::Event::PointerMoved(pos),
+        mouse_button(pos, true),
+    ]
+}
+
+#[test]
+fn native_mouse_pad_ownership_survives_touch_emulation_and_releases_independently() {
+    let mut gui = Gui::new();
+    gui.frame(emulated_start(&gui, Target::Pad(0)));
+    let mouse = gui.hit(Target::Pad(1)).rect.center();
+    gui.frame(vec![
+        egui::Event::PointerMoved(mouse),
+        mouse_button(mouse, true),
+    ]);
+    assert!(gui.held(0) && gui.held(1));
+    assert_eq!(gui.app.pad_inputs[0], 16);
+    assert_eq!(gui.app.pad_inputs[1], 1);
+    let moved = gui.hit(Target::Pitch(0)).track.left_top();
+    gui.frame(vec![
+        touch(1, 1, egui::TouchPhase::Move, moved, None),
+        egui::Event::PointerMoved(moved),
+    ]);
+    assert_eq!(
+        gui.app.pad_inputs[1], 1,
+        "emulated movement must not steal the physical mouse hold"
+    );
+    gui.frame(vec![
+        release(1, 1, egui::TouchPhase::End),
+        mouse_button(moved, false),
+        egui::Event::PointerGone,
+    ]);
+    assert!(
+        !gui.held(0) && gui.held(1),
+        "emulated release must not release the physical mouse"
+    );
+    gui.frame(vec![mouse_button(mouse, false)]);
+    assert!(!gui.held(1));
+    assert_eq!(gui.rt.sampler_poly.note_on_events, 2);
+    gui.frame(emulated_start(&gui, Target::Pad(0)));
+    let same = gui.hit(Target::Pad(0)).rect.center();
+    gui.frame(vec![mouse_button(same, true)]);
+    assert_eq!(
+        gui.app.pad_inputs[0], 17,
+        "physical mouse can share the touched pad"
+    );
+    gui.frame(vec![mouse_button(same, false)]);
+    assert_eq!(gui.app.pad_inputs[0], 16);
+    gui.frame(vec![
+        release(1, 1, egui::TouchPhase::Cancel),
+        egui::Event::PointerGone,
+    ]);
+    assert!(!gui.held(0));
+}
+
+#[test]
+fn native_mouse_faders_keep_dragging_while_touch_moves_and_ends() {
+    let mut gui = Gui::new();
+    gui.size.x = 2600.0;
+    gui.frame(vec![]);
+    gui.frame(vec![]);
+    for target in [Target::Pitch(0), Target::Crossfader] {
+        gui.frame(emulated_start(&gui, Target::Pad(0)));
+        let hit = gui.hit(target);
+        let (first, next) = if matches!(target, Target::Pitch(_)) {
+            (hit.track.center(), hit.track.left_top())
+        } else {
+            (hit.track.center(), hit.track.right_center())
+        };
+        gui.frame(vec![
+            egui::Event::PointerMoved(first),
+            mouse_button(first, true),
+        ]);
+        gui.frame(vec![egui::Event::PointerMoved(next)]);
+        match target {
+            Target::Pitch(_) => assert!((gui.rt.decks[0].pitch - 1.0).abs() < 1e-6),
+            Target::Crossfader => assert!((gui.rt.xfader - 1.0).abs() < 1e-6),
+            _ => unreachable!(),
+        }
+        assert!(gui.held(0));
+        let pad = gui.hit(Target::Pad(0)).rect.center();
+        gui.frame(vec![
+            release(1, 1, egui::TouchPhase::End),
+            mouse_button(pad, false),
+            egui::Event::PointerGone,
+        ]);
+        gui.frame(vec![egui::Event::PointerMoved(first)]);
+        match target {
+            Target::Pitch(_) => assert!((gui.rt.decks[0].pitch - 0.5).abs() < 1e-6),
+            Target::Crossfader => assert!((gui.rt.xfader - 0.5).abs() < 1e-6),
+            _ => unreachable!(),
+        }
+        gui.frame(vec![mouse_button(first, false)]);
+        assert!(!gui.held(0));
+    }
+}
+
+#[test]
+fn native_touch_start_and_cancel_cannot_cut_an_existing_mouse_pad() {
+    let mut gui = Gui::new();
+    let mouse = gui.hit(Target::Pad(1)).rect.center();
+    gui.frame(vec![
+        egui::Event::PointerMoved(mouse),
+        mouse_button(mouse, true),
+    ]);
+    gui.frame(emulated_start(&gui, Target::Pad(0)));
+    assert!(gui.held(0) && gui.held(1));
+    gui.frame(vec![
+        release(1, 1, egui::TouchPhase::Cancel),
+        egui::Event::PointerGone,
+    ]);
+    assert!(!gui.held(0) && gui.held(1));
+    gui.frame(vec![mouse_button(mouse, false)]);
+    assert!(!gui.held(1));
 }

@@ -585,22 +585,13 @@ impl App {
 
     fn pad_gate(&mut self, ui: &Ui, p: usize, enabled: bool, r: &egui::Response) {
         if p >= self.pad_held.len() { return; }
-        let touch_pointer=touch::register(ui,r,touch::Target::Pad(p as u8),r.rect,enabled);
-        let (pressed, released, down, origin, window_focus) = r.ctx.input(|input| (
-            input.pointer.button_pressed(PointerButton::Primary),
-            input.pointer.button_released(PointerButton::Primary),
-            input.pointer.button_down(PointerButton::Primary),
-            input.events.iter().rev().find_map(|event| match event {
-                egui::Event::PointerButton { pos, button: PointerButton::Primary, pressed: true, .. } => Some(*pos),
-                _ => None,
-            }), input.focused,
-        ));
-        if released || !down || !window_focus || !r.enabled() { self.set_pad_input(p, 1, false); }
-        let pressed_here = !touch_pointer && pressed && window_focus && r.enabled() && origin.is_some_and(|pos|
-            r.interact_rect.contains(pos) && r.ctx.layer_id_at(pos) == Some(r.layer_id));
+        let mouse=touch::register(ui,r,touch::Target::Pad(p as u8),r.rect,enabled);
+        let window_focus=r.ctx.input(|input| input.focused);
+        if mouse.released || !mouse.down || !window_focus || !r.enabled() { self.set_pad_input(p, 1, false); }
+        let pressed_here = mouse.pressed && window_focus && r.enabled() && mouse.starts_here(r);
         if enabled && pressed_here {
             self.set_pad_input(p, 1, true);
-            if !down { self.set_pad_input(p, 1, false); }
+            if !mouse.down { self.set_pad_input(p, 1, false); }
         }
         // Pointer, keyboard and AT holds share one admitted pad gate, with
         // distinct local ownership so releasing one input cannot cut another.
@@ -2070,7 +2061,7 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     let p = ui.painter();
     let track = Rect::from_center_size(rect.center(), Vec2::new(7.0, rect.height() - 8.0));
-    let touch_pointer=touch::register(ui,&resp,touch::Target::Pitch(deck),track,true);
+    let mouse=touch::register(ui,&resp,touch::Target::Pitch(deck),track,true);
     p.rect_filled(track, 3.0, t.bg_darker);
     let mh = track.height() * meter.clamp(0.0, 1.0);
     p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.trace(t.green, t.level_contrast));
@@ -2080,17 +2071,15 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
         .map(|percent| (percent / span + 1.0) * 0.5);
     accessibility::status(ui, &resp, &format!("Signal activity {:.0}% (smoothed, not a peak or clipping meter)", meter.clamp(0.0, 1.0) * 100.0));
     help::annotate(ui, &resp, HelpControl::Pitch);
-    if !touch_pointer && (resp.clicked() || resp.dragged()) {
-        if let Some(pos) = resp.interact_pointer_pos() {
-            return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));
-        }
+    if let Some(pos) = mouse.position(&resp) {
+        return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));
     }
     alternate
 }
 
 fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> bool {
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
-    let touch_pointer=touch::register(ui,&resp,touch::Target::Crossfader,Rect::from_min_max(rect.min+Vec2::new(16.0,0.0),rect.max-Vec2::new(16.0,0.0)),true);
+    let mouse=touch::register(ui,&resp,touch::Target::Crossfader,Rect::from_min_max(rect.min+Vec2::new(16.0,0.0),rect.max-Vec2::new(16.0,0.0)),true);
     let p = ui.painter();
     p.rect_filled(rect, 4.0, t.bg_darker);
     p.text(rect.left_center() + Vec2::new(6.0, 0.0), egui::Align2::LEFT_CENTER, "A", FontId::proportional(t.text_size(10.0)), t.track_color(0));
@@ -2099,11 +2088,9 @@ fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> b
     p.rect_filled(Rect::from_center_size(Pos2::new(x, rect.center().y), Vec2::new(12.0, 14.0)), 2.0, t.accent);
     let alternate = accessibility::numeric(ui, &resp, "Crossfader", *value * 100.0, 0.0, 100.0, 1.0, "% B");
     help::annotate(ui, &resp, HelpControl::Crossfader);
-    if !touch_pointer && (resp.clicked() || resp.dragged()) {
-        if let Some(pos) = resp.interact_pointer_pos() {
+    if let Some(pos) = mouse.position(&resp) {
             *value = ((pos.x - rect.left() - 16.0) / (rect.width() - 32.0)).clamp(0.0, 1.0);
-            return true;
-        }
+        return true;
     }
     if let Some(next) = alternate {
         *value = next / 100.0; return true;
