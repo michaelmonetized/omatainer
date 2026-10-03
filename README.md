@@ -1,6 +1,6 @@
 # omatainer
 
-Omarchy-native DAW + live DJ surface. One clock, one mixer, one window:
+Omarchy-native DAW + live DJ surface. One clock, one mixer, configurable workspaces:
 
 - **Session** clip grid with quantized scene and clip launches
 - **Compose** a MIDI piano roll and explicitly armed pad-note capture, with stable note identities and undo
@@ -769,3 +769,5 @@ Interface language and Unicode search are described in [international text](docs
 Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions, capture logical keys, reset defaults and export bindings without other profile settings.
 
 [Touch and pen input](docs/touch-and-pen.md) supports independently held performance controls, reported pad pressure and cancellation. The Linux backend pressure and physical-device limits are documented.
+
+Use [Workspaces and panel windows](docs/workspaces.md) to save panel visibility, order, heights and secondary-window sizes through Preferences.

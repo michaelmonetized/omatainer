@@ -13,6 +13,11 @@ pub(super) struct Panel {
     decision: Option<Decision>,
     inputs_released: bool,
 }
+impl Panel {
+    /// Open the explicit emergency-silence decision from any workspace window.
+    /// Takes no arguments; returns no value and does not silence audio before confirmation.
+    pub(super) fn silence(&mut self) { self.decision=Some(Decision::Silence); }
+}
 impl App {
     /// Refuse before invalidating a pending load/receipt or spawning a decoder.
     /// The renderer repeats the check against its actual current deck state.
@@ -60,6 +65,13 @@ impl App {
                 self.performance_reset_button(ui);
             }
         });
+        self.performance_decision(ctx);
+    }
+
+    /// Render the shared safety decision in the native window that owns input.
+    /// Takes its context; returns no value and uses ordinary safety admission.
+    pub(super) fn performance_decision(&mut self,ctx:&egui::Context) {
+        let status = self.engine.cmd.performance().status();
         let Some(decision) = self.performance_panel.decision else {
             return;
         };

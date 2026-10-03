@@ -2907,3 +2907,7 @@ The in-app Help window shows the active bindings. Defaults follow; text fields a
 - Ctrl+Z: Undo last creative edit
 - Ctrl+Shift+Z: Redo next creative edit
 - Ctrl+Y: Redo next creative edit
+
+## Workspaces
+
+Setup → Workspaces opens panel layouts in the preference draft. Copy Production, Mix or DJ, resize/hide/reorder panels and open secondary windows. Preview and Apply saves the selected layout; Cancel retains the applied layout. Resize windows, then Use current window sizes before Apply. Closing a secondary window returns its panel to the main window for this session. Transport and safety warnings stay outside panel scrolling. See [Workspaces and panel windows](workspaces.md).

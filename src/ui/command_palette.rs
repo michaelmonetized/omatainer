@@ -4,6 +4,7 @@ use super::*;
 #[derive(Default)]
 pub(super) struct Palette {
     pub open: bool,
+    viewport: egui::ViewportId,
     query: String,
     selected: usize,
     focus: bool,
@@ -11,7 +12,8 @@ pub(super) struct Palette {
 }
 
 impl Palette {
-    pub fn open(&mut self) {
+    pub fn open(&mut self,viewport:egui::ViewportId) {
+        self.viewport=viewport;
         self.open = true;
         self.query.clear();
         self.selected = 0;
@@ -30,7 +32,7 @@ pub(super) fn chord(profile: &crate::preferences::Profile) -> Option<Key> {
 
 impl App {
     pub(super) fn command_palette_ui(&mut self, ctx: &egui::Context) {
-        if !self.command_palette.open { return; }
+        if !self.command_palette.open || self.command_palette.viewport != ctx.viewport_id() { return; }
         keyboard::block_for_dialog(ctx);
         let profile = self.settings.profile().clone();
         let project_ready = !self.project.committing() && self.project.dialog_is_closed();

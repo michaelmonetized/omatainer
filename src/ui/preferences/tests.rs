@@ -1169,3 +1169,50 @@ fn native_language_preview_cancel_apply_reopen_and_translated_layout_preserve_mu
         gui.click(cancel);
     }
 }
+
+
+#[test]
+fn real_workspace_controls_reorder_hide_resize_detach_persist_and_reopen_unicode_names() {
+    use crate::preferences::workspaces::Panel;
+    let mut gui=Gui::new(); gui.height=5000.0; gui.frame(vec![]); gui.open();
+    gui.click("Configure panel layout");
+    gui.routing_text("New workspace name","Mix 窗"); gui.click("Copy workspace");
+    gui.click("Move Sampler up"); gui.click("Show Library");
+    gui.click("Automatic Sampler height"); gui.click("Separate Sampler window");
+    let expected=gui.fixture.app.settings.draft.current().unwrap().workspaces.clone();
+    assert_eq!(expected.active,"Mix 窗");
+    let layout=expected.current().unwrap();
+    assert_eq!(layout.panels[0].panel,Panel::Sampler);
+    assert_eq!(layout.panels[0].height,320.0); assert!(layout.panels[0].detached);
+    assert!(!layout.panels.iter().find(|entry|entry.panel==Panel::Library).unwrap().visible);
+    gui.preview_apply();
+    assert_eq!(gui.fixture.app.settings.profile().workspaces,expected);
+    let loaded=storage::load(&gui.dir.join("preferences.json"),&AtomicBool::new(false)).unwrap();
+    assert_eq!(loaded.preferences.current().unwrap().workspaces,expected);
+    let mut reopened=Fixture::new(64);
+    reopened.app.initialize_preferences(&gui.ctx,Startup::read(gui.dir.join("preferences.json"),gui.dir.clone()),loaded.preferences.current().unwrap().audio.clone());
+    assert_eq!(reopened.app.settings.profile().workspaces,expected);
+    gui.click("Cancel changes"); gui.open(); gui.click("Reset workspace layouts"); gui.click("Cancel changes");
+    assert_eq!(gui.fixture.app.settings.profile().workspaces,expected);
+}
+
+#[test]
+fn workspace_preview_cancel_and_invalid_layout_keep_saved_and_applied_state() {
+    let mut gui=Gui::new(); gui.height=5000.0; gui.frame(vec![]); gui.open(); gui.preview_apply();
+    let bytes=std::fs::read(gui.dir.join("preferences.json")).unwrap();
+    let previous=gui.fixture.app.settings.applied.clone();
+    gui.click("Configure panel layout"); gui.click("Show Library");
+    gui.fixture.app.settings.worker.as_ref().unwrap().delay.store(100,Ordering::Release);
+    gui.click("Preview changes"); gui.click("Cancel pending preferences operation"); gui.wait();
+    assert_eq!(gui.fixture.app.settings.applied,previous);
+    assert_eq!(std::fs::read(gui.dir.join("preferences.json")).unwrap(),bytes);
+    gui.fixture.app.settings.worker.as_ref().unwrap().delay.store(0,Ordering::Release);
+    for label in ["Show Decks","Show Sampler","Show Session and mixer"] {gui.click(label);}
+    gui.click("Preview changes"); gui.wait();
+    assert!(gui.fixture.app.settings.preview.is_none());
+    assert!(gui.fixture.app.settings.message.contains("Keep at least one workspace panel visible"));
+    assert_eq!(gui.fixture.app.settings.applied,previous);
+    assert_eq!(std::fs::read(gui.dir.join("preferences.json")).unwrap(),bytes);
+    gui.click("Cancel changes");
+    assert_eq!(gui.fixture.app.settings.draft,previous);
+}

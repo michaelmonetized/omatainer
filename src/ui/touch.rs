@@ -79,7 +79,7 @@ pub(super) struct Input {
     mouse: Mouse,
     pointer_touch: Option<egui::TouchId>,
     focused: bool,
-    viewport: Option<(Rect, f32)>,
+    viewport: Option<(Rect, f32, Option<Vec2>)>,
     pub open: bool,
     pub cancelled: u64,
     pub rejected: u64,
@@ -101,8 +101,9 @@ pub(super) fn register(
         layer: response.layer_id,
         enabled: response.enabled() && enabled,
     };
+    let frame_key = viewport_key(ui.ctx().viewport_id(), FRAME);
     ui.ctx().data_mut(|data| {
-        let frame = data.get_temp_mut_or_default::<Frame>(egui::Id::new(FRAME));
+        let frame = data.get_temp_mut_or_default::<Frame>(frame_key);
         if hit.rect.is_positive() && frame.hits.len() < MAX_CONTACTS {
             frame.hits.push(hit);
         }
@@ -133,9 +134,10 @@ impl Input {
                 }
             });
         }
+        let frame_key = viewport_key(ctx.viewport_id(), FRAME);
         ctx.data_mut(|data| {
             data.insert_temp(
-                egui::Id::new(FRAME),
+                frame_key,
                 Frame {
                     hits: Vec::with_capacity(20),
                     mouse: self.mouse,
@@ -227,6 +229,13 @@ impl Input {
         self.contacts.clear();
     }
 
+    /// Retire pointer ownership when a workspace moves or replaces its controls.
+    /// Takes no arguments; returns no value and requires a fresh mouse or touch press.
+    pub(super) fn retire(&mut self) {
+        self.clear();
+        self.mouse = Mouse::default();
+    }
+
     /// Read the pads still owned by at least one contact.
     /// Takes this input state; returns one bit per held pad.
     fn pads(&self) -> u16 {
@@ -266,10 +275,15 @@ impl Input {
         if ctx.will_discard() {
             return (Vec::new(), Vec::new());
         }
+        let frame_key = viewport_key(ctx.viewport_id(), FRAME);
         let frame = ctx
-            .data(|data| data.get_temp::<Frame>(egui::Id::new(FRAME)))
+            .data(|data| data.get_temp::<Frame>(frame_key))
             .unwrap_or_default();
-        let viewport = (ctx.screen_rect(), ctx.pixels_per_point());
+        let viewport = (
+            ctx.screen_rect(),
+            ctx.pixels_per_point(),
+            ctx.input(|input| input.viewport().monitor_size),
+        );
         let focused = self.focused;
         let events = std::mem::take(&mut self.events);
         let mut changes = Vec::new();
@@ -451,3 +465,18 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+/// Inspect a performance target rendered in a particular native window.
+/// Takes context, viewport and target; returns its current clipped rectangle when present.
+pub(super) fn target_rect(
+    ctx: &egui::Context,
+    viewport: egui::ViewportId,
+    target: Target,
+) -> Option<Rect> {
+    ctx.data(|data| data.get_temp::<Frame>(viewport_key(viewport, FRAME)))?
+        .hits
+        .iter()
+        .find(|hit| hit.target == target && hit.enabled)
+        .map(|hit| hit.rect)
+}

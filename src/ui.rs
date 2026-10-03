@@ -73,6 +73,7 @@ mod keyboard;
 mod shortcuts;
 mod command_palette;
 mod touch;
+mod workspace;
 mod help;
 use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
@@ -168,6 +169,7 @@ pub struct App {
     keys_open: bool,
     command_palette: command_palette::Palette,
     touch_input: touch::Input,
+    workspace: workspace::State,
     help: help::Help,
     midi_open: bool,
     status: String,
@@ -194,6 +196,12 @@ struct LibItem {
     length: Option<f64>,
     last_play: Option<SystemTime>,
     source: LibSource,
+}
+
+/// Keep input helpers separate across native windows while retaining root identities.
+/// Takes a viewport and helper name; returns the stable context-data key for that window.
+fn viewport_key(viewport:egui::ViewportId,name:&str)->egui::Id {
+    if viewport==egui::ViewportId::ROOT {egui::Id::new(name)} else {egui::Id::new((viewport,name))}
 }
 
 impl App {
@@ -287,6 +295,7 @@ impl App {
             keys_open: false,
             command_palette: command_palette::Palette::default(),
             touch_input: touch::Input::default(),
+            workspace: workspace::State::default(),
             help: help::Help::default(),
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
@@ -775,48 +784,7 @@ impl App {
         self.session_history_ui(ctx);
         self.load_status(ctx);
         if !compact { self.audio_status(ctx); self.master_fx_status(ctx); }
-        let t = self.theme.clone();
-        egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(t.bg).inner_margin(6.0))
-            .show(ctx, |ui| {
-                if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
-                let h = ui.available_height();
-                let w = ui.available_width();
-                // Keep every focused control reachable at small window sizes.
-                // Custom focus handlers request scrolling inside this surface.
-                let surface = egui::ScrollArea::both().id_salt("performance-surface").animated(!t.reduced_motion).auto_shrink([false, false]).show(ui, |ui| {
-                ui.set_width(w);
-                let gap = 4.0;
-                let samp_h = (118.0_f32).max(t.target_size(32.0) * 5.0 + 20.0);
-                let crate_h = (108.0_f32).max(t.target_size(26.0) * 4.0 + 24.0);
-                let seq_row = t.target_size(26.0);
-                let seq_h = 70.0 + 26.0 + 48.0 + seq_row * SCENES as f32 + gap * (SCENES as f32 + 2.0);
-                let scratch_h = (h - samp_h - crate_h - seq_h - gap * 3.0).max(200.0);
-                ui.allocate_ui(Vec2::new(ui.available_width(), scratch_h), |ui| {
-                    if self.engine.safe_mode() { ui.disable(); }
-                    self.scratch_row(ui, &t);
-                });
-                ui.add_space(gap);
-                ui.allocate_ui(Vec2::new(ui.available_width(), samp_h), |ui| {
-                    if self.engine.safe_mode() { ui.disable(); }
-                    accessibility::scope(ui, "Sampler", |ui| self.sampler_row(ui, &t));
-                });
-                ui.add_space(gap);
-                ui.allocate_ui(Vec2::new(ui.available_width(), crate_h), |ui| {
-                    self.crate_row(ui, &t);
-                });
-                ui.add_space(gap);
-                if self.snap.fx_view >= 0 {
-                    ui.add_enabled_ui(!self.engine.safe_mode(), |ui| self.fx_row(ui, &t));
-                } else {
-                    ui.allocate_ui(Vec2::new(ui.available_width(), seq_h), |ui| {
-                        if self.engine.safe_mode() { ui.disable(); }
-                        self.sequencer_row(ui, &t);
-                    });
-                }
-                });
-                accessibility::scrollbars(ui, "Performance surface", &surface);
-            });
+        self.workspace_ui(ctx);
 
         if let Some(error) = self.submission_error.get() {
             keyboard::block_for_dialog(ctx);
@@ -915,7 +883,7 @@ impl App {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
                     if Some(*key) == command_palette::chord(self.settings.profile()) && mods.ctrl && mods.shift && !mods.alt && !mods.mac_cmd && !repeat {
-                        self.command_palette.open();
+                        self.command_palette.open(ctx.viewport_id());
                         return;
                     }
                     if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }
