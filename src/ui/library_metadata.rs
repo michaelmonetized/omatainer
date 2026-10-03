@@ -213,6 +213,7 @@ impl Metadata {
                 let mut row_index_pins: Option<[Arc<CollectionRows>; 3]> = None;
                 while let Ok(mut job) = work.recv() {
                     before_job();
+                    let refresh_smart = job.collection.as_ref().is_some_and(|request|matches!(request.action, collections::Action::Read));
                     for capture in &job.captures {
                         // Excess tracks retain their essential cues and can be
                         // verified by an explicit relocation while the original
@@ -429,11 +430,12 @@ impl Metadata {
                             },
                         }
                     });
-                    let full_index = Arc::new(CollectionRows::build(&items, &catalog));
+                    let previous = row_index_pins.as_ref().filter(|_|!refresh_smart);
+                    let full_index = Arc::new(CollectionRows::build_incremental(&items, &catalog, previous.map(|pins|pins[0].as_ref())));
                     let restricted_index = if Arc::ptr_eq(&items, &restricted) { full_index.clone() }
-                        else { Arc::new(CollectionRows::build(&restricted, &catalog)) };
+                        else { Arc::new(CollectionRows::build_incremental(&restricted, &catalog, previous.map(|pins|pins[1].as_ref()))) };
                     let row_indices = [full_index, restricted_index,
-                        Arc::new(CollectionRows::build(&job.base, &catalog))];
+                        Arc::new(CollectionRows::build_incremental(&job.base, &catalog, previous.map(|pins|pins[2].as_ref())))];
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {

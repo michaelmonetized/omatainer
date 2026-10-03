@@ -19,6 +19,7 @@ mod content;
 pub(crate) mod tags;
 pub(crate) mod annotations;
 pub(crate) mod search;
+pub(crate) mod smart_crates;
 pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;
@@ -32,7 +33,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 9;
+const SCHEMA: u32 = 10;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -476,8 +477,16 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
         || header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("annotation_rule").is_some()))) {
         return Err("Track annotations and smart annotation rules require library schema 9; original file preserved".into());
     }
+    if schema.is_some_and(|version| version < 10) && header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("smart_rule").is_some())) {
+        return Err("Typed smart crate rules require library schema 10; original file preserved".into());
+    }
     let mut catalog = match schema {
-        Some(9) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(10) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(9) => {
+            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            old.schema = SCHEMA;
+            old
+        },
         Some(8) => {
             let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;

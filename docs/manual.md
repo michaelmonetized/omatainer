@@ -110,6 +110,14 @@ Capture selected or filtered stable IDs, select changed fields, Review and Apply
 
 Workflow: Prepare a DJ deck.
 
+### Smart crate rules
+
+All or Any typed conditions; inclusive numeric ranges
+
+Select an empty named crate and open Smart crate rules. Choose supported text, key, BPM, duration, rating or confirmed-played conditions. Preview current results before Save. Membership is updated on the catalog worker when current metadata changes. Refresh recomputes saved membership explicitly. Cancel stops a preview without saving; Remove leaves an empty manual crate.
+
+Workflow: Prepare a DJ deck.
+
 ### Automatic annotation crate rules
 
 Saved predicates over current library annotations

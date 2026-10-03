@@ -222,4 +222,4 @@ fn annotation_text(
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

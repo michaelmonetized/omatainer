@@ -183,6 +183,35 @@
         "docs/validation/issue-120-providers.md"
       ],
       "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
+    },
+    "205": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_smart_crates.rs",
+          "entry": "Named crates → Smart crate rules → Preview and Save"
+        },
+        {
+          "kind": "catalog worker",
+          "file": "src/ui/library_metadata/collection_rows.rs",
+          "entry": "Incremental membership bound to exact library/catalog publications"
+        },
+        {
+          "kind": "persistent catalog",
+          "file": "src/library/smart_crates.rs",
+          "entry": "Validated typed All/Any rules in schema 10"
+        }
+      ],
+      "fixtures": [
+        "library::smart_crates::tests",
+        "ui::library_metadata::collection_rows::tests",
+        "ui::library_smart_crates::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-205-smart-crates.md"
+      ],
+      "limits": "Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines."
     }
   }
 }

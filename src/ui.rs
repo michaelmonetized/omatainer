@@ -16,6 +16,7 @@ mod library_metadata;
 mod library_analysis;
 mod library_tags;
 mod library_annotations;
+mod library_smart_crates;
 mod library_crates;
 mod library_store;
 pub(crate) mod bpm;
@@ -143,6 +144,7 @@ pub struct App {
     library_analysis: library_analysis::Panel,
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
+    smart_crates: library_smart_crates::Panel,
     library_crates: library_crates::Crates,
     library_import_open: bool,
     library_initialized: bool,
@@ -272,6 +274,7 @@ impl App {
             library_analysis: library_analysis::Panel::default(),
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
+            smart_crates: library_smart_crates::Panel::default(),
             library_crates: library_crates::Crates::default(),
             library_import_open: false,
             library_initialized: false,
@@ -793,6 +796,7 @@ impl App {
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
         self.named_crates_ui(ctx);
+        self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
         if !compact { self.audio_status(ctx); self.master_fx_status(ctx); }

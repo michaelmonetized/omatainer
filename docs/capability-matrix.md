@@ -59,6 +59,16 @@ The registry records observed status and pending work. Each implementation needs
 
 Local 100000-track synthetic catalog; search fields reflect implemented title/artist/key/annotation metadata.
 
+### Issue #205: implemented
+
+- native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
+- catalog worker: [src/ui/library_metadata/collection_rows.rs](../src/ui/library_metadata/collection_rows.rs) — Incremental membership bound to exact library/catalog publications
+- persistent catalog: [src/library/smart_crates.rs](../src/library/smart_crates.rs) — Validated typed All/Any rules in schema 10
+- Acceptance fixtures: `library::smart_crates::tests`, `ui::library_metadata::collection_rows::tests`, `ui::library_smart_crates::tests`.
+- Evidence: [docs/validation/issue-205-smart-crates.md](../docs/validation/issue-205-smart-crates.md).
+
+Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines.
+
 ### Issue #221: partial
 
 - native UI: [src/ui/music_provider.rs](../src/ui/music_provider.rs) — FreeToUse search and preview
@@ -151,7 +161,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | planned |
 | [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | planned |
 | [#204](https://github.com/michaelmonetized/omatainer/issues/204) | Detect changing-tempo beatgrids automatically as a preview-comparison feature | planned |
-| [#205](https://github.com/michaelmonetized/omatainer/issues/205) | Add automatically maintained smart crates | planned |
+| [#205](https://github.com/michaelmonetized/omatainer/issues/205) | Add automatically maintained smart crates | implemented |
 | [#206](https://github.com/michaelmonetized/omatainer/issues/206) | Manage provider-authorized offline lockers and readiness | excluded from release |
 | [#207](https://github.com/michaelmonetized/omatainer/issues/207) | Build chord progression and voicing generation tools | planned |
 | [#208](https://github.com/michaelmonetized/omatainer/issues/208) | Create shape-guided and seeded melodic MIDI generators | planned |

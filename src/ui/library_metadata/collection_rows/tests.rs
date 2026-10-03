@@ -76,3 +76,84 @@ fn actual_owner_publishes_matching_map_and_retires_previous_table_off_gui() {
     assert_ne!(owner, std::thread::current().id());
     assert!(metadata.collection_rows().is_for(&rows, &metadata.catalog));
 }
+
+#[test]
+fn smart_crate_100000_track_updates_evaluate_changed_members_only_while_audio_runs() {
+    use crate::library::{crates::{CrateId,Edit},smart_crates::{Rule,Combine,Condition,NumberField}};
+    use std::sync::atomic::{AtomicBool,Ordering};
+    struct StopOnDrop(Arc<AtomicBool>);
+    impl Drop for StopOnDrop { fn drop(&mut self) { self.0.store(true,Ordering::Release); } }
+    let stop = Arc::new(AtomicBool::new(false)); let stopping = stop.clone();
+    let _stop_on_failure=StopOnDrop(stop.clone());
+    let audio = std::thread::spawn(move || {
+        let (engine, mut rt) = crate::engine::Engine::headless_for_test(48000, 256);
+        engine.send(crate::engine::Command::DeckPlay { deck:0 }).unwrap();
+        let mut buffer = [0.0;512]; rt.process(&mut buffer);
+        let mut callbacks = 0usize;
+        while !stopping.load(Ordering::Acquire) {
+            assert_eq!(crate::engine::test_alloc::measure(||rt.process(&mut buffer)),crate::engine::test_alloc::Counts::default());
+            assert!(buffer.iter().all(|sample|sample.is_finite()));
+            callbacks += 1;
+            std::thread::sleep(Duration::from_micros(100));
+        }
+        callbacks
+    });
+    let mut catalog = Catalog::default();
+    for index in 0..100000 {
+        catalog.upsert(crate::engine::media_source::LibSource::File(format!("/synthetic-smart/{index}.wav").into()), None,
+            crate::library::Metadata { title: format!("Track {index}"), artist: "Fixture".into(), bpm: Bpm::hint(100.0+(index%100) as f32), key: "C".into(), duration: Some(180.0),last_play:None }).unwrap();
+        catalog.tracks[index].annotations.rating = (index%6) as u8;
+    }
+    let id = CrateId("00000000000000000000000000000205".into());
+    catalog.crates.apply(0,&Edit::Create { id:id.clone(),name:"Smart".into(),parent:None,before:None },|_|true).unwrap();
+    catalog.crates.apply(1,&Edit::SetSmartRule { id:id.clone(),rule:Some(Rule { combine:Combine::All,conditions:vec![
+        Condition::Number { field:NumberField::Bpm,minimum:120.0,maximum:128.0 },
+        Condition::Number { field:NumberField::Rating,minimum:4.0,maximum:5.0 },
+    ] }) },|_|true).unwrap();
+    let catalog = Arc::new(catalog);
+    let rows = Arc::new(catalog.tracks.iter().map(|track|LibItem::from_stored(track.source.clone(),&track.versions[track.current])).collect::<Vec<_>>());
+    let first = Instant::now(); let index = CollectionRows::build(&rows,&catalog); let first_elapsed = first.elapsed();
+    let expected: Vec<_> = (0..100000).filter(|i|(20..=28).contains(&(i%100)) && i%6>=4).collect();
+    assert_eq!(index.smart_rows(&id,&rows,&catalog).unwrap(),expected);
+    assert_eq!(index.smart[&id].evaluated,100000);
+    let mut changed = (*catalog).clone(); changed.tracks[20].annotations.rating = 5;
+    let changed = Arc::new(changed);
+    let started = Instant::now(); let update = CollectionRows::build_incremental(&rows,&changed,Some(&index)); let elapsed=started.elapsed();
+    assert_eq!(update.smart[&id].evaluated,1);
+    let mut expected=expected;expected.push(20);expected.sort_unstable();
+    assert_eq!(update.smart_rows(&id,&rows,&changed).unwrap(),expected);
+    let mut next_rows=(*rows).clone();next_rows.reverse();
+    let next_rows=Arc::new(next_rows);let reordered=CollectionRows::build_incremental(&next_rows,&changed,Some(&update));
+    assert_eq!(reordered.smart[&id].evaluated,0);
+    assert_eq!(reordered.smart_rows(&id,&next_rows,&changed).unwrap(),(0..100000).filter(|i|expected.binary_search(&(99999-i)).is_ok()).collect::<Vec<_>>());
+    let refreshed=CollectionRows::build(&rows,&changed);assert_eq!(refreshed.smart[&id].evaluated,100000);
+    assert_eq!(refreshed.smart_rows(&id,&rows,&changed),update.smart_rows(&id,&rows,&changed));
+    assert!(update.smart_rows(&id,&rows,&catalog).is_none());
+    stop.store(true,Ordering::Release);let callbacks=audio.join().unwrap();
+    assert!(callbacks>100);
+    eprintln!("Smart crates: 100000 tracks, initial {first_elapsed:?}, one-track update {elapsed:?}, {callbacks} concurrent zero-heap software callbacks");
+    assert!(first_elapsed<Duration::from_secs(5) && elapsed<Duration::from_secs(5));
+}
+
+#[test]
+fn real_catalog_owner_updates_smart_annotations_incrementally_and_manual_refresh_recomputes() {
+    use crate::library::{crates::{CrateId,Edit},smart_crates::{Rule,Combine,Condition,NumberField},annotations::Patch};
+    use crate::ui::library_metadata::{CollectionAction,CollectionOutcome};
+    let (files,catalog,_)=fixture();let mut catalog=(*catalog).clone();
+    let id=CrateId("00000000000000000000000000000205".into());
+    catalog.edit_crates(0,&Edit::Create { id:id.clone(),name:"Rated".into(),parent:None,before:None }).unwrap();
+    catalog.edit_crates(1,&Edit::SetSmartRule { id:id.clone(),rule:Some(Rule { combine:Combine::All,conditions:vec![Condition::Number { field:NumberField::Rating,minimum:4.0,maximum:5.0 }] }) }).unwrap();
+    let member=catalog.tracks[0].id.clone();let source=catalog.tracks[0].source.clone();
+    let path=files.0.join("catalog.json");let mut store=crate::library::Store::open(path.clone()).unwrap();store.catalog=catalog;store.save().unwrap();drop(store);
+    let mut metadata=Metadata::new(Some(path));let mut rows=Arc::new(Vec::new());settle(&mut metadata,&mut rows);
+    assert!(metadata.collection_rows().smart_rows(&id,&rows,&metadata.catalog).unwrap().is_empty());
+    metadata.edit_crates(metadata.catalog.crates.revision(),CollectionAction::Annotate { ids:vec![member],patch:Patch { rating:Some(5),..Default::default() } }).unwrap();
+    settle(&mut metadata,&mut rows);
+    assert_eq!(metadata.take_collection_result().unwrap().outcome,CollectionOutcome::Durable { changed:true });
+    let result=metadata.collection_rows();let members=result.smart_rows(&id,&rows,&metadata.catalog).unwrap();
+    assert_eq!(members.len(),1);assert_eq!(rows[members[0]].source,source);assert_eq!(result.smart[&id].evaluated,1);
+    metadata.edit_crates(metadata.catalog.crates.revision(),CollectionAction::Read).unwrap();settle(&mut metadata,&mut rows);
+    assert_eq!(metadata.take_collection_result().unwrap().outcome,CollectionOutcome::Read);
+    assert_eq!(metadata.collection_rows().smart[&id].evaluated,2);
+    assert_eq!(metadata.collection_rows().smart_rows(&id,&rows,&metadata.catalog).unwrap().len(),1);
+}

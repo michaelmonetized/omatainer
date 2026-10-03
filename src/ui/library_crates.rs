@@ -219,7 +219,11 @@ impl App {
                             ui.push_id((&node.id, "tree-row"), |ui| {
                                 ui.horizontal(|ui| {
                                     ui.add_space(depth as f32 * 12.0);
-                                    if ui.selectable_label(self.library_crates.selected.as_ref() == Some(&node.id), { let __omatainer_args = (&(node.name),&(node.members.len()),); crate::localization::format("{} · {} tracks", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) })
+                                    let label = if node.smart_rule.is_some() {
+                                        let count = self.library_metadata.collection_rows().smart_rows(&node.id, &self.library, &self.library_metadata.catalog).map(|rows|rows.len().to_string()).unwrap_or_else(||"…".into());
+                                        crate::localization::format("{name} · {count} automatic tracks", &[node.name.clone(),count])
+                                    } else { crate::localization::format("{} · {} tracks", &[node.name.clone(),node.members.len().to_string()]) };
+                                    if ui.selectable_label(self.library_crates.selected.as_ref() == Some(&node.id), label)
                                         .help(ui, HelpControl::NamedCrates).clicked() { chosen = Some(node.id.clone()); }
                                 });
                             });
@@ -248,6 +252,7 @@ impl App {
                         }
                         if ui.add_enabled(available && id.is_some(), egui::Button::new(tr!("Delete crate…"))).help(ui, HelpControl::CrateDelete).clicked() { self.request_crate_delete(); }
                     });
+                    if ui.add_enabled(id.is_some(), egui::Button::new(tr!("Smart crate rules…"))).help(ui, HelpControl::SmartCrates).clicked() { self.smart_crates.open = true; }
                     self.crate_order_buttons(ui, revision, id.as_ref(), available);
                     ui.horizontal(|ui| {
                         if ui.add_enabled(id.is_some(), egui::Button::new(tr!("Use as destination"))).help(ui, HelpControl::CrateDestination).clicked() { self.library_crates.destination = id.clone(); }
@@ -329,6 +334,7 @@ impl App {
             ui.label(tr!("All tracks keeps library sorting. Select a named crate to reorder or remove its direct members."));
             return;
         };
+        if node.is_smart() { ui.label(tr!("Automatic membership follows the saved rule. Browse matching tracks in the library; remove the rule before editing manual members.")); return; }
         ui.push_id(("crate-members", revision, id), |ui| {
             ui.label({ let __omatainer_args = (&(node.members.len()),&(self.library_crates.members.len()),); crate::localization::format("{} direct members; {} selected (maximum 4096). Child crates are separate views.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
             let mut cursor = self.library_crates.member_cursor.max(1).min(node.members.len().max(1)) as f32;

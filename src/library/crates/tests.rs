@@ -406,6 +406,7 @@ fn node_and_membership_limits_are_validated_before_commit() {
         forest.roots.push(id(value));
         forest.nodes.push(Node {
             annotation_rule: None,
+            smart_rule: None,
             id: id(value),
             name: value.to_string(),
             children: vec![],

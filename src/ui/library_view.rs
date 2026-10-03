@@ -179,7 +179,11 @@ impl App {
             view.unavailable = 0;
             if let Some(node) = selected_crate.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)) {
                 let rows = self.library_metadata.collection_rows();
-                if let Some(rule) = &node.annotation_rule {
+                if node.smart_rule.is_some() {
+                    if let Some(members) = rows.smart_rows(&node.id, &self.library, &self.library_metadata.catalog) {
+                        indices.extend(members.iter().copied().filter(|index|matches(&self.library[*index])));
+                    } else { view.annotation_error = "Smart crate membership is preparing for the current library".into(); }
+                } else if let Some(rule) = &node.annotation_rule {
                     indices.extend(self.library.iter().enumerate().filter_map(|(index, item)|
                         (matches(item) && self.library_metadata.catalog.track(&item.source).is_some_and(|track|rule.matches(&track.annotations))).then_some(index)));
                 } else {

@@ -46,6 +46,7 @@ impl Action {
             return Ok(());
         }
         if let Self::Edit(Edit::SetAnnotationRule { rule: Some(rule), .. }) = self { rule.validate().map_err(|e|invalid(&e))?; }
+        if let Self::Edit(Edit::SetSmartRule { rule: Some(rule), .. }) = self { rule.validate().map_err(|e|invalid(&e))?; }
 
         let name = match self {
             Self::Create { name, .. } | Self::Edit(Edit::Rename { name, .. }) => Some(name),
@@ -89,7 +90,7 @@ impl Action {
         let anchor = |id: &Option<CrateId>| id.as_ref().is_none_or(crate_id);
         let shape = match self {
             Self::Create { parent, before, .. } => anchor(parent) && anchor(before),
-            Self::Edit(Edit::Rename { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. }) => crate_id(id),
+            Self::Edit(Edit::Rename { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. } | Edit::SetSmartRule { id, .. }) => crate_id(id),
             Self::Edit(Edit::MoveCrate { id, parent, before }) => {
                 crate_id(id) && anchor(parent) && anchor(before)
             }
@@ -238,7 +239,7 @@ impl Receipt {
 pub(super) struct Request {
     token: Token,
     expected: u64,
-    action: Action,
+    pub(super) action: Action,
     work: Option<WorkPermit>,
 }
 

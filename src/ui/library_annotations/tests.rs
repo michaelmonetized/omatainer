@@ -4,9 +4,9 @@ use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-struct Files(PathBuf);
+pub(in crate::ui) struct Files(pub(in crate::ui) PathBuf);
 impl Files {
-    fn new() -> Self {
+    pub(in crate::ui) fn new() -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
             "omatainer-annotations-gui-{}-{}",
@@ -29,15 +29,15 @@ impl Drop for Files {
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }
-struct Gui {
-    app: App,
-    rt: RtEngine,
+pub(in crate::ui) struct Gui {
+    pub(in crate::ui) app: App,
+    pub(in crate::ui) rt: RtEngine,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
 }
 impl Gui {
-    fn new(files: &Files) -> Self {
+    pub(in crate::ui) fn new(files: &Files) -> Self {
         let (engine, mut rt) = Engine::headless_for_test(48000, 256);
         rt.publish_for_test();
         let loader = Loader::start_with_performance(engine.cmd.performance().clone()).unwrap();
@@ -64,7 +64,7 @@ impl Gui {
         gui.click("annotations…");
         gui
     }
-    fn frame(&mut self, events: Vec<egui::Event>) {
+    pub(in crate::ui) fn frame(&mut self, events: Vec<egui::Event>) {
         self.time += 0.02;
         let out = self.ctx.run(
             egui::RawInput {
@@ -80,7 +80,7 @@ impl Gui {
         self.rt.process(&mut [0.0; 256]);
         self.rt.publish_for_test();
     }
-    fn wait(&mut self, mut condition: impl FnMut(&Self) -> bool) {
+    pub(in crate::ui) fn wait(&mut self, mut condition: impl FnMut(&Self) -> bool) {
         let until = Instant::now() + Duration::from_secs(10);
         loop {
             self.frame(vec![]);
@@ -96,7 +96,7 @@ impl Gui {
             std::thread::sleep(Duration::from_millis(2));
         }
     }
-    fn node(&self, label: &str) -> NodeId {
+    pub(in crate::ui) fn node(&self, label: &str) -> NodeId {
         self.nodes
             .iter()
             .find(|(_, node)| node.label() == Some(label))
@@ -111,7 +111,7 @@ impl Gui {
                 )
             })
     }
-    fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
+    pub(in crate::ui) fn action(&mut self, label: &str, action: Action, data: Option<ActionData>) {
         let target = self.node(label);
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             target,
@@ -120,10 +120,10 @@ impl Gui {
         })]);
         self.frame(vec![]);
     }
-    fn click(&mut self, label: &str) {
+    pub(in crate::ui) fn click(&mut self, label: &str) {
         self.action(label, Action::Click, None);
     }
-    fn text(&mut self, label: &str, value: &str) {
+    pub(in crate::ui) fn text(&mut self, label: &str, value: &str) {
         self.action(label, Action::Focus, None);
         self.frame(vec![
             egui::Event::Key {
@@ -141,7 +141,7 @@ impl Gui {
         ]);
         self.frame(vec![]);
     }
-    fn finish(&mut self) {
+    pub(in crate::ui) fn finish(&mut self) {
         self.wait(|gui| {
             gui.app.library_crates.pending.is_none() && !gui.app.library_metadata.active()
         });
