@@ -1108,6 +1108,9 @@ fn native_shortcut_capture_cancel_persist_export_import_and_failure_preserve_oth
     reopened.rt.process(&mut []);
     assert!(reopened.rt.playing,"reopened App must dispatch the persisted logical G binding");
     let export = gui.dir.join("bindings.json");
+    gui.fixture.app.settings.roots.push_str("\nunrelated-relative-draft");
+    gui.frame(vec![]);
+    assert!(gui.fixture.app.settings.draft.current().unwrap().validate().is_err());
     gui.fixture.app.settings.file_path = export.to_string_lossy().into();
     gui.click("Export bindings only"); gui.wait();
     let bytes = std::fs::read(&export).unwrap();
@@ -1119,6 +1122,7 @@ fn native_shortcut_capture_cancel_persist_export_import_and_failure_preserve_oth
     assert!(gui.fixture.app.settings.draft.current().unwrap().shortcuts.is_empty());
     gui.click("Import bindings into draft"); gui.wait();
     let mut expected = before.current().unwrap().clone(); bundle.apply(&mut expected).unwrap();
+    expected.library_roots.push("unrelated-relative-draft".into());
     assert_eq!(gui.fixture.app.settings.draft.current().unwrap(),&expected);
     gui.click("Cancel changes");
     assert_eq!(gui.fixture.app.settings.draft,gui.fixture.app.settings.applied);
