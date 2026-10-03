@@ -116,6 +116,7 @@ impl App {
             }
             let ignored = job.intentionally_cancelled;
             let source_operation = job.source_operation;
+            let operation = job.decode_start.is_none();
             if let Some(result) = job.poll() {
                 panel.job = None;
                 match result {
@@ -154,7 +155,11 @@ impl App {
                         panel.future.clear();
                         panel.texture = None;
                     }
-                    Err(_) => {}
+                    Err(_) => {
+                        if operation {
+                            panel.message = "Video job cancelled before publication".into();
+                        }
+                    }
                 }
             }
         }
