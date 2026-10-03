@@ -2,6 +2,7 @@ use crate::engine::RtEngine;
 pub mod calibration;
 pub mod config;
 pub mod owner;
+pub mod recovery;
 use cpal::traits::{DeviceTrait, StreamTrait};
 pub use owner::AudioOut;
 use std::sync::{
@@ -52,8 +53,12 @@ impl owner::Backend for Native {
         plan: &config::Plan,
         callback: OutputCallback,
         fault: Arc<AtomicBool>,
+        identity: Option<&str>,
     ) -> Result<Self::Stream, String> {
         let device = config::select_exact(plan).map_err(|e| e.to_string())?;
+        if identity.is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected)) {
+            return Err("Physical output changed before opening; no other output was activated".into());
+        }
         let cfg = plan.config();
         let errors = callback.rt.telemetry.clone();
         let error = move |e| {
@@ -78,6 +83,12 @@ impl owner::Backend for Native {
             cpal::SampleFormat::U64 => build!(u64),
             other => Err(format!("Unsupported sample format {other}")),
         }
+    }
+    fn identity(&mut self, plan: &config::Plan) -> Option<String> {
+        recovery::identity(&plan.device)
+    }
+    fn reconnect(&mut self, target: &recovery::Target) -> Result<config::Plan, String> {
+        recovery::discover(target)
     }
     fn calibrate(
         &mut self,
@@ -152,6 +163,7 @@ pub(crate) struct OutputCallback {
     stopped: Option<Arc<AtomicBool>>,
     channels: usize,
     buffer: Vec<f32>,
+    resume_ramp: Option<(u8, u32, u32)>,
     #[cfg(test)]
     conversion_delay: std::time::Duration,
 }
@@ -172,6 +184,7 @@ impl OutputCallback {
             stopped: None,
             channels,
             buffer: Vec::new(),
+            resume_ramp: None,
             #[cfg(test)]
             conversion_delay: std::time::Duration::ZERO,
         }
@@ -193,6 +206,7 @@ impl OutputCallback {
             stopped: Some(stopped),
             channels,
             buffer: Vec::new(),
+            resume_ramp: Some((0, 0, 1)),
             #[cfg(test)]
             conversion_delay: std::time::Duration::ZERO,
         }
@@ -233,6 +247,20 @@ impl OutputCallback {
         slice.fill(0.0);
         if let Some(history) = &mut self.rt.history_measurement { history.begin_output(data.len() / self.channels.max(1)); }
         self.rt.process_interleaved(slice, self.channels);
+        if let Some((was_playing, remaining, total)) = &mut self.resume_ramp {
+            let playing = u8::from(self.rt.playing) | self.rt.decks.iter().enumerate().fold(0, |bits,(index,deck)| bits | (u8::from(deck.playing) << (index+1)));
+            if playing & !*was_playing != 0 {
+                *total = (self.rt.sr as u32).saturating_mul(2).div_ceil(1000).max(1);
+                *remaining = *total;
+            }
+            *was_playing = playing;
+            for frame in slice.chunks_mut(self.channels.max(1)) {
+                if *remaining == 0 { break; }
+                let gain = 1.0 - *remaining as f32 / *total as f32;
+                for sample in frame { *sample *= gain; }
+                *remaining -= 1;
+            }
+        }
         #[cfg(test)]
         std::thread::sleep(self.conversion_delay);
         for (destination, source) in data.iter_mut().zip(slice) {
