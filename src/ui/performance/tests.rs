@@ -84,6 +84,59 @@ impl Gui {
     }
 }
 #[test]
+fn localized_safety_decisions_keep_cancel_acknowledgment_and_latched_mute() {
+    use crate::localization::{self, Locale};
+    for locale in [Locale::Spanish,Locale::German] {
+        let mut gui = Gui::new();
+        let active = gui.fixture.app.settings.applied.active.clone();
+        gui.fixture.app.settings.applied.profiles.get_mut(&active).unwrap().appearance.locale = locale;
+        gui.frame(vec![]);
+        let translated = |key| { let _locale = localization::scope(locale); localization::text(key) };
+        gui.click(translated("Enable performance mode"));
+        gui.click(translated("Leave performance mode…"));
+        assert_ne!(translated("Leave protection deliberately. Playing deck replacement, destructive edits and optional background work will become available. Emergency mute, if present, stays latched."), "Leave protection deliberately. Playing deck replacement, destructive edits and optional background work will become available. Emergency mute, if present, stays latched.");
+        assert!(gui.has(translated("Leave protection deliberately. Playing deck replacement, destructive edits and optional background work will become available. Emergency mute, if present, stays latched.")));
+        gui.click(translated("Keep current safety state"));
+        assert!(gui.fixture.app.engine.cmd.performance().status().protected);
+        gui.click(translated("Leave performance mode…"));
+        gui.click(translated("Leave protection"));
+        assert!(!gui.fixture.app.engine.cmd.performance().status().protected);
+        gui.click(translated("Safe stop…"));
+        assert_ne!(translated("Stop session and both decks, finalize recorded holds, disarm compose and release all input-owned synth gates. Finite hits and effect tails continue naturally. Recovery needs your explicit input-release acknowledgment."), "Stop session and both decks, finalize recorded holds, disarm compose and release all input-owned synth gates. Finite hits and effect tails continue naturally. Recovery needs your explicit input-release acknowledgment.");
+        assert!(gui.has(translated("Stop session and both decks, finalize recorded holds, disarm compose and release all input-owned synth gates. Finite hits and effect tails continue naturally. Recovery needs your explicit input-release acknowledgment.")));
+        gui.click(translated("Stop all transports and release notes"));
+        assert!(gui.fixture.app.engine.cmd.performance().status().recovery);
+        gui.frame(vec![]);
+        gui.click(translated("Recover inputs…"));
+        assert_ne!(translated("Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched."), "Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched.");
+        assert!(gui.has(translated("Release physical keys, pads and platter touch controls first. Your confirmation is a user report, not a hardware check. This only reopens controls after queued pre-stop work drains; playback stays stopped and emergency output mute stays latched.")));
+        let label = translated("Inputs released — keep playback stopped");
+        assert!(gui.nodes.iter().find(|(_,node)| node.label()==Some(label)).unwrap().1.is_disabled());
+        gui.click(translated("I have released the physical inputs"));
+        gui.click(label);
+        assert!(!gui.fixture.app.engine.cmd.performance().status().recovery);
+        assert!(!gui.fixture.rt.playing);
+        gui.click(translated("Emergency silence…"));
+        assert_ne!(translated("Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy."), "Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy.");
+        assert!(gui.has(translated("Finalize captured holds, stop session and both decks, release all notes and ramp output to silence over 2 ms. Output stays muted until a deliberate stopped DSP reset. This does not claim the device or physical controls are healthy.")));
+        gui.click(translated("Keep current safety state"));
+        assert!(!gui.fixture.app.engine.cmd.performance().status().output_muted);
+        gui.click(translated("Emergency silence…"));
+        gui.click(translated("Confirm emergency silence"));
+        gui.frame(vec![]);
+        assert!(gui.fixture.app.engine.cmd.performance().status().output_muted);
+        gui.click(translated("Recover inputs…"));
+        let label = translated("Inputs released — keep output muted");
+        assert!(gui.nodes.iter().find(|(_,node)| node.label()==Some(label)).unwrap().1.is_disabled());
+        gui.click(translated("I have released the physical inputs"));
+        gui.click(label);
+        let status = gui.fixture.app.engine.cmd.performance().status();
+        assert!(!status.recovery && status.output_muted);
+        assert!(!gui.fixture.rt.playing);
+    }
+}
+
+#[test]
 fn actual_safety_controls_require_deliberate_decisions_and_keep_emergency_mute() {
     let mut gui = Gui::new();
     gui.click("Enable performance mode");

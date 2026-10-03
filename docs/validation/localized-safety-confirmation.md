@@ -1,0 +1,23 @@
+# Localized safety confirmation controls
+
+Source freeze: `28fd6f874837af15bd608ad1df9316f69f5a2294`. Base: PR #492 (`stack/issue-125-localization`).
+
+The native safety dialog now looks up its selected confirmation action and
+explanation in the current catalogue. Spanish/German confirmation and explanation
+translations become visible without changing their commands, acknowledgment
+requirements, cancellation or latched emergency mute.
+
+Linux aarch64, locked Rust/Cargo 1.98.0: five actual App safety tests and three
+catalogue tests pass, plus eight license/package fixtures. The new native fixture
+runs both Spanish and German through protected-mode cancellation/leaving, safe
+stop, input-release acknowledgment, emergency cancellation/silence and recovery
+that preserves the output mute. Actual AccessKit actions reach the renderer;
+physical input release is deliberately a fixture acknowledgment.
+
+Qualified ordinary test binary: `c8cd373f37901a25f5a8e18398bf1b092041cda36dddf125901a1b3347b74927`,
+retained at `/home/michael/Projects/omatainer-work/localized-safety-final-qualified-tests`.
+Adjacent `localized-safety-final-{native,catalog,package}.log` files retain results.
+No separate complete suite or performance gate is claimed for this display-only
+layer; PR #492's frozen qualification remains its parent receipt.
+
+All four explanation paragraphs are retained in English, Spanish and German catalogues. The native fixture asserts their rendered translations in both languages before exercising the matching action; none of these safety explanations relies on an English fallback.
