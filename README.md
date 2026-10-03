@@ -10,6 +10,19 @@ Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship
 
 It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`) and font, registers in the keybind menu, and drops a Quickshell bar chip next to the rest of the shell.
 
+## Licensed music providers
+
+Open **Music providers** in Setup. Network access starts only after you accept
+Free To Use's current non-commercial license and attribution requirement.
+Search its public catalog, copy credits and preview non-premium music at its
+original pitch. No API key or account is required. Premium and commercial use
+need a paid license for Omatainer; none is configured.
+
+This adapter supports one transient preview voice and no offline storage, stems,
+recording/export or DJ decks. Remote tracks retain provider IDs and never enter
+local crates or saved project media. Close the panel or press **Stop provider
+preview** to cancel playback. See the [provider contract](docs/music-providers.md).
+
 ## Install on this machine
 
 ```bash

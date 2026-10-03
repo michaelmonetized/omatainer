@@ -66,6 +66,7 @@ macro_rules! controls { ($( $id:ident, $title:literal, $units:literal, $purpose:
     }
 }}
 controls! {
+    MusicProvider, "Licensed music providers", "Explicit non-commercial consent; one original-pitch preview", "Enable the public Free To Use API only after accepting its current non-commercial license and attribution requirement. Search current metadata, copy credits and preview non-premium music. Premium and commercial use need a paid license for this app; none is configured. The adapter supports no offline storage, stems, recording, export or DJ decks. Close or Stop cancels preview audio. Network and decoding run on a bounded worker; safe and performance modes block these jobs.", Dj;
     AutomationOpen, "Automation API", "Versioned local and loopback control", "Inspect the private local socket, stable session IDs and API results. Command acceptance is pending until its job reports applied. The native inspector uses the same typed API as scripts.", Setup;
     AutomationState, "Read API state", "Stable IDs and reviewed revision", "Read a bounded state page from automation version 1. Names may be shortened here; native project data stays complete.", Setup;
     AutomationSchedule, "Schedule API action", "Absolute quarter-note beat", "While transport plays, schedule selected-track gain on a future musical beat. Stops, safety changes and project replacement invalidate pending actions. Audio executes from fixed storage without network IO.", Setup;

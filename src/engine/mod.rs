@@ -7,6 +7,7 @@ pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
+pub(crate) mod provider_preview;
 mod arp;
 mod deck_filter;
 #[cfg(test)]
@@ -555,6 +556,7 @@ pub struct RtEngine {
     pub beat: f64,
     pub(crate) transport_epoch: u64,
     remote_schedule: remote::Schedule,
+    provider_preview: Option<provider_preview::Active>,
     beat_roundoff: f64,
     midi_beat: f64,
     midi_beat_reference: f64,
@@ -833,6 +835,7 @@ impl Default for Snapshot {
 #[derive(Clone, Debug)]
 pub enum Command {
     Remote(remote::Request),
+    ProviderPreview(provider_preview::Request),
     SessionEdit(session::Request),
     SessionControl(session::Scoped),
     PerformanceMode(bool),
@@ -987,6 +990,7 @@ impl RtEngine {
             beat_roundoff: 0.0,
             transport_epoch: 0,
             remote_schedule: remote::Schedule::default(),
+            provider_preview: None,
             midi_beat: 0.0,
             midi_beat_reference: 0.0,
             #[cfg(test)]
@@ -1285,6 +1289,7 @@ impl RtEngine {
         self.prepare_midi_output_block();
         self.sync_midi_clock();
         self.remote_maintain();
+        self.maintain_provider_preview();
         if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
@@ -1434,7 +1439,6 @@ impl RtEngine {
             let cm = self.cue_mix;
             l = l * (1.0 - cm) + cue_l * cm;
             r = r * (1.0 - cm) + cue_r * cm;
-            self.safety_output.observe([l * self.master, r * self.master], self.sr);
             if let Some(history) = self.history_measurement.as_mut().filter(|history| history.available) {
                 let contribution = history.tracker.process(
                     [self.decks[0].history_last, self.decks[1].history_last],
@@ -1442,6 +1446,10 @@ impl RtEngine {
                     [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], cm);
                 history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output);
             }
+            let preview = self.tick_provider_preview();
+            l += preview[0];
+            r += preview[1];
+            self.safety_output.observe([l * self.master, r * self.master], self.sr);
             l = limiter(l * self.master);
             r = limiter(r * self.master);
             let [l, r] = self.safety_output.output([l, r]);
@@ -1976,6 +1984,7 @@ impl RtEngine {
         self.refresh_history_protection();
         match c {
             Command::Remote(request) => { self.remote_request(request); return; }
+            Command::ProviderPreview(request) => { self.apply_provider_preview(request); return; }
             Command::Undo => {self.history_replay(false);return;}
             Command::Redo => {self.history_replay(true);return;}
             command @ Command::DeckCuePoint { .. } => {
@@ -2053,7 +2062,7 @@ impl RtEngine {
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
-            Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
+            Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::ReservedStop { lane, ticket, target } => {
                 if lane == 0 { self.apply(Command::Stop); }
                 else if target.is_none_or(|reference| self.session.resolves(session::Axis::Track, usize::from(lane - 1), reference)) { self.apply(Command::StopTrack { track: lane - 1 }); }

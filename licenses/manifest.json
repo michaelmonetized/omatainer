@@ -312,6 +312,16 @@
       "version": "1.5.1"
     },
     {
+      "checksum": "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5",
+      "features": [
+        "alloc",
+        "std"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "base64",
+      "version": "0.23.1"
+    },
+    {
       "checksum": "08807e080ed7f9d5433fa9b275196cfc35414f66a0c79d864dc51a0d825231a3",
       "features": [],
       "license": "Apache-2.0 OR MIT",
@@ -398,6 +408,16 @@
       "license": "Unlicense OR MIT",
       "name": "byteorder-lite",
       "version": "0.1.0"
+    },
+    {
+      "checksum": "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04",
+      "features": [
+        "default",
+        "std"
+      ],
+      "license": "MIT",
+      "name": "bytes",
+      "version": "1.12.1"
     },
     {
       "checksum": "b99da2f8558ca23c71f4fd15dc57c906239752dd27ff3c00a1d56b685b7cbfec",
@@ -943,6 +963,13 @@
       "version": "1.1.0"
     },
     {
+      "checksum": "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "getrandom",
+      "version": "0.2.17"
+    },
+    {
       "checksum": "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd",
       "features": [],
       "license": "MIT OR Apache-2.0",
@@ -1097,6 +1124,22 @@
       "license": "CC0-1.0",
       "name": "hexf-parse",
       "version": "0.2.1"
+    },
+    {
+      "checksum": "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0",
+      "features": [
+        "std"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "http",
+      "version": "1.5.0"
+    },
+    {
+      "checksum": "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "httparse",
+      "version": "1.10.1"
     },
     {
       "checksum": "fa68d21081c4a05d5a901a1c62add574c77048b6a1c67be3b50ce0b60d4ca513",
@@ -1693,6 +1736,17 @@
       "version": "1.1.0"
     },
     {
+      "checksum": "a4689e6c2294d81e88dc6261c768b63bc4fcdb852be6d1352498b114f61383b7",
+      "features": [
+        "alloc",
+        "default",
+        "dev_urandom_fallback"
+      ],
+      "license": "Apache-2.0 AND ISC",
+      "name": "ring",
+      "version": "0.17.14"
+    },
+    {
       "checksum": "fae8ee26b0371a29a77d2b2d6b3ae13aa81def6f9bf1b1b92a32d279a5e709b7",
       "features": [
         "default",
@@ -1757,6 +1811,41 @@
       "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
       "name": "rustix",
       "version": "1.1.4"
+    },
+    {
+      "checksum": "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634",
+      "features": [
+        "log",
+        "logging",
+        "ring",
+        "std",
+        "tls12"
+      ],
+      "license": "Apache-2.0 OR ISC OR MIT",
+      "name": "rustls",
+      "version": "0.23.45"
+    },
+    {
+      "checksum": "2f4925028c7eb5d1fcdaf196971378ed9d2c1c4efc7dc5d011256f76c99c0a96",
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "rustls-pki-types",
+      "version": "1.15.1"
+    },
+    {
+      "checksum": "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2",
+      "features": [
+        "alloc",
+        "ring",
+        "std"
+      ],
+      "license": "ISC",
+      "name": "rustls-webpki",
+      "version": "0.103.15"
     },
     {
       "checksum": "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f",
@@ -2012,6 +2101,13 @@
       "license": "MIT",
       "name": "strum_macros",
       "version": "0.26.4"
+    },
+    {
+      "checksum": "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292",
+      "features": [],
+      "license": "BSD-3-Clause",
+      "name": "subtle",
+      "version": "2.6.1"
     },
     {
       "checksum": "5773a4c030a19d9bfaa090f49746ff35c75dfddfa700df7a5939d5e076a57039",
@@ -2466,13 +2562,54 @@
       "version": "0.2.2"
     },
     {
+      "checksum": "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1",
+      "features": [],
+      "license": "ISC",
+      "name": "untrusted",
+      "version": "0.9.0"
+    },
+    {
+      "checksum": "9a7ac20be9b7726e0bbdbf974c059676d9acb1cd414961f570a4e8231cacd7fc",
+      "features": [
+        "_ring",
+        "_rustls",
+        "_tls",
+        "rustls",
+        "rustls-no-provider",
+        "rustls-webpki-roots"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "ureq",
+      "version": "3.4.2"
+    },
+    {
+      "checksum": "f86fd172ccca569e458f61b6bdd6220965a9ef36e672a6852953b51a0e1583be",
+      "features": [
+        "client"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "ureq-proto",
+      "version": "0.6.4"
+    },
+    {
       "checksum": "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed",
       "features": [
+        "default",
         "std"
       ],
       "license": "MIT OR Apache-2.0",
       "name": "url",
       "version": "2.5.8"
+    },
+    {
+      "checksum": "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e",
+      "features": [
+        "default",
+        "std"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "utf8-zero",
+      "version": "0.8.1"
     },
     {
       "checksum": "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be",
@@ -2621,6 +2758,13 @@
       "license": "MIT OR Apache-2.0",
       "name": "webbrowser",
       "version": "1.2.4"
+    },
+    {
+      "checksum": "7dcd9d09a39985f5344844e66b0c530a33843579125f23e21e9f0f220850f22a",
+      "features": [],
+      "license": "CDLA-Permissive-2.0",
+      "name": "webpki-roots",
+      "version": "1.0.9"
     },
     {
       "checksum": "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88",
@@ -2955,6 +3099,16 @@
       "license": "Unicode-3.0",
       "name": "zerofrom-derive",
       "version": "0.1.8"
+    },
+    {
+      "checksum": "e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e",
+      "features": [
+        "alloc",
+        "default"
+      ],
+      "license": "Apache-2.0 OR MIT",
+      "name": "zeroize",
+      "version": "1.9.0"
     },
     {
       "checksum": "4ea269c3bd32f0a32c321907a2ae912ba6f4649bb0fc764a15627e99a7095a3f",
@@ -4265,6 +4419,32 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:base64@0.23.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "base64 0.23.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/base64/base64-0.23.1.crate#LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "location": "https://static.crates.io/crates/base64/base64-0.23.1.crate#LICENSE-MIT",
+          "sha256": "ab499c75a0f0da8e0fe83bf9ba3a27e5c39705310f07107c6c66b69958d2401c"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/base64/base64-0.23.1.crate",
+          "sha256": "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:bit-set@0.8.0",
       "license": "Apache-2.0 OR MIT",
       "members": [],
@@ -4530,6 +4710,28 @@
         {
           "location": "https://static.crates.io/crates/byteorder-lite/byteorder-lite-0.1.0.crate",
           "sha256": "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:bytes@1.12.1",
+      "license": "MIT",
+      "members": [],
+      "name": "bytes 1.12.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/bytes/bytes-1.12.1.crate#LICENSE",
+          "sha256": "45f522cacecb1023856e46df79ca625dfc550c94910078bd8aec6e02880b3d42"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/bytes/bytes-1.12.1.crate",
+          "sha256": "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
         }
       ]
     },
@@ -5991,6 +6193,32 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:getrandom@0.2.17",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "getrandom 0.2.17",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/getrandom/getrandom-0.2.17.crate#LICENSE-APACHE",
+          "sha256": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf"
+        },
+        {
+          "location": "https://static.crates.io/crates/getrandom/getrandom-0.2.17.crate#LICENSE-MIT",
+          "sha256": "42fa16951ce7f24b5a467a40e5b449a1d41e662f97ca779864f053f39e097737"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/getrandom/getrandom-0.2.17.crate",
+          "sha256": "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:getrandom@0.3.4",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -6394,6 +6622,58 @@
         {
           "location": "https://static.crates.io/crates/hexf-parse/hexf-parse-0.2.1.crate",
           "sha256": "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:http@1.5.0",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "http 1.5.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/http/http-1.5.0.crate#LICENSE-APACHE",
+          "sha256": "8bb1b50b0e5c9399ae33bd35fab2769010fa6c14e8860c729a52295d84896b7a"
+        },
+        {
+          "location": "https://static.crates.io/crates/http/http-1.5.0.crate#LICENSE-MIT",
+          "sha256": "dc91f8200e4b2a1f9261035d4c18c33c246911a6c0f7b543d75347e61b249cff"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/http/http-1.5.0.crate",
+          "sha256": "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:httparse@1.10.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "httparse 1.10.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/httparse/httparse-1.10.1.crate#LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "location": "https://static.crates.io/crates/httparse/httparse-1.10.1.crate#LICENSE-MIT",
+          "sha256": "391a5396cec6230bfabd4ef4eb2350eb895bc5efce377a2218f5702ed020d3e3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/httparse/httparse-1.10.1.crate",
+          "sha256": "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
         }
       ]
     },
@@ -8019,6 +8299,48 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:ring@0.17.14",
+      "license": "Apache-2.0 AND ISC",
+      "members": [],
+      "name": "ring 0.17.14",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate#LICENSE",
+          "sha256": "b3d734001a94efff3579978d953391aa7115f877657d25eb54037a43875d078a"
+        },
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate#LICENSE-BoringSSL",
+          "sha256": "005fc765ddc5115da796cca915baa9557abae13ff35e0a47c47affc56f6c414d"
+        },
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate#LICENSE-other-bits",
+          "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
+        },
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate#src/polyfill/once_cell/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate#src/polyfill/once_cell/LICENSE-MIT",
+          "sha256": "6ee2ed6c77710de911761acd5fc1ad1da00f476beb1a7ef27e78c2d1858deafc"
+        },
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate#third_party/fiat/LICENSE",
+          "sha256": "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/ring/ring-0.17.14.crate",
+          "sha256": "a4689e6c2294d81e88dc6261c768b63bc4fcdb852be6d1352498b114f61383b7"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:rtrb@0.3.5",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -8158,6 +8480,84 @@
         {
           "location": "https://static.crates.io/crates/rustix/rustix-1.1.4.crate",
           "sha256": "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:rustls@0.23.45",
+      "license": "Apache-2.0 OR ISC OR MIT",
+      "members": [],
+      "name": "rustls 0.23.45",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/rustls/rustls-0.23.45.crate#LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "location": "https://static.crates.io/crates/rustls/rustls-0.23.45.crate#LICENSE-ISC",
+          "sha256": "7cfafc877eccc46c0e346ccbaa5c51bb6b894d2b818e617d970211e232785ad4"
+        },
+        {
+          "location": "https://static.crates.io/crates/rustls/rustls-0.23.45.crate#LICENSE-MIT",
+          "sha256": "709e3175b4212f7b13aa93971c9f62ff8c69ec45ad8c6532a7e0c41d7a7d6f8c"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/rustls/rustls-0.23.45.crate",
+          "sha256": "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:rustls-pki-types@1.15.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "rustls-pki-types 1.15.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/rustls-pki-types/rustls-pki-types-1.15.1.crate#LICENSE-APACHE",
+          "sha256": "45fd05c4865e7c350b98ad7ac50e1b15462d49af4a91e9b0c9dd933dc9a69742"
+        },
+        {
+          "location": "https://static.crates.io/crates/rustls-pki-types/rustls-pki-types-1.15.1.crate#LICENSE-MIT",
+          "sha256": "9117d922e667125508dde62b02c1f57ed22f5ad21eb536aa2e2d99e1c796e639"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/rustls-pki-types/rustls-pki-types-1.15.1.crate",
+          "sha256": "2f4925028c7eb5d1fcdaf196971378ed9d2c1c4efc7dc5d011256f76c99c0a96"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:rustls-webpki@0.103.15",
+      "license": "ISC",
+      "members": [],
+      "name": "rustls-webpki 0.103.15",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/rustls-webpki/rustls-webpki-0.103.15.crate#LICENSE",
+          "sha256": "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/rustls-webpki/rustls-webpki-0.103.15.crate",
+          "sha256": "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2"
         }
       ]
     },
@@ -8850,6 +9250,28 @@
         {
           "location": "https://static.crates.io/crates/strum_macros/strum_macros-0.26.4.crate",
           "sha256": "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:subtle@2.6.1",
+      "license": "BSD-3-Clause",
+      "members": [],
+      "name": "subtle 2.6.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/subtle/subtle-2.6.1.crate#LICENSE",
+          "sha256": "d1fc1bc0d155df60b2e7705b6b2ae02a05c96f948e1cec6e2fb86360b09f346b"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/subtle/subtle-2.6.1.crate",
+          "sha256": "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
         }
       ]
     },
@@ -9989,6 +10411,80 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:untrusted@0.9.0",
+      "license": "ISC",
+      "members": [],
+      "name": "untrusted 0.9.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/untrusted/untrusted-0.9.0.crate#LICENSE.txt",
+          "sha256": "7abd9b6960dcf7d4d0a48606a5b71bfe37d472db68d70637f3a58a56785f1621"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/untrusted/untrusted-0.9.0.crate",
+          "sha256": "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:ureq@3.4.2",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "ureq 3.4.2",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/ureq/ureq-3.4.2.crate#LICENSE-APACHE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "location": "https://static.crates.io/crates/ureq/ureq-3.4.2.crate#LICENSE-MIT",
+          "sha256": "7e5886959f67f8c75063a9d55cd3cb08c5a8cbea9a944fa1df2d4ae038f53721"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/ureq/ureq-3.4.2.crate",
+          "sha256": "9a7ac20be9b7726e0bbdbf974c059676d9acb1cd414961f570a4e8231cacd7fc"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:ureq-proto@0.6.4",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "ureq-proto 0.6.4",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/ureq-proto/ureq-proto-0.6.4.crate#LICENSE-APACHE.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "location": "https://static.crates.io/crates/ureq-proto/ureq-proto-0.6.4.crate#LICENSE-MIT.txt",
+          "sha256": "5b460f37be48ac4cf2181596181cc6cae432fc2caae05944873f380730829a4b"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/ureq-proto/ureq-proto-0.6.4.crate",
+          "sha256": "f86fd172ccca569e458f61b6bdd6220965a9ef36e672a6852953b51a0e1583be"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:url@2.5.8",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -10008,6 +10504,32 @@
         {
           "location": "https://static.crates.io/crates/url/url-2.5.8.crate",
           "sha256": "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:utf8-zero@0.8.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "utf8-zero 0.8.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate#LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate",
+          "sha256": "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
         }
       ]
     },
@@ -10422,6 +10944,28 @@
         {
           "location": "https://static.crates.io/crates/webbrowser/webbrowser-1.2.4.crate",
           "sha256": "62c35be770821a214dbc362fc26908c853e776c0004294d0b10b8a6bad582f94"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:webpki-roots@1.0.9",
+      "license": "CDLA-Permissive-2.0",
+      "members": [],
+      "name": "webpki-roots 1.0.9",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/webpki-roots/webpki-roots-1.0.9.crate#LICENSE",
+          "sha256": "e271993808fec50ab29350b39539cdec611a9103f827e0aa26d61da70e2d33f8"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/webpki-roots/webpki-roots-1.0.9.crate",
+          "sha256": "7dcd9d09a39985f5344844e66b0c530a33843579125f23e21e9f0f220850f22a"
         }
       ]
     },
@@ -11143,6 +11687,32 @@
     },
     {
       "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:zeroize@1.9.0",
+      "license": "Apache-2.0 OR MIT",
+      "members": [],
+      "name": "zeroize 1.9.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/zeroize/zeroize-1.9.0.crate#LICENSE-APACHE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "location": "https://static.crates.io/crates/zeroize/zeroize-1.9.0.crate#LICENSE-MIT",
+          "sha256": "8c7516d4b27b1e495be5e38b612298b63de48d05f49cdac94f70f3cd70f8864b"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/zeroize/zeroize-1.9.0.crate",
+          "sha256": "e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
       "commercial_use": "Use, including commercial use, is permitted under Unicode-3.0.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:zerotrie@0.2.5",
@@ -11530,16 +12100,16 @@
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "cdd558568f22c2f474b4b23e07cad617e08e51f8e2a740394d3c7bc8f41d14e6",
-    "Cargo.toml": "7c5f3bbec5b91b9f21ccc810ce5efbcb417e346c78c2b3de75fcd61b6e852ace",
+    "Cargo.lock": "961ff6a5d1b002610e186bdd48494483ac090ab98d118f03fb7c86533456c0e1",
+    "Cargo.toml": "0196bcaa91e2fd516413bbc2a350e307e0a0aae3d7a91c93da4d0ba85439097d",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "c46ef44341fbd45ae745877409af486467e519e2219f57b7b35ee03baddc2b02",
+    "README.md": "3d4db4144b45c97e745dadc03325eb9d314d8ea249c8af9e2a6b995c469801aa",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/manual.md": "eb9aa4f81e99da3dcbdf59ada1fcce9af39b1305593a7ba3ee2209af2da81a10",
+    "docs/manual.md": "d762976eaf581c5e7c7c0fb8076e79b77fe126e86cb504a3557293db0db06c8b",
     "licenses/assets.json": "f346e365531bd57e59f2b8fe6309df9ae445e08ff6d9d43dbffe79f89c94566c",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "4bfc2782b991a4b015b19d38224496d1d5418f23e1df157b5c7c3932da72f223",
@@ -11595,7 +12165,7 @@
     "src/engine/clip_gain_tests.rs": "fb9f9c8b788446cdafcc3031397f142a4761bf6c8107246743f943dd5045a930",
     "src/engine/clip_lifecycle_tests.rs": "08419b12714fb253405920b892cdc28a54697ccead077a1e32ed3c8f97123951",
     "src/engine/compose_tests.rs": "d314e9fce6934fce05c712b09a0ee44dea324334519adddafc869924fd85a1cc",
-    "src/engine/control.rs": "3a28a2f57e9011d5110494d8553eaa45463759f9731d04c1435f4abb834b9481",
+    "src/engine/control.rs": "60d5605f55272e4435c079a995b0fede257fbc924a0ef9ce6d8d12342b674ae2",
     "src/engine/control/admission_tests.rs": "83a0ad154c18e136045e7b0e44820d4538151ecb87a042441d7125161a557523",
     "src/engine/control/payload_tests.rs": "22d50d2672f879b726a33846e246fa1adc08ce9e9982b3d387737537c9fef5f4",
     "src/engine/control/project_gate_tests.rs": "05ec84c13d67c1a4357e4b7757147844b3524fb1009659ae362231321ae22575",
@@ -11606,7 +12176,7 @@
     "src/engine/deck_loop_tests.rs": "423e657471ae4ea3da1e0f1ea53cb5d27642bf3fa28db98a5184d12c7b6cc6c2",
     "src/engine/deck_stereo_tests.rs": "0035381c0a2397c4c3890b53e1e3d9d2a875c9906a2359f415434d6118a8d008",
     "src/engine/deck_transition_tests.rs": "aea3b4ff3922b9fcb03227cb7fa7a1f5712d3e058444d2791424766996ac418c",
-    "src/engine/decode.rs": "d7481672246f3f72848fd58c2e8240ada2f58eb0c29bdd1d5d3e190985375bbb",
+    "src/engine/decode.rs": "60eb6eafe7136cd30575e45c1e951662269c0cd637266b9c63d026dda9e7d645",
     "src/engine/decode/tests.rs": "24e9e8c26cb3c486ee1f9122383d813cdbed878d07dc3028550c9869a4570f52",
     "src/engine/diagnostics.rs": "3fb736f524e6fc4d1be6dc1d98faf184b8dacb5b2e0852ea48c44f032c0bfb58",
     "src/engine/diagnostics/tests.rs": "738f4a859f6d6eab2410141e7963084dc2942eb06a273c8874221d93c60bbde3",
@@ -11693,10 +12263,10 @@
     "src/engine/midi_schedule_tests.rs": "665b77f63dddb92e122798699508c5b0b1348be58c856e18e5dafc38726a260b",
     "src/engine/mixer_gain.rs": "f0b86e2d234a83410a7a54204b254deb2e6ccdbd173bbfd3b7c9e5124a968a65",
     "src/engine/mixer_gain_tests.rs": "ab282c03872fb39a50c3f8cb457f987b505a856b8bef2a48242f8e2d1f1731d3",
-    "src/engine/mod.rs": "70fad554f10e85f5391b62fbce53fecb53561dcb021fc7b276e5328e678c14bd",
+    "src/engine/mod.rs": "383ef8ba8729d7cf0881430753461f8c8b40755d30fd823acee6a27c29765124",
     "src/engine/mute_lifecycle_tests.rs": "e0186faea31396b9fd8f2d4f891f8d7f28d6229e60682f42bacd0b9b397b8fd1",
     "src/engine/pad_routing_tests.rs": "296eb7efb6561c833cfeaeb72a1ef28ae95cb20c7d2367254ea7f2f5dc37434b",
-    "src/engine/performance.rs": "ebb412a30dd90619bb369a26161965fd684193bc9c74b650eeff7161b252e907",
+    "src/engine/performance.rs": "14fa174277112c9e3fce87dd98912591f7fa9026bc35c1ef9cd929355102ee58",
     "src/engine/performance/tests.rs": "9b75edb5f22432ce4c33c17f18924fdaa15307dab8257e22d59df298a6e5e290",
     "src/engine/performance_workload_tests.rs": "1335225937a20262039d9703ba1c63cb07f012da6daea56f7ebe8282e7794e8f",
     "src/engine/preparation.rs": "24b89110c1b4f2e79ed8ad0e4a69569f1100bf2eae66c73e0f8742e1aada406d",
@@ -11710,6 +12280,8 @@
     "src/engine/project/tests/session_tests.rs": "5df022803afeef4dd0c37089d212efea85b177842f315dd520ff7e47470c0f25",
     "src/engine/project/tests/structure_tests.rs": "423aacb3a05673f3e64a44fa819af094e3c68e4b154b47f1b0436b8f246e7bc0",
     "src/engine/project/tests/template_tests.rs": "9efb72b89ef7c6b683fc3ea320822d7ae61e0c700637f33e842f2eba8cb2d1fd",
+    "src/engine/provider_preview.rs": "96c09aa8d73a0bdb58390cb393d4f564a1da08c53223ae2f65acd8ac19ed4fff",
+    "src/engine/provider_preview/tests.rs": "837a7cab69e70d79af45cef8f62d891a56c6ba4e4316a2328fa0acfbae4a79e6",
     "src/engine/quantized_launch_tests.rs": "f0100a90be4702a1adbfb606a081f949456ca5b2a06d6879083811f3a8e9c54d",
     "src/engine/recording.rs": "06c78f1a3940e020d83863d635ec16b3610198ab6c245672289d3f61c760c5c3",
     "src/engine/recording_duration_tests.rs": "fd6dcf23b2f2f704220c981348b89841fb3fd12aea876a8c2f89b6b9e81c1ced",
@@ -11736,9 +12308,9 @@
     "src/engine/svf_tests.rs": "496114be396af2750f075c00b49b7388639ba8bb69b4c6c0e93011c0fd9bc313",
     "src/engine/test_alloc.rs": "dbc2eb39146150d15ceccecaead08de85f3c4f421dea7c827b02bbce15f7c363",
     "src/engine/ui_requests.rs": "2e51e0f5c4dd0e2563188c1f170d895500004bf285755d46342a504d9cf52b92",
-    "src/engine/undo/capture.rs": "d25ffb664914ff8e79eea6ee673431796cef6e82b3f5e9c6e1dbae28b91515f5",
+    "src/engine/undo/capture.rs": "2a67e9d6e14c809790deb1d9abc7147308cd544d1a6b196ffb7cfffe3a57623a",
     "src/engine/undo/midi_import.rs": "7ca1eaba34c40dae9ff8d15b21584a29d2c3c0b4a48d5c3925149395398e49d4",
-    "src/engine/undo/mod.rs": "4c3d10c2a69a08eaeaf6bac418b81c80ae9dbab36cc779d2ee0196ee29977f63",
+    "src/engine/undo/mod.rs": "7a597ce603ac1de56790b8b43085b35cd833ca0c763234e68ea755f6745fe47d",
     "src/engine/undo/patch.rs": "d81c5eae882e4dda1ef552a3f30675ed949ad8675ab774111d11a8ce45dadac5",
     "src/engine/undo/recording.rs": "906a437382e17103b7c4a685d849e755e05cc10f0d6668612fae3b4a17746cc7",
     "src/engine/undo/tests.rs": "c4b9464fb7de7f6d2c62baed138987aa8cc7f66acd4e2c0746f83a086fb92d7e",
@@ -11772,7 +12344,7 @@
     "src/library/watch_roots.rs": "67ab779881590c4ecc4eb0e796779bbf136ac7820544450a4055ab9febf4c8ff",
     "src/library/watch_roots/tests.rs": "68bd98b0ae485533e9f0d5fe340ad8139d41a1fae68218a0a35cdaa8634957b1",
     "src/licenses.rs": "4aa05a206cbee50b76e9ec364c2cf3d627eba6970a87a035a74f52b0422566f7",
-    "src/main.rs": "33bee3dc7b77c124747f8a5ca3d5502d759e238d1a7d3aacac42f9f5231cd96d",
+    "src/main.rs": "0330bac61f483bdb6d1e54b6abc4d29821ba7b85f260fd0eb86153e15a0f62b4",
     "src/media_location.rs": "e705b3dbeb3c472e78bf053ff23b9d4a71cbd20d4ec9171907c012e7a8c0559b",
     "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
     "src/media_location/tests.rs": "89fb64ff9dc6a8bf41926cd3d67dcf1659fc7362e2684d14175fda3184ab261f",
@@ -11785,6 +12357,11 @@
     "src/media_tags/write/tests.rs": "e0ca085a21dd65f4cec7d845ed612a6872e60757e0f60525007f5cfc267bbb68",
     "src/midi_file.rs": "e7d2d117a7fbdb051a9430657d2d951a58bf4a41cc942ed86ac51c6a4c42b89e",
     "src/midi_file_io.rs": "0b1923b5582d437b569073c318af1a7331e50e1ba8c5a7c4957261e11dac16d1",
+    "src/music_provider.rs": "37afc503330cec94e64fe0b2e6a48e8c8aa3d56fb77b4e67e00b403ea15f24ef",
+    "src/music_provider/freetouse.rs": "abf81328ea462aefe7f93098330a8b6b3b026414df89c511c1b308fcd63dfc3a",
+    "src/music_provider/freetouse/tests.rs": "0cf6ddc9bdcb055bfd52083f824dfa6c3021730c9aae79142e50b6afd03cfa1b",
+    "src/music_provider/tests.rs": "28b570b9eb0321852560465a3febe8cee2b4ff0ef50e906bb6476e7a34f1f6d4",
+    "src/music_provider/worker.rs": "7e77e0dc92a511192b7f4a5aba2d7b90c9a0ae5be9126fffa7ed6ef363417834",
     "src/performance_history.rs": "91f19de9e99b0addc879d2f4767bf84bf232ae77b647c5090dedf5ac4b91ec65",
     "src/performance_history/storage.rs": "457e9d012d02ffd816415adb3dd9af5437b3634a810f8c082256b7713bd404d0",
     "src/performance_history/storage/tests.rs": "317062ffb1da682ab0a858c75e945a11229a06ac92dacc34856624e1e31f872c",
@@ -11844,13 +12421,13 @@
     "src/track_analysis.rs": "6a32af0a7bbf6f784ddd4c54f13b21dbd2b2dd630a4c7fbca9d01ea9e7afeeef",
     "src/track_analysis/cache.rs": "2350205a7a8de86ef6c2c497a90db3bf8d03d3e514929e138917afedf4b002b8",
     "src/track_analysis/cache/tests.rs": "d3e9f7b86248d794a7b0b088cd92d1af97e45e5a63944b6414f77e0d96aae736",
-    "src/ui.rs": "c59dfc53bee9f8e367974cc4f1c4485b56528d6270cd7b707240f73d1c5cf678",
+    "src/ui.rs": "dc96e4e6d9d399618abe650b73dbf7857ef73598e029e8d4943d72b814b7206a",
     "src/ui/accessibility.rs": "193a59f2d01c40346324b9cb83424044acc9e489273339360ae2deab09b16752",
     "src/ui/accessibility/tests.rs": "ffe083e0cbd7bc08b18c75179f2b5501e51f5fe24fc4168d09e9148585cec908",
     "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
     "src/ui/audio_settings.rs": "a475064cdb97e65882463470fecfce1327b2b97f81aed38a5d03c9dffb5fcaa2",
     "src/ui/audio_settings/tests.rs": "026c17ad215e90a5ab7ff3fa6289dff1db49e9454baa2002fe8af76c1711237d",
-    "src/ui/audio_status.rs": "67b8d6993854f116a9b001b264fcfdc0a7b2a53ab1755a86b8bbf341e550c3e5",
+    "src/ui/audio_status.rs": "4a22fa93b9172257daed68c8c07dc84e3d02b4977e4b64951c2c55d949857f36",
     "src/ui/automation.rs": "da66eeaedb303e54a97d0ac3ebdb83d38102fb6fc2dbbbf50873f757c12f409d",
     "src/ui/automation/tests.rs": "dd822e35903fc2ca9c70e251c0967d2ee1fcc64f703f8385a59b50fc3c8f1435",
     "src/ui/bpm.rs": "da23ec98c44eed8e564ffb6438efafc09133b737f6e71f69165a5bbb0458711c",
@@ -11879,7 +12456,7 @@
     "src/ui/grid_editor.rs": "025f8e6bbc8e2fa6fa2e0f2b34820feaf6487432826ccbd8a5e607e98b009856",
     "src/ui/grid_editor/tests.rs": "f8fe8e65cad1ae3ca0201142822683332026ebaddcba1d72f06b7b4afa471e28",
     "src/ui/help.rs": "2a7b3be1789cc0085f52ac18e22d6bf22ce453e3b42b1dc5fb62ce9fb6cea56f",
-    "src/ui/help/catalogue.rs": "eeec81eb10d984d3214546528aefbe713a0c39c41d3254e5ead2f48d4457ee9f",
+    "src/ui/help/catalogue.rs": "bab1a368c0e6030edade0d2c44bfd71566f19b7effb0ff1938eb93a30073dc8d",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
     "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
     "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",
@@ -11926,6 +12503,8 @@
     "src/ui/midi_files/tests.rs": "b4524722dac72b478299fdaaf7e7e6adefb4d14177369ca36ff021e23ee57b33",
     "src/ui/midi_files/worker.rs": "912c2af3e6af4382919faaa4238b8885f4bcdbf5cc782b2a2916fe85d4a80c39",
     "src/ui/midi_routing.rs": "64d385ebf5ae343e5408b7411f102a352b64d958e7c6ff4cdf988a22281e2054",
+    "src/ui/music_provider.rs": "fec64217de266da7c064592f448743089f7a9e74d77d2055d3482e35a4e0c7fb",
+    "src/ui/music_provider/tests.rs": "0814c16f6a50c82e34d70dcbd4dcc8a795bf334d9ca2697034c33f9a1d895365",
     "src/ui/performance.rs": "6a6836effe591ce1469855eb95f157f946d8d17390c65a919d4b10433a914f3a",
     "src/ui/performance/tests.rs": "66f6547ba1e551039c32db78504f7c1da15874379df72cb66a1f47d7334b3d46",
     "src/ui/piano_roll.rs": "9a30a23d041126928c1e7a1c5224304127a03a187011a5857fbd290bac1b14e5",
