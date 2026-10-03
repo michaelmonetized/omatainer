@@ -169,3 +169,47 @@ fn native_cancel_close_and_performance_mode_do_not_publish_obsolete_audio() {
     assert_eq!(provider.calls.load(Ordering::Acquire), count);
     assert!(gui.fixture.app.music_provider.job.is_none());
 }
+
+#[test]
+fn native_provider_requests_wait_for_the_project_view_commit_to_be_confirmed() {
+    let provider = Arc::new(ContractProvider::default());
+    let mut gui = Gui::new(provider.clone());
+    gui.click(CONSENT);
+    gui.click("Search provider");
+    gui.wait();
+    let view = gui.fixture.app.project_view();
+    gui.fixture
+        .app
+        .initialize_startup_session(&gui.ctx, view, None);
+    assert!(gui.fixture.app.project.committing());
+    let before = provider.calls.load(Ordering::Acquire);
+    for label in ["Search provider", "Preview Contract tone"] {
+        let target = gui
+            .nodes
+            .iter()
+            .find(|(_, node)| node.label() == Some(label))
+            .map(|(id, _)| *id)
+            .unwrap();
+        let result = gui.ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1540.0, 960.0))),
+                events: vec![egui::Event::AccessKitActionRequest(ActionRequest {
+                    target,
+                    action: Action::Click,
+                    data: None,
+                })],
+                ..Default::default()
+            },
+            |ctx| gui.fixture.app.music_provider_ui(ctx),
+        );
+        gui.nodes = result.platform_output.accesskit_update.unwrap().nodes;
+        assert!(gui.fixture.app.project.committing());
+        assert!(gui.fixture.app.music_provider.job.is_none());
+    }
+    assert_eq!(provider.calls.load(Ordering::Acquire), before);
+    gui.frame(vec![]);
+    assert!(!gui.fixture.app.project.committing());
+    gui.click("Search provider");
+    gui.wait();
+    assert_eq!(provider.calls.load(Ordering::Acquire), before + 1);
+}
