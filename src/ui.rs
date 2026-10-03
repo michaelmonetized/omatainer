@@ -72,6 +72,7 @@ mod load_status_tests;
 mod keyboard;
 mod shortcuts;
 mod command_palette;
+mod touch;
 mod help;
 use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
@@ -166,6 +167,7 @@ pub struct App {
     lib_sel: usize,
     keys_open: bool,
     command_palette: command_palette::Palette,
+    touch_input: touch::Input,
     help: help::Help,
     midi_open: bool,
     status: String,
@@ -284,6 +286,7 @@ impl App {
             lib_sel: 0,
             keys_open: false,
             command_palette: command_palette::Palette::default(),
+            touch_input: touch::Input::default(),
             help: help::Help::default(),
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
@@ -562,10 +565,19 @@ impl App {
     }
 
     fn set_pad_input(&mut self, pad: usize, source: u8, on: bool) {
+        self.set_pad_input_pressure(pad,source,on,None);
+    }
+
+    /// Share an admitted pad gate while preserving each local input owner's release.
+    /// Takes pad, source bit, gate and optional pressure; returns no value and applies pressure only at attack.
+    fn set_pad_input_pressure(&mut self, pad: usize, source: u8, on: bool, pressure: Option<f32>) {
         let before = self.pad_inputs[pad];
         let after = if on { before | source } else { before & !source };
         if before == after { return; }
-        if before == 0 && after != 0 && !self.submit(Command::SamplerPad { pad: pad as u8, on: true }) { return; }
+        if before == 0 && after != 0 {
+            let command=pressure.map_or(Command::SamplerPad {pad:pad as u8,on:true},|pressure|Command::SamplerPadPressure {pad:pad as u8,pressure});
+            if !self.submit(command) {return;}
+        }
         self.pad_inputs[pad] = after;
         self.pad_held[pad] = after != 0;
         if before != 0 && after == 0 { self.send(Command::SamplerPad { pad: pad as u8, on: false }); }
@@ -573,6 +585,7 @@ impl App {
 
     fn pad_gate(&mut self, ui: &Ui, p: usize, enabled: bool, r: &egui::Response) {
         if p >= self.pad_held.len() { return; }
+        let touch_pointer=touch::register(ui,r,touch::Target::Pad(p as u8),r.rect,enabled);
         let (pressed, released, down, origin, window_focus) = r.ctx.input(|input| (
             input.pointer.button_pressed(PointerButton::Primary),
             input.pointer.button_released(PointerButton::Primary),
@@ -583,7 +596,7 @@ impl App {
             }), input.focused,
         ));
         if released || !down || !window_focus || !r.enabled() { self.set_pad_input(p, 1, false); }
-        let pressed_here = pressed && window_focus && r.enabled() && origin.is_some_and(|pos|
+        let pressed_here = !touch_pointer && pressed && window_focus && r.enabled() && origin.is_some_and(|pos|
             r.interact_rect.contains(pos) && r.ctx.layer_id_at(pos) == Some(r.layer_id));
         if enabled && pressed_here {
             self.set_pad_input(p, 1, true);
@@ -687,6 +700,7 @@ impl App {
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
+        self.touch_input.begin(ctx);
         accessibility::begin_frame(ctx);
         self.undo_history.begin_frame(ctx, &self.engine.undo);
         if !self.project.committing() {
@@ -867,8 +881,10 @@ impl App {
         self.undo_panel(ctx);
         accessibility::numeric_editor(ctx);
         self.command_palette_ui(ctx);
+        self.touch_input_ui(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
+        self.finish_touch_input(ctx);
         self.undo_history.end_frame(ctx);
         accessibility::finish_frame(ctx);
         // Resolve terminal project outcomes after this frame's Cancel/input.
@@ -1004,7 +1020,7 @@ impl App {
             }
             let fader_h = (h - sq * 2.0 - 8.0).max(t.target_size(48.0)).min((ui.clip_rect().height() - 8.0).max(t.target_size(24.0)));
             let span = [8.0, 16.0, 50.0][snap.pitch_range.min(2) as usize];
-            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h) {
+            if let Some(v) = fader(ui, t, snap.pitch, span, snap.meter, t.accent, sq, fader_h, d as u8) {
                 self.send(Command::DeckPitch { deck: d as u8, value: v });
             }
             let lab = ["8", "16", "50"][snap.pitch_range.min(2) as usize];
@@ -1021,7 +1037,7 @@ impl App {
         let cell = sq;
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(3.0);
-            ui.set_width(cell * 4.0 + 9.0);
+            ui.set_width((cell + 4.0) * 4.0 + 9.0);
             ui.set_min_height(wave_h);
             for row in 0..2 {
                 ui.horizontal(|ui| {
@@ -1719,7 +1735,7 @@ fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32, minimum_square: f32) 
     let mut mid_w = 0.0;
     for _ in 0..12 {
         sq = (wave_h / 7.0).clamp(minimum_square, minimum_square.max(34.0));
-        let cue_w = 4.0 * sq + 9.0;
+        let cue_w = 4.0 * (sq + 4.0) + 9.0;
         side_w = sq + gap + cue_w + gap + wave_h + gap + sq;
         mid_w = w - 2.0 * side_w - 2.0 * gap;
         if mid_w >= 120.0 {
@@ -1729,7 +1745,7 @@ fn scratch_metrics(w: f32, h: f32, fader_h: f32, gap: f32, minimum_square: f32) 
         if wave_h < minimum_wave {
             wave_h = minimum_wave;
             sq = (wave_h / 7.0).clamp(minimum_square, minimum_square.max(34.0));
-            let cue_w = 4.0 * sq + 9.0;
+            let cue_w = 4.0 * (sq + 4.0) + 9.0;
             side_w = sq + gap + cue_w + gap + wave_h + gap + sq;
             mid_w = (w - 2.0 * side_w - 2.0 * gap).max(96.0);
             break;
@@ -2050,10 +2066,11 @@ fn vertical_wave(
     }
 }
 
-fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32) -> Option<f32> {
+fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8) -> Option<f32> {
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     let p = ui.painter();
     let track = Rect::from_center_size(rect.center(), Vec2::new(7.0, rect.height() - 8.0));
+    let touch_pointer=touch::register(ui,&resp,touch::Target::Pitch(deck),track,true);
     p.rect_filled(track, 3.0, t.bg_darker);
     let mh = track.height() * meter.clamp(0.0, 1.0);
     p.rect_filled(Rect::from_min_max(Pos2::new(track.right() + 2.0, track.bottom() - mh), Pos2::new(track.right() + 5.0, track.bottom())), 1.0, t.trace(t.green, t.level_contrast));
@@ -2063,7 +2080,7 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
         .map(|percent| (percent / span + 1.0) * 0.5);
     accessibility::status(ui, &resp, &format!("Signal activity {:.0}% (smoothed, not a peak or clipping meter)", meter.clamp(0.0, 1.0) * 100.0));
     help::annotate(ui, &resp, HelpControl::Pitch);
-    if resp.clicked() || resp.dragged() {
+    if !touch_pointer && (resp.clicked() || resp.dragged()) {
         if let Some(pos) = resp.interact_pointer_pos() {
             return Some((1.0 - (pos.y - track.top()) / track.height()).clamp(0.0, 1.0));
         }
@@ -2073,6 +2090,7 @@ fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32
 
 fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> bool {
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
+    let touch_pointer=touch::register(ui,&resp,touch::Target::Crossfader,Rect::from_min_max(rect.min+Vec2::new(16.0,0.0),rect.max-Vec2::new(16.0,0.0)),true);
     let p = ui.painter();
     p.rect_filled(rect, 4.0, t.bg_darker);
     p.text(rect.left_center() + Vec2::new(6.0, 0.0), egui::Align2::LEFT_CENTER, "A", FontId::proportional(t.text_size(10.0)), t.track_color(0));
@@ -2081,7 +2099,7 @@ fn xfader(ui: &mut Ui, t: &Theme, width: f32, height: f32, value: &mut f32) -> b
     p.rect_filled(Rect::from_center_size(Pos2::new(x, rect.center().y), Vec2::new(12.0, 14.0)), 2.0, t.accent);
     let alternate = accessibility::numeric(ui, &resp, "Crossfader", *value * 100.0, 0.0, 100.0, 1.0, "% B");
     help::annotate(ui, &resp, HelpControl::Crossfader);
-    if resp.clicked() || resp.dragged() {
+    if !touch_pointer && (resp.clicked() || resp.dragged()) {
         if let Some(pos) = resp.interact_pointer_pos() {
             *value = ((pos.x - rect.left() - 16.0) / (rect.width() - 32.0)).clamp(0.0, 1.0);
             return true;

@@ -17,6 +17,7 @@ impl App {
                 if ui.button(tr!("Preferences")).help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; }
                 let label = command_palette::chord(self.settings.profile()).map_or_else(|| tr!("Commands").into(), |key| format!("{} (Ctrl+Shift+{})", tr!("Commands"), key.name()));
                 if ui.button(label).help(ui, HelpControl::PreferenceShortcut).clicked() { self.command_palette.open(); }
+                if ui.button(tr!("Touch & pen")).help(ui, HelpControl::SamplerPad).clicked() {self.touch_input.open=true;}
                 if !self.settings.open && !self.settings.message.is_empty() {
                     let label = if self.settings.message.starts_with("Preferences failed") { "Preferences failed" } else { "Preferences update" };
                     if ui.button(label).help_detail(ui, HelpControl::Preferences, &self.settings.message).clicked() { self.settings.open = true; }

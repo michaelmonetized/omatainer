@@ -580,6 +580,7 @@ fn destructive(command: &Command) -> bool {
         | Command::RestartScene { .. }
         | Command::AddScene { .. }
         | Command::SamplerPad { .. }
+        | Command::SamplerPadPressure { .. }
         | Command::MidiAudition { on: false, .. }
         | Command::SamplerAuditionStop { .. }
         | Command::SamplerBank(_)

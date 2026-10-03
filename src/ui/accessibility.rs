@@ -224,7 +224,7 @@ pub(super) fn focus(ui: &Ui, response: &egui::Response) {
         );
         // Space activates the focused control; it cannot also toggle transport.
         if ui.input(|input| input.key_pressed(Key::Space) || input.key_pressed(Key::Enter)) {
-            keyboard::block_for_dialog(ui.ctx());
+            keyboard::block_for_activation(ui.ctx());
         }
     }
 }

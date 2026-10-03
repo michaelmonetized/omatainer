@@ -767,3 +767,5 @@ and the [network-denied qualification boundary](docs/validation/issue-103-offlin
 Interface language and Unicode search are described in [international text](docs/localization.md). Preferences retain English, Spanish or German per profile; untranslated technical text has an English fallback.
 
 Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions, capture logical keys, reset defaults and export bindings without other profile settings.
+
+[Touch and pen input](docs/touch-and-pen.md) supports independently held performance controls, reported pad pressure and cancellation. The Linux backend pressure and physical-device limits are documented.
