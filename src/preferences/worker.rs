@@ -58,6 +58,8 @@ pub enum Job {
         path: PathBuf,
         preferences: Preferences,
     },
+    ImportShortcuts(PathBuf),
+    ExportShortcuts { path: PathBuf, profile: super::Profile },
     Reload,
     Reset(Preferences),
 }
@@ -75,6 +77,8 @@ pub enum Event {
     },
     Imported(Preferences, bool),
     Exported(storage::Saved),
+    ShortcutsImported(super::shortcuts::Bundle),
+    ShortcutsExported(storage::Saved),
     Reloaded(storage::Loaded),
     Failed(String),
     Cancelled,
@@ -152,8 +156,8 @@ impl Worker {
     pub fn poll(&mut self) -> Option<Event> {
         match self.results.try_recv() {
             Ok(event) => {
-                self.cancel = None;
-                Some(event)
+                let cancelled = self.cancel.take().is_some_and(|cancel| cancel.load(Ordering::Acquire));
+                Some(if cancelled && matches!(event, Event::ShortcutsImported(_)) { Event::Cancelled } else { event })
             }
             Err(crossbeam_channel::TryRecvError::Disconnected) if self.busy() => {
                 self.cancel = None;
@@ -258,6 +262,24 @@ fn execute(
                 Err(error) => failure(error),
             }
         }
+        Job::ImportShortcuts(path) => match storage::read_raw(&path, cancel) {
+            Ok((bytes, _)) => match super::shortcuts::Bundle::decode(&bytes) {
+                Ok(bundle) => Event::ShortcutsImported(bundle),
+                Err(error) => Event::Failed(error),
+            },
+            Err(error) => failure(error),
+        },
+        Job::ExportShortcuts { path, profile } => {
+            let bundle = super::shortcuts::Bundle::from_profile(&profile);
+            if let Err(error) = bundle.apply(&mut profile.clone()) { return Event::Failed(error); }
+            match serde_json::to_vec_pretty(&bundle) {
+                Ok(bytes) => match storage::publish_new(&path, &bytes, cancel, permit) {
+                    Ok(saved) => Event::ShortcutsExported(saved),
+                    Err(error) => failure(error),
+                },
+                Err(error) => Event::Failed(error.to_string()),
+            }
+        },
         Job::Reload => match storage::load(path, cancel) {
             Ok(loaded) => Event::Reloaded(loaded),
             Err(error) => failure(error),

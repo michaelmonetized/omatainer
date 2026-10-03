@@ -22,6 +22,7 @@ pub(super) struct Settings {
     edited: String,
     profile_name: String,
     file_path: String,
+    shortcut_capture: Option<String>,
     roots: String,
     midi_names: String,
     pub rescan: bool,
@@ -76,6 +77,7 @@ impl Settings {
             inventory: None,
             home: start.home,
             file_path: String::new(),
+            shortcut_capture: None,
             roots: String::new(),
             midi_names: String::new(),
             rescan: false,
@@ -172,6 +174,16 @@ impl Settings {
                 self.message = saved.warning.unwrap_or_else(|| {
                     "Preferences exported. Current settings and active profile unchanged.".into()
                 })
+            }
+            Event::ShortcutsImported(bundle) => {
+                let profile = self.draft.profiles.get_mut(&self.edited).expect("selected draft profile");
+                self.message = match bundle.apply(profile) {
+                    Ok(()) => { self.preview = None; "Bindings imported into draft. Preview and Apply to save them.".into() },
+                    Err(error) => error,
+                };
+            }
+            Event::ShortcutsExported(saved) => {
+                self.message = saved.warning.unwrap_or_else(|| "Bindings exported. Current settings are unchanged.".into());
             }
             Event::Failed(error) => self.message = format!("Preferences failed: {error}"),
             Event::Cancelled => self.message = "Cancelled; current settings are unchanged.".into(),
@@ -315,9 +327,33 @@ impl App {
     }
     pub(super) fn preferences_ui(&mut self, ctx: &egui::Context) {
         if !self.settings.open {
+            self.settings.shortcut_capture = None;
             return;
         }
         keyboard::block_for_dialog(ctx);
+        if let Some(id) = self.settings.shortcut_capture.clone() {
+            let captured = ctx.input(|input| input.events.iter().find_map(|event| match event {
+                egui::Event::Key { key, modifiers, pressed: true, repeat: false, .. } => Some((*key, *modifiers)),
+                _ => None,
+            }));
+            if self.settings.busy() || self.engine.safe_mode() { self.settings.shortcut_capture = None; }
+            else if let Some((key, modifiers)) = captured {
+                self.settings.shortcut_capture = None;
+                if key == Key::Escape { self.settings.message = "Shortcut capture cancelled; bindings are unchanged.".into(); }
+                else if modifiers.mac_cmd { self.settings.message = "This Linux profile accepts Ctrl, Alt and Shift modifiers.".into(); }
+                else {
+                    let shortcut = model::Shortcut { key: key.name().into(), ctrl: modifiers.ctrl, alt: modifiers.alt, shift: modifiers.shift };
+                    match shortcut.validate() {
+                        Ok(()) => {
+                            self.settings.draft.profiles.get_mut(&self.settings.edited).unwrap().shortcuts.insert(id, Some(shortcut));
+                            self.settings.preview = None;
+                            self.settings.message = "Shortcut captured into draft. Resolve any collisions, then Preview and Apply.".into();
+                        },
+                        Err(error) => self.settings.message = error,
+                    }
+                }
+            }
+        }
         if self.engine.safe_mode() {
             let mut open=true;
             egui::Window::new(tr!("Preferences and profiles")).id(egui::Id::new("Preferences and profiles")).open(&mut open).show(ctx,|ui|{
@@ -381,7 +417,7 @@ impl App {
                             for name in state.draft.profiles.keys() { ui.selectable_value(&mut state.edited, name.clone(), name).help(ui, HelpControl::PreferenceProfile); }
                         });
                         help::annotate(ui, &profile_combo.response, HelpControl::PreferenceProfile);
-                        if previous != state.edited { state.editor_strings(); }
+                        if previous != state.edited { state.editor_strings(); state.shortcut_capture = None; }
                         ui.horizontal_wrapped(|ui| {
                             ui.label({ let __omatainer_args = (&(state.draft.active),); crate::localization::format("Active profile on Apply: {}", &[format!("{}", __omatainer_args.0)]) });
                             if ui.button(tr!("Use this profile")).help(ui, HelpControl::PreferenceActivate).clicked() { state.draft.active = state.edited.clone(); state.preview = None; }
@@ -480,15 +516,25 @@ impl App {
                             ui.collapsing("Keyboard shortcuts", |ui| {
                                 ui.checkbox(&mut profile.shortcuts_enabled,tr!("Enable performance shortcuts")).help(ui, HelpControl::PreferenceShortcut);
                                 ui.label(tr!("Navigation, focused controls and reserved project keys remain available. Empty key disables this shortcut."));
+                                ui.label(tr!("Text editing owns typing keys. Editor actions change creative edits; performance actions control playback. Logical keys follow the active keyboard layout; unsupported non-Latin keys use egui's physical-key fallback."));
+                                if ui.button(tr!("Reset all shortcut bindings")).help(ui, HelpControl::PreferenceShortcut).clicked() {
+                                    profile.shortcuts.clear(); profile.shortcuts_enabled = true; state.shortcut_capture = None;
+                                }
+                                if let Some(id) = &state.shortcut_capture {
+                                    ui.label(crate::localization::format("Press the new shortcut for {0}; Escape cancels.", &[id.clone()]));
+                                }
+                                if let Err(error) = shortcuts::validate(profile) { ui.colored_label(ui.visuals().warn_fg_color, error); }
                                 for binding in shortcuts::BINDINGS {
                                     accessibility::group(ui, binding.description, |ui| {
                                     ui.push_id(binding.id(), |ui| {
                                         ui.label(binding.description);
+                                        ui.label(crate::localization::text_dynamic(binding.action.context()));
                                         let mut value = binding.effective(profile).unwrap_or(model::Shortcut {key:String::new(),ctrl:false,shift:false,alt:false});
                                         let before = value.clone();
                                         ui.horizontal(|ui| {
                                             text(ui, &format!("{} key",binding.description), &mut value.key, HelpControl::PreferenceShortcut);
                                             ui.checkbox(&mut value.ctrl,tr!("Ctrl")).help(ui, HelpControl::PreferenceShortcut);ui.checkbox(&mut value.alt,tr!("Alt")).help(ui, HelpControl::PreferenceShortcut);ui.checkbox(&mut value.shift,tr!("Shift")).help(ui, HelpControl::PreferenceShortcut);
+                                            if ui.button(tr!("Capture key")).help(ui, HelpControl::PreferenceShortcut).clicked() { state.shortcut_capture = Some(binding.id().into()); }
                                             if ui.button(tr!("Default")).help(ui, HelpControl::PreferenceShortcut).clicked() { profile.shortcuts.remove(binding.id()); }
                                         });
                                         if value != before { profile.shortcuts.insert(binding.id().into(),(!value.key.is_empty()).then_some(value)); }
@@ -507,6 +553,11 @@ impl App {
                             if ui.button(tr!("Export draft")).help(ui, HelpControl::PreferenceExport).clicked() { state.request(Job::Export{path:PathBuf::from(&state.file_path),preferences:state.draft.clone()}); }
                             if ui.button(tr!("Reload saved preferences")).help(ui, HelpControl::PreferenceReload).clicked() { state.request(Job::Reload); }
                         });
+                        ui.horizontal_wrapped(|ui| {
+                            if ui.button(tr!("Import bindings into draft")).help(ui, HelpControl::PreferenceImport).clicked() { state.request(Job::ImportShortcuts(PathBuf::from(&state.file_path))); }
+                            if ui.button(tr!("Export bindings only")).help(ui, HelpControl::PreferenceExport).clicked() { state.request(Job::ExportShortcuts { path: PathBuf::from(&state.file_path), profile: state.draft.profiles[&state.edited].clone() }); }
+                        });
+                        ui.label(tr!("Binding exports include only shortcut overrides and the performance shortcut switch for the edited profile. Import changes the draft; Cancel preserves saved bindings. Export never replaces an existing file."));
                         if state.blocked {
                             ui.colored_label(ui.visuals().warn_fg_color,tr!("Saving is blocked to preserve an unreadable or changed preferences file."));
                             if ui.button(tr!("Preserve old file and reset all preferences")).help(ui, HelpControl::PreferenceRecover).clicked() { state.request(Job::Reset(model::Preferences::defaults(&state.home))); }
@@ -555,6 +606,7 @@ impl App {
             state.edited = state.draft.active.clone();
             state.editor_strings();
             state.preview = None;
+            state.shortcut_capture = None;
             state.open = false;
         }
     }

@@ -238,6 +238,17 @@ fn save_with_gate(path: &Path, preferences: &Preferences, overwrite: Overwrite, 
     preferences.validate().map_err(Error::Invalid)?;
     let bytes = serde_json::to_vec_pretty(preferences)
         .map_err(|error| Error::Invalid(error.to_string()))?;
+    publish_bytes(path, &bytes, overwrite, cancel, before_commit, permit)
+}
+
+/// Publish a new bounded settings export without replacing an existing file.
+/// Takes an absolute path, validated bytes, cancellation and work permit; returns the committed file receipt.
+pub(crate) fn publish_new(path: &Path, bytes: &[u8], cancel: &AtomicBool, permit: &crate::engine::performance::WorkPermit) -> Result<Saved, Error> {
+    publish_bytes(path, bytes, Overwrite::New, cancel, || {}, Some(permit))
+}
+
+fn publish_bytes(path: &Path, bytes: &[u8], overwrite: Overwrite, cancel: &AtomicBool, before_commit: impl FnOnce(), permit: Option<&crate::engine::performance::WorkPermit>) -> Result<Saved, Error> {
+    check(cancel)?;
     if bytes.len() as u64 > MAX_BYTES {
         return Err(Error::Invalid("Preferences exceed 1 MiB".into()));
     }
@@ -273,7 +284,7 @@ fn save_with_gate(path: &Path, preferences: &Preferences, overwrite: Overwrite, 
         .open(&temp.0)
         .map_err(|error| io("Create preference staging file", error))?;
     output
-        .write_all(&bytes)
+        .write_all(bytes)
         .map_err(|error| io("Write preferences", error))?;
     output
         .sync_all()

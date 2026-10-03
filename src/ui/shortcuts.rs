@@ -18,6 +18,18 @@ pub(super) enum Action {
     Redo,
 }
 
+impl Action {
+    /// Name the keyboard context that owns this action outside text entry.
+    /// Takes an action; returns its discoverable editor, navigation or performance context.
+    pub(super) fn context(self) -> &'static str {
+        match self {
+            Self::Undo | Self::Redo | Self::CloseFx => "Editor",
+            Self::Help | Self::Midi => "Navigation",
+            _ => "Performance",
+        }
+    }
+}
+
 pub(super) struct Binding {
     pub key: Key,
     pub modifiers: Modifiers,

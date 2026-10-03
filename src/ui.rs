@@ -71,6 +71,7 @@ use crate::engine::load_receipt::{Media, Receipt};
 mod load_status_tests;
 mod keyboard;
 mod shortcuts;
+mod command_palette;
 mod help;
 use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
@@ -164,6 +165,7 @@ pub struct App {
     lib_filter: String,
     lib_sel: usize,
     keys_open: bool,
+    command_palette: command_palette::Palette,
     help: help::Help,
     midi_open: bool,
     status: String,
@@ -281,6 +283,7 @@ impl App {
             lib_filter: String::new(),
             lib_sel: 0,
             keys_open: false,
+            command_palette: command_palette::Palette::default(),
             help: help::Help::default(),
             midi_open: false,
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
@@ -863,6 +866,7 @@ impl App {
         self.clip_gain_editor(ctx);
         self.undo_panel(ctx);
         accessibility::numeric_editor(ctx);
+        self.command_palette_ui(ctx);
         // Text fields and dialogs get this frame's keys before global actions.
         self.handle_keys(ctx);
         self.undo_history.end_frame(ctx);
@@ -903,6 +907,10 @@ impl App {
         ctx.input(|i| {
             for ev in &i.events {
                 if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
+                    if Some(*key) == command_palette::chord(self.settings.profile()) && mods.ctrl && mods.shift && !mods.alt && !mods.mac_cmd && !repeat {
+                        self.command_palette.open();
+                        return;
+                    }
                     if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }
                     if let Some(action) = shortcuts::lookup_with(self.settings.profile(), *key, *mods, *repeat) {
                         self.dispatch_shortcut(action);
@@ -910,6 +918,7 @@ impl App {
                 }
             }
         });
+        if self.command_palette.open { keyboard::block_for_dialog(ctx); }
     }
 
     fn scratch_row(&mut self, ui: &mut Ui, t: &Theme) {

@@ -17,6 +17,18 @@ impl Drop for Gui {
     }
 }
 impl Gui {
+    fn click_in(&mut self, group: &str, label: &str) {
+        let mut pending = self.nodes.iter().find(|(_,node)| node.role()==egui::accesskit::Role::Group && node.label()==Some(group)).unwrap().1.children().to_vec();
+        let target = loop {
+            let id = pending.pop().expect("named control in its command group");
+            if let Some((_,node)) = self.nodes.iter().find(|(current,_)| *current==id) {
+                if node.label()==Some(label) { break id; }
+                pending.extend_from_slice(node.children());
+            }
+        };
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target,action:Action::Click,data:None })]);
+        self.frame(vec![]);
+    }
     fn routing_text(&mut self,name:&str,value:&str){
         let target=self.node(name);
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest{target,action:Action::Focus,data:None})]);
@@ -1055,6 +1067,75 @@ fn osc_preferences_apply_reopen_cancel_and_conflict_preserve_the_actual_listener
         gui.fixture.app.automation_network.status().token,
         applied.token
     );
+}
+
+#[test]
+fn native_shortcut_capture_cancel_persist_export_import_and_failure_preserve_other_settings() {
+    let mut gui = Gui::new();
+    gui.open();
+    gui.click("Keyboard shortcuts");
+    gui.click_in("Play / stop session", "Capture key");
+    let before = gui.fixture.app.settings.applied.clone();
+    let key = |pressed| egui::Event::Key { key:Key::G,physical_key:Some(Key::Q),pressed,repeat:false,modifiers:Default::default() };
+    gui.frame(vec![key(true)]); gui.frame(vec![key(false)]);
+    assert_eq!(gui.fixture.app.settings.draft.current().unwrap().shortcuts["transport"].as_ref().unwrap().key,"G");
+    assert_eq!(gui.fixture.app.settings.applied,before);
+    gui.click_in("Play / stop session", "Capture key");
+    let escape = |pressed| egui::Event::Key { key:Key::Escape,physical_key:None,pressed,repeat:false,modifiers:Default::default() };
+    gui.frame(vec![escape(true)]); gui.frame(vec![escape(false)]);
+    assert_eq!(gui.fixture.app.settings.draft.current().unwrap().shortcuts["transport"].as_ref().unwrap().key,"G");
+    gui.click_in("Play / stop session", "Capture key");
+    let collision = |pressed| egui::Event::Key { key:Key::Q,physical_key:Some(Key::A),pressed,repeat:false,modifiers:Default::default() };
+    gui.frame(vec![collision(true)]); gui.frame(vec![collision(false)]);
+    gui.click("Preview changes"); gui.wait();
+    assert!(gui.fixture.app.settings.message.contains("both use"));
+    assert_eq!(gui.fixture.app.settings.applied,before);
+    gui.click("Cancel changes");
+    assert_eq!(gui.fixture.app.settings.draft,before);
+    gui.open();
+    gui.click_in("Play / stop session", "Capture key");
+    gui.frame(vec![key(true)]); gui.frame(vec![key(false)]);
+    gui.preview_apply();
+    let saved = storage::load(&gui.dir.join("preferences.json"),&AtomicBool::new(false)).unwrap();
+    assert_eq!(saved.preferences.current().unwrap().shortcuts["transport"].as_ref().unwrap().key,"G");
+    assert_eq!(saved.preferences.current().unwrap().audio,before.current().unwrap().audio);
+    assert_eq!(saved.preferences.current().unwrap().library_roots,before.current().unwrap().library_roots);
+    let mut reopened = Fixture::new(64);
+    let startup = Startup::read(gui.dir.join("preferences.json"),gui.dir.clone());
+    let context = egui::Context::default();
+    reopened.app.initialize_preferences(&context,startup,saved.preferences.current().unwrap().audio.clone());
+    let _ = context.run(egui::RawInput { screen_rect:Some(Rect::from_min_size(Pos2::ZERO,Vec2::new(1600.0,1200.0))),events:vec![key(true)],..Default::default() },|ctx| reopened.app.update_frame(ctx));
+    reopened.rt.process(&mut []);
+    assert!(reopened.rt.playing,"reopened App must dispatch the persisted logical G binding");
+    let export = gui.dir.join("bindings.json");
+    gui.fixture.app.settings.file_path = export.to_string_lossy().into();
+    gui.click("Export bindings only"); gui.wait();
+    let bytes = std::fs::read(&export).unwrap();
+    let bundle = model::shortcuts::Bundle::decode(&bytes).unwrap();
+    gui.click("Export bindings only"); gui.wait();
+    assert!(gui.fixture.app.settings.message.contains("Destination exists"));
+    assert_eq!(std::fs::read(&export).unwrap(),bytes);
+    gui.click("Reset all shortcut bindings");
+    assert!(gui.fixture.app.settings.draft.current().unwrap().shortcuts.is_empty());
+    gui.click("Import bindings into draft"); gui.wait();
+    let mut expected = before.current().unwrap().clone(); bundle.apply(&mut expected).unwrap();
+    assert_eq!(gui.fixture.app.settings.draft.current().unwrap(),&expected);
+    gui.click("Cancel changes");
+    assert_eq!(gui.fixture.app.settings.draft,gui.fixture.app.settings.applied);
+    gui.open();
+    gui.fixture.app.settings.file_path = export.to_string_lossy().into();
+    gui.fixture.app.settings.worker.as_ref().unwrap().delay.store(100,Ordering::Release);
+    gui.click("Import bindings into draft");
+    gui.click("Cancel pending preferences operation"); gui.wait();
+    assert!(gui.fixture.app.settings.message.contains("Cancelled"));
+    assert_eq!(gui.fixture.app.settings.draft,gui.fixture.app.settings.applied);
+    gui.fixture.app.settings.worker.as_ref().unwrap().delay.store(0,Ordering::Release);
+    std::fs::write(&export,b"{\"version\":999}").unwrap();
+    let prior = gui.fixture.app.settings.draft.clone();
+    gui.click("Import bindings into draft"); gui.wait();
+    assert!(gui.fixture.app.settings.message.contains("failed"));
+    assert_eq!(gui.fixture.app.settings.draft,prior);
+    assert_eq!(std::fs::read(&export).unwrap(),b"{\"version\":999}");
 }
 
 #[test]
