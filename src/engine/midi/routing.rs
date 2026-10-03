@@ -16,4 +16,4 @@ pub use model::{Endpoint, Filter, Input, Route, Routing};
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-pub(crate) use output::tests::install_for_test;
+pub(crate) use output::tests::{install_for_test, install_ports_for_test};

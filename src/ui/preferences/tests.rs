@@ -889,3 +889,40 @@ fn native_missing_output_receipt_preserves_saved_profile_and_midi_panel_resets()
     gui.click("Cancel changes");
     assert_eq!(std::fs::read(path).unwrap(), bytes);
 }
+
+#[test]
+fn startup_empty_session_is_selected_in_native_preferences_and_persisted() {
+    let mut gui = Gui::new(); gui.height = 1900.0; gui.open();
+    gui.click("Empty session");
+    assert_eq!(gui.fixture.app.settings.draft.current().unwrap().startup.session, crate::project_template::Startup::Empty);
+    gui.preview_apply();
+    let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
+    assert_eq!(loaded.preferences.current().unwrap().startup.session, crate::project_template::Startup::Empty);
+    let target = gui.node("Project template");
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::Focus, data: None })]);
+    gui.click("Project template");
+    assert!(matches!(gui.fixture.app.settings.draft.current().unwrap().startup.session, crate::project_template::Startup::Template { .. }));
+    let missing = gui.dir.join("missing.omtemplate"); gui.routing_text("Startup template file", missing.to_str().unwrap());
+    gui.click("Preview changes"); gui.wait(); assert!(gui.fixture.app.settings.message.contains("unavailable"));
+    assert_eq!(storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap().preferences, loaded.preferences);
+    gui.click("Cancel changes"); assert_eq!(gui.fixture.app.settings.draft, gui.fixture.app.settings.applied);
+}
+#[test]
+fn template_hardware_draft_keeps_exact_missing_ports_and_rejects_reused_track_target() {
+    use crate::project_template as template;
+    use crate::engine::midi::routing::{Endpoint, Route, Routing, Filter};
+    let mut gui = Gui::new(); gui.height = 1900.0;
+    crate::engine::midi::routing::install_for_test(&mut gui.fixture.app.engine, Routing::default());
+    let original = gui.fixture.app.settings.applied.clone();
+    let mut hardware = template::Hardware::capture(gui.fixture.app.settings.profile());
+    hardware.routing = Routing { enabled: true, routes: vec![Route { track: 0, inputs: vec![], output: Some(Endpoint { name: "Unavailable synthesizer".into(), id: Some("999:0".into()) }), output_channel: Some(3), monitor: false, thru: false, filter: Filter::default() }] };
+    let metadata = template::Metadata { schema: template::VERSION, name: "External synth".into(), kind: template::Kind::Track { bus: gui.fixture.rt.session.scenes[0].name.clone() }, hardware };
+    let target = template::Target::capture(&gui.fixture.rt.session, 2).unwrap();
+    gui.fixture.app.review_template_hardware(&metadata, Some(target)); gui.frame(vec![]);
+    assert!(gui.fixture.app.settings.open); assert_eq!(gui.fixture.app.settings.applied, original);
+    assert_eq!(gui.fixture.app.settings.draft.current().unwrap().midi_routing.routes[0].track, 2);
+    gui.click("Cancel changes"); assert_eq!(gui.fixture.app.settings.applied, original); assert_eq!(gui.fixture.app.settings.draft, original);
+    gui.fixture.rt.session.namespace[1] += 1; gui.fixture.rt.publish_for_test(); gui.frame(vec![]);
+    gui.fixture.app.review_template_hardware(&metadata, Some(target));
+    assert_eq!(gui.fixture.app.settings.draft, original); assert!(gui.fixture.app.templates.error.as_deref().unwrap().contains("replaced or deleted"));
+}

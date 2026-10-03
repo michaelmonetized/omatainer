@@ -620,31 +620,102 @@ impl State {
                 });
             remap.push(index);
         }
-        let map = |v: &mut Option<usize>| {
-            if let Some(index) = v {
-                *index = remap[*index];
-            }
-        };
+        self.media_indices(|index| *index = remap[*index]);
+        *media = unique;
+    }
+
+    fn media_indices(&mut self, mut visit: impl FnMut(&mut usize)) {
         for track in &mut self.tracks {
             for clip in &mut track.clips {
-                map(&mut clip.audio);
+                if let Some(index) = &mut clip.audio { visit(index); }
             }
             for index in &mut track.drums {
-                *index = remap[*index];
+                visit(index);
             }
         }
         for deck in &mut self.decks {
-            map(&mut deck.audio);
+            if let Some(index) = &mut deck.audio { visit(index); }
         }
         for bank in &mut self.banks {
             for index in bank.media.iter_mut().flatten() {
-                *index = remap[*index];
+                visit(index);
             }
         }
-        for index in &mut self.builtin {
-            map(index);
+        for index in self.builtin.iter_mut().flatten() { visit(index); }
+    }
+
+    /// Keep and reindex only audio referenced by validated native state.
+    /// `media` is compacted off audio; duplicate shared samples use one entry.
+    pub(crate) fn compact_media(&mut self, media: &mut Vec<Arc<Sample>>) -> Result<(), String> {
+        self.validate(media)?;
+        let mut used = vec![false; media.len()];
+        self.media_indices(|index| used[*index] = true);
+        let mut remap = vec![0; media.len()];
+        let mut retained = Vec::new();
+        for (index, sample) in media.iter().enumerate() {
+            if used[index] { remap[index] = retained.len(); retained.push(sample.clone()); }
         }
-        *media = unique;
+        self.media_indices(|index| *index = remap[*index]);
+        *media = retained;
+        self.deduplicate(media);
+        Ok(())
+    }
+
+    /// Capture one track's settings and audio dependencies without song content.
+    /// `track` is a live storage slot; returned state has one empty clip and bus.
+    pub(crate) fn track_configuration(&self, media: &[Arc<Sample>], track: usize) -> Result<(Self, Vec<Arc<Sample>>), String> {
+        self.validate(media)?;
+        let mut selected = self.tracks.get(track).ok_or("Template track is unavailable")?.clone();
+        if self.session.as_ref().is_some_and(|layout| !layout.tracks[track].active) {
+            return Err("Template track is inactive".into());
+        }
+        let mut state = Self::blank();
+        selected.clips = vec![state.tracks[0].clips[0].clone()];
+        selected.launch = None;
+        selected.scene_bus = 0;
+        state.session = Some(session::Layout::fresh([selected.name.clone()], 1));
+        state.tracks = vec![selected];
+        state.scene_fx = vec![Vec::new()];
+        state.banks = vec![Bank { name: "Empty bank".into(), media: [None;16], instance: Some(crate::sampler_bank::BankId::new()?),
+            settings: Some(Arc::new(crate::sampler_bank::resident::Settings::empty("Empty bank".into())?)) }];
+        let mut audio = media.to_vec();
+        state.compact_media(&mut audio)?;
+        Ok((state, audio))
+    }
+
+    /// Apply a track configuration while retaining clips and unrelated state.
+    /// `target` is an active storage slot and `bus` must name one active scene.
+    /// Returns an owned replacement with rebound audio; source data stays intact.
+    pub(crate) fn apply_track_configuration(mut self, mut media: Vec<Arc<Sample>>, configuration: &Self,
+        source_media: &[Arc<Sample>], target: usize, bus: &str) -> Result<(Self, Vec<Arc<Sample>>), String> {
+        self.validate(&media)?;
+        configuration.validate(source_media)?;
+        if configuration.tracks.len() != 1 || configuration.scene_fx.len() != 1
+            || configuration.tracks[0].launch.is_some()
+            || configuration.tracks[0].clips.iter().any(|clip| clip.kind != ClipKind::Empty || !clip.notes.is_empty() || clip.audio.is_some() || clip.lanes.is_some()) {
+            return Err("Track template contains song content or multiple tracks".into());
+        }
+        let layout = self.session.as_ref().ok_or("Current session has no bus aliases")?;
+        if !layout.tracks.get(target).is_some_and(|track| track.active) {
+            return Err("Template target track is unavailable".into());
+        }
+        let mut buses = layout.scenes.iter().enumerate().filter(|(_, scene)| scene.active && scene.name == bus);
+        let destination = buses.next().map(|(index, _)| index).ok_or("Template scene-bus alias is unavailable; no routing was changed")?;
+        if buses.next().is_some() { return Err("Template scene-bus alias is ambiguous; no routing was changed".into()); }
+        let generation = layout.generation.checked_add(1).ok_or("Session generation exhausted")?;
+        let mut replacement = configuration.tracks[0].clone();
+        let offset = media.len();
+        for index in &mut replacement.drums { *index += offset; }
+        replacement.clips = self.tracks[target].clips.clone();
+        replacement.launch = self.tracks[target].launch;
+        replacement.scene_bus = destination;
+        media.extend(source_media.iter().cloned());
+        self.tracks[target] = replacement;
+        let layout = self.session.as_mut().unwrap();
+        layout.tracks[target].name = self.tracks[target].name.clone();
+        layout.generation = generation;
+        self.compact_media(&mut media)?;
+        Ok((self, media))
     }
 }
 

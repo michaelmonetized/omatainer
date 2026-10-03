@@ -154,8 +154,8 @@ fn devices(
     Ok(result)
 }
 
-fn manifest(
-    bundle: &Bundle<project::Document>,
+pub(in crate::ui) fn manifest(
+    document: &project::Document,
     inventory: &dependencies::Inventory,
     cancel: &AtomicBool,
 ) -> Result<data::Manifest, String> {
@@ -176,7 +176,7 @@ fn manifest(
         license_manifest: crate::licenses::MANIFEST.into(),
         license_notices: crate::licenses::NOTICES.into(),
         media,
-        devices: devices(&bundle.state.engine, cancel)?,
+        devices: devices(&document.engine, cancel)?,
         unresolved: inventory
             .missing
             .iter()
@@ -191,7 +191,7 @@ fn manifest(
     })
 }
 
-fn destination_parent(destination: &Path) -> Result<&Path, String> {
+pub(in crate::ui) fn destination_parent(destination: &Path) -> Result<&Path, String> {
     if !destination.is_absolute() || destination.file_name().is_none() {
         return Err("Choose an absolute destination path with a new name".into());
     }
@@ -242,7 +242,7 @@ fn perform(kind: Kind, handle: &Handle, cancel: &AtomicBool) -> Result<ResultDat
                 &bundle.state.view.media_origins,
                 cancel,
             )?;
-            let mut manifest = manifest(&bundle, &inventory, cancel)?;
+            let mut manifest = manifest(&bundle.state, &inventory, cancel)?;
             match export {
                 None => Ok(ResultData::Inspected(Review {
                     revision,
@@ -321,76 +321,15 @@ fn perform(kind: Kind, handle: &Handle, cancel: &AtomicBool) -> Result<ResultDat
                     "Archive dependencies changed since review; review the archive again".into(),
                 );
             }
-            bundle.state.validate()?;
-            bundle.state.engine.validate(&bundle.media)?;
-            if devices(&bundle.state.engine, cancel)? != manifest.devices {
-                return Err("Device/preset manifest differs from the native session".into());
-            }
-            let missing: Vec<_> = dependencies::missing_sources(&bundle.state.engine)
-                .iter()
-                .map(|missing| {
-                    format!(
-                        "{}: {} (no embedded audio)",
-                        missing.placement, missing.source
-                    )
-                })
-                .collect();
-            if missing != manifest.unresolved {
-                return Err("Unresolved source manifest differs from the native session".into());
-            }
-            let mut origins = bundle.state.view.media_origins.clone();
-            for media in &manifest.media {
-                if let Some(name) = &media.collected {
-                    let temporary = LibSource::File(stage.path.join(name));
-                    let bytes = (media.frames as u64)
-                        .checked_mul(u64::from(media.channels))
-                        .and_then(|bytes| bytes.checked_mul(4))
-                        .ok_or("Invalid audio shape")?;
-                    dependencies::load_source(
-                        &temporary,
-                        media.key.audio_hash,
-                        bytes.saturating_add(4 * 1024 * 1024),
-                        || cancel.load(Ordering::Acquire),
-                    )
-                    .map_err(|e| e.detail)?;
-                    origins.retain(|origin| origin.key != media.key);
-                    origins.push(dependencies::Origin {
-                        key: media.key.clone(),
-                        source: LibSource::File(destination.join(name)),
-                    });
-                }
-            }
-            dependencies::validate_origins(&origins)?;
-            for bank in &mut bundle.state.engine.banks {
-                if let Some(settings) = &mut bank.settings {
-                    let settings = Arc::make_mut(settings);
-                    for (index, slot) in settings.slots.iter_mut().enumerate() {
-                        if let Some(sample) =
-                            bank.media[index].and_then(|index| bundle.media.get(index))
-                        {
-                            let hash = dependencies::audio_hash(sample, cancel)?;
-                            if let Some(origin) = origins.iter().find(|origin| {
-                                origin.key.audio_hash == hash
-                                    && origin.key.original_path == sample.path
-                            }) {
-                                slot.source = Some(crate::sampler_bank::Source::Project {
-                                    source: origin.source.clone(),
-                                    audio_hash: hash,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-            bundle.state.view.media_origins = origins;
-            bundle.state.validate()?;
-            let prepared = Prepared::from_state(
-                bundle.state.engine.clone(),
-                bundle.media.clone(),
+            rebind_document(
+                &stage,
+                &manifest,
+                &mut bundle.state,
+                &bundle.media,
+                &destination,
                 handle.sample_rate(),
-            )
-            .map_err(|e| e.to_string())?;
-            drop(prepared);
+                cancel,
+            )?;
             crate::project_file::save(
                 &stage.path.join("session.omat"),
                 &bundle,
@@ -406,4 +345,82 @@ fn perform(kind: Kind, handle: &Handle, cancel: &AtomicBool) -> Result<ResultDat
             ))
         }
     }
+}
+
+/// Verify device identities and rebind collected audio before preparing a native document.
+/// `stage` owns checked archive entries; `destination` supplies published source paths.
+/// Returns an error without publication; all source audio is retained in `media`.
+pub(in crate::ui) fn rebind_document(
+    stage: &data::Stage,
+    manifest: &data::Manifest,
+    document: &mut project::Document,
+    media: &[Arc<crate::engine::dsp::Sample>],
+    destination: &Path,
+    sample_rate: u32,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
+    document.validate()?;
+    document.engine.validate(media)?;
+    if devices(&document.engine, cancel)? != manifest.devices {
+        return Err("Device/preset manifest differs from the native session".into());
+    }
+    let missing: Vec<_> = dependencies::missing_sources(&document.engine)
+        .iter()
+        .map(|missing| {
+            format!(
+                "{}: {} (no embedded audio)",
+                missing.placement, missing.source
+            )
+        })
+        .collect();
+    if missing != manifest.unresolved {
+        return Err("Unresolved source manifest differs from the native session".into());
+    }
+    let mut origins = document.view.media_origins.clone();
+    for media in &manifest.media {
+        if let Some(name) = &media.collected {
+            let temporary = LibSource::File(stage.path.join(name));
+            let bytes = (media.frames as u64)
+                .checked_mul(u64::from(media.channels))
+                .and_then(|bytes| bytes.checked_mul(4))
+                .ok_or("Invalid audio shape")?;
+            dependencies::load_source(
+                &temporary,
+                media.key.audio_hash,
+                bytes.saturating_add(4 * 1024 * 1024),
+                || cancel.load(Ordering::Acquire),
+            )
+            .map_err(|e| e.detail)?;
+            origins.retain(|origin| origin.key != media.key);
+            origins.push(dependencies::Origin {
+                key: media.key.clone(),
+                source: LibSource::File(destination.join(name)),
+            });
+        }
+    }
+    dependencies::validate_origins(&origins)?;
+    for bank in &mut document.engine.banks {
+        if let Some(settings) = &mut bank.settings {
+            let settings = Arc::make_mut(settings);
+            for (index, slot) in settings.slots.iter_mut().enumerate() {
+                if let Some(sample) = bank.media[index].and_then(|index| media.get(index)) {
+                    let hash = dependencies::audio_hash(sample, cancel)?;
+                    if let Some(origin) = origins.iter().find(|origin| {
+                        origin.key.audio_hash == hash && origin.key.original_path == sample.path
+                    }) {
+                        slot.source = Some(crate::sampler_bank::Source::Project {
+                            source: origin.source.clone(),
+                            audio_hash: hash,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    document.view.media_origins = origins;
+    document.validate()?;
+    let prepared = Prepared::from_state(document.engine.clone(), media.to_vec(), sample_rate)
+        .map_err(|e| e.to_string())?;
+    drop(prepared);
+    Ok(())
 }

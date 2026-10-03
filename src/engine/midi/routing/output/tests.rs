@@ -21,11 +21,14 @@ struct Fixture {
 struct Fake(Arc<Fixture>);
 struct Connection(Arc<Fixture>);
 pub(crate) fn install_for_test(engine: &mut Engine, config: Routing) {
+    install_ports_for_test(engine, config, false);
+}
+pub(crate) fn install_ports_for_test(engine: &mut Engine, config: Routing, ambiguous: bool) {
     engine.midi.routing = Some(
         Manager::start_backend(
             engine.cmd.clone(),
             config,
-            Fake(Arc::new(Fixture::default())),
+            Fake(Arc::new(Fixture { ambiguous: AtomicBool::new(ambiguous), ..Default::default() })),
         )
         .unwrap(),
     );

@@ -117,7 +117,7 @@ fn full_message_widths_running_status_realtime_and_sysex_are_exact() {
     assert!(Packet::new(&max).is_none());
 }
 #[test]
-fn profile_version_six_roundtrip_and_old_presence_guard() {
+fn profile_roundtrip_and_legacy_midi_presence_guard() {
     let mut prefs = crate::preferences::Preferences::defaults(std::path::Path::new("/tmp"));
     prefs.profiles.get_mut("Studio").unwrap().midi_routing = Routing {
         enabled: true,
@@ -133,11 +133,12 @@ fn profile_version_six_roundtrip_and_old_presence_guard() {
         assert!(crate::preferences::storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
         for p in old["profiles"].as_object_mut().unwrap().values_mut() {
             p.as_object_mut().unwrap().remove("midi_routing");
+            p["startup"].as_object_mut().unwrap().remove("session");
         }
         let (decoded, migrated) =
             crate::preferences::storage::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
         assert!(migrated);
-        assert_eq!(decoded.version, 6);
+        assert_eq!(decoded.version, crate::preferences::VERSION);
         assert!(!decoded.current().unwrap().midi_routing.enabled);
     }
 }

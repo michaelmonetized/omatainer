@@ -201,6 +201,37 @@ impl App {
             self.scan_library();
         }
     }
+    pub(super) fn review_template_hardware(&mut self, metadata: &crate::project_template::Metadata, target: Option<crate::project_template::Target>) {
+        let result = (|| {
+            metadata.validate()?;
+            if self.settings.busy() || self.settings.draft != self.settings.applied {
+                return Err("Finish or cancel the existing preference draft before reviewing template hardware".into());
+            }
+            let mut profile = self.settings.profile().clone();
+            if matches!(metadata.kind, crate::project_template::Kind::Track { .. }) {
+                let slot = target.and_then(|target| self.snap.session.as_ref().and_then(|layout| target.resolve(layout)))
+                    .ok_or_else(|| "The template target was replaced or deleted; inspect and select it again".to_string())?;
+                profile.audio = metadata.hardware.audio.clone();
+                profile.midi_inputs = metadata.hardware.midi_inputs.clone();
+                profile.midi_routing.routes.retain(|route| usize::from(route.track) != slot);
+                for route in &metadata.hardware.routing.routes {
+                    let mut route = route.clone(); route.track = slot as u8;
+                    profile.midi_routing.routes.push(route);
+                }
+                profile.midi_routing.enabled |= metadata.hardware.routing.enabled;
+            } else { metadata.hardware.apply(&mut profile); }
+            profile.validate()?;
+            self.settings.edited = self.settings.draft.active.clone();
+            self.settings.draft.profiles.insert(self.settings.edited.clone(), profile);
+            self.settings.editor_strings();
+            self.settings.preview = None;
+            self.settings.open = true;
+            self.settings.message = "Template hardware is a draft. Preview exact endpoints, then Apply deliberately. Cancel preserves the active profile and all connections.".into();
+            Ok::<(), String>(())
+        })();
+        if let Err(error) = result { self.templates.error = Some(error); }
+    }
+
     pub(super) fn apply_appearance(&mut self, ctx: &egui::Context) {
         if self.engine.safe_mode() { self.theme=Theme::default(); self.theme.apply(ctx); ctx.set_zoom_factor(1.0); return; }
         let appearance = self.settings.profile().appearance.clone();
@@ -394,6 +425,21 @@ impl App {
                             if let Some(size) = &mut profile.appearance.font_size { float_control(ui,"Font size",size,8.0,48.0,1.0," pt",HelpControl::PreferenceFont); }
                             float_control(ui,"UI scale",&mut profile.appearance.scale,0.5,3.0,0.05,"×",HelpControl::PreferenceScale);
                             ui.heading("Startup");
+                            let mut choice = match profile.startup.session { crate::project_template::Startup::Demo => 0, crate::project_template::Startup::Empty => 1, crate::project_template::Startup::Template { .. } => 2 };
+                            let before = choice;
+                            ui.horizontal(|ui| {
+                                ui.label("Startup session");
+                                for (index, label) in ["Demo session", "Empty session", "Project template"].into_iter().enumerate() { ui.radio_value(&mut choice, index, label).help(ui, HelpControl::TemplateStartup); }
+                            });
+                            if choice != before { profile.startup.session = match choice { 0 => crate::project_template::Startup::Demo, 1 => crate::project_template::Startup::Empty, _ => crate::project_template::Startup::Template { path: PathBuf::new() } }; }
+                            if let crate::project_template::Startup::Template { path } = &mut profile.startup.session {
+                                let mut path_text = path.to_string_lossy().into_owned();
+                                ui.label("Startup template file");
+                                let response = ui.add(egui::TextEdit::singleline(&mut path_text).char_limit(4096)).help(ui, HelpControl::TemplateStartup);
+                                response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Startup template file"));
+                                if response.changed() { *path = PathBuf::from(path_text); }
+                            }
+                            ui.label("Startup templates retain creative state. Hardware stays on the active profile until explicitly reviewed and applied in Templates → Review hardware.");
                             ui.checkbox(&mut profile.startup.performance_mode,"Enable performance protection on startup").help(ui, HelpControl::PerformanceMode);
                             ui.checkbox(&mut profile.startup.scan_library,"Scan library on startup").help(ui, HelpControl::PreferenceStartup);
                             ui.checkbox(&mut profile.startup.show_help,"Open help on startup").help(ui, HelpControl::PreferenceStartup);

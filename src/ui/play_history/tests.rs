@@ -277,7 +277,7 @@ fn real_file_load_stays_unplayed_until_render_and_records_captured_identity_when
 #[test]
 fn initial_builtins_and_new_play_episodes_record_once_without_callback_heap_work() {
     let mut f = Fixture::new(32);
-    let receipt = f.app.engine.initial_playback[0].clone();
+    let receipt = f.app.engine.initial_playback[0].clone().unwrap();
     let mut output = [0.0; 512];
     f.rt.process(&mut output); // warm render/mixer state
     assert!(receipt.last_play().is_none());
@@ -473,10 +473,10 @@ fn chronological_timestamp_wins_over_watch_order_and_deck_unload_order() {
     // Harmony watch is second in the vector but plays earlier than Drums.
     f.rt.apply(Command::DeckPlay { deck: 1 });
     f.rt.process(&mut [0.0; 128]);
-    let first = f.app.engine.initial_playback[1].last_play().unwrap();
+    let first = f.app.engine.initial_playback[1].as_ref().unwrap().last_play().unwrap();
     f.rt.apply(Command::DeckPlay { deck: 0 });
     f.rt.process(&mut [0.0; 128]);
-    let last = f.app.engine.initial_playback[0].last_play().unwrap();
+    let last = f.app.engine.initial_playback[0].as_ref().unwrap().last_play().unwrap();
     assert!(last > first);
     f.rt.apply(Command::DeckUnload { deck: 0 });
     f.rt.apply(Command::DeckUnload { deck: 1 });
@@ -495,7 +495,7 @@ fn chronological_timestamp_wins_over_watch_order_and_deck_unload_order() {
 #[test]
 fn end_of_file_missing_empty_invalid_sources_and_transition_tails_never_create_a_false_play() {
     let mut f = Fixture::new(32);
-    let receipt = f.app.engine.initial_playback[0].clone();
+    let receipt = f.app.engine.initial_playback[0].clone().unwrap();
     f.rt.apply(Command::DeckSeek { deck: 0, frac: 1.0 });
     f.rt.apply(Command::DeckPlay { deck: 0 });
     render(&mut f, 64);
@@ -567,7 +567,7 @@ fn renderer_disconnect_preserves_final_play_and_retires_watches() {
     } = Fixture::new(32);
     rt.apply(Command::DeckPlay { deck: 1 });
     rt.process(&mut [0.0; 128]);
-    let played = app.engine.initial_playback[1].last_play().unwrap();
+    let played = app.engine.initial_playback[1].as_ref().unwrap().last_play().unwrap();
     drop(rt);
     assert!(!app.engine.cmd.is_connected());
     app.poll_play_history();

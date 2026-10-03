@@ -227,14 +227,14 @@ fn actual_eight_cue_editor_fields_apply_persist_reload_and_match_waveform_and_pa
         assert!(gui.f.rt.decks[0].hotcues[i].set);
     }
     gui.settle();
-    let saved = gui.f.app.engine.initial_playback[0]
+    let saved = gui.f.app.engine.initial_playback[0].as_ref().unwrap()
         .preparation()
         .unwrap()
         .1;
     assert_eq!(
         gui.f
             .app
-            .cue_storage_status(&gui.f.app.engine.initial_playback[0]),
+            .cue_storage_status(gui.f.app.engine.initial_playback[0].as_ref().unwrap()),
         "Saved in DJ library"
     );
     gui.close_editor();
@@ -278,7 +278,7 @@ fn actual_eight_cue_editor_fields_apply_persist_reload_and_match_waveform_and_pa
     reopened.f.app.start_library_store(files.store());
     reopened.settle();
     assert_eq!(
-        reopened.f.app.engine.initial_playback[0]
+        reopened.f.app.engine.initial_playback[0].as_ref().unwrap()
             .preparation()
             .unwrap()
             .1,

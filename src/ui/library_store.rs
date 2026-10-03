@@ -303,6 +303,7 @@ impl App {
         {
             return;
         }
+        if !self.engine.initial_builtin { self.library_initialized = true; return; }
         let mut admitted = true;
         for (deck, stem) in [BuiltinStem::Drums, BuiltinStem::Harmony]
             .into_iter()
@@ -315,10 +316,10 @@ impl App {
             else {
                 continue;
             };
-            if version.preparation != Preparation::default() {
+            if let Some(receipt) = self.engine.initial_playback[deck].clone().filter(|_| version.preparation != Preparation::default()) {
                 admitted &= self.submit(Command::DeckRestorePreparation {
                     deck: deck as u8,
-                    receipt: self.engine.initial_playback[deck].clone(),
+                    receipt,
                     preparation: version.preparation,
                 });
             }

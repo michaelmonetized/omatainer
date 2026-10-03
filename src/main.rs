@@ -1,4 +1,5 @@
 mod project_file;
+mod project_template;
 mod project_dependencies;
 mod portable_project;
 mod recovery;
@@ -99,7 +100,7 @@ fn main() -> anyhow::Result<()> {
         }
         let retry = preferences::recovery::show(startup.diagnostic.as_deref().unwrap_or("Preferences are unavailable"), true)?;
         drop(_instance);
-        return preferences::recovery::restart(retry);
+        return preferences::recovery::restart(retry, launch);
     }
     let mut profile = startup.preferences.current().expect("validated startup profile").clone();
     if defaults_once {
@@ -107,8 +108,23 @@ fn main() -> anyhow::Result<()> {
         let notice = "System-default audio explicitly selected for this launch. Saved preferences are unchanged.";
         startup.diagnostic = Some(startup.diagnostic.map_or(notice.into(), |error| format!("{error}\n{notice}")));
     }
+    let initial = if launch.safe_mode { None } else {
+        let choice = if launch.empty_once { &project_template::Startup::Empty } else { &profile.startup.session };
+        match ui::startup_session(choice, &std::sync::atomic::AtomicBool::new(false)) {
+            Ok(session) => session,
+            Err(error) => {
+                if let Some(support) = &support { support.finish(crate::support::Exit::StartupFailed, Duration::from_secs(2)); }
+                let retry = preferences::recovery::show_template(&format!("Startup template could not be loaded: {error}. Saved settings and template are unchanged."))?;
+                drop(_instance); return preferences::recovery::restart(retry, launch);
+            }
+        }
+    };
+    let (initial_engine, initial_view) = match initial {
+        Some(session) => (Some(session.initial), Some((session.view, session.metadata))),
+        None => (None, None),
+    };
     let running_audio = profile.audio.clone();
-    let mut engine = match if launch.safe_mode {engine::Engine::start_safe()} else {engine::Engine::start_with_settings(&profile)} {
+    let mut engine = match if launch.safe_mode {engine::Engine::start_safe()} else {engine::Engine::start_with_session(&profile, initial_engine)} {
         Ok(engine) => engine,
         Err(error) => {
             if let Some(support)=&support {
@@ -118,7 +134,7 @@ fn main() -> anyhow::Result<()> {
             if launch.startup_check {anyhow::bail!("safe startup project service could not be initialized");}
             let retry = preferences::recovery::show(&format!("Could not open the requested setup: {error:#}. Saved preferences were not changed."), false)?;
             drop(_instance);
-            return preferences::recovery::restart(retry);
+            return preferences::recovery::restart(retry, launch);
         }
     };
     if let Some(support)=&support {engine.cmd.attach_support(support.port.clone());}
@@ -159,6 +175,7 @@ fn main() -> anyhow::Result<()> {
         Box::new(|cc| {
             let mut app = ui::App::new(cc, engine);
             app.initialize_preferences(&cc.egui_ctx, startup, running_audio);
+            if let Some((view, metadata)) = initial_view { app.initialize_startup_session(&cc.egui_ctx, view, metadata); }
             app.initialize_support(support_client,support_root,restart.clone());
             Ok(Box::new(app))
         }),

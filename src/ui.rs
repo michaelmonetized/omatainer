@@ -40,6 +40,8 @@ mod portability;
 mod midi_routing;
 mod play_time;
 mod project;
+mod templates;
+pub(crate) use templates::startup_session;
 mod undo;
 mod audio_status;
 mod diagnostics;
@@ -109,6 +111,7 @@ pub struct App {
     licenses: licenses::Licenses,
     engine: Engine,
     project: project::Projects,
+    templates: templates::Templates,
     undo_history: undo::History,
     theme: Theme,
     deck_selection: deck_selection::Selection,
@@ -220,6 +223,7 @@ impl App {
             licenses: licenses::Licenses::default(),
             engine,
             project,
+            templates: templates::Templates::default(),
             undo_history: undo::History::default(),
             theme,
             deck_selection: deck_selection::Selection::new(snap.selected_deck_request),
@@ -680,6 +684,7 @@ impl App {
         self.timing.poll(&self.engine);
         self.poll_dependencies();
         self.poll_portability();
+        self.poll_templates();
         self.poll_sampler_editor();
         self.poll_library_analysis();
         self.poll_library_tags();
@@ -708,6 +713,7 @@ impl App {
         self.timing_ui(ctx);
         self.dependencies_ui(ctx);
         self.portability_ui(ctx);
+        self.templates_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.library_tags_ui(ctx);
