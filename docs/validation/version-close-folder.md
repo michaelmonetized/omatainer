@@ -40,3 +40,15 @@ tests pass on this revision (nine version and five portable storage), together
 with eight license/package fixtures. The earlier close/import qualification
 above remains retained. Updated debug test SHA: `fc31158d0f9f39ed3de219e89554ee969847bfcfc4865aa994c6b67510d752c6`.
 Logs: `/home/michael/Projects/omatainer-work/version-folder-exchange-{tests,versions,portable,package}.log`.
+
+## Shared close and safe-mode restart
+
+Version/import cancellation and settling now guards the shared Close request,
+its final project-close preparation and the safe-mode Restart normally action.
+Restart intent is set only after the worker gate succeeds. Eighteen focused
+tests pass (ten version, six native import and two existing close regressions),
+plus eight package fixtures. The new test uses the actual safe audio owner,
+pauses a snapshot, clicks Restart normally through the native accessibility
+request, verifies cancellation without close preparation, and confirms no index
+was published after the worker settles. Debug test SHA: `ae664bb7ae207911d0dfa782931c1521f3791f88af60a0a1f13f2d5394c6284a`.
+Logs: `/home/michael/Projects/omatainer-work/version-restart-{tests,versions,import,close,package}.log`.

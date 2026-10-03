@@ -405,3 +405,29 @@ fn native_close_cancels_and_waits_for_snapshot_branch_and_prune_workers() {
     }
     assert!(std::fs::read_dir(root.join("audio")).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().contains(".tmp")));
 }
+
+#[test]
+fn safe_mode_restart_uses_the_same_worker_close_gate_as_the_viewport() {
+    let files=Files::new();
+    let engine=Engine::start_safe().unwrap();
+    let mut app=App::with_loader(engine,Theme::default(),None);
+    app.library_metadata=library_metadata::Metadata::with_hook(files.0.join("catalog.json"),||{});
+    app.project_versions.root=files.0.join("restart-versions").display().to_string();
+    app.project_versions.worker=Some(Worker::start(app.engine.project.clone()).unwrap());
+    let (entered,resume)=app.project_versions.worker.as_ref().unwrap().pause_next();
+    let view=app.project_view();let identities=app.project_watch_identities();
+    app.project_versions.start(&app.engine,Task::Snapshot {name:"Cancelled by restart".into(),notes:String::new(),view,identities});
+    entered.recv_timeout(Duration::from_secs(2)).unwrap();
+    let cancel=app.project_versions.active.as_ref().unwrap().clone();
+    let ctx=egui::Context::default();ctx.enable_accesskit();
+    let out=ctx.run(egui::RawInput {screen_rect:Some(Rect::from_min_size(Pos2::ZERO,Vec2::new(1800.0,1600.0))),..Default::default()},|ctx|app.update_frame(ctx));
+    let target=out.platform_output.accesskit_update.unwrap().nodes.into_iter().find(|(_,n)|n.label()==Some("Restart normally")).unwrap().0;
+    let _out=ctx.run(egui::RawInput {screen_rect:Some(Rect::from_min_size(Pos2::ZERO,Vec2::new(1800.0,1600.0))),events:vec![egui::Event::AccessKitActionRequest(ActionRequest{target,action:Action::Click,data:None})],..Default::default()},|ctx|app.update_frame(ctx));
+    assert!(cancel.load(Ordering::Acquire));
+    assert!(!app.project_pending_for_test());
+    assert!(app.project_result_for_test().1.unwrap().contains("named version work settles"));
+    resume.send(()).unwrap();
+    let end=Instant::now()+Duration::from_secs(3);
+    while app.project_versions.busy() {app.project_versions.poll();assert!(Instant::now()<end);std::thread::sleep(Duration::from_millis(1));}
+    assert!(!files.0.join("restart-versions/versions.omat").exists());
+}
