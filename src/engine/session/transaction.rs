@@ -5,6 +5,9 @@ use crate::engine::{
     Command, RtEngine,
 };
 mod structural;
+mod import;
+use import::Import;
+pub(crate) use import::Selection as ImportSelection;
 #[cfg(test)]
 mod tests;
 
@@ -59,6 +62,7 @@ pub(crate) struct Inverse {
 
 #[derive(Clone, Debug)]
 pub(super) enum Content {
+    Import(Import),
     Track {
         slot: usize,
         node: Option<Box<crate::engine::TrackRt>>,
@@ -191,6 +195,7 @@ impl Inverse {
                 .sum::<usize>() as i128
         };
         match &self.content {
+            Some(Content::Import(import)) => import.processor_delta(rt),
             Some(Content::Track { slot, node }) => {
                 node.as_ref().map_or(0, |track| bytes(&track.fx))
                     - rt.tracks.get(*slot).map_or(0, |track| bytes(&track.fx))
@@ -226,6 +231,7 @@ impl Inverse {
         self.layout.namespace == rt.session.namespace
             && rt.session.generation < u64::MAX
             && match &self.content {
+                Some(Content::Import(import)) => import.valid(rt),
                 None => {
                     self.layout.tracks.len() == rt.tracks.len()
                         && self.layout.scenes.len() == rt.scene_fx.len()
@@ -398,6 +404,7 @@ impl Inverse {
 impl Content {
     fn swap(&mut self, rt: &mut RtEngine, next: &Layout) {
         match self {
+            Self::Import(import) => import.swap(rt),
             Self::Track { slot, node } => {
                 if *slot == rt.tracks.len() {
                     rt.tracks.push(node.take().unwrap());
@@ -431,6 +438,7 @@ impl Content {
 impl Inverse {
     pub(crate) fn reserve(&mut self, rt: &RtEngine) {
         self.reserved_heap = match &self.content {
+            Some(Content::Import(import)) => import.bytes(),
             None => 0,
             Some(Content::Track { slot, node }) => {
                 node.as_ref().map_or(0, |node| node.retained_bytes())
@@ -483,6 +491,7 @@ impl Inverse {
     pub(crate) fn prepare_rate(&mut self, sr: f32) {
         if let Some(content) = &mut self.content {
             match content {
+                Content::Import(import) => import.prepare_rate(sr),
                 Content::Track {
                     node: Some(node), ..
                 } => {

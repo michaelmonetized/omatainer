@@ -7,6 +7,7 @@ pub(crate) use scoped::Scoped;
 mod transaction;
 pub(crate) use registry::{Reference, Registry};
 pub(crate) use transaction::{Structure, Action, Inverse, Request};
+pub(crate) use transaction::ImportSelection;
 
 pub const MAX_TRACKS: usize = 128;
 pub const MAX_SCENES: usize = 512;

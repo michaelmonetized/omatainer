@@ -3,7 +3,7 @@ use super::*;
 use crate::engine::{fx, midi_edit::NoteId, project, Clip, Sample};
 use std::sync::Arc;
 
-fn empty_cell() -> project::SavedClip {
+pub(super) fn empty_cell() -> project::SavedClip {
     project::SavedClip {
         lanes: None,
         region: None,
@@ -187,6 +187,7 @@ impl Request {
             .map(|id| fx::FxSlot::required_storage(*id, rate as f32))
             .sum();
         let reserved_heap = match &content {
+            Content::Import(import) => import.bytes(),
             Content::Track { node, .. } => node.as_ref().unwrap().retained_bytes(),
             Content::Scene { cells, rack, .. } => {
                 cells.capacity() * std::mem::size_of::<Option<Clip>>()
