@@ -108,3 +108,55 @@ fn text_and_target_floors_hold_across_supported_scales_and_fonts() {
         }
     }
 }
+
+#[test]
+fn focused_text_edit_uses_a_visible_cursor_on_the_actual_contrast_background() {
+    for contrast in [Contrast::Dark, Contrast::Light] {
+        let mut appearance = Profile::defaults(Path::new("/tmp")).appearance;
+        appearance.contrast = contrast;
+        let mut theme = Theme::default();
+        theme.configure_display(&appearance);
+        let ctx = egui::Context::default();
+        theme.apply(&ctx);
+        let visuals = ctx.style().visuals.clone();
+        let defaults = if contrast == Contrast::Light {
+            Visuals::light()
+        } else {
+            Visuals::dark()
+        };
+        assert_eq!(visuals.window_shadow, defaults.window_shadow);
+        assert_eq!(visuals.popup_shadow, defaults.popup_shadow);
+        assert_eq!(
+            visuals.text_alpha_from_coverage,
+            defaults.text_alpha_from_coverage
+        );
+        assert!(
+            display::contrast_ratio(visuals.text_cursor.stroke.color, visuals.extreme_bg_color)
+                >= 3.0
+        );
+        let mut text = "Focused native text".to_owned();
+        let mut output = None;
+        for frame in 0..3 {
+            output = Some(ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(600.0, 400.0),
+                    )),
+                    time: Some(frame as f64 * 0.02),
+                    focused: true,
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        let response = ui.add(egui::TextEdit::singleline(&mut text));
+                        response.request_focus();
+                    });
+                },
+            ));
+        }
+        let output = output.unwrap();
+        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::LineSegment { stroke, .. } if *stroke == visuals.text_cursor.stroke)), "{contrast:?}: native cursor was not painted");
+        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Rect(rect) if rect.fill == visuals.extreme_bg_color)));
+    }
+}

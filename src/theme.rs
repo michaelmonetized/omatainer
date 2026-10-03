@@ -136,7 +136,7 @@ impl Theme {
                 window_corner_radius: CornerRadius::same(0),
                 window_stroke: st(if self.contrast == Contrast::Theme { 0.0 } else { 1.0 }, self.muted),
                 menu_corner_radius: CornerRadius::same(self.rounding as u8),
-                ..Visuals::dark()
+                ..if self.contrast == Contrast::Light { Visuals::light() } else { Visuals::dark() }
             },
             ..Style::default()
         };
