@@ -1,6 +1,8 @@
 //! Show protection is shared by every producer and checked again by the
 //! renderer. No callback lock, allocation, driver call, or worker wait lives here.
 use super::Command;
+mod deck_load;
+pub(crate) use deck_load::Approval as DeckApproval;
 use serde::Serialize;
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -33,7 +35,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Protected => "Performance protection: this destructive action was not applied. Leave performance mode deliberately to edit it.",
-            Self::PlayingDeck => "Performance protection: pause and release the target deck before loading or unloading it.",
+            Self::PlayingDeck => "Deck load protection: pause and release the target until quiet, or review a deliberate replacement.",
             Self::Recovery => "Recovery is latched. Release physical inputs, then explicitly acknowledge recovery. Playback will remain stopped.",
             Self::Changing => "A project/device change or irreversible background commit is already pending. Finish or cancel it before changing performance protection.",
             Self::PendingStop => "The renderer has not completed the safety stop yet. Recovery cannot be acknowledged early.",
@@ -52,6 +54,7 @@ pub enum Safety {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Status {
+    pub deck_load_locked: [bool; super::DECKS],
     pub protected: bool,
     pub recovery: bool,
     pub stopped: bool,
@@ -75,6 +78,7 @@ struct Shared {
     applied: AtomicU64,
     recover: AtomicU64,
     deck_activity: AtomicU8,
+    deck_load: [AtomicU64; super::DECKS],
     output: AtomicU8,
     observed: AtomicU64,
     quiet: AtomicU64,
@@ -97,6 +101,7 @@ impl Default for Handle {
             observed: AtomicU64::new(0),
             quiet: AtomicU64::new(0),
             deck_activity: AtomicU8::new(0),
+            deck_load: std::array::from_fn(|_| AtomicU64::new(0)),
             rejected: AtomicU64::new(0),
             last_rejection: AtomicU8::new(0),
             work: std::array::from_fn(|_| Arc::new(AtomicBool::new(false))),
@@ -187,6 +192,7 @@ impl Handle {
     pub fn status(&self) -> Status {
         let state = self.0.admission.load(Ordering::Acquire);
         Status {
+            deck_load_locked: std::array::from_fn(|deck| self.deck_load_word(deck) & 1 != 0),
             protected: state & PROTECTED != 0,
             recovery: state & RECOVERY != 0,
             stopped: state & STOPPED != 0,
@@ -447,17 +453,19 @@ impl Handle {
         if state & RECOVERY != 0 && !recovery_safe(command) {
             return Err(Error::Recovery);
         }
-        if state & PROTECTED == 0 {
-            return Ok(());
-        }
-        if destructive(command) {
+        if state & PROTECTED != 0 && destructive(command) {
             return Err(Error::Protected);
         }
         if let Some(deck) = media_target(command) {
-            if deck < super::DECKS
+            let approval = deck_load::approval(command);
+            if approval.is_some_and(|approval| !approval.valid(self, deck)) {
+                return Err(Error::PlayingDeck);
+            }
+            if (state & PROTECTED != 0 || self.deck_load_word(deck) & 1 != 0)
                 && activity.unwrap_or_else(|| self.0.deck_activity.load(Ordering::Acquire))
                     & (1 << deck)
                     != 0
+                && approval.is_none()
             {
                 return Err(Error::PlayingDeck);
             }
@@ -709,7 +717,7 @@ pub(super) fn reject_receipt(command: &Command) {
 impl super::RtEngine {
     pub(super) fn deck_activity(&self) -> u8 {
         self.decks.iter().enumerate().fold(0, |bits, (i, deck)| {
-            bits | (u8::from(deck.playing || deck.touching) << i)
+            bits | (u8::from(deck.playing || deck.touching || deck.last_output.iter().any(|sample| sample.abs() > 0.0001)) << i)
         })
     }
     pub(super) fn performance_tick(&mut self) {

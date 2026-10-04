@@ -1710,11 +1710,35 @@ Scroll to controls outside the viewport. Focused controls reveal themselves; arr
 
 Workflow: Audio setup.
 
+### Lock a live deck
+
+Per-deck session lock
+
+Lock playing, touched or audibly fading decks independently of performance mode. Mouse, keyboard, dropped-file, controller and IPC replacement/eject requests use the same guard. A quiet stopped deck remains available. Locks survive project and output changes within this app session; restarting starts unlocked. Performance mode protects live decks even when their explicit lock is off.
+
+Workflow: Prepare a DJ deck.
+
+### Review a deck replacement
+
+The reviewed deck and track
+
+Review load override captures the selected library item and current deck source. Confirm starts preparation while old audio keeps playing. A missing file, cancelled decode, changed source, lock choice or safety state refuses application. Review eject identifies the exact source and reports queued separately from renderer-completed. MIDI and IPC requests cannot supply a reviewed override; use this deliberate app decision.
+
+Workflow: Prepare a DJ deck.
+
+### Keep current deck audio
+
+Cancel an unconfirmed review
+
+Close this review without submitting a replacement or eject, cancelling an existing decoder or changing current playback. An already confirmed load has its normal pending/loaded/refused receipt; changing safety or the source invalidates its reviewed approval.
+
+Workflow: Prepare a DJ deck.
+
 ### Performance protection
 
 Session safety state
 
-Protect playing/touched deck loads, destructive edits and project/device changes centrally. Mixing, composing, recording, stopped-deck loads and Save remain available. Leaving requires a deliberate decision; opening a project never disables protection.
+Protect playing/touched/audibly fading deck loads, destructive edits and project/device changes centrally. Mixing, composing, recording, quiet stopped-deck loads and Save remain available. Leaving requires a deliberate decision; opening a project never disables protection. Explicit deck locks remain independent; a reviewed source-bound override can replace only its confirmed deck.
 
 Workflow: Stop and recover.
 

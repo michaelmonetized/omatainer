@@ -200,6 +200,7 @@ impl Prepared {
     pub(crate) fn into_offline(self) -> Box<RtEngine> { self.rt }
 
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
+        for deck in 0..DECKS { rt.performance.deck_media_changed(deck); }
         rt.routing_pipe.recorder.invalidate();
         rt.transport_epoch = rt.transport_epoch.wrapping_add(1);
         rt.midi_routing.reset_outputs();

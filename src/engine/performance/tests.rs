@@ -50,6 +50,8 @@ fn protected_loads_are_checked_again_on_renderer_without_dropping_payloads() {
     engine.send(Command::Master(0.7)).unwrap();
     engine.send(Command::DeckPlay { deck: 0 }).unwrap();
     tick(&mut rt);
+    assert!(matches!(engine.send(Command::LoadBuiltin { deck: 0, stem: 1 }), Err(crate::engine::SubmissionError::Performance(Error::PlayingDeck))));
+    tick(&mut rt);
     let receipt = load_receipt::Receipt::new();
     engine
         .send(Command::DeckLoadRequested {
@@ -482,4 +484,113 @@ fn manual_grid_edits_are_destructive_and_queued_protected_requests_acknowledge_r
     assert_eq!(test_alloc::measure(|| tick(&mut rt)), test_alloc::Counts::default());
     assert_eq!(ack.state(), GridEditState::Applied);
     assert_eq!(rt.decks[0].grid, Some(grid));
+}
+
+#[test]
+fn explicit_deck_lock_guards_studio_loads_and_ejects_without_callback_heap_or_audio_changes() {
+    let (engine, mut rt) = fixture();
+    rt.apply(Command::Stop);
+    rt.legacy_gain_math = true;
+    rt.xfader = 0.0;
+    rt.master = 1.0;
+    rt.apply(Command::DeckAudio { deck: 0, audio: Arc::new(Sample { name: "continuous source".into(), path: String::new(), sr: 48000, ch: 2,
+        data: vec![0.25; 65536], peaks: Arc::new(Vec::new()), bpm: 120.0 }) });
+    rt.apply(Command::DeckPlay { deck: 0 });
+    tick(&mut rt);
+    let original = rt.decks[0].audio.clone().unwrap();
+    let position = rt.decks[0].pos;
+    engine.cmd.performance().set_deck_load_lock(0, true).unwrap();
+    assert!(!engine.cmd.performance().protected());
+    let receipt = load_receipt::Receipt::new();
+    for command in [Command::DeckAudio { deck: 0, audio: original.clone() },
+        Command::DeckUnload { deck: 0 }, Command::LoadBuiltin { deck: 0, stem: 1 },
+        Command::DeckLoadSelected { deck: 0 }, Command::DeckLoadRequested { deck: 0,
+            media: load_receipt::Media::Builtin(1), receipt: receipt.clone() }] {
+        assert!(matches!(engine.send(command), Err(crate::engine::SubmissionError::Performance(Error::PlayingDeck))));
+    }
+    let queued = load_receipt::Receipt::new();
+    let command = Command::DeckLoadRequested { deck: 0, media: load_receipt::Media::Builtin(1), receipt: queued.clone() };
+    let counts = test_alloc::measure(|| rt.apply(command));
+    assert_eq!((counts.allocations, counts.frees), (0, 0));
+    assert_eq!(queued.state(), load_receipt::State::Protected);
+    assert!(Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &original));
+    assert!(rt.decks[0].playing);
+    let mut output = [0.0; 128];
+    rt.process(&mut output);
+    assert!(output.iter().all(|sample| sample.is_finite() && sample.abs() > 0.01));
+    assert!(rt.decks[0].pos > position);
+}
+
+#[test]
+fn reviewed_override_belongs_to_its_owner_source_and_safety_generation() {
+    let (engine, mut rt) = fixture();
+    rt.apply(Command::DeckPlay { deck: 0 }); tick(&mut rt);
+    let handle = engine.cmd.performance();
+    handle.set_deck_load_lock(0, true).unwrap();
+    let review = handle.approve_deck_load(0, handle.deck_load_word(0)).unwrap();
+    let foreign = Handle::default();
+    assert!(!review.valid(&foreign, 0));
+    let receipt = load_receipt::Receipt::new().with_deck_approval(review.clone());
+    engine.send(Command::DeckLoadRequested { deck: 0, media: load_receipt::Media::Builtin(1), receipt: receipt.clone() }).unwrap();
+    tick(&mut rt);
+    assert_eq!(receipt.state(), load_receipt::State::Current);
+    let stale = load_receipt::Receipt::new().with_deck_approval(review);
+    assert!(matches!(engine.send(Command::DeckLoadRequested { deck: 0, media: load_receipt::Media::Builtin(0), receipt: stale }),
+        Err(crate::engine::SubmissionError::Performance(Error::PlayingDeck))));
+    let review = handle.approve_deck_load(0, handle.deck_load_word(0)).unwrap();
+    let wrong = load_receipt::Receipt::new().with_deck_approval(review.clone());
+    assert!(matches!(engine.send(Command::DeckLoadRequested { deck: 1, media: load_receipt::Media::Builtin(0), receipt: wrong }),
+        Err(crate::engine::SubmissionError::Performance(Error::PlayingDeck))));
+    handle.request_safety(Safety::Stop);
+    let stale = load_receipt::Receipt::new().with_deck_approval(review);
+    assert!(handle.check(&Command::DeckLoadRequested { deck: 0, media: load_receipt::Media::Unload, receipt: stale }, None).is_err());
+}
+
+#[test]
+fn lock_change_after_receipt_claim_refuses_a_reviewed_renderer_mutation() {
+    let (engine, mut rt) = fixture();
+    rt.apply(Command::DeckPlay { deck: 0 }); tick(&mut rt);
+    let original = rt.decks[0].audio.clone().unwrap();
+    let handle = engine.cmd.performance().clone();
+    handle.set_deck_load_lock(0, true).unwrap();
+    let approval = handle.approve_deck_load(0, handle.deck_load_word(0)).unwrap();
+    let receipt = load_receipt::Receipt::new().with_deck_approval(approval);
+    rt.load_test_hooks[1] = Some(Box::new(move || { handle.set_deck_load_lock(0, false).unwrap(); }));
+    rt.apply(Command::DeckLoadRequested { deck: 0, media: load_receipt::Media::Builtin(1), receipt: receipt.clone() });
+    assert_eq!(receipt.state(), load_receipt::State::Protected);
+    assert!(Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &original));
+    assert!(rt.decks[0].playing);
+}
+
+#[test]
+fn lock_entering_after_ordinary_receipt_claim_preserves_the_live_source() {
+    let (engine, mut rt) = fixture();
+    rt.apply(Command::DeckPlay { deck: 0 }); tick(&mut rt);
+    let original = rt.decks[0].audio.clone().unwrap();
+    let handle = engine.cmd.performance().clone();
+    let receipt = load_receipt::Receipt::new();
+    rt.load_test_hooks[1] = Some(Box::new(move || { handle.set_deck_load_lock(0, true).unwrap(); }));
+    rt.apply(Command::DeckLoadRequested { deck: 0, media: load_receipt::Media::Builtin(1), receipt: receipt.clone() });
+    assert_eq!(receipt.state(), load_receipt::State::Protected);
+    assert!(Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &original));
+    assert!(rt.decks[0].playing);
+}
+
+#[test]
+fn studio_lock_blocks_media_history_replay_until_the_deck_is_quiet() {
+    let (engine, mut rt) = fixture();
+    let initial = rt.decks[0].audio.clone().unwrap();
+    rt.apply(Command::LoadBuiltin { deck: 0, stem: 1 });
+    let current = rt.decks[0].audio.clone().unwrap();
+    assert!(!Arc::ptr_eq(&initial, &current));
+    rt.apply(Command::DeckPlay { deck: 0 }); tick(&mut rt);
+    engine.cmd.performance().set_deck_load_lock(0, true).unwrap();
+    let cursor = engine.undo.view().cursor;
+    rt.apply(Command::Undo);
+    assert_eq!(engine.undo.view().cursor, cursor);
+    assert!(Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &current));
+    rt.apply(Command::DeckPlay { deck: 0 }); tick(&mut rt); tick(&mut rt);
+    rt.apply(Command::Undo);
+    assert!(Arc::ptr_eq(rt.decks[0].audio.as_ref().unwrap(), &initial));
+    assert!(engine.cmd.performance().status().deck_load_locked[0]);
 }

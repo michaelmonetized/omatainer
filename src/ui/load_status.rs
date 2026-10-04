@@ -3,6 +3,7 @@ use crate::engine::load_receipt::{Receipt, State};
 use crate::engine::media_load::LoadToken;
 
 pub(super) struct LoadState {
+    pub approval: Option<crate::engine::performance::DeckApproval>,
     pub selection: Option<Selection>,
     pub phase: Phase,
     pub token: Option<LoadToken>,
@@ -23,6 +24,7 @@ pub(super) enum Phase {
 impl LoadState {
     pub fn new(selection: Option<Selection>, phase: Phase) -> Self {
         Self {
+            approval: None,
             selection,
             phase,
             token: None,
@@ -101,7 +103,7 @@ impl App {
                     }
                     State::Current if !matches!(load.phase, Phase::Loaded) => Some(Phase::Loaded),
                     State::Protected if !matches!(load.phase, Phase::Failed(_)) => Some(Phase::Failed(
-                        "Performance protection refused this load at the renderer; previous media is preserved. Pause/release this deck, then Retry.".into(),
+                        "Deck protection refused this load at the renderer; current media is preserved. Wait for a quiet paused deck, or review a deliberate replacement.".into(),
                     )),
                     State::Unavailable if !matches!(load.phase, Phase::Failed(_)) => Some(
                         Phase::Failed("built-in media is unavailable; media was not loaded".into()),
