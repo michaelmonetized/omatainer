@@ -3,6 +3,20 @@ use crate::engine::{dsp::Sample, test_alloc, Command, Engine};
 use std::sync::Arc;
 
 #[test]
+fn local_advancement_retains_small_clock_steps_after_large_pickup_offsets() {
+    let grid = Grid::new(-1e10, 400.0).unwrap().set_anchor(0.0, 120.0).unwrap().set_anchor(0.5, 90.0).unwrap();
+    let step = 2.0 / 384_000.0;
+    let start = 0.0;
+    let local = grid.advance(start, step).unwrap();
+    assert!((local - step * 0.5).abs() < 1e-15);
+    let rounded = grid.seconds_at(grid.beat_at(start).unwrap() + step).unwrap();
+    assert!((rounded - local).abs() > 1e-7, "fixture must reproduce absolute-beat rounding");
+    assert_eq!(grid.beats_between(0.0, 0.5), Some(1.0));
+    assert!((grid.advance(0.25, 1.25).unwrap() - 1.0).abs() < 1e-12);
+    assert!((grid.beats_between(0.25, 1.0).unwrap() - 1.25).abs() < 1e-12);
+}
+
+#[test]
 fn maximum_anchor_maps_render_full_callbacks_without_heap_work() {
     let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
     for deck in 0..2 {

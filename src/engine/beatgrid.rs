@@ -121,6 +121,38 @@ impl Grid {
         (seconds.is_finite() && seconds.abs() <= POSITION_LIMIT).then_some(seconds)
     }
     pub fn nearest(&self, seconds: f64) -> Option<f64> { self.seconds_at(self.beat_at(seconds)?.round()) }
+    /// Advance through local source intervals without rounding a large absolute beat count.
+    /// Takes source seconds and nonnegative beats; returns the new source position across all crossed anchors.
+    pub fn advance(&self, mut seconds: f64, mut beats: f64) -> Option<f64> {
+        if !seconds.is_finite() || seconds.abs() > POSITION_LIMIT || !beats.is_finite() || beats < 0.0 { return None; }
+        let mut index = self.anchors().partition_point(|anchor| anchor.seconds <= seconds);
+        let mut period = if index == 0 { self.seconds_per_beat } else { 60.0 / self.anchors.values[index - 1].bpm };
+        while let Some(anchor) = self.anchors().get(index) {
+            let span = (anchor.seconds - seconds) / period;
+            if beats < span { break; }
+            beats -= span;
+            seconds = anchor.seconds;
+            period = 60.0 / anchor.bpm;
+            index += 1;
+        }
+        seconds += beats * period;
+        (seconds.is_finite() && seconds.abs() <= POSITION_LIMIT).then_some(seconds)
+    }
+    /// Measure beats over local source intervals.
+    /// Takes increasing finite source positions; returns their musical span without subtracting large absolute beat counts.
+    pub fn beats_between(&self, mut start: f64, end: f64) -> Option<f64> {
+        if !start.is_finite() || !end.is_finite() || start.abs() > POSITION_LIMIT || end.abs() > POSITION_LIMIT || end < start { return None; }
+        let mut index = self.anchors().partition_point(|anchor| anchor.seconds <= start);
+        let mut period = if index == 0 { self.seconds_per_beat } else { 60.0 / self.anchors.values[index - 1].bpm };
+        let mut beats = 0.0;
+        while let Some(anchor) = self.anchors().get(index).filter(|anchor| anchor.seconds < end) {
+            beats += (anchor.seconds - start) / period;
+            start = anchor.seconds;
+            period = 60.0 / anchor.bpm;
+            index += 1;
+        }
+        Some(beats + (end - start) / period)
+    }
     /// Insert or update an exact local tempo anchor.
     /// Takes source seconds and BPM; returns a bounded ordered map with recomputed continuous beat boundaries.
     pub fn set_anchor(self, seconds: f64, bpm: f64) -> Result<Self, &'static str> {
@@ -324,8 +356,15 @@ impl super::DeckRt {
     /// Measure a musical loop across local tempo changes.
     /// Takes a source start, beat duration and fallback clock; returns the corresponding source-frame span.
     pub(super) fn grid_span(&self, start: f64, beats: f64, sr: f32, bpm: f32) -> f64 {
-        if self.grid.is_some() { self.grid_position(self.grid_beat(start, sr, bpm) + beats, sr, bpm) - start }
+        if let (Some(grid), Some(audio)) = (&self.grid, &self.audio) { grid.advance(start / audio.sr as f64, beats).map_or(0.0, |seconds| seconds * audio.sr as f64 - start) }
         else { beats * self.grid_geometry(sr, bpm).1 }
+    }
+    /// Measure a source-frame range in local beats.
+    /// Takes increasing source frames and a fallback clock; returns the musical span without subtracting absolute coordinates.
+    pub(super) fn grid_beats_between(&self, start: f64, end: f64, sr: f32, bpm: f32) -> f64 {
+        if let (Some(grid), Some(audio)) = (&self.grid, &self.audio) {
+            grid.beats_between(start / audio.sr as f64, end / audio.sr as f64).unwrap_or(0.0)
+        } else { (end - start) / self.grid_geometry(sr, bpm).1 }
     }
 }
 

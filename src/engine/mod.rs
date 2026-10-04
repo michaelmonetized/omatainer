@@ -1799,7 +1799,7 @@ impl RtEngine {
                 let source_sr = d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr);
                 if mapped_sync {
                     let grid = d.grid.as_ref().unwrap();
-                    let next = grid.beat_at(d.pos / source_sr).and_then(|beat| grid.seconds_at(beat + d.sync_bpm as f64 / (60.0 * sr)));
+                    let next = grid.advance(d.pos / source_sr, d.sync_bpm as f64 / (60.0 * sr));
                     if let Some(seconds) = next {
                         d.pos = seconds * source_sr;
                         d.rate = ((d.pos - before_position) * sr / source_sr) as f32;
@@ -1819,10 +1819,11 @@ impl RtEngine {
                     position = if mapped_sync {
                         let source_sr = d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr);
                         let grid = d.grid.as_ref().unwrap();
-                        let start = grid.beat_at(d.loop_start / source_sr).unwrap();
-                        let end = grid.beat_at((d.loop_start + d.loop_len) / source_sr).unwrap();
-                        let beat = grid.beat_at(position / source_sr).unwrap();
-                        grid.seconds_at(start + (beat - start).rem_euclid(end - start)).unwrap() * source_sr
+                        let start = d.loop_start / source_sr;
+                        let end = (d.loop_start + d.loop_len) / source_sr;
+                        let span = grid.beats_between(start, end).unwrap();
+                        let overshoot = grid.beats_between(end, position / source_sr).unwrap();
+                        grid.advance(start, overshoot.rem_euclid(span)).unwrap() * source_sr
                     } else { d.loop_start + (position - d.loop_start) % d.loop_len };
                 }
                 if position < d.loop_start {
@@ -2601,14 +2602,14 @@ impl RtEngine {
             Command::DeckLoopDouble { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
-                    d.loop_len = if d.grid.is_some() { d.grid_span(d.loop_start, 2.0 * (d.grid_beat(d.loop_start + d.loop_len, self.sr, self.bpm) - d.grid_beat(d.loop_start, self.sr, self.bpm)), self.sr, self.bpm) } else { d.loop_len * 2.0 };
+                    d.loop_len = if d.grid.is_some() { d.grid_span(d.loop_start, 2.0 * d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm), self.sr, self.bpm) } else { d.loop_len * 2.0 };
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckLoopHalf { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
-                    d.loop_len = if d.grid.is_some() { d.grid_span(d.loop_start, 0.5 * (d.grid_beat(d.loop_start + d.loop_len, self.sr, self.bpm) - d.grid_beat(d.loop_start, self.sr, self.bpm)), self.sr, self.bpm).max(64.0) } else { (d.loop_len * 0.5).max(64.0) };
+                    d.loop_len = if d.grid.is_some() { d.grid_span(d.loop_start, 0.5 * d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm), self.sr, self.bpm).max(64.0) } else { (d.loop_len * 0.5).max(64.0) };
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
