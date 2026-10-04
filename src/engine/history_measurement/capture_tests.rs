@@ -200,3 +200,48 @@ fn prepare_monitor_rejects_paused_tails_partial_windows_and_emergency_mute() {
     assert!(handle.digital_play(0).is_none());
     assert!(receiver.is_empty());
 }
+
+#[test]
+fn explicit_routing_retires_stereo_measurements_and_refuses_reusing_their_evidence() {
+    let (mut callback, _receiver, _) = callback(2, false, 1.0, 0.0, false, 0.0);
+    let mut block = [0.0_f32; 256];
+    for _ in 0..8 { callback.render(&mut block); }
+    assert!(callback.renderer_mut_for_test().history_measurement.as_mut().unwrap().start());
+    callback.render(&mut block);
+    let rt = callback.renderer_mut_for_test();
+    rt.routing = Some(Box::new(crate::engine::audio::routing::prepared::Prepared::new(
+        std::sync::Arc::new(crate::engine::audio::routing::model::Model::default()), &rt.session).unwrap()));
+    callback.render(&mut block);
+    let history = callback.renderer_mut_for_test().history_measurement.as_mut().unwrap();
+    assert!(history.incomplete);
+    assert!(history.end());
+    assert!(!history.start());
+    callback.renderer_mut_for_test().routing = None;
+    callback.render(&mut block);
+    assert!(callback.renderer_mut_for_test().history_measurement.as_mut().unwrap().start());
+}
+
+#[test]
+fn custom_routes_cannot_credit_prepare_removal_and_measurement_recovers_on_default_route() {
+    let (mut callback, receiver, _) = callback(2, false, 1.0, 0.0, false, 0.0);
+    let handle = callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
+    handle.set_prepare_monitor(true).unwrap();
+    let rt = callback.renderer_mut_for_test();
+    rt.routing = Some(Box::new(crate::engine::audio::routing::prepared::Prepared::new(
+        std::sync::Arc::new(crate::engine::audio::routing::model::Model::default()), &rt.session).unwrap()));
+    for _ in 0..8 { callback.render(&mut [0.0_f32; 256]); }
+    assert!(!handle.can_measure());
+    assert!(handle.digital_play(0).is_none());
+    assert!(receiver.is_empty());
+    callback.renderer_mut_for_test().routing = None;
+    for _ in 0..8 { callback.render(&mut [0.0_f32; 256]); }
+    assert!(handle.can_measure());
+    assert!(handle.digital_play(0).is_some());
+    let rt = callback.renderer_mut_for_test();
+    rt.routing = Some(Box::new(crate::engine::audio::routing::prepared::Prepared::new(
+        std::sync::Arc::new(crate::engine::audio::routing::model::Model::default()), &rt.session).unwrap()));
+    callback.render(&mut [0.0_f32; 256]);
+    assert!(!handle.can_measure());
+    assert!(handle.digital_play(0).is_none(), "old stereo evidence cannot escape the route guard");
+    assert!(receiver.is_empty());
+}

@@ -401,7 +401,7 @@ impl App {
             self.library_prepare.message = error.into();
             return;
         }
-        if !enabled || !self.prepare_available() {
+        if !enabled || !handle.can_measure() || !self.prepare_available() {
             return;
         }
         let events = [handle.digital_play(0), handle.digital_play(1)];
@@ -459,6 +459,9 @@ impl App {
                         let response = ui.checkbox(&mut self.library_prepare.retain,tr!("Retain after play"));
                         help::annotate(ui,&response,HelpControl::PrepareQueue);
                     });
+                    if !self.library_prepare.retain && !self.engine.performance_history.as_ref().is_some_and(|handle|handle.can_measure()) {
+                        ui.label(tr!("Automatic removal unavailable for this output route; queued tracks retained."));
+                    }
                     ui.label(tr!("Remove after play requires a complete 10 ms window of digital main output while playing. Loading and paused preview retain the track."));
                 });
                 let revision = self.library_prepare.revision;

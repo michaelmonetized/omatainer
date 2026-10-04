@@ -48,6 +48,7 @@ pub(crate) struct Request {
 #[derive(Clone, Debug)]
 pub(crate) struct Inverse {
     layout: Layout,
+    routing: Option<Option<Box<crate::engine::audio::routing::prepared::Prepared>>>,
     track_name: Option<(usize, String)>,
     focus: Option<Focus>,
     bus_mask: u128,
@@ -102,6 +103,22 @@ struct Focus {
 }
 
 impl Request {
+    /// Prepare an atomic routing edit.
+    /// Takes a captured project, output rate and optional saved graph; returns a guarded, undoable edit and acknowledgment.
+    pub(crate) fn routing(captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>) -> Result<(Self, Ack), String> {
+        let layout = captured.state.session.as_ref().ok_or("Session identity is unavailable")?;
+        layout.validate()?;
+        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::new(model, layout).map(Box::new)).transpose()?;
+        let ack = Ack::new();
+        Ok((Self {
+            namespace: layout.namespace, generation: layout.generation, epoch: captured.checkpoint.epoch,
+            inverse: Some(Box::new(Inverse {
+                layout: layout.clone(), routing: Some(prepared), track_name: None, focus: None,
+                bus_mask: 0, scene_buses: [0; super::MAX_TRACKS], content: None,
+                reserved_heap: 0, media: Vec::new(), fx_storage: Vec::new(), reserved_fx_bytes: 0,
+            })), ack: ack.clone(), disruptive: true, receipt: Some((captured.revision, rate)),
+        }, ack))
+    }
     /// Producer only. No mutation has happened when validation returns an error.
     pub fn metadata(layout: &Layout, epoch: u64, action: Action) -> Result<(Self, Ack), String> {
         layout.validate()?;
@@ -133,6 +150,7 @@ impl Request {
                 epoch,
                 inverse: Some(Box::new(Inverse {
                     layout: next,
+                    routing: None,
                     track_name,
                     focus: None,
                     bus_mask: 0,
@@ -176,6 +194,8 @@ impl Request {
             && self.namespace == rt.session.namespace
             && self.generation == rt.session.generation
             && rt.session.generation < u64::MAX
+            && self.inverse.as_ref().is_none_or(|inverse| inverse.routing.is_none() || inverse.content.is_some()
+                || !rt.playing && !rt.recording && !rt.decks.iter().any(|deck| deck.playing || deck.touching))
             && self.receipt.is_none_or(|(revision, rate)| {
                 rt.project.revision() == revision && rt.sr as u32 == rate
             })
@@ -220,6 +240,7 @@ impl Inverse {
                 .map(|item| item.name.capacity())
                 .sum::<usize>()
             + self.reserved_heap
+            + self.routing.as_ref().and_then(Option::as_ref).map_or(0, |graph| graph.bytes())
             + self.fx_storage.capacity() * std::mem::size_of::<crate::engine::fx::FxId>()
             + self.media.capacity() * std::mem::size_of::<std::sync::Arc<crate::engine::Sample>>()
             + self
@@ -259,6 +280,7 @@ impl Inverse {
             }
     }
     pub(crate) fn swap(&mut self, rt: &mut RtEngine) {
+        rt.routing_pipe.recorder.invalidate();
         let generation = rt.session.generation + 1;
         let next_id = rt.session.next_id.max(self.layout.next_id);
         let current_focus = Focus {
@@ -331,6 +353,7 @@ impl Inverse {
             content.swap(rt, &self.layout);
         }
         std::mem::swap(&mut rt.session, &mut self.layout);
+        if let Some(routing) = &mut self.routing { std::mem::swap(&mut rt.routing, routing); }
         rt.session.generation = generation;
         rt.session.next_id = next_id;
         rt.midi_routing.identity.publish(&rt.session);
@@ -462,6 +485,7 @@ impl Inverse {
                         .map_or(0, |rack| rack.retained_bytes())
             }
         };
+        if self.routing.is_some() { self.reserved_heap = self.reserved_heap.saturating_add(rt.routing.as_ref().map_or(0, |graph| graph.bytes())); }
     }
     pub(crate) fn media_reservations(&self, mut add: impl FnMut(usize, usize)) {
         for sample in &self.media {

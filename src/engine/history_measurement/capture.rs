@@ -23,6 +23,7 @@ impl Default for Rendered {
 pub(in crate::engine) struct Measurement {
     pub tracker: Tracker,
     pub available: bool,
+    routing_compatible: bool,
     rate: u32,
     sidecar: Vec<Rendered>,
     capture: bool,
@@ -49,7 +50,7 @@ impl Measurement {
         sidecar.try_reserve_exact(MAX_FRAMES).map_err(|_| "history conversion storage unavailable")?;
         sidecar.resize(MAX_FRAMES, Rendered::default());
         let (sender, receiver) = crossbeam_channel::bounded(EVENTS);
-        Ok(Self { tracker, available: true, rate, sidecar, capture: false, frame_count: 0, active: false, prepare_state: 0, window_playing: None, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
+        Ok(Self { tracker, available: true, routing_compatible: true, rate, sidecar, capture: false, frame_count: 0, active: false, prepare_state: 0, window_playing: None, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
             clock: 0, windows: None, window_episodes: [None; LANES], sender,
             incomplete: false, dropped: 0 })
     }
@@ -63,7 +64,7 @@ impl Measurement {
         let wall = self.endpoint.clock();
         let outcome = match request.action {
             Action::Start(_) if self.active => Outcome::AlreadyActive,
-            Action::Start(_) if !self.available || wall.is_none() => Outcome::Unavailable,
+            Action::Start(_) if !self.available || !self.routing_compatible || wall.is_none() => Outcome::Unavailable,
             Action::Start(_) if !self.capture || self.frame_count == 0 || self.frame_count > MAX_FRAMES => Outcome::NoOutput,
             Action::Start(_) => { self.start(); self.session = session; Outcome::Started },
             Action::End(_) if !self.active || self.session != session => Outcome::WrongSession,
@@ -76,7 +77,7 @@ impl Measurement {
             frame: self.clock, rate: self.rate, incomplete: self.incomplete, dropped: self.dropped, current });
     }
     pub fn start(&mut self) -> bool {
-        if self.active { return false; }
+        if self.active || !self.routing_compatible || !self.available { return false; }
         self.active = true; self.session = 1; self.windows = None; self.window_playing = None; self.window_episodes = [None; LANES];
         self.incomplete = self.tracker.incomplete; self.dropped = 0;
         true
@@ -89,6 +90,13 @@ impl Measurement {
     pub fn configure(&mut self, kinds: [FxKind; 3], wet: [f32; 3], spb: f64) {
         self.tracker.configure(kinds, wet, spb);
     }
+    /// Guard stereo source attribution from unmeasured routes.
+    /// Takes compatibility with the measured stereo mix; closes old windows and marks active captures incomplete when routing changes.
+    pub(crate) fn routing_compatibility(&mut self, compatible: bool) {
+        if self.routing_compatible && !compatible { self.flush(); self.windows = None; self.window_playing = None; if self.active { self.incomplete = true; } }
+        self.routing_compatible = compatible;
+        self.endpoint.measurement_available(self.available && self.routing_compatible);
+    }
     pub fn reset_dsp(&mut self) { self.tracker.reset(); }
     /// Off-callback rate preparation preserves the observation receiver and
     /// closes the previous rational-rate segment before replacing DSP storage.
@@ -98,6 +106,7 @@ impl Measurement {
             Ok(tracker) => { self.tracker = tracker; self.available = true; }
             Err(_) => { self.available = false; self.incomplete = true; }
         }
+        self.endpoint.measurement_available(self.available && self.routing_compatible);
     }
     pub fn begin_output(&mut self, frames: usize) {
         let state = self.endpoint.prepare_state();
@@ -115,7 +124,7 @@ impl Measurement {
     pub fn record_rendered(&mut self, index: usize, contribution: Contribution,
         before_limiter: [f32; 2], master: f32, safety: &performance::Output, playing: [u64; 2],
     ) {
-        if !self.capture || (!self.active && self.prepare_state & 1 == 0) || !self.available || self.frame_count > MAX_FRAMES { return; }
+        if !self.capture || (!self.active && self.prepare_state & 1 == 0) || !self.available || !self.routing_compatible || self.frame_count > MAX_FRAMES { return; }
         if index >= self.frame_count { self.incomplete = true; return; }
         self.incomplete |= contribution.incomplete;
         let actual = safety.preview(before_limiter.map(|v| (v * master).tanh()));
@@ -143,7 +152,7 @@ impl Measurement {
         let channels = channels.max(1);
         let frames = output.len() / channels;
         if frames != self.frame_count { self.incomplete = true; return; }
-        if (self.active || self.prepare_state & 1 != 0) && self.available && frames <= MAX_FRAMES {
+        if (self.active || self.prepare_state & 1 != 0) && self.available && self.routing_compatible && frames <= MAX_FRAMES {
             for i in 0..frames {
                 let record = self.sidecar[i];
                 if self.windows.is_none() || record.episodes != self.window_episodes {

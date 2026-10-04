@@ -79,6 +79,7 @@ impl Prepared {
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
+        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::new(model, &rt.session).map(Box::new)).transpose().map_err(Error::Invalid)?;
         rt.tracks.clear();
         rt.tracks.reserve(session::MAX_TRACKS);
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
@@ -199,6 +200,7 @@ impl Prepared {
     pub(crate) fn into_offline(self) -> Box<RtEngine> { self.rt }
 
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
+        rt.routing_pipe.recorder.invalidate();
         rt.transport_epoch = rt.transport_epoch.wrapping_add(1);
         rt.midi_routing.reset_outputs();
         if let Some(active) = &rt.sampler_audition { active.ended(); }
@@ -221,6 +223,7 @@ impl Prepared {
             midi_beat,
             midi_beat_reference,
             conductor,
+            routing,
             last_midi_step,
             quant,
             view,

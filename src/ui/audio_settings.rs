@@ -311,7 +311,8 @@ impl App {
                 let status=handle.status();ui.label(&status.message).help(ui, HelpControl::AudioNotice);
                 if let Some(active)=&status.active {
                     ui.label({ let __omatainer_args = (&(active.backend),&(active.plan.device),&(active.plan.rate),&(active.format),&(active.plan.channels),&(active.plan.buffer.map(|n|n.to_string()).unwrap_or("backend default".into())),); crate::localization::format("Backend-accepted logical output: {} / {} · {} Hz · {} · {} channels · buffer {}", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4), format!("{}", __omatainer_args.5)]) }).help(ui, HelpControl::AudioActive);
-                    ui.label(active.plan.route());
+                    if self.engine.routing.shared.explicit.load(Ordering::Acquire) { ui.label("Project routing selects physical outputs; absent channels stay silent."); }
+                    else { ui.label(active.plan.route()); }
                     if let Some(measured)=metrics.last_callback.filter(|_|status.phase==owner::Phase::Running && metrics.callbacks>status.callback_floor) {
                         ui.label({ let __omatainer_args = (&(measured.frames),&(measured.frames as f64*1000.0/measured.sample_rate.max(1) as f64),); crate::localization::format("Observed output callback: {} frames ({:.3} ms at logical rate)", &[format!("{}", __omatainer_args.0), format!("{:.3}", __omatainer_args.1)]) }).help(ui, HelpControl::AudioTiming);
                         ui.label(measured.output_latency_ns.map(|ns|{ let __omatainer_args = (&(ns as f64/1e6),); crate::localization::format("Backend output scheduling estimate: {:.3} ms", &[format!("{:.3}", __omatainer_args.0)]) }).unwrap_or(tr!("Backend output scheduling estimate unavailable").into())).help(ui, HelpControl::AudioTiming);

@@ -40,6 +40,7 @@ pub struct Handle {
 }
 pub struct AudioOut {
     pub handle: Handle,
+    pub(crate) input: super::routing::input::Handle,
 }
 impl Drop for AudioOut {
     fn drop(&mut self) {
@@ -61,6 +62,10 @@ struct Request {
     result: Sender<Result<Arc<Status>, String>>,
 }
 impl Handle {
+    /// Read owner lifetime without touching a device.
+    /// Takes this handle; returns whether application teardown was requested.
+    pub(crate) fn closed(&self) -> bool { self.stopped.load(Ordering::Acquire) }
+    pub(crate) fn project_handle(&self) -> &Project { &self.project }
     pub fn status(&self) -> Arc<Status> {
         self.status.load_full()
     }
@@ -593,6 +598,7 @@ fn start_owned<B:Backend>(
     safe_mode:bool,
 )->anyhow::Result<AudioOut> {
     let project = rt.project.clone();
+    let input_pipe = rt.routing_pipe.clone();
     let status = Arc::new(ArcSwap::from_pointee(Status {
         generation: 0,
         phase: Phase::Switching,
@@ -651,13 +657,15 @@ fn start_owned<B:Backend>(
             }
         })?;
     started.recv()?.map_err(anyhow::Error::msg)?;
-    Ok(AudioOut { handle })
+    let input = super::routing::input::start(input_pipe, handle.clone())?;
+    Ok(AudioOut { handle, input })
 }
 
 impl RtEngine {
     /// Unique audio-owner access only, after callback retirement. Preserve clip
     /// launch positions for explicit Play, but end captured/physical gates.
     fn stop_for_audio(&mut self) {
+        self.routing_pipe.recorder.invalidate();
         let launches = std::array::from_fn::<_, { crate::engine::TRACKS }, _>(|i| {
             self.tracks[i].playing.or(self.tracks[i].project_resume)
         });

@@ -66,6 +66,7 @@ mod music_provider;
 mod video;
 mod performance;
 mod audio_settings;
+mod audio_routing;
 mod recovery_settings;
 mod recovery;
 mod master_fx_status;
@@ -165,6 +166,7 @@ pub struct App {
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
     session_editor: session_editor::Editor,
+    audio_routing: audio_routing::Panel,
     piano_roll: piano_roll::Editor,
     midi_files: midi_files::Editor,
     timing: timing::Editor,
@@ -252,6 +254,7 @@ impl App {
             recovery: recovery::Recovery::default(),
             session_history: session_history::Panel::default(),
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
+            audio_routing: audio_routing::Panel::default(),
             settings: preferences::Settings::default(),
             automation_panel: automation::Panel::default(),
             music_provider: music_provider::Panel::default(),
@@ -800,6 +803,7 @@ impl App {
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
         self.session_editor_ui(ctx);
+        self.audio_routing_ui(ctx);
         self.piano_roll_ui(ctx);
         self.midi_files_ui(ctx);
         self.timing_ui(ctx);

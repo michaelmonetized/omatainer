@@ -36,6 +36,7 @@ struct Shared {
     sessions: AtomicU64,
     pending: AtomicU64,
     connected: AtomicBool,
+    measurement_available: AtomicBool,
     ack_sequence: AtomicU64,
     ack: [AtomicU64; 10],
     progress_sequence: AtomicU64,
@@ -60,7 +61,7 @@ impl Endpoint {
         let wall_origin = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
             .ok().and_then(|d| u64::try_from(d.as_nanos()).ok()).unwrap_or(0);
         let handle = Handle(Arc::new(Shared { sender, observations: std::sync::Mutex::new(Some(observations)), next: AtomicU64::new(1), sessions: AtomicU64::new(1), pending: AtomicU64::new(0),
-            connected: AtomicBool::new(true), ack_sequence: AtomicU64::new(0),
+            connected: AtomicBool::new(true), measurement_available: AtomicBool::new(true), ack_sequence: AtomicU64::new(0),
             ack: std::array::from_fn(|_| AtomicU64::new(0)), progress_sequence: AtomicU64::new(0),
             progress: std::array::from_fn(|_| AtomicU64::new(0)),
             prepare_state: AtomicU64::new(0), play_sequence: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -80,6 +81,7 @@ impl Endpoint {
         }
         shared.play_sequence[deck].fetch_add(1, Ordering::Release);
     }
+    pub fn measurement_available(&self, available: bool) { self.handle.0.measurement_available.store(available, Ordering::Release); }
     pub fn publish_status(&self, session: u64, incomplete: bool, dropped: u64) {
         self.handle.0.active.store(session, Ordering::Release);
         self.handle.0.incomplete.store(incomplete, Ordering::Release);
@@ -114,6 +116,11 @@ pub(crate) struct DigitalPlay {
     pub deck: u8, pub load: u64, pub wall_ns: u64, pub first_frame: u64, pub frames: u32, pub rate: u32,
 }
 impl Handle {
+    /// Check whether the renderer can attribute its current output to playing decks.
+    /// Takes no arguments; returns false for unmeasured routes or a disconnected renderer.
+    pub fn can_measure(&self) -> bool {
+        self.0.connected.load(Ordering::Acquire) && self.0.measurement_available.load(Ordering::Acquire)
+    }
     /// Enable transient prepare-queue measurement.
     /// Takes the requested state; returns an error if its bounded revision is exhausted.
     pub fn set_prepare_monitor(&self, enabled: bool) -> Result<(), &'static str> {
@@ -131,12 +138,12 @@ impl Handle {
     /// Read the last fully classified playing window for a deck.
     /// Takes a deck index; returns a coherent observation or None during publication/disconnection.
     pub fn digital_play(&self, deck: usize) -> Option<DigitalPlay> {
-        if deck >= 2 || !self.0.connected.load(Ordering::Acquire) { return None; }
+        if deck >= 2 || !self.can_measure() { return None; }
         let sequence = self.0.play_sequence[deck].load(Ordering::Acquire);
         if sequence & 1 != 0 { return None; }
         let words: [u64; 5] = std::array::from_fn(|i| self.0.play[deck][i].load(Ordering::Relaxed));
         std::sync::atomic::fence(Ordering::Acquire);
-        if sequence != self.0.play_sequence[deck].load(Ordering::Relaxed) || words[0] == 0 || words[1] == 0 { return None; }
+        if !self.can_measure() || sequence != self.0.play_sequence[deck].load(Ordering::Relaxed) || words[0] == 0 || words[1] == 0 { return None; }
         Some(DigitalPlay { deck: deck as u8, load: words[0], wall_ns: words[1], first_frame: words[2], frames: words[3] as u32, rate: words[4] as u32 })
     }
     /// Read before draining observation events. This fences the durable prefix

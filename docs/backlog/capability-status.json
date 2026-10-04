@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "release": "Unreleased combined stack above #501",
+  "release": "Unreleased combined stack above #502",
   "reviewed": "2026-10-03",
   "references": [
     {
@@ -310,6 +310,37 @@
         "docs/validation/issue-146-prepare-queue.md"
       ],
       "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
+    },
+    "130": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/audio_routing.rs",
+          "entry": "Setup \u2192 Audio routing \u2192 capture, review and apply saved graph"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/audio/routing/render.rs",
+          "entry": "Independent bus/tap/channel rendering and record-source selection"
+        },
+        {
+          "kind": "project",
+          "file": "src/engine/project/model.rs",
+          "entry": "Version 11 saved routing with guarded Undo and reopen"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::tests",
+        "engine::audio::routing::native_tests",
+        "ui::audio_routing::tests",
+        "engine::history_measurement::capture_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-130-audio-routing.md",
+        "docs/validation/issue-146-prepare-queue.md"
+      ],
+      "limits": "Published routing-layer software qualification is source bound to its own commit; merged prepare/routing source needs renewed qualification. Logical 64-channel addressing and private 32-channel native capture do not qualify physical interfaces, all maximum-session voices or xruns. Explicit graphs disable legacy stereo source attribution and automatic prepare removal; queued tracks remain visible. Physical USB and listening remain pending."
     }
   }
 }

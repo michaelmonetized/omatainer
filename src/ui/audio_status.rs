@@ -19,6 +19,7 @@ impl App {
                 let label = command_palette::chord(self.settings.profile()).map_or_else(|| tr!("Commands").into(), |key| format!("{} (Ctrl+Shift+{})", tr!("Commands"), key.name()));
                 if ui.button(label).help(ui, HelpControl::PreferenceShortcut).clicked() { self.command_palette.open(ctx.viewport_id()); }
                 if ui.button(tr!("Touch & pen")).help(ui, HelpControl::SamplerPad).clicked() {self.touch_input.open=true;}
+                if ui.button(tr!("Audio routing")).help(ui, HelpControl::AudioRouting).clicked() { self.audio_routing.open = true; }
                 if !self.settings.open && !self.settings.message.is_empty() {
                     let label = if self.settings.message.starts_with("Preferences failed") { "Preferences failed" } else { "Preferences update" };
                     if ui.button(label).help_detail(ui, HelpControl::Preferences, &self.settings.message).clicked() { self.settings.open = true; }

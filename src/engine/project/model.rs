@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 10;
+pub const STATE_VERSION: u32 = 11;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -14,6 +14,8 @@ pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default)]
     pub session: Option<session::Layout>,
     pub bpm: f32,
@@ -50,6 +52,8 @@ pub struct State {
 #[serde(deny_unknown_fields)]
 struct StateWire {
     version: u32,
+    #[serde(default)]
+    routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default)]
     session: Option<session::Layout>,
     bpm: f32,
@@ -114,10 +118,12 @@ impl<'de> Deserialize<'de> for State {
             return Err(serde::de::Error::custom("Legacy projects cannot contain relinked project sources"));
         }
         if version < 10 && raw.get("timeline_seconds").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain sample-based timeline positions")); }
-        if version == 10 && !raw.get("timeline_seconds").is_some_and(serde_json::Value::is_number) { return Err(serde::de::Error::custom("Project schema 10 requires a timeline position")); }
+        if (10..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("timeline_seconds").is_some_and(serde_json::Value::is_number) { return Err(serde::de::Error::custom("Project schema 10 requires a timeline position")); }
+        if version < 11 && raw.get("routing").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain audio routing metadata")); }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            routing: wire.routing,
             session: wire.session,
             bpm: wire.bpm,
             beat: wire.beat,
@@ -351,6 +357,7 @@ impl State {
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            routing: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
             conductor: None,
             bpm: 124.0,
@@ -468,6 +475,10 @@ impl State {
             layout.validate()?;
             if layout.tracks.len() != self.tracks.len() || layout.scenes.len() != self.scene_fx.len() { return fail("session identity and storage disagree"); }
             if !layout.tracks[self.selected_track.min(layout.tracks.len()-1)].active || !layout.scenes[self.selected_scene.min(layout.scenes.len()-1)].active { return fail("inactive session focus"); }
+        }
+        if let Some(routing) = &self.routing {
+            if self.version < 11 { return fail("routing metadata in a legacy state"); }
+            routing.order(self.session.as_ref().ok_or("Routing requires retained session identities")?)?;
         }
         if !(1..=STATE_VERSION).contains(&self.version) {
             return Err(format!(
@@ -773,4 +784,30 @@ fn valid_fx(rack: &[Effect], scene: bool) -> bool {
             unit(f.mix) && f.p.iter().all(|p| unit(*p)) && (!scene || f.id != fx::FxId::Arp)
                 && (f.id == fx::FxId::Unavailable) == f.offline.is_some()
         })
+}
+
+#[cfg(test)]
+mod routing_schema_tests {
+use super::*;
+
+#[test]
+fn routing_schema_requires_native_identity_and_rejects_legacy_injection() {
+    let (_, rt) = Engine::headless_for_test(48000, 256);
+    let mut frame = super::super::capture::Frame::new();
+    for _ in 0..4 { frame.capture(&rt); if frame.complete { break; } frame.prepare(); }
+    assert!(frame.complete);
+    let mut state = frame.state;
+    state.routing = Some(std::sync::Arc::new(audio::routing::model::Model::default()));
+    let saved = serde_json::to_vec(&state).unwrap();
+    let reopened: crate::engine::project::State = serde_json::from_slice(&saved).unwrap();
+    reopened.validate(&frame.media).unwrap();
+    assert_eq!(reopened.routing, state.routing);
+    let mut legacy: serde_json::Value = serde_json::from_slice(&saved).unwrap();
+    legacy["version"] = 10.into();
+    assert!(serde_json::from_value::<crate::engine::project::State>(legacy).is_err());
+    let mut model = audio::routing::model::Model::default();
+    model.connections[0].source.group = audio::routing::model::Group::Track(state.session.as_ref().unwrap().scenes[0].id);
+    assert!(model.order(state.session.as_ref().unwrap()).is_err());
+}
+
 }
