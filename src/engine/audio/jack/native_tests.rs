@@ -202,6 +202,15 @@ fn private_graph_loopback_quantum_reconnect_and_rate_change_retain_project() {
             .iter()
             .all(|trace| trace.first_signal_ns.load(Ordering::Acquire) != 0)
     });
+    let mut output_position = None;
+    wait(|| {
+        output_position = engine.audible.positions_at(engine.audible.now_ns());
+        output_position.is_some()
+    });
+    let output_position = output_position.unwrap()[0];
+    assert_ne!(output_position.media_key, 0);
+    assert!(output_position.source_frame.is_finite());
+    wait(|| engine.cmd.audio_metrics().last_callback.is_some_and(|callback| callback.output_latency_ns.is_some()));
     let traces = TRACES.get().unwrap().lock().unwrap().clone();
     let sent = traces
         .iter()
@@ -277,6 +286,7 @@ fn private_graph_loopback_quantum_reconnect_and_rate_change_retain_project() {
     ));
     let traces = TRACES.get().unwrap().lock().unwrap().clone();
     let report = serde_json::json!({ "backend_identity": identity(), "initial_rate": 48000, "initial_quantum": 128, "changed_quantum": 256, "reconnected_rate": 44100, "software_loopback_return_ns": latency,
+        "output_position_source_frame":output_position.source_frame,"output_position_frame":output_position.output_frame,
         "callbacks": traces.iter().map(|trace| trace.callbacks.load(Ordering::Acquire)).collect::<Vec<_>>(),
         "callback_allocations": traces.iter().map(|trace| trace.allocations.load(Ordering::Acquire)).collect::<Vec<_>>(),
         "callback_frees": traces.iter().map(|trace| trace.frees.load(Ordering::Acquire)).collect::<Vec<_>>(), "saved_routes_reopened": true, "missing_endpoint_returned_once": true, "duplicate_client_refused": true, "wrong_port_direction_refused": true, "project_media_retained": true, "playback_resumed": false });

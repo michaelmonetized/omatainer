@@ -264,6 +264,7 @@ impl Frame {
             copy(&mut out.title, &deck.title);
             out.playing = deck.playing;
             out.pos = deck.pos;
+            out.audible_key = deck.history_key;
             out.frames = deck
                 .audio
                 .as_ref()

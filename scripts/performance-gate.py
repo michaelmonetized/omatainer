@@ -404,7 +404,7 @@ def run(root, binary, destination):
                    'binary_info':parse(output([str(binary),'benchmark-build-info'])),'environment':{}}
             compiled=execute(['cargo','test',*options,'--no-run','--message-format=json'],timeout=rules['timeout_seconds'],limit=16*1024*1024,env=environment,log=log,cwd=root)
             test_binary=artifact(compiled,True);build['test_binary_sha256']=digest(test_binary)
-            native=execute([sys.executable,str(root/'scripts/check-accessibility.py'),'--test-binary',str(test_binary)],timeout=100,limit=1024*1024,env=environment,log=log,cwd=root)
+            native=execute([sys.executable,str(root/'scripts/check-accessibility.py'),'--test-binary',str(test_binary)],timeout=120,limit=1024*1024,env=environment,log=log,cwd=root)
             if native.returncode: fail('required private native accessibility preflight failed; no waiver')
             build['native_accessibility']={'exit_code':0,'report':parse(native.stdout)}
             native_evidence(build['native_accessibility'])

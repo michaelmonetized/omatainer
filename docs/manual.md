@@ -2090,7 +2090,23 @@ Workflow: Prepare a DJ deck.
 
 0–source duration in seconds
 
-Seek within loaded media. Seeking resets grain history with a bounded transition; it does not change the stored file. A stopped deck stays stopped.
+Seek within loaded media. Saved beatgrids, cues and loop boundaries follow the centered playhead. Downbeats use four-beat bars; phrases count eight bars from the saved downbeat. Backend output estimates use retained rendered source positions through tempo changes, loops and scratches. Unavailable or expired timing shows renderer position. These estimates do not measure acoustic output or pitch-lock transient delay. A stopped deck stays stopped.
+
+Workflow: Prepare a DJ deck.
+
+### Link waveform zoom
+
+Shared or independent beat spans
+
+Use the selected deck's zoom for both waveforms when linking. Both decks share a centered playhead and beat scale even when local tempos differ. Unlink to choose each deck separately. View preferences are saved in native projects.
+
+Workflow: Prepare a DJ deck.
+
+### Waveform zoom
+
+2, 4, 8 or 16 four-beat bars
+
+Change the visible beat span while playback continues. Saved local tempo maps keep waveform peaks and musical markers in the same coordinates. Tracks without a saved beatgrid show a source-time window and no invented beat or phrase positions.
 
 Workflow: Prepare a DJ deck.
 

@@ -381,6 +381,16 @@ Negative beat coordinates represent pickups; bars currently contain four beats
 source seconds. Performance protection rejects grid edits; essential saving
 continues, with optional relocation hashing deferred until Studio mode.
 
+Deck waveforms show saved beats, downbeats, cues and loop boundaries around a
+centered playhead. **Link zoom** shares a 2, 4, 8 or 16-bar view; unlink to choose
+each deck separately. Phase compares the other deck with the selected deck.
+Eight-bar phrase counts start at the saved downbeat. Tracks without a saved
+grid retain a source-time view. Native projects save these view preferences.
+The playhead uses retained output-frame positions when the backend provides a
+usable scheduling estimate, including tempo changes, loops and scratches.
+Unknown or expired timing is labeled **renderer position**. This does not
+measure acoustic output or pitch-lock transient delay.
+
 **Deck Actions → Edit cue names and colors** edits all eight hot cues with names
 up to 64 UTF-8 bytes and optional RGB colors. Pads, waveform markers and the cue
 list share those values; edits are undoable and the list shows whether they are

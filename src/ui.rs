@@ -49,6 +49,7 @@ mod undo;
 mod audio_status;
 mod diagnostics;
 mod support;
+mod waveform;
 pub(crate) mod deck_time;
 use deck_time::{DeckTimeSettings, Readout, TimeMode};
 #[cfg(test)]
@@ -190,6 +191,7 @@ pub struct App {
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
     deck_time: [DeckTimeSettings; DECKS],
+    waveform: waveform::Settings,
 }
 
 #[derive(Clone)]
@@ -319,6 +321,7 @@ impl App {
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
+            waveform: waveform::Settings::default(),
         };
         app.library_scan.set_performance(app.engine.cmd.performance().clone());
         app.library_metadata.set_performance(app.engine.cmd.performance().clone());
@@ -924,6 +927,10 @@ impl App {
 
     fn scratch_row(&mut self, ui: &mut Ui, t: &Theme) {
         self.deck_selection.begin_pointer_frame();
+        let output_positions = self.engine.audible.positions_at(self.engine.audible.now_ns());
+        let wave_positions = std::array::from_fn(|deck| self.snap.decks.get(deck)
+            .map(|snap| waveform::playhead(snap, output_positions.map(|positions| positions[deck])))
+            .unwrap_or(waveform::Playhead { frames: 0.0, estimated_output: false }));
         ui.spacing_mut().item_spacing = Vec2::splat(4.0);
         let h = ui.available_height();
         let w = ui.available_width();
@@ -938,18 +945,48 @@ impl App {
             });
             ui.allocate_ui(Vec2::new(mid_w, h), |ui| {
                 ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
+                    ui.set_width(mid_w);
+                    let wave_top = ui.cursor().top();
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
                     let wave_w = ((mid_w - gap) / 2.0).max(56.0);
+                    ui.horizontal_wrapped(|ui| {
+                        let linked = ui.checkbox(&mut self.waveform.linked, tr!("Link zoom")).on_hover_text("Use the same number of beats on both waveforms.");
+                        help::annotate(ui, &linked, HelpControl::WaveformLink);
+                        if linked.changed() && self.waveform.linked {
+                            let deck = self.snap.selected_deck.min(DECKS - 1);
+                            self.waveform.set(deck, self.waveform.zoom[deck]);
+                        }
+                        for deck in 0..DECKS {
+                            if self.waveform.linked && deck != self.snap.selected_deck.min(DECKS - 1) { continue; }
+                            let mut zoom = self.waveform.zoom[deck];
+                            let zoom_control = egui::ComboBox::from_id_salt(("waveform_zoom",deck))
+                                .selected_text(format!("{} {}",(b'A' + deck as u8) as char,zoom.label()))
+                                .width(64.0).show_ui(ui,|ui| {
+                                    for value in [waveform::Zoom::TwoBars,waveform::Zoom::FourBars,waveform::Zoom::EightBars,waveform::Zoom::SixteenBars] {
+                                        ui.selectable_value(&mut zoom,value,value.label());
+                                    }
+                                });
+                            zoom_control.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true,
+                                format!("Deck {}: Waveform zoom", (b'A' + deck as u8) as char)));
+                            help::annotate(ui, &zoom_control.response, HelpControl::WaveformZoom);
+                            if zoom != self.waveform.zoom[deck] { self.waveform.set(deck,zoom); }
+                        }
+                    });
+                    ui.label(RichText::new(waveform::phase(&self.snap.decks,&wave_positions,self.snap.selected_deck)).size(t.text_size(9.0)))
+                        .on_hover_text("Phase is the nearest beat difference relative to the selected deck. Output positions use the backend scheduling estimate when it is available; renderer phase is shown otherwise.");
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::splat(gap);
                         for d in 0..DECKS {
                             let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
                             let wave = ui.scope(|ui| {
-                                accessibility::scope(ui, &format!("Deck {}", (b'A' + d as u8) as char), |ui| {
-                                    vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
+                                accessibility::scope(ui, &format!("Deck {}", (b'A' + d as u8) as char), |ui| ui.vertical(|ui| {
+                                    ui.set_width(wave_w);
+                                    ui.label(RichText::new(waveform::phrase(&snap,wave_positions[d].frames)).size(t.text_size(9.0)));
+                                    let height = (wave_h - (ui.cursor().top() - wave_top)).max(16.0);
+                                    waveform::paint(ui,t,&snap,t.track_color(d),Vec2::new(wave_w,height),self.waveform.zoom[d],wave_positions[d],|frac| {
                                         self.send(Command::DeckSeek { deck: d as u8, frac });
                                     });
-                                });
+                                }));
                             });
                             self.select_deck_from_pointer(ui, wave.response.rect, d);
                         }
@@ -1984,71 +2021,9 @@ fn platter(
     }
 }
 
-fn vertical_wave(
-    ui: &mut Ui,
-    t: &Theme,
-    snap: &crate::engine::DeckSnap,
-    col: Color32,
-    w: f32,
-    h: f32,
-    mut on_seek: impl FnMut(f32),
-) {
-    let (rect, resp) = ui.allocate_exact_size(Vec2::new(w, h), Sense::click_and_drag());
-    let p = ui.painter_at(rect);
-    p.rect_filled(rect, 4.0, t.bg_darker);
-    let position = if snap.frames > 0.0 { ((snap.pos / snap.frames) as f32 * snap.duration).clamp(0.0, snap.duration) } else { 0.0 };
-    if let Some(seconds) = accessibility::numeric(ui, &resp, "Waveform position", position, 0.0, snap.duration.max(0.0), 0.1, " s") {
-        if snap.duration > 0.0 { on_seek(seconds / snap.duration); }
-    }
-    help::annotate(ui, &resp, HelpControl::Seek);
-    if snap.peaks.is_empty() || snap.frames < 1.0 || snap.duration <= 0.01 {
-        p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(t.text_size(10.0)), t.muted);
-        return;
-    }
-    let pos_s = (snap.pos / snap.frames) as f32 * snap.duration;
-    let half = 3.5;
-    let start_s = (pos_s - half).max(0.0);
-    let end_s = (start_s + half * 2.0).min(snap.duration);
-    let n = snap.peaks.len() as f32;
-    let a = ((start_s / snap.duration) * n) as usize;
-    let b = (((end_s / snap.duration) * n) as usize).max(a + 1).min(snap.peaks.len());
-    let mid = rect.center().x;
-    let hw = rect.width() * 0.46;
-    let span = (b - a).max(1);
-    let step = (span as f32 / rect.height().max(1.0)).ceil().max(1.0) as usize;
-    let mut k = 0usize;
-    let mut i = a;
-    while i < b {
-        let y = rect.top() + k as f32 * step as f32 / span as f32 * rect.height();
-        let pk = snap.peaks[i];
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid - pk[0] * hw, y)], st(1.0, t.waveform(t.red, 0.9)));
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid + pk[1] * hw, y)], st(1.0, t.waveform(t.green, 0.85)));
-        p.line_segment([Pos2::new(mid - pk[2] * hw * 0.35, y), Pos2::new(mid + pk[2] * hw * 0.35, y)], st(1.0, t.waveform(t.marker(col, t.bg_darker), 0.5)));
-        i += step;
-        k += 1;
-    }
-    grid_editor::paint_vertical_grid(&p, rect, t, snap.grid, start_s as f64, end_s as f64);
-    for (i, position) in snap.hotcue_positions.iter().enumerate() {
-        let Some(seconds) = position.map(|p| (p / snap.frames) as f32 * snap.duration) else { continue };
-        if !(start_s..=end_s).contains(&seconds) { continue; }
-        let y = rect.top() + (seconds - start_s) / (end_s - start_s).max(0.001) * rect.height();
-        let color = cue_editor::color(t, snap.cue_styles[i], i);
-        p.line_segment([Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)], st(1.0, color));
-        let name = cue_editor::short_name(snap.cue_styles[i].name.as_str(), 8);
-        p.text(Pos2::new(rect.left() + 2.0, y), egui::Align2::LEFT_BOTTOM,
-            format!("{} {}", i + 1, name), FontId::proportional(t.text_size(9.0)), t.fg);
-    }
-    accessibility::status(ui, &resp, &snap.hotcue_positions.iter().enumerate()
-        .filter(|(_, pos)| pos.is_some()).map(|(i, _)| cue_editor::description(snap, i)).collect::<Vec<_>>().join("; "));
-    let play_y = rect.top() + ((pos_s - start_s) / (end_s - start_s).max(0.001)) * rect.height();
-    p.line_segment([Pos2::new(rect.left(), play_y), Pos2::new(rect.right(), play_y)], st(1.6, t.accent));
-    if resp.clicked() || resp.dragged() {
-        if let Some(pos) = resp.interact_pointer_pos() {
-            let u = ((pos.y - rect.top()) / rect.height()).clamp(0.0, 1.0);
-            let tsec = start_s + u * (end_s - start_s);
-            on_seek((tsec / snap.duration).clamp(0.0, 1.0));
-        }
-    }
+#[cfg(test)]
+fn vertical_wave(ui: &mut Ui, theme: &Theme, snap: &crate::engine::DeckSnap, color: Color32, width: f32, height: f32, seek: impl FnMut(f32)) {
+    waveform::paint(ui,theme,snap,color,Vec2::new(width,height),waveform::Zoom::default(),waveform::playhead(snap,None),seek);
 }
 
 fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8) -> Option<f32> {

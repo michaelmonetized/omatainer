@@ -98,7 +98,7 @@ fn private_atspi_bridge_child() {
     );
     adapter.update_window_focus_state(true);
     let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
-    let deadline = Instant::now() + Duration::from_secs(70);
+    let deadline = Instant::now() + Duration::from_secs(90);
     let mut actions = Vec::new();
     let mut frames = 0u64;
     while !directory.join("done").exists() {
@@ -166,6 +166,7 @@ fn private_atspi_bridge_child() {
         let evidence = serde_json::json!({"pid":std::process::id(),"frames":frames,"actions":actions,
             "pitch":rt.decks[0].pitch,"playing":rt.decks[0].playing,"loaded":rt.decks[0].audio.is_some(),
             "grid":rt.decks[0].grid,"grid_editor":app.grid_editor.as_ref().map(grid_editor::Editor::evidence),
+            "waveform_view":app.waveform,
             "hotcue_1":rt.decks[0].hotcues[0].set,"cue_slots":rt.decks[0].hotcues.iter().map(|cue|cue.set).collect::<Vec<_>>(),"cue_editor_open":app.cue_editor.editor.is_some(),"pad_held":app.pad_held[0],"focus":focus,
             "sampler_editor":app.sampler_editor.evidence(),
             "analysis":app.library_analysis.evidence(),

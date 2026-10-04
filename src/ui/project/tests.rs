@@ -265,6 +265,32 @@ fn deck_time_preferences_round_trip_new_open_and_reject_unsupported_values() {
     assert!(gui.app.project_dirty());
 }
 
+#[test]
+fn waveform_zoom_round_trips_new_open_and_legacy_views() {
+    let files = Files::new();
+    let path = files.path("waveform-view.omat");
+    let mut gui = Gui::new();
+    let expected = waveform::Settings { linked: false,
+        zoom: [waveform::Zoom::TwoBars, waveform::Zoom::SixteenBars] };
+    gui.app.waveform = expected;
+    gui.save_as_ui(&path);
+    assert!(!gui.app.project_dirty());
+    let bundle = crate::project_file::load::<Document>(&path, &Limits::default(), &AtomicBool::new(false)).unwrap();
+    assert_eq!(bundle.state.view.waveform, expected);
+    let mut legacy = serde_json::to_value(&bundle.state.view).unwrap();
+    legacy.as_object_mut().unwrap().remove("waveform");
+    assert_eq!(serde_json::from_value::<UiState>(legacy).unwrap().waveform, waveform::Settings::default());
+    gui.menu("New project"); gui.settle();
+    assert_eq!(gui.app.waveform, waveform::Settings::default());
+    gui.menu("Open project…"); gui.enter_path(&path); gui.click_label("Open"); gui.settle();
+    assert_eq!(gui.app.waveform, expected);
+    let saved = std::fs::read(&path).unwrap();
+    gui.app.waveform.linked = true;
+    gui.app.begin_project_save(SaveKind::Save, None, path.clone(), true); gui.settle();
+    assert_eq!(std::fs::read(path).unwrap(), saved);
+    assert!(gui.app.project.message.as_deref().unwrap().contains("linked waveform zooms differ"));
+}
+
 struct Files(PathBuf);
 impl Files {
     fn new() -> Self {

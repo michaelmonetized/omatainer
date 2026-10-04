@@ -103,6 +103,38 @@ impl Gui {
 }
 
 #[test]
+fn waveform_zoom_native_actions_keep_playback_and_named_position_controls_live() {
+    let mut gui = Gui::new();
+    let audio = Arc::new(crate::engine::dsp::Sample { name: "One-hour zoom fixture".into(), sr: 8000, ch: 1,
+        data: vec![0.0; 3600 * 8000], peaks: Arc::new(vec![[0.1, 0.2, 0.3]; 8192]),
+        bpm: 120.0, path: String::new() });
+    gui.rt.apply(Command::DeckAudio { deck: 0, audio });
+    gui.rt.decks[0].grid = Some(crate::engine::beatgrid::Grid::new(0.0, 120.0).unwrap().set_anchor(1800.0, 90.0).unwrap());
+    gui.rt.decks[0].pos = 3590.0 * 8000.0;
+    gui.rt.apply(Command::DeckPlay { deck: 0 });
+    for size in [Vec2::new(1600.0, 1200.0), Vec2::new(800.0, 600.0)] {
+        gui.size = size; gui.frame(vec![]); gui.frame(vec![]);
+        let before = gui.rt.decks[0].pos;
+        gui.action("Deck A: Waveform zoom", Action::Click, None);
+        gui.action("16 bars", Action::Click, None);
+        assert_eq!(gui.app.waveform.zoom, [waveform::Zoom::SixteenBars; DECKS]);
+        gui.action("Link zoom", Action::Click, None);
+        assert!(!gui.app.waveform.linked);
+        gui.action("Deck B: Waveform zoom", Action::Click, None);
+        gui.action("2 bars", Action::Click, None);
+        assert_eq!(gui.app.waveform.zoom, [waveform::Zoom::SixteenBars, waveform::Zoom::TwoBars]);
+        gui.action("Link zoom", Action::Click, None);
+        assert_eq!(gui.app.waveform.zoom, [waveform::Zoom::SixteenBars; DECKS]);
+        assert!(gui.rt.decks[0].playing && gui.rt.decks[0].pos > before);
+        for deck in ['A','B'] {
+            let node = gui.node(&format!("Deck {deck}: Waveform position")).1;
+            assert_eq!(node.role(), egui::accesskit::Role::Slider);
+            assert!(node.description().unwrap().contains("renderer position"));
+        }
+    }
+}
+
+#[test]
 fn pitch_lock_reports_renderer_bypass_and_armed_modes_without_changing_its_action_id() {
     use crate::engine::keylock::Mode;
     let mut gui = Gui::new();

@@ -45,7 +45,7 @@ def outer(binary,support=False):
                                   '--private','--test-binary',str(binary.resolve())]+(['--support'] if support else []),
                                  env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
         try:
-            stdout,stderr=process.communicate(timeout=85)
+            stdout,stderr=process.communicate(timeout=110)
             if process.returncode:
                 raise RuntimeError(f'private AT-SPI fixture failed ({process.returncode}):\n{stdout}\n{stderr}')
             print(stdout.strip())
@@ -342,6 +342,8 @@ def private(binary,support=False):
         sys.dont_write_bytecode = True  # Keep fixture imports out of the source checkout.
         from check_grid_accessibility import verify_grid
         grid_evidence=verify_grid(named, action, state, wait_for, Atspi)
+        from check_waveform_accessibility import verify_waveform
+        waveform_evidence=verify_waveform(named, action, state, wait_for)
         from check_sampler_accessibility import verify_sampler
         sampler_evidence=verify_sampler(named, action, state, wait_for, Atspi)
         from check_analysis_accessibility import verify_analysis
@@ -382,7 +384,7 @@ def private(binary,support=False):
         print(json.dumps({'platform':'Linux AT-SPI via private D-Bus','native_nodes_visited':visited,
                           'pitch_role':pitch_role,'pitch_range':[-8,8],
                           'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
-                          'beatgrid':grid_evidence,'sampler_editor':sampler_evidence,'track_analysis':analysis_evidence,'named_crates':crates_evidence,'session_history':history_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
+                          'beatgrid':grid_evidence,'waveforms':waveform_evidence,'sampler_editor':sampler_evidence,'track_analysis':analysis_evidence,'named_crates':crates_evidence,'session_history':history_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
                           'cue_actions':cue_actions,'pad_actions':pad_actions,
                           'cue_editor_workflow':cue_editor_workflow,

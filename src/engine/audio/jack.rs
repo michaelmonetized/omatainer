@@ -299,6 +299,7 @@ struct Signals {
     rate: u32,
     quantum: AtomicU32,
     xruns: AtomicU64,
+    latency_ns: AtomicU64,
 }
 struct Process {
     ports: Vec<*mut j::jack_port_t>,
@@ -308,6 +309,7 @@ struct Process {
     signals: Arc<Signals>,
 }
 pub(crate) struct Stream {
+    latency_ports: Vec<*mut j::jack_port_t>,
     client: Option<Client>,
     process: Option<Box<Process>>,
     signals: Arc<Signals>,
@@ -368,6 +370,7 @@ impl Stream {
             rate: plan.rate,
             quantum: AtomicU32::new(client.quantum()),
             xruns: AtomicU64::new(0),
+            latency_ns: AtomicU64::new(u64::MAX),
         });
         let mut ports = Vec::with_capacity(plan.channels as usize);
         {
@@ -407,6 +410,7 @@ impl Stream {
             }
         }
         let mut stream = Self {
+            latency_ports: ports.clone(),
             client: Some(client),
             process: Some(Box::new(Process {
                 ports,
@@ -491,6 +495,19 @@ impl Stream {
                     return Err(error);
                 }
             }
+        }
+        if !self.input {
+            let mut latency = None;
+            let mut consistent = true;
+            for port in &self.latency_ports {
+                if unsafe { j::jack_port_connected(*port) } == 0 { continue; }
+                let mut range = j::jack_latency_range_t { min: 0, max: 0 };
+                unsafe { j::jack_port_get_latency_range(*port, j::JackPlaybackLatency, &mut range); }
+                if range.min != range.max || latency.is_some_and(|frames| frames != range.max) { consistent = false; break; }
+                latency = Some(range.max);
+            }
+            let ns = latency.filter(|_| consistent).map(|frames| u64::from(frames) * 1_000_000_000 / u64::from(self.signals.rate));
+            self.signals.latency_ns.store(ns.unwrap_or(u64::MAX), Ordering::Release);
         }
         Ok(self.signals.quantum.load(Ordering::Acquire))
     }
@@ -581,7 +598,8 @@ unsafe fn process_block(frames: u32, arg: *mut libc::c_void) -> libc::c_int {
     }
     let data = &mut process.buffer[..frames * width];
     if let Some(output) = &mut process.output {
-        output.render_timed(data, None);
+        let latency = process.signals.latency_ns.load(Ordering::Acquire);
+        output.render_timed(data, (latency != u64::MAX).then(|| Duration::from_nanos(latency)));
         #[cfg(test)]
         native_tests::observe(&process.signals.trace, data, width, process.signals.rate);
         for (channel, port) in process.ports.iter().enumerate() {
@@ -673,6 +691,7 @@ mod tests {
             rate: 48000,
             quantum: AtomicU32::new(128),
             xruns: AtomicU64::new(0),
+            latency_ns: AtomicU64::new(u64::MAX),
         };
         let arg = (&signals as *const Signals).cast_mut().cast();
         let counts = crate::engine::test_alloc::measure(|| unsafe {
