@@ -111,9 +111,22 @@ fn native_cancel_protection_and_changed_rows_do_not_reuse_old_readiness() {
     let files = Files::new();
     let mut gui = Gui::new(&files);
     gui.app.library_annotations.open = false;
+    let (entered, seen) = std::sync::mpsc::sync_channel(1);
+    let (resume, held) = std::sync::mpsc::sync_channel(1);
+    let mut once = true;
+    gui.app.loader = Some(Loader::with_health_hook(gui.app.engine.cmd.performance().clone(), move |_| {
+        if once {
+            once = false;
+            entered.send(()).unwrap();
+            held.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
+        }
+    }).unwrap());
     gui.click("health…");
     gui.click("Validate filtered crate");
+    seen.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
     gui.click("Cancel media validation");
+    assert!(gui.app.library_health.busy());
+    resume.send(()).unwrap();
     gui.wait(|gui| !gui.app.library_health.busy());
     assert!(gui.app.library_health.message.contains("cancelled"));
     gui.app.engine.cmd.performance().set_enabled(true).unwrap();

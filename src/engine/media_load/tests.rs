@@ -340,7 +340,7 @@ fn actual_descriptor_decoder_loads_typed_volume_and_fails_offline_or_changed_mou
     *mounts.lock().unwrap()=Mounts::fixture_offline();loader.request_source(1,source.clone()).unwrap();let completion=ready(&loader,1);
     assert!(completion.result.unwrap_err().to_string().contains("offline"));assert!(completion.fingerprint.is_none() && completion.content_hash.is_none());
     let mut calls=0;let next=Mounts::fixture_volume(root,"TEST-A",2);let policy=performance::Handle::default();let foreground=policy.clone();
-    let loader=Loader::with_backend(move |path,token,file|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,policy,true,
+    let loader=Loader::with_backend(move |path,token,file|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,media_health::run,policy,true,
         move ||{calls+=1;Ok(if calls==1 {mounted.clone()} else {next.clone()})}).unwrap();
     loader.request_source(0,source).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.content_hash.is_none());
 }
@@ -354,7 +354,7 @@ fn production_descriptor_cannot_admit_a_different_path_swapped_during_decode() {
     let loader=Loader::with_backend(move |path,token,file| {
         std::fs::rename(path,&saved).unwrap();std::fs::rename(&other,path).unwrap();
         super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground)
-    },media_analysis::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
+    },media_analysis::run,media_health::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
     loader.request(0,path).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.fingerprint.is_none());
 }
 

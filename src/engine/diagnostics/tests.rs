@@ -103,7 +103,7 @@ fn queue_pressure_reports_real_capacity_reservations_rejections_and_drain() {
         .unwrap();
     while engine.send(Command::Tap(Instant::now())).is_ok() {}
     let before = engine.cmd.queue_pressure();
-    assert_eq!(before.capacity, 32);
+    assert_eq!(before.capacity, 48);
     assert_eq!(before.pending, engine.cmd.len());
     assert_eq!(before.observed_high_water, before.pending as u64);
     assert_eq!(before.reserved_releases, 1);

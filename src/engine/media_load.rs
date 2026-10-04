@@ -111,7 +111,7 @@ impl Loader {
     pub fn start_with_performance(performance: super::performance::Handle) -> io::Result<Self> {
         let decode_performance = performance.clone();
         Self::with_backend(move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &decode_performance),
-            media_analysis::run, performance, true, crate::media_location::Snapshot::discover)
+            media_analysis::run, media_health::run, performance, true, crate::media_location::Snapshot::discover)
     }
     pub fn start() -> io::Result<Self> {
         Self::start_with_performance(performance::Handle::default())
@@ -120,7 +120,7 @@ impl Loader {
     #[cfg(test)]
     pub(crate) fn with_inventory(inventory:impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure>+Send+'static)->io::Result<Self> {
         let performance=performance::Handle::default();let foreground=performance.clone();
-        Self::with_backend(move |path,token,file|super::decode::decode_deck_file(path,file.expect("verified descriptor"),||!token.is_current(),&foreground),media_analysis::run,performance,true,inventory)
+        Self::with_backend(move |path,token,file|super::decode::decode_deck_file(path,file.expect("verified descriptor"),||!token.is_current(),&foreground),media_analysis::run,media_health::run,performance,true,inventory)
     }
     pub(crate) fn with_decoder(
         decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure>
@@ -144,6 +144,21 @@ impl Loader {
         Self::with_backend(
             move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &foreground),
             move |request, token, work| { before(token); media_analysis::run(request, token, work) },
+            media_health::run, performance, true, crate::media_location::Snapshot::discover,
+        )
+    }
+    /// Pause a real media-health job at a controlled worker boundary.
+    /// Takes the performance owner and a test hook; returns a loader that runs normal decoding after the hook.
+    #[cfg(test)]
+    pub(crate) fn with_health_hook(
+        performance: performance::Handle,
+        mut before: impl FnMut(&AnalysisToken) + Send + 'static,
+    ) -> io::Result<Self> {
+        let foreground = performance.clone();
+        Self::with_backend(
+            move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &foreground),
+            media_analysis::run,
+            move |request, token, work| { before(token); media_health::run(request, token, work) },
             performance, true, crate::media_location::Snapshot::discover,
         )
     }
@@ -155,11 +170,12 @@ impl Loader {
     ) -> io::Result<Self> {
         // Path decoders are explicit synthetic test adapters. Production
         // constructors always supply the same opened descriptor to decoding.
-        Self::with_backend(move |path,token,_file|decode(path,token),analyze,performance,false,crate::media_location::Snapshot::discover)
+        Self::with_backend(move |path,token,_file|decode(path,token),analyze,media_health::run,performance,false,crate::media_location::Snapshot::discover)
     }
     fn with_backend(
         mut decode: impl FnMut(&Path,&LoadToken,Option<std::fs::File>)->Result<DecodedAudio,DecodeFailure> + Send + 'static,
         mut analyze: impl FnMut(AnalysisRequest,&AnalysisToken,&performance::WorkPermit)->Result<crate::track_analysis::Prepared,AnalysisFailure> + Send + 'static,
+        mut check_health: impl FnMut(media_health::Request,&AnalysisToken,&performance::WorkPermit)->Result<media_health::Observation,AnalysisFailure> + Send + 'static,
         performance:performance::Handle,
         verified:bool,
         mut inventory:impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure> +Send+'static,
@@ -222,7 +238,7 @@ impl Loader {
                 let request = match request {
                     Work::Deck(request) => request,
                     Work::Health(job) => {
-                        let result = media_health::run(job.request, &job.token, &job.work);
+                        let result = check_health(job.request, &job.token, &job.work);
                         let old = {
                             let mut state = worker.state.lock().unwrap();
                             state.health_active = None;

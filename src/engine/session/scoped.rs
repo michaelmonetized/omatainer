@@ -160,11 +160,14 @@ mod tests {
             .is_ok()
         {}
         let ordinary = engine.cmd.len();
-        assert_eq!(ordinary, 127);
+        assert_eq!(ordinary, 111);
         for track in 0..128 {
             engine.send(Command::StopTrack { track }).unwrap();
         }
         engine.send(Command::Stop).unwrap();
+        for pad in 0..16 {
+            engine.send(Command::SamplerSlotStop { pad }).unwrap();
+        }
         assert_eq!(engine.cmd.len(), 256);
         for _ in 0..8 {
             assert_eq!(
