@@ -27,6 +27,7 @@ pub struct Prepared {
     pub model: Arc<Model>,
     pub nodes: Vec<Node>,
     incoming: Vec<Vec<Link>>,
+    outputs: Vec<usize>,
     pub scene_nodes: [Option<usize>; crate::engine::session::MAX_SCENES],
     pub main: usize,
 }
@@ -56,6 +57,9 @@ impl Prepared {
                 .map(|item| indices[&Group::Scene(item.id)])
         });
         let main = indices[&Group::Main];
+        let outputs = order.iter().enumerate().filter_map(|(index, group)| {
+            matches!(group, Group::Output(_)).then_some(index)
+        }).collect();
         let nodes = order
             .into_iter()
             .map(|group| Node {
@@ -78,6 +82,7 @@ impl Prepared {
             model,
             nodes,
             incoming,
+            outputs,
             scene_nodes,
             main,
         })
@@ -134,12 +139,10 @@ impl Prepared {
     /// Takes the active channel count; returns exact retained mappings, leaving absent channels silent.
     pub fn outputs(&self, channels: usize) -> [f32; MAX_PHYSICAL_CHANNELS] {
         let mut result = [0.0; MAX_PHYSICAL_CHANNELS];
-        for node in &self.nodes {
-            let Group::Output(_) = node.group else {
-                continue;
-            };
+        for &index in &self.outputs {
+            let node = &self.nodes[index];
             let port = &self.model.ports[node.slot.unwrap()];
-            for (&destination, value) in port.channels.iter().zip(node.taps[2]) {
+            for (&destination, value) in port.channels.iter().zip(node.input) {
                 if usize::from(destination) < channels.min(MAX_PHYSICAL_CHANNELS) {
                     result[usize::from(destination)] += value;
                 }
@@ -155,6 +158,7 @@ impl Prepared {
             + self.model.bytes()
             + self.nodes.capacity() * std::mem::size_of::<Node>()
             + self.incoming.capacity() * std::mem::size_of::<Vec<Link>>()
+            + self.outputs.capacity() * std::mem::size_of::<usize>()
             + self
                 .incoming
                 .iter()

@@ -24,6 +24,7 @@ impl Prepared {
             rt.xfader_gain.tick()
         };
         let mut cue = [0.0; 2];
+        let record_alias = rt.routing_pipe.recorder.alias();
         for index in 0..self.nodes.len() {
             self.gather(index);
             let input = [self.nodes[index].input[0], self.nodes[index].input[1]];
@@ -107,7 +108,14 @@ impl Prepared {
                     }
                     [before, post_fx, output]
                 }
-                Group::Input(_) | Group::Bus(_) | Group::Output(_) | Group::Record(_) => {
+                Group::Output(_) => continue,
+                Group::Record(id) => {
+                    if record_alias == id {
+                        rt.routing_pipe.recorder.capture(id, self.nodes[index].input);
+                    }
+                    continue;
+                }
+                Group::Input(_) | Group::Bus(_) => {
                     let input = self.nodes[index].input;
                     let taps = match group {
                         Group::Input(_) => {
@@ -123,12 +131,9 @@ impl Prepared {
                             let gain = if bus.mute { 0.0 } else { bus.gain };
                             [input, input, input.map(|value| value * gain)]
                         }
-                        _ => [input; 3],
+                        _ => unreachable!(),
                     };
                     self.publish(index, taps);
-                    if let Group::Record(id) = group {
-                        rt.routing_pipe.recorder.capture(id, taps[2]);
-                    }
                     continue;
                 }
             };
