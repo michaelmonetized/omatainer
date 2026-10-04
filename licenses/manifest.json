@@ -12484,7 +12484,7 @@
     "scripts/check-theme-colors.py": "5b48eb49b4b87145754f52d3f658acb881dfe14ea02a4433d4a621c689aab09f",
     "scripts/check_analysis_accessibility.py": "41dfe52abccf589b7778a74151f31815beaa58fe8672221d5bcfbdff4dfa3c65",
     "scripts/check_crates_accessibility.py": "606acf7066f07db1d3c08e6dc89e237869793a02d35d8d621f990856a3b8bdf2",
-    "scripts/check_grid_accessibility.py": "429f2addd4e539de9e341eeeb27bf9a1f6d72bac7db583c10e93e27cd62a34eb",
+    "scripts/check_grid_accessibility.py": "c81f28dd0d932ee2d23d82d3d017098a522967b11b4ee9796f60cc2db5772a2d",
     "scripts/check_history_accessibility.py": "ee88046d230b24161179458bf1fa4068f9e187bc1e742d35067948a9a6c55538",
     "scripts/check_sampler_accessibility.py": "562b6121633f6716a8150ae3b63f6816116ff0ac0a4d11b09ec3f187a69e6325",
     "scripts/hardware-probe.py": "66f873cb46342040e397b4e9f597a9a444a35ecfed695164eb4e2e854e96eba3",

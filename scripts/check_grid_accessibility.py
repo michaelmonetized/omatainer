@@ -67,7 +67,7 @@ def verify_grid(named, action, state, wait_for, Atspi):
     wait_for(lambda: state()['grid'] == mapped and not state()['grid_editor']['pending'], 'native anchor map applied')
     anchor = mapped['anchors'][0]
     click('Deck A beatgrid: Delete tempo anchor 1')
-    wait_for(lambda: not state()['grid_editor']['draft']['anchors'], 'native anchor deletion is a preview')
+    wait_for(lambda: not state()['grid_editor']['draft'].get('anchors', []), 'native anchor deletion is a preview')
     assert state()['grid'] == mapped
     click('Deck A beatgrid: Cancel or close grid editor')
     wait_for(lambda: state()['grid_editor'] is None, 'native Cancel preserves applied tempo map')
