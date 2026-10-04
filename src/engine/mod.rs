@@ -75,6 +75,7 @@ mod midi_schedule_tests;
 #[cfg(test)]
 mod sample_rate_tests;
 mod snapshot;
+pub(crate) mod audible;
 pub mod session;
 #[cfg(test)]
 mod scene_stereo_tests;
@@ -608,6 +609,7 @@ pub struct RtEngine {
     command_batch: Box<control::CommandBatch>,
     pub snap: Arc<Mutex<Snapshot>>,
     publisher: snapshot::Publisher,
+    audible: audible::Writer,
     pub midi_clock: MidiClockInput,
     #[cfg(test)]
     pub(crate) load_test_hooks: [Option<Box<dyn FnOnce() + Send>>; 2],
@@ -1074,6 +1076,7 @@ impl RtEngine {
             command_stats: control::CommandStats::default(),
             command_batch: Box::new(control::CommandBatch::empty()),
             publisher: snapshot::Publisher::new(snap.clone()),
+            audible: audible::Writer::new(),
             snap,
             midi_clock: MidiClockInput::default(),
             #[cfg(test)]
@@ -1457,6 +1460,7 @@ impl RtEngine {
                 output[..count].copy_from_slice(&frame[..count]);
                 self.render_output_probe(output);
                 self.routing = Some(routing);
+                self.audible.push(&self.decks);
                 if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
                 continue;
             }
@@ -1545,6 +1549,7 @@ impl RtEngine {
             output.fill(0.0);
             if channels == 1 { output[0] = 0.5 * (l + r); } else { output[0] = l; output[1] = r; }
             self.render_output_probe(output);
+            self.audible.push(&self.decks);
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
         self.project.publish_timeline(self.timeline_seconds());
@@ -3163,6 +3168,7 @@ impl InitialSession {
 }
 
 pub struct Engine {
+    pub(crate) audible: audible::Handle,
     pub(crate) routing: audio::routing::input::Pipe,
     pub undo: undo::Handle,
     pub project: project::Handle,
@@ -3207,9 +3213,11 @@ impl Engine {
         let routing = rt.routing_pipe.clone();
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
+        let audible = rt.audible.handle();
         let audio = audio::start_with_settings(rt, &settings.audio)?;
         let midi = midi::MidiHub::start_with_routing(tx.clone(), snap.clone(), settings.midi_inputs.clone(),settings.midi_routing.clone())?;
         Ok(Self {
+            audible,
             undo,
             project,
             cmd: tx,
@@ -3245,8 +3253,9 @@ impl Engine {
         let routing=rt.routing_pipe.clone();
         let sampler_assets=rt.sampler_assets.clone();
         let performance_history=rt.history_measurement.as_ref().map(|history|history.handle());
+        let audible=rt.audible.handle();
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,routing,sampler_assets,_audio:Some(audio)})
+        Ok(Self{audible,undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,routing,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
@@ -3278,8 +3287,10 @@ impl Engine {
         let routing = rt.routing_pipe.clone();
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
+        let audible = rt.audible.handle();
         (
             Self {
+                audible,
                 undo,
                 project,
                 cmd,

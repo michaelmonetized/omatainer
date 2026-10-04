@@ -221,6 +221,7 @@ impl App {
         self.apply_appearance(ctx);
         self.apply_automation();
         self.library_layout.apply(self.settings.profile().library_layout.clone());
+        self.waveform.settings = self.settings.profile().waveforms;
         if self.settings.profile().startup.scan_library {
             self.scan_library();
         }
@@ -297,6 +298,7 @@ impl App {
             self.apply_appearance(ctx);
             self.apply_automation();
             if old.library_layout != self.settings.profile().library_layout || old_profile != self.settings.applied.active { self.library_layout.apply(self.settings.profile().library_layout.clone()); }
+            if old_profile != self.settings.applied.active || (old.waveforms != self.settings.profile().waveforms && self.waveform.settings == old.waveforms) { self.waveform.settings = self.settings.profile().waveforms; }
             if old.library_roots != self.settings.profile().library_roots || old_profile!=self.settings.applied.active {
                 self.library_scan.cancel();
                 self.library_metadata.cancel_scan();

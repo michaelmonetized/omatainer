@@ -33,14 +33,14 @@ fn maximum_anchor_maps_keep_hybrid_callbacks_bounded_without_heap_work() {
         let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
         let mut output = vec![0.0f32; frames * 2];
         for _ in 0..128 {
-            callback.render(&mut output);
+            callback.render_timed(&mut output, Some(std::time::Duration::ZERO));
         }
         let mut cpu = Vec::with_capacity(4096);
         let mut wall = Vec::with_capacity(4096);
         let mut energy = 0.0f64;
         for _ in 0..4096 {
             assert_eq!(
-                test_alloc::measure(|| callback.render(&mut output)),
+                test_alloc::measure(|| callback.render_timed(&mut output, Some(std::time::Duration::ZERO))),
                 test_alloc::Counts::default()
             );
             let measurement = engine.cmd.audio_metrics().last_callback.unwrap();
@@ -68,7 +68,7 @@ fn maximum_anchor_maps_keep_hybrid_callbacks_bounded_without_heap_work() {
         println!(
             "VARIABLE_GRID_MAX_CALLBACK {}",
             serde_json::json!({"frames":frames,"callbacks":4096,
-            "sample_rate":48000,"tempo_anchors_per_deck":MAX_ANCHORS,"decks":2,"deadline_ns":deadline,
+            "sample_rate":48000,"tempo_anchors_per_deck":MAX_ANCHORS,"decks":2,"deadline_ns":deadline,"output_position_tracking":true,
             "p99_render_cpu_ns":cpu[4055],"max_render_cpu_ns":cpu[4095],"p99_callback_wall_ns":wall[4055],
             "max_callback_wall_ns":wall[4095],"energy":energy,"heap_allocations_and_frees":0,
             "notes":rt.tracks.iter().map(|track| track.clips[0].notes.len()).sum::<usize>()})

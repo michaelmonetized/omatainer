@@ -589,6 +589,36 @@
         "docs/validation/issue-134-variable-tempo-grid.md"
       ],
       "limits": "Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 BPM. Source PCM and absolute cues remain intact. Finished source-time map work contributes retained command storage, reusable inverse buffers, local interval arithmetic and a second CC BY 4.0 human electronic-drum recording. The canonical schema-13 format preserves legacy-header refusal and bounded migrations. The previous full qualification covers 32 anchors on source 28d82d7; qualification of the combined 64-anchor source remains pending. No acoustic corpus, listening score, physical controller or converter timing claim."
+    },
+    "135": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/waveform.rs",
+          "entry": "Deck waveforms → linked span, phase, cue/loop markers and Save waveform view"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/audible.rs",
+          "entry": "Bounded source-qualified output-frame history with per-frame reported playback timestamps"
+        },
+        {
+          "kind": "preferences",
+          "file": "src/preferences/waveforms.rs",
+          "entry": "Schema-14 linked waveform view; legacy in-memory migration and explicit save"
+        }
+      ],
+      "fixtures": [
+        "engine::audible::tests",
+        "engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo",
+        "ui::waveform::tests",
+        "preferences::waveforms::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-135-waveform-timing.md"
+      ],
+      "limits": "Reachable views and source-qualified playback estimates are implemented; fresh software qualification is pending. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending."
     }
   }
 }

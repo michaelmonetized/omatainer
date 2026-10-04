@@ -41,6 +41,7 @@ mod session_history;
 mod session_editor;
 mod cue_editor;
 mod grid_editor;
+mod waveform;
 mod piano_roll;
 mod midi_files;
 mod timing;
@@ -174,6 +175,7 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    waveform: waveform::Panel,
     session_editor: session_editor::Editor,
     audio_routing: audio_routing::Panel,
     piano_roll: piano_roll::Editor,
@@ -312,6 +314,7 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            waveform: waveform::Panel::default(),
             session_editor: session_editor::Editor::default(),
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
@@ -989,6 +992,10 @@ impl App {
         let gap = 4.0;
         let fader_h = t.target_size(28.0);
         let (sq, wave_h, side_w, mid_w) = scratch_metrics(w, h, fader_h, gap, t.target_size(22.0).max(if t.font_size <= 18.0 { t.text_size(11.0) * 2.0 + 8.0 } else { 0.0 }));
+        let output = self.engine.audible.positions_at(self.engine.audible.now_ns());
+        let positions = std::array::from_fn(|d| self.snap.decks.get(d)
+            .map(|snap| waveform::playhead(snap, output.map(|positions| positions[d])))
+            .unwrap_or(waveform::Playhead { frames:0.0, estimated_output:false }));
         ui.with_layout(egui::Layout::left_to_right(Align::Min), |ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(gap);
             ui.allocate_ui(Vec2::new(side_w, h), |ui| {
@@ -999,13 +1006,19 @@ impl App {
                 ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
                     let wave_w = ((mid_w - gap) / 2.0).max(56.0);
+                    let controls = ui.scope(|ui| {
+                        if self.waveform_toolbar(ui, t) { self.save_waveform_view(); }
+                        let phase = waveform::phase(&self.snap.decks, &positions, self.snap.selected_deck);
+                        ui.label(RichText::new(phase).size(t.text_size(9.0)));
+                    });
+                    let view_height = (wave_h - controls.response.rect.height() - gap).max(32.0);
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::splat(gap);
                         for d in 0..DECKS {
                             let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
                             let wave = ui.scope(|ui| {
                                 accessibility::scope(ui, &format!("Deck {}", (b'A' + d as u8) as char), |ui| {
-                                    vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
+                                    waveform::paint(ui, t, &snap, t.track_color(d), Vec2::new(wave_w, view_height), self.waveform.settings.zoom[d], positions[d], |frac| {
                                         self.send(Command::DeckSeek { deck: d as u8, frac });
                                     });
                                 });
@@ -2095,71 +2108,9 @@ fn platter(
     }
 }
 
-fn vertical_wave(
-    ui: &mut Ui,
-    t: &Theme,
-    snap: &crate::engine::DeckSnap,
-    col: Color32,
-    w: f32,
-    h: f32,
-    mut on_seek: impl FnMut(f32),
-) {
-    let (rect, resp) = ui.allocate_exact_size(Vec2::new(w, h), Sense::click_and_drag());
-    let p = ui.painter_at(rect);
-    p.rect_filled(rect, 4.0, t.bg_darker);
-    let position = if snap.frames > 0.0 { ((snap.pos / snap.frames) as f32 * snap.duration).clamp(0.0, snap.duration) } else { 0.0 };
-    if let Some(seconds) = accessibility::numeric(ui, &resp, "Waveform position", position, 0.0, snap.duration.max(0.0), 0.1, " s") {
-        if snap.duration > 0.0 { on_seek(seconds / snap.duration); }
-    }
-    help::annotate(ui, &resp, HelpControl::Seek);
-    if snap.peaks.is_empty() || snap.frames < 1.0 || snap.duration <= 0.01 {
-        p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(t.text_size(10.0)), t.muted);
-        return;
-    }
-    let pos_s = (snap.pos / snap.frames) as f32 * snap.duration;
-    let half = 3.5;
-    let start_s = (pos_s - half).max(0.0);
-    let end_s = (start_s + half * 2.0).min(snap.duration);
-    let n = snap.peaks.len() as f32;
-    let a = ((start_s / snap.duration) * n) as usize;
-    let b = (((end_s / snap.duration) * n) as usize).max(a + 1).min(snap.peaks.len());
-    let mid = rect.center().x;
-    let hw = rect.width() * 0.46;
-    let span = (b - a).max(1);
-    let step = (span as f32 / rect.height().max(1.0)).ceil().max(1.0) as usize;
-    let mut k = 0usize;
-    let mut i = a;
-    while i < b {
-        let y = rect.top() + k as f32 * step as f32 / span as f32 * rect.height();
-        let pk = snap.peaks[i];
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid - pk[0] * hw, y)], st(1.0, t.waveform(t.red, 0.9)));
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid + pk[1] * hw, y)], st(1.0, t.waveform(t.green, 0.85)));
-        p.line_segment([Pos2::new(mid - pk[2] * hw * 0.35, y), Pos2::new(mid + pk[2] * hw * 0.35, y)], st(1.0, t.waveform(t.marker(col, t.bg_darker), 0.5)));
-        i += step;
-        k += 1;
-    }
-    grid_editor::paint_vertical_grid(&p, rect, t, snap.grid, start_s as f64, end_s as f64);
-    for (i, position) in snap.hotcue_positions.iter().enumerate() {
-        let Some(seconds) = position.map(|p| (p / snap.frames) as f32 * snap.duration) else { continue };
-        if !(start_s..=end_s).contains(&seconds) { continue; }
-        let y = rect.top() + (seconds - start_s) / (end_s - start_s).max(0.001) * rect.height();
-        let color = cue_editor::color(t, snap.cue_styles[i], i);
-        p.line_segment([Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)], st(1.0, color));
-        let name = cue_editor::short_name(snap.cue_styles[i].name.as_str(), 8);
-        p.text(Pos2::new(rect.left() + 2.0, y), egui::Align2::LEFT_BOTTOM,
-            format!("{} {}", i + 1, name), FontId::proportional(t.text_size(9.0)), t.fg);
-    }
-    accessibility::status(ui, &resp, &snap.hotcue_positions.iter().enumerate()
-        .filter(|(_, pos)| pos.is_some()).map(|(i, _)| cue_editor::description(snap, i)).collect::<Vec<_>>().join("; "));
-    let play_y = rect.top() + ((pos_s - start_s) / (end_s - start_s).max(0.001)) * rect.height();
-    p.line_segment([Pos2::new(rect.left(), play_y), Pos2::new(rect.right(), play_y)], st(1.6, t.accent));
-    if resp.clicked() || resp.dragged() {
-        if let Some(pos) = resp.interact_pointer_pos() {
-            let u = ((pos.y - rect.top()) / rect.height()).clamp(0.0, 1.0);
-            let tsec = start_s + u * (end_s - start_s);
-            on_seek((tsec / snap.duration).clamp(0.0, 1.0));
-        }
-    }
+#[cfg(test)]
+fn vertical_wave(ui: &mut Ui, t: &Theme, snap: &crate::engine::DeckSnap, col: Color32, w: f32, h: f32, on_seek: impl FnMut(f32)) {
+    waveform::paint(ui, t, snap, col, Vec2::new(w,h), crate::preferences::waveforms::Zoom::default(), waveform::playhead(snap, None), on_seek);
 }
 
 fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8) -> Option<f32> {

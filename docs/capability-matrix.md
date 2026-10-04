@@ -84,6 +84,16 @@ Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native 
 
 Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 BPM. Source PCM and absolute cues remain intact. Finished source-time map work contributes retained command storage, reusable inverse buffers, local interval arithmetic and a second CC BY 4.0 human electronic-drum recording. The canonical schema-13 format preserves legacy-header refusal and bounded migrations. The previous full qualification covers 32 anchors on source 28d82d7; qualification of the combined 64-anchor source remains pending. No acoustic corpus, listening score, physical controller or converter timing claim.
 
+### Issue #135: partial
+
+- native UI: [src/ui/waveform.rs](../src/ui/waveform.rs) — Deck waveforms → linked span, phase, cue/loop markers and Save waveform view
+- renderer: [src/engine/audible.rs](../src/engine/audible.rs) — Bounded source-qualified output-frame history with per-frame reported playback timestamps
+- preferences: [src/preferences/waveforms.rs](../src/preferences/waveforms.rs) — Schema-14 linked waveform view; legacy in-memory migration and explicit save
+- Acceptance fixtures: `engine::audible::tests`, `engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo`, `ui::waveform::tests`, `preferences::waveforms::tests`.
+- Evidence: [docs/validation/issue-135-waveform-timing.md](../docs/validation/issue-135-waveform-timing.md).
+
+Reachable views and source-qualified playback estimates are implemented; fresh software qualification is pending. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending.
+
 ### Issue #137: partial
 
 - release tooling: [scripts/capability-matrix.py](../scripts/capability-matrix.py) — generate / check
@@ -215,7 +225,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#132](https://github.com/michaelmonetized/omatainer/issues/132) | Prioritize and cancel expensive background audio jobs | implemented |
 | [#133](https://github.com/michaelmonetized/omatainer/issues/133) | Integrate low-latency PipeWire, JACK and ALSA workflows | implemented |
 | [#134](https://github.com/michaelmonetized/omatainer/issues/134) | Support manually mapped tempo changes within a track | implemented |
-| [#135](https://github.com/michaelmonetized/omatainer/issues/135) | Show aligned beatgrid, phase and phrase position on deck waveforms | planned |
+| [#135](https://github.com/michaelmonetized/omatainer/issues/135) | Show aligned beatgrid, phase and phrase position on deck waveforms | partial |
 | [#136](https://github.com/michaelmonetized/omatainer/issues/136) | Switch live sets without interrupting the outgoing mix | planned |
 | [#137](https://github.com/michaelmonetized/omatainer/issues/137) | Maintain a versioned professional capability and compatibility matrix | partial |
 | [#138](https://github.com/michaelmonetized/omatainer/issues/138) | Deliver verified releases with safe updates and rollback | planned |

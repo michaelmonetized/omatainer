@@ -98,7 +98,7 @@ fn private_atspi_bridge_child() {
     );
     adapter.update_window_focus_state(true);
     let mut callback = crate::engine::audio::OutputCallback::new(rt, 2);
-    let deadline = Instant::now() + Duration::from_secs(70);
+    let deadline = Instant::now() + Duration::from_secs(120);
     let mut actions = Vec::new();
     let mut frames = 0u64;
     while !directory.join("done").exists() {

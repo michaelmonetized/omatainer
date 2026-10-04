@@ -4,13 +4,14 @@ pub mod recovery;
 pub(crate) mod shortcuts;
 pub(crate) mod workspaces;
 pub(crate) mod library_layout;
+pub(crate) mod waveforms;
 pub mod storage;
 pub mod worker;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 13;
+pub const VERSION: u32 = 14;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -170,6 +171,8 @@ pub struct Startup {
 #[serde(deny_unknown_fields)]
 pub struct Profile {
     #[serde(default)]
+    pub(crate) waveforms: waveforms::Config,
+    #[serde(default)]
     pub(crate) library_layout: library_layout::Config,
     #[serde(default)]
     pub(crate) workspaces: workspaces::Config,
@@ -194,6 +197,7 @@ pub struct Profile {
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
         Self {
+            waveforms: waveforms::Config::default(),
             library_layout: library_layout::Config::default(),
             workspaces: workspaces::Config::default(),
             automation: crate::automation::osc::Config::default(),
@@ -288,6 +292,7 @@ impl Preferences {
 impl Profile {
     pub fn validate(&self) -> Result<(), String> {
         self.library_layout.validate()?;
+        self.waveforms.validate()?;
         self.workspaces.validate()?;
         self.automation.validate()?;
         self.recovery.validate()?;

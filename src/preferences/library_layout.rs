@@ -284,7 +284,7 @@ mod tests {
         let mut old = serde_json::to_value(&current).unwrap();
         old["version"] = 12.into();
         for profile in old["profiles"].as_object_mut().unwrap().values_mut() {
-            profile.as_object_mut().unwrap().remove("library_layout");
+            profile.as_object_mut().unwrap().remove("library_layout");profile.as_object_mut().unwrap().remove("waveforms");
         }
         let (migrated, changed) = storage::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
         assert!(changed);
@@ -296,7 +296,7 @@ mod tests {
             old["profiles"]["Studio"]["library_layout"] = field;
             assert!(storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
         }
-        old["version"] = 14.into();
+        old["version"] = 15.into();
         assert!(storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
     }
     #[test]

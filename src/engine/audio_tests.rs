@@ -32,6 +32,55 @@ fn fixture() -> (OutputCallback, CommandPort) {
 }
 
 #[test]
+fn captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo() {
+    use crate::engine::{beatgrid::Grid, test_alloc};
+    for reverse in [false, true] {
+        let (mut callback, _commands) = fixture();
+        let mut pcm = vec![0.0; 8192 * 2];
+        for (index, frame) in (64..8192).step_by(128).enumerate() {
+            let frame = frame + index % 13;
+            pcm[frame*2] = 0.1; pcm[frame*2+1] = 0.1;
+        }
+        let sample = Arc::new(Sample { name: "captured click timeline".into(),sr:48000,ch:2,
+            data:pcm.clone(),peaks:vec![].into(),bpm:120.0,path:String::new() });
+        callback.rt.playing = false;
+        callback.rt.decks[0].audio = Some(sample.clone());
+        callback.rt.decks[0].history_key = 77;
+        callback.rt.decks[0].transition_remaining = 0;
+        callback.rt.decks[0].pos = if reverse { 4000.0 } else { 0.0 };
+        callback.rt.decks[0].touching = reverse;
+        callback.rt.decks[0].scratch = -0.75;
+        if !reverse {
+            callback.rt.decks[0].grid = Some(Grid::new(0.0,120.0).unwrap()
+                .with_anchor(0.08,0.03).unwrap().with_anchor(0.16,0.09).unwrap());
+            callback.rt.decks[0].sync = true;
+            callback.rt.decks[0].sync_bpm = 120.0;
+        }
+        let handle = callback.rt.audible.handle();
+        let mut captured_clicks = 0;
+        for block in 0..16 {
+            let start = 1_000_000_000 + block * 256 * 1_000_000_000 / 48000;
+            let mut output = [0.0_f32;512];
+            assert_eq!(test_alloc::measure(|| callback.render_at(&mut output,None,Some(start))), test_alloc::Counts::default());
+            for frame in 0..256 {
+                let positions = handle.positions_at(start + frame as u64 * 1_000_000_000 / 48000).unwrap();
+                let position = positions[0];
+                assert_eq!(position.media_key,77);
+                let expected = sample.at(position.source_frame).0;
+                if expected > 0.05 { assert!(output[frame*2].abs()>0.005); captured_clicks += 1; }
+                if expected == 0.0 { assert!(output[frame*2].abs()<0.002); }
+            }
+        }
+        assert!(captured_clicks>8);
+        assert_eq!(sample.data,pcm);
+        assert!(Arc::ptr_eq(&sample,callback.rt.decks[0].audio.as_ref().unwrap()));
+        assert!(handle.positions_at(999_999_999).is_none());
+        callback.render(&mut [0.0_f32;512]);
+        assert!(handle.positions_at(1_000_000_000).is_none());
+    }
+}
+
+#[test]
 fn control_port_reports_queue_acceptance_full_and_disconnected() {
     let (commands, rx) = CommandPort::channel(28);
     for _ in 0..3 {

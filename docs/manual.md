@@ -2094,6 +2094,14 @@ Seek within loaded media. Seeking resets grain history with a bounded transition
 
 Workflow: Prepare a DJ deck.
 
+### Waveform zoom and phase
+
+2 / 4 / 8 / 16 four-beat bars
+
+Cycle each deck's span. Link uses one musical span for both decks; Save retains the view in the current preference profile after its save receipt. Without a grid, spans use source seconds. Beat and downbeat lines, eight-bar phrase counts, saved cues and loop boundaries use the loaded source's grid. Phase is the nearest signed beat difference against the selected deck, not automatic phrase detection. Output position estimate follows the audio output’s reported playback time. Unknown, expired or replaced media timing and key-lock or transition mixtures show renderer position explicitly. Display, converters and listening alignment remain unqualified.
+
+Workflow: Prepare a DJ deck.
+
 ### Deck filter (mapped MIDI)
 
 −100% low-pass to +100% high-pass

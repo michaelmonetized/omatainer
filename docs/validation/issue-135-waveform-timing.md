@@ -1,0 +1,11 @@
+# Deck waveform timing
+
+The main deck view exposes linked 2/4/8/16-bar zoom, a signed nearest-beat phase offset against the selected deck, downbeat/beat lines, eight-bar phrase counts and saved cue/loop markers. Without a manual grid the span uses source seconds. Save waveform view uses the current preference owner and revision; another preference draft, protection or missing owner prevents a write. Schema 14 migrates older profiles in memory; older headers cannot carry new waveform fields.
+
+OutputCallback retains fixed per-frame source positions and their reported playback times. Each block keeps its own timestamp: a later block’s jitter cannot shift an earlier block’s positions. Reads are bounded, coherent and source-qualified; expired, overwritten, overlapping, unknown or restarted timing is unavailable. CPAL estimates from its reported playback delay. JACK estimates from cycle start plus a common exact downstream playback latency; unequal ranges and disconnected paths are unavailable. Callback heap work is forbidden by fixtures.
+
+The output position is an estimate of the rendered source timeline. Key-lock mixes grains; seeks, stops and mode changes mix a short outgoing fade. These cannot honestly be assigned one audible source position, so their view uses an explicitly labeled renderer fallback. Effect tails and physical/display/converter timing are not qualified. Phase assumes saved grids; eight-bar phrase counts do not detect song sections.
+
+The original unfinished worktree and exact six-file snapshot remain preserved. Implementation continues only in the combined branch and PR #500. Fresh click-output, reverse/tempo, bounded-history, long-track, native marker and saved-profile checks are pending. The latest read-only USB inventory (2026-10-04 09:30 UTC) has no external controller or audio interface; physical tests remain pending.
+
+Primary API contracts: [CPAL 0.15.3 output timestamps](https://docs.rs/cpal/0.15.3/cpal/struct.OutputStreamTimestamp.html), [JACK cycle timing](https://jackaudio.org/api/group__TimeFunctions.html), [JACK latency callbacks and ranges](https://jackaudio.org/api/group__LatencyFunctions.html). API estimates do not establish physical alignment.

@@ -807,3 +807,5 @@ Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions
 [Touch and pen input](docs/touch-and-pen.md) supports independently held performance controls, reported pad pressure and cancellation. The Linux backend pressure and physical-device limits are documented.
 
 Use [Workspaces and panel windows](docs/workspaces.md) to save panel visibility, order, heights and secondary-window sizes through Preferences.
+
+Deck waveforms offer linked 2/4/8/16-bar zoom, saved cue/loop markers and phase against the selected deck. Save waveform view retains it in preference schema 14. The output position estimate uses the backend’s reported time; unknown timing, changed media, key-lock and fades show renderer position explicitly. [Waveform qualification and limits](docs/validation/issue-135-waveform-timing.md).
