@@ -12843,7 +12843,7 @@
     "src/ui/fx_controls.rs": "399500a6f7218e514534c4d132a2f4001cc84332a5d55689811222db2ba479e7",
     "src/ui/fx_controls/tests.rs": "703e25715d2cc8c7e456a3e56480db802e880440cd7fdda25936d080cb38d1e8",
     "src/ui/grid_editor.rs": "6a6d9c817670602ff5fd89b2bc44805c3753df01d95e708b53f6ab1baeef83a6",
-    "src/ui/grid_editor/tests.rs": "9fb72543751001cd922051f631db68b1204720df3fe081f4e7d6ac231b78bad4",
+    "src/ui/grid_editor/tests.rs": "948c7e51ffb383b6c2c95724866668817a36d05caefe318d47797eb9ffdc21a3",
     "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
     "src/ui/help/catalogue.rs": "a825e3704a9f28603696f9396596ed5647f8c7165bacdf85042ceb176f0b0ca1",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",

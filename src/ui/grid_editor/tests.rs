@@ -685,7 +685,7 @@ fn recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_nati
     let catalog = files.0.join("catalog/library.json");
     drop(gui);
     let deadline = Instant::now() + std::time::Duration::from_secs(5);
-    while crate::library::Store::open(&catalog).is_err() {
+    while crate::library::Store::open(catalog.clone()).is_err() {
         assert!(Instant::now() < deadline); std::thread::sleep(std::time::Duration::from_millis(1));
     }
     let mut reopened = Gui::new(96_000);
@@ -699,7 +699,7 @@ fn recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_nati
     assert!(!reopened.rt.decks[0].playing);
     reopened.close();
     reopened.click("Deck A: Platter play or pause");
-    let mut audio = [0.0; 1024];
+    let mut audio = [0.0; 8192];
     assert_eq!(test_alloc::measure(|| reopened.rt.process(&mut audio)), test_alloc::Counts::default());
     assert!(audio.iter().any(|sample| sample.abs() > 1e-4));
 }
