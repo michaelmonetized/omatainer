@@ -12836,7 +12836,7 @@
     "src/ui/keyboard_tests.rs": "912d7d1ed22a60764615303802655ed153b43c8d8d3ce81c5deaa44ce3ae07e0",
     "src/ui/keylock_status.rs": "322adabfe66d0748e3e2bd583b75964fed01b65ca6ded1425c5cd9fe37627397",
     "src/ui/library_analysis.rs": "c257304a5e284fe9df6fae3739f71cac50b3291bf2c44000b8f0605e50baca90",
-    "src/ui/library_analysis/tests.rs": "d74bd52c6c76f2dce6381b401ba92fc80f93084bc4049d5a00f5027bd23ca227",
+    "src/ui/library_analysis/tests.rs": "c8ec455f4218db2388cb9e7e518e9ad9484aad3bc6086476ad152f114ae19c41",
     "src/ui/library_analysis/tests/long.rs": "da9abc6a6d08b798f4435c700be4cd1d8cf3129225f76ec7cfe75dbeb20660f2",
     "src/ui/library_annotations.rs": "27688727d99c141794a91628fe13adac42c21ecc1e19302ac4c408e69a0a1d39",
     "src/ui/library_annotations/tests.rs": "33fc9ff0a082edb1d59747535bbd6b7648e28fd3fa3764549b1ae6321d334ff5",
