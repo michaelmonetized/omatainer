@@ -25,4 +25,4 @@ Validation selectors:
 - `ui::library_tags::tests`: native actual-tag refresh preview displays saved protection on read-only media.
 - `ui::library_metadata::tests`, `ui::grid_editor::tests`: existing owner and editor regressions.
 
-The complete baseline qualification is retained in `remaining-backlog-qualification.md`. New qualification must bind the preparation-lock source and fresh test artifacts before this branch can be described as release qualified.
+The preparation-lock source `adea3009e06899d266bbc5831bbc8c9bfdf0b95d` passes the complete 1,448-test ordinary qualification, 118 focused checks, three private native audio fault modes and the optimized eight-workload gate. Source and executable bindings are retained in `remaining-backlog-qualification.md` and its JSON receipt. This qualifies the implemented software subset, not every remaining feature or physical device.
