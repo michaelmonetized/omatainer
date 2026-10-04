@@ -1,27 +1,27 @@
 {
   "schema": 1,
-  "source_commit": "3bd82bb0e4cbc30f2617f8f7f46a04b009ed633f",
-  "binary_sha256": "5952bd14ba7bfe8073d5e51d488969c2e8297d880beb11e7e50f2aa2159e7674",
+  "source_commit": "31a7a36d4f16c5bc7869aef4b151a205d274effd",
+  "binary_sha256": "a8b7c939dd78f54696707858b9b2b2511fdaafbc420a560c7e3a17dd0e4a58eb",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "f4c253819f800caaa2912a0d4aa06e9b2d4ce923a6579c334b0f5a8cc4da3560",
-    "Cargo.toml": "1cfb5a96028535a97726ff30727cc4545da46a98d369f5211aa1599964b19b7f",
+    "Cargo.lock": "69bf7598239f85a793b71a851a6d793ad0cc6c5d7e4fb64d90fef12fe72b12b3",
+    "Cargo.toml": "e661fe8a3eab9ebe62f132b1909780995bbce788f7e326038fb4b519bb2689ec",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "fa2482d42a063b969bf646b6abeb5454b3a40d09ae7b703af646b9921d876e5d",
+    "README.md": "c3d17ed3f1c89cc62bb46c4a64437380e83ebf7f1202911b90d0d0598cfeb707",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/backlog/capability-status.json": "126f63f06a97b30f4533a6dbac507f31aa9f4687d17c869530d8d054c884acf9",
+    "docs/backlog/capability-status.json": "86d2da23d70f81adc5a30c05706f53d7740f973b622c6ea5edb59239991693cd",
     "docs/backlog/previous-stack.json": "5e4e5ad9453e6f0ab813928e098101723f042aa739aa3f1c287eacedf6a4984d",
     "docs/backlog/release-scope.json": "5f7eb0b9875f42134a0113d1a8abf475610a516b8a83945399497b3f77078073",
     "docs/backlog/remaining-issues.json": "c852d3265ea2526be976a469ac3cd49aeb0e98626117cf42ea210b8432c99fd9",
-    "docs/capability-matrix.md": "01aeddf7b53e089bd9da45bfd5b59e124c702fc774f49c8bdc1dcf7579310f05",
-    "docs/manual.md": "0b282c04ffa99121b1f2a7dbf9bd74a9b774243847fc84ca1ff940298f3e78e1",
+    "docs/capability-matrix.md": "ef1ed91c7edef4a857340776e381a676800aceb2713c63b98162dfc072a09bea",
+    "docs/manual.md": "337dcdeef56083e76666b7a5370e49dc0916de6fe85718b69fe0be9caa658a6e",
     "licenses/assets.json": "14cf60030d4a9db3a4aeee3df1da26411705b4a59d08a9632cb4c377b35adeb0",
     "locales/de.json": "5ca01c7d8e9d62191d5a668f636915945258813b5c64014000ba860ec37cd502",
-    "locales/en.json": "a5ac416b958dc2692e49037787e254915e54d88d879e3bcee02a7f7fa9bc9b9c",
+    "locales/en.json": "142419cd473e12f5b0925c94d6e059675ba96b2dc8035b6928cdfaae6dbc2f3a",
     "locales/es.json": "bff584a8370023761665563a3384780de2e5a1cdd384cf591a2602abac85402d",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "4bfc2782b991a4b015b19d38224496d1d5418f23e1df157b5c7c3932da72f223",
@@ -185,7 +185,7 @@
     "src/engine/midi/routing/packet.rs": "531f59229be4b9a66c3cb16cc00f8c9b4f75d31b056630868e4df1f76b8d2057",
     "src/engine/midi/routing/playback.rs": "187f1096b326a9ca8c60b54cb9e8c3eb3b6c9e45fce2a05f90f1b5ee49ffb45b",
     "src/engine/midi/routing/playback/tests.rs": "7a2472709c983b9e2562bb81adcf0f9a98788bfce06049ec173061cc06864652",
-    "src/engine/midi/routing/tests.rs": "74a4e3b0019148f3858f54c427bcc049ff9aabdda59dff4d1f88e6483dff1584",
+    "src/engine/midi/routing/tests.rs": "edd8efebfa6f7bf6997b8583d33e05eeaeb77b84ff6d106e3af6a825e059ea2e",
     "src/engine/midi_data.rs": "16d6ccd7a2cf2a570a0eb96a54f50ad9eb155d04fc9b18193d3f56ba665ce81a",
     "src/engine/midi_data/lanes.rs": "8001f75de4cabd0df1b9ac17356b356ac609744d8f204d3b475bd0209c3ee287",
     "src/engine/midi_data/timeline.rs": "bed537e57a4eb7d0250ea8a914878e8e44b0b9ad1365e223ced747cd10fde4ec",
@@ -317,11 +317,10 @@
     "src/performance_history/worker/tests.rs": "632358a221db9594516fed14f49364ae7b65edab4ceaa75baa4070916077514c",
     "src/portable_project.rs": "9e774b7a3e960d71347ecc11bd270f71dd20c7df879679bfca3ed1c8bcb4b6b6",
     "src/portable_project/tests.rs": "a795e2cb9c8df18d91108e83a0e2225e0e1c2ccaa1f16e43d583417909f81955",
-    "src/preferences/library_layout.rs": "b8ba1fdfcaa62acc283f327c94e42ff0728471abd819faeb643a0bd201bd7b5c",
-    "src/preferences/mod.rs": "e8fac2299706564140d271172ae652fdbedb29308a40190a701699fa5fdad932",
+    "src/preferences/mod.rs": "071127f0e325f16cdbeb0b22673dfe19a52b7a3ef207b65cefea0fc32276205f",
     "src/preferences/recovery.rs": "88b75bf700d514cec7d69a75b632123de220bb7357003ef4bfd5bca36a3365ee",
     "src/preferences/shortcuts.rs": "5a43a66920444978496f08bf47e7706770ee05304d92db25cd613c7f4b48c27c",
-    "src/preferences/storage.rs": "5fbde4090c47d9dc5bf486078db662f1653a2d37660cec8a91e68e9a71fd39ae",
+    "src/preferences/storage.rs": "4dd5ceb7856e25c0055dd22746e87e9d13f7341dea2701f356bd1da56345ceac",
     "src/preferences/worker.rs": "402e045a7d0af38849cc7d88226143b2364361e21fbab99498ddc3ff224c16ae",
     "src/preferences/workspaces.rs": "eeb6a05d20a74649ee0a5b84d3ae093400a1bde6ea52db2188c621aa70018fa0",
     "src/project_dependencies.rs": "90ee8befa23c98b880b29667da26cfd4385abf2372c49b064b4ff5604acdcfee",
@@ -373,7 +372,7 @@
     "src/track_analysis.rs": "6a32af0a7bbf6f784ddd4c54f13b21dbd2b2dd630a4c7fbca9d01ea9e7afeeef",
     "src/track_analysis/cache.rs": "2350205a7a8de86ef6c2c497a90db3bf8d03d3e514929e138917afedf4b002b8",
     "src/track_analysis/cache/tests.rs": "d3e9f7b86248d794a7b0b088cd92d1af97e45e5a63944b6414f77e0d96aae736",
-    "src/ui.rs": "43144c02586a7183312a71803150b276aa53d220ce70eaf19ff59d5b6899f64b",
+    "src/ui.rs": "ec1ee92a8ff0303c4b3ecdb2565561d2eb6bec70ef7ba37a6c9635b75ea57754",
     "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
     "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
     "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
@@ -414,7 +413,7 @@
     "src/ui/grid_editor.rs": "b35b84caf7deeb4a13babc4628d4cce7ce2947dfdd0d83bf3edb02ea019ca496",
     "src/ui/grid_editor/tests.rs": "f8fe8e65cad1ae3ca0201142822683332026ebaddcba1d72f06b7b4afa471e28",
     "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
-    "src/ui/help/catalogue.rs": "98525a5ab342f39408003c24efb354faad0fee5a67a0a4a39963943ce0eb04eb",
+    "src/ui/help/catalogue.rs": "d99bd52827388c784d05adc077fb0bda7b7897685faf990a71724cc7fedd0fad",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
     "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
     "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",
@@ -427,16 +426,11 @@
     "src/ui/library_analysis/tests/long.rs": "da9abc6a6d08b798f4435c700be4cd1d8cf3129225f76ec7cfe75dbeb20660f2",
     "src/ui/library_annotations.rs": "cca858135c2ca92f1b28e8be97560d021fa556842e33d88907aa58a5177ebfbf",
     "src/ui/library_annotations/tests.rs": "4a037b928495820570b80899c3d12e9dc025dd07745fc1f7521e0f86ee2ee3da",
-    "src/ui/library_artwork.rs": "d1a9d2b1821535c9b21f0964669aedc4d430960ad50c2845f5cebe9a9efbb38d",
-    "src/ui/library_artwork/tests.rs": "2a02679ddef005de30692424cb162e96b101ad8b0c8649101414e6aa955e7b13",
     "src/ui/library_crates.rs": "c7627f29ab50d53a99d8ec1140c04ea833c6da04cc5e3c1d4e0d164c14b2f4d8",
     "src/ui/library_crates/discovery.rs": "68c77918bd98c613e07ea6fa48bd57601412da60e245dbd89b67b30268466319",
     "src/ui/library_crates/tests.rs": "ccaf531f5faa0af980ec29ce7a120408a066b44b3774fe120b0c5d625f3e97ed",
     "src/ui/library_health.rs": "1faab3786f74ee9f6decf06eda9d103198a6752495ba0d4d5540196ed3689793",
     "src/ui/library_health/tests.rs": "3e0ce243d2753a4f5b2e58f1fce898947469de593821ed64c410a914e6af8749",
-    "src/ui/library_layout.rs": "002f20083532f83e51fb6759c748c3548de69e89ee8c6513d166210606120079",
-    "src/ui/library_layout/sort.rs": "138ca0cb93773d09d2c3511ff01d99f6003380fb43452b02749bd9ad0a48a6a2",
-    "src/ui/library_layout/tests.rs": "ccb6fbd030cbc7f3d696979731a1255f55a4cdfea9994acc170fdc3b70549f97",
     "src/ui/library_metadata.rs": "5405b7a774ab4d69c76ed5835af585f2d0703eb638e9d36d89a4ddb7e16ddb22",
     "src/ui/library_metadata/analysis.rs": "bb7af72487808a85c018eccae76da385ee702cc4c12ec7cd210f2902dc94d227",
     "src/ui/library_metadata/analysis/tests.rs": "4e3afd3f0e8130d6de999431fa6d108ee19484b63ea35ea83b5c61af36d63dc0",
@@ -466,7 +460,7 @@
     "src/ui/library_store/tests.rs": "dc59e6ec5e3c2b1349e06d07931d591ddebe0e93c5a126d535bc7017fd5894a2",
     "src/ui/library_tags.rs": "d68301bd0b7cf77a607b8e3033371f9939a84ee2db707c310369ff1e2e21abb5",
     "src/ui/library_tags/tests.rs": "ca3df785ab2511456f3f6e2724c4450c61cdad4594e05e3b1b15a9d69edb220c",
-    "src/ui/library_view.rs": "b6056b369a92a5b71e520132624235b9c9c3f709005fa3055f0a1aba38113712",
+    "src/ui/library_view.rs": "e823b08995f3bd535ab6355ae32f2a528548afb9ba786ae43361b9af553363ad",
     "src/ui/library_view_tests.rs": "d46896e43a39b318c36509ba691649da34a262ffdbe8217e1a4e686c00c87d2c",
     "src/ui/licenses.rs": "514c7a7f5e69e2e816317837763582b0d913c34852a58a05c4e9731cf8b5b84f",
     "src/ui/licenses/tests.rs": "ed1be7b929653ee4fe5354161750ec8dcd3ee9b8179b4b629127155b424dc22c",
@@ -487,14 +481,14 @@
     "src/ui/piano_roll.rs": "74e11044229546072277a56aa41adf43c2f647442699008dbe6856b9f92c8477",
     "src/ui/piano_roll/canvas.rs": "d2aea4f4ecc6c82e7b56602184d3fdbb761978b41acd79e45b59f73ad19cff4b",
     "src/ui/piano_roll/tests.rs": "23e358a3f41eb19ff5689e6943d25307c937c9e99c71d9af0f4c30ce9e9433c1",
-    "src/ui/play_history.rs": "86a7461871016bf56b08210b039be4400d750a4a79023d24d966c5b255e4e88b",
+    "src/ui/play_history.rs": "495a5aaae7745b5233fa8d677d09d697ce3c50b4bce7046666731c1c5335da18",
     "src/ui/play_history/tests.rs": "7e3578f6621377f7164db8373c30c99e7d3cc0e8137f111d83ce8c51561cca99",
     "src/ui/play_time.rs": "eaf2fd3ee53933472c3972ea5f6ea186f2036c73b17195c33c35013fa022fe03",
     "src/ui/play_time/tests.rs": "17be78ff09807826c993a70213973164f1addd8370243396a30e97fad597dfa5",
     "src/ui/portability.rs": "52af93271305fc08620bb14aeb91dc6fe500d5ebf4d420903624767d5f1e56d6",
     "src/ui/portability/tests.rs": "adf6cdfd7eb99bd339c19f993bdd3b266e1848181d497718576a0351f3507dc7",
     "src/ui/portability/worker.rs": "5aaaf9aa4d50406db66a609487ca15f0b3c711bab6e64ad2694fbf3b1b9c9380",
-    "src/ui/preferences.rs": "be079f44c9929a89f4b4a9e1c0779f6dbf70196d5d0d37bf15abfca22ef462a9",
+    "src/ui/preferences.rs": "da1461bbc31826ae9d55a57b7e5fec5c5a38ca9c5b5cad8bd525c4c424b0ecf4",
     "src/ui/preferences/tests.rs": "08ea38f1306b58819c976b9e92965533dc4a0e50402b8f9e99cc62113e542f01",
     "src/ui/project.rs": "421c826051d65fbb1de41754523a235735e572b3cc6aa8bcc75a48692d3658fb",
     "src/ui/project/performance_gate_tests.rs": "97ea2ebd5a9a4e0646abf112e8b2dfb8a76d7ba097c347dcd20c84c7173efeee",
@@ -528,7 +522,7 @@
     "src/ui/templates/tests.rs": "57aca83b208896a9b05ee5ea5befc02e2e6b579163b752235f2ad9c8e165647a",
     "src/ui/templates/worker.rs": "4208129f59c160e4018f2e03a99fc28518f8a4fe1470cdf1725f7233778a93f3",
     "src/ui/test_support.rs": "d0cc7f3dc194e52dc7291a6f635fdf72ce0664ed68b1a3e384cc58b94c3b8356",
-    "src/ui/tests.rs": "079b264e5c5c47a5c917cba401be53c60ada5497f800fb7ba36fda294aafa2da",
+    "src/ui/tests.rs": "7b8036a458fc601eef39259fc7289dfa8a9210244c48ed73c612750175b93dcf",
     "src/ui/theme_reload_tests.rs": "5f97aba1e3a4c7cf4adc660748ccb4330b21b1f5787be70f85602c8eb9280707",
     "src/ui/theme_requests.rs": "701d7b04fd12a6270c9e8778f237611d5a9cc792fe93d78571dd07b4773a5a7d",
     "src/ui/theme_requests/tests.rs": "7ac812b0eb9cdff1849aa6a5db5c52d4aa2ccc28f66d134eee29263dfd9d3272",
@@ -543,7 +537,7 @@
     "src/ui/video/tests.rs": "cf58e06dad854276265c9283982d601d4b40c476888bf1b47bc1f5dfa49d7587",
     "src/ui/video/worker.rs": "1c938f7c429a8ab03aa23ec4df7d3d7670e331b225053960d87f38773d4d7aaa",
     "src/ui/waveform_tests.rs": "ec2e88e7884354c5a3cd3238a4dce8d9c87cf13aae633123da33dc7ec0f49846",
-    "src/ui/workspace.rs": "597004f6dbc3dad2640e684da9d2656e2e592c71c011bf48331d269da03e1470",
+    "src/ui/workspace.rs": "734e41367f24c9ed9576781d63c97538304fbc189794884147d7773afb3e1737",
     "src/ui/workspace/tests.rs": "a0d39d26186024e4510fdd018b766e24d3d8d8c3ff31aee94f7c5a958b34b29a",
     "src/video.rs": "5cedfd57b7208ade5aa69d23a7da1bb618ef3a39c87ad43ba84c6b1ffb55179a",
     "src/video/decoder.rs": "4ddfa9396dc17670c9aa6a0c784c841200fb678955bff9a254c4d3bdbaf720fe",
@@ -595,55 +589,55 @@
     "vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
   },
   "ordinary": {
-    "main_passed": 1531,
+    "main_passed": 1516,
     "isolated_scene_passed": 1,
+    "total_passed": 1517,
     "ignored": 32,
-    "main_elapsed_seconds": 75.15288409500499,
-    "isolated_elapsed_seconds": 287.7794506039936,
-    "total_passed": 1532,
+    "main_elapsed_seconds": 75.6440566109959,
+    "isolated_elapsed_seconds": 254.59467786701862,
     "changed_sources": []
   },
   "native_32_channel_routing": {
     "status": "pass",
-    "started": "2026-10-04T05:35:40.579295+00:00",
-    "finished": "2026-10-04T05:35:51.207411+00:00",
-    "binary_sha256": "5952bd14ba7bfe8073d5e51d488969c2e8297d880beb11e7e50f2aa2159e7674",
+    "started": "2026-10-04T04:38:31.294864+00:00",
+    "finished": "2026-10-04T04:38:41.899772+00:00",
+    "binary_sha256": "a8b7c939dd78f54696707858b9b2b2511fdaafbc420a560c7e3a17dd0e4a58eb",
     "pipewire": "pipewire\nCompiled with libpipewire 1.6.8\nLinked with libpipewire 1.6.8",
-    "server_pid": 72243,
-    "test_pid": 72245,
+    "server_pid": 4041749,
+    "test_pid": 4041751,
     "links": 64,
     "capture": {
-      "callbacks": 7278,
+      "callbacks": 7198,
       "captures": [
         {
           "cross_channel_overlap_frames": 0,
           "energy": [
-            0.5292138365133889,
-            0.4955018066188655,
-            0.5426460294665298,
-            0.535001088995993,
-            0.5380346451352623,
-            0.49011242880358885,
-            0.47813398071651964,
-            0.5731182137034228,
-            0.5748455332193897,
-            0.5114211913701073,
-            0.5543640680158424,
-            0.48706971054406845,
-            0.49552956739728515,
-            0.5650722271964107,
-            0.5307343478878546,
-            0.5646516991367546,
-            0.525902647871457,
-            0.5482982670916607,
-            0.5470018312498828,
-            0.5499977847113752,
-            0.5333391023974826,
-            0.5203600363365359,
-            0.552030793160831,
-            0.5331482645305763,
-            0.49451256129120286,
-            0.5354144192729177,
+            0.473635728304414,
+            0.49151686481205054,
+            0.5460710697442184,
+            0.5452839047793998,
+            0.5517018217643748,
+            0.5615180853359208,
+            0.4831417818631662,
+            0.5596725800204393,
+            0.5180344508649499,
+            0.5361976677269973,
+            0.5312118397489518,
+            0.5048363093985611,
+            0.5266631455520943,
+            0.5266125804088022,
+            0.5684466093515831,
+            0.53562155029125,
+            0.517691535548039,
+            0.5070437649811483,
+            0.5333475867015967,
+            0.5483844742686939,
+            0.525072283597425,
+            0.5120056704606306,
+            0.5393146531940354,
+            0.4862745548190291,
+            0.560492711346479,
+            0.5522946719639232,
             0.0,
             0.0,
             0.0,
@@ -651,9 +645,9 @@
             0.0,
             0.0
           ],
-          "frames": 340613,
+          "frames": 340134,
           "input_overflow_frames": 0,
-          "input_underrun_frames": 1024,
+          "input_underrun_frames": 0,
           "peak": [
             0.009999999776482582,
             0.009999999776482582,
@@ -664,15 +658,15 @@
             0.009999999776482582,
             0.009999999776482582,
             0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
-            0.009999999776482582,
             0.009999998845160007,
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582,
+            0.009999999776482582,
             0.009999999776482582,
             0.009999999776482582,
             0.009999999776482582,
@@ -692,17 +686,17 @@
             1,
             26
           ],
-          "wav": "/tmp/omatainer-wrapup/layout-native/loopback-0.wav"
+          "wav": "/tmp/omatainer-wrapup/sampler-native/loopback-0.wav"
         },
         {
           "cross_channel_overlap_frames": 0,
           "energy": [
-            0.4576961663143299,
-            0.5112139796480221,
-            0.5483646914022426,
-            0.5363630816547318,
-            0.570907584431854,
-            0.49505743163509774,
+            0.5357011031001754,
+            0.46874470357425807,
+            0.4866626870708037,
+            0.5377351904082897,
+            0.5490086439556474,
+            0.5517536463585699,
             0.0,
             0.0,
             0.0,
@@ -730,13 +724,13 @@
             0.0,
             0.0
           ],
-          "frames": 86272,
+          "frames": 85440,
           "input_overflow_frames": 0,
-          "input_underrun_frames": 640,
+          "input_underrun_frames": 0,
           "peak": [
             0.009999999776482582,
-            0.009999999776482582,
             0.009999998845160007,
+            0.009999999776482582,
             0.009999999776482582,
             0.009999999776482582,
             0.009999999776482582,
@@ -771,67 +765,67 @@
             27,
             32
           ],
-          "wav": "/tmp/omatainer-wrapup/layout-native/loopback-1.wav"
+          "wav": "/tmp/omatainer-wrapup/sampler-native/loopback-1.wav"
         }
       ],
       "channels": 32,
       "input_counter_unit": "frames",
       "input_overflow": 0,
-      "input_underruns": 2048,
+      "input_underruns": 0,
       "rate": 48000
     },
     "scope": "Actual CPAL/ALSA output and input, private 32-channel PipeWire null-sink loopback, renderer record aliases and decoded WAVs. No physical converter or external interface.",
     "owned_children_exited": true
   },
   "artifacts": {
-    "/tmp/omatainer-wrapup/layout-fixed-build-5.jsonl": {
-      "sha256": "7613d949bf6f53c835a7a1b8da222d8453485e3b63f672a3e654d9c2e5a5d27a",
-      "bytes": 373416
+    "/tmp/omatainer-wrapup/sampler-fixed-build.jsonl": {
+      "sha256": "da0bfe9bc992f6cb1c09ed040f631b83de836b08601213dfb5ec64c8a162d61c",
+      "bytes": 371799
     },
-    "/tmp/omatainer-wrapup/layout-fixed-ordinary.json": {
-      "sha256": "3b7c1aac0796cf73b545f02ce251f8b52b8a021119d85e267bb16bac06b2e00e",
-      "bytes": 61906
+    "/tmp/omatainer-wrapup/sampler-fixed-build.log": {
+      "sha256": "2ba80ea0c5124a579368ec569ae0ee829b891176f899e27521e4ac427e9de54f",
+      "bytes": 160
     },
-    "/tmp/omatainer-wrapup/layout-fixed-scene.json": {
-      "sha256": "c1483af7c6b37a7d8afe146a9ead44dfaa22514ed2b931a2a89a199ce811d291",
-      "bytes": 61907
+    "/tmp/omatainer-wrapup/sampler-fixed-regressions.log": {
+      "sha256": "122d67bcaddf36a9d93b868723a0272b78ed29264e6b6d2e2cdf3cf510a91b93",
+      "bytes": 1129
     },
-    "/tmp/omatainer-wrapup/layout-native-source-guard.json": {
-      "sha256": "909e4222e65be7e6bb0d7234f6ee08c458432152bcc387fc5db5368985c45c0d",
-      "bytes": 61672
+    "/tmp/omatainer-wrapup/sampler-fixed-ordinary.log": {
+      "sha256": "8d49f6d915626e0185f0a773c7aefb79ca397c51c9dbf055ab4168de62c7c314",
+      "bytes": 174391
     },
-    "/tmp/omatainer-wrapup/layout-frozen-ordinary.json": {
-      "sha256": "12529ab661bd5b2122f50e8da81bc794ad51c1f62396a51ecdc994ebe4406401",
-      "bytes": 61909
-    },
-    "/tmp/omatainer-wrapup/layout-pointer-debug-4.log": {
-      "sha256": "dd5704442f74288510a418895db3dd1389ec4539cd256d6f98d38dbe69bd657f",
-      "bytes": 2223
-    },
-    "/tmp/omatainer-wrapup/layout-fixed-ordinary.log": {
-      "sha256": "cb49a896083942fc3a7b1aef040b12f850e0d65e01fa52176a1278ceec56a758",
-      "bytes": 176034
-    },
-    "/tmp/omatainer-wrapup/layout-fixed-scene.log": {
-      "sha256": "5c5f6f510337c67ab11f2eed3b62b470b4ad7b05e1e474a75865b872de4c026d",
+    "/tmp/omatainer-wrapup/sampler-fixed-scene.log": {
+      "sha256": "2f726b1125e39107a3f428b7b4484c925c7b158a588bf204aee688df936c2696",
       "bytes": 178
     },
-    "/tmp/omatainer-wrapup/layout-native/receipt.json": {
-      "sha256": "d3ddca88604fd950f15556aa6d35368a85e23880d80640925e842b5528ecc3b9",
-      "bytes": 4425
+    "/tmp/omatainer-wrapup/sampler-native/receipt.json": {
+      "sha256": "dc1feb6a9156f350f1ef48f2039ac59f1108c609094075261a3ff7a304aa0d1e",
+      "bytes": 4417
     },
-    "/tmp/omatainer-wrapup/layout-native/loopback-0.wav": {
-      "sha256": "aebf605c0bc0602753e4874434b7484ae0e59501928dafcafa4d3a308e3f8297",
-      "bytes": 35423796
+    "/tmp/omatainer-wrapup/sampler-native/loopback-0.wav": {
+      "sha256": "a9d02b89766e0b16e4570c4e2090d3e7ed66f317919efc2573757a78a89e7f3e",
+      "bytes": 35373980
     },
-    "/tmp/omatainer-wrapup/layout-native/loopback-1.wav": {
-      "sha256": "939c4be19ec2a0fe6d3ed2ed544c142435a6ee48476825f83e235996b96b516a",
-      "bytes": 2070572
+    "/tmp/omatainer-wrapup/sampler-native/loopback-1.wav": {
+      "sha256": "d8e094b8582c83ca8a33d2b398e2a018a93f2dc2f48cba9a7d9ab9c57f089959",
+      "bytes": 2050604
+    },
+    "/tmp/omatainer-wrapup/sampler-native-source-guard.json": {
+      "sha256": "abeba95fc919d4ab06398d3e60f321c153344862fac12a98355c0ca0f39659b5",
+      "bytes": 61084
+    },
+    "/tmp/omatainer-wrapup/sampler-frozen-ordinary.json": {
+      "sha256": "2a8a166730b99143c66236be6bcabef2e2ae99a76dc835e952ad3c7e34fa728d",
+      "bytes": 61280
+    },
+    "/tmp/omatainer-wrapup/sampler-frozen-ordinary.log": {
+      "sha256": "8738010dbb970a6051b0e9c3fc96a564b9777c76d6779634b84afafbadf70157",
+      "bytes": 176700
     }
   },
   "limits": [
-    "Native routing assertion pass; 2048 missing input frames across the run, 1024 and 640 inside recorded intervals. Overflow and cross-channel overlap zero.",
-    "No physical controller or converter, actual suspend or listening proof.",
-    "Merged optimized gate and remaining backlog incomplete."
+    "Private loopback and software checks do not prove physical USB devices, converters, actual suspend or listening.",
+    "Merged optimized release gate pending; earlier source wall-time failure and crate-source input gaps remain retained.",
+    "Backlog remains incomplete; no release package or remote issue closure."
   ]
 }
