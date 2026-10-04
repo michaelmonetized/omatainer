@@ -45,7 +45,15 @@ impl Job {
         let (tx, frames) = bounded(3);
         let (done, result) = bounded(1);
         let thread=std::thread::Builder::new().name("video-picture".into()).spawn(move|| {
-            let result=(|| { if stop.load(Ordering::Acquire){return Err("Video operation cancelled".into());}
+            let result=(|| {
+                let (category,key)=match &kind {
+                    Kind::Import{path,expected}=>(crate::background::Kind::Prepare,crate::background::identity(&("picture-import",path,expected))?),
+                    Kind::Decode{clip,start}=>(crate::background::Kind::Prepare,crate::background::identity(&("picture-decode",clip,start))?),
+                    Kind::Render{clip,path,revision}=>(crate::background::Kind::Render,crate::background::identity(&(clip,path,revision))?),
+                };
+                let ticket=permit.background(category,key,crate::background::MEMORY_BYTES)?;
+                let _running=ticket.enter(||permit.cancelled())?;
+                if stop.load(Ordering::Acquire){return Err("Video operation cancelled".into());}
                 match kind {
                     Kind::Import{path,expected}=>{
                         let imported=data::decoder::probe(path,&stop)?;
@@ -66,7 +74,7 @@ impl Job {
                     Kind::Render{clip,path,revision}=>{
                         let captured=handle.capture(&stop).map_err(|e|e.to_string())?;
                         if captured.revision!=revision {return Err("Project changed before render capture; review and render again".into());}
-                        data::render::run(captured,&clip,&path,&permit).map(|outcome|Reply::Rendered(path,outcome))
+                        data::render::run(captured,&clip,&path,&permit,&ticket.reporter()).map(|outcome|Reply::Rendered(path,outcome))
                     },
                 }
             })();

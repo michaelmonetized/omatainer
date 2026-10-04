@@ -25,6 +25,16 @@ preview** to cancel playback. See the [provider contract](docs/music-providers.m
 
 ## Install on this machine
 
+Open **Setup → Background jobs** to inspect measured progress and cancel one
+captured request. Decode, analysis, indexing, provider requests, video work and
+media exports share bounded worker admission. At most one deck decoder and two
+optional workers run together, with 3 GiB of declared active reservations.
+An explicit deck load gets the next worker turn and cancels optional work when
+its reservation would otherwise block decoding. Linux workers use ordinary CPU
+scheduling, nice 10 or lower priority, and idle I/O priority. Existing asset and
+decoder limits still apply; the reservation total is not process memory usage.
+See the [background work limits](docs/background-jobs.md).
+
 ```bash
 ~/Projects/omatainer/scripts/install-omarchy.sh
 ```

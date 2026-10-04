@@ -86,6 +86,7 @@ struct Shared {
     last_rejection: AtomicU8,
     work: [Arc<AtomicBool>; OPTIONAL_SLOTS],
     work_claims: AtomicU64,
+    jobs: crate::background::Scheduler,
 }
 #[derive(Clone)]
 pub struct Handle(Arc<Shared>);
@@ -106,6 +107,7 @@ impl Default for Handle {
             last_rejection: AtomicU8::new(0),
             work: std::array::from_fn(|_| Arc::new(AtomicBool::new(false))),
             work_claims: AtomicU64::new(0),
+            jobs: crate::background::Scheduler::default(),
         }))
     }
 }
@@ -175,6 +177,12 @@ impl WorkPermit {
             || self.handle.0.admission.load(Ordering::Acquire) / SAFETY_GENERATION
                 != self.generation
     }
+    /// Queue one expensive optional operation.
+    /// Takes kind, stable identity and declared memory reservation; returns a scheduler ticket tied to this permit cancellation.
+    pub(crate) fn background(&self, kind: crate::background::Kind, key: String, bytes: u64) -> Result<crate::background::Ticket, String> {
+        if self.cancelled() { return Err(Error::Protected.to_string()); }
+        self.handle.jobs().request(kind, key, bytes, crate::background::Cancellation::Flag(self.cancel()))
+    }
     pub fn cancel(&self) -> Arc<AtomicBool> {
         self.handle.0.work[self.slot].clone()
     }
@@ -189,6 +197,9 @@ impl Drop for WorkPermit {
 }
 
 impl Handle {
+    /// Share worker admission outside the callback.
+    /// Takes this guard; returns its bounded scheduler for UI and worker use.
+    pub(crate) fn jobs(&self) -> &crate::background::Scheduler { &self.0.jobs }
     pub fn status(&self) -> Status {
         let state = self.0.admission.load(Ordering::Acquire);
         Status {

@@ -12,6 +12,7 @@ pub struct Receipt(Arc<Inner>);
 #[derive(Debug)]
 struct Inner {
     deck_approval: Option<super::performance::DeckApproval>,
+    deck_generation: Option<u64>,
     history_key: u64,
     state: AtomicU8,
     history_pins: AtomicU64,
@@ -43,12 +44,12 @@ impl Receipt {
     pub(crate) fn with_preparation(
         initial_preparation: Option<super::preparation::Preparation>,
     ) -> Self {
-        Self::with_preparation_and_approval(initial_preparation, None)
+        Self::with_preparation_and_approval(initial_preparation, None, None)
     }
     /// Create one pending media receipt.
     /// Takes retained preparation and an optional reviewed override; returns a fresh receipt with no application acknowledgment.
     fn with_preparation_and_approval(initial_preparation: Option<super::preparation::Preparation>,
-        deck_approval: Option<super::performance::DeckApproval>) -> Self {
+        deck_approval: Option<super::performance::DeckApproval>, deck_generation: Option<u64>) -> Self {
         let wall_origin = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -56,6 +57,7 @@ impl Receipt {
             .min(u64::MAX as u128) as u64;
         Self(Arc::new(Inner {
             deck_approval,
+            deck_generation,
             history_key: super::history_measurement::parts::fresh_key(),
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
@@ -70,8 +72,16 @@ impl Receipt {
     /// Bind a fresh load receipt to a deliberate deck review.
     /// Takes this unused receipt and approval; returns a new pending receipt retaining its preparation.
     pub(crate) fn with_deck_approval(self, approval: super::performance::DeckApproval) -> Self {
-        Self::with_preparation_and_approval(self.initial_preparation(), Some(approval))
+        Self::with_preparation_and_approval(self.initial_preparation(), Some(approval), self.0.deck_generation)
     }
+    /// Bind prepared media to the deck it was requested for.
+    /// Takes its captured media generation; returns a pending receipt which cannot replace a subsequently unloaded or changed deck.
+    pub(crate) fn with_deck_generation(self, generation:u64)->Self {
+        Self::with_preparation_and_approval(self.initial_preparation(),self.0.deck_approval.clone(),Some(generation))
+    }
+    /// Read the media generation captured before worker preparation.
+    /// Takes this receipt; returns its optional immutable generation.
+    pub(crate) fn deck_generation(&self)->Option<u64>{self.0.deck_generation}
     /// Inspect a reviewed deck override.
     /// Takes this receipt; returns its immutable approval when one was explicitly supplied.
     pub(crate) fn deck_approval(&self) -> Option<&super::performance::DeckApproval> {

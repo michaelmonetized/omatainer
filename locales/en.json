@@ -2048,5 +2048,12 @@
   "↓ bpm up   ↑ bpm down   same bpm → key → name": "↓ bpm up   ↑ bpm down   same bpm → key → name",
   "−10 / −1 / +1 / +10 milliseconds": "−10 / −1 / +1 / +10 milliseconds",
   "−100% low-pass to +100% high-pass": "−100% low-pass to +100% high-pass",
-  "−60 to −24 dBFS": "−60 to −24 dBFS"
+  "−60 to −24 dBFS": "−60 to −24 dBFS",
+  "Background jobs": "Background jobs",
+  "Cancel job": "Cancel job",
+  "Shared worker limits": "Shared worker limits",
+  "Inspect queued and running decode, analysis, indexing, rendering and provider work. At most two optional workers and one audio decoder share 3 GiB of declared active-worker reservations. Existing prepared media and caches have separate limits. Worker CPU and disk priorities are lowered on Linux. A finished worker is not proof of renderer application or a completed save.": "Inspect queued and running decode, analysis, indexing, rendering and provider work. At most two optional workers and one audio decoder share 3 GiB of declared active-worker reservations. Existing prepared media and caches have separate limits. Worker CPU and disk priorities are lowered on Linux. A finished worker is not proof of renderer application or a completed save.",
+  "Cancel captured job": "Cancel captured job",
+  "One stable request identity": "One stable request identity",
+  "Request cooperative cancellation for this exact queued or running job. Reused worker slots and newer requests are not targeted. A filesystem read already in progress may finish before cancellation is observed. Already committed writes retain their actual outcome in the original workflow.": "Request cooperative cancellation for this exact queued or running job. Reused worker slots and newer requests are not targeted. A filesystem read already in progress may finish before cancellation is observed. Already committed writes retain their actual outcome in the original workflow."
 }

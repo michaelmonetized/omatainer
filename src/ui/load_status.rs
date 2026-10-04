@@ -4,6 +4,7 @@ use crate::engine::media_load::LoadToken;
 
 pub(super) struct LoadState {
     pub approval: Option<crate::engine::performance::DeckApproval>,
+    pub deck_generation: Option<u64>,
     pub selection: Option<Selection>,
     pub phase: Phase,
     pub token: Option<LoadToken>,
@@ -25,6 +26,7 @@ impl LoadState {
     pub fn new(selection: Option<Selection>, phase: Phase) -> Self {
         Self {
             approval: None,
+            deck_generation: None,
             selection,
             phase,
             token: None,

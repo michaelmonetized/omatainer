@@ -31,7 +31,14 @@ impl Job {
         let thread = std::thread::Builder::new()
             .name("music-provider".into())
             .spawn(move || {
-                let _permit = permit;
+                let mut request=request;
+                let scheduled=permit.as_ref().map(|permit| {
+                    let key=match &operation {Operation::Search{query,offset}=>crate::background::identity(&("search",query,offset)),Operation::Preview(id)=>crate::background::identity(&("preview",&id.item))}?;
+                    permit.background(crate::background::Kind::Download,key,128*crate::background::MIB)
+                }).transpose();
+                let ticket=match scheduled {Ok(ticket)=>ticket,Err(_)=>{let _=sender.send(Err(Failure::Unavailable));return;}};
+                let running=match ticket.as_ref().map(|ticket|ticket.enter(|| request.check().is_err() || permit.as_ref().is_some_and(|permit|permit.cancelled()))).transpose(){Ok(running)=>running,Err(_)=>{let _=sender.send(Err(Failure::Cancelled));return;}};
+                if let Some(ticket)=&ticket {request.progress=ticket.reporter();}
                 let result = match operation {
                     Operation::Search { query, offset } => {
                         provider.search(&query, offset, &request).map(Reply::Page)
@@ -39,6 +46,8 @@ impl Job {
                     Operation::Preview(id) => provider.preview(&id, &request).map(Reply::Preview),
                 };
                 let result = request.check().and(result);
+                if let Some(ticket)=&ticket {ticket.progress(1,Some(1));}
+                drop(running);
                 let _ = sender.send(result);
             })
             .map_err(|_| Failure::Unavailable)?;

@@ -9,6 +9,7 @@ impl App {
                 accessibility::action_button(ui);
                 if ui.button(tr!("Help")).help(ui, HelpControl::Help).clicked() { self.keys_open = true; }
                 if ui.button(tr!("MIDI")).help(ui, HelpControl::Midi).clicked() { self.midi_open = true; }
+                if ui.button(tr!("Background jobs")).help(ui,HelpControl::BackgroundJobs).clicked(){self.background_jobs.open=true;}
                 if ui.button(tr!("Diagnostics")).help(ui, HelpControl::Diagnostics).clicked() { self.diagnostics.open = true; }
                 if ui.button(tr!("Content & licenses")).help(ui, HelpControl::License).clicked() { self.licenses.open = true; }
                 if ui.button(tr!("Music providers")).help_detail(ui, HelpControl::MusicProvider, "Browse licensed remote music with explicit provider capabilities.").clicked() { self.music_provider.open = true; }

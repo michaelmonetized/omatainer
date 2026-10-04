@@ -26,6 +26,7 @@ impl LoadToken {
 struct Request {
     token: LoadToken,
     source: LibSource,
+    job: crate::background::Ticket,
 }
 pub struct Completion {
     pub tags: Option<Result<crate::media_tags::Observation, String>>,
@@ -74,6 +75,7 @@ pub(crate) struct AnalysisCompletion {
 enum Work { Deck(Request), Sampler(SamplerRequest), Analysis(AnalysisJob) }
 struct State {
     pending: [Option<Request>; DECKS],
+    active: [Option<(LibSource, LoadToken)>; DECKS],
     ready: [Option<Completion>; DECKS],
     sampler_pending: Option<SamplerRequest>,
     sampler_ready: Option<SamplerCompletion>,
@@ -82,6 +84,7 @@ struct State {
     analysis_ready: Option<AnalysisCompletion>,
     analysis_token: Option<AnalysisToken>,
     analysis_active: Option<AnalysisToken>,
+    analysis_key: Option<String>,
     stop: bool,
     next_deck: usize,
 }
@@ -101,7 +104,7 @@ pub struct Loader {
 impl Loader {
     pub fn start_with_performance(performance: super::performance::Handle) -> io::Result<Self> {
         let decode_performance = performance.clone();
-        Self::with_backend(move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &decode_performance),
+        Self::with_backend(move |path, token, file, job| super::decode::decode_deck_file_progress(path, file.expect("verified descriptor"), || !token.is_current(), &decode_performance, |done,total|job.progress(done,total)),
             media_analysis::run, performance, true, crate::media_location::Snapshot::discover)
     }
     pub fn start() -> io::Result<Self> {
@@ -111,7 +114,7 @@ impl Loader {
     #[cfg(test)]
     pub(crate) fn with_inventory(inventory:impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure>+Send+'static)->io::Result<Self> {
         let performance=performance::Handle::default();let foreground=performance.clone();
-        Self::with_backend(move |path,token,file|super::decode::decode_deck_file(path,file.expect("verified descriptor"),||!token.is_current(),&foreground),media_analysis::run,performance,true,inventory)
+        Self::with_backend(move |path,token,file,job|super::decode::decode_deck_file_progress(path,file.expect("verified descriptor"),||!token.is_current(),&foreground,|done,total|job.progress(done,total)),media_analysis::run,performance,true,inventory)
     }
     pub(crate) fn with_decoder(
         decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure>
@@ -119,6 +122,9 @@ impl Loader {
     ) -> io::Result<Self> {
         Self::with_worker(decode, performance::Handle::default())
     }
+    /// Attach an explicit decoder adapter to its real show guard.
+    /// Takes the controlled decoder and engine protection handle; returns the same bounded loader with shared worker admission.
+    pub(crate) fn with_decoder_for_show(decode:impl FnMut(&Path,&LoadToken)->Result<DecodedAudio,DecodeFailure>+Send+'static,performance:performance::Handle)->io::Result<Self>{Self::with_worker(decode,performance)}
     fn with_worker(
         decode: impl FnMut(&Path, &LoadToken) -> Result<DecodedAudio, DecodeFailure>
             + Send + 'static,
@@ -133,7 +139,7 @@ impl Loader {
     ) -> io::Result<Self> {
         let foreground = performance.clone();
         Self::with_backend(
-            move |path, token, file| super::decode::decode_deck_file(path, file.expect("verified descriptor"), || !token.is_current(), &foreground),
+            move |path, token, file, job| super::decode::decode_deck_file_progress(path, file.expect("verified descriptor"), || !token.is_current(), &foreground, |done,total|job.progress(done,total)),
             move |request, token, work| { before(token); media_analysis::run(request, token, work) },
             performance, true, crate::media_location::Snapshot::discover,
         )
@@ -146,10 +152,10 @@ impl Loader {
     ) -> io::Result<Self> {
         // Path decoders are explicit synthetic test adapters. Production
         // constructors always supply the same opened descriptor to decoding.
-        Self::with_backend(move |path,token,_file|decode(path,token),analyze,performance,false,crate::media_location::Snapshot::discover)
+        Self::with_backend(move |path,token,_file,_job|decode(path,token),analyze,performance,false,crate::media_location::Snapshot::discover)
     }
     fn with_backend(
-        mut decode: impl FnMut(&Path,&LoadToken,Option<std::fs::File>)->Result<DecodedAudio,DecodeFailure> + Send + 'static,
+        mut decode: impl FnMut(&Path,&LoadToken,Option<std::fs::File>,&crate::background::Ticket)->Result<DecodedAudio,DecodeFailure> + Send + 'static,
         mut analyze: impl FnMut(AnalysisRequest,&AnalysisToken,&performance::WorkPermit)->Result<crate::track_analysis::Prepared,AnalysisFailure> + Send + 'static,
         performance:performance::Handle,
         verified:bool,
@@ -158,6 +164,7 @@ impl Loader {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 pending: std::array::from_fn(|_| None),
+                active: std::array::from_fn(|_| None),
                 ready: std::array::from_fn(|_| None),
                 sampler_pending: None,
                 sampler_ready: None,
@@ -166,6 +173,7 @@ impl Loader {
                 analysis_ready: None,
                 analysis_token: None,
                 analysis_active: None,
+                analysis_key: None,
                 stop: false,
                 next_deck: 0,
             }),
@@ -184,14 +192,15 @@ impl Loader {
                         // Three typed lanes share one decoder. A bank import
                         // decodes at most 16 sources sequentially in its turn;
                         // neither a fake deck ID nor another worker is needed.
-                        let selected = (0..=DECKS)
-                            .map(|offset| (state.next_deck + offset) % (DECKS + 1))
-                            .find(|&lane| if lane == DECKS { state.sampler_pending.is_some() }
-                                else { state.pending[lane].is_some() });
+                        let selected = (0..DECKS)
+                            .map(|offset| (state.next_deck + offset) % DECKS)
+                            .find(|&lane|state.pending[lane].is_some())
+                            .or_else(||state.sampler_pending.is_some().then_some(DECKS));
                         if let Some(lane) = selected {
-                            state.next_deck = (lane + 1) % (DECKS + 1);
+                            state.next_deck = (lane + 1) % DECKS;
                             break if lane == DECKS { Work::Sampler(state.sampler_pending.take().unwrap()) }
-                                else { Work::Deck(state.pending[lane].take().unwrap()) };
+                                else { let request=state.pending[lane].take().unwrap();
+                                    state.active[lane]=Some((request.source.clone(),request.token.clone())); Work::Deck(request) };
                         }
                         // Optional work never consumes a turn while any explicit
                         // deck or sampler request is waiting.
@@ -205,8 +214,15 @@ impl Loader {
                 let request = match request {
                     Work::Deck(request) => request,
                     Work::Analysis(job) => {
-                        let mut result = job.token.check(&job.work)
-                            .and_then(|_| analyze(job.request, &job.token, &job.work));
+                        let scheduled=crate::background::identity(&(&job.request.reference,&job.request.fields))
+                            .and_then(|key|job.work.background(crate::background::Kind::Analysis,format!("{key}:{}",job.token.id),crate::background::MEMORY_BYTES));
+                        let mut result=match scheduled {
+                            Err(error)=>Err(AnalysisFailure::Failed(error)),
+                            Ok(ticket)=>match ticket.enter(|| !job.token.is_current() || job.work.cancelled()) {
+                                Err(error)=>Err(AnalysisFailure::Failed(error)),
+                                Ok(_running)=>{let result=job.token.check(&job.work).and_then(|_|analyze(job.request,&job.token,&job.work));ticket.progress(1,Some(1));result},
+                            },
+                        };
                         // Keep user cancellation and protection observable even
                         // if a decoder reached completion before its last check.
                         if let Err(reason) = job.token.check(&job.work) { result = Err(reason); }
@@ -223,8 +239,14 @@ impl Loader {
                     }
                     Work::Sampler(request) => {
                         if !request.token.is_current() { continue; }
-                        let result = prepare::run(request.request, &request.owner,
-                            || !request.token.is_current() || request.work.cancelled());
+                        let scheduled=request.work.background(crate::background::Kind::Prepare,format!("sampler:{}",request.token.id),crate::background::MEMORY_BYTES);
+                        let result=match scheduled {
+                            Err(error)=>Err(error),
+                            Ok(ticket)=>match ticket.enter(|| !request.token.is_current() || request.work.cancelled()) {
+                                Err(error)=>Err(error),
+                                Ok(_running)=>{let result=prepare::run(request.request,&request.owner,||!request.token.is_current() || request.work.cancelled());ticket.progress(1,Some(1));result},
+                            },
+                        };
                         if !request.token.is_current() { continue; }
                         let old = {
                             let mut state = worker.state.lock().unwrap();
@@ -240,10 +262,13 @@ impl Loader {
                 if !request.token.is_current() {
                     continue;
                 }
-                let (fingerprint,content_hash,result) = if verified || matches!(request.source,LibSource::Removable {..}) {
-                    guarded_decode(&request.source,&request.token,&mut decode,&mut inventory)
+                let admission=request.job.enter(|| !request.token.is_current());
+                let (fingerprint,content_hash,result) = if let Err(error)=&admission {
+                    (None,None,Err(source_failure(error)))
+                } else if verified || matches!(request.source,LibSource::Removable {..}) {
+                    guarded_decode(&request.source,&request.token,&request.job,&mut decode,&mut inventory)
                 } else if let LibSource::File(path)=&request.source {
-                    let before=FileFingerprint::read(path);let result=decode(path,&request.token,None);
+                    let before=FileFingerprint::read(path);let result=decode(path,&request.token,None,&request.job);
                     let after=FileFingerprint::read(path);(before.filter(|before|Some(*before)==after),None,result)
                 } else {(None,None,Err(source_failure("Unsupported media namespace")))};
                 struct TagCancellation<'a>(&'a LoadToken);
@@ -264,6 +289,7 @@ impl Loader {
                         drop(state);
                         continue;
                     }
+                    state.active[deck]=None;
                     state.ready[deck].replace(Completion {
                         tags,
                         fingerprint,
@@ -318,16 +344,21 @@ impl Loader {
     /// One replaceable low-priority job and result; no batch is stored here.
     pub(crate) fn request_analysis(&self, request: AnalysisRequest) -> Result<AnalysisToken, String> {
         request.validate().map_err(|e| e.to_string())?;
-        let work = self.performance.optional_work().map_err(|e| e.to_string())?;
+        let key=crate::background::identity(&(&request.reference,&request.fields))?;
         let (token, old) = {
             let mut state = self.shared.state.lock().unwrap();
             if state.stop { return Err("decoder is unavailable".into()); }
+            if state.analysis_key.as_ref()==Some(&key) && (state.analysis_pending.is_some() || state.analysis_active.is_some()) {
+                if let Some(token)=state.analysis_token.as_ref().filter(|token|token.is_current()){return Ok(token.clone());}
+            }
+            let work = self.performance.optional_work().map_err(|e| e.to_string())?;
             let id = self.analysis_next.fetch_update(Ordering::AcqRel, Ordering::Acquire,
                 |id| id.checked_add(1)).map_err(|_| "analysis request identity exhausted")? + 1;
             let token = AnalysisToken::new(id, self.analysis_generation.clone());
             // Cancellation precedes generation replacement, so a concurrent
             // metadata publication either claims first or observes cancellation.
             if let Some(previous) = state.analysis_token.replace(token.clone()) { previous.cancel(); }
+            state.analysis_key=Some(key);
             self.analysis_generation.store(id, Ordering::Release);
             let pending = state.analysis_pending.replace(AnalysisJob { token: token.clone(), request, work });
             (token, (pending, state.analysis_ready.take()))
@@ -381,17 +412,23 @@ impl Loader {
             .clone();
         let (token, old) = {
             let mut state = self.shared.state.lock().unwrap();
-            let previous = current
-                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |id| id.checked_add(1))
-                .map_err(|_| "media request identity exhausted")?;
-            preempt_analysis(&state);
+            if let Some(request)=state.pending[deck as usize].as_ref().filter(|request|request.source==source && request.token.is_current()) {return Ok(request.token.clone());}
+            if let Some((active,token))=state.active[deck as usize].as_ref().filter(|(active,token)|*active==source && token.is_current()) {let _=active;return Ok(token.clone());}
+            let previous=current.load(Ordering::Acquire);
+            let next=previous.checked_add(1).filter(|next|*next<u64::MAX).ok_or("media request identity exhausted")?;
             let token = LoadToken {
                 deck,
-                id: previous + 1,
+                id: next,
                 current,
             };
+            let key=crate::background::identity(&(deck,&source))?;
+            let job=self.performance.jobs().request(crate::background::Kind::Decode,format!("{key}:{}",token.id),1536*crate::background::MIB,
+                crate::background::Cancellation::Generation{current:token.current.clone(),id:token.id})?;
+            token.current.compare_exchange(previous,next,Ordering::AcqRel,Ordering::Acquire).map_err(|_|"media request changed during admission; retry the captured source")?;
+            preempt_analysis(&state);
             let pending = state.pending[deck as usize].replace(Request {
                 token: token.clone(),
+                job,
                 source,
             });
             let ready = state.ready[deck as usize].take();
@@ -439,8 +476,8 @@ fn source_failure(detail:impl ToString)->DecodeFailure {
         diagnostics:Default::default(),detail:detail.to_string().chars().take(256).collect()}
 }
 fn guarded_decode(
-    source:&LibSource,token:&LoadToken,
-    decode:&mut impl FnMut(&Path,&LoadToken,Option<std::fs::File>)->Result<DecodedAudio,DecodeFailure>,
+    source:&LibSource,token:&LoadToken,job:&crate::background::Ticket,
+    decode:&mut impl FnMut(&Path,&LoadToken,Option<std::fs::File>,&crate::background::Ticket)->Result<DecodedAudio,DecodeFailure>,
     inventory:&mut impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure>,
 )->(Option<FileFingerprint>,Option<[u8;32]>,Result<DecodedAudio,DecodeFailure>) {
     use crate::media_location::{Location,Failure};
@@ -466,7 +503,7 @@ fn guarded_decode(
             if total!=meta.len() {return Err(source_failure(Failure::Changed));}
             file.rewind().map_err(source_failure)?;Some(hash.finalize().into())
         } else {None};
-        let result=decode(&location.path,token,Some(file.try_clone().map_err(source_failure)?));
+        let result=decode(&location.path,token,Some(file.try_clone().map_err(source_failure)?),job);
         if matches!(source,LibSource::Removable {..}) {location.recheck_with(&inventory().map_err(source_failure)?).map_err(source_failure)?;}
         if FileFingerprint::from_metadata(&file.metadata().map_err(source_failure)?)!=fingerprint || FileFingerprint::read(&location.path)!=Some(fingerprint) {return Err(source_failure(Failure::Changed));}
         result.map(|audio|(fingerprint,content_hash,audio))

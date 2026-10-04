@@ -61,6 +61,7 @@ mod music_provider;
 mod video;
 mod performance;
 mod deck_load_lock;
+mod background_jobs;
 mod audio_settings;
 mod audio_routing;
 mod recovery_settings;
@@ -122,6 +123,7 @@ pub struct App {
     automation_network: crate::automation::osc::Manager,
     performance_panel: performance::Panel,
     deck_load_panel: deck_load_lock::Panel,
+    background_jobs: background_jobs::Panel,
     audio_settings: audio_settings::Panel,
     diagnostics: diagnostics::Diagnostics,
     licenses: licenses::Licenses,
@@ -254,6 +256,7 @@ impl App {
             automation_network: crate::automation::osc::Manager::new(engine.cmd.clone(),engine.snap.clone()),
             performance_panel: performance::Panel::default(),
             deck_load_panel: deck_load_lock::Panel::default(),
+            background_jobs: background_jobs::Panel::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             licenses: licenses::Licenses::default(),
             engine,
@@ -406,7 +409,7 @@ impl App {
                     if let Some(error) = self.loader.as_ref().and_then(|loader| loader.invalidate(deck).err()) {
                         state.phase = Phase::Failed(error);
                     } else {
-                        let mut receipt = self.library_receipt(&picked.source, None);
+                        let mut receipt = self.library_receipt(&picked.source, None).with_deck_generation(self.engine.cmd.performance().deck_load_word(deck as usize));
                         if let Some(approval) = approval { receipt = receipt.with_deck_approval(approval); }
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
@@ -454,6 +457,7 @@ impl App {
         let selection = Selection { title: name.into(), source:source.clone() };
         let mut state = LoadState::new(Some(selection), Phase::Loading);
         state.approval = approval;
+        state.deck_generation=Some(self.engine.cmd.performance().deck_load_word(deck as usize));
         match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
             .and_then(|loader| loader.request_source(deck, source)) {
             Ok(token) => state.token = Some(token),
@@ -564,6 +568,7 @@ impl App {
                         Receipt::with_preparation(self.library_metadata.catalog.preparation_for_content(source,fp,hash))
                     } else {history_source.as_ref().map(|source|self.library_receipt(source,completion.fingerprint)).unwrap_or_else(Receipt::new)};
                     if let Some(approval) = state.approval.take() { receipt = receipt.with_deck_approval(approval); }
+                    if let Some(generation)=state.deck_generation {receipt=receipt.with_deck_generation(generation);}
                     if let Some(((source,fingerprint),hash))=measured {
                         if let Some(track)=self.library_metadata.catalog.track(source) {
                             let proof=crate::sampler_bank::SourceRef {track:track.id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};
@@ -804,6 +809,7 @@ impl App {
         self.load_status(ctx);
         if !compact { self.audio_status(ctx); self.master_fx_status(ctx); }
         self.workspace_ui(ctx);
+        self.background_jobs_ui(ctx);
 
         if let Some(error) = self.submission_error.get() {
             keyboard::block_for_dialog(ctx);

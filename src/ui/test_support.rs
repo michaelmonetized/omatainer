@@ -21,7 +21,7 @@ impl Fixture {
         let (load_tx, decoder_jobs) = mpsc::channel();
         let (decoder_results, load_rx) =
             mpsc::channel::<(u8, Result<DecodedAudio, DecodeFailure>)>();
-        let loader = Loader::with_decoder(move |path, token| {
+        let loader = Loader::with_decoder_for_show(move |path, token| {
             load_tx
                 .send((token.deck, path.to_path_buf()))
                 .map_err(|_| failed_decoder())?;
@@ -31,7 +31,7 @@ impl Fixture {
                 "fixture decoder result must match its active job"
             );
             report
-        })
+        },engine.cmd.performance().clone())
         .unwrap();
         let app = App::with_loader(engine, Theme::default(), Some(loader));
         Self {
