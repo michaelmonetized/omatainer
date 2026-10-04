@@ -1425,3 +1425,17 @@ fn unavailable_sampler_state_counts_toward_history_admission_before_any_replacem
     assert_eq!(rt.sampler_poly.offline, Some(device));
     assert_eq!(rt.undo.checkpoint(), before); assert_eq!(rt.undo.failure, Some(Failure::Budget));
 }
+#[test]
+fn exhausted_prepared_inverse_pool_refuses_edits_without_callback_allocation() {
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+    let (_sender, empty) = bounded::<PatchStore>(1);
+    let original = rt.undo.patch_stores.replace(empty);
+    let before = rt.master;
+    let checkpoint = engine.undo.checkpoint();
+    assert_eq!(test_alloc::measure(|| rt.apply(Command::Master(0.25))), test_alloc::Counts::default());
+    assert_eq!(rt.master, before);
+    assert_eq!(engine.undo.checkpoint(), checkpoint);
+    assert_eq!(rt.undo.failure, Some(Failure::Capacity));
+    assert!(std::mem::size_of::<Entry>() < 256);
+    rt.undo.patch_stores = original;
+}

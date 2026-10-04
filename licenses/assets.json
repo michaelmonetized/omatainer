@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
+  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and human-played Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "assets": [
     {
       "id": "factory:drum-kit",
@@ -293,6 +293,41 @@
         "ardour-9.8-region-ppqn19200.mid"
       ],
       "project_license": true
+    },
+    {
+      "id": "test:groove-drum-performance",
+      "name": "Human-played electronic drum recording and MIDI timing oracle",
+      "category": "samples",
+      "delivery": "source-only regression fixtures; not factory sounds or production embedded audio",
+      "license": "CC-BY-4.0",
+      "commercial_use": "Google LLC provides the Groove MIDI Dataset under CC BY 4.0. Its terms allow commercial use with attribution. No endorsement is implied.",
+      "redistribution": "Retain creator credit, source and license links, disclaimer and any processing disclosure from the fixture README. The project MIT license does not replace these recording terms.",
+      "sources": [
+        {
+          "location": "https://magenta.tensorflow.org/datasets/groove",
+          "sha256": null
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+          "sha256": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid",
+          "sha256": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/sources.json",
+          "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
+        }
+      ],
+      "members": [
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid"
+      ],
+      "notice_files": [
+        "tests/fixtures/beatgrid/README.md",
+        "tests/fixtures/beatgrid/CC-BY-4.0.txt"
+      ]
     }
   ],
   "fonts": [

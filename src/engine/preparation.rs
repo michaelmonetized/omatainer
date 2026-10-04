@@ -51,7 +51,7 @@ impl Preparation {
         let value = |i| f64::from_bits(words[i]);
         Self {
             cue: value(0),
-            grid: super::beatgrid::Grid::decode(words[GRID_OFFSET..].try_into().unwrap()).flatten(),
+            grid: super::beatgrid::Grid::decode(&words[GRID_OFFSET..]).flatten(),
             hotcues: std::array::from_fn(|i| (value(i + 1) >= 0.0).then(|| value(i + 1))),
             hotcue_styles: std::array::from_fn(|i| Style::from_words(words[12+i*STYLE_WORDS..12+(i+1)*STYLE_WORDS].try_into().unwrap()).unwrap_or_default()),
             loop_region: (value(9) >= 0.0).then(|| Loop {

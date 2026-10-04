@@ -3630,6 +3630,47 @@
       ]
     },
     {
+      "category": "samples",
+      "commercial_use": "Google LLC provides the Groove MIDI Dataset under CC BY 4.0. Its terms allow commercial use with attribution. No endorsement is implied.",
+      "delivery": "source-only regression fixtures; not factory sounds or production embedded audio",
+      "id": "test:groove-drum-performance",
+      "license": "CC-BY-4.0",
+      "members": [
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid"
+      ],
+      "name": "Human-played electronic drum recording and MIDI timing oracle",
+      "notices": [
+        {
+          "location": "tests/fixtures/beatgrid/README.md",
+          "sha256": "f2c29c9de7abb6e47f2d8c7cf7404a8c3fbad911582ff2a0f824e754a37b3cec"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/CC-BY-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "redistribution": "Retain creator credit, source and license links, disclaimer and any processing disclosure from the fixture README. The project MIT license does not replace these recording terms.",
+      "sources": [
+        {
+          "location": "https://magenta.tensorflow.org/datasets/groove",
+          "sha256": null
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+          "sha256": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid",
+          "sha256": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/sources.json",
+          "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
+        }
+      ]
+    },
+    {
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
@@ -12387,20 +12428,20 @@
     "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs"
   },
   "schema": 1,
-  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
+  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and human-played Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
     "Cargo.lock": "79e5cd28bc30c1b983b0776b3a2197c6110d8eef46c571a421139f788b0a3a2c",
     "Cargo.toml": "b7fb40e204f682fe847ad21b5d9f35adaf3bbc9fa626f63c36d6e7645e11e1dc",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "33d97f69be3339edd5aca339efaff9d33c191fdcbe9a7ffd97843c3c6d4c79e2",
+    "README.md": "31a1c424e37204bf6b0b4d28d79b899453e9f32aa391ccae32f8c5c21d6fab3c",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/manual.md": "f253d07cadade3bceb23f05189ccbfd83eb80d0ae006ca1f583688ef5caef5c8",
-    "licenses/assets.json": "f51a8803fe3e4a6d5712e7bb44bf128a2119603ed990bd3975a4b4ed61bf8adb",
+    "docs/manual.md": "ca7db8b282ee7d3af60675e915e76d9ff5f81459e523ec871572a828fed9465c",
+    "licenses/assets.json": "544c3dcb5675acb7df74a791699ca8a3dbf189b2974b127c078ec3f6ed8065ea",
     "locales/de.json": "5ca01c7d8e9d62191d5a668f636915945258813b5c64014000ba860ec37cd502",
     "locales/en.json": "1970bbc1050df421ddb720dea1eaedcdda1bbe42e93ab66fee4c296455bf5c2f",
     "locales/es.json": "bff584a8370023761665563a3384780de2e5a1cdd384cf591a2602abac85402d",
@@ -12426,7 +12467,7 @@
     "scripts/check-theme-colors.py": "5b48eb49b4b87145754f52d3f658acb881dfe14ea02a4433d4a621c689aab09f",
     "scripts/check_analysis_accessibility.py": "41dfe52abccf589b7778a74151f31815beaa58fe8672221d5bcfbdff4dfa3c65",
     "scripts/check_crates_accessibility.py": "606acf7066f07db1d3c08e6dc89e237869793a02d35d8d621f990856a3b8bdf2",
-    "scripts/check_grid_accessibility.py": "5b54fddc2014b4be726627e8bd26df647309a6b25188faf54bd2e602d9687fb6",
+    "scripts/check_grid_accessibility.py": "abc78c662d7a2c38d3fc30ffd9addbb0a77e709b6463c69df2e4796054789fbd",
     "scripts/check_history_accessibility.py": "ee88046d230b24161179458bf1fa4068f9e187bc1e742d35067948a9a6c55538",
     "scripts/check_sampler_accessibility.py": "562b6121633f6716a8150ae3b63f6816116ff0ac0a4d11b09ec3f187a69e6325",
     "scripts/install-executable.py": "b604da014c65202ec8f45561fde366ff67f18191c5f7c71f96fe5e6ae922dff2",
@@ -12473,7 +12514,8 @@
     "src/engine/audio_metrics.rs": "a0adccfe3b4140282d548ec8f992818871a4e10dec6aad8e3a45b62b5e11722d",
     "src/engine/audio_metrics_tests.rs": "04658951c16d774485b3124c7dabc866c258725b5cb7ec9344d07a82de096782",
     "src/engine/audio_tests.rs": "44a29d6c1cffe10075868f3133abb53e2d0202b9e0196dea25a77942ed46a778",
-    "src/engine/beatgrid.rs": "7f24aba3f3513f149165efdea6dde750b999ff6911d9c2e98ea392eddd4d1621",
+    "src/engine/beatgrid.rs": "d8c489e625b1c09ebe53e34550af1d38c1a693d84b1917195ac1f7e42076b435",
+    "src/engine/beatgrid/variable_tests.rs": "5b6310241de3774ef69628799c7668f71b09fdc689ec341367e53c77dcf0f20f",
     "src/engine/clip_gain_tests.rs": "fb9f9c8b788446cdafcc3031397f142a4761bf6c8107246743f943dd5045a930",
     "src/engine/clip_lifecycle_tests.rs": "08419b12714fb253405920b892cdc28a54697ccead077a1e32ed3c8f97123951",
     "src/engine/compose_tests.rs": "d314e9fce6934fce05c712b09a0ee44dea324334519adddafc869924fd85a1cc",
@@ -12575,19 +12617,19 @@
     "src/engine/midi_schedule_tests.rs": "665b77f63dddb92e122798699508c5b0b1348be58c856e18e5dafc38726a260b",
     "src/engine/mixer_gain.rs": "f0b86e2d234a83410a7a54204b254deb2e6ccdbd173bbfd3b7c9e5124a968a65",
     "src/engine/mixer_gain_tests.rs": "ab282c03872fb39a50c3f8cb457f987b505a856b8bef2a48242f8e2d1f1731d3",
-    "src/engine/mod.rs": "5540bb124e9006da122385f08bffa5235146c7ab15dd1b0fb888699d6dcf8b4e",
+    "src/engine/mod.rs": "1cab4e419a0780a5d328808e38b9ae0913b7ecf308bc8cd816ed9ef6994d9f9b",
     "src/engine/mute_lifecycle_tests.rs": "e0186faea31396b9fd8f2d4f891f8d7f28d6229e60682f42bacd0b9b397b8fd1",
     "src/engine/pad_routing_tests.rs": "7be4fb7cbf68dd0fb82b24108537bc3337afdee32aa91fcaa0899c408d2bf5fa",
     "src/engine/performance.rs": "851be2d8d20322b3f2cf1dad84c715d53af394b4708e3197ac3bd6c5c371ad67",
     "src/engine/performance/deck_load.rs": "5664c61a6ef7421fe244045047db2ffc5cc611549197355bae3cb7795a99a836",
     "src/engine/performance/tests.rs": "d3a322a6e6980d4a0a69e8c867dda21e83bb777437413034afb682860bcf9883",
     "src/engine/performance_workload_tests.rs": "1335225937a20262039d9703ba1c63cb07f012da6daea56f7ebe8282e7794e8f",
-    "src/engine/preparation.rs": "24b89110c1b4f2e79ed8ad0e4a69569f1100bf2eae66c73e0f8742e1aada406d",
+    "src/engine/preparation.rs": "5e4625f42e3bfb5d4060969ac7578c8c6fc2159d536b99f5186a5c42d6b2ae31",
     "src/engine/project.rs": "d1c1102b1be4f119a3c2e209675389db9c67d3d9eb87f8ac879f6f13c375a62b",
     "src/engine/project/capture.rs": "a837a1bef67240e53e49338f95f5684b0c56c31c2f018d80a66c30860074f157",
     "src/engine/project/model.rs": "2dad60641061307dd0cdbf7dd3b71b50abd126c5e885b752e95697b384399bd9",
     "src/engine/project/prepare.rs": "bb789115c568813b65ac8331327b9805e9e728845f250f60c2e32a7806b7ac95",
-    "src/engine/project/tests.rs": "e41c8f5313453d04264e5d3a32952aaa2dd7eb3ec0732e272075481cc71fcbc9",
+    "src/engine/project/tests.rs": "41a6032d8b82e18ff17baf27294ee85899f2c90f069bed4bd7c5b27e05fdfaaf",
     "src/engine/project/tests/dependency_tests.rs": "920385a9f673984dc70b173ad325199e95d130835ad9e0ad5009c9dec1174c07",
     "src/engine/project/tests/sampler_tests.rs": "003069facef7bb751db8f91c6ab92fbc58b0bd4ae3f6d72da9090acd447d8ea6",
     "src/engine/project/tests/session_tests.rs": "625429ce77cbd0676052983c2ba6b0903804cd505b43824be3724443e9612ac7",
@@ -12625,10 +12667,10 @@
     "src/engine/ui_requests.rs": "2e51e0f5c4dd0e2563188c1f170d895500004bf285755d46342a504d9cf52b92",
     "src/engine/undo/capture.rs": "2a67e9d6e14c809790deb1d9abc7147308cd544d1a6b196ffb7cfffe3a57623a",
     "src/engine/undo/midi_import.rs": "7ca1eaba34c40dae9ff8d15b21584a29d2c3c0b4a48d5c3925149395398e49d4",
-    "src/engine/undo/mod.rs": "cba62eda93af71147ec66960e896a24a2af79653edac9f8b7ff1748a73ea1b03",
+    "src/engine/undo/mod.rs": "fa90f27b869c25e8d275bff35c14e32e107fb9ade4dc0c9d06f97a99b254a54b",
     "src/engine/undo/patch.rs": "7b4bae51cea03a7463f55c798e1711ad325ee453a08ce6ff25b58ed5815d925b",
     "src/engine/undo/recording.rs": "906a437382e17103b7c4a685d849e755e05cc10f0d6668612fae3b4a17746cc7",
-    "src/engine/undo/tests.rs": "4c6902f932cca9895d6043281593290358cb331efe645b554a9dc754333a4dd7",
+    "src/engine/undo/tests.rs": "649e987e9d5b432244c1568694cee99e4adb355167967822298f01287df6f482",
     "src/engine/video_transport.rs": "932c934e2bd46f2c0c010f6be6657e20c4d01b1f94bd4be69aef3aa227feb2bc",
     "src/engine/voice_pitch_tests.rs": "0842859db49b0302059622d156153f929f96bd542a7933d90d8929e465d01d4d",
     "src/instance.rs": "23f44d05040770939d3bdcd09b4feeb3c3afc038b5160b9a16741a11e208b7d4",
@@ -12748,7 +12790,7 @@
     "src/ui.rs": "4b4f85c97fa5a01c8a1f6a358639496a94db28df3a31f430970678de643f59ee",
     "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
     "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
-    "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
+    "src/ui/atspi_tests.rs": "899e33847a645d3d0fa9753d8c539a08e4ab7499bc8b95e6d76530041567a826",
     "src/ui/audio_routing.rs": "32188c5391c2237d0c48b48370b13f97ca4669eef8bad65b080efb0970f93d72",
     "src/ui/audio_routing/tests.rs": "dda5649f85cf86ad740f0b897a827d89925109f8aedab8f9de500a1df00ce2c0",
     "src/ui/audio_routing/worker.rs": "ba2b971d1efcf8bb6894b8cf4ae96d684cf404ae5ef6aa130a9d0ae8e1b7b889",
@@ -12783,10 +12825,10 @@
     "src/ui/font_selection_tests.rs": "87e72095d8f9ca2f5a103861e3e8f1ebee4ad57dd42d62a3ef2651360f1e883e",
     "src/ui/fx_controls.rs": "399500a6f7218e514534c4d132a2f4001cc84332a5d55689811222db2ba479e7",
     "src/ui/fx_controls/tests.rs": "703e25715d2cc8c7e456a3e56480db802e880440cd7fdda25936d080cb38d1e8",
-    "src/ui/grid_editor.rs": "a2cf010e1c1ee2dbbad0980f09b32195b070fdf1f3f44e9dda29bf2df81ecb40",
-    "src/ui/grid_editor/tests.rs": "f8fe8e65cad1ae3ca0201142822683332026ebaddcba1d72f06b7b4afa471e28",
+    "src/ui/grid_editor.rs": "ef8030956ac5f3a842fbd349a6d5bdab230e31c88e7f7effcf64da6ca419906d",
+    "src/ui/grid_editor/tests.rs": "a60435ab79ce41c6122cdb964ebd99ba450490160b670c3298aa696ce5e8f40b",
     "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
-    "src/ui/help/catalogue.rs": "51eaee38e9ac08aef9ef516c4efa8a0ffe0479362c4e03f1e297d15e5364cd13",
+    "src/ui/help/catalogue.rs": "f3ac615c93a0076b0af0ca61dc22d83b40b073695efd3d1532bd4f9e878c08c6",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
     "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
     "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",
@@ -12915,6 +12957,11 @@
     "tests/fixtures/audio/tone.m4a": "4a24363782935022df775fa038098c857a2bbf740549e109a8f05c377469237d",
     "tests/fixtures/audio/tone.mp3": "09dbd544561b1b38ddd9a64991f8caadfac0cd0644fe45435cb7cdc6cb7170ba",
     "tests/fixtures/audio/tone.ogg": "ebc85aa6cfc74d049a03ecac2215063a50d2ab02b931abb8e0a15285e0ab2378",
+    "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8",
+    "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2",
+    "tests/fixtures/beatgrid/CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+    "tests/fixtures/beatgrid/README.md": "f2c29c9de7abb6e47f2d8c7cf7404a8c3fbad911582ff2a0f824e754a37b3cec",
+    "tests/fixtures/beatgrid/sources.json": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66",
     "tests/fixtures/keylock/README.md": "2a07072b3b1333b8ca185222f8a76afbb1412c28c4e92babaa80cab87c0e6f89",
     "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
     "tests/fixtures/keylock/f1_arpeggios_c_slow_forte_i.wav": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",

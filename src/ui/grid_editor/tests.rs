@@ -138,6 +138,53 @@ impl Gui {
 }
 
 #[test]
+fn tempo_anchor_ui_preserves_preview_identity_continuity_and_one_applied_history_edit() {
+    let mut gui = Gui::new(48_000);
+    let audio = gui.rt.decks[0].audio.clone().unwrap();
+    let before = gui.app.engine.undo.view().cursor;
+    gui.open();
+    gui.click("Deck A beatgrid: Tempo anchors");
+    let seed = gui.app.grid_editor.as_ref().unwrap().draft;
+    gui.text("Deck A beatgrid: Anchor seconds", "1.0");
+    gui.text("Deck A beatgrid: Anchor tempo BPM", "NaN");
+    gui.click("Deck A beatgrid: Insert or update tempo anchor");
+    assert!(gui.app.grid_editor.as_ref().unwrap().error.is_some());
+    assert_eq!(gui.app.grid_editor.as_ref().unwrap().draft, seed);
+    assert!(gui.node("Deck A beatgrid: Apply grid").1.is_disabled());
+    for (seconds, bpm) in [("1.0", "90"), ("2.5", "150")] {
+        gui.text("Deck A beatgrid: Anchor seconds", seconds);
+        gui.text("Deck A beatgrid: Anchor tempo BPM", bpm);
+        gui.click("Deck A beatgrid: Insert or update tempo anchor");
+    }
+    assert!(gui.rt.decks[0].grid.is_none());
+    let original = gui.app.grid_editor.as_ref().unwrap().draft.unwrap();
+    assert_eq!(original.anchors().len(), 2);
+    gui.text("Deck A beatgrid: Stretch tempo BPM", "62");
+    let stretched = gui.app.grid_editor.as_ref().unwrap().draft.unwrap();
+    assert_eq!(stretched.anchors()[0].seconds, 1.0);
+    assert!((stretched.anchors()[0].bpm - 90.0 * 62.0 / original.bpm()).abs() < 1e-10);
+    gui.text("Deck A beatgrid: Downbeat seconds", "0.1");
+    assert_eq!(gui.app.grid_editor.as_ref().unwrap().draft.unwrap().anchors()[0].seconds, 1.1);
+    gui.click("Deck A beatgrid: Delete tempo anchor at 1.1 seconds");
+    let grid = gui.app.grid_editor.as_ref().unwrap().draft.unwrap();
+    assert_eq!(grid.anchors().len(), 1);
+    gui.apply();
+    assert_eq!(gui.rt.decks[0].grid, Some(grid));
+    assert_eq!(gui.app.engine.undo.view().cursor, before + 1);
+    assert!(Arc::ptr_eq(gui.rt.decks[0].audio.as_ref().unwrap(), &audio));
+    gui.close();
+    gui.rt.apply(Command::Undo);
+    assert!(gui.rt.decks[0].grid.is_none());
+    gui.rt.apply(Command::Redo);
+    assert_eq!(gui.rt.decks[0].grid, Some(grid));
+    gui.rt.publish_for_test();
+    gui.frame(vec![]);
+    gui.open();
+    assert_eq!(gui.app.grid_editor.as_ref().unwrap().draft, Some(grid));
+    gui.close();
+}
+
+#[test]
 fn real_grid_ui_previews_set_slip_stretch_half_double_and_commits_one_undo() {
     for sr in [44_100, 48_000, 96_000] {
         let mut gui = Gui::new(sr);
@@ -642,6 +689,10 @@ fn actual_decoded_pickups_and_leading_silence_correct_ambiguous_seeds_and_reload
         gui.click(&format!("Deck A beatgrid: {correction}"));
         gui.click("Deck A beatgrid: Set downbeat at playhead");
         gui.click("Deck A beatgrid: Slip +1 ms");
+        gui.click("Deck A beatgrid: Tempo anchors");
+        gui.text("Deck A beatgrid: Anchor seconds", "2.0");
+        gui.text("Deck A beatgrid: Anchor tempo BPM", "110");
+        gui.click("Deck A beatgrid: Insert or update tempo anchor");
         gui.apply();
         let grid = gui.rt.decks[0].grid.unwrap();
         assert_eq!(grid.bpm(), 120.0);

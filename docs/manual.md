@@ -48,7 +48,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Prepare a DJ deck
 
-Select a crate row and explicitly load A or B. Built-in Drums (session) and Harmony (session) work without media files. Wait for Loaded: Queued only confirms admission. The filename BPM/key hints and heuristic analyzed BPM have distinct provenance and are not a verified beat grid. Use the grid editor to set the downbeat, slip beat lines, stretch tempo or correct half/double ambiguity in a draft preview. Apply creates one manual uniform four-beat grid; it does not overwrite analyzed BPM or move cues. Cancel or Escape discards unapplied drafts. Set a main cue or hot cues, set loop in/out, then audition. Pitch lock separates pitch from tempo. Match follows the crossfader-favored deck's effective tempo. Remaining time is an estimate and repeating loops suppress runout alerts. Preparation persists in the library for the exact file identity.
+Select a crate row and explicitly load A or B. Built-in Drums (session) and Harmony (session) work without media files. Wait for Loaded: Queued only confirms admission. The filename BPM/key hints and heuristic analyzed BPM have distinct provenance and are not a verified beat grid. Use the grid editor to set the downbeat, slip beat lines, stretch tempo or correct half/double ambiguity in a draft preview. Add ordered tempo anchors for changing tempos. Apply creates one continuous manual beat map with four-beat bars; it does not overwrite analyzed BPM or move cues. Cancel or Escape discards unapplied drafts. Set a main cue or hot cues, set loop in/out, then audition. Pitch lock separates pitch from tempo. Match follows the crossfader-favored deck's effective tempo. Remaining time is an estimate and repeating loops suppress runout alerts. Preparation persists in the library for the exact file identity.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -1850,7 +1850,47 @@ Workflow: Prepare a DJ deck.
 
 20–400 BPM
 
-Change beat spacing while keeping the draft downbeat fixed. Enter a finite tempo; invalid text cannot be applied. This uniform grid does not implement changing meters or tempo maps.
+Scale every local tempo while retaining source anchor positions and the downbeat. Each segment must remain between 20 and 400 BPM. Invalid text cannot be applied. Meter changes are not supported.
+
+Workflow: Prepare a DJ deck.
+
+### Track tempo anchors
+
+Up to 64 ordered source-time changes
+
+Show local tempo anchors. Each starts a constant-tempo segment; continuous beat coordinates join the segments. Insert or delete changes the draft only. Original source audio and absolute cues remain unchanged.
+
+Workflow: Prepare a DJ deck.
+
+### Tempo anchor position
+
+Source seconds within the loaded audio, after the downbeat
+
+Enter a source position for a local tempo change, or copy the playhead. Exact existing positions update that anchor. Anchors are kept in increasing order.
+
+Workflow: Prepare a DJ deck.
+
+### Local anchor tempo
+
+20–400 BPM
+
+Set the tempo from this anchor until the next one. Earlier segments retain their tempos. Invalid values retain the last valid draft.
+
+Workflow: Prepare a DJ deck.
+
+### Insert or update tempo anchor
+
+Validated preview edit
+
+Insert an ordered local tempo change or update the anchor at exactly these source seconds. The map supports 64 anchors and refuses collapsed beat boundaries. Apply separately commits the complete draft as one undoable edit.
+
+Workflow: Prepare a DJ deck.
+
+### Delete tempo anchor
+
+Exact draft anchor
+
+Remove this local tempo change and extend the previous tempo through its position. Later beat coordinates are recomputed continuously. This edits the preview only.
 
 Workflow: Prepare a DJ deck.
 
@@ -1880,7 +1920,7 @@ Workflow: Prepare a DJ deck.
 
 ### Beatgrid preview
 
-Solid applied / dashed draft; uniform four-beat bars
+Solid applied / dashed draft; local-tempo four-beat bars
 
 Inspect bounded source-time beat markers around the live playhead over a summed low/mid/high magnitude envelope, not raw sample peaks. Beat zero is the first downbeat; negative beat coordinates represent pickups. Colored cue markers keep their source positions. Preview does not alter playback.
 
@@ -2130,7 +2170,7 @@ Workflow: Prepare a DJ deck.
 
 Effective beats per minute
 
-Match the unfavored deck to the favored deck's file BPM times pitch rate. If both play, align the unfavored phase. The favored position does not jump.
+Match the unfavored deck to the favored deck's current local grid tempo times pitch rate, or its file BPM when no manual grid exists. The matched target is captured at this action; changing source tempo does not create an automatic master-follow link. If both play, align the unfavored phase. The favored position does not jump.
 
 Workflow: Prepare a DJ deck.
 

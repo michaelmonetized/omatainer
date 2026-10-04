@@ -224,7 +224,8 @@ fn populated() -> RtEngine {
         name: crate::engine::cue_metadata::Name::new("Drop • 演奏").unwrap(),
         color: Some([240, 32, 90]),
     };
-    rt.decks[0].grid = Some(crate::engine::beatgrid::Grid::new(0.5, 127.0).unwrap());
+    rt.decks[0].grid = Some(crate::engine::beatgrid::Grid::new(0.5, 127.0).unwrap()
+        .set_anchor(1.25, 114.0).unwrap().set_anchor(3.0, 145.0).unwrap());
     rt.decks[0].pos = 1987.5;
     rt.decks[0].cue_pos = 123.75;
     rt.decks[1].loop_on = true;

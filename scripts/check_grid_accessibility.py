@@ -47,6 +47,35 @@ def verify_grid(named, action, state, wait_for, Atspi):
     click('Deck A beatgrid: Cancel or close grid editor')
     wait_for(lambda: state()['grid_editor'] is None, 'native Cancel discards reset draft')
     assert state()['grid'] == draft
+    position = named('Deck A: Waveform position').get_value_iface()
+    count = len(state()['actions'])
+    assert position.set_current_value(1.5)
+    wait_for(lambda: len(state()['actions']) > count, 'native seek before tempo anchor')
+    click('Deck A: Beatgrid editor')
+    click('Deck A beatgrid: Tempo anchors')
+    for name in ['Anchor seconds', 'Anchor tempo BPM']:
+        field = named('Deck A beatgrid: ' + name)
+        assert field.get_role() == Atspi.Role.ENTRY
+        assert field.get_component_iface().grab_focus()
+        wait_for(lambda: state()['focus'] == 'Deck A beatgrid: ' + name, 'native anchor field focus')
+    click('Deck A beatgrid: Use playhead for anchor')
+    click('Deck A beatgrid: Half tempo')
+    click('Deck A beatgrid: Insert or update tempo anchor')
+    mapped = state()['grid_editor']['draft']
+    assert len(mapped['anchors']) == 1, mapped
+    assert mapped['anchors'][0]['bpm'] == 60 / draft['seconds_per_beat']
+    assert state()['grid'] == draft, 'native anchor preview changed renderer'
+    click('Deck A beatgrid: Apply grid')
+    wait_for(lambda: state()['grid'] == mapped and not state()['grid_editor']['pending'], 'native anchor map applied')
+    anchor = mapped['anchors'][0]
+    click(f"Deck A beatgrid: Delete tempo anchor at {anchor['seconds']} seconds")
+    wait_for(lambda: not state()['grid_editor']['draft']['anchors'], 'native anchor deletion is a preview')
+    assert state()['grid'] == mapped
+    click('Deck A beatgrid: Cancel or close grid editor')
+    wait_for(lambda: state()['grid_editor'] is None, 'native Cancel preserves applied tempo map')
+    assert state()['grid'] == mapped
     return {'workflow': 'open -> focus -> half -> double -> set -> slip -> Apply -> reset -> Cancel',
             'applied': draft, 'half_tempo_help': description,
+            'tempo_anchor_workflow': 'seek -> anchor fields focus -> playhead -> half -> insert -> Apply -> delete preview -> Cancel',
+            'applied_tempo_map': mapped,
             'cancel_preserved_applied_grid': True}

@@ -1,6 +1,6 @@
 //! Bounded, renderer-authoritative inverse transactions. Only affected musical
 //! objects are swapped. A worker retires owned media/notes/processors and
-//! replenishes recording scratch; it never owns or locks the live renderer.
+//! replenishes recording and inverse scratch; it never owns or locks the live renderer.
 mod capture;
 mod midi_import;
 mod patch;
@@ -17,6 +17,14 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 const MAX_ENTRIES: usize = 256;
 const MAX_PATCHES: usize = TRACKS * SCENES + 1;
 const SCRATCHES: usize = 64;
+const PATCH_STORES: usize = MAX_ENTRIES + control::COMMANDS_PER_BLOCK;
+type PatchStore = Box<[Option<Patch>]>;
+
+/// Prepare one bounded inverse buffer off the renderer thread.
+/// Takes no inputs; returns heap storage for the largest supported history transaction.
+fn patch_store() -> PatchStore {
+    std::iter::repeat_with(|| None).take(MAX_PATCHES).collect()
+}
 const RETIRE_CAPACITY: usize = 1024;
 const RESERVE_RETIRE: usize = 2 * control::MAX_COMMANDS + 2 * control::COMMANDS_PER_BLOCK + 4;
 const NOTE_LIMIT: usize = 8192;
@@ -205,11 +213,11 @@ struct Entry {
     frame: u64,
     before: u64,
     after: u64,
-    patches: [Option<Patch>; MAX_PATCHES],
+    patches: PatchStore,
     len: usize,
 }
 impl Entry {
-    fn new(id: u64, name: Name, gesture: u64, key: u64, frame: u64, before: u64) -> Self {
+    fn new(id: u64, name: Name, gesture: u64, key: u64, frame: u64, before: u64, patches: PatchStore) -> Self {
         Self {
             id,
             name,
@@ -219,7 +227,7 @@ impl Entry {
             frame,
             before,
             after: id,
-            patches: std::array::from_fn(|_| None),
+            patches,
             len: 0,
         }
     }
@@ -288,6 +296,7 @@ pub(super) struct Journal {
     assets: Vec<(usize, usize, usize)>,
     retired: Option<Sender<Garbage>>,
     scratch: Option<Receiver<Scratch>>,
+    patch_stores: Option<Receiver<PatchStore>>,
     /// Preserve ownership even if a worker disconnects unexpectedly. Once this
     /// is used, admission closes before any further creative payload is read.
     stranded: Vec<Garbage>,
@@ -314,6 +323,7 @@ impl Default for Journal {
             assets: Vec::new(),
             retired: None,
             scratch: None,
+            patch_stores: None,
             stranded: Vec::new(),
             shared: Arc::new(Shared {
                 view: Mutex::new(View::default()),
@@ -340,6 +350,10 @@ impl Journal {
         }
         let (retired, garbage) = bounded::<Garbage>(RETIRE_CAPACITY);
         let (prepared, scratch) = bounded(SCRATCHES);
+        let (prepared_patches, patch_stores) = bounded(PATCH_STORES);
+        for _ in 0..PATCH_STORES {
+            prepared_patches.try_send(patch_store()).ok().unwrap();
+        }
         for _ in 0..SCRATCHES {
             prepared.try_send(Scratch::new()).ok().unwrap();
         }
@@ -368,6 +382,9 @@ impl Journal {
                             break;
                         }
                     }
+                    while prepared_patches.len() < PATCH_STORES {
+                        if prepared_patches.try_send(patch_store()).is_err() { break; }
+                    }
                 }
                 shared.connected.store(false, Ordering::Release);
             })?;
@@ -377,6 +394,7 @@ impl Journal {
             Vec::with_capacity(2 * control::MAX_COMMANDS + 2 * control::COMMANDS_PER_BLOCK + 4);
         self.retired = Some(retired);
         self.scratch = Some(scratch);
+        self.patch_stores = Some(patch_stores);
         self.enabled = true;
         Ok(Handle {
             shared: self.shared.clone(),
@@ -465,6 +483,9 @@ impl Journal {
                 .is_some_and(|e| e.gesture == self.gesture && e.key == key && e.len < MAX_PATCHES)
     }
     fn preflight(&self, bytes: usize) -> Result<(), Failure> {
+        if self.patch_stores.as_ref().is_none_or(|stores| stores.is_empty()) {
+            return Err(Failure::Capacity);
+        }
         if bytes > self.budget {
             return Err(Failure::Budget);
         }
@@ -510,6 +531,7 @@ impl Journal {
             key,
             frame,
             self.state,
+            self.patch_stores.as_ref().unwrap().try_recv().expect("preflight reserved one inverse buffer"),
         )));
         self.cursor = self.entries.len();
         self.state = id;
@@ -858,6 +880,7 @@ impl Journal {
             + (RETIRE_CAPACITY + self.stranded.capacity()) * std::mem::size_of::<Garbage>()
             + self.assets.capacity() * std::mem::size_of::<(usize, usize, usize)>()
             + SCRATCHES * (TEXT_LIMIT + NOTE_LIMIT * std::mem::size_of::<MidiNote>())
+            + (PATCH_STORES + self.entries.capacity()) * MAX_PATCHES * std::mem::size_of::<Option<Patch>>()
     }
 }
 
@@ -905,6 +928,7 @@ impl Journal {
                     0,
                     entry.frame,
                     self.state,
+                    patch_store(),
                 );
                 for patch in &mut entry.patches[..entry.len] {
                     let keep = matches!(patch,Some(Patch::Clip {track,scene,..}) if active.iter().any(|(owner,t,s)| *owner == entry.id && *t == *track as usize && *s == *scene as usize));
