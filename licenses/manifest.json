@@ -12820,7 +12820,7 @@
     "src/ui/keylock_status.rs": "322adabfe66d0748e3e2bd583b75964fed01b65ca6ded1425c5cd9fe37627397",
     "src/ui/library_analysis.rs": "e657fd90fcddad35dca4597d9cc241768753386c5c681fcdbf187fbcdd709325",
     "src/ui/library_analysis/changes.rs": "a37295c1134a78f2ea90896fe4c8b380ea5e181683cb80978ca3c2194898896e",
-    "src/ui/library_analysis/tests.rs": "2a13ff213c61857f7b424a7d628aecc752127120ce01aa68a752e17138a4375d",
+    "src/ui/library_analysis/tests.rs": "a308c5574a955ccc043744c78ab57e72a4b624d419b04fa4e6e53a3465bbd286",
     "src/ui/library_analysis/tests/long.rs": "da9abc6a6d08b798f4435c700be4cd1d8cf3129225f76ec7cfe75dbeb20660f2",
     "src/ui/library_annotations.rs": "cca858135c2ca92f1b28e8be97560d021fa556842e33d88907aa58a5177ebfbf",
     "src/ui/library_annotations/tests.rs": "4a037b928495820570b80899c3d12e9dc025dd07745fc1f7521e0f86ee2ee3da",

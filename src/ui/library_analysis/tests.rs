@@ -448,7 +448,10 @@ fn unavailable_owner_stops_queue_and_retains_large_view_payloads_without_retryin
     let indices = gui.app.library_view.indices.clone();
     failed.store(true, Ordering::Release);
     gui.click("Analyze filtered crate");
-    gui.wait(|gui| !gui.app.library_metadata.analysis_worker_available());
+    gui.wait(|gui| {
+        !gui.app.library_metadata.analysis_worker_available()
+            && gui.app.library_analysis.queue.is_none()
+    });
     assert!(gui.app.library_analysis.queue.is_none());
     let retired = gui.app.library_analysis.retiring.as_ref().unwrap();
     assert!(Arc::ptr_eq(&rows, &retired.0) && Arc::ptr_eq(&indices, &retired.1));
