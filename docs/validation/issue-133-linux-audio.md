@@ -143,3 +143,5 @@ refusal, its raw renderer retirement fixture, and parallel sampler fixture
 capacity. The production shared sampler limits remain unchanged. Their failure
 logs remain in `/tmp/omatainer-wrapup/merged-backup-ordinary.log` and are not
 counted as qualification.
+
+The final combined freeze is a5872de32ce779294969939910483232ea2c5e30. It passes 1,569 ordinary checks, the reviewed eight-workload optimized gate, three additional decode/I/O-pressure runs and all debug/optimized native graph and settings runs. See the source-bound [combined receipt](remaining-backlog-qualification.md). Earlier parent and provisional measurements above remain historical evidence.

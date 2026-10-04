@@ -502,7 +502,7 @@
       "limits": "All eight backup checks pass, including native export/verify/restore/import, exact preparation and real-loader playback after source removal on a clean profile. The additional run uses distinct mounted local filesystems /home and /var/tmp. This is local software/mount evidence; removable USB migration, converter timing and listening remain unqualified. Final combined ordinary and optimized qualification is pending."
     },
     "132": {
-      "status": "partial",
+      "status": "implemented",
       "paths": [
         {
           "kind": "native UI",
@@ -528,12 +528,13 @@
         "ui::library_backup::tests"
       ],
       "evidence": [
-        "docs/validation/issue-132-background-work.md"
+        "docs/validation/issue-132-background-work.md",
+        "docs/validation/remaining-backlog-qualification.md"
       ],
-      "limits": "The published parent qualifies its own frozen source. Combined focused checks preserve media guards, cancellation, coalescing and exact captured fingerprints. Merged callback-pressure, optimized, full ordinary and physical deadline qualification remains pending. Reservations are declared admission budgets, not measured RSS or an OS memory cap. Plugin scanning and stem separation remain planned."
+      "limits": "Full combined source, optimized reviewed workloads and three actual decode/I/O-pressure repetitions pass on Linux aarch64; declared memory admission is not a universal RSS or physical device guarantee."
     },
     "133": {
-      "status": "partial",
+      "status": "implemented",
       "paths": [
         {
           "kind": "native UI",
@@ -552,9 +553,10 @@
         "ui::audio_settings::tests::private_native_graph_profile_preview_apply_cancel_and_reopen"
       ],
       "evidence": [
-        "docs/validation/issue-133-linux-audio.md"
+        "docs/validation/issue-133-linux-audio.md",
+        "docs/validation/remaining-backlog-qualification.md"
       ],
-      "limits": "The published parent has native private-server evidence. Combined-source native, optimized and deadline qualification is pending; physical interfaces and other platforms remain unqualified."
+      "limits": "Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native settings fixtures pass. Physical converters, external routes, real-time scheduling and other platforms remain unqualified."
     }
   }
 }

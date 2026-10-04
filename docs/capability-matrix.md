@@ -53,24 +53,26 @@ Published routing-layer software qualification is source bound to its own commit
 
 Physical MIDI/controller display testing is pending; software producers and actual native egui interactions are exercised.
 
-### Issue #132: partial
+### Issue #132: implemented
 
 - native UI: [src/ui/background_jobs.rs](../src/ui/background_jobs.rs) — Setup background jobs with captured-ID cancellation and measured worker progress
 - shared scheduler: [src/background.rs](../src/background.rs) — Bounded worker turns, declared memory reservations, decode priority, native worker CPU/IO policy and retired request ownership
 - combined workflows: [src/ui/library_backup.rs](../src/ui/library_backup.rs) — Catalog backup/verification/restore, embedded artwork and media validation join the existing admitted workflows
 - Acceptance fixtures: `background::tests`, `ui::background_jobs::tests`, `engine::media_load::tests`, `ui::library_artwork::tests`, `ui::library_backup::tests`.
 - Evidence: [docs/validation/issue-132-background-work.md](../docs/validation/issue-132-background-work.md).
+- Evidence: [docs/validation/remaining-backlog-qualification.md](../docs/validation/remaining-backlog-qualification.md).
 
-The published parent qualifies its own frozen source. Combined focused checks preserve media guards, cancellation, coalescing and exact captured fingerprints. Merged callback-pressure, optimized, full ordinary and physical deadline qualification remains pending. Reservations are declared admission budgets, not measured RSS or an OS memory cap. Plugin scanning and stem separation remain planned.
+Full combined source, optimized reviewed workloads and three actual decode/I/O-pressure repetitions pass on Linux aarch64; declared memory admission is not a universal RSS or physical device guarantee.
 
-### Issue #133: partial
+### Issue #133: implemented
 
 - native UI: [src/ui/audio_settings.rs](../src/ui/audio_settings.rs) — Audio devices → Linux ALSA/JACK server selection and exact graph endpoints
 - audio owner: [src/engine/audio/jack.rs](../src/engine/audio/jack.rs) — Server-clocked native JACK/PipeWire callbacks and stopped recovery
 - Acceptance fixtures: `engine::audio::graph::tests`, `engine::audio::jack::native_tests::private_graph_loopback_quantum_reconnect_and_rate_change_retain_project`, `ui::audio_settings::tests::private_native_graph_profile_preview_apply_cancel_and_reopen`.
 - Evidence: [docs/validation/issue-133-linux-audio.md](../docs/validation/issue-133-linux-audio.md).
+- Evidence: [docs/validation/remaining-backlog-qualification.md](../docs/validation/remaining-backlog-qualification.md).
 
-The published parent has native private-server evidence. Combined-source native, optimized and deadline qualification is pending; physical interfaces and other platforms remain unqualified.
+Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native settings fixtures pass. Physical converters, external routes, real-time scheduling and other platforms remain unqualified.
 
 ### Issue #137: partial
 
@@ -200,8 +202,8 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#129](https://github.com/michaelmonetized/omatainer/issues/129) | Recover safely from audio-device loss and backend restarts | partial |
 | [#130](https://github.com/michaelmonetized/omatainer/issues/130) | Route independent multichannel inputs and outputs through an audio graph | implemented |
 | [#131](https://github.com/michaelmonetized/omatainer/issues/131) | Protect audible DJ decks from accidental load and eject | implemented |
-| [#132](https://github.com/michaelmonetized/omatainer/issues/132) | Prioritize and cancel expensive background audio jobs | partial |
-| [#133](https://github.com/michaelmonetized/omatainer/issues/133) | Integrate low-latency PipeWire, JACK and ALSA workflows | partial |
+| [#132](https://github.com/michaelmonetized/omatainer/issues/132) | Prioritize and cancel expensive background audio jobs | implemented |
+| [#133](https://github.com/michaelmonetized/omatainer/issues/133) | Integrate low-latency PipeWire, JACK and ALSA workflows | implemented |
 | [#134](https://github.com/michaelmonetized/omatainer/issues/134) | Support manually mapped tempo changes within a track | planned |
 | [#135](https://github.com/michaelmonetized/omatainer/issues/135) | Show aligned beatgrid, phase and phrase position on deck waveforms | planned |
 | [#136](https://github.com/michaelmonetized/omatainer/issues/136) | Switch live sets without interrupting the outgoing mix | planned |
