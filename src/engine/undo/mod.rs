@@ -17,13 +17,20 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 const MAX_ENTRIES: usize = 256;
 const MAX_PATCHES: usize = TRACKS * SCENES + 1;
 const SCRATCHES: usize = 64;
-const PATCH_STORES: usize = MAX_ENTRIES + control::COMMANDS_PER_BLOCK;
+const PATCH_STORES: usize = RETIRE_CAPACITY - RESERVE_RETIRE + control::COMMANDS_PER_BLOCK;
 type PatchStore = Box<[Option<Patch>]>;
 
 /// Prepare one bounded inverse buffer off the renderer thread.
 /// Takes no inputs; returns heap storage for the largest supported history transaction.
 fn patch_store() -> PatchStore {
     std::iter::repeat_with(|| None).take(MAX_PATCHES).collect()
+}
+
+/// Return an inverse buffer after releasing its payloads on the history worker.
+/// Takes owned storage and its prepared queue; returns no value.
+fn recycle_patches(mut patches: PatchStore, prepared: &Sender<PatchStore>) {
+    for patch in &mut patches { *patch = None; }
+    let _ = prepared.try_send(patches);
 }
 const RETIRE_CAPACITY: usize = 1024;
 const RESERVE_RETIRE: usize = 2 * control::MAX_COMMANDS + 2 * control::COMMANDS_PER_BLOCK + 4;
@@ -265,6 +272,7 @@ enum Retired {
     Entry(Entry),
     Timeline(VecDeque<Option<Entry>>),
     Patch(Patch),
+    Patches(Vec<Patch>),
     Command(Command),
     Boxed(Box<Command>),
     Notes(Vec<MidiNote>),
@@ -370,7 +378,16 @@ impl Journal {
                     }
                     match garbage.recv_timeout(Duration::from_millis(10)) {
                         Ok(Garbage { value, bytes }) => {
-                            drop(value);
+                            match value {
+                                Retired::Entry(entry) => recycle_patches(entry.patches, &prepared_patches),
+                                Retired::Timeline(entries) => {
+                                    for entry in entries.into_iter().flatten() {
+                                        recycle_patches(entry.patches, &prepared_patches);
+                                    }
+                                }
+                                Retired::Patches(patches) => drop(patches),
+                                value => drop(value),
+                            }
                             shared.retired_bytes.fetch_sub(bytes, Ordering::Release);
                         }
                         Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
@@ -381,9 +398,6 @@ impl Journal {
                         if prepared.try_send(Scratch::new()).is_err() {
                             break;
                         }
-                    }
-                    while prepared_patches.len() < PATCH_STORES {
-                        if prepared_patches.try_send(patch_store()).is_err() { break; }
                     }
                 }
                 shared.connected.store(false, Ordering::Release);
@@ -538,9 +552,11 @@ impl Journal {
         self.publish_checkpoint();
     }
     fn unregister_entry(&mut self, entry: &Entry) -> usize {
-        let mut bytes = entry.bytes();
-        for patch in entry.patches[..entry.len].iter().flatten() {
-            patch.media_reservations(|pointer, _| {
+        entry.patches[..entry.len].iter().flatten().map(|patch| self.unregister_patch(patch)).sum()
+    }
+    fn unregister_patch(&mut self, patch: &Patch) -> usize {
+        let mut bytes = patch.heap_bytes();
+        patch.media_reservations(|pointer, _| {
                 let index = self
                     .assets
                     .binary_search_by_key(&pointer, |a| a.0)
@@ -549,8 +565,7 @@ impl Journal {
                 if self.assets[index].2 == 0 {
                     bytes += self.assets.remove(index).1;
                 }
-            });
-        }
+        });
         bytes
     }
     fn retire_entry(&mut self, entry: Entry) {
@@ -880,7 +895,7 @@ impl Journal {
             + (RETIRE_CAPACITY + self.stranded.capacity()) * std::mem::size_of::<Garbage>()
             + self.assets.capacity() * std::mem::size_of::<(usize, usize, usize)>()
             + SCRATCHES * (TEXT_LIMIT + NOTE_LIMIT * std::mem::size_of::<MidiNote>())
-            + (PATCH_STORES + self.entries.capacity()) * MAX_PATCHES * std::mem::size_of::<Option<Patch>>()
+            + PATCH_STORES * MAX_PATCHES * std::mem::size_of::<Option<Patch>>()
     }
 }
 
@@ -917,23 +932,29 @@ impl Journal {
             // beyond the budget merely to discard them immediately afterwards.
             let mut old = std::mem::replace(&mut self.entries, VecDeque::with_capacity(MAX_ENTRIES));
             self.state = 0;
-            for entry in old.iter_mut().take(self.cursor).flatten() {
+            let mut discarded = Vec::new();
+            let mut discarded_bytes = 0;
+            for slot in old.iter_mut().take(self.cursor) {
+                let Some(entry) = slot.as_mut() else { continue; };
                 // Held captures retain this stable owner ID across pruning.
                 // The epoch and before/after checkpoints still describe the new
                 // timeline; entry identity is not a mutable content version.
-                let mut kept = Entry::new(
-                    entry.id,
-                    Name::RecordNotes,
-                    entry.gesture,
-                    0,
-                    entry.frame,
-                    self.state,
-                    patch_store(),
-                );
-                for patch in &mut entry.patches[..entry.len] {
-                    let keep = matches!(patch,Some(Patch::Clip {track,scene,..}) if active.iter().any(|(owner,t,s)| *owner == entry.id && *t == *track as usize && *s == *scene as usize));
+                if !entry.patches[..entry.len].iter().flatten().any(|patch|
+                    matches!(patch,Patch::Clip {track,scene,..} if active.iter().any(|(owner,t,s)| *owner == entry.id && *t == *track as usize && *s == *scene as usize))) { continue; }
+                let mut kept = slot.take().unwrap();
+                let len = kept.len;
+                kept.len = 0;
+                kept.name = Name::RecordNotes;
+                kept.key = 0;
+                kept.before = self.state;
+                for index in 0..len {
+                    let patch = kept.patches[index].take().unwrap();
+                    let keep = matches!(&patch,Patch::Clip {track,scene,..} if active.iter().any(|(owner,t,s)| *owner == kept.id && *t == *track as usize && *s == *scene as usize));
                     if keep {
-                        kept.push(patch.take().unwrap());
+                        kept.push(patch);
+                    } else {
+                        discarded_bytes += self.unregister_patch(&patch);
+                        discarded.push(patch);
                     }
                 }
                 if kept.len != 0 {
@@ -946,6 +967,10 @@ impl Journal {
             let mut bytes = old.capacity() * std::mem::size_of::<Option<Entry>>();
             for entry in old.iter().flatten() {
                 bytes += self.unregister_entry(entry);
+            }
+            if !discarded.is_empty() {
+                discarded_bytes += discarded.capacity() * std::mem::size_of::<Patch>();
+                self.retire(Retired::Patches(discarded), discarded_bytes);
             }
             self.retire(Retired::Timeline(old), bytes);
             self.cursor = self.entries.len();

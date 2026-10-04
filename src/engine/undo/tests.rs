@@ -1426,6 +1426,29 @@ fn unavailable_sampler_state_counts_toward_history_admission_before_any_replacem
     assert_eq!(rt.undo.checkpoint(), before); assert_eq!(rt.undo.failure, Some(Failure::Budget));
 }
 #[test]
+fn inverse_buffers_cover_held_worker_bursts_and_are_recycled_without_callback_heap_work() {
+    let (_, mut rt) = Engine::headless_for_test(48_000, 128);
+    rt.undo.shared.worker_hold.store(true, Ordering::Release);
+    let counts = test_alloc::measure(|| {
+        for index in 0..MAX_ENTRIES + 4 * control::COMMANDS_PER_BLOCK {
+            rt.apply(Command::Master((index % 100) as f32 / 100.0));
+        }
+    });
+    assert_eq!(counts, test_alloc::Counts::default());
+    assert_eq!(rt.undo.failures, 0);
+    assert_eq!(rt.undo.entries.len(), MAX_ENTRIES);
+    assert!(rt.undo.patch_stores.as_ref().unwrap().len() < PATCH_STORES - MAX_ENTRIES);
+    rt.undo.shared.worker_hold.store(false, Ordering::Release);
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while rt.undo.patch_stores.as_ref().unwrap().len() != PATCH_STORES - MAX_ENTRIES
+        || rt.undo.shared.retired_bytes.load(Ordering::Acquire) != 0 {
+        assert!(Instant::now() < deadline, "inverse buffers were not recycled");
+        std::thread::yield_now();
+    }
+    assert_eq!(rt.undo.shared.retired_bytes.load(Ordering::Acquire), 0);
+}
+
+#[test]
 fn exhausted_prepared_inverse_pool_refuses_edits_without_callback_allocation() {
     let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
     let (_sender, empty) = bounded::<PatchStore>(1);
