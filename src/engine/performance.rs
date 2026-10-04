@@ -599,7 +599,6 @@ fn destructive(command: &Command) -> bool {
         | Command::FxSelect { .. }
         | Command::Quant(_)
         | Command::Metronome
-        | Command::LearnCapture { .. }
         | Command::NudgeBpm(_)
         | Command::ToggleQuant
         | Command::DeckLoopDouble { .. }

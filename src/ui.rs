@@ -44,6 +44,7 @@ mod timing;
 mod dependencies;
 mod portability;
 mod midi_routing;
+mod midi_learn;
 mod play_time;
 mod project;
 mod templates;
@@ -183,6 +184,7 @@ pub struct App {
     workspace: workspace::State,
     help: help::Help,
     midi_open: bool,
+    midi_learn: midi_learn::Panel,
     status: String,
     loads: [Option<LoadState>; DECKS],
     deck_load_review: Option<deck_load_lock::Review>,
@@ -315,6 +317,7 @@ impl App {
             workspace: workspace::State::default(),
             help: help::Help::default(),
             midi_open: false,
+            midi_learn: midi_learn::Panel::default(),
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
             loads: std::array::from_fn(|_| None),
             deck_load_review: None,
@@ -866,8 +869,10 @@ impl App {
                     ui.label(d);
                 }
                 self.midi_routing_status_ui(ui,ctx);
+                self.midi_learn_ui(ui,ctx);
             });
         }
+        if !self.midi_open {self.engine.cmd.midi_learn().close();}
         self.automation_ui(ctx);
         self.music_provider_ui(ctx);
         self.video_ui(ctx);

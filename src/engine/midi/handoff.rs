@@ -18,6 +18,7 @@ struct Event {
     sequence: u64,
     safety: u64,
     routing: u64,
+    learning: u64,
     len: u16,
     bytes: [u8; EVENT_BYTES],
 }
@@ -28,6 +29,7 @@ impl Event {
             sequence,
             safety: 0,
             routing: 0,
+            learning: 0,
             len: bytes.len() as u16,
             bytes: [0; EVENT_BYTES],
         };
@@ -78,6 +80,7 @@ impl InputCounters {
 }
 
 struct Shared {
+    learning: Arc<super::learn::Shared>,
     epoch: AtomicU64,
     performance: crate::engine::performance::Handle,
     stop_pending: AtomicBool,
@@ -188,7 +191,7 @@ impl InputSink {
         if self.pending_cc.take().is_some() {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
-        if bytes.len() > EVENT_BYTES || self.rules.has_stop(bytes) {
+        if bytes.len() > EVENT_BYTES || self.shared.learning.ordered.load(Acquire) || self.rules.has_stop(bytes) {
             self.shared.stop_pending.store(true, Release);
         }
         self.shared.epoch.fetch_add(1, Release);
@@ -215,7 +218,8 @@ impl InputSink {
         let mut event = Event::new(epoch, self.sequence, bytes);
         event.safety = self.shared.performance.input_epoch();
         event.routing = self.shared.routing.generation.load(Acquire);
-        let cc = !self.shared.routing.explicit.load(Acquire) && self.rules.coalescible(bytes);
+        event.learning = self.shared.learning.revision.load(Acquire);
+        let cc = !self.shared.learning.ordered.load(Acquire) && !self.shared.routing.explicit.load(Acquire) && self.rules.coalescible(bytes);
         if cc && self.pending_cc.same_pending_key(&event) {
             if self.pending_cc.publish(event) {
                 self.shared.counters.coalesced.fetch_add(1, Relaxed);
@@ -248,6 +252,7 @@ impl InputSink {
 }
 
 struct InputWorker {
+    learning_revision: u64,
     consumer: rtrb::Consumer<Event>,
     shared: Arc<Shared>,
     epoch: u64,
@@ -260,7 +265,6 @@ struct InputWorker {
     map: MidiMap,
     cmd: CommandPort,
     log: Arc<Mutex<Vec<String>>>,
-    learn: Arc<Mutex<Option<String>>>,
     shift: Arc<Mutex<[bool; 4]>>,
     name: String,
     port_id: String,
@@ -272,6 +276,8 @@ impl InputWorker {
         self.shared.counters.resets.fetch_add(1, Relaxed);
     }
     fn step(&mut self) -> bool {
+        let learning = self.shared.learning.revision.load(Acquire);
+        if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
         let safety = self.shared.performance.input_epoch();
         if self.safety != safety { *self.shift.lock() = [false; 4]; self.safety = safety; }
         let epoch = self.shared.epoch.load(Acquire);
@@ -286,23 +292,33 @@ impl InputWorker {
         let Some(event) = self.next_event() else {
             return reset;
         };
-        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety {
+        if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
             let cmd=self.cmd.for_input_epoch(event.safety);
             for frame in super::routing::packet::frames(event.bytes()) {
                 match frame {
-                    super::routing::packet::Frame::Musical(packet) => self.shared.routing.input(
-                        self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
+                    super::routing::packet::Frame::Musical(packet) => {
+                        if packet.bytes().len()==3 && packet.channel().is_some() {
+                            let message:[u8;3]=packet.bytes().try_into().unwrap();
+                            match self.shared.learning.input_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning) {
+                                super::learn::Dispatch::Consume => continue,
+                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift);continue; },
+                                super::learn::Dispatch::Normal => {},
+                            }
+                        }
+                        self.shared.routing.input(self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
-                                super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.learn,&self.shift,&self.name,allow_live);
+                                super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
                             }
-                        }),
-                    super::routing::packet::Frame::Realtime(status) => handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.learn,&self.shift,&self.name),
+                        });
+                    },
+                    super::routing::packet::Frame::Realtime(status) => handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name),
                     super::routing::packet::Frame::Malformed => self.shared.routing.malformed(),
                 }
             }
             self.shared.counters.dispatched.fetch_add(1, Relaxed);
         } else {
+            if event.learning != learning && Rules::new(&self.map).has_stop(event.bytes()) { let _=self.cmd.send(Command::Stop); }
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         true
@@ -387,7 +403,6 @@ fn channel(
     map: MidiMap,
     cmd: CommandPort,
     log: Arc<Mutex<Vec<String>>>,
-    learn: Arc<Mutex<Option<String>>>,
     name: String,
     port_id:String,
     counters: Arc<InputCounters>,
@@ -396,6 +411,7 @@ fn channel(
     let sources=routing.register(source,&name,&port_id)?;
     let (producer, consumer) = rtrb::RingBuffer::new(capacity);
     let shared = Arc::new(Shared {
+        learning: cmd.midi_learn(),
         epoch: AtomicU64::new(0),
         performance: cmd.performance().clone(),
         stop_pending: AtomicBool::new(false),
@@ -404,6 +420,7 @@ fn channel(
         counters,
         routing,
     });
+    shared.learning.connected(source,&name,&port_id);
     let rules = Rules::new(&map);
     let (pending_writer, pending_reader) = latest::channel();
     Ok((
@@ -415,6 +432,7 @@ fn channel(
             sequence: 0,
         },
         InputWorker {
+            learning_revision: shared.learning.revision.load(Acquire),
             consumer,
             shared,
             epoch: 0,
@@ -427,7 +445,6 @@ fn channel(
             map,
             cmd,
             log,
-            learn,
             shift: Arc::new(Mutex::new([false; 4])),
             port_id,
             name,
@@ -440,11 +457,10 @@ pub(super) fn start(
     map: MidiMap,
     cmd: CommandPort,
     log: Arc<Mutex<Vec<String>>>,
-    learn: Arc<Mutex<Option<String>>>,
     name: String,
     counters: Arc<InputCounters>,
 ) -> std::io::Result<(InputSink, InputGuard)> {
-    start_with_completion(source, map, cmd, log, learn, name, counters, || {})
+    start_with_completion(source, map, cmd, log,  name, counters, || {})
 }
 
 pub(super) fn start_with_completion(
@@ -452,13 +468,12 @@ pub(super) fn start_with_completion(
     map: MidiMap,
     cmd: CommandPort,
     log: Arc<Mutex<Vec<String>>>,
-    learn: Arc<Mutex<Option<String>>>,
     name: String,
     counters: Arc<InputCounters>,
     completed: impl FnOnce() + Send + 'static,
 ) -> std::io::Result<(InputSink, InputGuard)> {
     start_gated(
-        source, map, cmd, log, learn, name, counters, true, completed,
+        source, map, cmd, log,  name, counters, true, completed,
     )
 }
 
@@ -467,20 +482,19 @@ pub(super) fn start_gated(
     map: MidiMap,
     cmd: CommandPort,
     log: Arc<Mutex<Vec<String>>>,
-    learn: Arc<Mutex<Option<String>>>,
     name: String,
     counters: Arc<InputCounters>,
     enabled: bool,
     completed: impl FnOnce() + Send + 'static,
 ) -> std::io::Result<(InputSink, InputGuard)> {
     let id=name.clone();
-    start_on_port(source,map,cmd,log,learn,name,id,counters,enabled,completed)
+    start_on_port(source,map,cmd,log,name,id,counters,enabled,completed)
 }
 pub(super) fn start_on_port(
-    source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,learn:Arc<Mutex<Option<String>>>,
+    source:u64,map:MidiMap,cmd:CommandPort,log:Arc<Mutex<Vec<String>>>,
     name:String,id:String,counters:Arc<InputCounters>,enabled:bool,completed:impl FnOnce()+Send+'static,
 ) -> std::io::Result<(InputSink,InputGuard)> {
-    let (sink, worker) = channel(EVENTS, source, map, cmd, log, learn, name, id, counters)?;
+    let (sink, worker) = channel(EVENTS, source, map, cmd, log,  name, id, counters)?;
     sink.shared.enabled.store(enabled, Release);
     let shared = sink.shared.clone();
     let worker = std::thread::Builder::new()
@@ -499,6 +513,7 @@ pub(super) fn start_on_port(
 }
 impl Drop for InputWorker {
     fn drop(&mut self) {
+        self.shared.learning.disconnected(self.source);
         self.shared.routing.release(self.sources,&self.cmd);
         self.shared.routing.unregister(self.source);
     }

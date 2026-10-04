@@ -435,7 +435,6 @@ pub(super) fn command_bytes(command: &Command) -> usize {
             media: load_receipt::Media::Decoded { audio, .. },
             ..
         } => sample_bytes(audio),
-        Command::LearnCapture { param, .. } => param.capacity(),
         Command::Gesture { command, .. } => std::mem::size_of::<Command>() + command_bytes(command),
         _ => 0,
     }

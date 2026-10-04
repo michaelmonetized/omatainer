@@ -69,18 +69,6 @@ fn variable_payload_counts_allocated_capacity_and_shared_media_conservatively() 
         }),
         note_bytes
     );
-    let param = String::with_capacity(49);
-    let param_bytes = param.capacity();
-    assert_eq!(
-        owned_payload_bytes(&Command::LearnCapture {
-            param,
-            ch: 0,
-            d1: 0,
-            d2: 0,
-            status: 0
-        }),
-        param_bytes
-    );
     assert_eq!(
         owned_payload_bytes(&Command::Gesture {
             id: 1,

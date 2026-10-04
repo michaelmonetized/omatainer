@@ -941,7 +941,6 @@ pub enum Command {
     FxSelect { slot: u8 },
     Quant(f32),
     Metronome,
-    LearnCapture { param: String, ch: u8, d1: u8, d2: u8, status: u8 },
     NudgeBpm(f32),
     ToggleQuant,
     DeckLoopDouble { deck: u8 },
@@ -2615,7 +2614,6 @@ impl RtEngine {
                 self.metronome = !self.metronome;
                 self.metro.reset();
             }
-            command @ Command::LearnCapture { .. } => self.undo.retire_command(command),
             Command::ToggleQuant => {
                 self.quantize = !self.quantize;
                 self.quant = if self.quantize { 1.0 } else { 0.0 };
@@ -3128,6 +3126,7 @@ impl Engine {
         settings.validate().map_err(anyhow::Error::msg)?;
         let (tx, rx) = CommandPort::channel(256);
         if settings.startup.performance_mode { tx.performance().set_enabled(true)?; }
+        tx.midi_learn().configure(settings.midi_learn.clone()).map_err(anyhow::Error::msg)?;
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let mut rt = RtEngine::try_new(48000.0, rx, snap.clone()).map_err(anyhow::Error::msg)?;

@@ -101,6 +101,16 @@ Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its 
 
 Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence.
 
+### Issue #148: implemented
+
+- native UI: [src/ui/midi_learn.rs](../src/ui/midi_learn.rs) — MIDI → action/target → Capture → review Add/Replace/Test → Edit/Remove → Save MIDI assignments
+- dispatch worker: [src/engine/midi/learn.rs](../src/engine/midi/learn.rs) — Unique exact-port capture, mapping validation, cancellation and disconnect
+- persistent profile: [src/preferences/storage.rs](../src/preferences/storage.rs) — Version 12 learned assignments; durable Save with exact revision and legacy presence guard
+- Acceptance fixtures: `engine::midi::learn::tests`, `ui::midi_learn::tests`, `engine::midi::handoff::tests`, `engine::midi::realtime_tests`, `engine::midi::routing::tests`, `preferences::storage::midi_learn_migration_tests`.
+- Evidence: [docs/validation/issue-148-midi-learn.md](../docs/validation/issue-148-midi-learn.md).
+
+Current complete software qualification pending. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. Shift tests through its following assigned hardware gesture. NS7 motorized wheel protocols and custom drivers remain unqualified.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -146,7 +156,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |
 | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented |
 | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned |
-| [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | planned |
+| [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented |
 | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | planned |
 | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned |
 | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | planned |

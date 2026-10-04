@@ -2646,6 +2646,14 @@ Open the MIDI window to inspect actual connection state, queue/drop/reset counte
 
 Workflow: Connect a controller.
 
+### MIDI learn
+
+256 exact-port assignments; one captured gesture
+
+Choose a performance action, target and compatible message type. Relative encoders require an explicit format and sensitivity. Capture consumes one gesture for review; unrelated controls retain their mapping. Conflicts require Replace. Test submits the captured action through ordinary control admission. Add/Replace/Edit/Remove affect this run; Save MIDI assignments retains the active profile after its durable preferences receipt. Remove restores any built-in action. Cancel, close, timeout and disconnect end learning; existing assignments remain. Input changes release older source gates and fence stale queued messages. Missing exact ports remain unavailable until recaptured.
+
+Workflow: Connect a controller.
+
 ### Retry / rescan MIDI
 
 Background connection request

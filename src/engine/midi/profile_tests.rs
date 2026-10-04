@@ -8,7 +8,6 @@ fn observe(map: &MidiMap, message: &[u8]) -> Vec<Command> {
         map,
         &commands,
         &Arc::new(Mutex::new(Vec::new())),
-        &Arc::new(Mutex::new(None)),
         &Arc::new(Mutex::new([false; 4])),
         "synthetic controller",
     );
@@ -145,7 +144,6 @@ fn apc40_faders_exhaust_all_channels_controllers_and_values_without_fanout() {
 fn apc40_fader_dispatch_changes_only_its_own_engine_track() {
     let (engine, mut rt) = crate::engine::Engine::headless_for_test(48_000, 16);
     let log = Arc::new(Mutex::new(Vec::new()));
-    let learn = Arc::new(Mutex::new(None));
     let shift = Arc::new(Mutex::new([false; 4]));
     for map in [akai_apc40(), akai_apc40_mk2()] {
         for track in 0..8u8 {
@@ -161,7 +159,6 @@ fn apc40_fader_dispatch_changes_only_its_own_engine_track() {
                     &map,
                     &engine.cmd,
                     &log,
-                    &learn,
                     &shift,
                     "synthetic APC40",
                 );

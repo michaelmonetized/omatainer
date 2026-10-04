@@ -79,6 +79,7 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    midi_learn: std::sync::Arc<super::midi::learn::Shared>,
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
@@ -397,6 +398,9 @@ pub struct QueuePressure {
 }
 
 impl CommandPort {
+    /// Access bounded learning and assignment state outside the native callback.
+    /// Takes no arguments; returns the shared MIDI dispatch/editor owner.
+    pub(crate) fn midi_learn(&self) -> std::sync::Arc<super::midi::learn::Shared> { self.shared.midi_learn.clone() }
     pub(crate) fn midi_routing(&self) -> &std::sync::Arc<super::midi::routing::Shared> { &self.shared.midi_routing }
     pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
     /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
@@ -455,6 +459,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            midi_learn: std::sync::Arc::new(super::midi::learn::Shared::default()),
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
@@ -831,7 +836,6 @@ fn owned_payload_bytes(command: &Command) -> usize {
         Command::SetNotes { notes, .. } => notes
             .capacity()
             .saturating_mul(size_of::<super::MidiNote>()),
-        Command::LearnCapture { param, .. } => param.capacity(),
         Command::DeckAudio { audio, .. }
         | Command::DeckDecoded { audio, .. }
         | Command::DeckLoadRequested {

@@ -8,7 +8,6 @@ fn send(bytes: &[u8], source: u64, commands: &crate::engine::CommandPort) {
         &class_compliant(),
         commands,
         &Arc::new(Mutex::new(Vec::new())),
-        &Arc::new(Mutex::new(None)),
         &Arc::new(Mutex::new([false; 4])),
         "synthetic realtime input",
     );
@@ -189,46 +188,16 @@ fn truncated_channel_frames_never_invent_data_or_carry_into_the_next_packet() {
 #[test]
 fn realtime_bypasses_learn_but_complete_channel_capture_is_preserved() {
     let (commands, receiver) = crate::engine::CommandPort::channel(32);
-    let learn = Arc::new(Mutex::new(Some("master".to_owned())));
-    let call = |bytes: &[u8]| {
-        handle_msg(
-            bytes,
-            71,
-            &class_compliant(),
-            &commands,
-            &Arc::new(Mutex::new(Vec::new())),
-            &learn,
-            &Arc::new(Mutex::new([false; 4])),
-            "learning input",
-        )
-    };
-    call(&[0xfa, 0xb2, 0xf8, 7, 0xf8, 99]);
-    let received: Vec<_> = receiver.try_iter().collect();
-    assert!(matches!(
-        received.as_slice(),
-        [
-            Command::Play,
-            Command::MidiClock { source: 71 },
-            Command::MidiClock { source: 71 },
-            Command::LearnCapture {
-                ch: 2,
-                d1: 7,
-                d2: 99,
-                status: 0xb0,
-                ..
-            }
-        ]
-    ));
-    assert_eq!(learn.lock().as_deref(), Some("master"));
-    for packet in [&[0xb2, 7][..], &[0xc0, 1], &[0xd0, 1], &[0x90, 60]] {
-        call(packet);
-        assert!(receiver.is_empty());
-    }
-    call(&[0xfc]);
-    assert!(matches!(
-        receiver.try_recv(),
-        Ok(Command::ReservedStop { lane: 0, .. })
-    ));
+    let hub=MidiHub::without_devices();
+    let mut input=hub.open_for_test(&commands,71,class_compliant(),"learning input","fixture:learn");
+    commands.midi_learn().begin(cbind(0,0,Action::Master,0,0),None).unwrap();
+    input.push(&[0xfa,0xb2,0xf8,7,0xf8,99]);
+    let received:Vec<_>=receiver.try_iter().collect();
+    assert!(matches!(received.as_slice(),[Command::Play,Command::MidiClock{source:71},Command::MidiClock{source:71}]));
+    let view=commands.midi_learn().view();assert!(!view.armed);
+    assert_eq!(view.capture.unwrap().bytes,[0xb2,7,99]);
+    for packet in [&[0xb2,7][..],&[0xc0,1],&[0xd0,1],&[0x90,60]] {input.push(packet);assert!(receiver.is_empty());}
+    input.push(&[0xfc]);assert!(matches!(receiver.try_recv(),Ok(Command::ReservedStop{lane:0,..})));
 }
 
 #[test]
@@ -269,7 +238,6 @@ fn actual_input_worker_hands_single_byte_messages_to_the_renderer() {
         class_compliant(),
         engine.cmd.clone(),
         Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(None)),
         "realtime worker fixture".into(),
         counters.clone(),
     )

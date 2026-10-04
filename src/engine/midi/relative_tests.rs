@@ -16,7 +16,6 @@ fn send(map: &MidiMap, message: &[u8], commands: &crate::engine::CommandPort) {
         map,
         commands,
         &Arc::new(Mutex::new(Vec::new())),
-        &Arc::new(Mutex::new(None)),
         &Arc::new(Mutex::new([false; 4])),
         "synthetic relative controller",
     );

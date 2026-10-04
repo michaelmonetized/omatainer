@@ -842,7 +842,6 @@ impl Journal {
                     | Command::SamplerAudition(_)
                     | Command::ProviderPreview(_)
                     | Command::DeckCuePoint { .. }
-                    | Command::LearnCapture { .. }
             )
         {
             let bytes = capture::command_bytes(&command);

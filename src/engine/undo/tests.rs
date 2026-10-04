@@ -1170,13 +1170,6 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
             media: load_receipt::Media::Builtin(255),
             receipt: load_receipt::Receipt::new(),
         },
-        Command::LearnCapture {
-            param: "owned ignored mapping".repeat(100),
-            ch: 0,
-            d1: 1,
-            d2: 2,
-            status: 0xb0,
-        },
     ] {
         engine.send(command).unwrap();
     }

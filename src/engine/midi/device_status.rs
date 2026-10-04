@@ -215,7 +215,6 @@ mod tests {
             map,
             engine.cmd.clone(),
             engine.midi.log.clone(),
-            engine.midi.learn.clone(),
             "synthetic keyboard".into(),
             counters,
             move || completed.disconnected(),

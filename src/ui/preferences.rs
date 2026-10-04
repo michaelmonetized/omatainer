@@ -49,6 +49,12 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    #[cfg(test)]
+    pub(super) fn with_worker_for_test(path:PathBuf) -> Self {
+        let home=path.parent().unwrap().to_path_buf();
+        Self::from_startup(Startup{path,preferences:model::Preferences::defaults(&home),home,revision:None,blocked:false,diagnostic:None},true,None)
+    }
+
     fn from_startup(
         start: Startup,
         start_worker: bool,
@@ -100,7 +106,7 @@ impl Settings {
     pub fn busy(&self) -> bool {
         self.worker.as_ref().is_some_and(Worker::busy)
     }
-    fn request(&mut self, job: Job) {
+    pub(super) fn request(&mut self, job: Job) {
         match self
             .worker
             .as_mut()
@@ -309,6 +315,9 @@ impl App {
                         .message
                         .push_str(&format!(" Saved MIDI policy is not applied: {error}")),
                 }
+            }
+            if old.midi_learn != self.settings.profile().midi_learn {
+                if let Err(error)=self.engine.cmd.midi_learn().configure(self.settings.profile().midi_learn.clone()) {self.settings.message.push_str(&format!(" Saved MIDI assignments are not applied: {error}"));}
             }
             if old.midi_routing != self.settings.profile().midi_routing {
                 self.settings.routing_pending=true;

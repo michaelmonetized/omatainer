@@ -132,7 +132,7 @@ fn profile_roundtrip_and_legacy_midi_presence_guard() {
         old["version"] = version.into();
         for profile in old["profiles"].as_object_mut().unwrap().values_mut() {
             profile.as_object_mut().unwrap().remove("automation");
-            profile.as_object_mut().unwrap().remove("workspaces");
+            profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn");
             for field in ["locale", "contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
             profile["startup"].as_object_mut().unwrap().remove("session");
         }

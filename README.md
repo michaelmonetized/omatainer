@@ -6,7 +6,7 @@ Omarchy-native DAW + live DJ surface. One clock, one mixer, configurable workspa
 - **Compose** a MIDI piano roll and explicitly armed pad-note capture, with stable note identities and undo
 - **Two decks** with spinning platters, Serato-style waveforms, hot cues, loops, vinyl jog, sync, EQ, filter, and a crossfader
 
-Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; this build has no editable MIDI-learn mapping UI. Keyboard and pointer controls remain available.
+Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; the native MIDI learn editor captures exact-port assignments and retains them in the active profile after Save. Keyboard and pointer controls remain available.
 
 It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`) and font, registers in the keybind menu, and drops a Quickshell bar chip next to the rest of the shell.
 
@@ -501,6 +501,8 @@ failed connections without reopening working ones. Keyboard and mouse remain
 available throughout. A disconnected device is detected on an explicit rescan
 or when its input worker ends; automatic hotplug detection is not implemented.
 See the [connection lifecycle validation](docs/validation/issue-73-midi-connections.md).
+
+**MIDI learn** selects an action and target, captures one compatible control, and previews its exact device/channel/message. Add or deliberately Replace an address, test its action through normal admission, edit/remove existing assignments, and **Save MIDI assignments** after review. Relative encoders require an explicit format and sensitivity. Cancel, Escape, close, timeout and disconnect restore normal input; stale capture-period packets cannot trigger later actions. Saved mappings require the exact port. See [learn behavior and qualification limits](docs/validation/issue-148-midi-learn.md).
 
 MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
 their accepted count and last source in `midi_clock` status; this reception hook

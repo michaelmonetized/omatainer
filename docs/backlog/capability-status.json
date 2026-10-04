@@ -341,6 +341,38 @@
         "docs/validation/issue-146-prepare-queue.md"
       ],
       "limits": "Published routing-layer software qualification is source bound to its own commit; merged prepare/routing source needs renewed qualification. Logical 64-channel addressing and private 32-channel native capture do not qualify physical interfaces, all maximum-session voices or xruns. Explicit graphs disable legacy stereo source attribution and automatic prepare removal; queued tracks remain visible. Physical USB and listening remain pending."
+    },
+    "148": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/midi_learn.rs",
+          "entry": "MIDI \u2192 action/target \u2192 Capture \u2192 review Add/Replace/Test \u2192 Edit/Remove \u2192 Save MIDI assignments"
+        },
+        {
+          "kind": "dispatch worker",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Unique exact-port capture, mapping validation, cancellation and disconnect"
+        },
+        {
+          "kind": "persistent profile",
+          "file": "src/preferences/storage.rs",
+          "entry": "Version 12 learned assignments; durable Save with exact revision and legacy presence guard"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::learn::tests",
+        "ui::midi_learn::tests",
+        "engine::midi::handoff::tests",
+        "engine::midi::realtime_tests",
+        "engine::midi::routing::tests",
+        "preferences::storage::midi_learn_migration_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-148-midi-learn.md"
+      ],
+      "limits": "Current complete software qualification pending. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. Shift tests through its following assigned hardware gesture. NS7 motorized wheel protocols and custom drivers remain unqualified."
     }
   }
 }
