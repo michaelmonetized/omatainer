@@ -16,6 +16,7 @@ use std::{
 };
 
 mod content;
+pub(crate) mod backup;
 pub(crate) mod tags;
 pub(crate) mod annotations;
 pub(crate) mod search;

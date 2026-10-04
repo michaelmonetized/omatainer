@@ -28,6 +28,7 @@ use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
 mod library_view;
 mod library_layout;
+mod library_backup;
 mod library_artwork;
 mod key_hints;
 mod clip_gain;
@@ -147,6 +148,7 @@ pub struct App {
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
     library_layout: library_layout::Layouts,
+    library_backup: library_backup::Panel,
     library_artwork: library_artwork::Artwork,
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
@@ -285,6 +287,7 @@ impl App {
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
             library_layout: library_layout::Layouts::default(),
+            library_backup: library_backup::Panel::default(),
             library_artwork: library_artwork::Artwork::default(),
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
@@ -790,6 +793,7 @@ impl App {
         self.project_import.poll();
         self.project_versions.poll();
         self.poll_sampler_editor();
+        self.poll_library_backup(ctx);
         self.poll_library_analysis();
         self.poll_library_validation();
         self.poll_library_tags();
@@ -825,6 +829,7 @@ impl App {
         }
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
+        self.library_backup_ui(ctx);
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
         self.session_editor_ui(ctx);

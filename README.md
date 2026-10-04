@@ -118,6 +118,8 @@ Use **Help** or the active **F1** binding for focused-control explanations, acce
 
 **Setup → Automation** exposes the versioned local API and native job inspector. Use `omatainer ctl api` for discovery, state subscriptions, commands, atomic edits and musical scheduling. Optional authenticated loopback OSC is disabled by default. See the [automation protocol and examples](docs/automation-api.md).
 
+The Library window also exports a fixed saved DJ catalog, optionally collects explicitly authorized local music, verifies the complete backup and restores into a new directory. Import remains explicit and rejects conflicts. See [library backup](docs/validation/issue-143-library-backup.md).
+
 The [offline manual](docs/manual.md) is generated from the same catalogue. This build has no Arrange timeline, external audio recording, warp editor, automation lane editor or plugin host. Native projects, piano roll, pad-note capture, clip gain, history, mixer/FX and DJ preparation are implemented workflows.
 
 ## Play without files

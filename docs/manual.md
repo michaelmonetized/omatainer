@@ -2918,6 +2918,54 @@ Inspect catalog save status or import an Omatainer catalog. The library is separ
 
 Workflow: Prepare a DJ deck.
 
+### Back up and restore DJ library
+
+Complete independent catalog snapshot
+
+Export a fixed saved catalog, optionally collect authorized local tracks, verify a backup and restore into a new directory. Import is explicit and rejects conflicts before changing the live catalog.
+
+Workflow: Prepare a DJ deck.
+
+### Library backup paths
+
+Absolute local directories
+
+Choose a new directory for export or restore and an existing backup for verification. Existing destinations are never replaced. Restore must remain outside the read-only backup.
+
+Workflow: Prepare a DJ deck.
+
+### Authorized local music collection
+
+1–1024 GiB total; 8 GiB per file
+
+Explicitly authorize copying all local current catalog tracks. Encoded bytes and source identities are verified. Duplicate bytes share a backup asset; provider music is not collected. Originals remain read-only.
+
+Workflow: Prepare a DJ deck.
+
+### Export library snapshot
+
+Saved catalog and optional collected music
+
+Wait for the catalog owner to finish saving. The captured snapshot stays fixed during later edits. Cancellation and protection prevent incomplete publication.
+
+Workflow: Prepare a DJ deck.
+
+### Verify and restore library
+
+Versioned metadata and SHA-256 media checks
+
+Verify the complete backup before restoring preparation, identities, crates, favorites and history into a new directory. Each restored track keeps its own pathname; no catalog activates automatically.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel library backup job
+
+Bounded worker cancellation
+
+Stop optional backup reads and discard uncommitted private staging. A completed publication reports its actual durability outcome. Closing the window alone does not cancel the job.
+
+Workflow: Prepare a DJ deck.
+
 ### Catalog import path
 
 Local Omatainer catalog JSON

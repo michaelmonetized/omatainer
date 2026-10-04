@@ -25,7 +25,7 @@
       "limits": "Physical converter timing, external audio paths and sustained listening are not qualified by unit tests."
     },
     {
-      "name": "ALSA \u2192 private PipeWire null sink",
+      "name": "ALSA → private PipeWire null sink",
       "status": "backend restart exercised",
       "versions": "ALSA 1.2.16.1; PipeWire 1.6.8",
       "limits": "Owned private server and real CPAL callbacks; no USB unplug, converter or system suspend evidence."
@@ -68,7 +68,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/audio_settings.rs",
-          "entry": "Audio devices \u2192 reconnect review"
+          "entry": "Audio devices → reconnect review"
         },
         {
           "kind": "audio owner",
@@ -91,7 +91,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/deck_load_lock.rs",
-          "entry": "Platter lock \u2192 captured load/eject review"
+          "entry": "Platter lock → captured load/eject review"
         },
         {
           "kind": "MIDI",
@@ -160,7 +160,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/library_protection.rs",
-          "entry": "Library locks \u2192 capture, review and save"
+          "entry": "Library locks → capture, review and save"
         },
         {
           "kind": "native UI",
@@ -193,7 +193,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/library_smart_crates.rs",
-          "entry": "Named crates \u2192 Smart crate rules \u2192 Preview and Save"
+          "entry": "Named crates → Smart crate rules → Preview and Save"
         },
         {
           "kind": "catalog worker",
@@ -252,7 +252,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/library_health.rs",
-          "entry": "Library \u2192 health\u2026 \u2192 captured selected/filtered validation"
+          "entry": "Library → health… → captured selected/filtered validation"
         },
         {
           "kind": "shared decoder",
@@ -317,7 +317,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/audio_routing.rs",
-          "entry": "Setup \u2192 Audio routing \u2192 capture, review and apply saved graph"
+          "entry": "Setup → Audio routing → capture, review and apply saved graph"
         },
         {
           "kind": "renderer",
@@ -348,7 +348,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/midi_learn.rs",
-          "entry": "MIDI \u2192 action/target \u2192 Capture \u2192 review Add/Replace/Test \u2192 Edit/Remove \u2192 Save MIDI assignments"
+          "entry": "MIDI → action/target → Capture → review Add/Replace/Test → Edit/Remove → Save MIDI assignments"
         },
         {
           "kind": "dispatch worker",
@@ -380,7 +380,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/library_crates/discovery.rs",
-          "entry": "Named crates \u2192 search names / Favorite crates only / Find crates containing selected track \u2192 Return"
+          "entry": "Named crates → search names / Favorite crates only / Find crates containing selected track → Return"
         },
         {
           "kind": "catalog owner",
@@ -476,7 +476,30 @@
       "evidence": [
         "docs/validation/issue-144-library-layouts.md"
       ],
-      "limits": "Focused software routes pass; complete ordinary and optimized qualification are pending. Artwork previews support embedded PNG/JPEG in scanned local files, with explicit resource limits and truthful absence/errors. Sorting and presentation do not establish physical controller or audio timing qualification."
+      "limits": "Source 3bd82bb passes all 1532 ordinary checks. Native 32-channel routing assertions pass, with 2048 missing input frames (1024 and 640 within recorded captures) retained as a timing limit. Embedded PNG/JPEG artwork uses bounded, source-checked workers. Complete optimized and physical controller qualification remain pending."
+    },
+    "143": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_backup.rs",
+          "entry": "Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import"
+        },
+        {
+          "kind": "snapshot and media worker",
+          "file": "src/library/backup.rs",
+          "entry": "Versioned, bounded catalog/media snapshots with SHA-256, descriptor/mount guards, deduplication and no-replace publication"
+        }
+      ],
+      "fixtures": [
+        "library::backup::tests",
+        "ui::library_backup::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-143-library-backup.md"
+      ],
+      "limits": "Seven focused checks pass on the initial software source, including native export/restore/import and real-loader playback after original removal on a clean profile at different local paths. Additional cancellation/output replacement regression and final combined qualification remain pending. Physical mounted-volume migration, output converter timing and listening are not established."
     }
   }
 }

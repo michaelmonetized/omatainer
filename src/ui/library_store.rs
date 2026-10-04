@@ -397,6 +397,7 @@ impl App {
                     accessibility::scrollbars(ui, "Music import skipped entries", &scroll);
                 }
             }
+            if ui.button("Back up and restore DJ library").help(ui, help::Control::LibraryBackup).clicked() { self.library_backup.open = true; }
             ui.separator();
             ui.label(tr!("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected."));
             ui.label(tr!("Local files and uniquely identified mounted removable libraries can play. Offline, ambiguous or changed volumes fail explicitly. Provider references remain unavailable locally."));

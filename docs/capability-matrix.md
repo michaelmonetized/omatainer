@@ -80,6 +80,15 @@ Local 100000-track synthetic catalog; search fields reflect implemented title/ar
 
 Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification.
 
+### Issue #143: partial
+
+- native UI: [src/ui/library_backup.rs](../src/ui/library_backup.rs) — Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import
+- snapshot and media worker: [src/library/backup.rs](../src/library/backup.rs) — Versioned, bounded catalog/media snapshots with SHA-256, descriptor/mount guards, deduplication and no-replace publication
+- Acceptance fixtures: `library::backup::tests`, `ui::library_backup::tests`.
+- Evidence: [docs/validation/issue-143-library-backup.md](../docs/validation/issue-143-library-backup.md).
+
+Seven focused checks pass on the initial software source, including native export/restore/import and real-loader playback after original removal on a clean profile at different local paths. Additional cancellation/output replacement regression and final combined qualification remain pending. Physical mounted-volume migration, output converter timing and listening are not established.
+
 ### Issue #144: implemented
 
 - native UI: [src/ui/library_layout.rs](../src/ui/library_layout.rs) — Named layout editor with visibility, order, widths, density, two sorts, preview, save and discard
@@ -89,7 +98,7 @@ Software fixtures and read-only source paths; physical controller actions remain
 - Acceptance fixtures: `preferences::library_layout::tests`, `ui::library_layout::tests`, `ui::library_artwork::tests`.
 - Evidence: [docs/validation/issue-144-library-layouts.md](../docs/validation/issue-144-library-layouts.md).
 
-Focused software routes pass; complete ordinary and optimized qualification are pending. Artwork previews support embedded PNG/JPEG in scanned local files, with explicit resource limits and truthful absence/errors. Sorting and presentation do not establish physical controller or audio timing qualification.
+Source 3bd82bb passes all 1532 ordinary checks. Native 32-channel routing assertions pass, with 2048 missing input frames (1024 and 640 within recorded captures) retained as a timing limit. Embedded PNG/JPEG artwork uses bounded, source-checked workers. Complete optimized and physical controller qualification remain pending.
 
 ### Issue #145: implemented
 
@@ -183,7 +192,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#140](https://github.com/michaelmonetized/omatainer/issues/140) | Protect prepared beatgrids and metadata from bulk reanalysis | implemented |
 | [#141](https://github.com/michaelmonetized/omatainer/issues/141) | Analyze and recall safe per-track gain adjustment | planned |
 | [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | planned |
-| [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | planned |
+| [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | partial |
 | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | implemented |
 | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |
 | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented |
