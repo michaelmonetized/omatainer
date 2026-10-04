@@ -111,6 +111,17 @@ Merged-source qualification pending. Physical controller actions and listening r
 
 All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified.
 
+### Issue #153: implemented
+
+- native UI: [src/ui/sampler_editor.rs](../src/ui/sampler_editor.rs) — Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save
+- mouse and keyboard: [src/ui.rs](../src/ui.rs) — Pad context Stop slot; focused Shift+Escape; final local owner release
+- controller: [src/engine/midi.rs](../src/engine/midi.rs) — Learned Note action SamplerSlotStop with an exact slot
+- renderer and admission: [src/engine/control.rs](../src/engine/control.rs) — Sixteen independent reserved stop lanes and matching onset fencing
+- Acceptance fixtures: `engine::sampler::playback_tests`, `sampler_bank::store::tests::legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header`, `sampler_bank::tests::cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values`, `engine::project::tests::sampler_tests::sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields`, `ui::sampler_editor::tests::native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop`, `ui::sampler_pad_tests::mouse_context_and_focused_shift_escape_stop_exact_slots`, `engine::midi::profile_tests::exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press`, `engine::control::admission_tests::saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane`.
+- Evidence: [docs/validation/issue-153-sampler-playback.md](../docs/validation/issue-153-sampler-playback.md).
+
+Software qualification is in progress. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview.
+
 ### Issue #154: implemented
 
 - native UI: [src/ui/library_crates/discovery.rs](../src/ui/library_crates/discovery.rs) — Named crates → search names / Favorite crates only / Find crates containing selected track → Return
@@ -171,7 +182,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned |
 | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | planned |
 | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned |
-| [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | planned |
+| [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented |
 | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
 | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned |
 | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | planned |

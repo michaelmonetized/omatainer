@@ -287,7 +287,7 @@ fn rejected_or_still_queued_unload_does_not_claim_current_media_was_replaced() {
     let files = Files::new();
     let path = files.wave("current.wav");
     for decoded in [false, true] {
-        let mut f = Fixture::new(16);
+        let mut f = Fixture::new(32);
         let name = if decoded {
             f.app.load_file(0, path.clone(), "current file");
             f.decoder_jobs.recv_timeout(Duration::from_secs(3)).unwrap();
@@ -335,7 +335,7 @@ fn cancellation_and_application_have_one_winner_at_controlled_interleavings() {
     let path = files.wave("racing.wav");
     for decoded in [false, true] {
         for after_claim in [false, true] {
-            let mut f = Fixture::new(32);
+            let mut f = Fixture::new(48);
             if decoded {
                 f.app.load_file(0, path.clone(), "racing file");
                 f.decoder_jobs.recv_timeout(Duration::from_secs(3)).unwrap();

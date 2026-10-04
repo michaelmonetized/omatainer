@@ -54,7 +54,7 @@ fn actual_gui_installs_font_and_text_size_after_font_or_shell_only_reload() {
         .unwrap()
         .modified()
         .unwrap();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.loader());
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -113,7 +113,7 @@ fn held_theme_resolution_does_not_block_actual_frames_or_engine_controls() {
         .started
         .recv_timeout(Duration::from_secs(2))
         .unwrap();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(loader);
     let ctx = egui::Context::default();
     let mut time = 0.0;

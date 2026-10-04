@@ -10,7 +10,7 @@ struct Menu {
 
 impl Menu {
     fn new() -> Self {
-        let mut fixture = Fixture::new(128);
+        let mut fixture = Fixture::new(144);
         sound::prepare(&mut fixture.rt);
         Self {
             fixture,

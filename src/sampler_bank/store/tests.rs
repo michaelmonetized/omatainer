@@ -133,7 +133,7 @@ fn cancellation_before_rename_preserves_previous_and_after_rename_reports_commit
 fn malformed_future_oversized_symlink_and_external_replacement_are_preserved() {
     for bytes in [
         b"broken json".to_vec(),
-        b"{\"schema\":2,\"revision\":0,\"banks\":[]}".to_vec(),
+        b"{\"schema\":3,\"revision\":0,\"banks\":[]}".to_vec(),
         vec![b' '; MAX_BYTES as usize + 1],
     ] {
         let files = Files::new();
@@ -217,4 +217,33 @@ fn closing_writer_unlocks_even_while_a_duplicate_description_survives() {
     assert!(Store::open(files.path()).is_err(), "dropping an old description cannot unlock the new writer");
     drop(next);
     assert!(Store::open(files.path()).is_ok());
+}
+
+#[test]
+fn legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header() {
+    let files = Files::new();
+    let mut legacy = Collection::default();
+    legacy.schema = 1;
+    legacy.banks.push(Definition::empty("Legacy kit".into()).unwrap());
+    let bytes = serde_json::to_vec(&legacy).unwrap();
+    fs::write(files.path(), &bytes).unwrap();
+    let mut store = Store::open(files.path()).unwrap();
+    assert_eq!(store.collection.schema, SCHEMA);
+    assert_eq!(store.collection.banks[0].slots[0].playback, Playback::default());
+    assert_eq!(fs::read(files.path()).unwrap(), bytes);
+    let mut next = store.collection.clone();
+    next.revision += 1;
+    next.banks[0].slots[0].playback = Playback { mode: PlayMode::Hold, repeat: true, cue_seconds: Some(0.25) };
+    assert!(store.save(next.clone(), &AtomicBool::new(false)).unwrap().durable);
+    assert_eq!(fs::read(files.path().with_extension("backup.json")).unwrap(), bytes);
+    drop(store);
+    assert_eq!(Store::open(files.path()).unwrap().collection, next);
+    for field in [serde_json::json!(Playback::default()), serde_json::Value::Null] {
+        let mut raw = serde_json::to_value(&legacy).unwrap();
+        raw["banks"][0]["slots"][0]["playback"] = field;
+        let bytes = serde_json::to_vec(&raw).unwrap();
+        fs::write(files.path(), &bytes).unwrap();
+        assert!(Store::open(files.path()).is_err());
+        assert_eq!(fs::read(files.path()).unwrap(), bytes);
+    }
 }

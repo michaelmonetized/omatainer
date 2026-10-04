@@ -54,6 +54,7 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::Browse,
         Action::BrowseCrates,
         Action::CrateReturn,
+        Action::SamplerSlotStop,
         Action::Prepare,
         Action::PrepareCrate,
         Action::LoadA,

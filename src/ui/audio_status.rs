@@ -55,7 +55,7 @@ mod tests {
     use super::*;
     #[test]
     fn visible_telemetry_distinguishes_cpu_wall_deadlines_and_unknown_drops() {
-        let mut fixture = test_support::Fixture::new(32);
+        let mut fixture = test_support::Fixture::new(48);
         fixture.app.snap.audio = crate::engine::audio_metrics::AudioMetrics {
             last_callback: Some(crate::engine::audio_metrics::CallbackMeasurement {
                 elapsed_ns: 20_000_000,

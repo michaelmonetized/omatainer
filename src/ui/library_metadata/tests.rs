@@ -104,7 +104,7 @@ fn real_decode_reconciles_hint_to_labeled_current_deck_and_sorted_crate_without_
     let files = Files::new();
     let path = files.wave("Artist - Track 155.wav");
     let other = files.wave("Artist - Track 140.wav");
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.loader = Some(Loader::start().unwrap());
     scan(&mut f, &files);
     assert_eq!(find(&f, &path).bpm, Bpm::hint(155.0));
@@ -151,7 +151,7 @@ fn real_decode_reconciles_hint_to_labeled_current_deck_and_sorted_crate_without_
 fn explicit_user_value_wins_real_decode_submission_and_same_identity_rescans() {
     let files = Files::new();
     let path = files.wave("Correction 155.wav");
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.loader = Some(Loader::start().unwrap());
     scan(&mut f, &files);
     let items = Arc::make_mut(&mut f.app.library);
@@ -185,7 +185,7 @@ fn rejected_cancelled_and_superseded_loads_do_not_publish_analysis() {
     let files = Files::new();
     let path = files.wave("Track 155.wav");
     for mode in ["rejected", "cancelled", "superseded"] {
-        let mut f = Fixture::new(16);
+        let mut f = Fixture::new(32);
         scan(&mut f, &files);
         select(&mut f, &path);
         f.app.load_sel(0);
@@ -216,7 +216,7 @@ fn rejected_cancelled_and_superseded_loads_do_not_publish_analysis() {
 fn changed_bytes_during_decode_or_after_scan_cannot_acquire_old_analysis() {
     let files = Files::new();
     let path = files.wave("Track 155.wav");
-    let mut f = Fixture::new(16);
+    let mut f = Fixture::new(32);
     scan(&mut f, &files);
     select(&mut f, &path);
     let outgoing = f.rt.decks[0].audio.as_ref().unwrap().clone();
@@ -258,7 +258,7 @@ fn changed_bytes_during_decode_or_after_scan_cannot_acquire_old_analysis() {
 fn pending_metadata_rebases_on_new_arc_and_preserves_intervening_user_correction() {
     let files = Files::new();
     let path = files.wave("Track 155.wav");
-    let mut f = Fixture::new(16);
+    let mut f = Fixture::new(32);
     scan(&mut f, &files);
     let patch = Patch {
         tags: None,
@@ -303,7 +303,7 @@ fn scan_started_before_analysis_never_republishes_its_stale_filename_hint() {
     use std::sync::{atomic::AtomicBool, Mutex};
     let files = Files::new();
     let path = files.wave("Track 155.wav");
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.loader = Some(Loader::start().unwrap());
     scan(&mut f, &files);
     let (entered, ready) = mpsc::sync_channel(1);
@@ -351,7 +351,7 @@ fn scan_started_before_analysis_never_republishes_its_stale_filename_hint() {
 fn newer_patch_revision_wins_over_an_already_inflight_candidate() {
     let files = Files::new();
     let path = files.wave("Track 155.wav");
-    let mut f = Fixture::new(16);
+    let mut f = Fixture::new(32);
     scan(&mut f, &files);
     let mut patch = Patch {
         tags: None,

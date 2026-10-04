@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 11;
+pub const STATE_VERSION: u32 = 12;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -120,6 +120,11 @@ impl<'de> Deserialize<'de> for State {
         if version < 10 && raw.get("timeline_seconds").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain sample-based timeline positions")); }
         if (10..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("timeline_seconds").is_some_and(serde_json::Value::is_number) { return Err(serde::de::Error::custom("Project schema 10 requires a timeline position")); }
         if version < 11 && raw.get("routing").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain audio routing metadata")); }
+        if version < 12 && raw.get("banks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .filter_map(|bank| bank.get("settings")).filter_map(|settings| settings.get("slots").and_then(serde_json::Value::as_array)).flatten()
+            .any(|slot| slot.get("playback").is_some()) {
+            return Err(serde::de::Error::custom("Legacy projects cannot contain sampler playback modes"));
+        }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
@@ -594,8 +599,11 @@ impl State {
             } else {
                 let (Some(instance), Some(settings)) = (bank.instance, &bank.settings) else { return fail("sample bank identity or settings"); };
                 if !bank_ids.insert(instance) || settings.definition == Some(instance) || settings.name != bank.name || settings.validate().is_err() { return fail("sample bank identity or settings"); }
+                if self.version < 12 && settings.slots.iter().any(|slot| slot.playback != crate::sampler_bank::Playback::default()) {
+                    return fail("sampler playback modes in a legacy state");
+                }
                 for (slot, index) in settings.slots.iter().zip(bank.media) {
-                    if index.is_some_and(|i| slot.controls.frames(media[i].sr, media[i].frames()).is_err()) { return fail("sample bank source range"); }
+                    if index.is_some_and(|i| slot.frames(media[i].sr, media[i].frames()).is_err()) { return fail("sample bank source range"); }
                 }
             }
         }

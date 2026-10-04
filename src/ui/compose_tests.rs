@@ -52,7 +52,7 @@ fn notes(f: &Fixture) -> Vec<usize> {
 
 #[test]
 fn gui_shift_arm_stop_restart_pad_does_not_write_changed_selection() {
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     f.rt.tracks[4].clips[3] = crate::engine::Clip::empty();
     f.rt.tracks[4].clips[3].kind = crate::engine::ClipKind::Midi;
     f.rt.tracks[4].clips[3].name = "compose-target".into();
@@ -100,7 +100,7 @@ fn gui_shift_arm_stop_restart_pad_does_not_write_changed_selection() {
 
 #[test]
 fn gui_arm_and_disarm_controls_report_renderer_state_and_preserve_target_during_playback() {
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     f.app.send(Command::Select { track: 4, scene: 3 });
     let ctx = egui::Context::default();
     frame(&ctx, &mut f, 0.0, vec![], Default::default());

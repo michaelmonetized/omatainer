@@ -28,8 +28,9 @@ pub struct CommandPort {
     capacity: usize,
 }
 
-const STOP_LANES: usize = super::session::MAX_TRACKS + 1;
-const DEFAULT_STOP_LANES: usize = super::TRACKS + 1;
+pub(super) const SAMPLER_STOP_BASE: usize = super::session::MAX_TRACKS + 1;
+const STOP_LANES: usize = SAMPLER_STOP_BASE + crate::sampler_bank::SLOTS;
+const DEFAULT_STOP_LANES: usize = super::TRACKS + 1 + crate::sampler_bank::SLOTS;
 pub(super) const MAX_COMMANDS: usize = 256;
 const PROJECT_CLOSED: u64 = 1 << 63;
 
@@ -441,6 +442,8 @@ impl CommandPort {
             .load(std::sync::atomic::Ordering::Acquire)
     }
 
+    /// Create a bounded performance command channel.
+    /// Takes capacity in 27–256 commands; returns producer and renderer receiver with reserved track and slot stops.
     pub fn channel(capacity: usize) -> (Self, CommandReceiver) {
         Self::channel_with_payload_limit(capacity, MAX_QUEUED_PAYLOAD_BYTES)
     }
@@ -697,7 +700,11 @@ impl CommandPort {
                 state.pending_stops[lane] = 0;
             }
         }
+        if matches!(command, Command::SamplerSlotStop { pad } if usize::from(pad) >= crate::sampler_bank::SLOTS) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         let stop_lane = match command {
+            Command::SamplerSlotStop { pad } => Some(SAMPLER_STOP_BASE + usize::from(pad)),
             Command::Stop => Some(0),
             Command::StopTrack { track } if (track as usize) < super::session::MAX_TRACKS => {
                 Some(track as usize + 1)
@@ -707,7 +714,7 @@ impl CommandPort {
         let requested = match &command {
             Command::SessionEdit(request) => request.track_count(), _ => 0,
         };
-        let stop_reserve = state.stop_reserve.max(self.shared.midi_routing.identity.track_count() + 1).max(requested + 1);
+        let stop_reserve = state.stop_reserve.max(self.shared.midi_routing.identity.track_count() + 1 + crate::sampler_bank::SLOTS).max(requested + 1 + crate::sampler_bank::SLOTS);
         let gate = gate_change(&command);
         let existing_gate =
             gate.and_then(|(key, _)| state.gates.iter().position(|entry| *entry == Some(key)));
@@ -734,7 +741,7 @@ impl CommandPort {
             command = Command::ReservedStop {
                 lane: lane as u8,
                 ticket,
-                target: if lane == 0 {None} else {
+                target: if lane == 0 || lane >= SAMPLER_STOP_BASE {None} else {
                     let identity=&self.shared.midi_routing.identity;
                     let reference=identity.reference(super::session::Axis::Track,lane-1);
                     if identity.known() && reference.is_none() {return fail(SubmissionError::InvalidTarget);}
@@ -866,6 +873,7 @@ fn project_release(command: &Command) -> bool {
             | Command::SamplerPad { on: false, .. }
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
+            | Command::SamplerSlotStop { .. }
             | Command::DeckPreview { on: false, .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
@@ -884,7 +892,7 @@ mod gui_routing_tests {
 
     #[test]
     fn library_handoff_does_not_wait_for_audio_producer_admission() {
-        let (commands, _audio) = CommandPort::channel(32);
+        let (commands, _audio) = CommandPort::channel(48);
         let gui = commands.take_ui_receiver().unwrap();
         gui.publish_selection(Some(Arc::new(Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
@@ -981,11 +989,17 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
         command,
         Command::Play | Command::TogglePlay | Command::Record
     );
-    (pending[0] != 0 && (clip_track.is_some() || scene_start || transport_start))
+    let pad = match *command {
+        Command::SamplerPad { pad, on: true } => Some(usize::from(pad % 16)),
+        Command::SamplerPadPressure { pad, .. } => Some(usize::from(pad)),
+        _ => None,
+    };
+    pad.is_some_and(|pad| pending[SAMPLER_STOP_BASE + pad] != 0)
+        || (pending[0] != 0 && (clip_track.is_some() || scene_start || transport_start))
         || clip_track.is_some_and(|track| track < super::session::MAX_TRACKS && pending[track + 1] != 0)
-        || (scene_start && pending[1..].iter().any(|ticket| *ticket != 0))
+        || (scene_start && pending[1..SAMPLER_STOP_BASE].iter().any(|ticket| *ticket != 0))
         || (matches!(command, Command::TogglePlay)
-            && pending[1..].iter().any(|ticket| *ticket != 0))
+            && pending[1..SAMPLER_STOP_BASE].iter().any(|ticket| *ticket != 0))
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
@@ -1202,6 +1216,7 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
             | Command::SamplerPadPressure { .. }
+            | Command::SamplerSlotStop { .. }
             | Command::DeckPreview { on: false, .. }
             | Command::DeckTouch { .. }
             | Command::MidiDeckTouch { .. }

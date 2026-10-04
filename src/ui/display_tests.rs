@@ -39,7 +39,7 @@ fn reference_layouts_keep_scaled_controls_readable_and_focus_reachable() {
         (Vec2::new(3840.0, 2160.0), 2.0, 32.0),
         (Vec2::new(1280.0, 720.0), 3.0, 48.0),
     ] {
-        let mut f = Fixture::new(128);
+        let mut f = Fixture::new(144);
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
         f.app.theme = theme(scale, font, crate::theme::Contrast::Dark);
@@ -191,8 +191,8 @@ fn waveform_level_contrast_and_motion_change_paint_without_signal_geometry() {
 }
 #[test]
 fn appearance_frames_preserve_bit_exact_renderer_output() {
-    let mut a = Fixture::new(128);
-    let mut b = Fixture::new(128);
+    let mut a = Fixture::new(144);
+    let mut b = Fixture::new(144);
     for f in [&mut a, &mut b] {
         f.rt.apply(Command::DeckPlay { deck: 0 });
         f.rt.apply(Command::TogglePlay);

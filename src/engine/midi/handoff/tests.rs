@@ -56,7 +56,7 @@ fn held(rt: &RtEngine, source: u64, note: u8) -> bool {
 
 #[test]
 fn saturated_callback_never_touches_admission_log_or_learn_locks_or_heap() {
-    let (cmd, _receiver) = CommandPort::channel(16);
+    let (cmd, _receiver) = CommandPort::channel(32);
     let log = Arc::new(Mutex::new(Vec::new()));
     let counters = Arc::new(InputCounters::default());
     let (mut sink, guard) = start(
@@ -159,7 +159,7 @@ fn overflow_preserves_mapped_and_realtime_stops_without_replaying_old_onsets() {
         &[0xfc][..],
         &[0x90, 0xf8, 31, 0xf8, 100][..],
     ] {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 16);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 32);
         rt.playing = true;
         let (mut sink, mut worker) = input(1, 11, &engine.cmd);
         sink.push(&[0x90, 60, 100]);
@@ -212,7 +212,7 @@ fn only_adjacent_absolute_cc_values_coalesce_and_barriers_keep_order() {
 
 #[test]
 fn oversized_and_disconnected_input_are_bounded_and_observable() {
-    let (cmd, receiver) = CommandPort::channel(16);
+    let (cmd, receiver) = CommandPort::channel(32);
     let (mut sink, mut worker) = input(1, 11, &cmd);
     sink.push(&[0x90, 60, 100]);
     drain(&mut worker);
@@ -268,7 +268,7 @@ fn renderer_touch_owner_capacity_covers_every_admitted_gate_without_heap_work() 
 
 #[test]
 fn disconnect_releases_owned_gates_and_keeps_queued_stop_without_new_notes() {
-    let (cmd, receiver) = CommandPort::channel(16);
+    let (cmd, receiver) = CommandPort::channel(32);
     let (mut sink, mut worker) = input(4, 11, &cmd);
     sink.push(&[0x90, 60, 100]);
     drain(&mut worker);

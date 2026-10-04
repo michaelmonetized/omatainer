@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn raw_renderer_request_rejects_without_allocating_or_touching_selection_arcs() {
-        let (engine, mut renderer) = crate::engine::Engine::headless_for_test(48000, 32);
+        let (engine, mut renderer) = crate::engine::Engine::headless_for_test(48000, 48);
         engine
             .ui_requests
             .publish_selection(Some(Arc::new(Selection {

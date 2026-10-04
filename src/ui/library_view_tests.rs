@@ -78,7 +78,7 @@ fn selected_source(app: &mut App) -> LibSource {
 
 #[test]
 fn field_search_100000_track_catalog_has_exact_results_and_bounded_steady_frames() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     let mut library = items(100_000);
     let catalog = Arc::make_mut(&mut fixture.app.library_metadata.catalog);
     for (index, item) in library.iter_mut().enumerate() {
@@ -128,7 +128,7 @@ fn field_search_100000_track_catalog_has_exact_results_and_bounded_steady_frames
 #[test]
 fn native_search_scope_restores_named_crate_query_source_and_scroll() {
     use crate::library::crates::{CrateId, Edit};
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     let mut library = items(100);
     let catalog = Arc::make_mut(&mut fixture.app.library_metadata.catalog);
     for (index, item) in library.iter_mut().enumerate() {
@@ -168,7 +168,7 @@ fn native_search_scope_restores_named_crate_query_source_and_scroll() {
 
 #[test]
 fn played_predicates_follow_confirmed_source_versions_without_rebuilding_on_repeated_plays() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(100));
     fixture.app.lib_filter = "played:no".into();
     let ctx = egui::Context::default();
@@ -195,7 +195,7 @@ fn played_predicates_follow_confirmed_source_versions_without_rebuilding_on_repe
 fn fixed_viewport_work_is_bounded_at_100_10000_and_50000_tracks() {
     let mut steady_rows = None;
     for count in [100, 10_000, 50_000] {
-        let mut fixture = Fixture::new(32);
+        let mut fixture = Fixture::new(48);
         fixture.app.library = Arc::new(items(count));
         let ctx = egui::Context::default();
         let began = Instant::now();
@@ -248,7 +248,7 @@ fn fixed_viewport_work_is_bounded_at_100_10000_and_50000_tracks() {
 
 #[test]
 fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(100));
     let ctx = egui::Context::default();
     frame(&ctx, &mut fixture.app, 0.0, vec![]);
@@ -291,7 +291,7 @@ fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells()
 
 #[test]
 fn real_row_focus_keyboard_navigation_reveals_offscreen_selection_without_search_interference() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(10_000));
     let ctx = egui::Context::default();
     let output = frame(&ctx, &mut fixture.app, 0.0, vec![]);
@@ -334,7 +334,7 @@ fn real_row_focus_keyboard_navigation_reveals_offscreen_selection_without_search
 
 #[test]
 fn reordered_publication_keeps_selected_source_and_scroll_anchor() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(100));
     let ctx = egui::Context::default();
     frame(&ctx, &mut fixture.app, 0.0, vec![]);
@@ -370,7 +370,7 @@ fn reordered_publication_keeps_selected_source_and_scroll_anchor() {
 
 #[test]
 fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(50_000));
     let ctx = egui::Context::default();
     let output = frame(&ctx, &mut fixture.app, 0.0, vec![]);

@@ -601,7 +601,7 @@ mod tests {
     #[test]
     fn audition_is_an_independent_non_recording_owner_with_reserved_release() {
         use super::super::{dsp::InputKey, test_alloc, Command, Engine};
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 16);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 32);
         rt.recording = true;
         rt.playing = true;
         rt.selected_track = 2;

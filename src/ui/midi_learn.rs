@@ -53,6 +53,7 @@ fn label(action: Action) -> &'static str {
         Action::Browse => "Browse library",
         Action::BrowseCrates => "Browse crates",
         Action::CrateReturn => "Return to previous crate view",
+        Action::SamplerSlotStop => "Stop sample slot",
         Action::Prepare => "Prepare selected track",
         Action::PrepareCrate => "Prepare filtered crate",
         Action::LoadA => "Load deck A",
@@ -151,6 +152,7 @@ impl App {
                 });
             }
             let binding = &mut self.midi_learn.binding;
+            if binding.action != Action::SamplerSlotStop {
             let mut deck = f32::from(binding.deck) + 1.0;
             preferences::float_control(
                 ui,
@@ -167,7 +169,9 @@ impl App {
                 HelpControl::MidiLearn,
             );
             binding.deck = deck.round() as u8 - 1;
+            }
             let max = match binding.action {
+                Action::SamplerSlotStop => 16.0,
                 Action::DeckHotCue => 8.0,
                 Action::Scene | Action::Clip => 512.0,
                 Action::TrackFader | Action::TrackMute => 128.0,
@@ -178,7 +182,7 @@ impl App {
                 let mut extra = f32::from(binding.extra) + 1.0;
                 preferences::float_control(
                     ui,
-                    "MIDI target cue, scene, track or effect",
+                    if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
                     &mut extra,
                     1.0,
                     max,

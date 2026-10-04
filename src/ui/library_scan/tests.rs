@@ -150,7 +150,7 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
     let directory = Directory::new();
     let selected = directory.file("Track B 120 C.wav");
     let other = directory.file("Track A 140 C.wav");
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     let mut items = builtin_crate_items();
     items.push(item(selected.clone(), "Track B custom title", 135.5));
     fixture.app.library = Arc::new(items);
@@ -231,7 +231,7 @@ fn cancelled_scan_keeps_crate_and_rejects_overlap_until_worker_exits() {
     for index in 0..50 {
         directory.file(&format!("track{index}.wav"));
     }
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     let before = fixture.app.library.clone();
     assert!(fixture.app.library_scan.start_with(
         vec![directory.0.clone()],
@@ -272,7 +272,7 @@ fn cancelled_scan_keeps_crate_and_rejects_overlap_until_worker_exits() {
 fn cancelling_an_already_ready_result_prevents_stale_publication() {
     let directory = Directory::new();
     directory.file("candidate.wav");
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     let before = fixture.app.library.clone();
     start(&mut fixture.app, vec![directory.0.clone()]);
     wait_for(|| {
@@ -298,7 +298,7 @@ fn errors_preserve_prior_crate_and_selection_and_a_later_scan_recovers() {
     let directory = Directory::new();
     let invalid_root = directory.file("not-a-directory");
     directory.file("discovered.wav");
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.lib_sel = 1;
     let before = fixture.app.library.clone();
     start(&mut fixture.app, vec![directory.0.clone(), invalid_root]);
@@ -321,7 +321,7 @@ fn errors_preserve_prior_crate_and_selection_and_a_later_scan_recovers() {
 fn stable_file_metadata_is_retained_but_changed_content_invalidates_cached_analysis() {
     let directory = Directory::new();
     let path = directory.file("Artist - Tune 120 C.wav");
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     start(&mut fixture.app, vec![directory.0.clone()]);
     finish(&mut fixture.app);
     let position = fixture
@@ -363,7 +363,7 @@ fn scan_discovers_supported_regular_files_and_missing_roots_are_an_empty_success
     directory.file("lower.flac");
     directory.file("ignored.txt");
     std::fs::create_dir(directory.0.join("directory.mp3")).unwrap();
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     start(
         &mut fixture.app,
         vec![directory.0.clone(), directory.0.join("absent")],
@@ -409,7 +409,7 @@ fn dropping_scanner_never_joins_a_blocked_filesystem_hook_on_the_ui_thread() {
 #[test]
 fn explicit_files_and_deep_folders_merge_without_removing_existing_tracks() {
     let directory = Directory::new(); let existing = directory.file("existing.wav");
-    let mut fixture = Fixture::new(32); let mut baseline = builtin_crate_items(); baseline.push(item(existing.clone(), "retained custom title", 133.0));
+    let mut fixture = Fixture::new(48); let mut baseline = builtin_crate_items(); baseline.push(item(existing.clone(), "retained custom title", 133.0));
     fixture.app.library = Arc::new(baseline);
     let folder = directory.0.join("import"); std::fs::create_dir(&folder).unwrap(); let mut deep = folder.clone();
     for _ in 0..10 { deep.push("nested"); std::fs::create_dir(&deep).unwrap(); }
@@ -426,7 +426,7 @@ fn traversal_limits_and_skipped_reasons_are_explicit_and_samples_bounded() {
     let directory = Directory::new(); for i in 0..100 { directory.file(&format!("unsupported-{i}.txt")); }
     let mut deep = directory.0.clone(); for _ in 0..MAX_DEPTH+2 { deep.push("d"); std::fs::create_dir(&deep).unwrap(); }
     std::fs::write(deep.join("beyond-limit.wav"), b"fixture").unwrap();
-    let mut fixture = Fixture::new(32); start(&mut fixture.app, vec![directory.0.clone(), directory.0.join("unavailable")]); finish(&mut fixture.app);
+    let mut fixture = Fixture::new(48); start(&mut fixture.app, vec![directory.0.clone(), directory.0.join("unavailable")]); finish(&mut fixture.app);
     let summary = fixture.app.library_scan.summary.as_ref().unwrap();
     assert_eq!(summary.skipped[SkipReason::Unsupported as usize], 100);
     assert_eq!(summary.skipped[SkipReason::MissingRoot as usize], 1);
@@ -472,7 +472,7 @@ fn history_merge_requires_verified_identity_even_before_first_worker_scan() {
     let mut baseline = builtin_crate_items();
     baseline[0].last_play = known;
     baseline.extend([unchanged_item, replaced_item, unknown_item]);
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(baseline);
     fixture.app.lib_filter = "Unchanged".into();
     fixture.app.refresh_library_view();
@@ -515,7 +515,7 @@ fn repeated_rescans_preserve_history_and_selection_without_moving_history_to_oth
     ] {
         baseline.push(item(path.clone(), title, 130.0));
     }
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(baseline);
     fixture.app.lib_filter = "".into();
     fixture.app.refresh_library_view();

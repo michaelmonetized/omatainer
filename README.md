@@ -518,6 +518,10 @@ Sample pads **1–8** occupy the bottom row and **9–16** the top row, preservi
 piano layout's natural/accidental positions. Number N triggers bank slot N−1.
 Hover a pad for its slot or piano MIDI note; blank piano positions are inactive.
 
+**Edit sampler banks** saves independent Trigger, Hold or Toggle modes per slot. Trigger starts at the cue on every press and continues after release. Hold stops on the final release. Toggle stops on the next press. Repeat wraps to the captured cue or trim start. Prepare validates cue/range changes before Apply; sounding samples retain their captured source, mode and range across bank edits or selection changes. Project schema 12 and reusable-bank schema 2 retain these settings. Older valid banks migrate without writing until explicit Save.
+
+**Stop slot** uses an independent reserved queue lane. Right-click a pad, press Shift+Escape on its focused pad, use the editor’s selected-slot stop, or learn a Note button for an exact sample slot. Other slots and transport keep playing. Release any held physical input before triggering it again. [Sampler qualification](docs/validation/issue-153-sampler-playback.md) separates software checks from pending USB input and listening.
+
 Select an empty or MIDI clip cell and open **Piano roll**. Draw notes, drag their
 bodies to move them and right edges to resize them, or use the named note fields
 and action buttons. The focused roll supports arrows for movement/transposition,

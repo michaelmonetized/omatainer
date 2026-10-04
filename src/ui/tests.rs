@@ -8,7 +8,7 @@ use std::time::Duration;
 
 #[test]
 fn load_sel_routes_both_builtins_to_both_decks_and_reload_resets_playhead() {
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     for (title, stem) in [("Drums (session)", 0), ("Harmony (session)", 1)] {
         // Match the real filtered selection, not the unfiltered library index.
         fixture.app.lib_filter = title.into();
@@ -128,7 +128,7 @@ impl Drop for WaveFile {
 #[test]
 fn load_sel_sends_real_files_only_to_decoder_then_applies_decoded_audio() {
     let wave = WaveFile::new();
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     Arc::make_mut(&mut fixture.app.library).push(wave.item());
     fixture.app.lib_filter = "real WAV".into();
     for deck in 0..2 {
@@ -173,7 +173,7 @@ fn load_sel_sends_real_files_only_to_decoder_then_applies_decoded_audio() {
 
 #[test]
 fn builtin_load_rejection_is_reported_without_decoder_fallback() {
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     // Occupy ordinary queue capacity without coalescing adjacent assignments.
     while fixture
         .app
@@ -210,7 +210,7 @@ fn builtin_load_rejection_is_reported_without_decoder_fallback() {
 #[test]
 fn file_load_reports_unavailable_decoder_and_empty_selection_is_inert() {
     let wave = WaveFile::new();
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     fixture.app.library = Arc::new(vec![wave.item()]);
     fixture.app.loader.take();
     fixture.app.load_sel(0);
@@ -228,7 +228,7 @@ fn incomplete_decode_leaves_loaded_decks_untouched_and_surfaces_the_reason() {
     let wave = WaveFile::new();
     let bytes = std::fs::read(&wave.0).unwrap();
     std::fs::write(&wave.0, &bytes[..bytes.len() - 1000]).unwrap();
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     let before: Vec<_> = fixture
         .rt
         .decks
@@ -268,7 +268,7 @@ fn uncertain_length_warning_survives_worker_result_and_deck_admission() {
         include_bytes!("../../tests/fixtures/audio/tone-estimated.mp3"),
     )
     .unwrap();
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     let report = crate::engine::dsp::decode_audio(&path).unwrap();
     assert!(report.diagnostics.warning().is_some());
     fixture.app.load_file(0, path.clone(), "uncertain MP3");
@@ -316,7 +316,7 @@ fn assert_load_status_is_painted(app: &mut App, expected: &str) {
 #[test]
 fn crate_buttons_and_double_click_emit_builtin_commands_on_the_selected_deck() {
     use super::test_support::{click, crate_frame, label_center};
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     let ctx = egui::Context::default();
     let mut time = 1.0;
     for (title, stem) in [("Drums (session)", 0), ("Harmony (session)", 1)] {
@@ -359,7 +359,7 @@ fn newer_file_selection_discards_delayed_old_success_and_error_before_ui_publica
     for fail_old in [false, true] {
         let a = WaveFile::new();
         let b = WaveFile::new();
-        let mut fixture = Fixture::new(32);
+        let mut fixture = Fixture::new(48);
         let mut a_item = a.item();
         a_item.title = "choice A".into();
         let mut b_item = b.item();
@@ -410,7 +410,7 @@ fn newer_file_selection_discards_delayed_old_success_and_error_before_ui_publica
 fn builtin_selection_and_real_platter_unload_invalidate_active_file_decodes() {
     for unload in [false, true] {
         let wave = WaveFile::new();
-        let mut fixture = Fixture::new(32);
+        let mut fixture = Fixture::new(48);
         fixture.app.load_file(0, wave.0.clone(), "obsolete A");
         fixture
             .decoder_jobs
@@ -523,7 +523,7 @@ fn shift_click_platter(app: &mut App) {
 fn actual_dropped_file_supersedes_completion_already_queued_for_audio() {
     let a = WaveFile::new();
     let b = WaveFile::new();
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     let before = fixture.rt.decks[0].audio.clone().unwrap();
     fixture.app.load_file(0, a.0.clone(), "A");
     fixture

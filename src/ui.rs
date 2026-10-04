@@ -638,12 +638,25 @@ impl App {
         if mouse.released || !mouse.down || !window_focus || !r.enabled() { self.set_pad_input(p, 1, false); }
         let pressed_here = mouse.pressed && window_focus && r.enabled() && mouse.starts_here(r);
         if enabled && pressed_here {
+            r.request_focus();
             self.set_pad_input(p, 1, true);
             if !mouse.down { self.set_pad_input(p, 1, false); }
         }
         // Pointer, keyboard and AT holds share one admitted pad gate, with
         // distinct local ownership so releasing one input cannot cut another.
         let focused = r.has_focus() && r.enabled() && window_focus;
+        let stop_focused = focused || r.enabled() && window_focus && !keyboard::dialogs_block_input(&r.ctx)
+            && r.ctx.memory(|memory| memory.focused().is_none() && memory.had_focus_last_frame(r.id));
+        if stop_focused && r.ctx.input_mut(|input| input.consume_key(egui::Modifiers::SHIFT, Key::Escape)) {
+            self.send(Command::SamplerSlotStop { pad: p as u8 });
+            keyboard::block_for_activation(&r.ctx);
+        }
+        r.context_menu(|ui| {
+            let stop = ui.button("Stop slot");
+            accessibility::button(ui, &stop, &format!("Stop sample slot {}", p + 1), None);
+            help::annotate(ui, &stop, HelpControl::SamplerSlotStop);
+            if stop.clicked() { self.send(Command::SamplerSlotStop { pad: p as u8 }); ui.close(); }
+        });
         if !focused { self.set_pad_input(p, 2, false); self.set_pad_input(p, 8, false); }
         if !r.enabled() || !window_focus { self.set_pad_input(p, 4, false); }
         let keys = r.ctx.input(|input| input.events.iter().filter_map(|event| match event {

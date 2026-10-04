@@ -82,6 +82,7 @@ pub enum Action {
     Browse,
     BrowseCrates,
     CrateReturn,
+    SamplerSlotStop,
     Prepare,
     PrepareCrate,
     LoadA,
@@ -470,6 +471,7 @@ fn dispatch(
         }
         Action::BrowseCrates if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => { let _ = send(Command::BrowseCrates(rel)); }
         Action::CrateReturn if pressed => { let _ = send(Command::CrateReturn); }
+        Action::SamplerSlotStop if pressed && b.extra < 16 => { let _ = send(Command::SamplerSlotStop { pad: b.extra as u8 }); }
         Action::Browse if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => {
             let _ = send(Command::Browse(rel));
         }
@@ -844,7 +846,7 @@ mod tests {
         let first = next_source_id();
         let second = next_source_id();
         assert_ne!(first, second);
-        let (tx, rx) = crate::engine::CommandPort::channel(16);
+        let (tx, rx) = crate::engine::CommandPort::channel(32);
         let snapshot = Arc::new(Mutex::new(super::super::Snapshot::default()));
         let mut rt = super::super::RtEngine::new(48_000.0, rx, snapshot);
         let map = class_compliant();

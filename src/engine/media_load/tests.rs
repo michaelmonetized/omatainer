@@ -158,7 +158,7 @@ fn cancellation_is_observable_during_decode_and_drop_does_not_wait_for_io() {
 #[test]
 fn completion_already_queued_to_engine_cannot_overwrite_newer_selection_or_unload() {
     let loader = Loader::with_decoder(|path, _| Ok(sample(path.to_str().unwrap()))).unwrap();
-    let (commands, receiver) = CommandPort::channel(32);
+    let (commands, receiver) = CommandPort::channel(48);
     let mut rt = RtEngine::new(
         48000.0,
         receiver,

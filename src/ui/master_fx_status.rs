@@ -38,7 +38,7 @@ mod tests {
     use crate::engine::FxKind;
     #[test]
     fn selected_types_are_painted_and_selector_click_queues_real_command() {
-        let mut f = test_support::Fixture::new(32);
+        let mut f = test_support::Fixture::new(48);
         f.app.snap.fx_kind = [FxKind::Filter, FxKind::Echo, FxKind::Reverb];
         let ctx = egui::Context::default();
         let render = |app: &App, time, events| {

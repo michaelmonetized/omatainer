@@ -1249,7 +1249,7 @@ mod contextual_help_tests {
             .unwrap_or_else(|| panic!("Missing actual dialog help for {control:?}"))
     }
     fn setup() -> (test_support::Fixture, egui::Context) {
-        let mut fixture = test_support::Fixture::new(64);
+        let mut fixture = test_support::Fixture::new(80);
         fixture.rt.publish_for_test();
         let ctx = egui::Context::default();
         ctx.enable_accesskit();

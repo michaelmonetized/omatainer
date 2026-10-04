@@ -404,6 +404,45 @@
         "docs/validation/issue-154-crate-discovery.md"
       ],
       "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
+    },
+    "153": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/sampler_editor.rs",
+          "entry": "Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save"
+        },
+        {
+          "kind": "mouse and keyboard",
+          "file": "src/ui.rs",
+          "entry": "Pad context Stop slot; focused Shift+Escape; final local owner release"
+        },
+        {
+          "kind": "controller",
+          "file": "src/engine/midi.rs",
+          "entry": "Learned Note action SamplerSlotStop with an exact slot"
+        },
+        {
+          "kind": "renderer and admission",
+          "file": "src/engine/control.rs",
+          "entry": "Sixteen independent reserved stop lanes and matching onset fencing"
+        }
+      ],
+      "fixtures": [
+        "engine::sampler::playback_tests",
+        "sampler_bank::store::tests::legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header",
+        "sampler_bank::tests::cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values",
+        "engine::project::tests::sampler_tests::sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields",
+        "ui::sampler_editor::tests::native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop",
+        "ui::sampler_pad_tests::mouse_context_and_focused_shift_escape_stop_exact_slots",
+        "engine::midi::profile_tests::exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press",
+        "engine::control::admission_tests::saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane"
+      ],
+      "evidence": [
+        "docs/validation/issue-153-sampler-playback.md"
+      ],
+      "limits": "Software qualification is in progress. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview."
     }
   }
 }

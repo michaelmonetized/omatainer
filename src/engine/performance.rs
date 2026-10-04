@@ -618,6 +618,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SamplerPadPressure { .. }
         | Command::MidiAudition { on: false, .. }
         | Command::SamplerAuditionStop { .. }
+        | Command::SamplerSlotStop { .. }
         | Command::SamplerBank(_)
         | Command::SamplerInst(_)
         | Command::SamplerOct(_)
@@ -642,6 +643,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::SamplerPad { on: false, .. }
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
+        | Command::SamplerSlotStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::ComposeDisarm

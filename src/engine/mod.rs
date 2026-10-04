@@ -958,6 +958,7 @@ pub enum Command {
     AddScene { scene: u16 },
     SamplerPad { pad: u8, on: bool },
     SamplerPadPressure { pad: u8, pressure: f32 },
+    SamplerSlotStop { pad: u8 },
     SamplerBank(usize),
     SamplerEdit(sampler::Edit),
     SamplerAudition(sampler::Audition),
@@ -1958,7 +1959,7 @@ impl RtEngine {
                     buses[voice.track][0] += l;
                     buses[voice.track][1] += r;
                 }
-                if voice.position >= voice.end {
+                if voice.position >= voice.end && !voice.playback.repeat {
                     *slot = None;
                 }
             }
@@ -2165,6 +2166,7 @@ impl RtEngine {
             Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::ReservedStop { lane, ticket, target } => {
                 if lane == 0 { self.apply(Command::Stop); }
+                else if usize::from(lane) >= control::SAMPLER_STOP_BASE { self.apply(Command::SamplerSlotStop { pad: (usize::from(lane) - control::SAMPLER_STOP_BASE) as u8 }); }
                 else if target.is_none_or(|reference| self.session.resolves(session::Axis::Track, usize::from(lane - 1), reference)) { self.apply(Command::StopTrack { track: lane - 1 }); }
                 self.cmd_rx.complete_stop(lane as usize, ticket);
             }
@@ -2748,6 +2750,7 @@ impl RtEngine {
                     self.apply(Command::DeckAudio { deck, audio: a });
                 }
             }
+            Command::SamplerSlotStop { pad } => self.stop_sampler_slot(pad),
             Command::SamplerPad { pad, on } => self.apply_sampler_pad(pad % 16, on, 1.0),
             Command::SamplerPadPressure { pad, pressure } => {
                 if pad < 16 && pressure.is_finite() && (0.0..=1.0).contains(&pressure) { self.apply_sampler_pad(pad, true, pressure); }

@@ -51,6 +51,7 @@ impl MidiMap {
                 Action::Scene => binding.extra < crate::engine::session::MAX_SCENES as u16,
                 Action::Clip => usize::from(binding.deck) < crate::engine::session::MAX_TRACKS && binding.extra < crate::engine::session::MAX_SCENES as u16,
                 Action::TrackFader | Action::TrackMute => binding.extra < crate::engine::session::MAX_TRACKS as u16,
+                Action::SamplerSlotStop => binding.extra < 16 && binding.kind == MsgKind::Note,
                 Action::DeckHotCue => usize::from(binding.extra) < crate::engine::HOTCUES,
                 Action::FxWet | Action::FxSelect => binding.extra < 3,
                 _ => true,

@@ -231,7 +231,7 @@ fn coalesced_boxed_gestures_return_credit_without_callback_destruction() {
 
 #[test]
 fn producer_waiting_on_admission_rechecks_new_history_backpressure() {
-    let (port, receiver) = CommandPort::channel(32);
+    let (port, receiver) = CommandPort::channel(48);
     let locked = port.admission.lock();
     let (preflight, passed) = std::sync::mpsc::sync_channel(0);
     let producer = port.clone();
@@ -267,7 +267,7 @@ fn producer_waiting_on_admission_rechecks_new_history_backpressure() {
 #[test]
 fn performance_packet_waiter_rechecks_safety_after_producer_mutex() {
     use crate::engine::performance::{Error, Safety};
-    let (port, receiver) = CommandPort::channel(32);
+    let (port, receiver) = CommandPort::channel(48);
     let producer = port.for_input_epoch(port.performance().input_epoch());
     let locked = port.admission.lock();
     let (preflight, passed) = std::sync::mpsc::sync_channel(0);

@@ -122,7 +122,7 @@ mod tests {
     use std::sync::Arc;
     #[test]
     fn bounded_receipt_publication_is_coherent_and_renderer_commands_allocate_nothing() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 64);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 80);
         let receipt = engine.initial_playback[0].clone().unwrap();
         let counts = test_alloc::measure(|| {
             for i in 0..128 {
@@ -187,7 +187,7 @@ mod cue_style_tests {
 
     #[test]
     fn all_eight_cue_styles_roundtrip_receipts_history_and_delete_without_renderer_heap_work() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
         let receipt = engine.initial_playback[0].clone().unwrap();
         for pad in 0..8 {
             rt.decks[0].pos = (pad + 1) as f64 * 128.0;
@@ -235,7 +235,7 @@ mod cue_style_tests {
 
     #[test]
     fn cue_style_noop_invalid_empty_and_stale_identity_never_create_edits() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
         let receipt = engine.initial_playback[0].clone().unwrap();
         rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
         rt.clear_undo_for_test();
@@ -272,7 +272,7 @@ mod cue_editor_identity_tests {
     use crate::engine::{load_receipt::{Media, Receipt}, test_alloc, Command, Engine};
     #[test]
     fn queued_cue_point_editor_actions_cannot_target_replacement_media() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 32);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 48);
         let original = engine.initial_playback[0].clone().unwrap();
         rt.apply(Command::DeckCuePoint { deck: 0, pad: 3, del: false, receipt: original.clone() });
         assert!(rt.decks[0].hotcues[3].set);

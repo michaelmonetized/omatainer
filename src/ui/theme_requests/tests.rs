@@ -54,7 +54,7 @@ fn private_ipc_acknowledges_installed_font_and_shell_changes_after_the_gui_frame
         .unwrap()
         .modified()
         .unwrap();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.quiet_loader());
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -108,7 +108,7 @@ fn private_ipc_acknowledges_installed_font_and_shell_changes_after_the_gui_frame
 #[test]
 fn invalid_forced_bundles_preserve_the_actual_style_and_retry_recovers() {
     let source = Sources::new();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.quiet_loader());
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -157,7 +157,7 @@ fn invalid_forced_bundles_preserve_the_actual_style_and_retry_recovers() {
 #[test]
 fn reload_respects_the_latest_follow_theme_and_size_scale_profile() {
     let source = Sources::new();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.quiet_loader());
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -244,7 +244,7 @@ fn held_worker_keeps_gui_controls_live_and_server_shutdown_cancels_before_apply(
         .started
         .recv_timeout(Duration::from_secs(1))
         .unwrap();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(loader);
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -288,7 +288,7 @@ fn held_worker_keeps_gui_controls_live_and_server_shutdown_cancels_before_apply(
 
 #[test]
 fn unavailable_gui_and_strict_reload_schema_fail_without_audio_admission() {
-    let (commands, _receiver) = crate::engine::CommandPort::channel(64);
+    let (commands, _receiver) = crate::engine::CommandPort::channel(80);
     let snapshot = Arc::new(parking_lot::Mutex::new(crate::engine::Snapshot::default()));
     let (client, server) = UnixStream::pair().unwrap();
     let port = commands.clone();
@@ -334,7 +334,7 @@ fn native_cli_reload_waits_past_normal_status_budget_and_reports_real_gui_failur
         .recv_timeout(Duration::from_secs(1))
         .unwrap();
     control.release.send(()).unwrap();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(loader);
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -403,7 +403,7 @@ fn native_cli_reload_waits_past_normal_status_budget_and_reports_real_gui_failur
 #[test]
 fn private_ipc_deadline_cancels_unstarted_gui_work_and_reports_started_work_as_unknown() {
     let source = Sources::new();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.quiet_loader());
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -448,7 +448,7 @@ fn private_ipc_deadline_cancels_unstarted_gui_work_and_reports_started_work_as_u
 fn performance_private_ipc_rejects_before_apply_and_preserves_already_installing_ack() {
     let source = Sources::new();
     let performance = crate::engine::performance::Handle::default();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.quiet_loader_with_performance(performance.clone()));
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -513,7 +513,7 @@ fn performance_private_ipc_cancels_a_force_held_in_font_resolution_without_style
         .recv_timeout(Duration::from_secs(2))
         .unwrap();
     control.release.send(()).unwrap();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(loader);
     let ctx = egui::Context::default();
     let mut time = 0.0;

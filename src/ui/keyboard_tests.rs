@@ -20,7 +20,7 @@ struct Gui {
 impl Gui {
     fn new() -> Self {
         Self {
-            fixture: Fixture::new(128),
+            fixture: Fixture::new(144),
             ctx: egui::Context::default(),
             time: 0.0,
         }
@@ -405,7 +405,7 @@ fn error_dialog_blocks_first_and_dismissal_frame_shortcuts() {
 
 #[test]
 fn future_text_fields_and_modals_share_the_same_dispatch_guard() {
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     let ctx = egui::Context::default();
     let id = egui::Id::new("future-rename-field");
     let mut text = String::new();

@@ -35,7 +35,7 @@ fn manifest_members_match_the_actual_generated_audio_and_seeded_patterns() {
             .into_iter()
             .collect()
     );
-    let (_engine, rt) = Engine::headless_for_test(8000, 64);
+    let (_engine, rt) = Engine::headless_for_test(8000, 80);
     assert_eq!(
         members("factory:session-patterns"),
         rt.tracks

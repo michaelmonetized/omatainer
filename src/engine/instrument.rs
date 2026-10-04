@@ -57,7 +57,7 @@ impl SamplerInstrument {
 
     pub fn description(self) -> &'static str {
         match self {
-            Self::Samples => "One-shots from the selected Kit, Perc or Hits bank",
+            Self::Samples => "Samples from the selected bank with saved slot play modes",
             Self::Synth(SynthInstrument::Analog) => {
                 "Saw and square bass with a fast attack and short release"
             }

@@ -26,7 +26,7 @@ fn replay(rt: &mut RtEngine, command: Command) {
 
 #[test]
 fn create_audio_and_midi_tracks_and_scene_replay_without_touching_playing_nodes() {
-    let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 144);
     rt.apply(Command::FireClip {
         track: 2,
         scene: 0,
@@ -86,7 +86,7 @@ fn create_audio_and_midi_tracks_and_scene_replay_without_touching_playing_nodes(
 
 #[test]
 fn duplicate_track_and_scene_copy_music_with_fresh_ids_shared_audio_and_independent_fx() {
-    let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 144);
     rt.tracks[2]
         .fx
         .slots
@@ -157,7 +157,7 @@ fn duplicate_track_and_scene_copy_music_with_fresh_ids_shared_audio_and_independ
 
 #[test]
 fn slot_reuse_undo_and_branched_create_never_reuse_an_identity() {
-    let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 144);
     let old = rt.session.tracks[2].id;
     let original = rt.tracks[2].clips[0].notes.clone();
     let (request, ack) = Request::metadata(
@@ -208,7 +208,7 @@ fn slot_reuse_undo_and_branched_create_never_reuse_an_identity() {
 
 #[test]
 fn stale_cancelled_and_budget_refused_graph_edits_retire_without_callback_heap_activity() {
-    let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 144);
     let prepare = |rt: &RtEngine| {
         Request::structural(
             captured(rt),
@@ -250,7 +250,7 @@ fn stale_cancelled_and_budget_refused_graph_edits_retire_without_callback_heap_a
 
 #[test]
 fn undo_graph_processors_follow_stopped_sample_rate_changes() {
-    let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 144);
     rt.tracks[2]
         .fx
         .slots
@@ -332,7 +332,7 @@ fn undo_after_rate_change_cannot_restore_a_graph_above_the_processor_limit() {
 #[test]
 fn stale_piano_roll_cannot_edit_a_reused_empty_cell_with_identical_musical_content() {
     use crate::engine::midi_edit::{Document, Region, Request as MidiRequest};
-    let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 144);
     let baseline = Document::capture(captured(&rt), 2, 7).unwrap();
     let old = rt.session.scenes[7].id;
     let (delete, _) = Request::metadata(

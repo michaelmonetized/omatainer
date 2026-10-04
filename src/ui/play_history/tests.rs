@@ -131,7 +131,7 @@ fn failed_and_cancelled_decoder_jobs_never_credit_history() {
     let corrupt = files.0.join("corrupt.wav");
     std::fs::write(&corrupt, b"not audio").unwrap();
     let valid = files.wave("valid.wav", 4800);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.library = Arc::new(vec![
         item(&missing, "missing"),
         item(&corrupt, "corrupt"),
@@ -150,7 +150,7 @@ fn failed_and_cancelled_decoder_jobs_never_credit_history() {
     }
     // The controlled decoder completes the real valid WAV only after this
     // load has been cancelled and replaced by an independently loaded stem.
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.library = Arc::new(vec![item(&valid, "valid")]);
     f.app.load_file(0, valid.clone(), "cancelled file");
     assert_eq!(
@@ -186,7 +186,7 @@ fn failed_and_cancelled_decoder_jobs_never_credit_history() {
 
 #[test]
 fn builtin_rejection_unavailable_and_pending_cancellation_never_mark_played() {
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     while f.app.engine.send(Command::Tap(Instant::now())).is_ok() {}
     f.app.load_source(
         0,
@@ -229,7 +229,7 @@ fn real_file_load_stays_unplayed_until_render_and_records_captured_identity_when
     let files = Files::new();
     let first = files.wave("first.wav", 4800);
     let other = files.wave("other.wav", 4800);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.library = Arc::new(vec![item(&other, "Other"), item(&first, "Original")]);
     f.app.loader = Some(Loader::start().unwrap());
     file_load(&mut f, &first, 0);
@@ -272,7 +272,7 @@ fn real_file_load_stays_unplayed_until_render_and_records_captured_identity_when
 
 #[test]
 fn initial_builtins_and_new_play_episodes_record_once_without_callback_heap_work() {
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     let receipt = f.app.engine.initial_playback[0].clone().unwrap();
     let mut output = [0.0; 512];
     f.rt.process(&mut output); // warm render/mixer state
@@ -316,7 +316,7 @@ fn initial_builtins_and_new_play_episodes_record_once_without_callback_heap_work
 fn loops_muted_mix_and_silent_content_follow_source_play_contract_but_paused_scratch_does_not() {
     let files = Files::new();
     let path = files.wave("silent.wav", 4800);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.library = Arc::new(vec![item(&path, "silent")]);
     f.app.load_file(0, path.clone(), "silent");
     f.decoder_jobs.recv_timeout(Duration::from_secs(3)).unwrap();
@@ -365,7 +365,7 @@ fn dismissal_replacement_and_unload_do_not_lose_already_rendered_old_media() {
     let files = Files::new();
     let path = files.wave("old.wav", 4800);
     let missing = files.0.join("missing.wav");
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.library = Arc::new(vec![item(&path, "old")]);
     f.app.loader = Some(Loader::start().unwrap());
     file_load(&mut f, &path, 0);
@@ -428,7 +428,7 @@ fn dismissal_replacement_and_unload_do_not_lose_already_rendered_old_media() {
 fn file_replacement_same_path_and_moved_content_do_not_inherit_earlier_version_history() {
     let files = Files::new();
     let path = files.wave("replace.wav", 4800);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     let old_item = item(&path, "original version");
     f.app.library = Arc::new(vec![old_item.clone()]);
     f.app.loader = Some(Loader::start().unwrap());
@@ -463,7 +463,7 @@ fn file_replacement_same_path_and_moved_content_do_not_inherit_earlier_version_h
 
 #[test]
 fn chronological_timestamp_wins_over_watch_order_and_deck_unload_order() {
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     let drums = LibSource::Builtin(BuiltinStem::Drums);
     let harmony = LibSource::Builtin(BuiltinStem::Harmony);
     // Harmony watch is second in the vector but plays earlier than Drums.
@@ -490,7 +490,7 @@ fn chronological_timestamp_wins_over_watch_order_and_deck_unload_order() {
 
 #[test]
 fn end_of_file_missing_empty_invalid_sources_and_transition_tails_never_create_a_false_play() {
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     let receipt = f.app.engine.initial_playback[0].clone().unwrap();
     f.rt.apply(Command::DeckSeek { deck: 0, frac: 1.0 });
     f.rt.apply(Command::DeckPlay { deck: 0 });
@@ -540,7 +540,7 @@ fn status_frame(ctx: &egui::Context, app: &mut App, events: Vec<egui::Event>) ->
 fn queued_decoded_load_cancelled_before_application_cannot_create_history() {
     let files = Files::new();
     let path = files.wave("queued.wav", 4800);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.library = Arc::new(vec![item(&path, "queued")]);
     f.app.loader = Some(Loader::start().unwrap());
     f.app.load_file(0, path.clone(), "queued");
@@ -560,7 +560,7 @@ fn queued_decoded_load_cancelled_before_application_cannot_create_history() {
 fn renderer_disconnect_preserves_final_play_and_retires_watches() {
     let Fixture {
         mut app, mut rt, ..
-    } = Fixture::new(32);
+    } = Fixture::new(48);
     rt.apply(Command::DeckPlay { deck: 1 });
     rt.process(&mut [0.0; 128]);
     let played = app.engine.initial_playback[1].as_ref().unwrap().last_play().unwrap();

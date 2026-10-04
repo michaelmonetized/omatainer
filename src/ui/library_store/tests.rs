@@ -209,7 +209,7 @@ fn actual_gui_mixed_import_restart_and_real_load_restore_all_ids_and_preparation
         .preparation = prepared();
     let import = files.0.join("import.json");
     std::fs::write(&import, serde_json::to_vec(&catalog).unwrap()).unwrap();
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     start(&mut f, files.store());
     import_button(&mut f, &import);
     assert_eq!(f.app.library_metadata.label(), "DJ library saved");
@@ -241,7 +241,7 @@ fn actual_gui_mixed_import_restart_and_real_load_restore_all_ids_and_preparation
     let saved = crate::library::read(&files.store()).unwrap();
     drop(f);
     await_closed(&files.store());
-    let mut reopened = Fixture::new(64);
+    let mut reopened = Fixture::new(80);
     start(&mut reopened, files.store());
     assert_eq!(reopened.app.library_metadata.catalog.tracks, saved.tracks);
     for source in &sources {
@@ -266,7 +266,7 @@ fn renderer_edits_replacement_before_poll_and_changed_bytes_preserve_exact_versi
     let files = Files::new();
     let path = files.wave("track.wav", 96000, 1);
     let source = LibSource::File(path.clone());
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     start(&mut f, files.store());
     f.app
         .library_scan
@@ -347,7 +347,7 @@ fn malformed_store_and_import_remain_visible_and_cannot_be_replaced_by_scan_defa
     std::fs::create_dir_all(files.store().parent().unwrap()).unwrap();
     let original = b"{\"schema\":999,\"prepared_future_data\":[1,2,3]}";
     std::fs::write(files.store(), original).unwrap();
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     f.app.start_library_store(files.store());
     settle(&mut f);
     assert!(f
@@ -369,7 +369,7 @@ fn malformed_store_and_import_remain_visible_and_cannot_be_replaced_by_scan_defa
     drop(f);
     await_closed_lock_only(&files.store());
     let other = files.0.join("valid/library.json");
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     start(&mut f, other.clone());
     let before = std::fs::read(&other).unwrap();
     import_button(&mut f, &files.store());
@@ -402,7 +402,7 @@ fn initial_builtin_preparation_restores_without_overwriting_early_user_edits() {
             .preparation = prepared();
         store.save().unwrap();
     }
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     start(&mut f, files.store());
     assert_eq!(f.rt.decks[0].cue_pos, prepared().cue * 48000.0);
     settle(&mut f);
@@ -417,7 +417,7 @@ fn initial_builtin_preparation_restores_without_overwriting_early_user_edits() {
     );
     drop(f);
     await_closed(&files.store());
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     f.app.start_library_store(files.store());
     f.rt.apply(Command::DeckSeek { deck: 0, frac: 0.1 });
     let edited = f.rt.decks[0].cue_pos;
@@ -439,7 +439,7 @@ fn initial_builtin_preparation_restores_without_overwriting_early_user_edits() {
 fn bounded_background_save_keeps_actual_ui_controls_live_and_close_waits_for_fifo_and_durability() {
     use std::sync::mpsc;
     let files = Files::new();
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     let (entered, entry) = mpsc::sync_channel(1);
     let (release, released) = mpsc::sync_channel(1);
     let mut first = true;
@@ -503,7 +503,7 @@ fn bounded_background_save_keeps_actual_ui_controls_live_and_close_waits_for_fif
 #[test]
 fn invalid_import_does_not_drop_simultaneous_preparation_and_unapplied_load_never_overwrites_it() {
     let files = Files::new();
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     start(&mut f, files.store());
     let bad = files.0.join("bad.json");
     std::fs::write(&bad, b"{bad import").unwrap();
@@ -557,7 +557,7 @@ fn invalid_import_does_not_drop_simultaneous_preparation_and_unapplied_load_neve
 #[test]
 fn actual_egui_close_is_cancelled_until_preceding_renderer_edits_are_durable() {
     let files = Files::new();
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     start(&mut f, files.store());
     f.app.submit(Command::DeckSeek { deck: 0, frac: 0.3 });
     let ctx = egui::Context::default();
@@ -650,7 +650,7 @@ fn initial_preparation_retries_full_admission_on_later_actual_ui_frame() {
             .preparation = prepared();
         store.save().unwrap();
     }
-    let mut f = Fixture::new(64);
+    let mut f = Fixture::new(80);
     f.app.start_library_store(files.store());
     let rejected_import = files.0.join("invalid-import.json");
     std::fs::write(&rejected_import, b"{invalid import").unwrap();

@@ -42,6 +42,7 @@ struct Draft {
     token: Option<SamplerToken>,
     starts: [String; 16],
     ends: [String; 16],
+    cues: [String; 16],
 }
 struct Loading {
     token: SamplerToken,
@@ -98,6 +99,7 @@ impl Draft {
                     .end_seconds
                     .map_or_else(String::new, |v| v.to_string())
             }),
+            cues: std::array::from_fn(|i| bank.data.settings.slots[i].playback.cue_seconds.map_or_else(String::new, |v| v.to_string())),
             bank,
             prepared: true,
             applied: false,
@@ -264,6 +266,7 @@ impl Editor {
         }
         let mut settings = draft.settings.clone();
         for i in 0..16 {
+            settings.slots[i].playback.cue_seconds = if draft.cues[i].trim().is_empty() { None } else { Some(draft.cues[i].parse().unwrap_or(f64::NAN)) };
             settings.slots[i].controls.start_seconds = draft.starts[i].parse().unwrap_or(f64::NAN);
             settings.slots[i].controls.end_seconds = if draft.ends[i].trim().is_empty() {
                 None
@@ -488,10 +491,12 @@ impl App {
         }
         let mut editor = std::mem::take(&mut self.sampler_editor);
         keyboard::block_for_dialog(ctx);
+        let mut action = if ctx.input_mut(|input| input.consume_key(egui::Modifiers::SHIFT, Key::Escape)) {
+            Some(Action::SlotStop)
+        } else { None };
         let mut close = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
         let mut open = true;
         let available = ctx.screen_rect().shrink(8.0);
-        let mut action = None;
         egui::Window::new(tr!("Sampler bank editor")).id(egui::Id::new("sampler-bank-editor"))
             .open(&mut open).collapsible(false).default_width(630.0).min_width(250.0_f32.min(available.width()))
             .max_width(available.width()).max_height(available.height()).constrain_to(available)
@@ -518,6 +523,7 @@ impl App {
                     if button(ui, "Edit current bank", "Edit current bank", HelpControl::SamplerEdit, allowed).clicked() {
                         if let Some(bank) = self.snap.sampler_instances.get(self.snap.sampler_bank) { action = Some(Action::Select(bank.clone())); }
                     }
+                    if button(ui, "Stop slot", "Stop selected sample slot", HelpControl::SamplerSlotStop, true).clicked() { action = Some(Action::SlotStop); }
                     text(ui, &mut editor.name, "New or reusable bank name", HelpControl::SamplerName, 128);
                     ui.horizontal_wrapped(|ui| {
                         if button(ui, "Create empty", "Create empty bank", HelpControl::SamplerCreate, allowed).clicked() { action = Some(Action::Create); }
@@ -557,6 +563,20 @@ impl App {
                             if button(ui, "Retry missing source", "Retry selected source", HelpControl::SamplerRetry, editable && draft.settings.slots[slot].source.is_some()).clicked() { action = Some(Action::Retry); }
                         });
                         ui.add_enabled_ui(editable, |ui| {
+                            let playback = &mut draft.settings.slots[slot].playback;
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label("Play mode");
+                                for (mode, name) in [(sampler_bank::PlayMode::Trigger, "Trigger"), (sampler_bank::PlayMode::Hold, "Hold"), (sampler_bank::PlayMode::Toggle, "Toggle")] {
+                                    let response = ui.selectable_value(&mut playback.mode, mode, name);
+                                    accessibility::button(ui, &response, &format!("Sample slot play mode {name}"), Some(playback.mode == mode));
+                                    help::annotate(ui, &response, HelpControl::SamplerPlayMode);
+                                    if response.changed() { draft.prepared = false; }
+                                }
+                            });
+                            let response = ui.checkbox(&mut playback.repeat, "Repeat sample slot");
+                            help::annotate(ui, &response, HelpControl::SamplerRepeat);
+                            if response.changed() { draft.prepared = false; }
+                            if text(ui, &mut draft.cues[slot], "Cue seconds (empty means trim start)", HelpControl::SamplerCue, 32).changed() { draft.prepared = false; }
                             let controls = &mut draft.settings.slots[slot].controls;
                             let gain = ui.add(egui::Slider::new(&mut controls.gain, 0.0..=2.0).text("Slot gain"));
                             if let Some(value) = accessibility::numeric(ui, &gain, "Slot gain", controls.gain, 0.0, 2.0, 0.01, "linear") { controls.gain = value; draft.prepared = false; }
@@ -685,6 +705,7 @@ impl App {
                 }
                 Action::Apply => editor.apply(self),
                 Action::Audition => editor.audition(self),
+                Action::SlotStop => { self.send(Command::SamplerSlotStop { pad: editor.slot as u8 }); }
                 Action::Stop => {
                     editor.stop(&self.engine);
                 }
@@ -739,6 +760,7 @@ enum Action {
     Apply,
     Audition,
     Stop,
+    SlotStop,
     Import,
     Save,
     StoreRetry,

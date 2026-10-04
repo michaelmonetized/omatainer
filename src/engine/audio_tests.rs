@@ -33,7 +33,7 @@ fn fixture() -> (OutputCallback, CommandPort) {
 
 #[test]
 fn control_port_reports_queue_acceptance_full_and_disconnected() {
-    let (commands, rx) = CommandPort::channel(12);
+    let (commands, rx) = CommandPort::channel(28);
     for _ in 0..3 {
         assert_eq!(
             commands.send(Command::Play),

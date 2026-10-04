@@ -228,7 +228,7 @@ mod renderer_tests {
 
     #[test]
     fn grid_edit_reset_undo_and_reload_preserve_absolute_cues_without_callback_heap_traffic() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
         let receipt = engine.initial_playback[0].clone().unwrap();
         rt.decks[0].pos = 12_000.0;
         rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
@@ -283,7 +283,7 @@ mod renderer_tests {
 
     #[test]
     fn request_acknowledgements_survive_later_edits_and_undo_and_reject_retired_work() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
         let receipt = engine.initial_playback[0].clone().unwrap();
         let b = Grid::new(0.5, 120.0).unwrap();
         let c = Grid::new(1.5, 100.0).unwrap();
@@ -323,7 +323,7 @@ mod renderer_tests {
 
     #[test]
     fn match_and_quantized_loops_follow_each_manual_downbeat_and_tempo() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
         let a = Grid::new(1.25, 120.0).unwrap();
         let b = Grid::new(0.375, 90.0).unwrap();
         for (deck, grid) in [(0, a), (1, b)] {

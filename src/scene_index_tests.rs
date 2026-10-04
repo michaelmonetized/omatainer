@@ -199,7 +199,7 @@ pub(super) fn check_valid_scene_operations() {
 }
 
 pub(super) fn check_ipc_scene_requests() {
-    let (tx, rx) = engine::CommandPort::channel(16);
+    let (tx, rx) = engine::CommandPort::channel(32);
     let commands = tx.clone();
     let snap = Arc::new(Mutex::new(Snapshot::default()));
     let mut rt = RtEngine::try_new(48000.0, rx, snap.clone())

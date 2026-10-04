@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn percent_display_rounding_does_not_add_idle_history_and_one_undo_restores_gain() {
         use egui::accesskit::{Action, ActionData, ActionRequest};
-        let mut fixture = Fixture::new(64);
+        let mut fixture = Fixture::new(80);
         fixture.app.clip_gain_edit = Some(ClipGainEdit {track:0,scene:0,value:1.0,target:None});
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn alt_click_editor_changes_exact_clip_and_reports_failed_admission() {
-        let mut fixture = Fixture::new(32);
+        let mut fixture = Fixture::new(48);
         let ctx = egui::Context::default();
         let output = frame(&ctx, &mut fixture.app, 0.0, vec![], Default::default());
         click(

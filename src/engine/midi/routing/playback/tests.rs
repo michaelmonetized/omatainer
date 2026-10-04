@@ -20,7 +20,7 @@ fn actual_ramp_controller_lane_emission_matches_an_independent_sample_timestamp_
     };
     let starts = [0.0, 0.5, 3.5, 5.0, 8.5, 12.5];
     for rate in [44100, 48000, 96000] {
-        let (engine, mut rt) = crate::engine::Engine::headless_for_test(rate, 32);
+        let (engine, mut rt) = crate::engine::Engine::headless_for_test(rate, 48);
         let shared = engine.cmd.midi_routing();
         let events = shared.receiver.lock().take().unwrap();
         shared.bind_identity(&super::super::Routing { enabled: true, routes: vec![super::super::Route { track: 2, inputs: vec![], output: None, output_channel: None, monitor: false, thru: false, filter: Default::default() }] });

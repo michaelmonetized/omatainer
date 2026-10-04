@@ -128,6 +128,8 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
             )
         });
         wait(|| engine.routing.recorder.alias() != 0);
+        let underruns_before = engine.routing.shared.underrun.load(Ordering::Relaxed);
+        let overflow_before = engine.routing.shared.overflow.load(Ordering::Relaxed);
         for channel in start..end {
             engine
                 .routing
@@ -140,6 +142,8 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
         }
         std::thread::sleep(Duration::from_millis(200));
         engine.routing.recorder.stop();
+        let input_underrun_frames = engine.routing.shared.underrun.load(Ordering::Relaxed).saturating_sub(underruns_before);
+        let input_overflow_frames = engine.routing.shared.overflow.load(Ordering::Relaxed).saturating_sub(overflow_before);
         capture.join().unwrap().unwrap();
         let decoded = crate::engine::decode::decode_audio(&path).unwrap();
         assert_eq!(decoded.sample.ch, width as u16);
@@ -168,9 +172,9 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
             overlap, 0,
             "Physical channel tests crossed into another channel"
         );
-        receipts.push(serde_json::json!({"physical_channels": [start + 1, end], "frames": decoded.sample.frames(), "energy": energy, "peak": peak, "cross_channel_overlap_frames": overlap, "wav": path}));
+        receipts.push(serde_json::json!({"physical_channels": [start + 1, end], "frames": decoded.sample.frames(), "energy": energy, "peak": peak, "cross_channel_overlap_frames": overlap, "input_underrun_frames": input_underrun_frames, "input_overflow_frames": input_overflow_frames, "wav": path}));
     }
     engine.cmd.send(Command::Stop).unwrap();
-    std::fs::write(directory.join("done.json"), serde_json::to_vec_pretty(&serde_json::json!({"channels":32,"rate":48000,"captures":receipts,"input_underruns":engine.routing.shared.underrun.load(Ordering::Relaxed),"input_overflow":engine.routing.shared.overflow.load(Ordering::Relaxed),"callbacks":engine.cmd.audio_metrics().callbacks})).unwrap()).unwrap();
+    std::fs::write(directory.join("done.json"), serde_json::to_vec_pretty(&serde_json::json!({"channels":32,"rate":48000,"input_counter_unit":"frames","captures":receipts,"input_underruns":engine.routing.shared.underrun.load(Ordering::Relaxed),"input_overflow":engine.routing.shared.overflow.load(Ordering::Relaxed),"callbacks":engine.cmd.audio_metrics().callbacks})).unwrap()).unwrap();
     drop(audio);
 }

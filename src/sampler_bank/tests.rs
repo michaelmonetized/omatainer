@@ -53,6 +53,7 @@ fn strict_bounds_and_source_frame_ranges_never_clamp_or_substitute() {
             bank: Factory::Hits,
             slot: 15,
         }),
+        playback: Playback::default(),
         controls: Controls {
             gain: 0.5,
             start_seconds: 0.25,
@@ -105,7 +106,7 @@ fn strict_bounds_and_source_frame_ranges_never_clamp_or_substitute() {
     changed["future"] = serde_json::json!(true);
     assert!(serde_json::from_value::<Collection>(changed).is_err());
     let mut changed = serialized.clone();
-    changed["schema"] = serde_json::json!(2);
+    changed["schema"] = serde_json::json!(SCHEMA + 1);
     assert!(serde_json::from_value::<Collection>(changed)
         .unwrap()
         .validate()
@@ -200,4 +201,21 @@ fn source_resolution_follows_verified_relocation_but_refuses_replacement_bytes()
     invalid.source = LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums);
     assert!(invalid.validate().is_err());
     assert!(invalid.path().is_err());
+}
+
+#[test]
+fn cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values() {
+    let mut slot = Slot::default();
+    slot.controls = Controls { gain: 1.0, start_seconds: 0.25, end_seconds: Some(0.75) };
+    for cue in [-1.0, 0.2, 0.75, f64::NAN, f64::INFINITY] {
+        slot.playback.cue_seconds = Some(cue);
+        assert!(slot.validate().is_err());
+    }
+    slot.playback.cue_seconds = Some(0.5);
+    assert_eq!(slot.frames(16_000, 16_000).unwrap(), (8000.0, 12000.0));
+    slot.controls.end_seconds = None;
+    assert!(slot.frames(16_000, 4000).is_err());
+    assert_eq!(slot.frames(96_000, 96_000).unwrap(), (48000.0, 96000.0));
+    slot.playback.cue_seconds = None;
+    assert_eq!(slot.frames(16_000, 16_000).unwrap(), (4000.0, 16000.0));
 }

@@ -50,7 +50,7 @@ mod tests {
     use super::*;
     #[test]
     fn playing_sample_clock_survives_tempo_pause_rate_change_and_long_seek() {
-        let (engine, mut rt) = Engine::headless_for_test(48000, 128);
+        let (engine, mut rt) = Engine::headless_for_test(48000, 144);
         engine.send(Command::Play).unwrap();
         rt.process(&mut vec![0.0; 96000]);
         assert_eq!(rt.timeline_seconds(), 1.0);
@@ -84,7 +84,7 @@ mod allocation_tests {
     use super::*;
     #[test]
     fn actual_clip_seek_and_per_callback_clock_publish_do_not_allocate_or_free() {
-        let (_, mut rt) = Engine::headless_for_test(48000, 128);
+        let (_, mut rt) = Engine::headless_for_test(48000, 144);
         rt.apply(Command::LaunchScene { scene: 0 });
         rt.process(&mut [0.0; 512]);
         let counts = super::super::test_alloc::measure(|| {

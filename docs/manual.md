@@ -2350,6 +2350,38 @@ Retry the referenced missing source or reopen the reusable store. Source identit
 
 Workflow: Record a held note.
 
+### Sample slot play mode
+
+Trigger / Hold / Toggle
+
+Trigger restarts at the cue on every press and continues after release. Hold stops when the final input is released. Toggle stops on the next press. A sounding slot retains its captured mode across bank changes and edits.
+
+Workflow: Record a held note.
+
+### Repeat sample slot
+
+On / off
+
+Repeat wraps from the exclusive source endpoint to the captured cue or trim start. Hold release, Toggle press and Stop slot end repeat. Prepare and Apply change future onsets.
+
+Workflow: Record a held note.
+
+### Sample slot cue
+
+Source seconds; blank uses trim start
+
+Cue must be inside the prepared source range. Trigger and retrigger start at this point; repeating slots wrap back here. Preparing an invalid cue preserves the installed bank.
+
+Workflow: Record a held note.
+
+### Stop sample slot
+
+Exact slot; reserved admission
+
+Stop the sounding sample or synth pad without stopping other slots or transport. Right-click a pad or press Shift+Escape while it has focus. The editor stops its selected slot; MIDI learn assigns an exact slot button. Release a physically held input before triggering again.
+
+Workflow: Record a held note.
+
 ### Sampler slot gain
 
 0–2 linear

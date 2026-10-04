@@ -18,7 +18,7 @@ pub(crate) const SLOTS: usize = 16;
 pub(crate) const MAX_DEFINITIONS: usize = 64;
 pub(crate) const MAX_BYTES: u64 = 4 * 1024 * 1024;
 pub(crate) const MAX_NAME_BYTES: usize = 128;
-const SCHEMA: u32 = 1;
+const SCHEMA: u32 = 2;
 
 /// A working bank instance and a reusable definition each get their own ID.
 /// Import/copy must allocate a new working ID, retaining definition ID only as
@@ -249,15 +249,48 @@ impl Controls {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum PlayMode {
+    #[default]
+    Trigger,
+    Hold,
+    Toggle,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Playback {
+    pub mode: PlayMode,
+    pub repeat: bool,
+    pub cue_seconds: Option<f64>,
+}
+impl Playback {
+    fn is_default(&self) -> bool { *self == Self::default() }
+}
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Slot {
     pub source: Option<Source>,
     pub controls: Controls,
+    #[serde(default, skip_serializing_if = "Playback::is_default")]
+    pub playback: Playback,
 }
 impl Slot {
+    /// Resolve a slot's cue and trim against source PCM.
+    /// Takes source rate and frame count; returns the exclusive playback range or an invalid draft error.
+    pub fn frames(&self, sample_rate: u32, frames: usize) -> Result<(f64, f64), String> {
+        self.validate()?;
+        let (start, end) = self.controls.frames(sample_rate, frames)?;
+        let cue = self.playback.cue_seconds.map_or(start, |seconds| seconds * f64::from(sample_rate));
+        if cue < start || cue >= end { return Err("sampler cue must be inside the selected source range".into()); }
+        Ok((cue, end))
+    }
     pub fn validate(&self) -> Result<(), String> {
         self.controls.validate()?;
+        if self.playback.cue_seconds.is_some_and(|cue| !cue.is_finite() || cue < self.controls.start_seconds
+            || cue > 1.0e9 || self.controls.end_seconds.is_some_and(|end| cue >= end)) {
+            return Err("sampler cue must be finite and inside the selected source range".into());
+        }
         match &self.source {
             Some(Source::Library { reference }) => reference.validate()?,
             Some(Source::Project { source, .. }) => crate::media_location::validate_root_source(source).map_err(|e| e.to_string())?,
