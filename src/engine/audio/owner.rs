@@ -695,6 +695,7 @@ impl RtEngine {
         if let Some(history) = &mut self.history_measurement { history.reset_dsp(); }
         for deck in &mut self.decks {
             deck.playing = false;
+            deck.stop_preview(self.sr);
             deck.touching = false;
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;

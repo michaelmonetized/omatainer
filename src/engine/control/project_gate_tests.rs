@@ -94,8 +94,7 @@ fn every_existing_early_exit_retires_its_lease_and_gui_success_is_gated() {
     lease_retired(&port);
     gui.publish_selection(Some(Arc::new(Selection {
         source: LibSource::Builtin(BuiltinStem::Harmony),
-        title: "Harmony".into(),
-    })));
+        title: "Harmony".into(), fingerprint: None, })));
     assert_eq!(
         port.send(Command::DeckLoadSelected { deck: 1 }),
         Ok(SubmissionOutcome::Accepted)

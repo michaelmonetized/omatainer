@@ -68,8 +68,7 @@ fn undo_redo_and_media_identity_restoration_publish_durable_preparation() {
         0,
         Some(&crate::engine::media_source::Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
-            title: "Harmony".into(),
-        }),
+            title: "Harmony".into(), fingerprint: None, }),
     );
     gui.rt.process(&mut []);
     settle_library(&mut gui);

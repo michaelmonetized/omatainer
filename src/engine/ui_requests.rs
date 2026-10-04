@@ -36,6 +36,7 @@ pub struct BrowseRequest {
 pub enum Request {
     Browse(BrowseRequest),
     Load(LoadRequest),
+    Prepare(Vec<Arc<Selection>>),
 }
 #[derive(Default)]
 struct Navigation {
@@ -122,6 +123,24 @@ impl Mailbox {
                 .and_then(|view| view.selection(navigation.cursor))
                 .ok_or(SubmissionError::UncapturedSelection)?;
             Ok(Request::Load(LoadRequest { deck, selection }))
+        })
+    }
+    /// Capture selected or filtered upcoming tracks before navigation changes.
+    /// Takes the whole-view flag; returns bounded admission without touching the renderer.
+    pub fn prepare(&self, all: bool) -> Result<SubmissionOutcome, SubmissionError> {
+        self.submit(|navigation| {
+            let view = navigation.view.as_ref().ok_or(SubmissionError::UncapturedSelection)?;
+            let len = if all { view.len().ok_or(SubmissionError::UncapturedSelection)? } else { 1 };
+            if len == 0 || len > 4096 { return Err(SubmissionError::InvalidTarget); }
+            let mut selections = Vec::with_capacity(len);
+            let mut bytes = 0usize;
+            for index in 0..len {
+                let selected = view.selection(if all { index } else { navigation.cursor }).ok_or(SubmissionError::UncapturedSelection)?;
+                bytes = bytes.saturating_add(selected.bytes());
+                if bytes > 2 * 1024 * 1024 { return Err(SubmissionError::PayloadFull); }
+                selections.push(selected);
+            }
+            Ok(Request::Prepare(selections))
         })
     }
     pub fn browse(&self, steps: f32) -> Result<SubmissionOutcome, SubmissionError> {
@@ -221,8 +240,7 @@ mod tests {
             .ui_requests
             .publish_selection(Some(Arc::new(Selection {
                 source: crate::engine::media_source::LibSource::File("private.wav".into()),
-                title: "private".into(),
-            })));
+                title: "private".into(), fingerprint: None, })));
         let counts = crate::engine::test_alloc::measure(|| {
             renderer.apply(crate::engine::Command::DeckLoadSelected { deck: 0 });
             renderer.apply(crate::engine::Command::Browse(1.0));

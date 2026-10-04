@@ -274,7 +274,42 @@
       "evidence": [
         "docs/validation/issue-145-library-health.md"
       ],
-      "limits": "Focused media/UI fixtures passed; complete source qualification pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee."
+      "limits": "Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its optimized wall-time gate failed. New combined-source qualification remains pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee."
+    },
+    "146": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_prepare.rs",
+          "entry": "Library prepare queue: captured add, reorder, load, paused preview, save and restore"
+        },
+        {
+          "kind": "MIDI",
+          "file": "src/engine/midi.rs",
+          "entry": "Prepare/PrepareCrate and shifted mapped deck Load"
+        },
+        {
+          "kind": "output measurement",
+          "file": "src/engine/history_measurement/capture.rs",
+          "entry": "Complete converted playing-output window and atomic transient receipts"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/ui/library_metadata/collections.rs",
+          "entry": "One CreatePrepared transaction and durable save receipt"
+        }
+      ],
+      "fixtures": [
+        "ui::library_prepare::tests",
+        "engine::history_measurement::capture_tests",
+        "ui::library_metadata::collections::tests::prepared_queue_creation_is_one_atomic_save_with_ordered_stable_members",
+        "engine::media_load::tests::captured_source_version_rejects_replacement_before_decoding_its_new_bytes"
+      ],
+      "evidence": [
+        "docs/validation/issue-146-prepare-queue.md"
+      ],
+      "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
     }
   }
 }

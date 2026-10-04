@@ -15,6 +15,7 @@ mod library_scan;
 mod library_metadata;
 mod library_analysis;
 mod library_health;
+mod library_prepare;
 mod library_tags;
 mod library_annotations;
 mod library_protection;
@@ -145,6 +146,7 @@ pub struct App {
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
     library_health: library_health::Panel,
+    library_prepare: library_prepare::Panel,
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
     library_protection: library_protection::Panel,
@@ -277,6 +279,7 @@ impl App {
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
             library_health: library_health::Panel::default(),
+            library_prepare: library_prepare::Panel::default(),
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
             library_protection: library_protection::Panel::default(),
@@ -387,8 +390,7 @@ impl App {
 
     fn load_sel(&mut self, deck: u8) {
         let picked = self.selected_library_item().map(|item| Selection {
-            title: item.title.clone(), source: item.source.clone(),
-        });
+            title: item.title.clone(), source: item.source.clone(), fingerprint: item.fingerprint, });
         self.load_source(deck, picked.as_ref());
     }
 
@@ -421,8 +423,8 @@ impl App {
                     }
                     self.set_load_state(deck, state);
                 }
-                LibSource::File(path) => self.load_reference_authorized(deck, LibSource::File(path.clone()), &picked.title, expected),
-                LibSource::Removable { .. } => self.load_reference_authorized(deck,picked.source.clone(),&picked.title,expected),
+                LibSource::File(path) => self.load_reference_authorized(deck, LibSource::File(path.clone()), &picked.title, expected, picked.fingerprint),
+                LibSource::Removable { .. } => self.load_reference_authorized(deck,picked.source.clone(),&picked.title,expected,picked.fingerprint),
                 LibSource::Provider { .. } => {
                     self.supersede_load(deck);
                     if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
@@ -447,19 +449,19 @@ impl App {
         self.load_reference(deck,LibSource::File(path),name);
     }
     fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
-        if self.review_locked_load(deck, Some(Selection { title: name.into(), source: source.clone() })) { return; }
-        self.load_reference_authorized(deck, source, name, None);
+        if self.review_locked_load(deck, Some(Selection { title: name.into(), source: source.clone(), fingerprint: None, })) { return; }
+        self.load_reference_authorized(deck, source, name, None, None);
     }
-    fn load_reference_authorized(&mut self, deck:u8,source:LibSource,name:&str,expected:Option<u64>) {
+    fn load_reference_authorized(&mut self, deck:u8,source:LibSource,name:&str,expected:Option<u64>,fingerprint:Option<FileFingerprint>) {
         if !self.deck_load_allowed(deck, expected) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
-        let selection = Selection { title: name.into(), source:source.clone() };
+        let selection = Selection { title: name.into(), source:source.clone(), fingerprint, };
         let mut state = LoadState::new(Some(selection), Phase::Loading);
         state.override_key = expected;
         match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
-            .and_then(|loader| loader.request_source(deck, source)) {
+            .and_then(|loader| loader.request_source_expected(deck, source, fingerprint)) {
             Ok(token) => state.token = Some(token),
             Err(error) => state.phase = Phase::Failed(error),
         }
@@ -470,6 +472,7 @@ impl App {
         use crate::engine::ui_requests::Request;
         for request in self.engine.ui_requests.take_requests().into_iter().flatten() {
             match request {
+                Request::Prepare(selections) => self.prepare_selections(selections),
                 Request::Load(request) => self.load_source(request.deck, Some(&request.selection)),
                 Request::Browse(request) => {
                     if request.epoch != self.engine.ui_requests.epoch() { continue; }
@@ -500,13 +503,12 @@ impl App {
         self.refresh_library_view();
         let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
         if self.published_indices.as_ptr() == Arc::as_ptr(&self.library_view.indices)
-            && self.published_selection.as_ref().map(|item| (&item.source, &item.title))
-                == selected.map(|item| (&item.source, &item.title)) {
+            && self.published_selection.as_ref().map(|item| (&item.source, &item.title, item.fingerprint))
+                == selected.map(|item| (&item.source, &item.title, item.fingerprint)) {
             return;
         }
         let selection = selected.map(|item| Arc::new(Selection {
-            source: item.source.clone(), title: item.title.clone(),
-        }));
+            source: item.source.clone(), title: item.title.clone(), fingerprint: item.fingerprint, }));
         self.engine.ui_requests.publish_view(Arc::new(library_view::PublishedView {
             library: Arc::downgrade(&self.library), indices: Arc::downgrade(&self.library_view.indices),
         }), self.lib_sel);
@@ -764,6 +766,7 @@ impl App {
         self.poll_library_validation();
         self.poll_library_tags();
         self.poll_named_crates();
+        self.poll_prepare_queue();
         self.poll_session_history();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
@@ -808,6 +811,7 @@ impl App {
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
         self.library_health_ui(ctx);
+        self.prepare_queue_ui(ctx);
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
         self.library_protection_ui(ctx);
@@ -1296,6 +1300,7 @@ impl App {
                 if self.library_scan.active() && ui.button(tr!("cancel scan")).help(ui, HelpControl::CrateCancel).clicked() {
                     self.library_scan.cancel();
                 }
+                if ui.button(tr!("prepare…")).help(ui, HelpControl::PrepareQueue).clicked() { self.library_prepare.open = true; }
                 if ui.button(tr!("health…")).help(ui, HelpControl::LibraryHealth).clicked() { self.library_health.open = true; }
                 if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }

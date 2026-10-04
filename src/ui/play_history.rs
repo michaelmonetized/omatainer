@@ -75,6 +75,12 @@ pub(super) struct Watch {
     history_registered: bool,
 }
 
+impl Watch {
+    pub(super) fn matches_load(&self, source: &LibSource, fingerprint: Option<FileFingerprint>, key: u64) -> bool {
+        self.receipt.history_key() == key && self.identity.source == *source && self.identity.fingerprint == fingerprint
+    }
+}
+
 pub(super) fn initial_watches(engine: &Engine) -> Vec<Watch> {
     if !engine.initial_builtin { return Vec::new(); }
     [BuiltinStem::Drums, BuiltinStem::Harmony]

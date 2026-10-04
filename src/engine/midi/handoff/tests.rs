@@ -373,8 +373,7 @@ fn mailbox_keeps_full_event_fields_coherent_under_concurrent_replacement() {
 fn browse_callback_stays_allocation_free_while_gui_selection_lock_is_held() {
     let (engine, _rt) = Engine::headless_for_test(48000, 256);
     engine.ui_requests.publish_selection(Some(Arc::new(crate::engine::media_source::Selection {
-        title: "captured".into(), source: crate::engine::media_source::LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums),
-    })));
+        title: "captured".into(), source: crate::engine::media_source::LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums), fingerprint: None, })));
     let mut profile = map();
     profile.bindings = vec![
         rbind(0,17,Action::Browse,0,0,RelativeSpec {encoding:crate::engine::midi::RelativeEncoding::OffsetBinary,scale:1.0}),

@@ -471,6 +471,7 @@ impl Patch {
                 d.transition_to(*position, rt.sr, DeckTransition::Jump);
                 *position = current;
                 d.playing = false;
+                d.preview_position = None;
                 d.playback_active = false;
                 // A media swap cannot retain a physical scratch session on the
                 // replaced buffer; unrelated deck and live MIDI gates survive.

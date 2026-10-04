@@ -352,7 +352,6 @@ impl crate::engine::ui_requests::SelectionView for PublishedView {
         let item = library.get(*indices.get(index)?)?;
         Some(Arc::new(Selection {
             source: item.source.clone(),
-            title: item.title.clone(),
-        }))
+            title: item.title.clone(), fingerprint: item.fingerprint, }))
     }
 }

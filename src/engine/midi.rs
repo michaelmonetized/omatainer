@@ -79,6 +79,8 @@ pub enum Action {
     Master,
     CueMix,
     Browse,
+    Prepare,
+    PrepareCrate,
     LoadA,
     LoadB,
     Scene,
@@ -423,8 +425,10 @@ fn dispatch(
         Action::DeckLoopOut if pressed => {
             let _ = cmd.send(Command::DeckLoopOut { deck });
         }
+        Action::Prepare if pressed => { let _ = cmd.send(Command::PrepareSelected { all: false }); }
+        Action::PrepareCrate if pressed => { let _ = cmd.send(Command::PrepareSelected { all: true }); }
         Action::DeckLoad if pressed => {
-            let _ = cmd.send(Command::DeckLoadSelected { deck });
+            let _ = cmd.send(if shift.lock()[deck as usize] { Command::PrepareSelected { all: deck == 1 } } else { Command::DeckLoadSelected { deck } });
         }
         Action::DeckLoadLock if pressed => {
             let enabled = !cmd.performance().deck_load_locked(deck as usize);
@@ -446,10 +450,10 @@ fn dispatch(
             let _ = cmd.send(Command::Browse(rel));
         }
         Action::LoadA if pressed => {
-            let _ = cmd.send(Command::DeckLoadSelected { deck: 0 });
+            let _ = cmd.send(if shift.lock()[deck as usize] { Command::PrepareSelected { all: false } } else { Command::DeckLoadSelected { deck: 0 } });
         }
         Action::LoadB if pressed => {
-            let _ = cmd.send(Command::DeckLoadSelected { deck: 1 });
+            let _ = cmd.send(if shift.lock()[deck as usize] { Command::PrepareSelected { all: true } } else { Command::DeckLoadSelected { deck: 1 } });
         }
         Action::Scene if pressed => {
             let _ = cmd.send(Command::LaunchScene {

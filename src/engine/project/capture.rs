@@ -239,6 +239,7 @@ impl Frame {
                 pitch_range,
                 sync_bpm
             );
+            out.pos = deck.preview_position.unwrap_or(deck.pos);
             copy_string(&mut out.title, &deck.title);
             out.eq = eq(&deck.eq[0]);
             out.audio = deck.audio.as_ref().map(|s| media(&mut self.media, s));

@@ -525,8 +525,7 @@ fn invalid_import_does_not_drop_simultaneous_preparation_and_unapplied_load_neve
         0,
         Some(&Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
-            title: "cancelled".into(),
-        }),
+            title: "cancelled".into(), fingerprint: None, }),
     );
     f.app.loads[0]
         .as_ref()

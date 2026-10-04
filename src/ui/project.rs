@@ -1336,8 +1336,7 @@ mod contextual_help_tests {
         fixture.app.loads[1] = Some(load_status::LoadState::new(
             Some(Selection {
                 source: LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums),
-                title: "Test source".into(),
-            }),
+                title: "Test source".into(), fingerprint: None, }),
             load_status::Phase::Failed("Fixture failure".into()),
         ));
         let nodes = frame(&ctx, &mut fixture.app);

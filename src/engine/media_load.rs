@@ -26,6 +26,7 @@ impl LoadToken {
 struct Request {
     token: LoadToken,
     source: LibSource,
+    expected: Option<FileFingerprint>,
 }
 pub struct Completion {
     pub tags: Option<Result<crate::media_tags::Observation, String>>,
@@ -267,8 +268,8 @@ impl Loader {
                 if !request.token.is_current() {
                     continue;
                 }
-                let (fingerprint,content_hash,result) = if verified || matches!(request.source,LibSource::Removable {..}) {
-                    guarded_decode(&request.source,&request.token,&mut decode,&mut inventory)
+                let (fingerprint,content_hash,result) = if verified || request.expected.is_some() || matches!(request.source,LibSource::Removable {..}) {
+                    guarded_decode(&request.source,&request.token,request.expected,&mut decode,&mut inventory)
                 } else if let LibSource::File(path)=&request.source {
                     let before=FileFingerprint::read(path);let result=decode(path,&request.token,None);
                     let after=FileFingerprint::read(path);(before.filter(|before|Some(*before)==after),None,result)
@@ -422,14 +423,19 @@ impl Loader {
     }
 
     pub fn request(&self, deck: u8, path: PathBuf) -> Result<LoadToken, String> {
-        self.enqueue(deck,LibSource::File(path))
+        self.enqueue(deck,LibSource::File(path),None)
     }
     pub fn request_source(&self,deck:u8,source:LibSource)->Result<LoadToken,String> {
+        self.request_source_expected(deck,source,None)
+    }
+    /// Decode the reviewed source version.
+    /// Takes the deck, immutable source and optional captured fingerprint; returns admission or an explicit error.
+    pub fn request_source_expected(&self,deck:u8,source:LibSource,expected:Option<FileFingerprint>)->Result<LoadToken,String> {
         crate::library::validate_source(&source)?;
         crate::media_location::validate_root_source(&source).map_err(|e|e.to_string())?;
-        self.enqueue(deck,source)
+        self.enqueue(deck,source,expected)
     }
-    fn enqueue(&self,deck:u8,source:LibSource)->Result<LoadToken,String> {
+    fn enqueue(&self,deck:u8,source:LibSource,expected:Option<FileFingerprint>)->Result<LoadToken,String> {
         let current = self
             .generations
             .get(deck as usize)
@@ -449,6 +455,7 @@ impl Loader {
             let pending = state.pending[deck as usize].replace(Request {
                 token: token.clone(),
                 source,
+                expected,
             });
             let ready = state.ready[deck as usize].take();
             (token, (pending, ready))
@@ -497,7 +504,7 @@ fn source_failure(detail:impl ToString)->DecodeFailure {
         diagnostics:Default::default(),detail:detail.to_string().chars().take(256).collect()}
 }
 fn guarded_decode(
-    source:&LibSource,token:&LoadToken,
+    source:&LibSource,token:&LoadToken,expected:Option<FileFingerprint>,
     decode:&mut impl FnMut(&Path,&LoadToken,Option<std::fs::File>)->Result<DecodedAudio,DecodeFailure>,
     inventory:&mut impl FnMut()->Result<crate::media_location::Snapshot,crate::media_location::Failure>,
 )->(Option<FileFingerprint>,Option<[u8;32]>,Result<DecodedAudio,DecodeFailure>) {
@@ -511,7 +518,7 @@ fn guarded_decode(
         } else {Location::resolve(source).map_err(source_failure)?};
         let mut file=std::fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK).open(&location.path).map_err(source_failure)?;
         let meta=file.metadata().map_err(source_failure)?;let fingerprint=FileFingerprint::from_metadata(&meta);
-        if !meta.is_file() || FileFingerprint::read(&location.path)!=Some(fingerprint) {return Err(source_failure(Failure::Changed));}
+        if expected.is_some_and(|expected|expected!=fingerprint) || !meta.is_file() || FileFingerprint::read(&location.path)!=Some(fingerprint) {return Err(source_failure(Failure::Changed));}
         if !token.is_current() {return Err(source_failure("Load superseded before decoding"));}
         let content_hash=if matches!(source,LibSource::Removable {..}) {
             if meta.len()>8*1024*1024*1024 {return Err(source_failure("removable source exceeds 8 GiB verification limit"));}

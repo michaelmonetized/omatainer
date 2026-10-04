@@ -124,3 +124,79 @@ fn output_sidecar_and_disconnected_consumer_fail_explicitly_without_breaking_aud
     let history = callback.renderer_for_test().history_measurement.as_ref().unwrap();
     assert!(history.incomplete); assert!(history.dropped >= 16_865);
 }
+
+#[test]
+fn prepare_monitor_confirms_playing_output_without_starting_a_history_session() {
+    for (gain, xfader, pfl, cue_mix, active) in [
+        (1.0,0.0,false,0.0,true), (0.0,0.0,false,0.0,false),
+        (1.0,1.0,true,0.0,false), (1.0,1.0,true,1.0,true),
+    ] {
+        let (mut callback, receiver, key) = callback(2,false,gain,xfader,pfl,cue_mix);
+        let handle = callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
+        handle.set_prepare_monitor(true).unwrap();
+        let boundary = handle.clock().unwrap();
+        for _ in 0..8 { callback.render(&mut [0.0_f32;256]); }
+        let counts = test_alloc::measure(|| { for _ in 0..8 { callback.render(&mut [0_i16;256]); } });
+        assert_eq!((counts.allocations,counts.frees),(0,0));
+        assert!(receiver.is_empty(),"transient monitoring must not create session-zero history events");
+        assert_eq!(handle.status().0,0);
+        let event = handle.digital_play(0);
+        assert_eq!(event.is_some(),active,"gain{gain} crossfader{xfader} cue{cue_mix}");
+        if let Some(event) = event { assert_eq!(event.load,key);assert_eq!(event.frames,480);assert!(event.wall_ns > boundary); }
+        let previous = event;
+        handle.set_prepare_monitor(false).unwrap();
+        for _ in 0..8 { callback.render(&mut [0.0_f32;256]); }
+        assert_eq!(handle.digital_play(0),previous);
+    }
+}
+
+#[test]
+fn paused_preview_and_direct_renderer_processing_never_remove_upcoming_tracks() {
+    let (mut callback, receiver, key) = callback(2,false,1.0,0.0,false,0.0);
+    let handle = callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
+    handle.set_prepare_monitor(true).unwrap();
+    {
+        let rt = callback.renderer_mut_for_test();
+        rt.decks[0].playing = false;
+        rt.decks[0].keylock = true;
+        rt.decks[0].pitch = 0.6;
+        rt.decks[0].pos = 2500.0;
+        rt.apply(Command::DeckPreview { deck:0,expected:key,on:true });
+    }
+    let mut energy = 0.0_f64;
+    for _ in 0..12 { let mut out = [0.0_f32;256];callback.render(&mut out);energy += out.iter().map(|v|f64::from(*v).powi(2)).sum::<f64>(); }
+    assert!(energy > 0.1);
+    assert!(handle.digital_play(0).is_none());
+    assert!(receiver.is_empty());
+    let rt = callback.renderer_mut_for_test();
+    assert!(!rt.decks[0].playing);
+    assert!(rt.decks[0].pos > 1000.0,"paused preview must keep advancing after its initial transition");
+    assert_eq!(rt.decks[0].keylock_mode(),keylock::Mode::Locked);
+    rt.apply(Command::DeckPreview { deck:0,expected:key,on:false });
+    assert_eq!(rt.decks[0].pos,2500.0);
+    assert!(rt.decks[0].preview_position.is_none());
+    rt.decks[0].playing = true;
+    for _ in 0..8 { rt.process(&mut [0.0;2048]); }
+    assert!(handle.digital_play(0).is_none(),"exports and headless processing are not final converted output");
+}
+
+#[test]
+fn prepare_monitor_rejects_paused_tails_partial_windows_and_emergency_mute() {
+    let (mut callback, receiver, _) = callback(2,false,1.0,0.0,false,0.0);
+    let handle = callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
+    handle.set_prepare_monitor(true).unwrap();
+    callback.render(&mut [0.0_f32;200]);
+    assert!(handle.digital_play(0).is_none());
+    handle.set_prepare_monitor(false).unwrap();
+    callback.render(&mut [0.0_f32;256]);
+    callback.renderer_mut_for_test().decks[0].playing = false;
+    handle.set_prepare_monitor(true).unwrap();
+    for _ in 0..8 { callback.render(&mut [0.0_f32;256]); }
+    assert!(handle.digital_play(0).is_none());
+    let rt = callback.renderer_mut_for_test();
+    rt.apply(Command::SafetyStop(performance::Safety::Silence));
+    rt.decks[0].playing = true;
+    for _ in 0..16 { callback.render(&mut [0.0_f32;256]); }
+    assert!(handle.digital_play(0).is_none());
+    assert!(receiver.is_empty());
+}

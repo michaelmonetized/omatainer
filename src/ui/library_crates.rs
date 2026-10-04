@@ -101,6 +101,7 @@ impl App {
             if self.library_crates.pending.as_ref().is_some_and(|(token, _)| token.id == receipt.id) {
                 let (_, action) = self.library_crates.pending.take().unwrap();
                 self.library_crates.retry = None;
+                let prepared = matches!(&action, CollectionAction::CreatePrepared { .. });
                 let annotation = matches!(&action, CollectionAction::Annotate { .. });
                 let protection=matches!(&action,CollectionAction::Protect { .. });
                 self.library_crates.message = match receipt.outcome {
@@ -115,7 +116,11 @@ impl App {
                         format!("Crate edit was not applied: {error}")
                     }
                 };
-                if let Some(created) = receipt.created { self.choose_named_crate(Some(created)); }
+                if prepared { self.library_prepare.message = self.library_crates.message.clone(); }
+                if let Some(created) = receipt.created {
+                    if prepared { self.library_prepare.saved = Some(created); }
+                    else { self.choose_named_crate(Some(created)); }
+                }
             }
         }
         self.refresh_named_crates();

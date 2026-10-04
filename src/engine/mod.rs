@@ -333,6 +333,7 @@ pub struct DeckRt {
     pub target_rate: f32,
     pub pitch: f32, // -1..1 mapped around 1.0
     pub playing: bool,
+    preview_position: Option<f64>,
     pub load_locked: bool,
     pub cue_pos: f64,
     pub touching: bool,
@@ -377,6 +378,12 @@ pub struct DeckRt {
 }
 
 impl DeckRt {
+    /// Check whether this deck is rendering source audio.
+    /// Takes this deck; returns true for play, touch or an explicitly admitted paused preview.
+    fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() }
+    fn stop_preview(&mut self, rate: f32) {
+        if let Some(position) = self.preview_position.take() { self.transition_to(position, rate, DeckTransition::Jump); }
+    }
     fn clear_loop(&mut self) {
         self.loop_on = false;
         self.loop_start = 0.0;
@@ -393,6 +400,7 @@ impl DeckRt {
             target_rate: 1.0,
             pitch: 0.5,
             playing: false,
+            preview_position: None,
             load_locked: false,
             cue_pos: 0.0,
             touching: false,
@@ -504,7 +512,7 @@ impl DeckRt {
             keylock::Mode::Off
         } else if self.audio.is_none() {
             keylock::Mode::NoMedia
-        } else if !self.playing && !self.touching {
+        } else if !self.rendering() {
             keylock::Mode::Stopped
         } else {
             keylock::mode(true, self.touching, self.rate)
@@ -521,7 +529,7 @@ impl DeckRt {
     }
 
     fn play_rate(&self) -> f32 {
-        if self.playing || self.touching {
+        if self.rendering() {
             self.pitch_rate()
         } else {
             0.0
@@ -645,6 +653,7 @@ struct PadTarget {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
+    pub previewing: bool,
     pub load_locked: bool,
     pub media_key: u64,
     pub title: String,
@@ -885,6 +894,8 @@ pub enum Command {
     DeckLoopIn { deck: u8 },
     DeckLoopOut { deck: u8 },
     DeckLoadSelected { deck: u8 },
+    PrepareSelected { all: bool },
+    DeckPreview { deck: u8, expected: u64, on: bool },
     DeckLoadLock { deck: u8, enabled: bool },
     DeckEjectConfirmed { deck: u8, expected: u64 },
     DeckVinyl { deck: u8 },
@@ -1470,7 +1481,8 @@ impl RtEngine {
                     [self.decks[0].history_last, self.decks[1].history_last],
                     [self.decks[0].history_key, self.decks[1].history_key],
                     [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], cm);
-                history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output);
+                history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output,
+                    std::array::from_fn(|deck| if self.decks[deck].playing { self.decks[deck].history_key } else { 0 }));
             }
             let preview = self.tick_provider_preview();
             l += preview[0];
@@ -1752,7 +1764,7 @@ impl RtEngine {
                 d.scratch *= 0.85;
             }
             let before_position = d.pos;
-            if d.playing || d.touching {
+            if d.rendering() {
                 d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr);
             }
             let mut position = d.pos;
@@ -1774,6 +1786,7 @@ impl RtEngine {
                     position = 0.0;
                     if !d.loop_on {
                         d.playing = false;
+                        if let Some(saved) = d.preview_position.take() { position = saved; }
                     }
                 }
                 if position < 0.0 {
@@ -1805,7 +1818,7 @@ impl RtEngine {
                 d.playback_active = true;
             }
         }
-        if !self.decks[di].playing && !self.decks[di].touching {
+        if !self.decks[di].rendering() {
             // Retire the last output through the bounded transition envelope.
             // A paused source must never be read repeatedly as a DC signal.
             let d = &mut self.decks[di];
@@ -1858,7 +1871,7 @@ impl RtEngine {
     fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
         let d = &mut self.decks[di];
         let Some(audio) = &d.audio else { return (0.0, 0.0) };
-        if !d.playing && !d.touching { return (0.0, 0.0); }
+        if !d.rendering() { return (0.0, 0.0); }
         let source = keylock::Source {
             audio,
             loop_on: d.loop_on,
@@ -1905,6 +1918,7 @@ impl RtEngine {
 
     fn deck_touch(&mut self, source: u64, deck: u8, on: bool) {
         let d = &mut self.decks[deck as usize % DECKS];
+        if on { d.stop_preview(self.sr); }
         let existing = d.touch_sources.iter().position(|owner| *owner == Some(source));
         if on {
             if existing.is_none() {
@@ -2087,6 +2101,7 @@ impl RtEngine {
         if scene.is_some_and(|scene| scene >= self.scene_fx.len() || !self.session.scenes[scene].active) {
             return;
         }
+        if let Some(deck) = preparation_deck { self.decks[deck].stop_preview(self.sr); }
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
@@ -2107,6 +2122,7 @@ impl RtEngine {
                 self.history_finish_take();
                 self.finish_recording_all();
                 self.playing = false;
+                for deck in &mut self.decks { deck.stop_preview(self.sr); }
                 self.recording = false;
                 self.compose_target = None;
                 self.metro.reset();
@@ -2169,6 +2185,7 @@ impl RtEngine {
             }
             Command::DeckPlay { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.stop_preview(self.sr);
                 if d.audio.is_none() {
                     return;
                 }
@@ -2178,12 +2195,22 @@ impl RtEngine {
             }
             Command::DeckCue { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.stop_preview(self.sr);
                 if d.playing {
                     d.playing = false;
                     d.transition_to(d.cue_pos, self.sr, DeckTransition::Jump);
                 } else {
                     d.cue_pos = d.pos;
                 }
+            }
+            Command::DeckPreview { deck, expected, on } => {
+                let Some(d) = self.decks.get_mut(usize::from(deck)) else { return; };
+                if expected == 0 || d.history_key != expected { return; }
+                if on {
+                    if d.playing || d.touching || d.audio.is_none() || d.preview_position.is_some() { return; }
+                    d.preview_position = Some(d.pos);
+                    d.transition_to(d.cue_pos, self.sr, DeckTransition::Jump);
+                } else { d.stop_preview(self.sr); }
             }
             Command::DeckSync { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
@@ -2375,6 +2402,7 @@ impl RtEngine {
                 d.history_key = 0;
                 d.title.clear();
                 d.playing = false;
+                d.preview_position = None;
                 d.cue_pos = 0.0;
                 d.clear_loop();
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
@@ -2397,7 +2425,7 @@ impl RtEngine {
             Command::DeckEjectConfirmed { deck, .. } => {
                 if let Some(command) = self.history_before(Command::DeckUnload { deck }) { self.apply_plain(command); }
             }
-            Command::DeckLoadSelected { .. } => {
+            Command::DeckLoadSelected { .. } | Command::PrepareSelected { .. } => {
                 // Producers capture selection before routing to the GUI.
                 // A raw renderer call without that capture must fail visibly.
                 self.cmd_rx.reject_uncaptured_ui_load();

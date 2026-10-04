@@ -94,6 +94,14 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Prepare upcoming tracks
+
+4096 tracks and 2 MiB of captured references
+
+Queue a selected track or filtered crate while other decks play. Reorder or remove upcoming tracks, load their captured file version through ordinary deck protection, and preview a loaded paused deck on its existing output. Stop preview restores its position. Remove-after-play requires a complete 10 ms window of confirmed digital main output from a playing deck; loads, paused previews, silence and uncertain measurements retain tracks. Retain keeps them until manual removal. Save creates one ordered manual crate; explicit restore uses its current catalog versions. Shift with deck A Load queues the selected track; shift with deck B Load queues the published filtered crate on profiles with those controls. Physical controller mappings still need device validation.
+
+Workflow: Prepare a DJ deck.
+
 ### Library media health
 
 Captured read-only validation; at most 4096 rows per queue

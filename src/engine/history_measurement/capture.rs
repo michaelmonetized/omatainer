@@ -1,7 +1,7 @@
 //! Only final OutputCallback conversion promotes samples into observations.
 use super::{tracker::{Contribution, Tracker}, Episode, Frame, Observation, Windows, LANES};
 use crate::engine::{performance, FxKind};
-use super::control::{Action, Ack, Endpoint, Handle, Outcome, Progress};
+use super::control::{Action, Ack, Endpoint, Handle, Outcome, Progress, DigitalPlay};
 use crossbeam_channel::{Receiver, Sender};
 
 const MAX_FRAMES: usize = 16_384;
@@ -10,12 +10,13 @@ const EVENTS: usize = 4_096;
 #[derive(Clone, Copy)]
 struct Rendered {
     episodes: [Option<Episode>; LANES],
+    playing: [u64; 2],
     actual: [f32; 2],
     without: [[f32; 2]; LANES],
     error: [[f64; 2]; LANES],
 }
 impl Default for Rendered {
-    fn default() -> Self { Self { episodes: [None; LANES], actual: [0.0; 2],
+    fn default() -> Self { Self { episodes: [None; LANES], playing: [0; 2], actual: [0.0; 2],
         without: [[0.0; 2]; LANES], error: [[0.0; 2]; LANES] } }
 }
 
@@ -27,6 +28,8 @@ pub(in crate::engine) struct Measurement {
     capture: bool,
     frame_count: usize,
     active: bool,
+    prepare_state: u64,
+    window_playing: Option<[u64; 2]>,
     session: u64,
     endpoint: Endpoint,
     callback_wall_ns: u64,
@@ -46,7 +49,7 @@ impl Measurement {
         sidecar.try_reserve_exact(MAX_FRAMES).map_err(|_| "history conversion storage unavailable")?;
         sidecar.resize(MAX_FRAMES, Rendered::default());
         let (sender, receiver) = crossbeam_channel::bounded(EVENTS);
-        Ok(Self { tracker, available: true, rate, sidecar, capture: false, frame_count: 0, active: false, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
+        Ok(Self { tracker, available: true, rate, sidecar, capture: false, frame_count: 0, active: false, prepare_state: 0, window_playing: None, session: 0, endpoint: Endpoint::new(receiver), callback_wall_ns: 0, window_wall_ns: 0,
             clock: 0, windows: None, window_episodes: [None; LANES], sender,
             incomplete: false, dropped: 0 })
     }
@@ -74,13 +77,13 @@ impl Measurement {
     }
     pub fn start(&mut self) -> bool {
         if self.active { return false; }
-        self.active = true; self.session = 1; self.windows = None; self.window_episodes = [None; LANES];
+        self.active = true; self.session = 1; self.windows = None; self.window_playing = None; self.window_episodes = [None; LANES];
         self.incomplete = self.tracker.incomplete; self.dropped = 0;
         true
     }
     pub fn end(&mut self) -> bool {
         if !self.active { return false; }
-        self.flush(); self.windows = None; self.active = false;
+        self.flush(); self.windows = None; self.window_playing = None; self.active = false;
         true
     }
     pub fn configure(&mut self, kinds: [FxKind; 3], wet: [f32; 3], spb: f64) {
@@ -90,30 +93,33 @@ impl Measurement {
     /// Off-callback rate preparation preserves the observation receiver and
     /// closes the previous rational-rate segment before replacing DSP storage.
     pub fn set_rate(&mut self, rate: u32) {
-        self.flush(); self.windows = None; self.rate = rate;
+        self.flush(); self.windows = None; self.window_playing = None; self.rate = rate;
         match Tracker::new(rate) {
             Ok(tracker) => { self.tracker = tracker; self.available = true; }
             Err(_) => { self.available = false; self.incomplete = true; }
         }
     }
     pub fn begin_output(&mut self, frames: usize) {
+        let state = self.endpoint.prepare_state();
+        if state != self.prepare_state && !self.active { self.windows = None; self.window_playing = None; }
+        self.prepare_state = state;
         self.capture = true;
         self.callback_wall_ns = self.endpoint.clock().unwrap_or(0);
         self.frame_count = frames;
-        if self.active && frames > MAX_FRAMES {
+        if (self.active || self.prepare_state & 1 != 0) && frames > MAX_FRAMES {
             self.flush(); self.windows = None;
             self.incomplete = true;
             self.dropped = self.dropped.saturating_add(frames as u64);
         }
     }
     pub fn record_rendered(&mut self, index: usize, contribution: Contribution,
-        before_limiter: [f32; 2], master: f32, safety: &performance::Output,
+        before_limiter: [f32; 2], master: f32, safety: &performance::Output, playing: [u64; 2],
     ) {
-        if !self.capture || !self.active || !self.available || self.frame_count > MAX_FRAMES { return; }
+        if !self.capture || (!self.active && self.prepare_state & 1 == 0) || !self.available || self.frame_count > MAX_FRAMES { return; }
         if index >= self.frame_count { self.incomplete = true; return; }
         self.incomplete |= contribution.incomplete;
         let actual = safety.preview(before_limiter.map(|v| (v * master).tanh()));
-        let mut record = Rendered { episodes: contribution.episodes, actual, ..Default::default() };
+        let mut record = Rendered { episodes: contribution.episodes, playing, actual, ..Default::default() };
         let safety_gain = f64::from(safety.preview([1.0; 2])[0]).abs();
         for lane in 0..LANES {
             record.without[lane] = safety.preview(std::array::from_fn(|c|
@@ -137,11 +143,12 @@ impl Measurement {
         let channels = channels.max(1);
         let frames = output.len() / channels;
         if frames != self.frame_count { self.incomplete = true; return; }
-        if self.active && self.available && frames <= MAX_FRAMES {
+        if (self.active || self.prepare_state & 1 != 0) && self.available && frames <= MAX_FRAMES {
             for i in 0..frames {
                 let record = self.sidecar[i];
                 if self.windows.is_none() || record.episodes != self.window_episodes {
                     self.flush();
+                    self.window_playing = None;
                     self.window_episodes = record.episodes;
                     self.window_wall_ns = self.frame_wall_ns(i);
                     self.windows = self.clock.checked_add(i as u64)
@@ -168,10 +175,12 @@ impl Measurement {
                     without_analog: mapped_without.map(|p| p.map(f64::from)),
                     without_digital, error, digital_error,
                 };
+                let playing = self.window_playing.get_or_insert(record.playing);
+                for (previous, current) in playing.iter_mut().zip(record.playing) { if *previous != current { *previous = 0; } }
                 let observations = self.windows.as_mut().and_then(|w| w.push(&frame));
                 let completed = observations.is_some();
                 self.publish(observations);
-                if completed { self.window_wall_ns = self.frame_wall_ns(i + 1); }
+                if completed { self.window_wall_ns = self.frame_wall_ns(i + 1); self.window_playing = None; }
             }
         }
         if let Some(clock) = self.clock.checked_add(frames as u64) { self.clock = clock; }
@@ -196,6 +205,14 @@ impl Measurement {
     }
     fn publish(&mut self, observations: Option<[Option<Observation>; LANES]>) {
         for mut observation in observations.into_iter().flatten().flatten() {
+            if self.prepare_state & 1 != 0 && observation.classification == super::Classification::Active
+                && observation.frames >= self.rate.div_ceil(100) && observation.episode.deck < 2
+                && self.window_playing.is_some_and(|playing| playing[usize::from(observation.episode.deck)] == observation.episode.load)
+                && self.window_wall_ns != 0 {
+                self.endpoint.record_play(DigitalPlay { deck: observation.episode.deck, load: observation.episode.load,
+                    wall_ns: self.window_wall_ns, first_frame: observation.first_frame, frames: observation.frames, rate: observation.sample_rate });
+            }
+            if !self.active { continue; }
             observation.session = self.session; observation.wall_ns = self.window_wall_ns;
             if observation.wall_ns == 0 { self.incomplete = true; }
             if self.sender.try_send(observation).is_err() {

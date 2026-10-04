@@ -564,6 +564,8 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckLoadLock { .. }
         | Command::DeckEjectConfirmed { .. }
         | Command::DeckLoadSelected { .. }
+        | Command::PrepareSelected { .. }
+        | Command::DeckPreview { .. }
         | Command::DeckVinyl { .. }
         | Command::DeckKeylock { .. }
         | Command::DeckAudio { .. }
@@ -750,7 +752,7 @@ impl super::RtEngine {
     }
     pub(super) fn deck_activity(&self) -> u8 {
         self.decks.iter().enumerate().fold(0, |bits, (i, deck)| {
-            bits | (u8::from(deck.playing || deck.touching) << i)
+            bits | (u8::from(deck.rendering()) << i)
         })
     }
     pub(super) fn performance_tick(&mut self) {
@@ -785,6 +787,7 @@ impl super::RtEngine {
         // tails. Emergency silence is applied after the entire output chain.
         for deck in &mut self.decks {
             deck.playing = false;
+            deck.stop_preview(self.sr);
             deck.touching = false;
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;

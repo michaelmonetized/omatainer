@@ -71,6 +71,7 @@ fn selection() -> Selection {
     Selection {
         title: "Harmony (session)".into(),
         source: LibSource::Builtin(BuiltinStem::Harmony),
+        fingerprint: None,
     }
 }
 #[test]
@@ -147,7 +148,7 @@ fn approved_file_decode_keeps_old_audio_until_ready_and_failure_preserves_it() {
     let mut fixture = fixture();
     let original = fixture.rt.decks[0].audio.clone().unwrap();
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/audio/tone.flac");
-    let selected = Selection { title: "Own fixture tone".into(), source: LibSource::File(path.clone()) };
+    let selected = Selection { title: "Own fixture tone".into(), source: LibSource::File(path.clone()), fingerprint: None, };
     let ctx = egui::Context::default();
     let mut time = 1.0;
     for success in [false, true] {

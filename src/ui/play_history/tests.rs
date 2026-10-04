@@ -98,8 +98,7 @@ fn builtin_load(f: &mut Fixture, stem: BuiltinStem, deck: u8) {
         deck,
         Some(&Selection {
             source: LibSource::Builtin(stem),
-            title: "captured builtin".into(),
-        }),
+            title: "captured builtin".into(), fingerprint: None, }),
     );
     f.rt.process(&mut []);
     assert_eq!(load_receipt(f, deck as usize).state(), State::Current);
@@ -193,8 +192,7 @@ fn builtin_rejection_unavailable_and_pending_cancellation_never_mark_played() {
         0,
         Some(&Selection {
             source: LibSource::Builtin(BuiltinStem::Drums),
-            title: "rejected".into(),
-        }),
+            title: "rejected".into(), fingerprint: None, }),
     );
     assert!(matches!(
         f.app.loads[0].as_ref().unwrap().phase,
@@ -207,8 +205,7 @@ fn builtin_rejection_unavailable_and_pending_cancellation_never_mark_played() {
         0,
         Some(&Selection {
             source: LibSource::Builtin(BuiltinStem::Drums),
-            title: "unavailable".into(),
-        }),
+            title: "unavailable".into(), fingerprint: None, }),
     );
     let unavailable = load_receipt(&f, 0);
     render(&mut f, 64);
@@ -218,8 +215,7 @@ fn builtin_rejection_unavailable_and_pending_cancellation_never_mark_played() {
         0,
         Some(&Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
-            title: "cancelled".into(),
-        }),
+            title: "cancelled".into(), fingerprint: None, }),
     );
     let cancelled = load_receipt(&f, 0);
     cancelled.cancel_pending();

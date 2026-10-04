@@ -66,6 +66,7 @@ enum GateKey {
     Audition(u64),
     Piano(u64),
     Touch { source: u64, deck: u8 },
+    Preview { deck: u8, expected: u64 },
 }
 
 struct Admission {
@@ -616,7 +617,7 @@ impl CommandPort {
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
-        if self.shared.audio_offline.load(Acquire) && !project_release(&command) {
+        if self.shared.audio_offline.load(Acquire) && !project_release(&command) && !matches!(command,Command::PrepareSelected { .. }) {
             return fail(SubmissionError::AudioUnavailable);
         }
         if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {
@@ -627,11 +628,14 @@ impl CommandPort {
                 return fail(SubmissionError::InvalidTarget);
             }
         }
-        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckEjectConfirmed { deck, .. } if *deck as usize >= super::DECKS) {
+        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckEjectConfirmed { deck, .. } | Command::DeckPreview { deck, .. } if *deck as usize >= super::DECKS) {
             return fail(SubmissionError::InvalidTarget);
         }
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
+        }
+        if let Command::PrepareSelected { all } = command {
+            return self.shared.submit_ui(self.shared.ui_requests.prepare(all));
         }
         if let Command::Browse(steps) = command {
             return self.shared.submit_ui(self.shared.ui_requests.browse(steps));
@@ -670,7 +674,7 @@ impl CommandPort {
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
-        if self.shared.audio_offline.load(Acquire) && !project_release(&command) {
+        if self.shared.audio_offline.load(Acquire) && !project_release(&command) && !matches!(command,Command::PrepareSelected { .. }) {
             return fail(SubmissionError::AudioUnavailable);
         }
         // A producer may have passed preflight before waiting on this mutex.
@@ -856,6 +860,7 @@ fn project_release(command: &Command) -> bool {
             | Command::SamplerPad { on: false, .. }
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
+            | Command::DeckPreview { on: false, .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::Stop
@@ -877,8 +882,7 @@ mod gui_routing_tests {
         let gui = commands.take_ui_receiver().unwrap();
         gui.publish_selection(Some(Arc::new(Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
-            title: "Harmony".into(),
-        })));
+            title: "Harmony".into(), fingerprint: None, })));
         let locked = commands.admission.lock();
         let producer = commands.clone();
         let (done, received) = mpsc::channel();
@@ -930,6 +934,7 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
             },
             false,
         )),
+        Command::DeckPreview { deck, expected, on } => Some((GateKey::Preview { deck, expected },on)),
         Command::MidiAudition { id, on, .. } => Some((GateKey::Piano(id), on)),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
         Command::SamplerPadPressure { pad, .. } => Some((GateKey::Pad(pad), true)),
@@ -1182,12 +1187,14 @@ mod tests {
 fn history_monitoring(command: &Command) -> bool {
     matches!(
         command,
-        Command::LiveNoteOn { .. }
+        Command::PrepareSelected { .. }
+            | Command::LiveNoteOn { .. }
             | Command::RoutedNoteOn { .. }
             | Command::LiveNoteOff { .. }
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
             | Command::SamplerPadPressure { .. }
+            | Command::DeckPreview { on: false, .. }
             | Command::DeckTouch { .. }
             | Command::MidiDeckTouch { .. }
             | Command::Stop

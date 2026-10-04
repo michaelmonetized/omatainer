@@ -357,3 +357,21 @@ fn production_descriptor_cannot_admit_a_different_path_swapped_during_decode() {
     },media_analysis::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
     loader.request(0,path).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.fingerprint.is_none());
 }
+
+#[test]
+fn captured_source_version_rejects_replacement_before_decoding_its_new_bytes() {
+    use crate::engine::media_analysis::tests::{Files,wav};
+    let files=Files::new();let proof=files.source("captured.wav",&wav(8000,8000,1,false));
+    let loader=Loader::start().unwrap();
+    std::fs::write(files.0.join("captured.wav"),b"replacement content").unwrap();
+    loader.request_source_expected(0,proof.source,Some(proof.fingerprint)).unwrap();
+    let until=Instant::now()+Duration::from_secs(5);
+    loop {
+        if let Some(completion)=loader.take_ready()[0].take() {
+            assert!(completion.fingerprint.is_none());
+            assert!(matches!(completion.result,Err(ref failure) if failure.detail.contains("changed")),"{:?}",completion.result);
+            break;
+        }
+        assert!(Instant::now()<until);std::thread::sleep(Duration::from_millis(1));
+    }
+}

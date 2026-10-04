@@ -791,8 +791,7 @@ fn deferred_controller_loads_remain_on_old_project_when_install_or_clean_close_c
         .ui_requests
         .publish_selection(Some(Arc::new(media_source::Selection {
             source: media_source::LibSource::Builtin(media_source::BuiltinStem::Drums),
-            title: "Drums".into(),
-        })));
+            title: "Drums".into(), fingerprint: None, })));
     engine.send(Command::DeckLoadSelected { deck: 1 }).unwrap();
     let handle = engine.project.clone();
     let revision = handle.revision();

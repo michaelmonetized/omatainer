@@ -996,8 +996,7 @@ fn capture_never_assigns_an_old_watch_identity_to_replaced_deck_media() {
         0,
         Some(&Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
-            title: "New harmony".into(),
-        }),
+            title: "New harmony".into(), fingerprint: None, }),
     );
     // Capture executes after this admitted load, but the worker's earlier GUI
     // watch list contains only the old default receipt for deck A.
@@ -1236,8 +1235,7 @@ fn accepted_controller_load_between_gui_ready_and_audio_install_preserves_old_se
         .ui_requests
         .publish_selection(Some(Arc::new(Selection {
             source: LibSource::Builtin(BuiltinStem::Harmony),
-            title: "Captured harmony".into(),
-        })));
+            title: "Captured harmony".into(), fingerprint: None, })));
     gui.app
         .engine
         .send(Command::DeckLoadSelected { deck: 0 })

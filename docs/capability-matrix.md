@@ -77,7 +77,18 @@ Software fixtures and read-only source paths; physical controller actions remain
 - Acceptance fixtures: `engine::media_health::tests`, `ui::library_health::tests`, `engine::media_load::analysis_tests::foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current`, `ui::library_scan::tests`.
 - Evidence: [docs/validation/issue-145-library-health.md](../docs/validation/issue-145-library-health.md).
 
-Focused media/UI fixtures passed; complete source qualification pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee.
+Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its optimized wall-time gate failed. New combined-source qualification remains pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee.
+
+### Issue #146: implemented
+
+- native UI: [src/ui/library_prepare.rs](../src/ui/library_prepare.rs) — Library prepare queue: captured add, reorder, load, paused preview, save and restore
+- MIDI: [src/engine/midi.rs](../src/engine/midi.rs) — Prepare/PrepareCrate and shifted mapped deck Load
+- output measurement: [src/engine/history_measurement/capture.rs](../src/engine/history_measurement/capture.rs) — Complete converted playing-output window and atomic transient receipts
+- catalog owner: [src/ui/library_metadata/collections.rs](../src/ui/library_metadata/collections.rs) — One CreatePrepared transaction and durable save receipt
+- Acceptance fixtures: `ui::library_prepare::tests`, `engine::history_measurement::capture_tests`, `ui::library_metadata::collections::tests::prepared_queue_creation_is_one_atomic_save_with_ordered_stable_members`, `engine::media_load::tests::captured_source_version_rejects_replacement_before_decoding_its_new_bytes`.
+- Evidence: [docs/validation/issue-146-prepare-queue.md](../docs/validation/issue-146-prepare-queue.md).
+
+Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence.
 
 ### Issue #205: implemented
 
@@ -122,7 +133,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | planned |
 | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | planned |
 | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |
-| [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | planned |
+| [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented |
 | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned |
 | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | planned |
 | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | planned |
