@@ -1157,8 +1157,13 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
             }
             _ => unreachable!(),
         };
-        engine.send(command).unwrap();
-        let counts = test_alloc::measure(|| tick(&mut rt));
+        let counts = if matches!(case, 1 | 3) {
+            assert!(engine.send(command.clone()).is_err());
+            test_alloc::measure(|| rt.apply(command))
+        } else {
+            engine.send(command).unwrap();
+            test_alloc::measure(|| tick(&mut rt))
+        };
         assert_eq!((counts.allocations, counts.frees), (0, 0), "case {case}");
         CANCEL_AT_CLAIM.with(|slot| *slot.borrow_mut() = None);
         assert_eq!(rt.undo.cursor, 0);

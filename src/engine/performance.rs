@@ -491,7 +491,7 @@ impl Handle {
     }
 }
 
-fn media_target(command: &Command) -> Option<usize> {
+pub(super) fn media_target(command: &Command) -> Option<usize> {
     match command {
         Command::DeckAudio { deck, .. }
         | Command::DeckLoadRequested { deck, .. }

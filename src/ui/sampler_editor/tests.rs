@@ -69,7 +69,7 @@ struct Gui {
 }
 impl Gui {
     fn new(files: &Files) -> Self {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+        let (engine, mut rt) = Engine::headless_isolated_sampler_for_test(48_000, 256);
         rt.publish_for_test();
         let loader = Loader::start_with_performance(engine.cmd.performance().clone()).unwrap();
         let mut app = App::with_loader(engine, Theme::default(), Some(loader));

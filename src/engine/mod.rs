@@ -992,8 +992,21 @@ impl RtEngine {
         cmd_rx: impl Into<control::CommandReceiver>,
         snap: Arc<Mutex<Snapshot>>,
     ) -> Result<Self, String> {
+        Self::try_new_with_sampler_owner(sr, cmd_rx, snap, None)
+    }
+    /// Prepare one renderer and its bounded factory assets.
+    /// Takes its rate, command receiver, snapshot owner and optional fixture asset account; returns the complete renderer.
+    fn try_new_with_sampler_owner(
+        sr: f32,
+        cmd_rx: impl Into<control::CommandReceiver>,
+        snap: Arc<Mutex<Snapshot>>,
+        sampler_owner: Option<crate::sampler_bank::assets::Owner>,
+    ) -> Result<Self, String> {
         midi_edit::initialize()?;
-        let (sampler_assets, sampler_banks) = sampler::initial(sr as u32)?;
+        let (sampler_assets, sampler_banks) = match sampler_owner {
+            Some(owner) => sampler::initial_with_owner(sr as u32, owner)?,
+            None => sampler::initial(sr as u32)?,
+        };
         let cmd_rx = cmd_rx.into();
         let telemetry = cmd_rx.telemetry();
         let performance = cmd_rx.performance().clone();
@@ -3225,10 +3238,26 @@ impl Engine {
 
     #[cfg(test)]
     pub(crate) fn headless_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
+        Self::headless_with_sampler_owner_for_test(sample_rate, capacity, None)
+    }
+    /// Build an independent sampler editor fixture.
+    /// Takes sample rate and command capacity; returns the app engine and renderer under the production asset limits.
+    #[cfg(test)]
+    pub(crate) fn headless_isolated_sampler_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
+        let owner = crate::sampler_bank::assets::Owner::isolated_for_test(crate::sampler_bank::assets::Budget::limits());
+        Self::headless_with_sampler_owner_for_test(sample_rate, capacity, Some(owner))
+    }
+    /// Build an app fixture with one asset account.
+    /// Takes sample rate, command capacity and optional fixture owner; returns the complete engine and renderer.
+    #[cfg(test)]
+    fn headless_with_sampler_owner_for_test(
+        sample_rate: u32, capacity: usize, owner: Option<crate::sampler_bank::assets::Owner>,
+    ) -> (Self, RtEngine) {
         let (cmd, rx) = CommandPort::channel(capacity);
         let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
-        let mut rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let mut rt = RtEngine::try_new_with_sampler_owner(sample_rate as f32, rx, snap.clone(), owner)
+            .expect("prepare app fixture");
         let undo = rt.enable_undo().expect("undo worker");
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone());

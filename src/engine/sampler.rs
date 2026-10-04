@@ -140,7 +140,11 @@ pub(crate) fn factory_data(owner: &assets::Owner, sr: u32) -> Result<[assets::Ba
     Ok(cached.map(Option::unwrap))
 }
 pub(super) fn initial(sr: u32) -> Result<(assets::Owner, Vec<Bank>), String> {
-    let owner = assets::Owner::acquire().map_err(|e| e.to_string())?;
+    initial_with_owner(sr, assets::Owner::acquire().map_err(|e| e.to_string())?)
+}
+/// Prepare factory banks under one bounded asset owner.
+/// Takes output sample rate and its resident owner; returns that owner and fully registered banks.
+pub(super) fn initial_with_owner(sr: u32, owner: assets::Owner) -> Result<(assets::Owner, Vec<Bank>), String> {
     let mut banks = Vec::with_capacity(MAX_BANKS);
     for (factory, data) in Factory::ALL.into_iter().zip(factory_data(&owner, sr)?) {
         banks.push(Bank {

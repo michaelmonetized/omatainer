@@ -58,6 +58,7 @@ const STATUS_REQUEST: &str = r#"{"op":"status"}"#;
 const APPLICATION_ID: &str = "org.omarchy.omatainer";
 
 fn main() -> anyhow::Result<()> {
+    let _audio_shutdown = engine::audio::owner::Shutdown;
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
     if args.first().map(|s| s.as_str()) == Some("benchmark-build-info") {
         anyhow::ensure!(args.len() == 1, "usage: omatainer benchmark-build-info");
@@ -191,6 +192,7 @@ fn main() -> anyhow::Result<()> {
     )
     .map_err(|e| anyhow::anyhow!("{e}"));
     drop(_ipc);
+    engine::audio::owner::finish_shutdown();
     if let Some(support)=&support {
         let exit=if gui_result.is_ok(){crate::support::Exit::Clean}else{support.port.event(crate::support::Code::GuiStartupFailed,Some(crate::support::FailureClass::Unavailable));crate::support::Exit::StartupFailed};
         support.finish(exit,Duration::from_secs(2));

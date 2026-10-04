@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "release": "Unreleased combined stack above #504",
+  "release": "Unreleased combined stack above #505",
   "reviewed": "2026-10-04",
   "references": [
     {
@@ -531,6 +531,30 @@
         "docs/validation/issue-132-background-work.md"
       ],
       "limits": "The published parent qualifies its own frozen source. Combined focused checks preserve media guards, cancellation, coalescing and exact captured fingerprints. Merged callback-pressure, optimized, full ordinary and physical deadline qualification remains pending. Reservations are declared admission budgets, not measured RSS or an OS memory cap. Plugin scanning and stem separation remain planned."
+    },
+    "133": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/audio_settings.rs",
+          "entry": "Audio devices → Linux ALSA/JACK server selection and exact graph endpoints"
+        },
+        {
+          "kind": "audio owner",
+          "file": "src/engine/audio/jack.rs",
+          "entry": "Server-clocked native JACK/PipeWire callbacks and stopped recovery"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::graph::tests",
+        "engine::audio::jack::native_tests::private_graph_loopback_quantum_reconnect_and_rate_change_retain_project",
+        "ui::audio_settings::tests::private_native_graph_profile_preview_apply_cancel_and_reopen"
+      ],
+      "evidence": [
+        "docs/validation/issue-133-linux-audio.md"
+      ],
+      "limits": "The published parent has native private-server evidence. Combined-source native, optimized and deadline qualification is pending; physical interfaces and other platforms remain unqualified."
     }
   }
 }

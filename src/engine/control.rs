@@ -610,6 +610,14 @@ impl CommandPort {
                 Err(error) => fail(SubmissionError::Performance(error)),
             };
         }
+        if let Command::DeckLoadSelected { deck } = &command {
+            if usize::from(*deck) >= super::DECKS {
+                return self.shared.submit_ui(self.shared.ui_requests.load(*deck));
+            }
+        }
+        if super::performance::media_target(&command).is_some_and(|deck| deck >= super::DECKS) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         let _performance_writer = self.shared.performance.writer();
         if let Err(error) = self.performance_check(&command) {
             self.shared.performance.reject(error);

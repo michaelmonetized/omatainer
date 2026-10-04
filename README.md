@@ -107,6 +107,12 @@ low-level probes, never monitors input, rejects weak/ambiguous/corrupt evidence,
 and reports qualified host callback-to-callback return timing, not converter-only
 roundtrip latency. See [audio settings validation](docs/validation/issue-94-audio-settings.md).
 
+Linux profiles also support **JACK**, using an existing JACK server or PipeWire's
+JACK library. Named output/input ports, exact saved links and explicit reconnect
+share the existing audio-owner workflow. The server owns rate, quantum and callback
+scheduling. See [Linux audio backends](docs/linux-audio.md) for setup, saved routes,
+supported bounds and software qualification limits.
+
 MIDI input selection applies through the connection worker, with requested/applied
 generations and missing-device errors visible. Appearance (desktop theme/font,
 font size and scale), library roots and performance shortcut overrides apply live
