@@ -32,7 +32,7 @@ Planned means no complete implementation is claimed. Partial means some work is 
 
 USB unplug/replug and real suspend/resume remain pending.
 
-### Issue #130: implemented
+### Issue #130: partial
 
 - native UI: [src/ui/audio_routing.rs](../src/ui/audio_routing.rs) — Setup → Audio routing → capture, review and apply saved graph
 - renderer: [src/engine/audio/routing/render.rs](../src/engine/audio/routing/render.rs) — Independent bus/tap/channel rendering and record-source selection
@@ -41,7 +41,7 @@ USB unplug/replug and real suspend/resume remain pending.
 - Evidence: [docs/validation/issue-130-audio-routing.md](../docs/validation/issue-130-audio-routing.md).
 - Evidence: [docs/validation/issue-146-prepare-queue.md](../docs/validation/issue-146-prepare-queue.md).
 
-Published routing-layer software qualification is source bound to its own commit; merged prepare/routing source needs renewed qualification. Logical 64-channel addressing and private 32-channel native capture do not qualify physical interfaces, all maximum-session voices or xruns. Explicit graphs disable legacy stereo source attribution and automatic prepare removal; queued tracks remain visible. Physical USB and listening remain pending.
+Exact saved routing, stopped confirmation and record-source file integrity are implemented. Newer input buffering and continuity checks refuse incomplete WAVs; current private ALSA 128/512-frame completion fixtures fail after real gaps and publish no file. Source-bound graph, optimized and physical requalification of the combined changes remains pending. Separate nominal-rate clocks are not resampled.
 
 ### Issue #131: implemented
 
@@ -82,7 +82,7 @@ Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native 
 - Acceptance fixtures: `engine::beatgrid::variable_tests`, `ui::grid_editor::tests::tempo_anchor_widgets_validate_replace_delete_cancel_and_commit_one_receipt_qualified_edit`, `ui::grid_editor::tests::recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_native_widgets`, `engine::project::tests::tempo_anchor_state_preserves_media_and_old_versions_reject_anchor_fields`, `library::tests::tempo_anchors_roundtrip_and_legacy_headers_cannot_hide_new_geometry`, `library::backup::tests::schema_twelve_backups_migrate_and_current_anchors_survive_collected_restore`.
 - Evidence: [docs/validation/issue-134-variable-tempo-grid.md](../docs/validation/issue-134-variable-tempo-grid.md).
 
-Up to 32 manual anchors per deck; every linear segment stays within 20–400 BPM. Audio and cues remain in source coordinates. Generated click and one CC BY 4.0 human electronic-drum recording are software fixtures; no acoustic-drum corpus, listening score, physical controller or converter timing claim. Current combined-source full/optimized qualification is tracked in the validation receipt.
+Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 BPM. Source PCM and absolute cues remain intact. Finished source-time map work contributes retained command storage, reusable inverse buffers, local interval arithmetic and a second CC BY 4.0 human electronic-drum recording. The canonical schema-13 format preserves legacy-header refusal and bounded migrations. The previous full qualification covers 32 anchors on source 28d82d7; qualification of the combined 64-anchor source remains pending. No acoustic corpus, listening score, physical controller or converter timing claim.
 
 ### Issue #137: partial
 
@@ -210,7 +210,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | Issue | Capability | Status |
 | --- | --- | --- |
 | [#129](https://github.com/michaelmonetized/omatainer/issues/129) | Recover safely from audio-device loss and backend restarts | partial |
-| [#130](https://github.com/michaelmonetized/omatainer/issues/130) | Route independent multichannel inputs and outputs through an audio graph | implemented |
+| [#130](https://github.com/michaelmonetized/omatainer/issues/130) | Route independent multichannel inputs and outputs through an audio graph | partial |
 | [#131](https://github.com/michaelmonetized/omatainer/issues/131) | Protect audible DJ decks from accidental load and eject | implemented |
 | [#132](https://github.com/michaelmonetized/omatainer/issues/132) | Prioritize and cancel expensive background audio jobs | implemented |
 | [#133](https://github.com/michaelmonetized/omatainer/issues/133) | Integrate low-latency PipeWire, JACK and ALSA workflows | implemented |

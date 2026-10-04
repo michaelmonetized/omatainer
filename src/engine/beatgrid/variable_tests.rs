@@ -3,7 +3,7 @@ use crate::engine::{test_alloc, Command, Engine};
 use std::sync::Arc;
 
 #[test]
-#[ignore = "Controlled optimized callback qualification with two full 32-anchor maps"]
+#[ignore = "Controlled optimized callback qualification with two full 64-anchor maps"]
 fn maximum_anchor_maps_keep_hybrid_callbacks_bounded_without_heap_work() {
     assert!(
         !cfg!(debug_assertions),
@@ -15,8 +15,8 @@ fn maximum_anchor_maps_keep_hybrid_callbacks_bounded_without_heap_work() {
         let mut grid = Grid::new(0.0, 240.0).unwrap();
         let mut seconds = 0.0;
         for beat in 1..=MAX_ANCHORS {
-            seconds += 0.21 + (beat as f64 * 0.7).sin() * 0.025;
-            grid = grid.with_anchor(beat as f64, seconds).unwrap();
+            seconds += (0.21 + (beat as f64 * 0.7).sin() * 0.025) * 0.125;
+            grid = grid.with_anchor(beat as f64 * 0.125, seconds).unwrap();
         }
         for deck in 0..2 {
             assert!(seconds < rt.decks[deck].audio.as_ref().unwrap().frames() as f64 / 48_000.0);
@@ -24,7 +24,7 @@ fn maximum_anchor_maps_keep_hybrid_callbacks_bounded_without_heap_work() {
             rt.decks[deck].sync = true;
             rt.decks[deck].sync_bpm = 127.0;
             rt.decks[deck].loop_on = false;
-            rt.decks[deck].pos = grid.seconds_at(2.0).unwrap() * 48_000.0;
+            rt.decks[deck].pos = grid.seconds_at(0.0).unwrap() * 48_000.0;
             rt.apply(Command::DeckLoop {
                 deck: deck as u8,
                 beats: 24.0,
@@ -68,7 +68,7 @@ fn maximum_anchor_maps_keep_hybrid_callbacks_bounded_without_heap_work() {
         println!(
             "VARIABLE_GRID_MAX_CALLBACK {}",
             serde_json::json!({"frames":frames,"callbacks":4096,
-            "sample_rate":48000,"tempo_anchors_per_deck":32,"decks":2,"deadline_ns":deadline,
+            "sample_rate":48000,"tempo_anchors_per_deck":MAX_ANCHORS,"decks":2,"deadline_ns":deadline,
             "p99_render_cpu_ns":cpu[4055],"max_render_cpu_ns":cpu[4095],"p99_callback_wall_ns":wall[4055],
             "max_callback_wall_ns":wall[4095],"energy":energy,"heap_allocations_and_frees":0,
             "notes":rt.tracks.iter().map(|track| track.clips[0].notes.len()).sum::<usize>()})
@@ -405,18 +405,18 @@ fn bounded_anchor_editing_rejects_discontinuity_and_corrupt_storage_without_part
     for index in 1..=MAX_ANCHORS {
         full = full.with_anchor(index as f64, index as f64 * 0.5).unwrap();
     }
-    assert!(full.with_anchor(33.0, 16.5).is_err());
+    assert!(full.with_anchor((MAX_ANCHORS + 1) as f64, (MAX_ANCHORS + 1) as f64 * 0.5).is_err());
     assert!(full.with_anchor(16.0, 8.01).is_ok());
     let mut value = serde_json::to_value(full).unwrap();
     value["anchors"]
         .as_array_mut()
         .unwrap()
-        .push(serde_json::json!({"beat":33,"seconds":16.5}));
+        .push(serde_json::json!({"beat":MAX_ANCHORS + 1,"seconds":(MAX_ANCHORS + 1) as f64 * 0.5}));
     assert!(serde_json::from_value::<Grid>(value).is_err());
     for mutate in [0, 1, 2] {
         let mut words = Grid::encode(Some(base));
         match mutate {
-            0 => words[3] = 33,
+            0 => words[3] = MAX_ANCHORS as u64 + 1,
             1 => words[4] = 0,
             _ => words[WORDS - 1] = 1,
         }
@@ -534,4 +534,34 @@ fn actual_renderer_loops_sync_seek_and_undo_use_local_segments_without_changing_
         &audio,
         rt.decks[0].audio.as_ref().unwrap()
     ));
+}
+
+#[test]
+fn local_intervals_keep_small_sample_steps_precise_after_distant_pickups() {
+    let grid = Grid::new(-1.0e10, 120.0).unwrap().with_anchor(1.0, -1.0e10 + 0.5).unwrap();
+    let step = 1.0 / 48_000.0;
+    assert!((grid.advance(1.0, step).unwrap() - (1.0 + step * 0.5)).abs() < 1e-15);
+    assert!((grid.beats_between(1.0, 1.0 + step).unwrap() - step * 2.0).abs() < 1e-15);
+    let ramp = Grid::new(0.0, 120.0).unwrap().with_anchor(1.0, 0.5).unwrap().with_anchor(2.0, 0.8).unwrap();
+    assert!((ramp.advance(0.45, 1.0).unwrap() - 0.77).abs() < 1e-15);
+    assert!((ramp.beats_between(0.45, 0.77).unwrap() - 1.0).abs() < 1e-15);
+    assert!(ramp.advance(0.0, -1.0).is_none());
+    assert!(ramp.beats_between(1.0, 0.0).is_none());
+}
+
+#[test]
+fn consolidated_recorded_drum_fixture_maps_performed_quarters_without_replacing_pcm() {
+    use sha2::{Digest, Sha256};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/beatgrid");
+    let source: serde_json::Value = serde_json::from_slice(&std::fs::read(root.join("additional-sources.json")).unwrap()).unwrap();
+    for entry in source["members"].as_array().unwrap() {
+        let name = entry["member"].as_str().unwrap().rsplit('/').next().unwrap();
+        assert_eq!(format!("{:x}", Sha256::digest(std::fs::read(root.join(name)).unwrap())), entry["sha256"].as_str().unwrap());
+    }
+    let beats: Vec<f64> = source["selected_beats"].as_array().unwrap().iter().map(|beat| beat["seconds"].as_f64().unwrap()).collect();
+    let audio = Arc::new(crate::engine::decode::decode_audio(&root.join("35_rock_92_beat_4-4.wav")).unwrap().sample);
+    let mut grid = Grid::new(beats[0], 60.0 / (beats[1] - beats[0])).unwrap();
+    for (index, seconds) in beats.iter().enumerate().skip(1) { grid = grid.with_anchor(index as f64, *seconds).unwrap(); }
+    for (index, seconds) in beats.iter().enumerate() { assert!((grid.beat_at(*seconds).unwrap() - index as f64).abs() < 1e-10); }
+    for rate in [44_100, 48_000, 96_000] { println!("VARIABLE_GRID_ADDITIONAL_HUMAN_DRUM {}", exercise_audio(audio.clone(), grid, rate)); }
 }

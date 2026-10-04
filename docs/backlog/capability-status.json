@@ -312,7 +312,7 @@
       "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
     },
     "130": {
-      "status": "implemented",
+      "status": "partial",
       "paths": [
         {
           "kind": "native UI",
@@ -340,7 +340,7 @@
         "docs/validation/issue-130-audio-routing.md",
         "docs/validation/issue-146-prepare-queue.md"
       ],
-      "limits": "Published routing-layer software qualification is source bound to its own commit; merged prepare/routing source needs renewed qualification. Logical 64-channel addressing and private 32-channel native capture do not qualify physical interfaces, all maximum-session voices or xruns. Explicit graphs disable legacy stereo source attribution and automatic prepare removal; queued tracks remain visible. Physical USB and listening remain pending."
+      "limits": "Exact saved routing, stopped confirmation and record-source file integrity are implemented. Newer input buffering and continuity checks refuse incomplete WAVs; current private ALSA 128/512-frame completion fixtures fail after real gaps and publish no file. Source-bound graph, optimized and physical requalification of the combined changes remains pending. Separate nominal-rate clocks are not resampled."
     },
     "148": {
       "status": "implemented",
@@ -588,7 +588,7 @@
       "evidence": [
         "docs/validation/issue-134-variable-tempo-grid.md"
       ],
-      "limits": "Up to 32 manual anchors per deck; every linear segment stays within 20–400 BPM. Audio and cues remain in source coordinates. Generated click and one CC BY 4.0 human electronic-drum recording are software fixtures; no acoustic-drum corpus, listening score, physical controller or converter timing claim. Current combined-source full/optimized qualification is tracked in the validation receipt."
+      "limits": "Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 BPM. Source PCM and absolute cues remain intact. Finished source-time map work contributes retained command storage, reusable inverse buffers, local interval arithmetic and a second CC BY 4.0 human electronic-drum recording. The canonical schema-13 format preserves legacy-header refusal and bounded migrations. The previous full qualification covers 32 anchors on source 28d82d7; qualification of the combined 64-anchor source remains pending. No acoustic corpus, listening score, physical controller or converter timing claim."
     }
   }
 }

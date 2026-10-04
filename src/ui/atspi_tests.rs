@@ -123,7 +123,7 @@ fn private_atspi_bridge_child() {
             actions.push(serde_json::json!({"action":format!("{:?}",request.action),"label":label,"data":format!("{:?}",request.data)}));
             events.push(egui::Event::AccessKitActionRequest(request));
         }
-        assert!(actions.len() <= 160, "unbounded fixture action stream");
+        assert!(actions.len() <= 184, "unbounded fixture action stream");
         tree = frame(&mut app, events);
         *initial.lock().unwrap() = tree.clone();
         adapter.update_if_active(|| tree.clone());

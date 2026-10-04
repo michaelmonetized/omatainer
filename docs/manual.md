@@ -1904,7 +1904,7 @@ Workflow: Prepare a DJ deck.
 
 ### Manual tempo anchors
 
-Up to 32 ordered anchors; 20–400 BPM per segment
+Up to 64 ordered anchors; 20–400 BPM per segment
 
 Map a beat after beat 0 to a position inside the loaded source audio. Insert in any order; an existing beat is replaced. Source and beat positions must increase together. The map stays continuous across boundaries and continues its final tempo after the last anchor. Delete reconnects neighboring segments. Apply commits one undoable grid edit for the same track; Cancel keeps the applied map.
 

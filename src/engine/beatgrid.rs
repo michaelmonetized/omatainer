@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) const MIN_BPM: f64 = 20.0;
 pub(crate) const MAX_BPM: f64 = 400.0;
-pub(crate) const MAX_ANCHORS: usize = 32;
+pub(crate) const MAX_ANCHORS: usize = 64;
 pub(super) const WORDS: usize = 4 + 2 * MAX_ANCHORS;
 const POSITION_LIMIT: f64 = 1.0e10;
 
@@ -43,7 +43,7 @@ impl<'de> Deserialize<'de> for Anchors {
                 let mut anchors = Anchors::default();
                 while let Some(anchor) = sequence.next_element()? {
                     if anchors.count as usize == MAX_ANCHORS {
-                        return Err(serde::de::Error::custom("Beatgrid exceeds 32 tempo anchors"));
+                        return Err(serde::de::Error::custom("Beatgrid exceeds 64 tempo anchors"));
                     }
                     anchors.values[anchors.count as usize] = anchor;
                     anchors.count += 1;
@@ -109,14 +109,14 @@ impl Grid {
         }
         Stored { downbeat_seconds, seconds_per_beat: 60.0 / bpm, anchors: Anchors::default() }.try_into()
     }
-    pub fn downbeat(self) -> f64 { self.downbeat_seconds }
+    pub fn downbeat(&self) -> f64 { self.downbeat_seconds }
     pub fn anchors(&self) -> &[Anchor] { self.anchors.slice() }
-    pub fn period(self) -> f64 { self.segment(0).2 }
-    pub fn bpm(self) -> f64 { 60.0 / self.period() }
+    pub fn period(&self) -> f64 { self.segment(0).2 }
+    pub fn bpm(&self) -> f64 { 60.0 / self.period() }
 
     /// Locate one continuous linear segment.
     /// Takes the count of anchors preceding a coordinate; returns its origin beat, source time and local beat period.
-    fn segment(self, index: usize) -> (f64, f64, f64) {
+    fn segment(&self, index: usize) -> (f64, f64, f64) {
         let anchors = self.anchors.slice();
         let origin = Anchor { beat: 0.0, seconds: self.downbeat_seconds };
         if anchors.is_empty() { return (0.0, origin.seconds, self.seconds_per_beat); }
@@ -131,13 +131,13 @@ impl Grid {
     }
     /// Read tempo at a source position.
     /// Takes source seconds; returns the following segment's BPM at an exact boundary.
-    pub fn bpm_at(self, seconds: f64) -> Option<f64> {
+    pub fn bpm_at(&self, seconds: f64) -> Option<f64> {
         if !seconds.is_finite() || seconds.abs() > POSITION_LIMIT { return None; }
         Some(60.0 / self.segment(self.anchors.slice().partition_point(|a| a.seconds <= seconds)).2)
     }
     /// Convert source time to musical beats.
     /// Takes finite source seconds; returns a continuous beat position, including negative pickups.
-    pub fn beat_at(self, seconds: f64) -> Option<f64> {
+    pub fn beat_at(&self, seconds: f64) -> Option<f64> {
         if !seconds.is_finite() || seconds.abs() > POSITION_LIMIT { return None; }
         let (beat, origin, period) = self.segment(self.anchors.slice().partition_point(|a| a.seconds <= seconds));
         let result = beat + (seconds - origin) / period;
@@ -145,13 +145,47 @@ impl Grid {
     }
     /// Convert musical beats to source time.
     /// Takes finite beats; returns a source position using the same continuous segments.
-    pub fn seconds_at(self, beat: f64) -> Option<f64> {
+    pub fn seconds_at(&self, beat: f64) -> Option<f64> {
         if !beat.is_finite() { return None; }
         let (origin, seconds, period) = self.segment(self.anchors.slice().partition_point(|a| a.beat <= beat));
         let result = seconds + (beat - origin) * period;
         (result.is_finite() && result.abs() <= POSITION_LIMIT).then_some(result)
     }
-    pub fn nearest(self, seconds: f64) -> Option<f64> { self.seconds_at(self.beat_at(seconds)?.round()) }
+    pub fn nearest(&self, seconds: f64) -> Option<f64> { self.seconds_at(self.beat_at(seconds)?.round()) }
+
+    /// Advance through local source intervals without rounding an absolute beat count.
+    /// Takes source seconds and nonnegative beats; returns the continuous source position across every crossed anchor.
+    pub fn advance(&self, mut seconds: f64, mut beats: f64) -> Option<f64> {
+        if !seconds.is_finite() || seconds.abs() > POSITION_LIMIT || !beats.is_finite() || beats < 0.0 { return None; }
+        let mut index = self.anchors.slice().partition_point(|anchor| anchor.seconds <= seconds);
+        let mut period = self.segment(index).2;
+        while let Some(anchor) = self.anchors.slice().get(index) {
+            let span = (anchor.seconds - seconds) / period;
+            if beats < span { break; }
+            beats -= span;
+            seconds = anchor.seconds;
+            index += 1;
+            period = self.segment(index).2;
+        }
+        seconds += beats * period;
+        (seconds.is_finite() && seconds.abs() <= POSITION_LIMIT).then_some(seconds)
+    }
+
+    /// Measure a musical span over local source intervals.
+    /// Takes increasing finite source positions; returns their beat distance without subtracting large absolute coordinates.
+    pub fn beats_between(&self, mut start: f64, end: f64) -> Option<f64> {
+        if !start.is_finite() || !end.is_finite() || start.abs() > POSITION_LIMIT || end.abs() > POSITION_LIMIT || end < start { return None; }
+        let mut index = self.anchors.slice().partition_point(|anchor| anchor.seconds <= start);
+        let mut period = self.segment(index).2;
+        let mut beats = 0.0;
+        while let Some(anchor) = self.anchors.slice().get(index).filter(|anchor| anchor.seconds < end) {
+            beats += (anchor.seconds - start) / period;
+            start = anchor.seconds;
+            index += 1;
+            period = self.segment(index).2;
+        }
+        Some(beats + (end - start) / period)
+    }
 
     /// Insert or replace a manual tempo anchor.
     /// Takes its beat and unchanged source time; returns a bounded continuous map or retains the caller's original on error.
@@ -161,7 +195,7 @@ impl Grid {
         let replacing = next.anchors.slice().get(index).is_some_and(|a| a.beat == beat);
         if !replacing {
             let count = next.anchors.count as usize;
-            if count == MAX_ANCHORS { return Err("Beatgrid exceeds 32 tempo anchors"); }
+            if count == MAX_ANCHORS { return Err("Beatgrid exceeds 64 tempo anchors"); }
             next.anchors.values.copy_within(index..count, index + 1);
             next.anchors.count += 1;
         }
@@ -339,31 +373,30 @@ impl super::DeckRt {
     /// Read the current mapped source tempo.
     /// Takes this deck; returns local BPM without changing analyzed metadata.
     pub(super) fn musical_bpm(&self) -> f32 {
-        self.grid.and_then(|grid| grid.bpm_at(self.pos / self.audio.as_ref().map_or(1.0, |audio| audio.sr as f64)))
+        self.grid.as_ref().and_then(|grid| grid.bpm_at(self.pos / self.audio.as_ref().map_or(1.0, |audio| audio.sr as f64)))
             .map_or_else(|| self.audio.as_ref().map_or(self.bpm, |audio| audio.bpm), |bpm| bpm as f32)
     }
     /// Advance one synced sample through mapped tempo boundaries.
-    /// Takes output sample rate; returns source-speed ratio for anchored grids or none for the existing unanchored smoothing path.
-    pub(super) fn mapped_sync_rate(&self, output_rate: f32) -> Option<f32> {
-        let grid = self.grid.filter(|grid| !grid.anchors().is_empty())?;
+    /// Takes output sample rate; returns exact source frames and the DSP speed ratio for anchored grids, or none for the existing unanchored smoothing path.
+    pub(super) fn mapped_sync_step(&self, output_rate: f32) -> Option<(f64, f32)> {
+        let grid = self.grid.as_ref().filter(|grid| !grid.anchors().is_empty())?;
         let audio = self.audio.as_ref()?;
         let seconds = self.pos / f64::from(audio.sr);
-        let beat = grid.beat_at(seconds)?;
-        let next = grid.seconds_at(beat + f64::from(self.sync_bpm) / (60.0 * f64::from(output_rate)))?;
+        let next = grid.advance(seconds, f64::from(self.sync_bpm) / (60.0 * f64::from(output_rate)))?;
         let rate = ((next - seconds) * f64::from(output_rate)) as f32;
-        (rate.is_finite() && rate > 0.0).then_some(rate)
+        (rate.is_finite() && rate > 0.0).then_some((next * f64::from(audio.sr), rate))
     }
     /// Wrap a synced loop in musical coordinates.
     /// Takes the advanced source-frame position; returns its beat-preserving loop remainder for an anchored map.
     pub(super) fn mapped_loop_wrap(&self, position: f64) -> Option<f64> {
-        let grid = self.grid.filter(|grid| !grid.anchors().is_empty())?;
+        let grid = self.grid.as_ref().filter(|grid| !grid.anchors().is_empty())?;
         let source_rate = f64::from(self.audio.as_ref()?.sr);
-        let start = grid.beat_at(self.loop_start / source_rate)?;
-        let end = grid.beat_at((self.loop_start + self.loop_len) / source_rate)?;
-        let span = end - start;
+        let start = self.loop_start / source_rate;
+        let end = (self.loop_start + self.loop_len) / source_rate;
+        let span = grid.beats_between(start, end)?;
         if !span.is_finite() || span <= 0.0 { return None; }
-        let beat = grid.beat_at(position / source_rate)?;
-        Some(grid.seconds_at(start + (beat - start).rem_euclid(span))? * source_rate)
+        let overshoot = grid.beats_between(end, position / source_rate)?;
+        Some(grid.advance(start, overshoot.rem_euclid(span))? * source_rate)
     }
     fn source_rate(&self, fallback: f32) -> f64 {
         self.audio.as_ref().map_or(fallback as f64, |audio| audio.sr as f64)
@@ -375,7 +408,7 @@ impl super::DeckRt {
     /// Convert source frames into musical coordinates.
     /// Takes frame position and unprepared-track fallback; returns the local beat position.
     pub(super) fn grid_beat_at(&self, position: f64, sr: f32, bpm: f32) -> f64 {
-        self.grid.and_then(|grid| grid.beat_at(position / self.source_rate(sr)))
+        self.grid.as_ref().and_then(|grid| grid.beat_at(position / self.source_rate(sr)))
             .unwrap_or_else(|| position / self.fallback_period(sr, bpm))
     }
     /// Read phase while retaining the unprepared-track arithmetic.
@@ -387,15 +420,24 @@ impl super::DeckRt {
     /// Convert musical coordinates into unchanged source frames.
     /// Takes beat position and unprepared-track fallback; returns the corresponding source frame.
     pub(super) fn grid_position_at(&self, beat: f64, sr: f32, bpm: f32) -> f64 {
-        self.grid.and_then(|grid| grid.seconds_at(beat)).map_or_else(
+        self.grid.as_ref().and_then(|grid| grid.seconds_at(beat)).map_or_else(
             || beat * self.fallback_period(sr, bpm), |seconds| seconds * self.source_rate(sr))
     }
     /// Measure a musical loop through every crossed tempo boundary.
     /// Takes starting source frame, beat length and unprepared-track fallback; returns its source-frame length.
     pub(super) fn grid_span(&self, position: f64, beats: f64, sr: f32, bpm: f32) -> f64 {
-        if self.grid.is_some() {
-            self.grid_position_at(self.grid_beat_at(position, sr, bpm) + beats, sr, bpm) - position
+        if let Some(grid) = &self.grid {
+            let rate = self.source_rate(sr);
+            grid.advance(position / rate, beats).map_or(0.0, |seconds| seconds * rate - position)
         } else { beats * self.fallback_period(sr, bpm) }
+    }
+    /// Measure loop frames in local beats.
+    /// Takes increasing source frames and fallback clock; returns their musical distance without large-coordinate subtraction.
+    pub(super) fn grid_beats_between(&self, start: f64, end: f64, sr: f32, bpm: f32) -> f64 {
+        if let Some(grid) = &self.grid {
+            let rate = self.source_rate(sr);
+            grid.beats_between(start / rate, end / rate).unwrap_or(0.0)
+        } else { (end - start) / self.fallback_period(sr, bpm) }
     }
     /// Snap to a mapped beat without moving the original audio.
     /// Takes source frame and unprepared-track fallback; returns a bounded prepared position or the legacy unprepared snap.

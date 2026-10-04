@@ -1,0 +1,189 @@
+{
+  "dataset": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip",
+  "etag": "\"99db7e2a087761a913b2abfb19e86181\"",
+  "archive_bytes": 5111599714,
+  "scope": "range-retrieved ZIP members; member CRC verified by Python zipfile; full archive SHA not measured",
+  "row": {
+    "drummer": "drummer3",
+    "session": "drummer3/session2",
+    "id": "drummer3/session2/35",
+    "style": "rock",
+    "bpm": "92",
+    "beat_type": "beat",
+    "time_signature": "4-4",
+    "midi_filename": "drummer3/session2/35_rock_92_beat_4-4.mid",
+    "audio_filename": "drummer3/session2/35_rock_92_beat_4-4.wav",
+    "duration": "10.188860",
+    "split": "test"
+  },
+  "members": [
+    {
+      "member": "groove/drummer3/session2/35_rock_92_beat_4-4.wav",
+      "crc32": "85984688",
+      "bytes": 1833138,
+      "sha256": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2"
+    },
+    {
+      "member": "groove/drummer3/session2/35_rock_92_beat_4-4.mid",
+      "crc32": "7d5db5d2",
+      "bytes": 625,
+      "sha256": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8"
+    }
+  ],
+  "ranges": [
+    [
+      5111599692,
+      22
+    ],
+    [
+      5111599672,
+      20
+    ],
+    [
+      5111599616,
+      56
+    ],
+    [
+      5111313275,
+      286341
+    ],
+    [
+      5111291821,
+      30
+    ],
+    [
+      5111291851,
+      15
+    ],
+    [
+      5111291894,
+      21381
+    ],
+    [
+      4987793602,
+      30
+    ],
+    [
+      4987793632,
+      48
+    ],
+    [
+      4987793708,
+      1491396
+    ],
+    [
+      4953856971,
+      30
+    ],
+    [
+      4953857001,
+      48
+    ],
+    [
+      4953857077,
+      449
+    ]
+  ],
+  "license": "CC-BY-4.0",
+  "source": "https://magenta.tensorflow.org/datasets/groove",
+  "creator": "Google LLC; Jon Gillick, Adam Roberts, Jesse Engel, Douglas Eck, David Bamman",
+  "changes": "Original audio and MIDI members unchanged. Added independent beat annotations from nearest kick/snare MIDI onsets around quarter beats 0 through 15.",
+  "selected_beats": [
+    {
+      "beat": 0.0,
+      "seconds": 0.0,
+      "pitch": 36,
+      "velocity": 63
+    },
+    {
+      "beat": 0.9854166666666667,
+      "seconds": 0.6426631291666666,
+      "pitch": 36,
+      "velocity": 66
+    },
+    {
+      "beat": 2.00625,
+      "seconds": 1.3084240875,
+      "pitch": 36,
+      "velocity": 127
+    },
+    {
+      "beat": 2.997916666666667,
+      "seconds": 1.9551633041666667,
+      "pitch": 36,
+      "velocity": 127
+    },
+    {
+      "beat": 3.9895833333333335,
+      "seconds": 2.601902520833333,
+      "pitch": 36,
+      "velocity": 99
+    },
+    {
+      "beat": 4.98125,
+      "seconds": 3.2486417374999994,
+      "pitch": 36,
+      "velocity": 101
+    },
+    {
+      "beat": 5.99375,
+      "seconds": 3.908967912499999,
+      "pitch": 36,
+      "velocity": 127
+    },
+    {
+      "beat": 6.98125,
+      "seconds": 4.552989737499999,
+      "pitch": 36,
+      "velocity": 122
+    },
+    {
+      "beat": 7.985416666666667,
+      "seconds": 5.207881129166665,
+      "pitch": 36,
+      "velocity": 112
+    },
+    {
+      "beat": 8.96875,
+      "seconds": 5.849185562499999,
+      "pitch": 36,
+      "velocity": 104
+    },
+    {
+      "beat": 9.954166666666667,
+      "seconds": 6.491848691666665,
+      "pitch": 36,
+      "velocity": 109
+    },
+    {
+      "beat": 10.9625,
+      "seconds": 7.149457474999998,
+      "pitch": 36,
+      "velocity": 127
+    },
+    {
+      "beat": 11.979166666666666,
+      "seconds": 7.812501041666664,
+      "pitch": 38,
+      "velocity": 127
+    },
+    {
+      "beat": 12.947916666666666,
+      "seconds": 8.444294604166664,
+      "pitch": 38,
+      "velocity": 127
+    },
+    {
+      "beat": 13.93125,
+      "seconds": 9.085599037499998,
+      "pitch": 36,
+      "velocity": 127
+    },
+    {
+      "beat": 14.95625,
+      "seconds": 9.754077387499999,
+      "pitch": 36,
+      "velocity": 77
+    }
+  ]
+}

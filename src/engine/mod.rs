@@ -605,6 +605,7 @@ pub struct RtEngine {
     pub selected_deck_request: u64,
     pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
+    command_batch: Box<control::CommandBatch>,
     pub snap: Arc<Mutex<Snapshot>>,
     publisher: snapshot::Publisher,
     pub midi_clock: MidiClockInput,
@@ -1071,6 +1072,7 @@ impl RtEngine {
             selected_deck_request: 0,
             cmd_rx,
             command_stats: control::CommandStats::default(),
+            command_batch: Box::new(control::CommandBatch::empty()),
             publisher: snapshot::Publisher::new(snap.clone()),
             snap,
             midi_clock: MidiClockInput::default(),
@@ -1350,11 +1352,13 @@ impl RtEngine {
             }
         }
         self.performance_tick();
-        let batch = control::CommandBatch::receive(&self.cmd_rx);
-        self.command_stats.record(&batch);
-        for command in batch.discarded.into_iter().flatten() {self.undo.retire_command(command); }
-        for command in batch.commands.into_iter().flatten() {
-            self.apply(command);
+        self.command_batch.receive_into(&self.cmd_rx);
+        self.command_stats.record(&self.command_batch);
+        for index in 0..control::COMMANDS_PER_BLOCK {
+            if let Some(command) = self.command_batch.discarded[index].take() { self.undo.retire_command(command); }
+        }
+        for index in 0..control::COMMANDS_PER_BLOCK {
+            if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
         self.routing_pipe.shared.explicit.store(self.routing.is_some(), std::sync::atomic::Ordering::Release);
@@ -1811,8 +1815,8 @@ impl RtEngine {
         let sr = self.sr as f64;
         {
             let d = &mut self.decks[di];
-            let mapped_sync = d.sync.then(|| d.mapped_sync_rate(self.sr)).flatten();
-            if let Some(rate) = mapped_sync { d.target_rate = rate; }
+            let mapped_sync = d.sync.then(|| d.mapped_sync_step(self.sr)).flatten();
+            if let Some((_,rate)) = mapped_sync { d.target_rate = rate; }
             else if d.sync {
                 if d.audio.is_some() {
                     let bpm = d.musical_bpm();
@@ -1841,7 +1845,8 @@ impl RtEngine {
             }
             let before_position = d.pos;
             if d.rendering() {
-                d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr);
+                if let Some((position,_)) = mapped_sync.filter(|_| !d.touching) { d.pos = position; }
+                else { d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr); }
             }
             let mut position = d.pos;
             let natural_wrap = d.loop_on && d.loop_len > 1.0 && d.loop_start >= 0.0
@@ -2653,8 +2658,7 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_len = if d.grid.is_some() {
-                        let beats = d.grid_beat_at(d.loop_start + d.loop_len, self.sr, self.bpm)
-                            - d.grid_beat_at(d.loop_start, self.sr, self.bpm);
+                        let beats = d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm);
                         d.grid_span(d.loop_start, beats * 2.0, self.sr, self.bpm)
                     } else { d.loop_len * 2.0 };
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
@@ -2664,8 +2668,7 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_len = if d.grid.is_some() {
-                        let beats = d.grid_beat_at(d.loop_start + d.loop_len, self.sr, self.bpm)
-                            - d.grid_beat_at(d.loop_start, self.sr, self.bpm);
+                        let beats = d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm);
                         d.grid_span(d.loop_start, beats * 0.5, self.sr, self.bpm)
                     } else { d.loop_len * 0.5 }.max(64.0);
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);

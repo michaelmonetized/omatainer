@@ -241,7 +241,7 @@ impl App {
                                     }
                                 });
                                 ui.separator();
-                                ui.label(tr!("Tempo anchors map beat numbers to unchanged source audio. Up to 32 anchors; each segment stays between 20 and 400 BPM."));
+                                ui.label(tr!("Tempo anchors map beat numbers to unchanged source audio. Up to 64 anchors; each segment stays between 20 and 400 BPM."));
                                 ui.label(tr!("Tempo anchor beat after beat 0"));
                                 let beat = ui.add(egui::TextEdit::singleline(&mut editor.anchor_beat).id_salt("grid-anchor-beat").char_limit(32).desired_width(140.0));
                                 beat.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, beat.enabled(), format!("{title}: Tempo anchor beat")));
@@ -268,7 +268,7 @@ impl App {
                                         }).inner;
                                         if removed { editor.transform(grid.without_anchor(index)); break; }
                                     }
-                                    if grid.anchors().len() == MAX_ANCHORS { ui.label(tr!("All 32 tempo anchors are in use. Replace an existing beat or delete an anchor before adding another.")); }
+                                    if grid.anchors().len() == MAX_ANCHORS { ui.label(tr!("All 64 tempo anchors are in use. Replace an existing beat or delete an anchor before adding another.")); }
                                 }
                             });
                             if let Some(error) = &editor.error { ui.colored_label(self.theme.red, crate::localization::format("{error}. Preview retains its last valid draft.", &[format!("{}", error)])); }

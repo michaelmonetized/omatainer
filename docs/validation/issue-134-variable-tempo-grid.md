@@ -1,6 +1,6 @@
 # Variable-tempo deck grids
 
-Deck Actions → Beatgrid editor maps musical beat numbers to unchanged source seconds. Up to 32 anchors can be inserted in any order, replaced at the same beat or deleted. Beat 0 remains the downbeat. Every segment must increase strictly in time and stay within 20–400 BPM; invalid input retains the previous draft and disables Apply. Exact boundaries use the following segment; pickups extrapolate the first and the tail continues the last.
+Deck Actions → Beatgrid editor maps musical beat numbers to unchanged source seconds. Up to 64 anchors can be inserted in any order, replaced at the same beat or deleted. Beat 0 remains the downbeat. Every segment must increase strictly in time and stay within 20–400 BPM; invalid input retains the previous draft and disables Apply. Exact boundaries use the following segment; pickups extrapolate the first and the tail continues the last.
 
 Slip moves all anchors. Stretch scales all segments around beat 0. Half/double tempo checks every segment. Preview and Cancel do not edit playback. Apply is receipt-qualified, acknowledged by the renderer and adds one undo entry. Replaced-media receipts and delayed Delete widget identities cannot retarget another edit.
 
@@ -18,6 +18,8 @@ The recorded test material is the unmodified Google LLC [Groove MIDI Dataset 1.0
 
 ## Qualification status
 
-Frozen source `28d82d7` passes the source-bound combined suite (1,580 tests), recorded human-drum native workflow, eight-workload optimized gate and three maximum-anchor render CPU measurements. [Combined receipt and observed limits](remaining-backlog-qualification.md) retain the 128-frame callback wall overrun and missing native ALSA input frames. Rendering CPU headroom is not a physical or scheduling-deadline claim. Ignored or earlier-source checks are not counted as current passes.
+The consolidated branch now retains 64-anchor capacity, local interval arithmetic and reusable callback/history storage. Its fresh combined qualification remains pending.
+
+Earlier frozen 32-anchor source `28d82d7` passes the source-bound combined suite (1,580 tests), recorded human-drum native workflow, eight-workload optimized gate and three maximum-anchor render CPU measurements. [Combined receipt and observed limits](remaining-backlog-qualification.md) retain the 128-frame callback wall overrun and missing native ALSA input frames. Rendering CPU headroom is not a physical or scheduling-deadline claim. Ignored or earlier-source checks are not counted as current passes.
 
 These software fixtures do not establish human listening quality, physical hardware compatibility, display/converter latency, system suspend or USB unplug recovery.

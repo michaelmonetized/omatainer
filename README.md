@@ -378,7 +378,7 @@ fresh preparation, with old fingerprint versions preserved in the catalog. A
 new path receives a new identity unless the crate’s **relocate…** action
 verifies identical file bytes and deliberately preserves the existing track ID.
 Keep the original file available until its move-verification digest is saved.
-**Deck grid…** edits a manual downbeat and up to 32 ordered tempo anchors independently of analyzed
+**Deck grid…** edits a manual downbeat and up to 64 ordered tempo anchors independently of analyzed
 BPM. Map each anchor's beat number to its source time; insert, replace or delete
 anchors while previewing. Each segment must stay between 20 and 400 BPM.
 Preview Set at playhead, slip, stretch, half/double tempo and Reset before

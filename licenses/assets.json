@@ -310,6 +310,22 @@
         {
           "location": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip#groove/drummer3/session2/11_rock_100_beat_4-4.mid",
           "sha256": "26906e263271dfecdc0674f665a606d524badbc9ec384cd177e9fffe5e3e6c50"
+        },
+        {
+          "location": "https://magenta.tensorflow.org/datasets/groove",
+          "sha256": null
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+          "sha256": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid",
+          "sha256": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/additional-sources.json",
+          "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
         }
       ],
       "notice_files": [
@@ -318,7 +334,9 @@
       ],
       "members": [
         "11_rock_100_beat_4-4.wav",
-        "11_rock_100_beat_4-4.mid"
+        "11_rock_100_beat_4-4.mid",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid"
       ]
     }
   ],

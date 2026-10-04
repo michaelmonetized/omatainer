@@ -1032,19 +1032,27 @@ pub struct CommandBatch {
 }
 
 impl CommandBatch {
+    /// Prepare reusable command storage before audio starts.
+    /// Takes no inputs; returns an empty bounded batch whose storage can stay off the callback stack.
+    pub fn empty() -> Self {
+        Self { discarded: std::array::from_fn(|_| None), commands: std::array::from_fn(|_| None), received: 0, applied: 0, backlog: 0, queue_depth: 0 }
+    }
+    #[cfg(test)]
     pub fn receive(rx: &CommandReceiver) -> Self {
         Self::receive_with(rx, || {})
     }
-
+    #[cfg(test)]
     fn receive_with(rx: &CommandReceiver, mut after_pop: impl FnMut()) -> Self {
-        let mut batch = Self {
-            discarded: std::array::from_fn(|_| None),
-            commands: std::array::from_fn(|_| None),
-            received: 0,
-            applied: 0,
-            backlog: 0,
-            queue_depth: rx.len(),
-        };
+        let mut batch = Self::empty();
+        batch.fill(rx, &mut after_pop);
+        batch
+    }
+    /// Receive the next bounded batch into retained storage.
+    /// Takes the renderer's receiver; replaces counters and fills only slots drained by the preceding block.
+    pub fn receive_into(&mut self, rx: &CommandReceiver) { self.fill(rx, || {}); }
+    fn fill(&mut self, rx: &CommandReceiver, mut after_pop: impl FnMut()) {
+        debug_assert!(self.commands.iter().chain(&self.discarded).all(Option::is_none));
+        self.received = 0; self.applied = 0; self.backlog = 0; self.queue_depth = rx.len();
         let mut payload_bytes = 0usize;
         for _ in 0..COMMANDS_PER_BLOCK {
             let Ok(command) = rx.receiver.try_recv() else {
@@ -1052,27 +1060,26 @@ impl CommandBatch {
             };
             payload_bytes = payload_bytes.saturating_add(owned_payload_bytes(&command));
             after_pop();
-            batch.received += 1;
+            self.received += 1;
             // Do not reorder even apparently independent assignments: later
             // controls may acquire coupled semantics. Events are always barriers.
-            let duplicate = batch.applied > 0
-                && batch.commands[batch.applied - 1]
+            let duplicate = self.applied > 0
+                && self.commands[self.applied - 1]
                     .as_ref()
                     .is_some_and(|previous| same_parameter(previous, &command));
             if !duplicate {
-                batch.applied += 1;
+                self.applied += 1;
             }
-            let old = batch.commands[batch.applied - 1].replace(command);
+            let old = self.commands[self.applied - 1].replace(command);
             if duplicate {
-                batch.discarded[batch.received - 1] = old;
+                self.discarded[self.received - 1] = old;
             }
         }
         // Releasing credit after each pop would let producers refill a full
         // 256 MiB between every pop, retaining 32 queues' worth in this batch.
         // Holding credits through receipt caps the entire batch at one queue.
         rx.release_payload(payload_bytes);
-        batch.backlog = rx.len();
-        batch
+        self.backlog = rx.len();
     }
 }
 

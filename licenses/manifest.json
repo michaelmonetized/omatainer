@@ -3638,13 +3638,15 @@
       "license": "CC-BY-4.0",
       "members": [
         "11_rock_100_beat_4-4.wav",
-        "11_rock_100_beat_4-4.mid"
+        "11_rock_100_beat_4-4.mid",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid"
       ],
       "name": "Groove MIDI Dataset 1.0.0: human electronic drum qualification fixture",
       "notices": [
         {
           "location": "tests/fixtures/beatgrid/README.md",
-          "sha256": "9709c52ee8b59ef76861c51a3c4dbc377c17acea263db3001f0c60f4646c8b80"
+          "sha256": "aae4aef775d0f9deffebc03009afd8f126c4de8500c0c925184152baf7ecdfcb"
         },
         {
           "location": "tests/fixtures/beatgrid/CC-BY-4.0.txt",
@@ -3660,6 +3662,22 @@
         {
           "location": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip#groove/drummer3/session2/11_rock_100_beat_4-4.mid",
           "sha256": "26906e263271dfecdc0674f665a606d524badbc9ec384cd177e9fffe5e3e6c50"
+        },
+        {
+          "location": "https://magenta.tensorflow.org/datasets/groove",
+          "sha256": null
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+          "sha256": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid",
+          "sha256": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8"
+        },
+        {
+          "location": "tests/fixtures/beatgrid/additional-sources.json",
+          "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
         }
       ]
     },
@@ -12427,21 +12445,21 @@
     "Cargo.lock": "500de073386cdbdf205211d67a757b4302c48801d3a5a5fba7791c40a6f58438",
     "Cargo.toml": "be10a2f32185b5ab0e026e4f53b2987aba05ee0fe4eca507f837f255013cd4d2",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "3b6e9205b6a9a5085bf2785a43f02ed83c8d6bb8288c670e7bd8b3404ac8913b",
+    "README.md": "509391bb80460b569eb30abfbdd60069dff999a4c0e6b02e30a649106da304d5",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/backlog/capability-status.json": "e4b7723fad57e69015d8e69ba5f43ae821dcbc2d3c7229ef252e22edf6c5416f",
+    "docs/backlog/capability-status.json": "065309160de13aebe4c364a8a87025ce96efc9aa3f0ecbf3b47faaf4b6a8d1eb",
     "docs/backlog/previous-stack.json": "5e4e5ad9453e6f0ab813928e098101723f042aa739aa3f1c287eacedf6a4984d",
     "docs/backlog/release-scope.json": "5f7eb0b9875f42134a0113d1a8abf475610a516b8a83945399497b3f77078073",
     "docs/backlog/remaining-issues.json": "c852d3265ea2526be976a469ac3cd49aeb0e98626117cf42ea210b8432c99fd9",
-    "docs/capability-matrix.md": "04198c8a871a5fbfdd0d10f2429f0eb571b0363a5b800cff02e5c542a2babcaf",
-    "docs/manual.md": "e09141ca8d510b7aa0816d81fbdd180ee17d429b5ea498fe1921db93846a3c3a",
-    "licenses/assets.json": "a833a389ce789ff252cc7a28bf2e6ffa47ecfc9c3548d2af8b1df939e2774f3c",
+    "docs/capability-matrix.md": "8f0dc445ac2c05ea1c59025914b9ac77e499abca7897f48f5d0cc33dfe66ca33",
+    "docs/manual.md": "77c92d5584831b63b2820cca844b08fca557bac5a4248ecefec70ac25edce352",
+    "licenses/assets.json": "a2891bdb3276c15d3ed84b4e1b8a19b24b38c6e3f125b97399a6a7a2fdd04229",
     "locales/de.json": "5ca01c7d8e9d62191d5a668f636915945258813b5c64014000ba860ec37cd502",
-    "locales/en.json": "1c24ae07475e2b087664b230971e49e627093063ed53a74176d6f15274b9d858",
+    "locales/en.json": "e8e2d79f6a59bc7993fda5def1c0ab95bcb1eb099a2825c4f6622dc3f75514c1",
     "locales/es.json": "bff584a8370023761665563a3384780de2e5a1cdd384cf591a2602abac85402d",
     "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
     "plugin/Service.qml": "4bfc2782b991a4b015b19d38224496d1d5418f23e1df157b5c7c3932da72f223",
@@ -12466,7 +12484,7 @@
     "scripts/check-theme-colors.py": "5b48eb49b4b87145754f52d3f658acb881dfe14ea02a4433d4a621c689aab09f",
     "scripts/check_analysis_accessibility.py": "41dfe52abccf589b7778a74151f31815beaa58fe8672221d5bcfbdff4dfa3c65",
     "scripts/check_crates_accessibility.py": "606acf7066f07db1d3c08e6dc89e237869793a02d35d8d621f990856a3b8bdf2",
-    "scripts/check_grid_accessibility.py": "5b54fddc2014b4be726627e8bd26df647309a6b25188faf54bd2e602d9687fb6",
+    "scripts/check_grid_accessibility.py": "429f2addd4e539de9e341eeeb27bf9a1f6d72bac7db583c10e93e27cd62a34eb",
     "scripts/check_history_accessibility.py": "ee88046d230b24161179458bf1fa4068f9e187bc1e742d35067948a9a6c55538",
     "scripts/check_sampler_accessibility.py": "562b6121633f6716a8150ae3b63f6816116ff0ac0a4d11b09ec3f187a69e6325",
     "scripts/hardware-probe.py": "66f873cb46342040e397b4e9f597a9a444a35ecfed695164eb4e2e854e96eba3",
@@ -12515,12 +12533,12 @@
     "src/engine/audio_metrics.rs": "a0adccfe3b4140282d548ec8f992818871a4e10dec6aad8e3a45b62b5e11722d",
     "src/engine/audio_metrics_tests.rs": "03dce060750befb77648cc1609889ec11767762639de642e3407e477bc6aa841",
     "src/engine/audio_tests.rs": "4a0fc4a8522bef2eaa56c6f1080074d6cca3c159fc5ff768ccf52c7415381130",
-    "src/engine/beatgrid.rs": "26f00498da6963f57e547310046f43e4695895d879a3fc55d0326d7bb4e074e6",
-    "src/engine/beatgrid/variable_tests.rs": "478f5b96d648c4e434b22995385de4c9a015170df79d9c1c62156617363cd573",
+    "src/engine/beatgrid.rs": "cf9cf1457328499dbd43cd922bea04a159d61d78ea18b358a24f66955410fe67",
+    "src/engine/beatgrid/variable_tests.rs": "805fc122e408c69c9e874c183d5abcef8cfcb06142ad7fdd56e65dbf5c625e50",
     "src/engine/clip_gain_tests.rs": "7086ab57c71e5c7510631273cfe2ad8e58c2f9178e01a4e67bfa6c90308d02ce",
     "src/engine/clip_lifecycle_tests.rs": "08419b12714fb253405920b892cdc28a54697ccead077a1e32ed3c8f97123951",
     "src/engine/compose_tests.rs": "d314e9fce6934fce05c712b09a0ee44dea324334519adddafc869924fd85a1cc",
-    "src/engine/control.rs": "167262d183f284609bddd93740b5a589760370c4216b4464d399ee93d31c044e",
+    "src/engine/control.rs": "ce749a4124cb72ff23ea79a621c341fa91295dc8998664f287d631eeb23eb2b5",
     "src/engine/control/admission_tests.rs": "1705bccbdf853844d2e876d48802c75950819ba70c48f02d96f8fcad277e1d4a",
     "src/engine/control/payload_tests.rs": "3fa3ad8db8c02c417b3f4ec6551db42f3d303a4ec72c0e78f4fee0eecb19460c",
     "src/engine/control/project_gate_tests.rs": "850691c60345a42b7580c859ef98213bb65ed2d305e9e05b304a56bc582f04bf",
@@ -12623,7 +12641,7 @@
     "src/engine/midi_schedule_tests.rs": "665b77f63dddb92e122798699508c5b0b1348be58c856e18e5dafc38726a260b",
     "src/engine/mixer_gain.rs": "f0b86e2d234a83410a7a54204b254deb2e6ccdbd173bbfd3b7c9e5124a968a65",
     "src/engine/mixer_gain_tests.rs": "ab282c03872fb39a50c3f8cb457f987b505a856b8bef2a48242f8e2d1f1731d3",
-    "src/engine/mod.rs": "49dcb71012104cca5b1813f743a6de93e2eb1cf855d3f2b0f39e9e37ad61851d",
+    "src/engine/mod.rs": "113439ff5115963bfee093aece1510ec20053ab0085a2ebb33d203addb936e76",
     "src/engine/mute_lifecycle_tests.rs": "e0186faea31396b9fd8f2d4f891f8d7f28d6229e60682f42bacd0b9b397b8fd1",
     "src/engine/pad_routing_tests.rs": "7be4fb7cbf68dd0fb82b24108537bc3337afdee32aa91fcaa0899c408d2bf5fa",
     "src/engine/performance.rs": "948d4cb825408405f4cbc5fd76b3b7b8bea1c76709ab05dda472dccc3d345d0b",
@@ -12674,10 +12692,10 @@
     "src/engine/ui_requests.rs": "cc5a73817c8649802d9ab228422ed69bc738e469a4a60cf9ba39650c80a15fbf",
     "src/engine/undo/capture.rs": "a6fadf2334f030ec7835a40ebd61068f66042c99603077892be49984fbb72b61",
     "src/engine/undo/midi_import.rs": "7ca1eaba34c40dae9ff8d15b21584a29d2c3c0b4a48d5c3925149395398e49d4",
-    "src/engine/undo/mod.rs": "d8d60d307ce1e95379e12a6cd0c6ec6721e07172b45d6242cb872900e37b74f3",
+    "src/engine/undo/mod.rs": "4aee236b87bb34e6b775ea141d049502db0082b2add0cf6889644b51247cf4c2",
     "src/engine/undo/patch.rs": "51686642465b413dbbcd45bb19a47517f8a801d92a721737e7a4e84e61f0cbb8",
     "src/engine/undo/recording.rs": "906a437382e17103b7c4a685d849e755e05cc10f0d6668612fae3b4a17746cc7",
-    "src/engine/undo/tests.rs": "a8348ba9531ebe3f9a267d3732c4cc7934dc9af15f9a406329e3ea5d03c5f9c0",
+    "src/engine/undo/tests.rs": "37d2ccf6162a1f897a18cca38e81242dbb75f862cec48ac5b1bca31a009bb93b",
     "src/engine/video_transport.rs": "b3a09659055dbbc17200f0c6d21d4e6396e31c6da042ed284a91dfd805168150",
     "src/engine/voice_pitch_tests.rs": "0842859db49b0302059622d156153f929f96bd542a7933d90d8929e465d01d4d",
     "src/instance.rs": "23f44d05040770939d3bdcd09b4feeb3c3afc038b5160b9a16741a11e208b7d4",
@@ -12806,7 +12824,7 @@
     "src/ui.rs": "7f03eaf181d9b8dc335932c7773602f64542ac4f8c7faa4ccda746d08804ade5",
     "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
     "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
-    "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
+    "src/ui/atspi_tests.rs": "899e33847a645d3d0fa9753d8c539a08e4ab7499bc8b95e6d76530041567a826",
     "src/ui/audio_routing.rs": "5bfbc4fb66515ae3bd41ca2e4ca032ade193128e7f5ffbfb95b9955eef79eb0a",
     "src/ui/audio_routing/tests.rs": "ad436c5cbf7da41fbec70a2d23825d7b99be655fd32dcab782ad0defb3e3f1ba",
     "src/ui/audio_routing/worker.rs": "ba2b971d1efcf8bb6894b8cf4ae96d684cf404ae5ef6aa130a9d0ae8e1b7b889",
@@ -12842,10 +12860,10 @@
     "src/ui/font_selection_tests.rs": "753857b3540200dde60f65094805882f650db3de1f20ee4a621236b03d02cce9",
     "src/ui/fx_controls.rs": "399500a6f7218e514534c4d132a2f4001cc84332a5d55689811222db2ba479e7",
     "src/ui/fx_controls/tests.rs": "703e25715d2cc8c7e456a3e56480db802e880440cd7fdda25936d080cb38d1e8",
-    "src/ui/grid_editor.rs": "6a6d9c817670602ff5fd89b2bc44805c3753df01d95e708b53f6ab1baeef83a6",
+    "src/ui/grid_editor.rs": "f1dba9feae417eddcd55cf4d6e394385f0d24753ea1e7507067e25f5ba427fb8",
     "src/ui/grid_editor/tests.rs": "948c7e51ffb383b6c2c95724866668817a36d05caefe318d47797eb9ffdc21a3",
     "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
-    "src/ui/help/catalogue.rs": "d1d80fedcdaf1db3d6d4f56a84b6a8c6774f790e0e8d1ddcb7ef09cd80682e8e",
+    "src/ui/help/catalogue.rs": "9b0c5fe4a96640ee5b0a90385f4dadb10fb62cfe94aa8b32a392b01f1e52aef3",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
     "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
     "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",
@@ -12995,8 +13013,11 @@
     "tests/fixtures/audio/tone.ogg": "ebc85aa6cfc74d049a03ecac2215063a50d2ab02b931abb8e0a15285e0ab2378",
     "tests/fixtures/beatgrid/11_rock_100_beat_4-4.mid": "26906e263271dfecdc0674f665a606d524badbc9ec384cd177e9fffe5e3e6c50",
     "tests/fixtures/beatgrid/11_rock_100_beat_4-4.wav": "6e4f313f3dee5482bdc328fbd54893cc3a0f7fe9e960045b837b123e0a17dd4a",
+    "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8",
+    "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2",
     "tests/fixtures/beatgrid/CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
-    "tests/fixtures/beatgrid/README.md": "9709c52ee8b59ef76861c51a3c4dbc377c17acea263db3001f0c60f4646c8b80",
+    "tests/fixtures/beatgrid/README.md": "aae4aef775d0f9deffebc03009afd8f126c4de8500c0c925184152baf7ecdfcb",
+    "tests/fixtures/beatgrid/additional-sources.json": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66",
     "tests/fixtures/beatgrid/sources.json": "04df228b01a61d1b208da34e1631a2b84f6e828d2823dee71fb0a8489baa0124",
     "tests/fixtures/keylock/README.md": "2a07072b3b1333b8ca185222f8a76afbb1412c28c4e92babaa80cab87c0e6f89",
     "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
