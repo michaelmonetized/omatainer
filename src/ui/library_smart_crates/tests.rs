@@ -71,7 +71,7 @@ fn actual_native_preview_save_refresh_and_remove_round_trip_the_catalog() {
         saved.crates.node(&id).unwrap().smart_rule,
         Some(gui.app.smart_crates.rule.clone())
     );
-    assert_eq!(saved.schema, 13);
+    assert_eq!(saved.schema, crate::library::SCHEMA);
     gui.click("Refresh smart membership");
     gui.finish();
     assert_eq!(gui.app.library_view.indices.len(), 1);

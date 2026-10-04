@@ -68,12 +68,12 @@ impl Drop for Files {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,
     rendered: u64,
-    reference: Option<(Engine, RtEngine)>,
+    reference: Option<(Engine, Box<RtEngine>)>,
 }
 impl Gui {
     fn new(files: &Files) -> Self {
@@ -86,7 +86,7 @@ impl Gui {
         ctx.enable_accesskit();
         let mut gui = Self {
             app,
-            rt,
+            rt: Box::new(rt),
             ctx,
             nodes: Vec::new(),
             time: 0.0,
@@ -138,7 +138,7 @@ impl Gui {
     fn compare_playing_decks(&mut self) {
         let (engine, mut reference) = Engine::headless_for_test(48_000, 256);
         reference.decks = self.rt.decks.clone();
-        self.reference = Some((engine, reference));
+        self.reference = Some((engine, Box::new(reference)));
     }
     fn wait(&mut self, mut ready: impl FnMut(&Self) -> bool) {
         let deadline = Instant::now() + Duration::from_secs(15);
