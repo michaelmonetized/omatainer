@@ -149,6 +149,7 @@ impl App {
         if !self.library_layout.open {
             return;
         }
+        keyboard::block_for_dialog(ctx);
         let can_save = !self.settings.busy()
             && !self.settings.blocked
             && self.settings.draft == self.settings.applied

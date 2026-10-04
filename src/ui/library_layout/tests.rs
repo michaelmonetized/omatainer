@@ -252,3 +252,28 @@ fn actual_virtualized_cells_clip_long_text_to_their_resized_columns() {
         .all(|shape| shape.clip_rect.width() <= width + 0.01));
     assert!(cells[0].clip_rect.intersect(cells[1].clip_rect).width() <= 0.01);
 }
+
+#[test]
+fn layout_dialog_owns_keyboard_on_its_first_frame() {
+    let mut f = Fixture::new(256);
+    let ctx = egui::Context::default();
+    f.app.library_layout.open = true;
+    let _ = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1800.0, 1600.0))),
+            focused: true,
+            events: vec![egui::Event::Key {
+                key: Key::Space,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Default::default(),
+            }],
+            ..Default::default()
+        },
+        |ctx| f.app.update_frame(ctx),
+    );
+    f.rt.process(&mut [0.0; 256]);
+    assert!(keyboard::dialogs_block_input(&ctx));
+    assert!(!f.rt.playing);
+}

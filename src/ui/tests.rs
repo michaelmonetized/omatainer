@@ -335,7 +335,9 @@ fn crate_buttons_and_double_click_emit_builtin_commands_on_the_selected_deck() {
             time += 1.0;
             let output = crate_frame(&ctx, &mut fixture.app, time, Vec::new());
             let row = label_center(&output, title);
+            let offset = fixture.app.library_view.horizontal_offset;
             click(&ctx, &mut fixture.app, row, time + 0.1);
+            assert_eq!(fixture.app.library_view.horizontal_offset, offset, "Selecting a row must preserve the visible columns");
             assert!(
                 fixture.rt.cmd_rx.is_empty(),
                 "single row click must only select"

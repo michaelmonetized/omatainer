@@ -224,6 +224,7 @@ impl App {
     pub(super) fn workspace_ui(&mut self, ctx: &egui::Context) {
         let layout = self.workspace_layout(ctx);
         self.workspace.blocked = keyboard::dialogs_block_input(ctx)
+            || self.library_layout.open
             || self.settings.open
             || self.audio_settings.open
             || self.command_palette.open;

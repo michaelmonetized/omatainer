@@ -1399,7 +1399,7 @@ impl App {
             let performance=self.engine.cmd.performance().clone();
             let artwork_allowed=!self.engine.safe_mode();
             #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
-            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").animated(!t.reduced_motion).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
+            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").scroll_source(egui::scroll_area::ScrollSource { drag: ui.input(|input| input.any_touches()), ..Default::default() }).animated(!t.reduced_motion).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
             if let Some(offset) = self.library_view.pending_offset.take() {
                 scroll = scroll.vertical_scroll_offset(offset);
             }
@@ -1429,7 +1429,7 @@ impl App {
                     #[cfg(test)] { self.library_view.stats.rendered += 1; }
                     let sel = i == self.lib_sel;
                     let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(columns.iter().map(|(_,width)|width).sum::<f32>()+artwork_width), row_height), Sense::hover());
-                    let resp = ui.interact(rect, ui.id().with(("crate-source-row", &item.source)), Sense::click());
+                    let resp = ui.interact(rect.intersect(ui.clip_rect()), ui.id().with(("crate-source-row", &item.source)), Sense::click());
                     if sel { ui.painter().rect_filled(rect, 2.0, t.tint(t.accent, 0.18)); }
                     if sel { active_mark(ui.painter(), rect, t.fg); }
                     let mut x = rect.left();
@@ -1451,6 +1451,7 @@ impl App {
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
                     accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
+                    if resp.gained_focus() { resp.scroll_to_me_animation(None, egui::style::ScrollAnimation::none()); }
                     let preparation = self.library_metadata.catalog.track(&item.source).map_or_else(String::new, |track| format!("{}; {}",track.annotations.description(),track.locks.description()));
                     let media = self.library_health.observation(item).map_or_else(|| "Media not validated for this source version".into(), |observation| observation.description());
                     accessibility::status(ui, &resp, &format!("{preparation}; {media}; {artwork_status}"));
