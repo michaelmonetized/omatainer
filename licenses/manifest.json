@@ -12857,7 +12857,7 @@
     "src/ui/diagnostics.rs": "38a213bf60e44c16e3ea1b4ed0b99abcd7e47ef3c77c868307cf2d4b35ec18a8",
     "src/ui/diagnostics/capture.rs": "2a80471f3a58c9c1dd5d2bd27fd5d40edd8df0f43bb0e88809409dd2b41d5e3d",
     "src/ui/diagnostics/tests.rs": "314e95ae40ac6ba4d288ebd143d9c3c30a96b60e22d5e0b6cb761aa82901ab2b",
-    "src/ui/display_tests.rs": "9b2609fd961ed49a5118a70d97fe1671f611d7b070c8e7fa0ee7e5e11314c786",
+    "src/ui/display_tests.rs": "977965bf16c1c9c02c301bfd27306158777c60354bc84937146f92c38c4f1a7f",
     "src/ui/duration_tests.rs": "4e4e1ae5d4ee703850aec018cebf6dedb0b451f816a099c383c6d8666cac6ffe",
     "src/ui/font_selection_tests.rs": "753857b3540200dde60f65094805882f650db3de1f20ee4a621236b03d02cce9",
     "src/ui/fx_controls.rs": "399500a6f7218e514534c4d132a2f4001cc84332a5d55689811222db2ba479e7",

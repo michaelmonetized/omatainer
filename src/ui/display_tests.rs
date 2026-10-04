@@ -101,7 +101,7 @@ fn waveform_level_contrast_and_motion_change_paint_without_signal_geometry() {
     let snap = crate::engine::DeckSnap {
         frames: 48000.0 * 7.0,
         duration: 7.0,
-        pos: 48000.0 * 3.5,
+        pos: 48000.0 * 1.75,
         playing: true,
         meter: 0.4,
         peaks: Arc::new(vec![[0.2, 0.4, 0.6]; 1024]),
