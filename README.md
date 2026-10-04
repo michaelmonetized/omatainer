@@ -80,13 +80,13 @@ Audio device, sample format, rate, channel count and buffer size are saved separ
 from the running output. Device loss retains the project and stops playback;
 explicit recovery preserves the accepted route where physical identity is known.
 See [Recovering lost audio](docs/audio-recovery.md) for reconnect, fallback and
-pending physical qualification. Open **Audio devices and latency**, select **Preview saved
+pending physical qualification. **Audio routing** adds stable channel aliases, independent track/deck/bus taps, confirmed input activation and worker-written WAV record sources. See [audio routing](docs/audio-routing.md) for supported widths and verification limits. Open **Audio devices and latency**, select **Preview saved
 audio**, then **Use saved audio now** and **Stop and change output** to apply without
 restarting. This stops performance and tries to restore the prior output on failure;
 it never resumes playback automatically. If both devices fail, the stopped session
 still supports Save, New/Open and Close while you recover an output. An unavailable
 startup setup offers **Use system default audio this time** without changing the
-saved profile. Main left/right use outputs 1/2; mono sums both channels and extra
+saved profile. Projects without explicit routing send main left/right to outputs 1/2; mono sums both channels and extra
 channels are silent. There is no separate headphone cue bus yet.
 
 The audio window lists advertised input/output capabilities and distinguishes the

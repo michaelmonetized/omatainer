@@ -606,7 +606,13 @@ pub struct RtEngine {
     metronome: bool,
     metro: metronome::Click,
     count_in: Option<metronome::CountIn>,
-    scratch: Vec<f32>,
+    pub(crate) routing: Option<Box<audio::routing::prepared::Prepared>>,
+    routing_track_input: Option<[f32; 2]>,
+    routing_track_taps: [[f32; 2]; 3],
+    routing_deck_taps: [[f32; 2]; 2],
+    pub(crate) routing_input_frame: [f32; audio::routing::model::MAX_PHYSICAL_CHANNELS],
+    pub(crate) routing_pipe: audio::routing::input::Pipe,
+    routing_probe: audio::routing::probe::Probe,
     pub quantize: bool,
     pub sampler_bank: usize,
     pub sampler_inst: SamplerInstrument,
@@ -1043,7 +1049,13 @@ impl RtEngine {
             metronome: false,
             metro: metronome::Click::new(sr),
             count_in: None,
-            scratch: Vec::new(),
+            routing: None,
+            routing_track_input: None,
+            routing_track_taps: [[0.0; 2]; 3],
+            routing_deck_taps: [[0.0; 2]; 2],
+            routing_input_frame: [0.0; audio::routing::model::MAX_PHYSICAL_CHANNELS],
+            routing_pipe: audio::routing::input::Pipe::default(),
+            routing_probe: audio::routing::probe::Probe::default(),
             quantize: true,
             sampler_bank: 0,
             sampler_inst: SamplerInstrument::Samples,
@@ -1291,6 +1303,10 @@ impl RtEngine {
     }
 
     pub fn process(&mut self, out: &mut [f32]) {
+        self.process_channels(out, 2);
+    }
+
+    fn process_channels(&mut self, out: &mut [f32], channels: usize) {
         self.performance_tick();
         let batch = control::CommandBatch::receive(&self.cmd_rx);
         self.command_stats.record(&batch);
@@ -1299,11 +1315,16 @@ impl RtEngine {
             self.apply(command);
         }
         self.project_tick();
+        self.routing_pipe.shared.explicit.store(self.routing.is_some(), std::sync::atomic::Ordering::Release);
         self.prepare_midi_output_block();
         self.sync_midi_clock();
         self.remote_maintain();
         self.maintain_provider_preview();
-        if let Some(history) = &mut self.history_measurement { history.service_requests([self.decks[0].history_key, self.decks[1].history_key]); }
+        self.routing_pipe.recorder.preview(self.provider_preview.is_some());
+        if let Some(history) = &mut self.history_measurement {
+            history.routing_compatibility(self.routing.is_none());
+            history.service_requests([self.decks[0].history_key, self.decks[1].history_key]);
+        }
         self.performance.publish_decks(self.deck_activity());
         self.performance.try_recover(|| self.cmd_rx.is_empty() && !self.cmd_rx.pending_project_ui_requests());
         self.undo.publish();
@@ -1313,7 +1334,7 @@ impl RtEngine {
         let cpu_start = audio_metrics::thread_cpu_ns();
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[1]);
-        let frames = out.len() / 2;
+        let frames = out.len() / channels;
         if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
@@ -1326,6 +1347,7 @@ impl RtEngine {
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
+            self.routing_input_frame = self.routing_pipe.frame(self.sr as u32);
             self.remote_tick();
             if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
             let counting_in = self.count_in.is_some();
@@ -1379,6 +1401,18 @@ impl RtEngine {
             let timer = self.load_profile.start();
             self.pad_output = self.tick_pad_sources();
             self.load_profile.pads(timer);
+            if let Some(mut routing) = self.routing.take() {
+                let click = self.render_click(counting_in, count_click, beat_start);
+                let frame = routing.render(self, any_solo, click, channels);
+                let output = &mut out[i * channels..(i + 1) * channels];
+                output.fill(0.0);
+                let count = channels.min(audio::routing::model::MAX_PHYSICAL_CHANNELS);
+                output[..count].copy_from_slice(&frame[..count]);
+                self.render_output_probe(output);
+                self.routing = Some(routing);
+                if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
+                continue;
+            }
             let mut scene_inputs = [[0.0_f32; 2]; session::MAX_SCENES];
             for ti in 0..self.tracks.len() {
                 if !self.session.tracks.get(ti).is_some_and(|item| item.active) { continue; }
@@ -1431,15 +1465,7 @@ impl RtEngine {
                 cue_r += br;
             }
 
-            let click = if let Some(conductor) = self.conductor.as_ref().filter(|_| counting_in || self.metronome && self.playing) {
-                let settings = conductor.native.unwrap_or_default();
-                let event = if counting_in { count_click } else { conductor.click_between(beat_start, self.beat) };
-                #[cfg(test)]
-                if let (Some(trace), Some(accent)) = (&mut self.metro.trace, event) { trace.push((self.current_sample_frame, accent)); }
-                self.metro.tick_with_gains(true, event, settings.accent_gain, settings.beat_gain)
-            } else {
-                self.metro.tick(self.metronome && self.playing, beat_start, self.beat)
-            };
+            let click = self.render_click(counting_in, count_click, beat_start);
             l += click;
             r += click;
 
@@ -1467,8 +1493,10 @@ impl RtEngine {
             l = limiter(l * self.master);
             r = limiter(r * self.master);
             let [l, r] = self.safety_output.output([l, r]);
-            out[i * 2] = l;
-            out[i * 2 + 1] = r;
+            let output = &mut out[i * channels..(i + 1) * channels];
+            output.fill(0.0);
+            if channels == 1 { output[0] = 0.5 * (l + r); } else { output[0] = l; output[1] = r; }
+            self.render_output_probe(output);
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
         self.project.publish_timeline(self.timeline_seconds());
@@ -1491,6 +1519,29 @@ impl RtEngine {
         let track = &mut self.tracks[ti];
         track.mixer_gain.prepare([track.gain, track.pan], self.sr, mixer_gain::pan_gains);
         self.render_track_cached(ti, any_solo)
+    }
+
+    /// Advance the shared metronome once.
+    /// Takes count-in and beat events; returns the current click sample.
+    fn render_click(&mut self, counting_in: bool, count_click: Option<bool>, beat_start: f64) -> f32 {
+        if let Some(conductor) = self.conductor.as_ref().filter(|_| counting_in || self.metronome && self.playing) {
+            let settings = conductor.native.unwrap_or_default();
+            let event = if counting_in { count_click } else { conductor.click_between(beat_start, self.beat) };
+            #[cfg(test)]
+            if let (Some(trace), Some(accent)) = (&mut self.metro.trace, event) { trace.push((self.current_sample_frame, accent)); }
+            self.metro.tick_with_gains(true, event, settings.accent_gain, settings.beat_gain)
+            } else {
+            self.metro.tick(self.metronome && self.playing, beat_start, self.beat)
+        }
+    }
+
+    /// Apply an explicitly requested physical-channel test.
+    /// Takes a completed output frame; writes a bounded tone only while all transports are stopped and safety remains in force.
+    fn render_output_probe(&mut self, output: &mut [f32]) {
+        let stopped = !self.playing && !self.recording && !self.decks.iter().any(|deck| deck.playing || deck.touching) && !self.performance.status().protected;
+        if let Some((channel, value)) = self.routing_probe.sample(&self.routing_pipe.shared.probe, self.sr as u32, output.len(), stopped) {
+            output[channel] = self.safety_output.preview([value, 0.0])[0];
+        }
     }
 
     fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
@@ -1645,8 +1696,12 @@ impl RtEngine {
         track.eq_right.low_g = track.eq.low_g;
         track.eq_right.mid_g = track.eq.mid_g;
         track.eq_right.high_g = track.eq.high_g;
-        let l = track.eq.tick(s + pad_l + fallback[0]);
-        let r = track.eq_right.tick(s + pad_r + fallback[1]);
+        let mut raw = [s + pad_l + fallback[0], s + pad_r + fallback[1]];
+        if let Some(input) = self.routing_track_input {
+            raw[0] += input[0]; raw[1] += input[1];
+        }
+        let l = track.eq.tick(raw[0]);
+        let r = track.eq_right.tick(raw[1]);
         let [fl, fr] = self.load_profile.chain(&mut track.fx, [l, r], self.sr, false, ti);
         track.meter = track.meter * 0.93 + if silent { 0.0 } else { (l.abs() + r.abs()) * 0.035 };
         let [gl, gr] = {
@@ -1657,11 +1712,9 @@ impl RtEngine {
             #[cfg(not(test))]
             track.mixer_gain.tick()
         };
-        if silent {
-            (0.0, 0.0, false)
-        } else {
-            (fl * gl, fr * gr, false)
-        }
+        let output = if silent { [0.0; 2] } else { [fl * gl, fr * gr] };
+        self.routing_track_taps = [raw, [fl, fr], output];
+        (output[0], output[1], false)
     }
 
     fn trig_drum(&mut self, ti: usize, pitch: u8, vel: f32) {
@@ -1799,6 +1852,7 @@ impl RtEngine {
             let d = &mut self.decks[di];
             let [l, r] = d.transition_output([0.0; 2]);
             d.meter = d.meter * 0.9 + (l.abs() + r.abs()) * 0.05;
+            self.routing_deck_taps = [[0.0; 2], [l, r]];
             return (l, r);
         }
         // Vinyl contact follows the hand directly; OLA resumes from the
@@ -1828,6 +1882,7 @@ impl RtEngine {
         } else {
             self.decks[di].sample_at(self.decks[di].pos)
         };
+        self.routing_deck_taps[0] = [l, r];
         let g = self.decks[di].gain;
         l *= g;
         r *= g;
@@ -1840,6 +1895,7 @@ impl RtEngine {
         r = deck.filter[1].process(r, curve);
         [l, r] = self.decks[di].transition_output([l, r]);
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
+        self.routing_deck_taps[1] = [l, r];
         (l, r)
     }
 
@@ -2798,31 +2854,15 @@ impl RtEngine {
         }
     }
 
+    /// Render native channel frames.
+    /// Takes an interleaved buffer and channel count; writes complete frames and silences incomplete tails.
     pub fn process_interleaved(&mut self, data: &mut [f32], ch: usize) {
-        let ch = ch.max(1);
-        let frames = data.len() / ch;
-        let need = frames * 2;
-        let mut tmp = std::mem::take(&mut self.scratch);
-        if tmp.len() < need {
-            tmp.resize(need, 0.0);
-        }
-        tmp[..need].fill(0.0);
-        self.process(&mut tmp[..need]);
-        for i in 0..frames {
-            let l = tmp[i * 2];
-            let r = tmp[i * 2 + 1];
-            if ch == 1 {
-                data[i] = 0.5 * (l + r);
-            } else {
-                data[i * ch] = l;
-                data[i * ch + 1] = r;
-                for c in 2..ch {
-                    data[i * ch + c] = 0.0;
-                }
-            }
-        }
-        self.scratch = tmp;
+        let channels = ch.max(1);
+        let complete = data.len() / channels * channels;
+        data[complete..].fill(0.0);
+        self.process_channels(&mut data[..complete], channels);
     }
+
 }
 
 fn sampler_pitch(_inst: SamplerInstrument, oct: i8, pad: u8) -> u8 {
@@ -3011,6 +3051,7 @@ impl InitialSession {
 }
 
 pub struct Engine {
+    pub(crate) routing: audio::routing::input::Pipe,
     pub undo: undo::Handle,
     pub project: project::Handle,
     pub cmd: CommandPort,
@@ -3050,6 +3091,7 @@ impl Engine {
         let undo = rt.enable_undo()?;
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone());
+        let routing = rt.routing_pipe.clone();
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         let audio = audio::start_with_settings(rt, &settings.audio)?;
@@ -3064,6 +3106,7 @@ impl Engine {
             initial_playback,
             initial_builtin,
             performance_history,
+            routing,
             sampler_assets,
             _audio: Some(audio),
         })
@@ -3086,10 +3129,11 @@ impl Engine {
         let initial_playback=std::array::from_fn(|deck|rt.decks[deck].load_receipt.clone());
         let undo=rt.enable_undo()?;
         let project=rt.project.clone();
+        let routing=rt.routing_pipe.clone();
         let sampler_assets=rt.sampler_assets.clone();
         let performance_history=rt.history_measurement.as_ref().map(|history|history.handle());
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,sampler_assets,_audio:Some(audio)})
+        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,routing,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
@@ -3102,6 +3146,7 @@ impl Engine {
         let undo = rt.enable_undo().expect("undo worker");
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone());
+        let routing = rt.routing_pipe.clone();
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
         (
@@ -3115,7 +3160,8 @@ impl Engine {
                 initial_playback,
                 initial_builtin: true,
                 performance_history,
-                sampler_assets,
+                routing,
+            sampler_assets,
                 _audio: None,
             },
             rt,
@@ -3140,6 +3186,16 @@ impl Engine {
 
     pub fn sr(&self) -> u32 {
         self.project.sample_rate()
+    }
+    pub(crate) fn input_handle(&self) -> Option<audio::routing::input::Handle> { self._audio.as_ref().map(|audio| audio.input.clone()) }
+    /// Request a physical-channel tone.
+    /// Takes a zero-based channel; returns acceptance only for a running native output with stopped transports and protection off.
+    pub(crate) fn test_output(&self, channel: u16) -> Result<(), String> {
+        let output = self.output_info().ok_or("No native output is running")?;
+        let snap = self.snapshot();
+        if channel >= output.plan.channels || channel >= 64 { return Err("Test channel is absent from the active output".into()); }
+        if snap.playing || snap.recording || snap.decks.iter().any(|deck| deck.playing || deck.touching) || snap.performance.protected { return Err("Stop all transports and leave performance protection before testing outputs".into()); }
+        self.routing.shared.probe.compare_exchange(0, u32::from(channel) + 1, std::sync::atomic::Ordering::AcqRel, std::sync::atomic::Ordering::Acquire).map(|_| ()).map_err(|_| "A channel test is already running".into())
     }
 }
 

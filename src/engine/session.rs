@@ -15,7 +15,7 @@ pub const MAX_NAME_BYTES: usize = 4096;
 pub const MAX_PROCESSOR_BYTES: usize = 256 * 1024 * 1024;
 pub const SCENE_FX_BASE: i16 = 1000;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Id(pub u64);
 
