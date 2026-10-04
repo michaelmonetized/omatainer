@@ -61,7 +61,7 @@ fn version<'a>(catalog: &'a Catalog, review: &Review) -> &'a Version {
 fn analysis(catalog: &mut Catalog, review: &Review, bpm: Option<f32>) {
     catalog
         .apply_analysis(&crate::track_analysis::Patch {
-            level: None,
+            level: None, key: None,
             reference: crate::sampler_bank::SourceRef {
                 track: review.id.clone(),
                 source: review.source.clone(),
@@ -71,7 +71,7 @@ fn analysis(catalog: &mut Catalog, review: &Review, bpm: Option<f32>) {
             fields: crate::track_analysis::Fields {
                 bpm: true,
                 duration: true,
-                waveform: false, level: false },
+                waveform: false, level: false, key: false },
             at_unix_ms: 123,
             bpm,
             duration: 12.5,

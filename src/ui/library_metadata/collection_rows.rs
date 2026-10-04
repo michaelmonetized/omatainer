@@ -65,13 +65,17 @@ impl CollectionRows {
                     let old_row = entry.row?;
                     let old_item = &old_rows[old_row];
                     let old_track = &old_catalog.tracks[entry.track];
+                    let key_record = |version: &crate::library::Version| version.analysis.as_ref().and_then(|record|record.key.as_ref()).cloned();
                     (item.title == old_item.title && item.artist == old_item.artist && item.key == old_item.key
                         && item.bpm == old_item.bpm && item.length == old_item.length && item.last_play.is_some() == old_item.last_play.is_some()
-                        && track.annotations == old_track.annotations).then_some(membership.mask[old_row])
+                        && track.annotations == old_track.annotations && track.locks.metadata == old_track.locks.metadata
+                        && track.versions[track.current].tags == old_track.versions[old_track.current].tags
+                        && key_record(&track.versions[track.current]) == key_record(&old_track.versions[old_track.current])).then_some(membership.mask[old_row])
                 });
                 let matches = saved.unwrap_or_else(|| {
                     #[cfg(test)] { membership.evaluated += 1; }
-                    compiled.matches(crate::library::search::Row { title: &item.title, artist: &item.artist, key: &item.key,
+                    let key = crate::musical_key::effective(Some(&track.versions[track.current]),&item.key,track.locks.metadata).0;
+                    compiled.matches(crate::library::search::Row { title: &item.title, artist: &item.artist, key: &key,
                         bpm: item.bpm.value(), seconds: item.length, played: item.last_play.is_some(), annotations: &track.annotations })
                 });
                 membership.mask[row] = matches;

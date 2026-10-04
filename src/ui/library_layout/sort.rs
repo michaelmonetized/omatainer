@@ -15,11 +15,13 @@ fn text<'a>(
     item: &'a LibItem,
     fields: &'a crate::library::annotations::Annotations,
     column: Column,
+    catalog: &'a crate::library::Catalog,
 ) -> Cow<'a, str> {
     match column {
         Column::Title => Cow::Borrowed(&item.title),
         Column::Artist => Cow::Borrowed(&item.artist),
-        Column::Key => Cow::Borrowed(&item.key),
+        Column::Key => crate::musical_key::effective(catalog.version(&item.source, item.fingerprint), &item.key,
+            catalog.track(&item.source).is_some_and(|track|track.locks.metadata)).0,
         Column::Group => Cow::Borrowed(&fields.group),
         Column::Tags => Cow::Owned(fields.tags.join(", ")),
         Column::Notes => Cow::Borrowed(&fields.notes),
@@ -33,6 +35,7 @@ fn key(
     fields: &crate::library::annotations::Annotations,
     played: Option<SystemTime>,
     column: Column,
+    catalog: &crate::library::Catalog,
 ) -> Key {
     match column {
         Column::Bpm => Key::Number(
@@ -46,7 +49,7 @@ fn key(
         Column::Played => Key::Time(played),
         Column::Color => Key::Color(fields.color),
         _ => {
-            let mut normalized = crate::localization::search_key(&text(item, fields, column));
+            let mut normalized = crate::localization::search_key(&text(item, fields, column, catalog));
             let mut boundary = normalized.len().min(128);
             while !normalized.is_char_boundary(boundary) {
                 boundary -= 1;
@@ -109,6 +112,7 @@ pub(in crate::ui) fn order(
                             fields(index),
                             history.get(item).or(item.last_play),
                             sort.column,
+                            catalog,
                         )
                     })
                 }),
@@ -127,8 +131,8 @@ pub(in crate::ui) fn order(
                 (Key::Text(a_key), Key::Text(b_key)) => {
                     let result = a_key.cmp(b_key);
                     let result = if result == Ordering::Equal {
-                        let a_text = text(&library[*a], fields(*a), sort.column);
-                        let b_text = text(&library[*b], fields(*b), sort.column);
+                        let a_text = text(&library[*a], fields(*a), sort.column, catalog);
+                        let b_text = text(&library[*b], fields(*b), sort.column, catalog);
                         if a_text == b_text {
                             Ordering::Equal
                         } else {

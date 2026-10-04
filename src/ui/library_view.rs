@@ -64,6 +64,8 @@ impl LibraryView {
 pub(super) struct Cells {
     pub title: String,
     pub bpm: String,
+    pub key: String,
+    pub key_detail: String,
     pub length: String,
     pub played: String,
     pub played_at: Option<SystemTime>,
@@ -77,9 +79,12 @@ pub(super) struct Cells {
 impl Cells {
     pub fn new(item: &LibItem, played_at: Option<SystemTime>, now: SystemTime) -> Self {
         let played = play_time::format(played_at, now);
+        let (key, key_detail) = crate::musical_key::display(None, &item.key, false);
         Self {
             title: item.title.clone(),
             bpm: item.bpm.cell(),
+            key,
+            key_detail,
             length: fmt_len(item.length),
             played: played.label,
             played_tooltip: played.tooltip,
@@ -225,9 +230,12 @@ impl App {
             let indices = Arc::make_mut(&mut view.indices);
             indices.clear();
             let matches = |item: &LibItem| {
-                let fields = self.library_metadata.catalog.track(&item.source).map_or(&empty_annotations, |track| &track.annotations);
+                let track = self.library_metadata.catalog.track(&item.source);
+                let fields = track.map_or(&empty_annotations, |track| &track.annotations);
+                let version = track.and_then(|track|track.versions.iter().find(|version|version.fingerprint==item.fingerprint));
+                let key = crate::musical_key::effective(version,&item.key,track.is_some_and(|track|track.locks.metadata)).0;
                 parsed.as_ref().is_ok_and(|query|query.matches(crate::library::search::Row {
-                    title: &item.title, artist: &item.artist, key: &item.key,
+                    title: &item.title, artist: &item.artist, key: &key,
                     bpm: item.bpm.value(), seconds: item.length,
                     played: self.last_played.get(item).or(item.last_play).is_some(), annotations: fields,
                 }))

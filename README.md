@@ -281,7 +281,13 @@ waveform for selected local files or mounted removable libraries. **Analyze sele
 **Analyze filtered crate** captures the current filtered order, up to 4,096 rows.
 Later filtering or scanning does not retarget that queue. Choose individual
 fields and **Force selected fields** to reanalyze them; manual BPM and locked
-preparation remain authoritative. Key detection is unavailable.
+preparation remain authoritative. Musical-key analysis stores a separate,
+version-bound estimate. The key column shows conventional and harmonic notation;
+saved user or embedded keys take precedence. Inspect the cache for profile
+correlation, ambiguity margin and unknown results, or compare against another
+source key. Scores are not probabilities. Use Audio metadata to review a
+correction; an explicit clear stays cleared. Pitch changes are not included in
+the source-key comparison.
 
 The shared media worker hashes and decodes one source at a time. Explicit deck
 or sampler loads preempt background analysis; **Retry current analysis** resumes

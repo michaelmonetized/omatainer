@@ -1457,6 +1457,7 @@ impl App {
                     let cells = self.library_view.cells.entry(i).or_insert_with(|| {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
                         let mut cells = Cells::new(item, played_at, now);
+                        (cells.key, cells.key_detail) = crate::musical_key::display(self.library_metadata.catalog.version(&item.source, item.fingerprint), &item.key, self.library_metadata.catalog.track(&item.source).is_some_and(|track| track.locks.metadata));
                         if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); if !track.locks.is_empty() {cells.title.push_str(" [locked]");} }
                         if let Some(observation) = self.library_health.observation(item) { cells.title.push_str(&format!(" [{}{}]", observation.condition.label(), if observation.read_only { " · read-only" } else { "" })); }
                         cells
@@ -1489,21 +1490,22 @@ impl App {
                     }
                     for (column,width) in &columns {
                         use crate::preferences::library_layout::Column;
-                        let text: &str=match column { Column::Title=>&cells.title,Column::Bpm=>&cells.bpm,Column::Key=>&item.key,Column::Length=>&cells.length,Column::Played=>&cells.played,Column::Artist=>&item.artist,Column::Rating=>&cells.annotations[0],Column::Color=>&cells.annotations[1],Column::Group=>&cells.annotations[2],Column::Tags=>&cells.annotations[3],Column::Notes=>&cells.annotations[4] };
+                        let text: &str=match column { Column::Title=>&cells.title,Column::Bpm=>&cells.bpm,Column::Key=>&cells.key,Column::Length=>&cells.length,Column::Played=>&cells.played,Column::Artist=>&item.artist,Column::Rating=>&cells.annotations[0],Column::Color=>&cells.annotations[1],Column::Group=>&cells.annotations[2],Column::Tags=>&cells.annotations[3],Column::Notes=>&cells.annotations[4] };
                         let clip=Rect::from_min_max(Pos2::new(x,rect.top()),Pos2::new(x+width,rect.bottom())).intersect(ui.clip_rect());
                         ui.painter().with_clip_rect(clip).text(Pos2::new(x+4.0,rect.center().y),egui::Align2::LEFT_CENTER,text,FontId::proportional(t.text_size(11.0)),if sel {t.accent} else {t.fg});
                         x+=width;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
-                    accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
+                    accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, cells.key, cells.length, cells.played_tooltip), Some(sel));
                     if resp.gained_focus() { resp.scroll_to_me_animation(None, egui::style::ScrollAnimation::none()); }
                     let preparation = self.library_metadata.catalog.track(&item.source).map_or_else(String::new, |track| format!("{}; {}",track.annotations.description(),track.locks.description()));
                     let media = self.library_health.observation(item).map_or_else(|| "Media not validated for this source version".into(), |observation| observation.description());
-                    accessibility::status(ui, &resp, &format!("{preparation}; {media}; {artwork_status}"));
+                    accessibility::status(ui, &resp, &format!("{preparation}; {media}; {artwork_status}; {}", cells.key_detail));
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
                         format!("BPM: {}", item.bpm.label()),
+                        cells.key_detail.clone(),
                         self.library_metadata.catalog.version(&item.source, item.fingerprint).and_then(|v| v.tags.as_ref())
                             .map_or_else(|| "Title/artist/key: filename or catalog fallback; embedded tags not yet inspected".into(), |tags| tags.describe()),
                         cells.played_tooltip.clone(),

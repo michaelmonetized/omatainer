@@ -132,6 +132,17 @@ Software fixtures and read-only source paths; physical controller actions remain
 
 The metric is whole-source first-pair/mono RMS dBFS and sample peak, not LUFS or true peak. Auto uses reviewed targets and at most 12 dB boost. Its sample-peak estimate uses decoded source PCM; key-lock synthesis and downstream fader, EQ and effects can change peaks. It cannot repair clipping or guarantee final output headroom. Analysis alone never applies trim. Physical listening, controllers and converter measurements remain unqualified. Implementation status does not claim backlog or release completion.
 
+### Issue #142: implemented
+
+- native UI: [src/ui/library_analysis.rs](../src/ui/library_analysis.rs) — Library → analyze… → Analyze musical key → inspect conventional/harmonic notation, unknown, correlation and comparison → review correction through Audio metadata
+- background analysis: [src/engine/media_analysis.rs](../src/engine/media_analysis.rs) — Cancelable same-descriptor hash/decode and native-rate musical-key analysis on the existing worker
+- library view: [src/ui/library_view.rs](../src/ui/library_view.rs) — Effective source key shared by the visible key cell, filtering, sorting and smart-crate membership; metadata locks, user edits and embedded tags retain precedence
+- persistence: [src/track_analysis.rs](../src/track_analysis.rs) — Separate algorithm-versioned source-qualified key record; completed unknown differs from missing; schema-15 migration refuses lower-header injection
+- Acceptance fixtures: `musical_key::tests`, `library::analysis::tests::musical_key_analysis_preserves_manual_embedded_and_inferred_provenance`, `library::tests::musical_key_schema_and_persistence_preserve_corrections_and_unknown_results`, `ui::library_analysis::tests::musical_key_native_review_compare_correct_force_and_reopen_keep_user_value`, `ui::library_metadata::collection_rows::tests::analyzed_key_updates_smart_membership_without_row_edits_and_locks_restore_saved_key`, `engine::media_analysis::tests::musical_key_independent_corpus_qualification`, `engine::decode::tests::fully_trimmed_mp3_tail_is_not_a_missing_audible_packet`.
+- Evidence: [docs/validation/issue-142-musical-key.md](../docs/validation/issue-142-musical-key.md).
+
+Whole-source major/minor estimate of the first stereo pair or mono. Fixed correlation/margin thresholds decline weak or ambiguous material; scores are not probabilities. Initial native-worker development corpus: 48 independent artist-labeled CC0 Bach piano recordings; 19 correct, 27 unknown, 2 wrong (9.52% error among returned estimates). This is not held-out or cross-genre/DJ accuracy proof. Comparison uses effective source keys and does not account for deck pitch changes or promise a transition. Physical listening and controllers remain unqualified. See linked evidence for individual source/binary checks. Software implementation status does not claim release or backlog completion.
+
 ### Issue #143: implemented
 
 - native UI: [src/ui/library_backup.rs](../src/ui/library_backup.rs) — Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import
@@ -243,7 +254,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#139](https://github.com/michaelmonetized/omatainer/issues/139) | Add field-aware search and filtering across the music library | implemented |
 | [#140](https://github.com/michaelmonetized/omatainer/issues/140) | Protect prepared beatgrids and metadata from bulk reanalysis | implemented |
 | [#141](https://github.com/michaelmonetized/omatainer/issues/141) | Analyze and recall safe per-track gain adjustment | implemented |
-| [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | planned |
+| [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | implemented |
 | [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | implemented |
 | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | implemented |
 | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |

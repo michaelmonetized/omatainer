@@ -186,3 +186,39 @@ fn real_catalog_owner_updates_smart_annotations_incrementally_and_manual_refresh
     assert_eq!(metadata.collection_rows().smart[&id].evaluated,2);
     assert_eq!(metadata.collection_rows().smart_rows(&id,&rows,&metadata.catalog).unwrap().len(),1);
 }
+
+#[test]
+fn analyzed_key_updates_smart_membership_without_row_edits_and_locks_restore_saved_key() {
+    use crate::library::{crates::{CrateId,Edit},smart_crates::Rule};
+    let (_files,catalog,_)=fixture();
+    let mut catalog=(*catalog).clone();
+    catalog.tracks[0].versions[0].metadata.key="G".into();
+    catalog.tracks[1].versions[0].metadata.key="F#".into();
+    let id=CrateId("7".repeat(32));
+    catalog.edit_crates(catalog.crates.revision(),&Edit::Create {id:id.clone(),name:"C keys".into(),parent:None,before:None}).unwrap();
+    catalog.edit_crates(catalog.crates.revision(),&Edit::SetSmartRule {id:id.clone(),rule:Some(Rule::default())}).unwrap();
+    let rows=Arc::new(catalog.tracks.iter().rev().map(|track|LibItem::from_stored(track.source.clone(),&track.versions[0])).collect::<Vec<_>>());
+    let baseline=Arc::new(catalog.clone());
+    let before=CollectionRows::build(&rows,&baseline);
+    assert!(before.smart_rows(&id,&rows,&baseline).unwrap().is_empty());
+    let track=&catalog.tracks[0];let fingerprint=track.versions[0].fingerprint.unwrap();
+    let location=crate::media_location::Location::resolve(&track.source).unwrap();
+    let hash=crate::library::hash_project_source(&location.path,fingerprint,||true).unwrap();
+    let reference=crate::sampler_bank::SourceRef {track:track.id.clone(),source:track.source.clone(),fingerprint,content_hash:Some(hash)};
+    catalog.apply_analysis(&crate::track_analysis::Patch {reference,fields:crate::track_analysis::Fields {bpm:false,duration:false,waveform:false,level:false,key:true},at_unix_ms:1,bpm:None,duration:8.0,waveform:None,level:None,key:Some(crate::musical_key::Analysis {key:Some(crate::musical_key::Key {tonic:0,minor:false}),score:0.9,margin:0.2,frames:32})}).unwrap();
+    let analyzed=Arc::new(catalog.clone());
+    let changed=CollectionRows::build_incremental(&rows,&analyzed,Some(&before));
+    assert_eq!(changed.smart[&id].evaluated,1);
+    assert_eq!(changed.smart_rows(&id,&rows,&analyzed).unwrap(),&[1]);
+    let mut order=[0,1];
+    let sort=crate::preferences::library_layout::Sort {column:crate::preferences::library_layout::Column::Key,descending:false};
+    crate::ui::library_layout::sort::order(&mut order,&rows,&analyzed,&crate::ui::play_history::History::default(),[Some(sort),None]);
+    assert_eq!(order,[1,0]);
+    catalog.tracks[0].locks.metadata=true;
+    let locked=Arc::new(catalog);
+    let restored=CollectionRows::build_incremental(&rows,&locked,Some(&changed));
+    assert_eq!(restored.smart[&id].evaluated,1);
+    assert!(restored.smart_rows(&id,&rows,&locked).unwrap().is_empty());
+    crate::ui::library_layout::sort::order(&mut order,&rows,&locked,&crate::ui::play_history::History::default(),[Some(sort),None]);
+    assert_eq!(order,[0,1]);
+}

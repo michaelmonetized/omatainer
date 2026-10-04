@@ -115,7 +115,7 @@ fn actual_mixed_formats_produce_only_selected_bounded_source_qualified_results()
             Fields {
                 bpm: false,
                 duration: true,
-                waveform: false, level: false },
+                waveform: false, level: false, key: false },
         );
         assert!(only_duration.waveform.is_none() && only_duration.bpm.is_none());
         assert_eq!(only_duration.duration, result.duration);
@@ -289,4 +289,38 @@ fn local_block_volume_analysis_keeps_typed_source_and_same_descriptor_digest() {
     assert_eq!(result.duration,4096.0/16000.0);assert!(result.waveform.is_some());
     std::fs::remove_file(path).unwrap();let result=run(Request {reference,fields:Fields::ALL},&token(),&performance::Handle::default().optional_work().unwrap());
     assert!(result.unwrap_err().to_string().contains("missing on the mounted volume"));
+}
+
+#[test]
+#[ignore = "requires the independently labeled CC0 corpus and an explicit report destination"]
+fn musical_key_independent_corpus_qualification() {
+    let root=PathBuf::from(std::env::var_os("OMATAINER_KEY_CORPUS").expect("set OMATAINER_KEY_CORPUS"));
+    let destination=PathBuf::from(std::env::var_os("OMATAINER_KEY_REPORT").expect("set OMATAINER_KEY_REPORT"));
+    let corpus:serde_json::Value=serde_json::from_slice(&std::fs::read(root.join("corpus-pitch-classes.json")).unwrap()).unwrap();
+    let mut rows=Vec::new();
+    let fields=Fields {bpm:false,duration:false,waveform:false,level:false,key:true};
+    for track in corpus["tracks"].as_array().unwrap() {
+        let id=track["id"].as_u64().unwrap();
+        let path=root.join("audio").join(format!("{id}.mp3"));
+        let source=LibSource::File(path.clone());
+        let fingerprint=FileFingerprint::read(&path).unwrap();
+        let mut catalog=Catalog::default();
+        catalog.upsert(source.clone(),Some(fingerprint),crate::library::Metadata {
+            title:track["title"].as_str().unwrap().into(),artist:String::new(),bpm:crate::ui::bpm::Bpm::UNKNOWN,key:String::new(),duration:None,last_play:None,
+        }).unwrap();
+        let reference=SourceRef {track:catalog.track(&source).unwrap().id.clone(),source,fingerprint,content_hash:None};
+        let result=analyze(reference,fields);
+        let measured=result.key.unwrap();
+        assert!(measured.valid());
+        let exact=measured.key.is_some_and(|key|u64::from(key.tonic)==track["label"]["pitch_class"].as_u64().unwrap()&&key.minor==(track["label"]["mode"]=="minor"));
+        let hash:String=result.reference.content_hash.unwrap().iter().map(|byte|format!("{byte:02x}")).collect();
+        println!("{}: {:?}",track["title"].as_str().unwrap(),measured);
+        rows.push(serde_json::json!({"id":id,"title":track["title"],"label":track["label"],"source_sha256":hash,"duration":result.duration,"estimate":measured,"exact":exact}));
+    }
+    assert_eq!(rows.len(),48);
+    let exact=rows.iter().filter(|row|row["exact"]==true).count();
+    let unknown=rows.iter().filter(|row|row["estimate"]["key"].is_null()).count();
+    let errors=rows.len()-exact-unknown;
+    let report=serde_json::json!({"schema":1,"algorithm":crate::musical_key::ALGORITHM,"path":"actual same-descriptor hash and native-rate decoder/background analysis worker","scope":corpus["scope"],"label_source":corpus["label_source"],"source":corpus["source"],"license":corpus["license"],"count":rows.len(),"exact":exact,"unknown":unknown,"errors":errors,"exact_rate":exact as f64/rows.len() as f64,"unknown_rate":unknown as f64/rows.len() as f64,"error_rate":errors as f64/rows.len() as f64,"tracks":rows});
+    std::fs::write(destination,serde_json::to_vec_pretty(&report).unwrap()).unwrap();
 }

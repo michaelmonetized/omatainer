@@ -843,6 +843,7 @@ fn background_analysis_selective_fields_preserve_user_preparation_and_restart() 
     let wave = WaveformRef { sha256: [7; 32], bytes: 16000, frames: 480_000,
         sample_rate: 48_000, channels: 2, bins: 2048 };
     let mut patch = Patch { reference, fields: Fields::ALL, at_unix_ms: 1000,
+        key: Some(crate::musical_key::Analysis::unknown()),
         level: Some(crate::track_gain::Analysis::new(crate::track_gain::measure_channels(&[0.25; 32], 1, || false).unwrap())),
         bpm: Some(140.0), duration: 10.0, waveform: Some(wave.clone()) };
     store.catalog.apply_analysis(&patch).unwrap();
@@ -854,11 +855,12 @@ fn background_analysis_selective_fields_preserve_user_preparation_and_restart() 
     assert_eq!(analyzed.metadata.last_play, original.metadata.last_play);
     assert_eq!(analyzed.metadata.duration, Some(10.0));
     assert!(analyzed.analysis.as_ref().unwrap().contains(Fields::ALL));
-    patch.fields = Fields { bpm: true, duration: false, waveform: false, level: false };
+    patch.fields = Fields { bpm: true, duration: false, waveform: false, level: false, key: false };
     patch.at_unix_ms = 2000;
     patch.bpm = None;
     patch.waveform = None;
     patch.level = None;
+    patch.key = None;
     store.catalog.apply_analysis(&patch).unwrap();
     let selected = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
     let cached = selected.analysis.as_ref().unwrap();
@@ -894,8 +896,8 @@ fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() 
     let replaced = FileFingerprint::read(&path).unwrap();
     catalog.upsert(source.clone(), Some(replaced), metadata()).unwrap();
     let replacement = catalog.version(&source, Some(replaced)).unwrap().clone();
-    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false, level: false },
-        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None, level: None };
+    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false, level: false, key: false },
+        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None, level: None, key: None };
     catalog.apply_analysis(&patch).unwrap();
     let measured = catalog.version(&source, Some(fingerprint)).unwrap();
     assert_eq!(measured.metadata.bpm, Bpm::new(136.0, Origin::Heuristic));
@@ -910,7 +912,7 @@ fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() 
     assert!(catalog.apply_analysis(&invalid).is_err());
     invalid = patch.clone(); invalid.duration = f64::NAN;
     assert!(catalog.apply_analysis(&invalid).is_err());
-    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false, level: false };
+    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false, level: false, key: false };
     assert!(catalog.apply_analysis(&invalid).is_err());
     assert_eq!(catalog.tracks, before);
 }
@@ -989,4 +991,46 @@ fn analysis_store_receipts_distinguish_precommit_failure_postrename_and_noop() {
         store.save().unwrap();
         assert!(!store.last_save_replaced());
     }
+}
+
+#[test]
+fn musical_key_schema_and_persistence_preserve_corrections_and_unknown_results() {
+    use crate::{musical_key::{Analysis,Key},track_analysis::{Fields,Patch}};
+    let dir=Dir::new();
+    let path=dir.0.join("key-source.wav");
+    fs::write(&path,b"exact catalog version fixture").unwrap();
+    let source=LibSource::File(path.clone());
+    let fingerprint=FileFingerprint::read(&path).unwrap();
+    let hash=content::hash_file(&path,fingerprint,||true).unwrap();
+    let mut store=Store::open(dir.store()).unwrap();
+    store.catalog.upsert(source.clone(),Some(fingerprint),metadata()).unwrap();
+    let id=store.catalog.track(&source).unwrap().id.clone();
+    let reference=crate::sampler_bank::SourceRef {track:id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};
+    let measured=Analysis {key:Some(Key {tonic:0,minor:false}),score:0.9,margin:0.2,frames:32};
+    let mut patch=Patch {reference,fields:Fields {bpm:false,duration:false,waveform:false,level:false,key:true},at_unix_ms:500,bpm:None,duration:8.0,waveform:None,level:None,key:Some(measured)};
+    store.catalog.apply_analysis(&patch).unwrap();
+    let review=tags::Review {id,source:source.clone(),fingerprint};
+    store.catalog.apply_tag_sidecar(&review,&tags::Patch {key:Some("8A".into()),..Default::default()}).unwrap();
+    store.save().unwrap();drop(store);
+    let mut store=Store::open(dir.store()).unwrap();
+    let version=store.catalog.version(&source,Some(fingerprint)).unwrap();
+    assert_eq!(version.analysis.as_ref().unwrap().key.as_ref().unwrap().value,measured);
+    assert_eq!(crate::musical_key::display(Some(version),"",false).0,"Am · 8A");
+    patch.key=Some(Analysis::unknown());patch.at_unix_ms=600;
+    store.catalog.apply_analysis(&patch).unwrap();store.save().unwrap();drop(store);
+    let store=Store::open(dir.store()).unwrap();
+    let version=store.catalog.version(&source,Some(fingerprint)).unwrap();
+    assert_eq!(version.analysis.as_ref().unwrap().key.as_ref().unwrap().value,Analysis::unknown());
+    assert_eq!(version.metadata.key,"8A");
+    let mut legacy=serde_json::to_value(&store.catalog).unwrap();
+    legacy["schema"]=14.into();
+    for key in [serde_json::Value::Null,serde_json::to_value(version.analysis.as_ref().unwrap().key.as_ref().unwrap()).unwrap()] {
+        legacy["tracks"][0]["versions"][0]["analysis"]["key"]=key;
+        assert!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(),None).unwrap_err().contains("schema 15"));
+    }
+    legacy["tracks"][0]["versions"][0]["analysis"].as_object_mut().unwrap().remove("key");
+    legacy["tracks"][0]["versions"][0]["analysis"]=serde_json::Value::Null;
+    let upgraded=catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(),None).unwrap();
+    assert_eq!(upgraded.schema,Catalog::default().schema);
+    assert!(upgraded.version(&source,Some(fingerprint)).unwrap().analysis.is_none());
 }

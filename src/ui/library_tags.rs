@@ -83,7 +83,7 @@ impl Default for Panel {
     }
 }
 impl Panel {
-    fn busy(&self) -> bool {
+    pub(super) fn busy(&self) -> bool {
         self.pending.is_some()
             || self.queue.is_some()
             || self.recovery.is_some()
@@ -141,7 +141,7 @@ impl App {
         self.poll_library_tags();
         !self.library_tags.busy()
     }
-    fn inspect_tags(&mut self, batch: bool) {
+    pub(super) fn inspect_tags(&mut self, batch: bool) {
         if self.library_tags.busy()
             || self.library_scan.active()
             || self.library_metadata.active()

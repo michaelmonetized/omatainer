@@ -151,10 +151,11 @@ impl App {
                     if track.versions[track.current].fingerprint != item.fingerprint {
                         continue;
                     }
+                    let key = crate::musical_key::effective(Some(&track.versions[track.current]), &item.key, track.locks.metadata).0;
                     if compiled.matches(crate::library::search::Row {
                         title: &item.title,
                         artist: &item.artist,
-                        key: &item.key,
+                        key: &key,
                         bpm: item.bpm.value(),
                         seconds: item.length,
                         played: item.last_play.is_some(),

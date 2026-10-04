@@ -50,3 +50,11 @@ ffmpeg -i tone.flac -map_metadata -1 -c:a pcm_s16be tone-tags.aiff
 
 The tag tests copy fixtures into isolated temporary directories before writing
 Unicode title/artist, BPM and key tags, and compare production-decoded PCM.
+
+`tone-padding.mp3` is a generated 440 Hz mono sine, 44,100 Hz, 1,323 audible
+frames. FFmpeg encodes 0.03 seconds with libmp3lame at 128 kbit/s. Its last
+418-byte MPEG frame is repeated once, the Info frame count/byte count increase
+by one frame/418 bytes, and the Lavc end-padding field increases by 1,152
+samples. This retains the original audible samples and adds a fully trimmed
+terminal packet. Tests assert identical PCM with and without that extra packet;
+real declared-duration and damaged-packet checks remain active.

@@ -111,7 +111,7 @@ fn actual_decode_analysis_gain_recall_and_prefader_output_preserve_pcm_and_fader
             bpm: false,
             duration: false,
             waveform: false,
-            level: true,
+            level: true, key: false,
         };
         loader
             .request_analysis(media_analysis::Request {
@@ -137,7 +137,7 @@ fn actual_decode_analysis_gain_recall_and_prefader_output_preserve_pcm_and_fader
                 bpm: None,
                 duration: prepared.duration,
                 waveform: None,
-                level: prepared.level,
+                level: prepared.level, key: prepared.key,
             })
             .unwrap();
         assert_eq!(

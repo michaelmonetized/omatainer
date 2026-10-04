@@ -78,6 +78,7 @@ pub(crate) enum Stage {
     Tempo,
     Waveform,
     Level,
+    Key,
     Ready,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -155,6 +156,7 @@ impl Token {
             3 => Stage::Tempo,
             4 => Stage::Waveform,
             5 => Stage::Level,
+            6 => Stage::Key,
             _ => Stage::Ready,
         };
         let part = value & u32::MAX as u64;
@@ -310,6 +312,14 @@ fn run_with(
         checkpoint(Stage::Level);
         Some(crate::track_gain::Analysis::new(result.map_err(Failure::error)?))
     } else { None };
+    let key = if request.fields.key {
+        token.set_progress(Stage::Key, 0, Some(sample.frames() as u64));
+        let result = crate::musical_key::analyze(&sample.data, sample.ch, sample.sr, cancelled,
+            |done, total| token.set_progress(Stage::Key, done, Some(total)));
+        token.check(work)?;
+        checkpoint(Stage::Key);
+        Some(result.map_err(Failure::error)?)
+    } else { None };
     stable(&file)?;
     let mut reference = request.reference;
     reference.content_hash = Some(hash);
@@ -326,6 +336,7 @@ fn run_with(
         duration: sample.frames() as f64 / f64::from(sample.sr),
         waveform,
         level,
+        key,
     };
     // All resident PCM dies on this single worker, before Ready is published.
     drop(sample);

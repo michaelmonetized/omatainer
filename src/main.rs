@@ -22,6 +22,7 @@ mod performance_history;
 mod sampler_bank;
 mod track_analysis;
 mod track_gain;
+mod musical_key;
 mod preferences;
 mod theme;
 mod ui;

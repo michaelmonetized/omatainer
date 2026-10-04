@@ -73,6 +73,7 @@ pub(super) struct Panel {
     completion: Option<AnalysisCompletion>,
     preview: Option<AnalysisInspected>,
     preview_title: String,
+    compare_key: String,
     current_title: String,
     changes: Vec<changes::Row>,
     message: String,
@@ -91,6 +92,7 @@ impl Default for Panel {
             completion: None,
             preview: None,
             preview_title: String::new(),
+            compare_key: String::new(),
             current_title: String::new(),
             changes:Vec::new(),
             message: String::new(),
@@ -512,13 +514,14 @@ impl App {
             .open(&mut open).default_width(660.0).vscroll(true).show(ctx, |ui| {
                 ui.label(tr!("Closing this panel leaves an active queue running. Use Cancel analysis queue to stop it."));
                 ui.label(tr!("Local files only. Results are source/version qualified. Manual BPM and locked preparation remain authoritative."));
-                ui.label(tr!("Key analysis is unavailable. Existing filename hints and manual key values are not measured keys."));
+                ui.label(tr!("Key estimates remain separate from saved tags and filename hints. Scores are profile correlations, not probabilities. Weak or ambiguous material stays unknown."));
                 ui.add_enabled_ui(!self.library_analysis.busy(), |ui| {
                     ui.horizontal(|ui| {
                         ui.checkbox(&mut self.library_analysis.fields.bpm, tr!("Analyze BPM")).help(ui, HelpControl::AnalysisFields);
                         ui.checkbox(&mut self.library_analysis.fields.duration, tr!("Analyze duration")).help(ui, HelpControl::AnalysisFields);
                         ui.checkbox(&mut self.library_analysis.fields.waveform, tr!("Analyze waveform")).help(ui, HelpControl::AnalysisFields);
                         ui.checkbox(&mut self.library_analysis.fields.level, tr!("Analyze source level")).help(ui, HelpControl::AnalysisFields);
+                        ui.checkbox(&mut self.library_analysis.fields.key, tr!("Analyze musical key")).help(ui, HelpControl::AnalysisFields);
                     });
                     ui.checkbox(&mut self.library_analysis.force, tr!("Force selected fields")).help(ui, HelpControl::AnalysisForce);
                     ui.horizontal(|ui| {
@@ -541,7 +544,7 @@ impl App {
                         Step::Inspecting { .. } => { ui.label(tr!("Checking the saved source version and waveform cache…")); }
                         Step::Decoding(token) => {
                             let progress = token.progress();
-                            let stage = match progress.stage { Stage::Queued => "Queued", Stage::Hashing => "Hashing source", Stage::Decoding => "Decoding", Stage::Tempo => "Estimating BPM", Stage::Waveform => "Building waveform", Stage::Level => "Measuring source level", Stage::Ready => "Prepared; not saved yet" };
+                            let stage = match progress.stage { Stage::Queued => "Queued", Stage::Hashing => "Hashing source", Stage::Decoding => "Decoding", Stage::Tempo => "Estimating BPM", Stage::Waveform => "Building waveform", Stage::Level => "Measuring source level", Stage::Key => "Estimating musical key", Stage::Ready => "Prepared; not saved yet" };
                             if let Some(value) = progress.millionths { ui.add(egui::ProgressBar::new(value as f32 / 1_000_000.0).text(stage)); } else { ui.label(stage); }
                         }
                         Step::Saving(_) => { ui.label(tr!("Waiting for the catalog publication and durability result…")); }
@@ -573,7 +576,7 @@ impl App {
                     ui.separator(); ui.label(tr!("Analysis replacement preview"));
                     ui.label(tr!("Selected fields refresh their analysis records. User BPM, embedded tags, grids, cues and locks remain authoritative. No media files are written."));
                     let output=egui::ScrollArea::vertical().id_salt("analysis-change-preview").max_height(230.0)
-                        .show_rows(ui,88.0,self.library_analysis.changes.len(),|ui,range| {
+                        .show_rows(ui,106.0,self.library_analysis.changes.len(),|ui,range| {
                             for index in range {self.library_analysis.changes[index].show(ui,&self.library_metadata.catalog);}
                         });
                     accessibility::scrollbars(ui,"Analysis replacement preview",&output);
@@ -587,6 +590,23 @@ impl App {
                                 if let Some(bpm) = &record.bpm { ui.label(match bpm.value { Some(value) => { let __omatainer_args = (&(bpm.algorithm),); crate::localization::format("Analyzed BPM: {value:.2} (heuristic, unverified; algorithm {})", &[format!("{:.2}", value), format!("{}", __omatainer_args.0)]) }, None => tr!("Analyzed BPM: no usable estimate").into() }); }
                                 if let Some(duration) = &record.duration { ui.label({ let __omatainer_args = (&(duration.value),); crate::localization::format("Analyzed duration: {:.3} seconds", &[format!("{:.3}", __omatainer_args.0)]) }); }
                                 if let Some(level) = &record.level { ui.label(crate::track_gain::description(level.value.level)); ui.label(match level.value.recommended_db { Some(db) => crate::localization::format("Recommended source trim: {} dB (-18 dBFS RMS / -3 dBFS sample peak)", &[crate::localization::number(f64::from(db), 2)]), None => tr!("No usable automatic gain recommendation").into() }); }
+                                if let Some(key) = &record.key {
+                                    ui.label(crate::musical_key::description(key.value));
+                                    let version = self.library_metadata.catalog.version(&preview.reference.source, Some(preview.reference.fingerprint));
+                                    let (effective, source) = crate::musical_key::effective(version, &cached.metadata.key, cached.locks.metadata);
+                                    ui.label(crate::localization::format("Compared key: {} · {}", &[effective.to_string(), crate::localization::text(source).into()]));
+                                    ui.horizontal(|ui| {
+                                        ui.label(tr!("Compare with key"));
+                                        let input = ui.add(egui::TextEdit::singleline(&mut self.library_analysis.compare_key).char_limit(32).desired_width(120.0));
+                                        input.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, tr!("Compare with key")));
+                                    });
+                                    ui.label(match (crate::musical_key::Key::parse(&effective), crate::musical_key::Key::parse(&self.library_analysis.compare_key)) {
+                                        (Some(a),Some(b)) if a.compatible(b) => tr!("Compatible source keys: same, relative or adjacent on the harmonic wheel"),
+                                        (Some(_),Some(_)) => tr!("Source keys are not adjacent on the harmonic wheel"),
+                                        _ => tr!("Enter a conventional or harmonic key; an unknown estimate cannot be compared"),
+                                    });
+                                    ui.small(tr!("Compatibility compares source keys. Pitch changes and musical transitions still need your judgment."));
+                                }
                             }
                             if cached.needed.valid() { ui.label(tr!("Some selected fields require fresh analysis. Inspect alone never decodes a source.")); }
                             if let Some(waveform) = &cached.waveform {
@@ -603,6 +623,10 @@ impl App {
                         }
                     }
                 });
+                if ui.button(tr!("Review a key correction for the selected library row")).help(ui, HelpControl::TagField).clicked() {
+                    self.library_tags.open = true;
+                    self.inspect_tags(false);
+                }
                 if ui.button(tr!("Close analysis panel")).help(ui, HelpControl::AnalysisClose).clicked() { self.library_analysis.open = false; }
                 if self.library_analysis.busy() { ctx.request_repaint_after(std::time::Duration::from_millis(33)); }
             });

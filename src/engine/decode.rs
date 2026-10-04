@@ -376,7 +376,8 @@ fn decode_source(
         } else {
             packet_end
         };
-        if packet.ts > expected_start {
+        let fully_trimmed = packet.dur == 0 && (packet.trim_start > 0 || packet.trim_end > 0);
+        if packet.ts > expected_start && !fully_trimmed {
             return Err(failure(
                 DecodeFailureKind::Incomplete,
                 DecodeStage::ReadPacket,
@@ -389,6 +390,10 @@ fn decode_source(
         check_cancel(&cancelled, DecodeStage::DecodePacket, &diagnostics)?;
         let buffer = decoded
             .map_err(|error| codec_failure(error, DecodeStage::DecodePacket, &diagnostics))?;
+        if fully_trimmed && buffer.frames() != 0 {
+            return Err(failure(DecodeFailureKind::Fatal, DecodeStage::DecodePacket,
+                &diagnostics, "fully trimmed packet returned audible frames"));
+        }
         let current = *buffer.spec();
         if current.rate == 0 || current.channels.count() == 0 {
             return Err(failure(
@@ -448,7 +453,7 @@ fn decode_source(
         diagnostics.decoded_frames += (samples.samples().len() / current.channels.count()) as u64;
         progress(diagnostics.decoded_frames, diagnostics.expected_frames);
         diagnostics.decoded_packets += 1;
-        packet_end = packet_end.max(packet.ts.saturating_add(packet.dur));
+        if !fully_trimmed { packet_end = packet_end.max(packet.ts.saturating_add(packet.dur)); }
         if collect_pcm { data.extend_from_slice(samples.samples()); }
     }
     check_cancel(&cancelled, DecodeStage::Finish, &diagnostics)?;

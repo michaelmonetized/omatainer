@@ -35,7 +35,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 14;
+const SCHEMA: u32 = 15;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -523,9 +523,12 @@ fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Cata
     if schema.is_some_and(|version| version < 12) && header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("favorite").is_some())) {
         return Err("Crate favorites require library schema 12; original file preserved".into());
     }
+    if schema.is_some_and(|version| version < 15) && header.get("tracks").and_then(|v|v.as_array()).is_some_and(|tracks|tracks.iter().any(|track|track.get("versions").and_then(|v|v.as_array()).is_some_and(|versions|versions.iter().any(|version|version.get("analysis").is_some_and(|analysis|analysis.get("key").is_some()))))) {
+        return Err("Musical-key analysis requires library schema 15; original file preserved".into());
+    }
     let mut catalog = match schema {
-        Some(14) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
-        Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
+        Some(15) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
+        Some(14) | Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
             let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old

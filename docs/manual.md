@@ -954,15 +954,15 @@ Workflow: Stop and recover.
 
 Local source/version cache
 
-Open the bounded background analysis queue. Opening this panel neither decodes nor changes playback. Key detection is unavailable; existing filename hints and manual keys are not analysis results.
+Open the bounded background analysis queue. Opening this panel neither decodes nor changes playback. Musical-key estimates are stored separately from filename hints and saved tags. Review conventional and harmonic notation, unknown results and profile correlation before correcting a key through Audio metadata.
 
 Workflow: Prepare a DJ deck.
 
 ### Analysis fields
 
-BPM / duration / waveform / source level
+BPM / duration / waveform / source level / musical key
 
-Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM. Source level stores whole-track RMS, sample peak and a bounded gain recommendation; analysis does not apply gain.
+Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM. Source level stores whole-track RMS, sample peak and a bounded gain recommendation; analysis does not apply gain. Musical key uses the first stereo pair or mono channel and keeps weak or ambiguous estimates unknown. Analysis never overwrites saved key edits.
 
 Workflow: Prepare a DJ deck.
 

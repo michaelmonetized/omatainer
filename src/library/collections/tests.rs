@@ -42,12 +42,12 @@ fn fixture(files: &Files) -> Catalog {
         proof.content_hash = Some(content::hash_file(path, proof.fingerprint, || true).unwrap());
         catalog
             .apply_analysis(&Patch {
-                level: None,
+                level: None, key: None,
                 reference: proof,
                 fields: Fields {
                     bpm: true,
                     duration: true,
-                    waveform: false, level: false },
+                    waveform: false, level: false, key: false },
                 at_unix_ms: 77,
                 bpm: None,
                 duration: 1.0,

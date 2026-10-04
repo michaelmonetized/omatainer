@@ -250,7 +250,7 @@ fn inspect_is_read_only_and_selective_force_preserves_other_cached_fields() {
         .needed
         .valid());
     gui.click("Analyze BPM");
-    gui.click("Analyze waveform"); // duration only
+    gui.click("Analyze waveform"); gui.click("Analyze musical key"); // duration only
     gui.click("Analyze selected row");
     gui.finish();
     let record = gui.record(&paths[0]).unwrap();
@@ -283,7 +283,7 @@ fn over_limit_capture_refuses_every_row_and_empty_fields_cannot_enqueue() {
     gui.click("Analyze BPM");
     gui.click("Analyze duration");
     gui.click("Analyze waveform");
-    gui.click("Analyze source level");
+    gui.click("Analyze source level"); gui.click("Analyze musical key");
     gui.click("Analyze selected row");
     assert!(!gui.app.library_analysis.busy());
     assert!(gui.app.library_analysis.message.contains("at least one"));
@@ -554,8 +554,67 @@ fn native_filtered_replacement_preview_reports_locks_without_decoding_or_saving(
     assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),old);
     for path in &paths {assert!(gui.record(path).is_none());}
     gui.app.lib_filter="Analysis ".into();gui.app.refresh_library_view();gui.frame(vec![]);
-    gui.click("Analyze waveform");gui.click("Analyze source level");gui.click("Analyze filtered crate");gui.finish();
+    gui.click("Analyze waveform");gui.click("Analyze source level"); gui.click("Analyze musical key");gui.click("Analyze filtered crate");gui.finish();
     assert!(gui.app.library_analysis.message.contains("3 skipped"),"{}",gui.app.library_analysis.message);
     assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),old);
     for path in paths {assert!(gui.record(&path).is_none());}
+}
+
+impl Gui {
+    fn key_text(&mut self, label: &str, value: &str) {
+        let target=self.nodes.iter().find(|(_,node)|node.label()==Some(label)).unwrap().0;
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {target,action:Action::Focus,data:None})]);
+        for pressed in [true,false] {
+            self.frame(vec![egui::Event::Key {key:egui::Key::A,physical_key:None,pressed,repeat:false,
+                modifiers:egui::Modifiers {ctrl:true,command:true,..Default::default()}}]);
+        }
+        self.frame(vec![egui::Event::Text(value.into())]);self.frame(vec![]);
+    }
+}
+
+#[test]
+fn musical_key_native_review_compare_correct_force_and_reopen_keep_user_value() {
+    let files=Files::new();
+    let path=files.0.join("Analysis Key.wav");
+    let rate=16000u32;
+    let mut wav=crate::engine::media_analysis::tests::wav(rate as usize*8,rate,1,true);
+    for frame in 0..rate as usize*8 {
+        let sample=[60.0,64.0,67.0].iter().map(|note| {
+            let frequency=440.0*2.0f64.powf((note-69.0)/12.0);
+            (std::f64::consts::TAU*frequency*frame as f64/f64::from(rate)).sin()*0.08
+        }).sum::<f64>();
+        wav[44+frame*2..46+frame*2].copy_from_slice(&((sample*i16::MAX as f64) as i16).to_le_bytes());
+    }
+    std::fs::write(&path,wav).unwrap();
+    let mut gui=Gui::new(&files);gui.scan(&files);
+    for field in ["Analyze BPM","Analyze duration","Analyze waveform","Analyze source level"] {gui.click(field);}
+    gui.click("Analyze selected row");gui.finish();
+    let key=gui.record(&path).unwrap().key.as_ref().unwrap().value;
+    assert_eq!(key.key,Some(crate::musical_key::Key {tonic:0,minor:false}));
+    gui.app.lib_filter="key:C".into();gui.app.refresh_library_view();assert!(gui.app.library_view.indices.iter().any(|index|gui.app.library[*index].source==LibSource::File(path.clone())));
+    gui.app.lib_filter="key:G".into();gui.app.refresh_library_view();assert!(!gui.app.library_view.indices.iter().any(|index|gui.app.library[*index].source==LibSource::File(path.clone())));
+    gui.app.lib_filter="Analysis".into();gui.app.refresh_library_view();
+    gui.click("Inspect selected cache");gui.finish();gui.frame(vec![]);
+    assert!(gui.nodes.iter().any(|(_,node)|node.value().or_else(||node.label()).is_some_and(|label|label.contains("Analyzed key: C · 8B"))), "{}", gui.app.library_analysis.evidence());
+    gui.key_text("Compare with key","8A");
+    assert!(gui.nodes.iter().any(|(_,node)|node.value().or_else(||node.label())==Some("Compatible source keys: same, relative or adjacent on the harmonic wheel")));
+    gui.key_text("Compare with key","3A");
+    assert!(gui.nodes.iter().any(|(_,node)|node.value().or_else(||node.label())==Some("Source keys are not adjacent on the harmonic wheel")));
+    gui.click("Review a key correction for the selected library row");
+    gui.wait(|gui|!gui.app.library_tags.busy());
+    gui.click("Change Key");gui.key_text("New Key","F#m");
+    gui.click("Write supported embedded tags; use a library sidecar when writing is unavailable");
+    gui.click("Review these field changes");gui.click("Apply reviewed edits to captured tracks");
+    gui.wait(|gui|!gui.app.library_tags.busy()&&!gui.app.library_metadata.active());
+    gui.app.library_tags.open=false;gui.frame(vec![]);
+    gui.click("Force selected fields");gui.click("Analyze selected row");gui.finish();
+    assert!(gui.app.library_analysis.message.contains("1 saved"),"{}",gui.app.library_analysis.message);
+    let saved=crate::library::read(&files.0.join("catalog.json")).unwrap();
+    let version=saved.version(&LibSource::File(path.clone()),FileFingerprint::read(&path)).unwrap();
+    assert_eq!(version.metadata.key,"F#m");assert_eq!(version.analysis.as_ref().unwrap().key.as_ref().unwrap().value,key);
+    assert_eq!(crate::musical_key::display(Some(version),"",false).0,"F#m · 11A");
+    drop(gui);wait_store_closed(&files.0.join("catalog.json"));
+    let mut reopened=Gui::new(&files);reopened.scan(&files);
+    assert_eq!(reopened.record(&path).unwrap().key.as_ref().unwrap().value,key);
+    assert!(reopened.app.library_view.cells.values().any(|cells|cells.key=="F#m · 11A"));
 }

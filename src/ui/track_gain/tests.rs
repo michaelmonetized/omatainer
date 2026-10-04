@@ -197,7 +197,7 @@ fn native_file_review_saves_and_recalls_policy_through_the_catalog_owner() {
         gui.frame(vec![]);
         gui.click("Analyze BPM");
         gui.click("Analyze duration");
-        gui.click("Analyze waveform");
+        gui.click("Analyze waveform"); gui.click("Analyze musical key");
         gui.click("Force selected fields");
         gui.click("Analyze selected row");
         settle(&mut gui, |gui| !gui.app.library_analysis.busy());

@@ -655,6 +655,44 @@
         "docs/validation/issue-141-track-gain.md"
       ],
       "limits": "The metric is whole-source first-pair/mono RMS dBFS and sample peak, not LUFS or true peak. Auto uses reviewed targets and at most 12 dB boost. Its sample-peak estimate uses decoded source PCM; key-lock synthesis and downstream fader, EQ and effects can change peaks. It cannot repair clipping or guarantee final output headroom. Analysis alone never applies trim. Physical listening, controllers and converter measurements remain unqualified. Implementation status does not claim backlog or release completion."
+    },
+    "142": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_analysis.rs",
+          "entry": "Library → analyze… → Analyze musical key → inspect conventional/harmonic notation, unknown, correlation and comparison → review correction through Audio metadata"
+        },
+        {
+          "kind": "background analysis",
+          "file": "src/engine/media_analysis.rs",
+          "entry": "Cancelable same-descriptor hash/decode and native-rate musical-key analysis on the existing worker"
+        },
+        {
+          "kind": "library view",
+          "file": "src/ui/library_view.rs",
+          "entry": "Effective source key shared by the visible key cell, filtering, sorting and smart-crate membership; metadata locks, user edits and embedded tags retain precedence"
+        },
+        {
+          "kind": "persistence",
+          "file": "src/track_analysis.rs",
+          "entry": "Separate algorithm-versioned source-qualified key record; completed unknown differs from missing; schema-15 migration refuses lower-header injection"
+        }
+      ],
+      "fixtures": [
+        "musical_key::tests",
+        "library::analysis::tests::musical_key_analysis_preserves_manual_embedded_and_inferred_provenance",
+        "library::tests::musical_key_schema_and_persistence_preserve_corrections_and_unknown_results",
+        "ui::library_analysis::tests::musical_key_native_review_compare_correct_force_and_reopen_keep_user_value",
+        "ui::library_metadata::collection_rows::tests::analyzed_key_updates_smart_membership_without_row_edits_and_locks_restore_saved_key",
+        "engine::media_analysis::tests::musical_key_independent_corpus_qualification",
+        "engine::decode::tests::fully_trimmed_mp3_tail_is_not_a_missing_audible_packet"
+      ],
+      "evidence": [
+        "docs/validation/issue-142-musical-key.md"
+      ],
+      "limits": "Whole-source major/minor estimate of the first stereo pair or mono. Fixed correlation/margin thresholds decline weak or ambiguous material; scores are not probabilities. Initial native-worker development corpus: 48 independent artist-labeled CC0 Bach piano recordings; 19 correct, 27 unknown, 2 wrong (9.52% error among returned estimates). This is not held-out or cross-genre/DJ accuracy proof. Comparison uses effective source keys and does not account for deck pitch changes or promise a transition. Physical listening and controllers remain unqualified. See linked evidence for individual source/binary checks. Software implementation status does not claim release or backlog completion."
     }
   }
 }
