@@ -45,15 +45,21 @@ impl App {
             }
             for deck in 0..DECKS {
                 let zoom = self.waveform.settings.zoom[deck];
+                let label = zoom.label(
+                    self.snap
+                        .decks
+                        .get(deck)
+                        .is_some_and(|snap| snap.grid.is_some()),
+                );
                 let response =
-                    ui.small_button(format!("{} {}", (b'A' + deck as u8) as char, zoom.label()));
+                    ui.small_button(format!("{} {}", (b'A' + deck as u8) as char, label));
                 accessibility::button(
                     ui,
                     &response,
                     &format!("Deck {}: Waveform zoom", (b'A' + deck as u8) as char),
                     None,
                 );
-                accessibility::status(ui, &response, zoom.label());
+                accessibility::status(ui, &response, label);
                 help::annotate(ui, &response, HelpControl::WaveformZoom);
                 if response.clicked() {
                     self.waveform.settings.set(deck, zoom.next());
@@ -152,7 +158,7 @@ impl Window {
         let span = if snap.grid.is_some() {
             zoom.beats()
         } else {
-            7.0 * zoom.beats() / 16.0
+            zoom.seconds()
         };
         Some(Self {
             start: coordinate - span * 0.5,

@@ -415,7 +415,14 @@ impl Stream {
             }
         }
         let mut stream = Self {
-            latency: Box::new(Latency { ports: if input { Box::new([]) } else { ports.clone().into_boxed_slice() }, signals: signals.clone() }),
+            latency: Box::new(Latency {
+                ports: if input {
+                    Box::new([])
+                } else {
+                    ports.clone().into_boxed_slice()
+                },
+                signals: signals.clone(),
+            }),
             process: Some(Box::new(Process {
                 client: client.0,
                 ports,
@@ -517,11 +524,6 @@ impl Drop for Stream {
                 unsafe {
                     j::jack_deactivate(client.0);
                     j::jack_set_latency_callback(client.0, None, std::ptr::null_mut());
-                    if let Some(process) = &self.process {
-                        for port in &process.ports {
-                            j::jack_port_unregister(client.0, *port);
-                        }
-                    }
                     j::jack_set_process_callback(client.0, None, std::ptr::null_mut());
                     j::jack_on_shutdown(client.0, None, std::ptr::null_mut());
                     j::jack_client_close(client.0);
@@ -581,7 +583,9 @@ unsafe fn process_block(frames: u32, arg: *mut libc::c_void) -> libc::c_int {
         return 1;
     }
     if process.signals.fault.load(Ordering::Acquire) {
-        if let Some(output) = &process.output { output.rt.audible.invalidate(); }
+        if let Some(output) = &process.output {
+            output.rt.audible.invalidate();
+        }
         process.signals.fault.store(true, Ordering::Release);
         if process.output.is_some() {
             for port in &process.ports {
@@ -596,15 +600,35 @@ unsafe fn process_block(frames: u32, arg: *mut libc::c_void) -> libc::c_int {
     let data = &mut process.buffer[..frames * width];
     if let Some(output) = &mut process.output {
         let delay = process.signals.latency_ns.load(Ordering::Acquire);
-        let timestamp = if delay == u64::MAX { None } else {
-            let (mut current_frames, mut current_usecs, mut next_usecs, mut period_usecs) = (0,0,0,0.0);
-            let cycle = unsafe { j::jack_get_cycle_times(process.client, &mut current_frames, &mut current_usecs, &mut next_usecs, &mut period_usecs) };
+        let timestamp = if delay == u64::MAX {
+            None
+        } else {
+            let (mut current_frames, mut current_usecs, mut next_usecs, mut period_usecs) =
+                (0, 0, 0, 0.0);
+            let cycle = unsafe {
+                j::jack_get_cycle_times(
+                    process.client,
+                    &mut current_frames,
+                    &mut current_usecs,
+                    &mut next_usecs,
+                    &mut period_usecs,
+                )
+            };
             if cycle == Some(0) {
-                let age = unsafe { j::jack_get_time() }.checked_sub(current_usecs).and_then(|value| value.checked_mul(1000));
-                age.and_then(|age| output.rt.audible.now_ns().checked_sub(age)).and_then(|time| time.checked_add(delay))
-            } else { None }
+                let age = unsafe { j::jack_get_time() }
+                    .checked_sub(current_usecs)
+                    .and_then(|value| value.checked_mul(1000));
+                age.and_then(|age| output.rt.audible.now_ns().checked_sub(age))
+                    .and_then(|time| time.checked_add(delay))
+            } else {
+                None
+            }
         };
-        output.render_at(data, (delay != u64::MAX).then(|| Duration::from_nanos(delay)), timestamp);
+        output.render_at(
+            data,
+            (delay != u64::MAX).then(|| Duration::from_nanos(delay)),
+            timestamp,
+        );
         #[cfg(test)]
         native_tests::observe(&process.signals.trace, data, width, process.signals.rate);
         for (channel, port) in process.ports.iter().enumerate() {
@@ -672,13 +696,17 @@ unsafe extern "C" fn port_registered(_: u32, _: libc::c_int, arg: *mut libc::c_v
     }
 }
 unsafe extern "C" fn port_connected(_: u32, _: u32, _: libc::c_int, arg: *mut libc::c_void) {
-    unsafe { &*arg.cast::<Signals>() }.latency_ns.store(u64::MAX, Ordering::Release);
+    unsafe { &*arg.cast::<Signals>() }
+        .latency_ns
+        .store(u64::MAX, Ordering::Release);
     unsafe {
         graph_order(arg);
     }
 }
 unsafe extern "C" fn xrun(arg: *mut libc::c_void) -> libc::c_int {
-    unsafe { &*arg.cast::<Signals>() }.latency_ns.store(u64::MAX, Ordering::Release);
+    unsafe { &*arg.cast::<Signals>() }
+        .latency_ns
+        .store(u64::MAX, Ordering::Release);
     unsafe { &*arg.cast::<Signals>() }
         .xruns
         .fetch_add(1, Ordering::Relaxed);
@@ -688,21 +716,35 @@ unsafe extern "C" fn xrun(arg: *mut libc::c_void) -> libc::c_int {
 /// Read one common downstream playback delay.
 /// Takes JACK's latency mode and immutable output ports; publishes unavailable timing for disconnected or unequal paths.
 unsafe extern "C" fn latency(mode: j::jack_latency_callback_mode_t, arg: *mut libc::c_void) {
-    if mode != j::JackPlaybackLatency { return; }
+    if mode != j::JackPlaybackLatency {
+        return;
+    }
     let context = unsafe { &*arg.cast::<Latency>() };
     let mut delay = None;
     for port in &context.ports {
-        if unsafe { j::jack_port_connected(*port) } == 0 { continue; }
-        let mut range = j::jack_latency_range_t { min:0,max:0 };
-        unsafe { j::jack_port_get_latency_range(*port,mode,&mut range); }
-        let (min,max) = (range.min,range.max);
+        if unsafe { j::jack_port_connected(*port) } == 0 {
+            continue;
+        }
+        let mut range = j::jack_latency_range_t { min: 0, max: 0 };
+        unsafe {
+            j::jack_port_get_latency_range(*port, mode, &mut range);
+        }
+        let (min, max) = (range.min, range.max);
         if min != max || delay.is_some_and(|previous| previous != max) {
-            context.signals.latency_ns.store(u64::MAX,Ordering::Release); return;
+            context
+                .signals
+                .latency_ns
+                .store(u64::MAX, Ordering::Release);
+            return;
         }
         delay = Some(max);
     }
-    let ns = delay.map(|frames| u64::from(frames)*1_000_000_000/u64::from(context.signals.rate.max(1)));
-    context.signals.latency_ns.store(ns.unwrap_or(u64::MAX),Ordering::Release);
+    let ns = delay
+        .map(|frames| u64::from(frames) * 1_000_000_000 / u64::from(context.signals.rate.max(1)));
+    context
+        .signals
+        .latency_ns
+        .store(ns.unwrap_or(u64::MAX), Ordering::Release);
 }
 
 #[cfg(test)]

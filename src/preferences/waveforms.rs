@@ -50,14 +50,23 @@ impl Zoom {
             Self::SixteenBars => 64.0,
         }
     }
+    /// Choose a span without a beatgrid.
+    /// Takes this zoom; returns the displayed source seconds.
+    pub fn seconds(self) -> f64 {
+        7.0 * self.beats() / 16.0
+    }
     /// Name the current span.
-    /// Takes this zoom; returns its fixed visible label.
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::TwoBars => "2 bars",
-            Self::FourBars => "4 bars",
-            Self::EightBars => "8 bars",
-            Self::SixteenBars => "16 bars",
+    /// Takes this zoom and whether a beatgrid exists; returns the visible span with its actual units.
+    pub fn label(self, grid: bool) -> &'static str {
+        match (self, grid) {
+            (Self::TwoBars, true) => "2 bars",
+            (Self::FourBars, true) => "4 bars",
+            (Self::EightBars, true) => "8 bars",
+            (Self::SixteenBars, true) => "16 bars",
+            (Self::TwoBars, false) => "3.5 s",
+            (Self::FourBars, false) => "7 s",
+            (Self::EightBars, false) => "14 s",
+            (Self::SixteenBars, false) => "28 s",
         }
     }
     /// Step through supported spans.
