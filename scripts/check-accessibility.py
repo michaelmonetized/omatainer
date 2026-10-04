@@ -31,7 +31,7 @@ def wait_for(check, description, seconds=5):
     raise AssertionError(f'timed out: {description}; last error: {last}')
 
 def outer(binary,support=False):
-    with tempfile.TemporaryDirectory(prefix='omatainer-private-atspi-') as directory:
+    with tempfile.TemporaryDirectory(prefix='atspi-') as directory:
         root=Path(directory)
         for name in ['runtime','config','data','cache']:(root/name).mkdir(mode=0o700)
         (root/'private-harness').write_text('Private native accessibility fixture\n')
@@ -263,7 +263,7 @@ def private(binary,support=False):
         wait_for(lambda:state()['undo_epoch']>epoch and state()['notes']==0,'second native New installed empty state')
         wait_for(project_ready,'second New controls enabled')
         assert state()['all_pad_inputs_clear'],'project replacement clears all input ownership'
-        saved_path=state()['project_file']
+        saved_path=str(Path(state()['project_file']).resolve())
         action(named('Project'),'click')
         action(named('Open recent ⏵'),'click')
         action(named(saved_path),'click')

@@ -304,6 +304,33 @@ struct Signals {
 struct Latency {
     ports: Box<[*mut j::jack_port_t]>,
     signals: Arc<Signals>,
+    readers: Readers,
+}
+#[derive(Default)]
+struct Readers(AtomicU32);
+const RETIRING: u32 = 1 << 31;
+struct Read<'a>(&'a Readers);
+impl Readers {
+    /// Admit a callback while its ports exist.
+    /// Takes the reader gate; returns a guard before retirement or refuses access after it.
+    fn enter(&self) -> Option<Read<'_>> {
+        let before = self.0.fetch_add(1, Ordering::Acquire);
+        let guard = Read(self);
+        (before & RETIRING == 0).then_some(guard)
+    }
+    /// Finish port readers before freeing ports.
+    /// Takes the reader gate on the owning thread; refuses new reads and waits for admitted callbacks.
+    fn retire(&self) {
+        self.0.fetch_or(RETIRING, Ordering::AcqRel);
+        while self.0.load(Ordering::Acquire) != RETIRING {
+            std::thread::yield_now();
+        }
+    }
+}
+impl Drop for Read<'_> {
+    fn drop(&mut self) {
+        self.0 .0.fetch_sub(1, Ordering::Release);
+    }
 }
 struct Process {
     client: *mut j::jack_client_t,
@@ -422,6 +449,7 @@ impl Stream {
                     ports.clone().into_boxed_slice()
                 },
                 signals: signals.clone(),
+                readers: Readers::default(),
             }),
             process: Some(Box::new(Process {
                 client: client.0,
@@ -522,8 +550,14 @@ impl Drop for Stream {
                     .lock()
                     .unwrap_or_else(|error| error.into_inner());
                 unsafe {
+                    self.latency.readers.retire();
                     j::jack_deactivate(client.0);
                     j::jack_set_latency_callback(client.0, None, std::ptr::null_mut());
+                    if let Some(process) = &self.process {
+                        for port in &process.ports {
+                            j::jack_port_unregister(client.0, *port);
+                        }
+                    }
                     j::jack_set_process_callback(client.0, None, std::ptr::null_mut());
                     j::jack_on_shutdown(client.0, None, std::ptr::null_mut());
                     j::jack_client_close(client.0);
@@ -716,10 +750,13 @@ unsafe extern "C" fn xrun(arg: *mut libc::c_void) -> libc::c_int {
 /// Read one common downstream playback delay.
 /// Takes JACK's latency mode and immutable output ports; publishes unavailable timing for disconnected or unequal paths.
 unsafe extern "C" fn latency(mode: j::jack_latency_callback_mode_t, arg: *mut libc::c_void) {
+    let context = unsafe { &*arg.cast::<Latency>() };
+    let Some(_read) = context.readers.enter() else {
+        return;
+    };
     if mode != j::JackPlaybackLatency {
         return;
     }
-    let context = unsafe { &*arg.cast::<Latency>() };
     let mut delay = None;
     for port in &context.ports {
         if unsafe { j::jack_port_connected(*port) } == 0 {
@@ -750,6 +787,37 @@ unsafe extern "C" fn latency(mode: j::jack_latency_callback_mode_t, arg: *mut li
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retiring_ports_waits_for_admitted_readers_and_refuses_late_callbacks() {
+        let readers = Arc::new(Readers::default());
+        let active = readers.enter().unwrap();
+        let retiring = readers.clone();
+        let finished = Arc::new(AtomicBool::new(false));
+        let done = finished.clone();
+        let worker = std::thread::spawn(move || {
+            retiring.retire();
+            done.store(true, Ordering::Release);
+        });
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while readers.0.load(Ordering::Acquire) & RETIRING == 0 {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        assert!(!finished.load(Ordering::Acquire));
+        assert_eq!(
+            super::super::super::test_alloc::measure(|| {
+                for _ in 0..1024 {
+                    assert!(readers.enter().is_none());
+                }
+            }),
+            super::super::super::test_alloc::Counts::default()
+        );
+        drop(active);
+        worker.join().unwrap();
+        assert!(finished.load(Ordering::Acquire));
+        assert!(readers.enter().is_none());
+        assert_eq!(readers.0.load(Ordering::Acquire), RETIRING);
+    }
     #[test]
     fn quantum_rate_and_shutdown_notifications_never_allocate() {
         let signals = Signals {

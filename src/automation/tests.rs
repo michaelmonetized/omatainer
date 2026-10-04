@@ -112,7 +112,7 @@ struct Service {
 impl Service {
     fn new() -> Self {
         let root = std::env::temp_dir().join(format!(
-            "omatainer-api-{}-{}",
+            "api-{}-{}",
             std::process::id(),
             engine::midi_edit::NoteId::new()
         ));
