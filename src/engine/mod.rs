@@ -2686,7 +2686,7 @@ impl RtEngine {
                 let fav = if self.xfader <= 0.5 { 0 } else { 1 };
                 let oth = 1 - fav;
                 if self.decks[fav].audio.is_none() { return; }
-                let target_bpm = if self.decks[fav].sync { self.decks[fav].sync_bpm }
+                let target_bpm = if self.decks[fav].sync && self.decks[fav].grid.is_some_and(|grid| !grid.anchors().is_empty()) { self.decks[fav].sync_bpm }
                     else { self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate() };
                 self.decks[oth].sync = true;
                 self.decks[oth].sync_bpm = target_bpm;

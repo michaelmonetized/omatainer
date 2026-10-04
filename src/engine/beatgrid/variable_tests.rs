@@ -503,6 +503,12 @@ fn actual_renderer_loops_sync_seek_and_undo_use_local_segments_without_changing_
     rt.decks[1].pos = b.seconds_at(2.0).unwrap() * 48000.0;
     rt.process(&mut [0.0; 2]);
     assert!((rt.decks[1].target_rate - 160.0 / 120.0).abs() < 1e-6);
+    rt.xfader = 0.75;
+    rt.apply(Command::DeckMatch);
+    assert_eq!(
+        rt.decks[0].sync_bpm, 160.0,
+        "An anchored synced favorite retains its playing musical clock"
+    );
     rt.apply(Command::DeckSeek { deck: 0, frac: 0.5 });
     assert!(std::sync::Arc::ptr_eq(
         &audio,
