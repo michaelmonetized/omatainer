@@ -12809,7 +12809,7 @@
     "src/ui/session_history/tests.rs": "47dadf4a6f8a250bf3e076490df74924bb70223bc8d0eaedd3a51d3bfc5e0c64",
     "src/ui/shortcuts.rs": "063bc611579a9f577327187f9e682882655c872aae3f658e7e7aa9e187d1925e",
     "src/ui/support.rs": "8138ce0c49d80dd87f9adc799033d3fcd872ccae111df18e01278fde770d3399",
-    "src/ui/support/tests.rs": "1e9559a67f268ac4e09ab81df17153b95fa122139176ccfc671136f58c5e0e37",
+    "src/ui/support/tests.rs": "9241bdaf5a0a0060d59ae6426b065f7560f5709fa10fa99b2d5fec884c478244",
     "src/ui/templates.rs": "410695f9a8d767cd2079b6c44f3e1eb680177e3536c396c2f0a6e4b614b79a3a",
     "src/ui/templates/tests.rs": "57aca83b208896a9b05ee5ea5befc02e2e6b579163b752235f2ad9c8e165647a",
     "src/ui/templates/worker.rs": "4208129f59c160e4018f2e03a99fc28518f8a4fe1470cdf1725f7233778a93f3",
