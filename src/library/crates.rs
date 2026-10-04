@@ -32,6 +32,8 @@ pub(crate) struct Node<K> {
     pub name: String,
     pub children: Vec<CrateId>,
     pub members: Vec<K>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub favorite: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub annotation_rule: Option<crate::library::annotations::Rule>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -72,6 +74,7 @@ pub(crate) enum Edit<K> {
     },
     SetAnnotationRule { id: CrateId, rule: Option<crate::library::annotations::Rule> },
     SetSmartRule { id: CrateId, rule: Option<crate::library::smart_crates::Rule> },
+    SetFavorite { id: CrateId, favorite: bool },
     Rename {
         id: CrateId,
         name: String,
@@ -374,6 +377,7 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
                     members: vec![],
                     annotation_rule: None,
                     smart_rule: None,
+                    favorite: false,
                 });
             }
             Edit::SetAnnotationRule { id, rule } => {
@@ -387,6 +391,7 @@ impl<K: Clone + Eq + Hash> CrateForest<K> {
                 if rule.is_some() && (!node.members.is_empty() || node.annotation_rule.is_some()) { return Err(Error::Invalid("Select an empty manual crate before saving a typed smart rule; existing membership and rules were preserved")); }
                 node.smart_rule = rule.clone();
             },
+            Edit::SetFavorite { id, favorite } => self.node_mut(id)?.favorite = *favorite,
             Edit::Rename { id, name } => self.node_mut(id)?.name.clone_from(name),
             Edit::MoveCrate { id, parent, before } => {
                 if self.node(id).is_none() {
@@ -508,6 +513,10 @@ impl<K: Eq + Hash> Edit<K> {
         }
     }
 }
+/// Omit unpinned crates from compatible records.
+/// Takes the saved flag; returns whether it is false.
+fn is_false(value: &bool) -> bool { !value }
+
 fn validate_name(name: &str) -> Result<(), Error> {
     if name.is_empty()
         || name.len() > MAX_NAME_BYTES

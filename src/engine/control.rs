@@ -622,7 +622,7 @@ impl CommandPort {
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
-        if self.shared.audio_offline.load(Acquire) && !project_release(&command) && !matches!(command,Command::PrepareSelected { .. }) {
+        if self.shared.audio_offline.load(Acquire) && !project_release(&command) && !matches!(command,Command::PrepareSelected { .. } | Command::BrowseCrates(_) | Command::CrateReturn) {
             return fail(SubmissionError::AudioUnavailable);
         }
         if !self.shared.history_available.load(Acquire) && !history_monitoring(&command) {
@@ -642,6 +642,8 @@ impl CommandPort {
         if let Command::PrepareSelected { all } = command {
             return self.shared.submit_ui(self.shared.ui_requests.prepare(all));
         }
+        if let Command::BrowseCrates(steps) = command { return self.shared.submit_ui(self.shared.ui_requests.browse_crates(steps)); }
+        if let Command::CrateReturn = command { return self.shared.submit_ui(self.shared.ui_requests.return_crate()); }
         if let Command::Browse(steps) = command {
             return self.shared.submit_ui(self.shared.ui_requests.browse(steps));
         }
@@ -679,7 +681,7 @@ impl CommandPort {
         if !self.shared.connected.load(Acquire) {
             return fail(SubmissionError::Disconnected);
         }
-        if self.shared.audio_offline.load(Acquire) && !project_release(&command) && !matches!(command,Command::PrepareSelected { .. }) {
+        if self.shared.audio_offline.load(Acquire) && !project_release(&command) && !matches!(command,Command::PrepareSelected { .. } | Command::BrowseCrates(_) | Command::CrateReturn) {
             return fail(SubmissionError::AudioUnavailable);
         }
         // A producer may have passed preflight before waiting on this mutex.
@@ -1192,6 +1194,8 @@ fn history_monitoring(command: &Command) -> bool {
     matches!(
         command,
         Command::PrepareSelected { .. }
+            | Command::BrowseCrates(_)
+            | Command::CrateReturn
             | Command::LiveNoteOn { .. }
             | Command::RoutedNoteOn { .. }
             | Command::LiveNoteOff { .. }

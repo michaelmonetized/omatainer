@@ -42,7 +42,7 @@ impl MidiMap {
                 self.name
             );
             anyhow::ensure!(
-                binding.action != Action::Browse || (binding.kind == MsgKind::CcRel
+                !matches!(binding.action,Action::Browse | Action::BrowseCrates) || (binding.kind == MsgKind::CcRel
                     && binding.relative.is_some_and(|spec| spec.scale == 1.0)),
                 "MIDI profile {:?}: binding {index} Browse requires an explicit relative encoding and one row per wire step",
                 self.name

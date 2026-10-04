@@ -42,6 +42,35 @@ fn exact_publication_pair_and_current_version_are_required_for_row_lookup() {
     assert_eq!(missing.track_index(&catalog.tracks[0].id, &catalog), Some(0));
 }
 
+#[test]
+fn membership_discovery_includes_direct_manual_annotation_and_typed_rules_only() {
+    use crate::library::{crates::{CrateId,Edit},annotations,smart_crates::{Rule,Combine,Condition,NumberField}};
+    let (_files,catalog,_) = fixture();
+    let mut catalog = (*catalog).clone();
+    catalog.tracks[0].annotations.rating = 5;
+    let ids: Vec<_> = (1..=4).map(|i|CrateId(format!("{i:032x}"))).collect();
+    for (index,id) in ids.iter().enumerate() {
+        catalog.edit_crates(catalog.crates.revision(),&Edit::Create { id:id.clone(),name:format!("Crate {index}"),parent:(index==1).then(||ids[0].clone()),before:None }).unwrap();
+    }
+    catalog.edit_crates(catalog.crates.revision(),&Edit::AddMembers { id:ids[1].clone(),members:vec![catalog.tracks[0].id.clone()],before:None }).unwrap();
+    catalog.edit_crates(catalog.crates.revision(),&Edit::SetAnnotationRule { id:ids[2].clone(),rule:Some(annotations::Rule { minimum_rating:4,..Default::default() }) }).unwrap();
+    catalog.edit_crates(catalog.crates.revision(),&Edit::SetSmartRule { id:ids[3].clone(),rule:Some(Rule { combine:Combine::All,conditions:vec![Condition::Number { field:NumberField::Rating,minimum:4.0,maximum:5.0 }] }) }).unwrap();
+    let catalog = Arc::new(catalog);
+    let rows = Arc::new(catalog.tracks.iter().rev().map(|track|LibItem::from_stored(track.source.clone(),&track.versions[track.current])).collect());
+    let index = CollectionRows::build(&rows,&catalog);
+    let mut membership = index.crates_containing(&catalog.tracks[0].id,&rows,&catalog).unwrap();
+    membership.sort_unstable();
+    assert_eq!(membership,[1,2,3],"a parent crate does not inherit a child's direct membership");
+    assert!(index.crates_containing(&catalog.tracks[1].id,&rows,&catalog).unwrap().is_empty());
+    assert!(index.crates_containing(&catalog.tracks[0].id,&Arc::new((*rows).clone()),&catalog).is_none());
+    let mut changed = (*catalog).clone();
+    changed.tracks[0].annotations.rating = 1;
+    let changed = Arc::new(changed);
+    let update = CollectionRows::build_incremental(&rows,&changed,Some(&index));
+    assert_eq!(update.crates_containing(&changed.tracks[0].id,&rows,&changed).unwrap(),[1]);
+    assert!(index.crates_containing(&changed.tracks[0].id,&rows,&changed).is_none());
+}
+
 fn settle(metadata: &mut Metadata, rows: &mut Arc<Vec<LibItem>>) {
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {

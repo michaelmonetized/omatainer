@@ -49,6 +49,27 @@ fn add(forest: &mut Forest, value: u32, values: &[u32]) {
 }
 
 #[test]
+fn favorites_preserve_identity_order_membership_and_conflict_safety() {
+    let mut forest = Forest::default();
+    create(&mut forest, 1, None);
+    create(&mut forest, 2, Some(1));
+    add(&mut forest, 2, &[20,10]);
+    let old = forest.revision();
+    assert!(apply(&mut forest,Edit::SetFavorite { id:id(2),favorite:true }));
+    assert_eq!(forest.roots(),[id(1)]);
+    assert_eq!(members(&forest,2),[20,10]);
+    assert!(forest.node(&id(2)).unwrap().favorite);
+    assert!(!apply(&mut forest,Edit::SetFavorite { id:id(2),favorite:true }));
+    assert_eq!(forest.apply(old,&Edit::SetFavorite { id:id(1),favorite:true },|_|true),Err(Error::Conflict));
+    assert!(!forest.node(&id(1)).unwrap().favorite);
+    let restored: Forest = serde_json::from_slice(&serde_json::to_vec(&forest).unwrap()).unwrap();
+    assert_eq!(restored,forest);
+    assert!(apply(&mut forest,Edit::SetFavorite { id:id(2),favorite:false }));
+    assert!(serde_json::to_value(&forest).unwrap()["nodes"][1].get("favorite").is_none());
+    assert_eq!(rejected(&mut forest,Edit::SetFavorite { id:id(99),favorite:true }),Error::MissingCrate);
+}
+
+#[test]
 fn nested_overlapping_members_keep_manual_order_through_roundtrip() {
     let mut forest = Forest::default();
     create(&mut forest, 1, None);
@@ -407,6 +428,7 @@ fn node_and_membership_limits_are_validated_before_commit() {
         forest.nodes.push(Node {
             annotation_rule: None,
             smart_rule: None,
+            favorite: false,
             id: id(value),
             name: value.to_string(),
             children: vec![],

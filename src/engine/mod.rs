@@ -924,6 +924,8 @@ pub enum Command {
     Solo { track: u8 },
     Arm { track: u8 },
     Browse(f32),
+    BrowseCrates(f32),
+    CrateReturn,
     Select { track: usize, scene: usize },
     ComposeArm { track: usize, scene: usize },
     ComposeDisarm,
@@ -2520,7 +2522,7 @@ impl RtEngine {
                     self.tracks[track as usize].armed = !self.tracks[track as usize].armed;
                 }
             }
-            Command::Browse(_) => {
+            Command::Browse(_) | Command::BrowseCrates(_) | Command::CrateReturn => {
                 // Browsing must resolve the GUI's published filtered view on a
                 // control producer. The renderer has no independent selection.
                 self.cmd_rx.reject_uncaptured_ui_load();

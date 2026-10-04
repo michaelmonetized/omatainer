@@ -586,6 +586,8 @@ fn destructive(command: &Command) -> bool {
         | Command::Solo { .. }
         | Command::Arm { .. }
         | Command::Browse(_)
+        | Command::BrowseCrates(_)
+        | Command::CrateReturn
         | Command::Select { .. }
         | Command::ComposeArm { .. }
         | Command::ComposeDisarm
@@ -649,6 +651,8 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::SelectDeckRequested { .. }
             | Command::SetView(_)
             | Command::Browse(_)
+            | Command::BrowseCrates(_)
+            | Command::CrateReturn
             | Command::OpenFxTrack(_)
             | Command::OpenFxScene(_)
             | Command::CloseFx

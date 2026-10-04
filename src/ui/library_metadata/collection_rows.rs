@@ -16,6 +16,7 @@ pub(in crate::ui) struct CollectionRows {
     catalog: Weak<Catalog>,
     entries: HashMap<TrackId, Entry>,
     smart: HashMap<CrateId, SmartMembership>,
+    manual: HashMap<TrackId, Vec<usize>>,
     #[cfg(test)]
     dropped: std::sync::Mutex<Option<std::sync::mpsc::Sender<std::thread::ThreadId>>>,
 }
@@ -78,11 +79,30 @@ impl CollectionRows {
             }
             smart.insert(node.id.clone(), membership);
         }
+        let mut manual: HashMap<TrackId, Vec<usize>> = HashMap::new();
+        for (index, node) in catalog.crates.nodes().iter().enumerate() {
+            for member in &node.members { manual.entry(member.clone()).or_default().push(index); }
+        }
         Self {
-            rows: Arc::downgrade(rows), catalog: Arc::downgrade(catalog), entries, smart,
+            rows: Arc::downgrade(rows), catalog: Arc::downgrade(catalog), entries, smart, manual,
             #[cfg(test)]
             dropped: std::sync::Mutex::new(None),
         }
+    }
+
+    /// Reveal direct manual and automatic memberships for one saved track.
+    /// Takes its stable identity and exact publication; returns node indices, or None while that publication is unavailable.
+    pub fn crates_containing(&self, id: &TrackId, rows: &Arc<Vec<LibItem>>, catalog: &Arc<Catalog>) -> Option<Vec<usize>> {
+        if !self.is_for(rows, catalog) { return None; }
+        let entry = self.entries.get(id)?;
+        let annotations = &catalog.tracks[entry.track].annotations;
+        let mut result = self.manual.get(id).cloned().unwrap_or_default();
+        for (index, node) in catalog.crates.nodes().iter().enumerate() {
+            let automatic = node.annotation_rule.as_ref().is_some_and(|rule|rule.matches(annotations))
+                || entry.row.is_some_and(|row|self.smart.get(&node.id).is_some_and(|membership|membership.mask[row]));
+            if automatic { result.push(index); }
+        }
+        Some(result)
     }
 
     pub fn is_for(&self, rows: &Arc<Vec<LibItem>>, catalog: &Arc<Catalog>) -> bool {

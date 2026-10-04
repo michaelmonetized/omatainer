@@ -107,7 +107,7 @@ fn protection_survives_catalog_reopen_and_cannot_be_hidden_in_schema_ten() {
     store.save().unwrap();
     drop(store);
     let reopened = Store::open(path.clone()).unwrap();
-    assert_eq!(reopened.catalog.schema, 11);
+    assert_eq!(reopened.catalog.schema, crate::library::SCHEMA);
     assert!(reopened.catalog.tracks.iter().all(|track| track.locks
         == Locks {
             grid: true,
@@ -129,7 +129,7 @@ fn protection_survives_catalog_reopen_and_cannot_be_hidden_in_schema_ten() {
     }
     std::fs::write(&path, serde_json::to_vec(&legacy).unwrap()).unwrap();
     let migrated = read(&path).unwrap();
-    assert_eq!(migrated.schema, 11);
+    assert_eq!(migrated.schema, crate::library::SCHEMA);
     assert!(migrated.tracks.iter().all(|track| track.locks.is_empty()));
     std::fs::remove_dir_all(root).unwrap();
 }

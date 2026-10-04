@@ -51,6 +51,8 @@ fn label(action: Action) -> &'static str {
         Action::Master => "Master gain",
         Action::CueMix => "Headphone mix",
         Action::Browse => "Browse library",
+        Action::BrowseCrates => "Browse crates",
+        Action::CrateReturn => "Return to previous crate view",
         Action::Prepare => "Prepare selected track",
         Action::PrepareCrate => "Prepare filtered crate",
         Action::LoadA => "Load deck A",
@@ -141,7 +143,7 @@ impl App {
                 binding.extra = 0;
                 binding.relative = (binding.kind == MsgKind::CcRel).then_some(RelativeSpec {
                     encoding: crate::engine::midi::RelativeEncoding::OffsetBinary,
-                    scale: if binding.action == Action::Browse {
+                    scale: if matches!(binding.action, Action::Browse | Action::BrowseCrates) {
                         1.0
                     } else {
                         0.35
@@ -216,7 +218,7 @@ impl App {
                     })
                     .response
                     .help(ui, HelpControl::MidiLearn);
-                if binding.action == Action::Browse {
+                if matches!(binding.action, Action::Browse | Action::BrowseCrates) {
                     relative.scale = 1.0;
                 } else {
                     preferences::float_control(
@@ -237,13 +239,13 @@ impl App {
                         .endpoint
                         .as_ref()
                         .map(|e| format!("{} / {}", e.name, e.id))
-                        .unwrap_or_else(|| tr!("First connected input").into()),
+                        .unwrap_or_else(|| tr!("Any connected input").into()),
                 )
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut self.midi_learn.endpoint,
                         None,
-                        tr!("First connected input"),
+                        tr!("Any connected input"),
                     )
                     .help(ui, HelpControl::MidiLearn);
                     for device in &view.devices {

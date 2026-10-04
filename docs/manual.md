@@ -722,7 +722,7 @@ Workflow: Prepare a DJ deck.
 
 Saved collections; All tracks is a virtual view
 
-Choose a named crate or All tracks. Named crates contain only their direct members, in manual order; nested children are separate views. Browse is available during performance protection, while edits require Studio. Closing this manager does not cancel an admitted edit.
+Choose a named crate or All tracks. Search crate names separately from tracks, filter saved favorites, or reveal the selected track’s direct manual and automatic memberships. Choosing discovery results retains the original track query, selection and scroll for Return to previous crate view. Nested children are separate views. Use Alt+Up/Down to browse the filtered results and Alt+Home/End for the first/last. Learn Browse crates with an explicit relative encoder and Return with a note button; controller events capture exact crate identities. Browsing remains available during performance protection; pinning and edits require Studio. Closing this manager does not cancel an admitted edit.
 
 Workflow: Prepare a DJ deck.
 

@@ -478,6 +478,8 @@ impl App {
         use crate::engine::ui_requests::Request;
         for request in self.engine.ui_requests.take_requests().into_iter().flatten() {
             match request {
+                Request::Crate(request) => self.handle_crate_browse(request),
+                Request::CrateReturn(token) => self.handle_crate_return(token),
                 Request::Prepare(selections) => self.prepare_selections(selections),
                 Request::Load(request) => self.load_source(request.deck, Some(&request.selection)),
                 Request::Browse(request) => {
@@ -507,6 +509,7 @@ impl App {
 
     fn publish_library_selection(&mut self) {
         self.refresh_library_view();
+        self.publish_crate_navigation();
         let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
         if self.published_indices.as_ptr() == Arc::as_ptr(&self.library_view.indices)
             && self.published_selection.as_ref().map(|item| (&item.source, &item.title, item.fingerprint))

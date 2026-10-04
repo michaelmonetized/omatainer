@@ -99,7 +99,7 @@ impl Action {
         let shape = match self {
             Self::Create { parent, before, .. } => anchor(parent) && anchor(before),
             Self::CreatePrepared { .. } => true,
-            Self::Edit(Edit::Rename { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. } | Edit::SetSmartRule { id, .. }) => crate_id(id),
+            Self::Edit(Edit::Rename { id, .. } | Edit::SetFavorite { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. } | Edit::SetSmartRule { id, .. }) => crate_id(id),
             Self::Edit(Edit::MoveCrate { id, parent, before }) => {
                 crate_id(id) && anchor(parent) && anchor(before)
             }

@@ -372,7 +372,38 @@
       "evidence": [
         "docs/validation/issue-148-midi-learn.md"
       ],
-      "limits": "Current complete software qualification pending. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. Shift tests through its following assigned hardware gesture. NS7 motorized wheel protocols and custom drivers remain unqualified."
+      "limits": "All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified."
+    },
+    "154": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_crates/discovery.rs",
+          "entry": "Named crates \u2192 search names / Favorite crates only / Find crates containing selected track \u2192 Return"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/library/crates.rs",
+          "entry": "SetFavorite edit with durable save; catalog schema 12 migration"
+        },
+        {
+          "kind": "controller",
+          "file": "src/engine/ui_requests.rs",
+          "entry": "Exact-ID bounded crate browsing and return through learned relative encoder/note controls"
+        }
+      ],
+      "fixtures": [
+        "library::crates::tests::favorites_preserve_identity_order_membership_and_conflict_safety",
+        "library::collections::tests::schema_eleven_migrates_without_inventing_favorites_and_old_headers_reject_new_flags",
+        "ui::library_metadata::collection_rows::tests::membership_discovery_includes_direct_manual_annotation_and_typed_rules_only",
+        "ui::library_crates::tests",
+        "engine::ui_requests::crate_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-154-crate-discovery.md"
+      ],
+      "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
     }
   }
 }

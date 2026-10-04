@@ -275,6 +275,8 @@ or changed source versions remain explicit. Closing the panel leaves its queue
 running. Optional analysis is unavailable during Performance protection.
 
 
+Use **All tracks ▾** to open the **Named crates** manager. Search crate names independently of tracks, filter **Favorite crates only**, or **Find crates containing selected track**. Pin/unpin through the catalog save owner. Selecting a discovery result preserves the original query, track and scroll for **Return to previous crate view**. Learn **Browse crates** on a relative encoder and **Return to previous crate view** on a note button; captured IDs prevent queued input from retargeting another result.
+
 Use **All tracks ▾** to open the **Named crates** manager. Create root or child
 crates, rename them, reorder siblings or nest a crate in a chosen destination.
 Crates hold references to tracks; deleting a confirmed subtree removes only its

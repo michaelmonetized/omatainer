@@ -52,6 +52,8 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::Master,
         Action::CueMix,
         Action::Browse,
+        Action::BrowseCrates,
+        Action::CrateReturn,
         Action::Prepare,
         Action::PrepareCrate,
         Action::LoadA,
@@ -73,7 +75,7 @@ pub(crate) fn actions() -> &'static [Action] {
 /// Takes an action; returns Note, absolute CC, or explicitly decoded relative CC.
 pub(crate) fn kind(action: Action) -> MsgKind {
     match action {
-        Action::DeckJog | Action::Browse => MsgKind::CcRel,
+        Action::DeckJog | Action::Browse | Action::BrowseCrates => MsgKind::CcRel,
         Action::DeckPitch
         | Action::DeckGain
         | Action::DeckEqHi

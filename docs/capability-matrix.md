@@ -109,7 +109,17 @@ Merged-source qualification pending. Physical controller actions and listening r
 - Acceptance fixtures: `engine::midi::learn::tests`, `ui::midi_learn::tests`, `engine::midi::handoff::tests`, `engine::midi::realtime_tests`, `engine::midi::routing::tests`, `preferences::storage::midi_learn_migration_tests`.
 - Evidence: [docs/validation/issue-148-midi-learn.md](../docs/validation/issue-148-midi-learn.md).
 
-Current complete software qualification pending. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. Shift tests through its following assigned hardware gesture. NS7 motorized wheel protocols and custom drivers remain unqualified.
+All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified.
+
+### Issue #154: implemented
+
+- native UI: [src/ui/library_crates/discovery.rs](../src/ui/library_crates/discovery.rs) — Named crates → search names / Favorite crates only / Find crates containing selected track → Return
+- catalog owner: [src/library/crates.rs](../src/library/crates.rs) — SetFavorite edit with durable save; catalog schema 12 migration
+- controller: [src/engine/ui_requests.rs](../src/engine/ui_requests.rs) — Exact-ID bounded crate browsing and return through learned relative encoder/note controls
+- Acceptance fixtures: `library::crates::tests::favorites_preserve_identity_order_membership_and_conflict_safety`, `library::collections::tests::schema_eleven_migrates_without_inventing_favorites_and_old_headers_reject_new_flags`, `ui::library_metadata::collection_rows::tests::membership_discovery_includes_direct_manual_annotation_and_typed_rules_only`, `ui::library_crates::tests`, `engine::ui_requests::crate_tests`.
+- Evidence: [docs/validation/issue-154-crate-discovery.md](../docs/validation/issue-154-crate-discovery.md).
+
+Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication.
 
 ### Issue #205: implemented
 
@@ -162,7 +172,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | planned |
 | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned |
 | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | planned |
-| [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | planned |
+| [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
 | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned |
 | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | planned |
 | [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | planned |

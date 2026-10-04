@@ -2139,5 +2139,17 @@
   "↓ bpm up   ↑ bpm down   same bpm → key → name": "↓ bpm up   ↑ bpm down   same bpm → key → name",
   "−10 / −1 / +1 / +10 milliseconds": "−10 / −1 / +1 / +10 milliseconds",
   "−100% low-pass to +100% high-pass": "−100% low-pass to +100% high-pass",
-  "−60 to −24 dBFS": "−60 to −24 dBFS"
+  "−60 to −24 dBFS": "−60 to −24 dBFS",
+  "Search crate names": "Search crate names",
+  "Favorite crates only": "Favorite crates only",
+  "Find crates containing selected track": "Find crates containing selected track",
+  "Return to previous crate view": "Return to previous crate view",
+  "Crates containing {track}": "Crates containing {track}",
+  "Clear membership filter": "Clear membership filter",
+  "Pin favorite crate": "Pin favorite crate",
+  "Unpin favorite crate": "Unpin favorite crate",
+  "Browse crates": "Browse crates",
+  "{name} · annotation rule": "{name} · annotation rule",
+  "Any connected input": "Any connected input",
+  "Alt+Up/Down browses crate results; Alt+Home/End selects the first/last.": "Alt+Up/Down browses crate results; Alt+Home/End selects the first/last."
 }

@@ -80,6 +80,8 @@ pub enum Action {
     Master,
     CueMix,
     Browse,
+    BrowseCrates,
+    CrateReturn,
     Prepare,
     PrepareCrate,
     LoadA,
@@ -466,6 +468,8 @@ fn dispatch(
         Action::CueMix => {
             let _ = send(Command::CueMix(rel));
         }
+        Action::BrowseCrates if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => { let _ = send(Command::BrowseCrates(rel)); }
+        Action::CrateReturn if pressed => { let _ = send(Command::CrateReturn); }
         Action::Browse if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => {
             let _ = send(Command::Browse(rel));
         }

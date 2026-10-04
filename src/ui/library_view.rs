@@ -34,6 +34,25 @@ pub(super) struct LibraryView {
     pub stats: ViewStats,
 }
 
+pub(super) struct Bookmark {
+    crate_id: Option<crate::library::crates::CrateId>,
+    query: String,
+    source: Option<LibSource>,
+    top: Option<LibSource>,
+    top_fraction: f32,
+    offset: f32,
+    search_all: bool,
+    crate_return: Option<(Option<crate::library::crates::CrateId>, String, Option<LibSource>, f32)>,
+}
+impl Bookmark {
+    /// Follow an explicitly verified moved source in retained navigation.
+    /// Takes old and new identities; updates only matching selection and viewport anchors.
+    pub(super) fn relocate(&mut self, from: &LibSource, to: &LibSource) {
+        for source in [&mut self.source, &mut self.top] { if source.as_ref() == Some(from) { *source = Some(to.clone()); } }
+        if let Some((_,_,source,_)) = &mut self.crate_return { if source.as_ref() == Some(from) { *source = Some(to.clone()); } }
+    }
+}
+
 impl LibraryView {
     /// Follow deliberate crate selection.
     /// Takes mutable view state; discards whole-library mode and its old return context.
@@ -98,9 +117,39 @@ impl App {
     /// Follow an explicitly verified relocation, preserving a user's current
     /// selection rather than restoring whichever row submitted the request.
     pub(super) fn follow_library_relocation(&mut self, from: &LibSource, to: &LibSource) {
+        if let Some(bookmark) = &mut self.library_crates.discovery.return_to { bookmark.relocate(from, to); }
         let view = &mut self.library_view;
         if view.selected.as_ref() == Some(from) { view.selected = Some(to.clone()); }
         if view.top.as_ref() == Some(from) { view.top = Some(to.clone()); }
+    }
+
+    /// Capture a library return point before discovery changes crates.
+    /// Takes the current view; returns its query, selection, scroll anchor and whole-library context.
+    pub(super) fn library_bookmark(&mut self) -> Bookmark {
+        self.refresh_library_view();
+        Bookmark { crate_id: self.library_crates.selected.clone(), query: self.lib_filter.clone(),
+            source: self.library_view.indices.get(self.lib_sel).map(|index|self.library[*index].source.clone()),
+            top: self.library_view.top.clone(), top_fraction: self.library_view.top_fraction,
+            offset: self.library_view.offset, search_all: self.library_view.search_all,
+            crate_return: self.library_view.crate_return.clone() }
+    }
+
+    /// Return from discovered crates without replacing track navigation.
+    /// Takes a captured bookmark; restores the surviving crate, query, selected source and viewport.
+    pub(super) fn restore_library_bookmark(&mut self, bookmark: Bookmark) {
+        self.choose_named_crate(bookmark.crate_id);
+        self.lib_filter = bookmark.query;
+        self.library_view.search_all = bookmark.search_all;
+        self.library_view.crate_return = bookmark.crate_return;
+        self.refresh_library_view();
+        let find = |source: &LibSource|self.library_view.indices.iter().position(|index|&self.library[*index].source == source);
+        if let Some(source) = bookmark.source {
+            if let Some(index) = find(&source) { self.lib_sel = index; }
+            else { self.library_crates.message = "The saved selected track is no longer in this view; its return context was retained.".into(); }
+        }
+        self.library_view.pending_offset = Some(bookmark.top.as_ref().and_then(find)
+            .map(|index|index as f32 * self.library_view.stride.max(18.0) + bookmark.top_fraction).unwrap_or(bookmark.offset));
+        self.publish_library_selection();
     }
 
     /// Change search scope while retaining the named crate's navigation.
