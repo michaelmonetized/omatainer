@@ -165,6 +165,8 @@ impl FreeToUse {
         {
             return Err(Failure::Capacity);
         }
+        let total=response.headers().get("content-length").and_then(|header|header.to_str().ok()).and_then(|text|text.parse::<u64>().ok());
+        request.progress.progress(0,total);
         let mut reader = response.body_mut().as_reader();
         let mut bytes = Vec::new();
         let mut chunk = [0u8; 16 * 1024];
@@ -178,6 +180,7 @@ impl FreeToUse {
                 return Err(Failure::Capacity);
             }
             bytes.extend_from_slice(&chunk[..count]);
+            request.progress.progress(bytes.len() as u64,total);
         }
         request.check()?;
         Ok(bytes)

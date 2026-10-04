@@ -9,6 +9,7 @@ mod support;
 mod startup;
 mod licenses;
 mod engine;
+mod background;
 mod library;
 mod music_provider;
 mod video;
@@ -214,11 +215,32 @@ fn focus_existing() {
         .status();
 }
 
+/// Build an explicitly targeted deck media request.
+/// Takes deck-load or deck-unload and A/B; returns a validated IPC payload before any socket opens.
+fn deck_media_payload(args: &[String]) -> anyhow::Result<String> {
+    anyhow::ensure!(args.len() == 2, "usage: omatainer ctl deck-load|deck-unload A|B");
+    let op = match args[0].as_str() {
+        "deck-load" => "deckLoad", "deck-unload" => "deckUnload",
+        _ => anyhow::bail!("usage: omatainer ctl deck-load|deck-unload A|B"),
+    };
+    let deck = match args[1].as_str() {
+        "A" | "a" => 0, "B" | "b" => 1,
+        _ => anyhow::bail!("deck must be A or B"),
+    };
+    let value = serde_json::json!({"op": op, "deck": deck});
+    ipc_schema::Operation::parse(&value)?;
+    Ok(value.to_string())
+}
+
 fn ctl(args: &[String]) -> anyhow::Result<()> {
     let op = args.first().map(|s| s.as_str()).unwrap_or("status");
     if op == "deck-lock" || op == "deck-eject" {
         let payload = deck_protection_payload(args)?;
         println!("{}", send_op(&payload.to_string())?);
+        return Ok(());
+    }
+    if matches!(op, "deck-load" | "deck-unload") {
+        println!("{}", send_op(&deck_media_payload(args)?)?);
         return Ok(());
     }
     if op == "api" {

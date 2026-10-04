@@ -8,7 +8,10 @@ use std::{path::Path, time::Duration};
 struct Files(PathBuf);
 impl Files {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!(
+        Self::at(std::env::temp_dir())
+    }
+    fn at(root: PathBuf) -> Self {
+        let path = root.join(format!(
             "omatainer-backup-ui-{}",
             crate::sampler_bank::BankId::new().unwrap()
         ));
@@ -182,7 +185,21 @@ impl Gui {
 
 #[test]
 fn native_export_restore_import_and_real_loader_play_prepared_music_on_a_clean_profile() {
-    let files = Files::new();
+    let files = Files::at(
+        std::env::var_os("OMATAINER_BACKUP_SOURCE_ROOT")
+            .map(PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir),
+    );
+    let destination_root = std::env::var_os("OMATAINER_BACKUP_DESTINATION_ROOT")
+        .map(|root| Files::at(PathBuf::from(root)));
+    if let Some(other) = &destination_root {
+        use std::os::unix::fs::MetadataExt;
+        assert_ne!(
+            std::fs::metadata(&files.0).unwrap().dev(),
+            std::fs::metadata(&other.0).unwrap().dev(),
+            "Cross-mount qualification needs two distinct mounted filesystems"
+        );
+    }
     let (store, identity, preparation) = files.prepared();
     let source = files.0.join("prepared 120 Am.wav");
     let original = std::fs::read(&source).unwrap();
@@ -209,7 +226,8 @@ fn native_export_restore_import_and_real_loader_play_prepared_music_on_a_clean_p
     assert_eq!(std::fs::read(&source).unwrap(), original);
     assert_eq!(FileFingerprint::read(&source), Some(original_fp));
     std::fs::remove_file(&source).unwrap();
-    let mut clean = Gui::new(files.0.join("clean-profile/library.json"));
+    let restore_root = destination_root.as_ref().unwrap_or(&files);
+    let mut clean = Gui::new(restore_root.0.join("clean-profile/library.json"));
     assert!(!clean
         .app
         .library_metadata
@@ -225,7 +243,7 @@ fn native_export_restore_import_and_real_loader_play_prepared_music_on_a_clean_p
         .library_backup
         .message
         .starts_with("Verified backup"));
-    let destination = files.0.join("different-volume-path");
+    let destination = restore_root.0.join("different-volume-path");
     clean.path("New restore directory", &destination);
     clean.action("Restore to new directory", NativeAction::Click);
     clean.wait(|gui| gui.app.library_backup.active.is_none());
@@ -339,7 +357,27 @@ fn backup_dialog_blocks_transport_immediately_and_closed_window_keeps_a_job_canc
     }]);
     assert!(!gui.app.snap.playing);
     assert!(keyboard::dialogs_block_input(&gui.ctx));
+    let original_catalog = std::fs::read(files.0.join("profile/library.json")).unwrap();
     let performance = gui.app.engine.cmd.performance().clone();
+    let jobs = performance.jobs().clone();
+    let (entered, seen) = std::sync::mpsc::channel();
+    let (release, wait) = std::sync::mpsc::channel();
+    let blocker = std::thread::spawn(move || {
+        let ticket = jobs
+            .request(
+                crate::background::Kind::Prepare,
+                "backup-cancel-blocker".into(),
+                crate::background::MEMORY_BYTES,
+                crate::background::Cancellation::Flag(Arc::new(
+                    std::sync::atomic::AtomicBool::new(false),
+                )),
+            )
+            .unwrap();
+        let _running = ticket.enter(|| false).unwrap();
+        entered.send(()).unwrap();
+        wait.recv_timeout(Duration::from_secs(5)).unwrap();
+    });
+    seen.recv_timeout(Duration::from_secs(3)).unwrap();
     gui.app
         .library_backup
         .submit(
@@ -353,7 +391,16 @@ fn backup_dialog_blocks_transport_immediately_and_closed_window_keeps_a_job_canc
     gui.app.library_backup.cancel();
     gui.wait(|gui| gui.app.library_backup.active.is_none());
     assert!(
-        gui.app.library_backup.message.contains("cancelled")
-            || gui.app.library_backup.message.contains("No such file")
+        gui.app.library_backup.message.contains("cancelled"),
+        "{}",
+        gui.app.library_backup.message
     );
+    assert_eq!(
+        std::fs::read(files.0.join("profile/library.json")).unwrap(),
+        original_catalog
+    );
+    assert_eq!(std::fs::read_dir(&files.0).unwrap().count(), 1);
+    release.send(()).unwrap();
+    blocker.join().unwrap();
+    assert_eq!(performance.jobs().snapshot().reserved, 0);
 }

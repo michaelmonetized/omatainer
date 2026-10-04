@@ -7,6 +7,7 @@ pub(super) enum Action {
 pub(super) struct Review {
     deck: u8,
     expected: u64,
+    approval: crate::engine::performance::DeckApproval,
     title: String,
     action: Action,
     acknowledged: bool,
@@ -30,7 +31,7 @@ impl App {
         let Some(target) = snapshot.decks.get(deck as usize) else {
             return false;
         };
-        if !target.load_locked || (!target.playing && !target.touching) {
+        if !target.load_locked || !target.media_active {
             return false;
         }
         if self.engine.cmd.performance().status().protected {
@@ -41,21 +42,37 @@ impl App {
         }
         self.deck_load_review = Some(Review {
             deck,
-            expected: target.media_key,
+            expected: target.load_gate_word,
+            approval: match self
+                .engine
+                .cmd
+                .performance()
+                .approve_deck_load(deck as usize, target.load_gate_word)
+            {
+                Ok(approval) => approval,
+                Err(error) => {
+                    self.status = error.to_string();
+                    return true;
+                }
+            },
             title: target.title.clone(),
             action,
             acknowledged: false,
         });
         true
     }
-    /// Check ordinary load admission or consent for a single current track.
-    /// Takes the deck and optional reviewed media key; returns producer admission status.
-    pub(super) fn deck_load_allowed(&self, deck: u8, expected: Option<u64>) -> bool {
-        if let Some(expected) = expected {
+    /// Check ordinary load admission or a captured source review.
+    /// Takes its deck and approval; returns shared producer admission.
+    pub(super) fn deck_load_allows(
+        &self,
+        deck: u8,
+        approval: Option<&crate::engine::performance::DeckApproval>,
+    ) -> bool {
+        if let Some(approval) = approval {
             self.performance_allows(&Command::DeckLoadRequested {
                 deck,
                 media: Media::Builtin(0),
-                receipt: Receipt::with_override(None, Some(expected)),
+                receipt: Receipt::new().with_deck_approval(approval.clone()),
             })
         } else {
             self.performance_allows(&Command::DeckLoadSelected { deck })
@@ -69,7 +86,7 @@ impl App {
         if snapshot
             .decks
             .get(review.deck as usize)
-            .is_none_or(|deck| deck.media_key != review.expected)
+            .is_none_or(|deck| deck.load_gate_word != review.expected)
             || self.engine.cmd.performance().status().protected
         {
             self.status =
@@ -77,6 +94,7 @@ impl App {
                     .into();
             return;
         }
+        keyboard::block_for_dialog(ctx);
         let mut open = true;
         let mut commit = false;
         let mut cancel = false;
@@ -97,24 +115,27 @@ impl App {
                 ui.checkbox(&mut review.acknowledged, tr!("I intend to replace this playing track"));
                 ui.horizontal(|ui| {
                     commit = ui.add_enabled(review.acknowledged,
-                        egui::Button::new(tr!("Confirm deck replacement"))).clicked();
-                    cancel = ui.button(tr!("Keep playing track")).clicked();
+                        egui::Button::new(tr!("Confirm deck replacement"))).help(ui, HelpControl::DeckLoadReview).clicked();
+                    cancel = ui.button(tr!("Keep playing track")).help(ui, HelpControl::DeckLoadCancel).clicked();
                 });
             });
         if commit {
             match review.action {
-                Action::Load(selection) => self.load_source_authorized(
-                    review.deck,
-                    Some(&selection),
-                    Some(review.expected),
-                ),
+                Action::Load(selection) => {
+                    self.load_source_approved(review.deck, Some(&selection), Some(review.approval))
+                }
                 Action::Eject => {
-                    if self.submit(Command::DeckEjectConfirmed {
+                    let receipt = Receipt::new().with_deck_approval(review.approval);
+                    let mut state = LoadState::new(None, Phase::Queued);
+                    state.receipt = Some(receipt.clone());
+                    if !self.submit(Command::DeckLoadRequested {
                         deck: review.deck,
-                        expected: review.expected,
+                        media: Media::Unload,
+                        receipt,
                     }) {
-                        self.status = "Reviewed deck eject queued; waiting for the renderer".into();
+                        state.phase = Phase::Failed("Reviewed eject was not accepted".into());
                     }
+                    self.set_load_state(review.deck, state);
                 }
             }
         } else if open && !cancel {

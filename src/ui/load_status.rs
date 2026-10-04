@@ -3,6 +3,8 @@ use crate::engine::load_receipt::{Receipt, State};
 use crate::engine::media_load::LoadToken;
 
 pub(super) struct LoadState {
+    pub approval: Option<crate::engine::performance::DeckApproval>,
+    pub deck_generation: Option<u64>,
     pub selection: Option<Selection>,
     pub phase: Phase,
     pub token: Option<LoadToken>,
@@ -10,7 +12,6 @@ pub(super) struct LoadState {
     pub bpm: Option<Bpm>,
     pub metadata: Option<library_metadata::Patch>,
     pub warning: Option<&'static str>,
-    pub override_key: Option<u64>,
 }
 
 pub(super) enum Phase {
@@ -24,6 +25,8 @@ pub(super) enum Phase {
 impl LoadState {
     pub fn new(selection: Option<Selection>, phase: Phase) -> Self {
         Self {
+            approval: None,
+            deck_generation: None,
             selection,
             phase,
             token: None,
@@ -31,7 +34,6 @@ impl LoadState {
             bpm: None,
             metadata: None,
             warning: None,
-            override_key: None,
         }
     }
 
@@ -43,6 +45,8 @@ impl LoadState {
             .unwrap_or("no selection");
         let deck = (b'A' + deck as u8) as char;
         let mut text = match &self.phase {
+            Phase::Queued if self.selection.is_none() => format!("queued unload → {deck} · waiting for audio engine"),
+            Phase::Loaded if self.selection.is_none() => format!("unloaded → {deck}"),
             Phase::Loading => format!("loading {name} → {deck}"),
             Phase::Queued => format!("queued {name} → {deck} · waiting for audio engine"),
             Phase::Loaded => format!("loaded {name} → {deck}"),
@@ -103,7 +107,7 @@ impl App {
                     }
                     State::Current if !matches!(load.phase, Phase::Loaded) => Some(Phase::Loaded),
                     State::Protected if !matches!(load.phase, Phase::Failed(_)) => Some(Phase::Failed(
-                        "Deck load protection refused this load at the renderer; previous media is preserved. Pause/release the deck or review a new replacement.".into(),
+                        "Deck protection refused this load at the renderer; current media is preserved. Wait for a quiet paused deck, or review a deliberate replacement.".into(),
                     )),
                     State::Unavailable if !matches!(load.phase, Phase::Failed(_)) => Some(
                         Phase::Failed("built-in media is unavailable; media was not loaded".into()),

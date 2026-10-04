@@ -260,10 +260,12 @@ impl Frame {
             }
         }
         for (index, (out, deck)) in target.decks.iter_mut().zip(&rt.decks).enumerate() {
+            out.load_gate_word = rt.performance.deck_load_word(index);
             copy(&mut out.title, &deck.title);
             out.playing = deck.playing;
             out.previewing = deck.preview_position.is_some();
-            out.load_locked = deck.load_locked;
+            out.media_active = deck.media_active();
+            out.load_locked = rt.performance.deck_load_locked(index);
             out.media_key = deck.history_key;
             out.pos = deck.pos;
             out.frames = deck

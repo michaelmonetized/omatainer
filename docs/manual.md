@@ -1742,11 +1742,35 @@ Scroll to controls outside the viewport. Focused controls reveal themselves; arr
 
 Workflow: Audio setup.
 
+### Lock a live deck
+
+Per-deck session lock
+
+Lock playing, touched or audibly fading decks independently of performance mode. Mouse, keyboard, dropped-file, controller and IPC replacement/eject requests use the same guard. A quiet stopped deck remains available. Locks survive project and output changes within this app session; restarting starts unlocked. Performance mode protects live decks even when their explicit lock is off.
+
+Workflow: Prepare a DJ deck.
+
+### Review a deck replacement
+
+The reviewed deck and track
+
+Loading or ejecting an active locked deck opens a review of its current track and captured replacement. Acknowledge the replacement before confirming. Preparation leaves old audio loaded until the renderer applies a ready replacement. Failed or cancelled work and changed source, lock or safety generations refuse application. A reviewed eject reports queued separately from renderer-completed. MIDI and IPC cannot confirm this decision.
+
+Workflow: Prepare a DJ deck.
+
+### Keep current deck audio
+
+Cancel an unconfirmed review
+
+Close this review without submitting a replacement or eject, cancelling an existing decoder or changing current playback. An already confirmed load has its normal pending/loaded/refused receipt; changing safety or the source invalidates its reviewed approval.
+
+Workflow: Prepare a DJ deck.
+
 ### Performance protection
 
 Session safety state
 
-Protect playing/touched deck loads, destructive edits and project/device changes centrally. Mixing, composing, recording, stopped-deck loads and Save remain available. Leaving requires a deliberate decision; opening a project never disables protection.
+Protect playing/touched/audibly fading deck loads, destructive edits and project/device changes centrally. Mixing, composing, recording, quiet stopped-deck loads and Save remain available. Leaving requires a deliberate decision; opening a project never disables protection. Explicit deck locks remain independent; a reviewed source-bound override can replace only its confirmed deck.
 
 Workflow: Stop and recover.
 
@@ -2590,14 +2614,6 @@ Choose the destination for F, Enter and controller Load selected. Explicit →A/
 
 Workflow: Prepare a DJ deck.
 
-### Lock playing deck
-
-Per-deck replacement protection
-
-Prevent mouse, keyboard, drop, MIDI and IPC load/eject while this deck plays or is touched. Native deliberate replacement captures the current track and chosen source for review; the existing track remains until decoding succeeds. Changing the track invalidates approval. Performance mode still requires pausing and releasing the deck. Lock state is a runtime safety setting; a restarted engine starts unlocked.
-
-Workflow: Prepare a DJ deck.
-
 ### Load selected crate source
 
 Deck A / B
@@ -2845,6 +2861,22 @@ Message only
 Clear the renderer's history notice. It does not retry a rejected edit or recover evicted history.
 
 Workflow: Edit and undo.
+
+### Background jobs
+
+Shared worker limits
+
+Inspect queued and running decode, analysis, indexing, rendering and provider work. At most two optional workers and one audio decoder share 3 GiB of declared active-worker reservations. Existing prepared media and caches have separate limits. Worker CPU and disk priorities are lowered on Linux. A finished worker is not proof of renderer application or a completed save.
+
+Workflow: Audio setup.
+
+### Cancel captured job
+
+One stable request identity
+
+Request cooperative cancellation for this exact queued or running job. Reused worker slots and newer requests are not targeted. A filesystem read already in progress may finish before cancellation is observed. Already committed writes retain their actual outcome in the original workflow.
+
+Workflow: Audio setup.
 
 ### Audio diagnostics
 

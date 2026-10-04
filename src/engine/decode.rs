@@ -113,7 +113,7 @@ impl fmt::Display for DecodeFailure {
             DecodeFailureKind::VerificationFailed => "Audio checksum failed",
             DecodeFailureKind::Empty => "Empty audio",
             DecodeFailureKind::Cancelled => "Load cancelled",
-            DecodeFailureKind::Capacity => "Audio exceeds sampler capacity",
+            DecodeFailureKind::Capacity => "Audio exceeds its decode budget",
         };
         let activity = match self.stage {
             DecodeStage::Open => "opening the file",
@@ -242,10 +242,15 @@ pub(crate) fn decode_audio_for_show(path: &Path, cancelled: impl Fn() -> bool, p
 /// Foreground deck loading owns and verifies this descriptor on its media
 /// worker. Preserve the existing optional BPM policy without reopening a path.
 pub(crate) fn decode_deck_file(path:&Path,file:std::fs::File,cancelled:impl Fn()->bool,performance:&super::performance::Handle) -> Result<DecodedAudio,DecodeFailure> {
-    decode_source(path,Some(Box::new(file)),None,cancelled,|data,ch,sr| {
+    decode_deck_file_progress(path,file,cancelled,performance,|_,_|{})
+}
+/// Decode a bounded foreground source with measured frame progress.
+/// Takes its descriptor, cancellation/protection guards and progress sink; returns at most 512 MiB of decoded PCM without reopening the path.
+pub(crate) fn decode_deck_file_progress(path:&Path,file:std::fs::File,cancelled:impl Fn()->bool,performance:&super::performance::Handle,progress:impl Fn(u64,Option<u64>)) -> Result<DecodedAudio,DecodeFailure> {
+    decode_source(path,Some(Box::new(file)),Some(512*crate::background::MIB),cancelled,|data,ch,sr| {
         let permit=performance.optional_work().ok()?;let cancel=permit.cancel();
         super::dsp::detect_bpm_with_cancel(data,ch,sr,||cancel.load(std::sync::atomic::Ordering::Acquire))
-    },true,true,|_,_|{})
+    },true,true,progress)
 }
 fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>) -> Result<DecodedAudio, DecodeFailure> {
     decode_source(path, None, None, cancelled, analyze, true, true, |_, _| {})

@@ -58,29 +58,69 @@ impl Worker {
             .spawn(move || {
                 while let Ok(task) = pending.recv() {
                     let cancel = task.work.cancel();
-                    let progress = |value| task.progress.update(value);
-                    let result = match &task.action {
+                    let key = match &task.action {
                         Action::Export {
-                            catalog,
-                            destination,
-                            limit,
-                        } => backup::export(
-                            catalog,
-                            destination,
-                            *limit,
-                            &cancel,
-                            Some(&task.work),
-                            progress,
-                        )
-                        .map(Receipt::Published),
+                            destination, limit, ..
+                        } => crate::background::identity(&("library-backup", destination, limit)),
                         Action::Inspect { path } => {
-                            backup::inspect(path, &cancel, progress).map(Receipt::Inspected)
+                            crate::background::identity(&("library-backup-inspect", path))
                         }
-                        Action::Restore { path, destination } => {
-                            backup::restore(path, destination, &cancel, Some(&task.work), progress)
-                                .map(Receipt::Published)
-                        }
+                        Action::Restore { path, destination } => crate::background::identity(&(
+                            "library-backup-restore",
+                            path,
+                            destination,
+                        )),
                     };
+                    let result = key
+                        .and_then(|key| {
+                            if task.work.cancelled() {
+                                return Err("Library backup cancelled".into());
+                            }
+                            task.work.background(
+                                crate::background::Kind::Prepare,
+                                key,
+                                1024 * crate::background::MIB,
+                            )
+                        })
+                        .and_then(|ticket| {
+                            let _running = ticket.enter(|| task.work.cancelled())?;
+                            let last = std::cell::Cell::new(0u64);
+                            let offset = std::cell::Cell::new(0u64);
+                            let progress = |value: backup::Progress| {
+                                if value.bytes < last.get() {
+                                    offset.set(offset.get().saturating_add(last.get()));
+                                }
+                                last.set(value.bytes);
+                                ticket.progress(offset.get().saturating_add(value.bytes), None);
+                                task.progress.update(value);
+                            };
+                            match &task.action {
+                                Action::Export {
+                                    catalog,
+                                    destination,
+                                    limit,
+                                } => backup::export(
+                                    catalog,
+                                    destination,
+                                    *limit,
+                                    &cancel,
+                                    Some(&task.work),
+                                    progress,
+                                )
+                                .map(Receipt::Published),
+                                Action::Inspect { path } => {
+                                    backup::inspect(path, &cancel, progress).map(Receipt::Inspected)
+                                }
+                                Action::Restore { path, destination } => backup::restore(
+                                    path,
+                                    destination,
+                                    &cancel,
+                                    Some(&task.work),
+                                    progress,
+                                )
+                                .map(Receipt::Published),
+                            }
+                        });
                     drop(task);
                     if done.send(result).is_err() {
                         break;

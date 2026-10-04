@@ -36,6 +36,7 @@ pub(crate) fn run(
     clip: &Clip,
     destination: &Path,
     permit: &WorkPermit,
+    progress: &crate::background::Reporter,
 ) -> Result<crate::project_file::SaveOutcome, String> {
     clip.validate()?;
     let cancel = permit.cancel();
@@ -94,6 +95,7 @@ pub(crate) fn run(
     let mut audio = [0.0f32; 2048];
     let mut encoded = [0u8; 8192];
     let mut position = 0;
+    progress.progress(0,Some(frames));
     while position < frames {
         active(&cancel)?;
         let block = (frames - position).min(1024) as usize;
@@ -107,12 +109,14 @@ pub(crate) fn run(
         wav.write_all(&encoded[..block * 8])
             .map_err(|e| e.to_string())?;
         position += block as u64;
+        progress.progress(position,Some(frames));
     }
     wav.sync_all().map_err(|e| e.to_string())?;
     drop(wav);
     drop(rt);
     active(&cancel)?;
     let output = stage.path.join("picture.mkv");
+    progress.progress(0,None);
     let mut command = ChildCommand::new("ffmpeg");
     command.args(["-v","error","-nostdin","-threads","1","-protocol_whitelist","file,pipe","-format_whitelist","mov,matroska,webm,avi,mpegts","-i"]).arg(&clip.path)
         .arg("-i").arg(stage.path.join("score.wav"))

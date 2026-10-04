@@ -123,6 +123,7 @@ pub(crate) struct Request {
     pub license: License,
     pub cancel: Arc<AtomicBool>,
     pub expires: Instant,
+    pub progress: crate::background::Reporter,
 }
 impl Request {
     /// Bound one explicit catalog or preview operation.
@@ -132,6 +133,7 @@ impl Request {
             license,
             cancel,
             expires: Instant::now() + Duration::from_secs(20),
+            progress: crate::background::Reporter::default(),
         }
     }
     /// Reject obsolete worker work before publishing or downloading.

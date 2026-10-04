@@ -636,7 +636,7 @@ impl CommandPort {
                 return fail(SubmissionError::InvalidTarget);
             }
         }
-        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckEjectConfirmed { deck, .. } | Command::DeckPreview { deck, .. } if *deck as usize >= super::DECKS) {
+        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckPreview { deck, .. } if *deck as usize >= super::DECKS) {
             return fail(SubmissionError::InvalidTarget);
         }
         if let Command::DeckLoadSelected { deck } = command {

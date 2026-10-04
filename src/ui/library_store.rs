@@ -281,9 +281,9 @@ impl App {
         self.library_metadata.set_performance(self.engine.cmd.performance().clone());
         self.library_initialized = false;
     }
-    /// Bind preparation and optional consent to one captured source.
-    /// Takes its current identity and reviewed deck key; returns a single-use renderer receipt.
-    pub(super) fn library_receipt_authorized(&self, source: &LibSource, fingerprint: Option<FileFingerprint>, expected: Option<u64>) -> Receipt {
+    /// Bind saved preparation and locks to one captured source.
+    /// Takes its current identity; returns a pending renderer receipt.
+    pub(super) fn library_receipt(&self, source: &LibSource, fingerprint: Option<FileFingerprint>) -> Receipt {
         let preparation = if matches!(source, LibSource::File(_) | LibSource::Removable {..}) && fingerprint.is_none() {
             None
         } else {
@@ -292,7 +292,7 @@ impl App {
                 .version(source, fingerprint)
                 .map(|v| v.preparation)
         };
-        let receipt=Receipt::with_override(preparation, expected);
+        let receipt=Receipt::with_preparation(preparation);
         let locked=self.library_metadata.catalog.track_for_version(source,fingerprint).is_some_and(|track|track.locks.grid);
         receipt.set_grid_protection(locked,preparation.and_then(|p|p.grid));
         receipt

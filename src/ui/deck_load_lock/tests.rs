@@ -12,21 +12,10 @@ fn fixture() -> Fixture {
     fixture
 }
 fn sync(fixture: &mut Fixture) {
-    let deadline = Instant::now() + std::time::Duration::from_secs(3);
-    loop {
-        fixture.rt.publish();
-        let snapshot = fixture.app.engine.snapshot();
-        if snapshot.decks[0].load_locked == fixture.rt.decks[0].load_locked
-            && snapshot.decks[0].playing == fixture.rt.decks[0].playing
-            && snapshot.decks[0].title == fixture.rt.decks[0].title
-        {
-            fixture.app.snap = snapshot;
-            return;
-        }
-        assert!(Instant::now() < deadline);
-        std::thread::sleep(std::time::Duration::from_millis(1));
-    }
+    fixture.rt.publish_for_test();
+    fixture.app.snap = fixture.app.engine.snapshot();
 }
+
 fn frame(
     ctx: &egui::Context,
     app: &mut App,
@@ -84,29 +73,48 @@ fn actual_native_checkbox_has_deck_identity_and_toggles_only_its_renderer_lock()
     let mut time = 1.0;
     let mut run = |fixture: &mut Fixture, events| {
         time += 0.1;
-        ctx.run(egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
-            time: Some(time), events, ..Default::default()
-        }, |ctx|fixture.app.update_frame(ctx))
+        ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
+                time: Some(time),
+                events,
+                ..Default::default()
+            },
+            |ctx| fixture.app.update_frame(ctx),
+        )
     };
     let _ = run(&mut fixture, vec![]);
     let output = run(&mut fixture, vec![]);
-    let (id, node) = output.platform_output.accesskit_update.as_ref().unwrap().nodes.iter()
-        .find(|(_, node)|node.label() == Some("Deck A: Lock playing deck")).unwrap();
+    let (id, node) = output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .unwrap()
+        .nodes
+        .iter()
+        .find(|(_, node)| node.label() == Some("Deck A: Lock playing deck"))
+        .unwrap();
     assert_eq!(node.role(), Role::CheckBox);
     let id = *id;
     for expected in [true, false] {
-        let _ = run(&mut fixture, vec![egui::Event::AccessKitActionRequest(ActionRequest { target: id, action: Action::Click, data: None })]);
+        let _ = run(
+            &mut fixture,
+            vec![egui::Event::AccessKitActionRequest(ActionRequest {
+                target: id,
+                action: Action::Click,
+                data: None,
+            })],
+        );
         fixture.rt.process(&mut [0.0; 512]);
         sync(&mut fixture);
-        assert_eq!(fixture.rt.decks[0].load_locked, expected);
-        assert!(!fixture.rt.decks[1].load_locked);
+        assert_eq!(fixture.rt.performance.deck_load_locked(0), expected);
+        assert!(!fixture.rt.performance.deck_load_locked(1));
         let _ = run(&mut fixture, vec![]);
     }
 }
 #[test]
 fn actual_mouse_keyboard_drop_and_factory_midi_load_routes_keep_the_locked_deck_playing() {
-    use crate::ui::test_support::{crate_frame, click as crate_click};
+    use crate::ui::test_support::{click as crate_click, crate_frame};
     let mut fixture = fixture();
     let original = fixture.rt.decks[0].audio.clone().unwrap();
     fixture.app.lib_filter = "Harmony".into();
@@ -116,27 +124,56 @@ fn actual_mouse_keyboard_drop_and_factory_midi_load_routes_keep_the_locked_deck_
     assert!(fixture.app.deck_load_review.is_some());
     fixture.app.deck_load_review = None;
     let output = crate_frame(&ctx, &mut fixture.app, 0.2, vec![]);
-    crate_click(&ctx, &mut fixture.app, label_center(&output, "Harmony (session)"), 0.3);
-    crate_frame(&ctx, &mut fixture.app, 0.4, vec![egui::Event::Key {
-        key: Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::NONE,
-    }]);
+    crate_click(
+        &ctx,
+        &mut fixture.app,
+        label_center(&output, "Harmony (session)"),
+        0.3,
+    );
+    crate_frame(
+        &ctx,
+        &mut fixture.app,
+        0.4,
+        vec![egui::Event::Key {
+            key: Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
     assert!(fixture.app.deck_load_review.is_some());
     fixture.app.deck_load_review = None;
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/audio/tone.flac");
-    let _ = ctx.run(egui::RawInput {
-        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
-        time: Some(1.0), events: vec![egui::Event::PointerMoved(Pos2::new(100.0, 100.0))],
-        dropped_files: vec![egui::DroppedFile { path: Some(path), ..Default::default() }],
-        ..Default::default()
-    }, |ctx|fixture.app.update_frame(ctx));
+    let _ = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
+            time: Some(1.0),
+            events: vec![egui::Event::PointerMoved(Pos2::new(100.0, 100.0))],
+            dropped_files: vec![egui::DroppedFile {
+                path: Some(path),
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+        |ctx| fixture.app.update_frame(ctx),
+    );
     assert!(fixture.app.deck_load_review.is_some());
     assert!(fixture.decoder_jobs.try_recv().is_err());
     fixture.app.deck_load_review = None;
     fixture.app.publish_library_selection();
-    fixture.app.engine.midi.receive_for_test(&fixture.app.engine.cmd, 41, "Pioneer DDJ-FLX4", &[0x90, 0x02, 0x7f]);
+    fixture.app.engine.midi.receive_for_test(
+        &fixture.app.engine.cmd,
+        41,
+        "Pioneer DDJ-FLX4",
+        &[0x90, 0x02, 0x7f],
+    );
     assert_eq!(fixture.app.engine.cmd.ui_request_stats().pending, 0);
     fixture.rt.process(&mut [0.0; 512]);
-    assert!(Arc::ptr_eq(&original, fixture.rt.decks[0].audio.as_ref().unwrap()));
+    assert!(Arc::ptr_eq(
+        &original,
+        fixture.rt.decks[0].audio.as_ref().unwrap()
+    ));
     assert!(fixture.rt.decks[0].playing);
     assert!(fixture.rt.decks[0].pos > 0.0);
     assert!(fixture.decoder_jobs.try_recv().is_err());
@@ -148,29 +185,64 @@ fn approved_file_decode_keeps_old_audio_until_ready_and_failure_preserves_it() {
     let mut fixture = fixture();
     let original = fixture.rt.decks[0].audio.clone().unwrap();
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/audio/tone.flac");
-    let selected = Selection { title: "Own fixture tone".into(), source: LibSource::File(path.clone()), fingerprint: None, };
+    let selected = Selection {
+        title: "Own fixture tone".into(),
+        source: LibSource::File(path.clone()),
+        fingerprint: None,
+    };
     let ctx = egui::Context::default();
     let mut time = 1.0;
     for success in [false, true] {
         fixture.app.load_source(0, Some(&selected));
         frame(&ctx, &mut fixture.app, vec![], time);
-        click(&ctx, &mut fixture.app, "I intend to replace this playing track", &mut time);
-        click(&ctx, &mut fixture.app, "Confirm deck replacement", &mut time);
-        let (deck, captured) = fixture.decoder_jobs.recv_timeout(std::time::Duration::from_secs(3)).unwrap();
+        click(
+            &ctx,
+            &mut fixture.app,
+            "I intend to replace this playing track",
+            &mut time,
+        );
+        click(
+            &ctx,
+            &mut fixture.app,
+            "Confirm deck replacement",
+            &mut time,
+        );
+        let (deck, captured) = fixture
+            .decoder_jobs
+            .recv_timeout(std::time::Duration::from_secs(3))
+            .unwrap();
         assert_eq!((deck, captured), (0, path.clone()));
         fixture.rt.process(&mut [0.0; 512]);
-        assert!(Arc::ptr_eq(&original, fixture.rt.decks[0].audio.as_ref().unwrap()));
+        assert!(Arc::ptr_eq(
+            &original,
+            fixture.rt.decks[0].audio.as_ref().unwrap()
+        ));
         assert!(fixture.rt.decks[0].playing);
-        let result = if success { crate::engine::dsp::decode_audio(&path) } else { Err(DecodeFailure { kind: crate::engine::decode::DecodeFailureKind::Unsupported, stage: crate::engine::decode::DecodeStage::Open, diagnostics: Default::default(), detail: "Controlled unsupported fixture".into() }) };
+        let result = if success {
+            crate::engine::dsp::decode_audio(&path)
+        } else {
+            Err(DecodeFailure {
+                kind: crate::engine::decode::DecodeFailureKind::Unsupported,
+                stage: crate::engine::decode::DecodeStage::Open,
+                diagnostics: Default::default(),
+                detail: "Controlled unsupported fixture".into(),
+            })
+        };
         fixture.decoder_results.send((0, result)).unwrap();
         fixture.poll_loads();
         if success {
             fixture.rt.apply(fixture.rt.cmd_rx.try_recv().unwrap());
             assert!(!fixture.rt.decks[0].playing);
-            assert!(!Arc::ptr_eq(&original, fixture.rt.decks[0].audio.as_ref().unwrap()));
+            assert!(!Arc::ptr_eq(
+                &original,
+                fixture.rt.decks[0].audio.as_ref().unwrap()
+            ));
         } else {
             assert!(fixture.rt.cmd_rx.is_empty());
-            assert!(Arc::ptr_eq(&original, fixture.rt.decks[0].audio.as_ref().unwrap()));
+            assert!(Arc::ptr_eq(
+                &original,
+                fixture.rt.decks[0].audio.as_ref().unwrap()
+            ));
             assert!(fixture.rt.decks[0].playing);
         }
     }
@@ -216,7 +288,7 @@ fn native_review_cancel_and_confirmation_preserve_current_audio_until_renderer_a
     ));
     assert_eq!(fixture.rt.decks[0].title, "Harmony (session)");
     assert!(!fixture.rt.decks[0].playing);
-    assert!(fixture.rt.decks[0].load_locked);
+    assert!(fixture.rt.performance.deck_load_locked(0));
 }
 #[test]
 fn stale_native_review_and_global_performance_mode_never_authorize_another_track() {
@@ -265,4 +337,56 @@ fn native_eject_requires_review_and_exact_media_identity() {
     fixture.rt.apply(fixture.rt.cmd_rx.try_recv().unwrap());
     assert!(fixture.rt.decks[0].audio.is_none());
     assert!(!fixture.rt.decks[0].playing);
+}
+
+#[test]
+fn a_paused_preview_and_fading_pause_open_review_before_deliberate_replacement() {
+    for preview in [true, false] {
+        let mut fixture = fixture();
+        fixture.rt.process(&mut [0.0; 512]);
+        fixture.rt.apply(Command::DeckPlay { deck: 0 });
+        if preview {
+            sync(&mut fixture);
+            let expected = fixture.app.snap.decks[0].media_key;
+            fixture.rt.apply(Command::DeckPreview {
+                deck: 0,
+                expected,
+                on: true,
+            });
+        }
+        sync(&mut fixture);
+        assert!(!fixture.app.snap.decks[0].playing);
+        assert!(fixture.app.snap.decks[0].media_active);
+        let original = fixture.rt.decks[0].audio.clone().unwrap();
+        fixture.app.load_source(0, Some(&selection()));
+        assert!(fixture.app.deck_load_review.is_some());
+        assert!(fixture.rt.cmd_rx.is_empty());
+        let ctx = egui::Context::default();
+        let mut time = 1.0;
+        frame(&ctx, &mut fixture.app, vec![], time);
+        click(
+            &ctx,
+            &mut fixture.app,
+            "I intend to replace this playing track",
+            &mut time,
+        );
+        click(
+            &ctx,
+            &mut fixture.app,
+            "Confirm deck replacement",
+            &mut time,
+        );
+        assert!(Arc::ptr_eq(
+            &original,
+            fixture.rt.decks[0].audio.as_ref().unwrap()
+        ));
+        fixture.rt.apply(fixture.rt.cmd_rx.try_recv().unwrap());
+        assert!(!Arc::ptr_eq(
+            &original,
+            fixture.rt.decks[0].audio.as_ref().unwrap()
+        ));
+        sync(&mut fixture);
+        assert!(!fixture.app.snap.decks[0].playing);
+        assert!(!fixture.app.snap.decks[0].previewing);
+    }
 }

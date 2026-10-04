@@ -260,6 +260,23 @@ fn unavailable_builtin_and_disconnected_renderer_produce_retryable_failure() {
 }
 
 #[test]
+fn decode_finishing_after_an_independent_renderer_eject_cannot_reload_the_deck() {
+    let files=Files::new();let path=files.wave("pending.wav");let mut f=Fixture::new(256);
+    f.app.load_file(0,path.clone(),"pending file");
+    f.decoder_jobs.recv_timeout(Duration::from_secs(3)).unwrap();
+    f.app.engine.send(Command::DeckUnload{deck:0}).unwrap();
+    f.rt.process(&mut [0.0;256]);
+    assert!(f.rt.decks[0].audio.is_none());
+    f.decoder_results.send((0,crate::engine::dsp::decode_audio(&path))).unwrap();f.poll_loads();
+    let receipt=f.app.loads[0].as_ref().unwrap().receipt.as_ref().unwrap().clone();
+    let counts=crate::engine::test_alloc::measure(||f.rt.process(&mut [0.0;256]));
+    assert_eq!((counts.allocations,counts.frees),(0,0));
+    assert_eq!(receipt.state(),crate::engine::load_receipt::State::Superseded);
+    assert!(f.rt.decks[0].audio.is_none());f.app.poll_load_receipts();
+    assert!(matches!(f.app.loads[0].as_ref().unwrap().phase,Phase::Superseded));
+}
+
+#[test]
 fn superseded_queued_load_never_revives_success_and_old_completion_cannot_replace_newer_media() {
     let files = Files::new();
     let path = files.wave("old.wav");

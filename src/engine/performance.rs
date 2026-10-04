@@ -1,6 +1,8 @@
 //! Show protection is shared by every producer and checked again by the
 //! renderer. No callback lock, allocation, driver call, or worker wait lives here.
 use super::Command;
+mod deck_load;
+pub(crate) use deck_load::Approval as DeckApproval;
 use serde::Serialize;
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -33,7 +35,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Protected => "Performance protection: this destructive action was not applied. Leave performance mode deliberately to edit it.",
-            Self::PlayingDeck => "Deck load protection: pause and release this deck or review a replacement of its current track. Performance mode requires pausing the deck.",
+            Self::PlayingDeck => "Deck load protection: pause and release the target until quiet, or review a deliberate replacement.",
             Self::Recovery => "Recovery is latched. Release physical inputs, then explicitly acknowledge recovery. Playback will remain stopped.",
             Self::Changing => "A project/device change or irreversible background commit is already pending. Finish or cancel it before changing performance protection.",
             Self::PendingStop => "The renderer has not completed the safety stop yet. Recovery cannot be acknowledged early.",
@@ -52,6 +54,7 @@ pub enum Safety {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Status {
+    pub deck_load_locked: [bool; super::DECKS],
     pub protected: bool,
     pub recovery: bool,
     pub stopped: bool,
@@ -75,8 +78,7 @@ struct Shared {
     applied: AtomicU64,
     recover: AtomicU64,
     deck_activity: AtomicU8,
-    deck_locks: AtomicU8,
-    deck_media: [AtomicU64; super::DECKS],
+    deck_load: [AtomicU64; super::DECKS],
     output: AtomicU8,
     observed: AtomicU64,
     quiet: AtomicU64,
@@ -84,6 +86,7 @@ struct Shared {
     last_rejection: AtomicU8,
     work: [Arc<AtomicBool>; OPTIONAL_SLOTS],
     work_claims: AtomicU64,
+    jobs: crate::background::Scheduler,
 }
 #[derive(Clone)]
 pub struct Handle(Arc<Shared>);
@@ -99,12 +102,12 @@ impl Default for Handle {
             observed: AtomicU64::new(0),
             quiet: AtomicU64::new(0),
             deck_activity: AtomicU8::new(0),
-            deck_locks: AtomicU8::new(0),
-            deck_media: std::array::from_fn(|_| AtomicU64::new(0)),
+            deck_load: std::array::from_fn(|_| AtomicU64::new(0)),
             rejected: AtomicU64::new(0),
             last_rejection: AtomicU8::new(0),
             work: std::array::from_fn(|_| Arc::new(AtomicBool::new(false))),
             work_claims: AtomicU64::new(0),
+            jobs: crate::background::Scheduler::default(),
         }))
     }
 }
@@ -174,6 +177,12 @@ impl WorkPermit {
             || self.handle.0.admission.load(Ordering::Acquire) / SAFETY_GENERATION
                 != self.generation
     }
+    /// Queue one expensive optional operation.
+    /// Takes kind, stable identity and declared memory reservation; returns a scheduler ticket tied to this permit cancellation.
+    pub(crate) fn background(&self, kind: crate::background::Kind, key: String, bytes: u64) -> Result<crate::background::Ticket, String> {
+        if self.cancelled() { return Err(Error::Protected.to_string()); }
+        self.handle.jobs().request(kind, key, bytes, crate::background::Cancellation::Flag(self.cancel()))
+    }
     pub fn cancel(&self) -> Arc<AtomicBool> {
         self.handle.0.work[self.slot].clone()
     }
@@ -188,9 +197,13 @@ impl Drop for WorkPermit {
 }
 
 impl Handle {
+    /// Share worker admission outside the callback.
+    /// Takes this guard; returns its bounded scheduler for UI and worker use.
+    pub(crate) fn jobs(&self) -> &crate::background::Scheduler { &self.0.jobs }
     pub fn status(&self) -> Status {
         let state = self.0.admission.load(Ordering::Acquire);
         Status {
+            deck_load_locked: std::array::from_fn(|deck| self.deck_load_word(deck) & 1 != 0),
             protected: state & PROTECTED != 0,
             recovery: state & RECOVERY != 0,
             stopped: state & STOPPED != 0,
@@ -449,35 +462,27 @@ impl Handle {
     /// Read the renderer-confirmed deck loading lock.
     /// Takes a deck index; returns its current protection state without touching audio.
     pub(crate) fn deck_load_locked(&self, deck: usize) -> bool {
-        deck < super::DECKS && self.0.deck_locks.load(Ordering::Acquire) & (1 << deck) != 0
+        deck < super::DECKS && self.deck_load_word(deck) & 1 != 0
     }
     pub(crate) fn check(&self, command: &Command, activity: Option<u8>) -> Result<(), Error> {
         let state = self.0.admission.load(Ordering::Acquire);
         if state & RECOVERY != 0 && !recovery_safe(command) {
             return Err(Error::Recovery);
         }
-        if let Some(deck) = media_target(command) {
-            if deck >= super::DECKS { return Err(Error::PlayingDeck); }
-            let expected = override_key(command);
-            if expected.is_some_and(|key| key == 0 || key != self.0.deck_media[deck].load(Ordering::Acquire)) {
-                return Err(Error::PlayingDeck);
-            }
-            if self.deck_load_locked(deck) && expected.is_none()
-                && activity.unwrap_or_else(|| self.0.deck_activity.load(Ordering::Acquire)) & (1 << deck) != 0 {
-                return Err(Error::PlayingDeck);
-            }
-        }
-        if state & PROTECTED == 0 {
-            return Ok(());
-        }
-        if destructive(command) {
+        if state & PROTECTED != 0 && destructive(command) {
             return Err(Error::Protected);
         }
         if let Some(deck) = media_target(command) {
-            if deck < super::DECKS
+            if deck >= super::DECKS { return Err(Error::PlayingDeck); }
+            let approval = deck_load::approval(command);
+            if approval.is_some_and(|approval| !approval.valid(self, deck)) {
+                return Err(Error::PlayingDeck);
+            }
+            if (state & PROTECTED != 0 || self.deck_load_word(deck) & 1 != 0)
                 && activity.unwrap_or_else(|| self.0.deck_activity.load(Ordering::Acquire))
                     & (1 << deck)
                     != 0
+                && approval.is_none()
             {
                 return Err(Error::PlayingDeck);
             }
@@ -493,23 +498,14 @@ fn media_target(command: &Command) -> Option<usize> {
         | Command::DeckLoadSelected { deck }
         | Command::LoadBuiltin { deck, .. }
         | Command::DeckUnload { deck }
-        | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize % super::DECKS),
-        Command::DeckEjectConfirmed { deck, .. } => Some(*deck as usize),
-        Command::DeckDecoded { request, .. } => Some(request.deck as usize % super::DECKS),
+        | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize),
+        Command::DeckDecoded { request, .. } => Some(request.deck as usize),
         Command::SessionControl(scoped) => media_target(&scoped.command),
         Command::Gesture { command, .. } => media_target(command),
         _ => None,
     }
 }
-fn override_key(command: &Command) -> Option<u64> {
-    match command {
-        Command::DeckLoadRequested { receipt, .. } => receipt.override_key(),
-        Command::DeckEjectConfirmed { expected, .. } => Some(*expected),
-        Command::SessionControl(scoped) => override_key(&scoped.command),
-        Command::Gesture { command, .. } => override_key(command),
-        _ => None,
-    }
-}
+
 fn destructive(command: &Command) -> bool {
     match command {
         Command::Remote(request) => destructive(&request.action.command()),
@@ -562,7 +558,6 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckLoopIn { .. }
         | Command::DeckLoopOut { .. }
         | Command::DeckLoadLock { .. }
-        | Command::DeckEjectConfirmed { .. }
         | Command::DeckLoadSelected { .. }
         | Command::PrepareSelected { .. }
         | Command::DeckPreview { .. }
@@ -747,17 +742,11 @@ pub(super) fn reject_receipt(command: &Command) {
 }
 impl super::RtEngine {
     pub(super) fn publish_deck_guards(&self) {
-        let mut locks = 0;
-        for (index, deck) in self.decks.iter().enumerate() {
-            self.performance.0.deck_media[index].store(deck.history_key, Ordering::Release);
-            locks |= u8::from(deck.load_locked) << index;
-        }
-        self.performance.0.deck_locks.store(locks, Ordering::Release);
         self.performance.publish_decks(self.deck_activity());
     }
     pub(super) fn deck_activity(&self) -> u8 {
         self.decks.iter().enumerate().fold(0, |bits, (i, deck)| {
-            bits | (u8::from(deck.rendering()) << i)
+            bits | (u8::from(deck.media_active()) << i)
         })
     }
     pub(super) fn performance_tick(&mut self) {

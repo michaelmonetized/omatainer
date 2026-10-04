@@ -57,14 +57,23 @@ fn real_embedded_cover_is_version_checked_and_read_only() {
     let before = std::fs::read(&path).unwrap();
     let fingerprint = FileFingerprint::read(&path).unwrap();
     let performance = Handle::default();
+    let work = performance.optional_work().unwrap();
+    let ticket = work
+        .background(
+            crate::background::Kind::Prepare,
+            "artwork-direct-test".into(),
+            128 * crate::background::MIB,
+        )
+        .unwrap();
     let job = Job {
+        ticket,
         key: Key {
             source: LibSource::File(path.clone()),
             fingerprint,
         },
         id: 1,
         cancel: Arc::new(AtomicBool::new(false)),
-        work: performance.optional_work().unwrap(),
+        work,
     };
     assert_eq!(read(&job).unwrap().unwrap().size, [40, 20]);
     assert_eq!(std::fs::read(&path).unwrap(), before);
@@ -245,4 +254,64 @@ fn invisible_requests_are_cancelled_and_thumbnail_cache_evicts_the_oldest_entry(
     }));
     cache.retry();
     assert!(cache.rows.is_empty());
+}
+
+#[test]
+fn queued_artwork_has_a_bounded_shared_reservation_and_scheduler_cancel_releases_it() {
+    let files = crate::ui::library_annotations::tests::Files::new();
+    let path = files.0.join("One.flac");
+    let item = LibItem {
+        source: LibSource::File(path.clone()),
+        title: "Coverless".into(),
+        artist: String::new(),
+        bpm: Bpm::UNKNOWN,
+        key: String::new(),
+        length: None,
+        last_play: None,
+        fingerprint: FileFingerprint::read(&path),
+    };
+    let performance = Handle::default();
+    let jobs = performance.jobs().clone();
+    let (entered, seen) = std::sync::mpsc::channel();
+    let (release, wait) = std::sync::mpsc::channel();
+    let blocker = std::thread::spawn(move || {
+        let ticket = jobs
+            .request(
+                crate::background::Kind::Prepare,
+                "artwork-budget-blocker".into(),
+                crate::background::MEMORY_BYTES,
+                crate::background::Cancellation::Flag(Arc::new(AtomicBool::new(false))),
+            )
+            .unwrap();
+        let _running = ticket.enter(|| false).unwrap();
+        entered.send(()).unwrap();
+        wait.recv_timeout(Duration::from_secs(5)).unwrap();
+    });
+    seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    let ctx = egui::Context::default();
+    let mut cache = Artwork::default();
+    cache.begin_frame(&ctx);
+    cache.visible(&item, &performance, true);
+    let snapshot = performance.jobs().snapshot();
+    let row = snapshot
+        .rows
+        .iter()
+        .find(|row| row.phase == crate::background::Phase::Queued)
+        .unwrap();
+    assert_eq!(row.bytes, 128 * crate::background::MIB);
+    assert_eq!(snapshot.reserved, crate::background::MEMORY_BYTES);
+    assert!(performance.jobs().cancel(row.id));
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !cache.rows.is_empty() {
+        cache.begin_frame(&ctx);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    release.send(()).unwrap();
+    blocker.join().unwrap();
+    assert_eq!(performance.jobs().snapshot().reserved, 0);
+    while performance.status().optional_active != 0 {
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
 }

@@ -24,6 +24,7 @@ struct Job {
     key: Key,
     id: u64,
     cancel: Arc<AtomicBool>,
+    ticket: crate::background::Ticket,
     work: WorkPermit,
 }
 struct ResultRow {
@@ -167,7 +168,18 @@ impl Worker {
             .name("omatainer-artwork".into())
             .spawn(move || {
                 while let Ok(job) = input.recv() {
-                    let result = read(&job).map_err(|error| error.chars().take(256).collect());
+                    let result = job
+                        .ticket
+                        .enter(|| job.cancel.load(Ordering::Acquire) || job.work.cancelled())
+                        .and_then(|_running| {
+                            job.ticket.progress(0, Some(1));
+                            let result = read(&job);
+                            if result.is_ok() {
+                                job.ticket.progress(1, Some(1));
+                            }
+                            result
+                        })
+                        .map_err(|error| error.chars().take(256).collect());
                     if job.cancel.load(Ordering::Acquire) {
                         continue;
                     }
@@ -194,6 +206,8 @@ impl Artwork {
     pub fn begin_frame(&mut self, ctx: &egui::Context) {
         self.frame = self.frame.checked_add(1).expect("artwork frame exhausted");
         self.waiting = false;
+        self.rows
+            .retain(|_, entry| !entry.cancel.load(Ordering::Acquire));
         if let Some(worker) = &self.worker {
             for _ in 0..PENDING_LIMIT {
                 let Ok(row) = worker.ready.try_recv() else {
@@ -281,8 +295,21 @@ impl Artwork {
             Ok(work) => work,
             Err(error) => return (None, error.to_string()),
         };
-        self.next = self.next.checked_add(1).expect("artwork request exhausted");
         let cancel = Arc::new(AtomicBool::new(false));
+        let ticket =
+            match crate::background::identity(&("library-artwork", &key.source, key.fingerprint))
+                .and_then(|key| {
+                    performance.jobs().request(
+                        crate::background::Kind::Prepare,
+                        key,
+                        128 * crate::background::MIB,
+                        crate::background::Cancellation::Flag(cancel.clone()),
+                    )
+                }) {
+                Ok(ticket) => ticket,
+                Err(error) => return (None, error),
+            };
+        self.next = self.next.checked_add(1).expect("artwork request exhausted");
         if self
             .worker
             .as_ref()
@@ -292,6 +319,7 @@ impl Artwork {
                 key: key.clone(),
                 id: self.next,
                 cancel: cancel.clone(),
+                ticket,
                 work,
             })
             .is_err()

@@ -60,6 +60,8 @@ pub(crate) enum Operation {
     DeckCue { deck: DeckIndex },
     DeckLoadLock { deck: DeckIndex, enabled: bool },
     DeckEject { deck: DeckIndex },
+    DeckLoad { deck: DeckIndex },
+    DeckUnload { deck: DeckIndex },
 }
 
 impl Operation {
@@ -94,6 +96,8 @@ impl Operation {
             Self::DeckCue { deck } => Command::DeckCue { deck: deck.0 },
             Self::DeckLoadLock { deck, enabled } => Command::DeckLoadLock { deck: deck.0, enabled },
             Self::DeckEject { deck } => Command::DeckUnload { deck: deck.0 },
+            Self::DeckLoad { deck } => Command::DeckLoadSelected { deck: deck.0 },
+            Self::DeckUnload { deck } => Command::DeckUnload { deck: deck.0 },
         })
     }
 }

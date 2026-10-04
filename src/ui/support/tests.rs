@@ -541,12 +541,12 @@ fn retained_linked_recovery_action_cannot_open_a_new_exact_candidate() {
         });
     }
     drop(store);
-    gui.app.start_recovery(root);
     for reference in references { gui.session.port.recovery(reference); }
     gui.wait(|g| g.session.view().report.recovery.len() == 2);
     gui.open_support();
     gui.click("Inspect current report");
     gui.wait(|g| g.app.support.preview.is_some());
+    gui.app.start_recovery(root);
     gui.click("Find exact recovery record 1");
     gui.wait(|g| g.app.support.found.as_ref().is_some_and(|candidate| candidate.sequence == 1));
     let old_action = gui.node("Preview linked recovery");

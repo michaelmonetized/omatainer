@@ -25,6 +25,16 @@ preview** to cancel playback. See the [provider contract](docs/music-providers.m
 
 ## Install on this machine
 
+Open **Setup → Background jobs** to inspect measured progress and cancel one
+captured request. Decode, analysis, indexing, provider requests, video work and
+media exports share bounded worker admission. At most one deck decoder and two
+optional workers run together, with 3 GiB of declared active reservations.
+An explicit deck load gets the next worker turn and cancels optional work when
+its reservation would otherwise block decoding. Linux workers use ordinary CPU
+scheduling, nice 10 or lower priority, and idle I/O priority. Existing asset and
+decoder limits still apply; the reservation total is not process memory usage.
+See the [background work limits](docs/background-jobs.md).
+
 ```bash
 ~/Projects/omatainer/scripts/install-omarchy.sh
 ```
@@ -731,6 +741,8 @@ installation. Draft policies, missing/stale evidence and failed checks block
 publication. See [the local release gate contract and reproduction steps](docs/validation/issue-95-local-release-gate.md).
 
 ### Performance protection
+
+Use **Lock playing deck A/B** to protect each live deck from accidental loading or ejecting. Review an override to identify the exact target and keep its current audio playing until the replacement is ready. See [deck load protection](docs/deck-load-protection.md) for the controls and IPC requests.
 
 Use the visible **Performance** bar before a show. Protection keeps playing/touched
 deck loads, destructive edits, project replacement and device changes from being

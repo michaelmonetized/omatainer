@@ -334,7 +334,6 @@ pub struct DeckRt {
     pub pitch: f32, // -1..1 mapped around 1.0
     pub playing: bool,
     preview_position: Option<f64>,
-    pub load_locked: bool,
     pub cue_pos: f64,
     pub touching: bool,
     // Admission cannot hold more than MAX_COMMANDS gates across all inputs.
@@ -381,6 +380,11 @@ impl DeckRt {
     /// Check whether this deck is rendering source audio.
     /// Takes this deck; returns true for play, touch or an explicitly admitted paused preview.
     fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() }
+    /// Keep media replacement guarded while this deck renders or fades.
+    /// Takes its renderer state; returns whether load protection still owns audible activity.
+    fn media_active(&self) -> bool {
+        self.rendering() || self.last_output.iter().any(|sample| sample.abs() > 0.0001)
+    }
     fn stop_preview(&mut self, rate: f32) {
         if let Some(position) = self.preview_position.take() { self.transition_to(position, rate, DeckTransition::Jump); }
     }
@@ -401,7 +405,6 @@ impl DeckRt {
             pitch: 0.5,
             playing: false,
             preview_position: None,
-            load_locked: false,
             cue_pos: 0.0,
             touching: false,
             touch_sources: [None; control::MAX_COMMANDS],
@@ -659,9 +662,11 @@ struct PadTarget {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
+    pub media_active: bool,
     pub previewing: bool,
     pub load_locked: bool,
     pub media_key: u64,
+    pub load_gate_word: u64,
     pub title: String,
     pub playing: bool,
     pub pos: f64,
@@ -903,7 +908,6 @@ pub enum Command {
     PrepareSelected { all: bool },
     DeckPreview { deck: u8, expected: u64, on: bool },
     DeckLoadLock { deck: u8, enabled: bool },
-    DeckEjectConfirmed { deck: u8, expected: u64 },
     DeckVinyl { deck: u8 },
     DeckKeylock { deck: u8 },
     DeckAudio { deck: u8, audio: Arc<Sample> },
@@ -2123,6 +2127,13 @@ impl RtEngine {
             self.undo.retire_command(c);
             return;
         }
+        if let Command::DeckAudio { deck, .. } | Command::DeckUnload { deck } = &c {
+            if !self.performance.claim_deck_media(*deck as usize % DECKS, self.deck_activity(), None, None) {
+                self.performance.reject(performance::Error::PlayingDeck);
+                self.undo.retire_command(c);
+                return;
+            }
+        }
         let Some(c)=self.history_before(c) else{return;};
         self.apply_plain(c);
     }
@@ -2443,6 +2454,7 @@ impl RtEngine {
                 d.bpm = audio.bpm;
                 d.cue_pos = 0.0;
                 d.playing = false;
+                d.preview_position = None;
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.grid = None;
                 d.hotcues = std::array::from_fn(|_| HotCue {
@@ -2479,10 +2491,7 @@ impl RtEngine {
                 d.cue_pos = d.pos;
             }
             Command::DeckLoadLock { deck, enabled } => {
-                if let Some(target) = self.decks.get_mut(deck as usize) { target.load_locked = enabled; }
-            }
-            Command::DeckEjectConfirmed { deck, .. } => {
-                if let Some(command) = self.history_before(Command::DeckUnload { deck }) { self.apply_plain(command); }
+                let _ = self.performance.set_deck_load_lock(deck as usize, enabled);
             }
             Command::DeckLoadSelected { .. } | Command::PrepareSelected { .. } => {
                 // Producers capture selection before routing to the GUI.
@@ -2845,7 +2854,27 @@ impl RtEngine {
             if receipt.claim() { receipt.finish(State::Unavailable); }
             return;
         }
+        if receipt.deck_generation().is_some_and(|generation|generation!=self.performance.deck_load_word(deck as usize)) {
+            receipt.supersede();
+            return;
+        }
+        if matches!(media, Media::Unload) {
+            if !receipt.claim() { return; }
+            if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval(), receipt.deck_generation()) {
+                self.performance.reject(performance::Error::PlayingDeck);
+                receipt.finish(State::Protected);
+                return;
+            }
+            let Some(command) = self.history_before(Command::DeckUnload { deck }) else {
+                receipt.finish(State::Unavailable);
+                return;
+            };
+            self.apply_plain(command);
+            receipt.finish(State::Current);
+            return;
+        }
         let audio = match media {
+            Media::Unload => unreachable!(),
             Media::Builtin(stem) => self.builtin.get(*stem as usize).and_then(Clone::clone),
             Media::Decoded { token, audio } => {
                 if token.deck != deck || !token.is_current() {
@@ -2862,6 +2891,11 @@ impl RtEngine {
         if !receipt.claim() { return; }
         #[cfg(test)]
         if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
+        if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval(), receipt.deck_generation()) {
+            self.performance.reject(performance::Error::PlayingDeck);
+            receipt.finish(State::Protected);
+            return;
+        }
         if let Some(audio) = audio {
             // Application acknowledgement follows the actual mutation outcome,
             // not an unrelated retirement notice published during the capture.

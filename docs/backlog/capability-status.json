@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "release": "Unreleased combined stack above #502",
-  "reviewed": "2026-10-03",
+  "release": "Unreleased combined stack above #504",
+  "reviewed": "2026-10-04",
   "references": [
     {
       "name": "Ableton Live",
@@ -479,7 +479,7 @@
       "limits": "Source 3bd82bb passes all 1532 ordinary checks. Native 32-channel routing assertions pass, with 2048 missing input frames (1024 and 640 within recorded captures) retained as a timing limit. Embedded PNG/JPEG artwork uses bounded, source-checked workers. Complete optimized and physical controller qualification remain pending."
     },
     "143": {
-      "status": "partial",
+      "status": "implemented",
       "paths": [
         {
           "kind": "native UI",
@@ -499,7 +499,38 @@
       "evidence": [
         "docs/validation/issue-143-library-backup.md"
       ],
-      "limits": "Seven focused checks pass on the initial software source, including native export/restore/import and real-loader playback after original removal on a clean profile at different local paths. Additional cancellation/output replacement regression and final combined qualification remain pending. Physical mounted-volume migration, output converter timing and listening are not established."
+      "limits": "All eight backup checks pass, including native export/verify/restore/import, exact preparation and real-loader playback after source removal on a clean profile. The additional run uses distinct mounted local filesystems /home and /var/tmp. This is local software/mount evidence; removable USB migration, converter timing and listening remain unqualified. Final combined ordinary and optimized qualification is pending."
+    },
+    "132": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/background_jobs.rs",
+          "entry": "Setup background jobs with captured-ID cancellation and measured worker progress"
+        },
+        {
+          "kind": "shared scheduler",
+          "file": "src/background.rs",
+          "entry": "Bounded worker turns, declared memory reservations, decode priority, native worker CPU/IO policy and retired request ownership"
+        },
+        {
+          "kind": "combined workflows",
+          "file": "src/ui/library_backup.rs",
+          "entry": "Catalog backup/verification/restore, embedded artwork and media validation join the existing admitted workflows"
+        }
+      ],
+      "fixtures": [
+        "background::tests",
+        "ui::background_jobs::tests",
+        "engine::media_load::tests",
+        "ui::library_artwork::tests",
+        "ui::library_backup::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-132-background-work.md"
+      ],
+      "limits": "The published parent qualifies its own frozen source. Combined focused checks preserve media guards, cancellation, coalescing and exact captured fingerprints. Merged callback-pressure, optimized, full ordinary and physical deadline qualification remains pending. Reservations are declared admission budgets, not measured RSS or an OS memory cap. Plugin scanning and stem separation remain planned."
     }
   }
 }

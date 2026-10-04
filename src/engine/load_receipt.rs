@@ -11,8 +11,9 @@ pub struct Receipt(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
+    deck_approval: Option<super::performance::DeckApproval>,
+    deck_generation: Option<u64>,
     history_key: u64,
-    override_key: Option<u64>,
     state: AtomicU8,
     history_pins: AtomicU64,
     grid_lock_sequence: AtomicU64,
@@ -45,23 +46,28 @@ impl Receipt {
     pub(crate) fn with_preparation(
         initial_preparation: Option<super::preparation::Preparation>,
     ) -> Self {
-        Self::with_override(initial_preparation, None)
+        Self::with_preparation_and_approval(initial_preparation, None, None)
     }
-    /// Capture consent to replace one current deck track.
-    /// Takes preparation and an optional reviewed media key; returns a new single-use load receipt.
-    pub(crate) fn with_override(initial_preparation: Option<super::preparation::Preparation>, override_key: Option<u64>) -> Self {
+    /// Create one pending media receipt.
+    /// Takes retained preparation and an optional reviewed override; returns a fresh receipt with no application acknowledgment.
+    fn with_preparation_and_approval(
+        initial_preparation: Option<super::preparation::Preparation>,
+        deck_approval: Option<super::performance::DeckApproval>,
+        deck_generation: Option<u64>,
+    ) -> Self {
         let wall_origin = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos()
             .min(u64::MAX as u128) as u64;
         Self(Arc::new(Inner {
+            deck_approval,
+            deck_generation,
             history_key: super::history_measurement::parts::fresh_key(),
-            override_key,
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
             grid_lock_sequence: AtomicU64::new(0),
-            grid_lock: std::array::from_fn(|_|AtomicU64::new(0)),
+            grid_lock: std::array::from_fn(|_| AtomicU64::new(0)),
             initial_preparation,
             preparation_sequence: AtomicU64::new(0),
             preparation: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -73,28 +79,72 @@ impl Receipt {
     /// Publish reviewed grid protection without callback locks.
     /// Takes locked state and its canonical saved grid; atomically replaces one bounded receipt target.
     pub(crate) fn set_grid_protection(&self, locked: bool, grid: Option<super::beatgrid::Grid>) {
-        if self.grid_protection()==Some((locked,if locked {grid} else {None})) {return;}
-        let words=super::beatgrid::Grid::encode(if locked {grid} else {None});
-        self.0.grid_lock_sequence.fetch_add(1,Ordering::AcqRel);
-        self.0.grid_lock[0].store(locked as u64,Ordering::Relaxed);
-        for (slot,word) in self.0.grid_lock[1..].iter().zip(words) {slot.store(word,Ordering::Relaxed);}
-        self.0.grid_lock_sequence.fetch_add(1,Ordering::Release);
+        if self.grid_protection() == Some((locked, if locked { grid } else { None })) {
+            return;
+        }
+        let words = super::beatgrid::Grid::encode(if locked { grid } else { None });
+        self.0.grid_lock_sequence.fetch_add(1, Ordering::AcqRel);
+        self.0.grid_lock[0].store(locked as u64, Ordering::Relaxed);
+        for (slot, word) in self.0.grid_lock[1..].iter().zip(words) {
+            slot.store(word, Ordering::Relaxed);
+        }
+        self.0.grid_lock_sequence.fetch_add(1, Ordering::Release);
     }
     /// Read coherent grid protection without waiting.
     /// Takes this receipt; returns its bounded lock/grid snapshot or none during concurrent publication.
-    pub(super) fn grid_protection(&self) -> Option<(bool,Option<super::beatgrid::Grid>)> {
-        let sequence=self.0.grid_lock_sequence.load(Ordering::Acquire);
-        if sequence&1!=0 {return None;}
-        let words:[u64;4]=std::array::from_fn(|i|self.0.grid_lock[i].load(Ordering::Relaxed));
+    pub(super) fn grid_protection(&self) -> Option<(bool, Option<super::beatgrid::Grid>)> {
+        let sequence = self.0.grid_lock_sequence.load(Ordering::Acquire);
+        if sequence & 1 != 0 {
+            return None;
+        }
+        let words: [u64; 4] = std::array::from_fn(|i| self.0.grid_lock[i].load(Ordering::Relaxed));
         std::sync::atomic::fence(Ordering::Acquire);
-        if sequence!=self.0.grid_lock_sequence.load(Ordering::Relaxed) {return None;}
-        let grid=super::beatgrid::Grid::decode([words[1],words[2],words[3]])?;
-        Some((words[0]!=0,grid))
+        if sequence != self.0.grid_lock_sequence.load(Ordering::Relaxed) {
+            return None;
+        }
+        let grid = super::beatgrid::Grid::decode([words[1], words[2], words[3]])?;
+        Some((words[0] != 0, grid))
     }
     /// Refuse grid edits while locked or while protection changes.
     /// Takes this receipt; returns whether a manual edit must wait for an explicit unlock.
     pub(crate) fn grid_is_locked(&self) -> bool {
-        self.grid_protection().is_none_or(|(locked,_)|locked)
+        self.grid_protection().is_none_or(|(locked, _)| locked)
+    }
+    /// Bind a fresh load receipt to a deliberate deck review.
+    /// Takes this unused receipt and approval; returns a new pending receipt retaining its preparation.
+    pub(crate) fn with_deck_approval(self, approval: super::performance::DeckApproval) -> Self {
+        let next = Self::with_preparation_and_approval(
+            self.initial_preparation(),
+            Some(approval),
+            self.0.deck_generation,
+        );
+        if let Some((locked, grid)) = self.grid_protection() {
+            next.set_grid_protection(locked, grid);
+        }
+        next
+    }
+    /// Bind prepared media to the deck it was requested for.
+    /// Takes its captured media generation; returns a pending receipt which cannot replace a subsequently unloaded or changed deck.
+    pub(crate) fn with_deck_generation(self, generation: u64) -> Self {
+        let next = Self::with_preparation_and_approval(
+            self.initial_preparation(),
+            self.0.deck_approval.clone(),
+            Some(generation),
+        );
+        if let Some((locked, grid)) = self.grid_protection() {
+            next.set_grid_protection(locked, grid);
+        }
+        next
+    }
+    /// Read the media generation captured before worker preparation.
+    /// Takes this receipt; returns its optional immutable generation.
+    pub(crate) fn deck_generation(&self) -> Option<u64> {
+        self.0.deck_generation
+    }
+    /// Inspect a reviewed deck override.
+    /// Takes this receipt; returns its immutable approval when one was explicitly supplied.
+    pub(crate) fn deck_approval(&self) -> Option<&super::performance::DeckApproval> {
+        self.0.deck_approval.as_ref()
     }
     pub(super) fn initial_preparation(&self) -> Option<super::preparation::Preparation> {
         self.0.initial_preparation
@@ -124,8 +174,9 @@ impl Receipt {
     pub(crate) fn snapshot_key(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
     }
-    pub(crate) fn history_key(&self) -> u64 { self.0.history_key }
-    pub(crate) fn override_key(&self) -> Option<u64> { self.0.override_key }
+    pub(crate) fn history_key(&self) -> u64 {
+        self.0.history_key
+    }
     pub fn same_request(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }
@@ -214,6 +265,7 @@ impl Receipt {
 
 #[derive(Clone, Debug)]
 pub enum Media {
+    Unload,
     Builtin(u8),
     Decoded {
         token: LoadToken,
