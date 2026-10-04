@@ -74,6 +74,16 @@ Full combined source, optimized reviewed workloads and three actual decode/I/O-p
 
 Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native settings fixtures pass. Physical converters, external routes, real-time scheduling and other platforms remain unqualified.
 
+### Issue #134: implemented
+
+- native UI: [src/ui/grid_editor.rs](../src/ui/grid_editor.rs) — Deck Actions → Beatgrid editor → tempo anchor beat/source position; insert/replace/delete; reviewed Apply
+- renderer: [src/engine/beatgrid.rs](../src/engine/beatgrid.rs) — Bounded continuous local beat/time mapping, synchronized advancement and musical loop wrapping
+- persistence: [src/library/backup.rs](../src/library/backup.rs) — Schema 13 catalog/project preparation; verified schema 12/13 backup migration and restore
+- Acceptance fixtures: `engine::beatgrid::variable_tests`, `ui::grid_editor::tests::tempo_anchor_widgets_validate_replace_delete_cancel_and_commit_one_receipt_qualified_edit`, `ui::grid_editor::tests::recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_native_widgets`, `engine::project::tests::tempo_anchor_state_preserves_media_and_old_versions_reject_anchor_fields`, `library::tests::tempo_anchors_roundtrip_and_legacy_headers_cannot_hide_new_geometry`, `library::backup::tests::schema_twelve_backups_migrate_and_current_anchors_survive_collected_restore`.
+- Evidence: [docs/validation/issue-134-variable-tempo-grid.md](../docs/validation/issue-134-variable-tempo-grid.md).
+
+Up to 32 manual anchors per deck; every linear segment stays within 20–400 BPM. Audio and cues remain in source coordinates. Generated click and one CC BY 4.0 human electronic-drum recording are software fixtures; no acoustic-drum corpus, listening score, physical controller or converter timing claim. Current combined-source full/optimized qualification is tracked in the validation receipt.
+
 ### Issue #137: partial
 
 - release tooling: [scripts/capability-matrix.py](../scripts/capability-matrix.py) — generate / check
@@ -204,7 +214,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#131](https://github.com/michaelmonetized/omatainer/issues/131) | Protect audible DJ decks from accidental load and eject | implemented |
 | [#132](https://github.com/michaelmonetized/omatainer/issues/132) | Prioritize and cancel expensive background audio jobs | implemented |
 | [#133](https://github.com/michaelmonetized/omatainer/issues/133) | Integrate low-latency PipeWire, JACK and ALSA workflows | implemented |
-| [#134](https://github.com/michaelmonetized/omatainer/issues/134) | Support manually mapped tempo changes within a track | planned |
+| [#134](https://github.com/michaelmonetized/omatainer/issues/134) | Support manually mapped tempo changes within a track | implemented |
 | [#135](https://github.com/michaelmonetized/omatainer/issues/135) | Show aligned beatgrid, phase and phrase position on deck waveforms | planned |
 | [#136](https://github.com/michaelmonetized/omatainer/issues/136) | Switch live sets without interrupting the outgoing mix | planned |
 | [#137](https://github.com/michaelmonetized/omatainer/issues/137) | Maintain a versioned professional capability and compatibility matrix | partial |

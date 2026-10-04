@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 12;
+pub const STATE_VERSION: u32 = 13;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -124,6 +124,10 @@ impl<'de> Deserialize<'de> for State {
             .filter_map(|bank| bank.get("settings")).filter_map(|settings| settings.get("slots").and_then(serde_json::Value::as_array)).flatten()
             .any(|slot| slot.get("playback").is_some()) {
             return Err(serde::de::Error::custom("Legacy projects cannot contain sampler playback modes"));
+        }
+        if version < 13 && raw.get("decks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .filter_map(|deck| deck.get("grid")).any(|grid| grid.get("anchors").is_some()) {
+            return Err(serde::de::Error::custom("Tempo anchors require project state version 13"));
         }
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
@@ -624,6 +628,7 @@ impl State {
                     .eq_store
                     .iter()
                     .any(|v| !finite_range(*v as f64, 0.0, 16.0))
+                || self.version < 13 && deck.grid.is_some_and(|grid| !grid.anchors().is_empty())
                 || !finite_range(deck.bpm as f64, 1.0, 1000.0)
                 || !finite_range(deck.sync_bpm as f64, 1.0, 1000.0)
                 || !finite_range(deck.pos, -1.0e12, 1.0e12)

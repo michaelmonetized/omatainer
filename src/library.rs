@@ -35,7 +35,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 12;
+const SCHEMA: u32 = 13;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -475,8 +475,31 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     if bytes.len() as u64 > MAX_BYTES {
         return Err("library exceeds 64 MiB".into());
     }
-    let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let catalog = catalog_from_bytes(&bytes, None)?;
+    let identity = FileFingerprint::from_metadata(&meta);
+    if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != identity
+        || store_identity(path)? != Some(identity)
+    {
+        return Err("DJ library changed while it was read; original file preserved".into());
+    }
+    Ok((catalog, identity))
+}
+
+/// Read one bounded catalog and its supported migrations.
+/// Takes JSON bytes and an optional exact archive schema; returns a validated current catalog without editing its source.
+fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Catalog, String> {
+    if bytes.len() as u64 > MAX_BYTES { return Err("library exceeds 64 MiB".into()); }
+    let header: serde_json::Value = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
     let schema = header.get("schema").and_then(|v| v.as_u64());
+    if expected_schema.is_some_and(|expected| schema != Some(u64::from(expected))) {
+        return Err("Backup catalog schema does not match its manifest".into());
+    }
+    if schema.is_some_and(|version| version < 13) && header.get("tracks").and_then(|v| v.as_array()).into_iter().flatten()
+        .flat_map(|track| track.get("preparation").into_iter().chain(
+            track.get("versions").and_then(|v| v.as_array()).into_iter().flatten().filter_map(|v| v.get("preparation"))))
+        .filter_map(|preparation| preparation.get("grid")).any(|grid| grid.get("anchors").is_some()) {
+        return Err("Tempo anchors require library schema 13; original file preserved".into());
+    }
     if schema.is_some_and(|schema| schema < 8) {
         tags::reject_legacy_fields(&header)?;
     }
@@ -495,34 +518,34 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
         return Err("Crate favorites require library schema 12; original file preserved".into());
     }
     let mut catalog = match schema {
-        Some(12) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
-        Some(11) | Some(10) | Some(9) => {
-            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+        Some(13) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
+        Some(12) | Some(11) | Some(10) | Some(9) => {
+            let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
         },
         Some(8) => {
-            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
         },
         Some(7) => {
-            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
         },
         Some(6) => {
-            let old: BeforeWatchedRoots = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let old: BeforeWatchedRoots = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema,6);
             Catalog { tracks: old.tracks, crates: old.crates, ..Default::default() }
         },
         Some(2 | 3 | 4 | 5) => {
-            let old: BeforeCollections = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let old: BeforeCollections = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             debug_assert!((2..=5).contains(&old.schema));
             Catalog { tracks: old.tracks, ..Default::default() }
         },
         Some(1) => {
-            let old: V1 = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let old: V1 = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema, 1);
             Catalog {
                 schema: SCHEMA,
@@ -564,13 +587,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
         return Err("invalid legacy relocated track association".into());
     }
     catalog.validate()?;
-    let identity = FileFingerprint::from_metadata(&meta);
-    if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != identity
-        || store_identity(path)? != Some(identity)
-    {
-        return Err("DJ library changed while it was read; original file preserved".into());
-    }
-    Ok((catalog, identity))
+    Ok(catalog)
 }
 
 fn store_identity(path: &Path) -> Result<Option<FileFingerprint>, String> {

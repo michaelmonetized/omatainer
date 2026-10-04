@@ -557,6 +557,38 @@
         "docs/validation/remaining-backlog-qualification.md"
       ],
       "limits": "Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native settings fixtures pass. Physical converters, external routes, real-time scheduling and other platforms remain unqualified."
+    },
+    "134": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/grid_editor.rs",
+          "entry": "Deck Actions → Beatgrid editor → tempo anchor beat/source position; insert/replace/delete; reviewed Apply"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/beatgrid.rs",
+          "entry": "Bounded continuous local beat/time mapping, synchronized advancement and musical loop wrapping"
+        },
+        {
+          "kind": "persistence",
+          "file": "src/library/backup.rs",
+          "entry": "Schema 13 catalog/project preparation; verified schema 12/13 backup migration and restore"
+        }
+      ],
+      "fixtures": [
+        "engine::beatgrid::variable_tests",
+        "ui::grid_editor::tests::tempo_anchor_widgets_validate_replace_delete_cancel_and_commit_one_receipt_qualified_edit",
+        "ui::grid_editor::tests::recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_native_widgets",
+        "engine::project::tests::tempo_anchor_state_preserves_media_and_old_versions_reject_anchor_fields",
+        "library::tests::tempo_anchors_roundtrip_and_legacy_headers_cannot_hide_new_geometry",
+        "library::backup::tests::schema_twelve_backups_migrate_and_current_anchors_survive_collected_restore"
+      ],
+      "evidence": [
+        "docs/validation/issue-134-variable-tempo-grid.md"
+      ],
+      "limits": "Up to 32 manual anchors per deck; every linear segment stays within 20–400 BPM. Audio and cues remain in source coordinates. Generated click and one CC BY 4.0 human electronic-drum recording are software fixtures; no acoustic-drum corpus, listening score, physical controller or converter timing claim. Current combined-source full/optimized qualification is tracked in the validation receipt."
     }
   }
 }

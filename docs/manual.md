@@ -1882,7 +1882,7 @@ Workflow: Prepare a DJ deck.
 
 20–400 BPM
 
-Change beat spacing while keeping the draft downbeat fixed. Enter a finite tempo; invalid text cannot be applied. This uniform grid does not implement changing meters or tempo maps.
+Scale every tempo segment around the draft downbeat. All segments must stay between 20 and 400 BPM. Anchors retain beat coordinates; original audio and absolute cues stay unchanged. Bars remain four beats.
 
 Workflow: Prepare a DJ deck.
 
@@ -1899,6 +1899,14 @@ Workflow: Prepare a DJ deck.
 Draft BPM multiplied by two; maximum 400
 
 Correct half-tempo ambiguity in the preview while retaining the downbeat. Disabled when the result would exceed the supported range.
+
+Workflow: Prepare a DJ deck.
+
+### Manual tempo anchors
+
+Up to 32 ordered anchors; 20–400 BPM per segment
+
+Map a beat after beat 0 to a position inside the loaded source audio. Insert in any order; an existing beat is replaced. Source and beat positions must increase together. The map stays continuous across boundaries and continues its final tempo after the last anchor. Delete reconnects neighboring segments. Apply commits one undoable grid edit for the same track; Cancel keeps the applied map.
 
 Workflow: Prepare a DJ deck.
 

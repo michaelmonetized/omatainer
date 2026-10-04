@@ -17,7 +17,7 @@ struct Inner {
     state: AtomicU8,
     history_pins: AtomicU64,
     grid_lock_sequence: AtomicU64,
-    grid_lock: [AtomicU64; 4],
+    grid_lock: [AtomicU64; 1 + super::beatgrid::WORDS],
     initial_preparation: Option<super::preparation::Preparation>,
     preparation_sequence: AtomicU64,
     preparation: [AtomicU64; super::preparation::WORDS],
@@ -97,12 +97,13 @@ impl Receipt {
         if sequence & 1 != 0 {
             return None;
         }
-        let words: [u64; 4] = std::array::from_fn(|i| self.0.grid_lock[i].load(Ordering::Relaxed));
+        let words: [u64; 1 + super::beatgrid::WORDS] = std::array::from_fn(|i| self.0.grid_lock[i].load(Ordering::Relaxed));
         std::sync::atomic::fence(Ordering::Acquire);
         if sequence != self.0.grid_lock_sequence.load(Ordering::Relaxed) {
             return None;
         }
-        let grid = super::beatgrid::Grid::decode([words[1], words[2], words[3]])?;
+        if words[0] > 1 { return None; }
+        let grid = super::beatgrid::Grid::decode(words[1..].try_into().unwrap())?;
         Some((words[0] != 0, grid))
     }
     /// Refuse grid edits while locked or while protection changes.

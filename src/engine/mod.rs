@@ -1810,9 +1810,11 @@ impl RtEngine {
         let sr = self.sr as f64;
         {
             let d = &mut self.decks[di];
-            if d.sync {
-                if let Some(a) = &d.audio {
-                    let bpm = d.grid.map_or(a.bpm, |grid| grid.bpm() as f32);
+            let mapped_sync = d.sync.then(|| d.mapped_sync_rate(self.sr)).flatten();
+            if let Some(rate) = mapped_sync { d.target_rate = rate; }
+            else if d.sync {
+                if d.audio.is_some() {
+                    let bpm = d.musical_bpm();
                     if bpm > 1.0 { d.target_rate = d.sync_bpm / bpm; }
                 }
             } else {
@@ -1821,7 +1823,8 @@ impl RtEngine {
             if d.touching {
                 d.rate = d.scratch;
             } else {
-                d.rate += (d.target_rate - d.rate) * d.rate_smoothing;
+                if mapped_sync.is_some() { d.rate = d.target_rate; }
+                else { d.rate += (d.target_rate - d.rate) * d.rate_smoothing; }
                 if d.keylock
                     && (d.target_rate == keylock::MIN_RATIO || d.target_rate == 1.0
                         || d.target_rate == keylock::MAX_RATIO)
@@ -1847,7 +1850,9 @@ impl RtEngine {
                 && position >= d.loop_start + d.loop_len;
             if d.loop_on && d.loop_len > 1.0 {
                 if position >= d.loop_start + d.loop_len {
-                    position = d.loop_start + (position - d.loop_start) % d.loop_len;
+                    position = if mapped_sync.is_some() && !d.touching {
+                        d.mapped_loop_wrap(position)
+                    } else { None }.unwrap_or_else(|| d.loop_start + (position - d.loop_start) % d.loop_len);
                 }
                 if position < d.loop_start {
                     position = d.loop_start;
@@ -2382,14 +2387,13 @@ impl RtEngine {
                 self.undo.retire_command(command);
             }
             Command::DeckLoop { deck, beats } => {
-                let (_, spb) = self.decks[deck as usize % DECKS].grid_geometry(self.sr, self.bpm);
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_on = false;
                 } else {
                     d.loop_on = true;
                     d.loop_start = if self.quantize && d.grid.is_some() { d.grid_snap(d.pos, self.sr, self.bpm) } else { d.pos };
-                    d.loop_len = beats as f64 * spb;
+                    d.loop_len = d.grid_span(d.loop_start, beats as f64, self.sr, self.bpm);
                 }
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
@@ -2647,19 +2651,26 @@ impl RtEngine {
             Command::DeckLoopDouble { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
-                    d.loop_len *= 2.0;
+                    d.loop_len = if d.grid.is_some() {
+                        let beats = d.grid_beat_at(d.loop_start + d.loop_len, self.sr, self.bpm)
+                            - d.grid_beat_at(d.loop_start, self.sr, self.bpm);
+                        d.grid_span(d.loop_start, beats * 2.0, self.sr, self.bpm)
+                    } else { d.loop_len * 2.0 };
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckLoopHalf { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
-                    d.loop_len = (d.loop_len * 0.5).max(64.0);
+                    d.loop_len = if d.grid.is_some() {
+                        let beats = d.grid_beat_at(d.loop_start + d.loop_len, self.sr, self.bpm)
+                            - d.grid_beat_at(d.loop_start, self.sr, self.bpm);
+                        d.grid_span(d.loop_start, beats * 0.5, self.sr, self.bpm)
+                    } else { d.loop_len * 0.5 }.max(64.0);
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckReloop { deck } => {
-                let (_, spb) = self.decks[deck as usize % DECKS].grid_geometry(self.sr, self.bpm);
                 let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
                 let mut pos = d.pos;
@@ -2667,7 +2678,7 @@ impl RtEngine {
                     pos = d.grid_snap(pos, self.sr, self.bpm);
                 }
                 d.loop_start = pos;
-                d.loop_len = 4.0 * 4.0 * spb;
+                d.loop_len = d.grid_span(pos, 16.0, self.sr, self.bpm);
                 d.loop_on = true;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
@@ -2675,16 +2686,15 @@ impl RtEngine {
                 let fav = if self.xfader <= 0.5 { 0 } else { 1 };
                 let oth = 1 - fav;
                 if self.decks[fav].audio.is_none() { return; }
-                let target_bpm = self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate();
+                let target_bpm = if self.decks[fav].sync { self.decks[fav].sync_bpm }
+                    else { self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate() };
                 self.decks[oth].sync = true;
                 self.decks[oth].sync_bpm = target_bpm;
                 if self.decks[fav].playing && self.decks[oth].playing {
                     if self.decks[oth].audio.is_some() {
-                        let (origin_f, spb_f) = self.decks[fav].grid_geometry(self.sr, self.bpm);
-                        let (origin_o, spb_o) = self.decks[oth].grid_geometry(self.sr, self.bpm);
-                        let phase = (self.decks[fav].pos - origin_f).rem_euclid(spb_f) / spb_f;
-                        let beat = ((self.decks[oth].pos - origin_o) / spb_o).floor();
-                        let mut position = origin_o + (beat + phase) * spb_o;
+                        let phase = self.decks[fav].grid_phase(self.decks[fav].pos, self.sr, self.bpm);
+                        let beat = self.decks[oth].grid_beat_at(self.decks[oth].pos, self.sr, self.bpm).floor();
+                        let mut position = self.decks[oth].grid_position_at(beat + phase, self.sr, self.bpm);
                         if self.decks[oth].grid.is_some() {
                             position = position.clamp(0.0, self.decks[oth].audio.as_ref().unwrap().frames() as f64);
                         }

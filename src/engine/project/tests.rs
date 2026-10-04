@@ -246,6 +246,31 @@ fn populated() -> RtEngine {
 }
 
 #[test]
+fn tempo_anchor_state_preserves_media_and_old_versions_reject_anchor_fields() {
+    use super::super::beatgrid::Grid;
+    let mut original = populated();
+    let grid = Grid::new(0.1, 120.0).unwrap().with_anchor(4.0, 2.1).unwrap().with_anchor(8.0, 3.6).unwrap();
+    original.decks[0].grid = Some(grid);
+    let saved = captured(&original);
+    let value = serde_json::to_value(&saved.state).unwrap();
+    let state: State = serde_json::from_value(value.clone()).unwrap();
+    state.validate(&saved.media).unwrap();
+    let prepared = Prepared::from_state(state, saved.media.clone(), 96_000).unwrap();
+    assert_eq!(prepared.rt.decks[0].grid, Some(grid));
+    assert!(Arc::ptr_eq(original.decks[0].audio.as_ref().unwrap(), prepared.rt.decks[0].audio.as_ref().unwrap()));
+    assert_eq!(prepared.rt.decks[0].pos, original.decks[0].pos);
+    let mut legacy = value;
+    legacy["version"] = 12.into();
+    assert!(serde_json::from_value::<State>(legacy.clone()).is_err());
+    legacy["decks"][0]["grid"]["anchors"] = serde_json::json!([]);
+    assert!(serde_json::from_value::<State>(legacy.clone()).is_err());
+    legacy["decks"][0]["grid"].as_object_mut().unwrap().remove("anchors");
+    let state: State = serde_json::from_value(legacy).unwrap();
+    state.validate(&saved.media).unwrap();
+    assert!(Prepared::from_state(state, saved.media, 48_000).unwrap().rt.decks[0].grid.unwrap().anchors().is_empty());
+}
+
+#[test]
 fn full_state_roundtrip_preserves_every_attachment_rack_note_and_control() {
     let original = populated();
     let saved = captured(&original);

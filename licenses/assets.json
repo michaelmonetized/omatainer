@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
+  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "assets": [
     {
       "id": "factory:drum-kit",
@@ -293,6 +293,33 @@
         "ardour-9.8-region-ppqn19200.mid"
       ],
       "project_license": true
+    },
+    {
+      "id": "test:groove-1.0.0",
+      "name": "Groove MIDI Dataset 1.0.0: human electronic drum qualification fixture",
+      "category": "test-fixture",
+      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory samples.",
+      "license": "CC-BY-4.0",
+      "commercial_use": "CC BY 4.0 permits reuse, including commercially, under its attribution and other conditions. See retained legal text and source attribution.",
+      "redistribution": "Retain Google LLC attribution, the listed paper authors and ICML 2019 citation, dataset source, CC BY 4.0 link/terms and warranty disclaimer. Identify processing of derivatives; no endorsement is implied.",
+      "sources": [
+        {
+          "location": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip#groove/drummer3/session2/11_rock_100_beat_4-4.wav",
+          "sha256": "6e4f313f3dee5482bdc328fbd54893cc3a0f7fe9e960045b837b123e0a17dd4a"
+        },
+        {
+          "location": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip#groove/drummer3/session2/11_rock_100_beat_4-4.mid",
+          "sha256": "26906e263271dfecdc0674f665a606d524badbc9ec384cd177e9fffe5e3e6c50"
+        }
+      ],
+      "notice_files": [
+        "tests/fixtures/beatgrid/README.md",
+        "tests/fixtures/beatgrid/CC-BY-4.0.txt"
+      ],
+      "members": [
+        "11_rock_100_beat_4-4.wav",
+        "11_rock_100_beat_4-4.mid"
+      ]
     }
   ],
   "fonts": [

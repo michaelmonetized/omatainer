@@ -1,7 +1,7 @@
 //! Manual source-time grid drafts. Only Apply submits one receipt-qualified
 //! renderer edit; preview geometry never changes transport, cues or analysis.
 use super::*;
-use crate::engine::beatgrid::{Grid, GridEditAck, GridEditState, MAX_BPM, MIN_BPM};
+use crate::engine::beatgrid::{Grid, GridEditAck, GridEditState, MAX_ANCHORS};
 use crate::engine::load_receipt::State;
 
 pub(super) struct Editor {
@@ -10,6 +10,8 @@ pub(super) struct Editor {
     draft: Option<Grid>,
     origin: String,
     tempo: String,
+    anchor_beat: String,
+    anchor_seconds: String,
     error: Option<String>,
     message: String,
     pending: Option<Pending>,
@@ -32,6 +34,8 @@ impl Editor {
             draft: seed,
             origin: seed.map_or_else(|| "0".into(), |g| g.downbeat().to_string()),
             tempo: seed.map_or_else(String::new, |g| g.bpm().to_string()),
+            anchor_beat: "4".into(),
+            anchor_seconds: source_seconds(snap).to_string(),
             error: None,
             pending: None,
             message: if applied.is_some() {
@@ -52,7 +56,10 @@ impl Editor {
             .ok()
             .zip(self.tempo.trim().parse::<f64>().ok())
             .ok_or("Enter finite downbeat seconds and a tempo from 20 to 400 BPM")
-            .and_then(|(origin, tempo)| Grid::new(origin, tempo));
+            .and_then(|(origin, tempo)| self.draft.map_or_else(
+                || Grid::new(origin, tempo),
+                |grid| grid.slip(origin - grid.downbeat()).and_then(|grid| grid.stretch(tempo)),
+            ));
         match value {
             Ok(grid) => {
                 self.draft = Some(grid);
@@ -73,6 +80,21 @@ impl Editor {
             }
             Err(error) => self.error = Some(error.into()),
         }
+    }
+    /// Preview one captured source-time anchor.
+    /// Takes the loaded duration; validates beat and source fields before replacing the draft.
+    fn insert_anchor(&mut self, duration: f64) {
+        let result = self.anchor_beat.trim().parse::<f64>().ok()
+            .zip(self.anchor_seconds.trim().parse::<f64>().ok())
+            .ok_or("Enter finite beat and source positions for the tempo anchor")
+            .and_then(|(beat, seconds)| {
+                if !seconds.is_finite() || !(0.0..=duration).contains(&seconds) {
+                    return Err("Tempo anchors must be inside the loaded audio");
+                }
+                self.draft.ok_or("Create a manual grid before adding tempo anchors")?
+                    .with_anchor(beat, seconds)
+            });
+        self.transform(result);
     }
 }
 impl App {
@@ -179,7 +201,7 @@ impl App {
                                     ui.label(crate::localization::format("Playhead: {playhead:.6} s · preview beat {beat:.3}", &[format!("{:.6}", playhead), format!("{:.3}", beat)]));
                                 }
                             });
-                            ui.label(tr!("Beat 0 is the first downbeat. Earlier beats are negative pickups. Uniform four-beat bars; changing meters and tempo maps are not supported here."));
+                            ui.label(tr!("Beat 0 is the first downbeat. Earlier beats are negative pickups. Tempo anchors keep beats continuous; bars remain four beats."));
                             ui.label(tr!("Manual edits do not replace analyzed BPM or move stored cue positions."));
                             ui.add_enabled_ui(editor.pending.is_none() && !self.project.committing() && self.project.dialog_is_closed(), |ui| {
                                 ui.label(tr!("Downbeat position in source seconds"));
@@ -193,7 +215,10 @@ impl App {
                                 if origin.changed() || tempo.changed() { editor.parse(); }
                                 if button(ui, "Set downbeat at playhead", "Set downbeat at playhead", HelpControl::GridSet, true).clicked() {
                                     let bpm = editor.tempo.trim().parse::<f64>().unwrap_or(f64::NAN);
-                                    editor.transform(Grid::new(playhead, bpm));
+                                    editor.transform(editor.draft.map_or_else(
+                                        || Grid::new(playhead, bpm),
+                                        |grid| grid.slip(playhead - grid.downbeat()).and_then(|grid| grid.stretch(bpm)),
+                                    ));
                                 }
                                 ui.horizontal_wrapped(|ui| {
                                     for (label, delta) in [("Slip −10 ms", -0.010), ("Slip −1 ms", -0.001), ("Slip +1 ms", 0.001), ("Slip +10 ms", 0.010)] {
@@ -204,10 +229,10 @@ impl App {
                                 });
                                 ui.horizontal_wrapped(|ui| {
                                     let grid = editor.draft.filter(|_| editor.error.is_none());
-                                    if button(ui, "Half tempo", "Half tempo", HelpControl::GridHalf, grid.is_some_and(|g| g.bpm() / 2.0 >= MIN_BPM)).clicked() {
+                                    if button(ui, "Half tempo", "Half tempo", HelpControl::GridHalf, grid.is_some_and(|g| g.half_tempo().is_ok())).clicked() {
                                         editor.transform(grid.unwrap().half_tempo());
                                     }
-                                    if button(ui, "Double tempo", "Double tempo", HelpControl::GridDouble, grid.is_some_and(|g| g.bpm() * 2.0 <= MAX_BPM)).clicked() {
+                                    if button(ui, "Double tempo", "Double tempo", HelpControl::GridDouble, grid.is_some_and(|g| g.double_tempo().is_ok())).clicked() {
                                         editor.transform(grid.unwrap().double_tempo());
                                     }
                                     if button(ui, "Reset grid", "Reset manual grid", HelpControl::GridReset, true).clicked() {
@@ -215,6 +240,36 @@ impl App {
                                         editor.message = "Reset preview: Apply removes the manual grid. Cues and analysis are retained.".into();
                                     }
                                 });
+                                ui.separator();
+                                ui.label(tr!("Tempo anchors map beat numbers to unchanged source audio. Up to 32 anchors; each segment stays between 20 and 400 BPM."));
+                                ui.label(tr!("Tempo anchor beat after beat 0"));
+                                let beat = ui.add(egui::TextEdit::singleline(&mut editor.anchor_beat).id_salt("grid-anchor-beat").char_limit(32).desired_width(140.0));
+                                beat.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, beat.enabled(), format!("{title}: Tempo anchor beat")));
+                                accessibility::focus(ui, &beat); help::annotate(ui, &beat, HelpControl::GridAnchor);
+                                ui.label(tr!("Tempo anchor source seconds"));
+                                let source = ui.add(egui::TextEdit::singleline(&mut editor.anchor_seconds).id_salt("grid-anchor-seconds").char_limit(32).desired_width(180.0));
+                                source.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, source.enabled(), format!("{title}: Tempo anchor source seconds")));
+                                accessibility::focus(ui, &source); help::annotate(ui, &source, HelpControl::GridAnchor);
+                                let duration = if snap.source_sample_rate > 0 { snap.frames / f64::from(snap.source_sample_rate) } else { 0.0 };
+                                if button(ui, "Insert or replace anchor", "Insert or replace tempo anchor", HelpControl::GridAnchor, editor.draft.is_some()).clicked() {
+                                    editor.insert_anchor(duration);
+                                }
+                                if button(ui, "Anchor at playhead", "Tempo anchor at playhead", HelpControl::GridAnchor, editor.draft.is_some()).clicked() {
+                                    editor.anchor_seconds = playhead.to_string();
+                                    editor.insert_anchor(duration);
+                                }
+                                if let Some(grid) = editor.draft {
+                                    for (index, anchor) in grid.anchors().iter().enumerate() {
+                                        let removed = ui.push_id(("tempo-anchor", anchor.beat.to_bits(), anchor.seconds.to_bits()), |ui| {
+                                            ui.horizontal_wrapped(|ui| {
+                                                ui.label(crate::localization::format("Beat {beat:.3} → {seconds:.6} s · {bpm:.3} BPM", &[format!("{:.3}", anchor.beat), format!("{:.6}", anchor.seconds), format!("{:.3}", grid.bpm_at(anchor.seconds).unwrap())]));
+                                                button(ui, "Delete anchor", &format!("Delete tempo anchor {}", index + 1), HelpControl::GridAnchor, true).clicked()
+                                            }).inner
+                                        }).inner;
+                                        if removed { editor.transform(grid.without_anchor(index)); break; }
+                                    }
+                                    if grid.anchors().len() == MAX_ANCHORS { ui.label(tr!("All 32 tempo anchors are in use. Replace an existing beat or delete an anchor before adding another.")); }
+                                }
                             });
                             if let Some(error) = &editor.error { ui.colored_label(self.theme.red, crate::localization::format("{error}. Preview retains its last valid draft.", &[format!("{}", error)])); }
                             ui.label(&editor.message);

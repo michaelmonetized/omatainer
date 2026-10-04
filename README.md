@@ -364,7 +364,7 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 7 is the current format; versions 1–6 migrate without changing
+worker. Version 13 is the current format; versions 1–12 migrate without changing
 IDs or preparation. Source-qualified analysis results and their algorithm versions
 are retained in the catalog; bounded waveform blobs live in the private cache. Conflicting identities or unknown
 fields/formats are rejected rather than discarded. Mounted removable libraries
@@ -378,12 +378,14 @@ fresh preparation, with old fingerprint versions preserved in the catalog. A
 new path receives a new identity unless the crate’s **relocate…** action
 verifies identical file bytes and deliberately preserves the existing track ID.
 Keep the original file available until its move-verification digest is saved.
-**Deck grid…** edits a manual downbeat and uniform tempo independently of analyzed
-BPM. Preview Set at playhead, slip, stretch, half/double tempo and Reset before
+**Deck grid…** edits a manual downbeat and up to 32 ordered tempo anchors independently of analyzed
+BPM. Map each anchor's beat number to its source time; insert, replace or delete
+anchors while previewing. Each segment must stay between 20 and 400 BPM.
+Preview Set at playhead, slip, stretch, half/double tempo and Reset before
 Apply; Cancel/Escape discards the draft. Applied grids are undoable, survive
 library/project/recovery reloads, and guide Match phase and quantized loops.
-Negative beat coordinates represent pickups; bars currently contain four beats
-(changing meters and tempo maps are not implemented). Cue positions stay in
+Negative beat coordinates represent pickups; deck bars currently contain four beats.
+Loops and synchronization follow local tempo segments. Cue positions stay in
 source seconds. Performance protection rejects grid edits; essential saving
 continues, with optional relocation hashing deferred until Studio mode.
 

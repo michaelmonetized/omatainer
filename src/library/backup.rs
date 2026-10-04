@@ -478,7 +478,7 @@ fn verify(
     let (bytes, manifest_fp) = metadata(&path.join("manifest.json"), cancel)?;
     let manifest: Manifest = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     if manifest.schema != VERSION
-        || manifest.library_schema != SCHEMA
+        || !(12..=SCHEMA).contains(&manifest.library_schema)
         || manifest.entries.len() > MAX_TRACKS
         || manifest.collection_limit > MAX_COLLECTION
         || (!manifest.entries.is_empty() && manifest.collection_limit == 0)
@@ -489,8 +489,7 @@ fn verify(
     if <[u8; 32]>::from(Sha256::digest(&bytes)) != manifest.catalog_sha256 {
         return Err("Library backup catalog checksum does not match".into());
     }
-    let mut catalog: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-    catalog.validate()?;
+    let mut catalog = super::catalog_from_bytes(&bytes, Some(manifest.library_schema))?;
     let tracks: HashMap<_, _> = catalog
         .tracks
         .iter()

@@ -116,6 +116,39 @@ fn mixed(dir: &Dir) -> Catalog {
     catalog
 }
 #[test]
+fn tempo_anchors_roundtrip_and_legacy_headers_cannot_hide_new_geometry() {
+    let dir = Dir::new();
+    let mut catalog = mixed(&dir);
+    let grid = crate::engine::beatgrid::Grid::new(0.25, 120.0).unwrap()
+        .with_anchor(4.0, 2.25).unwrap().with_anchor(8.0, 3.75).unwrap();
+    for track in &mut catalog.tracks { track.versions[track.current].preparation.grid = Some(grid); }
+    {
+        let mut store = Store::open(dir.store()).unwrap();
+        store.catalog = catalog.clone(); store.save().unwrap();
+    }
+    assert_eq!(read(&dir.store()).unwrap().tracks, catalog.tracks);
+    let current = serde_json::to_value(&catalog).unwrap();
+    let mut forged = current.clone(); forged["schema"] = 12.into();
+    let bytes = serde_json::to_vec(&forged).unwrap(); fs::write(dir.store(), &bytes).unwrap();
+    assert!(Store::open(dir.store()).is_err());
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    let mut legacy = current;
+    legacy["schema"] = 12.into();
+    for track in legacy["tracks"].as_array_mut().unwrap() {
+        for version in track["versions"].as_array_mut().unwrap() {
+            version["preparation"]["grid"].as_object_mut().unwrap().remove("anchors");
+        }
+    }
+    let old = serde_json::to_vec(&legacy).unwrap(); fs::write(dir.store(), &old).unwrap();
+    let migrated = read(&dir.store()).unwrap();
+    assert_eq!(migrated.schema, SCHEMA);
+    assert!(migrated.tracks.iter().all(|t| t.versions[t.current].preparation.grid.unwrap().anchors().is_empty()));
+    assert_eq!(fs::read(dir.store()).unwrap(), old);
+    legacy["tracks"][0]["versions"][0]["preparation"]["grid"]["anchors"] = serde_json::json!([]);
+    assert!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(), Some(12)).is_err());
+}
+
+#[test]
 fn mixed_namespaces_ids_metadata_and_preparation_survive_restart() {
     let dir = Dir::new();
     let original = mixed(&dir);

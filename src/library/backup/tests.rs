@@ -107,6 +107,45 @@ fn no_stages(files: &Files) {
 }
 
 #[test]
+fn schema_twelve_backups_migrate_and_current_anchors_survive_collected_restore() {
+    let files = Files::new();
+    let cancel = AtomicBool::new(false);
+    let original = files.catalog();
+    let backup = files.0.join("legacy-12");
+    export(&original, &backup, Some(400_000), &cancel, None, |_| {}).unwrap();
+    let mut catalog: serde_json::Value = serde_json::from_slice(&fs::read(backup.join("catalog.json")).unwrap()).unwrap();
+    catalog["schema"] = 12.into();
+    let legacy = serde_json::to_vec(&catalog).unwrap(); fs::write(backup.join("catalog.json"), &legacy).unwrap();
+    let digest: [u8; 32] = Sha256::digest(&legacy).into();
+    rewrite_manifest(&backup, |manifest| {
+        manifest["library_schema"] = 12.into(); manifest["catalog_sha256"] = serde_json::to_value(digest).unwrap();
+    });
+    assert_eq!(inspect(&backup, &cancel, |_| {}).unwrap().collected, 2);
+    let restored = restore(&backup, &files.0.join("legacy-restored"), &cancel, None, |_| {}).unwrap();
+    let result = read(&restored.catalog).unwrap();
+    assert_eq!(result.schema, SCHEMA);
+    assert_eq!(result.crates, original.crates);
+    assert_eq!(fs::read(backup.join("catalog.json")).unwrap(), legacy);
+    for (a, b) in result.tracks.iter().zip(&original.tracks) {
+        assert_eq!(a.versions[a.current].preparation, b.versions[b.current].preparation);
+    }
+    rewrite_manifest(&backup, |manifest| manifest["library_schema"] = SCHEMA.into());
+    assert!(inspect(&backup, &cancel, |_| {}).unwrap_err().contains("schema does not match"));
+    let grid = Grid::new(0.01, 120.0).unwrap().with_anchor(1.0, 0.51).unwrap().with_anchor(2.0, 0.91).unwrap();
+    let mut anchored = original.clone();
+    for track in &mut anchored.tracks { track.versions[track.current].preparation.grid = Some(grid); }
+    let backup = files.0.join("current-anchors");
+    export(&anchored, &backup, Some(400_000), &cancel, None, |_| {}).unwrap();
+    let restored = restore(&backup, &files.0.join("current-restored"), &cancel, None, |_| {}).unwrap();
+    for track in read(&restored.catalog).unwrap().tracks {
+        assert_eq!(track.versions[track.current].preparation.grid, Some(grid));
+        assert_eq!(track.versions.len(), 3);
+        assert_eq!(track.versions[1].preparation.grid, Some(grid));
+    }
+    no_stages(&files);
+}
+
+#[test]
 fn metadata_snapshot_is_exact_and_optional_collection_preserves_every_prepared_version() {
     let files = Files::new();
     let catalog = files.catalog();
