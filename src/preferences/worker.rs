@@ -93,11 +93,17 @@ pub struct Worker {
 }
 impl Worker {
     pub fn start(path: PathBuf) -> std::io::Result<Self> {
-        Self::with_discovery(path, config::discover)
+        Self::with_backend_discovery(path, |audio| config::discover_for(audio.backend.as_deref()))
     }
     pub fn with_discovery(
         path: PathBuf,
         discover: impl Fn() -> Result<Inventory, String> + Send + 'static,
+    ) -> std::io::Result<Self> {
+        Self::with_backend_discovery(path, move |_| discover())
+    }
+    fn with_backend_discovery(
+        path: PathBuf,
+        discover: impl Fn(&super::Audio) -> Result<Inventory, String> + Send + 'static,
     ) -> std::io::Result<Self> {
         let (jobs, input) = bounded::<(Job, Arc<AtomicBool>, crate::engine::performance::WorkPermit)>(1);
         let (output, results) = bounded(1);
@@ -192,7 +198,7 @@ fn execute(
     path: &std::path::Path,
     job: Job,
     cancel: &AtomicBool,
-    discover: &impl Fn() -> Result<Inventory, String>,
+    discover: &impl Fn(&super::Audio) -> Result<Inventory, String>,
     permit: &crate::engine::performance::WorkPermit,
 ) -> Event {
     match job {
@@ -200,11 +206,11 @@ fn execute(
             if let Err(error) = validate_startup(&preferences, cancel) {
                 return Event::Failed(error);
             }
-            let inventory = discover();
+            let current = preferences.current().expect("validated active profile");
+            let inventory = discover(&current.audio);
             if cancel.load(Ordering::Acquire) {
                 return Event::Cancelled;
             }
-            let current = preferences.current().expect("validated active profile");
             let plan = inventory
                 .as_ref()
                 .map_err(Clone::clone)

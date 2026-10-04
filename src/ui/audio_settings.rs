@@ -37,7 +37,7 @@ struct Worker {
 impl Worker {
     fn start(
         handle: owner::Handle,
-        discover: impl Fn() -> Result<config::Inventory, String> + Send + 'static,
+        discover: impl Fn(&Audio) -> Result<config::Inventory, String> + Send + 'static,
     ) -> std::io::Result<Self> {
         let (sender, input) = bounded::<(Job, Arc<AtomicBool>, Option<crate::engine::performance::ExclusivePermit>)>(1);
         let (output, receiver) = bounded(1);
@@ -48,7 +48,7 @@ impl Worker {
                 let handle = worker_handle;
                 while let Ok((job, cancel, permit)) = input.recv() {
                     let event = match job {
-                        Job::Preview(profile, saved) => match discover() {
+                        Job::Preview(profile, saved) => match discover(&saved) {
                             Ok(inventory) => {
                                 let target = config::plan(&saved, &inventory);
                                 let calibration = handle
@@ -59,6 +59,7 @@ impl Worker {
                                         "Recover a session output before calibration".into()
                                     })
                                     .and_then(|active| {
+                                        if active.plan.backend == "JACK" { return Err("Choose the ALSA workflow for physical loopback calibration".into()); }
                                         let input = config::calibration_plan(
                                             &saved,
                                             &inventory,
@@ -167,11 +168,17 @@ pub(super) struct Panel {
 }
 impl Panel {
     pub fn new(handle: Option<owner::Handle>) -> Self {
-        Self::with_discovery(handle, config::discover)
+        Self::with_backend_discovery(handle, |saved| config::discover_for(saved.backend.as_deref()))
     }
     fn with_discovery(
         handle: Option<owner::Handle>,
         discover: impl Fn() -> Result<config::Inventory, String> + Send + 'static,
+    ) -> Self {
+        Self::with_backend_discovery(handle, move |_| discover())
+    }
+    fn with_backend_discovery(
+        handle: Option<owner::Handle>,
+        discover: impl Fn(&Audio) -> Result<config::Inventory, String> + Send + 'static,
     ) -> Self {
         let worker = handle
             .clone().filter(|handle|!handle.safe_mode())
@@ -368,7 +375,7 @@ impl App {
                     ui.separator();
                     match confirm {
                         Confirm::Reset => { ui.label(tr!("Stop all sources, reclaim the graph on the audio-owner worker, clear voice/effect/filter histories and reopen the current output. Only a successful reset removes emergency mute. Playback remains stopped; input acknowledgment is still required if recovery is latched.")); },
-                        Confirm::Reconnect(_) => {ui.label(tr!("Reconnect only the retained physical output with the same route, rate, format and buffer. No fallback opens. Playback stays stopped and emergency mute stays latched. Release physical inputs and acknowledge recovery before pressing Play; transport starts use a 2 ms output ramp."));},
+                        Confirm::Reconnect(_) => {ui.label(tr!("Reconnect only the retained output and exact routes. Graph outputs follow their retained server clock; ALSA keeps the accepted configuration. No fallback opens. Playback stays stopped and emergency mute stays latched. Release physical inputs and acknowledge recovery before pressing Play; transport starts use a 2 ms output ramp."));},
                         Confirm::Switch(_)=>{ui.label(tr!("Stop decks, clips, recording and held notes, then change output? Previous output will be restored if opening fails. Playback will remain stopped; press Play explicitly when ready."));},
                         Confirm::Calibrate(_)=>{ui.label(tr!("Connect the chosen LINE output to the chosen LINE input using a suitable cable/interface loopback. Disable input monitoring, use line level (not a speaker output), and turn down external speakers. This stops performance, emits three short low-level coded probes on the chosen output, captures up to 3 seconds, and restores the session output without resuming playback."));if let Some(request)=panel.preview.as_ref().and_then(|p|p.calibration.as_ref().ok()){ui.label({ let __omatainer_args = (&(request.output.device),&(request.output_channel+1),&(request.input.device),&(request.input_channel+1),&(request.level_db),); crate::localization::format("Confirm route: {} output {} → {} input {}; level {} dBFS", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2), format!("{}", __omatainer_args.3), format!("{}", __omatainer_args.4)]) });}},
                     }
@@ -395,8 +402,18 @@ fn audio_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response
 }
 
 fn capabilities(ui: &mut egui::Ui, inventory: &config::Inventory) {
+    if inventory.backend == "JACK" {
+        ui.label("The JACK or PipeWire server owns rate, quantum and callback scheduling. Channels map to exact named graph ports; no physical converter latency is inferred.");
+        egui::ScrollArea::vertical().max_height(180.0).show_rows(ui, 18.0, inventory.graph_ports.len(), |ui, rows| {
+            for row in rows {
+                let (port, input) = &inventory.graph_ports[row];
+                ui.label(format!("{}: {port}", if *input { "Destination" } else { "Source" }));
+            }
+        });
+    } else {
     ui.label(tr!("Audio setup uses exact backend/device names. During this session, recovery also retains verified ALSA physical identity and route where Linux exposes them. Default/server aliases and USB devices without serials require explicit fallback confirmation; duplicate identities are refused."));
     ui.label({ let __omatainer_args = (&(inventory.backend),); crate::localization::format("Backend: {}. Channel numbers are CPAL's ordered interleaved channels; physical connector names are unavailable.", &[format!("{}", __omatainer_args.0)]) });
+    }
     if inventory.truncated {
         ui.label(tr!("Capability inventory truncated at 256 devices / 4096 ranges per device"));
     }
@@ -443,20 +460,20 @@ pub(super) fn edit_profile(
     audio: &mut Audio,
     inventory: Option<&config::Inventory>,
 ) {
-    let Some(inventory) = inventory else {
-        ui.label(tr!("Preview the profile to discover audio capabilities. Saved unavailable selections are preserved."));
-        return;
-    };
     egui::ComboBox::from_label(tr!("Audio backend"))
         .selected_text(audio.backend.as_deref().unwrap_or("System backend"))
         .show_ui(ui, |ui| {
             ui.selectable_value(&mut audio.backend, None, tr!("System backend")).help(ui, HelpControl::AudioBackend);
-            ui.selectable_value(
-                &mut audio.backend,
-                Some(inventory.backend.clone()),
-                &inventory.backend,
-            ).help(ui, HelpControl::AudioBackend);
+            #[cfg(target_os = "linux")]
+            for backend in ["ALSA", "JACK"] { ui.selectable_value(&mut audio.backend, Some(backend.into()), backend).help(ui, HelpControl::AudioBackend); }
+            if let Some(inventory) = inventory {
+                if !matches!(inventory.backend.as_str(), "ALSA" | "JACK") { ui.selectable_value(&mut audio.backend, Some(inventory.backend.clone()), &inventory.backend).help(ui, HelpControl::AudioBackend); }
+            }
         }).response.help(ui, HelpControl::AudioBackend);
+    let Some(inventory) = inventory else {
+        ui.label(tr!("Preview the profile to discover audio capabilities. Saved unavailable selections are preserved."));
+        return;
+    };
     device(ui, "Output device", &mut audio.device, &inventory.devices, HelpControl::PreferenceAudioDevice);
     let found = inventory.devices.iter().find(|device| {
         audio
@@ -496,7 +513,12 @@ pub(super) fn edit_profile(
         "Output",
         [HelpControl::PreferenceAudioChannels, HelpControl::AudioOutputFormat, HelpControl::PreferenceAudioBuffer],
     );
-    ui.label(tr!("Main left/right use outputs 1/2 (mono sums both); additional outputs are silent. Independent cue routing is not available."));
+    ui.label("Project Audio routing assigns main, cue and bus channels. Without an explicit project route, main uses outputs 1/2 and additional channels stay silent.");
+    if inventory.backend == "JACK" {
+        graph_routes(ui, audio, inventory);
+        ui.label("The graph server owns its clock. Rate changes stop audio and retain the project for explicit reconnect. Physical loopback calibration is available through the ALSA workflow.");
+        return;
+    }
     ui.heading(tr!("Optional loopback calibration input"));
     device(
         ui,
@@ -643,3 +665,34 @@ fn layout(
 
 #[cfg(test)]
 mod tests;
+
+/// Edit exact graph endpoints in the profile draft.
+/// Takes UI, saved audio choices and fresh port discovery; preserves unavailable endpoints until deliberately removed.
+fn graph_routes(ui: &mut egui::Ui, audio: &mut Audio, inventory: &config::Inventory) {
+    ui.heading("Named graph ports");
+    ui.label("Outputs: Omatainer:output_01 … output_64. Inputs: OmatainerCapture:input_01 … input_64, created only after explicit input activation. Choose channel counts before applying.");
+    for (input, links) in [(false, &mut audio.graph.outputs), (true, &mut audio.graph.inputs)] {
+        ui.push_id(input, |ui| {
+            ui.heading(if input { "Saved graph inputs" } else { "Saved graph outputs" });
+            let mut remove = None;
+            for (index, link) in links.iter_mut().enumerate() {
+                ui.push_id(index, |ui| { ui.horizontal(|ui| {
+                    let mut channel = link.channel + 1;
+                    ui.add(egui::DragValue::new(&mut channel).range(1..=64).prefix("Channel ")); link.channel = channel - 1;
+                    egui::ComboBox::from_id_salt("endpoint").selected_text(&link.endpoint).show_ui(ui, |ui| {
+                        for (endpoint, destination) in &inventory.graph_ports { if *destination != input { ui.selectable_value(&mut link.endpoint, endpoint.clone(), endpoint); } }
+                    });
+                    let label = ui.label(format!("Graph {} endpoint {}", if input { "input" } else { "output" }, channel));
+                    ui.text_edit_singleline(&mut link.endpoint).labelled_by(label.id);
+                    if ui.button(format!("Remove graph {} {}", if input { "input" } else { "output" }, channel)).clicked() { remove = Some(index); }
+                }); });
+            }
+            if let Some(index) = remove { links.remove(index); }
+            if links.len() < 64 && ui.button(if input { "Add graph input" } else { "Add graph output" }).clicked() {
+                let channel = (0..64).find(|channel| links.iter().all(|link| link.channel != *channel)).unwrap();
+                links.push(crate::engine::audio::graph::Link { channel, endpoint: String::new() });
+            }
+        });
+    }
+    ui.label("Only saved exact links reconnect when an endpoint returns. No speakers or inputs connect automatically. Feedback and duplicate links are refused.");
+}

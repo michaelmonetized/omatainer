@@ -397,6 +397,7 @@
     "Proprietary SDKs and reference-product content: none shipped."
   ],
   "external": [
+    "JACK and PipeWire servers/client libraries are external system dependencies selected at launch, not bundled. The dynamically loaded graph library keeps its own upstream license.",
     "System fonts chosen through fontconfig are loaded from the user's system, not redistributed by this package; their own license applies.",
     "Imported samples and media remain subject to their owners' terms. Importing does not establish commercial or redistribution rights.",
     "Omarchy, Quickshell, OS audio/graphics libraries, and controller firmware are external system dependencies, not bundled by this installer. Their licenses are not replaced by these records."
