@@ -1,5 +1,7 @@
 # Combined variable-tempo grid qualification
 
+Newer [input integrity work](input-integrity-consolidation.md) has focused checks and native file-refusal evidence; full qualification of those changes remains pending.
+
 Frozen source `28d82d7` (full revision in the [receipt](remaining-backlog-qualification.json)). All **608 source hashes remain unchanged** across qualification. Fresh debug test executable SHA-256 `647a5558fd26362092612f76dfbf3a7454372eb8db42e26b9765ccfbc6342e89`.
 
 **1,580 tests pass**: 1,579 ordinary checks in 83.44 seconds and the isolated exhaustive scene check in 277.07 seconds. Thirty-six opt-in checks are excluded from that count. The native human drum workflow loads original recorded PCM through the real decoder, edits four anchors through AccessKit/egui controls, saves the library, reopens at 96 kHz and renders audio. The native workflow verifies that source PCM, analyzed tempo and absolute cue positions survive grid edits.

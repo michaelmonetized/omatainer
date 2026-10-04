@@ -1377,6 +1377,7 @@ impl RtEngine {
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[1]);
         let frames = out.len() / channels;
+        self.routing_pipe.begin_block(self.sr as u32, frames);
         if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }

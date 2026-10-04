@@ -230,6 +230,7 @@
   "Bass / mid / treble: 0–340% linear gain": "Bass / mid / treble: 0–340% linear gain",
   "Beat 0 is the first downbeat. Earlier beats are negative pickups. Tempo anchors keep beats continuous; bars remain four beats.": "Beat 0 is the first downbeat. Earlier beats are negative pickups. Tempo anchors keep beats continuous; bars remain four beats.",
   "Beat 0 is the first downbeat. Earlier beats are negative pickups. Uniform four-beat bars; changing meters and tempo maps are not supported here.": "Beat 0 is the first downbeat. Earlier beats are negative pickups. Uniform four-beat bars; changing meters and tempo maps are not supported here.",
+  "Beat {beat:.3} → {seconds:.6} s · {bpm:.3} BPM": "Beat {beat:.3} → {seconds:.6} s · {bpm:.3} BPM",
   "Beatgrid preview": "Beatgrid preview",
   "Before audio claims the commit": "Before audio claims the commit",
   "Before commit": "Before commit",
@@ -1046,6 +1047,7 @@
   "Listening: 127.0.0.1:{port} · /omatainer/v1 ,sb": "Listening: 127.0.0.1:{0} · /omatainer/v1 ,sb",
   "Live MIDI thru": "Live MIDI thru",
   "Live input choices": "Live input choices",
+  "Live input waits for two actual callback blocks. Larger buffers add latency; independent device clocks can still drift. The running cushion target and gaps remain visible.": "Live input waits for two actual callback blocks. Larger buffers add latency; independent device clocks can still drift. The running cushion target and gaps remain visible.",
   "Live learned assignments": "Live learned assignments",
   "Live output device · measured service times; backend XRUN count unavailable": "Live output device · measured service times; backend XRUN count unavailable",
   "Live routed input": "Live routed input",
@@ -1603,6 +1605,7 @@
   "Request cancellation and retain the existing crate. An in-progress filesystem call finishes before cancellation is acknowledged.": "Request cancellation and retain the existing crate. An in-progress filesystem call finishes before cancellation is acknowledged.",
   "Request cancellation at safe worker boundaries; operating-system calls may still finish. Cancellation before output activation restores the prior route; a change already committed is reported honestly. Cancelled calibration produces no current measurement.": "Request cancellation at safe worker boundaries; operating-system calls may still finish. Cancellation before output activation restores the prior route; a change already committed is reported honestly. Cancelled calibration produces no current measurement.",
   "Request cooperative cancellation for this exact queued or running job. Reused worker slots and newer requests are not targeted. A filesystem read already in progress may finish before cancellation is observed. Already committed writes retain their actual outcome in the original workflow.": "Request cooperative cancellation for this exact queued or running job. Reused worker slots and newer requests are not targeted. A filesystem read already in progress may finish before cancellation is observed. Already committed writes retain their actual outcome in the original workflow.",
+  "Request input buffer size": "Request input buffer size",
   "Request the captured source on the named deck. Queued/decoding are not Loaded; wait for renderer confirmation. Failures retain existing media. Built-in stems bypass file decoding.": "Request the captured source on the named deck. Queued/decoding are not Loaded; wait for renderer confirmation. Failures retain existing media. Built-in stems bypass file decoding.",
   "Request the next coherent edit-state record without changing playback. This is an asynchronous request, not confirmation of durability. Read the resulting durable timestamp and warnings.": "Request the next coherent edit-state record without changing playback. This is an asynchronous request, not confirmation of durability. Read the resulting durable timestamp and warnings.",
   "Request the saved profile’s policy again. Inspect applied generation and missing/failed ports; retry admission is not connection success.": "Request the saved profile’s policy again. Inspect applied generation and missing/failed ports; retry admission is not connection success.",
@@ -1773,7 +1776,7 @@
   "Saved audio pending": "Saved audio pending",
   "Saved catalog and optional collected music": "Saved catalog and optional collected music",
   "Saved collections; All tracks is a virtual view": "Saved collections; All tracks is a virtual view",
-  "Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. Faults, missing callbacks and output changes disable input and require fresh confirmation. A bounded queue reports missing frames and overflow; separate device clocks are not resampled. Safe mode disables device access.": "Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. Faults, missing callbacks and output changes disable input and require fresh confirmation. A bounded queue reports missing frames and overflow; separate device clocks are not resampled. Safe mode disables device access.",
+  "Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. A bounded cushion waits for two actual callback blocks before delivering input; its frame count and nominal buffering target are shown. Startup silence, later missing frames, source discontinuities and overflow have separate counters. Input/output blocks above 2730 frames are refused. Faults, missing callbacks and output changes disable input and require fresh confirmation. Separate device clocks are not resampled. Safe mode disables device access.": "Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. A bounded cushion waits for two actual callback blocks before delivering input; its frame count and nominal buffering target are shown. Startup silence, later missing frames, source discontinuities and overflow have separate counters. Input/output blocks above 2730 frames are refused. Faults, missing callbacks and output changes disable input and require fresh confirmation. Separate device clocks are not resampled. Safe mode disables device access.",
   "Saved intent / active stream / observed timing": "Saved intent / active stream / observed timing",
   "Saved intent versus actual listener": "Saved intent versus actual listener",
   "Saved library root preferences": "Saved library root preferences",
@@ -2230,6 +2233,5 @@
   "↓ bpm up   ↑ bpm down   same bpm → key → name": "↓ bpm up   ↑ bpm down   same bpm → key → name",
   "−10 / −1 / +1 / +10 milliseconds": "−10 / −1 / +1 / +10 milliseconds",
   "−100% low-pass to +100% high-pass": "−100% low-pass to +100% high-pass",
-  "−60 to −24 dBFS": "−60 to −24 dBFS",
-  "Beat {beat:.3} → {seconds:.6} s · {bpm:.3} BPM": "Beat {beat:.3} → {seconds:.6} s · {bpm:.3} BPM"
+  "−60 to −24 dBFS": "−60 to −24 dBFS"
 }

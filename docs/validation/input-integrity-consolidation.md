@@ -1,0 +1,9 @@
+# Routed input integrity follow-up
+
+The renderer waits for a bounded two-block input cushion without discarding source samples. Startup silence, later missing frames, queue overflow and lost source-index continuity are counted separately. The running target shows its frame count and nominal buffering time. Input buffer size is explicitly editable, reviewed and saved with the project. Blocks above 2,730 frames are refused because the 8,192-frame queue must hold the two-block target and one incoming block. Independent clocks are not resampled.
+
+Input continuity follows every nonzero mapped route, including buses, tracks and their default scene/main sends. A record source that depends on missing input is refused; unrelated deck-only sources can still finish. The writer removes its unpublished partial file. Tests exercise actual routed rendering into the real WAV writer, cancellation, subsequent successful capture, queue bounds, stale generations, source-index loss and zero callback heap activity. The native input buffer control is changed through AccessKit actions, applied, captured in a project, reopened at 96 kHz and cancelled without changing the saved choice.
+
+Fresh source-bound debug build 3 passes 16 routing checks, five native routing UI checks and 14 help checks. The [receipt](input-integrity-consolidation.json) records all 608 source hashes and the freshly compiled executable. The input protection works in actual ALSA/private PipeWire failure cases: 128-frame requested buffers record 704 missing input frames; 512-frame requested buffers record 1,408. Both 32-channel completion fixtures fail and publish no WAV. Larger buffers did not establish a continuous route. These are retained failures and file-refusal evidence, not successful native capture qualification.
+
+The earlier full combined qualification remains bound to its own `28d82d7` source. Full current-source optimized, graph, controller and physical qualification remains pending.

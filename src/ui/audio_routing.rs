@@ -641,6 +641,11 @@ impl App {
                                 ui.horizontal(|ui| { ui.label(tr!("Exact input device")); ui.text_edit_singleline(&mut saved.device); });
                                 ui.add(egui::DragValue::new(&mut saved.channels).range(1..=64).prefix("Input channels "));
                                 egui::ComboBox::from_id_salt("input-format").selected_text(format!("{:?}", saved.format)).show_ui(ui, |ui| { for format in crate::preferences::AudioFormat::ALL { ui.selectable_value(&mut saved.format, format, format!("{format:?}")); } });
+                                let mut requested = saved.buffer_frames.is_some();
+                                if ui.checkbox(&mut requested, tr!("Request input buffer size")).changed() { saved.buffer_frames = requested.then_some(512); panel.input_preview = None; }
+                                if let Some(frames) = &mut saved.buffer_frames {
+                                    if let Some(value) = number(ui, "Input buffer frames", *frames as f32, 1.0, 2730.0, 1.0) { *frames = value.round() as u32; panel.input_preview = None; }
+                                }
                                 if ui.button(tr!("Preview input")).help(ui, HelpControl::AudioRoutingInput).clicked() { preview_input = Some(saved.clone()); }
                             }
                         });
@@ -667,6 +672,10 @@ impl App {
             if let Some(handle) = self.engine.input_handle() {
                 let status = handle.status(); ui.label(&status.message);
                 ui.label(format!("Captured input frames: {} · missing frames: {} · queue overflow: {}", handle.shared().captured.load(Ordering::Relaxed), handle.shared().underrun.load(Ordering::Relaxed), handle.shared().overflow.load(Ordering::Relaxed)));
+                let cushion = handle.shared().cushion.load(Ordering::Relaxed);
+                let rate = status.active.as_ref().map_or(0, |plan| plan.rate);
+                let milliseconds = if rate == 0 { 0.0 } else { f64::from(cushion) * 1000.0 / f64::from(rate) };
+                ui.label(format!("Input cushion target: {cushion} frames ({milliseconds:.3} ms nominal) · startup silence: {} frames · source discontinuities: {}", handle.shared().priming.load(Ordering::Relaxed), handle.shared().discontinuities.load(Ordering::Relaxed)));
                 ui.collapsing(tr!("Physical channel meters"), |ui| {
                     let channels = self.engine.output_info().map_or(0, |output| usize::from(output.plan.channels));
                     for channel in 0..channels.min(MAX_PHYSICAL_CHANNELS) { ui.horizontal(|ui| {
@@ -702,6 +711,9 @@ impl App {
         }) {
             egui::Window::new(tr!("Confirm live input")).id(egui::Id::new("confirm-routing-input")).collapsible(false).show(ctx, |ui| {
                 ui.label(format!("{} / {} · {} channels · {} Hz · {}. Input may feed any saved route. Enabling stops playback; reconnect requires another confirmation.", preview.plan.backend, preview.plan.device, preview.plan.channels, preview.plan.rate, preview.plan.format));
+                ui.label(format!("Requested input buffer: {}", preview.plan.buffer.map_or_else(|| "backend selected".into(), |frames| format!("{frames} frames"))));
+                ui.label(tr!("Live input waits for two actual callback blocks. Larger buffers add latency; independent device clocks can still drift. The running cushion target and gaps remain visible."));
+                if let Some(warning) = &preview.plan.warning { ui.label(warning); }
                 if ui.add_enabled(!panel.busy(), egui::Button::new(tr!("Stop and enable input"))).clicked() { panel.request(&self.engine, |cancel| Job::EnableInput(preview, cancel)); }
                 if ui.button(tr!("Cancel input preview")).clicked() { panel.input_preview = None; }
             });

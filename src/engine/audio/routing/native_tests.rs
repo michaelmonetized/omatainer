@@ -35,6 +35,8 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
         directory.join("runtime")
     );
     let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+    let buffer = std::env::var("OMATAINER_NATIVE_ROUTING_FRAMES").map_or(128, |value| value.parse::<u32>().unwrap());
+    assert!([128, 256, 512, 1024, 2048].contains(&buffer));
     let mut model = Model::default();
     model.next_id = 6;
     for half in 0..2_u64 {
@@ -76,7 +78,7 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
         sample_rate: Some(48000),
         channels: Some(32),
         format: Some(crate::preferences::AudioFormat::F32),
-        buffer_frames: Some(128),
+        buffer_frames: Some(buffer),
         ..Default::default()
     };
     let audio = audio::start_with_settings(rt, &settings).unwrap();
@@ -89,7 +91,7 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
         device: output.device.clone(),
         channels: 32,
         format: crate::preferences::AudioFormat::F32,
-        buffer_frames: Some(128),
+        buffer_frames: Some(buffer),
     };
     let plan = input::preview(&saved, &audio::config::discover().unwrap(), output).unwrap();
     audio
@@ -144,7 +146,10 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
         engine.routing.recorder.stop();
         let input_underrun_frames = engine.routing.shared.underrun.load(Ordering::Relaxed).saturating_sub(underruns_before);
         let input_overflow_frames = engine.routing.shared.overflow.load(Ordering::Relaxed).saturating_sub(overflow_before);
-        capture.join().unwrap().unwrap();
+        let result = capture.join().unwrap();
+        let diagnostic = serde_json::json!({"requested_buffer_frames": buffer, "physical_channels": [start + 1, end], "record_result": result, "input_captured_frames": engine.routing.shared.captured.load(Ordering::Relaxed), "input_underrun_frames": input_underrun_frames, "input_overflow_frames": input_overflow_frames, "input_priming_frames": engine.routing.shared.priming.load(Ordering::Relaxed), "input_discontinuities": engine.routing.shared.discontinuities.load(Ordering::Relaxed), "input_cushion_frames": engine.routing.shared.cushion.load(Ordering::Relaxed), "callbacks": engine.cmd.audio_metrics().callbacks, "input_status": audio.input.status().message, "file_published": path.exists()});
+        std::fs::write(directory.join(format!("loopback-{half}-status.json")), serde_json::to_vec_pretty(&diagnostic).unwrap()).unwrap();
+        result.unwrap();
         let decoded = crate::engine::decode::decode_audio(&path).unwrap();
         assert_eq!(decoded.sample.ch, width as u16);
         let mut energy = [0.0_f64; 32];
@@ -175,6 +180,6 @@ fn private_native_32_channel_loopback_captures_each_physical_output() {
         receipts.push(serde_json::json!({"physical_channels": [start + 1, end], "frames": decoded.sample.frames(), "energy": energy, "peak": peak, "cross_channel_overlap_frames": overlap, "input_underrun_frames": input_underrun_frames, "input_overflow_frames": input_overflow_frames, "wav": path}));
     }
     engine.cmd.send(Command::Stop).unwrap();
-    std::fs::write(directory.join("done.json"), serde_json::to_vec_pretty(&serde_json::json!({"channels":32,"rate":48000,"input_counter_unit":"frames","captures":receipts,"input_underruns":engine.routing.shared.underrun.load(Ordering::Relaxed),"input_overflow":engine.routing.shared.overflow.load(Ordering::Relaxed),"callbacks":engine.cmd.audio_metrics().callbacks})).unwrap()).unwrap();
+    std::fs::write(directory.join("done.json"), serde_json::to_vec_pretty(&serde_json::json!({"channels":32,"rate":48000,"input_counter_unit":"frames","captures":receipts,"input_underruns":engine.routing.shared.underrun.load(Ordering::Relaxed),"input_overflow":engine.routing.shared.overflow.load(Ordering::Relaxed),"input_priming_frames":engine.routing.shared.priming.load(Ordering::Relaxed),"input_discontinuities":engine.routing.shared.discontinuities.load(Ordering::Relaxed),"input_cushion_frames":engine.routing.shared.cushion.load(Ordering::Relaxed),"callbacks":engine.cmd.audio_metrics().callbacks})).unwrap()).unwrap();
     drop(audio);
 }

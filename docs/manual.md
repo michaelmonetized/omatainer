@@ -218,7 +218,7 @@ Workflow: Audio setup.
 
 Exact device at the active output nominal rate
 
-Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. Faults, missing callbacks and output changes disable input and require fresh confirmation. A bounded queue reports missing frames and overflow; separate device clocks are not resampled. Safe mode disables device access.
+Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. A bounded cushion waits for two actual callback blocks before delivering input; its frame count and nominal buffering target are shown. Startup silence, later missing frames, source discontinuities and overflow have separate counters. Input/output blocks above 2730 frames are refused. Faults, missing callbacks and output changes disable input and require fresh confirmation. Separate device clocks are not resampled. Safe mode disables device access.
 
 Workflow: Audio setup.
 

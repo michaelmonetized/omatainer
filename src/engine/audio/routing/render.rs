@@ -44,7 +44,7 @@ impl Prepared {
                         rt.load_profile.track(slot, timer);
                         if !self.model.tracks_without_default_send.contains(&id) {
                             if let Some(scene) = self.scene_nodes[rt.tracks[slot].scene_bus] {
-                                self.legacy_send(scene, [left, right]);
+                                self.legacy_send(scene, [left, right], self.nodes[index].valid);
                             }
                         }
                         rt.routing_track_taps
@@ -68,7 +68,7 @@ impl Prepared {
                             slot,
                         );
                         rt.load_profile.scene(slot, timer);
-                        self.legacy_send(self.main, output);
+                        self.legacy_send(self.main, output, self.nodes[index].valid);
                         [input, output, output]
                     } else {
                         [[0.0; 2]; 3]
@@ -81,7 +81,7 @@ impl Prepared {
                     rt.load_profile.deck(slot, timer);
                     let mixed = [left * gains[slot], right * gains[slot]];
                     if !self.model.decks_without_default_send[slot] {
-                        self.legacy_send(self.main, mixed);
+                        self.legacy_send(self.main, mixed, self.nodes[index].valid);
                     }
                     if rt.decks[slot].pfl {
                         cue[0] += left;
@@ -111,7 +111,7 @@ impl Prepared {
                 Group::Output(_) => continue,
                 Group::Record(id) => {
                     if record_alias == id {
-                        rt.routing_pipe.recorder.capture(id, self.nodes[index].input);
+                        rt.routing_pipe.recorder.capture(id, self.nodes[index].input, self.nodes[index].valid);
                     }
                     continue;
                 }
@@ -119,6 +119,7 @@ impl Prepared {
                     let input = self.nodes[index].input;
                     let taps = match group {
                         Group::Input(_) => {
+                            self.nodes[index].valid = rt.routing_pipe.valid();
                             let mut frame = [0.0; MAX_PORT_CHANNELS];
                             let port = &self.model.ports[self.nodes[index].slot.unwrap()];
                             for (value, physical) in frame.iter_mut().zip(&port.channels) {
