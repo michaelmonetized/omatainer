@@ -618,7 +618,7 @@
       "evidence": [
         "docs/validation/issue-135-waveform-timing.md"
       ],
-      "limits": "Reachable views and source-qualified playback estimates are implemented; fresh software qualification is pending. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending."
+      "limits": "Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending."
     }
   }
 }

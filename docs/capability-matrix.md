@@ -92,7 +92,7 @@ Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 B
 - Acceptance fixtures: `engine::audible::tests`, `engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo`, `ui::waveform::tests`, `preferences::waveforms::tests`.
 - Evidence: [docs/validation/issue-135-waveform-timing.md](../docs/validation/issue-135-waveform-timing.md).
 
-Reachable views and source-qualified playback estimates are implemented; fresh software qualification is pending. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending.
+Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending.
 
 ### Issue #137: partial
 
