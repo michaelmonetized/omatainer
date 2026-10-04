@@ -10,7 +10,7 @@ Library and native project state schema 13 retain anchor maps. Supported older s
 
 ## Fixtures
 
-- `engine::beatgrid::variable_tests`: bounded storage/geometry, inverse conversions, 32-anchor overflow/refusal, local loops/Match/Undo, generated ramping-click PCM and original recorded human drum PCM at 44.1/48/96 kHz output. A 20↔400 BPM boundary fixture checks fractional loop wrap. Audio samples remain identical before/after playback and editing; rendered beat positions and audible click energy are checked. The ignored optimized workload measures real hybrid OutputCallback processing with two full 32-anchor maps, 8,192 notes and 128/256/1,024-frame buffers, including callback heap counts and render CPU budget.
+- `engine::beatgrid::variable_tests`: bounded storage/geometry, inverse conversions, 64-anchor overflow/refusal, local loops/Match/Undo, generated ramping-click PCM and original recorded human drum PCM at 44.1/48/96 kHz output. A 20↔400 BPM boundary fixture checks fractional loop wrap. Audio samples remain identical before/after playback and editing; rendered beat positions and audible click energy are checked. The ignored optimized workload measures real hybrid OutputCallback processing with two full 64-anchor maps, 8,192 notes and 128/256/1,024-frame buffers, including callback heap counts and render CPU budget.
 - Native AccessKit/egui grid widgets exercise insert/replace/delete, invalid coordinates, delayed actions, Cancel, Apply acknowledgement and receipt invalidation. A copied original human drum file passes through the real decoder, crate load, native grid editing, durable library save/reopen at a changed output rate and actual deck playback.
 - Library/project fixtures check unchanged source media and schema-12 constant-grid migration/new-field refusal. A real collected-backup fixture checks legacy archive migration, header mismatch rejection and schema-13 anchor restore.
 
@@ -18,7 +18,7 @@ The recorded test material is the unmodified Google LLC [Groove MIDI Dataset 1.0
 
 ## Qualification status
 
-The consolidated branch now retains 64-anchor capacity, local interval arithmetic and reusable callback/history storage. Its fresh combined qualification remains pending.
+The consolidated branch retains 64-anchor capacity, local interval arithmetic and reusable callback/history storage. It passes 174 focused checks and private JACK/PipeWire graph workflows. [Consolidated checkpoint](finished-work-consolidation.md). Full current-source accessibility and optimized qualification remain pending.
 
 Earlier frozen 32-anchor source `28d82d7` passes the source-bound combined suite (1,580 tests), recorded human-drum native workflow, eight-workload optimized gate and three maximum-anchor render CPU measurements. [Combined receipt and observed limits](remaining-backlog-qualification.md) retain the 128-frame callback wall overrun and missing native ALSA input frames. Rendering CPU headroom is not a physical or scheduling-deadline claim. Ignored or earlier-source checks are not counted as current passes.
 
