@@ -591,6 +591,7 @@ pub struct RtEngine {
     pub selected_deck_request: u64,
     pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
+    command_batch: Box<control::CommandBatch>,
     pub snap: Arc<Mutex<Snapshot>>,
     publisher: snapshot::Publisher,
     pub midi_clock: MidiClockInput,
@@ -1035,6 +1036,7 @@ impl RtEngine {
             selected_deck_request: 0,
             cmd_rx,
             command_stats: control::CommandStats::default(),
+            command_batch: Box::new(control::CommandBatch::empty()),
             publisher: snapshot::Publisher::new(snap.clone()),
             snap,
             midi_clock: MidiClockInput::default(),
@@ -1309,11 +1311,13 @@ impl RtEngine {
 
     fn process_channels(&mut self, out: &mut [f32], channels: usize) {
         self.performance_tick();
-        let batch = control::CommandBatch::receive(&self.cmd_rx);
-        self.command_stats.record(&batch);
-        for command in batch.discarded.into_iter().flatten() {self.undo.retire_command(command); }
-        for command in batch.commands.into_iter().flatten() {
-            self.apply(command);
+        self.command_batch.receive_into(&self.cmd_rx);
+        self.command_stats.record(&self.command_batch);
+        for index in 0..control::COMMANDS_PER_BLOCK {
+            if let Some(command) = self.command_batch.discarded[index].take() { self.undo.retire_command(command); }
+        }
+        for index in 0..control::COMMANDS_PER_BLOCK {
+            if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
         self.routing_pipe.shared.explicit.store(self.routing.is_some(), std::sync::atomic::Ordering::Release);
