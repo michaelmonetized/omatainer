@@ -25,6 +25,7 @@ struct Shared {
     fault: AtomicBool,
     stop: AtomicBool,
     busy: AtomicBool,
+    preview: AtomicBool,
     generation: AtomicU64,
     epoch: AtomicU64,
 }
@@ -46,6 +47,7 @@ impl Default for Recorder {
                 fault: AtomicBool::new(false),
                 stop: AtomicBool::new(false),
                 busy: AtomicBool::new(false),
+                preview: AtomicBool::new(false),
                 generation: AtomicU64::new(0),
                 epoch: AtomicU64::new(0),
             }),
@@ -62,7 +64,10 @@ impl Recorder {
     /// Takes its alias and rendered channels; submits a numbered frame without waiting or allocation.
     pub(crate) fn capture(&self, alias: u64, frame: Frame) {
         let generation = self.shared.generation.load(Ordering::Acquire);
-        if self.alias() != alias || self.shared.stop.load(Ordering::Acquire) {
+        if self.alias() != alias
+            || self.shared.stop.load(Ordering::Acquire)
+            || self.shared.preview.load(Ordering::Acquire)
+        {
             return;
         }
         let index = self.shared.count.fetch_add(1, Ordering::Relaxed);
@@ -89,6 +94,14 @@ impl Recorder {
     pub(crate) fn invalidate(&self) {
         self.shared.epoch.fetch_add(1, Ordering::AcqRel);
         self.stop();
+    }
+    /// Exclude transient licensed preview audio.
+    /// Takes preview ownership at a block boundary; prevents new captures and finishes existing audio before preview frames render.
+    pub(crate) fn preview(&self, active: bool) {
+        self.shared.preview.store(active, Ordering::Release);
+        if active {
+            self.invalidate();
+        }
     }
     /// Read the source boundary.
     /// Takes this recorder; returns the epoch a writer must confirm before activation.
@@ -118,6 +131,9 @@ impl Recorder {
             || !(1..=600).contains(&seconds)
         {
             return Err("Unsupported record source, rate or duration".into());
+        }
+        if self.shared.preview.load(Ordering::Acquire) {
+            return Err("Stop licensed provider preview before capturing a record source".into());
         }
         let limit = u64::from(rate) * u64::from(seconds);
         if limit * u64::from(channels) * 4 > MAX_BYTES {
@@ -156,11 +172,16 @@ impl Recorder {
             self.shared.count.store(0, Ordering::Release);
             self.shared.fault.store(false, Ordering::Release);
             self.shared.stop.store(false, Ordering::Release);
+            if self.shared.preview.load(Ordering::Acquire) {
+                return Err(
+                    "Stop licensed provider preview before capturing a record source".into(),
+                );
+            }
             if cancel.load(Ordering::Acquire) || self.epoch() != epoch {
                 return Err("Record-source capture cancelled".into());
             }
             self.shared.alias.store(alias, Ordering::Release);
-            if self.epoch() != epoch {
+            if self.epoch() != epoch || self.shared.preview.load(Ordering::Acquire) {
                 self.stop();
                 return Err("Record source changed before activation".into());
             }

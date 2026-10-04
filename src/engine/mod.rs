@@ -1320,6 +1320,7 @@ impl RtEngine {
         self.sync_midi_clock();
         self.remote_maintain();
         self.maintain_provider_preview();
+        self.routing_pipe.recorder.preview(self.provider_preview.is_some());
         if let Some(history) = &mut self.history_measurement {
             history.routing_compatibility(self.routing.is_none());
             history.service_requests([self.decks[0].history_key, self.decks[1].history_key]);

@@ -48,7 +48,9 @@ and maximum duration. Capture writes floating-point samples on a worker, up to
 128 MiB per file. Stop finalizes completed audio; Cancel removes the partial file.
 An overflow, missing frame, invalid sample or file failure prevents publication.
 Existing files are preserved. Routing, project, audio and emergency-stop boundaries
-finish the active capture so one file keeps one source and sample rate.
+finish the active capture so one file keeps one source and sample rate. Licensed
+provider preview also finishes captures before its first frame; new captures are
+refused until preview stops. Transient preview audio never enters these WAV files.
 
 The existing measured stereo performance-source attribution is unavailable while
 explicit routing is enabled. An active measurement becomes incomplete at that
