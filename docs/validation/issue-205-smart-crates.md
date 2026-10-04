@@ -6,7 +6,7 @@ Preview reports the exact match count and up to eight track titles. Save binds t
 
 The catalog worker prepares membership with each exact metadata publication. Unchanged rules reuse results by stable track identity; only changed metadata/annotations are evaluated again. Row reordering preserves identity and requires no new predicate evaluations. An unavailable or different publication cannot expose stale membership. Refresh smart membership deliberately recomputes current saved rules. The native library view reads prepared membership and keeps its existing search and virtualized viewport.
 
-Library schema 10 persists typed rules. Schema 9 and earlier records migrate without inventing rules; typed fields disguised in older schemas fail closed and preserve the original bytes. Malformed conditions, unknown fields/actions, invalid ranges, oversized rules and attempts to mix manual/automatic membership are refused before publication. Metadata import/export uses the catalog's existing whole-document validation and conflict checks.
+Library schema 10 introduced typed rules; the current schema 11 retains them while adding preparation locks. Schema 9 and earlier records migrate without inventing rules; typed fields disguised in older schemas fail closed and preserve the original bytes. Malformed conditions, unknown fields/actions, invalid ranges, oversized rules and attempts to mix manual/automatic membership are refused before publication. Metadata import/export uses the catalog's existing whole-document validation and conflict checks.
 
 ## Acceptance fixtures
 

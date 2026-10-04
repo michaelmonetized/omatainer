@@ -59,6 +59,16 @@ The registry records observed status and pending work. Each implementation needs
 
 Local 100000-track synthetic catalog; search fields reflect implemented title/artist/key/annotation metadata.
 
+### Issue #140: implemented
+
+- native UI: [src/ui/library_protection.rs](../src/ui/library_protection.rs) — Library locks → capture, review and save
+- native UI: [src/ui/library_analysis.rs](../src/ui/library_analysis.rs) — Preview selected or filtered analysis changes
+- catalog owner: [src/library/protection.rs](../src/library/protection.rs) — Version-qualified protection and automatic metadata guards
+- Acceptance fixtures: `library::protection::tests`, `library::analysis::tests`, `library::tags::tests`, `engine::beatgrid::renderer_tests`, `ui::library_protection::tests`, `ui::library_analysis::tests`, `ui::library_tags::tests`.
+- Evidence: [docs/validation/issue-140-preparation-locks.md](../docs/validation/issue-140-preparation-locks.md).
+
+Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -96,7 +106,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#137](https://github.com/michaelmonetized/omatainer/issues/137) | Maintain a versioned professional capability and compatibility matrix | partial |
 | [#138](https://github.com/michaelmonetized/omatainer/issues/138) | Deliver verified releases with safe updates and rollback | planned |
 | [#139](https://github.com/michaelmonetized/omatainer/issues/139) | Add field-aware search and filtering across the music library | implemented |
-| [#140](https://github.com/michaelmonetized/omatainer/issues/140) | Protect prepared beatgrids and metadata from bulk reanalysis | planned |
+| [#140](https://github.com/michaelmonetized/omatainer/issues/140) | Protect prepared beatgrids and metadata from bulk reanalysis | implemented |
 | [#141](https://github.com/michaelmonetized/omatainer/issues/141) | Analyze and recall safe per-track gain adjustment | planned |
 | [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | planned |
 | [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | planned |

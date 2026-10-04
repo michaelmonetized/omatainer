@@ -214,6 +214,19 @@ mod renderer_tests {
     use crate::engine::{load_receipt::{Media, Receipt}, test_alloc, Command, Engine};
 
     #[test]
+    fn catalog_grid_lock_blocks_queued_edits_and_undo_with_zero_callback_heap_work() {
+        let (engine,mut rt)=Engine::headless_for_test(48000,128);let receipt=engine.initial_playback[0].clone().unwrap();
+        let original=Grid::new(0.25,123.0).unwrap();let changed=Grid::new(2.0,150.0).unwrap();
+        rt.apply(Command::DeckGrid {deck:0,grid:Some(original),receipt:receipt.clone(),ack:GridEditAck::new()});
+        receipt.set_grid_protection(true,Some(original));
+        let ack=GridEditAck::new();let command=Command::DeckGrid {deck:0,grid:Some(changed),receipt:receipt.clone(),ack:ack.clone()};
+        assert_eq!(test_alloc::measure(||rt.apply(command)),test_alloc::Counts::default());assert_eq!(ack.state(),GridEditState::Rejected);assert_eq!(rt.decks[0].grid,Some(original));
+        assert_eq!(test_alloc::measure(||rt.apply(Command::Undo)),test_alloc::Counts::default());assert_eq!(rt.decks[0].grid,Some(original));
+        rt.decks[0].grid=Some(changed);assert_eq!(test_alloc::measure(||rt.process(&mut [0.0;256])),test_alloc::Counts::default());assert_eq!(rt.decks[0].grid,Some(original));
+        receipt.set_grid_protection(false,None);rt.apply(Command::Undo);assert_eq!(rt.decks[0].grid,None);rt.apply(Command::Redo);assert_eq!(rt.decks[0].grid,Some(original));
+    }
+
+    #[test]
     fn grid_edit_reset_undo_and_reload_preserve_absolute_cues_without_callback_heap_traffic() {
         let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
         let receipt = engine.initial_playback[0].clone().unwrap();

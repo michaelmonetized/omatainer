@@ -601,6 +601,18 @@ impl App {
                             }
                             Err(error) => { ui.label(error); }
                         }
+                        ui.label(tr!("Tag refresh replacement preview"));
+                        ui.small(row.locks.description());
+                        match &row.refresh {
+                            Ok(next)=>{
+                                for (name,old,new) in [("Title",&row.metadata.title,&next.title),("Artist",&row.metadata.artist,&next.artist),("Key",&row.metadata.key,&next.key)] {
+                                    ui.add(egui::Label::new(format!("{name}: {old} → {new}")).truncate());
+                                }
+                                ui.small(format!("BPM: {} → {}",row.metadata.bpm.cell(),next.bpm.cell()));
+                                ui.small("Refresh retains user sidecars and locked fields. Reviewed manual edits below change only selected fields, including locked fields.");
+                            }
+                            Err(error)=>{ui.small(error);}
+                        }
                         if let Some(target) = &row.target {
                             if let Some(tags) = self.library_metadata.catalog.version(&target.source, Some(target.fingerprint)).and_then(|version| version.tags.as_ref()) {
                                 ui.small(format!("Effective saved values: {}", tags.describe()));

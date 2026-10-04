@@ -23,6 +23,8 @@ impl Inspect {
 }
 pub(in crate::ui) struct Cached {
     pub needed: crate::track_analysis::Fields,
+    pub metadata: crate::library::Metadata,
+    pub locks: crate::library::protection::Locks,
     pub record: Option<crate::track_analysis::Record>,
     pub waveform: Option<crate::track_analysis::cache::Waveform>,
     pub notice: Option<String>,
@@ -60,7 +62,7 @@ pub(super) fn inspect(store: &Store, disk: &mut Disk, mut request: Inspect) -> I
         request.reference.content_hash = version.content_hash;
         let record = version.analysis.as_ref().filter(|record|
             version.content_hash.is_some() && record.valid()).cloned();
-        let mut needed = request.fields;
+        let mut needed = track.locks.analysis(request.fields);
         if !request.force {
             if let Some(record) = &record {
                 needed.bpm &= record.bpm.is_none();
@@ -68,7 +70,7 @@ pub(super) fn inspect(store: &Store, disk: &mut Disk, mut request: Inspect) -> I
                 needed.waveform &= record.waveform.is_none();
             }
         }
-        let mut notice = None;
+        let mut notice = (track.locks.analysis(request.fields)!=request.fields).then(||"Preparation locks exclude protected analysis fields. Force never overrides a lock.".into());
         let waveform = if request.fields.waveform {
             if let Some(waveform) = record.as_ref().and_then(|record| record.waveform.as_ref()) {
                 match disk.cache().and_then(|cache| cache.read(&waveform.value, || request.cancelled())) {
@@ -85,7 +87,7 @@ pub(super) fn inspect(store: &Store, disk: &mut Disk, mut request: Inspect) -> I
         location.recheck().map_err(|e|e.to_string())?;
         if crate::engine::media_source::FileFingerprint::read(&location.path)!=Some(request.reference.fingerprint) {return Err("Analysis source changed during inspection".into());}
         if request.cancelled() { return Err("Analysis inspection cancelled".into()); }
-        Ok(Cached { needed, record, waveform, notice })
+        Ok(Cached { needed, metadata:version.metadata.clone(), locks:track.locks, record, waveform, notice })
     })();
     Inspected { id: request.id, reference: request.reference, work: request.work,
         cancel: request.cancel, outcome }

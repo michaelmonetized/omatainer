@@ -257,7 +257,7 @@ fn old_schema_defaults_migrate_and_new_fields_cannot_hide_in_legacy_records() {
     legacy["schema"] = 8.into();
     fs::write(&path, serde_json::to_vec(&legacy).unwrap()).unwrap();
     let loaded = read(&path).unwrap();
-    assert_eq!(loaded.schema, 10);
+    assert_eq!(loaded.schema, crate::library::SCHEMA);
     assert!(loaded.tracks[0].annotations.is_empty());
     legacy["tracks"][0]["annotations"] = serde_json::to_value(Annotations::default()).unwrap();
     let bytes = serde_json::to_vec(&legacy).unwrap();

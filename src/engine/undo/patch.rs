@@ -354,6 +354,7 @@ impl Patch {
     }
     pub fn valid(&self, rt: &RtEngine) -> bool {
         match self {
+            Self::Deck(index,value) => rt.decks.get(*index as usize).is_some_and(|deck|value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked())),
             Self::Session(value) => value.valid(rt),
             Self::Conductor { .. } | Self::Global(_) => rt.count_in.is_none(),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX

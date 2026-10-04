@@ -194,6 +194,7 @@ impl RtEngine {
         if let Command::DeckGrid { deck, grid, receipt, ack } = &c {
             let current = self.decks.get(*deck as usize).filter(|d| d.audio.is_some()
                 && receipt.state() == load_receipt::State::Current
+                && !receipt.grid_is_locked()
                 && d.load_receipt.as_ref().is_some_and(|r| r.same_request(receipt)));
             let Some(deck) = current else {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;

@@ -176,7 +176,9 @@ impl Catalog {
                 || audio_identity.is_some() && version.audio_identity == audio_identity
             {
                 if let Some(preparation) = preparation.filter(|p| p.valid()) {
+                    let grid=version.preparation.grid;
                     version.preparation = preparation;
+                    if track.locks.grid {version.preparation.grid=grid;}
                 }
                 version.metadata.last_play = version.metadata.last_play.max(played);
             }

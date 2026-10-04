@@ -9,12 +9,14 @@ use crate::sampler_bank::SourceRef;
 use crate::track_analysis::Fields;
 use library_metadata::{AnalysisInspect, AnalysisInspected};
 use std::sync::atomic::{AtomicBool, Ordering};
+mod changes;
 
 pub(super) const MAX_TRACKS: usize = 4096;
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Purpose {
     Analyze,
     Inspect,
+    Preview,
     Refresh,
 }
 struct Captured {
@@ -72,6 +74,7 @@ pub(super) struct Panel {
     preview: Option<AnalysisInspected>,
     preview_title: String,
     current_title: String,
+    changes: Vec<changes::Row>,
     message: String,
     retiring: Option<(Arc<Vec<LibItem>>, Arc<Vec<usize>>)>,
 }
@@ -89,6 +92,7 @@ impl Default for Panel {
             preview: None,
             preview_title: String::new(),
             current_title: String::new(),
+            changes:Vec::new(),
             message: String::new(),
             retiring: None,
         }
@@ -132,6 +136,8 @@ impl App {
         };
         if queue.cancelled {
             self.library_analysis.message = format!("Queue cancelled; {} saved, {} reused from cache, {} skipped. Earlier committed results remain saved.", queue.saved, queue.cached, queue.skipped);
+        } else if queue.purpose==Purpose::Preview {
+            self.library_analysis.message=format!("Previewed {} captured rows. Preview does not decode or save. Source versions and locks are checked again when analysis runs.", self.library_analysis.changes.len());
         } else {
             self.library_analysis.message = format!(
                 "Queue finished: {} saved, {} reused from cache, {} skipped of {} captured rows.",
@@ -208,6 +214,7 @@ impl App {
             return;
         };
         self.library_analysis.generation = generation;
+        if purpose==Purpose::Preview {self.library_analysis.changes.clear();}
         self.library_analysis.queue = Some(Captured {
             rows: self.library.clone(),
             indices: self.library_view.indices.clone(),
@@ -301,7 +308,7 @@ impl App {
             id,
             reference,
             fields: queue.fields,
-            force: purpose == Purpose::Analyze && queue.force,
+            force: matches!(purpose,Purpose::Analyze|Purpose::Preview) && queue.force,
             work,
             cancel: cancel.clone(),
         };
@@ -364,6 +371,12 @@ impl App {
                         .into(),
                 ),
             };
+            if purpose==Some(Purpose::Preview) && !aborted {
+                if let Ok(cached)=&result.outcome {
+                    let fields=self.library_analysis.queue.as_ref().unwrap().fields;
+                    self.library_analysis.changes.push(changes::Row::new(&self.library_analysis.current_title,&result.reference,cached,fields));
+                }
+            }
             self.library_analysis.preview_title = self.library_analysis.current_title.clone();
             self.library_analysis.preview = Some(result);
             match next {
@@ -381,7 +394,10 @@ impl App {
                 }
                 Ok(None) => {
                     if purpose == Some(Purpose::Analyze) {
-                        self.library_analysis.queue.as_mut().unwrap().cached += 1;
+                        let permitted=self.library_analysis.preview.as_ref().and_then(|preview|preview.outcome.as_ref().ok())
+                            .is_some_and(|cached|cached.locks.analysis(self.library_analysis.queue.as_ref().unwrap().fields).valid());
+                        let queue=self.library_analysis.queue.as_mut().unwrap();
+                        if permitted {queue.cached+=1;} else {queue.skipped+=1;}
                     }
                     self.next_analysis_item();
                 }
@@ -503,6 +519,10 @@ impl App {
                     ui.horizontal(|ui| {
                         if ui.button(tr!("Analyze selected row")).help(ui, HelpControl::AnalysisSelected).clicked() { self.start_library_analysis(false, Purpose::Analyze); }
                         if ui.button(tr!("Analyze filtered crate")).help(ui, HelpControl::AnalysisCrate).clicked() { self.start_library_analysis(true, Purpose::Analyze); }
+                        if ui.button(tr!("Preview selected analysis changes")).help(ui, HelpControl::AnalysisInspect).clicked() { self.start_library_analysis(false, Purpose::Preview); }
+                        if ui.button(tr!("Preview filtered analysis changes")).help(ui, HelpControl::AnalysisInspect).clicked() { self.start_library_analysis(true, Purpose::Preview); }
+                    });
+                    ui.horizontal(|ui| {
                         if ui.button(tr!("Inspect selected cache")).help(ui, HelpControl::AnalysisInspect).clicked() { self.start_library_analysis(false, Purpose::Inspect); }
                     });
                 });
@@ -544,6 +564,15 @@ impl App {
                         if self.library_analysis.queue.is_some() && ui.button(tr!("Cancel analysis queue")).help(ui, HelpControl::AnalysisCancel).clicked() { self.library_analysis.cancel(); }
                     });
                 });
+                if !self.library_analysis.changes.is_empty() {
+                    ui.separator(); ui.label(tr!("Analysis replacement preview"));
+                    ui.label(tr!("Selected fields refresh their analysis records. User BPM, embedded tags, grids, cues and locks remain authoritative. No media files are written."));
+                    let output=egui::ScrollArea::vertical().id_salt("analysis-change-preview").max_height(230.0)
+                        .show_rows(ui,88.0,self.library_analysis.changes.len(),|ui,range| {
+                            for index in range {self.library_analysis.changes[index].show(ui,&self.library_metadata.catalog);}
+                        });
+                    accessibility::scrollbars(ui,"Analysis replacement preview",&output);
+                }
                 ui.push_id("analysis-cache-preview", |ui| {
                     if let Some(preview) = &self.library_analysis.preview {
                         ui.separator(); ui.label({ let __omatainer_args = (&(self.library_analysis.preview_title),); crate::localization::format("Verified cached values: {}", &[format!("{}", __omatainer_args.0)]) });

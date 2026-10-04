@@ -801,3 +801,19 @@ fn startup_recovers_installed_tag_media_before_retiring_the_original_backup() {
     assert!(!journal.exists());
     assert!(crate::media_tags::write::recover(&root).is_empty());
 }
+
+#[test]
+fn native_tag_refresh_preview_displays_saved_locks_and_preserves_read_only_media() {
+    let files=Files::new();let path=files.media("tone.flac","Prepared.flac",Some("Embedded title"));
+    std::fs::set_permissions(&path,std::fs::Permissions::from_mode(0o444)).unwrap();let bytes=std::fs::read(&path).unwrap();
+    let mut gui=Gui::new(&files);gui.import(vec![path.clone()]);gui.select(&path);
+    gui.app.library_protection.open=true;gui.frame(vec![]);gui.click("Capture selected preparation");
+    for label in ["Change BPM lock","Lock BPM","Change metadata lock","Lock metadata"] {gui.click(label);}
+    gui.click("Review preparation locks");gui.click("Save reviewed preparation locks");gui.settle();
+    gui.app.library_protection.open=false;gui.inspect(false);
+    let labels:Vec<_>=gui.nodes.iter().filter_map(|(_,node)|node.label().or(node.value())).collect();
+    assert!(labels.contains(&"Tag refresh replacement preview"),"{labels:?}");
+    assert!(labels.iter().any(|label|label.contains("Preparation locked: BPM, metadata")),"{labels:?}");
+    assert!(labels.iter().any(|label|label.contains("Title: Embedded title → Embedded title")),"{labels:?}");
+    assert_eq!(std::fs::read(&path).unwrap(),bytes);
+}

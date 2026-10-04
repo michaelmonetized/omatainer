@@ -20,6 +20,7 @@ pub(crate) mod tags;
 pub(crate) mod annotations;
 pub(crate) mod search;
 pub(crate) mod smart_crates;
+pub(crate) mod protection;
 pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;
@@ -33,7 +34,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 10;
+const SCHEMA: u32 = 11;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -74,6 +75,8 @@ pub(crate) struct Track {
     pub id: TrackId,
     #[serde(default, skip_serializing_if = "annotations::Annotations::is_empty")]
     pub annotations: annotations::Annotations,
+    #[serde(default, skip_serializing_if = "protection::Locks::is_empty")]
+    pub locks: protection::Locks,
     pub source: LibSource,
     pub current: usize,
     // Replaced bytes do not inherit preparation, but their old prepared version
@@ -266,6 +269,7 @@ impl Catalog {
                 self.index.insert(source.clone(), i);
                 self.tracks.push(Track {
                     annotations: Default::default(),
+                    locks: Default::default(),
                     id,
                     source,
                     current: 0,
@@ -298,7 +302,9 @@ impl Catalog {
             && track.versions[index].audio_identity.is_some()
             && tags::equivalent_audio(&track.versions[index], &track.versions[track.current]);
         if relocated.is_none() && !archived_tag_receipt { track.current = index; }
+        let locks=track.locks;
         let version = &mut track.versions[index];
+        let protected_metadata=(!locks.is_empty()).then(||version.metadata.clone());
         if metadata.bpm.origin == Origin::Heuristic {
             if let Some(tags) = &mut version.tags { tags.automatic_bpm = metadata.bpm; }
         }
@@ -344,6 +350,7 @@ impl Catalog {
             ..metadata
         };
         tags::reconcile(version);
+        if let Some(previous)=protected_metadata {locks.preserve(&previous,&mut version.metadata);}
         Ok(version)
     }
     pub fn merge_import(&mut self, mut other: Catalog) -> Result<(), String> {
@@ -355,7 +362,7 @@ impl Catalog {
                 let existing = &mut candidate.tracks[index];
                 if existing != &track {
                     let pristine = |t: &Track| {
-                        t.annotations.is_empty() && t.versions.len() == 1
+                        t.annotations.is_empty() && t.locks.is_empty() && t.versions.len() == 1
                             && t.versions[0].preparation == Preparation::default()
                             && t.versions[0].metadata.last_play.is_none()
                             && t.versions[0].metadata.bpm.origin == Origin::Builtin
@@ -480,9 +487,12 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     if schema.is_some_and(|version| version < 10) && header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("smart_rule").is_some())) {
         return Err("Typed smart crate rules require library schema 10; original file preserved".into());
     }
+    if schema.is_some_and(|version|version<11) && header.get("tracks").and_then(|v|v.as_array()).is_some_and(|tracks|tracks.iter().any(|track|track.get("locks").is_some())) {
+        return Err("Preparation locks require library schema 11; original file preserved".into());
+    }
     let mut catalog = match schema {
-        Some(10) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
-        Some(9) => {
+        Some(11) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(10) | Some(9) => {
             let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
@@ -521,6 +531,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
                     .into_iter()
                     .map(|track| Track {
                         annotations: Default::default(),
+                    locks: Default::default(),
                         id: track.id,
                         source: track.source,
                         current: 0,

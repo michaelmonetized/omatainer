@@ -87,6 +87,7 @@ impl App {
             self.status = "Wait for a loaded track before editing its beatgrid".into();
             return;
         };
+        if receipt.grid_is_locked() {self.status="This track’s grid is locked. Review and save an unlock in Preparation locks before editing.".into();return;}
         self.grid_editor = Some(Editor::from_snapshot(deck, snap, receipt));
     }
     pub(super) fn grid_editor_ui(&mut self, ctx: &egui::Context) {
@@ -225,7 +226,7 @@ impl App {
                         let pending = editor.pending.is_some();
                         if button(ui, if pending { "Close grid editor" } else { "Cancel / close grid editor" }, "Cancel or close grid editor", HelpControl::GridCancel, true).clicked() { close = true; }
                         let changed = editor.draft != applied;
-                        let enabled = changed && editor.error.is_none() && !pending && !self.project.committing() && self.project.dialog_is_closed();
+                        let enabled = !editor.receipt.grid_is_locked() && changed && editor.error.is_none() && !pending && !self.project.committing() && self.project.dialog_is_closed();
                         apply = button(ui, "Apply grid", "Apply grid", HelpControl::GridApply, enabled).clicked();
                     });
                 });

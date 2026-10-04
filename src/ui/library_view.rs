@@ -41,6 +41,7 @@ impl LibraryView {
 }
 
 pub(super) struct Cells {
+    pub title: String,
     pub bpm: String,
     pub length: String,
     pub played: String,
@@ -56,6 +57,7 @@ impl Cells {
     pub fn new(item: &LibItem, played_at: Option<SystemTime>, now: SystemTime) -> Self {
         let played = play_time::format(played_at, now);
         Self {
+            title: item.title.clone(),
             bpm: item.bpm.cell(),
             length: fmt_len(item.length),
             played: played.label,

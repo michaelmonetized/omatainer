@@ -286,7 +286,7 @@ fn smart_rules_preserve_manual_members_and_fail_closed_in_legacy_or_invalid_cata
         .remove("smart_rule");
     std::fs::write(&path, serde_json::to_vec(&old).unwrap()).unwrap();
     let migrated = Store::open(path.clone()).unwrap();
-    assert_eq!(migrated.catalog.schema, 10);
+    assert_eq!(migrated.catalog.schema, crate::library::SCHEMA);
     assert!(migrated
         .catalog
         .crates

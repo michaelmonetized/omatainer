@@ -1297,6 +1297,11 @@ impl RtEngine {
     }
 
     pub fn process(&mut self, out: &mut [f32]) {
+        for deck in &mut self.decks {
+            if let Some((true,grid))=deck.load_receipt.as_ref().and_then(load_receipt::Receipt::grid_protection) {
+                if deck.grid!=grid {deck.grid=grid;deck.publish_preparation();}
+            }
+        }
         self.performance_tick();
         let batch = control::CommandBatch::receive(&self.cmd_rx);
         self.command_stats.record(&batch);

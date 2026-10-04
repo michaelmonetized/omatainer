@@ -102,6 +102,14 @@ Select the display language for this profile. Preview and Cancel retain the appl
 
 Workflow: Audio setup.
 
+### Preparation locks
+
+Reviewed grid, BPM and metadata protection
+
+Capture current library versions, select lock fields, Review and Save. Grid locks prevent manual grid edits and Undo until unlocked. BPM and metadata locks exclude automatic replacement, including forced analysis and tag refresh. Reviewed manual tag edits remain available; unselected locked fields stay intact. Preview analysis replacements in the analysis panel and actual tag refresh replacements in the tag editor before refreshing. Locks are catalog sidecars and survive restart. Replacement content starts with fresh preparation.
+
+Workflow: Prepare a DJ deck.
+
 ### Track ratings, colors and annotations
 
 Stable track metadata; ratings 0–5
@@ -914,7 +922,7 @@ Workflow: Prepare a DJ deck.
 
 Reanalysis of chosen fields only
 
-Recompute the chosen fields even if verified cache entries exist. Unselected analysis fields and manual preparation remain unchanged. A missing or corrupt waveform is recomputed without trusting that cached blob.
+Recompute the chosen fields even if verified cache entries exist. Unselected analysis fields and manual preparation remain unchanged. A missing or corrupt waveform is recomputed without trusting that cached blob. Force never overrides BPM or metadata locks.
 
 Workflow: Prepare a DJ deck.
 
@@ -938,7 +946,7 @@ Workflow: Prepare a DJ deck.
 
 Verified cached record and waveform
 
-Read the selected source/version's saved record and verify the waveform on the metadata worker. Missing fields are reported; inspection alone never starts source decoding. A changed source cannot inherit another version's result.
+Use Preview selected/filtered analysis changes to inspect the fields that will refresh and the current values protected by locks, without decoding or saving. Read the selected source/version's saved record and verify the waveform on the metadata worker. Missing fields are reported; inspection alone never starts source decoding. A changed source cannot inherit another version's result.
 
 Workflow: Prepare a DJ deck.
 

@@ -145,6 +145,10 @@ impl App {
         let connected = self.engine.cmd.is_connected();
         let mut latest = None;
         self.playback_watches.retain_mut(|watch| {
+            if let Some(track)=self.library_metadata.catalog.track_for_version(&watch.identity.source,watch.identity.fingerprint) {
+                let grid=track.versions.iter().find(|version|version.fingerprint==watch.identity.fingerprint).and_then(|version|version.preparation.grid);
+                watch.receipt.set_grid_protection(track.locks.grid,grid);
+            }
             if !watch.history_registered && self.session_history.worker.is_some() {
                 // Preserve identity before terminal watches retire; catalog saves
                 // can arrive later than the renderer acknowledgement.

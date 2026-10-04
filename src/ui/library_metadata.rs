@@ -47,17 +47,19 @@ impl Patch {
         }
     }
 
-    fn apply(&self, item: &mut LibItem) {
+    /// Update an exact row without replacing protected preparation.
+    /// Takes the row and saved track locks; applies permitted matching-version fields only.
+    fn apply(&self, item: &mut LibItem, locks:crate::library::protection::Locks) {
         if item.source == self.source && item.fingerprint == Some(self.fingerprint) {
-            item.bpm = item.bpm.reconcile(self.bpm);
-            if let Some(Ok(observation)) = &self.tags {
+            if !locks.bpm {item.bpm = item.bpm.reconcile(self.bpm);}
+            if let Some(Ok(observation)) = self.tags.as_ref().filter(|_|!locks.metadata) {
                 if let Some(field) = &observation.fields.title { item.title.clone_from(&field.value); }
                 if let Some(field) = &observation.fields.artist { item.artist.clone_from(&field.value); }
                 if let Some(field) = &observation.fields.key { item.key.clone_from(&field.value); }
             }
             if let Some(duration) = self
                 .duration
-                .filter(|value| value.is_finite() && *value >= 0.0)
+                .filter(|value| !locks.metadata && value.is_finite() && *value >= 0.0)
             {
                 item.length = Some(duration);
             }
@@ -263,7 +265,7 @@ impl Metadata {
                         .collect();
                     let mut fallback = job.base.as_ref().clone();
                     for item in &mut fallback {
-                        if let Some(patch) = cache.get(&item.source) { patch.apply(item); }
+                        if let Some(patch) = cache.get(&item.source) { let locks=store.as_ref().and_then(|store|store.as_ref().ok()).and_then(|store|store.catalog.track_for_version(&item.source,item.fingerprint)).map_or(Default::default(),|track|track.locks); patch.apply(item,locks); }
                     }
                     let mut items = if job.scan_work.as_ref().is_some_and(|work| work.cancel().load(std::sync::atomic::Ordering::Acquire)) {
                         fallback.clone()
@@ -278,7 +280,7 @@ impl Metadata {
                             }
                         }
                         if let Some(patch) = cache.get(&item.source) {
-                            patch.apply(item);
+                            let locks=store.as_ref().and_then(|store|store.as_ref().ok()).and_then(|store|store.catalog.track_for_version(&item.source,item.fingerprint)).map_or(Default::default(),|track|track.locks); patch.apply(item,locks);
                         }
                     }
                     let mut storage = None;

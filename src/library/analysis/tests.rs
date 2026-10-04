@@ -49,6 +49,7 @@ fn fixture() -> (Catalog, SourceRef, Version) {
     let mut catalog = Catalog::default();
     catalog.tracks.push(Track {
         annotations: Default::default(),
+        locks: Default::default(),
         id: reference.track.clone(),
         source,
         current: 0,
@@ -250,4 +251,14 @@ fn selective_reanalysis_does_not_write_unrequested_fields_or_other_versions() {
             .analysis
             .is_some());
     }
+}
+
+#[test]
+fn late_analysis_cannot_replace_newly_locked_fields_and_still_publishes_allowed_waveforms() {
+    use crate::library::protection::{Target,Patch as LockPatch};
+    let (mut catalog,reference,original)=fixture();let target=Target::capture(&catalog.tracks[0]);catalog.protect(&[target],LockPatch {bpm:Some(true),metadata:Some(true),grid:Some(true)}).unwrap();
+    let forbidden=patch(reference.clone(),Some(150.0),Fields {bpm:true,duration:true,waveform:false});
+    assert!(catalog.apply_analysis(&forbidden).unwrap_err().contains("protected"));assert_eq!(catalog.tracks[0].versions[0],original);
+    catalog.apply_analysis(&patch(reference,Some(150.0),Fields::ALL)).unwrap();let version=&catalog.tracks[0].versions[0];
+    assert_eq!(version.metadata,original.metadata);assert_eq!(version.preparation,original.preparation);let record=version.analysis.as_ref().unwrap();assert!(record.bpm.is_none());assert!(record.duration.is_none());assert!(record.waveform.is_some());
 }

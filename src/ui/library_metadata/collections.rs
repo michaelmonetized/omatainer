@@ -33,6 +33,7 @@ pub(in crate::ui) enum Action {
     },
     Edit(Edit<TrackId>),
     Annotate { ids: Vec<TrackId>, patch: crate::library::annotations::Patch },
+    Protect { targets: Vec<crate::library::protection::Target>, patch: crate::library::protection::Patch },
     Read,
 }
 impl Action {
@@ -40,6 +41,10 @@ impl Action {
         // Only bounded shape checks at UI admission. Duplicate membership and
         // whole-forest validation/allocation remain on the metadata worker.
         let invalid = |text: &str| Admission::Invalid(text.into());
+        if let Self::Protect { targets,patch }=self {
+            if targets.is_empty() || targets.len()>4096 || patch.is_empty() || targets.iter().any(|target|target.track.0.len()!=32 || !target.track.0.bytes().all(|b|b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) {return Err(invalid("Review 1–4096 current track versions and at least one changed lock field"));}
+            return Ok(());
+        }
         if let Self::Annotate { ids, patch } = self {
             if ids.is_empty() || ids.len() > 100000 || patch.is_empty() || ids.iter().any(|id| id.0.len() != 32 || !id.0.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) { return Err(invalid("Select 1–100000 stable tracks and at least one changed annotation field")); }
             patch.apply(&crate::library::annotations::Annotations::default()).map_err(|e|invalid(&e))?;
@@ -109,7 +114,7 @@ impl Action {
                     && before.as_ref().is_none_or(|id| valid(&id.0))
             }
             Self::Read => true,
-            Self::Annotate { .. } => unreachable!(),
+            Self::Annotate { .. } | Self::Protect { .. } => unreachable!(),
             Self::Edit(Edit::Create { .. }) => false,
         };
         if !shape || members.is_some_and(|members| members.iter().any(|id| !valid(&id.0))) {
@@ -331,7 +336,10 @@ fn apply_using(
             return Ok(());
         }
         let mut candidate = store.catalog.clone();
-        let changed = if let Action::Annotate { ids, patch } = &action {
+        let changed = if let Action::Protect {targets,patch}=&action {
+            if expected!=candidate.crates.revision() {return Err(Failure::Invalid("Crate selection changed; review preparation locks again".into()));}
+            candidate.protect(targets,*patch).map_err(Failure::Invalid)?
+        } else if let Action::Annotate { ids, patch } = &action {
             if expected != candidate.crates.revision() { return Err(Failure::Invalid("Crate selection changed; review the batch again".into())); }
             candidate.annotate(ids, patch).map_err(Failure::Invalid)?
         } else {
@@ -355,7 +363,7 @@ fn apply_using(
                 }
             }
             Action::Edit(edit) => edit,
-            Action::Read | Action::Annotate { .. } => unreachable!(),
+            Action::Read | Action::Annotate { .. } | Action::Protect { .. } => unreachable!(),
         };
         candidate.edit_crates(expected, &edit).map_err(Failure::Invalid)?
         };

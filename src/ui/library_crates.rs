@@ -102,8 +102,10 @@ impl App {
                 let (_, action) = self.library_crates.pending.take().unwrap();
                 self.library_crates.retry = None;
                 let annotation = matches!(&action, CollectionAction::Annotate { .. });
+                let protection=matches!(&action,CollectionAction::Protect { .. });
                 self.library_crates.message = match receipt.outcome {
                     CollectionOutcome::Read => "Crates refreshed from the catalog owner.".into(),
+                    CollectionOutcome::Durable { changed } if protection => if changed {"Preparation locks saved.".into()} else {"Preparation locks already match.".into()},
                     CollectionOutcome::Durable { changed } if annotation => if changed { "Annotations saved.".into() } else { "Annotations already match; no changes needed.".into() },
                     CollectionOutcome::Durable { changed } => if changed { "Crate changes saved.".into() } else { "Crates already match; no changes needed.".into() },
                     CollectionOutcome::CommittedUnconfirmed(error) => format!("Crate changes committed; durability unconfirmed: {error}. Do not repeat this edit."),

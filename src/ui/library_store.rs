@@ -292,7 +292,10 @@ impl App {
                 .version(source, fingerprint)
                 .map(|v| v.preparation)
         };
-        Receipt::with_override(preparation, expected)
+        let receipt=Receipt::with_override(preparation, expected);
+        let locked=self.library_metadata.catalog.track_for_version(source,fingerprint).is_some_and(|track|track.locks.grid);
+        receipt.set_grid_protection(locked,preparation.and_then(|p|p.grid));
+        receipt
     }
     pub(super) fn restore_initial_library_preparation(&mut self) {
         if self.library_initialized

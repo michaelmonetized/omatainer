@@ -535,3 +535,33 @@ fn pre_tag_schemas_migrate_but_reject_even_null_new_fields_and_new_bpm_states() 
         }
     }
 }
+
+#[test]
+fn locked_metadata_survives_tag_refresh_and_failed_inspection_but_reviewed_fields_can_change() {
+    use crate::library::protection::{Target,Patch as LockPatch};
+    let (mut catalog,review)=fixture();catalog.observe_tags(&review,&observation(review.fingerprint)).unwrap();
+    let before=version(&catalog,&review).metadata.clone();let target=Target::capture(catalog.track(&review.source).unwrap());
+    catalog.protect(&[target],LockPatch {bpm:Some(true),metadata:Some(true),grid:None}).unwrap();
+    let mut refreshed=observation(review.fingerprint);refreshed.fields.title=field("New embedded title");refreshed.fields.artist=field("Other artist");refreshed.fields.key=field("Cm");refreshed.fields.bpm=field("140");
+    catalog.observe_tags(&review,&refreshed).unwrap();assert_eq!(version(&catalog,&review).metadata,before);
+    catalog.observe_loader_bpm(&review,Bpm::new(150.0,Origin::Heuristic)).unwrap();assert_eq!(version(&catalog,&review).metadata,before);
+    catalog.observe_tag_failure(&review,"truncated tags").unwrap();assert_eq!(version(&catalog,&review).metadata,before);
+    catalog.apply_tag_sidecar(&review,&Patch {title:Some("Reviewed correction".into()),..Default::default()}).unwrap();
+    let after=&version(&catalog,&review).metadata;assert_eq!(after.title,"Reviewed correction");assert_eq!(after.artist,before.artist);assert_eq!(after.key,before.key);assert_eq!(after.bpm,before.bpm);
+}
+
+#[test]
+fn actual_tag_refresh_preview_matches_publication_and_leaves_locked_catalog_unchanged() {
+    use crate::library::protection::{Target,Patch as LockPatch};
+    let (mut catalog,review)=fixture();let observation=observation(review.fingerprint);
+    let old=serde_json::to_vec(&catalog).unwrap();let next=catalog.preview_tag_refresh(&review,&observation).unwrap();
+    assert_eq!(serde_json::to_vec(&catalog).unwrap(),old);
+    catalog.observe_tags(&review,&observation).unwrap();assert_eq!(version(&catalog,&review).metadata,next);
+    let target=Target::capture(catalog.track(&review.source).unwrap());
+    catalog.protect(&[target],LockPatch {bpm:Some(true),metadata:Some(true),grid:None}).unwrap();
+    let before=version(&catalog,&review).metadata.clone();let mut refreshed=observation;
+    refreshed.fields.title=field("Refresh title");refreshed.fields.bpm=field("180");
+    let old=serde_json::to_vec(&catalog).unwrap();assert_eq!(catalog.preview_tag_refresh(&review,&refreshed).unwrap(),before);
+    assert_eq!(serde_json::to_vec(&catalog).unwrap(),old);
+    catalog.observe_tags(&review,&refreshed).unwrap();assert_eq!(version(&catalog,&review).metadata,before);
+}

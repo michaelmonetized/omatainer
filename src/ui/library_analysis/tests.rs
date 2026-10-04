@@ -528,3 +528,30 @@ fn wait_store_closed(path: &std::path::Path) {
         }
     }
 }
+
+#[test]
+fn native_filtered_replacement_preview_reports_locks_without_decoding_or_saving() {
+    let files=Files::new();let paths=files.sources();let mut gui=Gui::new(&files);gui.scan(&files);
+    gui.app.library_analysis.open=false;gui.app.library_protection.open=true;gui.frame(vec![]);
+    gui.click("Capture filtered preparation");
+    for label in ["Change BPM lock","Lock BPM","Change metadata lock","Lock metadata"] {gui.click(label);}
+    gui.click("Review preparation locks");gui.click("Save reviewed preparation locks");
+    gui.wait(|g|!g.app.library_metadata.active() && g.app.library_crates.pending.is_none());
+    gui.app.library_protection.open=false;gui.app.library_analysis.open=true;gui.frame(vec![]);
+    let old=std::fs::read(files.0.join("catalog.json")).unwrap();
+    gui.click("Force selected fields");gui.click("Preview filtered analysis changes");
+    gui.app.lib_filter="no matching track".into();gui.app.refresh_library_view();gui.finish();
+    assert_eq!(gui.app.library_analysis.changes.len(),3);
+    assert!(gui.app.library_analysis.message.contains("Previewed 3"));
+    let labels:Vec<_>=gui.nodes.iter().filter_map(|(_,node)|node.label().or(node.value())).collect();
+    assert!(labels.iter().any(|label|label.contains("BPM:") && label.contains("keep: locked")),"{labels:?}");
+    assert!(labels.iter().any(|label|label.contains("Duration:") && label.contains("keep: locked")));
+    assert!(labels.iter().any(|label|label.contains("Waveform: none → refresh analysis")));
+    assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),old);
+    for path in &paths {assert!(gui.record(path).is_none());}
+    gui.app.lib_filter="Analysis ".into();gui.app.refresh_library_view();gui.frame(vec![]);
+    gui.click("Analyze waveform");gui.click("Analyze filtered crate");gui.finish();
+    assert!(gui.app.library_analysis.message.contains("3 skipped"),"{}",gui.app.library_analysis.message);
+    assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),old);
+    for path in paths {assert!(gui.record(&path).is_none());}
+}

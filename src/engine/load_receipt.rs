@@ -15,6 +15,8 @@ struct Inner {
     override_key: Option<u64>,
     state: AtomicU8,
     history_pins: AtomicU64,
+    grid_lock_sequence: AtomicU64,
+    grid_lock: [AtomicU64; 4],
     initial_preparation: Option<super::preparation::Preparation>,
     preparation_sequence: AtomicU64,
     preparation: [AtomicU64; super::preparation::WORDS],
@@ -58,6 +60,8 @@ impl Receipt {
             override_key,
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
+            grid_lock_sequence: AtomicU64::new(0),
+            grid_lock: std::array::from_fn(|_|AtomicU64::new(0)),
             initial_preparation,
             preparation_sequence: AtomicU64::new(0),
             preparation: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -65,6 +69,32 @@ impl Receipt {
             wall_origin,
             clock_origin: std::time::Instant::now(),
         }))
+    }
+    /// Publish reviewed grid protection without callback locks.
+    /// Takes locked state and its canonical saved grid; atomically replaces one bounded receipt target.
+    pub(crate) fn set_grid_protection(&self, locked: bool, grid: Option<super::beatgrid::Grid>) {
+        if self.grid_protection()==Some((locked,if locked {grid} else {None})) {return;}
+        let words=super::beatgrid::Grid::encode(if locked {grid} else {None});
+        self.0.grid_lock_sequence.fetch_add(1,Ordering::AcqRel);
+        self.0.grid_lock[0].store(locked as u64,Ordering::Relaxed);
+        for (slot,word) in self.0.grid_lock[1..].iter().zip(words) {slot.store(word,Ordering::Relaxed);}
+        self.0.grid_lock_sequence.fetch_add(1,Ordering::Release);
+    }
+    /// Read coherent grid protection without waiting.
+    /// Takes this receipt; returns its bounded lock/grid snapshot or none during concurrent publication.
+    pub(super) fn grid_protection(&self) -> Option<(bool,Option<super::beatgrid::Grid>)> {
+        let sequence=self.0.grid_lock_sequence.load(Ordering::Acquire);
+        if sequence&1!=0 {return None;}
+        let words:[u64;4]=std::array::from_fn(|i|self.0.grid_lock[i].load(Ordering::Relaxed));
+        std::sync::atomic::fence(Ordering::Acquire);
+        if sequence!=self.0.grid_lock_sequence.load(Ordering::Relaxed) {return None;}
+        let grid=super::beatgrid::Grid::decode([words[1],words[2],words[3]])?;
+        Some((words[0]!=0,grid))
+    }
+    /// Refuse grid edits while locked or while protection changes.
+    /// Takes this receipt; returns whether a manual edit must wait for an explicit unlock.
+    pub(crate) fn grid_is_locked(&self) -> bool {
+        self.grid_protection().is_none_or(|(locked,_)|locked)
     }
     pub(super) fn initial_preparation(&self) -> Option<super::preparation::Preparation> {
         self.0.initial_preparation

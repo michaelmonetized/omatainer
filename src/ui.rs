@@ -16,6 +16,7 @@ mod library_metadata;
 mod library_analysis;
 mod library_tags;
 mod library_annotations;
+mod library_protection;
 mod library_smart_crates;
 mod library_crates;
 mod library_store;
@@ -144,6 +145,7 @@ pub struct App {
     library_analysis: library_analysis::Panel,
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
+    library_protection: library_protection::Panel,
     smart_crates: library_smart_crates::Panel,
     library_crates: library_crates::Crates,
     library_import_open: bool,
@@ -274,6 +276,7 @@ impl App {
             library_analysis: library_analysis::Panel::default(),
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
+            library_protection: library_protection::Panel::default(),
             smart_crates: library_smart_crates::Panel::default(),
             library_crates: library_crates::Crates::default(),
             library_import_open: false,
@@ -537,7 +540,10 @@ impl App {
                     let mut bpm = self.library.iter().find(|item| Some(&item.source) == source
                         && item.fingerprint.is_some() && item.fingerprint == completion.fingerprint)
                         .map(|item| item.bpm.reconcile(analysis)).unwrap_or(analysis);
-                    if bpm.origin != Origin::User {
+                    let protected_bpm=source.and_then(|source|self.library_metadata.catalog.track_for_version(source,completion.fingerprint)).filter(|track|track.locks.bpm)
+                        .and_then(|track|track.versions.iter().find(|version|version.fingerprint==completion.fingerprint)).map(|version|version.metadata.bpm);
+                    if let Some(saved)=protected_bpm {bpm=saved;}
+                    if protected_bpm.is_none() && bpm.origin != Origin::User {
                         if let Some(value) = completion.tags.as_ref().and_then(|tags| tags.as_ref().ok())
                             .and_then(|tags| tags.fields.bpm.as_ref()).and_then(|field| field.value.trim().parse::<f32>().ok()) {
                             let embedded = Bpm::new(value, Origin::EmbeddedTag);
@@ -561,6 +567,10 @@ impl App {
                     let receipt=if let Some(((source,fp),hash))=measured {
                         Receipt::with_override(self.library_metadata.catalog.preparation_for_content(source,fp,hash), state.override_key)
                     } else {history_source.as_ref().map(|source|self.library_receipt_authorized(source, completion.fingerprint, state.override_key)).unwrap_or_else(||Receipt::with_override(None,state.override_key))};
+                    if let Some(((source,fingerprint),hash))=measured {
+                        let locked=self.library_metadata.catalog.track(source).is_some_and(|track|track.locks.grid);
+                        receipt.set_grid_protection(locked,self.library_metadata.catalog.preparation_for_content(source,fingerprint,hash).and_then(|preparation|preparation.grid));
+                    }
                     if let Some(((source,fingerprint),hash))=measured {
                         if let Some(track)=self.library_metadata.catalog.track(source) {
                             let proof=crate::sampler_bank::SourceRef {track:track.id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};
@@ -795,6 +805,7 @@ impl App {
         self.library_analysis_ui(ctx);
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
+        self.library_protection_ui(ctx);
         self.named_crates_ui(ctx);
         self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
@@ -1282,6 +1293,7 @@ impl App {
                 }
                 if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
+                if ui.button(tr!("locks…")).help(ui,HelpControl::PreparationLocks).clicked() {self.library_protection.open=true;}
                 if ui.button(tr!("tags…")).help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
                 if ui.button(tr!("library…")).help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
@@ -1338,7 +1350,7 @@ impl App {
                     let cells = self.library_view.cells.entry(i).or_insert_with(|| {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
                         let mut cells = Cells::new(item, played_at, now);
-                        if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); }
+                        if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); if !track.locks.is_empty() {cells.title.push_str(" [locked]");} }
                         cells
                     });
                     if cells.refresh_play(played_at, now) {
@@ -1358,14 +1370,14 @@ impl App {
                     if sel { ui.painter().rect_filled(rect, 2.0, t.tint(t.accent, 0.18)); }
                     if sel { active_mark(ui.painter(), rect, t.fg); }
                     let mut x = rect.left();
-                    for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist, &cells.annotations[0], &cells.annotations[1], &cells.annotations[2], &cells.annotations[3], &cells.annotations[4]].iter().zip(col_w) {
+                    for (txt, w) in [&cells.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist, &cells.annotations[0], &cells.annotations[1], &cells.annotations[2], &cells.annotations[3], &cells.annotations[4]].iter().zip(col_w) {
                         ui.painter().text(Pos2::new(x + 4.0, rect.center().y), egui::Align2::LEFT_CENTER,
                             *txt, FontId::proportional(t.text_size(11.0)), if sel { t.accent } else { t.fg });
                         x += w;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
                     accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
-                    if let Some(track) = self.library_metadata.catalog.track(&item.source) { accessibility::status(ui, &resp, &track.annotations.description()); }
+                    if let Some(track) = self.library_metadata.catalog.track(&item.source) { accessibility::status(ui, &resp, &format!("{}; {}",track.annotations.description(),track.locks.description())); }
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
