@@ -22,6 +22,7 @@ pub struct Device {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Inventory {
+    pub(crate) graph_ports: Vec<(String, bool)>,
     pub backend: String,
     pub devices: Vec<Device>,
     pub inputs: Vec<Device>,
@@ -30,6 +31,7 @@ pub struct Inventory {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Plan {
+    pub(crate) graph: graph::Routes,
     pub backend: String,
     pub device: String,
     pub channels: u16,
@@ -175,6 +177,7 @@ pub fn discover() -> Result<Inventory, String> {
         .chain(&inputs)
         .any(|device| device.ranges.len() == 4096);
     Ok(Inventory {
+        graph_ports: Vec::new(),
         backend: host.id().name().into(),
         devices,
         inputs,
@@ -264,10 +267,12 @@ pub fn plan(settings: &Audio, inventory: &Inventory) -> Result<Plan, String> {
             device.name
         )
     })?;
+    settings.graph.validate()?;
+    if inventory.backend == "JACK" && settings.graph.outputs.iter().any(|link| link.channel >= channels) { return Err("Saved graph output exceeds the selected channel count".into()); }
     Ok(Plan {
-        backend: inventory.backend.clone(), device: device.name.clone(), channels, rate, format: range.format,
-        buffer: settings.buffer_frames,
-        warning: (settings.buffer_frames.is_some() && range.buffer.is_none()).then(|| "The device does not advertise buffer limits; opening the stream may still reject this buffer".into()),
+        graph: settings.graph.clone(), backend: inventory.backend.clone(), device: device.name.clone(), channels, rate, format: range.format,
+        buffer: if inventory.backend == "JACK" { range.buffer.map(|(quantum, _)| quantum) } else { settings.buffer_frames },
+        warning: if inventory.backend == "JACK" { Some("The graph server owns rate and quantum. No system connections are automatic; missing saved endpoints stay disconnected.".into()) } else { (settings.buffer_frames.is_some() && range.buffer.is_none()).then(|| "The device does not advertise buffer limits; opening the stream may still reject this buffer".into()) },
     })
 }
 
@@ -289,6 +294,7 @@ pub(super) fn select(settings: &Audio) -> anyhow::Result<(cpal::Device, Plan)> {
             .context("no default audio output (PipeWire/ALSA)")?
     };
     let inventory = Inventory {
+        graph_ports: Vec::new(),
         backend: host.id().name().into(),
         devices: vec![inspect(&device, true, false)],
         inputs: Vec::new(),
@@ -304,6 +310,7 @@ pub(crate) mod tests {
     use super::*;
     pub(crate) fn inventory() -> Inventory {
         Inventory {
+            graph_ports: Vec::new(),
             backend: "fixture".into(),
             inputs: Vec::new(),
             input_error: None,
@@ -425,8 +432,10 @@ pub fn calibration_plan(
         buffer_frames: input.buffer_frames,
         format: input.format,
         calibration: Default::default(),
+        graph: Default::default(),
     };
     let input_inventory = Inventory {
+        graph_ports: Vec::new(),
         backend: inventory.backend.clone(),
         devices: inventory.inputs.clone(),
         inputs: Vec::new(),
@@ -532,4 +541,14 @@ mod professional_tests {
         eprintln!("NATIVE READ-ONLY INVENTORY {inventory:#?}");
         assert!(!inventory.backend.is_empty());
     }
+}
+
+/// Discover the selected Linux workflow.
+/// Takes an optional exact backend name; returns ALSA capabilities or the existing JACK server.
+pub(crate) fn discover_for(backend: Option<&str>) -> Result<Inventory, String> {
+    #[cfg(target_os = "linux")]
+    if backend == Some(super::jack::BACKEND) { return super::jack::discover(); }
+    let inventory = discover()?;
+    if backend.is_some_and(|name| name != inventory.backend) { return Err("Saved audio backend is unavailable".into()); }
+    Ok(inventory)
 }

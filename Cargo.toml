@@ -47,3 +47,6 @@ accesskit_unix = "=0.15.0"
 [patch.crates-io]
 symphonia-format-riff = { path = "vendor/symphonia-format-riff" }
 egui-winit = { path = "vendor/egui-winit" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+jack-sys = { version = "=0.5.1", features = ["dynamic_loading"] }

@@ -14,6 +14,7 @@ pub struct Target {
 /// Takes an accepted plan; returns its exact rate, channels, format and buffer.
 pub(super) fn settings(plan: &Plan) -> crate::preferences::Audio {
     crate::preferences::Audio {
+        graph: plan.graph.clone(),
         backend: Some(plan.backend.clone()),
         device: Some(plan.device.clone()),
         sample_rate: Some(plan.rate),

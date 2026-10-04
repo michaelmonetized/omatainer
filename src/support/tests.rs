@@ -640,6 +640,7 @@ fn routing_distinguishes_default_intent_resolved_backend_and_actual_fixed_channe
         (4, OutputRoute::MainLeftRightToOneTwoOthersSilent),
     ] {
         let plan = crate::engine::audio::config::Plan {
+            graph: Default::default(),
             backend: "ALSA".into(),
             device: "never export this device".into(),
             channels,

@@ -82,6 +82,8 @@ impl Default for CalibrationInput {
 #[serde(deny_unknown_fields)]
 pub struct Audio {
     #[serde(default)]
+    pub(crate) graph: crate::engine::audio::graph::Routes,
+    #[serde(default)]
     pub backend: Option<String>,
     #[serde(default)]
     pub format: Option<AudioFormat>,
@@ -94,7 +96,8 @@ pub struct Audio {
 }
 impl Audio {
     pub fn output_eq(&self, other: &Self) -> bool {
-        self.backend == other.backend
+        self.graph == other.graph
+            && self.backend == other.backend
             && self.device == other.device
             && self.sample_rate == other.sample_rate
             && self.channels == other.channels
@@ -105,6 +108,7 @@ impl Audio {
 impl Default for Audio {
     fn default() -> Self {
         Self {
+            graph: Default::default(),
             backend: None,
             format: None,
             calibration: CalibrationInput::default(),
@@ -280,6 +284,7 @@ impl Profile {
         self.automation.validate()?;
         self.recovery.validate()?;
         self.startup.session.validate()?;
+        self.audio.graph.validate()?;
         let calibration = &self.audio.calibration;
         for name in [&self.audio.backend, &calibration.device]
             .into_iter()

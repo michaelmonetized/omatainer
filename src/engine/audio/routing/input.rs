@@ -103,7 +103,7 @@ impl Pipe {
             meter.store(0, Ordering::Relaxed);
         }
     }
-    fn capture<T>(&self, data: &[T], channels: usize, generation: u64)
+    pub(crate) fn capture<T>(&self, data: &[T], channels: usize, generation: u64)
     where
         T: cpal::SizedSample,
         f32: cpal::FromSample<T>,
@@ -223,13 +223,16 @@ pub(crate) fn preview(
         ..Default::default()
     };
     let inputs = config::Inventory {
+        graph_ports: Vec::new(),
         backend: inventory.backend.clone(),
         devices: inventory.inputs.clone(),
         inputs: Vec::new(),
         input_error: None,
         truncated: false,
     };
-    config::plan(&settings, &inputs).map_err(|error| error.replace("output", "input"))
+    let mut plan = config::plan(&settings, &inputs).map_err(|error| error.replace("output", "input"))?;
+    plan.graph = output.graph.clone();
+    Ok(plan)
 }
 
 fn build<T>(
@@ -253,7 +256,21 @@ where
         )
         .map_err(|error| error.to_string())
 }
-fn open(plan: &config::Plan, pipe: &Pipe, cancel: &AtomicBool) -> Result<cpal::Stream, String> {
+enum NativeInput {
+    Alsa(cpal::Stream),
+    #[cfg(target_os = "linux")]
+    Jack(super::super::jack::Stream),
+}
+fn open(plan: &config::Plan, pipe: &Pipe, cancel: &AtomicBool) -> Result<NativeInput, String> {
+    #[cfg(target_os = "linux")]
+    if plan.backend == super::super::jack::BACKEND {
+        pipe.stop(); pipe.shared.fault.store(false, Ordering::Release);
+        let generation = pipe.shared.generation.load(Ordering::Acquire);
+        let stream = super::super::jack::capture(plan, pipe.clone(), generation, Arc::new(AtomicBool::new(false)))?;
+        if cancel.load(Ordering::Acquire) || pipe.shared.fault.load(Ordering::Acquire) { return Err("Graph input activation cancelled or faulted".into()); }
+        pipe.shared.rate.store(plan.rate, Ordering::Release); pipe.shared.enabled.store(true, Ordering::Release);
+        return Ok(NativeInput::Jack(stream));
+    }
     if !(1..=MAX_PHYSICAL_CHANNELS).contains(&usize::from(plan.channels)) {
         return Err("Input supports one through 64 channels".into());
     }
@@ -287,12 +304,12 @@ fn open(plan: &config::Plan, pipe: &Pipe, cancel: &AtomicBool) -> Result<cpal::S
     pipe.shared.rate.store(plan.rate, Ordering::Release);
     pipe.shared.fault.store(false, Ordering::Release);
     pipe.shared.enabled.store(true, Ordering::Release);
-    Ok(stream)
+    Ok(NativeInput::Alsa(stream))
 }
 
 /// Start the sole native input owner.
 /// Takes a fixed pipe and output owner; returns a request handle without enumerating or opening any input.
-pub(crate) fn start(pipe: Pipe, output: owner::Handle) -> std::io::Result<Handle> {
+pub(crate) fn start(pipe: Pipe, output: owner::Handle) -> std::io::Result<(Handle, std::thread::JoinHandle<()>)> {
     let status = Arc::new(ArcSwap::from_pointee(Status {
         generation: 0,
         active: None,
@@ -305,10 +322,21 @@ pub(crate) fn start(pipe: Pipe, output: owner::Handle) -> std::io::Result<Handle
         pipe: pipe.clone(),
         output: output.clone(),
     };
-    std::thread::Builder::new().name("omatainer-input-owner".into()).spawn(move || {
-        let mut active: Option<(cpal::Stream, config::Plan, u64)> = None;
+    let worker = std::thread::Builder::new().name("omatainer-input-owner".into()).spawn(move || {
+        let mut active: Option<(NativeInput, config::Plan, u64)> = None;
         let mut last_frame = (pipe.shared.captured.load(Ordering::Relaxed), std::time::Instant::now());
         loop {
+            #[cfg(target_os = "linux")]
+            if let Some((NativeInput::Jack(stream), plan, _)) = &mut active {
+                match stream.maintain() {
+                    Ok(quantum) if plan.buffer != Some(quantum) => {
+                        plan.buffer = Some(quantum);
+                        let mut current = (*status.load_full()).clone(); current.active = Some(plan.clone()); status.store(Arc::new(current));
+                    }
+                    Err(_) => pipe.shared.fault.store(true, Ordering::Release),
+                    _ => {}
+                }
+            }
             let captured = pipe.shared.captured.load(Ordering::Relaxed);
             if captured != last_frame.0 { last_frame = (captured, std::time::Instant::now()); }
             let output_status = output.status();
@@ -348,7 +376,7 @@ pub(crate) fn start(pipe: Pipe, output: owner::Handle) -> std::io::Result<Handle
         }
         pipe.stop(); drop(active);
     })?;
-    Ok(handle)
+    Ok((handle, worker))
 }
 
 #[cfg(test)]

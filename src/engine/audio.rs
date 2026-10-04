@@ -3,6 +3,9 @@ pub mod calibration;
 pub mod config;
 pub mod owner;
 pub mod recovery;
+pub(crate) mod graph;
+#[cfg(target_os = "linux")]
+pub(crate) mod jack;
 pub(crate) mod routing;
 use cpal::traits::{DeviceTrait, StreamTrait};
 pub use owner::AudioOut;
@@ -37,14 +40,16 @@ pub fn start_with_settings(
     // returns. Other backends need their own verified ownership contract.
     anyhow::ensure!(
         cfg!(target_os = "linux"),
-        "Live audio ownership currently requires the verified Linux ALSA backend"
+        "Live audio ownership currently requires a supported Linux ALSA or JACK backend"
     );
     owner::start_with(rt, settings.clone(), || Native)
 }
 struct Native;
 impl owner::Backend for Native {
-    type Stream = cpal::Stream;
+    type Stream = NativeStream;
     fn select(&mut self, settings: &crate::preferences::Audio) -> Result<config::Plan, String> {
+        #[cfg(target_os = "linux")]
+        if settings.backend.as_deref() == Some(jack::BACKEND) { return jack::select(settings); }
         config::select(settings)
             .map(|(_, plan)| plan)
             .map_err(|e| e.to_string())
@@ -56,6 +61,8 @@ impl owner::Backend for Native {
         fault: Arc<AtomicBool>,
         identity: Option<&str>,
     ) -> Result<Self::Stream, String> {
+        #[cfg(target_os = "linux")]
+        if plan.backend == jack::BACKEND { return jack::output(plan, callback, fault).map(NativeStream::Jack); }
         let device = config::select_exact(plan).map_err(|e| e.to_string())?;
         if identity.is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected)) {
             return Err("Physical output changed before opening; no other output was activated".into());
@@ -68,7 +75,7 @@ impl owner::Backend for Native {
         };
         macro_rules! build {
             ($type:ty) => {
-                build::<$type>(&device, &cfg, callback, error).map_err(|e| e.to_string())
+                build::<$type>(&device, &cfg, callback, error).map(NativeStream::Alsa).map_err(|e| e.to_string())
             };
         }
         match plan.format {
@@ -86,9 +93,17 @@ impl owner::Backend for Native {
         }
     }
     fn identity(&mut self, plan: &config::Plan) -> Option<String> {
+        #[cfg(target_os = "linux")]
+        if plan.backend == jack::BACKEND { return jack::identity(); }
         recovery::identity(&plan.device)
     }
     fn reconnect(&mut self, target: &recovery::Target) -> Result<config::Plan, String> {
+        #[cfg(target_os = "linux")]
+        if target.plan.backend == jack::BACKEND {
+            if target.identity.as_ref() != jack::identity().as_ref() { return Err("Retained graph server identity changed; preview another output explicitly".into()); }
+            let mut saved = recovery::settings(&target.plan); saved.sample_rate = None; saved.buffer_frames = None;
+            return jack::select(&saved);
+        }
         recovery::discover(target)
     }
     fn calibrate(
@@ -97,11 +112,26 @@ impl owner::Backend for Native {
         cancel: &AtomicBool,
         stopped: &Arc<AtomicBool>,
     ) -> Result<calibration::Measurement, String> {
+        #[cfg(target_os = "linux")]
+        if request.output.backend == jack::BACKEND { return Err("Choose the ALSA workflow for physical loopback calibration".into()); }
         calibration::native::run(request, cancel, stopped.clone())
     }
-    fn play(&mut self, stream: &Self::Stream) -> Result<(), String> {
-        stream.play().map_err(|e| e.to_string())
+    fn maintain(&mut self, stream: &Self::Stream) -> Result<Option<u32>, String> {
+        match stream {
+            NativeStream::Alsa(_) => Ok(None),
+            #[cfg(target_os = "linux")] NativeStream::Jack(stream) => stream.maintain().map(Some),
+        }
     }
+    fn play(&mut self, stream: &Self::Stream) -> Result<(), String> {
+        match stream { NativeStream::Alsa(stream) => stream.play().map_err(|e| e.to_string()),
+            #[cfg(target_os = "linux")] NativeStream::Jack(stream) => stream.maintain().map(|_| ()),
+        }
+    }
+}
+enum NativeStream {
+    Alsa(cpal::Stream),
+    #[cfg(target_os = "linux")]
+    Jack(jack::Stream),
 }
 fn build<T>(
     device: &cpal::Device,
@@ -184,7 +214,7 @@ impl OutputCallback {
             enabled: None,
             stopped: None,
             channels,
-            buffer: Vec::new(),
+            buffer: vec![0.0; 32768 * channels.max(1)],
             resume_ramp: None,
             #[cfg(test)]
             conversion_delay: std::time::Duration::ZERO,
@@ -206,7 +236,7 @@ impl OutputCallback {
             enabled: Some(enabled),
             stopped: Some(stopped),
             channels,
-            buffer: Vec::new(),
+            buffer: vec![0.0; 32768 * channels.max(1)],
             resume_ramp: Some((0, 0, 1)),
             #[cfg(test)]
             conversion_delay: std::time::Duration::ZERO,
@@ -241,8 +271,10 @@ impl OutputCallback {
             return;
         }
         let started = std::time::Instant::now();
-        if self.buffer.len() < data.len() {
-            self.buffer.resize(data.len(), 0.0);
+        if data.len() > self.buffer.len() {
+            let width = self.buffer.len();
+            for block in data.chunks_mut(width) { self.render_timed(block, latency); }
+            return;
         }
         let slice = &mut self.buffer[..data.len()];
         slice.fill(0.0);

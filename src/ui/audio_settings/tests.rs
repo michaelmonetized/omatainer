@@ -26,6 +26,7 @@ fn inventory() -> config::Inventory {
         error: None,
     };
     config::Inventory {
+        graph_ports: Vec::new(),
         backend: "Fixture".into(),
         devices: vec![device.clone()],
         inputs: vec![device],
@@ -139,6 +140,23 @@ impl Gui {
             .output
             .is_ok());
     }
+    fn wait_settings(&mut self) {
+        let deadline = Instant::now() + Duration::from_secs(4);
+        while self.app.settings.busy() {
+            self.frame(vec![]);
+            assert!(Instant::now() < deadline, "{}", self.app.settings.message);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        self.frame(vec![]);
+    }
+    fn text(&mut self, name: &str, value: &str) {
+        let target = self.nodes.iter().find(|(_, node)| node.supports_action(Action::Focus) && (node.label() == Some(name) || node.labelled_by().iter().any(|label| self.nodes.iter().any(|(id, node)| id == label && (node.label() == Some(name) || node.value() == Some(name)))))).unwrap().0;
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::Focus, data: None })]);
+        let modifiers = egui::Modifiers { ctrl: true, command: true, ..Default::default() };
+        self.frame(vec![egui::Event::Key { key: Key::A, physical_key: None, pressed: true, repeat: false, modifiers }]);
+        self.frame(vec![egui::Event::Key { key: Key::A, physical_key: None, pressed: false, repeat: false, modifiers }, egui::Event::Text(value.into())]);
+        self.frame(vec![]);
+    }
     fn apply(&mut self) {
         self.click("Use saved audio now");
         self.click("Stop and change output");
@@ -154,6 +172,59 @@ impl Drop for Gui {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.dir);
     }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+#[ignore = "Requires scripts/check-linux-audio.py with an owned private graph server"]
+fn private_native_graph_profile_preview_apply_cancel_and_reopen() {
+    let root = PathBuf::from(std::env::var_os("OMATAINER_NATIVE_GRAPH_DIR").unwrap());
+    let mut saved = Audio {
+        backend: Some("JACK".into()), channels: Some(2),
+        graph: crate::engine::audio::graph::Routes {
+            outputs: vec![crate::engine::audio::graph::Link { channel: 0, endpoint: std::env::var("OMATAINER_GRAPH_OUTPUT").unwrap() }],
+            inputs: Vec::new(),
+        }, ..Default::default()
+    };
+    let engine = crate::engine::audio::jack::native_tests::native_engine(&saved);
+    let handle = engine.audio_handle().unwrap();
+    let mut app = App::with_loader(engine, Theme::default(), None);
+    let ctx = egui::Context::default(); ctx.enable_accesskit();
+    let mut preferences = crate::preferences::Preferences::defaults(&root);
+    for profile in preferences.profiles.values_mut() { profile.audio = saved.clone(); profile.startup.scan_library = false; profile.midi_inputs = crate::preferences::MidiInputs::Disabled; }
+    let path = root.join("preferences.json");
+    std::fs::write(&path, serde_json::to_vec(&preferences).unwrap()).unwrap();
+    app.initialize_preferences(&ctx, crate::preferences::worker::Startup::read(path.clone(), root.clone()), saved.clone());
+    let mut gui = Gui { app, ctx, nodes: Vec::new(), time: 0.0, controls: Arc::new(owner::tests::Controls::default()), dir: root.join("gui-temp") };
+    gui.frame(vec![]); gui.frame(vec![]); gui.click("Preferences");
+    let original_generation = handle.status().generation;
+    gui.click("Preview changes"); gui.wait_settings();
+    gui.click("Add graph output"); gui.text("Graph output endpoint 2", "FutureProfile:playback_02");
+    saved.graph.outputs.push(crate::engine::audio::graph::Link { channel: 1, endpoint: "FutureProfile:playback_02".into() });
+    gui.click("Preview changes"); gui.wait_settings(); gui.click("Apply and save"); gui.wait_settings();
+    assert_eq!(gui.app.settings.profile().audio, saved);
+    assert_eq!(handle.status().generation, original_generation, "Saving preferences activated output");
+    gui.click("Audio devices and latency"); gui.preview();
+    assert_eq!(gui.app.audio_settings.preview.as_ref().unwrap().inventory.backend, "JACK");
+    let before = handle.status().generation;
+    gui.click("Use saved audio now"); gui.click("Keep current audio");
+    assert_eq!(handle.status().generation, before);
+    gui.apply();
+    assert!(handle.status().generation > before);
+    assert_eq!(handle.status().phase, owner::Phase::Running);
+    assert_eq!(handle.status().active.as_ref().unwrap().plan.graph, saved.graph);
+    assert_eq!(gui.app.settings.profile().audio, saved);
+    let reopened: crate::preferences::Preferences = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(reopened.current().unwrap().audio, saved);
+    assert!(gui.app.audio_settings.preview.as_ref().unwrap().calibration.is_err());
+    gui.click("Advertised input and output capabilities");
+    gui.frame(vec![]);
+    assert!(gui.nodes.iter().filter_map(|(_, node)| node.label()).any(|label| label.contains("JACK")));
+    let report = serde_json::json!({ "backend_identity": crate::engine::audio::jack::identity(), "native_app_frames": (gui.time / 0.025).round(), "preview_activated_output": false,
+        "native_graph_endpoint_edited_and_saved": true, "save_preserved_output_generation": true,
+        "cancel_preserved_generation": true, "reviewed_apply_changed_generation": true, "saved_routes_reopened": true, "calibration_refused_before_stopping_graph": true });
+    drop(gui); owner::finish_shutdown();
+    std::fs::write(root.join("result.json"), serde_json::to_vec_pretty(&report).unwrap()).unwrap();
 }
 #[test]
 fn native_reconnect_confirmation_cancel_and_resume_keep_saved_settings_and_finalize_held_input() {

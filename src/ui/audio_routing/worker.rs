@@ -64,7 +64,7 @@ impl Worker {
                         if handle.safe_mode() { return Err("Inputs are disabled in safe mode".into()); }
                         let status = handle.status();
                         let active = status.active.as_ref().ok_or("Recover an output before enabling input")?;
-                        let inventory = crate::engine::audio::config::discover()?;
+                        let inventory = crate::engine::audio::config::discover_for(Some(&active.plan.backend))?;
                         let plan = input::preview(&saved, &inventory, &active.plan)?;
                         if cancel.load(Ordering::Acquire) { return Err("Input preview cancelled".into()); }
                         Ok(InputPreview { saved, plan, output_generation: status.generation })

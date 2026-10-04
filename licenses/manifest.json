@@ -1288,6 +1288,15 @@
       "version": "1.0.18"
     },
     {
+      "checksum": "6013b7619b95a22b576dfb43296faa4ecbe40abbdb97dfd22ead520775fc86ab",
+      "features": [
+        "dynamic_loading"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "jack-sys",
+      "version": "0.5.1"
+    },
+    {
       "checksum": "1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3",
       "features": [],
       "license": "MIT OR Apache-2.0",
@@ -1338,6 +1347,13 @@
       "license": "MIT OR Apache-2.0",
       "name": "libc",
       "version": "0.2.189"
+    },
+    {
+      "checksum": "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f",
+      "features": [],
+      "license": "ISC",
+      "name": "libloading",
+      "version": "0.7.4"
     },
     {
       "checksum": "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55",
@@ -7119,6 +7135,32 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:jack-sys@0.5.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "jack-sys 0.5.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/jack-sys/jack-sys-0.5.1.crate#LICENSE-APACHE",
+          "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08"
+        },
+        {
+          "location": "https://static.crates.io/crates/jack-sys/jack-sys-0.5.1.crate#LICENSE-MIT",
+          "sha256": "d5faadf6f7a11b71cfb6d0f2c1d54303b20a407258235cf0dca2934256ee4abf"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/jack-sys/jack-sys-0.5.1.crate",
+          "sha256": "6013b7619b95a22b576dfb43296faa4ecbe40abbdb97dfd22ead520775fc86ab"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:jobserver@0.1.35",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -7238,6 +7280,28 @@
         {
           "location": "https://static.crates.io/crates/libc/libc-0.2.189.crate",
           "sha256": "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:libloading@0.7.4",
+      "license": "ISC",
+      "members": [],
+      "name": "libloading 0.7.4",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/libloading/libloading-0.7.4.crate#LICENSE",
+          "sha256": "b29f8b01452350c20dd1af16ef83b598fea3053578ccc1c7a0ef40e57be2620f"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/libloading/libloading-0.7.4.crate",
+          "sha256": "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
         }
       ]
     },
@@ -12285,6 +12349,7 @@
     }
   ],
   "external": [
+    "JACK and PipeWire servers/client libraries are external system dependencies selected at launch, not bundled. The dynamically loaded graph library keeps its own upstream license.",
     "System fonts chosen through fontconfig are loaded from the user's system, not redistributed by this package; their own license applies.",
     "Imported samples and media remain subject to their owners' terms. Importing does not establish commercial or redistribution rights.",
     "Omarchy, Quickshell, OS audio/graphics libraries, and controller firmware are external system dependencies, not bundled by this installer. Their licenses are not replaced by these records."
@@ -12325,17 +12390,17 @@
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "69bf7598239f85a793b71a851a6d793ad0cc6c5d7e4fb64d90fef12fe72b12b3",
-    "Cargo.toml": "e661fe8a3eab9ebe62f132b1909780995bbce788f7e326038fb4b519bb2689ec",
+    "Cargo.lock": "79e5cd28bc30c1b983b0776b3a2197c6110d8eef46c571a421139f788b0a3a2c",
+    "Cargo.toml": "b7fb40e204f682fe847ad21b5d9f35adaf3bbc9fa626f63c36d6e7645e11e1dc",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "6f3a41ce8dc14ae0b5e56669acf3a57b5efbf2323a537b75b2c870a1455c5d5d",
+    "README.md": "33d97f69be3339edd5aca339efaff9d33c191fdcbe9a7ffd97843c3c6d4c79e2",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/manual.md": "3eeb25e121a582defb661e06c9dc7142239b198c294f4be282307fa996647fdb",
-    "licenses/assets.json": "14cf60030d4a9db3a4aeee3df1da26411705b4a59d08a9632cb4c377b35adeb0",
+    "docs/manual.md": "f253d07cadade3bceb23f05189ccbfd83eb80d0ae006ca1f583688ef5caef5c8",
+    "licenses/assets.json": "f51a8803fe3e4a6d5712e7bb44bf128a2119603ed990bd3975a4b4ed61bf8adb",
     "locales/de.json": "5ca01c7d8e9d62191d5a668f636915945258813b5c64014000ba860ec37cd502",
     "locales/en.json": "1970bbc1050df421ddb720dea1eaedcdda1bbe42e93ab66fee4c296455bf5c2f",
     "locales/es.json": "bff584a8370023761665563a3384780de2e5a1cdd384cf591a2602abac85402d",
@@ -12350,6 +12415,7 @@
     "scripts/check-ipc-cli.py": "a62274390008c5fc2f743aae396786dec69412e0527e8a959874564bc7b06f67",
     "scripts/check-keylock-quality.py": "4f81f5c35fc719b7f1173dcb6f2deaa5ab0d85d8dda4d8c2a55a214c4c16f576",
     "scripts/check-keylock-show-load.py": "e18ab3e32c613d00724222abb16e6b3457ad88ab09122dad1d1003df50a3e0ba",
+    "scripts/check-linux-audio.py": "f9dec192ad88e8cb165c5748a3f479c65f2a7607df77c3085a4c3dd9ce29577e",
     "scripts/check-midi-status.py": "6847d71ccb8fefbf2ef8ada71764960ec60bbade4daa71d7cba645c8ad94c307",
     "scripts/check-offline.py": "97b6d77505355cb6c7545800052c9466cf395cb8a6b2c0b5c5278f56164769a2",
     "scripts/check-runtime-isolation.py": "e10bf68ab7c9634a48ad3f4f117bc99b30300961f3c21d78edd1ed55737c02f9",
@@ -12385,15 +12451,18 @@
     "src/background/tests.rs": "802c0a2d254d51edc50cd254cd8e06b5bebf726386177f4e1b6a738ad3eae0bd",
     "src/engine/arp.rs": "5543f23955b3dfe8a31177291a998cd5e0aaff79b911f4fc4edcc321a5662254",
     "src/engine/arp_tests.rs": "f9414f93f1610d1fa8ae6a944acbe0554659c12764b0771c7ad5ebbd0e7c1206",
-    "src/engine/audio.rs": "893ea8c1dba59ad86c462452dad602ce70d536d7057d9df64b80136f7546dc71",
+    "src/engine/audio.rs": "e75a431df556fae557de98c347b807cbf97535dcbbd56ad8ae0a0bd9ff64b7b1",
     "src/engine/audio/calibration.rs": "94a4daae48c7902fb7c23d0d95b3fedff4adb1039c8ccd8e668c2f305feb66ee",
     "src/engine/audio/calibration/native.rs": "ce0325f686e8c022f49eb91d19cb6fe0457f1e613c0ae78889b037ae86a76961",
-    "src/engine/audio/config.rs": "6583bb5dfe7b202ad14a2f16729d710c3509ab3ed5a8934edff538c54f10b99a",
-    "src/engine/audio/owner.rs": "ce585a000b25a1af14f75bdf60549a5fec3e5073666e63b29faef37d4f330513",
-    "src/engine/audio/recovery.rs": "a3b45116ddd5d50c87b4d9c33973dd0eb31815cd9da9a474e5b035bf9ecf64b6",
+    "src/engine/audio/config.rs": "76d7aaacb6e6852cffddf1a33d346d99dca71529ddcbe42fb92bb6a9aafa7588",
+    "src/engine/audio/graph.rs": "319d76e7b948249481c6a2f2d4b109ef7ee19b7369b22c33c1e4d302a02ea3fd",
+    "src/engine/audio/jack.rs": "cbf8fe2ba298824188083f297f584735bcd97a865aa9854430b763f083a741a8",
+    "src/engine/audio/jack/native_tests.rs": "ad9d2329cfa837b9336eb615cdf8d7116a255003261974a2506d3259f50ffa2a",
+    "src/engine/audio/owner.rs": "59f601e19df3ce445af950f1ac9e91126cd3e72c6b1cbf3826eae758d51aa0b3",
+    "src/engine/audio/recovery.rs": "e2e123b0977939fe0b9decaede97bbf85e8b6e6295cd8a3d9d6eb3a5aaa04b1c",
     "src/engine/audio/recovery_tests.rs": "469a566db5e06e7b4267dd3b0ff86a0cb8b123258d301065e20a8d957992ea43",
     "src/engine/audio/routing.rs": "c3008906a74dd204e1d7c1d4978bb9e2b5f87325ad3417db1b450671b56a58c0",
-    "src/engine/audio/routing/input.rs": "f59747724a2a4162210bacaf99be7a0c31970a3df8423f635925812859f2d500",
+    "src/engine/audio/routing/input.rs": "6763f6a41836c51e9752fbdfc3f0d4dd736e2097cca89eabd8701899990090ea",
     "src/engine/audio/routing/model.rs": "4aca2948f718550b3b00b8c05f84453514bd87ec7b7ccbe891f43762164d06f0",
     "src/engine/audio/routing/native_tests.rs": "a654c9d1b287d7370b5f6a1309f646d54e264954dcf290f7a78927803ae62f0e",
     "src/engine/audio/routing/prepared.rs": "efd9883de58638c9c8a0571634b7596826aa606aab187dd45bb8fa4fa559ca08",
@@ -12595,7 +12664,7 @@
     "src/licenses.rs": "ceaccf567edf45d474add759018ac094a6b9eff37d2320fefbe817f4f1a1a9fb",
     "src/localization.rs": "6adf674b76f671256579864460444a9a39e5214dbe3a95e85886bf4bf558aaa3",
     "src/localization/tests.rs": "f6dba5b95ae73bc793b358e2b823ac31e438935fb4e259ee53a1daa47a79b306",
-    "src/main.rs": "45f452f515b3c937ecda11b3c2429ce1f6911766720b9c344837a5d8d7ed3ac8",
+    "src/main.rs": "0b3622769141f39bf0de71ae2956e93f100e15f5775dad70a488af22becacefd",
     "src/media_location.rs": "e705b3dbeb3c472e78bf053ff23b9d4a71cbd20d4ec9171907c012e7a8c0559b",
     "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
     "src/media_location/tests.rs": "89fb64ff9dc6a8bf41926cd3d67dcf1659fc7362e2684d14175fda3184ab261f",
@@ -12621,11 +12690,11 @@
     "src/performance_history/worker/tests.rs": "46c5b0b1b0fe06449933cdf844a86601fb2cccf5d4949711f549035df8a9f1f3",
     "src/portable_project.rs": "9e774b7a3e960d71347ecc11bd270f71dd20c7df879679bfca3ed1c8bcb4b6b6",
     "src/portable_project/tests.rs": "a795e2cb9c8df18d91108e83a0e2225e0e1c2ccaa1f16e43d583417909f81955",
-    "src/preferences/mod.rs": "c0f22c4529465776fd0bdf0b1b3afae2838684bdb680dd92bc04a5123ca4375f",
+    "src/preferences/mod.rs": "388b2796e51789e3930710157b60cb8ce7a565553b9dc768257090c3ea5ba0b6",
     "src/preferences/recovery.rs": "88b75bf700d514cec7d69a75b632123de220bb7357003ef4bfd5bca36a3365ee",
     "src/preferences/shortcuts.rs": "5a43a66920444978496f08bf47e7706770ee05304d92db25cd613c7f4b48c27c",
     "src/preferences/storage.rs": "23ef791993ca1966eb1801183f9066b1a1a6bf5bd41fa184556963acd918dff4",
-    "src/preferences/worker.rs": "402e045a7d0af38849cc7d88226143b2364361e21fbab99498ddc3ff224c16ae",
+    "src/preferences/worker.rs": "28d3ca31502f85ba54365fa0aa95a2762687b5d888d1107dcbf144fd5c70635e",
     "src/preferences/workspaces.rs": "eeb6a05d20a74649ee0a5b84d3ae093400a1bde6ea52db2188c621aa70018fa0",
     "src/project_dependencies.rs": "90ee8befa23c98b880b29667da26cfd4385abf2372c49b064b4ff5604acdcfee",
     "src/project_dependencies/tests.rs": "d6a5e86a77262c23df56c74f172b000c7de1571432c8a1f29a1831e17b79757b",
@@ -12661,7 +12730,7 @@
     "src/support/model.rs": "053abfbb8c9e80f102557d514f21e335d50153ec01b46906a40bd8427264022a",
     "src/support/operations.rs": "514a6ec0ce802e4937429632639fddbef969bc0819a6f949fa0cbbd800d71f59",
     "src/support/storage.rs": "424ad007543e7fcb7f0b8cbbf77647a246578bdc918549af88b11ce8d05a29e1",
-    "src/support/tests.rs": "928083ad995d88a3bf6c411128064e95a62621433098f815cc048bf0dc0bfb92",
+    "src/support/tests.rs": "cb8bb7d2f39977bfdf854f667934d17e0f03130d468311b6fa837f2edf8f7856",
     "src/support/worker.rs": "7d7e2d0f49c366bf7fe49a5a7358fed887b520662a22d0bbc60d8c3303e78483",
     "src/theme.rs": "61d0887158b7890f82ef8c673f4bc17f44bbdf895789fc1a835c888ed9df9f2a",
     "src/theme/color.rs": "c63d551f0d7f23b8cebdd3845f6a3a3b33632595bf24eeb2906c45e888c10658",
@@ -12682,9 +12751,9 @@
     "src/ui/atspi_tests.rs": "c14a9631b0fd8d4fd9cf4d2b7165541221c45928dfc241416d43f592fce11bc2",
     "src/ui/audio_routing.rs": "32188c5391c2237d0c48b48370b13f97ca4669eef8bad65b080efb0970f93d72",
     "src/ui/audio_routing/tests.rs": "dda5649f85cf86ad740f0b897a827d89925109f8aedab8f9de500a1df00ce2c0",
-    "src/ui/audio_routing/worker.rs": "fcd339b113571c06dfaaef917d67134553c6f87ec6a281c76e12b27c7aa973b9",
-    "src/ui/audio_settings.rs": "71f07e2b1dce6309dc73b351fc7b4aac682c50979b8a2b7256a27d62a5867a77",
-    "src/ui/audio_settings/tests.rs": "069a16796c33d42f74e9ac916df4d4bb76dcae670d138c9fcf767f65b7ab9a9b",
+    "src/ui/audio_routing/worker.rs": "ba2b971d1efcf8bb6894b8cf4ae96d684cf404ae5ef6aa130a9d0ae8e1b7b889",
+    "src/ui/audio_settings.rs": "266d4fc7445c0f46f83f03a2d2edd45f3ff2eb16f60b07e9e9955b062f917dce",
+    "src/ui/audio_settings/tests.rs": "de6af0ca8c002c08b8af628d71109729f2611572baba8870d7e73efaba7ec873",
     "src/ui/audio_status.rs": "10760c96a68a2f3c62f13b5cde070f3e2452eeee27a1bb34ff6a4ec46154bd0e",
     "src/ui/automation.rs": "b5745d30156017d17dd5ab685152a8ac525549390db6b9d5a29f01c925136713",
     "src/ui/automation/tests.rs": "dd822e35903fc2ca9c70e251c0967d2ee1fcc64f703f8385a59b50fc3c8f1435",
@@ -12717,7 +12786,7 @@
     "src/ui/grid_editor.rs": "a2cf010e1c1ee2dbbad0980f09b32195b070fdf1f3f44e9dda29bf2df81ecb40",
     "src/ui/grid_editor/tests.rs": "f8fe8e65cad1ae3ca0201142822683332026ebaddcba1d72f06b7b4afa471e28",
     "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
-    "src/ui/help/catalogue.rs": "ae9e7636324967b1b7cc29910545d848c1693b39a819fd1a04a1a9a2bba281e5",
+    "src/ui/help/catalogue.rs": "51eaee38e9ac08aef9ef516c4efa8a0ffe0479362c4e03f1e297d15e5364cd13",
     "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
     "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
     "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",

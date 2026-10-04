@@ -1,4 +1,4 @@
-//! CPAL streams never leave this owner thread. Only immutable status and bounded
+//! Native streams never leave this owner thread. Only immutable status and bounded
 //! requests cross threads; the renderer itself moves through a single return slot.
 use super::*;
 use crate::engine::project::{CloseGuard, Handle as Project};
@@ -41,14 +41,26 @@ pub struct Handle {
 pub struct AudioOut {
     pub handle: Handle,
     pub(crate) input: super::routing::input::Handle,
+    workers: Vec<std::thread::JoinHandle<()>>,
 }
+static RETIRED_AUDIO_WORKERS: std::sync::Mutex<Vec<std::thread::JoinHandle<()>>> = std::sync::Mutex::new(Vec::new());
 impl Drop for AudioOut {
     fn drop(&mut self) {
-        // Backend teardown may join an OS thread. The owner performs it, never
-        // the GUI destructor. The detached owner exits after its current call.
         self.handle.stopped.store(true, Ordering::Release);
+        RETIRED_AUDIO_WORKERS.lock().unwrap_or_else(|error| error.into_inner()).append(&mut self.workers);
     }
 }
+
+/// Finish native audio teardown before process exit.
+/// Takes no arguments; waits only for retired input/output owners, leaving backend destruction on their own threads.
+pub(crate) fn finish_shutdown() {
+    let workers = std::mem::take(&mut *RETIRED_AUDIO_WORKERS.lock().unwrap_or_else(|error| error.into_inner()));
+    for worker in workers { let _ = worker.join(); }
+}
+
+pub(crate) struct Shutdown;
+impl Drop for Shutdown { fn drop(&mut self) { finish_shutdown(); } }
+
 enum Operation {
     Switch(crate::preferences::Audio, Option<config::Plan>),
     Calibrate(calibration::Request),
@@ -192,6 +204,7 @@ pub(super) trait Backend: 'static {
         cancel: &AtomicBool,
         stopped: &Arc<AtomicBool>,
     ) -> Result<calibration::Measurement, String>;
+    fn maintain(&mut self, _stream: &Self::Stream) -> Result<Option<u32>, String> { Ok(None) }
     fn close(&mut self, stream: Self::Stream) {
         drop(stream);
     }
@@ -532,6 +545,18 @@ impl<B: Backend> Owner<B> {
     }
     fn run(&mut self, requests: Receiver<Request>) {
         while !self.stopped.load(Ordering::Acquire) {
+            if let Some(active) = &mut self.active {
+                match self.backend.maintain(&active.stream) {
+                    Ok(Some(quantum)) if active.plan.buffer != Some(quantum) => {
+                        active.plan.buffer = Some(quantum);
+                        let previous = self.status.load_full();
+                        let mut current = (*previous).clone(); current.active = Some(OutputInfo::from(active.plan.clone()));
+                        self.status.store(Arc::new(current));
+                    }
+                    Err(_) => active.fault.store(true, Ordering::Release),
+                    _ => {}
+                }
+            }
             if self.active.as_mut().is_some_and(|active| active.fault.load(Ordering::Acquire)
                 || recovery::boot_time().is_some_and(|now| active.watchdog.lost(now, active.telemetry.read().callbacks)))
             {
@@ -617,7 +642,7 @@ fn start_owned<B:Backend>(
         safe_mode,
     };
     let (ready, started) = bounded(1);
-    std::thread::Builder::new()
+    let worker = std::thread::Builder::new()
         .name("omatainer-audio-owner".into())
         .spawn(move || {
             let mut owner = Owner {
@@ -653,9 +678,13 @@ fn start_owned<B:Backend>(
                 }
             }
         })?;
-    started.recv()?.map_err(anyhow::Error::msg)?;
-    let input = super::routing::input::start(input_pipe, handle.clone())?;
-    Ok(AudioOut { handle, input })
+    if let Err(error) = started.recv().map_err(anyhow::Error::from).and_then(|result| result.map_err(anyhow::Error::msg)) {
+        let _ = worker.join(); return Err(error);
+    }
+    match super::routing::input::start(input_pipe, handle.clone()) {
+        Ok((input, input_worker)) => Ok(AudioOut { handle, input, workers: vec![input_worker, worker] }),
+        Err(error) => { handle.stopped.store(true, Ordering::Release); let _ = worker.join(); Err(error.into()) }
+    }
 }
 
 impl RtEngine {
@@ -789,6 +818,7 @@ pub(crate) mod tests {
                 return Err("Unsupported fixture rate".into());
             }
             Ok(config::Plan {
+                graph: settings.graph.clone(),
                 backend: "Fixture".into(),
                 device: device.into(),
                 channels: settings.channels.unwrap_or(2),
