@@ -49,6 +49,7 @@ impl App {
                     self.performance_panel.decision = Some(Decision::Recover);
                 }
             });
+            self.deck_load_controls(ui);
             if status.protected {
                 ui.label(tr!("Playing/touched deck replacement, destructive edits, project replacement and device changes are protected. Mixing, recording, stopped-deck loads and project Save remain available. Optional background work is deferred."));
             }
@@ -66,6 +67,7 @@ impl App {
             }
         });
         self.performance_decision(ctx);
+        self.deck_load_decision(ctx);
     }
 
     /// Render the shared safety decision in the native window that owns input.

@@ -648,6 +648,7 @@ struct PadTarget {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
+    pub load_gate_word: u64,
     pub title: String,
     pub playing: bool,
     pub pos: f64,
@@ -2094,6 +2095,13 @@ impl RtEngine {
             self.undo.retire_command(c);
             return;
         }
+        if let Command::DeckAudio { deck, .. } | Command::DeckUnload { deck } = &c {
+            if !self.performance.claim_deck_media(*deck as usize % DECKS, self.deck_activity(), None) {
+                self.performance.reject(performance::Error::PlayingDeck);
+                self.undo.retire_command(c);
+                return;
+            }
+        }
         let Some(c)=self.history_before(c) else{return;};
         self.apply_plain(c);
     }
@@ -2794,7 +2802,23 @@ impl RtEngine {
             if receipt.claim() { receipt.finish(State::Unavailable); }
             return;
         }
+        if matches!(media, Media::Unload) {
+            if !receipt.claim() { return; }
+            if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval()) {
+                self.performance.reject(performance::Error::PlayingDeck);
+                receipt.finish(State::Protected);
+                return;
+            }
+            let Some(command) = self.history_before(Command::DeckUnload { deck }) else {
+                receipt.finish(State::Unavailable);
+                return;
+            };
+            self.apply_plain(command);
+            receipt.finish(State::Current);
+            return;
+        }
         let audio = match media {
+            Media::Unload => unreachable!(),
             Media::Builtin(stem) => self.builtin.get(*stem as usize).and_then(Clone::clone),
             Media::Decoded { token, audio } => {
                 if token.deck != deck || !token.is_current() {
@@ -2811,6 +2835,11 @@ impl RtEngine {
         if !receipt.claim() { return; }
         #[cfg(test)]
         if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
+        if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval()) {
+            self.performance.reject(performance::Error::PlayingDeck);
+            receipt.finish(State::Protected);
+            return;
+        }
         if let Some(audio) = audio {
             // Application acknowledgement follows the actual mutation outcome,
             // not an unrelated retirement notice published during the capture.

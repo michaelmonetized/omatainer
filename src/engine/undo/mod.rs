@@ -609,6 +609,13 @@ impl RtEngine {
             self.undo.cursor - 1
         };
         // Validity of every target is checked before any object is changed.
+        if self.undo.entries[index].as_ref().unwrap().patches.iter().flatten().any(|patch| {
+            matches!(patch, Patch::Media { deck, .. } if self.performance.check(&Command::DeckUnload { deck: *deck }, Some(self.deck_activity())).is_err())
+        }) {
+            self.performance.reject(super::performance::Error::PlayingDeck);
+            self.undo.reject(Failure::Invalid);
+            return;
+        }
         if self.undo.entries[index]
             .as_ref()
             .unwrap()

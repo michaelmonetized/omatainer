@@ -461,6 +461,7 @@ impl Patch {
                 receipt,
                 ..
             } => {
+                rt.performance.deck_media_changed(*deck as usize);
                 let d = &mut rt.decks[*deck as usize];
                 std::mem::swap(audio, &mut d.audio);
                 std::mem::swap(title, &mut d.title);

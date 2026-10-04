@@ -719,6 +719,8 @@ publication. See [the local release gate contract and reproduction steps](docs/v
 
 ### Performance protection
 
+Use **Lock playing deck A/B** to protect each live deck from accidental loading or ejecting. Review an override to identify the exact target and keep its current audio playing until the replacement is ready. See [deck load protection](docs/deck-load-protection.md) for the controls and IPC requests.
+
 Use the visible **Performance** bar before a show. Protection keeps playing/touched
 deck loads, destructive edits, project replacement and device changes from being
 applied; mixing, composing, recording, stopped-deck loads and project Save remain

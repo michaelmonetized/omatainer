@@ -60,6 +60,7 @@ mod automation;
 mod music_provider;
 mod video;
 mod performance;
+mod deck_load_lock;
 mod audio_settings;
 mod audio_routing;
 mod recovery_settings;
@@ -120,6 +121,7 @@ pub struct App {
     video: video::Panel,
     automation_network: crate::automation::osc::Manager,
     performance_panel: performance::Panel,
+    deck_load_panel: deck_load_lock::Panel,
     audio_settings: audio_settings::Panel,
     diagnostics: diagnostics::Diagnostics,
     licenses: licenses::Licenses,
@@ -251,6 +253,7 @@ impl App {
             video: video::Panel::default(),
             automation_network: crate::automation::osc::Manager::new(engine.cmd.clone(),engine.snap.clone()),
             performance_panel: performance::Panel::default(),
+            deck_load_panel: deck_load_lock::Panel::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             licenses: licenses::Licenses::default(),
             engine,
@@ -384,7 +387,12 @@ impl App {
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
-        if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
+        self.load_source_approved(deck, picked, None);
+    }
+    /// Prepare one captured library choice.
+    /// Takes its target, selected source and optional review; preserves the current deck until renderer application.
+    fn load_source_approved(&mut self, deck: u8, picked: Option<&Selection>, approval: Option<crate::engine::performance::DeckApproval>) {
+        if !self.deck_load_allows(deck, approval.as_ref()) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS {
             self.status = "load failed: invalid deck".into();
@@ -398,7 +406,8 @@ impl App {
                     if let Some(error) = self.loader.as_ref().and_then(|loader| loader.invalidate(deck).err()) {
                         state.phase = Phase::Failed(error);
                     } else {
-                        let receipt = self.library_receipt(&picked.source, None);
+                        let mut receipt = self.library_receipt(&picked.source, None);
+                        if let Some(approval) = approval { receipt = receipt.with_deck_approval(approval); }
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
                         } else {
@@ -408,8 +417,7 @@ impl App {
                     }
                     self.set_load_state(deck, state);
                 }
-                LibSource::File(path) => self.load_file(deck, path.clone(), &picked.title),
-                LibSource::Removable { .. } => self.load_reference(deck,picked.source.clone(),&picked.title),
+                LibSource::File(_) | LibSource::Removable { .. } => self.load_reference_approved(deck,picked.source.clone(),&picked.title,approval),
                 LibSource::Provider { .. } => {
                     self.supersede_load(deck);
                     if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
@@ -434,12 +442,18 @@ impl App {
         self.load_reference(deck,LibSource::File(path),name);
     }
     fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
-        if !self.performance_allows(&Command::DeckLoadSelected { deck }) { return; }
+        self.load_reference_approved(deck, source, name, None);
+    }
+    /// Start one source-bound asynchronous decode.
+    /// Takes its deck, source, displayed name and optional review; retains approval with the pending job and leaves loaded audio intact.
+    fn load_reference_approved(&mut self, deck:u8,source:LibSource,name:&str,approval:Option<crate::engine::performance::DeckApproval>) {
+        if !self.deck_load_allows(deck, approval.as_ref()) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
         let selection = Selection { title: name.into(), source:source.clone() };
         let mut state = LoadState::new(Some(selection), Phase::Loading);
+        state.approval = approval;
         match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
             .and_then(|loader| loader.request_source(deck, source)) {
             Ok(token) => state.token = Some(token),
@@ -546,9 +560,10 @@ impl App {
                         metadata
                     });
                     let measured=history_source.as_ref().zip(completion.fingerprint).zip(completion.content_hash);
-                    let receipt=if let Some(((source,fp),hash))=measured {
+                    let mut receipt=if let Some(((source,fp),hash))=measured {
                         Receipt::with_preparation(self.library_metadata.catalog.preparation_for_content(source,fp,hash))
                     } else {history_source.as_ref().map(|source|self.library_receipt(source,completion.fingerprint)).unwrap_or_else(Receipt::new)};
+                    if let Some(approval) = state.approval.take() { receipt = receipt.with_deck_approval(approval); }
                     if let Some(((source,fingerprint),hash))=measured {
                         if let Some(track)=self.library_metadata.catalog.track(source) {
                             let proof=crate::sampler_bank::SourceRef {track:track.id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};

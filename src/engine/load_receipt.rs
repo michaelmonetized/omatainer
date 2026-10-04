@@ -11,6 +11,7 @@ pub struct Receipt(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
+    deck_approval: Option<super::performance::DeckApproval>,
     history_key: u64,
     state: AtomicU8,
     history_pins: AtomicU64,
@@ -42,12 +43,19 @@ impl Receipt {
     pub(crate) fn with_preparation(
         initial_preparation: Option<super::preparation::Preparation>,
     ) -> Self {
+        Self::with_preparation_and_approval(initial_preparation, None)
+    }
+    /// Create one pending media receipt.
+    /// Takes retained preparation and an optional reviewed override; returns a fresh receipt with no application acknowledgment.
+    fn with_preparation_and_approval(initial_preparation: Option<super::preparation::Preparation>,
+        deck_approval: Option<super::performance::DeckApproval>) -> Self {
         let wall_origin = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos()
             .min(u64::MAX as u128) as u64;
         Self(Arc::new(Inner {
+            deck_approval,
             history_key: super::history_measurement::parts::fresh_key(),
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
@@ -58,6 +66,16 @@ impl Receipt {
             wall_origin,
             clock_origin: std::time::Instant::now(),
         }))
+    }
+    /// Bind a fresh load receipt to a deliberate deck review.
+    /// Takes this unused receipt and approval; returns a new pending receipt retaining its preparation.
+    pub(crate) fn with_deck_approval(self, approval: super::performance::DeckApproval) -> Self {
+        Self::with_preparation_and_approval(self.initial_preparation(), Some(approval))
+    }
+    /// Inspect a reviewed deck override.
+    /// Takes this receipt; returns its immutable approval when one was explicitly supplied.
+    pub(crate) fn deck_approval(&self) -> Option<&super::performance::DeckApproval> {
+        self.0.deck_approval.as_ref()
     }
     pub(super) fn initial_preparation(&self) -> Option<super::preparation::Preparation> {
         self.0.initial_preparation
@@ -176,6 +194,7 @@ impl Receipt {
 
 #[derive(Clone, Debug)]
 pub enum Media {
+    Unload,
     Builtin(u8),
     Decoded {
         token: LoadToken,
