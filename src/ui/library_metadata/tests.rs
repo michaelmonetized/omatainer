@@ -219,6 +219,7 @@ fn changed_bytes_during_decode_or_after_scan_cannot_acquire_old_analysis() {
     let mut f = Fixture::new(16);
     scan(&mut f, &files);
     select(&mut f, &path);
+    let outgoing = f.rt.decks[0].audio.as_ref().unwrap().clone();
     f.app.load_sel(0);
     f.decoder_jobs.recv_timeout(Duration::from_secs(3)).unwrap();
     let old_report = decode_audio(&path).unwrap();
@@ -226,19 +227,30 @@ fn changed_bytes_during_decode_or_after_scan_cannot_acquire_old_analysis() {
     std::fs::rename(replacement, &path).unwrap();
     f.decoder_results.send((0, Ok(old_report))).unwrap();
     f.poll_loads();
-    apply_load(&mut f);
+    finish(&mut f);
+    assert!(matches!(f.app.loads[0].as_ref().unwrap().phase, Phase::Failed(_)));
+    assert!(f.rt.cmd_rx.try_recv().is_err());
+    assert!(Arc::ptr_eq(f.rt.decks[0].audio.as_ref().unwrap(), &outgoing));
     assert_eq!(find(&f, &path).bpm, Bpm::hint(155.0));
     scan(&mut f, &files);
     assert_eq!(find(&f, &path).bpm, Bpm::hint(155.0));
-    // A valid decode with a new fingerprint also cannot alter an old scan row.
+    // A version replaced after scan is refused before it can install analysis.
     let other = files.wave("replacement2.wav");
     std::fs::rename(other, &path).unwrap();
     f.app.loader = Some(Loader::start().unwrap());
     f.app.load_sel(0);
     f.poll_loads();
-    apply_load(&mut f);
+    finish(&mut f);
+    assert!(matches!(f.app.loads[0].as_ref().unwrap().phase, Phase::Failed(_)));
+    assert!(f.rt.cmd_rx.try_recv().is_err());
+    assert!(Arc::ptr_eq(f.rt.decks[0].audio.as_ref().unwrap(), &outgoing));
     assert_eq!(find(&f, &path).bpm, Bpm::hint(155.0));
     scan(&mut f, &files);
+    assert_eq!(find(&f, &path).bpm, Bpm::hint(155.0));
+    select(&mut f, &path);
+    f.app.load_sel(0);
+    f.poll_loads();
+    apply_load(&mut f);
     assert_eq!(find(&f, &path).bpm.origin, Origin::Heuristic);
 }
 

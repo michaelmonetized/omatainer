@@ -237,6 +237,7 @@ fn held_decode_keeps_real_crate_frames_and_controls_live_and_stale_file_duration
     let mut f = Fixture::new(32);
     scan(&mut f, &files);
     select(&mut f, &path);
+    let outgoing = f.rt.decks[0].audio.as_ref().unwrap().clone();
     f.app.load_sel(0);
     assert_eq!(
         f.decoder_jobs
@@ -261,7 +262,10 @@ fn held_decode_keeps_real_crate_frames_and_controls_live_and_stale_file_duration
     std::fs::rename(replacement, &path).unwrap();
     f.decoder_results.send((0, Ok(report))).unwrap();
     f.poll_loads();
-    apply(&mut f);
+    finish(&mut f);
+    assert!(matches!(f.app.loads[0].as_ref().unwrap().phase, Phase::Failed(_)));
+    assert!(f.rt.cmd_rx.try_recv().is_err(), "changed decode must never request deck replacement");
+    assert!(Arc::ptr_eq(f.rt.decks[0].audio.as_ref().unwrap(), &outgoing));
     assert_eq!(
         item(&f, &path).length,
         None,
