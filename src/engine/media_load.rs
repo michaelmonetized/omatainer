@@ -5,7 +5,7 @@ use super::decode::{DecodeFailure, DecodedAudio};
 use super::media_source::{FileFingerprint,LibSource};
 use super::DECKS;
 use crate::sampler_bank::{assets, prepare};
-use super::{performance, sampler, media_analysis};
+use super::{performance, sampler, media_analysis, media_health};
 pub(crate) use media_analysis::{Request as AnalysisRequest, Token as AnalysisToken, Failure as AnalysisFailure};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -71,7 +71,9 @@ pub(crate) struct AnalysisCompletion {
     pub result: Result<crate::track_analysis::Prepared, AnalysisFailure>,
     pub work: performance::WorkPermit,
 }
-enum Work { Deck(Request), Sampler(SamplerRequest), Analysis(AnalysisJob) }
+struct HealthJob { token: AnalysisToken, request: media_health::Request, work: performance::WorkPermit }
+pub(crate) struct HealthCompletion { pub token: AnalysisToken, pub result: Result<media_health::Observation, AnalysisFailure> }
+enum Work { Deck(Request), Sampler(SamplerRequest), Analysis(AnalysisJob), Health(HealthJob) }
 struct State {
     pending: [Option<Request>; DECKS],
     ready: [Option<Completion>; DECKS],
@@ -82,6 +84,10 @@ struct State {
     analysis_ready: Option<AnalysisCompletion>,
     analysis_token: Option<AnalysisToken>,
     analysis_active: Option<AnalysisToken>,
+    health_pending: Option<HealthJob>,
+    health_ready: Option<HealthCompletion>,
+    health_token: Option<AnalysisToken>,
+    health_active: Option<AnalysisToken>,
     stop: bool,
     next_deck: usize,
 }
@@ -96,6 +102,8 @@ pub struct Loader {
     sampler_next: AtomicU64,
     analysis_generation: Arc<AtomicU64>,
     analysis_next: AtomicU64,
+    health_generation: Arc<AtomicU64>,
+    health_next: AtomicU64,
     performance: performance::Handle,
 }
 impl Loader {
@@ -166,6 +174,10 @@ impl Loader {
                 analysis_ready: None,
                 analysis_token: None,
                 analysis_active: None,
+                health_pending: None,
+                health_ready: None,
+                health_token: None,
+                health_active: None,
                 stop: false,
                 next_deck: 0,
             }),
@@ -199,11 +211,26 @@ impl Loader {
                             state.analysis_active = Some(job.token.clone());
                             break Work::Analysis(job);
                         }
+                        if let Some(job) = state.health_pending.take() {
+                            state.health_active = Some(job.token.clone());
+                            break Work::Health(job);
+                        }
                         state = worker.wake.wait(state).unwrap();
                     }
                 };
                 let request = match request {
                     Work::Deck(request) => request,
+                    Work::Health(job) => {
+                        let result = media_health::run(job.request, &job.token, &job.work);
+                        let old = {
+                            let mut state = worker.state.lock().unwrap();
+                            state.health_active = None;
+                            if state.stop || !job.token.same_generation() { drop(state); continue; }
+                            state.health_ready.replace(HealthCompletion { token:job.token, result })
+                        };
+                        drop(old);
+                        continue;
+                    }
                     Work::Analysis(job) => {
                         let mut result = job.token.check(&job.work)
                             .and_then(|_| analyze(job.request, &job.token, &job.work));
@@ -281,6 +308,8 @@ impl Loader {
             sampler_next: AtomicU64::new(0),
             analysis_generation: Arc::new(AtomicU64::new(0)),
             analysis_next: AtomicU64::new(0),
+            health_generation: Arc::new(AtomicU64::new(0)),
+            health_next: AtomicU64::new(0),
             performance,
         })
     }
@@ -294,7 +323,7 @@ impl Loader {
             let mut state = self.shared.state.lock().unwrap();
             if state.stop { return Err("decoder is unavailable".into()); }
             if let Some(previous) = state.sampler_token.replace(token.clone()) { previous.cancel(); }
-            preempt_analysis(&state);
+            preempt_optional_decode(&state);
             self.sampler_generation.store(id, Ordering::Release);
             let pending = state.sampler_pending.replace(SamplerRequest { token: token.clone(), request, owner, work });
             (pending, state.sampler_ready.take())
@@ -315,6 +344,32 @@ impl Loader {
         drop(old);
     }
 
+    /// Queue one read-only media check on the shared decoder worker.
+    /// Takes a captured source/version; returns a cancellable token or refuses unavailable, protected or occupied optional work.
+    pub(crate) fn request_health(&self, request: media_health::Request) -> Result<AnalysisToken, String> {
+        crate::library::validate_source(&request.source)?;
+        let work = self.performance.optional_work().map_err(|e| e.to_string())?;
+        let (token, old) = {
+            let mut state = self.shared.state.lock().unwrap();
+            if state.stop { return Err("decoder is unavailable".into()); }
+            if state.analysis_pending.is_some() || state.analysis_active.is_some() { return Err("Finish or cancel the active analysis request first".into()); }
+            let id = self.health_next.fetch_update(Ordering::AcqRel, Ordering::Acquire, |id| id.checked_add(1))
+                .map_err(|_| "media validation identity exhausted")? + 1;
+            let token = AnalysisToken::new(id, self.health_generation.clone());
+            if let Some(previous) = state.health_token.replace(token.clone()) { previous.cancel(); }
+            self.health_generation.store(id, Ordering::Release);
+            let pending = state.health_pending.replace(HealthJob { token:token.clone(), request, work });
+            (token, (pending, state.health_ready.take()))
+        };
+        drop(old);
+        self.shared.wake.notify_one();
+        Ok(token)
+    }
+    /// Poll the bounded media-check result without waiting on decoding.
+    /// Takes the loader; returns its latest completed check if the worker lock is available.
+    pub(crate) fn take_health_ready(&self) -> Option<HealthCompletion> {
+        self.shared.state.try_lock().ok()?.health_ready.take()
+    }
     /// One replaceable low-priority job and result; no batch is stored here.
     pub(crate) fn request_analysis(&self, request: AnalysisRequest) -> Result<AnalysisToken, String> {
         request.validate().map_err(|e| e.to_string())?;
@@ -322,6 +377,7 @@ impl Loader {
         let (token, old) = {
             let mut state = self.shared.state.lock().unwrap();
             if state.stop { return Err("decoder is unavailable".into()); }
+            if state.health_pending.is_some() || state.health_active.is_some() { return Err("Finish or cancel the active media validation first".into()); }
             let id = self.analysis_next.fetch_update(Ordering::AcqRel, Ordering::Acquire,
                 |id| id.checked_add(1)).map_err(|_| "analysis request identity exhausted")? + 1;
             let token = AnalysisToken::new(id, self.analysis_generation.clone());
@@ -384,7 +440,7 @@ impl Loader {
             let previous = current
                 .fetch_update(Ordering::AcqRel, Ordering::Acquire, |id| id.checked_add(1))
                 .map_err(|_| "media request identity exhausted")?;
-            preempt_analysis(&state);
+            preempt_optional_decode(&state);
             let token = LoadToken {
                 deck,
                 id: previous + 1,
@@ -418,10 +474,12 @@ impl Drop for Loader {
         let discarded = {
             let mut state = self.shared.state.lock().unwrap();
             state.stop = true;
+            if let Some(token) = state.health_token.take() { token.cancel(); }
             if let Some(token) = state.sampler_token.take() { token.cancel(); }
             if let Some(token) = state.analysis_token.take() { token.cancel(); }
             (state.sampler_pending.take(), state.sampler_ready.take(),
                 state.analysis_pending.take(), state.analysis_ready.take(),
+                state.health_pending.take(), state.health_ready.take(),
                 std::mem::replace(&mut state.pending, std::array::from_fn(|_| None)),
                 std::mem::replace(&mut state.ready, std::array::from_fn(|_| None)),
             )
@@ -473,9 +531,11 @@ fn guarded_decode(
     };
     match operation() {Ok((fingerprint,hash,audio))=>(Some(fingerprint),hash,Ok(audio)),Err(error)=>(None,None,Err(error))}
 }
-fn preempt_analysis(state: &State) {
+fn preempt_optional_decode(state: &State) {
     if let Some(token) = &state.analysis_active { token.preempt(); }
     if let Some(job) = &state.analysis_pending { job.token.preempt(); }
+    if let Some(token) = &state.health_active { token.preempt(); }
+    if let Some(job) = &state.health_pending { job.token.preempt(); }
 }
 
 #[cfg(test)]

@@ -25,7 +25,7 @@
       "limits": "Physical converter timing, external audio paths and sustained listening are not qualified by unit tests."
     },
     {
-      "name": "ALSA → private PipeWire null sink",
+      "name": "ALSA \u2192 private PipeWire null sink",
       "status": "backend restart exercised",
       "versions": "ALSA 1.2.16.1; PipeWire 1.6.8",
       "limits": "Owned private server and real CPAL callbacks; no USB unplug, converter or system suspend evidence."
@@ -68,7 +68,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/audio_settings.rs",
-          "entry": "Audio devices → reconnect review"
+          "entry": "Audio devices \u2192 reconnect review"
         },
         {
           "kind": "audio owner",
@@ -91,7 +91,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/deck_load_lock.rs",
-          "entry": "Platter lock → captured load/eject review"
+          "entry": "Platter lock \u2192 captured load/eject review"
         },
         {
           "kind": "MIDI",
@@ -160,7 +160,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/library_protection.rs",
-          "entry": "Library locks → capture, review and save"
+          "entry": "Library locks \u2192 capture, review and save"
         },
         {
           "kind": "native UI",
@@ -193,7 +193,7 @@
         {
           "kind": "native UI",
           "file": "src/ui/library_smart_crates.rs",
-          "entry": "Named crates → Smart crate rules → Preview and Save"
+          "entry": "Named crates \u2192 Smart crate rules \u2192 Preview and Save"
         },
         {
           "kind": "catalog worker",
@@ -203,7 +203,7 @@
         {
           "kind": "persistent catalog",
           "file": "src/library/smart_crates.rs",
-          "entry": "Validated typed All/Any rules in schema 10"
+          "entry": "Validated typed All/Any rules in versioned catalog"
         }
       ],
       "fixtures": [
@@ -245,6 +245,36 @@
         "docs/validation/issue-120-providers.md"
       ],
       "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
+    },
+    "145": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_health.rs",
+          "entry": "Library \u2192 health\u2026 \u2192 captured selected/filtered validation"
+        },
+        {
+          "kind": "shared decoder",
+          "file": "src/engine/media_health.rs",
+          "entry": "Full read-only stream check on the existing optional decoder lane"
+        },
+        {
+          "kind": "import report",
+          "file": "src/ui/library_store.rs",
+          "entry": "Per-input skipped-entry diagnostics retain healthy imported rows"
+        }
+      ],
+      "fixtures": [
+        "engine::media_health::tests",
+        "ui::library_health::tests",
+        "engine::media_load::analysis_tests::foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current",
+        "ui::library_scan::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-145-library-health.md"
+      ],
+      "limits": "Focused media/UI fixtures passed; complete source qualification pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee."
     }
   }
 }

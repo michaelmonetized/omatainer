@@ -490,6 +490,7 @@ impl App {
     pub(super) fn request_library_close(&mut self, ctx: &egui::Context) {
         self.library_metadata.set_collections_closing(true);
         self.library_close.requested = true;
+        self.library_health.cancel();
         self.stop_analysis_for_close();
         if self.library_metadata.storage.is_none() {
             self.library_close.allow = true;

@@ -94,6 +94,14 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Library media health
+
+Captured read-only validation; at most 4096 rows per queue
+
+Validate a selected row or the filtered crate without replacing live decks. The existing decoder worker reads each complete file and discards packet PCM. Status distinguishes missing, unreadable, unsupported, corrupt and changed sources. Read-only audio remains playable and uses sidecar preparation. Bad tags are reported separately when audio still decodes. Results describe the last checked version; rescan and validate after media changes. Cancel stops remaining work; earlier results stay visible. Performance protection or an explicit media load stops validation. Closing the panel leaves an active queue running.
+
+Workflow: Prepare a DJ deck.
+
 ### Interface language
 
 English, Español or Deutsch; saved per profile

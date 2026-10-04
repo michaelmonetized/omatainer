@@ -99,7 +99,7 @@ impl Default for Panel {
     }
 }
 impl Panel {
-    fn busy(&self) -> bool {
+    pub(super) fn busy(&self) -> bool {
         self.queue.is_some() || self.retiring.is_some()
     }
     fn cancel(&mut self) {
@@ -171,6 +171,10 @@ impl App {
             return;
         }
         if self.library_analysis.busy() {
+            return;
+        }
+        if self.library_health.busy() {
+            self.library_analysis.message = "Finish or cancel media validation first.".into();
             return;
         }
         if self.loader.is_none() {

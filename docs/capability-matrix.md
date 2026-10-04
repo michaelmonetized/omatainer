@@ -69,11 +69,21 @@ Local 100000-track synthetic catalog; search fields reflect implemented title/ar
 
 Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification.
 
+### Issue #145: implemented
+
+- native UI: [src/ui/library_health.rs](../src/ui/library_health.rs) — Library → health… → captured selected/filtered validation
+- shared decoder: [src/engine/media_health.rs](../src/engine/media_health.rs) — Full read-only stream check on the existing optional decoder lane
+- import report: [src/ui/library_store.rs](../src/ui/library_store.rs) — Per-input skipped-entry diagnostics retain healthy imported rows
+- Acceptance fixtures: `engine::media_health::tests`, `ui::library_health::tests`, `engine::media_load::analysis_tests::foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current`, `ui::library_scan::tests`.
+- Evidence: [docs/validation/issue-145-library-health.md](../docs/validation/issue-145-library-health.md).
+
+Focused media/UI fixtures passed; complete source qualification pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
 - catalog worker: [src/ui/library_metadata/collection_rows.rs](../src/ui/library_metadata/collection_rows.rs) — Incremental membership bound to exact library/catalog publications
-- persistent catalog: [src/library/smart_crates.rs](../src/library/smart_crates.rs) — Validated typed All/Any rules in schema 10
+- persistent catalog: [src/library/smart_crates.rs](../src/library/smart_crates.rs) — Validated typed All/Any rules in versioned catalog
 - Acceptance fixtures: `library::smart_crates::tests`, `ui::library_metadata::collection_rows::tests`, `ui::library_smart_crates::tests`.
 - Evidence: [docs/validation/issue-205-smart-crates.md](../docs/validation/issue-205-smart-crates.md).
 
@@ -111,7 +121,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | planned |
 | [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | planned |
 | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | planned |
-| [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | planned |
+| [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |
 | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | planned |
 | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned |
 | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | planned |

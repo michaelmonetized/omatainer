@@ -14,6 +14,7 @@ use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
 mod library_analysis;
+mod library_health;
 mod library_tags;
 mod library_annotations;
 mod library_protection;
@@ -143,6 +144,7 @@ pub struct App {
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
+    library_health: library_health::Panel,
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
     library_protection: library_protection::Panel,
@@ -274,6 +276,7 @@ impl App {
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
+            library_health: library_health::Panel::default(),
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
             library_protection: library_protection::Panel::default(),
@@ -758,6 +761,7 @@ impl App {
         self.project_versions.poll();
         self.poll_sampler_editor();
         self.poll_library_analysis();
+        self.poll_library_validation();
         self.poll_library_tags();
         self.poll_named_crates();
         self.poll_session_history();
@@ -803,6 +807,7 @@ impl App {
         self.project_versions_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
+        self.library_health_ui(ctx);
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
         self.library_protection_ui(ctx);
@@ -1291,6 +1296,7 @@ impl App {
                 if self.library_scan.active() && ui.button(tr!("cancel scan")).help(ui, HelpControl::CrateCancel).clicked() {
                     self.library_scan.cancel();
                 }
+                if ui.button(tr!("health…")).help(ui, HelpControl::LibraryHealth).clicked() { self.library_health.open = true; }
                 if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
                 if ui.button(tr!("locks…")).help(ui,HelpControl::PreparationLocks).clicked() {self.library_protection.open=true;}
@@ -1351,6 +1357,7 @@ impl App {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
                         let mut cells = Cells::new(item, played_at, now);
                         if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); if !track.locks.is_empty() {cells.title.push_str(" [locked]");} }
+                        if let Some(observation) = self.library_health.observation(item) { cells.title.push_str(&format!(" [{}{}]", observation.condition.label(), if observation.read_only { " · read-only" } else { "" })); }
                         cells
                     });
                     if cells.refresh_play(played_at, now) {
@@ -1377,7 +1384,9 @@ impl App {
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
                     accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
-                    if let Some(track) = self.library_metadata.catalog.track(&item.source) { accessibility::status(ui, &resp, &format!("{}; {}",track.annotations.description(),track.locks.description())); }
+                    let preparation = self.library_metadata.catalog.track(&item.source).map_or_else(String::new, |track| format!("{}; {}",track.annotations.description(),track.locks.description()));
+                    let media = self.library_health.observation(item).map_or_else(|| "Media not validated for this source version".into(), |observation| observation.description());
+                    accessibility::status(ui, &resp, &format!("{preparation}; {media}"));
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
@@ -1385,6 +1394,7 @@ impl App {
                         self.library_metadata.catalog.version(&item.source, item.fingerprint).and_then(|v| v.tags.as_ref())
                             .map_or_else(|| "Title/artist/key: filename or catalog fallback; embedded tags not yet inspected".into(), |tags| tags.describe()),
                         cells.played_tooltip.clone(),
+                        self.library_health.observation(item).map_or_else(|| "Media: not validated for this source version".into(), |observation| observation.description()),
                         self.library_metadata.catalog.track(&item.source).map(|track|track.annotations.description()).unwrap_or_default(),
                         format!("Track ID: {identity}"), format!("Location: {:?}", item.source),
                         help::tooltip_text(HelpControl::CrateRow),

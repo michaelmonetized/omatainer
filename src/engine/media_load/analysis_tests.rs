@@ -9,6 +9,37 @@ use crate::{
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+#[test]
+fn foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current() {
+    let files = Files::new();
+    let source = files.source("validation.wav", &wav(12000, 48000, 2, false));
+    let (entered, seen) = mpsc::channel();
+    let (resume, wait) = mpsc::channel();
+    let mut first = true;
+    let loader = Loader::with_workers(move |_, _| {
+        if first { first=false; entered.send(()).unwrap(); wait.recv_timeout(Duration::from_secs(3)).unwrap(); }
+        Ok(super::tests::sample("foreground"))
+    }, real_run, performance::Handle::default()).unwrap();
+    loader.request(0, "foreground".into()).unwrap();
+    seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    let token = loader.request_health(media_health::Request { source:source.source, fingerprint:Some(source.fingerprint) }).unwrap();
+    assert!(loader.request(255, "invalid".into()).is_err());
+    assert_eq!(token.failure(), None);
+    loader.request(1, "foreground".into()).unwrap();
+    assert_eq!(token.failure(), Some(AnalysisFailure::Preempted));
+    resume.send(()).unwrap();
+    let until = Instant::now()+Duration::from_secs(3);
+    loop {
+        if let Some(done) = loader.take_health_ready() {
+            assert_eq!(done.token.id, token.id);
+            assert!(matches!(done.result, Err(AnalysisFailure::Preempted)));
+            break;
+        }
+        assert!(Instant::now()<until);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
 fn request(files: &Files) -> AnalysisRequest {
     AnalysisRequest {
         reference: files.source("analysis.wav", &wav(8000, 8000, 1, false)),

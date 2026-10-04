@@ -161,7 +161,7 @@ impl Token {
             millionths: (part != UNKNOWN).then_some(part as u32),
         }
     }
-    fn set_progress(&self, stage: Stage, done: u64, total: Option<u64>) {
+    pub(super) fn set_progress(&self, stage: Stage, done: u64, total: Option<u64>) {
         let fraction = total
             .filter(|total| *total > 0)
             .map(|total| ((u128::from(done.min(total)) * 1_000_000) / u128::from(total)) as u64)

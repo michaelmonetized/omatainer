@@ -123,6 +123,9 @@ impl Gui {
     pub(in crate::ui) fn click(&mut self, label: &str) {
         self.action(label, Action::Click, None);
     }
+    pub(in crate::ui) fn visible_text(&self) -> impl Iterator<Item = &str> {
+        self.nodes.iter().filter_map(|(_, node)| node.label().or(node.value()))
+    }
     pub(in crate::ui) fn text(&mut self, label: &str, value: &str) {
         self.action(label, Action::Focus, None);
         self.frame(vec![
