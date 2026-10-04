@@ -12751,7 +12751,7 @@
     "src/ui/library_scan/traversal.rs": "de58e06c3c4af3b9494dd933eb654f665c9f3faefce3b79adf8a29d3a40f43cc",
     "src/ui/library_scan/watch.rs": "9bd29e4e7d98ddbeefcd48e71eb139b700800af06515fece2c1f887f0d1694ef",
     "src/ui/library_smart_crates.rs": "ee8d76b9b594071219ca926a5d2c2d786f04c00e041134b3f97bd107ca6cc6a8",
-    "src/ui/library_smart_crates/tests.rs": "98ee8e5f5cd9d4133056144012a157f43372c71780970f7cd18abbb3778d56e0",
+    "src/ui/library_smart_crates/tests.rs": "d735f602c4bbff35170e3481ba99c555ec65cca519ef9c3e867beedc94796467",
     "src/ui/library_store.rs": "5461b734d525ccf94db65e0f65aa8217a8e8773dd9e2d81bd3a75e15cff076d8",
     "src/ui/library_store/import_tests.rs": "93467ae668b164de2c9415425048858b68697bbe51bf5b33d4ad118a21b65f3b",
     "src/ui/library_store/import_tests/relocation.rs": "28d31e97bcbc9a4337f780635f3b4dcc033eed2cef9a6ea6150287eaf7e3dfaf",
