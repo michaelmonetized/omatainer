@@ -18,6 +18,6 @@ The recorded test material is the unmodified Google LLC [Groove MIDI Dataset 1.0
 
 ## Qualification status
 
-Development focused builds passed. The source-bound combined full suite, private native audio paths and optimized performance gate are pending for this new source revision. The previous combined receipt remains explicitly tied to its earlier source. Ignored, queued or earlier-source workloads are not evidence for this revision.
+Frozen source `28d82d7` passes the source-bound combined suite (1,580 tests), recorded human-drum native workflow, eight-workload optimized gate and three maximum-anchor render CPU measurements. [Combined receipt and observed limits](remaining-backlog-qualification.md) retain the 128-frame callback wall overrun and missing native ALSA input frames. Rendering CPU headroom is not a physical or scheduling-deadline claim. Ignored or earlier-source checks are not counted as current passes.
 
 These software fixtures do not establish human listening quality, physical hardware compatibility, display/converter latency, system suspend or USB unplug recovery.
