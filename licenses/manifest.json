@@ -12555,7 +12555,7 @@
     "src/engine/undo/mod.rs": "239d2b26f17d9ceeb634c907499188bf534a2a0cd1a7b660206e08ff926833ea",
     "src/engine/undo/patch.rs": "160cb312e80405c8990d90cc12935208251775504e3ec43f9ef126ad019c5dbc",
     "src/engine/undo/recording.rs": "906a437382e17103b7c4a685d849e755e05cc10f0d6668612fae3b4a17746cc7",
-    "src/engine/undo/tests.rs": "c4b9464fb7de7f6d2c62baed138987aa8cc7f66acd4e2c0746f83a086fb92d7e",
+    "src/engine/undo/tests.rs": "c6ae529963dacd0b544967b4d74d885461609622e5875b37ad6f05c38d663f04",
     "src/engine/video_transport.rs": "932c934e2bd46f2c0c010f6be6657e20c4d01b1f94bd4be69aef3aa227feb2bc",
     "src/engine/voice_pitch_tests.rs": "0842859db49b0302059622d156153f929f96bd542a7933d90d8929e465d01d4d",
     "src/instance.rs": "23f44d05040770939d3bdcd09b4feeb3c3afc038b5160b9a16741a11e208b7d4",

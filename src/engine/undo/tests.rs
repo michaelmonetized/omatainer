@@ -1264,7 +1264,11 @@ fn independent_short_holds_do_not_pin_prior_recording_inverses_during_dense_cont
         // renderer measurement. It must not disguise active-owner pinning.
         rt.refresh_history_protection();
         let deadline = Instant::now() + Duration::from_secs(2);
-        while rt.undo.preflight(0).is_err() || rt.undo.scratch.as_ref().unwrap().len() < 2 {
+        while rt.undo.preflight(0).is_err()
+            || rt.undo.scratch.as_ref().unwrap().len() < 2
+            || !rt.undo.retired.as_ref().unwrap().is_empty()
+            || rt.undo.shared.retired_bytes.load(Ordering::Acquire) != 0
+        {
             assert!(Instant::now() < deadline, "history worker failed to settle");
             std::thread::sleep(Duration::from_millis(1));
         }
