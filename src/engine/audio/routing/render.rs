@@ -1,8 +1,5 @@
 //! Each ordered node renders once; all physical outputs share the safety envelope.
-use super::{
-    model::*,
-    prepared::{stereo, Prepared},
-};
+use super::{model::*, prepared::Prepared};
 use crate::engine::{mixer_gain, RtEngine};
 
 impl Prepared {
@@ -28,17 +25,10 @@ impl Prepared {
         };
         let mut cue = [0.0; 2];
         for index in 0..self.nodes.len() {
-            let input = self.gather(index);
+            self.gather(index);
+            let input = [self.nodes[index].input[0], self.nodes[index].input[1]];
             let group = self.nodes[index].group;
             let taps = match group {
-                Group::Input(id) => {
-                    let mut frame = [0.0; MAX_PORT_CHANNELS];
-                    let port = self.model.port(id, Direction::Input).unwrap();
-                    for (value, physical) in frame.iter_mut().zip(&port.channels) {
-                        *value = rt.routing_input_frame[usize::from(*physical)];
-                    }
-                    [frame; 3]
-                }
                 Group::Track(id) => {
                     if let Some(slot) = self.nodes[index].slot.filter(|slot| {
                         rt.session
@@ -56,9 +46,9 @@ impl Prepared {
                                 self.legacy_send(scene, [left, right]);
                             }
                         }
-                        rt.routing_track_taps.map(stereo)
+                        rt.routing_track_taps
                     } else {
-                        [[0.0; MAX_PORT_CHANNELS]; 3]
+                        [[0.0; 2]; 3]
                     }
                 }
                 Group::Scene(id) => {
@@ -78,9 +68,9 @@ impl Prepared {
                         );
                         rt.load_profile.scene(slot, timer);
                         self.legacy_send(self.main, output);
-                        [input, stereo(output), stereo(output)]
+                        [input, output, output]
                     } else {
-                        [[0.0; MAX_PORT_CHANNELS]; 3]
+                        [[0.0; 2]; 3]
                     }
                 }
                 Group::Deck(deck) => {
@@ -96,16 +86,7 @@ impl Prepared {
                         cue[0] += left;
                         cue[1] += right;
                     }
-                    [
-                        stereo(rt.routing_deck_taps[0]),
-                        stereo([left, right]),
-                        stereo(mixed),
-                    ]
-                }
-                Group::Bus(id) => {
-                    let bus = self.model.buses.iter().find(|bus| bus.id == id).unwrap();
-                    let gain = if bus.mute { 0.0 } else { bus.gain };
-                    [input, input, input.map(|value| value * gain)]
+                    [rt.routing_deck_taps[0], [left, right], mixed]
                 }
                 Group::Main => {
                     let before = [input[0] + click, input[1] + click];
@@ -124,14 +105,34 @@ impl Prepared {
                             + preview[channel])
                             * rt.master;
                     }
-                    [stereo(before), stereo(post_fx), stereo(output)]
+                    [before, post_fx, output]
                 }
-                Group::Output(_) | Group::Record(_) => [input; 3],
+                Group::Input(_) | Group::Bus(_) | Group::Output(_) | Group::Record(_) => {
+                    let input = self.nodes[index].input;
+                    let taps = match group {
+                        Group::Input(_) => {
+                            let mut frame = [0.0; MAX_PORT_CHANNELS];
+                            let port = &self.model.ports[self.nodes[index].slot.unwrap()];
+                            for (value, physical) in frame.iter_mut().zip(&port.channels) {
+                                *value = rt.routing_input_frame[usize::from(*physical)];
+                            }
+                            [frame; 3]
+                        }
+                        Group::Bus(_) => {
+                            let bus = &self.model.buses[self.nodes[index].slot.unwrap()];
+                            let gain = if bus.mute { 0.0 } else { bus.gain };
+                            [input, input, input.map(|value| value * gain)]
+                        }
+                        _ => [input; 3],
+                    };
+                    self.publish(index, taps);
+                    if let Group::Record(id) = group {
+                        rt.routing_pipe.recorder.capture(id, taps[2]);
+                    }
+                    continue;
+                }
             };
-            self.publish(index, taps);
-            if let Group::Record(id) = group {
-                rt.routing_pipe.recorder.capture(id, taps[2]);
-            }
+            self.publish_stereo(index, taps);
         }
         let mut output = self.outputs(channels);
         let mut peak = [0.0_f32; 2];

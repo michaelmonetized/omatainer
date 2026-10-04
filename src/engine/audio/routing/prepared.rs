@@ -13,7 +13,6 @@ pub struct Node {
     pub width: usize,
     pub input: Frame,
     pub taps: [Frame; 3],
-    pub meter: Frame,
 }
 
 #[derive(Clone, Debug)]
@@ -64,12 +63,15 @@ impl Prepared {
                 slot: match group {
                     Group::Track(id) => layout.tracks.iter().position(|item| item.id == id),
                     Group::Scene(id) => layout.scenes.iter().position(|item| item.id == id),
+                    Group::Input(id) | Group::Output(id) | Group::Record(id) => {
+                        model.ports.iter().position(|port| port.id == id)
+                    }
+                    Group::Bus(id) => model.buses.iter().position(|bus| bus.id == id),
                     _ => None,
                 },
                 width: model.width(group, layout).unwrap(),
                 input: [0.0; MAX_PORT_CHANNELS],
                 taps: [[0.0; MAX_PORT_CHANNELS]; 3],
-                meter: [0.0; MAX_PORT_CHANNELS],
             })
             .collect();
         Ok(Self {
@@ -90,29 +92,34 @@ impl Prepared {
     }
 
     /// Sum a node's explicit incoming maps.
-    /// Takes its prepared index; returns the mapped input after all earlier sources have rendered.
-    pub fn gather(&mut self, index: usize) -> Frame {
+    /// Takes its prepared index; sums into its prepared input after all earlier sources have rendered.
+    pub fn gather(&mut self, index: usize) {
+        let (sources, destination) = self.nodes.split_at_mut(index);
+        let input = &mut destination[0].input;
         for link in &self.incoming[index] {
+            let source = &sources[link.source].taps[link.tap];
             for map in &link.map {
-                let value =
-                    self.nodes[link.source].taps[link.tap][usize::from(map.source)] * map.gain;
-                self.nodes[index].input[usize::from(map.destination)] += value;
+                input[usize::from(map.destination)] += source[usize::from(map.source)] * map.gain;
             }
         }
-        self.nodes[index].input
     }
 
     /// Publish a node's three tap points.
-    /// Takes its index and rendered frames; replaces samples and updates independent peak meters.
+    /// Takes its index and rendered frames; replaces only its bounded sample channels.
     pub fn publish(&mut self, index: usize, taps: [Frame; 3]) {
         let node = &mut self.nodes[index];
-        node.taps = taps;
-        for (meter, value) in node.meter[..node.width].iter_mut().zip(taps[2]) {
-            *meter = if value.is_finite() {
-                (*meter * 0.999).max(value.abs())
-            } else {
-                f32::INFINITY
-            };
+        for (destination, source) in node.taps.iter_mut().zip(&taps) {
+            destination[..node.width].copy_from_slice(&source[..node.width]);
+        }
+    }
+
+    /// Publish native stereo taps directly.
+    /// Takes a stereo node index and three sample pairs; writes only its two channels.
+    pub fn publish_stereo(&mut self, index: usize, taps: [[f32; 2]; 3]) {
+        let node = &mut self.nodes[index];
+        debug_assert_eq!(node.width, 2);
+        for (destination, source) in node.taps.iter_mut().zip(taps) {
+            destination[..2].copy_from_slice(&source);
         }
     }
 
@@ -128,10 +135,10 @@ impl Prepared {
     pub fn outputs(&self, channels: usize) -> [f32; MAX_PHYSICAL_CHANNELS] {
         let mut result = [0.0; MAX_PHYSICAL_CHANNELS];
         for node in &self.nodes {
-            let Group::Output(id) = node.group else {
+            let Group::Output(_) = node.group else {
                 continue;
             };
-            let port = self.model.port(id, Direction::Output).unwrap();
+            let port = &self.model.ports[node.slot.unwrap()];
             for (&destination, value) in port.channels.iter().zip(node.taps[2]) {
                 if usize::from(destination) < channels.min(MAX_PHYSICAL_CHANNELS) {
                     result[usize::from(destination)] += value;
@@ -160,12 +167,4 @@ impl Prepared {
                 })
                 .sum::<usize>()
     }
-}
-
-/// Expand a stereo tap into a routing frame.
-/// Takes left/right samples; returns a zero-filled bounded channel frame.
-pub fn stereo(frame: [f32; 2]) -> Frame {
-    let mut result = [0.0; MAX_PORT_CHANNELS];
-    result[..2].copy_from_slice(&frame);
-    result
 }

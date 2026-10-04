@@ -173,8 +173,8 @@ fn all_64_physical_outputs_render_distinct_mapped_samples_without_heap_work() {
             destination: Group::Output(output),
             map: (0..32)
                 .map(|channel| ChannelMap {
-                    source: channel,
-                    destination: channel,
+                    source: channel as u8,
+                    destination: channel as u8,
                     gain: 1.0,
                 })
                 .collect(),
@@ -342,6 +342,7 @@ fn independent_track_deck_and_bus_taps_preserve_pre_mixer_audio() {
 #[test]
 fn maximum_saved_graph_processes_full_native_width_without_callback_heap_work() {
     let mut rt = crate::engine::project::maximum_for_test().into_offline();
+    rt.legacy_gain_math = false;
     let mut model = Model::default();
     model.ports.clear();
     model.buses.clear();
@@ -393,10 +394,10 @@ fn maximum_saved_graph_processes_full_native_width_without_callback_heap_work() 
                 tap: Tap::PostMixer,
             },
             destination,
-            map: (0..16)
+            map: (0..MAX_MAPS / MAX_CONNECTIONS)
                 .map(|channel| ChannelMap {
-                    source: channel,
-                    destination: channel,
+                    source: channel as u8,
+                    destination: channel as u8,
                     gain: 0.125,
                 })
                 .collect(),
@@ -420,4 +421,14 @@ fn maximum_saved_graph_processes_full_native_width_without_callback_heap_work() 
     assert_eq!(heap, crate::engine::test_alloc::Counts::default());
     assert!(block.iter().all(|value| value.is_finite()));
     println!("Maximum routing: 128 tracks, 512 scenes, 96 ports, 32 buses, 256 connections, 4096 maps; 128 frames × 32 native channels in {} ns; heap {:?}", started.elapsed().as_nanos(), heap);
+    println!("Maximum routing render CPU: {:?} ns", rt.render_cpu_ns);
+    let retained = rt.routing.take();
+    let started = std::time::Instant::now();
+    rt.process_interleaved(&mut block, 32);
+    println!(
+        "Same maximum session without custom routing: {} ns wall, {:?} ns render CPU",
+        started.elapsed().as_nanos(),
+        rt.render_cpu_ns
+    );
+    drop(retained);
 }
