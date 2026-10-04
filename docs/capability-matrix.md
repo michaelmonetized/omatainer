@@ -80,6 +80,17 @@ Local 100000-track synthetic catalog; search fields reflect implemented title/ar
 
 Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification.
 
+### Issue #144: implemented
+
+- native UI: [src/ui/library_layout.rs](../src/ui/library_layout.rs) — Named layout editor with visibility, order, widths, density, two sorts, preview, save and discard
+- browser: [src/ui/library_view.rs](../src/ui/library_view.rs) — Stable source/viewport-preserving ordering with cached Unicode prefixes and virtualized rows
+- embedded artwork: [src/ui/library_artwork.rs](../src/ui/library_artwork.rs) — One bounded read-only source-version-checked PNG/JPEG worker and retryable thumbnail cache
+- saved profiles: [src/preferences/library_layout.rs](../src/preferences/library_layout.rs) — Validated saved layouts and preferences version 13 migration
+- Acceptance fixtures: `preferences::library_layout::tests`, `ui::library_layout::tests`, `ui::library_artwork::tests`.
+- Evidence: [docs/validation/issue-144-library-layouts.md](../docs/validation/issue-144-library-layouts.md).
+
+Focused software routes pass; complete ordinary and optimized qualification are pending. Artwork previews support embedded PNG/JPEG in scanned local files, with explicit resource limits and truthful absence/errors. Sorting and presentation do not establish physical controller or audio timing qualification.
+
 ### Issue #145: implemented
 
 - native UI: [src/ui/library_health.rs](../src/ui/library_health.rs) — Library → health… → captured selected/filtered validation
@@ -120,7 +131,7 @@ All 1498 ordinary checks and private 32-channel native routing pass on the recor
 - Acceptance fixtures: `engine::sampler::playback_tests`, `sampler_bank::store::tests::legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header`, `sampler_bank::tests::cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values`, `engine::project::tests::sampler_tests::sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields`, `ui::sampler_editor::tests::native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop`, `ui::sampler_pad_tests::mouse_context_and_focused_shift_escape_stop_exact_slots`, `engine::midi::profile_tests::exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press`, `engine::control::admission_tests::saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane`.
 - Evidence: [docs/validation/issue-153-sampler-playback.md](../docs/validation/issue-153-sampler-playback.md).
 
-Software qualification is in progress. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview.
+Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native routing fixture with zero missing/overflow input frames. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview.
 
 ### Issue #154: implemented
 
@@ -173,7 +184,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#141](https://github.com/michaelmonetized/omatainer/issues/141) | Analyze and recall safe per-track gain adjustment | planned |
 | [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | planned |
 | [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | planned |
-| [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | planned |
+| [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | implemented |
 | [#145](https://github.com/michaelmonetized/omatainer/issues/145) | Expose missing, corrupt, unsupported and read-only track status | implemented |
 | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented |
 | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned |

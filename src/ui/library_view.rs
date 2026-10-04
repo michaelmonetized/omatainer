@@ -12,6 +12,8 @@ pub(super) struct LibraryView {
     searched_all: bool,
     played_filter: bool,
     played_revision: u64,
+    sorts: [Option<crate::preferences::library_layout::Sort>; 2],
+    pub horizontal_offset: f32,
     crate_return: Option<(Option<crate::library::crates::CrateId>, String, Option<LibSource>, f32)>,
     crate_id: Option<crate::library::crates::CrateId>,
     collection_revision: u64,
@@ -176,7 +178,9 @@ impl App {
 
     pub(super) fn refresh_library_view(&mut self) {
         self.refresh_named_crates();
+        let sorts = self.library_layout.live.current().sorts();
         let view = &mut self.library_view;
+        let order_changed = sorts != view.sorts;
         let selected_scope = if view.search_all { None } else { self.library_crates.selected.clone() };
         let selected_crate = &selected_scope;
         let scope_changed = view.search_all != view.searched_all;
@@ -190,8 +194,9 @@ impl App {
         // so the scan worker remains responsible for retiring the large Vec.
         let library_changed = view.library.as_ptr() != Arc::as_ptr(&self.library);
         let query_changed = view.query != self.lib_filter;
-        let played_revision = self.last_played.membership_revision();
-        let played_changed = view.played_filter && view.played_revision != played_revision;
+        let sort_played = sorts.iter().flatten().any(|sort|sort.column == crate::preferences::library_layout::Column::Played);
+        let played_revision = if sort_played { self.last_played.revision() } else { self.last_played.membership_revision() };
+        let played_changed = (view.played_filter || sort_played) && view.played_revision != played_revision;
         let annotations_changed = view.catalog.as_ptr() != Arc::as_ptr(&self.library_metadata.catalog);
         if !library_changed {
             let source = view
@@ -211,7 +216,7 @@ impl App {
             }
             view.last_played_index = self.last_play_idx;
         }
-        if library_changed || query_changed || crate_changed || annotations_changed || scope_changed || played_changed {
+        if library_changed || query_changed || crate_changed || annotations_changed || scope_changed || played_changed || order_changed {
             let parsed = crate::library::search::Query::parse(&self.lib_filter);
             view.played_filter = parsed.as_ref().is_ok_and(|query|query.uses_play_history());
             view.played_revision = played_revision;
@@ -247,8 +252,8 @@ impl App {
             } else {
                 indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| matches(item).then_some(index)));
             }
-            // All tracks keeps the worker order; named crates keep direct manual
-            // membership order. Filtering never sorts either view.
+            library_layout::sort::order(indices, &self.library, &self.library_metadata.catalog, &self.last_played, sorts);
+            view.sorts = sorts;
             view.generation = view.generation.checked_add(1).expect("library view generation exhausted");
             let find = |source: &LibSource| {
                 view.indices

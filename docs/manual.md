@@ -2510,6 +2510,38 @@ Press holds a gate; release stops it, including outside the cell. Space/Enter ho
 
 Workflow: Record a held note.
 
+### Library layouts
+
+Named layouts in the active profile
+
+Edit columns, density and ordering. Preview changes the browser locally. Save layouts writes through the preference owner; a busy or dirty Preferences draft must be finished first. Discard restores the saved profile. Copy uses a distinct name; Delete keeps at least one layout.
+
+Workflow: Prepare a DJ deck.
+
+### Library columns
+
+Visibility, order and width in points
+
+Show or hide any column while keeping at least one visible. Move a column with its arrows and resize it from 36 to 1024 points. Header and row cells share horizontal scrolling and clip long text to their own column.
+
+Workflow: Prepare a DJ deck.
+
+### Library sorting
+
+Primary and secondary metadata order
+
+Choose a primary and a different secondary column, with independent directions. Click a header for primary sorting; Shift-click sets secondary sorting. Missing metadata remains last, equal values preserve published/manual order, and Unicode text is compared without case differences. Manual order restores direct saved crate membership. Source selection and viewport anchors survive sorting.
+
+Workflow: Prepare a DJ deck.
+
+### Library density and artwork
+
+Compact, Comfortable or Artwork rows
+
+Compact retains small rows; Comfortable adds space; Artwork shows embedded PNG/JPEG covers for visible scanned local sources. One bounded worker reads source-version-checked pictures; previews retain a bounded cache. Missing, unsupported or failed artwork is reported. Reads pause under protection; artwork never substitutes for source identity.
+
+Workflow: Prepare a DJ deck.
+
 ### Search crate
 
 Text filter · AND terms and explicit fields

@@ -34,12 +34,14 @@ pub(super) struct History {
     by_source: HashMap<LibSource, HashMap<Option<FileFingerprint>, SystemTime>>,
     latest: Option<(SystemTime, Identity)>,
     membership_revision: u64,
+    revision: u64,
 }
 impl History {
     pub(super) fn record(&mut self, identity: &Identity, played: SystemTime) -> bool {
         if !self.by_source.get(&identity.source).is_some_and(|versions|versions.contains_key(&identity.fingerprint)) {
             self.membership_revision = self.membership_revision.checked_add(1).expect("play history membership exhausted");
         }
+        self.revision = self.revision.checked_add(1).expect("play history revision exhausted");
         self.by_source
             .entry(identity.source.clone())
             .or_default()
@@ -55,6 +57,9 @@ impl History {
     /// Observe confirmed played membership changes.
     /// Takes no arguments; returns a revision that changes only when another source/version first plays.
     pub(super) fn membership_revision(&self) -> u64 { self.membership_revision }
+    /// Observe every confirmed history update for timestamp sorting.
+    /// Takes this history; returns its monotonically increasing update revision.
+    pub(super) fn revision(&self) -> u64 { self.revision }
     pub(super) fn latest_identity(&self) -> Option<&Identity> {
         self.latest.as_ref().map(|(_, identity)| identity)
     }

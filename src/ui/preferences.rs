@@ -220,6 +220,7 @@ impl App {
         );
         self.apply_appearance(ctx);
         self.apply_automation();
+        self.library_layout.apply(self.settings.profile().library_layout.clone());
         if self.settings.profile().startup.scan_library {
             self.scan_library();
         }
@@ -295,6 +296,7 @@ impl App {
         if self.settings.poll() {
             self.apply_appearance(ctx);
             self.apply_automation();
+            if old.library_layout != self.settings.profile().library_layout || old_profile != self.settings.applied.active { self.library_layout.apply(self.settings.profile().library_layout.clone()); }
             if old.library_roots != self.settings.profile().library_roots || old_profile!=self.settings.applied.active {
                 self.library_scan.cancel();
                 self.library_metadata.cancel_scan();
@@ -323,6 +325,7 @@ impl App {
                 self.settings.routing_pending=true;
             }
         }
+        self.poll_library_layout_save();
         if self.settings.routing_pending && !self.engine.midi.connections_busy() && self.engine.midi.policy_status().is_none_or(|s|!s.pending()) {
             self.settings.routing_pending=false;
             match self.engine.midi.configure_routing(self.settings.profile().midi_routing.clone()) {

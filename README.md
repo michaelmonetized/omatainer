@@ -319,6 +319,10 @@ coverage: at most 64 inputs, 64 folder levels, one million visited entries and
 100,000 rows; the first 32 skipped paths are shown. Cancellation retains the
 prior crate. The worker does not follow descendant symlinks.
 
+**layout…** saves named library layouts in the active profile. Show or hide columns, move them with the editor’s arrows and resize their widths. Choose Compact, Comfortable or Artwork rows; Artwork reads real embedded PNG/JPEG covers for visible scanned local tracks. Missing artwork stays explicit, and **Retry artwork** refreshes the bounded cache after access changes.
+
+Choose a primary and secondary sort with independent directions. Header clicks sort by that column; Shift-click adds a different secondary column. Missing metadata remains last, equal values keep their published or manual crate order, and sorting preserves selected-source and scroll anchors. **Manual order / none** restores the direct saved crate order. **Preview layout** changes the browser locally; **Save layouts** persists through the preference owner; **Discard layout preview** restores saved layouts. Preferences version 13 migrates older profiles without writing until explicit save. [Layout qualification](docs/validation/issue-144-library-layouts.md) records the software checks.
+
 **Manage music folders in Preferences** edits saved watched roots. After the
 startup/manual scan, directory notifications coalesce into one pending rescan;
 a full-scan hint every 30 idle seconds catches missed events and reconnects. Watches

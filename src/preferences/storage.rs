@@ -113,6 +113,9 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 13 && profiles.iter().any(|p|p.get("library_layout").is_some()) {
+        return Err(Error::Invalid("Library layouts require preferences version 13".into()));
+    }
     if version < 12 && profiles.iter().any(|p|p.get("midi_learn").is_some()) {
         return Err(Error::Invalid("MIDI assignments require preferences version 12".into()));
     }
@@ -135,12 +138,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
     let (preferences, migrated) = match version {
-        12 => (
+        13 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -427,10 +430,10 @@ mod tests {
         assert!(decode(&serde_json::to_vec(&original).unwrap()).is_err());
     }
     fn strip_language(value: &mut serde_json::Value) {
-        for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn"); profile["appearance"].as_object_mut().unwrap().remove("locale"); }
+        for profile in value["profiles"].as_object_mut().unwrap().values_mut() { profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn");profile.as_object_mut().unwrap().remove("library_layout"); profile["appearance"].as_object_mut().unwrap().remove("locale"); }
     }
     fn strip_appearance(profile: &mut serde_json::Value) {
-        profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn");
+        profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn");profile.as_object_mut().unwrap().remove("library_layout");
         profile.as_object_mut().unwrap().remove("automation");
         for field in ["locale", "contrast", "reduced_motion", "waveform_contrast", "level_contrast"] { profile["appearance"].as_object_mut().unwrap().remove(field); }
     }
@@ -734,7 +737,7 @@ mod workspace_migration_tests {
         let mut legacy=serde_json::to_value(&current).unwrap();
         legacy["version"]=10.into();
         for profile in legacy["profiles"].as_object_mut().unwrap().values_mut() {
-            profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn");
+            profile.as_object_mut().unwrap().remove("workspaces");profile.as_object_mut().unwrap().remove("midi_learn");profile.as_object_mut().unwrap().remove("library_layout");
         }
         let (migrated,changed)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
         assert!(changed); assert_eq!(migrated,current);
@@ -753,9 +756,9 @@ mod midi_learn_migration_tests {
     #[test]
     fn version_eleven_migrates_empty_assignments_and_cannot_smuggle_new_bindings() {
         let current=Preferences::defaults(Path::new("/tmp"));let mut old=serde_json::to_value(&current).unwrap();old["version"]=11.into();
-        for profile in old["profiles"].as_object_mut().unwrap().values_mut(){profile.as_object_mut().unwrap().remove("midi_learn");}
+        for profile in old["profiles"].as_object_mut().unwrap().values_mut(){profile.as_object_mut().unwrap().remove("midi_learn");profile.as_object_mut().unwrap().remove("library_layout");}
         let (migrated,changed)=decode(&serde_json::to_vec(&old).unwrap()).unwrap();assert!(changed);assert_eq!(migrated,current);
         old["profiles"]["Studio"]["midi_learn"]=serde_json::to_value(&current.current().unwrap().midi_learn).unwrap();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
-        old["version"]=13.into();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
+        old["version"]=14.into();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
     }
 }

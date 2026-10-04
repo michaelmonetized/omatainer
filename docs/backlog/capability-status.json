@@ -442,7 +442,41 @@
       "evidence": [
         "docs/validation/issue-153-sampler-playback.md"
       ],
-      "limits": "Software qualification is in progress. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview."
+      "limits": "Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native routing fixture with zero missing/overflow input frames. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview."
+    },
+    "144": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_layout.rs",
+          "entry": "Named layout editor with visibility, order, widths, density, two sorts, preview, save and discard"
+        },
+        {
+          "kind": "browser",
+          "file": "src/ui/library_view.rs",
+          "entry": "Stable source/viewport-preserving ordering with cached Unicode prefixes and virtualized rows"
+        },
+        {
+          "kind": "embedded artwork",
+          "file": "src/ui/library_artwork.rs",
+          "entry": "One bounded read-only source-version-checked PNG/JPEG worker and retryable thumbnail cache"
+        },
+        {
+          "kind": "saved profiles",
+          "file": "src/preferences/library_layout.rs",
+          "entry": "Validated saved layouts and preferences version 13 migration"
+        }
+      ],
+      "fixtures": [
+        "preferences::library_layout::tests",
+        "ui::library_layout::tests",
+        "ui::library_artwork::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-144-library-layouts.md"
+      ],
+      "limits": "Focused software routes pass; complete ordinary and optimized qualification are pending. Artwork previews support embedded PNG/JPEG in scanned local files, with explicit resource limits and truthful absence/errors. Sorting and presentation do not establish physical controller or audio timing qualification."
     }
   }
 }

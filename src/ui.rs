@@ -27,6 +27,8 @@ use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
 mod library_view;
+mod library_layout;
+mod library_artwork;
 mod key_hints;
 mod clip_gain;
 use clip_gain::ClipGainEdit;
@@ -144,6 +146,8 @@ pub struct App {
     theme_fonts: Option<Arc<egui::FontDefinitions>>,
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
+    library_layout: library_layout::Layouts,
+    library_artwork: library_artwork::Artwork,
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
@@ -280,6 +284,8 @@ impl App {
             theme_fonts: None,
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
+            library_layout: library_layout::Layouts::default(),
+            library_artwork: library_artwork::Artwork::default(),
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
@@ -893,6 +899,7 @@ impl App {
         self.music_provider_ui(ctx);
         self.video_ui(ctx);
         self.preferences_ui(ctx);
+        self.library_layout_ui(ctx);
         self.audio_settings_ui(ctx);
         self.recovery_ui(ctx);
         self.diagnostics_panel(ctx);
@@ -1312,6 +1319,7 @@ impl App {
         ui.vertical(|ui| {
             ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
+                if ui.button("layout…").help(ui, HelpControl::LibraryLayouts).clicked() { self.library_layout.open=true; }
                 let mut all = self.library_view.search_all;
                 let scope = ui.checkbox(&mut all, tr!("Search all library"));
                 help::annotate(ui, &scope, HelpControl::CrateSearchScope);
@@ -1346,7 +1354,7 @@ impl App {
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
-                ui.label(RichText::new(if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.annotation_rule.is_some()) { tr!("automatic annotation rule") } else if self.library_crates.selected.is_some() { tr!("manual crate order") } else { tr!("↓ bpm up   ↑ bpm down   same bpm → key → name") }).size(t.text_size(10.0)).color(t.muted));
+                ui.label(RichText::new(if self.library_layout.live.current().primary.is_some() { "custom column sort" } else if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.smart_rule.is_none() && node.annotation_rule.is_none()) { "manual crate order" } else { "published catalog order" }).size(t.text_size(10.0)).color(t.muted));
                 ui.label(RichText::new(tr!("metadata: inspect tags…")).size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(t.text_size(10.0)).color(t.fg_dim)).truncate())
@@ -1357,13 +1365,26 @@ impl App {
             if let Some(state)=selected_source.as_ref().and_then(|source|self.library_scan.summary.as_ref().and_then(|s|s.availability.get(source))) {
                 ui.label(crate::localization::format("Last scan: {state}. Library records are retained.", &[format!("{}", state)]));
             }
-            let header = ["song", "bpm · source", "key", "length", "last play", "artist", "rating", "color", "group", "tags", "notes"];
-            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0, 64.0, 88.0, 128.0, 160.0, 240.0].map(|width| width * (t.text_size(11.0) / 11.0).max(1.0));
-            ui.horizontal(|ui| {
-                for (h, w) in header.iter().zip(col_w.iter()) {
-                    ui.add_sized(Vec2::new(*w, t.target_size(16.0)), egui::Label::new(RichText::new(*h).size(t.text_size(10.0)).color(t.fg_dim)));
-                }
+            let layout = self.library_layout.live.current().clone();
+            let columns: Vec<_> = layout.columns.iter().filter(|spec|spec.visible).map(|spec|(spec.column, spec.width * (t.text_size(11.0) / 11.0).max(1.0))).collect();
+            let row_height = t.target_size(layout.density.height());
+            let artwork_width = if layout.density == crate::preferences::library_layout::Density::Artwork { row_height } else { 0.0 };
+            let header = egui::ScrollArea::horizontal().id_salt("crate-column-header").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).horizontal_scroll_offset(self.library_view.horizontal_offset).show(ui, |ui| {
+                ui.spacing_mut().item_spacing.x=0.0;
+                ui.horizontal(|ui| {
+                    if artwork_width > 0.0 { ui.add_sized(Vec2::new(artwork_width,t.target_size(16.0)),egui::Label::new("Artwork")); }
+                    for (column,width) in &columns {
+                        let sorted = layout.primary.filter(|sort|sort.column==*column).map(|sort|(1,sort)).or_else(||layout.secondary.filter(|sort|sort.column==*column).map(|sort|(2,sort)));
+                        let label = sorted.map_or_else(||column.label().to_string(), |(rank,sort)|format!("{} {}{}",column.label(),rank,if sort.descending { "↓" } else { "↑" }));
+                        let response=ui.add_sized(Vec2::new(*width,t.target_size(16.0)),egui::Button::new(RichText::new(label).size(t.text_size(10.0))).truncate());
+                        accessibility::button(ui,&response,&format!("Sort library by {}",column.label()),None);
+                        help::annotate(ui,&response,HelpControl::LibrarySort);
+                        if response.clicked() { self.sort_library_column(*column,ui.input(|input|input.modifiers.shift)); }
+                    }
+                });
             });
+            self.library_view.horizontal_offset=header.state.offset.x;
+            self.library_artwork.begin_frame(ui.ctx());
             self.refresh_library_view();
             if !self.library_view.annotation_error.is_empty() { ui.colored_label(ui.visuals().warn_fg_color, &self.library_view.annotation_error); }
             if self.library_view.unavailable != 0 {
@@ -1371,10 +1392,14 @@ impl App {
             }
             let focus = ui.make_persistent_id("crate-navigation");
             self.crate_navigation(ui, focus);
-            let row_height = t.target_size(18.0);
             let stride = row_height + ui.spacing().item_spacing.y;
+            if self.library_view.stride > 0.0 && self.library_view.stride != stride {
+                self.library_view.pending_offset=Some(self.library_view.pending_offset.unwrap_or(self.library_view.offset)/self.library_view.stride*stride);
+            }
+            let performance=self.engine.cmd.performance().clone();
+            let artwork_allowed=!self.engine.safe_mode();
             #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
-            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").animated(!t.reduced_motion).auto_shrink([false, false]);
+            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").animated(!t.reduced_motion).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
             if let Some(offset) = self.library_view.pending_offset.take() {
                 scroll = scroll.vertical_scroll_offset(offset);
             }
@@ -1383,6 +1408,7 @@ impl App {
                 for i in rows {
                     let item = &self.library[self.library_view.indices[i]];
                     let played_at = self.item_last_play(item);
+                    let (artwork, artwork_status) = if artwork_width > 0.0 { self.library_artwork.visible(item,&performance,artwork_allowed) } else { (None,String::new()) };
                     let cells = self.library_view.cells.entry(i).or_insert_with(|| {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
                         let mut cells = Cells::new(item, played_at, now);
@@ -1402,21 +1428,32 @@ impl App {
                     }
                     #[cfg(test)] { self.library_view.stats.rendered += 1; }
                     let sel = i == self.lib_sel;
-                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(col_w.iter().sum()), t.target_size(18.0)), Sense::hover());
+                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(columns.iter().map(|(_,width)|width).sum::<f32>()+artwork_width), row_height), Sense::hover());
                     let resp = ui.interact(rect, ui.id().with(("crate-source-row", &item.source)), Sense::click());
                     if sel { ui.painter().rect_filled(rect, 2.0, t.tint(t.accent, 0.18)); }
                     if sel { active_mark(ui.painter(), rect, t.fg); }
                     let mut x = rect.left();
-                    for (txt, w) in [&cells.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist, &cells.annotations[0], &cells.annotations[1], &cells.annotations[2], &cells.annotations[3], &cells.annotations[4]].iter().zip(col_w) {
-                        ui.painter().text(Pos2::new(x + 4.0, rect.center().y), egui::Align2::LEFT_CENTER,
-                            *txt, FontId::proportional(t.text_size(11.0)), if sel { t.accent } else { t.fg });
-                        x += w;
+                    if artwork_width > 0.0 {
+                        let area=Rect::from_center_size(Pos2::new(x+artwork_width/2.0,rect.center().y),Vec2::splat(artwork_width-8.0));
+                        ui.painter().rect_filled(area,2.0,t.bg_darker);
+                        if let Some((texture,size))=artwork {
+                            let size=size*((artwork_width-8.0)/size.x.max(size.y));
+                            ui.painter().image(texture,Rect::from_center_size(area.center(),size),Rect::from_min_max(Pos2::ZERO,Pos2::new(1.0,1.0)),Color32::WHITE);
+                        } else { ui.painter().text(area.center(),egui::Align2::CENTER_CENTER,"—",FontId::proportional(t.text_size(16.0)),t.muted); }
+                        x+=artwork_width;
+                    }
+                    for (column,width) in &columns {
+                        use crate::preferences::library_layout::Column;
+                        let text: &str=match column { Column::Title=>&cells.title,Column::Bpm=>&cells.bpm,Column::Key=>&item.key,Column::Length=>&cells.length,Column::Played=>&cells.played,Column::Artist=>&item.artist,Column::Rating=>&cells.annotations[0],Column::Color=>&cells.annotations[1],Column::Group=>&cells.annotations[2],Column::Tags=>&cells.annotations[3],Column::Notes=>&cells.annotations[4] };
+                        let clip=Rect::from_min_max(Pos2::new(x,rect.top()),Pos2::new(x+width,rect.bottom())).intersect(ui.clip_rect());
+                        ui.painter().with_clip_rect(clip).text(Pos2::new(x+4.0,rect.center().y),egui::Align2::LEFT_CENTER,text,FontId::proportional(t.text_size(11.0)),if sel {t.accent} else {t.fg});
+                        x+=width;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
                     accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
                     let preparation = self.library_metadata.catalog.track(&item.source).map_or_else(String::new, |track| format!("{}; {}",track.annotations.description(),track.locks.description()));
                     let media = self.library_health.observation(item).map_or_else(|| "Media not validated for this source version".into(), |observation| observation.description());
-                    accessibility::status(ui, &resp, &format!("{preparation}; {media}"));
+                    accessibility::status(ui, &resp, &format!("{preparation}; {media}; {artwork_status}"));
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
@@ -1424,6 +1461,7 @@ impl App {
                         self.library_metadata.catalog.version(&item.source, item.fingerprint).and_then(|v| v.tags.as_ref())
                             .map_or_else(|| "Title/artist/key: filename or catalog fallback; embedded tags not yet inspected".into(), |tags| tags.describe()),
                         cells.played_tooltip.clone(),
+                        artwork_status.clone(),
                         self.library_health.observation(item).map_or_else(|| "Media: not validated for this source version".into(), |observation| observation.description()),
                         self.library_metadata.catalog.track(&item.source).map(|track|track.annotations.description()).unwrap_or_default(),
                         format!("Track ID: {identity}"), format!("Location: {:?}", item.source),
@@ -1437,6 +1475,8 @@ impl App {
                     else if let Some(deck) = row_action.and_then(|action| [None, Some(0), Some(1), None][action]) { self.load_sel(deck); }
                 }
             });
+            self.library_artwork.end_frame(ui.ctx());
+            self.library_view.horizontal_offset=output.state.offset.x;
             accessibility::scrollbars(ui, "Crate", &output);
             let navigation = ui.interact(output.inner_rect, focus, Sense::focusable_noninteractive());
             let count = self.library_view.indices.len();
