@@ -199,7 +199,10 @@ fn metadata_rebase_cannot_restore_stale_automatic_values_after_analysis_commit()
         // Stop GUI polling until the actual immutable result is durable.
         wait(|| read(&path).ok().is_some_and(|catalog|
             catalog.version(&reference.source, Some(reference.fingerprint)).unwrap().analysis.is_some()));
-        if protected { f.handle.set_enabled(true).unwrap(); }
+        if protected {
+            wait(|| !f.handle.status().changing);
+            f.handle.set_enabled(true).unwrap();
+        }
         let mut captured = rows[0].stored_metadata();
         captured.last_play = Some(SystemTime::UNIX_EPOCH + Duration::from_secs(100));
         owner.capture(Capture { source: reference.source.clone(), fingerprint: Some(reference.fingerprint),

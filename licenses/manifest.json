@@ -12895,7 +12895,7 @@
     "src/ui/library_layout/tests.rs": "ccb6fbd030cbc7f3d696979731a1255f55a4cdfea9994acc170fdc3b70549f97",
     "src/ui/library_metadata.rs": "5405b7a774ab4d69c76ed5835af585f2d0703eb638e9d36d89a4ddb7e16ddb22",
     "src/ui/library_metadata/analysis.rs": "c2beb619fd5f6ba5798d9cd51b42f3c6faa913203a35a1d6d3bce6686da849f5",
-    "src/ui/library_metadata/analysis/tests.rs": "5495d8e096aba40f669ea1964fae83dc49a23450bbb17d49e2b73ebf51fd1926",
+    "src/ui/library_metadata/analysis/tests.rs": "68d8f04539198c37511129d9a876a3422aaa8d3caa2ce2e590d01c5a27e93d9b",
     "src/ui/library_metadata/collection_rows.rs": "4706b30c8d2e34114140b9a88e68f17711af7aa4a275270ada250579b7f2368a",
     "src/ui/library_metadata/collection_rows/tests.rs": "ff627d6d968fbc5364709d7cb71190023377021a119cfc64ff1f85abb7db57d7",
     "src/ui/library_metadata/collections.rs": "e0ff3b822c4b3dbab5cbbd2aa187a54b0f2a0741c3e33a477d476cb7e111ad17",
