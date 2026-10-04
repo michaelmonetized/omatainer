@@ -18,7 +18,7 @@ The recorded test material is the unmodified Google LLC [Groove MIDI Dataset 1.0
 
 ## Qualification status
 
-The consolidated branch retains 64-anchor capacity, local interval arithmetic and reusable callback/history storage. It passes 174 focused checks and private JACK/PipeWire graph workflows. [Consolidated checkpoint](finished-work-consolidation.md). Full current-source accessibility and optimized qualification remain pending.
+The consolidated branch retains 64-anchor capacity, local interval arithmetic and reusable callback/history storage. Frozen source `096dff2` passes 1,602 ordinary checks, full native accessibility, the optimized eight-workload gate and fresh private JACK/PipeWire graph/settings workflows. Three additional timed 64-anchor runs include source-position history writes and zero Rust heap activity. [Current qualification and observed limits](waveform-qualification.md). The [earlier consolidation checkpoint](finished-work-consolidation.md) retains its original focused evidence.
 
 Earlier frozen 32-anchor source `28d82d7` passes the source-bound combined suite (1,580 tests), recorded human-drum native workflow, eight-workload optimized gate and three maximum-anchor render CPU measurements. [Combined receipt and observed limits](remaining-backlog-qualification.md) retain the 128-frame callback wall overrun and missing native ALSA input frames. Rendering CPU headroom is not a physical or scheduling-deadline claim. Ignored or earlier-source checks are not counted as current passes.
 

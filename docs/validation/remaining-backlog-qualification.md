@@ -1,6 +1,6 @@
 # Combined variable-tempo grid qualification
 
-Newer [input integrity work](input-integrity-consolidation.md) has focused checks and native file-refusal evidence; full qualification of those changes remains pending.
+Newer source `096dff2` includes input integrity, consolidated 64-anchor grids and waveform timing. Its [full qualification](waveform-qualification.md) passes 1,602 ordinary tests, native accessibility, the optimized gate and graph/settings workflows. Native input gaps remain open. The results below retain their earlier 32-anchor source binding.
 
 Frozen source `28d82d7` (full revision in the [receipt](remaining-backlog-qualification.json)). All **608 source hashes remain unchanged** across qualification. Fresh debug test executable SHA-256 `647a5558fd26362092612f76dfbf3a7454372eb8db42e26b9765ccfbc6342e89`.
 
