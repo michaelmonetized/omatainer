@@ -44,9 +44,10 @@ impl Approval {
 impl Handle {
     /// Claim a guarded media mutation.
     /// Takes its deck, current renderer activity and optional review; returns whether one atomic media boundary may proceed without callback waits.
-    pub(crate) fn claim_deck_media(&self, deck: usize, activity: u8, approval: Option<&Approval>) -> bool {
+    pub(crate) fn claim_deck_media(&self, deck: usize, activity: u8, approval: Option<&Approval>, generation:Option<u64>) -> bool {
+        if generation.is_some_and(|generation|generation!=self.deck_load_word(deck)){return false;}
         if let Some(approval) = approval { return approval.claim(self, deck); }
-        let word = self.deck_load_word(deck);
+        let word = generation.unwrap_or_else(||self.deck_load_word(deck));
         let Some(next) = word.checked_add(2) else { return false };
         let command = Command::DeckUnload { deck: deck as u8 };
         self.check(&command, Some(activity)).is_ok()

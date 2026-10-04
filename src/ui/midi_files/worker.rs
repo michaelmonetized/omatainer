@@ -85,6 +85,13 @@ impl Worker {
                 let cancel = job.work().cancel();
                 let result = (|| -> Result<Event, String> {
                     if job.work().cancelled() { return Err("MIDI operation cancelled".into()); }
+                    let (kind,key)=match &job {
+                        Job::Inspect{path,..}=>(crate::background::Kind::Prepare,crate::background::identity(&("midi-inspect",path))?),
+                        Job::Import{preview,..}=>(crate::background::Kind::Prepare,crate::background::identity(&("midi-import",&preview.path,preview.fingerprint))?),
+                        Job::Export{path,cells,..}=>(crate::background::Kind::Render,crate::background::identity(&("midi-export",path,cells))?),
+                    };
+                    let ticket=job.work().background(kind,key,crate::background::MEMORY_BYTES)?;
+                    let _running=ticket.enter(||job.work().cancelled())?;
                     match job {
                         Job::Inspect { path, work: _work } => {
                             if pins.len() >= 3 { return Err("Previous MIDI previews are still retiring; retry shortly".into()); }

@@ -180,7 +180,8 @@ pub(super) fn scan_with_inventory(
                 );
                 break 'roots;
             }
-            request.progress.visited.fetch_add(1, Ordering::Relaxed);
+            let visited=request.progress.visited.fetch_add(1, Ordering::Relaxed)+1;
+            request.progress.reporter.lock().unwrap().progress(visited as u64,None);
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(error) => {

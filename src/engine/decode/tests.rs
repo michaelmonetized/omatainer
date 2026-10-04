@@ -52,6 +52,21 @@ fn wav(frames: usize, sr: u32, ch: u16) -> Vec<u8> {
 }
 
 #[test]
+fn deck_decode_refuses_declared_pcm_over_its_budget_before_decoding_or_allocating_samples() {
+    let mut bytes=wav(1,48000,2);
+    let declared=512u32*1024*1024;
+    bytes[4..8].copy_from_slice(&(36+declared).to_le_bytes());
+    bytes[40..44].copy_from_slice(&declared.to_le_bytes());
+    let fixture=Fixture::new("wav",&bytes);
+    let error=decode_deck_file_progress(&fixture.0,std::fs::File::open(&fixture.0).unwrap(),||false,&super::super::performance::Handle::default(),|_,_|{}).unwrap_err();
+    assert_eq!(error.kind,DecodeFailureKind::Capacity,"{error}");
+    assert_eq!(error.stage,DecodeStage::CreateDecoder);
+    assert_eq!(error.diagnostics.decoded_frames,0);
+    assert_eq!(error.diagnostics.decoded_packets,0);
+    assert_eq!(error.diagnostics.expected_frames,Some(u64::from(declared)/4));
+}
+
+#[test]
 fn pcm_eof_preserves_exact_duration_channels_and_samples() {
     for (sr, ch) in [(8000, 1), (44100, 2), (96000, 2)] {
         let frames = sr as usize / 4;

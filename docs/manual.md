@@ -2750,6 +2750,22 @@ Clear the renderer's history notice. It does not retry a rejected edit or recove
 
 Workflow: Edit and undo.
 
+### Background jobs
+
+Shared worker limits
+
+Inspect queued and running decode, analysis, indexing, rendering and provider work. At most two optional workers and one audio decoder share 3 GiB of declared active-worker reservations. Existing prepared media and caches have separate limits. Worker CPU and disk priorities are lowered on Linux. A finished worker is not proof of renderer application or a completed save.
+
+Workflow: Audio setup.
+
+### Cancel captured job
+
+One stable request identity
+
+Request cooperative cancellation for this exact queued or running job. Reused worker slots and newer requests are not targeted. A filesystem read already in progress may finish before cancellation is observed. Already committed writes retain their actual outcome in the original workflow.
+
+Workflow: Audio setup.
+
 ### Audio diagnostics
 
 Measured CPU, wall time, queues and sampled load

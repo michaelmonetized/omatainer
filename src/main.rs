@@ -9,6 +9,7 @@ mod support;
 mod startup;
 mod licenses;
 mod engine;
+mod background;
 mod library;
 mod music_provider;
 mod video;

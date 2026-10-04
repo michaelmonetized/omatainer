@@ -29,6 +29,18 @@ fn ready(loader: &Loader, deck: usize) -> Completion {
 }
 
 #[test]
+fn full_background_capacity_refuses_a_new_load_without_cancelling_the_active_source() {
+    let performance=performance::Handle::default();let (entered,seen)=mpsc::channel();let (resume,wait)=mpsc::channel();
+    let loader=Loader::with_worker(move |path,_|{entered.send(()).unwrap();wait.recv_timeout(Duration::from_secs(3)).unwrap();Ok(sample(path.to_str().unwrap()))},performance.clone()).unwrap();
+    let token=loader.request(0,"active".into()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    let mut tickets=Vec::new();
+    for id in 0..63 {tickets.push(performance.jobs().request(crate::background::Kind::Index,format!("capacity-{id}"),crate::background::MIB,crate::background::Cancellation::Flag(Arc::new(std::sync::atomic::AtomicBool::new(false)))).unwrap());}
+    assert!(loader.request(0,"refused replacement".into()).unwrap_err().contains("capacity"));
+    assert!(token.is_current(),"refused admission must retain the active decode identity");
+    drop(tickets);resume.send(()).unwrap();let done=ready(&loader,0);assert_eq!(done.token.id,token.id);assert_eq!(done.result.unwrap().sample.name,"active");
+}
+
+#[test]
 fn newer_selection_and_unload_discard_late_success_and_failure() {
     for fail_old in [false, true] {
         let (started, seen) = mpsc::channel();
@@ -340,7 +352,7 @@ fn actual_descriptor_decoder_loads_typed_volume_and_fails_offline_or_changed_mou
     *mounts.lock().unwrap()=Mounts::fixture_offline();loader.request_source(1,source.clone()).unwrap();let completion=ready(&loader,1);
     assert!(completion.result.unwrap_err().to_string().contains("offline"));assert!(completion.fingerprint.is_none() && completion.content_hash.is_none());
     let mut calls=0;let next=Mounts::fixture_volume(root,"TEST-A",2);let policy=performance::Handle::default();let foreground=policy.clone();
-    let loader=Loader::with_backend(move |path,token,file|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,policy,true,
+    let loader=Loader::with_backend(move |path,token,file,_job|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,policy,true,
         move ||{calls+=1;Ok(if calls==1 {mounted.clone()} else {next.clone()})}).unwrap();
     loader.request_source(0,source).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.content_hash.is_none());
 }
@@ -351,9 +363,22 @@ fn production_descriptor_cannot_admit_a_different_path_swapped_during_decode() {
     let files=Files::new();let bytes=wav(8000,8000,1,false);let local=files.source("original.wav",&bytes);let other=files.source("other.wav",&wav(8000,2000,1,false));
     let LibSource::File(path)=local.source else {unreachable!()};let LibSource::File(other)=other.source else {unreachable!()};
     let saved=path.with_extension("saved");let policy=performance::Handle::default();let foreground=policy.clone();
-    let loader=Loader::with_backend(move |path,token,file| {
+    let loader=Loader::with_backend(move |path,token,file,_job| {
         std::fs::rename(path,&saved).unwrap();std::fs::rename(&other,path).unwrap();
         super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground)
     },media_analysis::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
     loader.request(0,path).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.fingerprint.is_none());
+}
+
+#[test]
+fn equivalent_active_and_pending_decodes_coalesce_without_changing_the_request_identity() {
+    let (entered,seen)=mpsc::channel();let (resume,wait)=mpsc::channel();
+    let calls=Arc::new(std::sync::atomic::AtomicUsize::new(0));let worker_calls=calls.clone();
+    let loader=Loader::with_decoder(move |path,_|{worker_calls.fetch_add(1,Ordering::Relaxed);entered.send(()).unwrap();wait.recv().unwrap();Ok(sample(path.to_str().unwrap()))}).unwrap();
+    let first=loader.request(0,"same".into()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    for _ in 0..100 {assert_eq!(loader.request(0,"same".into()).unwrap().id,first.id);}
+    let pending=loader.request(1,"other".into()).unwrap();assert_eq!(loader.request(1,"other".into()).unwrap().id,pending.id);
+    resume.send(()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();resume.send(()).unwrap();
+    assert_eq!(ready(&loader,0).token.id,first.id);assert_eq!(ready(&loader,1).token.id,pending.id);
+    assert_eq!(calls.load(Ordering::Acquire),2);
 }

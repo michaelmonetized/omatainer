@@ -60,6 +60,7 @@ pub(super) enum ScanState {
 
 #[derive(Default)]
 struct Progress {
+    reporter: std::sync::Mutex<crate::background::Reporter>,
     visited: AtomicUsize,
     found: AtomicUsize,
     phase: AtomicU8,
@@ -208,6 +209,16 @@ impl LibraryScan {
                         Err(mpsc::RecvTimeoutError::Timeout)=>{if watcher.poll(&mut inventory) {worker_changed.store(true,Ordering::Release);}continue;},
                         Err(mpsc::RecvTimeoutError::Disconnected)=>break,
                     };
+                    let key=crate::background::identity(&(&request.roots,request.kind==Kind::Import,request.tags.as_ref().map(|job|job.id),request.replacement.as_ref().map(|job|job.id)));
+                    let admitted=key.and_then(|key|request.work.background(crate::background::Kind::Index,key,256*crate::background::MIB))
+                        .and_then(|ticket|ticket.enter(||request.work.cancelled()).map(|running|(ticket,Some(running))));
+                    let (ticket,mut running)=match admitted {
+                        Ok(admitted)=>admitted,
+                        Err(error)=>{let completion=if let Some(job)=&request.tags {Completion::Tags(job.id,Arc::new(tag_jobs::Reply::Failed{message:error,record:None}))}
+                            else if let Some(job)=&request.replacement {Completion::Replacement(job.id,Err(error))}else{Completion::Failed(error)};
+                            if finished.send(completion).is_err(){break;}continue;},
+                    };
+                    *request.progress.reporter.lock().unwrap()=ticket.reporter();
                     if let Some(job) = request.tags.take() {
                         #[cfg(test)]
                         {
@@ -218,6 +229,7 @@ impl LibraryScan {
                             tag_jobs::Reply::Failed { message: "Close an earlier tag review before continuing".into(), record: None }
                         } else { tag_jobs::run(job.task, &request.work) });
                         if tag_pins.len() < 3 { tag_pins.push(result.clone()); }
+                        ticket.progress(1,Some(1));drop(running.take());
                         if finished.send(Completion::Tags(job.id, result)).is_err() { break; }
                         continue;
                     }
@@ -231,12 +243,14 @@ impl LibraryScan {
                             ).map(Arc::new)
                         };
                         if let Ok(receipt) = &result { search_pins.push(receipt.clone()); }
+                        ticket.progress(1,Some(1));drop(running.take());
                         if finished.send(Completion::Replacement(task.id, result)).is_err() { break; }
                         continue;
                     }
                     match traversal::scan_with_inventory(&request, &fingerprints, &mut inventory) {
                         Ok((items, next_fingerprints, summary, roots)) => {
                             let items = Arc::new(items);let roots=roots.map(Arc::new);let summary=Arc::new(summary);
+                            drop(running.take());
                             let (retirement, retired) = mpsc::sync_channel(1);
                             if finished
                                 .send(Completion::Ready(Publication {

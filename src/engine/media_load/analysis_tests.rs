@@ -177,7 +177,8 @@ fn analysis_pending_results_and_replacement_are_bounded_and_late_cancel_survives
     for _ in 0..100 {
         latest = loader.request_analysis(request.clone()).unwrap();
     }
-    assert!(!first.is_current());
+    assert!(first.is_current());
+    assert_eq!(first.id,latest.id,"equivalent pending requests must share one worker identity");
     {
         let state = loader.shared.state.lock().unwrap();
         assert!(state.analysis_pending.is_some());
@@ -320,10 +321,10 @@ fn concurrent_analysis_admission_orders_ids_and_only_latest_result_survives() {
     seen.recv_timeout(Duration::from_secs(3)).unwrap();
     let barrier = Arc::new(std::sync::Barrier::new(9));
     let threads: Vec<_> = (0..8)
-        .map(|_| {
+        .map(|index| {
             let loader = loader.clone();
             let barrier = barrier.clone();
-            let request = request.clone();
+            let request=AnalysisRequest{reference:files.source(&format!("concurrent-{index}.wav"),&wav(8000,8000,1,false)),fields:request.fields};
             std::thread::spawn(move || {
                 barrier.wait();
                 loader.request_analysis(request).unwrap()
@@ -339,6 +340,18 @@ fn concurrent_analysis_admission_orders_ids_and_only_latest_result_survives() {
     let done = wait_ready(&loader);
     assert_eq!(done.token.id, latest.id);
     assert!(done.result.is_ok());
+}
+
+#[test]
+fn cancelled_active_analysis_can_restart_the_same_source_without_duplicate_refusal() {
+    let files=Files::new();let request=request(&files);let (entered,seen)=mpsc::channel();let (resume,wait)=mpsc::channel();let mut calls=0;
+    let loader=Loader::with_workers(|_,_|unreachable!(),move |request,token,work|{
+        calls+=1;if calls==1 {entered.send(()).unwrap();wait.recv_timeout(Duration::from_secs(3)).unwrap();}
+        real_run(request,token,work)
+    },performance::Handle::default()).unwrap();
+    let first=loader.request_analysis(request.clone()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();assert!(first.cancel());
+    let second=loader.request_analysis(request).unwrap();assert!(second.id>first.id);resume.send(()).unwrap();
+    let done=wait_ready(&loader);assert_eq!(done.token.id,second.id);assert!(done.result.is_ok());assert!(!first.is_current());
 }
 
 #[test]

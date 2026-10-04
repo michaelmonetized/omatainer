@@ -2096,7 +2096,7 @@ impl RtEngine {
             return;
         }
         if let Command::DeckAudio { deck, .. } | Command::DeckUnload { deck } = &c {
-            if !self.performance.claim_deck_media(*deck as usize % DECKS, self.deck_activity(), None) {
+            if !self.performance.claim_deck_media(*deck as usize % DECKS, self.deck_activity(), None, None) {
                 self.performance.reject(performance::Error::PlayingDeck);
                 self.undo.retire_command(c);
                 return;
@@ -2802,9 +2802,13 @@ impl RtEngine {
             if receipt.claim() { receipt.finish(State::Unavailable); }
             return;
         }
+        if receipt.deck_generation().is_some_and(|generation|generation!=self.performance.deck_load_word(deck as usize)) {
+            receipt.supersede();
+            return;
+        }
         if matches!(media, Media::Unload) {
             if !receipt.claim() { return; }
-            if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval()) {
+            if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval(), receipt.deck_generation()) {
                 self.performance.reject(performance::Error::PlayingDeck);
                 receipt.finish(State::Protected);
                 return;
@@ -2835,7 +2839,7 @@ impl RtEngine {
         if !receipt.claim() { return; }
         #[cfg(test)]
         if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
-        if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval()) {
+        if !self.performance.claim_deck_media(deck as usize, self.deck_activity(), receipt.deck_approval(), receipt.deck_generation()) {
             self.performance.reject(performance::Error::PlayingDeck);
             receipt.finish(State::Protected);
             return;

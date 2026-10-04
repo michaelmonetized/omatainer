@@ -59,7 +59,17 @@ impl Worker {
             .spawn(move || {
                 while let Ok(Job { kind, work }) = incoming.recv() {
                     let cancel = work.cancel();
-                    let result = perform(kind, &handle, &cancel);
+                    let scheduled=match &kind {
+                        Kind::Inspect(_)=>crate::background::identity(&("portable-inspect",)),
+                        Kind::Export{path,review,..}=>crate::background::identity(&("portable-export",path,review.revision,review.namespace)),
+                        Kind::Preview(path)=>crate::background::identity(&("portable-preview",path)),
+                        Kind::Import{archive,destination,..}=>crate::background::identity(&("portable-import",archive,destination)),
+                    }.and_then(|key|work.background(crate::background::Kind::Prepare,key,crate::background::MEMORY_BYTES));
+                    let result=match scheduled {
+                        Err(error)=>Err(error),Ok(ticket)=>match ticket.enter(||work.cancelled()) {
+                            Err(error)=>Err(error),Ok(_running)=>{let result=perform(kind,&handle,&cancel);ticket.progress(1,Some(1));result},
+                        },
+                    };
                     if work.cancelled() {
                         let _ = handle.retire_cancelled_capture(&cancel);
                     }
