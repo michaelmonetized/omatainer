@@ -35,7 +35,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 13;
+const SCHEMA: u32 = 14;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -500,6 +500,12 @@ fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Cata
         .filter_map(|preparation| preparation.get("grid")).any(|grid| grid.get("anchors").is_some()) {
         return Err("Tempo anchors require library schema 13; original file preserved".into());
     }
+    if schema.is_some_and(|version| version < 14) && header.get("tracks").and_then(|v| v.as_array()).into_iter().flatten()
+        .flat_map(|track| std::iter::once(track).chain(track.get("versions").and_then(|v| v.as_array()).into_iter().flatten()))
+        .any(|version| version.get("preparation").is_some_and(|preparation| preparation.get("source_gain").is_some())
+            || version.get("analysis").is_some_and(|analysis| analysis.get("level").is_some())) {
+        return Err("Source gain and level analysis require library schema 14; original file preserved".into());
+    }
     if schema.is_some_and(|schema| schema < 8) {
         tags::reject_legacy_fields(&header)?;
     }
@@ -518,8 +524,8 @@ fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Cata
         return Err("Crate favorites require library schema 12; original file preserved".into());
     }
     let mut catalog = match schema {
-        Some(13) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
-        Some(12) | Some(11) | Some(10) | Some(9) => {
+        Some(14) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
+        Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
             let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old

@@ -286,7 +286,7 @@ impl GridEditAck {
 pub(super) fn reject_retired(mut command: &super::Command) {
     loop {
         match command {
-            super::Command::DeckGrid { ack, .. } => { ack.reject_pending(); return; }
+            super::Command::DeckGrid { ack, .. } | super::Command::DeckSourceGain { ack, .. } => { ack.reject_pending(); return; }
             super::Command::Gesture { command: inner, .. } => command = inner,
             _ => return,
         }

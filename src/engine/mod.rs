@@ -7,6 +7,8 @@ pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
+#[cfg(test)]
+mod track_gain_tests;
 mod video_transport;
 pub(crate) mod provider_preview;
 mod arp;
@@ -345,6 +347,7 @@ pub struct DeckRt {
     pub sync: bool,
     pub gain: f32,
     pub eq: [ThreeBand; 2],
+    pub(crate) source_gain: crate::track_gain::Resolved,
     pub filter: [deck_filter::ChannelFilter; 2],
     filter_position: f32,
     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
@@ -386,6 +389,12 @@ impl DeckRt {
     fn media_active(&self) -> bool {
         self.rendering() || self.last_output.iter().any(|sample| sample.abs() > 0.0001)
     }
+    /// Keep source trim fixed until its audible state settles.
+    /// Takes this deck; returns true for rendering, retained output or an outgoing nonzero fade.
+    fn source_gain_active(&self) -> bool {
+        self.rendering() || self.last_output.iter().any(|sample| *sample != 0.0)
+            || self.transition_remaining > 0 && self.transition_from.iter().any(|sample| *sample != 0.0)
+    }
     fn stop_preview(&mut self, rate: f32) {
         if let Some(position) = self.preview_position.take() { self.transition_to(position, rate, DeckTransition::Jump); }
     }
@@ -413,6 +422,7 @@ impl DeckRt {
             keylock: false,
             sync: false,
             gain: 0.85,
+            source_gain: crate::track_gain::Resolved::default(),
             eq: [ThreeBand::new(sr); 2],
             filter: [deck_filter::ChannelFilter::default(); 2],
             filter_position: 0.5,
@@ -646,6 +656,7 @@ pub struct RtEngine {
     pad_output: [[f32; 2]; session::MAX_TRACKS],
     pad_targets: [Option<PadTarget>; 16],
     pub builtin: [Option<Arc<Sample>>; 2],
+    builtin_levels: [Option<crate::track_gain::Level>; 2],
     pub fx_view: i16,
     pub scene_fx: Vec<fx::FxChain>,
     pub compose_target: Option<ComposeTarget>,
@@ -686,6 +697,10 @@ pub struct DeckSnap {
     pub pitch: f32,
     pub gain: f32,
     pub eq: [f32; 3],
+    pub source_gain: crate::track_gain::Policy,
+    pub source_gain_db: f32,
+    pub source_gain_active: bool,
+    pub source_level: Option<crate::track_gain::Level>,
     pub filter: f32,
     pub vinyl: bool,
     pub sync: bool,
@@ -752,6 +767,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub(crate) builtin_levels: [Option<crate::track_gain::Level>; 2],
     pub session: Option<session::Layout>,
     pub performance: performance::Status,
     pub project_revision: u64,
@@ -811,6 +827,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            builtin_levels: [None, None],
             session: None,
             performance: performance::Status::default(),
             project_revision: 0,
@@ -902,6 +919,7 @@ pub enum Command {
     DeckPfl { deck: u8 },
     DeckHotCue { deck: u8, pad: u8, del: bool },
     DeckGrid { deck: u8, grid: Option<beatgrid::Grid>, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
+    DeckSourceGain { deck: u8, gain: crate::track_gain::Resolved, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
     DeckCuePoint { deck: u8, pad: u8, del: bool, receipt: load_receipt::Receipt },
     DeckCueStyle { deck: u8, pad: u8, style: cue_metadata::Style, receipt: load_receipt::Receipt },
     DeckLoop { deck: u8, beats: f32 },
@@ -1112,6 +1130,7 @@ impl RtEngine {
             pad_output: [[0.0; 2]; session::MAX_TRACKS],
             pad_targets: [None; 16],
             builtin: [None, None],
+            builtin_levels: [None, None],
             fx_view: -1,
             scene_fx: { let mut racks: Vec<_> = (0..SCENES).map(|_| fx::FxChain::new(sr)).collect(); racks.reserve(session::MAX_SCENES - racks.len()); racks },
             compose_target: None,
@@ -1120,9 +1139,10 @@ impl RtEngine {
         e.seed_demo();
         let (stem_a, stem_b) = demo_stems(sr as u32, e.bpm);
         e.builtin = [Some(stem_a), Some(stem_b)];
+        e.builtin_levels = std::array::from_fn(|stem| e.builtin[stem].as_ref().and_then(|sample| crate::track_gain::measure_channels(&sample.data, sample.ch, || false).ok()));
         for deck in 0..DECKS as u8 {
             e.apply(Command::DeckLoadRequested {
-                deck, media: load_receipt::Media::Builtin(deck), receipt: load_receipt::Receipt::new(),
+                deck, media: load_receipt::Media::Builtin(deck), receipt: load_receipt::Receipt::new().with_source_level(e.builtin_levels[deck as usize]).map_err(str::to_string)?,
             });
         }
         e.publish_initial();
@@ -1942,6 +1962,8 @@ impl RtEngine {
         } else {
             self.decks[di].sample_at(self.decks[di].pos)
         };
+        l *= self.decks[di].source_gain.linear();
+        r *= self.decks[di].source_gain.linear();
         self.routing_deck_taps[0] = [l, r];
         let g = self.decks[di].gain;
         l *= g;
@@ -2389,6 +2411,15 @@ impl RtEngine {
                 }
                 self.undo.retire_command(command);
             }
+            command @ Command::DeckSourceGain { .. } => {
+                if let Command::DeckSourceGain { deck, gain, ack, .. } = &command {
+                    let deck = &mut self.decks[*deck as usize];
+                    deck.source_gain = *gain;
+                    deck.publish_preparation();
+                    ack.applied();
+                }
+                self.undo.retire_command(command);
+            }
             command @ Command::DeckCueStyle { .. } => {
                 if let Command::DeckCueStyle { deck, pad, style, .. } = &command {
                     // Identity, indices, set state and no-op were checked before
@@ -2447,7 +2478,8 @@ impl RtEngine {
             Command::DeckRestorePreparation { deck, receipt, preparation } => {
                 if let Some(d) = self.decks.get_mut(deck as usize) {
                     if d.load_receipt.as_ref().is_some_and(|current| current.same_request(&receipt))
-                        && receipt.preparation().is_some_and(|(revision, _)| revision == 2) {
+                        && receipt.preparation().is_some_and(|(revision, _)| revision == 2)
+                        && preparation.source_gain == d.source_gain.policy() {
                         d.restore_preparation(preparation);
                         d.publish_preparation();
                         self.project.edited();
@@ -2485,6 +2517,7 @@ impl RtEngine {
                 d.preview_position = None;
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.grid = None;
+                d.source_gain = crate::track_gain::Resolved::default();
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -2506,6 +2539,7 @@ impl RtEngine {
                 d.clear_loop();
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.grid = None;
+                d.source_gain = crate::track_gain::Resolved::default();
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -2907,7 +2941,12 @@ impl RtEngine {
         }
         let audio = match media {
             Media::Unload => unreachable!(),
-            Media::Builtin(stem) => self.builtin.get(*stem as usize).and_then(Clone::clone),
+            Media::Builtin(stem) => {
+                if receipt.source_level().is_some() && receipt.source_level() != self.builtin_levels.get(*stem as usize).copied().flatten() {
+                    receipt.supersede(); return;
+                }
+                self.builtin.get(*stem as usize).and_then(Clone::clone)
+            },
             Media::Decoded { token, audio } => {
                 if token.deck != deck || !token.is_current() {
                     receipt.supersede();
@@ -2920,6 +2959,7 @@ impl RtEngine {
         if let Some(hook) = self.load_test_hooks[0].take() { hook(); }
         // Cancellation and application race for one atomic transition. The
         // caller still owns the complete request if cancellation wins here.
+        if receipt.source_gain().is_none() { if receipt.claim() { receipt.finish(State::Unavailable); } return; }
         if !receipt.claim() { return; }
         #[cfg(test)]
         if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
@@ -2937,6 +2977,7 @@ impl RtEngine {
             };
             self.apply_plain(command);
             let d = &mut self.decks[deck as usize];
+            d.source_gain = receipt.source_gain().unwrap_or_default();
             if let Some(preparation) = receipt.initial_preparation() { d.restore_preparation(preparation); }
             d.history_key = receipt.history_key();
             d.load_receipt = Some(receipt.clone());

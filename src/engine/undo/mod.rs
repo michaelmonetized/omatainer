@@ -837,6 +837,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckHotCue { .. }
             | Command::DeckCueStyle { .. }
             | Command::DeckGrid { .. }
+            | Command::DeckSourceGain { .. }
             | Command::DeckCuePoint { .. }
             | Command::DeckLoop { .. }
             | Command::DeckLoopIn { .. }
@@ -882,6 +883,7 @@ impl Journal {
                     | Command::DeckRestorePreparation { .. }
                     | Command::DeckCueStyle { .. }
                     | Command::DeckGrid { .. }
+                    | Command::DeckSourceGain { .. }
                     | Command::SamplerEdit(_)
                     | Command::SamplerAudition(_)
                     | Command::ProviderPreview(_)

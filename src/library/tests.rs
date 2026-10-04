@@ -71,6 +71,7 @@ fn sampler_verified_content_only_qualifies_its_exact_existing_version() {
 }
 fn preparation() -> Preparation {
     Preparation {
+        source_gain: crate::track_gain::Policy::Off,
         grid: None,
         cue: 4.5,
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
@@ -234,6 +235,33 @@ fn interrupted_atomic_updates_retain_complete_old_or_new_and_prepared_backup() {
         assert_eq!(fs::read(orphan).unwrap(), b"partial");
     }
 }
+#[test]
+fn schema_thirteen_preserves_legacy_data_and_refuses_gain_or_level_injection() {
+    let dir = Dir::new();
+    let good = mixed(&dir);
+    let mut legacy = serde_json::to_value(&good).unwrap();
+    legacy["schema"] = 13.into();
+    let bytes = serde_json::to_vec(&legacy).unwrap();
+    fs::write(dir.store(), &bytes).unwrap();
+    let migrated = Store::open(dir.store()).unwrap();
+    assert_eq!(migrated.catalog.schema, SCHEMA);
+    assert_eq!(migrated.catalog.tracks, good.tracks);
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    drop(migrated);
+    for value in [serde_json::Value::Null, serde_json::json!({"mode":"off"}), serde_json::json!({})] {
+        for field in ["source_gain", "level"] {
+            let mut injected = legacy.clone();
+            if field == "source_gain" { injected["tracks"][0]["versions"][0]["preparation"][field] = value.clone(); }
+            else { injected["tracks"][0]["versions"][0]["analysis"] = serde_json::json!({"level":value}); }
+            let bytes = serde_json::to_vec(&injected).unwrap();
+            fs::write(dir.store(), &bytes).unwrap();
+            let error = Store::open(dir.store()).err().unwrap();
+            assert!(error.contains("require library schema 14"), "{error}");
+            assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+        }
+    }
+}
+
 #[test]
 fn malformed_future_unknown_fields_and_invalid_imports_fail_closed() {
     let dir = Dir::new();
@@ -815,6 +843,7 @@ fn background_analysis_selective_fields_preserve_user_preparation_and_restart() 
     let wave = WaveformRef { sha256: [7; 32], bytes: 16000, frames: 480_000,
         sample_rate: 48_000, channels: 2, bins: 2048 };
     let mut patch = Patch { reference, fields: Fields::ALL, at_unix_ms: 1000,
+        level: Some(crate::track_gain::Analysis::new(crate::track_gain::measure_channels(&[0.25; 32], 1, || false).unwrap())),
         bpm: Some(140.0), duration: 10.0, waveform: Some(wave.clone()) };
     store.catalog.apply_analysis(&patch).unwrap();
     let analyzed = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
@@ -825,10 +854,11 @@ fn background_analysis_selective_fields_preserve_user_preparation_and_restart() 
     assert_eq!(analyzed.metadata.last_play, original.metadata.last_play);
     assert_eq!(analyzed.metadata.duration, Some(10.0));
     assert!(analyzed.analysis.as_ref().unwrap().contains(Fields::ALL));
-    patch.fields = Fields { bpm: true, duration: false, waveform: false };
+    patch.fields = Fields { bpm: true, duration: false, waveform: false, level: false };
     patch.at_unix_ms = 2000;
     patch.bpm = None;
     patch.waveform = None;
+    patch.level = None;
     store.catalog.apply_analysis(&patch).unwrap();
     let selected = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
     let cached = selected.analysis.as_ref().unwrap();
@@ -864,8 +894,8 @@ fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() 
     let replaced = FileFingerprint::read(&path).unwrap();
     catalog.upsert(source.clone(), Some(replaced), metadata()).unwrap();
     let replacement = catalog.version(&source, Some(replaced)).unwrap().clone();
-    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false },
-        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None };
+    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false, level: false },
+        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None, level: None };
     catalog.apply_analysis(&patch).unwrap();
     let measured = catalog.version(&source, Some(fingerprint)).unwrap();
     assert_eq!(measured.metadata.bpm, Bpm::new(136.0, Origin::Heuristic));
@@ -880,7 +910,7 @@ fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() 
     assert!(catalog.apply_analysis(&invalid).is_err());
     invalid = patch.clone(); invalid.duration = f64::NAN;
     assert!(catalog.apply_analysis(&invalid).is_err());
-    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false };
+    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false, level: false };
     assert!(catalog.apply_analysis(&invalid).is_err());
     assert_eq!(catalog.tracks, before);
 }

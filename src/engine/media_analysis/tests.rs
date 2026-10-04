@@ -115,8 +115,7 @@ fn actual_mixed_formats_produce_only_selected_bounded_source_qualified_results()
             Fields {
                 bpm: false,
                 duration: true,
-                waveform: false,
-            },
+                waveform: false, level: false },
         );
         assert!(only_duration.waveform.is_none() && only_duration.bpm.is_none());
         assert_eq!(only_duration.duration, result.duration);

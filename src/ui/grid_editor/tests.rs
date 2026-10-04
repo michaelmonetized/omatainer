@@ -2,9 +2,9 @@ use super::*;
 use crate::engine::{test_alloc, RtEngine};
 use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId, Role};
 
-struct Gui {
-    app: App,
-    rt: RtEngine,
+pub(in crate::ui) struct Gui {
+    pub(in crate::ui) app: App,
+    pub(in crate::ui) rt: RtEngine,
     ctx: egui::Context,
     time: f64,
     size: Vec2,
@@ -12,7 +12,7 @@ struct Gui {
     render: bool,
 }
 impl Gui {
-    fn new(sr: u32) -> Self {
+    pub(in crate::ui) fn new(sr: u32) -> Self {
         let (engine, mut rt) = Engine::headless_for_test(sr, 256);
         rt.publish_for_test();
         let app = App::with_loader(engine, Theme::default(), None);
@@ -31,7 +31,7 @@ impl Gui {
         value.frame(vec![]);
         value
     }
-    fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
+    pub(in crate::ui) fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
         self.time += 0.02;
         let modifiers = events
             .iter()
@@ -68,7 +68,7 @@ impl Gui {
         }
         out
     }
-    fn node(&self, name: &str) -> (NodeId, &Node) {
+    pub(in crate::ui) fn node(&self, name: &str) -> (NodeId, &Node) {
         self.nodes
             .iter()
             .find(|(_, n)| n.label() == Some(name))
@@ -83,7 +83,7 @@ impl Gui {
                 )
             })
     }
-    fn action(&mut self, name: &str, action: Action, data: Option<ActionData>) -> egui::FullOutput {
+    pub(in crate::ui) fn action(&mut self, name: &str, action: Action, data: Option<ActionData>) -> egui::FullOutput {
         let target = self.node(name).0;
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             action,
@@ -92,7 +92,7 @@ impl Gui {
         })]);
         self.frame(vec![])
     }
-    fn click(&mut self, name: &str) -> egui::FullOutput {
+    pub(in crate::ui) fn click(&mut self, name: &str) -> egui::FullOutput {
         self.action(name, Action::Click, None)
     }
     fn key(&mut self, key: Key, modifiers: egui::Modifiers) {

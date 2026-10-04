@@ -121,6 +121,17 @@ Local 100000-track synthetic catalog; search fields reflect implemented title/ar
 
 Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification.
 
+### Issue #141: implemented
+
+- native UI: [src/ui/track_gain.rs](../src/ui/track_gain.rs) — Deck → gain… → review Off, Manual or Auto → Apply with renderer acknowledgment
+- background analysis: [src/engine/media_analysis.rs](../src/engine/media_analysis.rs) — Library → analyze… → Analyze source level → qualified RMS, sample peak and recommendation
+- renderer: [src/engine/mod.rs](../src/engine/mod.rs) — Precomputed source multiplier before the fader; stopped current-receipt admission and bounded Undo
+- persistent recall: [src/engine/project/prepare.rs](../src/engine/project/prepare.rs) — Catalog policy on deliberate media load; project recall remeasures actual embedded PCM
+- Acceptance fixtures: `track_gain::tests`, `engine::track_gain_tests`, `ui::track_gain::tests`, `engine::project::tests::gain_tests`, `library::tests::schema_thirteen_preserves_legacy_data_and_refuses_gain_or_level_injection`.
+- Evidence: [docs/validation/issue-141-track-gain.md](../docs/validation/issue-141-track-gain.md).
+
+The metric is whole-source first-pair/mono RMS dBFS and sample peak, not LUFS or true peak. Auto uses reviewed targets and at most 12 dB boost. Its sample-peak estimate uses decoded source PCM; key-lock synthesis and downstream fader, EQ and effects can change peaks. It cannot repair clipping or guarantee final output headroom. Analysis alone never applies trim. Physical listening, controllers and converter measurements remain unqualified. Implementation status does not claim backlog or release completion.
+
 ### Issue #143: implemented
 
 - native UI: [src/ui/library_backup.rs](../src/ui/library_backup.rs) — Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import
@@ -231,7 +242,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#138](https://github.com/michaelmonetized/omatainer/issues/138) | Deliver verified releases with safe updates and rollback | planned |
 | [#139](https://github.com/michaelmonetized/omatainer/issues/139) | Add field-aware search and filtering across the music library | implemented |
 | [#140](https://github.com/michaelmonetized/omatainer/issues/140) | Protect prepared beatgrids and metadata from bulk reanalysis | implemented |
-| [#141](https://github.com/michaelmonetized/omatainer/issues/141) | Analyze and recall safe per-track gain adjustment | planned |
+| [#141](https://github.com/michaelmonetized/omatainer/issues/141) | Analyze and recall safe per-track gain adjustment | implemented |
 | [#142](https://github.com/michaelmonetized/omatainer/issues/142) | Analyze musical key and display harmonic compatibility | planned |
 | [#143](https://github.com/michaelmonetized/omatainer/issues/143) | Back up and move the complete DJ library with preparation data | implemented |
 | [#144](https://github.com/michaelmonetized/omatainer/issues/144) | Make library columns, sorting and view density configurable | implemented |

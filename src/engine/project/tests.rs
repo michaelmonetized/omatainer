@@ -1,6 +1,7 @@
 use super::model::*;
 use super::*;
 mod sampler_tests;
+mod gain_tests;
 mod dependency_tests;
 mod template_tests;
 pub(super) mod session_tests;

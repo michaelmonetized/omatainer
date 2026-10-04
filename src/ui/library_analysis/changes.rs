@@ -7,7 +7,7 @@ pub(super) struct Row {
     bpm: Bpm,
     duration: Option<f64>,
     locks: crate::library::protection::Locks,
-    lines: [String; 3],
+    lines: [String; 4],
     record: Option<crate::track_analysis::Record>,
 }
 impl Row {
@@ -35,6 +35,7 @@ impl Row {
         let bpm = state(fields.bpm, cached.needed.bpm, locks.bpm);
         let duration = state(fields.duration, cached.needed.duration, locks.metadata);
         let waveform = state(fields.waveform, cached.needed.waveform, false);
+        let level = state(fields.level, cached.needed.level, false);
         let old_duration = metadata
             .duration
             .map_or_else(|| "unknown".into(), |value| format!("{value:.3} seconds"));
@@ -57,6 +58,7 @@ impl Row {
                 format!("BPM: {} → {bpm}", metadata.bpm.cell()),
                 format!("Duration: {old_duration} → {duration}"),
                 format!("Waveform: {old_waveform} → {waveform}"),
+                format!("Source level: {} → {level}", cached.record.as_ref().and_then(|record| record.level.as_ref()).map_or_else(|| "unknown".into(), |level| crate::track_gain::description(level.value.level))),
             ],
         }
     }

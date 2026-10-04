@@ -33,6 +33,7 @@ fn deck_preparation(gui: &Gui) -> Preparation {
     let sr = f64::from(deck.audio.as_ref().unwrap().sr);
     Preparation {
         grid: None,        cue: deck.cue_pos / sr,
+        source_gain: deck.source_gain.policy(),
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
         hotcues: std::array::from_fn(|i| deck.hotcues[i].set.then_some(deck.hotcues[i].pos / sr)),
         loop_region: (deck.loop_len > 0.0).then_some(crate::engine::preparation::Loop {

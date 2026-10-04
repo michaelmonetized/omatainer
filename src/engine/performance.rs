@@ -519,6 +519,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SamplerAudition(_)
         | Command::ProviderPreview(_)
         | Command::DeckGrid { .. }
+        | Command::DeckSourceGain { .. }
         | Command::Undo
         | Command::Redo
         | Command::FxAdd(_)

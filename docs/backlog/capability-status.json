@@ -619,6 +619,42 @@
         "docs/validation/issue-135-waveform-timing.md"
       ],
       "limits": "Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending."
+    },
+    "141": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/track_gain.rs",
+          "entry": "Deck → gain… → review Off, Manual or Auto → Apply with renderer acknowledgment"
+        },
+        {
+          "kind": "background analysis",
+          "file": "src/engine/media_analysis.rs",
+          "entry": "Library → analyze… → Analyze source level → qualified RMS, sample peak and recommendation"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/mod.rs",
+          "entry": "Precomputed source multiplier before the fader; stopped current-receipt admission and bounded Undo"
+        },
+        {
+          "kind": "persistent recall",
+          "file": "src/engine/project/prepare.rs",
+          "entry": "Catalog policy on deliberate media load; project recall remeasures actual embedded PCM"
+        }
+      ],
+      "fixtures": [
+        "track_gain::tests",
+        "engine::track_gain_tests",
+        "ui::track_gain::tests",
+        "engine::project::tests::gain_tests",
+        "library::tests::schema_thirteen_preserves_legacy_data_and_refuses_gain_or_level_injection"
+      ],
+      "evidence": [
+        "docs/validation/issue-141-track-gain.md"
+      ],
+      "limits": "The metric is whole-source first-pair/mono RMS dBFS and sample peak, not LUFS or true peak. Auto uses reviewed targets and at most 12 dB boost. Its sample-peak estimate uses decoded source PCM; key-lock synthesis and downstream fader, EQ and effects can change peaks. It cannot repair clipping or guarantee final output headroom. Analysis alone never applies trim. Physical listening, controllers and converter measurements remain unqualified. Implementation status does not claim backlog or release completion."
     }
   }
 }

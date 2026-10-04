@@ -960,9 +960,9 @@ Workflow: Prepare a DJ deck.
 
 ### Analysis fields
 
-BPM / duration / waveform
+BPM / duration / waveform / source level
 
-Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM.
+Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM. Source level stores whole-track RMS, sample peak and a bounded gain recommendation; analysis does not apply gain.
 
 Workflow: Prepare a DJ deck.
 
@@ -2075,6 +2075,14 @@ Workflow: Mix a session.
 0–120% linear gain
 
 Set the deck's level before mixing. Click or alternate actions can cut/solo the gain path. Zero is silent.
+
+Workflow: Mix a session.
+
+### Track source gain
+
+Source trim in dB, separate from the fader
+
+Review whole-track RMS and sample peak. Auto uses an explicit target and peak limit with at most 12 dB boost. Manual keeps your override. Apply requires this loaded track to be stopped, untouched and settled; Cancel keeps the current trim. Analysis alone never changes playback gain. This is not LUFS or true-peak limiting.
 
 Workflow: Mix a session.
 

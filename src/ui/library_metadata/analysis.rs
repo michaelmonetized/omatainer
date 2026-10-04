@@ -68,6 +68,7 @@ pub(super) fn inspect(store: &Store, disk: &mut Disk, mut request: Inspect) -> I
                 needed.bpm &= record.bpm.is_none();
                 needed.duration &= record.duration.is_none();
                 needed.waveform &= record.waveform.is_none();
+                needed.level &= record.level.is_none();
             }
         }
         let mut notice = (track.locks.analysis(request.fields)!=request.fields).then(||"Preparation locks exclude protected analysis fields. Force never overrides a lock.".into());
@@ -152,7 +153,7 @@ fn save_using(store: &mut Store, disk: &mut Disk, completion: AnalysisCompletion
         } else { None };
         let patch = Patch { reference: prepared.reference, fields: prepared.fields,
             at_unix_ms: prepared.at_unix_ms, bpm: prepared.bpm,
-            duration: prepared.duration, waveform };
+            duration: prepared.duration, waveform, level: prepared.level };
         let mut candidate = store.catalog.clone();
         candidate.apply_analysis(&patch).map_err(AnalysisFailure::Failed)?;
         checkpoint(1);

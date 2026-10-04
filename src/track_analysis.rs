@@ -17,6 +17,7 @@ pub(crate) struct Prepared {
     pub bpm: Option<f32>,
     pub duration: f64,
     pub waveform: Option<cache::Waveform>,
+    pub level: Option<crate::track_gain::Analysis>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,15 +26,18 @@ pub(crate) struct Fields {
     pub bpm: bool,
     pub duration: bool,
     pub waveform: bool,
+    #[serde(default)]
+    pub level: bool,
 }
 impl Fields {
     pub const ALL: Self = Self {
         bpm: true,
         duration: true,
         waveform: true,
+        level: true,
     };
     pub fn valid(self) -> bool {
-        self.bpm || self.duration || self.waveform
+        self.bpm || self.duration || self.waveform || self.level
     }
 }
 
@@ -88,10 +92,12 @@ pub(crate) struct Record {
     pub bpm: Option<Measured<Option<f32>>>,
     pub duration: Option<Measured<f64>>,
     pub waveform: Option<Measured<WaveformRef>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub level: Option<Measured<crate::track_gain::Analysis>>,
 }
 impl Record {
     pub fn valid(&self) -> bool {
-        (self.bpm.is_some() || self.duration.is_some() || self.waveform.is_some())
+        (self.bpm.is_some() || self.duration.is_some() || self.waveform.is_some() || self.level.is_some())
             && self
                 .bpm
                 .as_ref()
@@ -104,6 +110,7 @@ impl Record {
                 .waveform
                 .as_ref()
                 .is_none_or(|m| m.algorithm == ALGORITHM && m.value.valid())
+            && self.level.as_ref().is_none_or(|m| m.algorithm == crate::track_gain::ALGORITHM && m.value.valid())
     }
     pub fn contains(&self, fields: Fields) -> bool {
         fields.valid()
@@ -111,6 +118,7 @@ impl Record {
             && (!fields.bpm || self.bpm.is_some())
             && (!fields.duration || self.duration.is_some())
             && (!fields.waveform || self.waveform.is_some())
+            && (!fields.level || self.level.is_some())
     }
     pub fn merged(&self, patch: &Patch) -> Result<Self, String> {
         patch.validate()?;
@@ -126,6 +134,9 @@ impl Record {
                 patch.waveform.clone().unwrap(),
                 patch.at_unix_ms,
             ));
+        }
+        if patch.fields.level {
+            next.level = Some(Measured { algorithm: crate::track_gain::ALGORITHM, at_unix_ms: patch.at_unix_ms, value: patch.level.unwrap() });
         }
         if !next.valid() {
             return Err("invalid combined track analysis record".into());
@@ -143,6 +154,7 @@ pub(crate) struct Patch {
     pub bpm: Option<f32>,
     pub duration: f64,
     pub waveform: Option<WaveformRef>,
+    pub level: Option<crate::track_gain::Analysis>,
 }
 impl Patch {
     pub fn validate(&self) -> Result<(), String> {
@@ -152,6 +164,8 @@ impl Patch {
             || !valid_bpm(self.bpm)
             || !valid_duration(self.duration)
             || self.fields.waveform != self.waveform.is_some()
+            || self.fields.level != self.level.is_some()
+            || self.level.is_some_and(|level| !level.valid())
             || self.waveform.as_ref().is_some_and(|wave| {
                 !wave.valid()
                     || ((wave.frames as f64 / f64::from(wave.sample_rate)) - self.duration).abs()

@@ -518,6 +518,7 @@ impl App {
                         ui.checkbox(&mut self.library_analysis.fields.bpm, tr!("Analyze BPM")).help(ui, HelpControl::AnalysisFields);
                         ui.checkbox(&mut self.library_analysis.fields.duration, tr!("Analyze duration")).help(ui, HelpControl::AnalysisFields);
                         ui.checkbox(&mut self.library_analysis.fields.waveform, tr!("Analyze waveform")).help(ui, HelpControl::AnalysisFields);
+                        ui.checkbox(&mut self.library_analysis.fields.level, tr!("Analyze source level")).help(ui, HelpControl::AnalysisFields);
                     });
                     ui.checkbox(&mut self.library_analysis.force, tr!("Force selected fields")).help(ui, HelpControl::AnalysisForce);
                     ui.horizontal(|ui| {
@@ -540,7 +541,7 @@ impl App {
                         Step::Inspecting { .. } => { ui.label(tr!("Checking the saved source version and waveform cache…")); }
                         Step::Decoding(token) => {
                             let progress = token.progress();
-                            let stage = match progress.stage { Stage::Queued => "Queued", Stage::Hashing => "Hashing source", Stage::Decoding => "Decoding", Stage::Tempo => "Estimating BPM", Stage::Waveform => "Building waveform", Stage::Ready => "Prepared; not saved yet" };
+                            let stage = match progress.stage { Stage::Queued => "Queued", Stage::Hashing => "Hashing source", Stage::Decoding => "Decoding", Stage::Tempo => "Estimating BPM", Stage::Waveform => "Building waveform", Stage::Level => "Measuring source level", Stage::Ready => "Prepared; not saved yet" };
                             if let Some(value) = progress.millionths { ui.add(egui::ProgressBar::new(value as f32 / 1_000_000.0).text(stage)); } else { ui.label(stage); }
                         }
                         Step::Saving(_) => { ui.label(tr!("Waiting for the catalog publication and durability result…")); }
@@ -585,6 +586,7 @@ impl App {
                             if let Some(record) = &cached.record {
                                 if let Some(bpm) = &record.bpm { ui.label(match bpm.value { Some(value) => { let __omatainer_args = (&(bpm.algorithm),); crate::localization::format("Analyzed BPM: {value:.2} (heuristic, unverified; algorithm {})", &[format!("{:.2}", value), format!("{}", __omatainer_args.0)]) }, None => tr!("Analyzed BPM: no usable estimate").into() }); }
                                 if let Some(duration) = &record.duration { ui.label({ let __omatainer_args = (&(duration.value),); crate::localization::format("Analyzed duration: {:.3} seconds", &[format!("{:.3}", __omatainer_args.0)]) }); }
+                                if let Some(level) = &record.level { ui.label(crate::track_gain::description(level.value.level)); ui.label(match level.value.recommended_db { Some(db) => crate::localization::format("Recommended source trim: {} dB (-18 dBFS RMS / -3 dBFS sample peak)", &[crate::localization::number(f64::from(db), 2)]), None => tr!("No usable automatic gain recommendation").into() }); }
                             }
                             if cached.needed.valid() { ui.label(tr!("Some selected fields require fresh analysis. Inspect alone never decodes a source.")); }
                             if let Some(waveform) = &cached.waveform {

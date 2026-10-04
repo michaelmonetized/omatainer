@@ -41,6 +41,7 @@ mod session_history;
 mod session_editor;
 mod cue_editor;
 mod grid_editor;
+mod track_gain;
 mod waveform;
 mod piano_roll;
 mod midi_files;
@@ -175,6 +176,7 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    track_gain: Option<track_gain::Editor>,
     waveform: waveform::Panel,
     session_editor: session_editor::Editor,
     audio_routing: audio_routing::Panel,
@@ -314,6 +316,7 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            track_gain: None,
             waveform: waveform::Panel::default(),
             session_editor: session_editor::Editor::default(),
             piano_roll: piano_roll::Editor::default(),
@@ -437,6 +440,10 @@ impl App {
                         state.phase = Phase::Failed(error);
                     } else {
                         let mut receipt = self.library_receipt(&picked.source, None).with_deck_generation(self.engine.cmd.performance().deck_load_word(deck as usize));
+                        receipt = match receipt.with_source_level(self.snap.builtin_levels[stem.index() as usize]) {
+                            Ok(receipt) => receipt,
+                            Err(error) => { state.phase = Phase::Failed(error.into()); self.set_load_state(deck, state); return; },
+                        };
                         if let Some(approval) = approval { receipt = receipt.with_deck_approval(approval); }
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
@@ -605,6 +612,10 @@ impl App {
                         let locked=self.library_metadata.catalog.track(source).is_some_and(|track|track.locks.grid);
                         receipt.set_grid_protection(locked,self.library_metadata.catalog.preparation_for_content(source,fingerprint,hash).and_then(|preparation|preparation.grid));
                     }
+                    receipt = match receipt.with_source_level(completion.level) {
+                        Ok(receipt) => receipt,
+                        Err(error) => { state.phase = Phase::Failed(error.into()); self.set_load_state(deck, state); continue; },
+                    };
                     if let Some(approval) = state.approval.take() { receipt = receipt.with_deck_approval(approval); }
                     if let Some(generation)=state.deck_generation {receipt=receipt.with_deck_generation(generation);}
                     if let Some(((source,fingerprint),hash))=measured {
@@ -845,6 +856,7 @@ impl App {
         self.library_backup_ui(ctx);
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
+        self.track_gain_ui(ctx);
         self.session_editor_ui(ctx);
         self.audio_routing_ui(ctx);
         self.piano_roll_ui(ctx);
@@ -1128,6 +1140,10 @@ impl App {
                 accessibility::button(ui, &grid, "Beatgrid editor", None);
                 help::annotate(ui, &grid, HelpControl::GridEditor);
                 if grid.clicked() { self.open_grid_editor(d); }
+                let gain = ui.small_button(tr!("gain…"));
+                accessibility::button(ui, &gain, "Track gain review", None);
+                help::annotate(ui, &gain, HelpControl::SourceGain);
+                if gain.clicked() { self.open_track_gain(d); }
             });
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(3.0);

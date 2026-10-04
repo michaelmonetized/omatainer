@@ -175,6 +175,7 @@ impl Frame {
         debug_assert!(self.samples.iter().all(Option::is_none));
         debug_assert!(self.timing.is_none() && self.values.timing.is_none());
         self.complete = false;
+        self.values.builtin_levels = rt.builtin_levels;
         self.track_count = rt.session.tracks.len(); self.scene_count = rt.session.scenes.len();
         for (out, item) in self.scene_names.iter_mut().zip(&rt.session.scenes) { *out = item.name.len(); }
         let chain = if rt.fx_view >= 0 && rt.fx_view < rt.tracks.len() as i16 {
@@ -294,6 +295,10 @@ impl Frame {
             out.hotcue_positions = std::array::from_fn(|i| deck.hotcues[i].set.then_some(deck.hotcues[i].pos));
             out.cue_styles = deck.cue_styles;
             out.grid = deck.grid;
+            out.source_gain = deck.source_gain.policy();
+            out.source_gain_db = deck.source_gain.db();
+            out.source_gain_active = deck.source_gain_active();
+            out.source_level = deck.source_gain.level();
             out.receipt_key = deck.load_receipt.as_ref().map_or(0, load_receipt::Receipt::snapshot_key);
             out.meter = deck.meter;
             out.duration = deck

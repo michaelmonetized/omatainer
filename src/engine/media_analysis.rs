@@ -77,6 +77,7 @@ pub(crate) enum Stage {
     Decoding,
     Tempo,
     Waveform,
+    Level,
     Ready,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -153,6 +154,7 @@ impl Token {
             2 => Stage::Decoding,
             3 => Stage::Tempo,
             4 => Stage::Waveform,
+            5 => Stage::Level,
             _ => Stage::Ready,
         };
         let part = value & u32::MAX as u64;
@@ -301,6 +303,13 @@ fn run_with(
     } else {
         None
     };
+    let level = if request.fields.level {
+        token.set_progress(Stage::Level, 0, Some(sample.frames() as u64));
+        let result = crate::track_gain::measure_channels(&sample.data, sample.ch, cancelled);
+        token.check(work)?;
+        checkpoint(Stage::Level);
+        Some(crate::track_gain::Analysis::new(result.map_err(Failure::error)?))
+    } else { None };
     stable(&file)?;
     let mut reference = request.reference;
     reference.content_hash = Some(hash);
@@ -316,6 +325,7 @@ fn run_with(
         bpm,
         duration: sample.frames() as f64 / f64::from(sample.sr),
         waveform,
+        level,
     };
     // All resident PCM dies on this single worker, before Ready is published.
     drop(sample);

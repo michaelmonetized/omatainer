@@ -30,6 +30,7 @@ struct Request {
     job: crate::background::Ticket,
 }
 pub struct Completion {
+    pub(crate) level: Option<crate::track_gain::Level>,
     pub tags: Option<Result<crate::media_tags::Observation, String>>,
     pub fingerprint: Option<FileFingerprint>,
     pub content_hash: Option<[u8;32]>,
@@ -315,7 +316,7 @@ impl Loader {
                     continue;
                 }
                 let admission=request.job.enter(|| !request.token.is_current());
-                let (fingerprint,content_hash,result) = if let Err(error)=&admission {
+                let (fingerprint,content_hash,mut result) = if let Err(error)=&admission {
                     (None,None,Err(source_failure(error)))
                 } else if verified || request.expected.is_some() || matches!(request.source,LibSource::Removable {..}) {
                     guarded_decode(&request.source,&request.token,request.expected,&request.job,&mut decode,&mut inventory)
@@ -323,6 +324,14 @@ impl Loader {
                     let before=FileFingerprint::read(path);let result=decode(path,&request.token,None,&request.job);
                     let after=FileFingerprint::read(path);(before.filter(|before|Some(*before)==after),None,result)
                 } else {(None,None,Err(source_failure("Unsupported media namespace")))};
+                let level = match &result {
+                    Ok(decoded) => crate::track_gain::measure_channels(&decoded.sample.data, decoded.sample.ch, || !request.token.is_current()).map(Some),
+                    Err(_) => Ok(None),
+                };
+                let level = match level {
+                    Ok(level) => level,
+                    Err(error) => { result = Err(source_failure(error)); None },
+                };
                 struct TagCancellation<'a>(&'a LoadToken);
                 impl crate::media_tags::Cancellation for TagCancellation<'_> {
                     fn cancelled(&self) -> bool { !self.0.is_current() }
@@ -343,6 +352,7 @@ impl Loader {
                     }
                     state.active[deck]=None;
                     state.ready[deck].replace(Completion {
+                        level,
                         tags,
                         fingerprint,
                         content_hash,

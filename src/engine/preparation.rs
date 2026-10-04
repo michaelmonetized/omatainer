@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 use super::cue_metadata::{Style, STYLE_WORDS};
 const GRID_OFFSET: usize = 12 + super::HOTCUES * STYLE_WORDS;
-pub(super) const WORDS: usize = GRID_OFFSET + super::beatgrid::WORDS;
+const GAIN_OFFSET: usize = GRID_OFFSET + super::beatgrid::WORDS;
+pub(super) const WORDS: usize = GAIN_OFFSET + crate::track_gain::WORDS;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -11,6 +12,8 @@ pub(crate) struct Preparation {
     pub cue: f64,
     #[serde(default)]
     pub grid: Option<super::beatgrid::Grid>,
+    #[serde(default, skip_serializing_if = "crate::track_gain::Policy::is_off")]
+    pub source_gain: crate::track_gain::Policy,
     pub hotcues: [Option<f64>; super::HOTCUES],
     #[serde(default)]
     pub hotcue_styles: [Style; super::HOTCUES],
@@ -26,7 +29,7 @@ pub(crate) struct Loop {
 impl Preparation {
     pub fn valid(self) -> bool {
         let position = |v: f64| v.is_finite() && (0.0..=1.0e10).contains(&v);
-        position(self.cue)
+        self.source_gain.valid() && position(self.cue)
             && self.hotcues.into_iter().flatten().all(position)
             && self
                 .loop_region
@@ -44,14 +47,16 @@ impl Preparation {
         for (dest, style) in words[12..].chunks_exact_mut(STYLE_WORDS).zip(self.hotcue_styles) {
             dest.copy_from_slice(&style.words());
         }
-        words[GRID_OFFSET..].copy_from_slice(&super::beatgrid::Grid::encode(self.grid));
+        words[GRID_OFFSET..GAIN_OFFSET].copy_from_slice(&super::beatgrid::Grid::encode(self.grid));
+        words[GAIN_OFFSET..].copy_from_slice(&self.source_gain.words());
         words
     }
     pub(super) fn from_words(words: [u64; WORDS]) -> Self {
         let value = |i| f64::from_bits(words[i]);
         Self {
             cue: value(0),
-            grid: super::beatgrid::Grid::decode(words[GRID_OFFSET..].try_into().unwrap()).flatten(),
+            grid: super::beatgrid::Grid::decode(words[GRID_OFFSET..GAIN_OFFSET].try_into().unwrap()).flatten(),
+            source_gain: crate::track_gain::Policy::from_words(words[GAIN_OFFSET..].try_into().unwrap()).unwrap_or_default(),
             hotcues: std::array::from_fn(|i| (value(i + 1) >= 0.0).then(|| value(i + 1))),
             hotcue_styles: std::array::from_fn(|i| Style::from_words(words[12+i*STYLE_WORDS..12+(i+1)*STYLE_WORDS].try_into().unwrap()).unwrap_or_default()),
             loop_region: (value(9) >= 0.0).then(|| Loop {
@@ -75,6 +80,7 @@ impl super::DeckRt {
         Some(Preparation {
             cue: pos(self.cue_pos),
             grid: self.grid,
+            source_gain: self.source_gain.policy(),
             hotcue_styles: self.cue_styles,
             hotcues: std::array::from_fn(|i| self.hotcues[i].set.then(|| pos(self.hotcues[i].pos))),
             loop_region: (self.loop_len > 0.0 && self.loop_start < end).then(|| Loop {
@@ -150,6 +156,7 @@ mod tests {
         let worker = std::thread::spawn(move || {
             for i in 1..50_000 {
                 writing.record_preparation(Preparation {
+                    source_gain: crate::track_gain::Policy::Off,
                     cue: i as f64,
                     grid: Some(super::super::beatgrid::Grid::new(i as f64, 120.0).unwrap()),
                     hotcues: [Some(i as f64); 8],

@@ -121,6 +121,8 @@ impl Prepared {
             );
             deck.title = saved.title;
             deck.audio = saved.audio.map(|index| media[index].clone());
+            let level = deck.audio.as_ref().map(|sample| crate::track_gain::measure_channels(&sample.data, sample.ch, || false)).transpose().map_err(|error| Error::Invalid(error.into()))?;
+            deck.source_gain = crate::track_gain::Resolved::prepare(saved.source_gain, level).map_err(|error| Error::Invalid(error.into()))?;
             deck.history_key = 0;
             deck.eq = [eq(saved.eq, output_sr); 2];
             deck.filter_position = saved.filter_amt;
@@ -141,7 +143,7 @@ impl Prepared {
             // render directly; warm DSP tails/physical scratch motion are transient.
             deck.transition_remaining = 0;
             if deck.audio.is_some() {
-                let receipt = load_receipt::Receipt::new();
+                let receipt = load_receipt::Receipt::with_preparation(deck.preparation()).with_source_level(level).map_err(|error| Error::Invalid(error.into()))?;
                 receipt.claim();
                 receipt.finish(load_receipt::State::Current);
                 deck.history_key = receipt.history_key();
@@ -164,6 +166,7 @@ impl Prepared {
             rt.sampler_banks.push(sampler::Bank { id: match saved.instance { Some(id) => id, None => crate::sampler_bank::BankId::new().map_err(Error::Invalid)? }, revision: 1, factory: None, data });
         }
         rt.builtin = state.builtin.map(|index| index.map(|i| media[i].clone()));
+        rt.builtin_levels = std::array::from_fn(|stem| rt.builtin[stem].as_ref().and_then(|sample| crate::track_gain::measure_channels(&sample.data, sample.ch, || false).ok()));
         for track in &mut rt.tracks {
             track.midi_schedule.prepare_history(8192);
             track.recorded_playback.reserve(8192);
@@ -260,6 +263,7 @@ impl Prepared {
             pad_output,
             pad_targets,
             builtin,
+            builtin_levels,
             fx_view,
             scene_fx,
             compose_target

@@ -19,6 +19,7 @@ struct Inner {
     grid_lock_sequence: AtomicU64,
     grid_lock: [AtomicU64; 1 + super::beatgrid::WORDS],
     initial_preparation: Option<super::preparation::Preparation>,
+    source_gain: Option<crate::track_gain::Resolved>,
     preparation_sequence: AtomicU64,
     preparation: [AtomicU64; super::preparation::WORDS],
     last_play: AtomicU64,
@@ -46,7 +47,7 @@ impl Receipt {
     pub(crate) fn with_preparation(
         initial_preparation: Option<super::preparation::Preparation>,
     ) -> Self {
-        Self::with_preparation_and_approval(initial_preparation, None, None)
+        Self::with_preparation_and_approval(initial_preparation, None, None, None)
     }
     /// Create one pending media receipt.
     /// Takes retained preparation and an optional reviewed override; returns a fresh receipt with no application acknowledgment.
@@ -54,6 +55,7 @@ impl Receipt {
         initial_preparation: Option<super::preparation::Preparation>,
         deck_approval: Option<super::performance::DeckApproval>,
         deck_generation: Option<u64>,
+        level: Option<crate::track_gain::Level>,
     ) -> Self {
         let wall_origin = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -69,6 +71,7 @@ impl Receipt {
             grid_lock_sequence: AtomicU64::new(0),
             grid_lock: std::array::from_fn(|_| AtomicU64::new(0)),
             initial_preparation,
+            source_gain: crate::track_gain::Resolved::prepare(initial_preparation.unwrap_or_default().source_gain, level).ok(),
             preparation_sequence: AtomicU64::new(0),
             preparation: std::array::from_fn(|_| AtomicU64::new(0)),
             last_play: AtomicU64::new(0),
@@ -118,6 +121,7 @@ impl Receipt {
             self.initial_preparation(),
             Some(approval),
             self.0.deck_generation,
+            self.source_level(),
         );
         if let Some((locked, grid)) = self.grid_protection() {
             next.set_grid_protection(locked, grid);
@@ -131,6 +135,7 @@ impl Receipt {
             self.initial_preparation(),
             self.0.deck_approval.clone(),
             Some(generation),
+            self.source_level(),
         );
         if let Some((locked, grid)) = self.grid_protection() {
             next.set_grid_protection(locked, grid);
@@ -150,6 +155,18 @@ impl Receipt {
     pub(super) fn initial_preparation(&self) -> Option<super::preparation::Preparation> {
         self.0.initial_preparation
     }
+    /// Bind gain recall to the actual decoded source.
+    /// Takes its whole-track level; returns a pending receipt with prepared gain, or refuses an unusable saved auto policy.
+    pub(crate) fn with_source_level(self, level: Option<crate::track_gain::Level>) -> Result<Self, &'static str> {
+        crate::track_gain::Resolved::prepare(self.initial_preparation().unwrap_or_default().source_gain, level)?;
+        let next = Self::with_preparation_and_approval(self.initial_preparation(), self.0.deck_approval.clone(), self.0.deck_generation, level);
+        if let Some((locked, grid)) = self.grid_protection() { next.set_grid_protection(locked, grid); }
+        Ok(next)
+    }
+    /// Read the level of the decoded source attached to this request.
+    /// Takes this receipt; returns its immutable measurement when available.
+    pub(crate) fn source_level(&self) -> Option<crate::track_gain::Level> { self.0.source_gain.and_then(|gain| gain.level()) }
+    pub(super) fn source_gain(&self) -> Option<crate::track_gain::Resolved> { self.0.source_gain }
     /// Single renderer writer; a GUI poll makes one bounded attempt, never spins.
     pub(super) fn record_preparation(&self, preparation: super::preparation::Preparation) {
         let words = preparation.words();

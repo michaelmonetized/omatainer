@@ -283,6 +283,7 @@ fn over_limit_capture_refuses_every_row_and_empty_fields_cannot_enqueue() {
     gui.click("Analyze BPM");
     gui.click("Analyze duration");
     gui.click("Analyze waveform");
+    gui.click("Analyze source level");
     gui.click("Analyze selected row");
     assert!(!gui.app.library_analysis.busy());
     assert!(gui.app.library_analysis.message.contains("at least one"));
@@ -553,7 +554,7 @@ fn native_filtered_replacement_preview_reports_locks_without_decoding_or_saving(
     assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),old);
     for path in &paths {assert!(gui.record(path).is_none());}
     gui.app.lib_filter="Analysis ".into();gui.app.refresh_library_view();gui.frame(vec![]);
-    gui.click("Analyze waveform");gui.click("Analyze filtered crate");gui.finish();
+    gui.click("Analyze waveform");gui.click("Analyze source level");gui.click("Analyze filtered crate");gui.finish();
     assert!(gui.app.library_analysis.message.contains("3 skipped"),"{}",gui.app.library_analysis.message);
     assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),old);
     for path in paths {assert!(gui.record(&path).is_none());}

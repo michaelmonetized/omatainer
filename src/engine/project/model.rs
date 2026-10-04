@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 13;
+pub const STATE_VERSION: u32 = 14;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -91,6 +91,9 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 14 && raw.get("decks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|deck| deck.get("source_gain").is_some()) {
+            return Err(serde::de::Error::custom("Source gain requires project state version 14"));
+        }
         if version < 7 && raw.get("session").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain session identity metadata")); }
         if (7..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Supported versions 7 and newer require session identity metadata")); }
         if version < 8 && raw.get("conductor").and_then(serde_json::Value::as_object).is_some_and(|c| c.contains_key("native") || c.get("tempos").and_then(serde_json::Value::as_array).is_some_and(|points| points.iter().any(|p| p.get("ramp").is_some()))) {
@@ -321,6 +324,8 @@ pub struct Deck {
     pub sync: bool,
     pub gain: f32,
     pub eq: [f32; 3],
+    #[serde(default, skip_serializing_if = "crate::track_gain::Policy::is_off")]
+    pub source_gain: crate::track_gain::Policy,
     pub filter_morph: f32,
     pub filter_amt: f32,
     pub pfl: bool,
@@ -424,6 +429,7 @@ impl State {
                 keylock: false,
                 sync: false,
                 gain: 0.85,
+                source_gain: crate::track_gain::Policy::Off,
                 eq: [1.0; 3],
                 filter_morph: 0.5,
                 filter_amt: 0.5,
@@ -619,6 +625,8 @@ impl State {
                 || !text_ok(&deck.title)
                 || !unit(deck.pitch)
                 || !finite_range(deck.gain as f64, 0.0, 1.5)
+                || !deck.source_gain.valid()
+                || self.version < 14 && !deck.source_gain.is_off()
                 || !valid_eq(deck.eq)
                 || !unit(deck.filter_amt)
                 || !unit(deck.filter_morph)

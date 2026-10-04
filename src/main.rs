@@ -21,6 +21,7 @@ mod midi_file_io;
 mod performance_history;
 mod sampler_bank;
 mod track_analysis;
+mod track_gain;
 mod preferences;
 mod theme;
 mod ui;

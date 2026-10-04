@@ -121,6 +121,7 @@ impl Plan {
                 )
             }
             DeckGrid { deck, .. } => (Target::Deck(*deck), Name::Grid, 460 + *deck as u64),
+            DeckSourceGain { deck, .. } => (Target::Deck(*deck), Name::Deck, 470 + *deck as u64),
             DeckCueStyle { deck, pad, .. } => (
                 Target::Deck(*deck), Name::CueStyle, 440 + (*deck as u64) * 8 + *pad as u64,
             ),
@@ -190,6 +191,15 @@ impl RtEngine {
             if self.sampler_edit_index(edit).is_none() || !edit.ack.claim() {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
             }
+        }
+        if let Command::DeckSourceGain { deck, gain, receipt, ack } = &c {
+            let current = self.decks.get(*deck as usize).filter(|deck| deck.audio.is_some()
+                && !deck.source_gain_active()
+                && receipt.state() == load_receipt::State::Current
+                && gain.level() == receipt.source_level()
+                && deck.load_receipt.as_ref().is_some_and(|loaded| loaded.same_request(receipt)));
+            let Some(deck) = current else { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; };
+            if deck.source_gain == *gain { ack.applied(); self.undo.retire_command(c); return None; }
         }
         if let Command::DeckGrid { deck, grid, receipt, ack } = &c {
             let current = self.decks.get(*deck as usize).filter(|d| d.audio.is_some()
