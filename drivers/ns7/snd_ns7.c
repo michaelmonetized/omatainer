@@ -422,6 +422,11 @@ static int ns7_pcm_hw_free(struct snd_pcm_substream *stream)
 	unsigned long flags;
 	mutex_lock(&chip->audio_mutex);
 	spin_lock_irqsave(&chip->lock, flags);
+	if (!state->prepared) {
+		spin_unlock_irqrestore(&chip->lock, flags);
+		mutex_unlock(&chip->audio_mutex);
+		return 0;
+	}
 	state->running = false;
 	state->prepared = false;
 	state->generation++;

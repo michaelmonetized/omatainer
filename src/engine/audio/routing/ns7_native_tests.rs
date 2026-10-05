@@ -174,3 +174,104 @@ fn original_ns7_production_audio_and_midi_io() {
     drop(audio);
     audio::owner::finish_shutdown();
 }
+
+#[test]
+#[ignore = "Requires NS7 headphones, muted stage amps, and OMATAINER_NS7_LISTEN_DIR on /home"]
+fn original_ns7_headphone_listening() {
+    use crate::engine::{monitor::Control, Command, Sample};
+    let directory =
+        PathBuf::from(std::env::var_os("OMATAINER_NS7_LISTEN_DIR").expect("listening directory"));
+    assert!(directory.starts_with("/home"));
+    std::fs::create_dir_all(&directory).unwrap();
+    assert!(
+        !directory.join("stop").exists(),
+        "use a fresh listening directory"
+    );
+    let (engine, mut rt) = Engine::headless_for_test(44100, 256);
+    rt.apply(Command::Stop);
+    rt.master = 0.0;
+    rt.fx_wet = [0.0; 3];
+    for (slot, deck) in rt.decks.iter_mut().enumerate() {
+        let data = (0..88200)
+            .flat_map(|frame| {
+                let time = frame as f32 / 44100.0;
+                let phase = time.fract();
+                let envelope = (phase / 0.005)
+                    .min(1.0)
+                    .min(((0.4 - phase) / 0.005).clamp(0.0, 1.0));
+                let sample =
+                    0.02 * envelope * (std::f32::consts::TAU * [440.0, 660.0][slot] * time).sin();
+                [sample; 2]
+            })
+            .collect();
+        deck.audio = Some(Arc::new(Sample {
+            name: format!("Quiet headphone check {}", slot + 1),
+            sr: 44100,
+            ch: 2,
+            data,
+            peaks: vec![].into(),
+            bpm: 120.0,
+            path: String::new(),
+        }));
+        deck.playing = true;
+        deck.sync = false;
+        deck.keylock = false;
+        deck.gain = 1.0;
+        deck.loop_on = true;
+        deck.loop_start = 0.0;
+        deck.loop_len = 88200.0;
+        rt.monitor.apply(Control::Fader {
+            deck: slot as u8,
+            value: 0.0,
+        });
+    }
+    rt.monitor.apply(Control::Mix(0.5));
+    rt.monitor.apply(Control::Master(false));
+    rt.monitor.apply(Control::Volume(0.5));
+    let settings = crate::preferences::Audio {
+        backend: Some("ALSA".into()),
+        device: Some("sysdefault:CARD=NS7".into()),
+        sample_rate: Some(44100),
+        channels: Some(4),
+        format: Some(crate::preferences::AudioFormat::I32),
+        buffer_frames: Some(2048),
+        ..Default::default()
+    };
+    let probe = midir::MidiInput::new("omatainer-listening-discover").unwrap();
+    let names = probe
+        .ports()
+        .iter()
+        .filter_map(|port| probe.port_name(port).ok())
+        .filter(|name| {
+            name.contains("Numark NS7:")
+                || name.contains("Pioneer DDJ-SP1:")
+                || name.contains("APC40")
+        })
+        .collect();
+    let midi = midi::MidiHub::start_with_policy(
+        engine.cmd.clone(),
+        engine.snap.clone(),
+        midi::InputPolicy::Selected(names),
+    )
+    .unwrap();
+    let audio = audio::start_with_settings(rt, &settings).unwrap();
+    wait(|| engine.cmd.audio_metrics().callbacks > 20);
+    let started = Instant::now();
+    while started.elapsed() < Duration::from_secs(180) && !directory.join("stop").exists() {
+        let snapshot = engine.snap.lock().clone();
+        let receipt = serde_json::json!({"elapsed_seconds":started.elapsed().as_secs_f32(),"source_peak":0.02,
+            "audience_gain":0.0,"frequencies_hz":[440,660],"monitor":snapshot.monitor,
+            "audio":engine.cmd.audio_metrics(),"midi_input":snapshot.midi_input,"midi_feedback":snapshot.midi_feedback});
+        std::fs::write(
+            directory.join("status.json"),
+            serde_json::to_vec_pretty(&receipt).unwrap(),
+        )
+        .unwrap();
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    let metrics = engine.cmd.audio_metrics();
+    drop(midi);
+    drop(audio);
+    audio::owner::finish_shutdown();
+    assert_eq!(metrics.backend_errors, 0);
+}
