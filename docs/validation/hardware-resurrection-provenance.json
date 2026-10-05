@@ -36,7 +36,7 @@
     "ns7_mode_label_capture_confirmed": true,
     "corrected_mode_listening_confirmed": false,
     "ns7_audience_listening_confirmed": false,
-    "pioneer_visible_feedback_confirmed": false,
+    "pioneer_visible_feedback_confirmed": true,
     "apc_fader_and_grid_input_confirmed": true,
     "apc_led_color_observation_confirmed": false,
     "mpd_pad_input_confirmed": true,
