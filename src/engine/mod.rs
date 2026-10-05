@@ -9,6 +9,7 @@ pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
 pub(crate) mod monitor;
+pub(crate) mod surface_controls;
 #[cfg(test)]
 mod track_gain_tests;
 mod video_transport;
@@ -622,6 +623,7 @@ pub struct RtEngine {
     pub master: f32,
     pub cue_mix: f32,
     monitor: monitor::Monitor,
+    surface: surface_controls::State,
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
     pub decks: [DeckRt; DECKS],
@@ -821,6 +823,7 @@ pub struct Snapshot {
     pub meter_master: bool,
     pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
+    pub surfaces: surface_controls::Status,
     pub view: u8,
     pub selected_track: usize,
     pub selected_scene: usize,
@@ -888,6 +891,7 @@ impl Default for Snapshot {
             meter_master: false,
             master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
+            surfaces: surface_controls::Status::default(),
             view: 0,
             selected_track: 0,
             selected_scene: 0,
@@ -926,6 +930,8 @@ impl Default for Snapshot {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    Surface(surface_controls::Input),
+    MidiSamplerPad { source: u64, pad: u8, on: bool, pressure: f32 },
     Remote(remote::Request),
     ProviderPreview(provider_preview::Request),
     SessionEdit(session::Request),
@@ -1138,6 +1144,7 @@ impl RtEngine {
             master: 0.85,
             cue_mix: 0.0,
             monitor: monitor::Monitor::default(),
+            surface: surface_controls::State::new(sr).map_err(|error| error.to_string())?,
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
@@ -1561,6 +1568,9 @@ impl RtEngine {
                 scene_inputs[bus][0] += tl;
                 scene_inputs[bus][1] += tr;
             }
+            let sends = self.surface.render_sends(spb);
+            l += sends[0];
+            r += sends[1];
             // Keep every scene's own history advancing, including zero-input
             // tails after all of its tracks have stopped or moved elsewhere.
             for (scene, (chain, input)) in self.scene_fx.iter_mut().zip(scene_inputs).enumerate() {
@@ -1856,6 +1866,8 @@ impl RtEngine {
         };
         let output = if silent { [0.0; 2] } else { [fl * gl, fr * gr] };
         self.routing_track_taps = [raw, [fl, fr], output];
+        let output = self.surface.track(ti, output);
+        self.routing_track_taps[2] = output;
         (output[0], output[1], false)
     }
 
@@ -1906,6 +1918,7 @@ impl RtEngine {
     }
 
     fn render_deck(&mut self, di: usize) -> (f32, f32) {
+        self.deck_surface_tick(di);
         let sr = self.sr as f64;
         {
             let d = &mut self.decks[di];
@@ -2072,6 +2085,7 @@ impl RtEngine {
         let curve = deck_filter::Curve::at(deck.filter_position, self.sr);
         l = deck.filter[0].process(l, curve);
         r = deck.filter[1].process(r, curve);
+        [l, r] = self.surface.deck(di, [l, r], f64::from(self.sr) * 60.0 / f64::from(self.bpm.max(1.0)));
         [l, r] = self.decks[di].transition_output([l, r]);
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
         self.routing_deck_taps[1] = [l, r];
@@ -2124,6 +2138,7 @@ impl RtEngine {
             }
             if voice.position >= voice.end { self.finish_sampler_audition(); }
         }
+        for bus in &mut buses { for sample in bus { *sample *= self.surface.status.sampler_volume; } }
         buses
     }
 
@@ -2324,6 +2339,8 @@ impl RtEngine {
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
             Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
+            Command::Surface(input) => self.surface_input(input),
+            Command::MidiSamplerPad { source, pad, on, pressure } => self.surface_sampler(source, pad, on, pressure),
             Command::ReservedStop { lane, ticket, target } => {
                 if lane == 0 { self.apply(Command::Stop); }
                 else if usize::from(lane) >= control::SAMPLER_STOP_BASE { self.apply(Command::SamplerSlotStop { pad: (usize::from(lane) - control::SAMPLER_STOP_BASE) as u8 }); }
@@ -2466,7 +2483,7 @@ impl RtEngine {
             Command::DeckSpindleRelease { source, deck } => {
                 if let Some(d) = self.decks.get_mut(usize::from(deck)) {
                     if d.spindle.as_ref().is_some_and(|s| s.source == source) {
-                        d.spindle = None; d.playing = false; d.controls.release(); d.fade_from_last_output(self.sr);
+                        d.spindle = None; d.playing = false; d.release_performance_controls(); d.fade_from_last_output(self.sr);
                     }
                 }
             }

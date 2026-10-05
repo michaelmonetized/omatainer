@@ -64,6 +64,8 @@ impl Drop for ProjectLease<'_> {
 enum GateKey {
     Live { source: u64, ch: u8, note: u8 },
     Pad(u8),
+    MidiPad { source: u64, pad: u8 },
+    SurfaceShift(u64),
     Audition(u64),
     Piano(u64),
     Touch { source: u64, deck: u8 },
@@ -554,6 +556,8 @@ impl CommandPort {
                 },
                 GateKey::Spindle { source: owner, deck } if owner == source => Command::DeckSpindleRelease { source, deck },
                 GateKey::DeckButton { source: owner, deck, button } if owner == source => Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold { button, on: false } },
+                GateKey::MidiPad { source: owner, pad } if owner == source => Command::MidiSamplerPad { source, pad, on: false, pressure: 0.0 },
+                GateKey::SurfaceShift(owner) if owner == source => Command::Surface(super::surface_controls::Input::Shift { source, on: false }),
                 _ => continue,
             };
             let _ = self.send(command);
@@ -652,6 +656,8 @@ impl CommandPort {
             return fail(SubmissionError::InvalidTarget);
         }
         if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
         }
@@ -893,6 +899,8 @@ fn project_release(command: &Command) -> bool {
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::RoutedNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::MidiSamplerPad { on: false, .. }
+            | Command::Surface(super::surface_controls::Input::Shift { on: false, .. })
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
             | Command::SamplerSlotStop { .. }
@@ -976,6 +984,8 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
         Command::DeckPreview { deck, expected, on } => Some((GateKey::Preview { deck, expected },on)),
         Command::MidiAudition { id, on, .. } => Some((GateKey::Piano(id), on)),
         Command::SamplerPad { pad, on } => Some((GateKey::Pad(pad % 16), on)),
+        Command::MidiSamplerPad { source, pad, on, .. } => Some((GateKey::MidiPad { source, pad }, on)),
+        Command::Surface(super::surface_controls::Input::Shift { source, on }) => Some((GateKey::SurfaceShift(source), on)),
         Command::SamplerPadPressure { pad, .. } => Some((GateKey::Pad(pad), true)),
         Command::SamplerAudition(ref request) => Some((GateKey::Audition(request.id), true)),
         Command::SamplerAuditionStop { id } => Some((GateKey::Audition(id), false)),
@@ -1016,10 +1026,11 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
     let transport_start = matches!(
         command,
         Command::Play | Command::TogglePlay | Command::Record
-    );
+    ) || matches!(command, Command::Surface(super::surface_controls::Input::Apc { control: 0..=0x27 | 0x52..=0x56 | 0x5b | 0x5d | 0x66, value: 1..=127, note: true, .. }) | Command::Surface(super::surface_controls::Input::Recording(true)));
     let pad = match *command {
         Command::SamplerPad { pad, on: true } => Some(usize::from(pad % 16)),
         Command::SamplerPadPressure { pad, .. } => Some(usize::from(pad)),
+        Command::MidiSamplerPad { pad, on: true, .. } => Some(usize::from(pad)),
         _ => None,
     };
     pad.is_some_and(|pad| pending[SAMPLER_STOP_BASE + pad] != 0)
@@ -1149,6 +1160,10 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
         Command::FxParam { slot, p, .. } => Some((12, slot, p as usize)),
         Command::Quant(_) => Some((13, 0, 0)),
         Command::ClipGain { track, scene, .. } => Some((14, track as usize, scene as usize)),
+        Command::Surface(super::surface_controls::Input::Apc { channel, control, note: false, .. }) if !matches!(control, 0x0d | 0x2f | 0x40) => Some((24, channel as usize, control as usize)),
+        Command::Surface(super::surface_controls::Input::TrackSend { track, send, .. }) => Some((25, track as usize, send as usize)),
+        Command::Surface(super::surface_controls::Input::FxValue { bank, slot, parameter, .. }) => Some((26, bank as usize, slot as usize + if parameter { 3 } else { 0 })),
+        Command::Surface(super::surface_controls::Input::SamplerVolume(_)) => Some((27, 0, 0)),
         _ => None,
     }
 }
@@ -1275,6 +1290,7 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::LiveNoteOff { .. }
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
+            | Command::MidiSamplerPad { .. }
             | Command::SamplerPadPressure { .. }
             | Command::SamplerSlotStop { .. }
             | Command::DeckPreview { on: false, .. }

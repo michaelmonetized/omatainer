@@ -457,3 +457,17 @@ fn cancel_fences_queued_capture_gestures_and_accepts_the_next_performance_note()
     engine.cmd.midi_learn().cancel();drain(&mut worker);render(&mut rt);assert!(!held(&rt,1103,63));assert!(engine.cmd.midi_learn().view().capture.is_none());
     sink.push(&[0x90,64,100]);drain(&mut worker);render(&mut rt);assert!(held(&rt,1103,64));
 }
+
+#[test]
+fn surfaces_apc_and_mpd_stop_survive_callback_overflow() {
+    for (map, stop) in [(crate::engine::midi::akai_apc40_mk2(), vec![0x90, 0x5c, 127]),
+        (crate::engine::midi::akai_mpd232(), vec![0xf0, 0x7f, 0x7f, 6, 1, 0xf7])] {
+        let (engine, mut rt) = Engine::headless_for_test(48000, 32);
+        rt.playing = true;
+        let (mut sink, mut worker) = channel(1, 98, map, engine.cmd.clone(), Arc::new(Mutex::new(Vec::new())),
+            "surface stop test".into(), "fixture:stop".into(), Arc::new(InputCounters::default())).unwrap();
+        sink.push(&[0x90, 60, 100]); sink.push(&stop);
+        drain(&mut worker); render(&mut rt);
+        assert!(!rt.playing && sink.shared.counters.snapshot().resets > 0);
+    }
+}

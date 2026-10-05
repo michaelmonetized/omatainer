@@ -2,6 +2,8 @@ use super::{cbind, nbind, rbind, Action, MidiMap, RelativeEncoding, RelativeSpec
 use crate::engine::{Command, CommandPort};
 mod spindle;
 mod ns7;
+mod sp1;
+pub(super) mod mpd232;
 
 pub(super) fn pioneer_sp1() -> MidiMap {
     let mut bindings = Vec::new();
@@ -258,7 +260,7 @@ pub(super) fn numark_ns7() -> MidiMap {
 
 pub(super) struct Decoder {
     spindles: [spindle::Spindle; 2],
-    fx: [[Option<u8>; 3]; 2],
+    sp1: sp1::Decoder,
     ns7: ns7::Decoder,
 }
 
@@ -266,7 +268,7 @@ impl Default for Decoder {
     fn default() -> Self {
         Self {
             spindles: std::array::from_fn(|_| spindle::Spindle::default()),
-            fx: [[None; 3]; 2],
+            sp1: sp1::Decoder::default(),
             ns7: ns7::Decoder::default(),
         }
     }
@@ -291,6 +293,15 @@ impl Decoder {
     /// Takes profile, message, command port, source and time; returns whether it was consumed.
     pub(super) fn input_at(&mut self, map: &MidiMap, message: &[u8; 3], cmd: &CommandPort, source: u64, at: std::time::Instant) -> bool {
         let [status, control, value] = *message;
+        if map.name == "Pioneer DDJ-SP1" && self.sp1.input(*message, source, cmd) { return true; }
+        if map.name == "Akai APC40 mkII" && matches!(status & 0xf0, 0x80 | 0x90 | 0xb0) {
+            if status & 0xf0 != 0xb0 && control == 0x62 { let _ = cmd.send(Command::Surface(crate::engine::surface_controls::Input::Shift { source, on: status & 0xf0 == 0x90 && value > 0 })); return true; }
+            if status & 0xf0 == 0x90 && control == 0x5c && value > 0 { let _ = cmd.send(Command::Stop); return true; }
+            let _ = cmd.send(Command::Surface(crate::engine::surface_controls::Input::Apc {
+                channel: status & 15, control, value: if status & 0xf0 == 0x80 { 0 } else { value }, note: status & 0xf0 != 0xb0,
+            }));
+            return true;
+        }
         if map.name == "Numark NS7 (original)" && self.ns7.input(*message, source, cmd, at) { return true; }
         if map.name == "Numark NS7 (original)" && matches!(status, 0x90 | 0x80) && control == 0 {
             let _ = cmd.send(Command::Monitor(crate::engine::monitor::Control::Master(
@@ -333,36 +344,6 @@ impl Decoder {
         }
         if map.name == "Numark NS7 (original)" && matches!(status, 0xe0 | 0xe2) {
             return true;
-        }
-        if map.name == "Pioneer DDJ-SP1" {
-            if (0x97..=0x9a).contains(&status) && (8..16).contains(&control) {
-                if value > 0 {
-                    let _ = cmd.send(Command::DeckHotCue {
-                        deck: (status - 0x97) % 2,
-                        pad: control - 8,
-                        del: true,
-                    });
-                }
-                return true;
-            }
-            if matches!(status, 0xb4 | 0xb5) {
-                let bank = usize::from(status - 0xb4);
-                if matches!(control, 2 | 4 | 6) {
-                    self.fx[bank][usize::from(control / 2 - 1)] = Some(value);
-                    return true;
-                }
-                if matches!(control, 0x22 | 0x24 | 0x26) {
-                    let slot = usize::from((control - 0x20) / 2 - 1);
-                    if let Some(msb) = self.fx[bank][slot].take() {
-                        let value = f32::from((u16::from(msb) << 7) | u16::from(value)) / 16383.0;
-                        let _ = cmd.send(Command::FxWet {
-                            slot: slot as u8,
-                            value,
-                        });
-                    }
-                    return true;
-                }
-            }
         }
         false
     }

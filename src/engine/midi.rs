@@ -28,6 +28,8 @@ pub(crate) use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
 #[cfg(test)]
+mod surface_tests;
+#[cfg(test)]
 mod realtime_tests;
 #[cfg(test)]
 mod relative_tests;
@@ -95,6 +97,11 @@ pub enum Action {
     Clip,
     TrackFader,
     TrackMute,
+    TrackSolo,
+    TrackArm,
+    TrackPan,
+    TrackSendA,
+    TrackSendB,
     Play,
     Stop,
     Record,
@@ -269,6 +276,7 @@ fn handle_msg(
                 // learn capture, including when interleaved in a frame.
                 let command = match status {
                     0xfa => Some(Command::Play),
+                    0xfb => Some(Command::Play),
                     0xfc => Some(Command::Stop),
                     0xf8 => Some(Command::MidiClock { source }),
                     _ => None, // Continue/sensing/reset/reserved: no handler yet.
@@ -514,6 +522,10 @@ fn dispatch(
                 track: b.extra.min((super::session::MAX_TRACKS - 1) as u16) as u8,
             });
         }
+        Action::TrackSolo if pressed => { let _ = send(Command::Solo { track: b.extra as u8 }); }
+        Action::TrackArm if pressed => { let _ = send(Command::Arm { track: b.extra as u8 }); }
+        Action::TrackPan => { let _ = send(Command::TrackPan { track: b.extra as u8, value: rel }); }
+        Action::TrackSendA | Action::TrackSendB => { let _ = send(Command::Surface(super::surface_controls::Input::TrackSend { track: b.extra as u8, send: u8::from(b.action == Action::TrackSendB), value: rel })); }
         Action::Play if pressed => {
             let _ = send(Command::TogglePlay);
         }
@@ -599,7 +611,7 @@ pub fn builtin_maps() -> anyhow::Result<Vec<MidiMap>> {
     // The specific MkII name must precede the original's broader matcher.
     maps.push(akai_apc40_mk2());
     maps.push(akai_apc40());
-    maps.push(akai_mpd232());
+    maps.push(surface::mpd232::configured()?.unwrap_or_else(akai_mpd232));
     maps.push(akai_mpk());
     maps.push(class_compliant());
     for map in &maps {
@@ -773,6 +785,7 @@ fn akai_apc40() -> MidiMap {
 
 fn akai_apc40_mk2() -> MidiMap {
     let mut b = apc40_common_bindings();
+    b.push(nbind(0xff, 0x5c, Action::Stop, 0, 0));
     // Akai APC40 Mk2 protocol v1.2, pp. 30-34: forty distinct clip notes,
     // with the same eight per-channel CC7 track faders as the original.
     for scene in 0..5u8 {

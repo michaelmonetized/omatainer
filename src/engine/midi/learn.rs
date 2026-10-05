@@ -64,6 +64,11 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::Clip,
         Action::TrackFader,
         Action::TrackMute,
+        Action::TrackSolo,
+        Action::TrackArm,
+        Action::TrackPan,
+        Action::TrackSendA,
+        Action::TrackSendB,
         Action::Play,
         Action::Stop,
         Action::Record,
@@ -89,6 +94,9 @@ pub(crate) fn kind(action: Action) -> MsgKind {
         | Action::Master
         | Action::CueMix
         | Action::TrackFader
+        | Action::TrackPan
+        | Action::TrackSendA
+        | Action::TrackSendB
         | Action::FxWet => MsgKind::Cc,
         _ => MsgKind::Note,
     }

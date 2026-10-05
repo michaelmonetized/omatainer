@@ -296,7 +296,7 @@ fn state(
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
-        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,
+        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,"surfaces":s.surfaces,
         "decks":s.decks.iter().take(2).map(|deck| json!({"title":ipc_transport::short_text(&deck.title,32),"playing":deck.playing,"position_seconds":deck.pos/f64::from(deck.source_sample_rate.max(1)),"duration":deck.duration,"keylock":deck.keylock,"keylock_mode":deck.keylock_mode,"pitch_range":deck.pitch_range,"controls":deck.controls,"loop_on":deck.loop_on,"hotcues":deck.hotcues})).collect::<Vec<_>>(),
         "transport_epoch":Count(s.transport_epoch),"performance":commands.performance().status(),
         "page":page,"total":slots.len(),"objects":objects,

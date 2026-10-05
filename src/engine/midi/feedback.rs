@@ -71,9 +71,33 @@ impl Surface {
                         continue;
                     };
                     messages.push([0x90 + deck as u8, 0x58, if state.sync { 127 } else { 0 }]);
+                    messages.push([0x90 + deck as u8, 0x5c, if state.sync { 127 } else { 0 }]);
+                    messages.push([0x90 + deck as u8, 0x63, if state.keylock { 127 } else { 0 }]);
                     messages.push([0x90 + deck as u8, 0x55, if state.loop_on { 127 } else { 0 }]);
+                    messages.push([0x90 + deck as u8, 0x40, if state.controls.slip { 127 } else { 0 }]);
+                    messages.push([0x90 + deck as u8, 0x15, if state.controls.bleep { 127 } else { 0 }]);
+                    messages.push([0x90 + deck as u8, 0x38, if state.controls.reverse { 127 } else { 0 }]);
+                    messages.push([0x9b, deck as u8, if state.media_active { 127 } else { 0 }]);
                     for (pad, set) in state.hotcues.iter().take(8).enumerate() {
                         messages.push([0x97 + deck as u8, pad as u8, if *set { 127 } else { 0 }]);
+                        messages.push([0x97 + deck as u8, 0x10 + pad as u8, if state.controls.roll == Some(pad as u8) { 127 } else { 0 }]);
+                        messages.push([0x97 + deck as u8, 0x20 + pad as u8, if state.controls.slice == Some(pad as u8) { 127 } else { 0 }]);
+                        let slot = deck % 2 * 8 + pad;
+                        let loaded = snapshot.sampler_instances.get(snapshot.sampler_bank).is_some_and(|bank| bank.data.audio[slot].is_some());
+                        let brightness = if snapshot.surfaces.sampler_playing[slot] { 127 } else if loaded { 63 } else { 0 };
+                        for mode in [0x30, 0x70] { messages.push([0x97 + deck as u8, mode + pad as u8, brightness]); }
+                        messages.push([0x97 + deck as u8, 0x40 + pad as u8, if state.controls.hotloops[pad] { 127 } else { 0 }]);
+                        let beats = state.loop_len / f64::from(state.source_sample_rate.max(1)) * f64::from(state.bpm) / 60.0;
+                        messages.push([0x97 + deck as u8, 0x50 + pad as u8, if state.loop_on && (beats - 2_f64.powi(pad as i32 - 5 + i32::from(state.controls.roll_scale))).abs() < 0.01 { 127 } else { 0 }]);
+                        let manual = match pad { 1 | 6 => state.loop_on, 2 => state.controls.hotloops[usize::from(state.controls.loop_slot)], 4 | 5 => state.controls.loop_edit == (pad - 3) as u8, _ => false };
+                        messages.push([0x97 + deck as u8, 0x60 + pad as u8, if manual { 127 } else { 0 }]);
+                    }
+                }
+                for (bank, effects) in snapshot.surfaces.fx.iter().enumerate() {
+                    for slot in 0..3 { messages.push([0x94 + bank as u8, 0x47 + slot as u8, if effects.on[slot] { 127 } else { 0 }]); }
+                    for deck in 0..2 {
+                        messages.push([0x96, 0x4c + (bank * 4 + deck) as u8, if effects.assigned[deck] { 127 } else { 0 }]);
+                        messages.push([0x96, 0x5a + (bank * 2 + deck) as u8, if effects.assigned[deck] { 127 } else { 0 }]);
                     }
                 }
             }
@@ -120,12 +144,13 @@ impl Surface {
             Self::ApcMk2 | Self::Apc => {
                 for scene in 0..5 {
                     for track in 0..8 {
-                        let state = snapshot.tracks.get(track);
+                        let state = snapshot.tracks.get(track + if self == Self::ApcMk2 { snapshot.surfaces.track_offset } else { 0 });
+                        let scene_index = scene + if self == Self::ApcMk2 { snapshot.surfaces.scene_offset } else { 0 };
                         let occupied = state
-                            .and_then(|state| state.clips.get(scene))
+                            .and_then(|state| state.clips.get(scene_index))
                             .is_some_and(|clip| clip.kind != 0);
                         let playing = occupied
-                            && state.is_some_and(|state| state.playing_scene == scene as i16);
+                            && state.is_some_and(|state| state.playing_scene == scene_index as i16);
                         let color = if playing {
                             if self == Self::ApcMk2 { 21 } else { 1 }
                         } else if occupied {
@@ -138,6 +163,38 @@ impl Surface {
                         } else {
                             [0x90 + track as u8, 0x35 + scene as u8, color]
                         });
+                    }
+                }
+                if self == Self::ApcMk2 {
+                    let status = snapshot.surfaces;
+                    for track in 0..8 {
+                        let state = snapshot.tracks.get(status.track_offset + track);
+                        for (note, on) in [(0x30, state.is_some_and(|state| state.armed)), (0x31, state.is_some_and(|state| state.solo)),
+                            (0x32, state.is_some_and(|state| !state.mute)), (0x33, snapshot.selected_track == status.track_offset + track)] {
+                            messages.push([0x90 + track as u8, note, u8::from(on)]);
+                        }
+                        messages.push([0x90 + track as u8, 0x42, status.assignments[track]]);
+                        let value = match status.knob_mode {
+                            1 => status.sends[track][usize::from(status.send)],
+                            2 => state.map_or(0.0, |state| state.gain / 1.5),
+                            _ => state.map_or(0.5, |state| (state.pan + 1.0) * 0.5),
+                        };
+                        messages.push([0xb0, 0x38 + track as u8, if status.knob_mode == 0 { 3 } else { 2 }]);
+                        messages.push([0xb0, 0x30 + track as u8, (value.clamp(0.0, 1.0) * 127.0).round() as u8]);
+                        messages.push([0xb0, 0x18 + track as u8, 2]);
+                        messages.push([0xb0, 0x10 + track as u8, (status.device_values[track].clamp(0.0, 1.0) * 127.0).round() as u8]);
+                    }
+                    for (note, on) in [(0x3e, status.device_on), (0x3f, status.device_lock.is_some()), (0x40, snapshot.view == 2),
+                        (0x50, status.device_master),
+                        (0x41, snapshot.fx_view >= 0), (0x57, status.knob_mode == 0), (0x58, status.knob_mode == 1),
+                        (0x59, status.knob_mode == 2), (0x5a, snapshot.metronome), (0x5b, snapshot.playing),
+                        (0x5d, snapshot.recording), (0x66, snapshot.recording), (0x67, status.bank_lock)] {
+                        messages.push([0x90, note, u8::from(on)]);
+                    }
+                    for scene in 0..5 {
+                        let scene_index = status.scene_offset + scene;
+                        let playing = snapshot.tracks.iter().any(|track| track.playing_scene == scene_index as i16);
+                        messages.push([0x90, 0x52 + scene as u8, u8::from(playing)]);
                     }
                 }
             }
@@ -451,7 +508,7 @@ mod tests {
             .collect();
         for (surface, playing_color, loaded_color) in [(Surface::Apc, 1, 5), (Surface::ApcMk2, 21, 13)] {
             let messages = surface.messages(&snapshot);
-            assert_eq!(messages.len(), 40);
+            assert_eq!(messages.iter().filter(|message| if surface == Surface::ApcMk2 { message[0] == 0x90 && message[1] < 40 } else { (0x90..=0x97).contains(&message[0]) && (0x35..=0x39).contains(&message[1]) }).count(), 40);
             for track in 0..8 {
                 for scene in 0..5 {
                     let state = &snapshot.tracks[track];
@@ -513,5 +570,35 @@ mod tests {
         snapshot.decks[0].pfl = true;
         snapshot.decks[1].pfl = true;
         assert_eq!(before, Surface::Ns7.messages(&snapshot));
+    }
+
+    #[test]
+    fn surfaces_feedback_follows_modes_rings_and_held_pad_states() {
+        let mut snapshot = Snapshot::default();
+        snapshot.tracks = (0..16).map(|_| crate::engine::TrackSnap::default()).collect();
+        snapshot.surfaces.track_offset = 8;
+        snapshot.tracks[9].solo = true;
+        snapshot.tracks[9].armed = true;
+        snapshot.surfaces.assignments[1] = 2;
+        snapshot.surfaces.knob_mode = 1;
+        snapshot.surfaces.send = 1;
+        snapshot.surfaces.sends[1][1] = 1.0;
+        snapshot.surfaces.device_values[0] = 0.5;
+        let messages = Surface::ApcMk2.messages(&snapshot);
+        for message in [[0x91, 0x30, 1], [0x91, 0x31, 1], [0x91, 0x42, 2], [0xb0, 0x39, 2], [0xb0, 0x31, 127], [0xb0, 0x10, 64]] {
+            assert!(messages.contains(&message), "{message:?}");
+        }
+        snapshot.decks = vec![Default::default(), Default::default()];
+        snapshot.decks[0].controls.roll = Some(5);
+        snapshot.decks[1].controls.slice = Some(7);
+        snapshot.decks[0].controls.slip = true;
+        snapshot.surfaces.sampler_playing[8] = true;
+        snapshot.surfaces.fx[1].on[2] = true;
+        snapshot.surfaces.fx[1].assigned[0] = true;
+        let messages = Surface::Sp1.messages(&snapshot);
+        for message in [[0x97, 0x15, 127], [0x98, 0x27, 127], [0x90, 0x40, 127], [0x98, 0x70, 127], [0x95, 0x49, 127], [0x96, 0x50, 127]] {
+            assert!(messages.contains(&message), "{message:?}");
+        }
+        assert!(Surface::Mpd232.messages(&snapshot).is_empty());
     }
 }

@@ -95,12 +95,14 @@ struct Shared {
 struct Rules {
     cc: [[bool; 128]; 16],
     stop: [[bool; 128]; 16],
+    mmc: bool,
 }
 impl Rules {
     fn new(map: &MidiMap) -> Self {
         let mut rules = Self {
             cc: [[false; 128]; 16],
             stop: [[false; 128]; 16],
+            mmc: map.name.starts_with("Akai MPD232"),
         };
         for binding in &map.bindings {
             if binding.data >= 128 {
@@ -129,6 +131,9 @@ impl Rules {
                             | Action::Master
                             | Action::CueMix
                             | Action::TrackFader
+                            | Action::TrackPan
+                            | Action::TrackSendA
+                            | Action::TrackSendB
                             | Action::FxWet
                     )
                 {
@@ -146,6 +151,7 @@ impl Rules {
             && self.cc[(bytes[0] & 15) as usize][bytes[1] as usize]
     }
     fn has_stop(&self, bytes: &[u8]) -> bool {
+        if self.mmc && bytes.windows(6).any(|packet| packet[0] == 0xf0 && packet[1] == 0x7f && packet[2] < 128 && packet[3..] == [6, 1, 0xf7]) { return true; }
         // Bounded overflow-only scan preserves stop even with interleaved
         // realtime bytes. Normal MIDI parsing remains in handle_msg.
         let mut note = [0; 3];
@@ -303,6 +309,7 @@ impl InputWorker {
             for frame in super::routing::packet::frames(event.bytes()) {
                 match frame {
                     super::routing::packet::Frame::Musical(packet) => {
+                        if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
                             match self.shared.learning.input_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning) {

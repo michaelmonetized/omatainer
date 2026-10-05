@@ -556,6 +556,8 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckSpindle { .. }
         | Command::DeckSpindleRelease { .. }
         | Command::DeckControl { .. }
+        | Command::Surface(_)
+        | Command::MidiSamplerPad { .. }
         | Command::DeckTrack { .. }
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
@@ -654,6 +656,8 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::RoutedNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::MidiSamplerPad { on: false, .. }
+            | Command::Surface(super::surface_controls::Input::Shift { on: false, .. })
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
         | Command::SamplerSlotStop { .. }
@@ -798,6 +802,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.release_surface_inputs();
         self.finish_sampler_audition();
         // Finite sample one-shots keep their existing Arc ownership and natural
         // tails. Emergency silence is applied after the entire output chain.
@@ -806,7 +811,7 @@ impl super::RtEngine {
             deck.stop_preview(self.sr);
             deck.touching = false;
             deck.spindle = None;
-            deck.controls.release();
+            deck.release_performance_controls();
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;
         }

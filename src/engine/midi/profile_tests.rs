@@ -1,6 +1,6 @@
 use super::*;
 
-fn observe(map: &MidiMap, message: &[u8]) -> Vec<Command> {
+pub(super) fn observe(map: &MidiMap, message: &[u8]) -> Vec<Command> {
     let (commands, receiver) = crate::engine::CommandPort::channel(32);
     handle_msg(
         message,
@@ -34,7 +34,7 @@ fn every_factory_profile_has_unambiguous_wire_addresses() {
 
 #[test]
 fn mpd232_programmable_pads_preserve_all_notes_channels_and_velocities() {
-    let map = pick_map(&builtin_maps().unwrap(), "Akai MPD232 MIDI 1");
+    let map = akai_mpd232();
     assert_eq!(map.name, "Akai MPD232 (programmable)");
     for channel in [0, 9, 15] {
         for note in 0..128 {
@@ -59,7 +59,7 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     sp1.push(&[0xb4, 2, 64]);
     assert!(receiver.is_empty());
     sp1.push(&[0xb4, 0x22, 0]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::FxWet { slot: 0, value }) if (value - 8192.0 / 16383.0).abs() < 0.00001));
+    assert!(matches!(receiver.try_recv(), Ok(Command::Surface(crate::engine::surface_controls::Input::FxValue { bank: 0, slot: 0, parameter: false, value })) if (value - 8192.0 / 16383.0).abs() < 0.00001));
     sp1.push(&[0x9a, 15, 127]);
     assert!(matches!(receiver.try_recv(), Ok(Command::DeckHotCue { deck: 1, pad: 7, del: true })));
     let mut ns7 = hub.open_for_test(&commands, 72, surface::numark_ns7(), "synthetic NS7", "fixture:ns7");

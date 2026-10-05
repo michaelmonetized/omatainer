@@ -90,7 +90,8 @@ impl Prepared {
                     [rt.routing_deck_taps[0], [left, right], mixed]
                 }
                 Group::Main => {
-                    let before = [input[0] + click, input[1] + click];
+                    let sends = rt.surface.render_sends(f64::from(rt.sr) * 60.0 / f64::from(rt.bpm.max(1.0)));
+                    let before = [input[0] + click + sends[0], input[1] + click + sends[1]];
                     let mut output = before;
                     for slot in 0..rt.master_fx.len() {
                         let timer = rt.load_profile.start();

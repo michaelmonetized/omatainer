@@ -174,6 +174,12 @@ pub struct Reverb {
 }
 
 impl Reverb {
+    /// Read the feedback used by each comb for measured rendering.
+    /// Takes this reverb; returns the four current feedback coefficients.
+    pub(super) fn feedback(&self) -> [f32; 4] { self.delays.each_ref().map(|delay| delay.fb) }
+    /// Set comb feedback without replacing delay storage.
+    /// Takes normalized decay; updates all four delay feedback coefficients.
+    pub(super) fn decay(&mut self, value: f32) { for delay in &mut self.delays { delay.fb = value.clamp(0.0, 0.85); } }
     pub(super) fn storage_bytes(&self) -> usize { self.delays.iter().map(Delay::storage_bytes).sum() }
     pub fn new() -> Self {
         Self::at_sample_rate(48_000.0)

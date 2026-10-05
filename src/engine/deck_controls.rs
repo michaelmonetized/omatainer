@@ -14,6 +14,8 @@ pub enum Button {
     Delete,
     Cue,
     HotCue(u8),
+    Roll(u8),
+    Slice(u8),
 }
 impl Button {
     /// Locate a bounded button counter.
@@ -27,6 +29,8 @@ impl Button {
             Self::Delete => 4,
             Self::Cue => 5,
             Self::HotCue(pad) => 6 + usize::from(pad),
+            Self::Roll(pad) => 14 + usize::from(pad),
+            Self::Slice(pad) => 22 + usize::from(pad),
         }
     }
 }
@@ -49,6 +53,13 @@ pub enum Control {
     StartTime { value: f32 },
     StopTime { value: f32 },
     TrackStart,
+    Slip,
+    PadMode { mode: u8 },
+    Parameter { mode: u8, up: bool, shifted: bool },
+    HotLoop { pad: u8, clear: bool },
+    AutoLoopPad { pad: u8 },
+    ManualPad { pad: u8 },
+    SyncOff,
 }
 impl Control {
     /// Validate a performance control before queue admission.
@@ -62,7 +73,14 @@ impl Control {
             Self::Hold {
                 button: Button::HotCue(pad),
                 ..
-            } => pad < 5,
+            } => pad < 8,
+            Self::Hold {
+                button: Button::Roll(pad) | Button::Slice(pad),
+                ..
+            }
+            | Self::HotLoop { pad, .. } => pad < 8,
+            Self::AutoLoopPad { pad } | Self::ManualPad { pad } => pad < 8,
+            Self::PadMode { mode } | Self::Parameter { mode, .. } => mode < 8,
             _ => true,
         }
     }
@@ -80,12 +98,19 @@ pub struct Status {
     pub start_seconds: f32,
     pub stop_seconds: f32,
     pub braking: bool,
+    pub slip: bool,
+    pub pad_mode: u8,
+    pub roll: Option<u8>,
+    pub slice: Option<u8>,
+    pub roll_scale: i8,
+    pub slice_domain: u8,
+    pub hotloops: [bool; 8],
 }
 
 #[derive(Clone, Debug)]
 pub(super) struct State {
     owners: [Option<(u64, Button)>; super::control::MAX_COMMANDS],
-    counts: [u16; 11],
+    counts: [u16; 30],
     pub forward: Option<f64>,
     preview: Option<(u64, Button)>,
     delete: bool,
@@ -105,6 +130,14 @@ pub(super) struct State {
     remaining: u32,
     pub braking: bool,
     pub brake_rate: f32,
+    slip: bool,
+    pub pad_mode: u8,
+    pub roll_scale: i8,
+    slice_domain: u8,
+    slice_quant: u8,
+    performance_forward: Option<f64>,
+    saved_loop: Option<(bool, f64, f64)>,
+    slip_forward: Option<f64>,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct LoopHistory {
@@ -116,7 +149,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             owners: [None; super::control::MAX_COMMANDS],
-            counts: [0; 11],
+            counts: [0; 30],
             forward: None,
             preview: None,
             delete: false,
@@ -136,6 +169,14 @@ impl Default for State {
             remaining: 0,
             braking: false,
             brake_rate: 0.0,
+            slip: false,
+            pad_mode: 0,
+            roll_scale: 0,
+            slice_domain: 3,
+            slice_quant: 0,
+            performance_forward: None,
+            saved_loop: None,
+            slip_forward: None,
         }
     }
 }
@@ -239,6 +280,9 @@ impl State {
         self.owners.fill(None);
         self.counts.fill(0);
         self.forward = None;
+        self.performance_forward = None;
+        self.saved_loop = None;
+        self.slip_forward = None;
         self.preview = None;
         self.auto_button = None;
         self.delete = false;
@@ -265,11 +309,23 @@ impl State {
             start_seconds: self.start,
             stop_seconds: self.stop,
             braking: self.braking,
+            slip: self.slip,
+            pad_mode: self.pad_mode,
+            roll: (0..8).find(|&pad| self.held(Button::Roll(pad))),
+            slice: (0..8).find(|&pad| self.held(Button::Slice(pad))),
+            roll_scale: self.roll_scale,
+            slice_domain: self.slice_domain,
+            hotloops: self.loops.map(|slot| slot.is_some()),
         }
     }
     /// Discard loop banks and preview clocks when source media changes.
     /// Takes this state; returns no value and retains physical knob/switch settings.
     pub fn media_changed(&mut self) {
+        self.owners.fill(None);
+        self.counts.fill(0);
+        self.performance_forward = None;
+        self.saved_loop = None;
+        self.slip_forward = None;
         self.loops.fill(None);
         self.auto_button = None;
         self.selected = 0;
@@ -283,7 +339,58 @@ impl State {
     }
 }
 
+impl super::DeckRt {
+    /// Retire temporary pad loops before clearing their owners.
+    /// Takes this deck; restores its prior loop and clears all held performance gestures.
+    pub(super) fn release_performance_controls(&mut self) {
+        if let Some((on, start, len)) = self.controls.saved_loop.take() {
+            self.loop_on = on;
+            self.loop_start = start;
+            self.loop_len = len;
+        }
+        self.controls.release();
+    }
+}
+
 impl RtEngine {
+    /// Advance silent slip and pad clocks independently of the audible loop.
+    /// Takes deck index; advances at normal tempo and restores the slip position after vinyl release.
+    pub(super) fn deck_surface_tick(&mut self, index: usize) {
+        let d = &mut self.decks[index];
+        let step = f64::from(if d.sync {
+            d.target_rate.abs()
+        } else {
+            d.play_rate().abs()
+        }) * d
+            .audio
+            .as_ref()
+            .map_or(f64::from(self.sr), |audio| f64::from(audio.sr))
+            / f64::from(self.sr);
+        if let Some(position) = &mut d.controls.performance_forward {
+            if d.playing {
+                *position += step;
+            }
+            if let Some((true, start, len)) = d.controls.saved_loop.filter(|(_, _, len)| *len > 1.0)
+            {
+                if *position >= start + len {
+                    *position = start + (*position - start).rem_euclid(len);
+                }
+            }
+        }
+        let scratching = d.touching
+            || d.follows_spindle()
+                && d.spindle
+                    .as_ref()
+                    .is_some_and(super::spindle::Playback::scratching);
+        if d.controls.slip && scratching && d.playing {
+            let position = d.controls.slip_forward.get_or_insert(d.pos);
+            *position += step;
+        } else if let Some(position) = d.controls.slip_forward.take() {
+            if d.playing {
+                d.transition_to(position, self.sr, DeckTransition::Jump);
+            }
+        }
+    }
     /// Measure the actual audience output for the NS7's master meter mode.
     /// Takes the emitted stereo frame; updates two bounded envelopes without allocation.
     pub(super) fn observe_master_meter(&mut self, frame: [f32; 2]) {
@@ -309,6 +416,67 @@ impl RtEngine {
                     return;
                 }
                 match button {
+                    Button::Roll(_) | Button::Slice(_) => {
+                        if on && d.controls.saved_loop.is_none() {
+                            d.controls.saved_loop = Some((d.loop_on, d.loop_start, d.loop_len));
+                            d.controls.performance_forward = Some(d.pos);
+                        }
+                        let active = if on {
+                            Some(button)
+                        } else {
+                            d.controls
+                                .owners
+                                .iter()
+                                .rev()
+                                .flatten()
+                                .map(|(_, button)| *button)
+                                .find(|button| matches!(button, Button::Roll(_) | Button::Slice(_)))
+                        };
+                        if let Some(button) = active {
+                            let (start, beats) = match button {
+                                Button::Roll(pad) => (
+                                    d.grid_snap(d.pos, self.sr, self.bpm),
+                                    2_f32.powi(
+                                        i32::from(pad) - 5 + i32::from(d.controls.roll_scale),
+                                    ),
+                                ),
+                                Button::Slice(pad) => {
+                                    let domain = 2_f64.powi(i32::from(d.controls.slice_domain));
+                                    let beat = d.grid_beats_between(
+                                        0.0,
+                                        d.controls.performance_forward.unwrap_or(d.pos),
+                                        self.sr,
+                                        self.bpm,
+                                    );
+                                    let start = (beat / domain).floor() * domain
+                                        + f64::from(pad) * domain / 8.0;
+                                    (
+                                        d.grid_span(0.0, start, self.sr, self.bpm),
+                                        (domain
+                                            / 8.0
+                                            / 2_f64.powi(i32::from(d.controls.slice_quant)))
+                                            as f32,
+                                    )
+                                }
+                                _ => unreachable!(),
+                            };
+                            d.loop_start = start;
+                            d.loop_len = d
+                                .grid_span(start, f64::from(beats), self.sr, self.bpm)
+                                .max(2.0);
+                            d.loop_on = true;
+                            d.transition_to(start, self.sr, DeckTransition::Jump);
+                        } else {
+                            if let Some((on, start, len)) = d.controls.saved_loop.take() {
+                                d.loop_on = on;
+                                d.loop_start = start;
+                                d.loop_len = len;
+                            }
+                            if let Some(position) = d.controls.performance_forward.take() {
+                                d.transition_to(position, self.sr, DeckTransition::Jump);
+                            }
+                        }
+                    }
                     Button::Bleep => {
                         if d.controls.held(Button::Bleep) {
                             if d.controls.forward.is_none() {
@@ -329,7 +497,7 @@ impl RtEngine {
                     Button::Cue | Button::HotCue(_) => {
                         if !on {
                             let held = d.controls.held(Button::Cue)
-                                || (0..5).any(|pad| d.controls.held(Button::HotCue(pad)));
+                                || (0..8).any(|pad| d.controls.held(Button::HotCue(pad)));
                             if !held && d.controls.preview.is_some() && d.preview_position.is_some()
                             {
                                 d.controls.preview = None;
@@ -376,6 +544,11 @@ impl RtEngine {
                 }
             }
             Control::Keylock => self.apply(Command::DeckKeylock { deck }),
+            Control::SyncOff => {
+                if self.decks[index].sync {
+                    self.apply(Command::DeckSync { deck });
+                }
+            }
             Control::PitchRange => self.apply(Command::DeckPitchRange { deck }),
             Control::Strip { value } => {
                 if self.decks[index].loop_on {
@@ -393,6 +566,114 @@ impl RtEngine {
             }
             Control::TrackStart => self.apply(Command::DeckSeek { deck, frac: 0.0 }),
             Control::StartTime { value } => self.decks[index].controls.start = value * 4.0,
+            Control::Slip => self.decks[index].controls.slip = !self.decks[index].controls.slip,
+            Control::PadMode { mode } => self.decks[index].controls.pad_mode = mode,
+            Control::Parameter { mode, up, shifted } => {
+                let controls = &mut self.decks[index].controls;
+                let delta = if up { 1 } else { -1 };
+                match mode {
+                    1 | 5 if !shifted => {
+                        controls.roll_scale = (controls.roll_scale + delta).clamp(-3, 3)
+                    }
+                    2 => {
+                        if !shifted {
+                            controls.slice_quant = (i16::from(controls.slice_quant)
+                                + i16::from(delta))
+                            .clamp(0, 3) as u8;
+                        } else {
+                            controls.slice_domain = (i16::from(controls.slice_domain)
+                                + i16::from(delta))
+                            .clamp(1, 6) as u8;
+                        }
+                    }
+                    4 | 6 if !shifted => self.apply(Command::DeckControl {
+                        source,
+                        deck,
+                        control: Control::LoopScale { double: up },
+                    }),
+                    3 | 7 => {
+                        self.apply(Command::SamplerBank(if up {
+                            self.sampler_bank + 1
+                        } else {
+                            self.sampler_bank.saturating_sub(1)
+                        }));
+                    }
+                    _ => self.apply(Command::DeckControl {
+                        source,
+                        deck,
+                        control: Control::LoopShift { forward: up },
+                    }),
+                }
+            }
+            Control::HotLoop { pad, clear } => {
+                let d = &mut self.decks[index];
+                let slot = usize::from(pad);
+                if clear {
+                    d.controls.loops[slot] = None;
+                    return;
+                }
+                if let Some((start, len)) = d.controls.loops[slot] {
+                    d.loop_on = true;
+                    d.loop_start = start;
+                    d.loop_len = len;
+                    d.transition_to(start, self.sr, DeckTransition::Jump);
+                } else {
+                    let start =
+                        d.hotcues[slot].unwrap_or_else(|| d.grid_snap(d.pos, self.sr, self.bpm));
+                    let len = if d.loop_on {
+                        d.loop_len
+                    } else {
+                        d.grid_span(start, 4.0, self.sr, self.bpm)
+                    };
+                    d.controls.loops[slot] = Some((start, len));
+                    d.loop_on = true;
+                    d.loop_start = start;
+                    d.loop_len = len;
+                }
+            }
+            Control::AutoLoopPad { pad } => {
+                let beats = 2_f32
+                    .powi(i32::from(pad) - 5 + i32::from(self.decks[index].controls.roll_scale));
+                let d = &mut self.decks[index];
+                let length = d.grid_span(d.loop_start, f64::from(beats), self.sr, self.bpm);
+                if (d.loop_len - length).abs() > 1.0 {
+                    d.loop_on = false;
+                }
+                self.apply(Command::DeckLoop { deck, beats });
+            }
+            Control::ManualPad { pad } => match pad {
+                0 => self.apply(Command::SelectDeck(index)),
+                1 | 6 => self.deck_control(source, deck, Control::LoopToggle),
+                2 => self.remember_controller_loop(index),
+                3 | 7 => {
+                    let d = &mut self.decks[index];
+                    d.controls.selected = (d.controls.selected + if pad == 3 { 7 } else { 1 }) % 8;
+                    d.controls.edit = 0;
+                    d.controls.edit_ticks = None;
+                    if let Some((start, len)) = d.controls.loops[d.controls.selected] {
+                        d.loop_start = start;
+                        d.loop_len = len;
+                    } else {
+                        d.clear_loop();
+                    }
+                    d.publish_preparation();
+                }
+                4 | 5 => {
+                    if self.decks[index].loop_on {
+                        let controls = &mut self.decks[index].controls;
+                        let edit = if pad == 4 { 1 } else { 2 };
+                        controls.edit = if controls.edit == edit { 0 } else { edit };
+                        controls.edit_ticks = None;
+                    } else {
+                        self.apply(if pad == 4 {
+                            Command::DeckLoopIn { deck }
+                        } else {
+                            Command::DeckLoopOut { deck }
+                        });
+                    }
+                }
+                _ => {}
+            },
             Control::StopTime { value } => self.decks[index].controls.stop = value * 4.0,
             Control::Tap => {
                 let d = &mut self.decks[index];
@@ -492,6 +773,10 @@ impl RtEngine {
                 self.remember_controller_loop(index);
             }
             Control::LoopToggle => {
+                if self.decks[index].loop_len <= 1.0 {
+                    self.apply(Command::DeckLoop { deck, beats: 4.0 });
+                    return;
+                }
                 let d = &mut self.decks[index];
                 if d.loop_len > 1.0 {
                     d.loop_on = !d.loop_on;
@@ -528,7 +813,8 @@ impl RtEngine {
             }
             Control::LoopScale { double } => {
                 if self.decks[index].loop_len <= 1.0 {
-                    return;
+                    self.apply(Command::DeckLoop { deck, beats: 4.0 });
+                    self.decks[index].loop_on = false;
                 }
                 let active = self.decks[index].loop_on;
                 self.decks[index].loop_on = self.decks[index].loop_len > 1.0;
@@ -634,7 +920,7 @@ impl RtEngine {
                 d.controls.transport(true, d.rate, self.sr);
             } else if !muted(before) && muted(after) {
                 d.playing = false;
-                d.controls.release();
+                d.release_performance_controls();
                 d.transition_to(0.0, self.sr, DeckTransition::Jump);
             }
         }

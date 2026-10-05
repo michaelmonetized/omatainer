@@ -51,6 +51,16 @@ impl MasterSlot {
             }
         }
     }
+    /// Apply a normalized effect parameter while retaining its histories.
+    /// Takes output rate and value; sets echo feedback, reverb decay and lowpass cutoff.
+    pub fn parameter(&mut self, sr: f32, value: f32) {
+        for channel in 0..2 {
+            self.echo[channel].fb = value * 0.85;
+            self.reverb[channel].decay(value * 0.85);
+            let coefficient = OnePole::lpf(sr, 40.0 * 400_f32.powf(value)).a;
+            for pole in &mut self.filter[channel] { pole.a = coefficient; }
+        }
+    }
     pub fn process(&mut self, input: [f32; 2], kind: FxKind, wet: f32) -> [f32; 2] {
         std::array::from_fn(|channel| match kind {
             FxKind::Echo => self.echo[channel].tick(input[channel]),
@@ -92,13 +102,14 @@ impl MasterSlot {
             }
             FxKind::Reverb => {
                 let mut errors = [0.0; 4];
+                let feedback = self.reverb[channel].feedback();
                 let mut sum = 0.0_f32;
                 let mut magnitude = 0.0_f64;
                 let output = self.reverb[channel].tick_traced(input[channel], |index, delayed, value, wrapped| {
                     let x = if index % 2 == 0 { input[channel] } else { -input[channel] };
                     errors[index] = bounds.reverb_error[channel][index].tick(
                         bounds.reverb[channel][index].peak(), x, delayed,
-                        input_error[channel], 0.72, 1.0, wrapped);
+                        input_error[channel], feedback[index], 1.0, wrapped);
                     bounds.reverb[channel][index].write(value, wrapped);
                     sum += delayed;
                     magnitude += f64::from(delayed).abs() * 0.25;
