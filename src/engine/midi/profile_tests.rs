@@ -134,7 +134,8 @@ fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck
             input.push(&[0xb0, cc, value]);
             rt.process(&mut [0.0; 256]);
             let position = rt.decks[deck].pos;
-            assert!((position / 47999.0 - f64::from(value) / 127.0).abs() < 0.00001);
+            let expected = (f64::from(f32::from(value) / 127.0) * 48000.0).min(47999.0);
+            assert!((position - expected).abs() < 0.001, "deck {deck}, value {value}: {position}, expected {expected}");
             input.push(&[0xb0, cc, 0]);
             rt.process(&mut [0.0; 256]);
             assert_eq!(rt.decks[deck].pos, position);
@@ -144,7 +145,7 @@ fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck
         rt.apply(Command::DeckPlay { deck: deck as u8 });
         rt.process(&mut [0.0; 256]);
         let position = rt.decks[deck].pos;
-        assert!((position - (47999.0 * 40.0 / 127.0 + 128.0)).abs() < 0.001);
+        assert!((position - (f64::from(40.0_f32 / 127.0) * 48000.0 + 128.0)).abs() < 0.001);
         input.push(&[0xb0, cc, 0, cc, 0]);
         rt.process(&mut [0.0; 256]);
         assert!((rt.decks[deck].pos - position - 128.0).abs() < 0.001);
