@@ -45,6 +45,10 @@ fn original_ns7_production_audio_and_midi_io() {
     );
     assert!(directory.starts_with("/home"));
     std::fs::create_dir_all(&directory).unwrap();
+    assert!(
+        !directory.join("ns7-input.wav").exists(),
+        "use a fresh NS7 qualification directory"
+    );
     let interface = std::fs::read_dir("/sys/bus/usb/drivers/snd_ns7")
         .unwrap()
         .filter_map(Result::ok)
@@ -168,8 +172,20 @@ fn original_ns7_production_audio_and_midi_io() {
     assert!(decoded.sample.data.iter().all(|value| value.is_finite()));
     let metrics = engine.cmd.audio_metrics();
     let snapshot = engine.snap.lock().clone();
+    let input_status = audio.input.status().message.clone();
+    drop(audio);
+    audio::owner::finish_shutdown();
+    let pcm_closed = || {
+        ["pcm0p", "pcm0c"].iter().all(|direction| {
+            std::fs::read_to_string(format!("/proc/asound/NS7/{direction}/sub0/status"))
+                .is_ok_and(|status| status.trim() == "closed")
+        })
+    };
+    wait(pcm_closed);
+    let silent_before = counter("pcm_playback_frames");
+    wait(|| counter("pcm_playback_frames") > silent_before + 4410);
     let receipt = serde_json::json!({
-        "output":format!("{:?}",output),"input_status":audio.input.status().message,"audio":metrics,
+        "output":format!("{:?}",output),"input_status":input_status,"audio":metrics,
         "input_captured_frames":engine.routing.shared.captured.load(Ordering::Relaxed),
         "input_overflow":engine.routing.shared.overflow.load(Ordering::Relaxed),
         "input_underrun":engine.routing.shared.underrun.load(Ordering::Relaxed),
@@ -178,7 +194,8 @@ fn original_ns7_production_audio_and_midi_io() {
         "ns7_midi_input_bytes":counter("midi_input_bytes")-input_before,"ns7_midi_errors":counter("midi_errors")-midi_errors_before,
         "ns7_pcm_playback_frames":counter("pcm_playback_frames")-playback_before,"ns7_pcm_capture_frames":counter("pcm_capture_frames")-capture_before,
         "ns7_pcm_feedback_frames":counter("pcm_feedback_frames")-feedback_before,"ns7_pcm_errors":counter("pcm_errors")-pcm_errors_before,
-        "ns7_pcm_startup_partial":counter("pcm_feedback_partial")-partial_before
+        "ns7_pcm_startup_partial":counter("pcm_feedback_partial")-partial_before,
+        "midi_clock_without_pcm":{"playback_frames":counter("pcm_playback_frames")-silent_before,"pcm_closed":pcm_closed()}
     });
     std::fs::write(
         directory.join("receipt.json"),
@@ -193,8 +210,6 @@ fn original_ns7_production_audio_and_midi_io() {
         "{receipt}"
     );
     drop(midi);
-    drop(audio);
-    audio::owner::finish_shutdown();
 }
 
 #[test]

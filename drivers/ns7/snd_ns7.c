@@ -55,6 +55,7 @@ struct ns7 {
 	atomic64_t sent;
 	atomic64_t errors;
 	struct mutex audio_mutex;
+	unsigned int midi_users;
 	struct ns7_pcm_state pcm[2];
 	struct ns7_audio_urb playback[NS7_AUDIO_URBS];
 	struct ns7_audio_urb capture[NS7_AUDIO_URBS];
@@ -429,6 +430,7 @@ static int ns7_pcm_hw_free(struct snd_pcm_substream *stream)
 	mutex_lock(&chip->audio_mutex);
 	spin_lock_irqsave(&chip->lock, flags);
 	if (!state->prepared) {
+		state->stream = NULL;
 		spin_unlock_irqrestore(&chip->lock, flags);
 		mutex_unlock(&chip->audio_mutex);
 		return 0;
@@ -437,9 +439,10 @@ static int ns7_pcm_hw_free(struct snd_pcm_substream *stream)
 	state->prepared = false;
 	state->generation++;
 	spin_unlock_irqrestore(&chip->lock, flags);
-	if (!chip->pcm[0].prepared && !chip->pcm[1].prepared)
+	if (!chip->pcm[0].prepared && !chip->pcm[1].prepared &&
+	    !chip->midi_users)
 		ns7_audio_stop(chip);
-	else {
+	else if (chip->audio_active && !chip->dead) {
 		for (int i = 0; i < NS7_AUDIO_URBS; i++)
 			usb_kill_urb(stream->stream == SNDRV_PCM_STREAM_PLAYBACK
 					 ? chip->playback[i].urb
@@ -674,7 +677,26 @@ static void ns7_write(struct urb *urb)
 static int ns7_open(struct snd_rawmidi_substream *stream)
 {
 	struct ns7 *chip = stream->rmidi->private_data;
-	return READ_ONCE(chip->dead) ? -ENODEV : 0;
+	int result = 0;
+	mutex_lock(&chip->audio_mutex);
+	if (READ_ONCE(chip->dead))
+		result = -ENODEV;
+	else if (!chip->audio_active)
+		result = ns7_audio_start(chip);
+	if (!result)
+		chip->midi_users++;
+	mutex_unlock(&chip->audio_mutex);
+	return result;
+}
+
+static void ns7_midi_close(struct ns7 *chip)
+{
+	mutex_lock(&chip->audio_mutex);
+	chip->midi_users--;
+	if (!chip->midi_users && !chip->pcm[0].prepared &&
+	    !chip->pcm[1].prepared)
+		ns7_audio_stop(chip);
+	mutex_unlock(&chip->audio_mutex);
 }
 
 static int ns7_input_close(struct snd_rawmidi_substream *stream)
@@ -684,6 +706,7 @@ static int ns7_input_close(struct snd_rawmidi_substream *stream)
 	spin_lock_irqsave(&chip->lock, flags);
 	chip->input = NULL;
 	spin_unlock_irqrestore(&chip->lock, flags);
+	ns7_midi_close(chip);
 	return 0;
 }
 
@@ -707,6 +730,7 @@ static int ns7_output_close(struct snd_rawmidi_substream *stream)
 	spin_lock_irqsave(&chip->lock, flags);
 	chip->output = NULL;
 	spin_unlock_irqrestore(&chip->lock, flags);
+	ns7_midi_close(chip);
 	return 0;
 }
 
@@ -992,7 +1016,8 @@ static int ns7_post_reset(struct usb_interface *interface)
 		result = -EIO;
 	kfree(status);
 	if (!result)
-		result = ns7_midi_resume(chip);
+		result = chip->midi_users ? ns7_audio_start(chip)
+					  : ns7_midi_resume(chip);
 unlock:
 	mutex_unlock(&chip->audio_mutex);
 	return result;

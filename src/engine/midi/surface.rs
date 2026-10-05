@@ -196,7 +196,7 @@ impl Decoder {
         let [status, control, value] = *message;
         if map.name == "Numark NS7 (original)" && matches!(status, 0x90 | 0x80) && control == 0 {
             let _ = cmd.send(Command::Monitor(crate::engine::monitor::Control::Master(
-                status == 0x90 && value != 0,
+                status == 0x80 || value == 0,
             )));
             return true;
         }

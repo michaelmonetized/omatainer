@@ -75,12 +75,18 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Mix(1.0)))));
     ns7.push(&[0xb0, 0x42, 0]);
     assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Volume(0.0)))));
-    ns7.push(&[0x90, 0, 127]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Master(true)))));
     ns7.push(&[0x90, 1, 127]);
     assert!(receiver.is_empty());
-    ns7.push(&[0x90, 0, 0]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Master(false)))));
+    for (message, expected) in [
+        ([0x90, 0, 99], false),
+        ([0x80, 0, 64], true),
+        ([0x90, 0, 127], false),
+        ([0x90, 0, 0], true),
+        ([0x90, 0, 127], false),
+    ] {
+        ns7.push(&message);
+        assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Master(value))) if value == expected));
+    }
 }
 
 #[test]
