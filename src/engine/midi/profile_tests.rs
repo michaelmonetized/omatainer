@@ -102,6 +102,72 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
 }
 
 #[test]
+fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck() {
+    use crate::engine::{deck_controls::Control, Engine, Sample};
+    let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+    for deck in 0..2 {
+        rt.apply(Command::DeckAudio {
+            deck,
+            audio: Arc::new(Sample {
+                name: "NS7 strip release".into(),
+                sr: 48000,
+                ch: 2,
+                data: vec![0.25; 96000],
+                peaks: Vec::new().into(),
+                bpm: 120.0,
+                path: String::new(),
+            }),
+        });
+    }
+    let hub = MidiHub::without_devices();
+    let mut input = hub.open_for_test(
+        &engine.cmd,
+        72,
+        surface::numark_ns7(),
+        "synthetic NS7",
+        "fixture:strip",
+    );
+    for (deck, cc) in [(0usize, 0x45), (1, 0x4d)] {
+        let other = 1 - deck;
+        let other_position = rt.decks[other].pos;
+        for value in [1, 38, 64, 120, 127] {
+            input.push(&[0xb0, cc, value]);
+            rt.process(&mut [0.0; 256]);
+            let position = rt.decks[deck].pos;
+            assert!((position / 47999.0 - f64::from(value) / 127.0).abs() < 0.00001);
+            input.push(&[0xb0, cc, 0]);
+            rt.process(&mut [0.0; 256]);
+            assert_eq!(rt.decks[deck].pos, position);
+            assert_eq!(rt.decks[other].pos, other_position);
+        }
+        input.push(&[0xb0, cc, 38, cc, 39, cc, 40, cc, 0]);
+        rt.apply(Command::DeckPlay { deck: deck as u8 });
+        rt.process(&mut [0.0; 256]);
+        let position = rt.decks[deck].pos;
+        assert!((position - (47999.0 * 40.0 / 127.0 + 128.0)).abs() < 0.001);
+        input.push(&[0xb0, cc, 0, cc, 0]);
+        rt.process(&mut [0.0; 256]);
+        assert!((rt.decks[deck].pos - position - 128.0).abs() < 0.001);
+        assert!(rt.decks[deck].playing);
+        assert_eq!(rt.decks[other].pos, other_position);
+        rt.apply(Command::DeckPlay { deck: deck as u8 });
+        for time_cc in [cc + 1, cc + 2] {
+            input.push(&[0xb0, time_cc, 127, time_cc, 0]);
+        }
+        rt.process(&mut [0.0; 256]);
+        let status = rt.decks[deck].controls.status();
+        assert_eq!(status.start_seconds, 0.0);
+        assert_eq!(status.stop_seconds, 0.0);
+        rt.apply(Command::DeckControl {
+            source: 72,
+            deck: deck as u8,
+            control: Control::Strip { value: 0.0 },
+        });
+        assert_eq!(rt.decks[deck].pos, 0.0);
+    }
+}
+
+#[test]
 fn sp1_and_original_ns7_use_their_own_wire_channels() {
     let maps = builtin_maps().unwrap();
     let sp1 = pick_map(&maps, "Pioneer DDJ-SP1 MIDI 1");

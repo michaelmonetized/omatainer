@@ -22,6 +22,9 @@ impl Decoder {
         let on = status == 0x90 && value > 0;
         if status == 0xb0 {
             for (deck, strip, start, stop) in [(0, 0x45, 0x46, 0x47), (1, 0x4d, 0x4e, 0x4f)] {
+                if address == strip && value == 0 {
+                    return true;
+                }
                 let value = f32::from(value) / 127.0;
                 let control = if address == strip {
                     Control::Strip { value }
