@@ -1,14 +1,14 @@
 {
-  "source_commit": "f8c3e2bb97a20429fdebb6d59b63fd659a6ad4f3",
+  "source_commit": "969904e6a92f7df1ad7e5d55994a8f37e2328d88",
   "native_driver_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "native_fixture_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
   "kernel": "7.1.13-3-2-ARCH",
-  "binary_sha256": "8d09d4b77fbbd4a445682d2bb24c7773ebe2fa255e47c81e8c2a4c8635b4ce6a",
+  "binary_sha256": "e0cecfeaeb933f5438602e8d8b0d8e2fa652071871a78d89810025d871b59e29",
   "module_sha256": "73506bfa6584f4e3cc61f84f19a9eee9d0e8acf6c0996fe7f7b81241eb26815d",
   "module_srcversion": "9874D71882F6752484E64FE",
   "native_fixture_binary_sha256": "781c5b3d0a071ea2635950265a2f08455a55739e05a309a60c8ce2072904e57b",
-  "source_diff_sha256": "42d2402da59d53edd58737cff1116d7c3d4155d7c1c6b3dc2001aac940f16ad8",
+  "source_diff_sha256": "29272355fc4da839b73cd63653a5daf3d4dcbf68d90b09e32f52c3ad9bf9bde3",
   "source_diff_paths": [
     "Cargo.toml",
     "Cargo.lock",
@@ -18,10 +18,10 @@
   ],
   "installed_binary": "/home/michael/.local/bin/omatainer",
   "tests": {
-    "ordinary_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
-    "ordinary_passed": 1648,
+    "ordinary_source_commit": "969904e6a92f7df1ad7e5d55994a8f37e2328d88",
+    "ordinary_passed": 1658,
     "ordinary_failed": 0,
-    "ordinary_ignored": 40,
+    "ordinary_ignored": 41,
     "skipped_unchanged_invalid_scenes": 1,
     "final_midi_passed": 134,
     "final_midi_failed": 0,
@@ -37,7 +37,22 @@
     "motor_ns7_failed": 0,
     "native_pcm_midi_fixture_passed": true,
     "midi_clock_without_pcm_proven": true,
-    "native_vectors_sanitized": true
+    "native_vectors_sanitized": true,
+    "scratch_source_commit": "f44fb47880b21229816844ceb8c91a29419348f5",
+    "scratch_spindle_passed": 3,
+    "scratch_ns7_passed": 6,
+    "scratch_snapshot_passed": 8,
+    "scratch_metrics_passed": 7,
+    "scratch_display_motion_passed": 1,
+    "continuous_clock_source_commit": "969904e6a92f7df1ad7e5d55994a8f37e2328d88",
+    "continuous_clock_regressions_in_ordinary_suite": 5,
+    "captured_spindle_replay_passed": 1,
+    "captured_spindle_replay_motion_updates": 1483,
+    "captured_spindle_replay_rate_range": [
+      0.90339094,
+      0.9749017
+    ],
+    "captured_spindle_replay_1khz_peak_adjacent_sample_difference": 0.1387806823667217
   },
   "physical": {
     "ns7_headphone_left_output": 3,
@@ -61,7 +76,96 @@
     ],
     "mpd_current_usb_path": "5-1",
     "mpd_display_fault_on_original_stage_path_fixed": false,
-    "ns7_scratch_listening_confirmed": false,
-    "ns7_display_rotation_match_confirmed": false
+    "ns7_scratch_listening_confirmed": true,
+    "ns7_display_rotation_match_confirmed": true,
+    "ns7_scratch_audio_quality_confirmed": false
+  },
+  "runtime": {
+    "ns7_buffer_frames": 512,
+    "ns7_period_frames": 128,
+    "installed_gui_pid": 1326622,
+    "physical_scratch_listening_pending": false,
+    "continuous_clock_audio_listening_pending": true,
+    "audio_callback_tid": 1326776,
+    "audio_callback_scheduling": {
+      "policy": "SCHED_OTHER",
+      "priority": 0,
+      "scope": "Current desktop-service callback"
+    },
+    "previous_f44_build_load_output": {
+      "backend_errors": 24219,
+      "deadline_overruns": 10,
+      "output_stopped": true
+    },
+    "continuous_clock_initial_audio": {
+      "backend_errors": 0,
+      "callbacks": 22838,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 2993197,
+        "channels": 4,
+        "elapsed_ns": 138293,
+        "frames": 132,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 129583,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 2990102,
+      "max_overrun_ns": 0
+    },
+    "continuous_clock_initial_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 15430,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 15432,
+      "received": 15432,
+      "resets": 0
+    },
+    "previous_rt_trial": {
+      "gui_pid": 1263735,
+      "callback_tid": 1263829,
+      "policy": "SCHED_RR",
+      "priority": 10,
+      "exit_signal": "SIGKILL",
+      "exit_code": 137,
+      "core_dump_found": false,
+      "oom_kill_found": false,
+      "cause": "Not established"
+    },
+    "desktop_service": "omatainer-ns7-testdrive.service",
+    "continuous_clock_current_audio": {
+      "backend_errors": 0,
+      "callbacks": 43510,
+      "deadline_overruns": 2,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 2993197,
+        "channels": 4,
+        "elapsed_ns": 140042,
+        "frames": 132,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 128375,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 4100317,
+      "max_overrun_ns": 439732
+    },
+    "continuous_clock_current_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 134260,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 134262,
+      "received": 134262,
+      "resets": 0
+    }
   }
 }
