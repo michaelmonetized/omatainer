@@ -1,7 +1,7 @@
 {
   "source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
   "binary_sha256": "a1fd33650d25aaeb3d2f6c93ce772d87f86053e3ef0e414696739979b2ef3567",
-  "scope": "Physical left-strip input and returned engine playhead; physical listening confirmation pending",
+  "scope": "Physical left-strip input, returned engine playhead and user-confirmed release listening",
   "deck": 0,
   "strip_messages": 359,
   "release_messages": 51,
@@ -105,5 +105,10 @@
   "artifacts": {
     "strip_events_sha256": "f7b1811f4c1fbfbb411891ef4f71ca0239010a5fba80511a456053709770df19",
     "engine_states_sha256": "80bc83bb84a381c79e8c8ccc3cb0092b1fac8e146b6195aebd7b90d294e86279"
+  },
+  "physical_listening_confirmation": {
+    "deck": 0,
+    "user_response": "Yep",
+    "check": "Touch several positions and lift the finger; playback continues from the final touch"
   }
 }

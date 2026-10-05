@@ -132,7 +132,7 @@
     "ns7_keylock_bleep_reverse_listening_source_commit": "bb5aeb76d72f123b0faf25aec54fa83ac26fcf49",
     "ns7_other_new_button_listening_confirmed": false,
     "ns7_strip_release_fault_observed": true,
-    "ns7_strip_release_listening_confirmed": false,
+    "ns7_strip_release_listening_confirmed": true,
     "ns7_strip_release_capture": {
       "deck": 0,
       "wire_channel": 0,
@@ -148,7 +148,9 @@
       "path": "target/hardware/ns7-strip-release-capture.txt"
     },
     "ns7_strip_release_engine_position_confirmed": true,
-    "ns7_strip_release_engine_position_receipt": "docs/validation/ns7-strip-release-receipt.json"
+    "ns7_strip_release_engine_position_receipt": "docs/validation/ns7-strip-release-receipt.json",
+    "ns7_strip_release_listening_deck": 0,
+    "ns7_strip_release_listening_source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1"
   },
   "runtime": {
     "ns7_buffer_frames": 512,
@@ -431,7 +433,7 @@
       "workspace": 9,
       "gui_mapped": true
     },
-    "strip_release_listening_pending": true,
+    "strip_release_listening_pending": false,
     "strip_release_after_controls_audio": {
       "backend_errors": 0,
       "callbacks": 62233,
