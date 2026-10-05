@@ -222,7 +222,7 @@ fn focus_existing() {
 /// Build an explicitly targeted deck media request.
 /// Takes deck-load or deck-unload and A/B; returns a validated IPC payload before any socket opens.
 fn deck_media_payload(args: &[String]) -> anyhow::Result<String> {
-    anyhow::ensure!(args.len() == 2, "usage: omatainer ctl deck-load|deck-unload A|B");
+    anyhow::ensure!(args.len() == 2 || (args.len() == 3 && args[0] == "deck-load"), "usage: omatainer ctl deck-load A|B [absolute-file] | deck-unload A|B");
     let op = match args[0].as_str() {
         "deck-load" => "deckLoad", "deck-unload" => "deckUnload",
         _ => anyhow::bail!("usage: omatainer ctl deck-load|deck-unload A|B"),
@@ -231,7 +231,10 @@ fn deck_media_payload(args: &[String]) -> anyhow::Result<String> {
         "A" | "a" => 0, "B" | "b" => 1,
         _ => anyhow::bail!("deck must be A or B"),
     };
-    let value = serde_json::json!({"op": op, "deck": deck});
+    let value = if let Some(path) = args.get(2) {
+        anyhow::ensure!(std::path::Path::new(path).is_absolute(), "deck file must use an absolute path");
+        serde_json::json!({"op":"deckLoadFile", "deck":deck, "path":path})
+    } else { serde_json::json!({"op": op, "deck": deck}) };
     ipc_schema::Operation::parse(&value)?;
     Ok(value.to_string())
 }

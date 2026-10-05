@@ -110,6 +110,22 @@ mod tests {
     }
 
     #[test]
+    fn ns7_running_motor_reports_cannot_nudge_the_audio_clock() {
+        let map = numark_ns7();
+        let mut decoder = Decoder::default();
+        let (cmd, received) = CommandPort::channel(32);
+        cmd.performance().publish_decks(1);
+        for position in [125,126,127,0,1] { decoder.input(&map, &[0xb0,0,position], &cmd); }
+        assert!(received.try_iter().next().is_none());
+        decoder.input(&map, &[0xb0,2,50], &cmd);
+        decoder.input(&map, &[0xb0,2,51], &cmd);
+        assert!(matches!(received.try_iter().next(),Some(Command::DeckJog {deck:1,delta}) if delta == 0.35));
+        cmd.performance().publish_decks(0);
+        decoder.input(&map, &[0xb0,0,2], &cmd);
+        assert!(matches!(received.try_iter().next(),Some(Command::DeckJog {deck:0,delta}) if delta == 0.35));
+    }
+
+    #[test]
     fn sp1_knobs_require_a_complete_pair_and_shifted_pads_delete_the_right_deck() {
         let map = pioneer_sp1();
         let mut decoder = Decoder::default();
@@ -231,7 +247,7 @@ impl Decoder {
             let deck = usize::from(control / 2);
             if let Some(previous) = self.jog[deck].replace(value) {
                 let delta = (i16::from(value) - i16::from(previous) + 64).rem_euclid(128) - 64;
-                if delta != 0 {
+                if delta != 0 && !cmd.performance().deck_active(deck) {
                     let _ = cmd.send(Command::DeckJog {
                         deck: deck as u8,
                         delta: delta as f32 * 0.35,

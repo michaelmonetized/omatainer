@@ -936,6 +936,7 @@ pub enum Command {
     DeckLoopIn { deck: u8 },
     DeckLoopOut { deck: u8 },
     DeckLoadSelected { deck: u8 },
+    DeckLoadFile { deck: u8, path: std::path::PathBuf },
     PrepareSelected { all: bool },
     DeckPreview { deck: u8, expected: u64, on: bool },
     DeckLoadLock { deck: u8, enabled: bool },
@@ -2581,6 +2582,10 @@ impl RtEngine {
                 // Producers capture selection before routing to the GUI.
                 // A raw renderer call without that capture must fail visibly.
                 self.cmd_rx.reject_uncaptured_ui_load();
+            }
+            command @ Command::DeckLoadFile { .. } => {
+                self.cmd_rx.reject_uncaptured_ui_load();
+                self.undo.retire_command(command);
             }
             Command::Xfader(v) => self.xfader = v.clamp(0.0, 1.0),
             Command::Master(v) => self.master = v.clamp(0.0, 1.5),

@@ -159,3 +159,32 @@ fn deck_media_cli_payloads_validate_targets_before_connecting() {
         assert!(deck_media_payload(&[op.into(),"A".into(),"extra".into()]).is_err());
     }
 }
+
+#[test]
+fn explicit_file_load_captures_identity_without_changing_the_selected_library_row() {
+    let root = std::env::temp_dir().join(format!("omatainer-file-load-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    std::fs::create_dir_all(&root).unwrap();
+    let media = root.join("stage track.mp3");
+    std::fs::write(&media,b"captured original bytes").unwrap();
+    let (engine,mut renderer) = engine::Engine::headless_for_test(48000,128);
+    let before = renderer.decks[0].pos;
+    engine.cmd.send(Command::DeckLoadFile {deck:1,path:media.clone()}).unwrap();
+    assert_eq!(engine.cmd.len(),0);
+    assert_eq!(renderer.decks[0].pos,before);
+    let requests = engine.ui_requests.take_requests();
+    let Some(engine::ui_requests::Request::Load(load)) = &requests[0] else { panic!("expected file load"); };
+    assert_eq!(load.deck,1);
+    assert_eq!(load.selection.source,engine::media_source::LibSource::File(media.clone()));
+    assert_eq!(load.selection.fingerprint,engine::media_source::FileFingerprint::read(&media));
+    assert_eq!(load.selection.title,"stage track");
+    assert!(engine.cmd.send(Command::DeckLoadFile {deck:2,path:media.clone()}).is_err());
+    assert!(engine.cmd.send(Command::DeckLoadFile {deck:0,path:"relative.mp3".into()}).is_err());
+    assert!(engine.cmd.send(Command::DeckLoadFile {deck:0,path:root.clone()}).is_err());
+    renderer.apply(Command::DeckPlay {deck:0});
+    renderer.apply(Command::DeckLoadLock {deck:0,enabled:true});
+    renderer.process(&mut [0.0;256]);
+    assert!(renderer.decks[0].playing);
+    assert!(engine.cmd.send(Command::DeckLoadFile {deck:0,path:media}).is_err());
+    assert_eq!(engine.cmd.ui_request_stats().pending,0);
+    std::fs::remove_dir_all(root).unwrap();
+}

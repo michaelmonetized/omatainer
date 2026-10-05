@@ -459,6 +459,11 @@ impl Handle {
     pub(super) fn publish_decks(&self, activity: u8) {
         self.0.deck_activity.store(activity, Ordering::Release);
     }
+    /// Read whether a deck is rendering or retaining audible output.
+    /// Takes a deck index; returns its renderer-confirmed activity without locking audio.
+    pub(crate) fn deck_active(&self, deck: usize) -> bool {
+        deck < super::DECKS && self.0.deck_activity.load(Ordering::Acquire) & (1 << deck) != 0
+    }
     /// Read the renderer-confirmed deck loading lock.
     /// Takes a deck index; returns its current protection state without touching audio.
     pub(crate) fn deck_load_locked(&self, deck: usize) -> bool {
@@ -496,6 +501,7 @@ pub(super) fn media_target(command: &Command) -> Option<usize> {
         Command::DeckAudio { deck, .. }
         | Command::DeckLoadRequested { deck, .. }
         | Command::DeckLoadSelected { deck }
+        | Command::DeckLoadFile { deck, .. }
         | Command::LoadBuiltin { deck, .. }
         | Command::DeckUnload { deck }
         | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize),
@@ -560,6 +566,7 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckLoopOut { .. }
         | Command::DeckLoadLock { .. }
         | Command::DeckLoadSelected { .. }
+        | Command::DeckLoadFile { .. }
         | Command::PrepareSelected { .. }
         | Command::DeckPreview { .. }
         | Command::DeckVinyl { .. }

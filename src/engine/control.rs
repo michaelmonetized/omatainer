@@ -650,6 +650,9 @@ impl CommandPort {
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
         }
+        if let Command::DeckLoadFile { deck, path } = command {
+            return self.shared.submit_ui(self.shared.ui_requests.load_file(deck, path));
+        }
         if let Command::PrepareSelected { all } = command {
             return self.shared.submit_ui(self.shared.ui_requests.prepare(all));
         }

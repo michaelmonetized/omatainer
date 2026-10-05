@@ -145,6 +145,20 @@ impl Mailbox {
             Ok(Request::Load(LoadRequest { deck, selection }))
         })
     }
+    /// Capture one explicit local file for the ordinary GUI loader.
+    /// Takes its deck and absolute path; returns bounded admission with the current file identity.
+    pub fn load_file(&self, deck: u8, path: std::path::PathBuf) -> Result<SubmissionOutcome, SubmissionError> {
+        self.submit(|_| {
+            if deck as usize >= DECKS || !path.is_absolute() || path.as_os_str().len() > 3072 {
+                return Err(SubmissionError::InvalidTarget);
+            }
+            let fingerprint = super::media_source::FileFingerprint::read(&path)
+                .ok_or(SubmissionError::UncapturedSelection)?;
+            let title = path.file_stem().ok_or(SubmissionError::InvalidTarget)?.to_string_lossy().into_owned();
+            let selection = Arc::new(Selection { source: super::media_source::LibSource::File(path), title, fingerprint: Some(fingerprint) });
+            Ok(Request::Load(LoadRequest { deck, selection }))
+        })
+    }
     /// Capture selected or filtered upcoming tracks before navigation changes.
     /// Takes the whole-view flag; returns bounded admission without touching the renderer.
     pub fn prepare(&self, all: bool) -> Result<SubmissionOutcome, SubmissionError> {

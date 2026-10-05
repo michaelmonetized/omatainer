@@ -94,6 +94,7 @@ impl Surface {
                         },
                     ]);
                     messages.push([0xb0, [0x07, 0x1d][deck], if state.sync { 127 } else { 0 }]);
+                    messages.push([0xb0, [0x12, 0x29][deck], if state.vinyl { 0 } else { 127 }]);
                 }
             }
             Self::ApcMk2 | Self::Apc => {
@@ -145,6 +146,41 @@ struct Output {
     surface: Surface,
     connection: MidiOutputConnection,
     values: BTreeMap<(u8, u8), u8>,
+    motors: Motors,
+}
+
+#[derive(Default)]
+struct Motors([Option<bool>; 2]);
+
+impl Motors {
+    /// Follow renderer-confirmed deck transport with motor edges.
+    /// Takes the current snapshot; returns start or stop commands only for changed deck states.
+    fn pending(&self, snapshot: &Snapshot) -> ([bool; 2], Vec<[u8; 3]>) {
+        let desired = std::array::from_fn(|deck| {
+            !snapshot.performance.recovery && !snapshot.performance.stopped
+                && snapshot.decks.get(deck).is_some_and(|state| state.media_active && state.playing && state.vinyl)
+        });
+        let messages = desired.iter().enumerate().filter_map(|(deck, running)| {
+            (self.0[deck] != Some(*running)).then_some([0xb0, if *running { 65 } else { 66 } + deck as u8 * 10, 127])
+        }).collect();
+        (desired, messages)
+    }
+
+    fn applied(&mut self, desired: [bool; 2]) {
+        self.0 = desired.map(Some);
+    }
+}
+
+impl Drop for Output {
+    fn drop(&mut self) {
+        match self.surface {
+            Surface::Ns7 => {
+                for controller in [66, 76] { let _ = self.connection.send(&[0xb0, controller, 127]); }
+            }
+            Surface::Sp1 => { let _ = self.connection.send(&[0x9b, 9, 0]); }
+            _ => {}
+        }
+    }
 }
 
 pub(super) struct Manager {
@@ -219,6 +255,7 @@ impl Manager {
                                                     surface,
                                                     connection,
                                                     values: BTreeMap::new(),
+                                                    motors: Motors::default(),
                                                 },
                                             );
                                         }
@@ -235,10 +272,14 @@ impl Manager {
                         let snapshot = snapshot.lock();
                         outputs
                             .iter()
-                            .map(|(id, output)| (id.clone(), output.surface.messages(&snapshot)))
+                            .map(|(id, output)| {
+                                let (desired, motors) = output.motors.pending(&snapshot);
+                                (id.clone(), output.surface.messages(&snapshot), desired,
+                                    if output.surface == Surface::Ns7 { motors } else { Vec::new() })
+                            })
                             .collect::<Vec<_>>()
                     };
-                    for (id, messages) in updates {
+                    for (id, messages, desired, motors) in updates {
                         let Some(output) = outputs.get_mut(&id) else {
                             continue;
                         };
@@ -255,6 +296,17 @@ impl Manager {
                             counts.sent.fetch_add(1, Relaxed);
                             output.values.insert((status, data), value);
                         }
+                        if !failed {
+                            for message in motors {
+                                if output.connection.send(&message).is_err() {
+                                    counts.failed.fetch_add(1, Relaxed);
+                                    failed = true;
+                                    break;
+                                }
+                                counts.sent.fetch_add(1, Relaxed);
+                            }
+                            if !failed { output.motors.applied(desired); }
+                        }
                         if failed {
                             outputs.remove(&id);
                         }
@@ -265,14 +317,9 @@ impl Manager {
                         connected: outputs.len() as u64,
                     };
                     snapshot.lock().midi_input = input_counters.snapshot();
-                    std::thread::park_timeout(Duration::from_millis(67));
+                    std::thread::park_timeout(Duration::from_millis(16));
                 }
-                for output in outputs
-                    .values_mut()
-                    .filter(|output| output.surface == Surface::Sp1)
-                {
-                    let _ = output.connection.send(&[0x9b, 9, 0]);
-                }
+                outputs.clear();
                 counts.connected.store(0, Relaxed);
             })?;
         Ok(Self {
@@ -304,6 +351,41 @@ impl Drop for Manager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ns7_motors_repeat_play_pause_edges_and_stop_for_vinyl_off_or_recovery() {
+        let mut snapshot = Snapshot::default();
+        snapshot.decks = vec![Default::default(), Default::default()];
+        for deck in &mut snapshot.decks { deck.media_active = true; deck.vinyl = true; }
+        let mut motors = Motors::default();
+        let (desired, messages) = motors.pending(&snapshot);
+        assert_eq!(messages, [[0xb0,66,127], [0xb0,76,127]]);
+        motors.applied(desired);
+        for _ in 0..3 {
+            snapshot.decks[0].playing = true;
+            let (desired, messages) = motors.pending(&snapshot);
+            assert_eq!(messages, [[0xb0,65,127]]);
+            motors.applied(desired);
+            assert!(motors.pending(&snapshot).1.is_empty());
+            snapshot.decks[0].playing = false;
+            let (desired, messages) = motors.pending(&snapshot);
+            assert_eq!(messages, [[0xb0,66,127]]);
+            motors.applied(desired);
+        }
+        snapshot.decks[1].playing = true;
+        let (desired, messages) = motors.pending(&snapshot);
+        assert_eq!(messages, [[0xb0,75,127]]);
+        motors.applied(desired);
+        snapshot.decks[1].vinyl = false;
+        let (desired, messages) = motors.pending(&snapshot);
+        assert_eq!(messages, [[0xb0,76,127]]);
+        motors.applied(desired);
+        snapshot.decks[1].vinyl = true;
+        let (desired, messages) = motors.pending(&snapshot);
+        assert_eq!(messages, [[0xb0,75,127]]);
+        motors.applied(desired);
+        snapshot.performance.recovery = true;
+        assert_eq!(motors.pending(&snapshot).1, [[0xb0,76,127]]);
+    }
     #[test]
     fn apc_mk2_initialization_selects_host_button_control_before_led_updates() {
         let messages = Surface::ApcMk2.initialization();
