@@ -45,6 +45,8 @@ fn captured_clicks_and_output_positions_agree_across_source_rates_and_a_tempo_ch
         rt.decks[0].sync_bpm = 120.0;
         rt.decks[0].playing = true;
         rt.xfader = 0.0;
+        let initial_fade_frames = rt.decks[0].transition_remaining as usize;
+        assert!(initial_fade_frames > 0);
         let mut callback = OutputCallback::new(rt, 2);
         let handle = engine.audible.clone();
         let count = output_rate as usize * 21 / 10;
@@ -66,7 +68,11 @@ fn captured_clicks_and_output_positions_agree_across_source_rates_and_a_tempo_ch
                         anchor + (offset as u64 * 1_000_000_000).div_ceil(u64::from(output_rate));
                     let position = handle.positions_at(time).unwrap()[0];
                     assert_eq!(position.output_frame, (start + offset) as u64);
-                    assert_ne!(position.media_key, 0);
+                    if start + offset + 1 < initial_fade_frames {
+                        assert_eq!(position.media_key, 0);
+                    } else {
+                        assert_ne!(position.media_key, 0);
+                    }
                     captured[start + offset] =
                         output[offset * 2].abs().max(output[offset * 2 + 1].abs());
                     source_positions[start + offset] = position.source_frame;
