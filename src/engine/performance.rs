@@ -555,6 +555,8 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiDeckTouch { .. }
         | Command::DeckSpindle { .. }
         | Command::DeckSpindleRelease { .. }
+        | Command::DeckControl { .. }
+        | Command::DeckTrack { .. }
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }
@@ -583,6 +585,9 @@ fn destructive(command: &Command) -> bool {
         | Command::LoadBuiltin { .. }
         | Command::Xfader(_)
         | Command::XfaderCurve(_)
+        | Command::XfaderReverse(_)
+        | Command::FaderStart { .. }
+        | Command::MeterMaster(_)
         | Command::Master(_)
         | Command::CueMix(_)
         | Command::Monitor(_)
@@ -594,6 +599,7 @@ fn destructive(command: &Command) -> bool {
         | Command::Arm { .. }
         | Command::Browse(_)
         | Command::BrowseCrates(_)
+        | Command::BrowsePanel(_)
         | Command::CrateReturn
         | Command::Select { .. }
         | Command::ComposeArm { .. }
@@ -654,6 +660,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::DeckSpindleRelease { .. }
+            | Command::DeckControl { control: super::deck_controls::Control::Hold { on: false, .. }, .. }
             | Command::ComposeDisarm
             | Command::LibraryFence { .. }
             | Command::Select { .. }
@@ -662,6 +669,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::SetView(_)
             | Command::Browse(_)
             | Command::BrowseCrates(_)
+            | Command::BrowsePanel(_)
             | Command::CrateReturn
             | Command::OpenFxTrack(_)
             | Command::OpenFxScene(_)
@@ -798,6 +806,7 @@ impl super::RtEngine {
             deck.stop_preview(self.sr);
             deck.touching = false;
             deck.spindle = None;
+            deck.controls.release();
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;
         }

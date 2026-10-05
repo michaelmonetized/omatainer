@@ -75,7 +75,7 @@ impl super::RtEngine {
             return;
         }
         self.xfader_gain
-            .prepare([self.xfader, self.xfader_curve], self.sr, crossfader_gains);
+            .prepare([self.crossfader_position(), self.xfader_curve], self.sr, crossfader_gains);
         for track in &mut self.tracks {
             track
                 .mixer_gain

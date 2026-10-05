@@ -506,11 +506,20 @@ impl App {
         use crate::engine::ui_requests::Request;
         for request in self.engine.ui_requests.take_requests().into_iter().flatten() {
             match request {
+                Request::TrackStart { deck, selection } => {
+                    if self.loads[usize::from(deck)].as_ref().and_then(|load| load.selection.as_ref()).is_some_and(|current| current.source == selection.source && current.fingerprint == selection.fingerprint) { self.send(Command::DeckSeek { deck, frac: 0.0 }); }
+                }
+                Request::Panel(panel) => {
+                    self.library_prepare.open = panel == 2;
+                    self.library_crates.open = panel == 1;
+                    if panel == 2 { self.publish_prepare_controller_view(); }
+                }
                 Request::Crate(request) => self.handle_crate_browse(request),
                 Request::CrateReturn(token) => self.handle_crate_return(token),
                 Request::Prepare(selections) => self.prepare_selections(selections),
                 Request::Load(request) => self.load_source(request.deck, Some(&request.selection)),
                 Request::Browse(request) => {
+                    if request.panel == 2 { self.select_prepared_controller_row(&request); continue; }
                     if request.epoch != self.engine.ui_requests.epoch() { continue; }
                     self.refresh_library_view();
                     let matches = |&i: &usize| self.library[i].source == request.selection.source;
@@ -536,6 +545,12 @@ impl App {
     }
 
     fn publish_library_selection(&mut self) {
+        self.publish_prepare_controller_view();
+        for deck in 0..DECKS {
+            let loaded = self.loads[deck].as_ref().filter(|load| load.receipt.as_ref().is_some_and(|receipt| receipt.state() == crate::engine::load_receipt::State::Current));
+            let seconds = self.snap.decks.get(deck).map_or(0.0, |state| state.pos / f64::from(state.source_sample_rate.max(1)));
+            self.engine.ui_requests.publish_deck(deck, loaded.and_then(|load| load.selection.as_ref()), seconds);
+        }
         self.refresh_library_view();
         self.publish_crate_navigation();
         let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);

@@ -64,6 +64,10 @@ impl Playback {
     /// Takes this clock; returns zero when input movement has expired.
     pub fn rate(&self) -> f32 { if self.elapsed <= self.motion.hold { self.motion.rate * self.ratio as f32 } else { 0.0 } }
 
+    /// Let keylock follow normal free rotation while vinyl gestures keep their pitch.
+    /// Takes the measured clock; returns true for hold, reverse or movement outside the measured free-spin band.
+    pub fn scratching(&self) -> bool { self.elapsed > self.motion.hold || !(0.85..=1.10).contains(&self.motion.rate) }
+
     /// Read physical turns per second independently of audio tempo.
     /// Takes this clock; returns signed rotation or zero for an expired report.
     pub fn turn_rate(&self) -> f32 { if self.elapsed <= self.motion.hold { self.motion.rate * (TICKS_PER_SECOND / TICKS_PER_TURN) as f32 } else { 0.0 } }

@@ -292,6 +292,7 @@ impl Frame {
             out.vinyl = deck.vinyl;
             out.sync = deck.sync;
             out.keylock = deck.keylock;
+            out.controls = deck.controls.status();
             out.keylock_mode = deck.keylock_mode();
             out.pfl = deck.pfl;
             out.loop_on = deck.loop_on;
@@ -344,6 +345,10 @@ impl Frame {
         target.master = rt.master;
         target.xfader = rt.xfader;
         target.xfader_curve = rt.xfader_curve;
+        target.xfader_reverse = rt.xfader_reverse;
+        target.fader_start = rt.fader_start;
+        target.meter_master = rt.meter_master;
+        target.master_meters = rt.master_meters;
         target.cue_mix = rt.cue_mix;
         target.monitor = rt.monitor.status;
         target.view = match rt.view {

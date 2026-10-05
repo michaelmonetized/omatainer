@@ -68,6 +68,7 @@ enum GateKey {
     Piano(u64),
     Touch { source: u64, deck: u8 },
     Spindle { source: u64, deck: u8 },
+    DeckButton { source: u64, deck: u8, button: super::deck_controls::Button },
     Preview { deck: u8, expected: u64 },
 }
 
@@ -552,6 +553,7 @@ impl CommandPort {
                     on: false,
                 },
                 GateKey::Spindle { source: owner, deck } if owner == source => Command::DeckSpindleRelease { source, deck },
+                GateKey::DeckButton { source: owner, deck, button } if owner == source => Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold { button, on: false } },
                 _ => continue,
             };
             let _ = self.send(command);
@@ -646,9 +648,10 @@ impl CommandPort {
                 return fail(SubmissionError::InvalidTarget);
             }
         }
-        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckPreview { deck, .. } | Command::DeckSpindle { deck, .. } | Command::DeckSpindleRelease { deck, .. } if *deck as usize >= super::DECKS) {
+        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckPreview { deck, .. } | Command::DeckSpindle { deck, .. } | Command::DeckSpindleRelease { deck, .. } | Command::FaderStart { deck, .. } if *deck as usize >= super::DECKS) {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
         }
@@ -660,6 +663,8 @@ impl CommandPort {
         }
         if let Command::BrowseCrates(steps) = command { return self.shared.submit_ui(self.shared.ui_requests.browse_crates(steps)); }
         if let Command::CrateReturn = command { return self.shared.submit_ui(self.shared.ui_requests.return_crate()); }
+        if let Command::BrowsePanel(panel) = command { return self.shared.submit_ui(self.shared.ui_requests.panel(panel)); }
+        if let Command::DeckTrack { deck, forward } = command { return self.shared.submit_ui(self.shared.ui_requests.track(deck, forward)); }
         if let Command::Browse(steps) = command {
             return self.shared.submit_ui(self.shared.ui_requests.browse(steps));
         }
@@ -880,6 +885,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
 }
 
 fn project_release(command: &Command) -> bool {
+    if let Command::Remote(request) = command { return project_release(&request.action.command()); }
     matches!(
         command,
         Command::LibraryFence { .. }
@@ -894,6 +900,7 @@ fn project_release(command: &Command) -> bool {
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::DeckSpindleRelease { .. }
+            | Command::DeckControl { control: super::deck_controls::Control::Hold { on: false, .. }, .. }
             | Command::Stop
             | Command::StopTrack { .. }
             | Command::ReservedStop { .. }
@@ -940,6 +947,7 @@ mod gui_routing_tests {
 }
 
 fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
+    if let Command::Remote(request) = command { return gate_change(&request.action.command()); }
     match *command {
         Command::LiveNoteOn {
             source,ch,note,vel,
@@ -987,6 +995,7 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
         )),
         Command::DeckSpindle { source, deck, .. } => Some((GateKey::Spindle { source, deck }, true)),
         Command::DeckSpindleRelease { source, deck } => Some((GateKey::Spindle { source, deck }, false)),
+        Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold { button, on } } => Some((GateKey::DeckButton { source, deck, button }, on)),
         _ => None,
     }
 }
@@ -1119,6 +1128,11 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
         Command::SetBpm(_) => Some((0, 0, 0)),
         Command::Xfader(_) => Some((1, 0, 0)),
         Command::XfaderCurve(_) => Some((18, 0, 0)),
+        Command::XfaderReverse(_) => Some((19, 0, 0)),
+        Command::FaderStart { deck, .. } => Some((20, usize::from(deck), 0)),
+        Command::MeterMaster(_) => Some((21, 0, 0)),
+        Command::DeckControl { deck, control: super::deck_controls::Control::StartTime { .. }, .. } => Some((22, usize::from(deck), 0)),
+        Command::DeckControl { deck, control: super::deck_controls::Control::StopTime { .. }, .. } => Some((23, usize::from(deck), 0)),
         Command::Master(_) => Some((2, 0, 0)),
         Command::CueMix(_) => Some((3, 0, 0)),
         Command::Monitor(crate::engine::monitor::Control::Mix(_)) => Some((15, 0, 0)),
@@ -1253,6 +1267,8 @@ fn history_monitoring(command: &Command) -> bool {
         command,
         Command::PrepareSelected { .. }
             | Command::BrowseCrates(_)
+            | Command::BrowsePanel(_)
+            | Command::DeckTrack { .. }
             | Command::CrateReturn
             | Command::LiveNoteOn { .. }
             | Command::RoutedNoteOn { .. }
@@ -1266,6 +1282,7 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::MidiDeckTouch { .. }
             | Command::DeckSpindle { .. }
             | Command::DeckSpindleRelease { .. }
+            | Command::DeckControl { .. }
             | Command::Stop
             | Command::StopTrack { .. }
             | Command::ReservedStop { .. }

@@ -1,6 +1,7 @@
 use super::{cbind, nbind, rbind, Action, MidiMap, RelativeEncoding, RelativeSpec, UnmappedNotes};
 use crate::engine::{Command, CommandPort};
 mod spindle;
+mod ns7;
 
 pub(super) fn pioneer_sp1() -> MidiMap {
     let mut bindings = Vec::new();
@@ -258,6 +259,7 @@ pub(super) fn numark_ns7() -> MidiMap {
 pub(super) struct Decoder {
     spindles: [spindle::Spindle; 2],
     fx: [[Option<u8>; 3]; 2],
+    ns7: ns7::Decoder,
 }
 
 impl Default for Decoder {
@@ -265,6 +267,7 @@ impl Default for Decoder {
         Self {
             spindles: std::array::from_fn(|_| spindle::Spindle::default()),
             fx: [[None; 3]; 2],
+            ns7: ns7::Decoder::default(),
         }
     }
 }
@@ -288,6 +291,7 @@ impl Decoder {
     /// Takes profile, message, command port, source and time; returns whether it was consumed.
     pub(super) fn input_at(&mut self, map: &MidiMap, message: &[u8; 3], cmd: &CommandPort, source: u64, at: std::time::Instant) -> bool {
         let [status, control, value] = *message;
+        if map.name == "Numark NS7 (original)" && self.ns7.input(*message, source, cmd, at) { return true; }
         if map.name == "Numark NS7 (original)" && matches!(status, 0x90 | 0x80) && control == 0 {
             let _ = cmd.send(Command::Monitor(crate::engine::monitor::Control::Master(
                 status == 0x80 || value == 0,

@@ -18,6 +18,23 @@ fn pick(gui: &mut Gui, title: &str) {
 }
 
 #[test]
+fn ns7_controls_prepare_browser_and_load_use_the_queue_in_the_native_gui() {
+    let files = Files::new(); let mut gui = setup(&files);
+    pick(&mut gui, "One"); gui.app.prepare_browser_rows(false);
+    pick(&mut gui, "Two"); gui.app.prepare_browser_rows(false); gui.app.publish_library_selection();
+    gui.app.library_prepare.selected = Some(gui.app.library_prepare.entries[0].id.clone());
+    gui.app.publish_prepare_controller_view();
+    let map = crate::engine::midi::builtin_maps().unwrap().into_iter().find(|map| map.name == "Numark NS7 (original)").unwrap();
+    let mut input = gui.app.engine.midi.open_for_test(&gui.app.engine.cmd, 88, map, "Synthetic NS7 controls", "synthetic:ns7-prepare");
+    input.push(&[0x90,9,127]); input.push(&[0xb0,0x44,1]); input.push(&[0x90,0x0c,127]);
+    gui.wait(|gui| matches!(gui.app.loads[0].as_ref().map(|load| &load.phase), Some(Phase::Loaded)));
+    assert!(gui.app.library_prepare.open); assert_eq!(gui.rt.decks[0].title, "Two");
+    assert_eq!(gui.app.library_prepare.selected.as_ref(), Some(&gui.app.library_prepare.entries[1].id));
+    input.push(&[0x90,10,127]); gui.frame(vec![]); assert!(!gui.app.library_prepare.open);
+    assert_eq!(gui.app.lib_filter, "title:Two");
+}
+
+#[test]
 fn native_queue_reorder_preview_rejected_load_and_durable_restore_preserve_sources() {
     let files = Files::new();
     let mut gui = setup(&files);

@@ -95,6 +95,26 @@ impl Surface {
                     ]);
                     messages.push([0xb0, [0x07, 0x1d][deck], if state.sync { 127 } else { 0 }]);
                     messages.push([0xb0, [0x12, 0x29][deck], if state.vinyl { 0 } else { 127 }]);
+                    for (address, on) in [
+                        ([16, 39][deck], state.keylock),
+                        ([10, 32][deck], state.controls.delete),
+                        ([21, 44][deck], state.loop_on),
+                        ([24, 47][deck], state.controls.auto_loop),
+                    ] { messages.push([0xb0, address, if on { 127 } else { 0 }]); }
+                    let loop_beats = state.loop_len / f64::from(state.source_sample_rate.max(1)) * f64::from(state.bpm) / 60.0;
+                    for button in 0..4 {
+                        let on = if state.controls.auto_loop { state.loop_on && (loop_beats - f64::from(1 << button)).abs() < 0.01 }
+                            else { match button { 0 | 1 => state.loop_len > 1.0, 2 => state.loop_len > 1.0, _ => state.loop_on } };
+                        messages.push([0xb0, [25, 48][deck] + button, if on { 127 } else { 0 }]);
+                    }
+                    for (pad, set) in state.hotcues.iter().take(5).enumerate() {
+                        messages.push([0xb0, [11, 33][deck] + pad as u8, if *set { 127 } else { 0 }]);
+                    }
+                    let meter = if snapshot.meter_master { snapshot.master_meters[deck] } else { state.meter };
+                    messages.push([0xb0, 52 + deck as u8, (meter * 127.0).clamp(0.0, 127.0) as u8]);
+                }
+                for (address, on) in [(0, snapshot.fader_start[0]), (1, snapshot.fader_start[1]), (2, snapshot.xfader_reverse)] {
+                    messages.push([0xb0, address, if on { 127 } else { 0 }]);
                 }
             }
             Self::ApcMk2 | Self::Apc => {
@@ -351,6 +371,18 @@ impl Drop for Manager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ns7_controls_feedback_tracks_keylock_hotcues_loop_and_hardware_switches() {
+        let mut snapshot = Snapshot::default(); snapshot.decks = vec![Default::default(), Default::default()];
+        snapshot.fader_start = [true, false]; snapshot.xfader_reverse = true;
+        for deck in &mut snapshot.decks { deck.keylock = true; deck.hotcues[0] = true; deck.loop_on = true; deck.controls.auto_loop = true; deck.controls.delete = true; }
+        let messages = Surface::Ns7.messages(&snapshot);
+        for cc in [0,2,16,39,11,33,21,44,24,47,10,32] { assert!(messages.contains(&[0xb0,cc,127]), "CC {cc}"); }
+        assert!(messages.contains(&[0xb0,1,0]));
+        snapshot.decks[0].keylock = false; snapshot.decks[0].hotcues[0] = false;
+        let messages = Surface::Ns7.messages(&snapshot); assert!(messages.contains(&[0xb0,16,0])); assert!(messages.contains(&[0xb0,11,0]));
+        assert!(messages.iter().all(|message| !matches!(message[1], 65..=80)), "LED refresh must never contain motor actions");
+    }
     #[test]
     fn ns7_motors_repeat_play_pause_edges_and_stop_for_vinyl_off_or_recovery() {
         let mut snapshot = Snapshot::default();

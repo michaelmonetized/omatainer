@@ -36,6 +36,7 @@ pub struct LoadRequest {
 }
 pub struct BrowseRequest {
     pub index: usize,
+    pub panel: u8,
     pub epoch: u64,
     pub selection: Arc<Selection>,
 }
@@ -45,6 +46,8 @@ pub struct CrateBrowseRequest {
     pub id: String,
 }
 pub enum Request {
+    TrackStart { deck: u8, selection: Arc<Selection> },
+    Panel(u8),
     Crate(CrateBrowseRequest),
     CrateReturn(u64),
     Browse(BrowseRequest),
@@ -60,6 +63,12 @@ struct Navigation {
     crate_cursor: usize,
     crate_epoch: u64,
     crate_return: Option<u64>,
+    panel: u8,
+    prepared: Option<Arc<dyn SelectionView>>,
+    file_view: Option<Arc<dyn SelectionView>>,
+    file_cursor: usize,
+    prepared_cursor: usize,
+    loaded: [Option<(Arc<Selection>, f64)>; DECKS],
 }
 #[derive(Default)]
 struct Shared {
@@ -107,6 +116,10 @@ impl Mailbox {
             let mut navigation = self.shared.navigation.lock();
             let previous = navigation.cursor;
             let previous_crate = navigation.crate_cursor;
+            let previous_panel = navigation.panel;
+            let previous_view = navigation.view.clone();
+            let previous_file = navigation.file_cursor;
+            let previous_prepared = navigation.prepared_cursor;
             match make(&mut navigation).and_then(|request| {
                 self.sender.try_send(request).map_err(|error| match error {
                     TrySendError::Full(_) => SubmissionError::UiFull,
@@ -117,6 +130,10 @@ impl Mailbox {
                 Err(error) => {
                     navigation.cursor = previous;
                     navigation.crate_cursor = previous_crate;
+                    navigation.panel = previous_panel;
+                    navigation.view = previous_view;
+                    navigation.file_cursor = previous_file;
+                    navigation.prepared_cursor = previous_prepared;
                     Err(error)
                 }
             }
@@ -142,6 +159,20 @@ impl Mailbox {
                 .as_ref()
                 .and_then(|view| view.selection(navigation.cursor))
                 .ok_or(SubmissionError::UncapturedSelection)?;
+            Ok(Request::Load(LoadRequest { deck, selection }))
+        })
+    }
+    /// Capture track navigation relative to the media actually loaded on a deck.
+    /// Takes deck and direction; restarts after three seconds or captures an adjacent source in the current view.
+    pub fn track(&self, deck: u8, forward: bool) -> Result<SubmissionOutcome, SubmissionError> {
+        self.submit(|navigation| {
+            let (loaded, seconds) = navigation.loaded.get(usize::from(deck)).ok_or(SubmissionError::InvalidTarget)?.as_ref().ok_or(SubmissionError::UncapturedSelection)?;
+            if !forward && *seconds > 3.0 { return Ok(Request::TrackStart { deck, selection: loaded.clone() }); }
+            let view = navigation.view.as_ref().ok_or(SubmissionError::UncapturedSelection)?;
+            let len = view.len().ok_or(SubmissionError::UncapturedSelection)?;
+            let index = (0..len).find(|&index| view.selection(index).is_some_and(|selection| selection.source == loaded.source && selection.fingerprint == loaded.fingerprint)).ok_or(SubmissionError::UncapturedSelection)?;
+            let next = if forward { index.checked_add(1) } else { index.checked_sub(1) }.filter(|index| *index < len).ok_or(SubmissionError::UncapturedSelection)?;
+            let selection = view.selection(next).ok_or(SubmissionError::UncapturedSelection)?;
             Ok(Request::Load(LoadRequest { deck, selection }))
         })
     }
@@ -200,9 +231,22 @@ impl Mailbox {
             navigation.cursor = cursor;
             Ok(Request::Browse(BrowseRequest {
                 index: cursor,
+                panel: navigation.panel,
                 epoch: navigation.epoch,
                 selection,
             }))
+        })
+    }
+    /// Switch the hardware browser before capturing later knob/load events.
+    /// Takes Files (0), Crates (1), or Prepare (2); queues the matching native panel without substituting a later selection.
+    pub fn panel(&self, panel: u8) -> Result<SubmissionOutcome, SubmissionError> {
+        if panel > 2 { return Err(SubmissionError::InvalidTarget); }
+        self.submit(|navigation| {
+            if navigation.panel == 2 { navigation.prepared_cursor = navigation.cursor; } else { navigation.file_cursor = navigation.cursor; }
+            navigation.panel = panel;
+            navigation.view = if panel == 2 { navigation.prepared.clone() } else { navigation.file_view.clone() };
+            navigation.cursor = if panel == 2 { navigation.prepared_cursor } else { navigation.file_cursor };
+            Ok(Request::Panel(panel))
         })
     }
     /// Browse an exact crate list on a control producer.
@@ -241,12 +285,39 @@ pub struct Receiver {
     receiver: QueueReceiver<Request>,
 }
 impl Receiver {
+    /// Publish the identity and elapsed source time confirmed by the GUI's load receipt.
+    /// Takes deck, optional source and seconds; updates bounded navigation state outside the renderer.
+    pub(crate) fn publish_deck(&self, deck: usize, selection: Option<&Selection>, seconds: f64) {
+        let mut navigation = self.shared.navigation.lock();
+        let Some(slot) = navigation.loaded.get_mut(deck) else { return; };
+        match selection {
+            Some(selection) => {
+                if let Some((current, elapsed)) = slot.as_mut().filter(|(current, _)| current.source == selection.source && current.fingerprint == selection.fingerprint) { let _ = current; *elapsed = seconds; }
+                else { *slot = Some((Arc::new(selection.clone()), seconds)); }
+            }
+            None => *slot = None,
+        }
+    }
     pub fn publish_view(&self, view: Arc<dyn SelectionView>, cursor: usize) {
         let mut navigation = self.shared.navigation.lock();
+        navigation.file_view = Some(view.clone());
+        navigation.file_cursor = cursor;
+        if navigation.panel == 2 { return; }
         navigation.view = Some(view);
         navigation.cursor = cursor;
         navigation.epoch = navigation.epoch.wrapping_add(1);
         self.shared.epoch.store(navigation.epoch, Ordering::Release);
+    }
+    /// Publish a versioned Prepare queue independently of the main browser.
+    /// Takes the immutable queue and selected cursor; refreshes active selection only when Prepare owns browsing.
+    pub(crate) fn publish_prepare(&self, view: Arc<dyn SelectionView>, cursor: usize) {
+        let mut navigation = self.shared.navigation.lock();
+        let changed = !navigation.prepared.as_ref().is_some_and(|old| Arc::ptr_eq(old, &view));
+        navigation.prepared = Some(view.clone()); navigation.prepared_cursor = cursor;
+        if navigation.panel == 2 {
+            navigation.view = Some(view); navigation.cursor = cursor;
+            if changed { navigation.epoch = navigation.epoch.wrapping_add(1); self.shared.epoch.store(navigation.epoch, Ordering::Release); }
+        }
     }
     /// Publish one exact crate list and its acknowledged selection.
     /// Takes an immutable view and cursor; changes the epoch so pending events cannot retarget later results.
@@ -298,6 +369,37 @@ impl Drop for Receiver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct NamedView(Vec<Arc<Selection>>);
+    impl SelectionView for NamedView {
+        fn len(&self) -> Option<usize> { Some(self.0.len()) }
+        fn selection(&self, index: usize) -> Option<Arc<Selection>> { self.0.get(index).cloned() }
+    }
+    fn named(title: &str) -> Arc<Selection> { Arc::new(Selection { source: crate::engine::media_source::LibSource::File(title.into()), title: title.into(), fingerprint: None }) }
+    #[test]
+    fn ns7_controls_browser_prepare_load_and_track_navigation_capture_exact_sources() {
+        let mailbox = Mailbox::default(); let receiver = mailbox.receiver().unwrap();
+        let files: Arc<dyn SelectionView> = Arc::new(NamedView(vec![named("One"), named("Two"), named("Three")]));
+        receiver.publish_view(files, 0);
+        receiver.publish_prepare(Arc::new(NamedView(vec![named("Prepared one"), named("Prepared two")])), 0);
+        mailbox.panel(2).unwrap(); mailbox.browse(1.0).unwrap(); mailbox.load(1).unwrap();
+        mailbox.panel(0).unwrap(); mailbox.load(0).unwrap();
+        let requests = receiver.take_requests();
+        assert!(matches!(&requests[2], Some(Request::Load(request)) if request.deck == 1 && request.selection.title == "Prepared two"));
+        assert!(matches!(&requests[4], Some(Request::Load(request)) if request.deck == 0 && request.selection.title == "One"));
+        receiver.publish_deck(0, Some(&named("Two")), 1.0);
+        mailbox.track(0, true).unwrap(); mailbox.track(0, false).unwrap();
+        receiver.publish_deck(0, Some(&named("Two")), 10.0); mailbox.track(0, false).unwrap();
+        let requests = receiver.take_requests();
+        assert!(matches!(&requests[0], Some(Request::Load(request)) if request.selection.title == "Three"));
+        assert!(matches!(&requests[1], Some(Request::Load(request)) if request.selection.title == "One"));
+        assert!(matches!(&requests[2], Some(Request::TrackStart { deck: 0, selection }) if selection.title == "Two"));
+        for _ in 0..CAPACITY { mailbox.panel(2).unwrap(); }
+        assert_eq!(mailbox.panel(0), Err(SubmissionError::UiFull));
+        for _ in 0..CAPACITY { receiver.take_requests(); }
+        mailbox.load(0).unwrap(); assert!(matches!(&receiver.take_requests()[0], Some(Request::Load(request)) if request.selection.title == "Prepared two"));
+        assert_eq!(mailbox.track(2, true), Err(SubmissionError::InvalidTarget));
+    }
 
     #[test]
     fn raw_renderer_request_rejects_without_allocating_or_touching_selection_arcs() {

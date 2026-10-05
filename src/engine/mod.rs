@@ -55,6 +55,7 @@ mod control_tests;
 mod quantized_launch_tests;
 pub mod decode;
 pub mod dsp;
+pub(crate) mod deck_controls;
 #[cfg(test)]
 mod svf_tests;
 pub mod media_load;
@@ -332,6 +333,7 @@ pub struct HotCue {
 #[derive(Clone, Debug)]
 pub struct DeckRt {
     spindle: Option<spindle::Playback>,
+    controls: deck_controls::State,
     load_receipt: Option<load_receipt::Receipt>,
     playback_active: bool,
     pub audio: Option<Arc<Sample>>,
@@ -387,7 +389,10 @@ pub struct DeckRt {
 impl DeckRt {
     /// Check whether this deck is rendering source audio.
     /// Takes this deck; returns true for play, touch or an explicitly admitted paused preview.
-    fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() || self.vinyl && self.spindle.as_ref().is_some_and(|s| s.rate().abs() > 0.001) }
+    fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() || self.controls.braking || self.vinyl && self.spindle.as_ref().is_some_and(|s| s.rate().abs() > 0.001) }
+    /// Follow vinyl motion while ordinary transport owns the source clock.
+    /// Takes this deck; returns false while a stopped-platter Cue preview or audio brake owns playback.
+    fn follows_spindle(&self) -> bool { self.vinyl && self.spindle.is_some() && self.preview_position.is_none() && !self.controls.braking }
     /// Keep media replacement guarded while this deck renders or fades.
     /// Takes its renderer state; returns whether load protection still owns audible activity.
     fn media_active(&self) -> bool {
@@ -411,6 +416,7 @@ impl DeckRt {
     fn new(sr: f32) -> Self {
         Self {
             spindle: None,
+            controls: deck_controls::State::default(),
             load_receipt: None,
             playback_active: false,
             audio: None,
@@ -538,7 +544,7 @@ impl DeckRt {
         } else if !self.rendering() {
             keylock::Mode::Stopped
         } else {
-            keylock::mode(true, self.touching || self.vinyl && self.spindle.is_some(), self.rate)
+            keylock::mode(true, self.touching || self.follows_spindle() && self.spindle.as_ref().is_some_and(spindle::Playback::scratching), self.rate)
         }
     }
 
@@ -607,6 +613,10 @@ pub struct RtEngine {
     pub xfader: f32,
     pub xfader_curve: f32,
     xfader_gain: mixer_gain::GainPair,
+    xfader_reverse: bool,
+    fader_start: [bool; DECKS],
+    meter_master: bool,
+    master_meters: [f32; 2],
     #[cfg(test)]
     legacy_gain_math: bool,
     pub master: f32,
@@ -720,6 +730,7 @@ pub struct DeckSnap {
     pub vinyl: bool,
     pub sync: bool,
     pub keylock: bool,
+    pub controls: deck_controls::Status,
     pub keylock_mode: keylock::Mode,
     pub pfl: bool,
     pub loop_on: bool,
@@ -805,6 +816,10 @@ pub struct Snapshot {
     pub xfader: f32,
     pub xfader_curve: f32,
     pub cue_mix: f32,
+    pub xfader_reverse: bool,
+    pub fader_start: [bool; DECKS],
+    pub meter_master: bool,
+    pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
     pub view: u8,
     pub selected_track: usize,
@@ -868,6 +883,10 @@ impl Default for Snapshot {
             xfader: 0.5,
             xfader_curve: 0.35,
             cue_mix: 0.0,
+            xfader_reverse: false,
+            fader_start: [false; DECKS],
+            meter_master: false,
+            master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
             view: 0,
             selected_track: 0,
@@ -937,6 +956,8 @@ pub enum Command {
     MidiDeckTouch { source: u64, deck: u8, on: bool },
     DeckSpindle { source: u64, deck: u8, motion: spindle::Motion },
     DeckSpindleRelease { source: u64, deck: u8 },
+    DeckControl { source: u64, deck: u8, control: deck_controls::Control },
+    DeckTrack { deck: u8, forward: bool },
     DeckPitch { deck: u8, value: f32 },
     DeckGain { deck: u8, value: f32 },
     DeckEq { deck: u8, band: u8, value: f32 },
@@ -967,6 +988,9 @@ pub enum Command {
     LoadBuiltin { deck: u8, stem: u8 },
     Xfader(f32),
     XfaderCurve(f32),
+    XfaderReverse(bool),
+    FaderStart { deck: u8, on: bool },
+    MeterMaster(bool),
     Master(f32),
     CueMix(f32),
     Monitor(monitor::Control),
@@ -978,6 +1002,7 @@ pub enum Command {
     Arm { track: u8 },
     Browse(f32),
     BrowseCrates(f32),
+    BrowsePanel(u8),
     CrateReturn,
     Select { track: usize, scene: usize },
     ComposeArm { track: usize, scene: usize },
@@ -1104,6 +1129,10 @@ impl RtEngine {
             xfader: 0.5,
             xfader_curve: 0.35,
             xfader_gain: mixer_gain::GainPair::default(),
+            xfader_reverse: false,
+            fader_start: [false; DECKS],
+            meter_master: false,
+            master_meters: [0.0; 2],
             #[cfg(test)]
             legacy_gain_math: false,
             master: 0.85,
@@ -1552,7 +1581,7 @@ impl RtEngine {
             let [ga, gb] = {
                 #[cfg(test)]
                 if self.legacy_gain_math {
-                    mixer_gain::crossfader_gains(self.xfader, self.xfader_curve)
+                    mixer_gain::crossfader_gains(self.crossfader_position(), self.xfader_curve)
                 } else { self.xfader_gain.tick() }
                 #[cfg(not(test))]
                 self.xfader_gain.tick()
@@ -1602,6 +1631,7 @@ impl RtEngine {
             r = limiter(r * self.master);
             let headphone = self.safety_output.preview(headphone.map(limiter));
             let [l, r] = self.safety_output.output([l, r]);
+            self.observe_master_meter([l, r]);
             let output = &mut out[i * channels..(i + 1) * channels];
             output.fill(0.0);
             if channels == 1 { output[0] = 0.5 * (l + r); } else { output[0] = l; output[1] = r; }
@@ -1879,7 +1909,8 @@ impl RtEngine {
         let sr = self.sr as f64;
         {
             let d = &mut self.decks[di];
-            let mapped_sync = d.sync.then(|| d.mapped_sync_step(self.sr)).flatten();
+            let transport = d.controls.tick();
+            let mapped_sync = (d.sync && d.controls.multiplier() == 1.0 && transport == 1.0 && !d.controls.braking).then(|| d.mapped_sync_step(self.sr)).flatten();
             if let Some((_,rate)) = mapped_sync { d.target_rate = rate; }
             else if d.sync {
                 if d.audio.is_some() {
@@ -1889,9 +1920,16 @@ impl RtEngine {
             } else {
                 d.target_rate = d.play_rate();
             }
-            if d.touching {
+            d.target_rate *= d.controls.multiplier() * transport;
+            if let Some(position) = &mut d.controls.forward {
+                if d.playing { *position += f64::from(d.target_rate.abs()) * d.audio.as_ref().map_or(sr, |a| f64::from(a.sr)) / sr; }
+                if d.loop_on && d.loop_len > 1.0 && *position >= d.loop_start + d.loop_len { *position = d.loop_start + (*position - d.loop_start).rem_euclid(d.loop_len); }
+            }
+            if d.controls.braking {
+                d.rate = d.controls.brake_rate * transport;
+            } else if d.touching {
                 d.rate = d.scratch;
-            } else if d.vinyl && d.spindle.is_some() {
+            } else if d.follows_spindle() {
                 d.spindle.as_mut().unwrap().tempo(d.target_rate);
                 d.rate = d.spindle.as_ref().unwrap().rate();
             } else {
@@ -1912,7 +1950,8 @@ impl RtEngine {
             }
             let before_position = d.pos;
             if d.rendering() {
-                if !d.touching && d.vinyl && d.spindle.is_some() {
+                if d.controls.braking { d.pos += f64::from(d.rate) * d.audio.as_ref().map_or(sr, |a| f64::from(a.sr)) / sr; }
+                else if !d.touching && d.follows_spindle() {
                     let (seconds, rate) = d.spindle.as_mut().unwrap().next(self.sr);
                     d.rate = rate;
                     d.pos = seconds * d.audio.as_ref().map_or(sr, |audio| f64::from(audio.sr));
@@ -1925,14 +1964,14 @@ impl RtEngine {
                 && before_position >= d.loop_start
                 && before_position < d.loop_start + d.loop_len
                 && position >= d.loop_start + d.loop_len;
-            if d.loop_on && d.loop_len > 1.0 {
+            if d.loop_on && d.loop_len > 1.0 && before_position >= d.loop_start {
                 if position >= d.loop_start + d.loop_len {
                     position = if mapped_sync.is_some() && !d.touching {
                         d.mapped_loop_wrap(position)
                     } else { None }.unwrap_or_else(|| d.loop_start + (position - d.loop_start) % d.loop_len);
                 }
                 if position < d.loop_start {
-                    position = d.loop_start;
+                    position = if d.rate < 0.0 { d.loop_start + (position - d.loop_start).rem_euclid(d.loop_len) } else { d.loop_start };
                 }
             }
             if let Some(a) = &d.audio {
@@ -1948,7 +1987,10 @@ impl RtEngine {
                 }
             }
             if position != d.pos {
-                if natural_wrap && d.keylock_mode() == keylock::Mode::Locked {
+                if position == 0.0 && before_position == 0.0 && d.rate < 0.0 {
+                    d.pos = 0.0;
+                    if let Some(spindle) = &mut d.spindle { spindle.rebase(0.0); }
+                } else if natural_wrap && d.keylock_mode() == keylock::Mode::Locked {
                     d.pos = position;
                     d.keylock_dsp.natural_wrap();
                 } else {
@@ -2009,9 +2051,12 @@ impl RtEngine {
         } else {
             self.decks[di].sample_at(self.decks[di].pos)
         };
-        if !self.decks[di].touching && self.decks[di].vinyl && self.decks[di].spindle.is_some() {
+        if !self.decks[di].touching && self.decks[di].follows_spindle() {
             let moving = (self.decks[di].rate.abs() * 100.0).min(1.0);
             l *= moving; r *= moving;
+        }
+        if self.decks[di].pos <= 0.0 && self.decks[di].rate < 0.0 {
+            l = 0.0; r = 0.0;
         }
         l *= self.decks[di].source_gain.linear();
         r *= self.decks[di].source_gain.linear();
@@ -2358,11 +2403,12 @@ impl RtEngine {
             }
             Command::DeckPlay { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
-                d.stop_preview(self.sr);
+                if d.controls.latch_preview() { d.preview_position = None; } else { d.stop_preview(self.sr); }
                 if d.audio.is_none() {
                     return;
                 }
                 d.playing = !d.playing;
+                d.controls.transport(d.playing, d.rate, self.sr);
                 let pos = if d.playing && d.pos < 1.0 { d.cue_pos } else { d.pos };
                 d.transition_to(pos, self.sr, DeckTransition::Jump);
             }
@@ -2405,6 +2451,8 @@ impl RtEngine {
                 self.deck_touch(source, deck, on);
             }
             Command::DeckSpindle { source, deck, motion } => {
+                if usize::from(deck) >= DECKS { return; }
+                if self.controller_loop_edit(usize::from(deck), motion.ticks) { return; }
                 let Some(d) = self.decks.get_mut(usize::from(deck)) else { return; };
                 if !motion.rate.is_finite() || motion.rate.abs() > 16.0 || !motion.hold.is_finite() || !(0.0..=0.05).contains(&motion.hold) { return; }
                 if let Some(spindle) = &mut d.spindle {
@@ -2417,10 +2465,11 @@ impl RtEngine {
             Command::DeckSpindleRelease { source, deck } => {
                 if let Some(d) = self.decks.get_mut(usize::from(deck)) {
                     if d.spindle.as_ref().is_some_and(|s| s.source == source) {
-                        d.spindle = None; d.playing = false; d.fade_from_last_output(self.sr);
+                        d.spindle = None; d.playing = false; d.controls.release(); d.fade_from_last_output(self.sr);
                     }
                 }
             }
+            Command::DeckControl { source, deck, control } => self.deck_control(source, deck, control),
             Command::DeckPitch { deck, value } => {
                 self.decks[deck as usize % DECKS].pitch = value.clamp(0.0, 1.0);
             }
@@ -2577,6 +2626,7 @@ impl RtEngine {
             }
             Command::DeckAudio { deck, audio } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.controls.media_changed();
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.playback_active = false;
                 d.clear_loop();
@@ -2599,6 +2649,7 @@ impl RtEngine {
             }
             Command::DeckUnload { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.controls.media_changed();
                 if let Some(receipt) = d.load_receipt.take() { receipt.supersede(); }
                 d.playback_active = false;
                 d.audio = None;
@@ -2635,10 +2686,13 @@ impl RtEngine {
                 self.cmd_rx.reject_uncaptured_ui_load();
                 self.undo.retire_command(command);
             }
-            Command::Xfader(v) => self.xfader = v.clamp(0.0, 1.0),
+            Command::Xfader(v) => self.crossfader_move(v),
             Command::XfaderCurve(v) => {
                 if v.is_finite() { self.xfader_curve = v.clamp(0.0, 1.0); }
             }
+            Command::XfaderReverse(on) => self.xfader_reverse = on,
+            Command::FaderStart { deck, on } => { if let Some(value) = self.fader_start.get_mut(usize::from(deck)) { *value = on; } }
+            Command::MeterMaster(on) => self.meter_master = on,
             Command::Master(v) => self.master = v.clamp(0.0, 1.5),
             Command::CueMix(v) => self.cue_mix = v.clamp(0.0, 1.0),
             Command::Monitor(control) => self.monitor.apply(control),
@@ -2674,7 +2728,7 @@ impl RtEngine {
                     self.tracks[track as usize].armed = !self.tracks[track as usize].armed;
                 }
             }
-            Command::Browse(_) | Command::BrowseCrates(_) | Command::CrateReturn => {
+            Command::Browse(_) | Command::BrowseCrates(_) | Command::BrowsePanel(_) | Command::DeckTrack { .. } | Command::CrateReturn => {
                 // Browsing must resolve the GUI's published filtered view on a
                 // control producer. The renderer has no independent selection.
                 self.cmd_rx.reject_uncaptured_ui_load();

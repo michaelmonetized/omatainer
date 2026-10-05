@@ -16,7 +16,7 @@ impl Prepared {
         let gains = {
             #[cfg(test)]
             if rt.legacy_gain_math {
-                mixer_gain::crossfader_gains(rt.xfader, rt.xfader_curve)
+                mixer_gain::crossfader_gains(rt.crossfader_position(), rt.xfader_curve)
             } else {
                 rt.xfader_gain.tick()
             }
@@ -165,6 +165,7 @@ impl Prepared {
                 0.0
             };
         }
+        rt.observe_master_meter([output[0], output[1]]);
         output
     }
 }
