@@ -47,17 +47,19 @@ impl Patch {
         }
     }
 
-    fn apply(&self, item: &mut LibItem) {
+    /// Update an exact row without replacing protected preparation.
+    /// Takes the row and saved track locks; applies permitted matching-version fields only.
+    fn apply(&self, item: &mut LibItem, locks:crate::library::protection::Locks) {
         if item.source == self.source && item.fingerprint == Some(self.fingerprint) {
-            item.bpm = item.bpm.reconcile(self.bpm);
-            if let Some(Ok(observation)) = &self.tags {
+            if !locks.bpm {item.bpm = item.bpm.reconcile(self.bpm);}
+            if let Some(Ok(observation)) = self.tags.as_ref().filter(|_|!locks.metadata) {
                 if let Some(field) = &observation.fields.title { item.title.clone_from(&field.value); }
                 if let Some(field) = &observation.fields.artist { item.artist.clone_from(&field.value); }
                 if let Some(field) = &observation.fields.key { item.key.clone_from(&field.value); }
             }
             if let Some(duration) = self
                 .duration
-                .filter(|value| value.is_finite() && *value >= 0.0)
+                .filter(|value| !locks.metadata && value.is_finite() && *value >= 0.0)
             {
                 item.length = Some(duration);
             }
@@ -213,6 +215,7 @@ impl Metadata {
                 let mut row_index_pins: Option<[Arc<CollectionRows>; 3]> = None;
                 while let Ok(mut job) = work.recv() {
                     before_job();
+                    let refresh_smart = job.collection.as_ref().is_some_and(|request|matches!(request.action, collections::Action::Read));
                     for capture in &job.captures {
                         // Excess tracks retain their essential cues and can be
                         // verified by an explicit relocation while the original
@@ -262,7 +265,7 @@ impl Metadata {
                         .collect();
                     let mut fallback = job.base.as_ref().clone();
                     for item in &mut fallback {
-                        if let Some(patch) = cache.get(&item.source) { patch.apply(item); }
+                        if let Some(patch) = cache.get(&item.source) { let locks=store.as_ref().and_then(|store|store.as_ref().ok()).and_then(|store|store.catalog.track_for_version(&item.source,item.fingerprint)).map_or(Default::default(),|track|track.locks); patch.apply(item,locks); }
                     }
                     let mut items = if job.scan_work.as_ref().is_some_and(|work| work.cancel().load(std::sync::atomic::Ordering::Acquire)) {
                         fallback.clone()
@@ -277,7 +280,7 @@ impl Metadata {
                             }
                         }
                         if let Some(patch) = cache.get(&item.source) {
-                            patch.apply(item);
+                            let locks=store.as_ref().and_then(|store|store.as_ref().ok()).and_then(|store|store.catalog.track_for_version(&item.source,item.fingerprint)).map_or(Default::default(),|track|track.locks); patch.apply(item,locks);
                         }
                     }
                     let mut storage = None;
@@ -429,11 +432,12 @@ impl Metadata {
                             },
                         }
                     });
-                    let full_index = Arc::new(CollectionRows::build(&items, &catalog));
+                    let previous = row_index_pins.as_ref().filter(|_|!refresh_smart);
+                    let full_index = Arc::new(CollectionRows::build_incremental(&items, &catalog, previous.map(|pins|pins[0].as_ref())));
                     let restricted_index = if Arc::ptr_eq(&items, &restricted) { full_index.clone() }
-                        else { Arc::new(CollectionRows::build(&restricted, &catalog)) };
+                        else { Arc::new(CollectionRows::build_incremental(&restricted, &catalog, previous.map(|pins|pins[1].as_ref()))) };
                     let row_indices = [full_index, restricted_index,
-                        Arc::new(CollectionRows::build(&job.base, &catalog))];
+                        Arc::new(CollectionRows::build_incremental(&job.base, &catalog, previous.map(|pins|pins[2].as_ref())))];
                     let (retire, retired) = mpsc::sync_channel(1);
                     if done
                         .send(Result {
@@ -518,6 +522,10 @@ impl Metadata {
     /// The table is prepared and pinned by the owner. Borrow it instead of
     /// retaining an Arc whose eventual destruction could move to the GUI.
     pub fn collection_rows(&self) -> &CollectionRows { &self.collection_rows }
+    #[cfg(test)]
+    pub(in crate::ui) fn bind_test_rows(&mut self, rows: &Arc<Vec<LibItem>>) {
+        self.collection_rows = Arc::new(CollectionRows::build(rows, &self.catalog));
+    }
 
     /// Bounded handoff: one pending result, plus the worker's one in-flight job.
     pub fn save_analysis(&mut self, completion: crate::engine::media_load::AnalysisCompletion)

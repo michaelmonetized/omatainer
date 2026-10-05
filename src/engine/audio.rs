@@ -78,7 +78,7 @@ impl owner::Backend for Native {
                 build::<$type>(&device, &cfg, callback, error).map(NativeStream::Alsa).map_err(|e| e.to_string())
             };
         }
-        match plan.format {
+        let stream = match plan.format {
             cpal::SampleFormat::F32 => build!(f32),
             cpal::SampleFormat::F64 => build!(f64),
             cpal::SampleFormat::I8 => build!(i8),
@@ -90,7 +90,12 @@ impl owner::Backend for Native {
             cpal::SampleFormat::U32 => build!(u32),
             cpal::SampleFormat::U64 => build!(u64),
             other => Err(format!("Unsupported sample format {other}")),
+        }?;
+        if identity.is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected)) {
+            drop(stream);
+            return Err("Physical output changed while opening; activation refused".into());
         }
+        Ok(stream)
     }
     fn identity(&mut self, plan: &config::Plan) -> Option<String> {
         #[cfg(target_os = "linux")]
@@ -173,6 +178,7 @@ impl std::ops::DerefMut for GraphLease {
 }
 impl Drop for GraphLease {
     fn drop(&mut self) {
+        if let Some(graph) = &self.graph { graph.audible.invalidate(); }
         if let Some(returned) = &self.returned {
             if let Some(graph) = self.graph.take() {
                 if let Err(error) = returned.try_send(graph) {
@@ -205,7 +211,8 @@ impl OutputCallback {
     #[cfg(test)]
     pub(crate) fn renderer_mut_for_test(&mut self) -> &mut RtEngine { &mut self.rt }
 
-    pub(crate) fn new(rt: RtEngine, channels: usize) -> Self {
+    pub(crate) fn new(mut rt: RtEngine, channels: usize) -> Self {
+        rt.audible.restart();
         Self {
             rt: GraphLease {
                 graph: Some(Box::new(rt)),
@@ -222,12 +229,13 @@ impl OutputCallback {
     }
 
     fn managed(
-        rt: Box<RtEngine>,
+        mut rt: Box<RtEngine>,
         channels: usize,
         returned: crossbeam_channel::Sender<Box<RtEngine>>,
         enabled: Arc<AtomicBool>,
         stopped: Arc<AtomicBool>,
     ) -> Self {
+        rt.audible.restart();
         Self {
             rt: GraphLease {
                 graph: Some(rt),
@@ -256,6 +264,17 @@ impl OutputCallback {
         T: cpal::SizedSample + cpal::FromSample<f32>,
     f64: cpal::FromSample<T>,
     {
+        let playback_ns = latency.and_then(|duration| self.rt.audible.now_ns().checked_add(super::audio_metrics::nanoseconds(duration)));
+        self.render_at(data, latency, playback_ns);
+    }
+
+    /// Render a block against its scheduled first output frame.
+    /// Takes destination samples, reported delay and absolute playback time; returns after bounded conversion and timing publication.
+    fn render_at<T>(&mut self, data: &mut [T], latency: Option<std::time::Duration>, playback_ns: Option<u64>)
+    where
+        T: cpal::SizedSample + cpal::FromSample<f32>,
+        f64: cpal::FromSample<T>,
+    {
         if self
             .enabled
             .as_ref()
@@ -265,6 +284,7 @@ impl OutputCallback {
                 .as_ref()
                 .is_some_and(|stopped| stopped.load(Ordering::Acquire))
         {
+            self.rt.audible.restart();
             for sample in data {
                 *sample = T::from_sample(0.0);
             }
@@ -273,16 +293,23 @@ impl OutputCallback {
         let started = std::time::Instant::now();
         if data.len() > self.buffer.len() {
             let width = self.buffer.len();
-            for block in data.chunks_mut(width) { self.render_timed(block, latency); }
+            let mut offset = 0u64;
+            for block in data.chunks_mut(width) {
+                let start = playback_ns.and_then(|ns| ns.checked_add(offset.saturating_mul(1_000_000_000) / (self.rt.sr as u64).max(1)));
+                self.render_at(block, latency, start);
+                offset += (block.len() / self.channels.max(1)) as u64;
+            }
             return;
         }
         let slice = &mut self.buffer[..data.len()];
         slice.fill(0.0);
         if let Some(history) = &mut self.rt.history_measurement { history.begin_output(data.len() / self.channels.max(1)); }
+        let sample_rate = self.rt.sr as u32;
+        self.rt.audible.begin(sample_rate, playback_ns);
         self.rt.process_interleaved(slice, self.channels);
         if let Some((was_playing, remaining, total)) = &mut self.resume_ramp {
             let playing = u8::from(self.rt.playing) | self.rt.decks.iter().enumerate().fold(0, |bits,(index,deck)| bits | (u8::from(deck.playing) << (index+1)));
-            if playing & !*was_playing != 0 {
+            if playing != 0 && *was_playing == 0 && *total == 1 {
                 *total = (self.rt.sr as u32).saturating_mul(2).div_ceil(1000).max(1);
                 *remaining = *total;
             }
@@ -294,6 +321,9 @@ impl OutputCallback {
                 *remaining -= 1;
             }
         }
+        if self.resume_ramp.is_some_and(|(playing, remaining, total)| playing != 0 && remaining == 0 && total > 1) {
+            self.resume_ramp = None;
+        }
         #[cfg(test)]
         std::thread::sleep(self.conversion_delay);
         for (destination, source) in data.iter_mut().zip(slice) {
@@ -301,6 +331,7 @@ impl OutputCallback {
         }
         self.rt.routing_pipe.meters(data, self.channels);
         if let Some(history) = &mut self.rt.history_measurement { history.converted(data, self.channels); }
+        self.rt.audible.finish();
         self.rt.telemetry.record_output(
             started.elapsed(),
             data.len() / self.channels.max(1),
@@ -319,3 +350,9 @@ mod tests;
 #[cfg(test)]
 #[path = "audio_metrics_tests.rs"]
 mod metrics_tests;
+#[cfg(test)]
+#[path = "audio_live_set_tests.rs"]
+mod live_set_tests;
+#[cfg(test)]
+#[path = "audio/audible_tests.rs"]
+mod audible_tests;

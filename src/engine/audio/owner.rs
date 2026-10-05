@@ -362,7 +362,7 @@ impl<B: Backend> Owner<B> {
         } = request;
         match operation {
             Operation::Switch(settings, expected) => {
-                self.switch(settings, expected, seal, cancel, result, false)
+                self.switch(settings, expected, seal, cancel, result, false, None)
             }
             Operation::Calibrate(request) => self.calibrate(request, seal, cancel, result),
             Operation::Reconnect(generation) => {
@@ -396,7 +396,8 @@ impl<B: Backend> Owner<B> {
                 let Some(active) = &state.active else {
                     drop(seal); let _=result.send(Err("Reconnect the retained output or preview and confirm a fallback before resetting DSP".into())); return;
                 };
-                self.switch(recovery::settings(&active.plan), Some(active.plan.clone()), seal, cancel, result, true);
+                let identity=self.active.as_ref().and_then(|active|active.identity.clone());
+                self.switch(recovery::settings(&active.plan), Some(active.plan.clone()), seal, cancel, result, true, identity);
             }
         }
     }
@@ -408,12 +409,12 @@ impl<B: Backend> Owner<B> {
         cancel: Arc<AtomicBool>,
         result: Sender<Result<Arc<Status>, String>>,
         reset: bool,
+        identity: Option<String>,
     ) {
         if cancel.load(Ordering::Acquire) {
             let _ = result.send(Err("Audio change cancelled; active output preserved".into()));
             return;
         }
-        let identity=if reset {self.active.as_ref().and_then(|active|active.identity.clone())} else {None};
         // Validate against current backend capabilities before stopping audio.
         let plan = match self.backend.select(&settings) {
             Ok(plan) if expected.as_ref().is_none_or(|expected| expected == &plan) => plan,
@@ -433,7 +434,9 @@ impl<B: Backend> Owner<B> {
             settings.clone(),
             "Stopping playback for confirmed device change".into(),
         );
-        let previous_target=self.active.as_ref().map(|active| recovery::Target {plan:active.plan.clone(),identity:active.identity.clone()});
+        let previous_target = self.active.as_ref().map(|active| recovery::Target {
+            plan: active.plan.clone(), identity: active.identity.clone(),
+        }).or_else(|| self.recovery.clone());
         let previous = self.reclaim();
         if let Some(graph) = &mut self.graph {
             graph.stop_for_audio();
@@ -729,6 +732,7 @@ impl RtEngine {
         if let Some(history) = &mut self.history_measurement { history.reset_dsp(); }
         for deck in &mut self.decks {
             deck.playing = false;
+            deck.stop_preview(self.sr);
             deck.touching = false;
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;

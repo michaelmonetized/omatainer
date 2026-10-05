@@ -13,7 +13,7 @@ fn request(client: &mut BufReader<UnixStream>, request: &str) -> Value {
 
 #[test]
 fn ipc_reports_accepted_full_disconnected_and_query_states_truthfully() {
-    let (tx, rx) = CommandPort::channel(12);
+    let (tx, rx) = CommandPort::channel(28);
     let commands = tx.clone();
     let snapshot = Arc::new(Mutex::new(engine::Snapshot::default()));
     let (client, server) = UnixStream::pair().unwrap();

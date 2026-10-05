@@ -112,7 +112,7 @@ struct Gui {
 }
 impl Gui {
     fn new(count: usize, played: Option<SystemTime>) -> Self {
-        let mut fixture = Fixture::new(32);
+        let mut fixture = Fixture::new(48);
         fixture.app.library = Arc::new(items(count, played));
         let ctx = egui::Context::default();
         ctx.style_mut(|style| {
@@ -309,7 +309,7 @@ fn extreme_future_ui_deadline_is_bounded_before_native_instant_conversion() {
 
 #[test]
 fn visible_last_play_cache_reformats_once_when_language_changes_without_changing_time() {
-    let fixture=crate::ui::test_support::Fixture::new(128);
+    let fixture=crate::ui::test_support::Fixture::new(144);
     let now=clock();let played=Some(now-Duration::from_secs(7*86400));
     let mut cells=crate::ui::library_view::Cells::new(&fixture.app.library[0],played,now);
     assert_eq!(cells.played,"2024-01-01 UTC");

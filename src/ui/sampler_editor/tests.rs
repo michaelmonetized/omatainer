@@ -69,7 +69,7 @@ struct Gui {
 }
 impl Gui {
     fn new(files: &Files) -> Self {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+        let (engine, mut rt) = Engine::headless_isolated_sampler_for_test(48_000, 256);
         rt.publish_for_test();
         let loader = Loader::start_with_performance(engine.cmd.performance().clone()).unwrap();
         let mut app = App::with_loader(engine, Theme::default(), Some(loader));
@@ -1089,3 +1089,37 @@ fn applied_source_proof_allows_real_relocation_and_reopened_definition_recovers_
 }
 
 mod offline;
+
+#[test]
+fn native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop() {
+    let files = Files::new();
+    let mut g = Gui::new(&files);
+    g.add_source(files.wave()); g.open(); g.create(); g.assign();
+    g.click("Sampler editor: Sample slot play mode Hold");
+    g.click("Repeat sample slot");
+    g.text("Sampler editor: Cue seconds (empty means trim start)", "0.125");
+    assert!(!g.app.sampler_editor.draft.as_ref().unwrap().prepared);
+    g.click("Sampler editor: Prepare slot preview"); g.ready();
+    let expected = sampler_bank::Playback { mode: sampler_bank::PlayMode::Hold, repeat: true, cue_seconds: Some(0.125) };
+    assert_eq!(g.app.sampler_editor.draft.as_ref().unwrap().bank.data.settings.slots[0].playback, expected);
+    g.click("Sampler editor: Save reusable bank");
+    g.wait(|g| g.app.sampler_editor.store.as_ref().unwrap().saved.is_some());
+    assert!(g.app.sampler_editor.store.as_ref().unwrap().saved.as_ref().unwrap().commit.durable);
+    let on_disk: sampler_bank::Collection = serde_json::from_slice(&std::fs::read(files.0.join("banks.json")).unwrap()).unwrap();
+    assert_eq!(on_disk.banks[0].slots[0].playback, expected);
+    g.apply();
+    let index = g.rt.sampler_bank;
+    assert_eq!(g.rt.sampler_banks[index].data.settings.slots[0].playback, expected);
+    g.app.engine.send(Command::SamplerPad { pad: 0, on: true }).unwrap(); g.frame(vec![]);
+    assert!(g.rt.pad_voices[0].is_some());
+    g.key(Key::Escape, egui::Modifiers::SHIFT);
+    assert!(g.app.sampler_editor.open);
+    assert!(g.rt.pad_voices[0].is_none());
+    g.app.engine.send(Command::SamplerPad { pad: 0, on: false }).unwrap();
+    g.click("Sampler editor: Edit current bank");
+    g.text("Sampler editor: Cue seconds (empty means trim start)", "0.6");
+    g.click("Sampler editor: Prepare slot preview");
+    g.wait(|g| g.app.sampler_editor.loading.is_none());
+    assert!(g.app.sampler_editor.error.is_some());
+    assert_eq!(g.rt.sampler_banks[index].data.settings.slots[0].playback, expected);
+}

@@ -36,10 +36,14 @@ struct Shared {
     sessions: AtomicU64,
     pending: AtomicU64,
     connected: AtomicBool,
+    measurement_available: AtomicBool,
     ack_sequence: AtomicU64,
     ack: [AtomicU64; 10],
     progress_sequence: AtomicU64,
     progress: [AtomicU64; 6],
+    prepare_state: AtomicU64,
+    play_sequence: [AtomicU64; 2],
+    play: [[AtomicU64; 5]; 2],
     active: AtomicU64,
     incomplete: AtomicBool,
     dropped: AtomicU64,
@@ -57,17 +61,27 @@ impl Endpoint {
         let wall_origin = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
             .ok().and_then(|d| u64::try_from(d.as_nanos()).ok()).unwrap_or(0);
         let handle = Handle(Arc::new(Shared { sender, observations: std::sync::Mutex::new(Some(observations)), next: AtomicU64::new(1), sessions: AtomicU64::new(1), pending: AtomicU64::new(0),
-            connected: AtomicBool::new(true), ack_sequence: AtomicU64::new(0),
+            connected: AtomicBool::new(true), measurement_available: AtomicBool::new(true), ack_sequence: AtomicU64::new(0),
             ack: std::array::from_fn(|_| AtomicU64::new(0)), progress_sequence: AtomicU64::new(0),
-            progress: std::array::from_fn(|_| AtomicU64::new(0)), active: AtomicU64::new(0),
+            progress: std::array::from_fn(|_| AtomicU64::new(0)),
+            prepare_state: AtomicU64::new(0), play_sequence: std::array::from_fn(|_| AtomicU64::new(0)),
+            play: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU64::new(0))), active: AtomicU64::new(0),
             incomplete: AtomicBool::new(false), dropped: AtomicU64::new(0), wall_origin, clock_origin }));
         Self { handle, receiver }
     }
     pub fn request(&self) -> Option<Request> { self.receiver.try_recv().ok() }
-    pub fn clock(&self) -> Option<u64> {
-        if self.handle.0.wall_origin == 0 { return None; }
-        self.handle.0.wall_origin.checked_add(u64::try_from(self.handle.0.clock_origin.elapsed().as_nanos()).ok()?)
+    pub fn clock(&self) -> Option<u64> { self.handle.clock() }
+    pub fn prepare_state(&self) -> u64 { self.handle.0.prepare_state.load(Ordering::Acquire) }
+    pub fn record_play(&self, value: DigitalPlay) {
+        let deck = usize::from(value.deck);
+        let shared = &self.handle.0;
+        shared.play_sequence[deck].fetch_add(1, Ordering::AcqRel);
+        for (slot, word) in shared.play[deck].iter().zip([value.load, value.wall_ns, value.first_frame, u64::from(value.frames), u64::from(value.rate)]) {
+            slot.store(word, Ordering::Relaxed);
+        }
+        shared.play_sequence[deck].fetch_add(1, Ordering::Release);
     }
+    pub fn measurement_available(&self, available: bool) { self.handle.0.measurement_available.store(available, Ordering::Release); }
     pub fn publish_status(&self, session: u64, incomplete: bool, dropped: u64) {
         self.handle.0.active.store(session, Ordering::Release);
         self.handle.0.incomplete.store(incomplete, Ordering::Release);
@@ -96,7 +110,42 @@ pub(crate) struct Progress {
     pub session: u64, pub wall_ns: u64, pub frame: u64, pub rate: u32,
     pub incomplete: bool, pub dropped: u64,
 }
+/// One complete window of confirmed digital main output from a playing deck.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct DigitalPlay {
+    pub deck: u8, pub load: u64, pub wall_ns: u64, pub first_frame: u64, pub frames: u32, pub rate: u32,
+}
 impl Handle {
+    /// Check whether the renderer can attribute its current output to playing decks.
+    /// Takes no arguments; returns false for unmeasured routes or a disconnected renderer.
+    pub fn can_measure(&self) -> bool {
+        self.0.connected.load(Ordering::Acquire) && self.0.measurement_available.load(Ordering::Acquire)
+    }
+    /// Enable transient prepare-queue measurement.
+    /// Takes the requested state; returns an error if its bounded revision is exhausted.
+    pub fn set_prepare_monitor(&self, enabled: bool) -> Result<(), &'static str> {
+        self.0.prepare_state.fetch_update(Ordering::AcqRel, Ordering::Acquire, |state| {
+            if state & 1 == u64::from(enabled) { Some(state) }
+            else { (state >> 1).checked_add(1).filter(|next| *next <= u64::MAX >> 1).map(|next| next << 1 | u64::from(enabled)) }
+        }).map(|_| ()).map_err(|_| "Prepare measurement revision exhausted")
+    }
+    /// Capture the monotonic civil-time boundary used by output observations.
+    /// Takes no arguments; returns None when the renderer clock is unavailable.
+    pub fn clock(&self) -> Option<u64> {
+        (self.0.wall_origin != 0).then_some(())?;
+        self.0.wall_origin.checked_add(u64::try_from(self.0.clock_origin.elapsed().as_nanos()).ok()?)
+    }
+    /// Read the last fully classified playing window for a deck.
+    /// Takes a deck index; returns a coherent observation or None during publication/disconnection.
+    pub fn digital_play(&self, deck: usize) -> Option<DigitalPlay> {
+        if deck >= 2 || !self.can_measure() { return None; }
+        let sequence = self.0.play_sequence[deck].load(Ordering::Acquire);
+        if sequence & 1 != 0 { return None; }
+        let words: [u64; 5] = std::array::from_fn(|i| self.0.play[deck][i].load(Ordering::Relaxed));
+        std::sync::atomic::fence(Ordering::Acquire);
+        if !self.can_measure() || sequence != self.0.play_sequence[deck].load(Ordering::Relaxed) || words[0] == 0 || words[1] == 0 { return None; }
+        Some(DigitalPlay { deck: deck as u8, load: words[0], wall_ns: words[1], first_frame: words[2], frames: words[3] as u32, rate: words[4] as u32 })
+    }
     /// Read before draining observation events. This fences the durable prefix
     /// at complete classification windows, excluding the pending partial one.
     pub fn progress(&self) -> Option<Progress> {

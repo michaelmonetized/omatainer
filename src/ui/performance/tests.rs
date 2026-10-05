@@ -80,6 +80,13 @@ impl Gui {
             data: None,
         })]);
     }
+    fn custom(&mut self, label: &str, action: i32) {
+        let target = self.nodes.iter().find_map(|(id, node)| (node.label() == Some(label)).then_some(*id)).unwrap();
+        self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target, action: Action::CustomAction, data: Some(egui::accesskit::ActionData::CustomAction(action)),
+        })]);
+        self.frame(vec![]);
+    }
     fn has(&self, label: &str) -> bool {
         self.painted.iter().any(|text| text.contains(label))
             || self
@@ -346,37 +353,43 @@ fn native_deck_review_cancel_load_and_eject_keep_the_exact_target() {
     gui.fixture.rt.apply(Command::DeckPlay { deck: 0 });
     gui.fixture.app.lib_sel = 1;
     gui.frame(vec![]);
-    gui.click("Lock playing deck A");
+    gui.click("Deck A: Lock playing deck");
     let original = gui.fixture.rt.decks[0].audio.clone().unwrap();
-    gui.click("Review load override…");
-    gui.click("Keep current deck audio");
+    let other = gui.fixture.rt.decks[1].audio.clone().unwrap();
+    gui.click("Load selected crate item to deck A");
+    gui.click("Keep playing track");
     assert!(Arc::ptr_eq(gui.fixture.rt.decks[0].audio.as_ref().unwrap(), &original));
     assert!(gui.fixture.rt.decks[0].playing);
-    gui.click("Review load override…");
-    gui.click_once("Confirm load on reviewed deck");
+    gui.click("Load selected crate item to deck A");
+    gui.click("I intend to replace this playing track");
+    gui.click_once("Confirm deck replacement");
     assert!(Arc::ptr_eq(gui.fixture.rt.decks[0].audio.as_ref().unwrap(), &original));
     gui.frame(vec![]); gui.frame(vec![]);
     assert!(!Arc::ptr_eq(gui.fixture.rt.decks[0].audio.as_ref().unwrap(), &original));
     assert!(matches!(gui.fixture.app.loads[0].as_ref().unwrap().phase, Phase::Loaded));
     gui.fixture.rt.apply(Command::DeckPlay { deck: 0 }); gui.frame(vec![]);
-    gui.click("Review eject…"); gui.click("Keep current deck audio");
+    gui.custom("Deck A: Platter play or pause", 2);
+    gui.click("Keep playing track");
     assert!(gui.fixture.rt.decks[0].audio.is_some());
-    gui.click("Review eject…"); gui.click_once("Confirm eject on reviewed deck");
+    gui.custom("Deck A: Platter play or pause", 2);
+    gui.click("I intend to replace this playing track");
+    gui.click_once("Confirm deck replacement");
     assert!(gui.fixture.rt.decks[0].audio.is_some());
     gui.frame(vec![]); gui.frame(vec![]);
     assert!(gui.fixture.rt.decks[0].audio.is_none());
-    assert!(gui.fixture.app.status.contains("ejected"));
+    assert!(Arc::ptr_eq(gui.fixture.rt.decks[1].audio.as_ref().unwrap(), &other));
+    assert!(gui.fixture.app.status.contains("unloaded"));
 }
 
 #[test]
 fn a_reviewed_delayed_decode_keeps_audio_until_ready_and_refuses_a_changed_target() {
     let mut gui = Gui::new();
     gui.fixture.rt.apply(Command::DeckPlay { deck: 0 }); gui.frame(vec![]);
-    gui.click("Lock playing deck A"); gui.frame(vec![]);
+    gui.click("Deck A: Lock playing deck"); gui.frame(vec![]);
     let original = gui.fixture.rt.decks[0].audio.clone().unwrap();
     let handle = gui.fixture.app.engine.cmd.performance().clone();
     let approval = handle.approve_deck_load(0, gui.fixture.app.snap.decks[0].load_gate_word).unwrap();
-    gui.fixture.app.load_reference_approved(0, LibSource::File(PathBuf::from("/private/reviewed.wav")), "reviewed", Some(approval));
+    gui.fixture.app.load_reference_approved(0, LibSource::File(PathBuf::from("/private/reviewed.wav")), "reviewed", Some(approval), None);
     gui.fixture.decoder_jobs.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
     gui.frame(vec![]);
     assert!(gui.fixture.rt.decks[0].playing);
@@ -394,28 +407,28 @@ fn a_reviewed_delayed_decode_keeps_audio_until_ready_and_refuses_a_changed_targe
 }
 
 #[test]
-fn studio_deck_lock_rejects_actual_keyboard_drop_and_midi_loads_before_decoding() {
+fn studio_deck_lock_reviews_keyboard_and_drop_and_rejects_midi_before_decoding() {
     let mut gui = Gui::new();
     gui.fixture.rt.apply(Command::DeckPlay { deck: 0 }); gui.frame(vec![]);
-    gui.click("Lock playing deck A");
+    gui.click("Deck A: Lock playing deck");
     assert!(!gui.fixture.app.engine.cmd.performance().protected());
     let original = gui.fixture.rt.decks[0].audio.clone().unwrap();
     let position = gui.fixture.rt.decks[0].pos;
-    let rejected = gui.fixture.app.engine.cmd.performance().status().rejected;
     gui.click("Load selected crate item to deck A");
-    assert!(gui.fixture.app.engine.cmd.performance().status().rejected > rejected);
-    gui.click("Dismiss");
+    assert!(gui.fixture.app.deck_load_review.is_some());
+    assert!(gui.fixture.decoder_jobs.try_recv().is_err());
+    gui.click("Keep playing track");
     gui.frame(vec![]);
     assert!(!keyboard::dialogs_block_input(&gui.ctx));
-    let rejected = gui.fixture.app.engine.cmd.performance().status().rejected;
     gui.frame(vec![egui::Event::Key { key: Key::F, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() }]);
-    assert!(gui.fixture.app.engine.cmd.performance().status().rejected > rejected);
+    assert!(gui.fixture.app.deck_load_review.is_some());
+    assert!(gui.fixture.decoder_jobs.try_recv().is_err());
     gui.frame(vec![egui::Event::Key { key: Key::F, physical_key: None, pressed: false, repeat: false, modifiers: Default::default() }]);
-    gui.click("Dismiss");
-    let rejected = gui.fixture.app.engine.cmd.performance().status().rejected;
+    gui.click("Keep playing track");
     gui.frame_input(vec![], vec![egui::DroppedFile { path: Some(PathBuf::from("/private/locked-drop.wav")), ..Default::default() }]);
-    assert!(gui.fixture.app.engine.cmd.performance().status().rejected > rejected);
-    gui.click("Dismiss");
+    assert!(gui.fixture.app.deck_load_review.is_some());
+    assert!(gui.fixture.decoder_jobs.try_recv().is_err());
+    gui.click("Keep playing track");
     let rejected = gui.fixture.app.engine.cmd.performance().status().rejected;
     gui.fixture.app.engine.midi.receive_for_test(&gui.fixture.app.engine.cmd, 41, "Pioneer DDJ-FLX4", &[0x90,0x02,0x7f]);
     assert!(gui.fixture.app.engine.cmd.performance().status().rejected > rejected);

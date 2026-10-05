@@ -11,13 +11,16 @@ impl Catalog {
         let index = self.version_track(&proof.source, Some(proof.fingerprint))
             .ok_or("track analysis no longer matches a catalog version")?;
         let track = &mut self.tracks[index];
+        let mut patch=patch.clone();patch.fields=track.locks.analysis(patch.fields);
+        if !patch.fields.valid() {return Err("Selected analysis fields are protected; unlock them before reanalysis".into());}
         if track.id != proof.track { return Err("track analysis belongs to a different track identity".into()); }
         let version = track.versions.iter_mut().find(|v| v.fingerprint == Some(proof.fingerprint))
             .ok_or("track analysis version is missing")?;
         if version.content_hash.is_some() && version.content_hash != proof.content_hash {
             return Err("track analysis conflicts with the saved source digest".into());
         }
-        let next = version.analysis.as_ref().cloned().unwrap_or_default().merged(patch)?;
+        let previous=version.metadata.clone();
+        let next = version.analysis.as_ref().cloned().unwrap_or_default().merged(&patch)?;
         version.content_hash = proof.content_hash;
         version.analysis = Some(next);
         if patch.fields.bpm {
@@ -26,6 +29,7 @@ impl Catalog {
         }
         if patch.fields.duration { version.metadata.duration = Some(patch.duration); }
         tags::reconcile(version);
+        track.locks.preserve(&previous,&mut version.metadata);
         Ok(())
     }
 }

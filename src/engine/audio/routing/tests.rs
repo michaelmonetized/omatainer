@@ -143,6 +143,59 @@ fn engine() -> crate::engine::RtEngine {
 }
 
 #[test]
+fn missing_input_reaches_direct_bus_track_scene_and_main_record_routes() {
+    use super::prepared::Prepared;
+    use std::sync::Arc;
+    let mut rt = engine();
+    let track = rt.session.tracks[0].id;
+    let scene = rt.session.scenes[rt.tracks[0].scene_bus].id;
+    let mut model = Model::default();
+    model.next_id = 5;
+    model.ports.push(Port { id: 2, alias: "Input".into(), direction: Direction::Input, channels: vec![0] });
+    model.ports.push(Port { id: 4, alias: "Record".into(), direction: Direction::Record, channels: vec![0] });
+    model.buses.push(Bus { id: 3, alias: "Bus".into(), channels: 1, gain: 1.0, mute: false });
+    for group in [Group::Input(2), Group::Bus(3), Group::Track(track), Group::Scene(scene), Group::Main, Group::Deck(0)] {
+        let mut saved = model.clone();
+        saved.connections.push(connection(Group::Input(2), Group::Bus(3)));
+        saved.connections.push(connection(Group::Bus(3), Group::Track(track)));
+        saved.connections.push(connection(group, Group::Record(4)));
+        let mut graph = Prepared::new(Arc::new(saved), &rt.session).unwrap();
+        assert_eq!(crate::engine::test_alloc::measure(|| { graph.render(&mut rt, false, 0.0, 2); }), crate::engine::test_alloc::Counts::default());
+        let path = std::env::temp_dir().join(format!("omatainer-routed-record-{}.wav", crate::sampler_bank::BankId::new().unwrap()));
+        let recorder = rt.routing_pipe.recorder.clone();
+        let writer = recorder.clone();
+        let destination = path.clone();
+        let epoch = recorder.epoch();
+        let capture = std::thread::spawn(move || writer.write(4, 1, 48000, 1, &destination, &std::sync::atomic::AtomicBool::new(false), epoch));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        while recorder.alias() != 4 {
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert_eq!(crate::engine::test_alloc::measure(|| {
+            for _ in 0..128 { graph.render(&mut rt, false, 0.0, 2); }
+        }), crate::engine::test_alloc::Counts::default());
+        recorder.stop();
+        let result = capture.join().unwrap();
+        if group == Group::Deck(0) {
+            assert_eq!(result.unwrap(), path);
+            assert_eq!(crate::engine::decode::decode_audio(&path).unwrap().sample.frames(), 128);
+            std::fs::remove_file(&path).unwrap();
+        } else {
+            assert!(result.unwrap_err().contains("missing input"), "{group:?}");
+            assert!(!path.exists());
+        }
+        let node = graph.nodes.iter().find(|node| node.group == Group::Record(4)).unwrap();
+        assert_eq!(node.valid, group == Group::Deck(0), "{group:?}");
+    }
+    model.connections.push(connection(Group::Input(2), Group::Record(4)));
+    model.connections.last_mut().unwrap().map[0].gain = 0.0;
+    let mut graph = Prepared::new(Arc::new(model), &rt.session).unwrap();
+    graph.render(&mut rt, false, 0.0, 2);
+    assert!(graph.nodes.iter().find(|node| node.group == Group::Record(4)).unwrap().valid);
+}
+
+#[test]
 fn all_64_physical_outputs_render_distinct_mapped_samples_without_heap_work() {
     let mut rt = engine();
     let mut model = Model::default();

@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn closing_gate_observes_a_producer_already_waiting_for_admission_without_taking_its_mutex() {
-    let (port, receiver) = CommandPort::channel(32);
+    let (port, receiver) = CommandPort::channel(48);
     let producer_mutex = port.admission.lock();
     let producer = port.clone();
     let worker = std::thread::spawn(move || producer.send(Command::Master(0.37)));
@@ -58,7 +58,7 @@ fn lease_retired(port: &CommandPort) {
 #[test]
 fn every_existing_early_exit_retires_its_lease_and_gui_success_is_gated() {
     use crate::engine::media_source::{BuiltinStem, LibSource, Selection};
-    let (port, receiver) = CommandPort::channel(32);
+    let (port, receiver) = CommandPort::channel(48);
     assert_eq!(
         port.send(Command::Master(0.4)),
         Ok(SubmissionOutcome::Accepted)
@@ -94,8 +94,7 @@ fn every_existing_early_exit_retires_its_lease_and_gui_success_is_gated() {
     lease_retired(&port);
     gui.publish_selection(Some(Arc::new(Selection {
         source: LibSource::Builtin(BuiltinStem::Harmony),
-        title: "Harmony".into(),
-    })));
+        title: "Harmony".into(), fingerprint: None, })));
     assert_eq!(
         port.send(Command::DeckLoadSelected { deck: 1 }),
         Ok(SubmissionOutcome::Accepted)
@@ -130,7 +129,7 @@ fn every_existing_early_exit_retires_its_lease_and_gui_success_is_gated() {
 
 #[test]
 fn physical_releases_and_reserved_stops_survive_closed_gate_and_an_aborted_install() {
-    let (port, receiver) = CommandPort::channel(64);
+    let (port, receiver) = CommandPort::channel(80);
     let mut rt = RtEngine::new(
         48000.0,
         receiver,
@@ -239,7 +238,7 @@ fn physical_releases_and_reserved_stops_survive_closed_gate_and_an_aborted_insta
 
 #[test]
 fn gate_toggle_is_allocation_free_idempotent_and_critical_writer_is_counted() {
-    let (port, receiver) = CommandPort::channel(32);
+    let (port, receiver) = CommandPort::channel(48);
     let counts = test_alloc::measure(|| {
         for _ in 0..1000 {
             assert!(receiver.begin_project_install());

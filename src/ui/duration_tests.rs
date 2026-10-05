@@ -99,7 +99,7 @@ fn visible(output: &egui::FullOutput, text: &str) -> bool {
 #[test]
 fn real_mono_and_stereo_decodes_refresh_visible_duration_for_the_original_row() {
     let files = Files::new();
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.loader = Some(Loader::start().unwrap());
     let fixtures = [
         (files.wave("Mono 155.wav", 44_100, 1, 143_325), 3.25, "0:03"),
@@ -163,7 +163,7 @@ fn real_mono_and_stereo_decodes_refresh_visible_duration_for_the_original_row() 
 fn duration_is_cached_by_bytes_and_cannot_be_rolled_back_by_an_older_scan() {
     let files = Files::new();
     let path = files.wave("Track 155.wav", 48_000, 1, 168_000);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.loader = Some(Loader::start().unwrap());
     scan(&mut f, &files);
     let (entered, ready) = mpsc::sync_channel(1);
@@ -234,9 +234,10 @@ fn duration_is_cached_by_bytes_and_cannot_be_rolled_back_by_an_older_scan() {
 fn held_decode_keeps_real_crate_frames_and_controls_live_and_stale_file_duration_unknown() {
     let files = Files::new();
     let path = files.wave("Slow 155.wav", 48_000, 2, 72_000);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     scan(&mut f, &files);
     select(&mut f, &path);
+    let outgoing = f.rt.decks[0].audio.as_ref().unwrap().clone();
     f.app.load_sel(0);
     assert_eq!(
         f.decoder_jobs
@@ -261,7 +262,10 @@ fn held_decode_keeps_real_crate_frames_and_controls_live_and_stale_file_duration
     std::fs::rename(replacement, &path).unwrap();
     f.decoder_results.send((0, Ok(report))).unwrap();
     f.poll_loads();
-    apply(&mut f);
+    finish(&mut f);
+    assert!(matches!(f.app.loads[0].as_ref().unwrap().phase, Phase::Failed(_)));
+    assert!(f.rt.cmd_rx.try_recv().is_err(), "changed decode must never request deck replacement");
+    assert!(Arc::ptr_eq(f.rt.decks[0].audio.as_ref().unwrap(), &outgoing));
     assert_eq!(
         item(&f, &path).length,
         None,
@@ -283,7 +287,7 @@ fn unknown_and_failed_duration_are_distinct_from_known_zero_and_fractional_lengt
     let files = Files::new();
     let path = files.0.join("Broken 155.wav");
     std::fs::write(&path, b"not audio").unwrap();
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     f.app.loader = Some(Loader::start().unwrap());
     scan(&mut f, &files);
     select(&mut f, &path);
@@ -301,7 +305,7 @@ fn unknown_and_failed_duration_are_distinct_from_known_zero_and_fractional_lengt
 fn pending_bpm_only_patch_keeps_duration_but_never_crosses_file_identity() {
     let files = Files::new();
     let path = files.wave("Pending 155.wav", 48_000, 1, 72_000);
-    let mut f = Fixture::new(32);
+    let mut f = Fixture::new(48);
     scan(&mut f, &files);
     let mut patch = library_metadata::Patch {
         tags: None,

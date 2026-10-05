@@ -29,7 +29,7 @@ struct Gui {
 }
 impl Gui {
     fn new() -> Self {
-        let mut f = test_support::Fixture::new(64);
+        let mut f = test_support::Fixture::new(80);
         f.rt.publish_for_test();
         Self {
             f,
@@ -216,7 +216,7 @@ fn actual_ui_cancellation_keeps_no_capture_or_partial_file_and_remains_responsiv
 
 #[test]
 fn display_uses_real_callback_queue_and_separately_measured_ui_update() {
-    let (engine, rt) = Engine::headless_for_test(48000, 64);
+    let (engine, rt) = Engine::headless_for_test(48000, 80);
     let mut callback = OutputCallback::new(rt, 2);
     engine.cmd.set_profiling(true);
     callback.render_timed(&mut [0f32; 256], Some(Duration::from_millis(9)));
@@ -243,7 +243,7 @@ fn display_uses_real_callback_queue_and_separately_measured_ui_update() {
     );
     for label in [
         "Predicted output latency 9.000 ms",
-        "Audio queue 1/64",
+        "Audio queue 1/80",
         "Output 48000 Hz · 2 channels · 128 frames",
         "XRUNs unavailable",
         &format!("UI update wall {:.3} ms", ui_ns as f64 / 1e6),

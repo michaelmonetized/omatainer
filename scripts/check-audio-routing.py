@@ -46,9 +46,9 @@ def connect(env, configured, links):
     return len(links)
 
 
-def run(binary, destination):
+def run(binary, destination, buffer_frames=128):
     """Qualify a native routing test executable.
-    Takes a test binary and new private directory; returns captured channel receipts and owned-child cleanup proof.
+    Takes a test binary, new private directory and requested buffer; returns captured channel receipts and owned-child cleanup proof.
     """
     destination.mkdir()
     root = destination.resolve()
@@ -56,13 +56,15 @@ def run(binary, destination):
     if len(os.fsencode(runtime / 'omatainer-test-manager')) >= 108:
         raise ValueError('Use a shorter fixture directory for native Unix socket paths')
     runtime.mkdir(mode=0o700)
-    server_config = fixture.SERVER.replace('[ FL FR ]', POSITIONS).replace('monitor = false', 'monitor = true')
+    if buffer_frames not in (128, 256, 512, 1024, 2048):
+        raise ValueError('Choose a supported private fixture buffer')
+    server_config = fixture.SERVER.replace('[ FL FR ]', POSITIONS).replace('monitor = false', 'monitor = true').replace('default.clock.quantum = 128', f'default.clock.quantum = {buffer_frames}')
     (root / 'pipewire.conf').write_text(server_config)
     alsa_config = fixture.ALSA.replace('channels 2', 'channels 32').replace('playback_node "test-sink"', 'playback_node "test-sink" capture_node "test-sink"')
     (root / 'alsa.conf').write_text(alsa_config)
     env = {**os.environ, 'XDG_RUNTIME_DIR': str(runtime), 'PIPEWIRE_RUNTIME_DIR': str(runtime),
            'PIPEWIRE_REMOTE': 'omatainer-test', 'PIPEWIRE_DEBUG': '1', 'ALSA_CONFIG_PATH': str(root / 'alsa.conf'),
-           'OMATAINER_NATIVE_ROUTING_DIR': str(root), 'PIPEWIRE_CONFIG_DIR': '/usr/share/pipewire', 'XDG_CONFIG_HOME': str(root / 'config')}
+           'OMATAINER_NATIVE_ROUTING_DIR': str(root), 'OMATAINER_NATIVE_ROUTING_FRAMES': str(buffer_frames), 'PIPEWIRE_CONFIG_DIR': '/usr/share/pipewire', 'XDG_CONFIG_HOME': str(root / 'config')}
     server, child = None, None
     started = dt.datetime.now(dt.timezone.utc).isoformat()
     try:
@@ -90,6 +92,7 @@ def run(binary, destination):
                    'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
                    'pipewire': fixture.command(['pipewire', '--version'], env).stdout.decode().strip(),
                    'server_pid': server.pid, 'test_pid': child.pid, 'links': len(links),
+                   'requested_buffer_frames': buffer_frames,
                    'capture': json.loads((root / 'done.json').read_text()),
                    'scope': 'Actual CPAL/ALSA output and input, private 32-channel PipeWire null-sink loopback, renderer record aliases and decoded WAVs. No physical converter or external interface.'}
     finally:
@@ -104,5 +107,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--test-binary', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--buffer-frames', type=int, choices=[128, 256, 512, 1024, 2048], default=128)
     args = parser.parse_args()
-    print(json.dumps(run(args.test_binary, args.destination), indent=2))
+    print(json.dumps(run(args.test_binary, args.destination, args.buffer_frames), indent=2))

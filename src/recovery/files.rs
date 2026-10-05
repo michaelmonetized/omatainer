@@ -66,6 +66,17 @@ pub(super) fn lock(path: &Path, create: bool) -> Result<Option<Lock>, Error> {
         Err(std::fs::TryLockError::Error(error)) => Err(Error::io("lock session", error)),
     }
 }
+
+/// Share a closed recovery session among verified readers.
+/// Takes an existing private lock file; refuses an active writer or exclusive cleanup without waiting.
+pub(super) fn read_lock(path: &Path) -> Result<Option<Lock>, Error> {
+    let file = open(path, false, false)?;
+    match file.try_lock_shared() {
+        Ok(()) => Ok(Some(Lock(file))),
+        Err(std::fs::TryLockError::WouldBlock) => Ok(None),
+        Err(std::fs::TryLockError::Error(error)) => Err(Error::io("share session read", error)),
+    }
+}
 pub(super) fn sync(path: &Path) -> Result<(), Error> {
     File::open(path)
         .and_then(|file| file.sync_all())

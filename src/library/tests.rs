@@ -71,6 +71,7 @@ fn sampler_verified_content_only_qualifies_its_exact_existing_version() {
 }
 fn preparation() -> Preparation {
     Preparation {
+        source_gain: crate::track_gain::Policy::Off,
         grid: None,
         cue: 4.5,
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
@@ -115,6 +116,39 @@ fn mixed(dir: &Dir) -> Catalog {
     }
     catalog
 }
+#[test]
+fn tempo_anchors_roundtrip_and_legacy_headers_cannot_hide_new_geometry() {
+    let dir = Dir::new();
+    let mut catalog = mixed(&dir);
+    let grid = crate::engine::beatgrid::Grid::new(0.25, 120.0).unwrap()
+        .with_anchor(4.0, 2.25).unwrap().with_anchor(8.0, 3.75).unwrap();
+    for track in &mut catalog.tracks { track.versions[track.current].preparation.grid = Some(grid); }
+    {
+        let mut store = Store::open(dir.store()).unwrap();
+        store.catalog = catalog.clone(); store.save().unwrap();
+    }
+    assert_eq!(read(&dir.store()).unwrap().tracks, catalog.tracks);
+    let current = serde_json::to_value(&catalog).unwrap();
+    let mut forged = current.clone(); forged["schema"] = 12.into();
+    let bytes = serde_json::to_vec(&forged).unwrap(); fs::write(dir.store(), &bytes).unwrap();
+    assert!(Store::open(dir.store()).is_err());
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    let mut legacy = current;
+    legacy["schema"] = 12.into();
+    for track in legacy["tracks"].as_array_mut().unwrap() {
+        for version in track["versions"].as_array_mut().unwrap() {
+            version["preparation"]["grid"].as_object_mut().unwrap().remove("anchors");
+        }
+    }
+    let old = serde_json::to_vec(&legacy).unwrap(); fs::write(dir.store(), &old).unwrap();
+    let migrated = read(&dir.store()).unwrap();
+    assert_eq!(migrated.schema, SCHEMA);
+    assert!(migrated.tracks.iter().all(|t| t.versions[t.current].preparation.grid.unwrap().anchors().is_empty()));
+    assert_eq!(fs::read(dir.store()).unwrap(), old);
+    legacy["tracks"][0]["versions"][0]["preparation"]["grid"]["anchors"] = serde_json::json!([]);
+    assert!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(), Some(12)).is_err());
+}
+
 #[test]
 fn mixed_namespaces_ids_metadata_and_preparation_survive_restart() {
     let dir = Dir::new();
@@ -201,6 +235,33 @@ fn interrupted_atomic_updates_retain_complete_old_or_new_and_prepared_backup() {
         assert_eq!(fs::read(orphan).unwrap(), b"partial");
     }
 }
+#[test]
+fn schema_thirteen_preserves_legacy_data_and_refuses_gain_or_level_injection() {
+    let dir = Dir::new();
+    let good = mixed(&dir);
+    let mut legacy = serde_json::to_value(&good).unwrap();
+    legacy["schema"] = 13.into();
+    let bytes = serde_json::to_vec(&legacy).unwrap();
+    fs::write(dir.store(), &bytes).unwrap();
+    let migrated = Store::open(dir.store()).unwrap();
+    assert_eq!(migrated.catalog.schema, SCHEMA);
+    assert_eq!(migrated.catalog.tracks, good.tracks);
+    assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+    drop(migrated);
+    for value in [serde_json::Value::Null, serde_json::json!({"mode":"off"}), serde_json::json!({})] {
+        for field in ["source_gain", "level"] {
+            let mut injected = legacy.clone();
+            if field == "source_gain" { injected["tracks"][0]["versions"][0]["preparation"][field] = value.clone(); }
+            else { injected["tracks"][0]["versions"][0]["analysis"] = serde_json::json!({"level":value}); }
+            let bytes = serde_json::to_vec(&injected).unwrap();
+            fs::write(dir.store(), &bytes).unwrap();
+            let error = Store::open(dir.store()).err().unwrap();
+            assert!(error.contains("require library schema 14"), "{error}");
+            assert_eq!(fs::read(dir.store()).unwrap(), bytes);
+        }
+    }
+}
+
 #[test]
 fn malformed_future_unknown_fields_and_invalid_imports_fail_closed() {
     let dir = Dir::new();
@@ -782,6 +843,8 @@ fn background_analysis_selective_fields_preserve_user_preparation_and_restart() 
     let wave = WaveformRef { sha256: [7; 32], bytes: 16000, frames: 480_000,
         sample_rate: 48_000, channels: 2, bins: 2048 };
     let mut patch = Patch { reference, fields: Fields::ALL, at_unix_ms: 1000,
+        key: Some(crate::musical_key::Analysis::unknown()),
+        level: Some(crate::track_gain::Analysis::new(crate::track_gain::measure_channels(&[0.25; 32], 1, || false).unwrap())),
         bpm: Some(140.0), duration: 10.0, waveform: Some(wave.clone()) };
     store.catalog.apply_analysis(&patch).unwrap();
     let analyzed = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
@@ -792,10 +855,12 @@ fn background_analysis_selective_fields_preserve_user_preparation_and_restart() 
     assert_eq!(analyzed.metadata.last_play, original.metadata.last_play);
     assert_eq!(analyzed.metadata.duration, Some(10.0));
     assert!(analyzed.analysis.as_ref().unwrap().contains(Fields::ALL));
-    patch.fields = Fields { bpm: true, duration: false, waveform: false };
+    patch.fields = Fields { bpm: true, duration: false, waveform: false, level: false, key: false };
     patch.at_unix_ms = 2000;
     patch.bpm = None;
     patch.waveform = None;
+    patch.level = None;
+    patch.key = None;
     store.catalog.apply_analysis(&patch).unwrap();
     let selected = store.catalog.version(&source, Some(fingerprint)).unwrap().clone();
     let cached = selected.analysis.as_ref().unwrap();
@@ -831,8 +896,8 @@ fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() 
     let replaced = FileFingerprint::read(&path).unwrap();
     catalog.upsert(source.clone(), Some(replaced), metadata()).unwrap();
     let replacement = catalog.version(&source, Some(replaced)).unwrap().clone();
-    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false },
-        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None };
+    let patch = Patch { reference, fields: Fields { bpm: true, duration: true, waveform: false, level: false, key: false },
+        at_unix_ms: 1000, bpm: Some(136.0), duration: 25.0, waveform: None, level: None, key: None };
     catalog.apply_analysis(&patch).unwrap();
     let measured = catalog.version(&source, Some(fingerprint)).unwrap();
     assert_eq!(measured.metadata.bpm, Bpm::new(136.0, Origin::Heuristic));
@@ -847,7 +912,7 @@ fn background_analysis_rejects_wrong_proofs_and_preserves_replacement_version() 
     assert!(catalog.apply_analysis(&invalid).is_err());
     invalid = patch.clone(); invalid.duration = f64::NAN;
     assert!(catalog.apply_analysis(&invalid).is_err());
-    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false };
+    invalid = patch.clone(); invalid.fields = Fields { bpm: false, duration: false, waveform: false, level: false, key: false };
     assert!(catalog.apply_analysis(&invalid).is_err());
     assert_eq!(catalog.tracks, before);
 }
@@ -926,4 +991,46 @@ fn analysis_store_receipts_distinguish_precommit_failure_postrename_and_noop() {
         store.save().unwrap();
         assert!(!store.last_save_replaced());
     }
+}
+
+#[test]
+fn musical_key_schema_and_persistence_preserve_corrections_and_unknown_results() {
+    use crate::{musical_key::{Analysis,Key},track_analysis::{Fields,Patch}};
+    let dir=Dir::new();
+    let path=dir.0.join("key-source.wav");
+    fs::write(&path,b"exact catalog version fixture").unwrap();
+    let source=LibSource::File(path.clone());
+    let fingerprint=FileFingerprint::read(&path).unwrap();
+    let hash=content::hash_file(&path,fingerprint,||true).unwrap();
+    let mut store=Store::open(dir.store()).unwrap();
+    store.catalog.upsert(source.clone(),Some(fingerprint),metadata()).unwrap();
+    let id=store.catalog.track(&source).unwrap().id.clone();
+    let reference=crate::sampler_bank::SourceRef {track:id.clone(),source:source.clone(),fingerprint,content_hash:Some(hash)};
+    let measured=Analysis {key:Some(Key {tonic:0,minor:false}),score:0.9,margin:0.2,frames:32};
+    let mut patch=Patch {reference,fields:Fields {bpm:false,duration:false,waveform:false,level:false,key:true},at_unix_ms:500,bpm:None,duration:8.0,waveform:None,level:None,key:Some(measured)};
+    store.catalog.apply_analysis(&patch).unwrap();
+    let review=tags::Review {id,source:source.clone(),fingerprint};
+    store.catalog.apply_tag_sidecar(&review,&tags::Patch {key:Some("8A".into()),..Default::default()}).unwrap();
+    store.save().unwrap();drop(store);
+    let mut store=Store::open(dir.store()).unwrap();
+    let version=store.catalog.version(&source,Some(fingerprint)).unwrap();
+    assert_eq!(version.analysis.as_ref().unwrap().key.as_ref().unwrap().value,measured);
+    assert_eq!(crate::musical_key::display(Some(version),"",false).0,"Am · 8A");
+    patch.key=Some(Analysis::unknown());patch.at_unix_ms=600;
+    store.catalog.apply_analysis(&patch).unwrap();store.save().unwrap();drop(store);
+    let store=Store::open(dir.store()).unwrap();
+    let version=store.catalog.version(&source,Some(fingerprint)).unwrap();
+    assert_eq!(version.analysis.as_ref().unwrap().key.as_ref().unwrap().value,Analysis::unknown());
+    assert_eq!(version.metadata.key,"8A");
+    let mut legacy=serde_json::to_value(&store.catalog).unwrap();
+    legacy["schema"]=14.into();
+    for key in [serde_json::Value::Null,serde_json::to_value(version.analysis.as_ref().unwrap().key.as_ref().unwrap()).unwrap()] {
+        legacy["tracks"][0]["versions"][0]["analysis"]["key"]=key;
+        assert!(catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(),None).unwrap_err().contains("schema 15"));
+    }
+    legacy["tracks"][0]["versions"][0]["analysis"].as_object_mut().unwrap().remove("key");
+    legacy["tracks"][0]["versions"][0]["analysis"]=serde_json::Value::Null;
+    let upgraded=catalog_from_bytes(&serde_json::to_vec(&legacy).unwrap(),None).unwrap();
+    assert_eq!(upgraded.schema,Catalog::default().schema);
+    assert!(upgraded.version(&source,Some(fingerprint)).unwrap().analysis.is_none());
 }

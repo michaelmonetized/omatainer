@@ -10,7 +10,7 @@ fn submit(engine: &Engine, rt: &RtEngine, action: Action) -> Ack {
 
 #[test]
 fn reorder_retains_playing_clip_note_identities_processor_storage_and_live_gate_destination() {
-    let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
     engine.send(Command::Select { track: 2, scene: 0 }).unwrap();
     engine
         .send(Command::FireClip {
@@ -103,7 +103,7 @@ fn reorder_retains_playing_clip_note_identities_processor_storage_and_live_gate_
 
 #[test]
 fn rename_and_color_are_atomic_undoable_and_stale_or_cancelled_edits_do_not_mutate() {
-    let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
     let id = rt.session.tracks[1].id;
     let old_name = rt.tracks[1].name.clone();
     let (stale, stale_ack) = Request::metadata(
@@ -159,7 +159,7 @@ fn rename_and_color_are_atomic_undoable_and_stale_or_cancelled_edits_do_not_muta
 
 #[test]
 fn reordering_remains_available_during_protected_playback() {
-    let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
     engine.send(Command::PerformanceMode(true)).unwrap();
     let id = rt.session.tracks[2].id;
     let ack = submit(
@@ -190,7 +190,7 @@ fn reordering_remains_available_during_protected_playback() {
 #[test]
 fn deleting_a_scene_moves_only_its_bus_references_and_undo_preserves_another_scene_launched_later()
 {
-    let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
     rt.selected_track = 2;
     rt.selected_scene = 0;
     rt.apply(Command::FireClip {
@@ -235,7 +235,7 @@ fn deleting_a_scene_moves_only_its_bus_references_and_undo_preserves_another_sce
 
 #[test]
 fn deleted_track_closes_live_gates_and_an_old_routed_target_cannot_play_a_reused_slot() {
-    let (engine, mut rt) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 144);
     let old = rt.session.reference(Axis::Track, 2).unwrap();
     rt.apply(Command::RoutedNoteOn {
         source: 19,

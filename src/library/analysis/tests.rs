@@ -49,6 +49,7 @@ fn fixture() -> (Catalog, SourceRef, Version) {
     let mut catalog = Catalog::default();
     catalog.tracks.push(Track {
         annotations: Default::default(),
+        locks: Default::default(),
         id: reference.track.clone(),
         source,
         current: 0,
@@ -62,6 +63,8 @@ fn patch(reference: SourceRef, bpm: Option<f32>, fields: Fields) -> Patch {
     Patch {
         reference,
         fields,
+        level: fields.level.then(|| crate::track_gain::Analysis::new(crate::track_gain::measure_channels(&[0.25; 32], 1, || false).unwrap())),
+        key: fields.key.then(crate::musical_key::Analysis::unknown),
         at_unix_ms: 123456,
         bpm,
         duration: 12.5,
@@ -150,8 +153,7 @@ fn user_bpm_correction_before_or_after_analysis_remains_authoritative() {
                 Fields {
                     bpm: true,
                     duration: false,
-                    waveform: false,
-                },
+                    waveform: false, level: false, key: false },
             ))
             .unwrap();
         let actual = catalog
@@ -184,18 +186,15 @@ fn selective_reanalysis_does_not_write_unrequested_fields_or_other_versions() {
         Fields {
             bpm: true,
             duration: false,
-            waveform: false,
-        },
+            waveform: false, level: false, key: false },
         Fields {
             bpm: false,
             duration: true,
-            waveform: false,
-        },
+            waveform: false, level: false, key: false },
         Fields {
             bpm: false,
             duration: false,
-            waveform: true,
-        },
+            waveform: true, level: false, key: false },
     ] {
         let (mut catalog, reference, original) = fixture();
         catalog
@@ -250,4 +249,47 @@ fn selective_reanalysis_does_not_write_unrequested_fields_or_other_versions() {
             .analysis
             .is_some());
     }
+}
+
+#[test]
+fn late_analysis_cannot_replace_newly_locked_fields_and_still_publishes_allowed_waveforms() {
+    use crate::library::protection::{Target,Patch as LockPatch};
+    let (mut catalog,reference,original)=fixture();let target=Target::capture(&catalog.tracks[0]);catalog.protect(&[target],LockPatch {bpm:Some(true),metadata:Some(true),grid:Some(true)}).unwrap();
+    let forbidden=patch(reference.clone(),Some(150.0),Fields {bpm:true,duration:true,waveform:false, level: false, key: false });
+    assert!(catalog.apply_analysis(&forbidden).unwrap_err().contains("protected"));assert_eq!(catalog.tracks[0].versions[0],original);
+    catalog.apply_analysis(&patch(reference,Some(150.0),Fields::ALL)).unwrap();let version=&catalog.tracks[0].versions[0];
+    assert_eq!(version.metadata,original.metadata);assert_eq!(version.preparation,original.preparation);let record=version.analysis.as_ref().unwrap();assert!(record.bpm.is_none());assert!(record.duration.is_none());assert!(record.waveform.is_some());
+}
+
+#[test]
+fn musical_key_analysis_preserves_manual_embedded_and_inferred_provenance() {
+    use crate::musical_key::{Analysis,Key};
+    let (mut catalog,reference,original)=fixture();
+    let fields=Fields {bpm:false,duration:false,waveform:false,level:false,key:true};
+    let mut measured=patch(reference.clone(),None,fields);
+    measured.key=Some(Analysis {key:Some(Key {tonic:0,minor:false}),score:0.9,margin:0.2,frames:32});
+    catalog.apply_analysis(&measured).unwrap();
+    let version=catalog.version(&reference.source,Some(reference.fingerprint)).unwrap();
+    assert_eq!(version.metadata,original.metadata);
+    let (cell,detail)=crate::musical_key::display(Some(version),"",false);
+    assert_eq!(cell,"C · 8B");assert!(detail.contains("Analyzed musical key"));
+    let (locked,detail)=crate::musical_key::display(Some(version),"",true);
+    assert_eq!(locked,"F#m · 11A");assert!(detail.contains("Locked saved key"));
+    let review=crate::library::tags::Review {id:reference.track.clone(),source:reference.source.clone(),fingerprint:reference.fingerprint};
+    catalog.apply_tag_sidecar(&review,&crate::library::tags::Patch {key:Some("F#m".into()),..Default::default()}).unwrap();
+    catalog.apply_analysis(&measured).unwrap();
+    let version=catalog.version(&reference.source,Some(reference.fingerprint)).unwrap();
+    assert_eq!(version.metadata.key,"F#m");
+    let (cell,detail)=crate::musical_key::display(Some(version),"",false);
+    assert_eq!(cell,"F#m · 11A");assert!(detail.contains("user sidecar"));assert!(detail.contains("C · 8B"));
+    let mut embedded=version.clone();embedded.metadata.key="Gm".into();
+    let tags=embedded.tags.as_mut().unwrap();tags.overrides.key=None;
+    tags.observed.key=Some(crate::media_tags::Field {value:"Gm".into(),source:crate::media_tags::TagSource::Vorbis});
+    let (cell,detail)=crate::musical_key::display(Some(&embedded),"",false);
+    assert_eq!(cell,"Gm · 6A");assert!(detail.contains("Vorbis comments"));assert!(detail.contains("C · 8B"));
+    catalog.apply_tag_sidecar(&review,&crate::library::tags::Patch {key:Some(String::new()),..Default::default()}).unwrap();
+    catalog.apply_analysis(&measured).unwrap();
+    let version=catalog.version(&reference.source,Some(reference.fingerprint)).unwrap();
+    assert_eq!(crate::musical_key::display(Some(version),"",false).0,"—");
+    assert_eq!(version.analysis.as_ref().unwrap().key.as_ref().unwrap().value,measured.key.unwrap());
 }

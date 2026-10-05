@@ -77,10 +77,125 @@ fn selected_source(app: &mut App) -> LibSource {
 }
 
 #[test]
+fn field_search_100000_track_catalog_has_exact_results_and_bounded_steady_frames() {
+    let mut fixture = Fixture::new(48);
+    let mut library = items(100_000);
+    let catalog = Arc::make_mut(&mut fixture.app.library_metadata.catalog);
+    for (index, item) in library.iter_mut().enumerate() {
+        item.source = LibSource::File(format!("/synthetic/{index}.wav").into());
+        item.bpm = Bpm::hint(100.0 + (index % 100) as f32);
+        item.length = Some(120.0 + (index % 200) as f64);
+        item.last_play = (index % 7 == 0).then_some(SystemTime::UNIX_EPOCH);
+        catalog.upsert(item.source.clone(), item.fingerprint, item.stored_metadata()).unwrap();
+        let fields = &mut catalog.tracks[index].annotations;
+        fields.rating = (index % 6) as u8;
+        fields.tags = vec![if index % 3 == 0 { "clean" } else { "explicit" }.into()];
+    }
+    fixture.app.library = Arc::new(library);
+    let ctx = egui::Context::default();
+    for (number, query) in [
+        "artist:\"Even Artist\" bpm:120..128 rating>=4 tag:explicit played:no length:2:00..4:00 key:C",
+        "title:\"Track 99999\"",
+        "bpm>=105 length<=130 played:yes",
+        "artist:\"Odd Artist\" rating:5",
+    ].into_iter().enumerate() {
+        fixture.app.lib_filter = query.into();
+        let started = Instant::now();
+        frame(&ctx, &mut fixture.app, number as f64, vec![]);
+        let elapsed = started.elapsed();
+        let expected: Vec<_> = (0..100_000).filter(|&i| match number {
+            0 => i % 2 == 0 && (20..=28).contains(&(i % 100)) && i % 6 >= 4
+                && i % 3 != 0 && i % 7 != 0 && i % 200 <= 120,
+            1 => i == 99_999,
+            2 => i % 100 >= 5 && i % 200 <= 10 && i % 7 == 0,
+            _ => i % 2 == 1 && i % 6 == 5,
+        }).collect();
+        assert_eq!(*fixture.app.library_view.indices, expected, "{query}");
+        eprintln!("100000-track field search {query:?}: {elapsed:?}, {} results", expected.len());
+        assert!(elapsed < Duration::from_secs(5), "bounded search exceeded five-second local gate: {elapsed:?}");
+        let rebuilds = fixture.app.library_view.stats.rebuilds;
+        frame(&ctx, &mut fixture.app, number as f64 + 0.1, vec![]);
+        assert_eq!(fixture.app.library_view.stats.rebuilds, rebuilds);
+        assert_eq!(fixture.app.library_view.stats.formatted, 0);
+        assert!(fixture.app.library_view.cells.len() <= 6);
+    }
+    fixture.app.lib_filter = "bpm:bad".into();
+    let output = frame(&ctx, &mut fixture.app, 5.0, vec![]);
+    assert!(fixture.app.library_view.indices.is_empty());
+    label_center(&output, "Invalid bpm number");
+}
+
+#[test]
+fn native_search_scope_restores_named_crate_query_source_and_scroll() {
+    use crate::library::crates::{CrateId, Edit};
+    let mut fixture = Fixture::new(48);
+    let mut library = items(100);
+    let catalog = Arc::make_mut(&mut fixture.app.library_metadata.catalog);
+    for (index, item) in library.iter_mut().enumerate() {
+        item.source = LibSource::File(format!("/synthetic/{index}.wav").into());
+        catalog.upsert(item.source.clone(), item.fingerprint, item.stored_metadata()).unwrap();
+    }
+    let id = CrateId("00000000000000000000000000000139".into());
+    catalog.crates.apply(0, &Edit::Create { id: id.clone(), name: "Opening".into(), parent: None, before: None }, |_|true).unwrap();
+    let members = catalog.tracks[..80].iter().map(|track|track.id.clone()).collect();
+    catalog.crates.apply(1, &Edit::AddMembers { id: id.clone(), members, before: None }, |_|true).unwrap();
+    fixture.app.library = Arc::new(library);
+    fixture.app.library_metadata.bind_test_rows(&fixture.app.library);
+    fixture.app.choose_named_crate(Some(id.clone()));
+    fixture.app.lib_filter = "artist:\"Even Artist\"".into();
+    let ctx = egui::Context::default();
+    frame(&ctx, &mut fixture.app, 0.0, vec![]);
+    fixture.app.lib_sel = 25;
+    fixture.app.library_view.pending_offset = Some(24.0 * fixture.app.library_view.stride);
+    let output = frame(&ctx, &mut fixture.app, 0.1, vec![]);
+    let source = selected_source(&mut fixture.app);
+    let offset = fixture.app.library_view.offset;
+    click(&ctx, &mut fixture.app, label_center(&output, "Search all library"), 0.2);
+    assert!(fixture.app.library_view.search_all);
+    assert_eq!(fixture.app.library_crates.selected, Some(id.clone()));
+    assert_eq!(fixture.app.library_view.indices.len(), 50);
+    fixture.app.lib_filter = "title:\"Track 00099\"".into();
+    let output = frame(&ctx, &mut fixture.app, 0.4, vec![]);
+    assert_eq!(fixture.app.library_view.indices.len(), 1);
+    click(&ctx, &mut fixture.app, label_center(&output, "Search all library"), 0.5);
+    frame(&ctx, &mut fixture.app, 0.6, vec![]);
+    assert!(!fixture.app.library_view.search_all);
+    assert_eq!(fixture.app.lib_filter, "artist:\"Even Artist\"");
+    assert_eq!(selected_source(&mut fixture.app), source);
+    assert!((fixture.app.library_view.offset - offset).abs() < 0.01);
+    assert_eq!(fixture.app.library_view.indices.len(), 40);
+}
+
+#[test]
+fn played_predicates_follow_confirmed_source_versions_without_rebuilding_on_repeated_plays() {
+    let mut fixture = Fixture::new(48);
+    fixture.app.library = Arc::new(items(100));
+    fixture.app.lib_filter = "played:no".into();
+    let ctx = egui::Context::default();
+    frame(&ctx, &mut fixture.app, 0.0, vec![]);
+    let source = &fixture.app.library[42];
+    let identity = play_history::Identity::new(source.source.clone(), source.fingerprint).unwrap();
+    fixture.app.last_played.record(&identity, SystemTime::UNIX_EPOCH);
+    frame(&ctx, &mut fixture.app, 0.1, vec![]);
+    assert_eq!(fixture.app.library_view.indices.len(), 99);
+    assert!(!fixture.app.library_view.indices.contains(&42));
+    let rebuilds = fixture.app.library_view.stats.rebuilds;
+    fixture.app.last_played.record(&identity, SystemTime::UNIX_EPOCH + Duration::from_secs(1));
+    frame(&ctx, &mut fixture.app, 0.2, vec![]);
+    assert_eq!(fixture.app.library_view.stats.rebuilds, rebuilds);
+    fixture.app.lib_filter = "played:yes".into();
+    frame(&ctx, &mut fixture.app, 0.3, vec![]);
+    assert_eq!(*fixture.app.library_view.indices, vec![42]);
+    Arc::make_mut(&mut fixture.app.library)[42].fingerprint = None;
+    frame(&ctx, &mut fixture.app, 0.4, vec![]);
+    assert!(fixture.app.library_view.indices.is_empty());
+}
+
+#[test]
 fn fixed_viewport_work_is_bounded_at_100_10000_and_50000_tracks() {
     let mut steady_rows = None;
     for count in [100, 10_000, 50_000] {
-        let mut fixture = Fixture::new(32);
+        let mut fixture = Fixture::new(48);
         fixture.app.library = Arc::new(items(count));
         let ctx = egui::Context::default();
         let began = Instant::now();
@@ -133,7 +248,7 @@ fn fixed_viewport_work_is_bounded_at_100_10000_and_50000_tracks() {
 
 #[test]
 fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(100));
     let ctx = egui::Context::default();
     frame(&ctx, &mut fixture.app, 0.0, vec![]);
@@ -176,7 +291,7 @@ fn filtering_and_metadata_refresh_reuse_sources_and_refresh_only_visible_cells()
 
 #[test]
 fn real_row_focus_keyboard_navigation_reveals_offscreen_selection_without_search_interference() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(10_000));
     let ctx = egui::Context::default();
     let output = frame(&ctx, &mut fixture.app, 0.0, vec![]);
@@ -219,7 +334,7 @@ fn real_row_focus_keyboard_navigation_reveals_offscreen_selection_without_search
 
 #[test]
 fn reordered_publication_keeps_selected_source_and_scroll_anchor() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(100));
     let ctx = egui::Context::default();
     frame(&ctx, &mut fixture.app, 0.0, vec![]);
@@ -255,17 +370,18 @@ fn reordered_publication_keeps_selected_source_and_scroll_anchor() {
 
 #[test]
 fn real_wheel_scrolling_keeps_work_bounded_and_selection_stable() {
-    let mut fixture = Fixture::new(32);
+    let mut fixture = Fixture::new(48);
     fixture.app.library = Arc::new(items(50_000));
     let ctx = egui::Context::default();
-    frame(&ctx, &mut fixture.app, 0.0, vec![]);
+    let output = frame(&ctx, &mut fixture.app, 0.0, vec![]);
+    let pointer = label_center(&output, "Track 00000");
     let source = selected_source(&mut fixture.app);
     frame(
         &ctx,
         &mut fixture.app,
         0.1,
         vec![
-            egui::Event::PointerMoved(Pos2::new(500.0, 85.0)),
+            egui::Event::PointerMoved(pointer),
             egui::Event::MouseWheel {
                 unit: egui::MouseWheelUnit::Point,
                 delta: Vec2::new(0.0, -3000.0),

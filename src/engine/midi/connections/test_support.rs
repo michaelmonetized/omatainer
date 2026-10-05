@@ -119,7 +119,6 @@ pub(crate) fn install_with_policy(engine: &mut Engine, policy: InputPolicy) -> C
             engine.cmd.clone(),
             super::super::builtin_maps().unwrap(),
             hub.log.clone(),
-            hub.learn.clone(),
             hub.input_counters.clone(),
             policy,
         )

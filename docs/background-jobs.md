@@ -9,7 +9,7 @@ catalog save. Its original window reports that result.
 The current expensive workflows share one admission queue: deck decoding, track
 analysis, library indexing/tag discovery/replacement search, provider search and
 preview downloads, sampler preparation, video import/preview/render, MIDI file
-interchange and portable project inspection/export/import. This does not imply
+interchange, library backup/verification/restore, embedded artwork and portable project inspection/export/import. This does not imply
 plugin scanning or stem separation exist in this build.
 
 The queue retains at most 64 records, never reuses request IDs and refuses a full
@@ -21,7 +21,7 @@ a decode's captured deck generation at the renderer.
 
 At most three expensive workers run: one deck decoder and two optional workers.
 Active declared reservations total at most 3 GiB. Deck decoding reserves 1536
-MiB, indexing 256 MiB and provider work 128 MiB; operations retaining large
+MiB, indexing 256 MiB, backup 1024 MiB, media health 64 MiB and provider/artwork work 128 MiB; operations retaining large
 project/media state reserve the full budget and run alone. These are admission
 reservations, not measured RSS or an operating-system memory cap. Existing
 source, PCM, asset, catalog and output bounds still apply. Deck PCM is capped at

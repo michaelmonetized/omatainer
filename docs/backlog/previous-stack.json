@@ -1,0 +1,891 @@
+[
+  {
+    "issue": 2,
+    "title": "[fix]/ Reject invalid scene indexes at CLI, IPC and engine boundaries",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/358"
+    ]
+  },
+  {
+    "issue": 3,
+    "title": "[fix]/ Stop allocating and sorting arpeggiator chords every sample",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/359"
+    ]
+  },
+  {
+    "issue": 4,
+    "title": "[fix]/ Release clip-owned voices when tracks or scenes stop or replace clips",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/360"
+    ]
+  },
+  {
+    "issue": 5,
+    "title": "[fix]/ Bound control-command work per audio block",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/361"
+    ]
+  },
+  {
+    "issue": 6,
+    "title": "[fix]/ Reset track-specific loop state when replacing deck audio",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/362"
+    ]
+  },
+  {
+    "issue": 7,
+    "title": "[fix]/ Separate left and right deck EQ and filter histories",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/363"
+    ]
+  },
+  {
+    "issue": 8,
+    "title": "[fix]/ Prevent GUI and IPC engine locks from zeroing audio buffers",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/364"
+    ]
+  },
+  {
+    "issue": 9,
+    "title": "[fix]/ Give every stacked FX slot its own processing state",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/365"
+    ]
+  },
+  {
+    "issue": 10,
+    "title": "[fix]/ Remove FX slot allocations from the sample loop",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/366"
+    ]
+  },
+  {
+    "issue": 11,
+    "title": "[fix]/ Handle full control queues without silently dropping GUI commands",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/367"
+    ]
+  },
+  {
+    "issue": 12,
+    "title": "[fix]/ Reset pitch-lock grain history after seeks, cues and media replacement",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/368"
+    ]
+  },
+  {
+    "issue": 13,
+    "title": "[fix]/ Correct stereo timing and channel state in master delay and reverb",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/369"
+    ]
+  },
+  {
+    "issue": 14,
+    "title": "[fix]/ Remove per-sample MIDI clip cloning and repeated full-note scans",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/370"
+    ]
+  },
+  {
+    "issue": 15,
+    "title": "[fix]/ Advance note and drum lifecycles while tracks are muted or excluded by solo",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/371"
+    ]
+  },
+  {
+    "issue": 16,
+    "title": "[fix]/ Route note-offs back to the track and voice that received note-on",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/372"
+    ]
+  },
+  {
+    "issue": 17,
+    "title": "[fix]/ Render silence from stopped decks instead of a frozen sample",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/373"
+    ]
+  },
+  {
+    "issue": 18,
+    "title": "[fix]/ Keep quantized clips pending until their scheduled start beat",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/374"
+    ]
+  },
+  {
+    "issue": 19,
+    "title": "[fix]/ Record note positions relative to the selected clip and its actual length",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/375"
+    ]
+  },
+  {
+    "issue": 20,
+    "title": "[fix]/ Record actual held note durations instead of fixed quarter-beat notes",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/376"
+    ]
+  },
+  {
+    "issue": 21,
+    "title": "[fix]/ Reconfigure every rate-dependent processor for the output sample rate",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/377"
+    ]
+  },
+  {
+    "issue": 22,
+    "title": "[fix]/ Route instrument pads through one deliberate mixer destination",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/378"
+    ]
+  },
+  {
+    "issue": 23,
+    "title": "[fix]/ Preserve session stereo when processing scene FX",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/379"
+    ]
+  },
+  {
+    "issue": 24,
+    "title": "[fix]/ Keep FX state and settings separate for each scene",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/380"
+    ]
+  },
+  {
+    "issue": 25,
+    "title": "[fix]/ Publish audio snapshots without blocking on UI or IPC readers",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/381"
+    ]
+  },
+  {
+    "issue": 26,
+    "title": "[fix]/ Replace the installed executable atomically",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/382"
+    ]
+  },
+  {
+    "issue": 27,
+    "title": "[fix]/ Make multi-file installation transactional and recoverable",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/383"
+    ]
+  },
+  {
+    "issue": 28,
+    "title": "[fix]/ Return errors for malformed JSON and unknown IPC operations",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/384"
+    ]
+  },
+  {
+    "issue": 29,
+    "title": "[fix]/ Surface IPC startup failure instead of running without the control surface",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/385"
+    ]
+  },
+  {
+    "issue": 30,
+    "title": "[fix]/ Bound IPC request size and idle connection lifetime",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/386"
+    ]
+  },
+  {
+    "issue": 31,
+    "title": "[fix]/ Do not unlink a live instance socket after a slow response",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/387"
+    ]
+  },
+  {
+    "issue": 32,
+    "title": "[fix]/ Keep the fallback control socket private to the current user",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/388"
+    ]
+  },
+  {
+    "issue": 33,
+    "title": "[fix]/ Report shell control results and avoid replacing in-flight commands",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/389"
+    ]
+  },
+  {
+    "issue": 34,
+    "title": "[fix]/ Load built-in crate entries through the built-in media path",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/390"
+    ]
+  },
+  {
+    "issue": 35,
+    "title": "[fix]/ Report corrupt and incomplete audio decoding instead of silently accepting it",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/391"
+    ]
+  },
+  {
+    "issue": 36,
+    "title": "[fix]/ Move filesystem scanning off the UI and startup rendering path",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/392"
+    ]
+  },
+  {
+    "issue": 37,
+    "title": "[fix]/ Reject stale deck load completions and cancel obsolete decode jobs",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/393"
+    ]
+  },
+  {
+    "issue": 38,
+    "title": "[fix]/ Remove duplicate APC40 fader bindings that alter every track",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/394"
+    ]
+  },
+  {
+    "issue": 39,
+    "title": "[fix]/ Keep MIDI input callbacks from blocking on the engine queue",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/395"
+    ]
+  },
+  {
+    "issue": 40,
+    "title": "[fix]/ Connect controller load commands to the actual library loader",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/396"
+    ]
+  },
+  {
+    "issue": 41,
+    "title": "[fix]/ Parse one-byte MIDI real-time messages before channel-message length checks",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/397"
+    ]
+  },
+  {
+    "issue": 42,
+    "title": "[fix]/ Decode relative jog movement with correct signed deltas",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/398"
+    ]
+  },
+  {
+    "issue": 43,
+    "title": "[fix]/ Make pad composition arming explicit and keep its target stable",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/399"
+    ]
+  },
+  {
+    "issue": 44,
+    "title": "[fix]/ Virtualize crate rows and cache unchanged filter/format work",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/400"
+    ]
+  },
+  {
+    "issue": 45,
+    "title": "[fix]/ Show loading, failure and completion status to the user",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/401"
+    ]
+  },
+  {
+    "issue": 46,
+    "title": "[fix]/ Suppress global transport shortcuts while editing text",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/402"
+    ]
+  },
+  {
+    "issue": 47,
+    "title": "[fix]/ Reject malformed UTF-8 color values without panicking",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/403"
+    ]
+  },
+  {
+    "issue": 48,
+    "title": "[fix]/ Measure the entire audio callback workload in CPU telemetry",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/404"
+    ]
+  },
+  {
+    "issue": 49,
+    "title": "[fix]/ Apply the stored clip gain during clip playback",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/405"
+    ]
+  },
+  {
+    "issue": 50,
+    "title": "[fix]/ Make the DJ low-pass sweep progress smoothly away from bypass",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/406"
+    ]
+  },
+  {
+    "issue": 51,
+    "title": "[fix]/ Stop cloning drum sample Arcs on every output frame",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/407"
+    ]
+  },
+  {
+    "issue": 52,
+    "title": "[fix]/ Apply MIDI velocity to drum voices",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/408"
+    ]
+  },
+  {
+    "issue": 53,
+    "title": "[fix]/ Make neutral and empty FX chains sample-transparent",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/409"
+    ]
+  },
+  {
+    "issue": 54,
+    "title": "[fix]/ Apply delay, reverb and chorus wet mix exactly once",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/410"
+    ]
+  },
+  {
+    "issue": 55,
+    "title": "[fix]/ Route legacy hardware FX selection into the actual renderer",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/411"
+    ]
+  },
+  {
+    "issue": 56,
+    "title": "[fix]/ Render a timed metronome click instead of one sample per beat",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/412"
+    ]
+  },
+  {
+    "issue": 57,
+    "title": "[fix]/ Cache unchanged crossfader and pan gain calculations",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/413"
+    ]
+  },
+  {
+    "issue": 58,
+    "title": "[fix]/ Map sampler instrument choices to the sounds named by the UI",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/414"
+    ]
+  },
+  {
+    "issue": 59,
+    "title": "[fix]/ Share immutable waveform peaks instead of cloning them on every snapshot",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/415"
+    ]
+  },
+  {
+    "issue": 60,
+    "title": "[fix]/ Honor wet mix and chain order for Spread and Balance",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/416"
+    ]
+  },
+  {
+    "issue": 61,
+    "title": "[fix]/ Apply the SVF cutoff limit in the correct frequency domain",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/417"
+    ]
+  },
+  {
+    "issue": 62,
+    "title": "[fix]/ Connect or explicitly reject the third hardware FX wet control",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/418"
+    ]
+  },
+  {
+    "issue": 63,
+    "title": "[fix]/ Cache synth pitch increments between note and tuning changes",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/419"
+    ]
+  },
+  {
+    "issue": 64,
+    "title": "[fix]/ Reuse a status connection instead of reconnecting and spawning a thread every poll",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/420"
+    ]
+  },
+  {
+    "issue": 65,
+    "title": "[fix]/ Publish MIDI device status into the shared snapshot used by CLI and shell",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/421"
+    ]
+  },
+  {
+    "issue": 66,
+    "title": "[fix]/ Forward the requested scene number through the shell service",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/422"
+    ]
+  },
+  {
+    "issue": 67,
+    "title": "[fix]/ Reconcile decoded BPM with crate metadata and identify filename guesses",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/423"
+    ]
+  },
+  {
+    "issue": 68,
+    "title": "[fix]/ Populate file duration in the existing crate length column",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/424"
+    ]
+  },
+  {
+    "issue": 69,
+    "title": "[fix]/ Preserve accidentals when parsing filename key hints",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/425"
+    ]
+  },
+  {
+    "issue": 70,
+    "title": "[fix]/ Update play history only after successful playback",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/426"
+    ]
+  },
+  {
+    "issue": 71,
+    "title": "[fix]/ Preserve existing crate history across rescans",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/427"
+    ]
+  },
+  {
+    "issue": 72,
+    "title": "[fix]/ Connect controller browse events to the visible crate selection",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/428"
+    ]
+  },
+  {
+    "issue": 73,
+    "title": "[fix]/ Report MIDI devices as connected only after connection succeeds",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/429"
+    ]
+  },
+  {
+    "issue": 74,
+    "title": "[fix]/ Restore documented shortcuts for implemented scene, sync, crossfader and load actions",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/430"
+    ]
+  },
+  {
+    "issue": 75,
+    "title": "[fix]/ Render effect-specific controls instead of inert generic sliders",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/431"
+    ]
+  },
+  {
+    "issue": 76,
+    "title": "[fix]/ Align displayed sample pad numbers with dispatched pad indexes",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/432"
+    ]
+  },
+  {
+    "issue": 77,
+    "title": "[fix]/ Make deck selection control the crate double-click destination",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/433"
+    ]
+  },
+  {
+    "issue": 78,
+    "title": "[fix]/ Reload font and shell theme settings when those sources change",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/434"
+    ]
+  },
+  {
+    "issue": 79,
+    "title": "[fix]/ Use the current Omarchy font when installing application fonts",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/435"
+    ]
+  },
+  {
+    "issue": 80,
+    "title": "[fix]/ Display last-play times as meaningful dates or elapsed time",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/436"
+    ]
+  },
+  {
+    "issue": 81,
+    "title": "Expose audio deadlines, xruns, latency and device-level performance diagnostics",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/437"
+    ]
+  },
+  {
+    "issue": 82,
+    "title": "Save and reopen complete native production and DJ projects",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/438"
+    ]
+  },
+  {
+    "issue": 83,
+    "title": "Provide nondestructive undo history across all creative edits",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/439"
+    ]
+  },
+  {
+    "issue": 84,
+    "title": "Add configurable elapsed, remaining and end-of-track deck warnings",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/440"
+    ]
+  },
+  {
+    "issue": 85,
+    "title": "Create a persistent DJ library with stable track identity",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/441"
+    ]
+  },
+  {
+    "issue": 86,
+    "title": "Track factory content, model and integration licensing in shipped assets",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/442"
+    ]
+  },
+  {
+    "issue": 87,
+    "title": "Expose complete keyboard and assistive-technology operation",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/443"
+    ]
+  },
+  {
+    "issue": 88,
+    "title": "Persist user preferences and named studio/performance profiles",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/444"
+    ]
+  },
+  {
+    "issue": 89,
+    "title": "Provide contextual help, interactive lessons and complete workflow documentation",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/445"
+    ]
+  },
+  {
+    "issue": 90,
+    "title": "[fix]/ Fail installation when Hyprland reload or configuration validation fails",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/446"
+    ]
+  },
+  {
+    "issue": 91,
+    "title": "[fix]/ Send valid status JSON from ctl follow",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/447"
+    ]
+  },
+  {
+    "issue": 92,
+    "title": "[fix]/ Validate IPC argument types instead of defaulting or wrapping targets",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/448"
+    ]
+  },
+  {
+    "issue": 93,
+    "title": "[fix]/ Make reload-theme actually reload theme resources",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/449"
+    ]
+  },
+  {
+    "issue": 94,
+    "title": "Configure professional audio devices, sample rates and buffers",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/450"
+    ]
+  },
+  {
+    "issue": 95,
+    "title": "Gate releases on production-scale audio and UI workloads",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/451"
+    ]
+  },
+  {
+    "issue": 96,
+    "title": "Provide a performance mode that protects the active show",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/452"
+    ]
+  },
+  {
+    "issue": 97,
+    "title": "Recover unsaved work after crashes and interrupted writes",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/453"
+    ]
+  },
+  {
+    "issue": 98,
+    "title": "Name, color and persist per-track hot cues",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/454"
+    ]
+  },
+  {
+    "issue": 99,
+    "title": "Create and edit persistent per-track beatgrids",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/455"
+    ]
+  },
+  {
+    "issue": 100,
+    "title": "Qualify DJ time stretching for transparent key lock across tempo ranges",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/456"
+    ]
+  },
+  {
+    "issue": 101,
+    "title": "Load user samples into persistent DJ sampler banks",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/457"
+    ]
+  },
+  {
+    "issue": 102,
+    "title": "Export actionable support bundles and recovery-safe crash diagnostics",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/458"
+    ]
+  },
+  {
+    "issue": 103,
+    "title": "Preserve and qualify offline operation as optional online features arrive",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/459"
+    ]
+  },
+  {
+    "issue": 104,
+    "title": "Add persistent background track analysis with selective reanalysis",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/460"
+    ]
+  },
+  {
+    "issue": 105,
+    "title": "Add named ordered crates and nested playlist organization",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/461"
+    ]
+  },
+  {
+    "issue": 106,
+    "title": "Record actual DJ performance history with session boundaries",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/462"
+    ]
+  },
+  {
+    "issue": 107,
+    "title": "Import arbitrary folders, files and removable music libraries",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/463"
+    ]
+  },
+  {
+    "issue": 108,
+    "title": "Relocate missing music while preserving DJ preparation",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/464"
+    ]
+  },
+  {
+    "issue": 109,
+    "title": "Read and edit real audio metadata instead of filename guesses",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/465"
+    ]
+  },
+  {
+    "issue": 110,
+    "title": "Deliver a full MIDI piano-roll editor with keyboard-accessible editing",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/466"
+    ]
+  },
+  {
+    "issue": 111,
+    "title": "Import and export Standard MIDI Files without losing musical timing",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/467"
+    ]
+  },
+  {
+    "issue": 112,
+    "title": "Route MIDI by device, port, channel and message type",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/468"
+    ]
+  },
+  {
+    "issue": 113,
+    "title": "Support user-managed tracks and scenes beyond the fixed 8 by 8 grid",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/469"
+    ]
+  },
+  {
+    "issue": 114,
+    "title": "Implement tempo automation and changing time signatures",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/471"
+    ]
+  },
+  {
+    "issue": 115,
+    "title": "Relink missing project media and restore unavailable devices",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/472"
+    ]
+  },
+  {
+    "issue": 116,
+    "title": "Collect project media and package portable self-contained sessions",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/474"
+    ]
+  },
+  {
+    "issue": 117,
+    "title": "Save reusable project, track and live-set templates",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/476"
+    ]
+  },
+  {
+    "issue": 118,
+    "title": "Provide scalable, high-contrast and color-independent layouts",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/478"
+    ]
+  },
+  {
+    "issue": 119,
+    "title": "Expose a versioned automation and remote-control API",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/480"
+    ]
+  },
+  {
+    "issue": 120,
+    "title": "Add licensed music-provider integration with explicit capability contracts",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/481"
+    ]
+  },
+  {
+    "issue": 121,
+    "title": "Add track ratings, colors and performance annotations",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/483"
+    ]
+  },
+  {
+    "issue": 122,
+    "title": "Score to video with frame-accurate playback and timecode",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/485"
+    ]
+  },
+  {
+    "issue": 123,
+    "title": "Import tracks, clips and device chains from another project",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/487"
+    ]
+  },
+  {
+    "issue": 124,
+    "title": "Manage named project versions and compare creative revisions",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/489"
+    ]
+  },
+  {
+    "issue": 125,
+    "title": "Localize the interface and preserve international file and metadata handling",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/492"
+    ]
+  },
+  {
+    "issue": 126,
+    "title": "Customize shortcuts and find commands through a command palette",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/494"
+    ]
+  },
+  {
+    "issue": 127,
+    "title": "Support touch, pen and simultaneous performance gestures",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/496"
+    ]
+  },
+  {
+    "issue": 128,
+    "title": "Save configurable workspaces and multiple-window layouts",
+    "prs": [
+      "https://github.com/michaelmonetized/omatainer/pull/499"
+    ]
+  }
+]

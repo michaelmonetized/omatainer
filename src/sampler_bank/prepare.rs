@@ -218,7 +218,7 @@ pub(crate) fn run(
                     pcm_remaining = pcm_remaining.checked_sub(bytes).ok_or("sampler aggregate PCM limit exceeded")?;
                     if let Source::Library { reference } = &source { verified_sources.push(reference.clone()); }
                 }
-                settings.slots[slot].controls.frames(sample.sr, sample.frames())?;
+                settings.slots[slot].frames(sample.sr, sample.frames())?;
                 settings.slots[slot].source = Some(source);
                 audio[slot] = Some(sample);
                 issues[slot] = None;

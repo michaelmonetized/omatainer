@@ -148,7 +148,7 @@ fn acknowledged_selection_revision_handles_a_b_a_and_later_renderer_selection() 
 
 #[test]
 fn rejected_selection_hover_and_release_over_another_deck_cannot_retarget_loads() {
-    let mut full = Gui::new(16);
+    let mut full = Gui::new(32);
     while full.f.app.engine.send(Command::Master(0.5)).is_ok() {}
     full.f.app.select_deck(1);
     assert_eq!(full.f.app.load_target(), 0);

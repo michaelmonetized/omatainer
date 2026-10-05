@@ -10,6 +10,7 @@ const MAX_SELECTION: usize = 4096;
 pub(super) struct Crates {
     pub open: bool,
     pub selected: Option<CrateId>,
+    pub(super) discovery: discovery::Discovery,
     revision: Option<u64>,
     tree: Vec<(usize, usize)>,
     parents: HashMap<CrateId, Option<CrateId>>,
@@ -81,6 +82,8 @@ impl App {
     }
 
     pub(super) fn choose_named_crate(&mut self, id: Option<CrateId>) {
+        self.library_crates.discovery.return_to = None;
+        self.library_view.reset_search_scope();
         self.refresh_named_crates();
         if id.as_ref().is_some_and(|id| self.library_metadata.catalog.crates.node(id).is_none()) {
             self.library_crates.message = "This crate is unavailable; showing All tracks. The project does not recreate catalog collections.".into();
@@ -100,9 +103,12 @@ impl App {
             if self.library_crates.pending.as_ref().is_some_and(|(token, _)| token.id == receipt.id) {
                 let (_, action) = self.library_crates.pending.take().unwrap();
                 self.library_crates.retry = None;
+                let prepared = matches!(&action, CollectionAction::CreatePrepared { .. });
                 let annotation = matches!(&action, CollectionAction::Annotate { .. });
+                let protection=matches!(&action,CollectionAction::Protect { .. });
                 self.library_crates.message = match receipt.outcome {
                     CollectionOutcome::Read => "Crates refreshed from the catalog owner.".into(),
+                    CollectionOutcome::Durable { changed } if protection => if changed {"Preparation locks saved.".into()} else {"Preparation locks already match.".into()},
                     CollectionOutcome::Durable { changed } if annotation => if changed { "Annotations saved.".into() } else { "Annotations already match; no changes needed.".into() },
                     CollectionOutcome::Durable { changed } => if changed { "Crate changes saved.".into() } else { "Crates already match; no changes needed.".into() },
                     CollectionOutcome::CommittedUnconfirmed(error) => format!("Crate changes committed; durability unconfirmed: {error}. Do not repeat this edit."),
@@ -112,7 +118,11 @@ impl App {
                         format!("Crate edit was not applied: {error}")
                     }
                 };
-                if let Some(created) = receipt.created { self.choose_named_crate(Some(created)); }
+                if prepared { self.library_prepare.message = self.library_crates.message.clone(); }
+                if let Some(created) = receipt.created {
+                    if prepared { self.library_prepare.saved = Some(created); }
+                    else { self.choose_named_crate(Some(created)); }
+                }
             }
         }
         self.refresh_named_crates();
@@ -199,37 +209,14 @@ impl App {
                     ui.label(tr!("Crates store ordered references only. Source audio and sampler banks are never moved or deleted."));
                     ui.label(&self.library_crates.message);
                 });
-                ui.push_id("crate-tree", |ui| {
-                    let count = self.library_crates.tree.len();
-                    let current = self.library_crates.selected.as_ref().and_then(|id| self.library_crates.tree.iter().position(|(index, _)| &self.library_metadata.catalog.crates.nodes()[*index].id == id)).map(|index| index + 1).unwrap_or(0);
-                    let mut number = current as f32;
-                    preferences::float_control(ui, "Crate tree row (0 = All tracks)", &mut number, 0.0, count as f32, 1.0, " row", HelpControl::NamedCrates);
-                    if number.round() as usize != current {
-                        let chosen = (number.round() as usize).checked_sub(1).and_then(|index| self.library_crates.tree.get(index)).map(|(index, _)| self.library_metadata.catalog.crates.nodes()[*index].id.clone());
-                        self.choose_named_crate(chosen);
-                    }
-                    if ui.selectable_label(self.library_crates.selected.is_none(), tr!("All tracks")).help(ui, HelpControl::NamedCrates).clicked() { self.choose_named_crate(None); }
-                    let rows = self.library_crates.tree.len();
-                    let mut chosen = None;
-                    let output = egui::ScrollArea::vertical().id_salt("named-crate-tree").max_height(150.0).show_rows(ui, 20.0, rows, |ui, range| {
-                        for row in range {
-                            let (index, depth) = self.library_crates.tree[row];
-                            let node = &self.library_metadata.catalog.crates.nodes()[index];
-                            ui.push_id((&node.id, "tree-row"), |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.add_space(depth as f32 * 12.0);
-                                    if ui.selectable_label(self.library_crates.selected.as_ref() == Some(&node.id), { let __omatainer_args = (&(node.name),&(node.members.len()),); crate::localization::format("{} · {} tracks", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) })
-                                        .help(ui, HelpControl::NamedCrates).clicked() { chosen = Some(node.id.clone()); }
-                                });
-                            });
-                        }
-                    });
-                    accessibility::scrollbars(ui, "Named crate tree", &output);
-                    if let Some(id) = chosen { self.choose_named_crate(Some(id)); }
-                });
+                self.crate_discovery_ui(ui);
                 let id = self.library_crates.selected.clone();
                 let available = self.library_crates.pending.is_none() && !self.project.committing() && self.project.dialog_is_closed() && !self.library_closing();
                 ui.push_id(("crate-edit", revision, &id), |ui| {
+                    let favorite = id.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.favorite);
+                    if ui.add_enabled(available && id.is_some(), egui::Button::new(if favorite { tr!("Unpin favorite crate") } else { tr!("Pin favorite crate") })).help(ui, HelpControl::NamedCrates).clicked() {
+                        self.submit_crate_edit(revision, CollectionAction::Edit(Edit::SetFavorite { id: id.clone().unwrap(), favorite: !favorite }));
+                    }
                     ui.horizontal(|ui| {
                         let label = ui.label(tr!("Name"));
                         let name = ui.add(egui::TextEdit::singleline(&mut self.library_crates.name).char_limit(256).desired_width(190.0)).labelled_by(label.id).help(ui, HelpControl::CrateName);
@@ -247,6 +234,7 @@ impl App {
                         }
                         if ui.add_enabled(available && id.is_some(), egui::Button::new(tr!("Delete crate…"))).help(ui, HelpControl::CrateDelete).clicked() { self.request_crate_delete(); }
                     });
+                    if ui.add_enabled(id.is_some(), egui::Button::new(tr!("Smart crate rules…"))).help(ui, HelpControl::SmartCrates).clicked() { self.smart_crates.open = true; }
                     self.crate_order_buttons(ui, revision, id.as_ref(), available);
                     ui.horizontal(|ui| {
                         if ui.add_enabled(id.is_some(), egui::Button::new(tr!("Use as destination"))).help(ui, HelpControl::CrateDestination).clicked() { self.library_crates.destination = id.clone(); }
@@ -328,6 +316,7 @@ impl App {
             ui.label(tr!("All tracks keeps library sorting. Select a named crate to reorder or remove its direct members."));
             return;
         };
+        if node.is_smart() { ui.label(tr!("Automatic membership follows the saved rule. Browse matching tracks in the library; remove the rule before editing manual members.")); return; }
         ui.push_id(("crate-members", revision, id), |ui| {
             ui.label({ let __omatainer_args = (&(node.members.len()),&(self.library_crates.members.len()),); crate::localization::format("{} direct members; {} selected (maximum 4096). Child crates are separate views.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1)]) });
             let mut cursor = self.library_crates.member_cursor.max(1).min(node.members.len().max(1)) as f32;
@@ -426,3 +415,5 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+mod discovery;

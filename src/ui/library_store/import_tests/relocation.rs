@@ -20,8 +20,7 @@ fn imported(
         1,
         Some(&Selection {
             title: "Prepared replacement".into(),
-            source: source.clone(),
-        }),
+            source: source.clone(), fingerprint: None, }),
     );
     gui.wait(|g| {
         matches!(

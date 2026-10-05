@@ -299,8 +299,41 @@ struct Signals {
     rate: u32,
     quantum: AtomicU32,
     xruns: AtomicU64,
+    latency_ns: AtomicU64,
+}
+struct Latency {
+    ports: Box<[*mut j::jack_port_t]>,
+    signals: Arc<Signals>,
+    readers: Readers,
+}
+#[derive(Default)]
+struct Readers(AtomicU32);
+const RETIRING: u32 = 1 << 31;
+struct Read<'a>(&'a Readers);
+impl Readers {
+    /// Admit a callback while its ports exist.
+    /// Takes the reader gate; returns a guard before retirement or refuses access after it.
+    fn enter(&self) -> Option<Read<'_>> {
+        let before = self.0.fetch_add(1, Ordering::Acquire);
+        let guard = Read(self);
+        (before & RETIRING == 0).then_some(guard)
+    }
+    /// Finish port readers before freeing ports.
+    /// Takes the reader gate on the owning thread; refuses new reads and waits for admitted callbacks.
+    fn retire(&self) {
+        self.0.fetch_or(RETIRING, Ordering::AcqRel);
+        while self.0.load(Ordering::Acquire) != RETIRING {
+            std::thread::yield_now();
+        }
+    }
+}
+impl Drop for Read<'_> {
+    fn drop(&mut self) {
+        self.0 .0.fetch_sub(1, Ordering::Release);
+    }
 }
 struct Process {
+    client: *mut j::jack_client_t,
     ports: Vec<*mut j::jack_port_t>,
     buffer: Vec<f32>,
     output: Option<OutputCallback>,
@@ -308,6 +341,7 @@ struct Process {
     signals: Arc<Signals>,
 }
 pub(crate) struct Stream {
+    latency: Box<Latency>,
     client: Option<Client>,
     process: Option<Box<Process>>,
     signals: Arc<Signals>,
@@ -368,6 +402,7 @@ impl Stream {
             rate: plan.rate,
             quantum: AtomicU32::new(client.quantum()),
             xruns: AtomicU64::new(0),
+            latency_ns: AtomicU64::new(u64::MAX),
         });
         let mut ports = Vec::with_capacity(plan.channels as usize);
         {
@@ -407,14 +442,24 @@ impl Stream {
             }
         }
         let mut stream = Self {
-            client: Some(client),
+            latency: Box::new(Latency {
+                ports: if input {
+                    Box::new([])
+                } else {
+                    ports.clone().into_boxed_slice()
+                },
+                signals: signals.clone(),
+                readers: Readers::default(),
+            }),
             process: Some(Box::new(Process {
+                client: client.0,
                 ports,
                 buffer: vec![0.0; MAX_FRAMES * usize::from(plan.channels)],
                 output,
                 input: capture,
                 signals: signals.clone(),
             })),
+            client: Some(client),
             signals,
             routes: plan.graph.clone(),
             input,
@@ -423,6 +468,7 @@ impl Stream {
         let raw = stream.client.as_ref().unwrap().0;
         let process_arg = (&mut **stream.process.as_mut().unwrap() as *mut Process).cast();
         let signal_arg = Arc::as_ptr(&stream.signals).cast_mut().cast();
+        let latency_arg = (&*stream.latency as *const Latency).cast_mut().cast();
         let registered = {
             let _control = CLIENT_LIFECYCLE
                 .lock()
@@ -439,6 +485,7 @@ impl Stream {
                     ) == 0
                     && j::jack_set_port_connect_callback(raw, Some(port_connected), signal_arg) == 0
                     && j::jack_set_xrun_callback(raw, Some(xrun), signal_arg) == 0
+                    && j::jack_set_latency_callback(raw, Some(latency), latency_arg) == 0
             }
         };
         if !registered {
@@ -503,7 +550,9 @@ impl Drop for Stream {
                     .lock()
                     .unwrap_or_else(|error| error.into_inner());
                 unsafe {
+                    self.latency.readers.retire();
                     j::jack_deactivate(client.0);
+                    j::jack_set_latency_callback(client.0, None, std::ptr::null_mut());
                     if let Some(process) = &self.process {
                         for port in &process.ports {
                             j::jack_port_unregister(client.0, *port);
@@ -568,6 +617,9 @@ unsafe fn process_block(frames: u32, arg: *mut libc::c_void) -> libc::c_int {
         return 1;
     }
     if process.signals.fault.load(Ordering::Acquire) {
+        if let Some(output) = &process.output {
+            output.rt.audible.invalidate();
+        }
         process.signals.fault.store(true, Ordering::Release);
         if process.output.is_some() {
             for port in &process.ports {
@@ -581,7 +633,36 @@ unsafe fn process_block(frames: u32, arg: *mut libc::c_void) -> libc::c_int {
     }
     let data = &mut process.buffer[..frames * width];
     if let Some(output) = &mut process.output {
-        output.render_timed(data, None);
+        let delay = process.signals.latency_ns.load(Ordering::Acquire);
+        let timestamp = if delay == u64::MAX {
+            None
+        } else {
+            let (mut current_frames, mut current_usecs, mut next_usecs, mut period_usecs) =
+                (0, 0, 0, 0.0);
+            let cycle = unsafe {
+                j::jack_get_cycle_times(
+                    process.client,
+                    &mut current_frames,
+                    &mut current_usecs,
+                    &mut next_usecs,
+                    &mut period_usecs,
+                )
+            };
+            if cycle == Some(0) {
+                let age = unsafe { j::jack_get_time() }
+                    .checked_sub(current_usecs)
+                    .and_then(|value| value.checked_mul(1000));
+                age.and_then(|age| output.rt.audible.now_ns().checked_sub(age))
+                    .and_then(|time| time.checked_add(delay))
+            } else {
+                None
+            }
+        };
+        output.render_at(
+            data,
+            (delay != u64::MAX).then(|| Duration::from_nanos(delay)),
+            timestamp,
+        );
         #[cfg(test)]
         native_tests::observe(&process.signals.trace, data, width, process.signals.rate);
         for (channel, port) in process.ports.iter().enumerate() {
@@ -649,20 +730,94 @@ unsafe extern "C" fn port_registered(_: u32, _: libc::c_int, arg: *mut libc::c_v
     }
 }
 unsafe extern "C" fn port_connected(_: u32, _: u32, _: libc::c_int, arg: *mut libc::c_void) {
+    unsafe { &*arg.cast::<Signals>() }
+        .latency_ns
+        .store(u64::MAX, Ordering::Release);
     unsafe {
         graph_order(arg);
     }
 }
 unsafe extern "C" fn xrun(arg: *mut libc::c_void) -> libc::c_int {
     unsafe { &*arg.cast::<Signals>() }
+        .latency_ns
+        .store(u64::MAX, Ordering::Release);
+    unsafe { &*arg.cast::<Signals>() }
         .xruns
         .fetch_add(1, Ordering::Relaxed);
     0
 }
 
+/// Read one common downstream playback delay.
+/// Takes JACK's latency mode and immutable output ports; publishes unavailable timing for disconnected or unequal paths.
+unsafe extern "C" fn latency(mode: j::jack_latency_callback_mode_t, arg: *mut libc::c_void) {
+    let context = unsafe { &*arg.cast::<Latency>() };
+    let Some(_read) = context.readers.enter() else {
+        return;
+    };
+    if mode != j::JackPlaybackLatency {
+        return;
+    }
+    let mut delay = None;
+    for port in &context.ports {
+        if unsafe { j::jack_port_connected(*port) } == 0 {
+            continue;
+        }
+        let mut range = j::jack_latency_range_t { min: 0, max: 0 };
+        unsafe {
+            j::jack_port_get_latency_range(*port, mode, &mut range);
+        }
+        let (min, max) = (range.min, range.max);
+        if min != max || delay.is_some_and(|previous| previous != max) {
+            context
+                .signals
+                .latency_ns
+                .store(u64::MAX, Ordering::Release);
+            return;
+        }
+        delay = Some(max);
+    }
+    let ns = delay
+        .map(|frames| u64::from(frames) * 1_000_000_000 / u64::from(context.signals.rate.max(1)));
+    context
+        .signals
+        .latency_ns
+        .store(ns.unwrap_or(u64::MAX), Ordering::Release);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retiring_ports_waits_for_admitted_readers_and_refuses_late_callbacks() {
+        let readers = Arc::new(Readers::default());
+        let active = readers.enter().unwrap();
+        let retiring = readers.clone();
+        let finished = Arc::new(AtomicBool::new(false));
+        let done = finished.clone();
+        let worker = std::thread::spawn(move || {
+            retiring.retire();
+            done.store(true, Ordering::Release);
+        });
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while readers.0.load(Ordering::Acquire) & RETIRING == 0 {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        assert!(!finished.load(Ordering::Acquire));
+        assert_eq!(
+            super::super::super::test_alloc::measure(|| {
+                for _ in 0..1024 {
+                    assert!(readers.enter().is_none());
+                }
+            }),
+            super::super::super::test_alloc::Counts::default()
+        );
+        drop(active);
+        worker.join().unwrap();
+        assert!(finished.load(Ordering::Acquire));
+        assert!(readers.enter().is_none());
+        assert_eq!(readers.0.load(Ordering::Acquire), RETIRING);
+    }
     #[test]
     fn quantum_rate_and_shutdown_notifications_never_allocate() {
         let signals = Signals {
@@ -673,6 +828,7 @@ mod tests {
             rate: 48000,
             quantum: AtomicU32::new(128),
             xruns: AtomicU64::new(0),
+            latency_ns: AtomicU64::new(u64::MAX),
         };
         let arg = (&signals as *const Signals).cast_mut().cast();
         let counts = crate::engine::test_alloc::measure(|| unsafe {

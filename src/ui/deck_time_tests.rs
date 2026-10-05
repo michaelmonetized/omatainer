@@ -126,7 +126,7 @@ fn capture(app: &mut App, rt: &mut RtEngine) {
 #[test]
 fn real_renderer_snapshot_tracks_media_output_rates_sync_smoothing_pause_and_loop_wrap() {
     for (media_sr, output_sr) in [(44_100, 48_000), (48_000, 96_000), (96_000, 44_100)] {
-        let (engine, mut rt) = Engine::headless_for_test(output_sr, 64);
+        let (engine, mut rt) = Engine::headless_for_test(output_sr, 80);
         let mut app = App::with_loader(engine, Theme::default(), None);
         for deck in 0..DECKS {
             rt.apply(Command::DeckAudio {
@@ -230,7 +230,7 @@ struct Gui {
 }
 impl Gui {
     fn new() -> Self {
-        let (engine, rt) = Engine::headless_for_test(48_000, 64);
+        let (engine, rt) = Engine::headless_for_test(48_000, 80);
         Self {
             app: App::with_loader(engine, Theme::default(), None),
             rt,
@@ -415,7 +415,7 @@ fn deck_time_settings_serialize_independently_with_bounded_lead_and_defaults() {
 
 #[test]
 fn long_media_pitch_ranges_and_end_of_file_use_the_real_captured_playhead() {
-    let (engine, mut rt) = Engine::headless_for_test(96_000, 64);
+    let (engine, mut rt) = Engine::headless_for_test(96_000, 80);
     let mut app = App::with_loader(engine, Theme::default(), None);
     rt.apply(Command::DeckAudio {
         deck: 0,

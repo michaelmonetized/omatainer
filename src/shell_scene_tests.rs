@@ -41,7 +41,7 @@ fn native_shell_scene_arguments_reach_distinct_renderer_scenes() {
         .mode(0o700)
         .create(&directory.0)
         .unwrap();
-    let (commands, accepted) = CommandPort::channel(32);
+    let (commands, accepted) = CommandPort::channel(48);
     let snapshot = Arc::new(Mutex::new(Snapshot::default()));
     let server = ipc_server::start_at(
         &directory.0.join("omatainer.sock"),

@@ -61,13 +61,18 @@ impl Recorder {
         self.shared.alias.load(Ordering::Acquire)
     }
     /// Capture one record-source frame.
-    /// Takes its alias and rendered channels; submits a numbered frame without waiting or allocation.
-    pub(crate) fn capture(&self, alias: u64, frame: Frame) {
+    /// Takes its alias, rendered channels and source continuity; refuses incomplete input before submitting a numbered frame without waiting or allocation.
+    pub(crate) fn capture(&self, alias: u64, frame: Frame, complete: bool) {
         let generation = self.shared.generation.load(Ordering::Acquire);
         if self.alias() != alias
             || self.shared.stop.load(Ordering::Acquire)
             || self.shared.preview.load(Ordering::Acquire)
         {
+            return;
+        }
+        if !complete {
+            self.shared.fault.store(true, Ordering::Release);
+            self.stop();
             return;
         }
         let index = self.shared.count.fetch_add(1, Ordering::Relaxed);
@@ -195,7 +200,7 @@ impl Recorder {
                     return Err("Record-source capture cancelled; no file was published".into());
                 }
                 if self.shared.fault.load(Ordering::Acquire) {
-                    return Err("Record-source capture overflowed or changed format; no incomplete file was published".into());
+                    return Err("Record-source capture has missing input, invalid frames or queue overflow; no incomplete file was published".into());
                 }
                 match self.receiver.recv_timeout(Duration::from_millis(20)) {
                     Ok(sample) if sample.generation != generation => {},
@@ -211,10 +216,10 @@ impl Recorder {
                 }
             }
             self.shared.alias.store(0, Ordering::Release);
-            if frames == 0
-                || cancel.load(Ordering::Acquire)
-                || self.shared.fault.load(Ordering::Acquire)
-            {
+            if self.shared.fault.load(Ordering::Acquire) {
+                return Err("Record-source capture has missing input, invalid frames or queue overflow; no incomplete file was published".into());
+            }
+            if frames == 0 || cancel.load(Ordering::Acquire) {
                 return Err("Record-source capture ended without complete audio".into());
             }
             writer
@@ -271,6 +276,39 @@ fn header(writer: &mut impl Write, channels: u16, rate: u32, bytes: u32) -> std:
 mod tests {
     use super::*;
     #[test]
+    fn incomplete_input_refuses_publication_and_the_next_complete_capture_can_finish() {
+        let recorder = Recorder::default();
+        let directory = std::env::temp_dir().join(format!("omatainer-input-record-{}", crate::sampler_bank::BankId::new().unwrap()));
+        std::fs::create_dir(&directory).unwrap();
+        for complete in [false, true] {
+            let path = directory.join(if complete { "complete.wav" } else { "incomplete.wav" });
+            let capture = recorder.clone();
+            let destination = path.clone();
+            let epoch = recorder.epoch();
+            let writer = std::thread::spawn(move || capture.write(7, 2, 48000, 1, &destination, &AtomicBool::new(false), epoch));
+            let deadline = std::time::Instant::now() + Duration::from_secs(3);
+            while recorder.alias() != 7 {
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            recorder.capture(7, [0.25; 32], true);
+            assert_eq!(crate::engine::test_alloc::measure(|| recorder.capture(7, [0.0; 32], complete)), crate::engine::test_alloc::Counts::default());
+            recorder.stop();
+            let result = writer.join().unwrap();
+            if complete {
+                assert_eq!(result.unwrap(), path);
+                let decoded = crate::engine::decode::decode_audio(&path).unwrap();
+                assert_eq!(decoded.sample.frames(), 2);
+                assert_eq!(&decoded.sample.data[..4], &[0.25, 0.25, 0.0, 0.0]);
+            } else {
+                assert!(result.unwrap_err().contains("missing input"));
+                assert!(!path.exists());
+                assert_eq!(std::fs::read_dir(&directory).unwrap().count(), 0);
+            }
+        }
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[test]
     fn record_source_writes_every_channel_and_cancel_preserves_existing_files() {
         let recorder = Recorder::default();
         let path = std::env::temp_dir().join(format!(
@@ -300,7 +338,7 @@ mod tests {
             let samples =
                 std::array::from_fn(|channel| (channel + 1) as f32 / 64.0 + frame as f32 / 65536.0);
             assert_eq!(
-                crate::engine::test_alloc::measure(|| recorder.capture(7, samples)),
+                crate::engine::test_alloc::measure(|| recorder.capture(7, samples, true)),
                 crate::engine::test_alloc::Counts::default()
             );
         }

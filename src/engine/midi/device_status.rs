@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn shared_midi_status_matches_gui_protocol_and_survives_audio_publication() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 32);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 48);
         let status = Status::new(&engine.snap, "MIDI keyboard", "Generic");
         let mut evidence = Vec::new();
         for state in [
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn midi_status_preserves_failure_and_distinguishes_identical_devices() {
-        let (engine, _rt) = Engine::headless_for_test(48_000, 32);
+        let (engine, _rt) = Engine::headless_for_test(48_000, 48);
         let first = Status::new(&engine.snap, "same keyboard", "Generic");
         let second = Status::new(&engine.snap, "same keyboard", "Generic");
         first.connected();
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn midi_worker_completion_reports_disconnect_without_callback_status_work() {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 32);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 48);
         let status = Status::new(&engine.snap, "synthetic keyboard", "Generic");
         let completed = status.clone();
         let counters = Arc::new(super::super::handoff::InputCounters::default());
@@ -215,7 +215,6 @@ mod tests {
             map,
             engine.cmd.clone(),
             engine.midi.log.clone(),
-            engine.midi.learn.clone(),
             "synthetic keyboard".into(),
             counters,
             move || completed.disconnected(),

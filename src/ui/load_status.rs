@@ -45,6 +45,8 @@ impl LoadState {
             .unwrap_or("no selection");
         let deck = (b'A' + deck as u8) as char;
         let mut text = match &self.phase {
+            Phase::Queued if self.selection.is_none() => format!("queued unload → {deck} · waiting for audio engine"),
+            Phase::Loaded if self.selection.is_none() => format!("unloaded → {deck}"),
             Phase::Loading => format!("loading {name} → {deck}"),
             Phase::Queued => format!("queued {name} → {deck} · waiting for audio engine"),
             Phase::Loaded => format!("loaded {name} → {deck}"),
@@ -127,6 +129,7 @@ impl App {
     }
 
     pub(super) fn load_status(&mut self, ctx: &egui::Context) {
+        self.deck_load_confirmation(ctx);
         // Recheck immediately before rendering, including unloads/replacements
         // processed since the last regular frame poll.
         self.poll_load_receipts();

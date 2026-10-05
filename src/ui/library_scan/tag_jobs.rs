@@ -15,6 +15,8 @@ pub(in crate::ui) struct Row {
     pub target: Option<Review>,
     pub metadata: Metadata,
     pub observation: Result<Observation, String>,
+    pub refresh: Result<Metadata,String>,
+    pub locks:crate::library::protection::Locks,
 }
 pub(in crate::ui) struct Preview {
     pub rows: Vec<Row>,
@@ -125,10 +127,15 @@ pub(super) fn run(task: Task, work: &Arc<WorkPermit>) -> Reply {
                                     )
                                 })
                         });
+                    let metadata=target.as_ref().and_then(|target|catalog.version(&target.source,Some(target.fingerprint)))
+                        .map_or_else(||item.stored_metadata(),|version|version.metadata.clone());
+                    let locks=catalog.track(&item.source).map_or(crate::library::protection::Locks::default(),|track|track.locks);
+                    let refresh=target.as_ref().ok_or_else(||"No current saved version".to_string())
+                        .and_then(|target|observation.as_ref().map_err(Clone::clone).and_then(|observation|catalog.preview_tag_refresh(target,observation)));
                     reviewed.push(Row {
                         target,
-                        metadata: item.stored_metadata(),
-                        observation,
+                        metadata,
+                        observation,refresh,locks,
                     });
                 }
                 Ok(Reply::Preview(Preview {

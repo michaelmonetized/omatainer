@@ -1,2 +1,4 @@
 target/
+t/
+.artifacts/
 *.bak.*

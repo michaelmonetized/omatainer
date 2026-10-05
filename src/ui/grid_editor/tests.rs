@@ -2,9 +2,9 @@ use super::*;
 use crate::engine::{test_alloc, RtEngine};
 use egui::accesskit::{Action, ActionData, ActionRequest, Node, NodeId, Role};
 
-struct Gui {
-    app: App,
-    rt: RtEngine,
+pub(in crate::ui) struct Gui {
+    pub(in crate::ui) app: App,
+    pub(in crate::ui) rt: RtEngine,
     ctx: egui::Context,
     time: f64,
     size: Vec2,
@@ -12,7 +12,7 @@ struct Gui {
     render: bool,
 }
 impl Gui {
-    fn new(sr: u32) -> Self {
+    pub(in crate::ui) fn new(sr: u32) -> Self {
         let (engine, mut rt) = Engine::headless_for_test(sr, 256);
         rt.publish_for_test();
         let app = App::with_loader(engine, Theme::default(), None);
@@ -31,7 +31,7 @@ impl Gui {
         value.frame(vec![]);
         value
     }
-    fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
+    pub(in crate::ui) fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
         self.time += 0.02;
         let modifiers = events
             .iter()
@@ -68,7 +68,7 @@ impl Gui {
         }
         out
     }
-    fn node(&self, name: &str) -> (NodeId, &Node) {
+    pub(in crate::ui) fn node(&self, name: &str) -> (NodeId, &Node) {
         self.nodes
             .iter()
             .find(|(_, n)| n.label() == Some(name))
@@ -83,7 +83,7 @@ impl Gui {
                 )
             })
     }
-    fn action(&mut self, name: &str, action: Action, data: Option<ActionData>) -> egui::FullOutput {
+    pub(in crate::ui) fn action(&mut self, name: &str, action: Action, data: Option<ActionData>) -> egui::FullOutput {
         let target = self.node(name).0;
         self.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
             action,
@@ -92,7 +92,7 @@ impl Gui {
         })]);
         self.frame(vec![])
     }
-    fn click(&mut self, name: &str) -> egui::FullOutput {
+    pub(in crate::ui) fn click(&mut self, name: &str) -> egui::FullOutput {
         self.action(name, Action::Click, None)
     }
     fn key(&mut self, key: Key, modifiers: egui::Modifiers) {
@@ -135,6 +135,63 @@ impl Gui {
         self.click("Deck A beatgrid: Cancel or close grid editor");
         self.frame(vec![]);
     }
+}
+
+#[test]
+fn tempo_anchor_widgets_validate_replace_delete_cancel_and_commit_one_receipt_qualified_edit() {
+    let mut gui = Gui::new(48_000);
+    let audio = gui.rt.decks[0].audio.clone().unwrap();
+    let before = gui.app.engine.undo.view().cursor;
+    gui.open();
+    gui.text("Deck A beatgrid: Downbeat seconds", "0");
+    gui.text("Deck A beatgrid: Stretch tempo BPM", "120");
+    for (beat, seconds) in [("4", "2"), ("8", "3.5")] {
+        gui.text("Deck A beatgrid: Tempo anchor beat", beat);
+        gui.text("Deck A beatgrid: Tempo anchor source seconds", seconds);
+        gui.click("Deck A beatgrid: Insert or replace tempo anchor");
+    }
+    let initial = gui.app.grid_editor.as_ref().unwrap().draft.unwrap();
+    assert_eq!(initial.anchors().len(), 2);
+    assert_eq!(initial.bpm_at(2.0), Some(160.0));
+    assert_eq!(gui.rt.decks[0].grid, None);
+    let old_delete = gui.node("Deck A beatgrid: Delete tempo anchor 2").0;
+    gui.text("Deck A beatgrid: Tempo anchor source seconds", "3.6");
+    gui.click("Deck A beatgrid: Insert or replace tempo anchor");
+    let replaced = gui.app.grid_editor.as_ref().unwrap().draft.unwrap();
+    assert_eq!(replaced.anchors().len(), 2);
+    assert_eq!(replaced.seconds_at(8.0), Some(3.6));
+    gui.frame(vec![egui::Event::AccessKitActionRequest(ActionRequest {
+        action: Action::Click, target: old_delete, data: None,
+    })]);
+    assert_eq!(gui.app.grid_editor.as_ref().unwrap().draft, Some(replaced));
+    for seconds in ["nan", "99", "2", "2.0001"] {
+        gui.text("Deck A beatgrid: Tempo anchor source seconds", seconds);
+        gui.click("Deck A beatgrid: Insert or replace tempo anchor");
+        assert_eq!(gui.app.grid_editor.as_ref().unwrap().draft, Some(replaced));
+        assert!(gui.app.grid_editor.as_ref().unwrap().error.is_some());
+        assert!(gui.node("Deck A beatgrid: Apply grid").1.is_disabled());
+    }
+    gui.text("Deck A beatgrid: Tempo anchor source seconds", "3.6");
+    gui.click("Deck A beatgrid: Insert or replace tempo anchor");
+    gui.click("Deck A beatgrid: Delete tempo anchor 1");
+    let draft = gui.app.grid_editor.as_ref().unwrap().draft.unwrap();
+    assert_eq!(draft.anchors().len(), 1);
+    assert_eq!(draft.seconds_at(8.0), Some(3.6));
+    gui.apply();
+    assert_eq!(gui.rt.decks[0].grid, Some(draft));
+    assert_eq!(gui.app.engine.undo.view().cursor, before + 1);
+    assert_eq!(gui.app.grid_editor.as_ref().unwrap().receipt.preparation().unwrap().1.grid, Some(draft));
+    assert!(std::sync::Arc::ptr_eq(&audio, gui.rt.decks[0].audio.as_ref().unwrap()));
+    gui.close(); gui.open();
+    assert_eq!(gui.app.grid_editor.as_ref().unwrap().draft, Some(draft));
+    gui.click("Deck A beatgrid: Delete tempo anchor 1");
+    gui.close();
+    assert_eq!(gui.rt.decks[0].grid, Some(draft));
+    gui.open();
+    gui.rt.apply(Command::DeckUnload { deck: 0 });
+    gui.rt.publish_for_test();
+    gui.frame(vec![]); gui.frame(vec![]);
+    assert!(gui.app.grid_editor.is_none());
 }
 
 #[test]
@@ -589,6 +646,62 @@ impl Gui {
         });
         self.frame(vec![]);
     }
+}
+
+#[test]
+fn recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_native_widgets() {
+    let files = Files::new();
+    let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/beatgrid/11_rock_100_beat_4-4.wav");
+    let path = files.0.join("human-drum.wav");
+    std::fs::copy(&source, &path).unwrap();
+    let mut gui = Gui::new(48_000);
+    gui.library(&files, 100.0);
+    gui.app.loader = Some(crate::engine::media_load::Loader::with_decoder(|path, _| crate::engine::decode::decode_audio(path)).unwrap());
+    assert!(gui.app.library_scan.start(vec![files.0.clone()], gui.app.library.clone()));
+    gui.until(|g| !g.app.library_scan.active() && !g.app.library_metadata.active()
+        && g.app.library.iter().any(|item| item.source == LibSource::File(path.clone())));
+    gui.file(&path);
+    let original = gui.rt.decks[0].audio.clone().unwrap();
+    let analyzed = original.bpm;
+    gui.action("Deck A: Waveform position", Action::SetValue, Some(ActionData::NumericValue(3.0)));
+    gui.click("Deck A: Hot cue 1");
+    let cue = gui.rt.decks[0].hotcues[0].pos;
+    gui.open();
+    gui.text("Deck A beatgrid: Downbeat seconds", "0");
+    gui.text("Deck A beatgrid: Stretch tempo BPM", "100");
+    for (beat, seconds) in [("4", "2.3925"), ("8", "4.7925"), ("12", "7.20125"), ("15", "8.99875")] {
+        gui.text("Deck A beatgrid: Tempo anchor beat", beat);
+        gui.text("Deck A beatgrid: Tempo anchor source seconds", seconds);
+        gui.click("Deck A beatgrid: Insert or replace tempo anchor");
+    }
+    gui.apply();
+    let grid = gui.rt.decks[0].grid.unwrap();
+    assert_eq!(grid.anchors().len(), 4);
+    gui.until(|g| !g.app.library_metadata.active()
+        && g.app.cue_storage_status(&g.app.grid_editor.as_ref().unwrap().receipt) == "Saved in DJ library");
+    assert!(std::sync::Arc::ptr_eq(&original, gui.rt.decks[0].audio.as_ref().unwrap()));
+    assert_eq!(gui.rt.decks[0].hotcues[0].pos, cue);
+    gui.close();
+    let catalog = files.0.join("catalog/library.json");
+    drop(gui);
+    let deadline = Instant::now() + std::time::Duration::from_secs(5);
+    while crate::library::Store::open(catalog.clone()).is_err() {
+        assert!(Instant::now() < deadline); std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let mut reopened = Gui::new(96_000);
+    reopened.library(&files, analyzed);
+    reopened.app.loader = Some(crate::engine::media_load::Loader::with_decoder(|path, _| crate::engine::decode::decode_audio(path)).unwrap());
+    reopened.file(&path); reopened.open();
+    assert_eq!(reopened.app.grid_editor.as_ref().unwrap().draft, Some(grid));
+    assert_eq!(reopened.rt.decks[0].grid, Some(grid));
+    assert_eq!(reopened.rt.decks[0].audio.as_ref().unwrap().bpm, analyzed);
+    assert_eq!(reopened.rt.decks[0].hotcues[0].pos, cue);
+    assert!(!reopened.rt.decks[0].playing);
+    reopened.close();
+    reopened.click("Deck A: Platter play or pause");
+    let mut audio = [0.0; 8192];
+    assert_eq!(test_alloc::measure(|| reopened.rt.process(&mut audio)), test_alloc::Counts::default());
+    assert!(audio.iter().any(|sample| sample.abs() > 1e-4));
 }
 
 #[test]

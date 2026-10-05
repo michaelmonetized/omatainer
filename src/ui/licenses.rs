@@ -156,7 +156,7 @@ mod contextual_help_tests {
 
     #[test]
     fn actual_offline_license_viewer_describes_search_selection_source_and_notice_controls() {
-        let mut fixture = test_support::Fixture::new(64);
+        let mut fixture = test_support::Fixture::new(80);
         let catalog = Catalog::parse(crate::licenses::MANIFEST, crate::licenses::NOTICES).unwrap();
         let selected = catalog
             .manifest

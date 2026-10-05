@@ -12,6 +12,7 @@ pub struct Node {
     pub slot: Option<usize>,
     pub width: usize,
     pub input: Frame,
+    pub valid: bool,
     pub taps: [Frame; 3],
 }
 
@@ -75,6 +76,7 @@ impl Prepared {
                 },
                 width: model.width(group, layout).unwrap(),
                 input: [0.0; MAX_PORT_CHANNELS],
+                valid: true,
                 taps: [[0.0; MAX_PORT_CHANNELS]; 3],
             })
             .collect();
@@ -93,6 +95,7 @@ impl Prepared {
     pub fn begin(&mut self) {
         for node in &mut self.nodes {
             node.input[..node.width].fill(0.0);
+            node.valid = true;
         }
     }
 
@@ -100,11 +103,14 @@ impl Prepared {
     /// Takes its prepared index; sums into its prepared input after all earlier sources have rendered.
     pub fn gather(&mut self, index: usize) {
         let (sources, destination) = self.nodes.split_at_mut(index);
-        let input = &mut destination[0].input;
+        let destination = &mut destination[0];
         for link in &self.incoming[index] {
             let source = &sources[link.source].taps[link.tap];
             for map in &link.map {
-                input[usize::from(map.destination)] += source[usize::from(map.source)] * map.gain;
+                destination.input[usize::from(map.destination)] += source[usize::from(map.source)] * map.gain;
+                if map.gain != 0.0 {
+                    destination.valid &= sources[link.source].valid;
+                }
             }
         }
     }
@@ -129,10 +135,11 @@ impl Prepared {
     }
 
     /// Add one legacy stereo send.
-    /// Takes its destination and stereo samples; sums into the existing mixer without changing alias maps.
-    pub fn legacy_send(&mut self, index: usize, frame: [f32; 2]) {
+    /// Takes its destination, stereo samples and continuity; sums into the existing mixer without changing alias maps.
+    pub fn legacy_send(&mut self, index: usize, frame: [f32; 2], valid: bool) {
         self.nodes[index].input[0] += frame[0];
         self.nodes[index].input[1] += frame[1];
+        self.nodes[index].valid &= valid;
     }
 
     /// Assemble physical outputs.

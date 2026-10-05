@@ -328,7 +328,7 @@ fn bounded_handoff_preserves_fifo_sources_and_limits_dispatch_work_per_frame() {
 
 #[test]
 fn closed_or_unattached_gui_and_invalid_decks_fail_explicitly() {
-    let (commands, audio) = crate::engine::CommandPort::channel(32);
+    let (commands, audio) = crate::engine::CommandPort::channel(48);
     assert_eq!(
         commands.send(Command::DeckLoadSelected { deck: 0 }),
         Err(SubmissionError::UiUnavailable)
@@ -351,7 +351,7 @@ fn closed_or_unattached_gui_and_invalid_decks_fail_explicitly() {
 
 #[test]
 fn audio_admission_failure_and_raw_uncaptured_request_are_visible_without_replacement() {
-    let mut fixture = Fixture::new(16);
+    let mut fixture = Fixture::new(32);
     let original = fixture.rt.decks[0].audio.clone().unwrap();
     while fixture
         .app

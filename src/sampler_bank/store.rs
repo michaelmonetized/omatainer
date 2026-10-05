@@ -61,7 +61,17 @@ fn read(path: &Path) -> Result<(Collection, Vec<u8>, FileFingerprint), String> {
     {
         return Err("sampler bank store changed during reading or exceeded its bound".into());
     }
-    let value: Collection = serde_json::from_slice(&bytes)
+    let mut raw: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|error| format!("invalid sampler bank store; original preserved: {error}"))?;
+    if raw["schema"].as_u64() == Some(1) {
+        if raw.get("banks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .flat_map(|bank| bank.get("slots").and_then(serde_json::Value::as_array).into_iter().flatten())
+            .any(|slot| slot.get("playback").is_some()) {
+            return Err("legacy sampler banks cannot contain playback modes; original preserved".into());
+        }
+        raw["schema"] = serde_json::json!(SCHEMA);
+    }
+    let value: Collection = serde_json::from_value(raw)
         .map_err(|error| format!("invalid sampler bank store; original preserved: {error}"))?;
     value.validate()?;
     Ok((value, bytes, FileFingerprint::from_metadata(&before)))

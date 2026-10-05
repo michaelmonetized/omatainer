@@ -31,8 +31,10 @@ pub(in crate::ui) enum Action {
         parent: Option<CrateId>,
         before: Option<CrateId>,
     },
+    CreatePrepared { name: String, members: Vec<TrackId> },
     Edit(Edit<TrackId>),
     Annotate { ids: Vec<TrackId>, patch: crate::library::annotations::Patch },
+    Protect { targets: Vec<crate::library::protection::Target>, patch: crate::library::protection::Patch },
     Read,
 }
 impl Action {
@@ -40,15 +42,21 @@ impl Action {
         // Only bounded shape checks at UI admission. Duplicate membership and
         // whole-forest validation/allocation remain on the metadata worker.
         let invalid = |text: &str| Admission::Invalid(text.into());
+        if let Self::Protect { targets,patch }=self {
+            if targets.is_empty() || targets.len()>4096 || patch.is_empty() || targets.iter().any(|target|target.track.0.len()!=32 || !target.track.0.bytes().all(|b|b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) {return Err(invalid("Review 1–4096 current track versions and at least one changed lock field"));}
+            return Ok(());
+        }
         if let Self::Annotate { ids, patch } = self {
             if ids.is_empty() || ids.len() > 100000 || patch.is_empty() || ids.iter().any(|id| id.0.len() != 32 || !id.0.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) { return Err(invalid("Select 1–100000 stable tracks and at least one changed annotation field")); }
             patch.apply(&crate::library::annotations::Annotations::default()).map_err(|e|invalid(&e))?;
             return Ok(());
         }
         if let Self::Edit(Edit::SetAnnotationRule { rule: Some(rule), .. }) = self { rule.validate().map_err(|e|invalid(&e))?; }
+        if let Self::Edit(Edit::SetSmartRule { rule: Some(rule), .. }) = self { rule.validate().map_err(|e|invalid(&e))?; }
 
+        if matches!(self, Self::CreatePrepared { members, .. } if members.is_empty()) { return Err(invalid("Queue at least one track before saving a prepared crate")); }
         let name = match self {
-            Self::Create { name, .. } | Self::Edit(Edit::Rename { name, .. }) => Some(name),
+            Self::Create { name, .. } | Self::CreatePrepared { name, .. } | Self::Edit(Edit::Rename { name, .. }) => Some(name),
             Self::Edit(Edit::Create { .. }) => {
                 return Err(invalid(
                     "Use Create so the catalog owner generates a fresh crate identity",
@@ -67,6 +75,7 @@ impl Action {
             ));
         }
         let members = match self {
+            Self::CreatePrepared { members, .. } => Some(members),
             Self::Edit(
                 Edit::AddMembers { members, .. }
                 | Edit::RemoveMembers { members, .. }
@@ -89,7 +98,8 @@ impl Action {
         let anchor = |id: &Option<CrateId>| id.as_ref().is_none_or(crate_id);
         let shape = match self {
             Self::Create { parent, before, .. } => anchor(parent) && anchor(before),
-            Self::Edit(Edit::Rename { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. }) => crate_id(id),
+            Self::CreatePrepared { .. } => true,
+            Self::Edit(Edit::Rename { id, .. } | Edit::SetFavorite { id, .. } | Edit::DeleteSubtree { id } | Edit::SetAnnotationRule { id, .. } | Edit::SetSmartRule { id, .. }) => crate_id(id),
             Self::Edit(Edit::MoveCrate { id, parent, before }) => {
                 crate_id(id) && anchor(parent) && anchor(before)
             }
@@ -108,7 +118,7 @@ impl Action {
                     && before.as_ref().is_none_or(|id| valid(&id.0))
             }
             Self::Read => true,
-            Self::Annotate { .. } => unreachable!(),
+            Self::Annotate { .. } | Self::Protect { .. } => unreachable!(),
             Self::Edit(Edit::Create { .. }) => false,
         };
         if !shape || members.is_some_and(|members| members.iter().any(|id| !valid(&id.0))) {
@@ -238,7 +248,7 @@ impl Receipt {
 pub(super) struct Request {
     token: Token,
     expected: u64,
-    action: Action,
+    pub(super) action: Action,
     work: Option<WorkPermit>,
 }
 
@@ -330,16 +340,19 @@ fn apply_using(
             return Ok(());
         }
         let mut candidate = store.catalog.clone();
-        let changed = if let Action::Annotate { ids, patch } = &action {
+        let changed = if let Action::Protect {targets,patch}=&action {
+            if expected!=candidate.crates.revision() {return Err(Failure::Invalid("Crate selection changed; review preparation locks again".into()));}
+            candidate.protect(targets,*patch).map_err(Failure::Invalid)?
+        } else if let Action::Annotate { ids, patch } = &action {
             if expected != candidate.crates.revision() { return Err(Failure::Invalid("Crate selection changed; review the batch again".into())); }
             candidate.annotate(ids, patch).map_err(Failure::Invalid)?
         } else {
+        let (action, prepared) = match action {
+            Action::CreatePrepared { name, members } => (Action::Create { name, parent: None, before: None }, Some(members)),
+            other => (other,None),
+        };
         let edit = match action {
-            Action::Create {
-                name,
-                parent,
-                before,
-            } => {
+            Action::Create { name, parent, before } => {
                 let mut bytes = [0u8; 16];
                 std::fs::File::open("/dev/urandom")
                     .and_then(|mut file| file.read_exact(&mut bytes))
@@ -354,9 +367,13 @@ fn apply_using(
                 }
             }
             Action::Edit(edit) => edit,
-            Action::Read | Action::Annotate { .. } => unreachable!(),
+            Action::Read | Action::Annotate { .. } | Action::Protect { .. } | Action::CreatePrepared { .. } => unreachable!(),
         };
-        candidate.edit_crates(expected, &edit).map_err(Failure::Invalid)?
+        let changed = candidate.edit_crates(expected, &edit).map_err(Failure::Invalid)?;
+        if let Some(members) = prepared {
+            candidate.edit_crates(candidate.crates.revision(), &Edit::AddMembers { id: created.clone().unwrap(), members, before: None }).map_err(Failure::Invalid)?;
+        }
+        changed
         };
         checkpoint(0);
         check()?;

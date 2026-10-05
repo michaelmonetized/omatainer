@@ -459,6 +459,11 @@ impl Handle {
     pub(super) fn publish_decks(&self, activity: u8) {
         self.0.deck_activity.store(activity, Ordering::Release);
     }
+    /// Read the renderer-confirmed deck loading lock.
+    /// Takes a deck index; returns its current protection state without touching audio.
+    pub(crate) fn deck_load_locked(&self, deck: usize) -> bool {
+        deck < super::DECKS && self.deck_load_word(deck) & 1 != 0
+    }
     pub(crate) fn check(&self, command: &Command, activity: Option<u8>) -> Result<(), Error> {
         let state = self.0.admission.load(Ordering::Acquire);
         if state & RECOVERY != 0 && !recovery_safe(command) {
@@ -468,6 +473,7 @@ impl Handle {
             return Err(Error::Protected);
         }
         if let Some(deck) = media_target(command) {
+            if deck >= super::DECKS { return Err(Error::PlayingDeck); }
             let approval = deck_load::approval(command);
             if approval.is_some_and(|approval| !approval.valid(self, deck)) {
                 return Err(Error::PlayingDeck);
@@ -485,20 +491,21 @@ impl Handle {
     }
 }
 
-fn media_target(command: &Command) -> Option<usize> {
+pub(super) fn media_target(command: &Command) -> Option<usize> {
     match command {
         Command::DeckAudio { deck, .. }
         | Command::DeckLoadRequested { deck, .. }
         | Command::DeckLoadSelected { deck }
         | Command::LoadBuiltin { deck, .. }
         | Command::DeckUnload { deck }
-        | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize % super::DECKS),
-        Command::DeckDecoded { request, .. } => Some(request.deck as usize % super::DECKS),
+        | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize),
+        Command::DeckDecoded { request, .. } => Some(request.deck as usize),
         Command::SessionControl(scoped) => media_target(&scoped.command),
         Command::Gesture { command, .. } => media_target(command),
         _ => None,
     }
 }
+
 fn destructive(command: &Command) -> bool {
     match command {
         Command::Remote(request) => destructive(&request.action.command()),
@@ -512,6 +519,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SamplerAudition(_)
         | Command::ProviderPreview(_)
         | Command::DeckGrid { .. }
+        | Command::DeckSourceGain { .. }
         | Command::Undo
         | Command::Redo
         | Command::FxAdd(_)
@@ -550,7 +558,10 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckLoop { .. }
         | Command::DeckLoopIn { .. }
         | Command::DeckLoopOut { .. }
+        | Command::DeckLoadLock { .. }
         | Command::DeckLoadSelected { .. }
+        | Command::PrepareSelected { .. }
+        | Command::DeckPreview { .. }
         | Command::DeckVinyl { .. }
         | Command::DeckKeylock { .. }
         | Command::DeckAudio { .. }
@@ -571,6 +582,8 @@ fn destructive(command: &Command) -> bool {
         | Command::Solo { .. }
         | Command::Arm { .. }
         | Command::Browse(_)
+        | Command::BrowseCrates(_)
+        | Command::CrateReturn
         | Command::Select { .. }
         | Command::ComposeArm { .. }
         | Command::ComposeDisarm
@@ -584,7 +597,6 @@ fn destructive(command: &Command) -> bool {
         | Command::FxSelect { .. }
         | Command::Quant(_)
         | Command::Metronome
-        | Command::LearnCapture { .. }
         | Command::NudgeBpm(_)
         | Command::ToggleQuant
         | Command::DeckLoopDouble { .. }
@@ -602,6 +614,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SamplerPadPressure { .. }
         | Command::MidiAudition { on: false, .. }
         | Command::SamplerAuditionStop { .. }
+        | Command::SamplerSlotStop { .. }
         | Command::SamplerBank(_)
         | Command::SamplerInst(_)
         | Command::SamplerOct(_)
@@ -626,6 +639,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::SamplerPad { on: false, .. }
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
+        | Command::SamplerSlotStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
             | Command::ComposeDisarm
@@ -635,6 +649,8 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::SelectDeckRequested { .. }
             | Command::SetView(_)
             | Command::Browse(_)
+            | Command::BrowseCrates(_)
+            | Command::CrateReturn
             | Command::OpenFxTrack(_)
             | Command::OpenFxScene(_)
             | Command::CloseFx
@@ -726,9 +742,12 @@ pub(super) fn reject_receipt(command: &Command) {
     }
 }
 impl super::RtEngine {
+    pub(super) fn publish_deck_guards(&self) {
+        self.performance.publish_decks(self.deck_activity());
+    }
     pub(super) fn deck_activity(&self) -> u8 {
         self.decks.iter().enumerate().fold(0, |bits, (i, deck)| {
-            bits | (u8::from(deck.playing || deck.touching || deck.last_output.iter().any(|sample| sample.abs() > 0.0001)) << i)
+            bits | (u8::from(deck.media_active()) << i)
         })
     }
     pub(super) fn performance_tick(&mut self) {
@@ -764,6 +783,7 @@ impl super::RtEngine {
         // tails. Emergency silence is applied after the entire output chain.
         for deck in &mut self.decks {
             deck.playing = false;
+            deck.stop_preview(self.sr);
             deck.touching = false;
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;

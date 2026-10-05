@@ -250,10 +250,10 @@ pub(crate) fn decode_deck_file_progress(path:&Path,file:std::fs::File,cancelled:
     decode_source(path,Some(Box::new(file)),Some(512*crate::background::MIB),cancelled,|data,ch,sr| {
         let permit=performance.optional_work().ok()?;let cancel=permit.cancel();
         super::dsp::detect_bpm_with_cancel(data,ch,sr,||cancel.load(std::sync::atomic::Ordering::Acquire))
-    },true,progress)
+    },true,true,progress)
 }
 fn decode_with_analysis(path: &Path, cancelled: impl Fn() -> bool, analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>) -> Result<DecodedAudio, DecodeFailure> {
-    decode_source(path, None, None, cancelled, analyze, true, |_, _| {})
+    decode_source(path, None, None, cancelled, analyze, true, true, |_, _| {})
 }
 
 /// Sampler preparation already owns a regular, fingerprint/hash-qualified
@@ -266,7 +266,7 @@ pub(crate) fn decode_sampler_file(
     pcm_bytes: u64,
     cancelled: impl Fn() -> bool,
 ) -> Result<DecodedAudio, DecodeFailure> {
-    decode_source(path, Some(Box::new(file)), Some(pcm_bytes), cancelled, |_, _, _| None, true, |_, _| {})
+    decode_source(path, Some(Box::new(file)), Some(pcm_bytes), cancelled, |_, _, _| None, true, true, |_, _| {})
 }
 /// Background analysis shares the strict decoder and exact open descriptor,
 /// but computes only requested optional fields after decoding. No PCM escapes
@@ -274,7 +274,16 @@ pub(crate) fn decode_sampler_file(
 pub(crate) fn decode_analysis_file(path: &Path, file: std::fs::File,
     cancelled: impl Fn() -> bool, progress: impl Fn(u64, Option<u64>)) -> Result<DecodedAudio, DecodeFailure> {
     decode_source(path, Some(Box::new(file)), Some(crate::track_analysis::MAX_PCM_BYTES), cancelled,
-        |_, _, _| None, false, progress)
+        |_, _, _| None, false, true, progress)
+}
+/// Check a complete audio stream with bounded packet scratch and no retained PCM.
+/// Takes an already verified descriptor and cancellation/progress callbacks; returns strict decode diagnostics, sample rate and channel count.
+pub(crate) fn validate_audio_file(path: &Path, file: std::fs::File, cancelled: impl Fn() -> bool,
+    progress: impl Fn(u64, Option<u64>)) -> Result<(DecodeDiagnostics, u32, u16), DecodeFailure> {
+    let mut decoded = decode_source(path, Some(Box::new(file)), Some(64 * 1024 * 1024), cancelled,
+        |_, _, _| None, false, false, progress)?;
+    decoded.diagnostics.analysis_deferred = false;
+    Ok((decoded.diagnostics, decoded.sample.sr, decoded.sample.ch))
 }
 fn decode_source(
     path: &Path,
@@ -283,6 +292,7 @@ fn decode_source(
     cancelled: impl Fn() -> bool,
     analyze: impl FnOnce(&[f32], u16, u32) -> Option<f32>,
     waveform: bool,
+    collect_pcm: bool,
     progress: impl Fn(u64, Option<u64>),
 ) -> Result<DecodedAudio, DecodeFailure> {
     let mut diagnostics = DecodeDiagnostics::default();
@@ -332,7 +342,7 @@ fn decode_source(
         if params.sample_rate.is_some_and(|rate| rate == 0 || rate > crate::project_file::MAX_SAMPLE_RATE)
             || ch.is_some_and(|channels| channels == 0 || channels > u64::from(crate::project_file::MAX_CHANNELS))
             || ch.zip(diagnostics.expected_frames).is_some_and(|(channels, frames)| {
-                diagnostics.length_evidence == LengthEvidence::Declared
+                collect_pcm && diagnostics.length_evidence == LengthEvidence::Declared
                     && frames.saturating_mul(channels).saturating_mul(4) > limit
             })
         {
@@ -366,7 +376,8 @@ fn decode_source(
         } else {
             packet_end
         };
-        if packet.ts > expected_start {
+        let fully_trimmed = packet.dur == 0 && (packet.trim_start > 0 || packet.trim_end > 0);
+        if packet.ts > expected_start && !fully_trimmed {
             return Err(failure(
                 DecodeFailureKind::Incomplete,
                 DecodeStage::ReadPacket,
@@ -379,6 +390,10 @@ fn decode_source(
         check_cancel(&cancelled, DecodeStage::DecodePacket, &diagnostics)?;
         let buffer = decoded
             .map_err(|error| codec_failure(error, DecodeStage::DecodePacket, &diagnostics))?;
+        if fully_trimmed && buffer.frames() != 0 {
+            return Err(failure(DecodeFailureKind::Fatal, DecodeStage::DecodePacket,
+                &diagnostics, "fully trimmed packet returned audible frames"));
+        }
         let current = *buffer.spec();
         if current.rate == 0 || current.channels.count() == 0 {
             return Err(failure(
@@ -405,7 +420,7 @@ fn decode_source(
             // supplied by Symphonia; our owned PCM never grows past its credit.
             if current.rate > crate::project_file::MAX_SAMPLE_RATE
                 || channels > u64::from(crate::project_file::MAX_CHANNELS)
-                || required > limit
+                || collect_pcm && required > limit
                 || (buffer.capacity() as u64).saturating_mul(channels).saturating_mul(4) > limit
             {
                 return Err(failure(DecodeFailureKind::Capacity, DecodeStage::DecodePacket,
@@ -414,7 +429,7 @@ fn decode_source(
             let added = usize::try_from(added).map_err(|_| failure(DecodeFailureKind::Capacity,
                 DecodeStage::DecodePacket, &diagnostics, "decoded packet length overflow"))?;
             let required_samples = data.len().saturating_add(added);
-            if required_samples > data.capacity() {
+            if collect_pcm && required_samples > data.capacity() {
                 let ceiling = usize::try_from(limit / 4).unwrap_or(usize::MAX);
                 let target = required_samples.max(data.capacity().saturating_mul(2)).min(ceiling);
                 data.try_reserve_exact(target - data.len()).map_err(|_| failure(DecodeFailureKind::Capacity,
@@ -438,11 +453,11 @@ fn decode_source(
         diagnostics.decoded_frames += (samples.samples().len() / current.channels.count()) as u64;
         progress(diagnostics.decoded_frames, diagnostics.expected_frames);
         diagnostics.decoded_packets += 1;
-        packet_end = packet_end.max(packet.ts.saturating_add(packet.dur));
-        data.extend_from_slice(samples.samples());
+        if !fully_trimmed { packet_end = packet_end.max(packet.ts.saturating_add(packet.dur)); }
+        if collect_pcm { data.extend_from_slice(samples.samples()); }
     }
     check_cancel(&cancelled, DecodeStage::Finish, &diagnostics)?;
-    let spec = spec.filter(|_| !data.is_empty()).ok_or_else(|| {
+    let spec = spec.filter(|_| diagnostics.decoded_frames > 0).ok_or_else(|| {
         failure(
             if diagnostics.expected_frames.is_some_and(|frames| frames > 0) {
                 DecodeFailureKind::Incomplete
@@ -518,7 +533,7 @@ mod tests;
 /// Takes bounded MP3 bytes and cancellation; returns checked PCM with an empty local path.
 pub(crate) fn decode_provider_bytes(bytes: Vec<u8>, cancelled: impl Fn() -> bool) -> Result<DecodedAudio, DecodeFailure> {
     let mut result = decode_source(Path::new("provider.mp3"), Some(Box::new(std::io::Cursor::new(bytes))),
-        Some(128 * 1024 * 1024), cancelled, |_, _, _| None, false, |_, _| {})?;
+        Some(128 * 1024 * 1024), cancelled, |_, _, _| None, false, true, |_, _| {})?;
     result.sample.path.clear();
     Ok(result)
 }

@@ -141,6 +141,7 @@ impl TrackControls {
 /// scratch owners. A knob undo must not rewind another performed movement.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct DeckControls {
+    source_gain: crate::track_gain::Resolved,
     pitch: f32,
     sync: bool,
     sync_bpm: f32,
@@ -165,6 +166,7 @@ pub(super) struct DeckControls {
 impl DeckControls {
     pub fn get(deck: &DeckRt) -> Self {
         Self {
+            source_gain: deck.source_gain,
             pitch: deck.pitch,
             sync: deck.sync,
             sync_bpm: deck.sync_bpm,
@@ -197,6 +199,7 @@ impl DeckControls {
         deck.sync = self.sync;
         deck.sync_bpm = self.sync_bpm;
         deck.gain = self.gain;
+        deck.source_gain = self.source_gain;
         deck.eq_cut = self.eq_cut;
         deck.eq_solo = self.eq_solo;
         deck.eq_store = self.eq_store;
@@ -354,6 +357,9 @@ impl Patch {
     }
     pub fn valid(&self, rt: &RtEngine) -> bool {
         match self {
+            Self::Deck(index,value) => rt.decks.get(*index as usize).is_some_and(|deck|
+                (value.source_gain == deck.source_gain || !deck.source_gain_active())
+                && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
             Self::Session(value) => value.valid(rt),
             Self::Conductor { .. } | Self::Global(_) => rt.count_in.is_none(),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
@@ -471,6 +477,7 @@ impl Patch {
                 d.transition_to(*position, rt.sr, DeckTransition::Jump);
                 *position = current;
                 d.playing = false;
+                d.preview_position = None;
                 d.playback_active = false;
                 // A media swap cannot retain a physical scratch session on the
                 // replaced buffer; unrelated deck and live MIDI gates survive.

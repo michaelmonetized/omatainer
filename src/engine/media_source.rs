@@ -35,6 +35,21 @@ impl BuiltinStem {
 pub(crate) struct Selection {
     pub source: LibSource,
     pub title: String,
+    pub fingerprint: Option<FileFingerprint>,
+}
+
+impl Selection {
+    /// Bound the owned memory of a captured track reference.
+    /// Takes this selection; returns source/title capacities plus fixed reference storage.
+    pub fn bytes(&self) -> usize {
+        let source = match &self.source {
+            LibSource::Builtin(_) => 0,
+            LibSource::File(path) => path.capacity(),
+            LibSource::Removable { volume_id, relative_path } => volume_id.capacity().saturating_add(relative_path.capacity()),
+            LibSource::Provider { provider, media_id } => provider.capacity().saturating_add(media_id.capacity()),
+        };
+        source.saturating_add(self.title.capacity()).saturating_add(std::mem::size_of::<Self>() + 3 * std::mem::size_of::<usize>())
+    }
 }
 
 /// Identity of the bytes inspected by a scan/decode, not just their pathname.

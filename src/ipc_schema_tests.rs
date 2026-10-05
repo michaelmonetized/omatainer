@@ -4,6 +4,17 @@ use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
+#[test]
+fn deck_protection_cli_validates_target_and_action_before_connecting() {
+    let args = |values: &[&str]|values.iter().map(|value|(*value).to_owned()).collect::<Vec<_>>();
+    assert_eq!(deck_protection_payload(&args(&["deck-lock", "A", "on"])).unwrap(), json!({"op":"deckLoadLock", "deck":0, "enabled":true}));
+    assert_eq!(deck_protection_payload(&args(&["deck-lock", "b", "off"])).unwrap(), json!({"op":"deckLoadLock", "deck":1, "enabled":false}));
+    assert_eq!(deck_protection_payload(&args(&["deck-eject", "B"])).unwrap(), json!({"op":"deckEject", "deck":1}));
+    for values in [vec![], vec!["deck-lock"], vec!["deck-lock","C","on"], vec!["deck-lock","A","maybe"], vec!["deck-eject","A","on"], vec!["unknown","A"]] {
+        assert!(deck_protection_payload(&args(&values)).is_err(), "{values:?}");
+    }
+}
+
 fn exchange(client: &mut BufReader<UnixStream>, value: &Value) -> Value {
     writeln!(client.get_mut(), "{value}").unwrap();
     let mut line = String::new();

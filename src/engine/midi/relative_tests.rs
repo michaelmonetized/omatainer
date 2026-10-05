@@ -16,7 +16,6 @@ fn send(map: &MidiMap, message: &[u8], commands: &crate::engine::CommandPort) {
         map,
         commands,
         &Arc::new(Mutex::new(Vec::new())),
-        &Arc::new(Mutex::new(None)),
         &Arc::new(Mutex::new([false; 4])),
         "synthetic relative controller",
     );
@@ -42,7 +41,7 @@ fn all_relative_bytes_have_the_declared_sign_neutral_and_scale() {
             let spec = RelativeSpec { encoding, scale };
             let profile = map(rbind(3, 0x21, Action::DeckJog, 1, 0, spec));
             profile.validate().unwrap();
-            let (commands, receiver) = crate::engine::CommandPort::channel(16);
+            let (commands, receiver) = crate::engine::CommandPort::channel(32);
             let mut signs = [0; 3];
             for (byte, steps) in expected.iter().copied().enumerate() {
                 let expected_delta = steps as f32 * scale;
@@ -95,7 +94,7 @@ fn relative_metadata_is_required_and_invalid_values_never_dispatch() {
             },
         ));
         assert!(invalid.validate().is_err());
-        let (commands, receiver) = crate::engine::CommandPort::channel(16);
+        let (commands, receiver) = crate::engine::CommandPort::channel(32);
         send(&invalid, &[0xb0, 1, 0x41], &commands);
         assert_eq!(receiver.try_iter().count(), 0);
     }
@@ -111,7 +110,7 @@ fn relative_metadata_is_required_and_invalid_values_never_dispatch() {
                 scale: 0.35,
             },
         ));
-        let (commands, receiver) = crate::engine::CommandPort::channel(16);
+        let (commands, receiver) = crate::engine::CommandPort::channel(32);
         for byte in 128..=255 {
             assert_eq!(profile.bindings[0].relative.unwrap().decode(byte), None);
             // F8..FF are valid interleaved realtime statuses, not invalid
@@ -128,7 +127,7 @@ fn relative_metadata_is_required_and_invalid_values_never_dispatch() {
 fn every_pioneer_jog_binding_uses_documented_centered_vectors() {
     let profile = pioneer_ddj_fx();
     profile.validate().unwrap();
-    let (commands, receiver) = crate::engine::CommandPort::channel(16);
+    let (commands, receiver) = crate::engine::CommandPort::channel(32);
     let relative: Vec<_> = profile
         .bindings
         .iter()
@@ -163,7 +162,7 @@ fn legacy_ns7_profiles_do_not_guess_a_relative_wheel_protocol() {
     for profile in [numark_ns7(false), numark_ns7(true)] {
         profile.validate().unwrap();
         assert!(!profile.bindings.iter().any(|b| b.action == Action::DeckJog));
-        let (commands, receiver) = crate::engine::CommandPort::channel(16);
+        let (commands, receiver) = crate::engine::CommandPort::channel(32);
         for channel in 0..2 {
             for byte in 0..128 {
                 send(&profile, &[0xb0 | channel, 0x21, byte], &commands);
@@ -176,7 +175,7 @@ fn legacy_ns7_profiles_do_not_guess_a_relative_wheel_protocol() {
 
 #[test]
 fn forward_reverse_and_neutral_reach_the_original_deck_jog_path() {
-    let (engine, mut rt) = crate::engine::Engine::headless_for_test(48_000, 16);
+    let (engine, mut rt) = crate::engine::Engine::headless_for_test(48_000, 32);
     for (encoding, forward, reverse, neutral) in [
         (RelativeEncoding::OffsetBinary, 0x41, 0x3f, 0x40),
         (RelativeEncoding::TwosComplement, 0x01, 0x7f, 0x00),

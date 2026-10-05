@@ -3,13 +3,15 @@
 pub mod recovery;
 pub(crate) mod shortcuts;
 pub(crate) mod workspaces;
+pub(crate) mod library_layout;
+pub(crate) mod waveforms;
 pub mod storage;
 pub mod worker;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 11;
+pub const VERSION: u32 = 14;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -169,6 +171,10 @@ pub struct Startup {
 #[serde(deny_unknown_fields)]
 pub struct Profile {
     #[serde(default)]
+    pub(crate) waveforms: waveforms::Config,
+    #[serde(default)]
+    pub(crate) library_layout: library_layout::Config,
+    #[serde(default)]
     pub(crate) workspaces: workspaces::Config,
     #[serde(default)]
     pub(crate) automation: crate::automation::osc::Config,
@@ -176,6 +182,8 @@ pub struct Profile {
     pub midi_inputs: MidiInputs,
     #[serde(default)]
     pub midi_routing: crate::engine::midi::routing::Routing,
+    #[serde(default)]
+    pub(crate) midi_learn: crate::engine::midi::learn::Config,
     pub library_roots: Vec<PathBuf>,
     pub appearance: Appearance,
     pub shortcuts_enabled: bool,
@@ -189,11 +197,14 @@ pub struct Profile {
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
         Self {
+            waveforms: waveforms::Config::default(),
+            library_layout: library_layout::Config::default(),
             workspaces: workspaces::Config::default(),
             automation: crate::automation::osc::Config::default(),
             audio: Audio::default(),
             midi_inputs: MidiInputs::All,
             midi_routing: crate::engine::midi::routing::Routing::default(),
+            midi_learn: crate::engine::midi::learn::Config::default(),
             library_roots: vec![home.join("Music"), home.join("music")],
             appearance: Appearance {
                 locale: crate::localization::Locale::default(),
@@ -280,6 +291,8 @@ impl Preferences {
 
 impl Profile {
     pub fn validate(&self) -> Result<(), String> {
+        self.library_layout.validate()?;
+        self.waveforms.validate()?;
         self.workspaces.validate()?;
         self.automation.validate()?;
         self.recovery.validate()?;
@@ -338,6 +351,7 @@ impl Profile {
             .validate()
             .map_err(|error| error.to_string())?;
         self.midi_routing.validate()?;
+        self.midi_learn.validate()?;
         if let MidiInputs::Selected(names) = &self.midi_inputs {
             if names.is_empty() || names.len() > 64 {
                 return Err("Select 1–64 MIDI inputs, or choose Disabled".into());

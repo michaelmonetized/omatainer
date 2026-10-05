@@ -49,6 +49,12 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    #[cfg(test)]
+    pub(super) fn with_worker_for_test(path:PathBuf) -> Self {
+        let home=path.parent().unwrap().to_path_buf();
+        Self::from_startup(Startup{path,preferences:model::Preferences::defaults(&home),home,revision:None,blocked:false,diagnostic:None},true,None)
+    }
+
     fn from_startup(
         start: Startup,
         start_worker: bool,
@@ -100,7 +106,7 @@ impl Settings {
     pub fn busy(&self) -> bool {
         self.worker.as_ref().is_some_and(Worker::busy)
     }
-    fn request(&mut self, job: Job) {
+    pub(super) fn request(&mut self, job: Job) {
         match self
             .worker
             .as_mut()
@@ -214,6 +220,8 @@ impl App {
         );
         self.apply_appearance(ctx);
         self.apply_automation();
+        self.library_layout.apply(self.settings.profile().library_layout.clone());
+        self.waveform.settings = self.settings.profile().waveforms;
         if self.settings.profile().startup.scan_library {
             self.scan_library();
         }
@@ -289,6 +297,8 @@ impl App {
         if self.settings.poll() {
             self.apply_appearance(ctx);
             self.apply_automation();
+            if old.library_layout != self.settings.profile().library_layout || old_profile != self.settings.applied.active { self.library_layout.apply(self.settings.profile().library_layout.clone()); }
+            if old_profile != self.settings.applied.active || (old.waveforms != self.settings.profile().waveforms && self.waveform.settings == old.waveforms) { self.waveform.settings = self.settings.profile().waveforms; }
             if old.library_roots != self.settings.profile().library_roots || old_profile!=self.settings.applied.active {
                 self.library_scan.cancel();
                 self.library_metadata.cancel_scan();
@@ -310,10 +320,14 @@ impl App {
                         .push_str(&format!(" Saved MIDI policy is not applied: {error}")),
                 }
             }
+            if old.midi_learn != self.settings.profile().midi_learn {
+                if let Err(error)=self.engine.cmd.midi_learn().configure(self.settings.profile().midi_learn.clone()) {self.settings.message.push_str(&format!(" Saved MIDI assignments are not applied: {error}"));}
+            }
             if old.midi_routing != self.settings.profile().midi_routing {
                 self.settings.routing_pending=true;
             }
         }
+        self.poll_library_layout_save();
         if self.settings.routing_pending && !self.engine.midi.connections_busy() && self.engine.midi.policy_status().is_none_or(|s|!s.pending()) {
             self.settings.routing_pending=false;
             match self.engine.midi.configure_routing(self.settings.profile().midi_routing.clone()) {

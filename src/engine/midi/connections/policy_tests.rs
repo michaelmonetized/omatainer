@@ -25,7 +25,7 @@ fn startup_disabled_and_exact_selected_names_never_expand_to_all() {
         ("2", "keyboard a"),
         ("3", "Keyboard B"),
     ];
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 64);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 80);
     let control = install_with_policy(&mut engine, InputPolicy::Disabled);
     control.discover(&ports);
     let status = applied(&engine, 1);
@@ -60,7 +60,7 @@ fn startup_disabled_and_exact_selected_names_never_expand_to_all() {
 #[test]
 fn policy_change_releases_only_removed_sources_and_preserves_allowed_connections() {
     let ports = [("1", "Keyboard A"), ("2", "Keyboard B")];
-    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 64);
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 80);
     rt.selected_track = 1;
     let control = install(&mut engine);
     control.discover(&ports);
@@ -112,7 +112,7 @@ fn policy_change_releases_only_removed_sources_and_preserves_allowed_connections
 
 #[test]
 fn blocked_connect_is_inert_and_superseded_policy_never_publishes_or_dispatches_it() {
-    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 64);
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 80);
     rt.selected_track = 1;
     let control = install(&mut engine);
     control.discover(&[("1", "Keyboard A")]);
@@ -167,7 +167,7 @@ fn blocked_connect_is_inert_and_superseded_policy_never_publishes_or_dispatches_
 
 #[test]
 fn validation_failure_and_unavailable_manager_preserve_current_policy() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 48);
     assert_eq!(
         engine.midi.configure_inputs(InputPolicy::All),
         Err(PolicyError::Unavailable)
@@ -213,7 +213,7 @@ fn validation_failure_and_unavailable_manager_preserve_current_policy() {
 
 #[test]
 fn selected_connection_failure_has_generation_receipt_and_retry_keeps_filter() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 48);
     let control = install_with_policy(&mut engine, InputPolicy::Selected(vec!["Wanted".into()]));
     let ports = [("1", "Wanted"), ("2", "Other")];
     control.discover(&ports);
@@ -232,7 +232,7 @@ fn selected_connection_failure_has_generation_receipt_and_retry_keeps_filter() {
 
 #[test]
 fn concurrent_policy_requests_have_unique_ordered_generations_and_one_latest_job() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 48);
     let control = install(&mut engine);
     assert!(matches!(control.next(), Attempt::Discover)); // OS discovery held.
     let manager = engine.midi.connections.as_ref().unwrap();
@@ -289,7 +289,7 @@ fn concurrent_policy_requests_have_unique_ordered_generations_and_one_latest_job
 
 #[test]
 fn bounded_discovery_preview_does_not_limit_exact_policy_matching() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 48);
     let control = install_with_policy(&mut engine, InputPolicy::Disabled);
     let mut ports: Vec<_> = (0..260)
         .map(|i| (i.to_string(), format!("Input {i:03}")))
@@ -326,7 +326,7 @@ fn bounded_discovery_preview_does_not_limit_exact_policy_matching() {
 
 #[test]
 fn disabled_policy_applies_and_releases_owned_gates_even_when_discovery_fails() {
-    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 48);
     rt.selected_track = 1;
     let control = install(&mut engine);
     control.discover(&[("1", "Keyboard")]);

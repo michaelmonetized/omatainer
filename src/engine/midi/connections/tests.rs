@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn injected_discovery_connect_failure_retry_and_duplicate_names_are_truthful() {
-    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 64);
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 80);
     rt.selected_track = 1;
     let control = install(&mut engine);
     assert!(engine.snapshot().midi[0].contains("[connected] keyboard + mouse"));
@@ -85,7 +85,7 @@ fn injected_discovery_connect_failure_retry_and_duplicate_names_are_truthful() {
 
 #[test]
 fn discovery_failure_keeps_fallback_and_retry_recovers_without_duplicate_rows() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 48);
     let control = install(&mut engine);
     assert!(matches!(control.next(), Attempt::Discover));
     control
@@ -112,7 +112,7 @@ fn discovery_failure_keeps_fallback_and_retry_recovers_without_duplicate_rows() 
 
 #[test]
 fn retry_detects_missing_ports_releases_their_notes_and_reconnects_them() {
-    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 48);
     rt.selected_track = 1;
     let control = install(&mut engine);
     control.discover(&[("1", "MIDI keyboard")]);
@@ -155,7 +155,7 @@ fn retry_detects_missing_ports_releases_their_notes_and_reconnects_them() {
 
 #[test]
 fn slow_backend_never_blocks_control_renderer_or_manager_drop() {
-    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, mut rt) = Engine::headless_for_test(48_000, 48);
     let control = install(&mut engine);
     control.discover(&[("1", "MIDI keyboard")]);
     let Attempt::Connect { input, .. } = control.next() else {
@@ -178,7 +178,7 @@ fn slow_backend_never_blocks_control_renderer_or_manager_drop() {
 
 #[test]
 fn simultaneous_retry_admission_has_one_request_and_no_followup_backlog() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 32);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 48);
     let control = install(&mut engine);
     control.discover(&[]);
     until(|| !engine.midi.connections_busy());
@@ -220,7 +220,7 @@ fn simultaneous_retry_admission_has_one_request_and_no_followup_backlog() {
 
 #[test]
 fn performance_protects_retry_and_pending_rediscovery_prevents_mode_entry() {
-    let (mut engine, _rt) = Engine::headless_for_test(48_000, 64);
+    let (mut engine, _rt) = Engine::headless_for_test(48_000, 80);
     let control = install(&mut engine);
     assert!(matches!(engine.send(Command::PerformanceMode(true)), Err(crate::engine::SubmissionError::Performance(crate::engine::performance::Error::Changing))));
     control.discover(&[]);

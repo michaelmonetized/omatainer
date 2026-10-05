@@ -59,7 +59,7 @@ fn assert_fallbacks(ctx: &egui::Context) {
 #[test]
 fn two_private_installed_fontconfig_fonts_reach_both_actual_gui_text_families() {
     let source = Sources::new();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.installed_loader("Hack"));
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -108,7 +108,7 @@ fn two_private_installed_fontconfig_fonts_reach_both_actual_gui_text_families() 
 fn unavailable_font_starts_with_bundled_defaults_then_keeps_last_loaded_font_and_recovers() {
     let source = Sources::new();
     source.select("unavailable fixture", "missing.ttf");
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload = Some(source.loader());
     let ctx = egui::Context::default();
     let mut time = 0.0;
@@ -168,7 +168,7 @@ fn unavailable_font_starts_with_bundled_defaults_then_keeps_last_loaded_font_and
 #[test]
 fn unavailable_fontconfig_family_uses_the_real_resolved_installed_substitute() {
     let source = Sources::new();
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     fixture.app.theme_reload =
         Some(source.installed_loader("NotInstalled-Omatainer-Private-Fixture"));
     let ctx = egui::Context::default();

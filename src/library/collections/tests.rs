@@ -42,12 +42,12 @@ fn fixture(files: &Files) -> Catalog {
         proof.content_hash = Some(content::hash_file(path, proof.fingerprint, || true).unwrap());
         catalog
             .apply_analysis(&Patch {
+                level: None, key: None,
                 reference: proof,
                 fields: Fields {
                     bpm: true,
                     duration: true,
-                    waveform: false,
-                },
+                    waveform: false, level: false, key: false },
                 at_unix_ms: 77,
                 bpm: None,
                 duration: 1.0,
@@ -73,6 +73,34 @@ fn create(c: &mut Catalog, n: u32, parent: Option<u32>) {
 }
 fn snapshot(c: &Catalog) -> Vec<u8> {
     serde_json::to_vec(c).unwrap()
+}
+
+#[test]
+fn schema_eleven_migrates_without_inventing_favorites_and_old_headers_reject_new_flags() {
+    let files = Files::new();
+    let mut catalog = fixture(&files);
+    create(&mut catalog,1,None);
+    let path = files.0.join("favorites.json");
+    let mut old = serde_json::to_value(&catalog).unwrap();
+    old["schema"] = 11.into();
+    let bytes = serde_json::to_vec(&old).unwrap();
+    fs::write(&path,&bytes).unwrap();
+    let mut store = Store::open(path.clone()).unwrap();
+    assert_eq!(store.catalog.schema,SCHEMA);
+    assert!(!store.catalog.crates.nodes()[0].favorite);
+    assert_eq!(fs::read(&path).unwrap(),bytes);
+    store.catalog.edit_crates(store.catalog.crates.revision(),&Edit::SetFavorite { id:id(1),favorite:true }).unwrap();
+    store.save().unwrap();
+    drop(store);
+    assert!(Store::open(path.clone()).unwrap().catalog.crates.nodes()[0].favorite);
+    assert_eq!(fs::read(path.with_extension("backup.json")).unwrap(),bytes);
+    for value in [serde_json::Value::Bool(true),serde_json::Value::Bool(false),serde_json::Value::Null] {
+        old["crates"]["nodes"][0]["favorite"] = value;
+        let bytes = serde_json::to_vec(&old).unwrap();
+        fs::write(&path,&bytes).unwrap();
+        assert!(read(&path).unwrap_err().contains("require library schema 12"));
+        assert_eq!(fs::read(&path).unwrap(),bytes);
+    }
 }
 
 #[test]

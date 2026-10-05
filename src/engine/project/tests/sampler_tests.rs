@@ -50,7 +50,7 @@ fn drive_without_heap<T: Send + 'static>(
 
 #[test]
 fn state_four_roundtrips_sparse_native_pcm_and_controls_without_reading_missing_originals() {
-    let (engine, mut live) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut live) = Engine::headless_for_test(48_000, 144);
     let bank = native(&live);
     let id = bank.id;
     let source = bank.data.audio[5].as_ref().unwrap().clone();
@@ -156,7 +156,7 @@ fn legacy_banks_named_kit_are_embedded_and_never_regenerated_from_the_name() {
 #[test]
 fn actual_project_install_keeps_renderer_owner_and_retires_previous_voice_history_and_capture_off_callback(
 ) {
-    let (engine, mut live) = Engine::headless_for_test(48_000, 128);
+    let (engine, mut live) = Engine::headless_for_test(48_000, 144);
     let bank = native(&live);
     let source = bank.data.audio[5].as_ref().unwrap().clone();
     let weak = Arc::downgrade(&source);
@@ -207,4 +207,42 @@ fn actual_project_install_keeps_renderer_owner_and_retires_previous_voice_histor
     live.publish_for_test();
     live.publish_for_test();
     wait_until(|| weak.upgrade().is_none());
+}
+
+#[test]
+fn sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields() {
+    let mut original = rt();
+    let mut bank = native(&original);
+    let mut settings = (*bank.data.settings).clone();
+    settings.slots[5].playback = crate::sampler_bank::Playback {
+        mode: crate::sampler_bank::PlayMode::Toggle, repeat: true, cue_seconds: Some(0.005),
+    };
+    let data = resident::Data::prepare(Arc::new(settings), bank.data.audio.clone(), bank.data.issues.clone()).unwrap();
+    bank.data = original.sampler_assets.pin(data).unwrap();
+    append(&mut original, bank);
+    let saved = captured(&original);
+    let raw = serde_json::to_value(&saved.state).unwrap();
+    let state: State = serde_json::from_value(raw.clone()).unwrap();
+    state.validate(&saved.media).unwrap();
+    let mut restored = Prepared::from_state(state, saved.media.clone(), 96_000).unwrap();
+    restored.rt.sampler_inst = SamplerInstrument::Samples;
+    restored.rt.apply(Command::SamplerPad { pad: 5, on: true });
+    let voice = restored.rt.pad_voices[5].as_ref().unwrap();
+    assert_eq!(voice.position, 80.0);
+    assert_eq!(voice.playback.mode, crate::sampler_bank::PlayMode::Toggle);
+    assert!(voice.playback.repeat);
+    let mut legacy = raw;
+    legacy["version"] = serde_json::json!(11);
+    assert!(serde_json::from_value::<State>(legacy.clone()).is_err());
+    for field in [serde_json::json!(crate::sampler_bank::Playback::default()), serde_json::Value::Null] {
+        legacy["banks"][3]["settings"]["slots"][5]["playback"] = field;
+        assert!(serde_json::from_value::<State>(legacy.clone()).is_err());
+    }
+    legacy["banks"][3]["settings"]["slots"][5].as_object_mut().unwrap().remove("playback");
+    let migrated: State = serde_json::from_value(legacy).unwrap();
+    migrated.validate(&saved.media).unwrap();
+    assert_eq!(migrated.banks[3].settings.as_ref().unwrap().slots[5].playback, crate::sampler_bank::Playback::default());
+    let mut incorrect = saved.state;
+    incorrect.version = 11;
+    assert!(incorrect.validate(&saved.media).is_err());
 }

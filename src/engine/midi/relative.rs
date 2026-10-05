@@ -1,6 +1,6 @@
 //! Relative wire formats are selected by a binding, never inferred from a byte.
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RelativeEncoding {
     /// Pioneer DDJ jogs: 0x40 is stationary, 0x41 is +1, 0x3f is -1.
     OffsetBinary,
@@ -23,7 +23,8 @@ impl RelativeEncoding {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RelativeSpec {
     pub encoding: RelativeEncoding,
     /// Engine delta per wire step. Positive and finite; direction is decoded

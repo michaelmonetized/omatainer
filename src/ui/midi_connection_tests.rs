@@ -29,7 +29,7 @@ fn frame(
 
 #[test]
 fn actual_midi_panel_reports_failure_retries_without_stalling_and_keeps_keyboard_working() {
-    let mut fixture = Fixture::new(64);
+    let mut fixture = Fixture::new(80);
     let control = backend::install(&mut fixture.app.engine);
     control.discover(&[("1", "MIDI keyboard")]);
     control.connect("1", Err("fixture port access denied"));

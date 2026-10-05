@@ -1790,6 +1790,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2657,6 +2659,7 @@ dependencies = [
  "egui",
  "icu_casemap",
  "icu_normalizer",
+ "image",
  "jack-sys",
  "libc",
  "lofty",

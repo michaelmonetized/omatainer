@@ -58,7 +58,7 @@ impl Gui {
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
         let mut gui = Self {
-            f: Fixture::new(128),
+            f: Fixture::new(144),
             ctx,
             nodes: vec![],
             time: 0.0,

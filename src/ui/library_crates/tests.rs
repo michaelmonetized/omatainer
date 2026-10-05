@@ -62,6 +62,11 @@ impl Gui {
     }
     fn click(&mut self, label: &str) { self.action(self.node(label), Action::Click, None); }
     fn value(&mut self, label: &str, value: f64) { self.action(self.node(label), Action::SetValue, Some(ActionData::NumericValue(value))); }
+    fn text(&mut self, label: &str, value: &str) {
+        self.action(self.node(label),Action::Focus,None);
+        self.frame(vec![egui::Event::Key { key:Key::A,physical_key:None,pressed:true,repeat:false,modifiers:egui::Modifiers { ctrl:true,command:true,..Default::default() } },egui::Event::Text(value.into())]);
+        self.frame(vec![]);
+    }
     fn name(&mut self, name: &str) {
         let id = self.nodes.iter().find(|(_, node)| node.role() == egui::accesskit::Role::TextInput && node.label() == Some("Crate name")).map(|(id, _)| *id).unwrap();
         self.action(id, Action::Focus, None);
@@ -82,6 +87,119 @@ impl Gui {
         self.wait(|gui| !gui.app.library_scan.active() && !gui.app.library_metadata.active());
     }
     fn members(&self, id: &CrateId) -> Vec<TrackId> { self.app.library_metadata.catalog.crates.node(id).unwrap().members.clone() }
+}
+
+#[test]
+fn native_favorites_save_reopen_search_separately_and_ignore_stale_pin_actions() {
+    let files = Files::new();
+    let original = std::fs::read(files.0.join("One.flac")).unwrap();
+    let mut gui = Gui::new(&files);
+    gui.scan(&files);
+    let root = gui.create("Studio",false);
+    let child = gui.create("Björk Opening",true);
+    gui.click("Use as destination");
+    gui.select(None);
+    gui.click("Add filtered tracks");gui.finish();gui.select(Some(&child));
+    let members = gui.members(&child);
+    let old_pin = gui.node("Pin favorite crate");
+    gui.select(Some(&root));
+    gui.action(old_pin,Action::Click,None);gui.finish();
+    assert!(!gui.app.library_metadata.catalog.crates.node(&root).unwrap().favorite);
+    gui.select(Some(&child));gui.click("Pin favorite crate");gui.finish();
+    assert!(gui.app.library_metadata.catalog.crates.node(&child).unwrap().favorite);
+    assert_eq!(gui.members(&child),members);
+    gui.app.lib_filter = "artist:\"Fixture\"".into();
+    gui.text("Search crate names","BJÖRK");
+    assert_eq!(gui.app.lib_filter,"artist:\"Fixture\"");
+    assert_eq!(gui.app.discovery_evidence()["ids"],serde_json::json!([child]));
+    gui.click("Favorite crates only");
+    assert_eq!(gui.app.discovery_evidence()["ids"],serde_json::json!([child]));
+    gui.app.engine.cmd.performance().set_enabled(true).unwrap();
+    gui.click("Unpin favorite crate");gui.finish();
+    assert!(gui.app.library_metadata.catalog.crates.node(&child).unwrap().favorite);
+    gui.app.engine.cmd.performance().set_enabled(false).unwrap();
+    drop(gui);
+    let deadline = Instant::now()+Duration::from_secs(5);
+    while crate::library::Store::open(files.0.join("catalog.json")).is_err() {
+        assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(2));
+    }
+    let mut reopened = Gui::new(&files);
+    reopened.click("Favorite crates only");
+    assert_eq!(reopened.app.discovery_evidence()["ids"],serde_json::json!([child]));
+    reopened.value("Crate tree row (0 = All tracks)",1.0);
+    reopened.click("Unpin favorite crate");reopened.finish();
+    assert!(reopened.app.discovery_evidence()["ids"].as_array().unwrap().is_empty());
+    assert_eq!(std::fs::read(files.0.join("One.flac")).unwrap(),original);
+}
+
+#[test]
+fn nested_4096_crates_restore_track_query_scroll_and_browse_actual_controller_input() {
+    use crate::engine::midi::{self,Action as MidiAction,Binding,MsgKind,RelativeSpec,RelativeEncoding,MidiMap,UnmappedNotes};
+    let files = Files::new();
+    let mut store = crate::library::Store::open(files.0.join("catalog.json")).unwrap();
+    for index in 0..256 {
+        store.catalog.upsert(LibSource::File(files.0.join(format!("unavailable-{index}.wav"))),None,
+            crate::library::Metadata { title:format!("Track {index:03}"),artist:"Fixture".into(),bpm:Bpm::UNKNOWN,key:"—".into(),duration:None,last_play:None }).unwrap();
+    }
+    let members: Vec<_> = store.catalog.tracks.iter().map(|track|track.id.clone()).collect();
+    let ids: Vec<_> = (1..=4096).map(|index|CrateId(format!("{index:032x}"))).collect();
+    let nodes: Vec<_> = ids.iter().enumerate().map(|(index,id)|serde_json::json!({
+        "id":id,"name":if index%16==15 { format!("Leaf {:04}",index/16) } else { format!("Folder {index:04}") },
+        "children":if index%16<15 { vec![ids[index+1].clone()] } else { vec![] },
+        "members":if index==0 || index==15 { members.clone() } else if index==31 || index==4095 { vec![members[150].clone()] } else { vec![] },
+        "favorite":index==31 || index==4095 })).collect();
+    store.catalog.crates = serde_json::from_value(serde_json::json!({"revision":1,"roots":ids.iter().step_by(16).cloned().collect::<Vec<_>>(),"nodes":nodes})).unwrap();
+    store.save().unwrap();drop(store);
+    let mut gui = Gui::new(&files);
+    gui.select(Some(&ids[0]));
+    gui.app.lib_filter = "title:Track".into();gui.frame(vec![]);
+    gui.app.lib_sel = 150;
+    gui.app.library_view.pending_offset = Some(2003.0);gui.frame(vec![]);
+    let source = gui.app.selected_library_item().unwrap().source.clone();
+    let offset = gui.app.library_view.offset;
+    gui.text("Search crate names","Leaf");
+    assert_eq!(gui.app.discovery_evidence()["ids"].as_array().unwrap().len(),256);
+    assert_eq!(gui.app.lib_filter,"title:Track");
+    gui.frame(vec![egui::Event::Key { key:Key::End,physical_key:None,pressed:true,repeat:false,modifiers:egui::Modifiers::ALT }]);
+    assert_eq!(gui.app.library_crates.selected,Some(ids[4095].clone()));
+    gui.click("Return to previous crate view");
+    assert_eq!(gui.app.library_crates.selected,Some(ids[0].clone()));
+    assert_eq!(gui.app.selected_library_item().unwrap().source,source);
+    assert!((gui.app.library_view.offset-offset).abs()<0.01);
+    gui.value("Crate tree row (0 = All tracks)",2.0);
+    assert_eq!(gui.app.library_crates.selected,Some(ids[31].clone()));
+    assert!(gui.app.lib_filter.is_empty());
+    gui.click("Return to previous crate view");
+    assert_eq!(gui.app.library_crates.selected,Some(ids[0].clone()));
+    assert_eq!(gui.app.lib_filter,"title:Track");
+    assert_eq!(gui.app.selected_library_item().unwrap().source,source);
+    assert!((gui.app.library_view.offset-offset).abs()<0.01);
+    gui.click("Find crates containing selected track");
+    assert_eq!(gui.app.discovery_evidence()["ids"],serde_json::json!([ids[0],ids[15],ids[31],ids[4095]]));
+    let stable = gui.app.discovery_evidence();
+    for _ in 0..12 { gui.frame(vec![]); }
+    assert_eq!(gui.app.discovery_evidence()["rebuilds"],stable["rebuilds"]);
+    let mut input = gui.app.engine.midi.open_for_test(&gui.app.engine.cmd,15400,MidiMap { name:"Crate fixture".into(),matchers:vec![],bindings:vec![],unmapped_notes:UnmappedNotes::Ignore },"Fixture crate controller","fixture:154");
+    let endpoint = midi::learn::Endpoint { name:"Fixture crate controller".into(),id:"fixture:154".into() };
+    gui.app.engine.cmd.midi_learn().configure(midi::learn::Config { mappings:vec![
+        midi::learn::Mapping { endpoint:endpoint.clone(),binding:Binding { kind:MsgKind::CcRel,ch:0,data:55,action:MidiAction::BrowseCrates,deck:0,extra:0,relative:Some(RelativeSpec { encoding:RelativeEncoding::OffsetBinary,scale:1.0 }) } },
+        midi::learn::Mapping { endpoint,binding:Binding { kind:MsgKind::Note,ch:0,data:56,action:MidiAction::CrateReturn,deck:0,extra:0,relative:None } }
+    ] }).unwrap();
+    for _ in 0..3 { input.push(&[0xb0,55,65]); }
+    gui.frame(vec![]);
+    assert_eq!(gui.app.library_crates.selected,Some(ids[4095].clone()));
+    input.push(&[0x90,56,100]);gui.frame(vec![]);
+    assert_eq!(gui.app.library_crates.selected,Some(ids[0].clone()));
+    assert_eq!(gui.app.selected_library_item().unwrap().source,source);
+    assert!((gui.app.library_view.offset-offset).abs()<0.01);
+    gui.app.engine.send(Command::BrowseCrates(1.0)).unwrap();
+    gui.app.choose_named_crate(None);gui.frame(vec![]);
+    assert!(gui.app.library_crates.selected.is_none(),"queued old list input must not retarget a new manual selection");
+    gui.click("Clear membership filter");gui.click("Favorite crates only");
+    assert_eq!(gui.app.discovery_evidence()["ids"],serde_json::json!([ids[31],ids[4095]]));
+    gui.text("Search crate names",&"é".repeat(129));
+    assert!(gui.app.discovery_evidence()["ids"].as_array().unwrap().is_empty());
+    assert!(gui.app.discovery_evidence()["message"].as_str().unwrap().contains("256 UTF-8 bytes"));
 }
 
 #[test]

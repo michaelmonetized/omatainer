@@ -176,7 +176,7 @@ fn coherent_samples_and_monotonic_counters_survive_concurrent_readers() {
 fn live_engine_and_ipc_status_read_completed_metrics_without_waiting_for_snapshot_publication() {
     use std::io::{BufRead, BufReader, Write};
     use std::os::unix::net::UnixStream;
-    let (engine, rt) = crate::engine::Engine::headless_for_test(48000, 32);
+    let (engine, rt) = crate::engine::Engine::headless_for_test(48000, 48);
     let mut callback = OutputCallback::new(rt, 2);
     callback.render(&mut [0f32; 128]); // far short of a periodic snapshot interval
     assert_eq!(engine.snapshot().audio.callbacks, 1);

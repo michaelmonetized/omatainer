@@ -21,6 +21,8 @@ mod midi_file_io;
 mod performance_history;
 mod sampler_bank;
 mod track_analysis;
+mod track_gain;
+mod musical_key;
 mod preferences;
 mod theme;
 mod ui;
@@ -236,6 +238,11 @@ fn deck_media_payload(args: &[String]) -> anyhow::Result<String> {
 
 fn ctl(args: &[String]) -> anyhow::Result<()> {
     let op = args.first().map(|s| s.as_str()).unwrap_or("status");
+    if op == "deck-lock" || op == "deck-eject" {
+        let payload = deck_protection_payload(args)?;
+        println!("{}", send_op(&payload.to_string())?);
+        return Ok(());
+    }
     if matches!(op, "deck-load" | "deck-unload") {
         println!("{}", send_op(&deck_media_payload(args)?)?);
         return Ok(());
@@ -282,6 +289,21 @@ fn ctl(args: &[String]) -> anyhow::Result<()> {
     };
     println!("{}", send_op(payload)?);
     Ok(())
+}
+
+/// Build an explicit deck protection request.
+/// Takes CLI arguments; returns a validated deck lock or eject envelope without touching the running instance.
+fn deck_protection_payload(args: &[String]) -> anyhow::Result<serde_json::Value> {
+    let op = args.first().context("missing deck operation")?;
+    let expected = match op.as_str() { "deck-lock" => 3, "deck-eject" => 2, _ => anyhow::bail!("unknown deck protection operation") };
+    anyhow::ensure!(args.len() == expected, "usage: omatainer ctl deck-lock <A|B> <on|off>, or deck-eject <A|B>");
+    let deck = match args[1].as_str() { "A"|"a" => 0, "B"|"b" => 1, _ => anyhow::bail!("deck must be A or B") };
+    let payload = if op == "deck-lock" {
+        let enabled = match args[2].as_str() { "on" => true, "off" => false, _ => anyhow::bail!("deck lock must be on or off") };
+        serde_json::json!({"op":"deckLoadLock", "deck":deck, "enabled":enabled})
+    } else { serde_json::json!({"op":"deckEject", "deck":deck}) };
+    ipc_schema::Operation::parse(&payload)?;
+    Ok(payload)
 }
 
 /// Build a typed version-1 CLI request.
@@ -489,6 +511,8 @@ fn handle_client_with_stop(
             "deckB": s.decks.get(1).map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),
             "deckBPlaying": s.decks.get(1).map(|d| d.playing).unwrap_or(false),
+            "deckALoadLocked": s.decks.first().map(|d| d.load_locked).unwrap_or(false),
+            "deckBLoadLocked": s.decks.get(1).map(|d| d.load_locked).unwrap_or(false),
         });
         drop(s);
         ipc_transport::reply(&mut writer, &out, limits.write)?;

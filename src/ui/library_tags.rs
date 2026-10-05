@@ -83,7 +83,7 @@ impl Default for Panel {
     }
 }
 impl Panel {
-    fn busy(&self) -> bool {
+    pub(super) fn busy(&self) -> bool {
         self.pending.is_some()
             || self.queue.is_some()
             || self.recovery.is_some()
@@ -141,7 +141,7 @@ impl App {
         self.poll_library_tags();
         !self.library_tags.busy()
     }
-    fn inspect_tags(&mut self, batch: bool) {
+    pub(super) fn inspect_tags(&mut self, batch: bool) {
         if self.library_tags.busy()
             || self.library_scan.active()
             || self.library_metadata.active()
@@ -600,6 +600,18 @@ impl App {
                                 for notice in &observation.notices { ui.add(egui::Label::new(notice).truncate()).on_hover_text(notice); }
                             }
                             Err(error) => { ui.label(error); }
+                        }
+                        ui.label(tr!("Tag refresh replacement preview"));
+                        ui.small(row.locks.description());
+                        match &row.refresh {
+                            Ok(next)=>{
+                                for (name,old,new) in [("Title",&row.metadata.title,&next.title),("Artist",&row.metadata.artist,&next.artist),("Key",&row.metadata.key,&next.key)] {
+                                    ui.add(egui::Label::new(format!("{name}: {old} → {new}")).truncate());
+                                }
+                                ui.small(format!("BPM: {} → {}",row.metadata.bpm.cell(),next.bpm.cell()));
+                                ui.small("Refresh retains user sidecars and locked fields. Reviewed manual edits below change only selected fields, including locked fields.");
+                            }
+                            Err(error)=>{ui.small(error);}
                         }
                         if let Some(target) = &row.target {
                             if let Some(tags) = self.library_metadata.catalog.version(&target.source, Some(target.fingerprint)).and_then(|version| version.tags.as_ref()) {

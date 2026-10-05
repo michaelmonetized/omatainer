@@ -34,7 +34,7 @@ fn request(definition: Definition, catalog: &Catalog) -> Request {
 fn definition(sources: &[SourceRef]) -> Definition {
     let mut definition = Definition::empty("Mixed reusable bank".into()).unwrap();
     for (i, reference) in sources.iter().enumerate() {
-        definition.slots[i] = Slot { source: Some(Source::Library { reference: reference.clone() }), controls: Controls::default() };
+        definition.slots[i] = Slot { source: Some(Source::Library { reference: reference.clone() }), controls: Controls::default(), ..Slot::default() };
     }
     definition
 }

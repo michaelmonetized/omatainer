@@ -245,7 +245,7 @@ fn clip_gain_controls_snapshot_serialization_validation_and_coalescing_keep_targ
         value: 0.0,
     });
     assert_eq!(rt.tracks[TRACK].clips[0].gain, 1.5);
-    let (port, receiver) = CommandPort::channel(32);
+    let (port, receiver) = CommandPort::channel(48);
     let mut rt = RtEngine::new(
         48_000.0,
         receiver,

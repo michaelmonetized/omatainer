@@ -1,0 +1,34 @@
+{
+  "url": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0.zip",
+  "archive_published_sha256": "21559feb2f1c96ca53988fd4d7060b1f2afe1d854fb2a8dcea5ff95cf3cce7e9",
+  "archive_fully_downloaded_or_digest_verified": false,
+  "metadata": {
+    "drummer": "drummer3",
+    "session": "drummer3/session2",
+    "id": "drummer3/session2/11",
+    "style": "rock",
+    "bpm": "100",
+    "beat_type": "beat",
+    "time_signature": "4-4",
+    "midi_filename": "drummer3/session2/11_rock_100_beat_4-4.mid",
+    "audio_filename": "drummer3/session2/11_rock_100_beat_4-4.wav",
+    "duration": "9.402500",
+    "split": "test"
+  },
+  "license": "CC-BY-4.0",
+  "attribution": "Google LLC; Jon Gillick, Adam Roberts, Jesse Engel, Douglas Eck, David Bamman. Learning to Groove with Inverse Sequence Transformations, ICML 2019.",
+  "drummer3/session2/11_rock_100_beat_4-4.wav": {
+    "file": "11_rock_100_beat_4-4.wav",
+    "sha256": "6e4f313f3dee5482bdc328fbd54893cc3a0f7fe9e960045b837b123e0a17dd4a",
+    "bytes": 1697950,
+    "zip_crc_verified": true
+  },
+  "drummer3/session2/11_rock_100_beat_4-4.mid": {
+    "file": "11_rock_100_beat_4-4.mid",
+    "sha256": "26906e263271dfecdc0674f665a606d524badbc9ec384cd177e9fffe5e3e6c50",
+    "bytes": 545,
+    "zip_crc_verified": true
+  },
+  "retrieved_utc": "2026-10-04",
+  "scope": "Test-only human electronic drum performance. Exact unmodified archive members; not acoustic drums or a factory asset. Range extraction verifies member CRC, not the complete archive digest."
+}

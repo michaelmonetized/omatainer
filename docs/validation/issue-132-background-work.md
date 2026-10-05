@@ -77,3 +77,23 @@ source-freeze receipts are adjacent to the worktrees with `issue-132-final` name
 
 Validation prose added after the frozen implementation is outside the manifested
 source inventory. No hosted Rust qualification is claimed.
+
+## Combined branch integration
+
+The combined continuation above #504 retains the parent receipts for their own
+frozen source. It adds backup/verification/restore, embedded artwork and media
+health to admitted worker turns. Captured fingerprints participate in decode
+coalescing; a changed version at the same path receives a new request identity.
+Artwork owns a separate cancellation flag so offscreen cancellation releases
+request identity without retaining a reused performance-permit flag.
+
+One canonical deck lock/generation guard preserves reviewed grid protection.
+Invalid ordinary deck targets cannot wrap into another deck. Paused preview and
+fading tails open native review; media replacement clears old preview state.
+Reviewed eject has its own renderer acknowledgment and retires older decodes.
+Native review uses the actual deck controls and platter Unload action.
+
+Focused combined checks pass on executable SHA256
+`07ec921d7864c099577765feef2f6d8dc238a5d393ef2afcbfb7c3f011b43fcb`. Full merged ordinary, optimized callback
+pressure and backend timing qualification remains pending. No parent timing
+receipt qualifies these changed sources.

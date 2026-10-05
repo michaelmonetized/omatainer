@@ -8,6 +8,8 @@ use super::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 pub use model::{State, STATE_VERSION};
 pub(crate) use model::{SavedClip, Track, Synth, Effect};
+#[cfg(test)]
+pub(crate) use model::Launch;
 pub(crate) use model::{MAX_NOTES_PER_CLIP, MAX_TOTAL_NOTES};
 pub use prepare::Prepared;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
@@ -95,6 +97,7 @@ struct Shared {
     sample_rate: AtomicU32,
     release_seal: AtomicBool,
     performance: performance::Handle,
+    live_sets: live_set::Handle,
     #[cfg(test)]
     wait_limit_millis: AtomicU64,
 }
@@ -135,6 +138,7 @@ impl Handle {
                 sample_rate: AtomicU32::new(sample_rate),
                 release_seal: AtomicBool::new(false),
                 performance,
+                live_sets: live_set::Handle::new(),
                 #[cfg(test)]
                 wait_limit_millis: AtomicU64::new(WAIT_LIMIT.as_millis() as u64),
             }),
@@ -153,6 +157,9 @@ impl Handle {
     pub fn sample_rate(&self) -> u32 {
         self.shared.sample_rate.load(Ordering::Acquire)
     }
+    /// Access the one next-set slot.
+    /// Takes this project owner; returns its bounded staging and retirement handle.
+    pub(crate) fn live_sets(&self) -> live_set::Handle { self.shared.live_sets.clone() }
     pub(super) fn set_sample_rate(&self, rate: u32) {
         self.shared.sample_rate.store(rate, Ordering::Release);
     }
@@ -452,7 +459,9 @@ impl RtEngine {
                     audio,
                     guard,
                 } => {
-                    if (*audio && self.cmd_rx.pending_project_ui_requests())
+                    if self.project.shared.live_sets.busy() {
+                        task.error = Some(Error::Busy);
+                    } else if (*audio && self.cmd_rx.pending_project_ui_requests())
                         || expected.is_some_and(|revision| {
                             revision != self.project.revision()
                                 || self.has_held_project_notes()
@@ -477,7 +486,9 @@ impl RtEngine {
                     expected,
                     applied,
                 } => {
-                    if self.project.revision() != *expected
+                    if self.project.shared.live_sets.busy() {
+                        task.error = Some(Error::Busy);
+                    } else if self.project.revision() != *expected
                         || prepared.rt.sr != self.sr
                         || !self.sampler_assets.same_owner(&prepared.rt.sampler_assets)
                         || self.cmd_rx.pending_project_ui_requests()

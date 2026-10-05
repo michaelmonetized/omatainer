@@ -1,14 +1,13 @@
 use super::*;
 
 fn observe(map: &MidiMap, message: &[u8]) -> Vec<Command> {
-    let (commands, receiver) = crate::engine::CommandPort::channel(16);
+    let (commands, receiver) = crate::engine::CommandPort::channel(32);
     handle_msg(
         message,
         1,
         map,
         &commands,
         &Arc::new(Mutex::new(Vec::new())),
-        &Arc::new(Mutex::new(None)),
         &Arc::new(Mutex::new([false; 4])),
         "synthetic controller",
     );
@@ -143,9 +142,8 @@ fn apc40_faders_exhaust_all_channels_controllers_and_values_without_fanout() {
 
 #[test]
 fn apc40_fader_dispatch_changes_only_its_own_engine_track() {
-    let (engine, mut rt) = crate::engine::Engine::headless_for_test(48_000, 16);
+    let (engine, mut rt) = crate::engine::Engine::headless_for_test(48_000, 32);
     let log = Arc::new(Mutex::new(Vec::new()));
-    let learn = Arc::new(Mutex::new(None));
     let shift = Arc::new(Mutex::new([false; 4]));
     for map in [akai_apc40(), akai_apc40_mk2()] {
         for track in 0..8u8 {
@@ -161,7 +159,6 @@ fn apc40_fader_dispatch_changes_only_its_own_engine_track() {
                     &map,
                     &engine.cmd,
                     &log,
-                    &learn,
                     &shift,
                     "synthetic APC40",
                 );
@@ -278,5 +275,21 @@ fn mpk_cc1_has_one_destination_and_generic_keyboards_keep_live_notes() {
                 vel: 100
             }]
         ));
+    }
+}
+
+#[test]
+fn exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press() {
+    for slot in 0..16 {
+        let map = with_bindings(vec![nbind(3, 60, Action::SamplerSlotStop, 0, slot)]);
+        map.validate().unwrap();
+        assert!(matches!(observe(&map, &[0x93, 60, 100]).as_slice(), [Command::ReservedStop { lane, target: None, .. }] if usize::from(*lane) == crate::engine::control::SAMPLER_STOP_BASE + usize::from(slot)));
+        assert!(observe(&map, &[0x83, 60, 0]).is_empty());
+        assert!(observe(&map, &[0x93, 60, 0]).is_empty());
+        assert!(observe(&map, &[0x92, 60, 100]).is_empty());
+    }
+    for invalid in [nbind(0, 60, Action::SamplerSlotStop, 0, 16), cbind(0, 60, Action::SamplerSlotStop, 0, 0)] {
+        assert!(with_bindings(vec![invalid]).validate().is_err());
+        assert!(learn::validate_binding(&invalid).is_err());
     }
 }

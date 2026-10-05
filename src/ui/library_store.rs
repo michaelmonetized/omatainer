@@ -281,11 +281,9 @@ impl App {
         self.library_metadata.set_performance(self.engine.cmd.performance().clone());
         self.library_initialized = false;
     }
-    pub(super) fn library_receipt(
-        &self,
-        source: &LibSource,
-        fingerprint: Option<FileFingerprint>,
-    ) -> Receipt {
+    /// Bind saved preparation and locks to one captured source.
+    /// Takes its current identity; returns a pending renderer receipt.
+    pub(super) fn library_receipt(&self, source: &LibSource, fingerprint: Option<FileFingerprint>) -> Receipt {
         let preparation = if matches!(source, LibSource::File(_) | LibSource::Removable {..}) && fingerprint.is_none() {
             None
         } else {
@@ -294,7 +292,10 @@ impl App {
                 .version(source, fingerprint)
                 .map(|v| v.preparation)
         };
-        Receipt::with_preparation(preparation)
+        let receipt=Receipt::with_preparation(preparation);
+        let locked=self.library_metadata.catalog.track_for_version(source,fingerprint).is_some_and(|track|track.locks.grid);
+        receipt.set_grid_protection(locked,preparation.and_then(|p|p.grid));
+        receipt
     }
     pub(super) fn restore_initial_library_preparation(&mut self) {
         if self.library_initialized
@@ -396,6 +397,7 @@ impl App {
                     accessibility::scrollbars(ui, "Music import skipped entries", &scroll);
                 }
             }
+            if ui.button("Back up and restore DJ library").help(ui, help::Control::LibraryBackup).clicked() { self.library_backup.open = true; }
             ui.separator();
             ui.label(tr!("Import an Omatainer catalog JSON. Existing identities and preparation are preserved; conflicting imports are rejected."));
             ui.label(tr!("Local files and uniquely identified mounted removable libraries can play. Offline, ambiguous or changed volumes fail explicitly. Provider references remain unavailable locally."));
@@ -489,6 +491,7 @@ impl App {
     pub(super) fn request_library_close(&mut self, ctx: &egui::Context) {
         self.library_metadata.set_collections_closing(true);
         self.library_close.requested = true;
+        self.library_health.cancel();
         self.stop_analysis_for_close();
         if self.library_metadata.storage.is_none() {
             self.library_close.allow = true;

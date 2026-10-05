@@ -216,7 +216,7 @@ fn enrollment_gui(files:Files,real:bool) {
     gui.action(gui.node("Music file and folder paths"),Action::Focus);gui.frame(vec![egui::Event::Text(path.display().to_string())]);gui.frame(vec![]);
     gui.action(gui.node("Import music files/folders"),Action::Click);gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active() && g.app.library_metadata.catalog.track(&file).is_some());
     let identity=gui.app.library_metadata.catalog.track(&file).unwrap().id.clone();
-    gui.app.load_source(1,Some(&Selection {title:"Imported source".into(),source:file.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)));
+    gui.app.load_source(1,Some(&Selection {title:"Imported source".into(),source:file.clone(), fingerprint: None, }));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)));
     let receipt=gui.app.loads[1].as_ref().unwrap().receipt.clone().unwrap();
     gui.app.engine.send(Command::DeckSeek {deck:1,frac:0.25}).unwrap();gui.app.engine.send(Command::DeckCuePoint {deck:1,pad:0,del:false,receipt}).unwrap();
     gui.wait(|g|!g.app.library_metadata.active() && g.app.library_metadata.catalog.version(&file,Some(fingerprint)).is_some_and(|v|v.preparation.hotcues[0].is_some() && v.content_hash.is_some()));
@@ -235,7 +235,7 @@ fn enrollment_gui(files:Files,real:bool) {
     assert_eq!(gui.app.library.iter().filter(|i|matches!(i.source,LibSource::File(_) | LibSource::Removable {..})).count(),1);
     assert_eq!(gui.app.library_metadata.catalog.version(&file,Some(fingerprint)).unwrap().preparation,preparation);
     if !real {let inventory=mounts.clone();gui.app.loader=Some(crate::engine::media_load::Loader::with_inventory(move ||Ok(inventory.lock().unwrap().clone())).unwrap());}
-    gui.app.load_source(1,Some(&Selection {title:"Typed volume".into(),source:typed.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)) && !g.app.library_metadata.active());
+    gui.app.load_source(1,Some(&Selection {title:"Typed volume".into(),source:typed.clone(), fingerprint: None, }));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)) && !g.app.library_metadata.active());
     assert_eq!(gui.app.library_metadata.catalog.version(&typed,Some(fingerprint)).unwrap().preparation,preparation);
     assert_eq!(gui.app.loads[1].as_ref().unwrap().selection.as_ref().unwrap().source,typed);
     assert!(gui.app.library_scan.start_watched(vec![files.0.clone()],gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));
@@ -243,13 +243,13 @@ fn enrollment_gui(files:Files,real:bool) {
     assert!(gui.app.library_metadata.catalog.watched_roots.binding("Live",&files.0).is_some());
     *mounts.lock().unwrap()=Snapshot::fixture_offline();
     let inventory=mounts.clone();gui.app.loader=Some(crate::engine::media_load::Loader::with_inventory(move ||Ok(inventory.lock().unwrap().clone())).unwrap());
-    gui.app.load_source(1,Some(&Selection {title:"Offline volume".into(),source:typed.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Failed(e)) if e.contains("offline")));
+    gui.app.load_source(1,Some(&Selection {title:"Offline volume".into(),source:typed.clone(), fingerprint: None, }));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Failed(e)) if e.contains("offline")));
     assert!(gui.app.library_scan.start_watched(vec![files.0.clone()],gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
     assert!(gui.app.library_scan.summary.as_ref().unwrap().availability[&typed].contains("offline"));assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().id,identity);
     *mounts.lock().unwrap()=mounted;
     assert!(gui.app.library_scan.start_watched(vec![files.0.clone()],gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
     assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().id,identity);assert_eq!(gui.app.library_metadata.catalog.track(&typed).unwrap().versions.len(),1);
-    gui.app.load_source(1,Some(&Selection {title:"Reconnected volume".into(),source:typed.clone()}));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)) && !g.app.library_metadata.active());
+    gui.app.load_source(1,Some(&Selection {title:"Reconnected volume".into(),source:typed.clone(), fingerprint: None, }));gui.wait(|g|matches!(g.app.loads[1].as_ref().map(|l|&l.phase),Some(Phase::Loaded)) && !g.app.library_metadata.active());
     assert!(gui.app.library_scan.start_watched(Vec::new(),gui.app.library.clone(),"Live".into(),gui.app.library_metadata.catalog.clone()));gui.wait(|g|!g.app.library_scan.active() && !g.app.library_metadata.active());
     let saved=crate::library::read(&files.0.join("saved/library.json")).unwrap();assert!(saved.watched_roots.binding("Live",&files.0).is_none());assert_eq!(saved.track(&typed).unwrap().id,identity);assert_eq!(saved.version(&typed,Some(fingerprint)).unwrap().preparation,preparation);
     assert!(gui.nonzero);assert_eq!(FileFingerprint::read(&path),Some(fingerprint));assert_eq!(std::fs::read(path).unwrap(),original);

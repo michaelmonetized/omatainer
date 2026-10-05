@@ -8,6 +8,13 @@ pub(super) struct LibraryView {
     library: Weak<Vec<LibItem>>,
     catalog: Weak<crate::library::Catalog>,
     query: String,
+    pub search_all: bool,
+    searched_all: bool,
+    played_filter: bool,
+    played_revision: u64,
+    sorts: [Option<crate::preferences::library_layout::Sort>; 2],
+    pub horizontal_offset: f32,
+    crate_return: Option<(Option<crate::library::crates::CrateId>, String, Option<LibSource>, f32)>,
     crate_id: Option<crate::library::crates::CrateId>,
     collection_revision: u64,
     pub generation: u64,
@@ -29,8 +36,36 @@ pub(super) struct LibraryView {
     pub stats: ViewStats,
 }
 
+pub(super) struct Bookmark {
+    crate_id: Option<crate::library::crates::CrateId>,
+    query: String,
+    source: Option<LibSource>,
+    top: Option<LibSource>,
+    top_fraction: f32,
+    offset: f32,
+    search_all: bool,
+    crate_return: Option<(Option<crate::library::crates::CrateId>, String, Option<LibSource>, f32)>,
+}
+impl Bookmark {
+    /// Follow an explicitly verified moved source in retained navigation.
+    /// Takes old and new identities; updates only matching selection and viewport anchors.
+    pub(super) fn relocate(&mut self, from: &LibSource, to: &LibSource) {
+        for source in [&mut self.source, &mut self.top] { if source.as_ref() == Some(from) { *source = Some(to.clone()); } }
+        if let Some((_,_,source,_)) = &mut self.crate_return { if source.as_ref() == Some(from) { *source = Some(to.clone()); } }
+    }
+}
+
+impl LibraryView {
+    /// Follow deliberate crate selection.
+    /// Takes mutable view state; discards whole-library mode and its old return context.
+    pub fn reset_search_scope(&mut self) { self.search_all = false; self.crate_return = None; }
+}
+
 pub(super) struct Cells {
+    pub title: String,
     pub bpm: String,
+    pub key: String,
+    pub key_detail: String,
     pub length: String,
     pub played: String,
     pub played_at: Option<SystemTime>,
@@ -44,8 +79,12 @@ pub(super) struct Cells {
 impl Cells {
     pub fn new(item: &LibItem, played_at: Option<SystemTime>, now: SystemTime) -> Self {
         let played = play_time::format(played_at, now);
+        let (key, key_detail) = crate::musical_key::display(None, &item.key, false);
         Self {
+            title: item.title.clone(),
             bpm: item.bpm.cell(),
+            key,
+            key_detail,
             length: fmt_len(item.length),
             played: played.label,
             played_tooltip: played.tooltip,
@@ -85,15 +124,71 @@ impl App {
     /// Follow an explicitly verified relocation, preserving a user's current
     /// selection rather than restoring whichever row submitted the request.
     pub(super) fn follow_library_relocation(&mut self, from: &LibSource, to: &LibSource) {
+        if let Some(bookmark) = &mut self.library_crates.discovery.return_to { bookmark.relocate(from, to); }
         let view = &mut self.library_view;
         if view.selected.as_ref() == Some(from) { view.selected = Some(to.clone()); }
         if view.top.as_ref() == Some(from) { view.top = Some(to.clone()); }
     }
 
+    /// Capture a library return point before discovery changes crates.
+    /// Takes the current view; returns its query, selection, scroll anchor and whole-library context.
+    pub(super) fn library_bookmark(&mut self) -> Bookmark {
+        self.refresh_library_view();
+        Bookmark { crate_id: self.library_crates.selected.clone(), query: self.lib_filter.clone(),
+            source: self.library_view.indices.get(self.lib_sel).map(|index|self.library[*index].source.clone()),
+            top: self.library_view.top.clone(), top_fraction: self.library_view.top_fraction,
+            offset: self.library_view.offset, search_all: self.library_view.search_all,
+            crate_return: self.library_view.crate_return.clone() }
+    }
+
+    /// Return from discovered crates without replacing track navigation.
+    /// Takes a captured bookmark; restores the surviving crate, query, selected source and viewport.
+    pub(super) fn restore_library_bookmark(&mut self, bookmark: Bookmark) {
+        self.choose_named_crate(bookmark.crate_id);
+        self.lib_filter = bookmark.query;
+        self.library_view.search_all = bookmark.search_all;
+        self.library_view.crate_return = bookmark.crate_return;
+        self.refresh_library_view();
+        let find = |source: &LibSource|self.library_view.indices.iter().position(|index|&self.library[*index].source == source);
+        if let Some(source) = bookmark.source {
+            if let Some(index) = find(&source) { self.lib_sel = index; }
+            else { self.library_crates.message = "The saved selected track is no longer in this view; its return context was retained.".into(); }
+        }
+        self.library_view.pending_offset = Some(bookmark.top.as_ref().and_then(find)
+            .map(|index|index as f32 * self.library_view.stride.max(18.0) + bookmark.top_fraction).unwrap_or(bookmark.offset));
+        self.publish_library_selection();
+    }
+
+    /// Change search scope while retaining the named crate's navigation.
+    /// Takes the requested whole-library mode; restores the prior crate query, row and scroll when returning.
+    pub(super) fn set_library_search_all(&mut self, enabled: bool) {
+        if self.library_view.search_all == enabled { return; }
+        self.refresh_library_view();
+        if enabled {
+            let source = self.library_view.indices.get(self.lib_sel).map(|index|self.library[*index].source.clone());
+            self.library_view.crate_return = Some((self.library_crates.selected.clone(), self.lib_filter.clone(), source, self.library_view.offset));
+            self.library_view.search_all = true;
+            self.refresh_library_view();
+        } else {
+            self.library_view.search_all = false;
+            let previous = self.library_view.crate_return.take().filter(|(crate_id, ..)|*crate_id == self.library_crates.selected);
+            if let Some((_,query,_,_)) = &previous { self.lib_filter.clone_from(query); }
+            self.refresh_library_view();
+            if let Some((_,_,source,offset)) = previous {
+                if let Some(index) = source.and_then(|source|self.library_view.indices.iter().position(|index|self.library[*index].source==source)) { self.lib_sel=index; }
+                self.library_view.pending_offset=Some(offset);
+            }
+        }
+    }
+
     pub(super) fn refresh_library_view(&mut self) {
         self.refresh_named_crates();
+        let sorts = self.library_layout.live.current().sorts();
         let view = &mut self.library_view;
-        let selected_crate = &self.library_crates.selected;
+        let order_changed = sorts != view.sorts;
+        let selected_scope = if view.search_all { None } else { self.library_crates.selected.clone() };
+        let selected_crate = &selected_scope;
+        let scope_changed = view.search_all != view.searched_all;
         let collection_revision = self.library_metadata.catalog.crates.revision();
         let selected_crate_changed = view.crate_id != *selected_crate;
         let crate_changed = selected_crate_changed
@@ -104,6 +199,9 @@ impl App {
         // so the scan worker remains responsible for retiring the large Vec.
         let library_changed = view.library.as_ptr() != Arc::as_ptr(&self.library);
         let query_changed = view.query != self.lib_filter;
+        let sort_played = sorts.iter().flatten().any(|sort|sort.column == crate::preferences::library_layout::Column::Played);
+        let played_revision = if sort_played { self.last_played.revision() } else { self.last_played.membership_revision() };
+        let played_changed = (view.played_filter || sort_played) && view.played_revision != played_revision;
         let annotations_changed = view.catalog.as_ptr() != Arc::as_ptr(&self.library_metadata.catalog);
         if !library_changed {
             let source = view
@@ -123,29 +221,33 @@ impl App {
             }
             view.last_played_index = self.last_play_idx;
         }
-        if library_changed || query_changed || crate_changed || annotations_changed {
-            let parsed = crate::library::annotations::Rule::search(&self.lib_filter);
+        if library_changed || query_changed || crate_changed || annotations_changed || scope_changed || played_changed || order_changed {
+            let parsed = crate::library::search::Query::parse(&self.lib_filter);
+            view.played_filter = parsed.as_ref().is_ok_and(|query|query.uses_play_history());
+            view.played_revision = played_revision;
             view.annotation_error = parsed.as_ref().err().cloned().unwrap_or_default();
-            let valid_query = parsed.is_ok();
-            let (query, rule) = parsed.unwrap_or_default();
-            let q = crate::localization::search_key(&query);
-            let rule_active = rule != crate::library::annotations::Rule::default();
-            let annotated = self.library_metadata.catalog.tracks.iter().any(|track|!track.annotations.is_empty());
             let empty_annotations = crate::library::annotations::Annotations::default();
             let indices = Arc::make_mut(&mut view.indices);
             indices.clear();
             let matches = |item: &LibItem| {
-                if !valid_query { return false; }
-                let ordinary = q.is_empty() || crate::localization::search_key(&item.title).contains(&q) || crate::localization::search_key(&item.artist).contains(&q);
-                if !rule_active && ordinary { return true; }
-                if !rule_active && !annotated { return false; }
-                let fields = self.library_metadata.catalog.track(&item.source).map_or(&empty_annotations, |track| &track.annotations);
-                (ordinary || fields.matches_text(&q)) && (!rule_active || rule.matches(fields))
+                let track = self.library_metadata.catalog.track(&item.source);
+                let fields = track.map_or(&empty_annotations, |track| &track.annotations);
+                let version = track.and_then(|track|track.versions.iter().find(|version|version.fingerprint==item.fingerprint));
+                let key = crate::musical_key::effective(version,&item.key,track.is_some_and(|track|track.locks.metadata)).0;
+                parsed.as_ref().is_ok_and(|query|query.matches(crate::library::search::Row {
+                    title: &item.title, artist: &item.artist, key: &key,
+                    bpm: item.bpm.value(), seconds: item.length,
+                    played: self.last_played.get(item).or(item.last_play).is_some(), annotations: fields,
+                }))
             };
             view.unavailable = 0;
             if let Some(node) = selected_crate.as_ref().and_then(|id| self.library_metadata.catalog.crates.node(id)) {
                 let rows = self.library_metadata.collection_rows();
-                if let Some(rule) = &node.annotation_rule {
+                if node.smart_rule.is_some() {
+                    if let Some(members) = rows.smart_rows(&node.id, &self.library, &self.library_metadata.catalog) {
+                        indices.extend(members.iter().copied().filter(|index|matches(&self.library[*index])));
+                    } else { view.annotation_error = "Smart crate membership is preparing for the current library".into(); }
+                } else if let Some(rule) = &node.annotation_rule {
                     indices.extend(self.library.iter().enumerate().filter_map(|(index, item)|
                         (matches(item) && self.library_metadata.catalog.track(&item.source).is_some_and(|track|rule.matches(&track.annotations))).then_some(index)));
                 } else {
@@ -158,8 +260,8 @@ impl App {
             } else {
                 indices.extend(self.library.iter().enumerate().filter_map(|(index, item)| matches(item).then_some(index)));
             }
-            // All tracks keeps the worker order; named crates keep direct manual
-            // membership order. Filtering never sorts either view.
+            library_layout::sort::order(indices, &self.library, &self.library_metadata.catalog, &self.last_played, sorts);
+            view.sorts = sorts;
             view.generation = view.generation.checked_add(1).expect("library view generation exhausted");
             let find = |source: &LibSource| {
                 view.indices
@@ -197,6 +299,7 @@ impl App {
             view.cells.clear();
             view.library = Arc::downgrade(&self.library);
             view.query.clone_from(&self.lib_filter);
+            view.searched_all = view.search_all;
             view.crate_id.clone_from(selected_crate);
             view.collection_revision = collection_revision;
             view.catalog = Arc::downgrade(&self.library_metadata.catalog);
@@ -311,7 +414,6 @@ impl crate::engine::ui_requests::SelectionView for PublishedView {
         let item = library.get(*indices.get(index)?)?;
         Some(Arc::new(Selection {
             source: item.source.clone(),
-            title: item.title.clone(),
-        }))
+            title: item.title.clone(), fingerprint: item.fingerprint, }))
     }
 }

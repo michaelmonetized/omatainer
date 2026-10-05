@@ -140,7 +140,11 @@ pub(crate) fn factory_data(owner: &assets::Owner, sr: u32) -> Result<[assets::Ba
     Ok(cached.map(Option::unwrap))
 }
 pub(super) fn initial(sr: u32) -> Result<(assets::Owner, Vec<Bank>), String> {
-    let owner = assets::Owner::acquire().map_err(|e| e.to_string())?;
+    initial_with_owner(sr, assets::Owner::acquire().map_err(|e| e.to_string())?)
+}
+/// Prepare factory banks under one bounded asset owner.
+/// Takes output sample rate and its resident owner; returns that owner and fully registered banks.
+pub(super) fn initial_with_owner(sr: u32, owner: assets::Owner) -> Result<(assets::Owner, Vec<Bank>), String> {
     let mut banks = Vec::with_capacity(MAX_BANKS);
     for (factory, data) in Factory::ALL.into_iter().zip(factory_data(&owner, sr)?) {
         banks.push(Bank {
@@ -268,6 +272,8 @@ impl RtEngine {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod playback_tests;
 
 pub(crate) fn reject(command: &Command) {
     match command {
@@ -320,6 +326,10 @@ impl RtEngine {
             track: self.selected_track, scene: self.selected_scene,
         });
         if on {
+            if self.pad_voices[pad as usize].as_ref().is_some_and(|voice| voice.playback.mode == crate::sampler_bank::PlayMode::Toggle) {
+                self.stop_sampler_slot(pad);
+                return;
+            }
             self.release_input(input);
             self.pad_targets[pad as usize] = None;
             if self.sampler_inst == SamplerInstrument::Samples {
@@ -328,6 +338,7 @@ impl RtEngine {
                     self.pad_voices[slot] = bank.data.audio[slot].as_ref().zip(bank.data.ranges[slot]).map(|(sample, range)| {
                         let rate = 2f32.powi((self.sampler_oct - 3) as i32) as f64;
                         let mut voice = crate::sampler_bank::resident::Voice::new(sample.clone(), range, bank.data.settings.slots[slot].controls, rate, destination.track);
+                        voice.playback = bank.data.settings.slots[slot].playback;
                         voice.gain *= pressure;
                         voice
                     });
@@ -356,6 +367,17 @@ impl RtEngine {
         } else {
             self.release_input(input);
             self.pad_targets[pad as usize] = None;
+            if self.pad_voices[pad as usize].as_ref().is_some_and(|voice| voice.playback.mode == crate::sampler_bank::PlayMode::Hold) {
+                self.pad_voices[pad as usize] = None;
+            }
         }
+    }
+    /// Stop one captured sample or synth pad.
+    /// Takes an exact slot in 0–15; returns no value and leaves every other slot and transport untouched.
+    pub(super) fn stop_sampler_slot(&mut self, pad: u8) {
+        if usize::from(pad) >= SLOTS { return; }
+        self.release_input(InputKey::Pad(pad));
+        self.pad_targets[usize::from(pad)] = None;
+        self.pad_voices[usize::from(pad)] = None;
     }
 }

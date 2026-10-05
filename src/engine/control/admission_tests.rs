@@ -113,7 +113,7 @@ fn equal_pitch_devices_reserve_independent_releases_including_zero_velocity() {
 }
 
 #[test]
-fn saturated_queue_preserves_fifo_gate_releases_and_all_nine_stop_lanes() {
+fn saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane() {
     let (port, mut rt) = engine();
     for command in [
         Command::LiveNoteOn {
@@ -128,7 +128,7 @@ fn saturated_queue_preserves_fifo_gate_releases_and_all_nine_stop_lanes() {
         assert_eq!(port.send(command), Ok(SubmissionOutcome::Accepted));
     }
     while port.send(Command::Master(0.8)).is_ok() {}
-    assert_eq!(port.len(), 244); // Three held releases + nine stops reserved.
+    assert_eq!(port.len(), 228);
     for release in [
         Command::LiveNoteOff {
             source: 0,
@@ -147,6 +147,9 @@ fn saturated_queue_preserves_fifo_gate_releases_and_all_nine_stop_lanes() {
             port.send(Command::StopTrack { track: track as u8 }),
             Ok(SubmissionOutcome::Accepted)
         );
+    }
+    for pad in 0..16 {
+        assert_eq!(port.send(Command::SamplerSlotStop { pad }), Ok(SubmissionOutcome::Accepted));
     }
     assert_eq!(port.len(), 256);
     assert_eq!(port.send(Command::Stop), Ok(SubmissionOutcome::Coalesced));
@@ -192,7 +195,7 @@ fn all_accepted_distinct_onsets_reserve_their_release_even_without_a_consumer() 
             other => panic!("unexpected admission {other:?}"),
         }
     }
-    assert_eq!(pitches.len(), 123);
+    assert_eq!(pitches.len(), 115);
     for note in pitches {
         assert_eq!(
             port.send(Command::LiveNoteOff {
@@ -210,6 +213,7 @@ fn all_accepted_distinct_onsets_reserve_their_release_even_without_a_consumer() 
             Ok(SubmissionOutcome::Accepted)
         );
     }
+    for pad in 0..16 { assert_eq!(port.send(Command::SamplerSlotStop { pad }), Ok(SubmissionOutcome::Accepted)); }
     assert_eq!(port.len(), 255);
     for _ in 0..8 {
         tick(&mut rt);

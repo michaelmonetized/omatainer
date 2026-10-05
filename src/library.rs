@@ -16,8 +16,12 @@ use std::{
 };
 
 mod content;
+pub(crate) mod backup;
 pub(crate) mod tags;
 pub(crate) mod annotations;
+pub(crate) mod search;
+pub(crate) mod smart_crates;
+pub(crate) mod protection;
 pub(crate) mod relocation_search;
 mod analysis;
 pub(crate) mod crates;
@@ -31,7 +35,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 9;
+const SCHEMA: u32 = 15;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -72,6 +76,8 @@ pub(crate) struct Track {
     pub id: TrackId,
     #[serde(default, skip_serializing_if = "annotations::Annotations::is_empty")]
     pub annotations: annotations::Annotations,
+    #[serde(default, skip_serializing_if = "protection::Locks::is_empty")]
+    pub locks: protection::Locks,
     pub source: LibSource,
     pub current: usize,
     // Replaced bytes do not inherit preparation, but their old prepared version
@@ -264,6 +270,7 @@ impl Catalog {
                 self.index.insert(source.clone(), i);
                 self.tracks.push(Track {
                     annotations: Default::default(),
+                    locks: Default::default(),
                     id,
                     source,
                     current: 0,
@@ -296,7 +303,9 @@ impl Catalog {
             && track.versions[index].audio_identity.is_some()
             && tags::equivalent_audio(&track.versions[index], &track.versions[track.current]);
         if relocated.is_none() && !archived_tag_receipt { track.current = index; }
+        let locks=track.locks;
         let version = &mut track.versions[index];
+        let protected_metadata=(!locks.is_empty()).then(||version.metadata.clone());
         if metadata.bpm.origin == Origin::Heuristic {
             if let Some(tags) = &mut version.tags { tags.automatic_bpm = metadata.bpm; }
         }
@@ -342,6 +351,7 @@ impl Catalog {
             ..metadata
         };
         tags::reconcile(version);
+        if let Some(previous)=protected_metadata {locks.preserve(&previous,&mut version.metadata);}
         Ok(version)
     }
     pub fn merge_import(&mut self, mut other: Catalog) -> Result<(), String> {
@@ -353,7 +363,7 @@ impl Catalog {
                 let existing = &mut candidate.tracks[index];
                 if existing != &track {
                     let pristine = |t: &Track| {
-                        t.annotations.is_empty() && t.versions.len() == 1
+                        t.annotations.is_empty() && t.locks.is_empty() && t.versions.len() == 1
                             && t.versions[0].preparation == Preparation::default()
                             && t.versions[0].metadata.last_play.is_none()
                             && t.versions[0].metadata.bpm.origin == Origin::Builtin
@@ -465,8 +475,37 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
     if bytes.len() as u64 > MAX_BYTES {
         return Err("library exceeds 64 MiB".into());
     }
-    let header: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let catalog = catalog_from_bytes(&bytes, None)?;
+    let identity = FileFingerprint::from_metadata(&meta);
+    if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != identity
+        || store_identity(path)? != Some(identity)
+    {
+        return Err("DJ library changed while it was read; original file preserved".into());
+    }
+    Ok((catalog, identity))
+}
+
+/// Read one bounded catalog and its supported migrations.
+/// Takes JSON bytes and an optional exact archive schema; returns a validated current catalog without editing its source.
+fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Catalog, String> {
+    if bytes.len() as u64 > MAX_BYTES { return Err("library exceeds 64 MiB".into()); }
+    let header: serde_json::Value = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
     let schema = header.get("schema").and_then(|v| v.as_u64());
+    if expected_schema.is_some_and(|expected| schema != Some(u64::from(expected))) {
+        return Err("Backup catalog schema does not match its manifest".into());
+    }
+    if schema.is_some_and(|version| version < 13) && header.get("tracks").and_then(|v| v.as_array()).into_iter().flatten()
+        .flat_map(|track| track.get("preparation").into_iter().chain(
+            track.get("versions").and_then(|v| v.as_array()).into_iter().flatten().filter_map(|v| v.get("preparation"))))
+        .filter_map(|preparation| preparation.get("grid")).any(|grid| grid.get("anchors").is_some()) {
+        return Err("Tempo anchors require library schema 13; original file preserved".into());
+    }
+    if schema.is_some_and(|version| version < 14) && header.get("tracks").and_then(|v| v.as_array()).into_iter().flatten()
+        .flat_map(|track| std::iter::once(track).chain(track.get("versions").and_then(|v| v.as_array()).into_iter().flatten()))
+        .any(|version| version.get("preparation").is_some_and(|preparation| preparation.get("source_gain").is_some())
+            || version.get("analysis").is_some_and(|analysis| analysis.get("level").is_some())) {
+        return Err("Source gain and level analysis require library schema 14; original file preserved".into());
+    }
     if schema.is_some_and(|schema| schema < 8) {
         tags::reject_legacy_fields(&header)?;
     }
@@ -475,30 +514,47 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
         || header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("annotation_rule").is_some()))) {
         return Err("Track annotations and smart annotation rules require library schema 9; original file preserved".into());
     }
+    if schema.is_some_and(|version| version < 10) && header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("smart_rule").is_some())) {
+        return Err("Typed smart crate rules require library schema 10; original file preserved".into());
+    }
+    if schema.is_some_and(|version|version<11) && header.get("tracks").and_then(|v|v.as_array()).is_some_and(|tracks|tracks.iter().any(|track|track.get("locks").is_some())) {
+        return Err("Preparation locks require library schema 11; original file preserved".into());
+    }
+    if schema.is_some_and(|version| version < 12) && header.get("crates").and_then(|v|v.get("nodes")).and_then(|v|v.as_array()).is_some_and(|nodes|nodes.iter().any(|node|node.get("favorite").is_some())) {
+        return Err("Crate favorites require library schema 12; original file preserved".into());
+    }
+    if schema.is_some_and(|version| version < 15) && header.get("tracks").and_then(|v|v.as_array()).is_some_and(|tracks|tracks.iter().any(|track|track.get("versions").and_then(|v|v.as_array()).is_some_and(|versions|versions.iter().any(|version|version.get("analysis").is_some_and(|analysis|analysis.get("key").is_some()))))) {
+        return Err("Musical-key analysis requires library schema 15; original file preserved".into());
+    }
     let mut catalog = match schema {
-        Some(9) => serde_json::from_slice(&bytes).map_err(|e| e.to_string())?,
+        Some(15) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
+        Some(14) | Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
+            let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+            old.schema = SCHEMA;
+            old
+        },
         Some(8) => {
-            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
         },
         Some(7) => {
-            let mut old: Catalog = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old
         },
         Some(6) => {
-            let old: BeforeWatchedRoots = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let old: BeforeWatchedRoots = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema,6);
             Catalog { tracks: old.tracks, crates: old.crates, ..Default::default() }
         },
         Some(2 | 3 | 4 | 5) => {
-            let old: BeforeCollections = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let old: BeforeCollections = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             debug_assert!((2..=5).contains(&old.schema));
             Catalog { tracks: old.tracks, ..Default::default() }
         },
         Some(1) => {
-            let old: V1 = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            let old: V1 = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             debug_assert_eq!(old.schema, 1);
             Catalog {
                 schema: SCHEMA,
@@ -511,6 +567,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
                     .into_iter()
                     .map(|track| Track {
                         annotations: Default::default(),
+                    locks: Default::default(),
                         id: track.id,
                         source: track.source,
                         current: 0,
@@ -539,13 +596,7 @@ fn read_with_identity(path: &Path) -> Result<(Catalog, FileFingerprint), String>
         return Err("invalid legacy relocated track association".into());
     }
     catalog.validate()?;
-    let identity = FileFingerprint::from_metadata(&meta);
-    if FileFingerprint::from_metadata(&file.metadata().map_err(|e| e.to_string())?) != identity
-        || store_identity(path)? != Some(identity)
-    {
-        return Err("DJ library changed while it was read; original file preserved".into());
-    }
-    Ok((catalog, identity))
+    Ok(catalog)
 }
 
 fn store_identity(path: &Path) -> Result<Option<FileFingerprint>, String> {

@@ -1,0 +1,3542 @@
+{
+  "schema": 1,
+  "source_commit": "096dff237e5351e22221ab2033d1919ad53338c9",
+  "source_tree_modified": false,
+  "source_files": {
+    "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
+    "Cargo.lock": "500de073386cdbdf205211d67a757b4302c48801d3a5a5fba7791c40a6f58438",
+    "Cargo.toml": "be10a2f32185b5ab0e026e4f53b2987aba05ee0fe4eca507f837f255013cd4d2",
+    "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
+    "README.md": "8148f79ab4dcba59bceae37ceeed19c8d1911d71aa227df5c46a0b4d8f1a2653",
+    "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
+    "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
+    "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
+    "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
+    "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
+    "docs/backlog/capability-status.json": "5cdc9f416e4ae1a01754ddaa5905520771250d79e410a0282121aef1b7cbd88e",
+    "docs/backlog/previous-stack.json": "5e4e5ad9453e6f0ab813928e098101723f042aa739aa3f1c287eacedf6a4984d",
+    "docs/backlog/release-scope.json": "5f7eb0b9875f42134a0113d1a8abf475610a516b8a83945399497b3f77078073",
+    "docs/backlog/remaining-issues.json": "c852d3265ea2526be976a469ac3cd49aeb0e98626117cf42ea210b8432c99fd9",
+    "docs/capability-matrix.md": "d16bb8a0671da3447e4ac10de6c5e0d82ebb26eaf149f16e72a09c9ba98d9b99",
+    "docs/manual.md": "3590a3412da39ab77dc3ef5a55690958f0c1c29fc9307eebf9efdc535cbdfb62",
+    "licenses/assets.json": "a2891bdb3276c15d3ed84b4e1b8a19b24b38c6e3f125b97399a6a7a2fdd04229",
+    "locales/de.json": "5ca01c7d8e9d62191d5a668f636915945258813b5c64014000ba860ec37cd502",
+    "locales/en.json": "5e3163453a32e593d2881e0a6abd513acc36144a384db4eb7ad440412e58f7ef",
+    "locales/es.json": "bff584a8370023761665563a3384780de2e5a1cdd384cf591a2602abac85402d",
+    "plugin/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
+    "plugin/Service.qml": "4bfc2782b991a4b015b19d38224496d1d5418f23e1df157b5c7c3932da72f223",
+    "plugin/manifest.json": "bb5da467bd143775315caab141e900274277e4c86420ae7b4da56dcb11751610",
+    "scripts/capability-matrix.py": "601ab18e70810ff8b8424116a92be68a4c52eeb2468a54a5c6ed98c93615d8a0",
+    "scripts/check-accessibility.py": "3e81b95b986ecc6f383ba4e23efcb6982a414e17300fee60c12fce5dad0b5a28",
+    "scripts/check-analysis.py": "c5a352cf19faf01b8398c1ed5cf6de2ca7ea24eae6299acdf5877fa76bf5eddf",
+    "scripts/check-audio-recovery.py": "ed7eb05bb9e938506e47552f3e93d0166f4211feb601a2fb01f4bf86963fe9e4",
+    "scripts/check-audio-routing.py": "af5faf1f4d95e19fbe75ccff6e48c3b3e7c0094f18ca0cd26bcdd0b473b0a48e",
+    "scripts/check-follow-protocol.py": "f6d0c76b694d4cf118be349fe68c59bf86d46cbf4f9f745ef49d8cd12112ce6d",
+    "scripts/check-ipc-cli.py": "a62274390008c5fc2f743aae396786dec69412e0527e8a959874564bc7b06f67",
+    "scripts/check-keylock-quality.py": "4f81f5c35fc719b7f1173dcb6f2deaa5ab0d85d8dda4d8c2a55a214c4c16f576",
+    "scripts/check-keylock-show-load.py": "e18ab3e32c613d00724222abb16e6b3457ad88ab09122dad1d1003df50a3e0ba",
+    "scripts/check-linux-audio.py": "f9dec192ad88e8cb165c5748a3f479c65f2a7607df77c3085a4c3dd9ce29577e",
+    "scripts/check-midi-status.py": "6847d71ccb8fefbf2ef8ada71764960ec60bbade4daa71d7cba645c8ad94c307",
+    "scripts/check-offline.py": "97b6d77505355cb6c7545800052c9466cf395cb8a6b2c0b5c5278f56164769a2",
+    "scripts/check-runtime-isolation.py": "e10bf68ab7c9634a48ad3f4f117bc99b30300961f3c21d78edd1ed55737c02f9",
+    "scripts/check-safe-startup.py": "bbd76fc6603d4d66b3eb8cbbdac77f9fc6a83c81162e356093e6207dc6ca89f1",
+    "scripts/check-scene-inputs.py": "227257ba767f55cab6af9d9f1b6fee84277f5b4ef34b8f7ad62850420324616f",
+    "scripts/check-shell-controls.py": "376a31c0e3d5ea9a0f429cf9ee89daf42613158ff4e0b20eec2696e8a697f624",
+    "scripts/check-shell-scenes.py": "83b5878c1d7f377e2b8e3445f392121a5951cb256fc23e935e8d2dda79dd0e31",
+    "scripts/check-theme-colors.py": "5b48eb49b4b87145754f52d3f658acb881dfe14ea02a4433d4a621c689aab09f",
+    "scripts/check_analysis_accessibility.py": "41dfe52abccf589b7778a74151f31815beaa58fe8672221d5bcfbdff4dfa3c65",
+    "scripts/check_crates_accessibility.py": "606acf7066f07db1d3c08e6dc89e237869793a02d35d8d621f990856a3b8bdf2",
+    "scripts/check_grid_accessibility.py": "c81f28dd0d932ee2d23d82d3d017098a522967b11b4ee9796f60cc2db5772a2d",
+    "scripts/check_history_accessibility.py": "ee88046d230b24161179458bf1fa4068f9e187bc1e742d35067948a9a6c55538",
+    "scripts/check_sampler_accessibility.py": "562b6121633f6716a8150ae3b63f6816116ff0ac0a4d11b09ec3f187a69e6325",
+    "scripts/hardware-probe.py": "66f873cb46342040e397b4e9f597a9a444a35ecfed695164eb4e2e854e96eba3",
+    "scripts/install-executable.py": "b604da014c65202ec8f45561fde366ff67f18191c5f7c71f96fe5e6ae922dff2",
+    "scripts/install-omarchy.sh": "f83b47871ab311e7f960863415d2419042b99a3a8a53936f899d68db3d35f5ff",
+    "scripts/install-transaction.py": "477cd38ea21784ea5d3a25ae0eafb47caf6feb65f36fa72deb68f5ecd22a2e7b",
+    "scripts/license-manifest.py": "8363e3216625d125a9e180a8ca58b50096875bc389c1a386680ba57b6927178d",
+    "scripts/offline_guard.py": "1be43f773920f57a5340e9cb69b713f6deea2e17f73a2395fc7d8f48c94765e5",
+    "scripts/performance-gate.py": "0171f3d8fd4aba35f22c26a0ac1d6cf3de83e828e72154dc5e63285b906758c5",
+    "scripts/performance-test-support.py": "33a6783da423046ec22e696faee6b50ea654637d63c85479bd107047fc2507de",
+    "scripts/test-capability-matrix.py": "ede5854a89454c6b38ebad7640f2bc62c30a1543e0d087ed051a75250c4bcbba",
+    "scripts/test-check-analysis.py": "57adbc43e1be64bcc4cf8ded279905c6f37feb5d7dd85a4dcc1fd44c6511fb3f",
+    "scripts/test-install-executable.py": "d1e310f727540f263fdefae4b2880b1a1b2ca5bbfecf8c645439bdf936be8928",
+    "scripts/test-install-transaction.py": "9cd781f0918503fcea4546dd5afb1fc0c6db20e15c0f2ec2a2a73d0c26e4ddb8",
+    "scripts/test-license-manifest.py": "e1195722aab298b64b2db27060a47d1c3ac0dd353753983812df28ddd544e7b7",
+    "scripts/test-performance-gate.py": "e3bca84fae0eff9e098d023645b3b9855749aba7d659c0b260fb1e1283f76631",
+    "scripts/test_offline_contract.py": "f26c137eb1ef0aeb1b8aa8f4a320fcdf43945d21eae2f0b858270d28f74d5b8d",
+    "scripts/test_offline_guard.py": "092fb8dfdecb2798215aa5a5c1df213f26c8013467e537c09cdb39fccf7f514c",
+    "src/automation.rs": "75ef4ba733caae7f677ebc2480ad369767dc3ca172a53f681bc0d21f6289c6b7",
+    "src/automation/osc.rs": "aa54ffd5461b9b661285f0aa76aa88dfc17cd597cab1f2a33b049c2b49d7fab4",
+    "src/automation/osc/tests.rs": "3e91890e1294255b1b360d5f2bdc61b42ea11a07f9cc93781ec3308886178975",
+    "src/automation/tests.rs": "c8caf9f76a46d31d85390dabca4b9a2eb32aad604032fdbf605d07f2a7eb43a3",
+    "src/background.rs": "557ca6e085fdb831ddd99cf9c1e428eae9a966b155fa8e58e18def3577e5eea3",
+    "src/background/tests.rs": "802c0a2d254d51edc50cd254cd8e06b5bebf726386177f4e1b6a738ad3eae0bd",
+    "src/engine/arp.rs": "5543f23955b3dfe8a31177291a998cd5e0aaff79b911f4fc4edcc321a5662254",
+    "src/engine/arp_tests.rs": "f9414f93f1610d1fa8ae6a944acbe0554659c12764b0771c7ad5ebbd0e7c1206",
+    "src/engine/audible.rs": "4681720d138656b3163f1e42e20a4e7b4df55dead24c5071930b6dff88787816",
+    "src/engine/audio.rs": "79933b3d58c044123a86d7e3a694826ff4e2ca5815e6c9b2da5bf5977f67e205",
+    "src/engine/audio/calibration.rs": "94a4daae48c7902fb7c23d0d95b3fedff4adb1039c8ccd8e668c2f305feb66ee",
+    "src/engine/audio/calibration/native.rs": "ce0325f686e8c022f49eb91d19cb6fe0457f1e613c0ae78889b037ae86a76961",
+    "src/engine/audio/config.rs": "76d7aaacb6e6852cffddf1a33d346d99dca71529ddcbe42fb92bb6a9aafa7588",
+    "src/engine/audio/graph.rs": "319d76e7b948249481c6a2f2d4b109ef7ee19b7369b22c33c1e4d302a02ea3fd",
+    "src/engine/audio/jack.rs": "4303ba59074d63661a162b1bf33073c0c5af045d0ad311a57bf59798d467fd9d",
+    "src/engine/audio/jack/native_tests.rs": "ad9d2329cfa837b9336eb615cdf8d7116a255003261974a2506d3259f50ffa2a",
+    "src/engine/audio/owner.rs": "bb415578930afea1d3b61507f4ee9dd423acff357f58b37dad6dca631bd8b475",
+    "src/engine/audio/recovery.rs": "e2e123b0977939fe0b9decaede97bbf85e8b6e6295cd8a3d9d6eb3a5aaa04b1c",
+    "src/engine/audio/recovery_tests.rs": "30578d59cd8a0af450d09373b4eae504425ac0a70a9621dc658e3608d1dca394",
+    "src/engine/audio/routing.rs": "c3008906a74dd204e1d7c1d4978bb9e2b5f87325ad3417db1b450671b56a58c0",
+    "src/engine/audio/routing/input.rs": "496df1136d86edcd0d4762094562489636019bd5a03c5cf52f89c355346b8eb5",
+    "src/engine/audio/routing/model.rs": "4aca2948f718550b3b00b8c05f84453514bd87ec7b7ccbe891f43762164d06f0",
+    "src/engine/audio/routing/native_tests.rs": "e31857b77f5ef6d9af47cc6082a4b6c57e79d8585179656e312c5485bdf96ee9",
+    "src/engine/audio/routing/prepared.rs": "4a125f79406f310ab7cb37216a6b24f5852a8c3f21837ac335a3f25b6265b706",
+    "src/engine/audio/routing/probe.rs": "4729062a934c151e9e2c232aff7c8fd8c1cc46f1c3dd051676d1381098cce79f",
+    "src/engine/audio/routing/record.rs": "dc6e8eef88dd1220a3758dcefee7aecccdd68587baf70209eef87b26d6791db9",
+    "src/engine/audio/routing/render.rs": "d3ed7602bfbcbda4425c1106680f2d2f2cf34e9251b139e22b42ff2ff270229a",
+    "src/engine/audio/routing/tests.rs": "5e8a701302d577abd6073eafbd070c9310a3c9c8cb2b7f254e748896bb0b2f11",
+    "src/engine/audio_metrics.rs": "a0adccfe3b4140282d548ec8f992818871a4e10dec6aad8e3a45b62b5e11722d",
+    "src/engine/audio_metrics_tests.rs": "03dce060750befb77648cc1609889ec11767762639de642e3407e477bc6aa841",
+    "src/engine/audio_tests.rs": "8b02a1ab291c096ad000f84a1da2645873b82fc621f13fbf233fe7a3587d0585",
+    "src/engine/beatgrid.rs": "cf9cf1457328499dbd43cd922bea04a159d61d78ea18b358a24f66955410fe67",
+    "src/engine/beatgrid/variable_tests.rs": "7022c1dd318626cf6b84f383fc49b199b2610644c0cbc044e0ea2c5df1351c36",
+    "src/engine/clip_gain_tests.rs": "7086ab57c71e5c7510631273cfe2ad8e58c2f9178e01a4e67bfa6c90308d02ce",
+    "src/engine/clip_lifecycle_tests.rs": "08419b12714fb253405920b892cdc28a54697ccead077a1e32ed3c8f97123951",
+    "src/engine/compose_tests.rs": "d314e9fce6934fce05c712b09a0ee44dea324334519adddafc869924fd85a1cc",
+    "src/engine/control.rs": "ce749a4124cb72ff23ea79a621c341fa91295dc8998664f287d631eeb23eb2b5",
+    "src/engine/control/admission_tests.rs": "1705bccbdf853844d2e876d48802c75950819ba70c48f02d96f8fcad277e1d4a",
+    "src/engine/control/payload_tests.rs": "3fa3ad8db8c02c417b3f4ec6551db42f3d303a4ec72c0e78f4fee0eecb19460c",
+    "src/engine/control/project_gate_tests.rs": "850691c60345a42b7580c859ef98213bb65ed2d305e9e05b304a56bc582f04bf",
+    "src/engine/control_tests.rs": "181d749a811f3955dc8ea3a5b32134ee6c33077bfc68adc186b72289f0a88517",
+    "src/engine/cue_metadata.rs": "72fbc50b51de257d3ab350d5e08441256bfaabe8b81567274c132acb2e842695",
+    "src/engine/deck_filter.rs": "83305ad62e6316f8ea0645efdca62accfb4b85f3070d22eda3c40f06bc2df2eb",
+    "src/engine/deck_filter_tests.rs": "36124076e46ca97dba7869fe8fb4e5cf54293765a53ab2dadfa032d0c7b8d508",
+    "src/engine/deck_load_lock_tests.rs": "5794b05bb0012fddc68261947f1d9a7e5acfc402754bfccdd4d0f52602707635",
+    "src/engine/deck_loop_tests.rs": "423e657471ae4ea3da1e0f1ea53cb5d27642bf3fa28db98a5184d12c7b6cc6c2",
+    "src/engine/deck_stereo_tests.rs": "0035381c0a2397c4c3890b53e1e3d9d2a875c9906a2359f415434d6118a8d008",
+    "src/engine/deck_transition_tests.rs": "aea3b4ff3922b9fcb03227cb7fa7a1f5712d3e058444d2791424766996ac418c",
+    "src/engine/decode.rs": "729f71c1debff3c7facf6b9e31c8d024eb88cee078cfa71edc44c07c2f055445",
+    "src/engine/decode/tests.rs": "9deb8774c83a4995958c079a8fd581d2ff9ce3594da998efce5a8d9c4870e670",
+    "src/engine/diagnostics.rs": "3fb736f524e6fc4d1be6dc1d98faf184b8dacb5b2e0852ea48c44f032c0bfb58",
+    "src/engine/diagnostics/tests.rs": "3c3f950705664d23a20025633415fd6e2bbfc76dfcde63c32271648d3ef5dcaf",
+    "src/engine/drum_borrow_tests.rs": "b4c224f6ef6b09b25281e28e9e21d11b3699dd08f945fbdc9705cb3d1cdbbfe8",
+    "src/engine/drum_velocity_tests.rs": "f803a20652a7d6492b3891a72eefbf73372006b9e873b6241ac49544e04118c8",
+    "src/engine/dsp.rs": "326dd7d9c532bebff381bc22d07b046beb38c44a2dc50e5ca3f5139643be8ced",
+    "src/engine/fx.rs": "c7da5aa4e79ba54c9575e07edd86a5eaa747ec03a00e5e4032e503c07568a06f",
+    "src/engine/fx/bypass.rs": "2aba76379b6dd297d7947b60ad991b16fffafa08b159e308c43bda2d30df8798",
+    "src/engine/fx/neutral_tests.rs": "0c92abb3b8508e09cc3e615725a7fd120bdc098fa5ee77950fe00b19fcee3161",
+    "src/engine/fx/offline.rs": "83b7690e075c26c6845dbe8e08d3b450fbf86667e5252189b00688b5e5973b0d",
+    "src/engine/fx/parameter_tests.rs": "4500efee466790a814f0d2feaa37f50418b8349e4f31e54b32c4024071f0abde",
+    "src/engine/fx/parameters.rs": "2a280c73d075a737859d9f8e6282cc10dcca2709a5191b999fcb8c5515fdb898",
+    "src/engine/fx/stereo_mix_tests.rs": "e9098242f0513dffb08dcee244613aadc698d3928bd1b2a0ce719b9cc4fca4a7",
+    "src/engine/fx/tests.rs": "2df453df20269695349ddd7d365d0f9e6a20fa5698463c54ac243a6725a662e5",
+    "src/engine/fx/wet_mix_tests.rs": "78c8c224a9b247db9ad8297271d7220fa5df9cb1d047027c4ec42dfb49e70bd2",
+    "src/engine/fx_allocation_tests.rs": "aa7c7c360575cdc6d2ca3e79a16e0f2a673401645effc443b465cd503c9fd01c",
+    "src/engine/fx_control_tests.rs": "e60fdc6d2fc4db4f708abc59747bbbe894cd08b1ef6f0a6cc36849f5d0d397c2",
+    "src/engine/history_measurement.rs": "f31af79c8890d9b51e280a2e89b99a1f9df3652be005e0a074cd2b49d233da48",
+    "src/engine/history_measurement/capture.rs": "f506d85f09b54b006e702e09e512ca02b0b35c417d00380710aa553ae3f20a69",
+    "src/engine/history_measurement/capture_tests.rs": "d80b373bb90c68cb6827f695486d0a0325b242e7c4d9828f1809f21a49b2ec3a",
+    "src/engine/history_measurement/control.rs": "275b4ef9b29fa0b07a9dbf3182eca6c5081b1154b03bf36773a86b6c2349ad85",
+    "src/engine/history_measurement/control_tests.rs": "250762067bf01e1c19dcbe7ecf977b79fdf5c981d26281262a5d2b748a2cb07c",
+    "src/engine/history_measurement/error.rs": "da14c9cc2de2487dea8fff291342708e3687e0812fe5a4ac308ff97d0f0a0efb",
+    "src/engine/history_measurement/error_tests.rs": "1e38f4f7d7274b781dd662e359ef7896844b9dce4429bafd25ae6f46a2fe673f",
+    "src/engine/history_measurement/parts.rs": "df0bac5e685b0f9a7f92b49f7c30382e29413cc22f5ca78668188a0d696899bb",
+    "src/engine/history_measurement/performance_tests.rs": "1ab6db64cba3166c358cae30441eac9d0b54c360fc50eeebbded3da43f93caa9",
+    "src/engine/history_measurement/tail.rs": "734be311cf4afd1f3b4b674a88fa4c06eb7ecdaee8cec56d2ff5a4efa9678357",
+    "src/engine/history_measurement/tests.rs": "2cf7a2443d62825cb4950b57dfff8aea38f1d330aa59ac767b398414c8f66104",
+    "src/engine/history_measurement/tracker.rs": "ae7da58a0e31a264bd0a2ee877933a37f49445800d9fcb2940a29b924360eedf",
+    "src/engine/history_measurement/tracker_tests.rs": "8e952a9f3055c11c35be6e00814f3ea53015501adfcca53af0e87b1364e44474",
+    "src/engine/history_measurement/window.rs": "e8708a5dbc3c4ed714363299f59d9f0a30416597858895a228f4fc741e3e6655",
+    "src/engine/input_ownership_tests.rs": "517f5b605129639fc338a5a461382a169c356ba718458682fc4ea576089c7741",
+    "src/engine/instrument.rs": "ba041b8e7c0fd35d2fc8f74e04e1a005b66f9cba39cca279d056130d6d801b99",
+    "src/engine/keylock.rs": "d4f8471d2b2f7551fbe3870828928b4a496330cbdae9becf9a922a9a25e5dd31",
+    "src/engine/keylock_quality_tests.rs": "5a4b70af7f528f9a9a98e889e2b48a5c4c1fe5556c1fafbcf1bd14218e3bf98e",
+    "src/engine/keylock_showload_tests.rs": "6a53ca0b84b71cd58410f892d5cf7c731560e7f32ff1cc10c51974371ff54eca",
+    "src/engine/keylock_tests.rs": "138c92c355bf4ab2ef422893942fa83f93f19fd131fcdb4e20fac6cc8adaaeb5",
+    "src/engine/license_content_tests.rs": "91c853e05b1ff810e1c573e4869a6353d701262395c50c27e153e5c3f70e968e",
+    "src/engine/load_receipt.rs": "67a328ccb36ac24841293ef9540054ba571e67ad7e7971b5972a6f321e9c394f",
+    "src/engine/master_fx.rs": "df70bafe2470d73c21d787e929dca1d093ac63cda271bb1b6136377c4f4cdfa3",
+    "src/engine/master_fx_tests.rs": "14d13e77e8f873832ed415430a93466269bd1243c1191fe217ff5a27ee983ade",
+    "src/engine/master_fx_tests/wet.rs": "8115f9f3ecebfb94fefbe1f52115224d2ede19021b5e60db09e19dd23380add4",
+    "src/engine/master_stereo_tests.rs": "fe70b3fb33b7d455027856abfa84327b4756f48c1b35b8e29ea4be396dd3df1c",
+    "src/engine/media_analysis.rs": "d371a3e4a71371eddaf83884a9eac761018b12964d826b9f6e5ed66934cec3ee",
+    "src/engine/media_analysis/tests.rs": "8f92ad5016e9cbc0a603d79b42f063396002a2b4013288f5129d80dcfb461f1d",
+    "src/engine/media_health.rs": "2cd169ac333784db8cebd08408059b27ab1b019dc44ad0617aaddb5642a2f5f0",
+    "src/engine/media_health/tests.rs": "983ef345e5c140bb12df0f6979d771d1f740afd7dedf8e26529dadd83c5ce676",
+    "src/engine/media_load.rs": "9755d6939b928e86d572030c26b6b3a76b75e87730df4cfdca7dc10b69e9b86b",
+    "src/engine/media_load/analysis_tests.rs": "4bcfb4998bac12d7f047925e4b8ba3bffb3149c9e568313faec46435f4124c1e",
+    "src/engine/media_load/tests.rs": "121a1847658957df238c2fb11200e46e6cc59c6b9e01ff084770b3e611ecf857",
+    "src/engine/media_source.rs": "c0f57cb2fd1b1a6cc83c1842f1f9b5041b851589c23d92757416d8d81a7b6a23",
+    "src/engine/metronome.rs": "add8a45e3e0c8552f75e77a548d991b6494550942204a2a02655b1ef311a7ccb",
+    "src/engine/midi.rs": "ac4239a7b6539d03555c06482ef92ff3ae6a6e002ee721e7bd58ab5c0d910ef4",
+    "src/engine/midi/connections.rs": "04038a9633ef5e4b0e750bd0fe7b27190588fb8f6badece8d24867e206aaeb42",
+    "src/engine/midi/connections/policy_tests.rs": "65a3e5565ca062f8ba9151cd494271305da7362f5777b820cf9f877b621227cd",
+    "src/engine/midi/connections/test_support.rs": "0f12a6a9add46037bda0e44cedc4ec4e38c77adbbefc9ab975938c50633b1438",
+    "src/engine/midi/connections/tests.rs": "c33c2899a2a9e276b6ce183e4ee3c89a2549ae5a5939c1bbd2438eccc702276f",
+    "src/engine/midi/device_status.rs": "ba45667136368fc5ad3ba1d22e8404a10175d02a8ac71e7ab3e6c84966afb85b",
+    "src/engine/midi/framing.rs": "0a6e5f9f2aed173559bcaf1d8f015c32d6f06acb57828c5ad74092dee6160ff1",
+    "src/engine/midi/handoff.rs": "76fc587720c13d6955106efece6eedf3f692add02c39fa587cc948b76e321526",
+    "src/engine/midi/handoff/latest.rs": "f24f8acbd4223afa4ce8fb96f6b1f7266f1a15a68496879b028498e9242651d1",
+    "src/engine/midi/handoff/tests.rs": "d73590ff1f8199d2ba7346d7f98bfd051622e127d806b25c063e29dc13ab8794",
+    "src/engine/midi/learn.rs": "e9809fce7ea5c65a38bb3e337589a68ea5ac326f19244da0a79294684b6992f6",
+    "src/engine/midi/learn/tests.rs": "0fed780194269281f51eed7da80f6012b6e8c11a21105ad354b869a65afc0edf",
+    "src/engine/midi/policy.rs": "ab79a91714aebdab1869315f45f928adc313f541a2cfaf9c85ac43dec58e769c",
+    "src/engine/midi/profile.rs": "79d428d30e4932d642a61cc997ebf523e6af980e08e60b9f092e486d0d98628c",
+    "src/engine/midi/profile_tests.rs": "4324db79463baa86f85d907139330429980289751147d8dd4c369c7d09163012",
+    "src/engine/midi/realtime_tests.rs": "9b824aa5c4e2af94c42ea2670cc878f60d69b5cf7447724d72f34a9620b54579",
+    "src/engine/midi/relative.rs": "362e1ba1336bbb8ba88a8bdb92c51f78a37dfc1b54dfca8d2920ed7dcbda1958",
+    "src/engine/midi/relative_tests.rs": "5fc71f834ca7909bc339638a7b74dc644936b2d8b0b47b0511ca39bd0a23cbcb",
+    "src/engine/midi/routing.rs": "bad93e5019c4c68d19b44be4c537169b5856ebd716220b8b8078385b4bc47bb8",
+    "src/engine/midi/routing/control.rs": "e328a2de4b147d5e945955b169b2ca2e2652df3e01f5439a0b18016d4165b4d0",
+    "src/engine/midi/routing/mask.rs": "05ff3bd4c202018dcdf534a28a688cfafcf3b06d1cc10f971b1653c94a72b3f5",
+    "src/engine/midi/routing/model.rs": "49e0d91a78f99041386e717dd8249b053527c8558e0bf4d9f14b6cf3aeb53b91",
+    "src/engine/midi/routing/output.rs": "6e3c1d0fd38fe9a37e205f169dd3b14498020abde56783dde54cb3d3209ffcf0",
+    "src/engine/midi/routing/output/tests.rs": "88f87e38cdba88846f7e029b0eee6be005c5c68179bd5d60474c39531a5e0b3b",
+    "src/engine/midi/routing/packet.rs": "531f59229be4b9a66c3cb16cc00f8c9b4f75d31b056630868e4df1f76b8d2057",
+    "src/engine/midi/routing/playback.rs": "187f1096b326a9ca8c60b54cb9e8c3eb3b6c9e45fce2a05f90f1b5ee49ffb45b",
+    "src/engine/midi/routing/playback/tests.rs": "7a2472709c983b9e2562bb81adcf0f9a98788bfce06049ec173061cc06864652",
+    "src/engine/midi/routing/tests.rs": "25bd534953a8791e5beb002710dc4d298ee91171b650db2275e3563d1b156d62",
+    "src/engine/midi_data.rs": "16d6ccd7a2cf2a570a0eb96a54f50ad9eb155d04fc9b18193d3f56ba665ce81a",
+    "src/engine/midi_data/lanes.rs": "8001f75de4cabd0df1b9ac17356b356ac609744d8f204d3b475bd0209c3ee287",
+    "src/engine/midi_data/timeline.rs": "bed537e57a4eb7d0250ea8a914878e8e44b0b9ad1365e223ced747cd10fde4ec",
+    "src/engine/midi_edit.rs": "05b1ceb6bc2819890f82bf7c2f3315bafcfc14c6c4563436a392d12cfdb1b771",
+    "src/engine/midi_interchange.rs": "b010d21b7b9d29ce9524ca5672bbbb769e9411ca2b01d9b6aabad424fb5c4e31",
+    "src/engine/midi_interchange/tests.rs": "b402f2978c57176d665cc645c64518e6f1624bb381a455df5670315f2ad64212",
+    "src/engine/midi_schedule.rs": "ed9cb99ede170f747bea97704315d6f5bd1e073857ba89d75fdb1fb7e12bcc5c",
+    "src/engine/midi_schedule_tests.rs": "665b77f63dddb92e122798699508c5b0b1348be58c856e18e5dafc38726a260b",
+    "src/engine/mixer_gain.rs": "f0b86e2d234a83410a7a54204b254deb2e6ccdbd173bbfd3b7c9e5124a968a65",
+    "src/engine/mixer_gain_tests.rs": "ab282c03872fb39a50c3f8cb457f987b505a856b8bef2a48242f8e2d1f1731d3",
+    "src/engine/mod.rs": "7234dc0cc5d7cd32ad710aa80fa8dde030017d6d00b0c724b59546888810fd0c",
+    "src/engine/mute_lifecycle_tests.rs": "e0186faea31396b9fd8f2d4f891f8d7f28d6229e60682f42bacd0b9b397b8fd1",
+    "src/engine/pad_routing_tests.rs": "7be4fb7cbf68dd0fb82b24108537bc3337afdee32aa91fcaa0899c408d2bf5fa",
+    "src/engine/performance.rs": "948d4cb825408405f4cbc5fd76b3b7b8bea1c76709ab05dda472dccc3d345d0b",
+    "src/engine/performance/deck_load.rs": "5664c61a6ef7421fe244045047db2ffc5cc611549197355bae3cb7795a99a836",
+    "src/engine/performance/tests.rs": "d3a322a6e6980d4a0a69e8c867dda21e83bb777437413034afb682860bcf9883",
+    "src/engine/performance_workload_tests.rs": "1335225937a20262039d9703ba1c63cb07f012da6daea56f7ebe8282e7794e8f",
+    "src/engine/preparation.rs": "4f0d94ecd5b5107a04bd5c87ad8edf3d12c5c7f55b31c6417edcb22732c3916a",
+    "src/engine/project.rs": "d1c1102b1be4f119a3c2e209675389db9c67d3d9eb87f8ac879f6f13c375a62b",
+    "src/engine/project/capture.rs": "d74edc14c69dadbd3e076a388e32c08ce56d6786b2374c3307f1223e772264ef",
+    "src/engine/project/model.rs": "f138ba63f96efce4254e4065073f6e5f2deee0597cecb30f27454f72d1c26d2d",
+    "src/engine/project/prepare.rs": "bb789115c568813b65ac8331327b9805e9e728845f250f60c2e32a7806b7ac95",
+    "src/engine/project/tests.rs": "b9efeaeac76038f3faa29f8ecc21cb57dcf96c12b3e75c0afe241a65adf4ee3f",
+    "src/engine/project/tests/dependency_tests.rs": "920385a9f673984dc70b173ad325199e95d130835ad9e0ad5009c9dec1174c07",
+    "src/engine/project/tests/sampler_tests.rs": "1196348756c59ac626e88e61d01f34e4f928efbd81c04f913746b035d3ee2bad",
+    "src/engine/project/tests/session_tests.rs": "625429ce77cbd0676052983c2ba6b0903804cd505b43824be3724443e9612ac7",
+    "src/engine/project/tests/structure_tests.rs": "379d4269d8bdbe8fe27af2971308e06e904d1a7cb250c3b4c535f9ea19bdb424",
+    "src/engine/project/tests/template_tests.rs": "9efb72b89ef7c6b683fc3ea320822d7ae61e0c700637f33e842f2eba8cb2d1fd",
+    "src/engine/provider_preview.rs": "96c09aa8d73a0bdb58390cb393d4f564a1da08c53223ae2f65acd8ac19ed4fff",
+    "src/engine/provider_preview/tests.rs": "f00e7a70fb3709706706bb9bf7a1f189dd85c36a72b372f4cf2cbac42b455860",
+    "src/engine/quantized_launch_tests.rs": "f0100a90be4702a1adbfb606a081f949456ca5b2a06d6879083811f3a8e9c54d",
+    "src/engine/recording.rs": "06c78f1a3940e020d83863d635ec16b3610198ab6c245672289d3f61c760c5c3",
+    "src/engine/recording_duration_tests.rs": "fd6dcf23b2f2f704220c981348b89841fb3fd12aea876a8c2f89b6b9e81c1ced",
+    "src/engine/recording_position_tests.rs": "bf6f47a46e499b8a62ebe4104eaee0f04d3e873805cf236df197c87c4fd40ab9",
+    "src/engine/remote.rs": "ac2e916b8e033a5f7b58798dc449d5408856dbd05f9f268e58bf009b16d11a20",
+    "src/engine/remote/tests.rs": "9962aea6fb3393a3ee16d0313bf1fee05858cb6ad3b65eb7855d416a61181c80",
+    "src/engine/sample_rate_tests.rs": "2bab1e2073a0febb3fd3be9235232d81aaf0a45e24cb2b3dcd18876478967444",
+    "src/engine/sampler.rs": "3ff01a1ffa2f0325ce7bccd2a262d87bcd2a963d89b810208768f97cdf1eb9f3",
+    "src/engine/sampler/playback_tests.rs": "64d530ddd95514d3a63d5608d6d86d6d7dda8204f4a5a5a33eda8f0717fb27e1",
+    "src/engine/sampler/tests.rs": "4fddcc36d44d627b987ca0fa09bdeb3e4f1c2897634fca70c448e5c734cee0ae",
+    "src/engine/sampler_identity_tests.rs": "c786a0e9efd7889bc5636534f78d050635f1e1b7e489470e9562b8f430e46aec",
+    "src/engine/sampler_pad.rs": "d0adc144284828ae50d3f90028532a8a6e24eeaebc186ef99c9e7d79256dfa62",
+    "src/engine/scene_ownership_tests.rs": "e3e6e03fe6351dc3c131352d58fea8fcaa56456c20e02d47a11e0b215a6f8749",
+    "src/engine/scene_stereo_tests.rs": "363efdcddb10fc1db2e2955180a2a6e095dd2ef694af2447603c95d96303d2f8",
+    "src/engine/session.rs": "2553c39d031c6cfcc09ef8e2a882332223a4bd3490a0b0b5fb4c69394dcfbca7",
+    "src/engine/session/registry.rs": "77462fea738c2e11b10ff128cb23e88804310c4ac6a3c36876e4e5b4d453f831",
+    "src/engine/session/scoped.rs": "76a7c8c55ccb94c188930ba25336011753bd2aa9d67baeb1a5486cc97b3ea935",
+    "src/engine/session/transaction.rs": "fe77073e2a144b628087f2b35d7fb11c229c1c353d55f6ee5533ccbd5e305030",
+    "src/engine/session/transaction/import.rs": "d476242db7e3e756650dff37cc08793c1e90b4d1a6cb60e0cd4a900285d6ee32",
+    "src/engine/session/transaction/import/tests.rs": "da5e094ec7e79301b2feb1c912c2f872e9a10603ebf4e317418af7adada9846f",
+    "src/engine/session/transaction/structural.rs": "72bdeffaa9da47dfce644d61b9fbbc3f6612c3fd2f4f58c2a30d36c776e961bc",
+    "src/engine/session/transaction/tests.rs": "3163cf9a363c25f562e5d57483376a590cad8646ecb1cbae05f7ab5e6a6b2141",
+    "src/engine/snapshot.rs": "39a762251c1e1495aafb3c13e66183bebeda39d3cfba5c013d4acea675d63888",
+    "src/engine/snapshot/tests.rs": "4ae1489563c8e7ba7a71b6a2e26e24736b6d4a8d339ce7c7cfcf93405ac9c034",
+    "src/engine/snapshot/waveform_tests.rs": "234e80d5f4943371d7fa0b73b897169134b34c243a76ea3b06b4510125bdd507",
+    "src/engine/stopped_deck_tests.rs": "a2310ac4a5206aeed23dea62e3ea3986ee1f6ba1105d475d278583bb8f02f237",
+    "src/engine/svf_tests.rs": "496114be396af2750f075c00b49b7388639ba8bb69b4c6c0e93011c0fd9bc313",
+    "src/engine/test_alloc.rs": "dbc2eb39146150d15ceccecaead08de85f3c4f421dea7c827b02bbce15f7c363",
+    "src/engine/ui_requests.rs": "cc5a73817c8649802d9ab228422ed69bc738e469a4a60cf9ba39650c80a15fbf",
+    "src/engine/undo/capture.rs": "a6fadf2334f030ec7835a40ebd61068f66042c99603077892be49984fbb72b61",
+    "src/engine/undo/midi_import.rs": "7ca1eaba34c40dae9ff8d15b21584a29d2c3c0b4a48d5c3925149395398e49d4",
+    "src/engine/undo/mod.rs": "4aee236b87bb34e6b775ea141d049502db0082b2add0cf6889644b51247cf4c2",
+    "src/engine/undo/patch.rs": "51686642465b413dbbcd45bb19a47517f8a801d92a721737e7a4e84e61f0cbb8",
+    "src/engine/undo/recording.rs": "906a437382e17103b7c4a685d849e755e05cc10f0d6668612fae3b4a17746cc7",
+    "src/engine/undo/tests.rs": "37d2ccf6162a1f897a18cca38e81242dbb75f862cec48ac5b1bca31a009bb93b",
+    "src/engine/video_transport.rs": "b3a09659055dbbc17200f0c6d21d4e6396e31c6da042ed284a91dfd805168150",
+    "src/engine/voice_pitch_tests.rs": "0842859db49b0302059622d156153f929f96bd542a7933d90d8929e465d01d4d",
+    "src/instance.rs": "23f44d05040770939d3bdcd09b4feeb3c3afc038b5160b9a16741a11e208b7d4",
+    "src/instance_tests.rs": "c3281a01779978cfcb72d9964589eaf720dbf5a0d91a596df7f7c772c31999ba",
+    "src/ipc_control_tests.rs": "f1fccf6e4e4ea1ffe9f5213b5025d1e5e7a907abc065f747adf23a9b5a4c48a5",
+    "src/ipc_error_tests.rs": "9c5c2af07003d37b2a066c17539e4582830ad2a9fbd8b7684fa0cb4e2eddadde",
+    "src/ipc_follow.rs": "d0d859d324d2dac52040fe12109a2682698dbc4190f1fa454d32807e4cf09536",
+    "src/ipc_follow_tests.rs": "d8ea8ffda689a7fe583b3c69ff0c14e26dad50cd676e2e5d71fc0ec50e84dc7e",
+    "src/ipc_limits_tests.rs": "c0654214b0e364b05dc6a0b7ff9278ade843a55030afdb157279524d38b82ac2",
+    "src/ipc_request.rs": "d2d681d54baf06f9da70d9b90f1f711e4be5aa40f4b93aa0790dd0c2504dabd5",
+    "src/ipc_schema.rs": "d9f2a3ac688decc9920b6aa83770e1cd38183a7f987aa5acfd899eb5ef71149d",
+    "src/ipc_schema_tests.rs": "2e5431a0cfcb035fa5629efd38bcddfb38c948e5af2d372b288432c4832fbf3d",
+    "src/ipc_server.rs": "4bb335a3bc3ab4f2cf64aa8ef7c95c3501b1dc2c105bd031a201dd5ca97c8585",
+    "src/ipc_startup_tests.rs": "51f6f452a5bfd1c8630004fdecd38da38a13fba425d35473b14db6683be77a80",
+    "src/ipc_transport.rs": "34658c654a0d2258bb2b3207a67899fa9eea0bd7158f04dc7085703358d06269",
+    "src/library.rs": "2e3248c42f03ebf79ac96b3b9d28103ede22d52aed5abc9f92844642129f3fa2",
+    "src/library/analysis.rs": "24102e0f9219e6f648b937b8398abee7bfeacb2b5b07b0e81a3cf4bad942b0e3",
+    "src/library/analysis/tests.rs": "1a2b62c43e7f94b076be54a452f4913a71169fe49d984d19f2cc0b2bda599d83",
+    "src/library/annotations.rs": "f089d76258d56e88b90109df89dd168590f4cf0111e5d50756ae8fc6129c3fd3",
+    "src/library/annotations/tests.rs": "7b7032972035a76a7f085f9e41d83137399e07bd4808f75efeda0f0919330cce",
+    "src/library/backup.rs": "0da102fc776b0ec75b9a3bb030bb342d8c6595ba5af29b5b93575e29959ffdc6",
+    "src/library/backup/tests.rs": "e0564bba85ba5f4004e28e88e3f8ea599a4064b9a0bb35309fa4593a15f94ce6",
+    "src/library/collections.rs": "54f4a5ba2895ec3ef676c09f36e53229ae6eae7275abd4431650d92cd376c7ce",
+    "src/library/collections/tests.rs": "c806e7bfc5b36441d353385052ab50325005bf1be61dd946a8e07172930d269d",
+    "src/library/content.rs": "4bc0ef482ce80f56926f27c2760ba811f66b2e6bf6f0b8756732958c81ac173a",
+    "src/library/crates.rs": "910439f08501d82e46e65f40511b5053aba68a00fd25a673387497a766db34e0",
+    "src/library/crates/tests.rs": "771eda4c4bb315387a088ff10a066d750b3362827a1699f3ef6a6f164ff2b8fd",
+    "src/library/protection.rs": "6c410f7b0dd58e6dc8a2f4e76c7f115864d0c17d860de4abc646a4bfee93474d",
+    "src/library/protection/tests.rs": "5d1d5272ea96859a6bd639934199384488c5a1e35ad6211feb22c223c871e925",
+    "src/library/relocation_search.rs": "bd486e5958ce28cf35b4e8126eefd35bb6bce036475ca01fd72ca981c94c3be4",
+    "src/library/relocation_search/tests.rs": "d1da64b987ef578cb1d49f1fbe0d7d0ac22541311519cbe43a887a0e4979a073",
+    "src/library/search.rs": "735b04774704818caba023d534cbc9200dd57af686fb63b356c1aa18429d3c78",
+    "src/library/search/tests.rs": "6dbc2822ca5158f6cdcf0251da99a03e760faddb5885504b3927b8f45f13a7c8",
+    "src/library/smart_crates.rs": "e42aaf32e04a5497d017e28a19a6d32c8ddc647de9366f895f50e9f8e680016e",
+    "src/library/smart_crates/tests.rs": "b76eded912b1f5d305d45df592702deed169e55659931d76a8d501f496320089",
+    "src/library/tags.rs": "5eb16e0aa3759780ba2200178c71abb2be537ca3c932e696ba5a92e0ecaa58c6",
+    "src/library/tags/tests.rs": "b7010081d835f2b511495aca3b214ded0fe91cb8c66b4b50f92cef5ae905cc6c",
+    "src/library/tests.rs": "a81aa5b6c06590a4613d7cba155f849e6db470ef8e61fdfa1d60a24de285b0ad",
+    "src/library/watch_roots.rs": "67ab779881590c4ecc4eb0e796779bbf136ac7820544450a4055ab9febf4c8ff",
+    "src/library/watch_roots/tests.rs": "68bd98b0ae485533e9f0d5fe340ad8139d41a1fae68218a0a35cdaa8634957b1",
+    "src/licenses.rs": "ceaccf567edf45d474add759018ac094a6b9eff37d2320fefbe817f4f1a1a9fb",
+    "src/localization.rs": "6adf674b76f671256579864460444a9a39e5214dbe3a95e85886bf4bf558aaa3",
+    "src/localization/tests.rs": "f6dba5b95ae73bc793b358e2b823ac31e438935fb4e259ee53a1daa47a79b306",
+    "src/main.rs": "15af3c3d41a7d70196baa91620139fa929ace9d767b1127ec7bcb0d20fb007e6",
+    "src/media_location.rs": "e705b3dbeb3c472e78bf053ff23b9d4a71cbd20d4ec9171907c012e7a8c0559b",
+    "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
+    "src/media_location/tests.rs": "89fb64ff9dc6a8bf41926cd3d67dcf1659fc7362e2684d14175fda3184ab261f",
+    "src/media_tags.rs": "8cf2bcb9b1235b1bf4859728f53755c2aa131ba3786ab6f4c9ab77e53b52ce3b",
+    "src/media_tags/payload.rs": "231a7ad2432ae2173f37c1ebf89be32aeb672f98e506f962a87d99f48876df89",
+    "src/media_tags/preservation.rs": "bd815143527198a8611cc7ae791405fecd400a4c4918709ed615539b792a839d",
+    "src/media_tags/preservation/tests.rs": "37ed99bc8c5d6a28578a81c57a656de822446d08ba4b9da8076fb22ce16a0e85",
+    "src/media_tags/tests.rs": "40643d30ea0df41a0c9adcecba711c438d32fcdb1cdca33141c84978badc502d",
+    "src/media_tags/write.rs": "084c4a3100b912028b3887fff2668cd65330628f71a5cbb0b7baeb916468f015",
+    "src/media_tags/write/tests.rs": "e0ca085a21dd65f4cec7d845ed612a6872e60757e0f60525007f5cfc267bbb68",
+    "src/midi_file.rs": "e7d2d117a7fbdb051a9430657d2d951a58bf4a41cc942ed86ac51c6a4c42b89e",
+    "src/midi_file_io.rs": "0b1923b5582d437b569073c318af1a7331e50e1ba8c5a7c4957261e11dac16d1",
+    "src/music_provider.rs": "a689d46c96d01b9d8b5453fa49eafd7b048f152f17a1575aa1502d094054fdc2",
+    "src/music_provider/freetouse.rs": "0f9847c02c81c6edbef311819e294bd9e0c3037b1f46969a78bc3a41eb75d4a6",
+    "src/music_provider/freetouse/tests.rs": "0cf6ddc9bdcb055bfd52083f824dfa6c3021730c9aae79142e50b6afd03cfa1b",
+    "src/music_provider/tests.rs": "28b570b9eb0321852560465a3febe8cee2b4ff0ef50e906bb6476e7a34f1f6d4",
+    "src/music_provider/worker.rs": "cad972ba1daebecacee7038736bcd450d95f8dd063b51f688922c1dee03f6e02",
+    "src/performance_history.rs": "91f19de9e99b0addc879d2f4767bf84bf232ae77b647c5090dedf5ac4b91ec65",
+    "src/performance_history/storage.rs": "457e9d012d02ffd816415adb3dd9af5437b3634a810f8c082256b7713bd404d0",
+    "src/performance_history/storage/tests.rs": "317062ffb1da682ab0a858c75e945a11229a06ac92dacc34856624e1e31f872c",
+    "src/performance_history/tests.rs": "eb57441d9ee0627e8e8f33fbbe6dd526c6d4f94042bc994d76a98c89413160d0",
+    "src/performance_history/worker.rs": "2330a00e0361061bf3e0a2497c5dc74ccb3aa10f1cde6ee0a1afa5822c540cf6",
+    "src/performance_history/worker/tests.rs": "632358a221db9594516fed14f49364ae7b65edab4ceaa75baa4070916077514c",
+    "src/portable_project.rs": "9e774b7a3e960d71347ecc11bd270f71dd20c7df879679bfca3ed1c8bcb4b6b6",
+    "src/portable_project/tests.rs": "a795e2cb9c8df18d91108e83a0e2225e0e1c2ccaa1f16e43d583417909f81955",
+    "src/preferences/library_layout.rs": "72c4e1b1b31d5d2eed52af7b5189ed028aa81bdf665bab0e7605a87da985b6ae",
+    "src/preferences/mod.rs": "53ef96f1a73e23faa74e36efa02c794e2ca2d26baf3242f8a41027eb3aea2634",
+    "src/preferences/recovery.rs": "88b75bf700d514cec7d69a75b632123de220bb7357003ef4bfd5bca36a3365ee",
+    "src/preferences/shortcuts.rs": "5a43a66920444978496f08bf47e7706770ee05304d92db25cd613c7f4b48c27c",
+    "src/preferences/storage.rs": "179d95b097e9559fc519a750a94ebe8c596bdb11d98f8c90ce2d00e210ab066a",
+    "src/preferences/waveforms.rs": "863dd086f432ee4ed4d1ca02a3cd025762e06d895214de39c40076f00df3738b",
+    "src/preferences/worker.rs": "28d3ca31502f85ba54365fa0aa95a2762687b5d888d1107dcbf144fd5c70635e",
+    "src/preferences/workspaces.rs": "eeb6a05d20a74649ee0a5b84d3ae093400a1bde6ea52db2188c621aa70018fa0",
+    "src/project_dependencies.rs": "90ee8befa23c98b880b29667da26cfd4385abf2372c49b064b4ff5604acdcfee",
+    "src/project_dependencies/tests.rs": "d6a5e86a77262c23df56c74f172b000c7de1571432c8a1f29a1831e17b79757b",
+    "src/project_file.rs": "1735ad9d70a20934fdf7c3e96b4c95915622808b1658c17fbae025a333662086",
+    "src/project_file/tests.rs": "208645d38e639e2aea49573e802a5e56991172791d4a16a8fd929f3c22d19042",
+    "src/project_template.rs": "7054cdc62d2a892b5a9c9cc90a5f4227f44ed6ce68901509b7b7c1a3d28732f4",
+    "src/project_versions.rs": "ff34bc4655e7fee7ac95d2d2c452735b193f88fd06ade046805aaac2ca61d136",
+    "src/project_versions/tests.rs": "af7aae36d101ff983c5c1e105fed4c9bdf0235645417c53a27e7680d63e121d9",
+    "src/recovery.rs": "28373df3501d87e75780a934dd9263627fb9b6e8341ff530bdefbeeb736e0b23",
+    "src/recovery/config.rs": "6f648085640d975590e1de37bfaba05b3539af77b873c98d133d35bef26d2a2a",
+    "src/recovery/files.rs": "3f7234a1d5af6efde45fa3306c0107ff5632d0eda0d75044ae23f41229c13b7f",
+    "src/recovery/journal.rs": "f4e1606fee5f69232d1f4e10df8193322986a19ee1ce5d4460181759a9d8c9d4",
+    "src/recovery/storage.rs": "efebbcdf9d7d87c2267cb6ead0135005e40ff33f2b920dff4d79414f6e6d8939",
+    "src/recovery/testing.rs": "447d6fe380fd11c208903c8f41a61071a9677c4d17384b5e557830882ae85fb1",
+    "src/recovery/tests.rs": "d9f3852670001a602d7b8228377f66a0bc2e9d4f7db02572ec8e17a4c6a79cdd",
+    "src/runtime.rs": "253cecd78cc7268f69c32a58b327eb37ed79d6c3244fdaebaf5faa2fa88ea190",
+    "src/runtime/tests.rs": "4a58f4df83ba765343a1c9888ffaa6d666219927c71b5929ac1680982125aeed",
+    "src/sampler_bank.rs": "f03c04ae609f9f616064ee1599af8802b80450ade242a61bae797b5a67bc4805",
+    "src/sampler_bank/assets.rs": "a6c1fcd72c18d4d495f30add33836fbf6cbd39b1c8fd7a3bbc08d6348847d4af",
+    "src/sampler_bank/assets/tests.rs": "a41d030921d78e4c5592fbafefd3a8a41a9ce1df0d5b7d6822be391ac25e223c",
+    "src/sampler_bank/manager.rs": "07ab130a5ff26d16f08e47718b8f27aafe1f33619a85c8fa0e313d340083933c",
+    "src/sampler_bank/manager/tests.rs": "64ee476547d22176d9f0862fc6edf7006e8c5cee601b215d073235e0b55e6a11",
+    "src/sampler_bank/prepare.rs": "81a20628d6d5cd184f33750e72e9a3a6fc9dbf6c1a2f70b4f8cf52d18c199ec8",
+    "src/sampler_bank/prepare/tests.rs": "6a74458c292ac8a7e2383620db644a2978be164d2c62905f5299d346e4a64a10",
+    "src/sampler_bank/resident.rs": "ad09ff99236042ac9864040522a37f450276d0921a78011e4356ac1d4f194311",
+    "src/sampler_bank/store.rs": "3662e374b51ee6354ee1b4eee3d4844ccced53c0d216ad83fdf15bb99ad8c510",
+    "src/sampler_bank/store/tests.rs": "e50dac49f3d41eb985141a5c30defeb0c35ef36fb460ebc17ec7066b0ac960ac",
+    "src/sampler_bank/tests.rs": "d80603f21302a0a5564b640748fb5d92445599d6c48b1bd50f29c9ef95790981",
+    "src/scene_index_tests.rs": "66a0961feac067b0fff5871b7bfbf0e36f87e04a12c23d98dac6f1173f6689a4",
+    "src/shell_scene_tests.rs": "758b960af513f6eb8c43c64111909b179587d5c66c96f5dbfb4e3d738de05759",
+    "src/startup.rs": "2045099e3f228c1a103c9bdb832bfb50b50ff16cc5067e4433a1784eb0b44456",
+    "src/support.rs": "685740305153aec71cbddf10b9671d06985c678bc84677df4c2d6c03cea49219",
+    "src/support/model.rs": "053abfbb8c9e80f102557d514f21e335d50153ec01b46906a40bd8427264022a",
+    "src/support/operations.rs": "514a6ec0ce802e4937429632639fddbef969bc0819a6f949fa0cbbd800d71f59",
+    "src/support/storage.rs": "424ad007543e7fcb7f0b8cbbf77647a246578bdc918549af88b11ce8d05a29e1",
+    "src/support/tests.rs": "cb8bb7d2f39977bfdf854f667934d17e0f03130d468311b6fa837f2edf8f7856",
+    "src/support/worker.rs": "7d7e2d0f49c366bf7fe49a5a7358fed887b520662a22d0bbc60d8c3303e78483",
+    "src/theme.rs": "61d0887158b7890f82ef8c673f4bc17f44bbdf895789fc1a835c888ed9df9f2a",
+    "src/theme/color.rs": "c63d551f0d7f23b8cebdd3845f6a3a3b33632595bf24eeb2906c45e888c10658",
+    "src/theme/display.rs": "bf1af496d491c89416fb72aee4052328e07530e11438f58a3819b35151b8fcf7",
+    "src/theme/display_tests.rs": "25bee9d4d974b8f8a250de99e0862e72ff61209184fd9a0cec64bf85b49fea3c",
+    "src/theme/reload.rs": "a93a02d9c6580394af40ad21c3ac7fdd5e437051b8643a23201eb1e7ea0ee4ce",
+    "src/theme/reload/fontconfig.rs": "3f20c9d2e490bf145841682f6108eb225041c463e84e1b221f712d0602432387",
+    "src/theme/reload/test_support.rs": "6074aeb03b19447ea9d350b03f9140f037fae32f912dfba52afcdc65702aac4d",
+    "src/theme/reload/tests.rs": "fe3ddda14a226d5ba9c67ba31c88ccd3a1cf0bc6677610f495698309e84e6c0d",
+    "src/theme/requests.rs": "3fafbe6e0b3c7c3cc9fec5b3b838fa25926fbf306dad9ea41002b33f5dca32cc",
+    "src/theme/tests.rs": "50fb7c43b4cd31e8cb93dc6a56ef6748a6524cc5ed084303d74d424b6c2d44c7",
+    "src/track_analysis.rs": "6a32af0a7bbf6f784ddd4c54f13b21dbd2b2dd630a4c7fbca9d01ea9e7afeeef",
+    "src/track_analysis/cache.rs": "2350205a7a8de86ef6c2c497a90db3bf8d03d3e514929e138917afedf4b002b8",
+    "src/track_analysis/cache/tests.rs": "d3e9f7b86248d794a7b0b088cd92d1af97e45e5a63944b6414f77e0d96aae736",
+    "src/ui.rs": "8638e43da5d58de939170baea53d9b34072b879221aadcfaf1eb08397f1ddcfd",
+    "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
+    "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
+    "src/ui/atspi_tests.rs": "27ea162b317b19969bf9de627605deacefee8a789e2d9a1433cca45913d05f14",
+    "src/ui/audio_routing.rs": "5bfbc4fb66515ae3bd41ca2e4ca032ade193128e7f5ffbfb95b9955eef79eb0a",
+    "src/ui/audio_routing/tests.rs": "ad436c5cbf7da41fbec70a2d23825d7b99be655fd32dcab782ad0defb3e3f1ba",
+    "src/ui/audio_routing/worker.rs": "ba2b971d1efcf8bb6894b8cf4ae96d684cf404ae5ef6aa130a9d0ae8e1b7b889",
+    "src/ui/audio_settings.rs": "266d4fc7445c0f46f83f03a2d2edd45f3ff2eb16f60b07e9e9955b062f917dce",
+    "src/ui/audio_settings/tests.rs": "de6af0ca8c002c08b8af628d71109729f2611572baba8870d7e73efaba7ec873",
+    "src/ui/audio_status.rs": "76d7ba5be966181cdfcbfad3fc4b909818a8088b562886349c8de467d893fa9b",
+    "src/ui/automation.rs": "b5745d30156017d17dd5ab685152a8ac525549390db6b9d5a29f01c925136713",
+    "src/ui/automation/tests.rs": "dd822e35903fc2ca9c70e251c0967d2ee1fcc64f703f8385a59b50fc3c8f1435",
+    "src/ui/background_jobs.rs": "fd58f9b461a72351e2f1bddd6fd58273b30f3fad1fc111b9ed5c1f8eeff676ab",
+    "src/ui/bpm.rs": "da23ec98c44eed8e564ffb6438efafc09133b737f6e71f69165a5bbb0458711c",
+    "src/ui/clip_gain.rs": "b7c810302603e05f6daf862e9154908967dcbe48ed8d4a77aeb69ea6678a754d",
+    "src/ui/command_palette.rs": "bb2d657e3e2e3e9abd2e20820a55ac4e706531244cb355f2761bf63a73803eba",
+    "src/ui/compose_tests.rs": "cc81bc73e255f9a45d871e0bdb8b58fbf2286f882e1f1f19b561141c6b4b6408",
+    "src/ui/controller_browse_tests.rs": "4dfe048b46aa687e5b8f260075dea93cd9c2a6997af9b0722fe5d567ae2d0c6a",
+    "src/ui/controller_load_tests.rs": "137c69507b45a51846bc2c431f4ae7bdcc6495c77262eaaff30693db62f033b6",
+    "src/ui/cue_editor.rs": "e3089555e778868a43d10a62f99b0c94a91dd70f4c054aabdb67e020fc91e507",
+    "src/ui/cue_editor/replacement.rs": "cb66ff4e635d7fb71aebd4b6523539573a5cf2512e6659f60cfff2ad45c6fff3",
+    "src/ui/cue_editor/tests.rs": "939cd4e7e1364cd7d27ce74a0ae646f1cec7dec9296784a584b9cd1b4055dc8d",
+    "src/ui/deck_load_lock.rs": "8eb615ad2f240a5e3678117af3363a15aff8ad4d05201e8a745a830fc3156868",
+    "src/ui/deck_load_lock/tests.rs": "ab538e183e2fb72c47f829fdeac35f394296c85ed69bc044cc58f02c2d7988ed",
+    "src/ui/deck_selection.rs": "96c4b87cdc85e442f2027351032546ffd586f542dde5996be0344f505b9304fd",
+    "src/ui/deck_selection/tests.rs": "8c9a894357e9a13b05a1a5270947285e761edd0548705db20f0f88938e5bbe55",
+    "src/ui/deck_time.rs": "92ad18a3cd83d0f9030fbba0672ca4251ac3520a6fef8f22bd4edaf28760d105",
+    "src/ui/deck_time_tests.rs": "39aaa02146a62c21b22809829689291d50dc61b480f96c876c1753a652d2efe2",
+    "src/ui/dependencies.rs": "d5f4cced80690f1bc077b532a3a56420feebc234578461674965133453623394",
+    "src/ui/dependencies/tests.rs": "6e22c0a9dc924095afbbc1a43af8ba861ad4252c0c72832ef4954e3a9ad4e634",
+    "src/ui/dependencies/worker.rs": "835d158a1eec393fa429528f85c64b92e6ffcee2fd13f27a2910a873cdc26d0c",
+    "src/ui/diagnostics.rs": "38a213bf60e44c16e3ea1b4ed0b99abcd7e47ef3c77c868307cf2d4b35ec18a8",
+    "src/ui/diagnostics/capture.rs": "2a80471f3a58c9c1dd5d2bd27fd5d40edd8df0f43bb0e88809409dd2b41d5e3d",
+    "src/ui/diagnostics/tests.rs": "314e95ae40ac6ba4d288ebd143d9c3c30a96b60e22d5e0b6cb761aa82901ab2b",
+    "src/ui/display_tests.rs": "977965bf16c1c9c02c301bfd27306158777c60354bc84937146f92c38c4f1a7f",
+    "src/ui/duration_tests.rs": "4e4e1ae5d4ee703850aec018cebf6dedb0b451f816a099c383c6d8666cac6ffe",
+    "src/ui/font_selection_tests.rs": "753857b3540200dde60f65094805882f650db3de1f20ee4a621236b03d02cce9",
+    "src/ui/fx_controls.rs": "399500a6f7218e514534c4d132a2f4001cc84332a5d55689811222db2ba479e7",
+    "src/ui/fx_controls/tests.rs": "703e25715d2cc8c7e456a3e56480db802e880440cd7fdda25936d080cb38d1e8",
+    "src/ui/grid_editor.rs": "f1dba9feae417eddcd55cf4d6e394385f0d24753ea1e7507067e25f5ba427fb8",
+    "src/ui/grid_editor/tests.rs": "948c7e51ffb383b6c2c95724866668817a36d05caefe318d47797eb9ffdc21a3",
+    "src/ui/help.rs": "73b137c3ff6a9532dddb1cd1dc5e2575c6429ac1cb2950654bc50ab382e5a3a3",
+    "src/ui/help/catalogue.rs": "24ad29ed0f169143e9130e0f37ff170133eb37cf91054e263c60ce9b4f24e2ee",
+    "src/ui/help/lessons.rs": "ce5ef9d51166df26c79ecdfc4907829f435a14bddffc24af69cd386daa93a01b",
+    "src/ui/help/tests.rs": "5d5480fdc7d20ec4d7778dd83a0d2b3e7c69eb17ac7579b6001fcff1c718be46",
+    "src/ui/key_hints.rs": "c5c5f28fe5bdd4e7af3588b1247e6404d5d6a6615673f886029a82e2201ccf22",
+    "src/ui/keyboard.rs": "08bb46d9585b4dec7fd1a0b5b7f9cebffe132bca9528aae6cdda5a0315edc867",
+    "src/ui/keyboard_tests.rs": "2971ffdafee95746c0a1d85617c7517c01ef2c1f7906f06745c78c3f2c846286",
+    "src/ui/keylock_status.rs": "322adabfe66d0748e3e2bd583b75964fed01b65ca6ded1425c5cd9fe37627397",
+    "src/ui/library_analysis.rs": "e657fd90fcddad35dca4597d9cc241768753386c5c681fcdbf187fbcdd709325",
+    "src/ui/library_analysis/changes.rs": "a37295c1134a78f2ea90896fe4c8b380ea5e181683cb80978ca3c2194898896e",
+    "src/ui/library_analysis/tests.rs": "a308c5574a955ccc043744c78ab57e72a4b624d419b04fa4e6e53a3465bbd286",
+    "src/ui/library_analysis/tests/long.rs": "da9abc6a6d08b798f4435c700be4cd1d8cf3129225f76ec7cfe75dbeb20660f2",
+    "src/ui/library_annotations.rs": "cca858135c2ca92f1b28e8be97560d021fa556842e33d88907aa58a5177ebfbf",
+    "src/ui/library_annotations/tests.rs": "4a037b928495820570b80899c3d12e9dc025dd07745fc1f7521e0f86ee2ee3da",
+    "src/ui/library_artwork.rs": "f0fd35bae3f9233395642fae85d8c4e15ba675b7e1df0cde5303bc9042ead9f3",
+    "src/ui/library_artwork/tests.rs": "7ee0407a2d094e42de7bf35880f5a8e5079faf74fffba1c20ae543fcc17977d7",
+    "src/ui/library_backup.rs": "17636f52b967a437ed9c4aa8320bbe536b39ea2e57ad5e14aa231511c4174032",
+    "src/ui/library_backup/tests.rs": "23328fa09a14412c7db1c6543219df2580f173fdbbf3fa738059a2775a88a48b",
+    "src/ui/library_crates.rs": "c7627f29ab50d53a99d8ec1140c04ea833c6da04cc5e3c1d4e0d164c14b2f4d8",
+    "src/ui/library_crates/discovery.rs": "68c77918bd98c613e07ea6fa48bd57601412da60e245dbd89b67b30268466319",
+    "src/ui/library_crates/tests.rs": "ccaf531f5faa0af980ec29ce7a120408a066b44b3774fe120b0c5d625f3e97ed",
+    "src/ui/library_health.rs": "1faab3786f74ee9f6decf06eda9d103198a6752495ba0d4d5540196ed3689793",
+    "src/ui/library_health/tests.rs": "3e0ce243d2753a4f5b2e58f1fce898947469de593821ed64c410a914e6af8749",
+    "src/ui/library_layout.rs": "002f20083532f83e51fb6759c748c3548de69e89ee8c6513d166210606120079",
+    "src/ui/library_layout/sort.rs": "138ca0cb93773d09d2c3511ff01d99f6003380fb43452b02749bd9ad0a48a6a2",
+    "src/ui/library_layout/tests.rs": "ccb6fbd030cbc7f3d696979731a1255f55a4cdfea9994acc170fdc3b70549f97",
+    "src/ui/library_metadata.rs": "5405b7a774ab4d69c76ed5835af585f2d0703eb638e9d36d89a4ddb7e16ddb22",
+    "src/ui/library_metadata/analysis.rs": "bb7af72487808a85c018eccae76da385ee702cc4c12ec7cd210f2902dc94d227",
+    "src/ui/library_metadata/analysis/tests.rs": "4e3afd3f0e8130d6de999431fa6d108ee19484b63ea35ea83b5c61af36d63dc0",
+    "src/ui/library_metadata/collection_rows.rs": "4706b30c8d2e34114140b9a88e68f17711af7aa4a275270ada250579b7f2368a",
+    "src/ui/library_metadata/collection_rows/tests.rs": "ff627d6d968fbc5364709d7cb71190023377021a119cfc64ff1f85abb7db57d7",
+    "src/ui/library_metadata/collections.rs": "e0ff3b822c4b3dbab5cbbd2aa187a54b0f2a0741c3e33a477d476cb7e111ad17",
+    "src/ui/library_metadata/collections/tests.rs": "c8134f4b3657b1b043cad0226dbeaafcc1882f8d0e249e81eea4082f7a15b58c",
+    "src/ui/library_metadata/tags.rs": "69ffbb71c713118cbee76fb45e9d0990bbf4a13073feef8ceea6413c3edd4d15",
+    "src/ui/library_metadata/tags/tests.rs": "4231bd68c0c9cf0f9cc535fe676e24cb1d77aac5bd9c3bc3abd7e4bd91a460a1",
+    "src/ui/library_metadata/tests.rs": "fbe712b28a1a8f78afef5059783d7615185658f73e99f6dee00271a2cffd2ad2",
+    "src/ui/library_prepare.rs": "26fb7b218fe4290d5025cc07de1ec1d8e8b7c3b0e8bf1cf42faa8c2bed9c394f",
+    "src/ui/library_prepare/tests.rs": "eacbf8b49cb53dbf8cab9c0f8e4c77d7a00b5842ff421d2f3428dfa1061c3dfc",
+    "src/ui/library_protection.rs": "06e2214aec6af01deac905ded1b95d2261d073adb1855461f804dfbd89678348",
+    "src/ui/library_protection/tests.rs": "8725d3f611c0a6e6f966325cf3c24f0ffdf4a5729b277911f004d793c7732aea",
+    "src/ui/library_scan.rs": "23fcd9dc7633950fa656bc7ae3df2a7412cfe4adea6a08edfcea3735fd66cc77",
+    "src/ui/library_scan/replacement.rs": "9fa87343b7e2800bbeb1bc6ac8d0abf2c62c96f42e8fdfab88c0cc556f33b4b3",
+    "src/ui/library_scan/tag_jobs.rs": "e8174cbc906cb86658abf448d2aca0c0b68a2c29523f70cd962170f873b64413",
+    "src/ui/library_scan/tags.rs": "f2774e5aeded44b105f4e2558418d71f0ecd46444d5d31bab7e459cdc9d923a4",
+    "src/ui/library_scan/tests.rs": "d6a6ae695d530c7b836a6d9542edad50deb9fef315e4a84bcfe77001f60af333",
+    "src/ui/library_scan/traversal.rs": "2be9d319ba08cacbe64814dcee8b9324b4fa0770176fab57bab33df4bb0928dd",
+    "src/ui/library_scan/watch.rs": "9bd29e4e7d98ddbeefcd48e71eb139b700800af06515fece2c1f887f0d1694ef",
+    "src/ui/library_smart_crates.rs": "ee8d76b9b594071219ca926a5d2c2d786f04c00e041134b3f97bd107ca6cc6a8",
+    "src/ui/library_smart_crates/tests.rs": "f0c88820f220ced1296b835129eb70e183a1c3517c38487603d0d3c3b1e8d95a",
+    "src/ui/library_store.rs": "250289f6f2bf684701460110297bb3c489406f6fea2d9bb65dd34dbf6494888c",
+    "src/ui/library_store/import_tests.rs": "c52558c06482d1901b3229955a38b34d7d82925ed32376b23f071735ebe5594c",
+    "src/ui/library_store/import_tests/relocation.rs": "15102faf246b0dbfaa66e9d03b3e7a3a4e2be1d97aafca8bee1a9a31d62c34ee",
+    "src/ui/library_store/tests.rs": "dc59e6ec5e3c2b1349e06d07931d591ddebe0e93c5a126d535bc7017fd5894a2",
+    "src/ui/library_tags.rs": "d68301bd0b7cf77a607b8e3033371f9939a84ee2db707c310369ff1e2e21abb5",
+    "src/ui/library_tags/tests.rs": "ca3df785ab2511456f3f6e2724c4450c61cdad4594e05e3b1b15a9d69edb220c",
+    "src/ui/library_view.rs": "b6056b369a92a5b71e520132624235b9c9c3f709005fa3055f0a1aba38113712",
+    "src/ui/library_view_tests.rs": "d46896e43a39b318c36509ba691649da34a262ffdbe8217e1a4e686c00c87d2c",
+    "src/ui/licenses.rs": "514c7a7f5e69e2e816317837763582b0d913c34852a58a05c4e9731cf8b5b84f",
+    "src/ui/licenses/tests.rs": "ed1be7b929653ee4fe5354161750ec8dcd3ee9b8179b4b629127155b424dc22c",
+    "src/ui/load_status.rs": "6eddddb8bff1b7a7cacdbac4e124e99304a74dbcef0284cba710ad35b70eb6fb",
+    "src/ui/load_status_tests.rs": "67d22b3563e316de90135703d6d84a91217847c15b5ea1a5dd9f630f02d3b214",
+    "src/ui/master_fx_status.rs": "68b39010bef36774107e2e22bd09337685e37ad70ae3e6504387564732c245a4",
+    "src/ui/midi_connection_tests.rs": "0896685184f64468d2520f28a72068f22b03e13ab439b553850ba30f3991b193",
+    "src/ui/midi_files.rs": "5aad9e1c5877d4ea5a53487779a3af844ce04f19e05404037eefeb6215f9d555",
+    "src/ui/midi_files/tests.rs": "b4524722dac72b478299fdaaf7e7e6adefb4d14177369ca36ff021e23ee57b33",
+    "src/ui/midi_files/worker.rs": "532fb3f91cce34fce07b7c9425bfe44bc5a58b04cdd8e9899db5e14c5d7be261",
+    "src/ui/midi_learn.rs": "d6cb47559b0fc767b3c4a381de388c469ca67cbff22edf6fa27472476bb44da0",
+    "src/ui/midi_learn/tests.rs": "b93a3bddbabfca4765866e19ec38fbd1c72e585f691e076277c31cb1ef7c728a",
+    "src/ui/midi_routing.rs": "5ad2bbbf72b1862830bdfd09ef8e6ce9a7112d168eb1f51a693e5b5a15322b79",
+    "src/ui/music_provider.rs": "4fde2b8189140832163f0ffedb434aef9132fa3e47a8a5545589313e21aed2bd",
+    "src/ui/music_provider/tests.rs": "6852556cb44f00076536df5bb322e31e49cd458189737c7bd1d3bd64e589045d",
+    "src/ui/performance.rs": "5728a6e5ceecde8457b3d3e3bf740985b0b40e6d603c73ac99d21072057aa6e7",
+    "src/ui/performance/tests.rs": "1f4bc02b63fbc04a2cfc66b2364a210d7620d40565f3312c4f5440379b3a90c6",
+    "src/ui/piano_roll.rs": "74e11044229546072277a56aa41adf43c2f647442699008dbe6856b9f92c8477",
+    "src/ui/piano_roll/canvas.rs": "d2aea4f4ecc6c82e7b56602184d3fdbb761978b41acd79e45b59f73ad19cff4b",
+    "src/ui/piano_roll/tests.rs": "23e358a3f41eb19ff5689e6943d25307c937c9e99c71d9af0f4c30ce9e9433c1",
+    "src/ui/play_history.rs": "86a7461871016bf56b08210b039be4400d750a4a79023d24d966c5b255e4e88b",
+    "src/ui/play_history/tests.rs": "7e3578f6621377f7164db8373c30c99e7d3cc0e8137f111d83ce8c51561cca99",
+    "src/ui/play_time.rs": "eaf2fd3ee53933472c3972ea5f6ea186f2036c73b17195c33c35013fa022fe03",
+    "src/ui/play_time/tests.rs": "17be78ff09807826c993a70213973164f1addd8370243396a30e97fad597dfa5",
+    "src/ui/portability.rs": "52af93271305fc08620bb14aeb91dc6fe500d5ebf4d420903624767d5f1e56d6",
+    "src/ui/portability/tests.rs": "adf6cdfd7eb99bd339c19f993bdd3b266e1848181d497718576a0351f3507dc7",
+    "src/ui/portability/worker.rs": "8cd054a7f7dd22bb4241af640cdf4a7abd7157c37cd8c27129f882f4c975a5ee",
+    "src/ui/preferences.rs": "4000df9c4abc6ffa33dd463afd5800985f388a0d9e873e501b4cbfdc0867283c",
+    "src/ui/preferences/tests.rs": "08ea38f1306b58819c976b9e92965533dc4a0e50402b8f9e99cc62113e542f01",
+    "src/ui/project.rs": "421c826051d65fbb1de41754523a235735e572b3cc6aa8bcc75a48692d3658fb",
+    "src/ui/project/performance_gate_tests.rs": "97ea2ebd5a9a4e0646abf112e8b2dfb8a76d7ba097c347dcd20c84c7173efeee",
+    "src/ui/project/tests.rs": "c7be0a0172a001a5d2241f26aab6a72abbfb5b2ba30873774ff42014a8f3f3d4",
+    "src/ui/project/tests/library_history_tests.rs": "46c065ca4482d1da49942515a2fa5f002c53b3982d72fd90149710ba3ef7ff85",
+    "src/ui/project/worker.rs": "a2803a8d192f32dfd7211d17d1f42b41984dd94d8b6ae947584f46e7bae4442d",
+    "src/ui/project_import.rs": "5ec74b1bbd5f2f407111ab0701c3e5bc07f9236289fc4f611c65cead9d72a6ce",
+    "src/ui/project_import/tests.rs": "756be2e09d4c344843575fa4ae1c7f09b4bca28b25ba0a42bb6dee3758ed916c",
+    "src/ui/project_import/worker.rs": "49884bb3d19b9b7a530b6a41ed2f15d08f89c56ed10b94a94a5c0982ecbaac8d",
+    "src/ui/project_versions.rs": "1fa0bca990b8a20af2d1a828e4cb0a8249f9136c75b83be808752f949fbb6c58",
+    "src/ui/project_versions/tests.rs": "08482555e1612dd2d06ebd846d35b6d4594df361dec5980c4f69342f022c0df6",
+    "src/ui/project_versions/worker.rs": "63e9a94bfb60307f6d531df317a2101cb61585eddd93aca28b90f0c6a6ced04e",
+    "src/ui/recovery.rs": "dc09220d54a6c2ac72dbc9fe37748c5cd2e025d62a07d9bbd7f38b9600615d90",
+    "src/ui/recovery/tests.rs": "5130ce189d052852f1d059bef00b0fae5c4bec00ff84daee238360381f1de6de",
+    "src/ui/recovery/worker.rs": "5e73b96a3e7455e1b6e7fa10d61bfcd70d1ffb00c044a4aba544ec46a8551e6f",
+    "src/ui/recovery_settings.rs": "da5838c2debb64b399f0521e37de3656cf69a9ca99d1646bb40d37e9cfbfb737",
+    "src/ui/sampler_editor.rs": "2cafe9ca4f6a12b83e367ba13e40cd9af847afd21e0cd4afb73094353912f581",
+    "src/ui/sampler_editor/tests.rs": "055d792896e0b2a1d06d032a5c8d875ffe8a2f81f322f9f835f7571b7fbec509",
+    "src/ui/sampler_editor/tests/offline.rs": "2fbd804f238c70942214005af56d23649114a1a385641babb7818c33a3f20832",
+    "src/ui/sampler_identity_tests.rs": "563964514eb825f84e7358218c4953a2a199e3c0b4a2b87c4a3d37a748c9fc26",
+    "src/ui/sampler_pad_tests.rs": "acfe5171debc3b0f6e37498abc3e397487f6adb0e52574f2603373f5b00b0826",
+    "src/ui/session_editor.rs": "556125873855c4249c37eb0ae04bdfbc4bfca646e0e10733b3fb131d0a85a22a",
+    "src/ui/session_editor/tests.rs": "03257a161554f07dfb2ff8fc3c856d460b29db15d850c237da84177f7e0bb75c",
+    "src/ui/session_editor/worker.rs": "bca125b408b675c26a0734a08e841218972b202d929af2913ac40e9a44d97a75",
+    "src/ui/session_history.rs": "7a59234287e6d4bf722fa89a7a77e6bf44359aef3ff064502f9bf930790c715e",
+    "src/ui/session_history/tests.rs": "47dadf4a6f8a250bf3e076490df74924bb70223bc8d0eaedd3a51d3bfc5e0c64",
+    "src/ui/shortcuts.rs": "063bc611579a9f577327187f9e682882655c872aae3f658e7e7aa9e187d1925e",
+    "src/ui/support.rs": "8138ce0c49d80dd87f9adc799033d3fcd872ccae111df18e01278fde770d3399",
+    "src/ui/support/tests.rs": "9241bdaf5a0a0060d59ae6426b065f7560f5709fa10fa99b2d5fec884c478244",
+    "src/ui/templates.rs": "410695f9a8d767cd2079b6c44f3e1eb680177e3536c396c2f0a6e4b614b79a3a",
+    "src/ui/templates/tests.rs": "57aca83b208896a9b05ee5ea5befc02e2e6b579163b752235f2ad9c8e165647a",
+    "src/ui/templates/worker.rs": "4208129f59c160e4018f2e03a99fc28518f8a4fe1470cdf1725f7233778a93f3",
+    "src/ui/test_support.rs": "7a5ef6aa7d88636a823100efa1e60e9712ba4d67b5a84f1be31dcc434239d1f1",
+    "src/ui/tests.rs": "079b264e5c5c47a5c917cba401be53c60ada5497f800fb7ba36fda294aafa2da",
+    "src/ui/theme_reload_tests.rs": "5f97aba1e3a4c7cf4adc660748ccb4330b21b1f5787be70f85602c8eb9280707",
+    "src/ui/theme_requests.rs": "701d7b04fd12a6270c9e8778f237611d5a9cc792fe93d78571dd07b4773a5a7d",
+    "src/ui/theme_requests/tests.rs": "7ac812b0eb9cdff1849aa6a5db5c52d4aa2ccc28f66d134eee29263dfd9d3272",
+    "src/ui/timing.rs": "81d003d6e2e965142ba88ad0092c8e1ddebca8420f131951bdf9516c4d611b9e",
+    "src/ui/timing/tests.rs": "7fcb555012cb8b83616d39a3da840470ef9f456e1699f27ce22087ba96acf55b",
+    "src/ui/timing/worker.rs": "81f2c1fed46d172b6b326196bf7225d6e8bf4eaf182df634c4a0b92a16d3bed6",
+    "src/ui/touch.rs": "93655e838ab165bcfdbea20e86100df06f2991b4456aaaf4813f155f89d3681c",
+    "src/ui/touch/tests.rs": "642bff28408d81d41cd9f1c02a68cae065fc5e57c639972a14ad3a2f6650d51e",
+    "src/ui/undo.rs": "29e9e55ddfdfc17f9ab1cdac2fbe0bb7533a088bc0e0a1728ec4f7d1e2647179",
+    "src/ui/undo/tests.rs": "e7b165a87f28635f0e90fec9a04009123b32ee7ac26a0823dfc693a5467e8d80",
+    "src/ui/video.rs": "6c8d2bf9d829017eee9cc5395c5262a942a93bb447cb12101f950c6759a9e9da",
+    "src/ui/video/tests.rs": "cf58e06dad854276265c9283982d601d4b40c476888bf1b47bc1f5dfa49d7587",
+    "src/ui/video/worker.rs": "81314c4c02220ff7b06cca7bcb8a6bf1fe7a7997631e09b8fa59d03070f92eb8",
+    "src/ui/waveform.rs": "d3146a9efaca54bafb69166d7777a785195b667b0e855c197e058b4812061d83",
+    "src/ui/waveform/tests.rs": "f565f5a7a108d63ba612ec65ac91731fed46af68b2db73804809287725d8856f",
+    "src/ui/waveform_tests.rs": "ec2e88e7884354c5a3cd3238a4dce8d9c87cf13aae633123da33dc7ec0f49846",
+    "src/ui/workspace.rs": "071661f2934689f14e07f33e9b20d11038a3b46e7d78bab18246a1cdb166dc78",
+    "src/ui/workspace/tests.rs": "a0d39d26186024e4510fdd018b766e24d3d8d8c3ff31aee94f7c5a958b34b29a",
+    "src/video.rs": "5cedfd57b7208ade5aa69d23a7da1bb618ef3a39c87ad43ba84c6b1ffb55179a",
+    "src/video/decoder.rs": "4ddfa9396dc17670c9aa6a0c784c841200fb678955bff9a254c4d3bdbaf720fe",
+    "src/video/decoder/tests.rs": "6bd75f86599d77ff37f42e395deeef08afc0e5b0a670c2fc82709b62df60ffca",
+    "src/video/render.rs": "d000c8f64db0d49cce0e678973d9ad9e942dfec76bfd3e5199e2b859a54425af",
+    "src/video/tests.rs": "28175eec094a9a9dafffc0dfe5142bb0f13e7d941eec2dc32ae23a8798c7dd3b",
+    "tests/fixtures/audio/README.md": "2193751dc91424ba222907f959a29d26ad181f73088a60a9599404583df25fda",
+    "tests/fixtures/audio/tone-estimated.mp3": "db3476a2c3bfb5c3838b867d819194bfed908240779a9e219514bbf879a052a0",
+    "tests/fixtures/audio/tone-long.ogg": "9f10c76485ef7317d06d35a83703e0e77150a8cb05a6e8755ce5347bb051fa6b",
+    "tests/fixtures/audio/tone-next.ogg": "108fa8b6b32a42dbad401cdfb6e72afe3f6ec8f8e3634fcb279610305a0bb7fd",
+    "tests/fixtures/audio/tone-tags.aiff": "4996e71df57482a513c46663093b63230a778bf95fe2a64820f7a8669e50df39",
+    "tests/fixtures/audio/tone-tags.wav": "24f1d3712dd61cbfc83f2f8974b92d00a4a3c39e89e00ffadc67a8c5726f0ef7",
+    "tests/fixtures/audio/tone.flac": "ea440a0e10d78243b7fcd92b3cf5e7998c8b0d95d4100fa18687f7adc931f4a6",
+    "tests/fixtures/audio/tone.m4a": "4a24363782935022df775fa038098c857a2bbf740549e109a8f05c377469237d",
+    "tests/fixtures/audio/tone.mp3": "09dbd544561b1b38ddd9a64991f8caadfac0cd0644fe45435cb7cdc6cb7170ba",
+    "tests/fixtures/audio/tone.ogg": "ebc85aa6cfc74d049a03ecac2215063a50d2ab02b931abb8e0a15285e0ab2378",
+    "tests/fixtures/beatgrid/11_rock_100_beat_4-4.mid": "26906e263271dfecdc0674f665a606d524badbc9ec384cd177e9fffe5e3e6c50",
+    "tests/fixtures/beatgrid/11_rock_100_beat_4-4.wav": "6e4f313f3dee5482bdc328fbd54893cc3a0f7fe9e960045b837b123e0a17dd4a",
+    "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid": "b665dd289f62852200217ad4fae574f196a7867d64d7f55733dab7ba13cd71d8",
+    "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav": "afabe6965ee20da4df0da5b41e889bf29e7a8d483aacd5557a162f53d6858ce2",
+    "tests/fixtures/beatgrid/CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+    "tests/fixtures/beatgrid/README.md": "aae4aef775d0f9deffebc03009afd8f126c4de8500c0c925184152baf7ecdfcb",
+    "tests/fixtures/beatgrid/additional-sources.json": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66",
+    "tests/fixtures/beatgrid/sources.json": "04df228b01a61d1b208da34e1631a2b84f6e828d2823dee71fb0a8489baa0124",
+    "tests/fixtures/keylock/README.md": "2a07072b3b1333b8ca185222f8a76afbb1412c28c4e92babaa80cab87c0e6f89",
+    "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+    "tests/fixtures/keylock/f1_arpeggios_c_slow_forte_i.wav": "23f8c61eca9ffb533806eeb58dab979013650c3d4331c1e916b3f627a0253c1b",
+    "tests/fixtures/keylock/m1_arpeggios_c_slow_forte_i.wav": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa",
+    "tests/fixtures/keylock/sources.json": "84c53b13a5f2c143c6f6345cea892d1e8a94037488f555b041dc339fda8fd1ac",
+    "tests/fixtures/midi/README.md": "74b15f28a85c57e6be2e025fccc1cdf4da1756dc0625bf2535e0310e72ec253e",
+    "tests/fixtures/midi/ardour-9.8-region-ppqn19200.mid": "e20b3ab9a40a45b032451df776a7a189bb3e0e886b25f8aeb0be2899ce5aecde",
+    "tests/fixtures/midi/generate.py": "16c30a593146b1b9804e8b21c3c6ae87b0b058b70a15cfe559980551d1b45e49",
+    "tests/fixtures/midi/sixteen-bars-ppqn960.mid": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4",
+    "vendor/egui-winit/.cargo_vcs_info.json": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+    "vendor/egui-winit/Cargo.lock": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+    "vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+    "vendor/egui-winit/Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+    "vendor/egui-winit/LICENSE": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+    "vendor/egui-winit/PATCHES.md": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+    "vendor/egui-winit/README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+    "vendor/egui-winit/UPSTREAM.json": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+    "vendor/egui-winit/src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+    "vendor/egui-winit/src/lib.rs": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+    "vendor/egui-winit/src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
+    "vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+    "vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+    "vendor/symphonia-format-riff/Cargo.toml.orig": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+    "vendor/symphonia-format-riff/LICENSE": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+    "vendor/symphonia-format-riff/PATCHES.md": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+    "vendor/symphonia-format-riff/README.md": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+    "vendor/symphonia-format-riff/UPSTREAM.json": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+    "vendor/symphonia-format-riff/src/aiff/chunks.rs": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+    "vendor/symphonia-format-riff/src/aiff/mod.rs": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+    "vendor/symphonia-format-riff/src/common.rs": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+    "vendor/symphonia-format-riff/src/lib.rs": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+    "vendor/symphonia-format-riff/src/wave/chunks.rs": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+    "vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
+  },
+  "started_utc": "2026-10-04T18:46:26Z",
+  "binaries": {
+    "debug_tests": {
+      "sha256": "48ba10c99081b0055454167fa418e740e6d8f4d38058ac777e6f4039ffe61819",
+      "fresh_compiler_artifact": true
+    },
+    "release_tests": {
+      "sha256": "6b8264d7764fc0a0a69bc6d0e7fa1e77133a2a6ad2e6146a4bb32d7fddaae23c",
+      "fresh_compiler_artifact": true
+    },
+    "release": {
+      "sha256": "2595676599baeedf217b528832ea812bde6fa2fa598ed8d9d14faa5e6a294e8c",
+      "fresh_compiler_artifact": true
+    }
+  },
+  "ordinary": {
+    "passed": 1602,
+    "ignored": 36,
+    "listed": 1638,
+    "exact_names_audited": true,
+    "groups": [
+      {
+        "name": "files",
+        "passed": 1551,
+        "ignored": 35,
+        "seconds": 311.37
+      },
+      {
+        "name": "real_path_sockets",
+        "passed": 50,
+        "ignored": 1,
+        "seconds": 10.34
+      },
+      {
+        "name": "exhaustive_scene",
+        "passed": 1,
+        "ignored": 0,
+        "seconds": 259.27
+      }
+    ]
+  },
+  "optimized": {
+    "bindings": {
+      "binary_sha256": "2595676599baeedf217b528832ea812bde6fa2fa598ed8d9d14faa5e6a294e8c",
+      "cargo_lock_sha256": "500de073386cdbdf205211d67a757b4302c48801d3a5a5fba7791c40a6f58438",
+      "license_manifest_sha256": "a258acb55b618a62272ec37a45831abf7bfe2be14494f559a986d648e514e9f0",
+      "license_notices_sha256": "b476dc973754c714d603acbe48837df69c72de918d25d0f06dc11ee95113ea1b",
+      "policy_sha256": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
+      "target": "aarch64-unknown-linux-gnu",
+      "toolchain": {
+        "LLVM version": "22.1.8",
+        "binary": "rustc",
+        "commit-date": "2026-08-18",
+        "commit-hash": "88d9e12ae178fab0fb5cc050a94da85685d449ea",
+        "host": "aarch64-unknown-linux-gnu",
+        "release": "1.98.0"
+      }
+    },
+    "build": {
+      "binary_info": {
+        "arch": "aarch64",
+        "debug_assertions": false,
+        "os": "linux",
+        "pkg_version": "0.1.0",
+        "schema": 1
+      },
+      "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+      "environment": {},
+      "native_accessibility": {
+        "exit_code": 0,
+        "report": {
+          "actions": [
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Deck A: Pitch"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(-4.0))",
+              "label": "Deck A: Pitch"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A: Platter play or pause"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A: Hot cue 1"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Deck A: Hot cue 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Deck A: Hot cue 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Delete cue"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Press pad"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Release pad"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler instrument"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "analog"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Press pad"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Release pad"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Project"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "New project"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Discard changes"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Clip track 1 scene 1: Empty"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Clip track 1 scene 1: Empty"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Arm compose"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Press pad"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Sample pad 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Release pad"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Edit"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Undo Record notes · Track 1, scene 1 Ctrl+Z"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Edit"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Redo Record notes · Track 1, scene 1 Ctrl+Shift+Z"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Project"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Save project as…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Save"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Project"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "New project"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Project"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Open recent ⏵"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "/home/michael/Projects/omatainer/target/atspi-ng2dzqwk/Untitled.omat"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Preferences"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(1.25))",
+              "label": "UI scale"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Follow desktop theme and font"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Preview changes"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Apply and save"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Cancel changes"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Help"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Record a held note"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Start this lesson"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Clip track 1 scene 3: Empty"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Clip track 1 scene 3: Empty"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Arm compose"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Next lesson step"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler instrument"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "keys"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Press pad"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Next lesson step"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Sampler: Pad 1: A MIDI note 57"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Release pad"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Next lesson step"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Disarm compose"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Next lesson step"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Clip track 1 scene 3: Clip"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Clip track 1 scene 3: Clip"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Launch once"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Next lesson step"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Cancel lesson"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Load selected crate item to deck A"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Deck A: Hot cue 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Actions for Deck A: Hot cue 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Edit cue names and colors"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Set 1"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Cue 1 name"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Apply 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Set 8"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Cue 8 name"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Apply 8"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Delete 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Close cue editor"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A: Beatgrid editor"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Deck A beatgrid: Downbeat seconds"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Half tempo"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Double tempo"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Set downbeat at playhead"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Slip +1 ms"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Apply grid"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Reset manual grid"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Cancel or close grid editor"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(1.5))",
+              "label": "Deck A: Waveform position"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A: Beatgrid editor"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Deck A beatgrid: Tempo anchor beat"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Deck A beatgrid: Tempo anchor source seconds"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Tempo anchor at playhead"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Apply grid"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Delete tempo anchor 1"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Deck A beatgrid: Cancel or close grid editor"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(3.0))",
+              "label": "Crate selection"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler: Edit sampler banks"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Sampler editor: New or reusable bank name"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Create empty bank"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Assign selected local source"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(0.6))",
+              "label": "Sampler editor: Slot gain"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Prepare slot preview"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Audition selected slot"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Stop audition"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Save reusable bank"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Apply bank"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Edit current bank"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Clear selected slot"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Sampler editor: Cancel or close sampler editor"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(3.0))",
+              "label": "Crate selection"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "analyze…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Analyze selected row"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Analyze selected row"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Inspect selected cache"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Close analysis panel"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Choose or edit named crates"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "Crate name"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "New root crate"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Use as destination"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(0.0))",
+              "label": "Crate tree row (0 = All tracks)"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Add filtered tracks"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(1.0))",
+              "label": "Crate tree row (0 = All tracks)"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "New child crate"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Use as destination"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(1.0))",
+              "label": "Crate tree row (0 = All tracks)"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Toggle member at row"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Copy selected to destination"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(4.0))",
+              "label": "Insert before row (last + 1 appends)"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Reorder selected members"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(2.0))",
+              "label": "Crate tree row (0 = All tracks)"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Delete crate…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Keep crate"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Delete crate…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Confirm delete crate subtree"
+            },
+            {
+              "action": "SetValue",
+              "data": "Some(NumericValue(0.0))",
+              "label": "Crate tree row (0 = All tracks)"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Close crates"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "History"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Start session"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "End session"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Mark unplayed · Drums (session) · deck A · entry 1"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "External track title"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "External track artist"
+            },
+            {
+              "action": "Focus",
+              "data": "None",
+              "label": "History export destination"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Close history"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Enable performance mode"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Safe stop…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Stop all transports and release notes"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Recover inputs…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "I have released the physical inputs"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Inputs released — keep playback stopped"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Emergency silence…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Confirm emergency silence"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Recover inputs…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "I have released the physical inputs"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Inputs released — keep output muted"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Leave performance mode…"
+            },
+            {
+              "action": "Click",
+              "data": "None",
+              "label": "Leave protection"
+            }
+          ],
+          "alternate_action_path": "production Actions menu using native AT-SPI Click",
+          "beatgrid": {
+            "applied": {
+              "downbeat_seconds": 0.001,
+              "seconds_per_beat": 0.4838709677419355
+            },
+            "applied_tempo_map": {
+              "anchors": [
+                {
+                  "beat": 4.0,
+                  "seconds": 1.4999999996547897
+                }
+              ],
+              "downbeat_seconds": 0.001,
+              "seconds_per_beat": 0.37474999991369745
+            },
+            "cancel_preserved_applied_grid": true,
+            "half_tempo_help": " Half grid tempo. Draft BPM divided by two; minimum 20. Correct double-tempo ambiguity in the preview while retaining the downbeat. Disabled when the result would fall below the supported range.",
+            "tempo_anchor_workflow": "seek -> anchor fields focus -> insert at playhead -> Apply -> delete preview -> Cancel",
+            "workflow": "open -> focus -> half -> double -> set -> slip -> Apply -> reset -> Cancel"
+          },
+          "cue_actions": [
+            "click"
+          ],
+          "cue_editor_workflow": "native list open -> set slots 1/8 -> text semantics/focus -> apply -> delete 1 -> close; typed names/colors covered by real egui tests",
+          "frames": 1604,
+          "help_recording_lesson": "native arm -> held note -> release -> disarm -> launch",
+          "lesson_notes": 1,
+          "named_crates": {
+            "manual_order": [
+              "00000000000000000000000000000002",
+              "780bff87d3a717180789cd87c98f2d1e",
+              "00000000000000000000000000000001"
+            ],
+            "name_entry": "ordinary New crate draft; typed rename covered by actual egui event tests",
+            "physical_controller_qa": false,
+            "root": "850ef87878b9870144bc1adbab2132f4",
+            "saved": true,
+            "workflow": "create root/child -> overlapping copy -> manual reorder -> cancel deletion -> delete child only"
+          },
+          "native_nodes_visited": 278,
+          "pad_actions": [
+            "click"
+          ],
+          "performance": {
+            "changing": false,
+            "deck_load_locked": [
+              false,
+              false
+            ],
+            "last_rejection": "protected",
+            "nonfinite_tail": false,
+            "observation_complete": false,
+            "observed_frames": 2880,
+            "optional_active": 1,
+            "output_muted": true,
+            "protected": false,
+            "quiet_frames": 2880,
+            "recovery": false,
+            "rejected": 1,
+            "safety_applied": 2,
+            "safety_requested": 2,
+            "stopped": false
+          },
+          "performance_workflow": "enable -> safe stop -> explicit recovery -> emergency silence -> keep-muted recovery -> deliberate exit",
+          "persisted_notes": 1,
+          "pitch_help": "Signal activity 0% (smoothed, not a peak or clipping meter). Arrow keys adjust; Shift for fine adjustment; Home/End for limits; F2 enters a value. Deck pitch. Percent; selected ±8, ±16 or ±50 range. Adjust playback rate around zero. Pitch lock determines whether the file's pitch follows the rate. Center resets to the original rate.",
+          "pitch_range": [
+            -8,
+            8
+          ],
+          "pitch_renderer_after_native_setvalue": 0.25,
+          "pitch_role": "slider",
+          "platform": "Linux AT-SPI via private D-Bus",
+          "platter_actions": [
+            "click"
+          ],
+          "preferences_saved_scale": 1.25,
+          "project_workflow": "New -> compose -> Undo -> Redo -> Save -> New -> Open recent",
+          "reopened_notes": 1,
+          "reopened_project_pitch": 0.5,
+          "sampler_editor": {
+            "applied_bank": {
+              "frames": 12000,
+              "gain": 0.6000000238418579,
+              "id": "b50037ae44dd5abcdfc0a50e1b87f2c5",
+              "name": "Kit copy"
+            },
+            "cancel_preserved_applied_bank": true,
+            "save_was_separate_from_apply": true,
+            "workflow": "create -> local FLAC -> gain -> prepare -> audition/stop -> reusable Save -> Apply -> clear preview -> Cancel"
+          },
+          "scope": "actual App/renderer plus native accessibility API; no window, Orca, desktop setting or hardware QA",
+          "session_history": {
+            "end_frame": 93376,
+            "physical_hardware_qa": false,
+            "session_id": "6fe15b55713e97a60c5f70b39f590bc0",
+            "start_frame": 92672,
+            "typed_external_and_export": "actual egui UI tests; pinned native adapter has no EditableText mutation",
+            "workflow": "output-confirmed Start -> End -> durable save -> captured manual mark -> text focus -> close"
+          },
+          "track_analysis": {
+            "duration": 0.25,
+            "physical_audio_qa": false,
+            "waveform_bins": 2048,
+            "workflow": "actual local FLAC -> analysis -> catalog save -> cache reuse -> inspection -> close"
+          },
+          "workflow_seconds": {
+            "analysis": 2.666234998992877,
+            "crates": 8.064454483013833,
+            "grid": 7.376855731010437,
+            "history": 3.323620215000119,
+            "sampler": 6.061956208985066
+          }
+        }
+      },
+      "profile": "release",
+      "test_binary_sha256": "6b8264d7764fc0a0a69bc6d0e7fa1e77133a2a6ad2e6146a4bb32d7fddaae23c",
+      "test_exit_code": 0
+    },
+    "failures": [],
+    "finished_utc": "2026-10-04T19:30:50.430226+00:00",
+    "host": {
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "architecture": "aarch64",
+      "cpu_model": "Apple MacBook Pro (16-inch, M1 Pro, 2021)",
+      "execution": "local",
+      "governors": [
+        "schedutil"
+      ],
+      "kernel": "7.1.13-3-2-ARCH",
+      "load_average_after_workload": [
+        3.45947265625,
+        4.6240234375,
+        4.7783203125
+      ],
+      "load_average_before_workload": [
+        7.07666015625,
+        5.498046875,
+        5.04541015625
+      ],
+      "logical_cpus": 10,
+      "memory_bytes": 16141500416,
+      "process_nice": 0,
+      "scheduler_policy": 0,
+      "system": "Linux"
+    },
+    "policy_text": "{\n  \"schema\": 1,\n  \"suite\": \"supported-workloads-v1\",\n  \"status\": \"reviewed\",\n  \"test\": \"ui::project::performance_gate_tests::fixed_native_workloads\",\n  \"timeout_seconds\": 900,\n  \"scope\": \"Local release-profile production components driven through implemented App, callback, MIDI and IPC paths. Timing describes headless callback/render/UI work on the recorded Linux host.\",\n  \"unresolved_limits\": [\n    \"No physical audio-device deadline, converter latency, XRUN, audible quality or controller hardware compatibility proof.\",\n    \"Headless egui frame time excludes a window-system compositor and physical display presentation; no Orca or human accessibility certification.\",\n    \"Dense live control changes exercise implemented commands; no automation-lane editor exists.\",\n    \"Long note capture exercises implemented MIDI composition; no general microphone or audio-file recording editor exists.\",\n    \"Ten minutes of musical-time recording is accelerated; this does not certify a ten-minute wall-clock hardware soak.\"\n  ],\n  \"workloads\": [\n    {\n      \"id\": \"callback_producer\",\n      \"conditions\": {\n        \"blocks\": 8192,\n        \"channels\": 2,\n        \"frames\": 256,\n        \"fx_per_track\": 3,\n        \"notes_per_track\": 1024,\n        \"parameter_interval_blocks\": 8,\n        \"parameter_sweep_tracks\": 8,\n        \"sample_rate\": 48000,\n        \"tracks\": 8,\n        \"warmup_blocks\": 128,\n        \"live_note_recording\": false\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"callback_wall_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 5333333,\n            \"max\": 10666666,\n            \"p99_minus_p50\": 2666666\n          }\n        },\n        \"render_cpu_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 3999999\n          }\n        }\n      },\n      \"metrics\": {\n        \"allocations\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"frees\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rms\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        },\n        \"peak\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        }\n      },\n      \"checks\": [\n        \"all_commands_applied\",\n        \"finite_output\",\n        \"nonzero_output\",\n        \"original_notes_intact\",\n        \"exact_recorded_notes\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {\n          \"quantized_audio_hash\": \"26f84beea80f5ec5\"\n        }\n      }\n    },\n    {\n      \"id\": \"callback_composer\",\n      \"conditions\": {\n        \"blocks\": 8192,\n        \"channels\": 2,\n        \"frames\": 256,\n        \"fx_per_track\": 3,\n        \"notes_per_track\": 1024,\n        \"parameter_interval_blocks\": 8,\n        \"parameter_sweep_tracks\": 8,\n        \"sample_rate\": 48000,\n        \"tracks\": 8,\n        \"warmup_blocks\": 128,\n        \"live_note_recording\": true\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"callback_wall_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 5333333,\n            \"max\": 10666666,\n            \"p99_minus_p50\": 2666666\n          }\n        },\n        \"render_cpu_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 3999999\n          }\n        }\n      },\n      \"metrics\": {\n        \"allocations\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"frees\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rms\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        },\n        \"peak\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        }\n      },\n      \"checks\": [\n        \"all_commands_applied\",\n        \"finite_output\",\n        \"nonzero_output\",\n        \"original_notes_intact\",\n        \"exact_recorded_notes\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {\n          \"quantized_audio_hash\": \"e2f197b02633bd3d\"\n        }\n      }\n    },\n    {\n      \"id\": \"callback_live_dj\",\n      \"conditions\": {\n        \"blocks\": 8192,\n        \"channels\": 2,\n        \"frames\": 128,\n        \"fx_per_track\": 0,\n        \"notes_per_track\": 0,\n        \"parameter_interval_blocks\": 8,\n        \"parameter_sweep_tracks\": 0,\n        \"sample_rate\": 48000,\n        \"tracks\": 0,\n        \"warmup_blocks\": 128,\n        \"live_note_recording\": false\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"callback_wall_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 2666666,\n            \"max\": 5333332,\n            \"p99_minus_p50\": 1333333\n          }\n        },\n        \"render_cpu_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 1999999\n          }\n        }\n      },\n      \"metrics\": {\n        \"allocations\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"frees\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rms\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        },\n        \"peak\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        }\n      },\n      \"checks\": [\n        \"all_commands_applied\",\n        \"finite_output\",\n        \"nonzero_output\",\n        \"original_notes_intact\",\n        \"exact_recorded_notes\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {\n          \"quantized_audio_hash\": \"d7711a2dc3b32a39\"\n        }\n      }\n    },\n    {\n      \"id\": \"callback_hybrid\",\n      \"conditions\": {\n        \"blocks\": 8192,\n        \"channels\": 2,\n        \"frames\": 256,\n        \"fx_per_track\": 3,\n        \"notes_per_track\": 1024,\n        \"parameter_interval_blocks\": 8,\n        \"parameter_sweep_tracks\": 8,\n        \"sample_rate\": 48000,\n        \"tracks\": 8,\n        \"warmup_blocks\": 128,\n        \"live_note_recording\": true\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"callback_wall_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 5333333,\n            \"max\": 10666666,\n            \"p99_minus_p50\": 2666666\n          }\n        },\n        \"render_cpu_ns\": {\n          \"count\": 8192,\n          \"max\": {\n            \"p99\": 3999999\n          }\n        }\n      },\n      \"metrics\": {\n        \"allocations\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"frees\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rms\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        },\n        \"peak\": {\n          \"unit\": \"linear amplitude\",\n          \"min\": 0.001,\n          \"max\": 1\n        }\n      },\n      \"checks\": [\n        \"all_commands_applied\",\n        \"finite_output\",\n        \"nonzero_output\",\n        \"original_notes_intact\",\n        \"exact_recorded_notes\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {\n          \"quantized_audio_hash\": \"adc9540dab057fed\"\n        }\n      }\n    },\n    {\n      \"id\": \"large_crate_ui\",\n      \"conditions\": {\n        \"entries\": 50000,\n        \"frames\": 512,\n        \"height\": 1000,\n        \"warmup_frames\": 16,\n        \"width\": 1440\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"frame_wall_ns\": {\n          \"count\": 512,\n          \"max\": {\n            \"p99\": 16670000,\n            \"max\": 50000000\n          }\n        }\n      },\n      \"metrics\": {\n        \"filtered_tracks\": {\n          \"unit\": \"count\",\n          \"min\": 25000,\n          \"max\": 25000\n        },\n        \"max_visible_rows\": {\n          \"unit\": \"count\",\n          \"min\": 1,\n          \"max\": 64\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        }\n      },\n      \"checks\": [\n        \"bounded_visible_rows\",\n        \"real_search_applied\",\n        \"selection_matches_published\",\n        \"steady_filter_cached\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {}\n      }\n    },\n    {\n      \"id\": \"multi_controller_ipc\",\n      \"conditions\": {\n        \"events_per_frame\": 8,\n        \"frames\": 512,\n        \"height\": 1000,\n        \"inputs\": 5,\n        \"ipc_requests\": 512,\n        \"warmup_frames\": 16,\n        \"width\": 1440,\n        \"ipc_connections\": 16,\n        \"requests_per_connection\": 32\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"frame_wall_ns\": {\n          \"count\": 512,\n          \"max\": {\n            \"p99\": 16670000,\n            \"max\": 50000000\n          }\n        },\n        \"ipc_roundtrip_ns\": {\n          \"count\": 512,\n          \"max\": {\n            \"p99\": 50000000,\n            \"max\": 200000000\n          }\n        },\n        \"midi_dispatch_ns\": {\n          \"count\": 512,\n          \"max\": {\n            \"p99\": 20000000,\n            \"max\": 100000000\n          }\n        }\n      },\n      \"metrics\": {\n        \"ipc_requests\": {\n          \"unit\": \"count\",\n          \"min\": 512,\n          \"max\": 512\n        },\n        \"midi_dispatched\": {\n          \"unit\": \"count\",\n          \"min\": 4096,\n          \"max\": 4096\n        },\n        \"midi_dropped\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"midi_received\": {\n          \"unit\": \"count\",\n          \"min\": 4096,\n          \"max\": 4096\n        },\n        \"midi_resets\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        }\n      },\n      \"checks\": [\n        \"all_input_events_dispatched\",\n        \"ipc_scene_applied\",\n        \"midi_values_applied\",\n        \"no_history_failure\",\n        \"no_stuck_notes\",\n        \"ui_gain_applied\",\n        \"independent_held_chords\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {}\n      }\n    },\n    {\n      \"id\": \"project_roundtrip\",\n      \"conditions\": {\n        \"height\": 1000,\n        \"notes_per_track\": 1024,\n        \"tracks\": 8,\n        \"warmup_frames\": 16,\n        \"width\": 1440\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"frame_wall_ns\": {\n          \"count\": {\n            \"min\": 1,\n            \"max\": 5000\n          },\n          \"max\": {\n            \"p99\": 16670000,\n            \"max\": 50000000\n          }\n        }\n      },\n      \"metrics\": {\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"reopen_ns\": {\n          \"unit\": \"ns\",\n          \"min\": 0,\n          \"max\": 5000000000\n        },\n        \"reopened_notes\": {\n          \"unit\": \"count\",\n          \"min\": 8192,\n          \"max\": 8192\n        },\n        \"save_ns\": {\n          \"unit\": \"ns\",\n          \"min\": 0,\n          \"max\": 5000000000\n        },\n        \"saved_notes\": {\n          \"unit\": \"count\",\n          \"min\": 8192,\n          \"max\": 8192\n        }\n      },\n      \"checks\": [\n        \"all_notes_exact\",\n        \"gain_persisted\",\n        \"opened_clean\",\n        \"opened_stopped\",\n        \"redo_applied\",\n        \"undo_applied\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {}\n      }\n    },\n    {\n      \"id\": \"long_note_recording\",\n      \"conditions\": {\n        \"blocks\": 6000,\n        \"frames\": 4800,\n        \"height\": 1000,\n        \"notes\": 600,\n        \"sample_rate\": 48000,\n        \"virtual_seconds\": 600,\n        \"warmup_frames\": 16,\n        \"width\": 1440\n      },\n      \"repetitions\": 3,\n      \"samples\": {\n        \"frame_wall_ns\": {\n          \"count\": {\n            \"min\": 1,\n            \"max\": 5000\n          },\n          \"max\": {\n            \"p99\": 16670000,\n            \"max\": 50000000\n          }\n        },\n        \"renderer_wall_ns\": {\n          \"count\": 6000,\n          \"max\": {\n            \"p99\": 100000000\n          }\n        }\n      },\n      \"metrics\": {\n        \"allocations\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"frees\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"midi_dispatched\": {\n          \"unit\": \"count\",\n          \"min\": 1200,\n          \"max\": 1200\n        },\n        \"midi_dropped\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        },\n        \"recorded_notes\": {\n          \"unit\": \"count\",\n          \"min\": 600,\n          \"max\": 600\n        },\n        \"rejected_commands\": {\n          \"unit\": \"count\",\n          \"min\": 0,\n          \"max\": 0\n        }\n      },\n      \"checks\": [\n        \"compose_disarmed\",\n        \"finite_output\",\n        \"no_history_failure\",\n        \"recorded_notes_exact\",\n        \"reopened_notes_exact\"\n      ],\n      \"expected_observations\": {\n        \"aarch64-unknown-linux-gnu\": {}\n      }\n    }\n  ],\n  \"targets\": [\n    \"aarch64-unknown-linux-gnu\"\n  ]\n}\n",
+    "schema": 1,
+    "started_utc": "2026-10-04T19:27:26.153479+00:00",
+    "status": "pass",
+    "summary": [
+      {
+        "id": "callback_producer",
+        "measurements": [
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 948797,
+                "min": 618087,
+                "p50": 680838,
+                "p95": 724296,
+                "p99": 748296,
+                "p99_minus_p50": 67458,
+                "spread": 330710
+              },
+              "render_cpu_ns": {
+                "max": 705414,
+                "min": 611000,
+                "p50": 662125,
+                "p95": 681123,
+                "p99": 687332,
+                "p99_minus_p50": 25207,
+                "spread": 94414
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.10289021581411362,
+              "rejected_commands": 0,
+              "rms": 0.018627574844502812
+            },
+            "observations": {
+              "quantized_audio_hash": "26f84beea80f5ec5"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 905464,
+                "min": 615087,
+                "p50": 672129,
+                "p95": 705504,
+                "p99": 730129,
+                "p99_minus_p50": 58000,
+                "spread": 290377
+              },
+              "render_cpu_ns": {
+                "max": 697083,
+                "min": 611625,
+                "p50": 661292,
+                "p95": 679957,
+                "p99": 686292,
+                "p99_minus_p50": 25000,
+                "spread": 85458
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.10289021581411362,
+              "rejected_commands": 0,
+              "rms": 0.018627574844502812
+            },
+            "observations": {
+              "quantized_audio_hash": "26f84beea80f5ec5"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 748046,
+                "min": 617337,
+                "p50": 671004,
+                "p95": 696379,
+                "p99": 709754,
+                "p99_minus_p50": 38750,
+                "spread": 130709
+              },
+              "render_cpu_ns": {
+                "max": 699209,
+                "min": 611166,
+                "p50": 662167,
+                "p95": 681292,
+                "p99": 687417,
+                "p99_minus_p50": 25250,
+                "spread": 88043
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.10289021581411362,
+              "rejected_commands": 0,
+              "rms": 0.018627574844502812
+            },
+            "observations": {
+              "quantized_audio_hash": "26f84beea80f5ec5"
+            }
+          }
+        ]
+      },
+      {
+        "id": "callback_composer",
+        "measurements": [
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 1260590,
+                "min": 630879,
+                "p50": 683880,
+                "p95": 768921,
+                "p99": 795422,
+                "p99_minus_p50": 111542,
+                "spread": 629711
+              },
+              "render_cpu_ns": {
+                "max": 718250,
+                "min": 626792,
+                "p50": 674209,
+                "p95": 692250,
+                "p99": 698500,
+                "p99_minus_p50": 24291,
+                "spread": 91458
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 900464,
+                "min": 629420,
+                "p50": 681587,
+                "p95": 767213,
+                "p99": 792588,
+                "p99_minus_p50": 111001,
+                "spread": 271044
+              },
+              "render_cpu_ns": {
+                "max": 704793,
+                "min": 625250,
+                "p50": 671834,
+                "p95": 689916,
+                "p99": 695751,
+                "p99_minus_p50": 23917,
+                "spread": 79543
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 832339,
+                "min": 630045,
+                "p50": 680921,
+                "p95": 765421,
+                "p99": 789588,
+                "p99_minus_p50": 108667,
+                "spread": 202294
+              },
+              "render_cpu_ns": {
+                "max": 713375,
+                "min": 623792,
+                "p50": 671583,
+                "p95": 689666,
+                "p99": 695834,
+                "p99_minus_p50": 24251,
+                "spread": 89583
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          }
+        ]
+      },
+      {
+        "id": "callback_live_dj",
+        "measurements": [
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 225543,
+                "min": 158209,
+                "p50": 176251,
+                "p95": 185293,
+                "p99": 189585,
+                "p99_minus_p50": 13334,
+                "spread": 67334
+              },
+              "render_cpu_ns": {
+                "max": 188416,
+                "min": 155834,
+                "p50": 172583,
+                "p95": 178875,
+                "p99": 180292,
+                "p99_minus_p50": 7709,
+                "spread": 32582
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.5795432329177856,
+              "rejected_commands": 0,
+              "rms": 0.03993976536618438
+            },
+            "observations": {
+              "quantized_audio_hash": "d7711a2dc3b32a39"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 219210,
+                "min": 158376,
+                "p50": 176293,
+                "p95": 185585,
+                "p99": 190210,
+                "p99_minus_p50": 13917,
+                "spread": 60834
+              },
+              "render_cpu_ns": {
+                "max": 183792,
+                "min": 156042,
+                "p50": 172375,
+                "p95": 178708,
+                "p99": 180500,
+                "p99_minus_p50": 8125,
+                "spread": 27750
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.5795432329177856,
+              "rejected_commands": 0,
+              "rms": 0.03993976536618438
+            },
+            "observations": {
+              "quantized_audio_hash": "d7711a2dc3b32a39"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 304793,
+                "min": 158126,
+                "p50": 176793,
+                "p95": 186917,
+                "p99": 195168,
+                "p99_minus_p50": 18375,
+                "spread": 146667
+              },
+              "render_cpu_ns": {
+                "max": 198376,
+                "min": 155958,
+                "p50": 172875,
+                "p95": 179291,
+                "p99": 180917,
+                "p99_minus_p50": 8042,
+                "spread": 42418
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.5795432329177856,
+              "rejected_commands": 0,
+              "rms": 0.03993976536618438
+            },
+            "observations": {
+              "quantized_audio_hash": "d7711a2dc3b32a39"
+            }
+          }
+        ]
+      },
+      {
+        "id": "callback_hybrid",
+        "measurements": [
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 1074589,
+                "min": 810796,
+                "p50": 886339,
+                "p95": 978631,
+                "p99": 1011215,
+                "p99_minus_p50": 124876,
+                "spread": 263793
+              },
+              "render_cpu_ns": {
+                "max": 918625,
+                "min": 803875,
+                "p50": 873667,
+                "p95": 900291,
+                "p99": 907334,
+                "p99_minus_p50": 33667,
+                "spread": 114750
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.5879642963409424,
+              "rejected_commands": 0,
+              "rms": 0.0439734476083944
+            },
+            "observations": {
+              "quantized_audio_hash": "adc9540dab057fed"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 1061673,
+                "min": 812380,
+                "p50": 887505,
+                "p95": 980840,
+                "p99": 1008631,
+                "p99_minus_p50": 121126,
+                "spread": 249293
+              },
+              "render_cpu_ns": {
+                "max": 921417,
+                "min": 806709,
+                "p50": 875375,
+                "p95": 902042,
+                "p99": 908834,
+                "p99_minus_p50": 33459,
+                "spread": 114708
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.5879642963409424,
+              "rejected_commands": 0,
+              "rms": 0.0439734476083944
+            },
+            "observations": {
+              "quantized_audio_hash": "adc9540dab057fed"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 1476758,
+                "min": 812338,
+                "p50": 888256,
+                "p95": 979798,
+                "p99": 1010381,
+                "p99_minus_p50": 122125,
+                "spread": 664420
+              },
+              "render_cpu_ns": {
+                "max": 922542,
+                "min": 804666,
+                "p50": 875624,
+                "p95": 901834,
+                "p99": 909833,
+                "p99_minus_p50": 34209,
+                "spread": 117876
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.5879642963409424,
+              "rejected_commands": 0,
+              "rms": 0.0439734476083944
+            },
+            "observations": {
+              "quantized_audio_hash": "adc9540dab057fed"
+            }
+          }
+        ]
+      },
+      {
+        "id": "large_crate_ui",
+        "measurements": [
+          {
+            "checks": {
+              "bounded_visible_rows": true,
+              "real_search_applied": true,
+              "selection_matches_published": true,
+              "steady_filter_cached": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 4829946,
+                "min": 817588,
+                "p50": 1205174,
+                "p95": 3022310,
+                "p99": 3792856,
+                "p99_minus_p50": 2587682,
+                "spread": 4012358
+              }
+            },
+            "metrics": {
+              "filtered_tracks": 25000,
+              "max_visible_rows": 4,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "bounded_visible_rows": true,
+              "real_search_applied": true,
+              "selection_matches_published": true,
+              "steady_filter_cached": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 6081911,
+                "min": 799005,
+                "p50": 1963262,
+                "p95": 3145769,
+                "p99": 4467818,
+                "p99_minus_p50": 2504556,
+                "spread": 5282906
+              }
+            },
+            "metrics": {
+              "filtered_tracks": 25000,
+              "max_visible_rows": 4,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "bounded_visible_rows": true,
+              "real_search_applied": true,
+              "selection_matches_published": true,
+              "steady_filter_cached": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 6730873,
+                "min": 911839,
+                "p50": 2685433,
+                "p95": 3408395,
+                "p99": 4723612,
+                "p99_minus_p50": 2038179,
+                "spread": 5819034
+              }
+            },
+            "metrics": {
+              "filtered_tracks": 25000,
+              "max_visible_rows": 4,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          }
+        ]
+      },
+      {
+        "id": "multi_controller_ipc",
+        "measurements": [
+          {
+            "checks": {
+              "all_input_events_dispatched": true,
+              "independent_held_chords": true,
+              "ipc_scene_applied": true,
+              "midi_values_applied": true,
+              "no_history_failure": true,
+              "no_stuck_notes": true,
+              "ui_gain_applied": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 14366877,
+                "min": 839213,
+                "p50": 2812184,
+                "p95": 4397859,
+                "p99": 7150835,
+                "p99_minus_p50": 4338651,
+                "spread": 13527664
+              },
+              "ipc_roundtrip_ns": {
+                "max": 12401032,
+                "min": 23542,
+                "p50": 94917,
+                "p95": 1403383,
+                "p99": 8495050,
+                "p99_minus_p50": 8400133,
+                "spread": 12377490
+              },
+              "midi_dispatch_ns": {
+                "max": 9550891,
+                "min": 1023131,
+                "p50": 1064673,
+                "p95": 3222644,
+                "p99": 5349573,
+                "p99_minus_p50": 4284900,
+                "spread": 8527760
+              }
+            },
+            "metrics": {
+              "ipc_requests": 512,
+              "midi_dispatched": 4096,
+              "midi_dropped": 0,
+              "midi_received": 4096,
+              "midi_resets": 0,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "all_input_events_dispatched": true,
+              "independent_held_chords": true,
+              "ipc_scene_applied": true,
+              "midi_values_applied": true,
+              "no_history_failure": true,
+              "no_stuck_notes": true,
+              "ui_gain_applied": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 6282913,
+                "min": 853005,
+                "p50": 2767183,
+                "p95": 4315942,
+                "p99": 5772285,
+                "p99_minus_p50": 3005102,
+                "spread": 5429908
+              },
+              "ipc_roundtrip_ns": {
+                "max": 10111519,
+                "min": 20501,
+                "p50": 92167,
+                "p95": 1441509,
+                "p99": 8104090,
+                "p99_minus_p50": 8011923,
+                "spread": 10091018
+              },
+              "midi_dispatch_ns": {
+                "max": 6314371,
+                "min": 1016672,
+                "p50": 1063590,
+                "p95": 3177144,
+                "p99": 4248317,
+                "p99_minus_p50": 3184727,
+                "spread": 5297699
+              }
+            },
+            "metrics": {
+              "ipc_requests": 512,
+              "midi_dispatched": 4096,
+              "midi_dropped": 0,
+              "midi_received": 4096,
+              "midi_resets": 0,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "all_input_events_dispatched": true,
+              "independent_held_chords": true,
+              "ipc_scene_applied": true,
+              "midi_values_applied": true,
+              "no_history_failure": true,
+              "no_stuck_notes": true,
+              "ui_gain_applied": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 7224877,
+                "min": 889088,
+                "p50": 2807850,
+                "p95": 4233025,
+                "p99": 6181787,
+                "p99_minus_p50": 3373937,
+                "spread": 6335789
+              },
+              "ipc_roundtrip_ns": {
+                "max": 9999560,
+                "min": 26167,
+                "p50": 95583,
+                "p95": 1916928,
+                "p99": 8103507,
+                "p99_minus_p50": 8007924,
+                "spread": 9973393
+              },
+              "midi_dispatch_ns": {
+                "max": 7396377,
+                "min": 1014173,
+                "p50": 1063506,
+                "p95": 3180686,
+                "p99": 5284406,
+                "p99_minus_p50": 4220900,
+                "spread": 6382204
+              }
+            },
+            "metrics": {
+              "ipc_requests": 512,
+              "midi_dispatched": 4096,
+              "midi_dropped": 0,
+              "midi_received": 4096,
+              "midi_resets": 0,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          }
+        ]
+      },
+      {
+        "id": "project_roundtrip",
+        "measurements": [
+          {
+            "checks": {
+              "all_notes_exact": true,
+              "gain_persisted": true,
+              "opened_clean": true,
+              "opened_stopped": true,
+              "redo_applied": true,
+              "undo_applied": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 4469152,
+                "min": 917255,
+                "p50": 1806761,
+                "p95": 3376812,
+                "p99": 4469152,
+                "p99_minus_p50": 2662391,
+                "spread": 3551897
+              }
+            },
+            "metrics": {
+              "rejected_commands": 0,
+              "reopen_ns": 243686832,
+              "reopened_notes": 8192,
+              "save_ns": 132131664,
+              "saved_notes": 8192
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "all_notes_exact": true,
+              "gain_persisted": true,
+              "opened_clean": true,
+              "opened_stopped": true,
+              "redo_applied": true,
+              "undo_applied": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 5051697,
+                "min": 775547,
+                "p50": 1661926,
+                "p95": 3598980,
+                "p99": 5051697,
+                "p99_minus_p50": 3389771,
+                "spread": 4276150
+              }
+            },
+            "metrics": {
+              "rejected_commands": 0,
+              "reopen_ns": 230603128,
+              "reopened_notes": 8192,
+              "save_ns": 131995706,
+              "saved_notes": 8192
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "all_notes_exact": true,
+              "gain_persisted": true,
+              "opened_clean": true,
+              "opened_stopped": true,
+              "redo_applied": true,
+              "undo_applied": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 5957285,
+                "min": 896339,
+                "p50": 1637135,
+                "p95": 3408062,
+                "p99": 5957285,
+                "p99_minus_p50": 4320150,
+                "spread": 5060946
+              }
+            },
+            "metrics": {
+              "rejected_commands": 0,
+              "reopen_ns": 234845237,
+              "reopened_notes": 8192,
+              "save_ns": 133723174,
+              "saved_notes": 8192
+            },
+            "observations": {}
+          }
+        ]
+      },
+      {
+        "id": "long_note_recording",
+        "measurements": [
+          {
+            "checks": {
+              "compose_disarmed": true,
+              "finite_output": true,
+              "no_history_failure": true,
+              "recorded_notes_exact": true,
+              "reopened_notes_exact": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 8010048,
+                "min": 848964,
+                "p50": 1497926,
+                "p95": 3141102,
+                "p99": 8010048,
+                "p99_minus_p50": 6512122,
+                "spread": 7161084
+              },
+              "renderer_wall_ns": {
+                "max": 5033863,
+                "min": 2979143,
+                "p50": 3263853,
+                "p95": 3321269,
+                "p99": 3365854,
+                "p99_minus_p50": 102001,
+                "spread": 2054720
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "midi_dispatched": 1200,
+              "midi_dropped": 0,
+              "recorded_notes": 600,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "compose_disarmed": true,
+              "finite_output": true,
+              "no_history_failure": true,
+              "recorded_notes_exact": true,
+              "reopened_notes_exact": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 3431187,
+                "min": 860672,
+                "p50": 1835386,
+                "p95": 3095894,
+                "p99": 3431187,
+                "p99_minus_p50": 1595801,
+                "spread": 2570515
+              },
+              "renderer_wall_ns": {
+                "max": 5034155,
+                "min": 2983101,
+                "p50": 3273811,
+                "p95": 3333687,
+                "p99": 3381021,
+                "p99_minus_p50": 107210,
+                "spread": 2051054
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "midi_dispatched": 1200,
+              "midi_dropped": 0,
+              "recorded_notes": 600,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          },
+          {
+            "checks": {
+              "compose_disarmed": true,
+              "finite_output": true,
+              "no_history_failure": true,
+              "recorded_notes_exact": true,
+              "reopened_notes_exact": true
+            },
+            "distributions": {
+              "frame_wall_ns": {
+                "max": 4001441,
+                "min": 843755,
+                "p50": 1651676,
+                "p95": 3204686,
+                "p99": 4001441,
+                "p99_minus_p50": 2349765,
+                "spread": 3157686
+              },
+              "renderer_wall_ns": {
+                "max": 4701444,
+                "min": 2971060,
+                "p50": 3273395,
+                "p95": 3333312,
+                "p99": 3395770,
+                "p99_minus_p50": 122375,
+                "spread": 1730384
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "midi_dispatched": 1200,
+              "midi_dropped": 0,
+              "recorded_notes": 600,
+              "rejected_commands": 0
+            },
+            "observations": {}
+          }
+        ]
+      }
+    ]
+  },
+  "other_attempts": [
+    {
+      "attempt": 1,
+      "status": "incomplete",
+      "reason": "Fixture IPC socket path exceeded platform length limit"
+    },
+    {
+      "attempt": 2,
+      "status": "fail",
+      "host": {
+        "affinity": [
+          6
+        ],
+        "architecture": "aarch64",
+        "cpu_model": "Apple MacBook Pro (16-inch, M1 Pro, 2021)",
+        "execution": "local",
+        "governors": [
+          "schedutil"
+        ],
+        "kernel": "7.1.13-3-2-ARCH",
+        "load_average_after_workload": [
+          4.98291015625,
+          5.3125,
+          6.5224609375
+        ],
+        "load_average_before_workload": [
+          6.73583984375,
+          5.61279296875,
+          6.798828125
+        ],
+        "logical_cpus": 10,
+        "memory_bytes": 16141500416,
+        "process_nice": 0,
+        "scheduler_policy": 0,
+        "system": "Linux"
+      },
+      "failures": [
+        "callback_composer[0] callback_wall_ns.max=17229792 exceeds 10666666"
+      ],
+      "composer": {
+        "id": "callback_composer",
+        "measurements": [
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 17229792,
+                "min": 641754,
+                "p50": 705130,
+                "p95": 805423,
+                "p99": 842172,
+                "p99_minus_p50": 137042,
+                "spread": 16588038
+              },
+              "render_cpu_ns": {
+                "max": 808376,
+                "min": 631375,
+                "p50": 679915,
+                "p95": 703836,
+                "p99": 728500,
+                "p99_minus_p50": 48585,
+                "spread": 177001
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 999299,
+                "min": 632380,
+                "p50": 688838,
+                "p95": 781256,
+                "p99": 812964,
+                "p99_minus_p50": 124126,
+                "spread": 366919
+              },
+              "render_cpu_ns": {
+                "max": 704914,
+                "min": 625208,
+                "p50": 672709,
+                "p95": 690958,
+                "p99": 696958,
+                "p99_minus_p50": 24249,
+                "spread": 79706
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 897173,
+                "min": 633671,
+                "p50": 685547,
+                "p95": 770505,
+                "p99": 797506,
+                "p99_minus_p50": 111959,
+                "spread": 263502
+              },
+              "render_cpu_ns": {
+                "max": 714959,
+                "min": 626500,
+                "p50": 673458,
+                "p95": 692249,
+                "p99": 698500,
+                "p99_minus_p50": 25042,
+                "spread": 88459
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "attempt": 3,
+      "status": "incomplete",
+      "reason": "Fixture IPC socket path exceeded platform length limit"
+    },
+    {
+      "attempt": 4,
+      "status": "fail",
+      "host": {
+        "affinity": [
+          6
+        ],
+        "architecture": "aarch64",
+        "cpu_model": "Apple MacBook Pro (16-inch, M1 Pro, 2021)",
+        "execution": "local",
+        "governors": [
+          "schedutil"
+        ],
+        "kernel": "7.1.13-3-2-ARCH",
+        "load_average_after_workload": [
+          4.712890625,
+          4.376953125,
+          4.91796875
+        ],
+        "load_average_before_workload": [
+          4.3837890625,
+          4.099609375,
+          4.9296875
+        ],
+        "logical_cpus": 10,
+        "memory_bytes": 16141500416,
+        "process_nice": 0,
+        "scheduler_policy": 0,
+        "system": "Linux"
+      },
+      "failures": [
+        "callback_composer[0] callback_wall_ns.max=13771079 exceeds 10666666"
+      ],
+      "composer": {
+        "id": "callback_composer",
+        "measurements": [
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 13771079,
+                "min": 632087,
+                "p50": 698338,
+                "p95": 805088,
+                "p99": 870172,
+                "p99_minus_p50": 171834,
+                "spread": 13138992
+              },
+              "render_cpu_ns": {
+                "max": 888291,
+                "min": 628501,
+                "p50": 679418,
+                "p95": 708457,
+                "p99": 751919,
+                "p99_minus_p50": 72501,
+                "spread": 259790
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 972797,
+                "min": 634795,
+                "p50": 694504,
+                "p95": 799254,
+                "p99": 845588,
+                "p99_minus_p50": 151084,
+                "spread": 338002
+              },
+              "render_cpu_ns": {
+                "max": 736166,
+                "min": 625749,
+                "p50": 674458,
+                "p95": 693374,
+                "p99": 700000,
+                "p99_minus_p50": 25542,
+                "spread": 110417
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          },
+          {
+            "checks": {
+              "all_commands_applied": true,
+              "exact_recorded_notes": true,
+              "finite_output": true,
+              "nonzero_output": true,
+              "original_notes_intact": true
+            },
+            "distributions": {
+              "callback_wall_ns": {
+                "max": 1490508,
+                "min": 629837,
+                "p50": 693170,
+                "p95": 794755,
+                "p99": 839130,
+                "p99_minus_p50": 145960,
+                "spread": 860671
+              },
+              "render_cpu_ns": {
+                "max": 736083,
+                "min": 623791,
+                "p50": 673792,
+                "p95": 692712,
+                "p99": 699376,
+                "p99_minus_p50": 25584,
+                "spread": 112292
+              }
+            },
+            "metrics": {
+              "allocations": 0,
+              "frees": 0,
+              "peak": 0.1036224216222763,
+              "rejected_commands": 0,
+              "rms": 0.01893305067917408
+            },
+            "observations": {
+              "quantized_audio_hash": "e2f197b02633bd3d"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "Normal affinity (CPUs 0–9) qualifies this optimized gate; pinning the whole workload to CPU 6 failed callback wall limits twice. No real-time scheduling or single-core claim.",
+    "Native fixture uses the actual App/renderer and accessibility API without a physical window or screen reader.",
+    "Graph fixtures use private JACK dummy/PipeWire servers; zero Rust callback heap activity does not qualify C/C++ allocation.",
+    "Earlier native routed input loses frames and refuses WAV publication; uninterrupted capture remains open.",
+    "USB/controller input, external audio, actual suspend, converter/display alignment and listening remain pending.",
+    "Key-lock grain mixes, outgoing fades and effects cannot be assigned one physical audible source position."
+  ],
+  "timed_64_anchor_maps": [
+    {
+      "repeat": 1,
+      "measurements": [
+        {
+          "callbacks": 4096,
+          "deadline_ns": 2666666,
+          "decks": 2,
+          "energy": 881.8891789331911,
+          "frames": 128,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 588379,
+          "max_render_cpu_ns": 461248,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 540003,
+          "p99_render_cpu_ns": 454167,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        },
+        {
+          "callbacks": 4096,
+          "deadline_ns": 5333333,
+          "decks": 2,
+          "energy": 1838.6988801328378,
+          "frames": 256,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 1457634,
+          "max_render_cpu_ns": 922749,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 1007964,
+          "p99_render_cpu_ns": 902166,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        },
+        {
+          "callbacks": 4096,
+          "deadline_ns": 21333333,
+          "decks": 2,
+          "energy": 7428.7801844766955,
+          "frames": 1024,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 3817939,
+          "max_render_cpu_ns": 3613750,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 3678772,
+          "p99_render_cpu_ns": 3554250,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "measurements": [
+        {
+          "callbacks": 4096,
+          "deadline_ns": 2666666,
+          "decks": 2,
+          "energy": 881.8891789331911,
+          "frames": 128,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 683337,
+          "max_render_cpu_ns": 492792,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 546336,
+          "p99_render_cpu_ns": 452916,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        },
+        {
+          "callbacks": 4096,
+          "deadline_ns": 5333333,
+          "decks": 2,
+          "energy": 1838.6988801328378,
+          "frames": 256,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 1035798,
+          "max_render_cpu_ns": 923084,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 1010173,
+          "p99_render_cpu_ns": 901166,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        },
+        {
+          "callbacks": 4096,
+          "deadline_ns": 21333333,
+          "decks": 2,
+          "energy": 7428.7801844766955,
+          "frames": 1024,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 4921363,
+          "max_render_cpu_ns": 3672793,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 3702230,
+          "p99_render_cpu_ns": 3569918,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "measurements": [
+        {
+          "callbacks": 4096,
+          "deadline_ns": 2666666,
+          "decks": 2,
+          "energy": 881.8891789331911,
+          "frames": 128,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 2422057,
+          "max_render_cpu_ns": 565959,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 547295,
+          "p99_render_cpu_ns": 453083,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        },
+        {
+          "callbacks": 4096,
+          "deadline_ns": 5333333,
+          "decks": 2,
+          "energy": 1838.6988801328378,
+          "frames": 256,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 1035132,
+          "max_render_cpu_ns": 954457,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 1003673,
+          "p99_render_cpu_ns": 899291,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        },
+        {
+          "callbacks": 4096,
+          "deadline_ns": 21333333,
+          "decks": 2,
+          "energy": 7428.7801844766955,
+          "frames": 1024,
+          "heap_allocations_and_frees": 0,
+          "max_callback_wall_ns": 5906952,
+          "max_render_cpu_ns": 3668959,
+          "notes": 8192,
+          "output_position_tracking": true,
+          "p99_callback_wall_ns": 3711814,
+          "p99_render_cpu_ns": 3575541,
+          "sample_rate": 48000,
+          "tempo_anchors_per_deck": 64
+        }
+      ]
+    }
+  ],
+  "native_graphs_and_settings": [
+    {
+      "backend_identity": "jack-graph-v1:1.9.22:omatainer-133-899408:pipewire-0",
+      "callback_allocations": [
+        0,
+        0,
+        0
+      ],
+      "callback_frees": [
+        0,
+        0,
+        0
+      ],
+      "callbacks": [
+        85,
+        29,
+        7
+      ],
+      "changed_quantum": 256,
+      "duplicate_client_refused": true,
+      "initial_quantum": 128,
+      "initial_rate": 48000,
+      "missing_endpoint_returned_once": true,
+      "playback_resumed": false,
+      "project_media_retained": true,
+      "reconnected_rate": 44100,
+      "saved_routes_reopened": true,
+      "software_loopback_return_ns": 2253764,
+      "wrong_port_direction_refused": true,
+      "backend": "jack",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/debug",
+      "binary_sha256": "48ba10c99081b0055454167fa418e740e6d8f4d38058ac777e6f4039ffe61819",
+      "start_utc": "2026-10-04T19:48:14.986536+00:00",
+      "finish_utc": "2026-10-04T19:48:17.122984+00:00",
+      "server_pids": [
+        899431,
+        899571
+      ],
+      "initial_inventory": {
+        "ports": [
+          "system:capture_1",
+          "system:capture_2",
+          "system:playback_1",
+          "system:monitor_1",
+          "system:playback_2",
+          "system:monitor_2"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:1.9.22:omatainer-133-900012:pipewire-0",
+      "calibration_refused_before_stopping_graph": true,
+      "cancel_preserved_generation": true,
+      "native_app_frames": 68.0,
+      "native_graph_endpoint_edited_and_saved": true,
+      "preview_activated_output": false,
+      "reviewed_apply_changed_generation": true,
+      "save_preserved_output_generation": true,
+      "saved_routes_reopened": true,
+      "backend": "jack",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/debug",
+      "binary_sha256": "48ba10c99081b0055454167fa418e740e6d8f4d38058ac777e6f4039ffe61819",
+      "start_utc": "2026-10-04T19:48:17.788260+00:00",
+      "finish_utc": "2026-10-04T19:48:18.649655+00:00",
+      "server_pids": [
+        900041
+      ],
+      "initial_inventory": {
+        "ports": [
+          "system:capture_1",
+          "system:capture_2",
+          "system:playback_1",
+          "system:monitor_1",
+          "system:playback_2",
+          "system:monitor_2"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:1.9.22:omatainer-133-900343:pipewire-0",
+      "callback_allocations": [
+        0,
+        0,
+        0
+      ],
+      "callback_frees": [
+        0,
+        0,
+        0
+      ],
+      "callbacks": [
+        86,
+        28,
+        6
+      ],
+      "changed_quantum": 256,
+      "duplicate_client_refused": true,
+      "initial_quantum": 128,
+      "initial_rate": 48000,
+      "missing_endpoint_returned_once": true,
+      "playback_resumed": false,
+      "project_media_retained": true,
+      "reconnected_rate": 44100,
+      "saved_routes_reopened": true,
+      "software_loopback_return_ns": 2504724,
+      "wrong_port_direction_refused": true,
+      "backend": "jack",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/release-tests",
+      "binary_sha256": "6b8264d7764fc0a0a69bc6d0e7fa1e77133a2a6ad2e6146a4bb32d7fddaae23c",
+      "start_utc": "2026-10-04T19:48:18.744693+00:00",
+      "finish_utc": "2026-10-04T19:48:19.605358+00:00",
+      "server_pids": [
+        900357,
+        900682
+      ],
+      "initial_inventory": {
+        "ports": [
+          "system:capture_1",
+          "system:capture_2",
+          "system:playback_1",
+          "system:monitor_1",
+          "system:playback_2",
+          "system:monitor_2"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:1.9.22:omatainer-133-900718:pipewire-0",
+      "calibration_refused_before_stopping_graph": true,
+      "cancel_preserved_generation": true,
+      "native_app_frames": 63.0,
+      "native_graph_endpoint_edited_and_saved": true,
+      "preview_activated_output": false,
+      "reviewed_apply_changed_generation": true,
+      "save_preserved_output_generation": true,
+      "saved_routes_reopened": true,
+      "backend": "jack",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/release-tests",
+      "binary_sha256": "6b8264d7764fc0a0a69bc6d0e7fa1e77133a2a6ad2e6146a4bb32d7fddaae23c",
+      "start_utc": "2026-10-04T19:48:19.666080+00:00",
+      "finish_utc": "2026-10-04T19:48:20.071869+00:00",
+      "server_pids": [
+        900746
+      ],
+      "initial_inventory": {
+        "ports": [
+          "system:capture_1",
+          "system:capture_2",
+          "system:playback_1",
+          "system:monitor_1",
+          "system:playback_2",
+          "system:monitor_2"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:3.1.6.9 (using PipeWire 1.6.9):default:omatainer-test",
+      "callback_allocations": [
+        0,
+        0,
+        0
+      ],
+      "callback_frees": [
+        0,
+        0,
+        0
+      ],
+      "callbacks": [
+        69,
+        19,
+        9
+      ],
+      "changed_quantum": 256,
+      "duplicate_client_refused": true,
+      "initial_quantum": 128,
+      "initial_rate": 48000,
+      "missing_endpoint_returned_once": true,
+      "playback_resumed": false,
+      "project_media_retained": true,
+      "reconnected_rate": 44100,
+      "saved_routes_reopened": true,
+      "software_loopback_return_ns": 1366008,
+      "wrong_port_direction_refused": true,
+      "backend": "pipewire",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/debug",
+      "binary_sha256": "48ba10c99081b0055454167fa418e740e6d8f4d38058ac777e6f4039ffe61819",
+      "start_utc": "2026-10-04T19:48:14.984879+00:00",
+      "finish_utc": "2026-10-04T19:48:17.873602+00:00",
+      "server_pids": [
+        899430,
+        899550
+      ],
+      "initial_inventory": {
+        "ports": [
+          "OmatainerFixture:playback_FL",
+          "OmatainerFixture:playback_FR",
+          "OmatainerFixture Monitor:monitor_FL",
+          "OmatainerFixture Monitor:monitor_FR"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:3.1.6.9 (using PipeWire 1.6.9):default:omatainer-test",
+      "calibration_refused_before_stopping_graph": true,
+      "cancel_preserved_generation": true,
+      "native_app_frames": 44.0,
+      "native_graph_endpoint_edited_and_saved": true,
+      "preview_activated_output": false,
+      "reviewed_apply_changed_generation": true,
+      "save_preserved_output_generation": true,
+      "saved_routes_reopened": true,
+      "backend": "pipewire",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/debug",
+      "binary_sha256": "48ba10c99081b0055454167fa418e740e6d8f4d38058ac777e6f4039ffe61819",
+      "start_utc": "2026-10-04T19:48:17.970537+00:00",
+      "finish_utc": "2026-10-04T19:48:18.759027+00:00",
+      "server_pids": [
+        900255
+      ],
+      "initial_inventory": {
+        "ports": [
+          "OmatainerFixture:playback_FL",
+          "OmatainerFixture:playback_FR",
+          "OmatainerFixture Monitor:monitor_FL",
+          "OmatainerFixture Monitor:monitor_FR"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:3.1.6.9 (using PipeWire 1.6.9):default:omatainer-test",
+      "callback_allocations": [
+        0,
+        0,
+        0
+      ],
+      "callback_frees": [
+        0,
+        0,
+        0
+      ],
+      "callbacks": [
+        51,
+        15,
+        29
+      ],
+      "changed_quantum": 256,
+      "duplicate_client_refused": true,
+      "initial_quantum": 128,
+      "initial_rate": 48000,
+      "missing_endpoint_returned_once": true,
+      "playback_resumed": false,
+      "project_media_retained": true,
+      "reconnected_rate": 44100,
+      "saved_routes_reopened": true,
+      "software_loopback_return_ns": 2523473,
+      "wrong_port_direction_refused": true,
+      "backend": "pipewire",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/release-tests",
+      "binary_sha256": "6b8264d7764fc0a0a69bc6d0e7fa1e77133a2a6ad2e6146a4bb32d7fddaae23c",
+      "start_utc": "2026-10-04T19:48:18.810615+00:00",
+      "finish_utc": "2026-10-04T19:48:19.580690+00:00",
+      "server_pids": [
+        900392,
+        900656
+      ],
+      "initial_inventory": {
+        "ports": [
+          "OmatainerFixture:playback_FL",
+          "OmatainerFixture:playback_FR",
+          "OmatainerFixture Monitor:monitor_FL",
+          "OmatainerFixture Monitor:monitor_FR"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    },
+    {
+      "backend_identity": "jack-graph-v1:3.1.6.9 (using PipeWire 1.6.9):default:omatainer-test",
+      "calibration_refused_before_stopping_graph": true,
+      "cancel_preserved_generation": true,
+      "native_app_frames": 54.0,
+      "native_graph_endpoint_edited_and_saved": true,
+      "preview_activated_output": false,
+      "reviewed_apply_changed_generation": true,
+      "save_preserved_output_generation": true,
+      "saved_routes_reopened": true,
+      "backend": "pipewire",
+      "binary": "/home/michael/Projects/omatainer-work/remaining-backlog/.artifacts/waveform-qualified/release-tests",
+      "binary_sha256": "6b8264d7764fc0a0a69bc6d0e7fa1e77133a2a6ad2e6146a4bb32d7fddaae23c",
+      "start_utc": "2026-10-04T19:48:19.637256+00:00",
+      "finish_utc": "2026-10-04T19:48:19.900006+00:00",
+      "server_pids": [
+        900729
+      ],
+      "initial_inventory": {
+        "ports": [
+          "OmatainerFixture:playback_FL",
+          "OmatainerFixture:playback_FR",
+          "OmatainerFixture Monitor:monitor_FL",
+          "OmatainerFixture Monitor:monitor_FR"
+        ],
+        "rate": 48000,
+        "quantum": 128
+      }
+    }
+  ],
+  "retained_evidence": [
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-source.json",
+      "sha256": "6cf43eaa2707c2dbe57430fc85031d0bb94c5a90ae667e2638a7c744ef94dded"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-artifacts.sha256",
+      "sha256": "917ac67c8beb4c75f6912fb3c6e52ebc51e9b6eeb522b3a73543621f3b361f61"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-files.log",
+      "sha256": "858b9633e7bb72e2891e9ee5086ca1a56e75cdc1a7622a46096b47ea2c92175a"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-sockets-2.log",
+      "sha256": "77d22a3b1473c792d8b81e70204ebe64d7439562b8ca42cb2d5fccc4dabc8bd4"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-scene.log",
+      "sha256": "3fb4ed12d632805b82c64a26455d7a0483a464edda23c12c25951f1b2cd01a60"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-expected-names.txt",
+      "sha256": "f1ff9c2ecf51a3ed82c10b647a7b398b0a76151990b37cbd8d1f1a4e6facca34"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-observed-names.txt",
+      "sha256": "f1ff9c2ecf51a3ed82c10b647a7b398b0a76151990b37cbd8d1f1a4e6facca34"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-build-debug.jsonl",
+      "sha256": "840981a42b31a593921b857f597cb1b77ece8fe9b63e768cde92c5326adbcbc1"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-build-release-tests.jsonl",
+      "sha256": "6d7ce431edefdc00d36993e142b6d5cf92d6a9cfde4114d37b9e6fa285cf83d1"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-build-release.jsonl",
+      "sha256": "9a8d74313ea69b38b861476c3d4712dea95716b69ea6ca67a3f10b9a20d9241a"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-performance-5.json",
+      "sha256": "dedb1150753f775e02bad89444cf687a7a766c862a7dd190c0058c231a58b4f9"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-performance-5.raw.json",
+      "sha256": "57e0ad8518b0740bdccd93a965f9e41600fb7a90b6cdcdd858b0631cfb673ee3"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-timed-maps-1.log",
+      "sha256": "ae2c8f1f1f5a50606ec3d8b6cb855b8726eb34af8a83a146450be175f56f6493"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-timed-maps-2.log",
+      "sha256": "0ad7f0de0deb64c7690d67c596447bfef9ab688a07103733affeed9ab5dd1fe0"
+    },
+    {
+      "file": ".artifacts/wrapup/waveform-qualified-timed-maps-3.log",
+      "sha256": "f5b8af5bb605d511f720c588a6428dc755c59021e98ee587484f6b0987314ca9"
+    }
+  ],
+  "local_package": {
+    "verified": true,
+    "target": "aarch64-unknown-linux-gnu",
+    "files": {
+      ".config/hypr/apps/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
+      ".config/omarchy/plugins/omatainer/BarWidget.qml": "3bf198ea3a45f9ac4f7e06e906b9773bff2ca578d030d917a5e59ddf382ecb48",
+      ".config/omarchy/plugins/omatainer/Service.qml": "4bfc2782b991a4b015b19d38224496d1d5418f23e1df157b5c7c3932da72f223",
+      ".config/omarchy/plugins/omatainer/manifest.json": "bb5da467bd143775315caab141e900274277e4c86420ae7b4da56dcb11751610",
+      ".local/bin/omatainer": "2595676599baeedf217b528832ea812bde6fa2fa598ed8d9d14faa5e6a294e8c",
+      ".local/share/applications/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
+      ".local/share/icons/hicolor/scalable/apps/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
+      ".local/share/omatainer/licenses/manifest.json": "a258acb55b618a62272ec37a45831abf7bfe2be14494f559a986d648e514e9f0",
+      ".local/share/omatainer/licenses/notices.json": "b476dc973754c714d603acbe48837df69c72de918d25d0f06dc11ee95113ea1b",
+      ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
+      ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
+      ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",
+      ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml.orig": "9d000872d4087c68562632ff9d8d2adcf16c502b73b9cbf8ed1769e16ecd10e0",
+      ".local/share/omatainer/source/vendor/egui-winit/LICENSE": "0c8aa20063e510da7be18f434655a4fe76c72054c7f936d4b06267603557e9af",
+      ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md": "7ab275f9cab4521890bf57aadbbf239e79e8fc4cf06116ef535ff4e5cbfe074e",
+      ".local/share/omatainer/source/vendor/egui-winit/README.md": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b",
+      ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad",
+      ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef",
+      ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs": "d8d3a6054d1884ca519c45fa7437700a04b207fed4589115dac30bfc4bee89ba",
+      ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/.cargo_vcs_info.json": "f0cbb62e0173cc0cb6051169ac939dc7840696b1a142d50ebfa0dc41b51a81e6",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml": "1f2201173493afd34d67c336bf36f8a438004bb141bd4576ca2491c0626e6610",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml.orig": "e938331d1178b7ca22fc894e9265ca14652bb5c392c07dc2edcf5ac47e55e05b",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/LICENSE": "c76f740d1521b9bed9ca7a04ad526c310493c62621b1341d623b431736533b30",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/PATCHES.md": "397a7979db699eab591faa2b142f6f68c51ddb1a8020ac09bdf6f1c120219954",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/README.md": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/UPSTREAM.json": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/chunks.rs": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/mod.rs": "3275aeaa4dac1adda742d23817804d773ae7348d64b66b047cce9c8b8b0ecd06",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/src/common.rs": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
+      ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd",
+      ".local/share/omatainer/validation/performance.json": "dedb1150753f775e02bad89444cf687a7a766c862a7dd190c0058c231a58b4f9"
+    },
+    "project_source": {
+      "identity": "source_files SHA-256 values identify the exact local sources, including reviewed local modifications",
+      "repository": "https://github.com/michaelmonetized/omatainer",
+      "revision": "096dff237e5351e22221ab2033d1919ad53338c9",
+      "source_tree_modified": false
+    },
+    "published": false,
+    "installed": false
+  }
+}

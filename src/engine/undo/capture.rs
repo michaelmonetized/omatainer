@@ -121,6 +121,7 @@ impl Plan {
                 )
             }
             DeckGrid { deck, .. } => (Target::Deck(*deck), Name::Grid, 460 + *deck as u64),
+            DeckSourceGain { deck, .. } => (Target::Deck(*deck), Name::Deck, 470 + *deck as u64),
             DeckCueStyle { deck, pad, .. } => (
                 Target::Deck(*deck), Name::CueStyle, 440 + (*deck as u64) * 8 + *pad as u64,
             ),
@@ -191,9 +192,19 @@ impl RtEngine {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
             }
         }
+        if let Command::DeckSourceGain { deck, gain, receipt, ack } = &c {
+            let current = self.decks.get(*deck as usize).filter(|deck| deck.audio.is_some()
+                && !deck.source_gain_active()
+                && receipt.state() == load_receipt::State::Current
+                && gain.level() == receipt.source_level()
+                && deck.load_receipt.as_ref().is_some_and(|loaded| loaded.same_request(receipt)));
+            let Some(deck) = current else { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; };
+            if deck.source_gain == *gain { ack.applied(); self.undo.retire_command(c); return None; }
+        }
         if let Command::DeckGrid { deck, grid, receipt, ack } = &c {
             let current = self.decks.get(*deck as usize).filter(|d| d.audio.is_some()
                 && receipt.state() == load_receipt::State::Current
+                && !receipt.grid_is_locked()
                 && d.load_receipt.as_ref().is_some_and(|r| r.same_request(receipt)));
             let Some(deck) = current else {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
@@ -434,7 +445,6 @@ pub(super) fn command_bytes(command: &Command) -> usize {
             media: load_receipt::Media::Decoded { audio, .. },
             ..
         } => sample_bytes(audio),
-        Command::LearnCapture { param, .. } => param.capacity(),
         Command::Gesture { command, .. } => std::mem::size_of::<Command>() + command_bytes(command),
         _ => 0,
     }

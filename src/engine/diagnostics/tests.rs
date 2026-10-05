@@ -8,7 +8,7 @@ use std::time::Duration;
 
 #[test]
 fn sampled_device_fault_matches_independent_wall_timer_and_keeps_cpu_distinct() {
-    let (engine, mut rt) = Engine::headless_for_test(48000, 64);
+    let (engine, mut rt) = Engine::headless_for_test(48000, 80);
     rt.tracks[2].fx.slots = vec![FxSlot::new(FxId::Dist, rt.sr)];
     rt.load_profile.fault = Some((false, 2, 0, Duration::from_millis(8)));
     engine.cmd.set_profiling(true);
@@ -44,8 +44,8 @@ fn sampled_device_fault_matches_independent_wall_timer_and_keeps_cpu_distinct() 
 
 #[test]
 fn dense_profile_has_fixed_coverage_preserves_audio_and_callback_has_no_heap_traffic() {
-    let (engine, mut profiled) = Engine::headless_for_test(48000, 64);
-    let (_, mut reference) = Engine::headless_for_test(48000, 64);
+    let (engine, mut profiled) = Engine::headless_for_test(48000, 80);
+    let (_, mut reference) = Engine::headless_for_test(48000, 80);
     for rt in [&mut profiled, &mut reference] {
         for i in 0..64 {
             rt.tracks[2].poly.note_on(30 + i, 0.3);
@@ -97,13 +97,13 @@ fn dense_profile_has_fixed_coverage_preserves_audio_and_callback_has_no_heap_tra
 
 #[test]
 fn queue_pressure_reports_real_capacity_reservations_rejections_and_drain() {
-    let (engine, rt) = Engine::headless_for_test(48000, 32);
+    let (engine, rt) = Engine::headless_for_test(48000, 48);
     engine
         .send(Command::SamplerPad { pad: 0, on: true })
         .unwrap();
     while engine.send(Command::Tap(Instant::now())).is_ok() {}
     let before = engine.cmd.queue_pressure();
-    assert_eq!(before.capacity, 32);
+    assert_eq!(before.capacity, 48);
     assert_eq!(before.pending, engine.cmd.len());
     assert_eq!(before.observed_high_water, before.pending as u64);
     assert_eq!(before.reserved_releases, 1);
@@ -125,7 +125,7 @@ fn queue_pressure_reports_real_capacity_reservations_rejections_and_drain() {
 #[ignore = "comparative local profiling-overhead benchmark; no hardware deadline assertion"]
 fn compare_optional_sampled_profiling_cpu_cost() {
     fn run(enabled: bool) -> u64 {
-        let (engine, mut rt) = Engine::headless_for_test(48000, 64);
+        let (engine, mut rt) = Engine::headless_for_test(48000, 80);
         for i in 0..64 {
             rt.tracks[2].poly.note_on(30 + i, 0.3);
         }

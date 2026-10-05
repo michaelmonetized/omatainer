@@ -2,11 +2,14 @@ pub(crate) mod keylock;
 #[cfg(test)]
 mod keylock_tests;
 pub(crate) mod project;
+pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
+#[cfg(test)]
+mod track_gain_tests;
 mod video_transport;
 pub(crate) mod provider_preview;
 mod arp;
@@ -55,6 +58,7 @@ pub mod dsp;
 mod svf_tests;
 pub mod media_load;
 pub(crate) mod media_analysis;
+pub(crate) mod media_health;
 pub(crate) mod load_receipt;
 pub(crate) mod preparation;
 pub(crate) mod cue_metadata;
@@ -74,6 +78,7 @@ mod midi_schedule_tests;
 #[cfg(test)]
 mod sample_rate_tests;
 mod snapshot;
+pub(crate) mod audible;
 pub mod session;
 #[cfg(test)]
 mod scene_stereo_tests;
@@ -332,6 +337,7 @@ pub struct DeckRt {
     pub target_rate: f32,
     pub pitch: f32, // -1..1 mapped around 1.0
     pub playing: bool,
+    preview_position: Option<f64>,
     pub cue_pos: f64,
     pub touching: bool,
     // Admission cannot hold more than MAX_COMMANDS gates across all inputs.
@@ -342,6 +348,7 @@ pub struct DeckRt {
     pub sync: bool,
     pub gain: f32,
     pub eq: [ThreeBand; 2],
+    pub(crate) source_gain: crate::track_gain::Resolved,
     pub filter: [deck_filter::ChannelFilter; 2],
     filter_position: f32,
     pub filter_morph: f32, // 0.5 = bypass-ish, 0 LP 1 HP. 0.5 + offset
@@ -375,6 +382,23 @@ pub struct DeckRt {
 }
 
 impl DeckRt {
+    /// Check whether this deck is rendering source audio.
+    /// Takes this deck; returns true for play, touch or an explicitly admitted paused preview.
+    fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() }
+    /// Keep media replacement guarded while this deck renders or fades.
+    /// Takes its renderer state; returns whether load protection still owns audible activity.
+    fn media_active(&self) -> bool {
+        self.rendering() || self.last_output.iter().any(|sample| sample.abs() > 0.0001)
+    }
+    /// Keep source trim fixed until its audible state settles.
+    /// Takes this deck; returns true for rendering, retained output or an outgoing nonzero fade.
+    fn source_gain_active(&self) -> bool {
+        self.rendering() || self.last_output.iter().any(|sample| *sample != 0.0)
+            || self.transition_remaining > 0 && self.transition_from.iter().any(|sample| *sample != 0.0)
+    }
+    fn stop_preview(&mut self, rate: f32) {
+        if let Some(position) = self.preview_position.take() { self.transition_to(position, rate, DeckTransition::Jump); }
+    }
     fn clear_loop(&mut self) {
         self.loop_on = false;
         self.loop_start = 0.0;
@@ -391,6 +415,7 @@ impl DeckRt {
             target_rate: 1.0,
             pitch: 0.5,
             playing: false,
+            preview_position: None,
             cue_pos: 0.0,
             touching: false,
             touch_sources: [None; control::MAX_COMMANDS],
@@ -398,6 +423,7 @@ impl DeckRt {
             keylock: false,
             sync: false,
             gain: 0.85,
+            source_gain: crate::track_gain::Resolved::default(),
             eq: [ThreeBand::new(sr); 2],
             filter: [deck_filter::ChannelFilter::default(); 2],
             filter_position: 0.5,
@@ -501,7 +527,7 @@ impl DeckRt {
             keylock::Mode::Off
         } else if self.audio.is_none() {
             keylock::Mode::NoMedia
-        } else if !self.playing && !self.touching {
+        } else if !self.rendering() {
             keylock::Mode::Stopped
         } else {
             keylock::mode(true, self.touching, self.rate)
@@ -518,7 +544,7 @@ impl DeckRt {
     }
 
     fn play_rate(&self) -> f32 {
-        if self.playing || self.touching {
+        if self.rendering() {
             self.pitch_rate()
         } else {
             0.0
@@ -550,6 +576,7 @@ pub struct RtEngine {
     project_pending: Option<Box<project::Task>>,
     project_waiting: Option<Box<project::Task>>,
     project_sealed: bool,
+    live_set: Option<Box<live_set::Stage>>,
     pub sr: f32,
     pub playing: bool,
     pub recording: bool,
@@ -591,8 +618,10 @@ pub struct RtEngine {
     pub selected_deck_request: u64,
     pub cmd_rx: control::CommandReceiver,
     pub command_stats: control::CommandStats,
+    command_batch: Box<control::CommandBatch>,
     pub snap: Arc<Mutex<Snapshot>>,
     publisher: snapshot::Publisher,
+    audible: audible::Writer,
     pub midi_clock: MidiClockInput,
     #[cfg(test)]
     pub(crate) load_test_hooks: [Option<Box<dyn FnOnce() + Send>>; 2],
@@ -629,6 +658,7 @@ pub struct RtEngine {
     pad_output: [[f32; 2]; session::MAX_TRACKS],
     pad_targets: [Option<PadTarget>; 16],
     pub builtin: [Option<Arc<Sample>>; 2],
+    builtin_levels: [Option<crate::track_gain::Level>; 2],
     pub fx_view: i16,
     pub scene_fx: Vec<fx::FxChain>,
     pub compose_target: Option<ComposeTarget>,
@@ -648,6 +678,10 @@ struct PadTarget {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
+    pub media_active: bool,
+    pub previewing: bool,
+    pub load_locked: bool,
+    pub media_key: u64,
     pub load_gate_word: u64,
     pub title: String,
     pub playing: bool,
@@ -665,6 +699,10 @@ pub struct DeckSnap {
     pub pitch: f32,
     pub gain: f32,
     pub eq: [f32; 3],
+    pub source_gain: crate::track_gain::Policy,
+    pub source_gain_db: f32,
+    pub source_gain_active: bool,
+    pub source_level: Option<crate::track_gain::Level>,
     pub filter: f32,
     pub vinyl: bool,
     pub sync: bool,
@@ -731,6 +769,7 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub(crate) builtin_levels: [Option<crate::track_gain::Level>; 2],
     pub session: Option<session::Layout>,
     pub performance: performance::Status,
     pub project_revision: u64,
@@ -790,6 +829,7 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            builtin_levels: [None, None],
             session: None,
             performance: performance::Status::default(),
             project_revision: 0,
@@ -881,12 +921,16 @@ pub enum Command {
     DeckPfl { deck: u8 },
     DeckHotCue { deck: u8, pad: u8, del: bool },
     DeckGrid { deck: u8, grid: Option<beatgrid::Grid>, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
+    DeckSourceGain { deck: u8, gain: crate::track_gain::Resolved, receipt: load_receipt::Receipt, ack: beatgrid::GridEditAck },
     DeckCuePoint { deck: u8, pad: u8, del: bool, receipt: load_receipt::Receipt },
     DeckCueStyle { deck: u8, pad: u8, style: cue_metadata::Style, receipt: load_receipt::Receipt },
     DeckLoop { deck: u8, beats: f32 },
     DeckLoopIn { deck: u8 },
     DeckLoopOut { deck: u8 },
     DeckLoadSelected { deck: u8 },
+    PrepareSelected { all: bool },
+    DeckPreview { deck: u8, expected: u64, on: bool },
+    DeckLoadLock { deck: u8, enabled: bool },
     DeckVinyl { deck: u8 },
     DeckKeylock { deck: u8 },
     DeckAudio { deck: u8, audio: Arc<Sample> },
@@ -907,6 +951,8 @@ pub enum Command {
     Solo { track: u8 },
     Arm { track: u8 },
     Browse(f32),
+    BrowseCrates(f32),
+    CrateReturn,
     Select { track: usize, scene: usize },
     ComposeArm { track: usize, scene: usize },
     ComposeDisarm,
@@ -924,7 +970,6 @@ pub enum Command {
     FxSelect { slot: u8 },
     Quant(f32),
     Metronome,
-    LearnCapture { param: String, ch: u8, d1: u8, d2: u8, status: u8 },
     NudgeBpm(f32),
     ToggleQuant,
     DeckLoopDouble { deck: u8 },
@@ -940,6 +985,7 @@ pub enum Command {
     AddScene { scene: u16 },
     SamplerPad { pad: u8, on: bool },
     SamplerPadPressure { pad: u8, pressure: f32 },
+    SamplerSlotStop { pad: u8 },
     SamplerBank(usize),
     SamplerEdit(sampler::Edit),
     SamplerAudition(sampler::Audition),
@@ -969,8 +1015,21 @@ impl RtEngine {
         cmd_rx: impl Into<control::CommandReceiver>,
         snap: Arc<Mutex<Snapshot>>,
     ) -> Result<Self, String> {
+        Self::try_new_with_sampler_owner(sr, cmd_rx, snap, None)
+    }
+    /// Prepare one renderer and its bounded factory assets.
+    /// Takes its rate, command receiver, snapshot owner and optional fixture asset account; returns the complete renderer.
+    fn try_new_with_sampler_owner(
+        sr: f32,
+        cmd_rx: impl Into<control::CommandReceiver>,
+        snap: Arc<Mutex<Snapshot>>,
+        sampler_owner: Option<crate::sampler_bank::assets::Owner>,
+    ) -> Result<Self, String> {
         midi_edit::initialize()?;
-        let (sampler_assets, sampler_banks) = sampler::initial(sr as u32)?;
+        let (sampler_assets, sampler_banks) = match sampler_owner {
+            Some(owner) => sampler::initial_with_owner(sr as u32, owner)?,
+            None => sampler::initial(sr as u32)?,
+        };
         let cmd_rx = cmd_rx.into();
         let telemetry = cmd_rx.telemetry();
         let performance = cmd_rx.performance().clone();
@@ -996,6 +1055,7 @@ impl RtEngine {
             project_pending: None,
             project_waiting: None,
             project_sealed: false,
+            live_set: None,
             sr,
             playing: false,
             recording: false,
@@ -1035,7 +1095,9 @@ impl RtEngine {
             selected_deck_request: 0,
             cmd_rx,
             command_stats: control::CommandStats::default(),
+            command_batch: Box::new(control::CommandBatch::empty()),
             publisher: snapshot::Publisher::new(snap.clone()),
+            audible: audible::Writer::new(),
             snap,
             midi_clock: MidiClockInput::default(),
             #[cfg(test)]
@@ -1071,6 +1133,7 @@ impl RtEngine {
             pad_output: [[0.0; 2]; session::MAX_TRACKS],
             pad_targets: [None; 16],
             builtin: [None, None],
+            builtin_levels: [None, None],
             fx_view: -1,
             scene_fx: { let mut racks: Vec<_> = (0..SCENES).map(|_| fx::FxChain::new(sr)).collect(); racks.reserve(session::MAX_SCENES - racks.len()); racks },
             compose_target: None,
@@ -1079,9 +1142,10 @@ impl RtEngine {
         e.seed_demo();
         let (stem_a, stem_b) = demo_stems(sr as u32, e.bpm);
         e.builtin = [Some(stem_a), Some(stem_b)];
+        e.builtin_levels = std::array::from_fn(|stem| e.builtin[stem].as_ref().and_then(|sample| crate::track_gain::measure_channels(&sample.data, sample.ch, || false).ok()));
         for deck in 0..DECKS as u8 {
             e.apply(Command::DeckLoadRequested {
-                deck, media: load_receipt::Media::Builtin(deck), receipt: load_receipt::Receipt::new(),
+                deck, media: load_receipt::Media::Builtin(deck), receipt: load_receipt::Receipt::new().with_source_level(e.builtin_levels[deck as usize]).map_err(str::to_string)?,
             });
         }
         e.publish_initial();
@@ -1308,14 +1372,22 @@ impl RtEngine {
     }
 
     fn process_channels(&mut self, out: &mut [f32], channels: usize) {
+        for deck in &mut self.decks {
+            if let Some((true,grid))=deck.load_receipt.as_ref().and_then(load_receipt::Receipt::grid_protection) {
+                if deck.grid!=grid {deck.grid=grid;deck.publish_preparation();}
+            }
+        }
         self.performance_tick();
-        let batch = control::CommandBatch::receive(&self.cmd_rx);
-        self.command_stats.record(&batch);
-        for command in batch.discarded.into_iter().flatten() {self.undo.retire_command(command); }
-        for command in batch.commands.into_iter().flatten() {
-            self.apply(command);
+        self.command_batch.receive_into(&self.cmd_rx);
+        self.command_stats.record(&self.command_batch);
+        for index in 0..control::COMMANDS_PER_BLOCK {
+            if let Some(command) = self.command_batch.discarded[index].take() { self.undo.retire_command(command); }
+        }
+        for index in 0..control::COMMANDS_PER_BLOCK {
+            if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
+        self.live_set_tick(channels);
         self.routing_pipe.shared.explicit.store(self.routing.is_some(), std::sync::atomic::Ordering::Release);
         self.prepare_midi_output_block();
         self.sync_midi_clock();
@@ -1323,7 +1395,7 @@ impl RtEngine {
         self.maintain_provider_preview();
         self.routing_pipe.recorder.preview(self.provider_preview.is_some());
         if let Some(history) = &mut self.history_measurement {
-            history.routing_compatibility(self.routing.is_none());
+            history.routing_compatibility(self.routing.is_none() && !self.live_set.as_ref().is_some_and(|stage| stage.transitioning()));
             history.service_requests([self.decks[0].history_key, self.decks[1].history_key]);
         }
         self.performance.publish_decks(self.deck_activity());
@@ -1336,6 +1408,7 @@ impl RtEngine {
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[1]);
         let frames = out.len() / channels;
+        self.routing_pipe.begin_block(self.sr as u32, frames);
         if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
@@ -1411,6 +1484,7 @@ impl RtEngine {
                 output[..count].copy_from_slice(&frame[..count]);
                 self.render_output_probe(output);
                 self.routing = Some(routing);
+                self.audible.push(&self.decks);
                 if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
                 continue;
             }
@@ -1485,7 +1559,8 @@ impl RtEngine {
                     [self.decks[0].history_last, self.decks[1].history_last],
                     [self.decks[0].history_key, self.decks[1].history_key],
                     [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], cm);
-                history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output);
+                history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output,
+                    std::array::from_fn(|deck| if self.decks[deck].playing { self.decks[deck].history_key } else { 0 }));
             }
             let preview = self.tick_provider_preview();
             l += preview[0];
@@ -1498,8 +1573,10 @@ impl RtEngine {
             output.fill(0.0);
             if channels == 1 { output[0] = 0.5 * (l + r); } else { output[0] = l; output[1] = r; }
             self.render_output_probe(output);
+            self.audible.push(&self.decks);
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
+        self.live_set_mix(out, channels);
         self.project.publish_timeline(self.timeline_seconds());
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
@@ -1768,9 +1845,11 @@ impl RtEngine {
         let sr = self.sr as f64;
         {
             let d = &mut self.decks[di];
-            if d.sync {
-                if let Some(a) = &d.audio {
-                    let bpm = d.grid.map_or(a.bpm, |grid| grid.bpm() as f32);
+            let mapped_sync = d.sync.then(|| d.mapped_sync_step(self.sr)).flatten();
+            if let Some((_,rate)) = mapped_sync { d.target_rate = rate; }
+            else if d.sync {
+                if d.audio.is_some() {
+                    let bpm = d.musical_bpm();
                     if bpm > 1.0 { d.target_rate = d.sync_bpm / bpm; }
                 }
             } else {
@@ -1779,7 +1858,8 @@ impl RtEngine {
             if d.touching {
                 d.rate = d.scratch;
             } else {
-                d.rate += (d.target_rate - d.rate) * d.rate_smoothing;
+                if mapped_sync.is_some() { d.rate = d.target_rate; }
+                else { d.rate += (d.target_rate - d.rate) * d.rate_smoothing; }
                 if d.keylock
                     && (d.target_rate == keylock::MIN_RATIO || d.target_rate == 1.0
                         || d.target_rate == keylock::MAX_RATIO)
@@ -1794,8 +1874,9 @@ impl RtEngine {
                 d.scratch *= 0.85;
             }
             let before_position = d.pos;
-            if d.playing || d.touching {
-                d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr);
+            if d.rendering() {
+                if let Some((position,_)) = mapped_sync.filter(|_| !d.touching) { d.pos = position; }
+                else { d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr); }
             }
             let mut position = d.pos;
             let natural_wrap = d.loop_on && d.loop_len > 1.0 && d.loop_start >= 0.0
@@ -1805,7 +1886,9 @@ impl RtEngine {
                 && position >= d.loop_start + d.loop_len;
             if d.loop_on && d.loop_len > 1.0 {
                 if position >= d.loop_start + d.loop_len {
-                    position = d.loop_start + (position - d.loop_start) % d.loop_len;
+                    position = if mapped_sync.is_some() && !d.touching {
+                        d.mapped_loop_wrap(position)
+                    } else { None }.unwrap_or_else(|| d.loop_start + (position - d.loop_start) % d.loop_len);
                 }
                 if position < d.loop_start {
                     position = d.loop_start;
@@ -1816,6 +1899,7 @@ impl RtEngine {
                     position = 0.0;
                     if !d.loop_on {
                         d.playing = false;
+                        if let Some(saved) = d.preview_position.take() { position = saved; }
                     }
                 }
                 if position < 0.0 {
@@ -1847,7 +1931,7 @@ impl RtEngine {
                 d.playback_active = true;
             }
         }
-        if !self.decks[di].playing && !self.decks[di].touching {
+        if !self.decks[di].rendering() {
             // Retire the last output through the bounded transition envelope.
             // A paused source must never be read repeatedly as a DC signal.
             let d = &mut self.decks[di];
@@ -1883,6 +1967,8 @@ impl RtEngine {
         } else {
             self.decks[di].sample_at(self.decks[di].pos)
         };
+        l *= self.decks[di].source_gain.linear();
+        r *= self.decks[di].source_gain.linear();
         self.routing_deck_taps[0] = [l, r];
         let g = self.decks[di].gain;
         l *= g;
@@ -1903,7 +1989,7 @@ impl RtEngine {
     fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
         let d = &mut self.decks[di];
         let Some(audio) = &d.audio else { return (0.0, 0.0) };
-        if !d.playing && !d.touching { return (0.0, 0.0); }
+        if !d.rendering() { return (0.0, 0.0); }
         let source = keylock::Source {
             audio,
             loop_on: d.loop_on,
@@ -1933,7 +2019,7 @@ impl RtEngine {
                     buses[voice.track][0] += l;
                     buses[voice.track][1] += r;
                 }
-                if voice.position >= voice.end {
+                if voice.position >= voice.end && !voice.playback.repeat {
                     *slot = None;
                 }
             }
@@ -1950,6 +2036,7 @@ impl RtEngine {
 
     fn deck_touch(&mut self, source: u64, deck: u8, on: bool) {
         let d = &mut self.decks[deck as usize % DECKS];
+        if on { d.stop_preview(self.sr); }
         let existing = d.touch_sources.iter().position(|owner| *owner == Some(source));
         if on {
             if existing.is_none() {
@@ -2047,6 +2134,7 @@ impl RtEngine {
             Command::RecoverPerformance => { let _ = self.performance.acknowledge_inputs_released(); return; }
             _ => {}
         }
+        self.publish_deck_guards();
         if let Err(reason) = self.performance.check(&c, Some(self.deck_activity())) {
             self.performance.reject(reason);
             performance::reject_receipt(&c);
@@ -2138,12 +2226,14 @@ impl RtEngine {
         if scene.is_some_and(|scene| scene >= self.scene_fx.len() || !self.session.scenes[scene].active) {
             return;
         }
+        if let Some(deck) = preparation_deck { self.decks[deck].stop_preview(self.sr); }
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
             Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::ReservedStop { lane, ticket, target } => {
                 if lane == 0 { self.apply(Command::Stop); }
+                else if usize::from(lane) >= control::SAMPLER_STOP_BASE { self.apply(Command::SamplerSlotStop { pad: (usize::from(lane) - control::SAMPLER_STOP_BASE) as u8 }); }
                 else if target.is_none_or(|reference| self.session.resolves(session::Axis::Track, usize::from(lane - 1), reference)) { self.apply(Command::StopTrack { track: lane - 1 }); }
                 self.cmd_rx.complete_stop(lane as usize, ticket);
             }
@@ -2158,6 +2248,7 @@ impl RtEngine {
                 self.history_finish_take();
                 self.finish_recording_all();
                 self.playing = false;
+                for deck in &mut self.decks { deck.stop_preview(self.sr); }
                 self.recording = false;
                 self.compose_target = None;
                 self.metro.reset();
@@ -2220,6 +2311,7 @@ impl RtEngine {
             }
             Command::DeckPlay { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.stop_preview(self.sr);
                 if d.audio.is_none() {
                     return;
                 }
@@ -2229,12 +2321,22 @@ impl RtEngine {
             }
             Command::DeckCue { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.stop_preview(self.sr);
                 if d.playing {
                     d.playing = false;
                     d.transition_to(d.cue_pos, self.sr, DeckTransition::Jump);
                 } else {
                     d.cue_pos = d.pos;
                 }
+            }
+            Command::DeckPreview { deck, expected, on } => {
+                let Some(d) = self.decks.get_mut(usize::from(deck)) else { return; };
+                if expected == 0 || d.history_key != expected { return; }
+                if on {
+                    if d.playing || d.touching || d.audio.is_none() || d.preview_position.is_some() { return; }
+                    d.preview_position = Some(d.pos);
+                    d.transition_to(d.cue_pos, self.sr, DeckTransition::Jump);
+                } else { d.stop_preview(self.sr); }
             }
             Command::DeckSync { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
@@ -2314,6 +2416,15 @@ impl RtEngine {
                 }
                 self.undo.retire_command(command);
             }
+            command @ Command::DeckSourceGain { .. } => {
+                if let Command::DeckSourceGain { deck, gain, ack, .. } = &command {
+                    let deck = &mut self.decks[*deck as usize];
+                    deck.source_gain = *gain;
+                    deck.publish_preparation();
+                    ack.applied();
+                }
+                self.undo.retire_command(command);
+            }
             command @ Command::DeckCueStyle { .. } => {
                 if let Command::DeckCueStyle { deck, pad, style, .. } = &command {
                     // Identity, indices, set state and no-op were checked before
@@ -2323,14 +2434,13 @@ impl RtEngine {
                 self.undo.retire_command(command);
             }
             Command::DeckLoop { deck, beats } => {
-                let (_, spb) = self.decks[deck as usize % DECKS].grid_geometry(self.sr, self.bpm);
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
                     d.loop_on = false;
                 } else {
                     d.loop_on = true;
                     d.loop_start = if self.quantize && d.grid.is_some() { d.grid_snap(d.pos, self.sr, self.bpm) } else { d.pos };
-                    d.loop_len = beats as f64 * spb;
+                    d.loop_len = d.grid_span(d.loop_start, beats as f64, self.sr, self.bpm);
                 }
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
@@ -2373,7 +2483,8 @@ impl RtEngine {
             Command::DeckRestorePreparation { deck, receipt, preparation } => {
                 if let Some(d) = self.decks.get_mut(deck as usize) {
                     if d.load_receipt.as_ref().is_some_and(|current| current.same_request(&receipt))
-                        && receipt.preparation().is_some_and(|(revision, _)| revision == 2) {
+                        && receipt.preparation().is_some_and(|(revision, _)| revision == 2)
+                        && preparation.source_gain == d.source_gain.policy() {
                         d.restore_preparation(preparation);
                         d.publish_preparation();
                         self.project.edited();
@@ -2408,8 +2519,10 @@ impl RtEngine {
                 d.bpm = audio.bpm;
                 d.cue_pos = 0.0;
                 d.playing = false;
+                d.preview_position = None;
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.grid = None;
+                d.source_gain = crate::track_gain::Resolved::default();
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -2426,10 +2539,12 @@ impl RtEngine {
                 d.history_key = 0;
                 d.title.clear();
                 d.playing = false;
+                d.preview_position = None;
                 d.cue_pos = 0.0;
                 d.clear_loop();
                 d.cue_styles = [cue_metadata::Style::default(); HOTCUES];
                 d.grid = None;
+                d.source_gain = crate::track_gain::Resolved::default();
                 d.hotcues = std::array::from_fn(|_| HotCue {
                     set: false,
                     pos: 0.0,
@@ -2442,7 +2557,10 @@ impl RtEngine {
                 d.transition_to((frac.clamp(0.0, 1.0) as f64 * frames).max(0.0), self.sr, DeckTransition::Jump);
                 d.cue_pos = d.pos;
             }
-            Command::DeckLoadSelected { .. } => {
+            Command::DeckLoadLock { deck, enabled } => {
+                let _ = self.performance.set_deck_load_lock(deck as usize, enabled);
+            }
+            Command::DeckLoadSelected { .. } | Command::PrepareSelected { .. } => {
                 // Producers capture selection before routing to the GUI.
                 // A raw renderer call without that capture must fail visibly.
                 self.cmd_rx.reject_uncaptured_ui_load();
@@ -2482,7 +2600,7 @@ impl RtEngine {
                     self.tracks[track as usize].armed = !self.tracks[track as usize].armed;
                 }
             }
-            Command::Browse(_) => {
+            Command::Browse(_) | Command::BrowseCrates(_) | Command::CrateReturn => {
                 // Browsing must resolve the GUI's published filtered view on a
                 // control producer. The renderer has no independent selection.
                 self.cmd_rx.reject_uncaptured_ui_load();
@@ -2576,7 +2694,6 @@ impl RtEngine {
                 self.metronome = !self.metronome;
                 self.metro.reset();
             }
-            command @ Command::LearnCapture { .. } => self.undo.retire_command(command),
             Command::ToggleQuant => {
                 self.quantize = !self.quantize;
                 self.quant = if self.quantize { 1.0 } else { 0.0 };
@@ -2584,19 +2701,24 @@ impl RtEngine {
             Command::DeckLoopDouble { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
-                    d.loop_len *= 2.0;
+                    d.loop_len = if d.grid.is_some() {
+                        let beats = d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm);
+                        d.grid_span(d.loop_start, beats * 2.0, self.sr, self.bpm)
+                    } else { d.loop_len * 2.0 };
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckLoopHalf { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 if d.loop_on {
-                    d.loop_len = (d.loop_len * 0.5).max(64.0);
+                    d.loop_len = if d.grid.is_some() {
+                        let beats = d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm);
+                        d.grid_span(d.loop_start, beats * 0.5, self.sr, self.bpm)
+                    } else { d.loop_len * 0.5 }.max(64.0);
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckReloop { deck } => {
-                let (_, spb) = self.decks[deck as usize % DECKS].grid_geometry(self.sr, self.bpm);
                 let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
                 let mut pos = d.pos;
@@ -2604,7 +2726,7 @@ impl RtEngine {
                     pos = d.grid_snap(pos, self.sr, self.bpm);
                 }
                 d.loop_start = pos;
-                d.loop_len = 4.0 * 4.0 * spb;
+                d.loop_len = d.grid_span(pos, 16.0, self.sr, self.bpm);
                 d.loop_on = true;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
@@ -2612,16 +2734,15 @@ impl RtEngine {
                 let fav = if self.xfader <= 0.5 { 0 } else { 1 };
                 let oth = 1 - fav;
                 if self.decks[fav].audio.is_none() { return; }
-                let target_bpm = self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate();
+                let target_bpm = if self.decks[fav].sync && self.decks[fav].grid.is_some_and(|grid| !grid.anchors().is_empty()) { self.decks[fav].sync_bpm }
+                    else { self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate() };
                 self.decks[oth].sync = true;
                 self.decks[oth].sync_bpm = target_bpm;
                 if self.decks[fav].playing && self.decks[oth].playing {
                     if self.decks[oth].audio.is_some() {
-                        let (origin_f, spb_f) = self.decks[fav].grid_geometry(self.sr, self.bpm);
-                        let (origin_o, spb_o) = self.decks[oth].grid_geometry(self.sr, self.bpm);
-                        let phase = (self.decks[fav].pos - origin_f).rem_euclid(spb_f) / spb_f;
-                        let beat = ((self.decks[oth].pos - origin_o) / spb_o).floor();
-                        let mut position = origin_o + (beat + phase) * spb_o;
+                        let phase = self.decks[fav].grid_phase(self.decks[fav].pos, self.sr, self.bpm);
+                        let beat = self.decks[oth].grid_beat_at(self.decks[oth].pos, self.sr, self.bpm).floor();
+                        let mut position = self.decks[oth].grid_position_at(beat + phase, self.sr, self.bpm);
                         if self.decks[oth].grid.is_some() {
                             position = position.clamp(0.0, self.decks[oth].audio.as_ref().unwrap().frames() as f64);
                         }
@@ -2709,6 +2830,7 @@ impl RtEngine {
                     self.apply(Command::DeckAudio { deck, audio: a });
                 }
             }
+            Command::SamplerSlotStop { pad } => self.stop_sampler_slot(pad),
             Command::SamplerPad { pad, on } => self.apply_sampler_pad(pad % 16, on, 1.0),
             Command::SamplerPadPressure { pad, pressure } => {
                 if pad < 16 && pressure.is_finite() && (0.0..=1.0).contains(&pressure) { self.apply_sampler_pad(pad, true, pressure); }
@@ -2792,6 +2914,7 @@ impl RtEngine {
             }
         }
         if let Some(deck) = preparation_deck { self.decks[deck].publish_preparation(); }
+        self.publish_deck_guards();
     }
 
     fn apply_media_request(&mut self, deck: u8, media: &load_receipt::Media,
@@ -2823,7 +2946,12 @@ impl RtEngine {
         }
         let audio = match media {
             Media::Unload => unreachable!(),
-            Media::Builtin(stem) => self.builtin.get(*stem as usize).and_then(Clone::clone),
+            Media::Builtin(stem) => {
+                if receipt.source_level().is_some() && receipt.source_level() != self.builtin_levels.get(*stem as usize).copied().flatten() {
+                    receipt.supersede(); return;
+                }
+                self.builtin.get(*stem as usize).and_then(Clone::clone)
+            },
             Media::Decoded { token, audio } => {
                 if token.deck != deck || !token.is_current() {
                     receipt.supersede();
@@ -2836,6 +2964,7 @@ impl RtEngine {
         if let Some(hook) = self.load_test_hooks[0].take() { hook(); }
         // Cancellation and application race for one atomic transition. The
         // caller still owns the complete request if cancellation wins here.
+        if receipt.source_gain().is_none() { if receipt.claim() { receipt.finish(State::Unavailable); } return; }
         if !receipt.claim() { return; }
         #[cfg(test)]
         if let Some(hook) = self.load_test_hooks[1].take() { hook(); }
@@ -2853,6 +2982,7 @@ impl RtEngine {
             };
             self.apply_plain(command);
             let d = &mut self.decks[deck as usize];
+            d.source_gain = receipt.source_gain().unwrap_or_default();
             if let Some(preparation) = receipt.initial_preparation() { d.restore_preparation(preparation); }
             d.history_key = receipt.history_key();
             d.load_receipt = Some(receipt.clone());
@@ -3084,6 +3214,7 @@ impl InitialSession {
 }
 
 pub struct Engine {
+    pub(crate) audible: audible::Handle,
     pub(crate) routing: audio::routing::input::Pipe,
     pub undo: undo::Handle,
     pub project: project::Handle,
@@ -3113,6 +3244,7 @@ impl Engine {
         settings.validate().map_err(anyhow::Error::msg)?;
         let (tx, rx) = CommandPort::channel(256);
         if settings.startup.performance_mode { tx.performance().set_enabled(true)?; }
+        tx.midi_learn().configure(settings.midi_learn.clone()).map_err(anyhow::Error::msg)?;
         let ui_requests = tx.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
         let mut rt = RtEngine::try_new(48000.0, rx, snap.clone()).map_err(anyhow::Error::msg)?;
@@ -3127,9 +3259,11 @@ impl Engine {
         let routing = rt.routing_pipe.clone();
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
+        let audible = rt.audible.handle();
         let audio = audio::start_with_settings(rt, &settings.audio)?;
         let midi = midi::MidiHub::start_with_routing(tx.clone(), snap.clone(), settings.midi_inputs.clone(),settings.midi_routing.clone())?;
         Ok(Self {
+            audible,
             undo,
             project,
             cmd: tx,
@@ -3165,25 +3299,44 @@ impl Engine {
         let routing=rt.routing_pipe.clone();
         let sampler_assets=rt.sampler_assets.clone();
         let performance_history=rt.history_measurement.as_ref().map(|history|history.handle());
+        let audible=rt.audible.handle();
         let audio=audio::owner::start_safe(rt)?;
-        Ok(Self{undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,routing,sampler_assets,_audio:Some(audio)})
+        Ok(Self{audible,undo,project,cmd,ui_requests,snap,midi:midi::MidiHub::without_devices(),initial_playback,initial_builtin:false,performance_history,routing,sampler_assets,_audio:Some(audio)})
     }
     pub fn safe_mode(&self)->bool {self._audio.as_ref().is_some_and(|audio|audio.handle.safe_mode())}
 
     #[cfg(test)]
     pub(crate) fn headless_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
+        Self::headless_with_sampler_owner_for_test(sample_rate, capacity, None)
+    }
+    /// Build an independent sampler editor fixture.
+    /// Takes sample rate and command capacity; returns the app engine and renderer under the production asset limits.
+    #[cfg(test)]
+    pub(crate) fn headless_isolated_sampler_for_test(sample_rate: u32, capacity: usize) -> (Self, RtEngine) {
+        let owner = crate::sampler_bank::assets::Owner::isolated_for_test(crate::sampler_bank::assets::Budget::limits());
+        Self::headless_with_sampler_owner_for_test(sample_rate, capacity, Some(owner))
+    }
+    /// Build an app fixture with one asset account.
+    /// Takes sample rate, command capacity and optional fixture owner; returns the complete engine and renderer.
+    #[cfg(test)]
+    fn headless_with_sampler_owner_for_test(
+        sample_rate: u32, capacity: usize, owner: Option<crate::sampler_bank::assets::Owner>,
+    ) -> (Self, RtEngine) {
         let (cmd, rx) = CommandPort::channel(capacity);
         let ui_requests = cmd.take_ui_receiver().expect("fresh GUI request receiver");
         let snap = Arc::new(Mutex::new(Snapshot::default()));
-        let mut rt = RtEngine::new(sample_rate as f32, rx, snap.clone());
+        let mut rt = RtEngine::try_new_with_sampler_owner(sample_rate as f32, rx, snap.clone(), owner)
+            .expect("prepare app fixture");
         let undo = rt.enable_undo().expect("undo worker");
         let project = rt.project.clone();
         let initial_playback = std::array::from_fn(|deck| rt.decks[deck].load_receipt.clone());
         let routing = rt.routing_pipe.clone();
         let sampler_assets = rt.sampler_assets.clone();
         let performance_history = rt.history_measurement.as_ref().map(|history| history.handle());
+        let audible = rt.audible.handle();
         (
             Self {
+                audible,
                 undo,
                 project,
                 cmd,
@@ -3530,3 +3683,6 @@ mod license_content_tests;
 
 #[cfg(test)]
 pub(crate) mod performance_workload_tests;
+
+#[cfg(test)]
+mod deck_load_lock_tests;

@@ -12,6 +12,7 @@ struct Pads {
     time: f64,
     points: [Pos2; 16],
     cover: Option<Pos2>,
+    stops: Vec<u8>,
 }
 impl Pads {
     fn new() -> Self {
@@ -28,6 +29,7 @@ impl Pads {
             time: 0.0,
             points: [Pos2::ZERO; 16],
             cover: None,
+            stops: Vec::new(),
         };
         pads.frame(vec![]);
         let (output, gates) = pads.frame(vec![]);
@@ -67,6 +69,9 @@ impl Pads {
         while let Ok(command) = self.f.rt.cmd_rx.try_recv() {
             if let Command::SamplerPad { pad, on } = command {
                 gates.push((pad, on));
+            } else if let Command::ReservedStop { lane, .. } = command {
+                assert!(usize::from(lane) >= (crate::engine::session::MAX_TRACKS + 1));
+                self.stops.push((usize::from(lane) - (crate::engine::session::MAX_TRACKS + 1)) as u8);
             } else {
                 panic!("unexpected command {command:?}");
             }
@@ -393,4 +398,31 @@ fn an_overlapping_interactive_layer_blocks_pad_press_without_blocking_existing_r
     assert!(pads.f.app.pad_held[0]);
     assert_eq!(pads.pointer(target, false), [(0, false)]);
     assert!(!pads.f.app.pad_held[0]);
+}
+
+#[test]
+fn mouse_context_and_focused_shift_escape_stop_exact_slots() {
+    let mut pads = Pads::new();
+    pads.instrument(SamplerInstrument::Samples);
+    let first = pads.points[0]; let second = pads.points[1];
+    pads.pointer(first, true); pads.pointer(first, false);
+    pads.pointer(second, true); pads.pointer(second, false);
+    assert!(pads.f.rt.pad_voices[0].is_some()); assert!(pads.f.rt.pad_voices[1].is_some());
+    for pressed in [true, false] { pads.frame(vec![egui::Event::PointerMoved(first), egui::Event::PointerButton {
+        pos: first, button: PointerButton::Secondary, pressed, modifiers: Default::default(),
+    }]); }
+    let menu = pads.frame(vec![]).0;
+    let stop = label_center(&menu, "Stop slot");
+    pads.pointer(stop, true); pads.pointer(stop, false);
+    assert_eq!(pads.stops, [0]);
+    assert!(pads.f.rt.pad_voices[0].is_none()); assert!(pads.f.rt.pad_voices[1].is_some());
+    pads.frame(vec![]);
+    assert_eq!(pads.pointer(second, true), [(1, true)]);
+    assert_eq!(pads.pointer(second, false), [(1, false)]);
+    assert!(pads.ctx.memory(|memory| memory.focused().is_some()), "pointer press must give its pad focus");
+    let focused = pads.ctx.memory(|memory| memory.focused()).unwrap();
+    assert!(pads.ctx.read_response(focused).unwrap().rect.contains(second), "focus must belong to the selected pad");
+    pads.frame(vec![egui::Event::Key { key: Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::SHIFT }]);
+    assert_eq!(pads.stops, [0, 1]);
+    assert!(pads.f.rt.pad_voices[1].is_none());
 }

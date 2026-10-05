@@ -170,7 +170,7 @@ fn cancellation_is_observable_during_decode_and_drop_does_not_wait_for_io() {
 #[test]
 fn completion_already_queued_to_engine_cannot_overwrite_newer_selection_or_unload() {
     let loader = Loader::with_decoder(|path, _| Ok(sample(path.to_str().unwrap()))).unwrap();
-    let (commands, receiver) = CommandPort::channel(32);
+    let (commands, receiver) = CommandPort::channel(48);
     let mut rt = RtEngine::new(
         48000.0,
         receiver,
@@ -352,7 +352,7 @@ fn actual_descriptor_decoder_loads_typed_volume_and_fails_offline_or_changed_mou
     *mounts.lock().unwrap()=Mounts::fixture_offline();loader.request_source(1,source.clone()).unwrap();let completion=ready(&loader,1);
     assert!(completion.result.unwrap_err().to_string().contains("offline"));assert!(completion.fingerprint.is_none() && completion.content_hash.is_none());
     let mut calls=0;let next=Mounts::fixture_volume(root,"TEST-A",2);let policy=performance::Handle::default();let foreground=policy.clone();
-    let loader=Loader::with_backend(move |path,token,file,_job|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,policy,true,
+    let loader=Loader::with_backend(move |path,token,file,_job|super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground),media_analysis::run,media_health::run,policy,true,
         move ||{calls+=1;Ok(if calls==1 {mounted.clone()} else {next.clone()})}).unwrap();
     loader.request_source(0,source).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.content_hash.is_none());
 }
@@ -366,8 +366,26 @@ fn production_descriptor_cannot_admit_a_different_path_swapped_during_decode() {
     let loader=Loader::with_backend(move |path,token,file,_job| {
         std::fs::rename(path,&saved).unwrap();std::fs::rename(&other,path).unwrap();
         super::super::decode::decode_deck_file(path,file.unwrap(),||!token.is_current(),&foreground)
-    },media_analysis::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
+    },media_analysis::run,media_health::run,policy,true,crate::media_location::Snapshot::discover).unwrap();
     loader.request(0,path).unwrap();let completion=ready(&loader,0);assert!(completion.result.unwrap_err().to_string().contains("changed during access"));assert!(completion.fingerprint.is_none());
+}
+
+#[test]
+fn captured_source_version_rejects_replacement_before_decoding_its_new_bytes() {
+    use crate::engine::media_analysis::tests::{Files,wav};
+    let files=Files::new();let proof=files.source("captured.wav",&wav(8000,8000,1,false));
+    let loader=Loader::start().unwrap();
+    std::fs::write(files.0.join("captured.wav"),b"replacement content").unwrap();
+    loader.request_source_expected(0,proof.source,Some(proof.fingerprint)).unwrap();
+    let until=Instant::now()+Duration::from_secs(5);
+    loop {
+        if let Some(completion)=loader.take_ready()[0].take() {
+            assert!(completion.fingerprint.is_none());
+            assert!(matches!(completion.result,Err(ref failure) if failure.detail.contains("changed")),"{:?}",completion.result);
+            break;
+        }
+        assert!(Instant::now()<until);std::thread::sleep(Duration::from_millis(1));
+    }
 }
 
 #[test]
@@ -381,4 +399,35 @@ fn equivalent_active_and_pending_decodes_coalesce_without_changing_the_request_i
     resume.send(()).unwrap();seen.recv_timeout(Duration::from_secs(3)).unwrap();resume.send(()).unwrap();
     assert_eq!(ready(&loader,0).token.id,first.id);assert_eq!(ready(&loader,1).token.id,pending.id);
     assert_eq!(calls.load(Ordering::Acquire),2);
+}
+
+#[test]
+fn a_changed_captured_fingerprint_never_coalesces_with_the_same_active_path() {
+    use crate::engine::media_analysis::tests::{Files, wav};
+    let files = Files::new();
+    let first = files.source("same-path.wav", &wav(8000, 8000, 1, false));
+    let LibSource::File(path) = &first.source else { unreachable!() };
+    let (entered, seen) = mpsc::channel();
+    let (release, wait) = mpsc::channel();
+    let loader = Loader::with_decoder(move |path, _| {
+        entered.send(()).unwrap();
+        wait.recv_timeout(Duration::from_secs(5)).unwrap();
+        Ok(sample(path.to_str().unwrap()))
+    }).unwrap();
+    let old = loader.request_source_expected(0, first.source.clone(), Some(first.fingerprint)).unwrap();
+    seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    assert_eq!(loader.request_source_expected(0, first.source.clone(), Some(first.fingerprint)).unwrap().id, old.id);
+    std::fs::write(path, wav(8000, 4000, 1, false)).unwrap();
+    let new_fingerprint = FileFingerprint::read(path).unwrap();
+    assert_ne!(new_fingerprint, first.fingerprint);
+    let next = loader.request_source_expected(0, first.source.clone(), Some(new_fingerprint)).unwrap();
+    assert!(next.id > old.id && !old.is_current());
+    assert_eq!(loader.request_source_expected(0, first.source, Some(new_fingerprint)).unwrap().id, next.id);
+    release.send(()).unwrap();
+    seen.recv_timeout(Duration::from_secs(3)).unwrap();
+    release.send(()).unwrap();
+    let completion = ready(&loader, 0);
+    assert_eq!(completion.token.id, next.id);
+    assert_eq!(completion.fingerprint, Some(new_fingerprint));
+    assert!(completion.result.is_ok());
 }

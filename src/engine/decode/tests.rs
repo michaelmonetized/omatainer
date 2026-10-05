@@ -358,3 +358,21 @@ fn performance_decode_keeps_actual_pcm_but_defers_optional_bpm_analysis() {
     assert_eq!(result, None);
     assert_eq!(seen.get(), 6);
 }
+
+#[test]
+fn fully_trimmed_mp3_tail_is_not_a_missing_audible_packet() {
+    let bytes=include_bytes!("../../../tests/fixtures/audio/tone-padding.mp3");
+    let full=Fixture::new("mp3",bytes).decode().unwrap();
+    assert_eq!(full.sample.frames(),1323);
+    assert_eq!(full.diagnostics.expected_frames,Some(1323));
+    assert!(full.diagnostics.reached_eof);
+    let mut no_tail=bytes[..bytes.len()-418].to_vec();
+    no_tail[73..77].copy_from_slice(&3u32.to_be_bytes());
+    no_tail[77..81].copy_from_slice(&1670u32.to_be_bytes());
+    let trim=u32::from_be_bytes([0,no_tail[206],no_tail[207],no_tail[208]]);
+    let trim=(trim&!4095)|((trim&4095)-1152);
+    no_tail[206..209].copy_from_slice(&trim.to_be_bytes()[1..]);
+    let baseline=Fixture::new("mp3",&no_tail).decode().unwrap();
+    assert_eq!(full.sample.data,baseline.sample.data);
+    assert_eq!(full.diagnostics.decoded_packets,baseline.diagnostics.decoded_packets+1);
+}

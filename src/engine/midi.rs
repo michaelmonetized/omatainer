@@ -1,4 +1,4 @@
-//! USB-MIDI class-compliant I/O, hardware maps, learn, and clock.
+//! USB-MIDI class-compliant I/O, hardware maps,  and clock.
 
 use crate::engine::{Command, DECKS, HOTCUES};
 use parking_lot::Mutex;
@@ -12,6 +12,7 @@ mod profile;
 mod handoff;
 mod framing;
 mod relative;
+pub(crate) mod learn;
 pub(crate) mod routing;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
@@ -20,7 +21,6 @@ pub use policy::{InputPolicy, PolicyError, PolicyStatus};
 #[cfg(test)]
 pub(crate) use connections::test_support as connection_test_support;
 pub use relative::RelativeSpec;
-#[cfg(test)]
 pub(crate) use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
@@ -35,7 +35,7 @@ fn next_source_id() -> u64 {
     NEXT_SOURCE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |id|id.checked_add(1)).unwrap_or(0)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MsgKind {
     Note,
     Cc,
@@ -43,7 +43,8 @@ pub enum MsgKind {
     Pitch,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Binding {
     pub kind: MsgKind,
     pub ch: u8, // 0-15, 0xFF = any
@@ -54,7 +55,7 @@ pub struct Binding {
     pub relative: Option<RelativeSpec>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Action {
     DeckPlay,
     DeckCue,
@@ -73,11 +74,17 @@ pub enum Action {
     DeckLoopIn,
     DeckLoopOut,
     DeckLoad,
+    DeckLoadLock,
     DeckVinyl,
     Xfader,
     Master,
     CueMix,
     Browse,
+    BrowseCrates,
+    CrateReturn,
+    SamplerSlotStop,
+    Prepare,
+    PrepareCrate,
     LoadA,
     LoadB,
     Scene,
@@ -112,10 +119,41 @@ pub struct MidiHub {
     input_counters: Arc<handoff::InputCounters>,
     routing: Option<routing::Manager>,
     pub log: Arc<Mutex<Vec<String>>>,
-    pub learn: Arc<Mutex<Option<String>>>,
 }
 
+#[cfg(test)]
+pub(crate) struct TestInput { callback: handoff::InputSink, _worker: handoff::InputGuard, counters: Arc<handoff::InputCounters> }
+#[cfg(test)]
+impl TestInput {
+    pub(crate) fn push(&mut self,message:&[u8]) {
+        let before=self.counters.snapshot().dispatched;
+        let allocation=super::test_alloc::measure(||self.callback.push(message));
+        assert_eq!((allocation.allocations,allocation.frees),(0,0));
+        let until=Instant::now()+std::time::Duration::from_secs(2);
+        while self.counters.snapshot().dispatched==before {assert!(Instant::now()<until,"synthetic input did not dispatch");std::thread::sleep(std::time::Duration::from_millis(1));}
+    }
+}
 impl MidiHub {
+    #[cfg(test)]
+    pub(crate) fn open_for_test(&self,cmd:&super::CommandPort,source:u64,map:MidiMap,name:&str,id:&str)->TestInput {
+        map.validate().unwrap();let counters=Arc::new(handoff::InputCounters::default());
+        let (callback,worker)=handoff::start_on_port(source,map,cmd.clone(),self.log.clone(),name.into(),id.into(),counters.clone(),true,||{}).unwrap();
+        TestInput{callback,_worker:worker,counters}
+    }
+    /// Test the still-connected captured action through normal command admission.
+    /// Takes its captured wire message and command port; returns an admission receipt or an explicit refusal.
+    pub(crate) fn preview_learn(&self,cmd:&super::CommandPort,capture:&learn::Capture)->Result<String,String> {
+        let view=cmd.midi_learn().view();
+        if view.capture.as_ref()!=Some(capture) || !view.devices.iter().any(|d|d.source==capture.source && d.endpoint==capture.mapping.endpoint) {return Err("Captured MIDI device or review changed; capture again".into());}
+        if view.devices.iter().filter(|device|device.endpoint==capture.mapping.endpoint).count()!=1 {return Err("Captured MIDI port is ambiguous".into());}
+        if cmd.performance().protected() {return Err("Performance protection excludes MIDI assignment tests".into());}
+        if capture.mapping.binding.action==Action::Shift {return Err("Assign Shift and test its following hardware gesture".into());}
+        let shift=Arc::new(Mutex::new([false;4]));let bytes=capture.bytes;
+        dispatch(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift).map_err(|e|e.to_string())?;
+        if bytes[0]&0xf0==0x90 {let off=[bytes[0]&15|0x80,bytes[1],0];dispatch(&capture.mapping.binding,capture.source,0x80,0,&off,cmd,&shift).map_err(|e|e.to_string())?;}
+        Ok("Captured action admitted. Check its normal control or load receipt.".into())
+    }
+
     #[cfg(test)]
     pub(crate) fn receive_for_test(&self, cmd: &super::CommandPort, source: u64, device: &str, message: &[u8]) {
         let map = pick_map(&builtin_maps().unwrap(), device);
@@ -127,7 +165,7 @@ impl MidiHub {
         map.validate().expect("invalid synthetic controller map");
         let counters = Arc::new(handoff::InputCounters::default());
         let (mut callback, worker) = handoff::start(
-            source, map, cmd.clone(), self.log.clone(), self.learn.clone(), device.into(), counters.clone(),
+            source, map, cmd.clone(), self.log.clone(),  device.into(), counters.clone(),
         ).unwrap();
         let allocation = super::test_alloc::measure(|| callback.push(message));
         assert_eq!(allocation.allocations, 0, "raw MIDI callback allocated");
@@ -148,7 +186,6 @@ impl MidiHub {
             input_counters: Arc::new(handoff::InputCounters::default()),
             routing: None,
             log: Arc::new(Mutex::new(Vec::new())),
-            learn: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -164,14 +201,13 @@ impl MidiHub {
         // Fail profile validation before a device callback can dispatch it.
         let maps = builtin_maps()?;
         let log = Arc::new(Mutex::new(Vec::new()));
-        let learn = Arc::new(Mutex::new(None));
         let input_counters = Arc::new(handoff::InputCounters::default());
         let routing=Some(routing::Manager::start(cmd.clone(),routes).map_err(anyhow::Error::msg)?);
         let connections = connections::Manager::start_with_policy(
             connections::MidirBackend,
-            &snapshot, cmd, maps, log.clone(), learn.clone(), input_counters.clone(), policy,
+            &snapshot, cmd, maps, log.clone(),  input_counters.clone(), policy,
         )?;
-        Ok(Self { connections: Some(connections), input_counters, routing, log, learn })
+        Ok(Self { connections: Some(connections), input_counters, routing, log })
     }
 
     pub fn configure_routing(&self,routes:routing::Routing)->Result<u64,String>{
@@ -215,7 +251,6 @@ fn handle_msg(
     map: &MidiMap,
     cmd: &super::CommandPort,
     log: &Arc<Mutex<Vec<String>>>,
-    learn: &Arc<Mutex<Option<String>>>,
     shift: &Arc<Mutex<[bool; 4]>>,
     dev: &str,
 ) {
@@ -235,7 +270,7 @@ fn handle_msg(
                 }
             }
             framing::Message::Channel(frame) => {
-                handle_channel(&frame, source, map, cmd, log, learn, shift, dev, true);
+                handle_channel(&frame, source, map, cmd, log,  shift, dev, true);
             }
         }
     }
@@ -247,7 +282,6 @@ fn handle_channel(
     map: &MidiMap,
     cmd: &super::CommandPort,
     log: &Arc<Mutex<Vec<String>>>,
-    learn: &Arc<Mutex<Option<String>>>,
     shift: &Arc<Mutex<[bool; 4]>>,
     dev: &str,
     allow_live: bool,
@@ -270,16 +304,6 @@ fn handle_channel(
         }
     }
 
-    if let Some(param) = learn.lock().as_ref() {
-        let _ = cmd.send(Command::LearnCapture {
-            param: param.clone(),
-            ch,
-            d1,
-            d2,
-            status: kind_hi,
-        });
-        return;
-    }
 
     let mut matched = false;
     for b in &map.bindings {
@@ -298,7 +322,7 @@ fn handle_channel(
             continue;
         }
         matched = true;
-        dispatch(b, source, kind_hi, d2, msg, cmd, shift);
+        let _ = dispatch(b, source, kind_hi, d2, msg, cmd, shift);
     }
 
     // Live MIDI notes onto the selected track when no map consumed a note
@@ -325,16 +349,18 @@ fn dispatch(
     msg: &[u8; 3],
     cmd: &super::CommandPort,
     shift: &Arc<Mutex<[bool; 4]>>,
-) {
+) -> Result<(), super::SubmissionError> {
+    let mut failure = None;
+    let mut send = |command| { let result = cmd.send(command);if let Err(error) = &result { if failure.is_none() { failure = Some(error.clone()); } } result };
     let pressed = status == 0x90 && d2 > 0;
     let rel = match b.kind {
         MsgKind::CcRel => {
             let Some(delta) = b.relative.and_then(|spec| spec.decode(d2)) else {
-                return;
+                return Ok(());
             };
             // A stationary report must not reset an active scratch/nudge.
             if delta == 0.0 {
-                return;
+                return Ok(());
             }
             delta
         }
@@ -348,16 +374,16 @@ fn dispatch(
     match b.action {
         Action::Shift => shift.lock()[deck as usize] = pressed,
         Action::DeckPlay if pressed => {
-            let _ = cmd.send(Command::DeckPlay { deck });
+            let _ = send(Command::DeckPlay { deck });
         }
         Action::DeckCue if pressed => {
-            let _ = cmd.send(Command::DeckCue { deck });
+            let _ = send(Command::DeckCue { deck });
         }
         Action::DeckSync if pressed => {
-            let _ = cmd.send(Command::DeckSync { deck });
+            let _ = send(Command::DeckSync { deck });
         }
         Action::DeckJog => {
-            let _ = cmd.send(Command::DeckJog {
+            let _ = send(Command::DeckJog {
                 deck,
                 delta: if b.kind == MsgKind::CcRel {
                     rel
@@ -367,130 +393,140 @@ fn dispatch(
             });
         }
         Action::DeckJogTouch => {
-            let _ = cmd.send(Command::MidiDeckTouch {
+            let _ = send(Command::MidiDeckTouch {
                 source,
                 deck,
                 on: pressed,
             });
         }
         Action::DeckPitch => {
-            let _ = cmd.send(Command::DeckPitch { deck, value: rel });
+            let _ = send(Command::DeckPitch { deck, value: rel });
         }
         Action::DeckGain => {
-            let _ = cmd.send(Command::DeckGain { deck, value: rel });
+            let _ = send(Command::DeckGain { deck, value: rel });
         }
         Action::DeckEqHi => {
-            let _ = cmd.send(Command::DeckEq {
+            let _ = send(Command::DeckEq {
                 deck,
                 band: 2,
                 value: rel,
             });
         }
         Action::DeckEqMid => {
-            let _ = cmd.send(Command::DeckEq {
+            let _ = send(Command::DeckEq {
                 deck,
                 band: 1,
                 value: rel,
             });
         }
         Action::DeckEqLow => {
-            let _ = cmd.send(Command::DeckEq {
+            let _ = send(Command::DeckEq {
                 deck,
                 band: 0,
                 value: rel,
             });
         }
         Action::DeckFilter => {
-            let _ = cmd.send(Command::DeckFilter { deck, value: rel });
+            let _ = send(Command::DeckFilter { deck, value: rel });
         }
         Action::DeckPfl if pressed => {
-            let _ = cmd.send(Command::DeckPfl { deck });
+            let _ = send(Command::DeckPfl { deck });
         }
         Action::DeckHotCue if pressed => {
-            let _ = cmd.send(Command::DeckHotCue {
+            let _ = send(Command::DeckHotCue {
                 deck,
                 pad: b.extra.min((HOTCUES - 1) as u16) as u8,
                 del: shift.lock()[deck as usize],
             });
         }
         Action::DeckLoop4 if pressed => {
-            let _ = cmd.send(Command::DeckLoop { deck, beats: 4.0 });
+            let _ = send(Command::DeckLoop { deck, beats: 4.0 });
         }
         Action::DeckLoopIn if pressed => {
-            let _ = cmd.send(Command::DeckLoopIn { deck });
+            let _ = send(Command::DeckLoopIn { deck });
         }
         Action::DeckLoopOut if pressed => {
-            let _ = cmd.send(Command::DeckLoopOut { deck });
+            let _ = send(Command::DeckLoopOut { deck });
         }
+        Action::Prepare if pressed => { let _ = send(Command::PrepareSelected { all: false }); }
+        Action::PrepareCrate if pressed => { let _ = send(Command::PrepareSelected { all: true }); }
         Action::DeckLoad if pressed => {
-            let _ = cmd.send(Command::DeckLoadSelected { deck });
+            let _ = send(if shift.lock()[deck as usize] { Command::PrepareSelected { all: deck == 1 } } else { Command::DeckLoadSelected { deck } });
+        }
+        Action::DeckLoadLock if pressed => {
+            let enabled = !cmd.performance().deck_load_locked(deck as usize);
+            let _ = send(Command::DeckLoadLock { deck, enabled });
         }
         Action::DeckVinyl if pressed => {
-            let _ = cmd.send(Command::DeckVinyl { deck });
+            let _ = send(Command::DeckVinyl { deck });
         }
         Action::Xfader => {
-            let _ = cmd.send(Command::Xfader(rel));
+            let _ = send(Command::Xfader(rel));
         }
         Action::Master => {
-            let _ = cmd.send(Command::Master(rel));
+            let _ = send(Command::Master(rel));
         }
         Action::CueMix => {
-            let _ = cmd.send(Command::CueMix(rel));
+            let _ = send(Command::CueMix(rel));
         }
+        Action::BrowseCrates if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => { let _ = send(Command::BrowseCrates(rel)); }
+        Action::CrateReturn if pressed => { let _ = send(Command::CrateReturn); }
+        Action::SamplerSlotStop if pressed && b.extra < 16 => { let _ = send(Command::SamplerSlotStop { pad: b.extra as u8 }); }
         Action::Browse if b.kind == MsgKind::CcRel && b.relative.is_some_and(|spec| spec.scale == 1.0) => {
-            let _ = cmd.send(Command::Browse(rel));
+            let _ = send(Command::Browse(rel));
         }
         Action::LoadA if pressed => {
-            let _ = cmd.send(Command::DeckLoadSelected { deck: 0 });
+            let _ = send(if shift.lock()[deck as usize] { Command::PrepareSelected { all: false } } else { Command::DeckLoadSelected { deck: 0 } });
         }
         Action::LoadB if pressed => {
-            let _ = cmd.send(Command::DeckLoadSelected { deck: 1 });
+            let _ = send(if shift.lock()[deck as usize] { Command::PrepareSelected { all: true } } else { Command::DeckLoadSelected { deck: 1 } });
         }
         Action::Scene if pressed => {
-            let _ = cmd.send(Command::LaunchScene {
+            let _ = send(Command::LaunchScene {
                 scene: b.extra.min((super::session::MAX_SCENES - 1) as u16),
             });
         }
         Action::Clip if pressed => {
-            let _ = cmd.send(Command::LaunchClip {
+            let _ = send(Command::LaunchClip {
                 track: b.deck.min((super::session::MAX_TRACKS - 1) as u8),
                 scene: b.extra.min((super::session::MAX_SCENES - 1) as u16),
             });
         }
         Action::TrackFader => {
-            let _ = cmd.send(Command::TrackGain {
+            let _ = send(Command::TrackGain {
                 track: b.extra.min((super::session::MAX_TRACKS - 1) as u16) as u8,
                 value: rel,
             });
         }
         Action::TrackMute if pressed => {
-            let _ = cmd.send(Command::Mute {
+            let _ = send(Command::Mute {
                 track: b.extra.min((super::session::MAX_TRACKS - 1) as u16) as u8,
             });
         }
         Action::Play if pressed => {
-            let _ = cmd.send(Command::TogglePlay);
+            let _ = send(Command::TogglePlay);
         }
         Action::Stop if pressed => {
-            let _ = cmd.send(Command::Stop);
+            let _ = send(Command::Stop);
         }
         Action::Record if pressed => {
-            let _ = cmd.send(Command::Record);
+            let _ = send(Command::Record);
         }
         Action::Tap if pressed => {
-            let _ = cmd.send(Command::Tap(Instant::now()));
+            let _ = send(Command::Tap(Instant::now()));
         }
         Action::FxWet => {
-            let _ = cmd.send(Command::FxWet {
+            let _ = send(Command::FxWet {
                 slot: b.extra.min(255) as u8,
                 value: rel,
             });
         }
         Action::FxSelect if pressed => {
-            let _ = cmd.send(Command::FxSelect { slot: b.extra.min(255) as u8 });
+            let _ = send(Command::FxSelect { slot: b.extra.min(255) as u8 });
         }
         _ => {}
     }
+    failure.map_or(Ok(()), Err)
 }
 
 fn pick_map(maps: &[MidiMap], name: &str) -> MidiMap {
@@ -810,29 +846,28 @@ mod tests {
         let first = next_source_id();
         let second = next_source_id();
         assert_ne!(first, second);
-        let (tx, rx) = crate::engine::CommandPort::channel(16);
+        let (tx, rx) = crate::engine::CommandPort::channel(32);
         let snapshot = Arc::new(Mutex::new(super::super::Snapshot::default()));
         let mut rt = super::super::RtEngine::new(48_000.0, rx, snapshot);
         let map = class_compliant();
         let log = Arc::new(Mutex::new(Vec::new()));
-        let learn = Arc::new(Mutex::new(None));
         let shift = Arc::new(Mutex::new([false; 4]));
         rt.selected_track = 1;
-        handle_msg(&[0x93, 60, 100], first, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        handle_msg(&[0x93, 60, 100], first, &map, &tx, &log, &shift, "USB MIDI keyboard");
         rt.process(&mut []);
         rt.selected_track = 2;
-        handle_msg(&[0x93, 60, 100], second, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        handle_msg(&[0x93, 60, 100], second, &map, &tx, &log, &shift, "USB MIDI keyboard");
         rt.process(&mut []);
         let first_key = super::super::dsp::InputKey::Midi { source: first, ch: 3, note: 60 };
         let second_key = super::super::dsp::InputKey::Midi { source: second, ch: 3, note: 60 };
         assert!(rt.tracks[1].poly.voices.iter().any(|voice| voice.input == Some(first_key) && voice.env.stage == 1));
         assert!(rt.tracks[2].poly.voices.iter().any(|voice| voice.input == Some(second_key) && voice.env.stage == 1));
-        handle_msg(&[0x83, 60, 0], first, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        handle_msg(&[0x83, 60, 0], first, &map, &tx, &log, &shift, "USB MIDI keyboard");
         rt.process(&mut []);
         assert!(rt.tracks[1].poly.voices.iter().filter(|voice| voice.input == Some(first_key)).all(|voice| voice.env.stage == 4));
         assert!(rt.tracks[2].poly.voices.iter().any(|voice| voice.input == Some(second_key) && voice.env.stage == 1));
         rt.selected_track = 3;
-        handle_msg(&[0x93, 60, 0], second, &map, &tx, &log, &learn, &shift, "USB MIDI keyboard");
+        handle_msg(&[0x93, 60, 0], second, &map, &tx, &log, &shift, "USB MIDI keyboard");
         rt.process(&mut []);
         assert!(rt.tracks[2].poly.voices.iter().filter(|voice| voice.input == Some(second_key)).all(|voice| voice.env.stage == 4));
     }

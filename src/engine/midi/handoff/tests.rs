@@ -25,7 +25,6 @@ fn input(capacity: usize, source: u64, cmd: &CommandPort) -> (InputSink, InputWo
         map(),
         cmd.clone(),
         Arc::new(Mutex::new(Vec::new())),
-        Arc::new(Mutex::new(None)),
         "test device".into(),
         "test device".into(),
         Arc::new(InputCounters::default()),
@@ -57,24 +56,21 @@ fn held(rt: &RtEngine, source: u64, note: u8) -> bool {
 
 #[test]
 fn saturated_callback_never_touches_admission_log_or_learn_locks_or_heap() {
-    let (cmd, _receiver) = CommandPort::channel(16);
+    let (cmd, _receiver) = CommandPort::channel(32);
     let log = Arc::new(Mutex::new(Vec::new()));
-    let learn = Arc::new(Mutex::new(None));
     let counters = Arc::new(InputCounters::default());
     let (mut sink, guard) = start(
         71,
         map(),
         cmd.clone(),
         log.clone(),
-        learn.clone(),
         "blocked worker".into(),
         counters.clone(),
     )
     .unwrap();
     let log_guard = log.lock();
-    let learn_guard = learn.lock();
     let mut result = None;
-    cmd.with_admission_held_for_test(|| {
+    cmd.midi_learn().with_editor_lock_for_test(|| cmd.with_admission_held_for_test(|| {
         let (done, receive) = std::sync::mpsc::channel();
         let callback = std::thread::spawn(move || {
             let began = Instant::now();
@@ -89,8 +85,7 @@ fn saturated_callback_never_touches_admission_log_or_learn_locks_or_heap() {
         // Locks remain held until this receive completes. A callback taking
         // any of them cannot satisfy this deliberately broad 500ms bound.
         result = Some((receive.recv_timeout(Duration::from_millis(500)), callback));
-    });
-    drop(learn_guard);
+    }));
     drop(log_guard);
     let (result, callback) = result.unwrap();
     let sink = callback.join().unwrap();
@@ -164,7 +159,7 @@ fn overflow_preserves_mapped_and_realtime_stops_without_replaying_old_onsets() {
         &[0xfc][..],
         &[0x90, 0xf8, 31, 0xf8, 100][..],
     ] {
-        let (engine, mut rt) = Engine::headless_for_test(48_000, 16);
+        let (engine, mut rt) = Engine::headless_for_test(48_000, 32);
         rt.playing = true;
         let (mut sink, mut worker) = input(1, 11, &engine.cmd);
         sink.push(&[0x90, 60, 100]);
@@ -217,7 +212,7 @@ fn only_adjacent_absolute_cc_values_coalesce_and_barriers_keep_order() {
 
 #[test]
 fn oversized_and_disconnected_input_are_bounded_and_observable() {
-    let (cmd, receiver) = CommandPort::channel(16);
+    let (cmd, receiver) = CommandPort::channel(32);
     let (mut sink, mut worker) = input(1, 11, &cmd);
     sink.push(&[0x90, 60, 100]);
     drain(&mut worker);
@@ -273,7 +268,7 @@ fn renderer_touch_owner_capacity_covers_every_admitted_gate_without_heap_work() 
 
 #[test]
 fn disconnect_releases_owned_gates_and_keeps_queued_stop_without_new_notes() {
-    let (cmd, receiver) = CommandPort::channel(16);
+    let (cmd, receiver) = CommandPort::channel(32);
     let (mut sink, mut worker) = input(4, 11, &cmd);
     sink.push(&[0x90, 60, 100]);
     drain(&mut worker);
@@ -373,15 +368,14 @@ fn mailbox_keeps_full_event_fields_coherent_under_concurrent_replacement() {
 fn browse_callback_stays_allocation_free_while_gui_selection_lock_is_held() {
     let (engine, _rt) = Engine::headless_for_test(48000, 256);
     engine.ui_requests.publish_selection(Some(Arc::new(crate::engine::media_source::Selection {
-        title: "captured".into(), source: crate::engine::media_source::LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums),
-    })));
+        title: "captured".into(), source: crate::engine::media_source::LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums), fingerprint: None, })));
     let mut profile = map();
     profile.bindings = vec![
         rbind(0,17,Action::Browse,0,0,RelativeSpec {encoding:crate::engine::midi::RelativeEncoding::OffsetBinary,scale:1.0}),
         nbind(0,2,Action::DeckLoad,0,0),
     ];
     profile.validate().unwrap();
-    let (mut callback, worker) = start(72,profile,engine.cmd.clone(),Arc::new(Mutex::new(Vec::new())),Arc::new(Mutex::new(None)),"synthetic browser".into(),Arc::new(InputCounters::default())).unwrap();
+    let (mut callback, worker) = start(72,profile,engine.cmd.clone(),Arc::new(Mutex::new(Vec::new())),"synthetic browser".into(),Arc::new(InputCounters::default())).unwrap();
     engine.ui_requests.with_navigation_held_for_test(|| {
         let counts = crate::engine::test_alloc::measure(|| {
             for _ in 0..1000 { callback.push(&[0xb0,17,65,0x90,2,127]); }
@@ -416,4 +410,50 @@ fn performance_recovery_discards_raw_packets_before_stop_and_during_recovery() {
     drain(&mut worker); render(&mut rt);
     assert!(held(&rt, 42, 63));
     assert_eq!(sink.shared.counters.snapshot().dropped, 2);
+}
+
+
+#[test]
+fn learned_relative_cc_stays_ordered_and_old_capture_messages_are_fenced() {
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    rt.selected_track=1;
+    let (mut sink,mut worker)=input(8,1101,&engine.cmd);
+    let endpoint=super::super::learn::Endpoint{name:"test device".into(),id:"test device".into()};
+    let binding=rbind(0,7,Action::DeckJog,0,0,RelativeSpec{encoding:super::super::relative::RelativeEncoding::OffsetBinary,scale:1.0});
+    engine.cmd.midi_learn().configure(super::super::learn::Config{mappings:vec![super::super::learn::Mapping{endpoint,binding}]}).unwrap();
+    let allocations=crate::engine::test_alloc::measure(||{sink.push(&[0xb0,7,65]);sink.push(&[0xb0,7,66]);});
+    assert_eq!((allocations.allocations,allocations.frees),(0,0));
+    drain(&mut worker);
+    assert!(matches!(rt.cmd_rx.try_recv().unwrap(),Command::DeckJog{delta:1.0,..}));
+    assert!(matches!(rt.cmd_rx.try_recv().unwrap(),Command::DeckJog{delta:2.0,..}));
+    assert!(rt.cmd_rx.try_recv().is_err());
+    sink.push(&[0x90,60,100]);
+    engine.cmd.midi_learn().begin(nbind(0,0,Action::DeckPlay,0,0),None).unwrap();
+    drain(&mut worker);render(&mut rt);assert!(!held(&rt,1101,60));assert!(engine.cmd.midi_learn().view().capture.is_none());
+    sink.push(&[0x90,61,100]);drain(&mut worker);assert_eq!(engine.cmd.midi_learn().view().capture.unwrap().mapping.binding.data,61);
+    engine.cmd.midi_learn().cancel();sink.push(&[0x80,61,0]);sink.push(&[0x90,62,100]);drain(&mut worker);render(&mut rt);assert!(held(&rt,1101,62));
+}
+
+#[test]
+fn capture_revision_releases_prior_source_gates_and_preserves_stale_safety_stop() {
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    rt.selected_track=1;
+    let (mut sink,mut worker)=input(8,1102,&engine.cmd);
+    sink.push(&[0x90,60,100]);sink.push(&[0x90,20,100]);drain(&mut worker);render(&mut rt);
+    assert!(held(&rt,1102,60));assert!(rt.decks[0].touching);
+    rt.playing=true;sink.push(&[0xfc]);
+    engine.cmd.midi_learn().begin(nbind(0,0,Action::DeckPlay,0,0),None).unwrap();
+    drain(&mut worker);render(&mut rt);
+    assert!(!held(&rt,1102,60));assert!(!rt.decks[0].touching);assert!(!rt.playing);
+    engine.cmd.midi_learn().cancel();sink.push(&[0x90,60,100]);drain(&mut worker);render(&mut rt);assert!(held(&rt,1102,60));
+    drop(worker);render(&mut rt);assert!(!held(&rt,1102,60));assert!(engine.cmd.midi_learn().view().devices.is_empty());
+}
+
+#[test]
+fn cancel_fences_queued_capture_gestures_and_accepts_the_next_performance_note() {
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);rt.selected_track=1;
+    let (mut sink,mut worker)=input(8,1103,&engine.cmd);
+    engine.cmd.midi_learn().begin(nbind(0,0,Action::DeckPlay,0,0),None).unwrap();sink.push(&[0x90,63,100]);
+    engine.cmd.midi_learn().cancel();drain(&mut worker);render(&mut rt);assert!(!held(&rt,1103,63));assert!(engine.cmd.midi_learn().view().capture.is_none());
+    sink.push(&[0x90,64,100]);drain(&mut worker);render(&mut rt);assert!(held(&rt,1103,64));
 }

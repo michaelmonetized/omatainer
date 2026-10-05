@@ -287,6 +287,16 @@ impl Catalog {
         }
         Ok(index)
     }
+    /// Preview a tag refresh without changing the catalog or media.
+    /// Takes an exact current track proof and actual embedded observation; returns the effective metadata after locks and user sidecars are applied.
+    pub(crate) fn preview_tag_refresh(&self,review:&Review,observation:&Observation)->Result<Metadata,String> {
+        let track=&self.tracks[self.reviewed_tag_index(review)?];
+        if observation.fingerprint!=review.fingerprint {return Err("Tag observation changed since review".into());}
+        let mut version=track.versions[track.current].clone();let old=version.metadata.clone();
+        let mut tags=version.tags.clone().unwrap_or_else(||TagMetadata::empty(&old));
+        tags.set_observation(observation)?;version.tags=Some(tags);reconcile(&mut version);track.locks.preserve(&old,&mut version.metadata);
+        Ok(version.metadata)
+    }
     /// Observations of an archived loaded version cannot change current media.
     pub(crate) fn observe_tags(
         &mut self,
@@ -309,7 +319,9 @@ impl Catalog {
         }
         let index = self.reviewed_tag_index(review)?;
         let track = &mut self.tracks[index];
+        let locks=track.locks;
         let version = &mut track.versions[track.current];
+        let previous=version.metadata.clone();
         let tags = version
             .tags
             .as_mut()
@@ -319,6 +331,7 @@ impl Catalog {
             version.metadata.bpm = bpm;
         }
         reconcile(version);
+        locks.preserve(&previous,&mut version.metadata);
         Ok(())
     }
     fn observe_tags_inner(
@@ -332,7 +345,9 @@ impl Catalog {
             return Err("tag observation does not match the reviewed file".into());
         }
         let track = &mut self.tracks[index];
+        let locks=track.locks;
         let version = &mut track.versions[track.current];
+        let previous=version.metadata.clone();
         let mut tags = version
             .tags
             .clone()
@@ -343,6 +358,7 @@ impl Catalog {
         tags.set_observation(observation)?;
         version.tags = Some(tags);
         reconcile(version);
+        locks.preserve(&previous,&mut version.metadata);
         Ok(())
     }
     pub(crate) fn observe_tag_failure(
@@ -368,7 +384,9 @@ impl Catalog {
     ) -> Result<(), String> {
         let index = self.reviewed_tag_index(review)?;
         let track = &mut self.tracks[index];
+        let locks=track.locks;
         let version = &mut track.versions[track.current];
+        let previous=version.metadata.clone();
         let mut tags = version
             .tags
             .clone()
@@ -392,6 +410,7 @@ impl Catalog {
         }
         version.tags = Some(tags);
         reconcile(version);
+        locks.preserve(&previous,&mut version.metadata);
         Ok(())
     }
     pub(crate) fn apply_tag_sidecar(
@@ -405,7 +424,9 @@ impl Catalog {
         }
         let index = self.reviewed_tag_index(review)?;
         let track = &mut self.tracks[index];
+        let locks=track.locks;
         let version = &mut track.versions[track.current];
+        let previous=version.metadata.clone();
         let mut tags = version
             .tags
             .clone()
@@ -416,6 +437,7 @@ impl Catalog {
         }
         version.tags = Some(tags);
         reconcile(version);
+        locks.preserve_reviewed(&previous,&mut version.metadata,patch);
         Ok(())
     }
     /// Caller supplies hashes/payload identities measured by the guarded writer,
@@ -498,6 +520,7 @@ impl Catalog {
         tags.overrides.merge(patch);
         next.tags = Some(tags);
         reconcile(&mut next);
+        track.locks.preserve_reviewed(&old.metadata,&mut next.metadata,patch);
         let track = &mut self.tracks[index];
         track.versions[old_index].content_hash = Some(proof.old_hash);
         track.versions[old_index].audio_identity = Some(proof.original_audio.clone());

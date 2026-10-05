@@ -1,0 +1,734 @@
+{
+  "schema": 1,
+  "release": "Unreleased combined stack above #505",
+  "reviewed": "2026-10-04",
+  "references": [
+    {
+      "name": "Ableton Live",
+      "stable": "12.4.6",
+      "published": "2026-09-15",
+      "url": "https://www.ableton.com/en/release-notes/live-12/",
+      "scope": "Stable release review only. No beta or separately paid pack parity claim."
+    },
+    {
+      "name": "Serato DJ Pro",
+      "stable": "4.0.10",
+      "url": "https://serato.com/dj/pro/downloads",
+      "scope": "Stable release review only. Video, DVS, stems and other expansions are tracked separately as planned capabilities."
+    }
+  ],
+  "compatibility": [
+    {
+      "name": "Linux aarch64 / Asahi MacBook Pro J316",
+      "status": "local software fixtures",
+      "versions": "Linux 7.1.13-3-2-ARCH; Rust/Cargo 1.98.0; CPAL 0.15.3",
+      "limits": "Physical converter timing, external audio paths and sustained listening are not qualified by unit tests."
+    },
+    {
+      "name": "ALSA → private PipeWire null sink",
+      "status": "backend restart exercised",
+      "versions": "ALSA 1.2.16.1; PipeWire 1.6.8",
+      "limits": "Owned private server and real CPAL callbacks; no USB unplug, converter or system suspend evidence."
+    },
+    {
+      "name": "MacBook built-in AppleJ316 / AppleJ316HPAI",
+      "status": "discovered",
+      "versions": "sysfs/proc inventory 2026-10-03",
+      "limits": "Discovery is not a captured audio or listening test."
+    },
+    {
+      "name": "Pioneer DDJ-FX; Numark NS7; Akai MPD232; Akai APC40; 88-key USB keyboard",
+      "status": "user available; pending attachment",
+      "versions": "Exact model, firmware and endpoint descriptors pending",
+      "limits": "No physical controller profile or custom NS7 driver is qualified yet."
+    },
+    {
+      "name": "FreeToUse",
+      "status": "public keyless test source",
+      "versions": "API v3; current API/license reviewed 2026-10-03",
+      "limits": "No paid account or music grant configured. Catalog tests and generated private-fixture audio are separate from provider music playback. Other provider integrations are excluded from this release."
+    },
+    {
+      "name": "Audio plugins",
+      "status": "planned",
+      "versions": "No hosted plugin formats or vendor versions qualified",
+      "limits": "Built-in effect racks are not VST3/CLAP/LV2 plugin hosting."
+    },
+    {
+      "name": "Windows / macOS",
+      "status": "unqualified",
+      "versions": "No native build/device qualification for this release",
+      "limits": "This run is Linux aarch64 only."
+    }
+  ],
+  "issues": {
+    "129": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/audio_settings.rs",
+          "entry": "Audio devices → reconnect review"
+        },
+        {
+          "kind": "audio owner",
+          "file": "src/engine/audio/owner.rs",
+          "entry": "Audio owner recovery state"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::owner::recovery_tests",
+        "ui::audio_settings::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-129-audio-recovery.md"
+      ],
+      "limits": "USB unplug/replug and real suspend/resume remain pending."
+    },
+    "131": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/deck_load_lock.rs",
+          "entry": "Platter lock → captured load/eject review"
+        },
+        {
+          "kind": "MIDI",
+          "file": "src/engine/midi.rs",
+          "entry": "Action::DeckLoadLock; existing load/eject producers"
+        },
+        {
+          "kind": "CLI/IPC",
+          "file": "src/main.rs",
+          "entry": "ctl deck-lock; ctl deck-eject; status lock fields"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_load_lock_tests",
+        "ui::deck_load_lock::tests",
+        "ipc_schema_tests::deck_protection_cli_validates_target_and_action_before_connecting"
+      ],
+      "evidence": [
+        "docs/validation/issue-131-deck-load-lock.md"
+      ],
+      "limits": "Physical MIDI/controller display testing is pending; software producers and actual native egui interactions are exercised."
+    },
+    "137": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "release tooling",
+          "file": "scripts/capability-matrix.py",
+          "entry": "generate / check"
+        }
+      ],
+      "fixtures": [
+        "scripts/test-capability-matrix.py"
+      ],
+      "evidence": [
+        "docs/capability-matrix.md"
+      ],
+      "limits": "The registry records observed status and pending work. Each implementation needs acceptance evidence before promotion."
+    },
+    "139": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_view.rs",
+          "entry": "Crate search; Search all library"
+        },
+        {
+          "kind": "query",
+          "file": "src/library/search.rs",
+          "entry": "Query::parse / matches"
+        }
+      ],
+      "fixtures": [
+        "library::search::tests",
+        "ui::library_view_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-139-library-search.md"
+      ],
+      "limits": "Local 100000-track synthetic catalog; search fields reflect implemented title/artist/key/annotation metadata."
+    },
+    "140": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_protection.rs",
+          "entry": "Library locks → capture, review and save"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_analysis.rs",
+          "entry": "Preview selected or filtered analysis changes"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/library/protection.rs",
+          "entry": "Version-qualified protection and automatic metadata guards"
+        }
+      ],
+      "fixtures": [
+        "library::protection::tests",
+        "library::analysis::tests",
+        "library::tags::tests",
+        "engine::beatgrid::renderer_tests",
+        "ui::library_protection::tests",
+        "ui::library_analysis::tests",
+        "ui::library_tags::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-140-preparation-locks.md"
+      ],
+      "limits": "Software fixtures and read-only source paths; physical controller actions remain pending. Implementation is not an automatic acceptance or release qualification."
+    },
+    "205": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_smart_crates.rs",
+          "entry": "Named crates → Smart crate rules → Preview and Save"
+        },
+        {
+          "kind": "catalog worker",
+          "file": "src/ui/library_metadata/collection_rows.rs",
+          "entry": "Incremental membership bound to exact library/catalog publications"
+        },
+        {
+          "kind": "persistent catalog",
+          "file": "src/library/smart_crates.rs",
+          "entry": "Validated typed All/Any rules in versioned catalog"
+        }
+      ],
+      "fixtures": [
+        "library::smart_crates::tests",
+        "ui::library_metadata::collection_rows::tests",
+        "ui::library_smart_crates::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-205-smart-crates.md"
+      ],
+      "limits": "Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines."
+    },
+    "221": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/music_provider.rs",
+          "entry": "FreeToUse search and preview"
+        },
+        {
+          "kind": "provider policy",
+          "file": "src/music_provider.rs",
+          "entry": "Capabilities and authorize"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/provider_preview.rs",
+          "entry": "Epoch-bound transient preview"
+        }
+      ],
+      "fixtures": [
+        "music_provider::tests",
+        "music_provider::freetouse::tests",
+        "engine::provider_preview::tests",
+        "ui::music_provider::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-120-providers.md"
+      ],
+      "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
+    },
+    "145": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_health.rs",
+          "entry": "Library → health… → captured selected/filtered validation"
+        },
+        {
+          "kind": "shared decoder",
+          "file": "src/engine/media_health.rs",
+          "entry": "Full read-only stream check on the existing optional decoder lane"
+        },
+        {
+          "kind": "import report",
+          "file": "src/ui/library_store.rs",
+          "entry": "Per-input skipped-entry diagnostics retain healthy imported rows"
+        }
+      ],
+      "fixtures": [
+        "engine::media_health::tests",
+        "ui::library_health::tests",
+        "engine::media_load::analysis_tests::foreground_admission_preempts_pending_validation_and_invalid_targets_leave_it_current",
+        "ui::library_scan::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-145-library-health.md"
+      ],
+      "limits": "Source 2ff1d5b passed 1455 ordinary/scene checks and private native faults; its optimized wall-time gate failed. New combined-source qualification remains pending. Linux native software fixtures; physical absent drives, USB controllers and listening remain pending. Full-file validation is cancellable at safe read/packet boundaries, not an OS-read interrupt. At most 4096 captured rows per queue; readiness is a last-observed source version, not a future-access guarantee."
+    },
+    "146": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_prepare.rs",
+          "entry": "Library prepare queue: captured add, reorder, load, paused preview, save and restore"
+        },
+        {
+          "kind": "MIDI",
+          "file": "src/engine/midi.rs",
+          "entry": "Prepare/PrepareCrate and shifted mapped deck Load"
+        },
+        {
+          "kind": "output measurement",
+          "file": "src/engine/history_measurement/capture.rs",
+          "entry": "Complete converted playing-output window and atomic transient receipts"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/ui/library_metadata/collections.rs",
+          "entry": "One CreatePrepared transaction and durable save receipt"
+        }
+      ],
+      "fixtures": [
+        "ui::library_prepare::tests",
+        "engine::history_measurement::capture_tests",
+        "ui::library_metadata::collections::tests::prepared_queue_creation_is_one_atomic_save_with_ordered_stable_members",
+        "engine::media_load::tests::captured_source_version_rejects_replacement_before_decoding_its_new_bytes"
+      ],
+      "evidence": [
+        "docs/validation/issue-146-prepare-queue.md"
+      ],
+      "limits": "Merged-source qualification pending. Physical controller actions and listening remain pending. Auto-removal requires a complete 10 ms conservative legacy digital main-output window while playing; paused previews and uncertain/custom-route attribution retain tracks. Queue limited to 4096 tracks and 2 MiB; one hardware capture has the same bounds. Saved crates restore current catalog versions explicitly; transient queue/policy are not project persistence."
+    },
+    "130": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/audio_routing.rs",
+          "entry": "Setup → Audio routing → capture, review and apply saved graph"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/audio/routing/render.rs",
+          "entry": "Independent bus/tap/channel rendering and record-source selection"
+        },
+        {
+          "kind": "project",
+          "file": "src/engine/project/model.rs",
+          "entry": "Version 11 saved routing with guarded Undo and reopen"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::tests",
+        "engine::audio::routing::native_tests",
+        "ui::audio_routing::tests",
+        "engine::history_measurement::capture_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-130-audio-routing.md",
+        "docs/validation/issue-146-prepare-queue.md"
+      ],
+      "limits": "Exact saved routing, stopped confirmation and record-source file integrity are implemented. Newer input buffering and continuity checks refuse incomplete WAVs; current private ALSA 128/512-frame completion fixtures fail after real gaps and publish no file. Source-bound graph, optimized and physical requalification of the combined changes remains pending. Separate nominal-rate clocks are not resampled."
+    },
+    "148": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/midi_learn.rs",
+          "entry": "MIDI → action/target → Capture → review Add/Replace/Test → Edit/Remove → Save MIDI assignments"
+        },
+        {
+          "kind": "dispatch worker",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Unique exact-port capture, mapping validation, cancellation and disconnect"
+        },
+        {
+          "kind": "persistent profile",
+          "file": "src/preferences/storage.rs",
+          "entry": "Version 12 learned assignments; durable Save with exact revision and legacy presence guard"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::learn::tests",
+        "ui::midi_learn::tests",
+        "engine::midi::handoff::tests",
+        "engine::midi::realtime_tests",
+        "engine::midi::routing::tests",
+        "preferences::storage::midi_learn_migration_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-148-midi-learn.md"
+      ],
+      "limits": "All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified."
+    },
+    "154": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_crates/discovery.rs",
+          "entry": "Named crates → search names / Favorite crates only / Find crates containing selected track → Return"
+        },
+        {
+          "kind": "catalog owner",
+          "file": "src/library/crates.rs",
+          "entry": "SetFavorite edit with durable save; catalog schema 12 migration"
+        },
+        {
+          "kind": "controller",
+          "file": "src/engine/ui_requests.rs",
+          "entry": "Exact-ID bounded crate browsing and return through learned relative encoder/note controls"
+        }
+      ],
+      "fixtures": [
+        "library::crates::tests::favorites_preserve_identity_order_membership_and_conflict_safety",
+        "library::collections::tests::schema_eleven_migrates_without_inventing_favorites_and_old_headers_reject_new_flags",
+        "ui::library_metadata::collection_rows::tests::membership_discovery_includes_direct_manual_annotation_and_typed_rules_only",
+        "ui::library_crates::tests",
+        "engine::ui_requests::crate_tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-154-crate-discovery.md"
+      ],
+      "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
+    },
+    "153": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/sampler_editor.rs",
+          "entry": "Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save"
+        },
+        {
+          "kind": "mouse and keyboard",
+          "file": "src/ui.rs",
+          "entry": "Pad context Stop slot; focused Shift+Escape; final local owner release"
+        },
+        {
+          "kind": "controller",
+          "file": "src/engine/midi.rs",
+          "entry": "Learned Note action SamplerSlotStop with an exact slot"
+        },
+        {
+          "kind": "renderer and admission",
+          "file": "src/engine/control.rs",
+          "entry": "Sixteen independent reserved stop lanes and matching onset fencing"
+        }
+      ],
+      "fixtures": [
+        "engine::sampler::playback_tests",
+        "sampler_bank::store::tests::legacy_playback_defaults_migrate_without_writing_and_new_fields_require_the_new_header",
+        "sampler_bank::tests::cue_validation_refuses_missing_duration_outside_trim_and_nonfinite_values",
+        "engine::project::tests::sampler_tests::sampler_playback_modes_roundtrip_and_legacy_headers_refuse_even_default_or_null_fields",
+        "ui::sampler_editor::tests::native_playback_modes_cue_repeat_save_apply_invalid_draft_and_keyboard_slot_stop",
+        "ui::sampler_pad_tests::mouse_context_and_focused_shift_escape_stop_exact_slots",
+        "engine::midi::profile_tests::exact_sample_slot_stop_buttons_validate_and_dispatch_only_on_press",
+        "engine::control::admission_tests::saturated_queue_preserves_fifo_gate_releases_and_every_emergency_stop_lane"
+      ],
+      "evidence": [
+        "docs/validation/issue-153-sampler-playback.md"
+      ],
+      "limits": "Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native routing fixture with zero missing/overflow input frames. Controller stop is learned from a Note button; physical Pioneer/Numark/Akai input, actual disconnect and final listening remain pending. This change does not claim motorized-wheel or NS7 driver support. Audition remains a separate one-shot preview."
+    },
+    "144": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_layout.rs",
+          "entry": "Named layout editor with visibility, order, widths, density, two sorts, preview, save and discard"
+        },
+        {
+          "kind": "browser",
+          "file": "src/ui/library_view.rs",
+          "entry": "Stable source/viewport-preserving ordering with cached Unicode prefixes and virtualized rows"
+        },
+        {
+          "kind": "embedded artwork",
+          "file": "src/ui/library_artwork.rs",
+          "entry": "One bounded read-only source-version-checked PNG/JPEG worker and retryable thumbnail cache"
+        },
+        {
+          "kind": "saved profiles",
+          "file": "src/preferences/library_layout.rs",
+          "entry": "Validated saved layouts and preferences version 13 migration"
+        }
+      ],
+      "fixtures": [
+        "preferences::library_layout::tests",
+        "ui::library_layout::tests",
+        "ui::library_artwork::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-144-library-layouts.md"
+      ],
+      "limits": "Source 3bd82bb passes all 1532 ordinary checks. Native 32-channel routing assertions pass, with 2048 missing input frames (1024 and 640 within recorded captures) retained as a timing limit. Embedded PNG/JPEG artwork uses bounded, source-checked workers. Complete optimized and physical controller qualification remain pending."
+    },
+    "143": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_backup.rs",
+          "entry": "Explicit saved catalog export, authorized local collection, full verification, new-directory restore and conflict-checked import"
+        },
+        {
+          "kind": "snapshot and media worker",
+          "file": "src/library/backup.rs",
+          "entry": "Versioned, bounded catalog/media snapshots with SHA-256, descriptor/mount guards, deduplication and no-replace publication"
+        }
+      ],
+      "fixtures": [
+        "library::backup::tests",
+        "ui::library_backup::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-143-library-backup.md"
+      ],
+      "limits": "All eight backup checks pass, including native export/verify/restore/import, exact preparation and real-loader playback after source removal on a clean profile. The additional run uses distinct mounted local filesystems /home and /var/tmp. This is local software/mount evidence; removable USB migration, converter timing and listening remain unqualified. Final combined ordinary and optimized qualification is pending."
+    },
+    "132": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/background_jobs.rs",
+          "entry": "Setup background jobs with captured-ID cancellation and measured worker progress"
+        },
+        {
+          "kind": "shared scheduler",
+          "file": "src/background.rs",
+          "entry": "Bounded worker turns, declared memory reservations, decode priority, native worker CPU/IO policy and retired request ownership"
+        },
+        {
+          "kind": "combined workflows",
+          "file": "src/ui/library_backup.rs",
+          "entry": "Catalog backup/verification/restore, embedded artwork and media validation join the existing admitted workflows"
+        }
+      ],
+      "fixtures": [
+        "background::tests",
+        "ui::background_jobs::tests",
+        "engine::media_load::tests",
+        "ui::library_artwork::tests",
+        "ui::library_backup::tests"
+      ],
+      "evidence": [
+        "docs/validation/issue-132-background-work.md",
+        "docs/validation/remaining-backlog-qualification.md"
+      ],
+      "limits": "Full combined source, optimized reviewed workloads and three actual decode/I/O-pressure repetitions pass on Linux aarch64; declared memory admission is not a universal RSS or physical device guarantee."
+    },
+    "133": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/audio_settings.rs",
+          "entry": "Audio devices → Linux ALSA/JACK server selection and exact graph endpoints"
+        },
+        {
+          "kind": "audio owner",
+          "file": "src/engine/audio/jack.rs",
+          "entry": "Server-clocked native JACK/PipeWire callbacks and stopped recovery"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::graph::tests",
+        "engine::audio::jack::native_tests::private_graph_loopback_quantum_reconnect_and_rate_change_retain_project",
+        "ui::audio_settings::tests::private_native_graph_profile_preview_apply_cancel_and_reopen"
+      ],
+      "evidence": [
+        "docs/validation/issue-133-linux-audio.md",
+        "docs/validation/remaining-backlog-qualification.md"
+      ],
+      "limits": "Combined-source private ALSA/JACK2/PipeWire debug and optimized software/native settings fixtures pass. Physical converters, external routes, real-time scheduling and other platforms remain unqualified."
+    },
+    "134": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/grid_editor.rs",
+          "entry": "Deck Actions → Beatgrid editor → tempo anchor beat/source position; insert/replace/delete; reviewed Apply"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/beatgrid.rs",
+          "entry": "Bounded continuous local beat/time mapping, synchronized advancement and musical loop wrapping"
+        },
+        {
+          "kind": "persistence",
+          "file": "src/library/backup.rs",
+          "entry": "Schema 13 catalog/project preparation; verified schema 12/13 backup migration and restore"
+        }
+      ],
+      "fixtures": [
+        "engine::beatgrid::variable_tests",
+        "ui::grid_editor::tests::tempo_anchor_widgets_validate_replace_delete_cancel_and_commit_one_receipt_qualified_edit",
+        "ui::grid_editor::tests::recorded_human_drum_grid_is_edited_saved_reopened_and_auditioned_through_native_widgets",
+        "engine::project::tests::tempo_anchor_state_preserves_media_and_old_versions_reject_anchor_fields",
+        "library::tests::tempo_anchors_roundtrip_and_legacy_headers_cannot_hide_new_geometry",
+        "library::backup::tests::schema_twelve_backups_migrate_and_current_anchors_survive_collected_restore"
+      ],
+      "evidence": [
+        "docs/validation/issue-134-variable-tempo-grid.md"
+      ],
+      "limits": "Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 BPM. Source PCM and absolute cues remain intact. Finished source-time map work contributes retained command storage, reusable inverse buffers, local interval arithmetic and a second CC BY 4.0 human electronic-drum recording. The canonical schema-13 format preserves legacy-header refusal and bounded migrations. The previous full qualification covers 32 anchors on source 28d82d7; qualification of the combined 64-anchor source remains pending. No acoustic corpus, listening score, physical controller or converter timing claim."
+    },
+    "135": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/waveform.rs",
+          "entry": "Deck waveforms → linked span, phase, cue/loop markers and Save waveform view"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/audible.rs",
+          "entry": "Bounded source-qualified output-frame history with per-frame reported playback timestamps"
+        },
+        {
+          "kind": "preferences",
+          "file": "src/preferences/waveforms.rs",
+          "entry": "Schema-14 linked waveform view; legacy in-memory migration and explicit save"
+        },
+        {
+          "kind": "native project",
+          "file": "src/ui/project.rs",
+          "entry": "Capture, validate and restore per-project waveform views with legacy defaults"
+        }
+      ],
+      "fixtures": [
+        "engine::audible::tests",
+        "engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo",
+        "ui::waveform::tests",
+        "preferences::waveforms::tests",
+        "engine::audio::audible_tests",
+        "ui::project::tests::waveform_zoom_round_trips_new_open_and_legacy_views"
+      ],
+      "evidence": [
+        "docs/validation/issue-135-waveform-timing.md"
+      ],
+      "limits": "Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending."
+    },
+    "141": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/track_gain.rs",
+          "entry": "Deck → gain… → review Off, Manual or Auto → Apply with renderer acknowledgment"
+        },
+        {
+          "kind": "background analysis",
+          "file": "src/engine/media_analysis.rs",
+          "entry": "Library → analyze… → Analyze source level → qualified RMS, sample peak and recommendation"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/mod.rs",
+          "entry": "Precomputed source multiplier before the fader; stopped current-receipt admission and bounded Undo"
+        },
+        {
+          "kind": "persistent recall",
+          "file": "src/engine/project/prepare.rs",
+          "entry": "Catalog policy on deliberate media load; project recall remeasures actual embedded PCM"
+        }
+      ],
+      "fixtures": [
+        "track_gain::tests",
+        "engine::track_gain_tests",
+        "ui::track_gain::tests",
+        "engine::project::tests::gain_tests",
+        "library::tests::schema_thirteen_preserves_legacy_data_and_refuses_gain_or_level_injection"
+      ],
+      "evidence": [
+        "docs/validation/issue-141-track-gain.md"
+      ],
+      "limits": "The metric is whole-source first-pair/mono RMS dBFS and sample peak, not LUFS or true peak. Auto uses reviewed targets and at most 12 dB boost. Its sample-peak estimate uses decoded source PCM; key-lock synthesis and downstream fader, EQ and effects can change peaks. It cannot repair clipping or guarantee final output headroom. Analysis alone never applies trim. Physical listening, controllers and converter measurements remain unqualified. Implementation status does not claim backlog or release completion."
+    },
+    "142": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_analysis.rs",
+          "entry": "Library → analyze… → Analyze musical key → inspect conventional/harmonic notation, unknown, correlation and comparison → review correction through Audio metadata"
+        },
+        {
+          "kind": "background analysis",
+          "file": "src/engine/media_analysis.rs",
+          "entry": "Cancelable same-descriptor hash/decode and native-rate musical-key analysis on the existing worker"
+        },
+        {
+          "kind": "library view",
+          "file": "src/ui/library_view.rs",
+          "entry": "Effective source key shared by the visible key cell, filtering, sorting and smart-crate membership; metadata locks, user edits and embedded tags retain precedence"
+        },
+        {
+          "kind": "persistence",
+          "file": "src/track_analysis.rs",
+          "entry": "Separate algorithm-versioned source-qualified key record; completed unknown differs from missing; schema-15 migration refuses lower-header injection"
+        }
+      ],
+      "fixtures": [
+        "musical_key::tests",
+        "library::analysis::tests::musical_key_analysis_preserves_manual_embedded_and_inferred_provenance",
+        "library::tests::musical_key_schema_and_persistence_preserve_corrections_and_unknown_results",
+        "ui::library_analysis::tests::musical_key_native_review_compare_correct_force_and_reopen_keep_user_value",
+        "ui::library_metadata::collection_rows::tests::analyzed_key_updates_smart_membership_without_row_edits_and_locks_restore_saved_key",
+        "engine::media_analysis::tests::musical_key_independent_corpus_qualification",
+        "engine::decode::tests::fully_trimmed_mp3_tail_is_not_a_missing_audible_packet"
+      ],
+      "evidence": [
+        "docs/validation/issue-142-musical-key.md"
+      ],
+      "limits": "Whole-source major/minor estimate of the first stereo pair or mono. Fixed correlation/margin thresholds decline weak or ambiguous material; scores are not probabilities. Initial native-worker development corpus: 48 independent artist-labeled CC0 Bach piano recordings; 19 correct, 27 unknown, 2 wrong (9.52% error among returned estimates). This is not held-out or cross-genre/DJ accuracy proof. Comparison uses effective source keys and does not account for deck pitch changes or promise a transition. Physical listening and controllers remain unqualified. See linked evidence for individual source/binary checks. Software implementation status does not claim release or backlog completion."
+    },
+    "136": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/project/live_set.rs",
+          "entry": "Project → Next live set… → Preload → separate cue → unsaved-work review → explicit transition"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/live_set.rs",
+          "entry": "One reserved prepared graph; complete outgoing/incoming linear fade and worker-owned retirement"
+        },
+        {
+          "kind": "project ownership",
+          "file": "src/engine/project.rs",
+          "entry": "Preload reservation prevents competing graph/device replacement; captures remain available"
+        }
+      ],
+      "fixtures": [
+        "engine::live_set::tests",
+        "ui::project::live_set::tests",
+        "engine::audio::live_set_tests::large_live_set_transition_qualification"
+      ],
+      "evidence": [
+        "docs/validation/issue-136-live-set.md"
+      ],
+      "limits": "Standard stereo master outputs 1/2 only; four logical channels support independent cue on 3/4. One next project: 256 MiB PCM, 32 MiB metadata, existing 256 MiB processor bound. Missing assets and unavailable processors refuse preflight. Optional preload is cancelled by performance protection; committed transitions are explicit and not cancelled by the Cancel button. Large-session timing, maximum active/polyphony load, custom graph routes and physical controller/audio/listening acceptance remain incomplete; local fixture evidence does not close this issue."
+    }
+  }
+}

@@ -122,3 +122,26 @@ receipts retain their original `/var/tmp/omatainer-133-alsa-debug` and
 This validation prose is added after source freeze and is outside the manifested
 source inventory. Physical converters, USB removal, acoustic feedback, external
 monitor paths, live studio loads and other platforms remain unqualified.
+
+## Combined backlog integration
+
+PR #500 retains this published layer above #505. The parent measurements above
+apply to its frozen source, not to the combined branch. On the combined working
+source, 286 selected ordinary checks pass, including invalid media targets, owned
+renderer retirement, independent sampler-editor fixtures, project restoration,
+backend configuration, saved graph endpoints, backup, performance guards,
+background jobs and native UI controls. The debug executable SHA-256 is
+`6ff8857b851b57837fd7c97393f833719499e3d3f27a62114061ff34d30bf5da`.
+The direct receipt is `/tmp/omatainer-wrapup/merge-133-focused-verified.json`;
+its source guard reports no changes. One empty worker selector is explicitly
+excluded from the count. Full, native-server and optimized combined-source
+qualification follows the final source freeze.
+
+The previous frozen combined source `6fa8f507f6f1dc9640b014b337ea3bc12ccbbd69`
+returned 1,562 passes and three failures. These were the changed invalid-target
+refusal, its raw renderer retirement fixture, and parallel sampler fixture
+capacity. The production shared sampler limits remain unchanged. Their failure
+logs remain in `/tmp/omatainer-wrapup/merged-backup-ordinary.log` and are not
+counted as qualification.
+
+The final combined freeze is a5872de32ce779294969939910483232ea2c5e30. It passes 1,569 ordinary checks, the reviewed eight-workload optimized gate, three additional decode/I/O-pressure runs and all debug/optimized native graph and settings runs. See the source-bound [combined receipt](remaining-backlog-qualification.md). Earlier parent and provisional measurements above remain historical evidence.

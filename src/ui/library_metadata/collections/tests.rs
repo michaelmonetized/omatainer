@@ -603,3 +603,28 @@ fn actual_catalog_import_keeps_collection_transaction_and_essential_edits_on_rej
     assert!(metadata.catalog.crates.node(&fresh_id).is_none());
     assert_eq!(library::read(&path).unwrap().crates, forest);
 }
+
+#[test]
+fn prepared_queue_creation_is_one_atomic_save_with_ordered_stable_members() {
+    let files = Files::new();let mut store = store(&files);let handle = Handle::default();
+    let member = store.catalog.tracks[0].id.clone();
+    let create = Action::CreatePrepared {name:"Requests".into(),members:vec![member.clone()]};
+    create.validate().unwrap();
+    let mut calls = 0;
+    let result = apply_using(&mut store,request(&handle,1,0,create.clone()),|_|{},|candidate| {
+        calls += 1;
+        assert_eq!(candidate.catalog.crates.nodes().len(),1);
+        assert_eq!(candidate.catalog.crates.nodes()[0].members,vec![member.clone()]);
+        candidate.save()
+    });
+    assert_eq!(calls,1);
+    let id = created(result);
+    assert_eq!(library::read(&files.0.join("catalog.json")).unwrap().crates.node(&id).unwrap().members,vec![member.clone()]);
+    let baseline = store.catalog.crates.clone();
+    let current = store.catalog.crates.revision();
+    let missing=Action::CreatePrepared {name:"Invalid".into(),members:vec![TrackId("f".repeat(32))]};
+    let result=apply_using(&mut store,request(&handle,2,current,missing),|_|{},|_|panic!("Invalid membership must reject before persistence"));
+    assert!(matches!(result.outcome,Outcome::Rejected(Failure::Invalid(_))));assert!(result.created.is_none());assert_eq!(store.catalog.crates,baseline);
+    let result=apply_using(&mut store,request(&handle,3,current,Action::CreatePrepared {name:"Storage failure".into(),members:vec![member]}),|_|{},|candidate|candidate.save_for_test(|phase| if phase==0 {Err("Storage refused before replacement".into())} else {Ok(())}));
+    assert!(matches!(result.outcome,Outcome::Rejected(Failure::Storage(_))),"{:?}",result.outcome);assert!(result.created.is_none());assert_eq!(store.catalog.crates,baseline);
+}

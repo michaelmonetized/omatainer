@@ -141,45 +141,6 @@ fn recovery_survives_renumbering_but_refuses_a_different_default_and_never_uses_
 }
 
 #[test]
-fn physical_replacement_during_stream_open_never_activates_the_replacement_and_retains_save() {
-    let (engine, audio, controls) = tests::fixture();
-    fault(&audio, &controls);
-    let callbacks = engine.cmd.audio_metrics().callbacks;
-    let retired = controls.dropped.load(Ordering::Acquire);
-    controls.block_open.store(true, Ordering::Release);
-    let handle = audio.handle.clone();
-    let operation = std::thread::spawn(move || reconnect(&handle));
-    wait(|| controls.entering_open.load(Ordering::Acquire));
-    controls.alternate_device.store(true, Ordering::Release);
-    controls.block_open.store(false, Ordering::Release);
-    let error = operation.join().unwrap().unwrap_err();
-    assert!(
-        error.contains("Physical output changed during opening"),
-        "{error}"
-    );
-    assert_eq!(audio.handle.status().phase, Phase::Offline);
-    assert!(audio.handle.status().active.is_none());
-    assert_eq!(
-        audio
-            .handle
-            .status()
-            .recovery
-            .as_ref()
-            .unwrap()
-            .identity
-            .as_deref(),
-        Some("unit-1")
-    );
-    assert_eq!(engine.cmd.audio_metrics().callbacks, callbacks);
-    assert_eq!(controls.dropped.load(Ordering::Acquire), retired + 1);
-    assert!(engine.cmd.send(Command::Play).is_err());
-    engine.project.capture(&AtomicBool::new(false)).unwrap();
-    controls.alternate_device.store(false, Ordering::Release);
-    assert_eq!(reconnect(&audio.handle).unwrap().phase, Phase::Running);
-    assert!(!engine.snapshot().playing);
-}
-
-#[test]
 fn canceled_or_failed_reconnect_retains_graph_and_target_for_later_retry_and_save() {
     let (engine, audio, controls) = tests::fixture();
     fault(&audio, &controls);
@@ -206,6 +167,32 @@ fn canceled_or_failed_reconnect_retains_graph_and_target_for_later_retry_and_sav
     assert!(audio.handle.status().recovery.is_some());
     engine.project.capture(&AtomicBool::new(false)).unwrap();
     assert_eq!(reconnect(&audio.handle).unwrap().phase, Phase::Running);
+}
+
+#[test]
+fn replacement_during_open_stays_muted_and_retains_the_original_target_and_project() {
+    let (engine,audio,controls)=tests::fixture();
+    engine.cmd.send(Command::Master(0.37)).unwrap();
+    wait(||engine.snapshot().master==0.37);
+    fault(&audio,&controls);
+    let before=engine.project.capture(&AtomicBool::new(false)).unwrap();
+    let callbacks=engine.cmd.audio_metrics().callbacks;
+    controls.block_open.store(true,Ordering::Release);
+    let handle=audio.handle.clone();
+    let operation=std::thread::spawn(move||reconnect(&handle));
+    wait(||controls.entering_open.load(Ordering::Acquire));
+    controls.alternate_device.store(true,Ordering::Release);
+    controls.block_open.store(false,Ordering::Release);
+    assert!(operation.join().unwrap().unwrap_err().contains("changed during opening"));
+    let status=audio.handle.status();assert_eq!(status.phase,Phase::Offline);
+    assert_eq!(status.recovery.as_ref().unwrap().identity.as_deref(),Some("unit-1"));
+    assert_eq!(engine.cmd.audio_metrics().callbacks,callbacks);
+    let after=engine.project.capture(&AtomicBool::new(false)).unwrap();
+    assert_eq!(serde_json::to_value(after.state).unwrap(),serde_json::to_value(before.state).unwrap());
+    assert!(engine.cmd.performance().status().recovery);
+    controls.alternate_device.store(false,Ordering::Release);
+    assert_eq!(reconnect(&audio.handle).unwrap().phase,Phase::Running);
+    assert!(!engine.snapshot().playing);
 }
 
 #[test]
@@ -421,4 +408,44 @@ fn private_native_pipewire_restart_retains_recorded_document_and_requires_explic
         "callbacks":engine.cmd.audio_metrics().callbacks,"explicit_fallback":true,"explicit_input_acknowledgment":true,
         "explicit_play":true,"recorded_notes_retained":true,"scope":"real CPAL/ALSA plus private PipeWire null sink; no physical devices",
     })).unwrap()).unwrap();
+}
+
+#[test]
+fn failed_explicit_fallback_keeps_original_physical_target_for_retry() {
+    let (_, audio, controls) = tests::fixture();
+    fault(&audio, &controls);
+    controls.alternate_device.store(true, Ordering::Release);
+    controls.failures.lock().push_back(true);
+    let failed = audio
+        .handle
+        .switch(crate::preferences::Audio::default(), token())
+        .unwrap();
+    assert_eq!(failed.phase, Phase::Offline);
+    let retained = failed.recovery.as_ref().unwrap();
+    assert_eq!(retained.identity.as_deref(), Some("unit-1"));
+    assert_eq!(retained.plan.device, "Fixture");
+    controls.alternate_device.store(false, Ordering::Release);
+    assert_eq!(reconnect(&audio.handle).unwrap().phase, Phase::Running);
+}
+
+#[test]
+fn starting_another_deck_after_recovery_does_not_fade_the_outgoing_mix() {
+    let (_, rt) = Engine::headless_for_test(48000, 256);
+    let (send, receive) = bounded(1);
+    let mut callback = OutputCallback::managed(
+        Box::new(rt),
+        2,
+        send,
+        Arc::new(AtomicBool::new(true)),
+        Arc::new(AtomicBool::new(false)),
+    );
+    callback.rt.decks[0].playing = true;
+    let mut output = [0.0_f32; 512];
+    callback.render(&mut output);
+    assert!(callback.resume_ramp.is_none());
+    callback.rt.decks[1].playing = true;
+    callback.render(&mut output);
+    assert!(callback.resume_ramp.is_none());
+    drop(callback);
+    assert!(receive.recv().is_ok());
 }

@@ -178,7 +178,7 @@ mod tests {
         };
         let boundaries: Vec<_> = (0..14).map(|i| f64::from(i) * 0.25).chain((0..10).map(|i| 3.5 + f64::from(i) * 0.5)).chain((0..9).map(|i| 8.5 + f64::from(i) * 0.5)).collect();
         for sr in [44100, 48000, 96000] {
-            let (_, mut rt) = Engine::headless_for_test(sr, 32);
+            let (_, mut rt) = Engine::headless_for_test(sr, 48);
             rt.apply(Command::Stop); rt.conductor = Some(map.clone()); rt.metronome = true;
             rt.metro.trace = Some(Vec::with_capacity(64)); rt.apply(Command::Play);
             let mut output = vec![0.0; 514]; let frames = (timestamp(12.6) * f64::from(sr)).ceil() as usize;

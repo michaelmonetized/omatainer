@@ -87,12 +87,12 @@ fn actual_decode_persists_reopens_and_inspects_exact_cached_results() {
 #[test]
 fn selective_inspection_preserves_completed_fields_and_detects_corrupt_waveform() {
     let mut f = Fixture::new();
-    let duration = Fields { bpm: false, duration: true, waveform: false };
+    let duration = Fields { bpm: false, duration: true, waveform: false, level: false, key: false };
     let done = f.prepared(duration);
     assert!(save(&mut f.store, &mut f.disk, done).outcome.is_ok());
     let request = f.inspection(1, Fields::ALL, false);
     let cached = inspect(&f.store, &mut f.disk, request).outcome.unwrap();
-    assert_eq!(cached.needed, Fields { bpm: true, duration: false, waveform: true });
+    assert_eq!(cached.needed, Fields { bpm: true, duration: false, waveform: true, level: true, key: true });
     let old_duration = cached.record.unwrap().duration;
     let done = f.prepared(cached.needed);
     assert!(save(&mut f.store, &mut f.disk, done).outcome.is_ok());
@@ -105,7 +105,7 @@ fn selective_inspection_preserves_completed_fields_and_detects_corrupt_waveform(
     std::fs::write(f.path().with_extension("analysis").join(name), b"corrupt").unwrap();
     let request = f.inspection(3, Fields::ALL, false);
     let cached = inspect(&f.store, &mut f.disk, request).outcome.unwrap();
-    assert_eq!(cached.needed, Fields { bpm: false, duration: false, waveform: true });
+    assert_eq!(cached.needed, Fields { bpm: false, duration: false, waveform: true, level: false, key: false });
     assert!(cached.waveform.is_none() && cached.notice.unwrap().contains("unavailable"));
     assert!(read(&f.path()).unwrap().version(&f.reference.source, Some(f.reference.fingerprint)).unwrap().analysis.is_some());
 }
@@ -199,7 +199,10 @@ fn metadata_rebase_cannot_restore_stale_automatic_values_after_analysis_commit()
         // Stop GUI polling until the actual immutable result is durable.
         wait(|| read(&path).ok().is_some_and(|catalog|
             catalog.version(&reference.source, Some(reference.fingerprint)).unwrap().analysis.is_some()));
-        if protected { f.handle.set_enabled(true).unwrap(); }
+        if protected {
+            wait(|| !f.handle.status().changing);
+            f.handle.set_enabled(true).unwrap();
+        }
         let mut captured = rows[0].stored_metadata();
         captured.last_play = Some(SystemTime::UNIX_EPOCH + Duration::from_secs(100));
         owner.capture(Capture { source: reference.source.clone(), fingerprint: Some(reference.fingerprint),

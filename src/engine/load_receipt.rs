@@ -16,7 +16,10 @@ struct Inner {
     history_key: u64,
     state: AtomicU8,
     history_pins: AtomicU64,
+    grid_lock_sequence: AtomicU64,
+    grid_lock: [AtomicU64; 1 + super::beatgrid::WORDS],
     initial_preparation: Option<super::preparation::Preparation>,
+    source_gain: Option<crate::track_gain::Resolved>,
     preparation_sequence: AtomicU64,
     preparation: [AtomicU64; super::preparation::WORDS],
     last_play: AtomicU64,
@@ -44,12 +47,16 @@ impl Receipt {
     pub(crate) fn with_preparation(
         initial_preparation: Option<super::preparation::Preparation>,
     ) -> Self {
-        Self::with_preparation_and_approval(initial_preparation, None, None)
+        Self::with_preparation_and_approval(initial_preparation, None, None, None)
     }
     /// Create one pending media receipt.
     /// Takes retained preparation and an optional reviewed override; returns a fresh receipt with no application acknowledgment.
-    fn with_preparation_and_approval(initial_preparation: Option<super::preparation::Preparation>,
-        deck_approval: Option<super::performance::DeckApproval>, deck_generation: Option<u64>) -> Self {
+    fn with_preparation_and_approval(
+        initial_preparation: Option<super::preparation::Preparation>,
+        deck_approval: Option<super::performance::DeckApproval>,
+        deck_generation: Option<u64>,
+        level: Option<crate::track_gain::Level>,
+    ) -> Self {
         let wall_origin = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -61,7 +68,10 @@ impl Receipt {
             history_key: super::history_measurement::parts::fresh_key(),
             state: AtomicU8::new(State::Pending as u8),
             history_pins: AtomicU64::new(0),
+            grid_lock_sequence: AtomicU64::new(0),
+            grid_lock: std::array::from_fn(|_| AtomicU64::new(0)),
             initial_preparation,
+            source_gain: crate::track_gain::Resolved::prepare(initial_preparation.unwrap_or_default().source_gain, level).ok(),
             preparation_sequence: AtomicU64::new(0),
             preparation: std::array::from_fn(|_| AtomicU64::new(0)),
             last_play: AtomicU64::new(0),
@@ -69,19 +79,74 @@ impl Receipt {
             clock_origin: std::time::Instant::now(),
         }))
     }
+    /// Publish reviewed grid protection without callback locks.
+    /// Takes locked state and its canonical saved grid; atomically replaces one bounded receipt target.
+    pub(crate) fn set_grid_protection(&self, locked: bool, grid: Option<super::beatgrid::Grid>) {
+        if self.grid_protection() == Some((locked, if locked { grid } else { None })) {
+            return;
+        }
+        let words = super::beatgrid::Grid::encode(if locked { grid } else { None });
+        self.0.grid_lock_sequence.fetch_add(1, Ordering::AcqRel);
+        self.0.grid_lock[0].store(locked as u64, Ordering::Relaxed);
+        for (slot, word) in self.0.grid_lock[1..].iter().zip(words) {
+            slot.store(word, Ordering::Relaxed);
+        }
+        self.0.grid_lock_sequence.fetch_add(1, Ordering::Release);
+    }
+    /// Read coherent grid protection without waiting.
+    /// Takes this receipt; returns its bounded lock/grid snapshot or none during concurrent publication.
+    pub(super) fn grid_protection(&self) -> Option<(bool, Option<super::beatgrid::Grid>)> {
+        let sequence = self.0.grid_lock_sequence.load(Ordering::Acquire);
+        if sequence & 1 != 0 {
+            return None;
+        }
+        let words: [u64; 1 + super::beatgrid::WORDS] = std::array::from_fn(|i| self.0.grid_lock[i].load(Ordering::Relaxed));
+        std::sync::atomic::fence(Ordering::Acquire);
+        if sequence != self.0.grid_lock_sequence.load(Ordering::Relaxed) {
+            return None;
+        }
+        if words[0] > 1 { return None; }
+        let grid = super::beatgrid::Grid::decode(words[1..].try_into().unwrap())?;
+        Some((words[0] != 0, grid))
+    }
+    /// Refuse grid edits while locked or while protection changes.
+    /// Takes this receipt; returns whether a manual edit must wait for an explicit unlock.
+    pub(crate) fn grid_is_locked(&self) -> bool {
+        self.grid_protection().is_none_or(|(locked, _)| locked)
+    }
     /// Bind a fresh load receipt to a deliberate deck review.
     /// Takes this unused receipt and approval; returns a new pending receipt retaining its preparation.
     pub(crate) fn with_deck_approval(self, approval: super::performance::DeckApproval) -> Self {
-        Self::with_preparation_and_approval(self.initial_preparation(), Some(approval), self.0.deck_generation)
+        let next = Self::with_preparation_and_approval(
+            self.initial_preparation(),
+            Some(approval),
+            self.0.deck_generation,
+            self.source_level(),
+        );
+        if let Some((locked, grid)) = self.grid_protection() {
+            next.set_grid_protection(locked, grid);
+        }
+        next
     }
     /// Bind prepared media to the deck it was requested for.
     /// Takes its captured media generation; returns a pending receipt which cannot replace a subsequently unloaded or changed deck.
-    pub(crate) fn with_deck_generation(self, generation:u64)->Self {
-        Self::with_preparation_and_approval(self.initial_preparation(),self.0.deck_approval.clone(),Some(generation))
+    pub(crate) fn with_deck_generation(self, generation: u64) -> Self {
+        let next = Self::with_preparation_and_approval(
+            self.initial_preparation(),
+            self.0.deck_approval.clone(),
+            Some(generation),
+            self.source_level(),
+        );
+        if let Some((locked, grid)) = self.grid_protection() {
+            next.set_grid_protection(locked, grid);
+        }
+        next
     }
     /// Read the media generation captured before worker preparation.
     /// Takes this receipt; returns its optional immutable generation.
-    pub(crate) fn deck_generation(&self)->Option<u64>{self.0.deck_generation}
+    pub(crate) fn deck_generation(&self) -> Option<u64> {
+        self.0.deck_generation
+    }
     /// Inspect a reviewed deck override.
     /// Takes this receipt; returns its immutable approval when one was explicitly supplied.
     pub(crate) fn deck_approval(&self) -> Option<&super::performance::DeckApproval> {
@@ -90,6 +155,18 @@ impl Receipt {
     pub(super) fn initial_preparation(&self) -> Option<super::preparation::Preparation> {
         self.0.initial_preparation
     }
+    /// Bind gain recall to the actual decoded source.
+    /// Takes its whole-track level; returns a pending receipt with prepared gain, or refuses an unusable saved auto policy.
+    pub(crate) fn with_source_level(self, level: Option<crate::track_gain::Level>) -> Result<Self, &'static str> {
+        crate::track_gain::Resolved::prepare(self.initial_preparation().unwrap_or_default().source_gain, level)?;
+        let next = Self::with_preparation_and_approval(self.initial_preparation(), self.0.deck_approval.clone(), self.0.deck_generation, level);
+        if let Some((locked, grid)) = self.grid_protection() { next.set_grid_protection(locked, grid); }
+        Ok(next)
+    }
+    /// Read the level of the decoded source attached to this request.
+    /// Takes this receipt; returns its immutable measurement when available.
+    pub(crate) fn source_level(&self) -> Option<crate::track_gain::Level> { self.0.source_gain.and_then(|gain| gain.level()) }
+    pub(super) fn source_gain(&self) -> Option<crate::track_gain::Resolved> { self.0.source_gain }
     /// Single renderer writer; a GUI poll makes one bounded attempt, never spins.
     pub(super) fn record_preparation(&self, preparation: super::preparation::Preparation) {
         let words = preparation.words();
@@ -115,7 +192,9 @@ impl Receipt {
     pub(crate) fn snapshot_key(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
     }
-    pub(crate) fn history_key(&self) -> u64 { self.0.history_key }
+    pub(crate) fn history_key(&self) -> u64 {
+        self.0.history_key
+    }
     pub fn same_request(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }

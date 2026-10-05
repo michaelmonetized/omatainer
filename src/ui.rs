@@ -14,8 +14,12 @@ use std::time::{Instant, SystemTime};
 mod library_scan;
 mod library_metadata;
 mod library_analysis;
+mod library_health;
+mod library_prepare;
 mod library_tags;
 mod library_annotations;
+mod library_protection;
+mod library_smart_crates;
 mod library_crates;
 mod library_store;
 pub(crate) mod bpm;
@@ -23,22 +27,29 @@ use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
 mod library_view;
+mod library_layout;
+mod library_backup;
+mod library_artwork;
 mod key_hints;
 mod clip_gain;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
+mod deck_load_lock;
 mod play_history;
 mod session_history;
 mod session_editor;
 mod cue_editor;
 mod grid_editor;
+mod track_gain;
+mod waveform;
 mod piano_roll;
 mod midi_files;
 mod timing;
 mod dependencies;
 mod portability;
 mod midi_routing;
+mod midi_learn;
 mod play_time;
 mod project;
 mod templates;
@@ -60,7 +71,6 @@ mod automation;
 mod music_provider;
 mod video;
 mod performance;
-mod deck_load_lock;
 mod background_jobs;
 mod audio_settings;
 mod audio_routing;
@@ -122,7 +132,6 @@ pub struct App {
     video: video::Panel,
     automation_network: crate::automation::osc::Manager,
     performance_panel: performance::Panel,
-    deck_load_panel: deck_load_lock::Panel,
     background_jobs: background_jobs::Panel,
     audio_settings: audio_settings::Panel,
     diagnostics: diagnostics::Diagnostics,
@@ -142,11 +151,18 @@ pub struct App {
     theme_fonts: Option<Arc<egui::FontDefinitions>>,
     library: Arc<Vec<LibItem>>,
     library_view: LibraryView,
+    library_layout: library_layout::Layouts,
+    library_backup: library_backup::Panel,
+    library_artwork: library_artwork::Artwork,
     library_scan: LibraryScan,
     library_metadata: library_metadata::Metadata,
     library_analysis: library_analysis::Panel,
+    library_health: library_health::Panel,
+    library_prepare: library_prepare::Panel,
     library_tags: library_tags::Panel,
     library_annotations: library_annotations::Panel,
+    library_protection: library_protection::Panel,
+    smart_crates: library_smart_crates::Panel,
     library_crates: library_crates::Crates,
     library_import_open: bool,
     library_initialized: bool,
@@ -160,6 +176,8 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    track_gain: Option<track_gain::Editor>,
+    waveform: waveform::Panel,
     session_editor: session_editor::Editor,
     audio_routing: audio_routing::Panel,
     piano_roll: piano_roll::Editor,
@@ -178,8 +196,10 @@ pub struct App {
     workspace: workspace::State,
     help: help::Help,
     midi_open: bool,
+    midi_learn: midi_learn::Panel,
     status: String,
     loads: [Option<LoadState>; DECKS],
+    deck_load_review: Option<deck_load_lock::Review>,
     submission_error: Cell<Option<crate::engine::SubmissionError>>,
     seen_submission_failures: u64,
     loader: Option<Loader>,
@@ -255,7 +275,6 @@ impl App {
             video: video::Panel::default(),
             automation_network: crate::automation::osc::Manager::new(engine.cmd.clone(),engine.snap.clone()),
             performance_panel: performance::Panel::default(),
-            deck_load_panel: deck_load_lock::Panel::default(),
             background_jobs: background_jobs::Panel::default(),
             diagnostics: diagnostics::Diagnostics::default(),
             licenses: licenses::Licenses::default(),
@@ -274,11 +293,18 @@ impl App {
             theme_fonts: None,
             library: Arc::new(builtin_crate_items()),
             library_view: LibraryView::default(),
+            library_layout: library_layout::Layouts::default(),
+            library_backup: library_backup::Panel::default(),
+            library_artwork: library_artwork::Artwork::default(),
             library_scan: LibraryScan::default(),
             library_metadata: library_metadata::Metadata::default(),
             library_analysis: library_analysis::Panel::default(),
+            library_health: library_health::Panel::default(),
+            library_prepare: library_prepare::Panel::default(),
             library_tags: library_tags::Panel::default(),
             library_annotations: library_annotations::Panel::default(),
+            library_protection: library_protection::Panel::default(),
+            smart_crates: library_smart_crates::Panel::default(),
             library_crates: library_crates::Crates::default(),
             library_import_open: false,
             library_initialized: false,
@@ -290,6 +316,8 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            track_gain: None,
+            waveform: waveform::Panel::default(),
             session_editor: session_editor::Editor::default(),
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
@@ -307,8 +335,10 @@ impl App {
             workspace: workspace::State::default(),
             help: help::Help::default(),
             midi_open: false,
+            midi_learn: midi_learn::Panel::default(),
             status: "Q quant · pads compose · ctrl-gain = fx".into(),
             loads: std::array::from_fn(|_| None),
+            deck_load_review: None,
             submission_error: Cell::new(None),
             seen_submission_failures: 0,
             loader,
@@ -357,7 +387,7 @@ impl App {
         if !matches!(c, Command::PerformanceMode(_) | Command::SafetyStop(_) | Command::RecoverPerformance) && !self.performance_allows(&c) { return false; }
         // Replacing or unloading a deck invalidates even a completion that has
         // already entered the audio command queue. The renderer rechecks it.
-        if let Command::DeckUnload { deck } | Command::LoadBuiltin { deck, .. } | Command::DeckAudio { deck, .. } = &c {
+        if let Command::DeckUnload { deck } | Command::LoadBuiltin { deck, .. } | Command::DeckAudio { deck, .. } | Command::DeckLoadRequested { deck, media: Media::Unload, .. } = &c {
             if let Some(load) = self.loads.get(*deck as usize).and_then(Option::as_ref) {
                 if let Some(receipt) = &load.receipt { receipt.cancel_pending(); }
             }
@@ -384,12 +414,12 @@ impl App {
 
     fn load_sel(&mut self, deck: u8) {
         let picked = self.selected_library_item().map(|item| Selection {
-            title: item.title.clone(), source: item.source.clone(),
-        });
+            title: item.title.clone(), source: item.source.clone(), fingerprint: item.fingerprint, });
         self.load_source(deck, picked.as_ref());
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
+        if self.review_locked_load(deck, picked.cloned()) { return; }
         self.load_source_approved(deck, picked, None);
     }
     /// Prepare one captured library choice.
@@ -410,6 +440,10 @@ impl App {
                         state.phase = Phase::Failed(error);
                     } else {
                         let mut receipt = self.library_receipt(&picked.source, None).with_deck_generation(self.engine.cmd.performance().deck_load_word(deck as usize));
+                        receipt = match receipt.with_source_level(self.snap.builtin_levels[stem.index() as usize]) {
+                            Ok(receipt) => receipt,
+                            Err(error) => { state.phase = Phase::Failed(error.into()); self.set_load_state(deck, state); return; },
+                        };
                         if let Some(approval) = approval { receipt = receipt.with_deck_approval(approval); }
                         if !self.submit(Command::DeckLoadRequested { deck, media: Media::Builtin(stem.index()), receipt: receipt.clone() }) {
                             state.phase = Phase::Failed("Load was not accepted; media was not loaded".into());
@@ -420,7 +454,7 @@ impl App {
                     }
                     self.set_load_state(deck, state);
                 }
-                LibSource::File(_) | LibSource::Removable { .. } => self.load_reference_approved(deck,picked.source.clone(),&picked.title,approval),
+                LibSource::File(_) | LibSource::Removable { .. } => self.load_reference_approved(deck,picked.source.clone(),&picked.title,approval,picked.fingerprint),
                 LibSource::Provider { .. } => {
                     self.supersede_load(deck);
                     if let Some(loader) = &self.loader { let _ = loader.invalidate(deck); }
@@ -445,21 +479,22 @@ impl App {
         self.load_reference(deck,LibSource::File(path),name);
     }
     fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
-        self.load_reference_approved(deck, source, name, None);
+        if self.review_locked_load(deck, Some(Selection { title: name.into(), source: source.clone(), fingerprint: None })) { return; }
+        self.load_reference_approved(deck, source, name, None, None);
     }
     /// Start one source-bound asynchronous decode.
     /// Takes its deck, source, displayed name and optional review; retains approval with the pending job and leaves loaded audio intact.
-    fn load_reference_approved(&mut self, deck:u8,source:LibSource,name:&str,approval:Option<crate::engine::performance::DeckApproval>) {
+    fn load_reference_approved(&mut self, deck:u8,source:LibSource,name:&str,approval:Option<crate::engine::performance::DeckApproval>,fingerprint:Option<FileFingerprint>) {
         if !self.deck_load_allows(deck, approval.as_ref()) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS { self.status = "load failed: invalid deck".into(); return; }
         self.supersede_load(deck);
-        let selection = Selection { title: name.into(), source:source.clone() };
+        let selection = Selection { title: name.into(), source:source.clone(), fingerprint, };
         let mut state = LoadState::new(Some(selection), Phase::Loading);
         state.approval = approval;
         state.deck_generation=Some(self.engine.cmd.performance().deck_load_word(deck as usize));
         match self.loader.as_ref().ok_or_else(|| "decoder is unavailable".to_string())
-            .and_then(|loader| loader.request_source(deck, source)) {
+            .and_then(|loader| loader.request_source_expected(deck, source, fingerprint)) {
             Ok(token) => state.token = Some(token),
             Err(error) => state.phase = Phase::Failed(error),
         }
@@ -470,6 +505,9 @@ impl App {
         use crate::engine::ui_requests::Request;
         for request in self.engine.ui_requests.take_requests().into_iter().flatten() {
             match request {
+                Request::Crate(request) => self.handle_crate_browse(request),
+                Request::CrateReturn(token) => self.handle_crate_return(token),
+                Request::Prepare(selections) => self.prepare_selections(selections),
                 Request::Load(request) => self.load_source(request.deck, Some(&request.selection)),
                 Request::Browse(request) => {
                     if request.epoch != self.engine.ui_requests.epoch() { continue; }
@@ -498,15 +536,15 @@ impl App {
 
     fn publish_library_selection(&mut self) {
         self.refresh_library_view();
+        self.publish_crate_navigation();
         let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
         if self.published_indices.as_ptr() == Arc::as_ptr(&self.library_view.indices)
-            && self.published_selection.as_ref().map(|item| (&item.source, &item.title))
-                == selected.map(|item| (&item.source, &item.title)) {
+            && self.published_selection.as_ref().map(|item| (&item.source, &item.title, item.fingerprint))
+                == selected.map(|item| (&item.source, &item.title, item.fingerprint)) {
             return;
         }
         let selection = selected.map(|item| Arc::new(Selection {
-            source: item.source.clone(), title: item.title.clone(),
-        }));
+            source: item.source.clone(), title: item.title.clone(), fingerprint: item.fingerprint, }));
         self.engine.ui_requests.publish_view(Arc::new(library_view::PublishedView {
             library: Arc::downgrade(&self.library), indices: Arc::downgrade(&self.library_view.indices),
         }), self.lib_sel);
@@ -543,7 +581,10 @@ impl App {
                     let mut bpm = self.library.iter().find(|item| Some(&item.source) == source
                         && item.fingerprint.is_some() && item.fingerprint == completion.fingerprint)
                         .map(|item| item.bpm.reconcile(analysis)).unwrap_or(analysis);
-                    if bpm.origin != Origin::User {
+                    let protected_bpm=source.and_then(|source|self.library_metadata.catalog.track_for_version(source,completion.fingerprint)).filter(|track|track.locks.bpm)
+                        .and_then(|track|track.versions.iter().find(|version|version.fingerprint==completion.fingerprint)).map(|version|version.metadata.bpm);
+                    if let Some(saved)=protected_bpm {bpm=saved;}
+                    if protected_bpm.is_none() && bpm.origin != Origin::User {
                         if let Some(value) = completion.tags.as_ref().and_then(|tags| tags.as_ref().ok())
                             .and_then(|tags| tags.fields.bpm.as_ref()).and_then(|field| field.value.trim().parse::<f32>().ok()) {
                             let embedded = Bpm::new(value, Origin::EmbeddedTag);
@@ -567,6 +608,14 @@ impl App {
                     let mut receipt=if let Some(((source,fp),hash))=measured {
                         Receipt::with_preparation(self.library_metadata.catalog.preparation_for_content(source,fp,hash))
                     } else {history_source.as_ref().map(|source|self.library_receipt(source,completion.fingerprint)).unwrap_or_else(Receipt::new)};
+                    if let Some(((source,fingerprint),hash))=measured {
+                        let locked=self.library_metadata.catalog.track(source).is_some_and(|track|track.locks.grid);
+                        receipt.set_grid_protection(locked,self.library_metadata.catalog.preparation_for_content(source,fingerprint,hash).and_then(|preparation|preparation.grid));
+                    }
+                    receipt = match receipt.with_source_level(completion.level) {
+                        Ok(receipt) => receipt,
+                        Err(error) => { state.phase = Phase::Failed(error.into()); self.set_load_state(deck, state); continue; },
+                    };
                     if let Some(approval) = state.approval.take() { receipt = receipt.with_deck_approval(approval); }
                     if let Some(generation)=state.deck_generation {receipt=receipt.with_deck_generation(generation);}
                     if let Some(((source,fingerprint),hash))=measured {
@@ -622,12 +671,25 @@ impl App {
         if mouse.released || !mouse.down || !window_focus || !r.enabled() { self.set_pad_input(p, 1, false); }
         let pressed_here = mouse.pressed && window_focus && r.enabled() && mouse.starts_here(r);
         if enabled && pressed_here {
+            r.request_focus();
             self.set_pad_input(p, 1, true);
             if !mouse.down { self.set_pad_input(p, 1, false); }
         }
         // Pointer, keyboard and AT holds share one admitted pad gate, with
         // distinct local ownership so releasing one input cannot cut another.
         let focused = r.has_focus() && r.enabled() && window_focus;
+        let stop_focused = focused || r.enabled() && window_focus && !keyboard::dialogs_block_input(&r.ctx)
+            && r.ctx.memory(|memory| memory.focused().is_none() && memory.had_focus_last_frame(r.id));
+        if stop_focused && r.ctx.input_mut(|input| input.consume_key(egui::Modifiers::SHIFT, Key::Escape)) {
+            self.send(Command::SamplerSlotStop { pad: p as u8 });
+            keyboard::block_for_activation(&r.ctx);
+        }
+        r.context_menu(|ui| {
+            let stop = ui.button("Stop slot");
+            accessibility::button(ui, &stop, &format!("Stop sample slot {}", p + 1), None);
+            help::annotate(ui, &stop, HelpControl::SamplerSlotStop);
+            if stop.clicked() { self.send(Command::SamplerSlotStop { pad: p as u8 }); ui.close(); }
+        });
         if !focused { self.set_pad_input(p, 2, false); self.set_pad_input(p, 8, false); }
         if !r.enabled() || !window_focus { self.set_pad_input(p, 4, false); }
         let keys = r.ctx.input(|input| input.events.iter().filter_map(|event| match event {
@@ -755,9 +817,12 @@ impl App {
         self.project_import.poll();
         self.project_versions.poll();
         self.poll_sampler_editor();
+        self.poll_library_backup(ctx);
         self.poll_library_analysis();
+        self.poll_library_validation();
         self.poll_library_tags();
         self.poll_named_crates();
+        self.poll_prepare_queue();
         self.poll_session_history();
         let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
         if let Some(p) = ctx.input(|i| {
@@ -788,8 +853,10 @@ impl App {
         }
         self.library_close_ui(ctx);
         self.library_store_ui(ctx);
+        self.library_backup_ui(ctx);
         self.cue_editor_ui(ctx);
         self.grid_editor_ui(ctx);
+        self.track_gain_ui(ctx);
         self.session_editor_ui(ctx);
         self.audio_routing_ui(ctx);
         self.piano_roll_ui(ctx);
@@ -802,9 +869,13 @@ impl App {
         self.project_versions_ui(ctx);
         self.sampler_editor_ui(ctx);
         self.library_analysis_ui(ctx);
+        self.library_health_ui(ctx);
+        self.prepare_queue_ui(ctx);
         self.library_tags_ui(ctx);
         self.library_annotations_ui(ctx);
+        self.library_protection_ui(ctx);
         self.named_crates_ui(ctx);
+        self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);
         if !compact { self.audio_status(ctx); self.master_fx_status(ctx); }
@@ -851,12 +922,15 @@ impl App {
                     ui.label(d);
                 }
                 self.midi_routing_status_ui(ui,ctx);
+                self.midi_learn_ui(ui,ctx);
             });
         }
+        if !self.midi_open {self.engine.cmd.midi_learn().close();}
         self.automation_ui(ctx);
         self.music_provider_ui(ctx);
         self.video_ui(ctx);
         self.preferences_ui(ctx);
+        self.library_layout_ui(ctx);
         self.audio_settings_ui(ctx);
         self.recovery_ui(ctx);
         self.diagnostics_panel(ctx);
@@ -930,6 +1004,10 @@ impl App {
         let gap = 4.0;
         let fader_h = t.target_size(28.0);
         let (sq, wave_h, side_w, mid_w) = scratch_metrics(w, h, fader_h, gap, t.target_size(22.0).max(if t.font_size <= 18.0 { t.text_size(11.0) * 2.0 + 8.0 } else { 0.0 }));
+        let output = self.engine.audible.positions_at(self.engine.audible.now_ns());
+        let positions = std::array::from_fn(|d| self.snap.decks.get(d)
+            .map(|snap| waveform::playhead(snap, output.map(|positions| positions[d])))
+            .unwrap_or(waveform::Playhead { frames:0.0, estimated_output:false }));
         ui.with_layout(egui::Layout::left_to_right(Align::Min), |ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(gap);
             ui.allocate_ui(Vec2::new(side_w, h), |ui| {
@@ -940,13 +1018,19 @@ impl App {
                 ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
                     ui.spacing_mut().item_spacing = Vec2::splat(gap);
                     let wave_w = ((mid_w - gap) / 2.0).max(56.0);
+                    let controls = ui.scope(|ui| {
+                        if self.waveform_toolbar(ui, t) { self.save_waveform_view(); }
+                        let phase = waveform::phase(&self.snap.decks, &positions, self.snap.selected_deck);
+                        ui.label(RichText::new(phase).size(t.text_size(9.0)));
+                    });
+                    let view_height = (wave_h - controls.response.rect.height() - gap).max(32.0);
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::splat(gap);
                         for d in 0..DECKS {
                             let snap = self.snap.decks.get(d).cloned().unwrap_or_default();
                             let wave = ui.scope(|ui| {
                                 accessibility::scope(ui, &format!("Deck {}", (b'A' + d as u8) as char), |ui| {
-                                    vertical_wave(ui, t, &snap, t.track_color(d), wave_w, wave_h, |frac| {
+                                    waveform::paint(ui, t, &snap, t.track_color(d), Vec2::new(wave_w, view_height), self.waveform.settings.zoom[d], positions[d], |frac| {
                                         self.send(Command::DeckSeek { deck: d as u8, frac });
                                     });
                                 });
@@ -1056,6 +1140,10 @@ impl App {
                 accessibility::button(ui, &grid, "Beatgrid editor", None);
                 help::annotate(ui, &grid, HelpControl::GridEditor);
                 if grid.clicked() { self.open_grid_editor(d); }
+                let gain = ui.small_button(tr!("gain…"));
+                accessibility::button(ui, &gain, "Track gain review", None);
+                help::annotate(ui, &gain, HelpControl::SourceGain);
+                if gain.clicked() { self.open_track_gain(d); }
             });
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(3.0);
@@ -1096,6 +1184,7 @@ impl App {
                 self.send(Command::DeckJog { deck: d as u8, delta });
             });
             if hit.shift_click {
+                if self.review_locked_eject(d as u8) { return; }
                 self.status = if self.submit(Command::DeckUnload { deck: d as u8 }) {
                     format!("queued unload → {}", (b'A' + d as u8) as char)
                 } else { "Unload was not accepted".into() };
@@ -1104,8 +1193,7 @@ impl App {
             } else if hit.click {
                 self.send(Command::DeckPlay { deck: d as u8 });
             }
-            // This row uses the same existing 28 px footer as the wave fader;
-            // it does not shrink the platter or add height to the scratch area.
+            ui.horizontal(|ui| {
             ui.push_id(("deck-time", d), |ui| {
                 let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(t.text_size(11.0))).help(ui, HelpControl::DeckTime);
                 egui::Popup::menu(&button)
@@ -1120,6 +1208,13 @@ impl App {
                         .range(0..=deck_time::MAX_WARNING_LEAD_SECONDS).suffix(" s")).help(ui, HelpControl::RunoutWarning);
                     ui.small("0 = off · repeating loops suppress alerts");
                 });
+            });
+            let mut locked = snap.load_locked;
+            let response = ui.checkbox(&mut locked, RichText::new(tr!("Lock")).size(t.text_size(11.0)));
+            response.widget_info(||egui::WidgetInfo::selected(egui::WidgetType::Checkbox, response.enabled(), locked, crate::localization::format("Deck {}: Lock playing deck", &[((b'A' + d as u8) as char).to_string()])));
+            help::annotate(ui, &response, HelpControl::DeckLoadLock);
+            accessibility::focus(ui, &response);
+            if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             });
         });
     }
@@ -1269,6 +1364,11 @@ impl App {
         ui.vertical(|ui| {
             ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
+                if ui.button("layout…").help(ui, HelpControl::LibraryLayouts).clicked() { self.library_layout.open=true; }
+                let mut all = self.library_view.search_all;
+                let scope = ui.checkbox(&mut all, tr!("Search all library"));
+                help::annotate(ui, &scope, HelpControl::CrateSearchScope);
+                if scope.changed() { self.set_library_search_all(all); }
                 let search = ui.add(egui::TextEdit::singleline(&mut self.lib_filter).id_salt("crate-search").hint_text(tr!("search")).desired_width(180.0));
                 search.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search crate"));
                 help::annotate(ui, &search, HelpControl::CrateSearch);
@@ -1278,8 +1378,11 @@ impl App {
                 if self.library_scan.active() && ui.button(tr!("cancel scan")).help(ui, HelpControl::CrateCancel).clicked() {
                     self.library_scan.cancel();
                 }
+                if ui.button(tr!("prepare…")).help(ui, HelpControl::PrepareQueue).clicked() { self.library_prepare.open = true; }
+                if ui.button(tr!("health…")).help(ui, HelpControl::LibraryHealth).clicked() { self.library_health.open = true; }
                 if ui.button(tr!("analyze…")).help(ui, HelpControl::LibraryAnalysis).clicked() { self.library_analysis.open = true; }
                 if ui.button(tr!("annotations…")).help(ui, HelpControl::TrackAnnotations).clicked() { self.library_annotations.open = true; }
+                if ui.button(tr!("locks…")).help(ui,HelpControl::PreparationLocks).clicked() {self.library_protection.open=true;}
                 if ui.button(tr!("tags…")).help(ui, HelpControl::TagEditor).clicked() { self.library_tags.open = true; }
                 self.deck_selectors(ui);
                 if ui.button(tr!("library…")).help(ui, HelpControl::Library).clicked() { self.library_import_open = true; }
@@ -1296,7 +1399,7 @@ impl App {
                 if load_b.clicked() {
                     self.load_sel(1);
                 }
-                ui.label(RichText::new(if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.annotation_rule.is_some()) { tr!("automatic annotation rule") } else if self.library_crates.selected.is_some() { tr!("manual crate order") } else { tr!("↓ bpm up   ↑ bpm down   same bpm → key → name") }).size(t.text_size(10.0)).color(t.muted));
+                ui.label(RichText::new(if self.library_layout.live.current().primary.is_some() { "custom column sort" } else if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.smart_rule.is_none() && node.annotation_rule.is_none()) { "manual crate order" } else { "published catalog order" }).size(t.text_size(10.0)).color(t.muted));
                 ui.label(RichText::new(tr!("metadata: inspect tags…")).size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
                 ui.add(egui::Label::new(RichText::new(&progress).size(t.text_size(10.0)).color(t.fg_dim)).truncate())
@@ -1307,13 +1410,26 @@ impl App {
             if let Some(state)=selected_source.as_ref().and_then(|source|self.library_scan.summary.as_ref().and_then(|s|s.availability.get(source))) {
                 ui.label(crate::localization::format("Last scan: {state}. Library records are retained.", &[format!("{}", state)]));
             }
-            let header = ["song", "bpm · source", "key", "length", "last play", "artist", "rating", "color", "group", "tags", "notes"];
-            let col_w = [280.0, 112.0, 48.0, 64.0, 140.0, 180.0, 64.0, 88.0, 128.0, 160.0, 240.0].map(|width| width * (t.text_size(11.0) / 11.0).max(1.0));
-            ui.horizontal(|ui| {
-                for (h, w) in header.iter().zip(col_w.iter()) {
-                    ui.add_sized(Vec2::new(*w, t.target_size(16.0)), egui::Label::new(RichText::new(*h).size(t.text_size(10.0)).color(t.fg_dim)));
-                }
+            let layout = self.library_layout.live.current().clone();
+            let columns: Vec<_> = layout.columns.iter().filter(|spec|spec.visible).map(|spec|(spec.column, spec.width * (t.text_size(11.0) / 11.0).max(1.0))).collect();
+            let row_height = t.target_size(layout.density.height());
+            let artwork_width = if layout.density == crate::preferences::library_layout::Density::Artwork { row_height } else { 0.0 };
+            let header = egui::ScrollArea::horizontal().id_salt("crate-column-header").scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).horizontal_scroll_offset(self.library_view.horizontal_offset).show(ui, |ui| {
+                ui.spacing_mut().item_spacing.x=0.0;
+                ui.horizontal(|ui| {
+                    if artwork_width > 0.0 { ui.add_sized(Vec2::new(artwork_width,t.target_size(16.0)),egui::Label::new("Artwork")); }
+                    for (column,width) in &columns {
+                        let sorted = layout.primary.filter(|sort|sort.column==*column).map(|sort|(1,sort)).or_else(||layout.secondary.filter(|sort|sort.column==*column).map(|sort|(2,sort)));
+                        let label = sorted.map_or_else(||column.label().to_string(), |(rank,sort)|format!("{} {}{}",column.label(),rank,if sort.descending { "↓" } else { "↑" }));
+                        let response=ui.add_sized(Vec2::new(*width,t.target_size(16.0)),egui::Button::new(RichText::new(label).size(t.text_size(10.0))).truncate());
+                        accessibility::button(ui,&response,&format!("Sort library by {}",column.label()),None);
+                        help::annotate(ui,&response,HelpControl::LibrarySort);
+                        if response.clicked() { self.sort_library_column(*column,ui.input(|input|input.modifiers.shift)); }
+                    }
+                });
             });
+            self.library_view.horizontal_offset=header.state.offset.x;
+            self.library_artwork.begin_frame(ui.ctx());
             self.refresh_library_view();
             if !self.library_view.annotation_error.is_empty() { ui.colored_label(ui.visuals().warn_fg_color, &self.library_view.annotation_error); }
             if self.library_view.unavailable != 0 {
@@ -1321,10 +1437,14 @@ impl App {
             }
             let focus = ui.make_persistent_id("crate-navigation");
             self.crate_navigation(ui, focus);
-            let row_height = t.target_size(18.0);
             let stride = row_height + ui.spacing().item_spacing.y;
+            if self.library_view.stride > 0.0 && self.library_view.stride != stride {
+                self.library_view.pending_offset=Some(self.library_view.pending_offset.unwrap_or(self.library_view.offset)/self.library_view.stride*stride);
+            }
+            let performance=self.engine.cmd.performance().clone();
+            let artwork_allowed=!self.engine.safe_mode();
             #[cfg(test)] { self.library_view.stats.rendered = 0; self.library_view.stats.formatted = 0; }
-            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").animated(!t.reduced_motion).auto_shrink([false, false]);
+            let mut scroll = egui::ScrollArea::both().id_salt("crate-rows").scroll_source(egui::scroll_area::ScrollSource { drag: ui.input(|input| input.any_touches()), ..Default::default() }).animated(!t.reduced_motion).auto_shrink([false, false]).horizontal_scroll_offset(self.library_view.horizontal_offset);
             if let Some(offset) = self.library_view.pending_offset.take() {
                 scroll = scroll.vertical_scroll_offset(offset);
             }
@@ -1333,10 +1453,13 @@ impl App {
                 for i in rows {
                     let item = &self.library[self.library_view.indices[i]];
                     let played_at = self.item_last_play(item);
+                    let (artwork, artwork_status) = if artwork_width > 0.0 { self.library_artwork.visible(item,&performance,artwork_allowed) } else { (None,String::new()) };
                     let cells = self.library_view.cells.entry(i).or_insert_with(|| {
                         #[cfg(test)] { self.library_view.stats.formatted += 1; }
                         let mut cells = Cells::new(item, played_at, now);
-                        if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); }
+                        (cells.key, cells.key_detail) = crate::musical_key::display(self.library_metadata.catalog.version(&item.source, item.fingerprint), &item.key, self.library_metadata.catalog.track(&item.source).is_some_and(|track| track.locks.metadata));
+                        if let Some(track) = self.library_metadata.catalog.track(&item.source) { cells.annotations = track.annotations.columns(); if !track.locks.is_empty() {cells.title.push_str(" [locked]");} }
+                        if let Some(observation) = self.library_health.observation(item) { cells.title.push_str(&format!(" [{}{}]", observation.condition.label(), if observation.read_only { " · read-only" } else { "" })); }
                         cells
                     });
                     if cells.refresh_play(played_at, now) {
@@ -1351,26 +1474,43 @@ impl App {
                     }
                     #[cfg(test)] { self.library_view.stats.rendered += 1; }
                     let sel = i == self.lib_sel;
-                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(col_w.iter().sum()), t.target_size(18.0)), Sense::hover());
-                    let resp = ui.interact(rect, ui.id().with(("crate-source-row", &item.source)), Sense::click());
+                    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width().max(columns.iter().map(|(_,width)|width).sum::<f32>()+artwork_width), row_height), Sense::hover());
+                    let resp = ui.interact(rect.intersect(ui.clip_rect()), ui.id().with(("crate-source-row", &item.source)), Sense::click());
                     if sel { ui.painter().rect_filled(rect, 2.0, t.tint(t.accent, 0.18)); }
                     if sel { active_mark(ui.painter(), rect, t.fg); }
                     let mut x = rect.left();
-                    for (txt, w) in [&item.title, &cells.bpm, &item.key, &cells.length, &cells.played, &item.artist, &cells.annotations[0], &cells.annotations[1], &cells.annotations[2], &cells.annotations[3], &cells.annotations[4]].iter().zip(col_w) {
-                        ui.painter().text(Pos2::new(x + 4.0, rect.center().y), egui::Align2::LEFT_CENTER,
-                            *txt, FontId::proportional(t.text_size(11.0)), if sel { t.accent } else { t.fg });
-                        x += w;
+                    if artwork_width > 0.0 {
+                        let area=Rect::from_center_size(Pos2::new(x+artwork_width/2.0,rect.center().y),Vec2::splat(artwork_width-8.0));
+                        ui.painter().rect_filled(area,2.0,t.bg_darker);
+                        if let Some((texture,size))=artwork {
+                            let size=size*((artwork_width-8.0)/size.x.max(size.y));
+                            ui.painter().image(texture,Rect::from_center_size(area.center(),size),Rect::from_min_max(Pos2::ZERO,Pos2::new(1.0,1.0)),Color32::WHITE);
+                        } else { ui.painter().text(area.center(),egui::Align2::CENTER_CENTER,"—",FontId::proportional(t.text_size(16.0)),t.muted); }
+                        x+=artwork_width;
+                    }
+                    for (column,width) in &columns {
+                        use crate::preferences::library_layout::Column;
+                        let text: &str=match column { Column::Title=>&cells.title,Column::Bpm=>&cells.bpm,Column::Key=>&cells.key,Column::Length=>&cells.length,Column::Played=>&cells.played,Column::Artist=>&item.artist,Column::Rating=>&cells.annotations[0],Column::Color=>&cells.annotations[1],Column::Group=>&cells.annotations[2],Column::Tags=>&cells.annotations[3],Column::Notes=>&cells.annotations[4] };
+                        let clip=Rect::from_min_max(Pos2::new(x,rect.top()),Pos2::new(x+width,rect.bottom())).intersect(ui.clip_rect());
+                        ui.painter().with_clip_rect(clip).text(Pos2::new(x+4.0,rect.center().y),egui::Align2::LEFT_CENTER,text,FontId::proportional(t.text_size(11.0)),if sel {t.accent} else {t.fg});
+                        x+=width;
                     }
                     let identity = self.library_metadata.catalog.track(&item.source).map(|track| track.id.0.as_str()).unwrap_or("not saved yet");
-                    accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, item.key, cells.length, cells.played_tooltip), Some(sel));
-                    if let Some(track) = self.library_metadata.catalog.track(&item.source) { accessibility::status(ui, &resp, &track.annotations.description()); }
+                    accessibility::button(ui, &resp, &format!("Crate row {}: {}, artist {}, BPM {}, key {}, length {}, {}", i + 1, item.title, item.artist, cells.bpm, cells.key, cells.length, cells.played_tooltip), Some(sel));
+                    if resp.gained_focus() { resp.scroll_to_me_animation(None, egui::style::ScrollAnimation::none()); }
+                    let preparation = self.library_metadata.catalog.track(&item.source).map_or_else(String::new, |track| format!("{}; {}",track.annotations.description(),track.locks.description()));
+                    let media = self.library_health.observation(item).map_or_else(|| "Media not validated for this source version".into(), |observation| observation.description());
+                    accessibility::status(ui, &resp, &format!("{preparation}; {media}; {artwork_status}; {}", cells.key_detail));
                     let row_action = accessibility::actions(ui, &resp, &["Select", "Load to deck A", "Load to deck B", "Load to selected deck"]);
                     help::describe(ui, &resp, HelpControl::CrateRow);
                     help::rich_tooltip(&resp, || vec![
                         format!("BPM: {}", item.bpm.label()),
+                        cells.key_detail.clone(),
                         self.library_metadata.catalog.version(&item.source, item.fingerprint).and_then(|v| v.tags.as_ref())
                             .map_or_else(|| "Title/artist/key: filename or catalog fallback; embedded tags not yet inspected".into(), |tags| tags.describe()),
                         cells.played_tooltip.clone(),
+                        artwork_status.clone(),
+                        self.library_health.observation(item).map_or_else(|| "Media: not validated for this source version".into(), |observation| observation.description()),
                         self.library_metadata.catalog.track(&item.source).map(|track|track.annotations.description()).unwrap_or_default(),
                         format!("Track ID: {identity}"), format!("Location: {:?}", item.source),
                         help::tooltip_text(HelpControl::CrateRow),
@@ -1383,6 +1523,8 @@ impl App {
                     else if let Some(deck) = row_action.and_then(|action| [None, Some(0), Some(1), None][action]) { self.load_sel(deck); }
                 }
             });
+            self.library_artwork.end_frame(ui.ctx());
+            self.library_view.horizontal_offset=output.state.offset.x;
             accessibility::scrollbars(ui, "Crate", &output);
             let navigation = ui.interact(output.inner_rect, focus, Sense::focusable_noninteractive());
             let count = self.library_view.indices.len();
@@ -1984,71 +2126,9 @@ fn platter(
     }
 }
 
-fn vertical_wave(
-    ui: &mut Ui,
-    t: &Theme,
-    snap: &crate::engine::DeckSnap,
-    col: Color32,
-    w: f32,
-    h: f32,
-    mut on_seek: impl FnMut(f32),
-) {
-    let (rect, resp) = ui.allocate_exact_size(Vec2::new(w, h), Sense::click_and_drag());
-    let p = ui.painter_at(rect);
-    p.rect_filled(rect, 4.0, t.bg_darker);
-    let position = if snap.frames > 0.0 { ((snap.pos / snap.frames) as f32 * snap.duration).clamp(0.0, snap.duration) } else { 0.0 };
-    if let Some(seconds) = accessibility::numeric(ui, &resp, "Waveform position", position, 0.0, snap.duration.max(0.0), 0.1, " s") {
-        if snap.duration > 0.0 { on_seek(seconds / snap.duration); }
-    }
-    help::annotate(ui, &resp, HelpControl::Seek);
-    if snap.peaks.is_empty() || snap.frames < 1.0 || snap.duration <= 0.01 {
-        p.text(rect.center(), egui::Align2::CENTER_CENTER, "wave", FontId::proportional(t.text_size(10.0)), t.muted);
-        return;
-    }
-    let pos_s = (snap.pos / snap.frames) as f32 * snap.duration;
-    let half = 3.5;
-    let start_s = (pos_s - half).max(0.0);
-    let end_s = (start_s + half * 2.0).min(snap.duration);
-    let n = snap.peaks.len() as f32;
-    let a = ((start_s / snap.duration) * n) as usize;
-    let b = (((end_s / snap.duration) * n) as usize).max(a + 1).min(snap.peaks.len());
-    let mid = rect.center().x;
-    let hw = rect.width() * 0.46;
-    let span = (b - a).max(1);
-    let step = (span as f32 / rect.height().max(1.0)).ceil().max(1.0) as usize;
-    let mut k = 0usize;
-    let mut i = a;
-    while i < b {
-        let y = rect.top() + k as f32 * step as f32 / span as f32 * rect.height();
-        let pk = snap.peaks[i];
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid - pk[0] * hw, y)], st(1.0, t.waveform(t.red, 0.9)));
-        p.line_segment([Pos2::new(mid, y), Pos2::new(mid + pk[1] * hw, y)], st(1.0, t.waveform(t.green, 0.85)));
-        p.line_segment([Pos2::new(mid - pk[2] * hw * 0.35, y), Pos2::new(mid + pk[2] * hw * 0.35, y)], st(1.0, t.waveform(t.marker(col, t.bg_darker), 0.5)));
-        i += step;
-        k += 1;
-    }
-    grid_editor::paint_vertical_grid(&p, rect, t, snap.grid, start_s as f64, end_s as f64);
-    for (i, position) in snap.hotcue_positions.iter().enumerate() {
-        let Some(seconds) = position.map(|p| (p / snap.frames) as f32 * snap.duration) else { continue };
-        if !(start_s..=end_s).contains(&seconds) { continue; }
-        let y = rect.top() + (seconds - start_s) / (end_s - start_s).max(0.001) * rect.height();
-        let color = cue_editor::color(t, snap.cue_styles[i], i);
-        p.line_segment([Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)], st(1.0, color));
-        let name = cue_editor::short_name(snap.cue_styles[i].name.as_str(), 8);
-        p.text(Pos2::new(rect.left() + 2.0, y), egui::Align2::LEFT_BOTTOM,
-            format!("{} {}", i + 1, name), FontId::proportional(t.text_size(9.0)), t.fg);
-    }
-    accessibility::status(ui, &resp, &snap.hotcue_positions.iter().enumerate()
-        .filter(|(_, pos)| pos.is_some()).map(|(i, _)| cue_editor::description(snap, i)).collect::<Vec<_>>().join("; "));
-    let play_y = rect.top() + ((pos_s - start_s) / (end_s - start_s).max(0.001)) * rect.height();
-    p.line_segment([Pos2::new(rect.left(), play_y), Pos2::new(rect.right(), play_y)], st(1.6, t.accent));
-    if resp.clicked() || resp.dragged() {
-        if let Some(pos) = resp.interact_pointer_pos() {
-            let u = ((pos.y - rect.top()) / rect.height()).clamp(0.0, 1.0);
-            let tsec = start_s + u * (end_s - start_s);
-            on_seek((tsec / snap.duration).clamp(0.0, 1.0));
-        }
-    }
+#[cfg(test)]
+fn vertical_wave(ui: &mut Ui, t: &Theme, snap: &crate::engine::DeckSnap, col: Color32, w: f32, h: f32, on_seek: impl FnMut(f32)) {
+    waveform::paint(ui, t, snap, col, Vec2::new(w,h), crate::preferences::waveforms::Zoom::default(), waveform::playhead(snap, None), on_seek);
 }
 
 fn fader(ui: &mut Ui, t: &Theme, value: f32, span: f32, meter: f32, col: Color32, width: f32, height: f32, deck: u8) -> Option<f32> {

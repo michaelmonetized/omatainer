@@ -227,6 +227,9 @@ def update(root, meta, supplements=None):
 def source_paths(root, package):
     paths = set(package) | {'LICENSE','Cargo.toml','Cargo.lock','licenses/assets.json',gate.POLICY,
                             'README.md','CONTRACT.md','docs/manual.md'}
+    paths.update({'docs/capability-matrix.md', 'docs/backlog/capability-status.json',
+                  'docs/backlog/remaining-issues.json', 'docs/backlog/release-scope.json',
+                  'docs/backlog/previous-stack.json'})
     paths.update(p.relative_to(root).as_posix() for p in (root/'scripts').glob('*') if p.suffix in ('.py','.sh'))
     # Test executables also embed media and read the checked manual. Bind these
     # inputs, including new non-Rust assets, rather than only the Rust modules.
@@ -264,6 +267,9 @@ def validate(root, meta=None):
     if found != set(document['package']):raise ManifestError('unmanifested or missing integration asset')
     if graph(meta if meta is not None else metadata(root), root) != document['cargo']:
         raise ManifestError('resolved Cargo components/features changed; refresh reviewed license records')
+    matrix = subprocess.run([sys.executable, str(root/'scripts/capability-matrix.py'), 'check'], capture_output=True, text=True)
+    if matrix.returncode:
+        raise ManifestError('capability release documentation is invalid or stale: ' + matrix.stderr.strip())
     return document
 
 def verify_binary(root, binary):

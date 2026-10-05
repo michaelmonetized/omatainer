@@ -89,7 +89,6 @@ impl Data {
                 validate_sample(sample)?;
                 ranges[index] = Some(
                     settings.slots[index]
-                        .controls
                         .frames(sample.sr, sample.frames())?,
                 );
             } else if settings.slots[index].source.is_some() && issues[index].is_none() {
@@ -168,6 +167,7 @@ pub(crate) struct Voice {
     pub gain: f32,
     pub rate: f64,
     pub track: usize,
+    pub playback: super::Playback,
 }
 impl Voice {
     pub fn new(
@@ -185,11 +185,13 @@ impl Voice {
             gain: controls.gain,
             rate,
             track,
+            playback: super::Playback::default(),
         }
     }
     pub fn tick(&mut self, output_rate: f64) -> Option<(f32, f32)> {
         if self.position >= self.end {
-            return None;
+            if !self.playback.repeat { return None; }
+            self.position = self.start + (self.position - self.start).rem_euclid(self.end - self.start);
         }
         if self.start == 0.0 && self.end == self.audio.frames() as f64 {
             // Preserve the existing factory/full-source endpoint convention.

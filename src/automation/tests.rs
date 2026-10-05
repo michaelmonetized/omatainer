@@ -111,10 +111,11 @@ struct Service {
 }
 impl Service {
     fn new() -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
-            "omatainer-api-{}-{}",
+            "api-{}-{}",
             std::process::id(),
-            engine::midi_edit::NoteId::new()
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         std::fs::DirBuilder::new()
             .mode(0o700)

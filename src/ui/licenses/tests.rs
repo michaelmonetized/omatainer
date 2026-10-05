@@ -8,7 +8,7 @@ struct Gui {
 }
 impl Gui {
     fn new() -> Self {
-        let mut fixture = test_support::Fixture::new(64);
+        let mut fixture = test_support::Fixture::new(80);
         fixture.rt.publish_for_test();
         Self {
             fixture,

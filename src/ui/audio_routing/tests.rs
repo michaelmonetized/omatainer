@@ -174,6 +174,45 @@ fn native_alias_channel_values_apply_and_cancel_without_retargeting_saved_routes
 }
 
 #[test]
+fn native_input_buffer_control_is_reviewed_saved_reopened_and_cancelled() {
+    use egui::accesskit::{Action, ActionData};
+    let mut gui = Gui::new();
+    gui.click("Audio routing");
+    gui.click("Refresh routes");
+    settled(&mut gui);
+    gui.click("Use explicit routing");
+    gui.click("Live input choices");
+    for _ in 0..8 { gui.frame(vec![]); }
+    gui.click("Save input choice");
+    gui.app.audio_routing.draft.as_mut().unwrap().model.input.as_mut().unwrap().device = "Reviewed fixture device".into();
+    gui.click("Request input buffer size");
+    for _ in 0..8 { gui.frame(vec![]); }
+    let label = gui.nodes.iter().filter_map(|(_, node)| node.label()).find(|label| label.ends_with("Input buffer frames")).unwrap().to_owned();
+    gui.action(&label, Action::SetValue, Some(ActionData::NumericValue(1024.0)));
+    assert_eq!(gui.app.audio_routing.draft.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    gui.click("Review routing change…");
+    gui.click("Apply routing");
+    settled(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
+    assert_eq!(gui.rt.routing.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    let handle = gui.app.engine.project.clone();
+    let capture = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)));
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while !capture.is_finished() { gui.frame(vec![]); assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1)); }
+    let state = capture.join().unwrap().unwrap();
+    let reopened = crate::engine::project::Prepared::from_state(state.state, state.media, 96000).unwrap().into_offline();
+    assert_eq!(reopened.routing.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    gui.click("Refresh routes");
+    settled(&mut gui);
+    for _ in 0..8 { gui.frame(vec![]); }
+    gui.click("Request input buffer size");
+    assert_eq!(gui.app.audio_routing.draft.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, None);
+    gui.click("Review routing change…");
+    gui.click("Cancel routing change");
+    assert_eq!(gui.rt.routing.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+}
+
+#[test]
 fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files() {
     let mut gui = Gui::new();
     gui.click("Audio routing");

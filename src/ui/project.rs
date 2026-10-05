@@ -6,6 +6,7 @@ use crossbeam_channel::{bounded, Sender};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
+mod live_set;
 use worker::{Event, Job, Worker};
 
 pub(crate) const FACTORY_MAPPING_SCHEMA: u32 = 1;
@@ -75,12 +76,15 @@ pub(crate) struct UiState {
     pub history_open: bool,
     #[serde(default)]
     pub deck_time: [DeckTimeSettings; DECKS],
+    #[serde(default)]
+    pub(super) waveform: crate::preferences::waveforms::Config,
     // Verified identities accompany captured receipts. Embedded path strings
     // alone cannot credit a same-path replacement in the live library.
     pub(super) deck_identities: [Option<SavedIdentity>; DECKS],
 }
 impl UiState {
     pub(super) fn validate(&self) -> Result<(), String> {
+        self.waveform.validate()?;
         if let Some(video) = &self.video { video.validate()?; }
         crate::project_dependencies::validate_origins(&self.media_origins)?;
         if self.selected_crate.as_ref().is_some_and(|id| id.0.len() != 32 || !id.0.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))) {
@@ -130,6 +134,7 @@ impl UiState {
             && self.diagnostics_open == other.diagnostics_open
             && self.history_open == other.history_open
             && self.deck_time == other.deck_time
+            && self.waveform == other.waveform
     }
 }
 
@@ -197,6 +202,7 @@ struct Active {
 }
 
 pub(super) struct Projects {
+    live: live_set::Panel,
     worker: Option<Worker>,
     current_path: Option<PathBuf>,
     recent: Vec<PathBuf>,
@@ -238,6 +244,7 @@ impl Projects {
         };
         Self {
             worker,
+            live: live_set::Panel::default(),
             current_path: None,
             recent: Vec::new(),
             recent_warning: None,
@@ -290,6 +297,12 @@ impl App {
     /// Settle project workers before any close or restart route begins.
     /// Returns true while cancelled version/import work still needs acknowledgment.
     fn guard_project_workers_before_close(&mut self) -> bool {
+        if self.project.live.busy() {
+            self.project.live.cancel();
+            self.project.live.open = true;
+            self.project.message = Some("Close cancelled while the next set settles. Retry after cancellation or transition finishes.".into());
+            return true;
+        }
         self.project_versions.cancel();
         self.project_import.cancel();
         if self.project_versions.busy() {
@@ -354,6 +367,7 @@ impl App {
             diagnostics_open: self.diagnostics.open,
             history_open: self.undo_history.open,
             deck_time: self.deck_time,
+            waveform: self.waveform.settings,
             deck_identities: Default::default(),
         }
     }
@@ -437,6 +451,12 @@ impl App {
     }
     pub(super) fn restore_named_version(&mut self, record: super::project_versions::worker::Record) { self.request_project_action(Action::Version(record)); }
     fn request_project_action(&mut self, action: Action) {
+        if self.project.live.busy() {
+            self.project.live.cancel();
+            self.project.live.open = true;
+            self.project.message = Some("Project replacement cancelled while the next set settles. Retry after cancellation or transition finishes.".into());
+            return;
+        }
         if matches!(action, Action::Close) && self.guard_project_workers_before_close() { return; }
         if self.reject_protected_project() { return; }
         if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
@@ -568,6 +588,7 @@ impl App {
     }
 
     pub(super) fn poll_projects(&mut self, ctx: &egui::Context) {
+        self.poll_live_set(ctx);
         loop {
             let event = match self
                 .project
@@ -891,6 +912,7 @@ impl App {
         self.diagnostics.open = view.diagnostics_open;
         self.undo_history.open = view.history_open;
         self.deck_time = view.deck_time;
+        self.waveform.install(view.waveform);
         self.clip_gain_edit = None;
         // Retire producer gate reservations before forgetting the old GUI
         // input owners; later key-up may otherwise see an already-cleared bit.
@@ -1001,6 +1023,7 @@ impl App {
                     |ui| {
                         self.undo_menu(ui);
                         let menu = ui.menu_button(tr!("Project"), |ui| {
+                            if ui.button(tr!("Next live set…")).help(ui, HelpControl::LiveSetOpen).clicked() { self.project.live.open = true; ui.close(); }
                             if ui.button(tr!("Support and crash reports…")).help(ui,HelpControl::SupportOpen).clicked(){self.support.open=true;ui.close();}
                             let recovery = ui.button(tr!("Autosave and recovery…"));
                             help::annotate(ui, &recovery, help::Control::RecoveryOpen);
@@ -1111,6 +1134,7 @@ impl App {
             self.request_project_save(kind, None);
         }
         self.project_dialogs(ctx);
+        self.live_set_panel(ctx);
     }
 
     fn project_dialogs(&mut self, ctx: &egui::Context) {
@@ -1249,7 +1273,7 @@ mod contextual_help_tests {
             .unwrap_or_else(|| panic!("Missing actual dialog help for {control:?}"))
     }
     fn setup() -> (test_support::Fixture, egui::Context) {
-        let mut fixture = test_support::Fixture::new(64);
+        let mut fixture = test_support::Fixture::new(80);
         fixture.rt.publish_for_test();
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
@@ -1336,8 +1360,7 @@ mod contextual_help_tests {
         fixture.app.loads[1] = Some(load_status::LoadState::new(
             Some(Selection {
                 source: LibSource::Builtin(crate::engine::media_source::BuiltinStem::Drums),
-                title: "Test source".into(),
-            }),
+                title: "Test source".into(), fingerprint: None, }),
             load_status::Phase::Failed("Fixture failure".into()),
         ));
         let nodes = frame(&ctx, &mut fixture.app);

@@ -1,0 +1,11 @@
+# Combined library layout qualification
+
+Source `3bd82bb0e4cbc30f2617f8f7f46a04b009ed633f`. Fresh Cargo test executable SHA256 `5952bd14ba7bfe8073d5e51d488969c2e8297d880beb11e7e50f2aa2159e7674`. All 590 retained source hashes stayed unchanged throughout software and native qualification; see [receipt](remaining-backlog-qualification.json).
+
+All **1532 ordinary checks passed**: 1531 in the main run and the isolated invalid-scene check. 32 opt-in checks were excluded. Capability selectors match the executable. Library layouts now save visible columns, order, widths, row density and two-column ordering in preferences schema 13. Actual embedded PNG/JPEG covers use bounded worker reads and decoded thumbnails. The full run first exposed one overlooked legacy MIDI-profile fixture and a mouse press treated as scroll-area dragging. The corrected migration fixture and touch-only content dragging pass the complete suite, including pointer selection/double-click and first-frame dialog keyboard ownership.
+
+The same executable captured all 32 routes through actual CPAL/ALSA playback/input and an owned private PipeWire loopback: 64 exact links and 7278 callbacks, graph taps, record aliases and decoded WAVs. Routing and record assertions pass with zero overflow frames and cross-channel overlap. The run reports **2048 missing input frames**, including **1024 and 640 within the two recorded intervals**. This is not a dropout-free timing pass. Owned children exited. Converter latency and backend xrun counters remain unmeasured.
+
+The [sampler qualification](remaining-backlog-sampler-qualification.md) retains its earlier zero-gap private run. The [crate qualification](remaining-backlog-crate-qualification.md), [MIDI learn receipt](remaining-backlog-midi-qualification.md), [routing and prepare](remaining-backlog-routing-qualification.md), [preparation](remaining-backlog-preparation-qualification.md) and [earlier baseline](remaining-backlog-baseline.md) retain their own source bindings. The merged optimized gate is pending; the earlier [media-health wall-time failure](remaining-backlog-media-health-qualification.md) remains visible.
+
+Physical Pioneer/Numark/Akai/keyboard input, unplug/replug, converter timing, real suspend and listening remain pending. No NS7 driver compatibility, release package or complete backlog acceptance is claimed.

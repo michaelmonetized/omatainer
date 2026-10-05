@@ -94,6 +94,22 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Prepare upcoming tracks
+
+4096 tracks and 2 MiB of captured references
+
+Queue a selected track or filtered crate while other decks play. Reorder or remove upcoming tracks, load their captured file version through ordinary deck protection, and preview a loaded paused deck on its existing output. Stop preview restores its position. Remove-after-play requires a complete 10 ms window of confirmed digital main output from a playing deck; loads, paused previews, silence and uncertain measurements retain tracks. Retain keeps them until manual removal. Save creates one ordered manual crate; explicit restore uses its current catalog versions. Shift with deck A Load queues the selected track; shift with deck B Load queues the published filtered crate on profiles with those controls. Physical controller mappings still need device validation.
+
+Workflow: Prepare a DJ deck.
+
+### Library media health
+
+Captured read-only validation; at most 4096 rows per queue
+
+Validate a selected row or the filtered crate without replacing live decks. The existing decoder worker reads each complete file and discards packet PCM. Status distinguishes missing, unreadable, unsupported, corrupt and changed sources. Read-only audio remains playable and uses sidecar preparation. Bad tags are reported separately when audio still decodes. Results describe the last checked version; rescan and validate after media changes. Cancel stops remaining work; earlier results stay visible. Performance protection or an explicit media load stops validation. Closing the panel leaves an active queue running.
+
+Workflow: Prepare a DJ deck.
+
 ### Interface language
 
 English, Español or Deutsch; saved per profile
@@ -102,11 +118,27 @@ Select the display language for this profile. Preview and Cancel retain the appl
 
 Workflow: Audio setup.
 
+### Preparation locks
+
+Reviewed grid, BPM and metadata protection
+
+Capture current library versions, select lock fields, Review and Save. Grid locks prevent manual grid edits and Undo until unlocked. BPM and metadata locks exclude automatic replacement, including forced analysis and tag refresh. Reviewed manual tag edits remain available; unselected locked fields stay intact. Preview analysis replacements in the analysis panel and actual tag refresh replacements in the tag editor before refreshing. Locks are catalog sidecars and survive restart. Replacement content starts with fresh preparation.
+
+Workflow: Prepare a DJ deck.
+
 ### Track ratings, colors and annotations
 
 Stable track metadata; ratings 0–5
 
 Capture selected or filtered stable IDs, select changed fields, Review and Apply. Ratings, colors, groups, tags and multiline notes are stored in library metadata; audio bytes and loaded sound are unchanged. Unselected fields preserve each track’s own values. Search also matches annotations; explicit filters include rating>=4, tag:clean, color:#FF6600, group:peak and note:request. Cancel can stop a pending write before its publication claim; closing keeps admitted writes running.
+
+Workflow: Prepare a DJ deck.
+
+### Smart crate rules
+
+All or Any typed conditions; inclusive numeric ranges
+
+Select an empty named crate and open Smart crate rules. Choose supported text, key, BPM, duration, rating or confirmed-played conditions. Preview current results before Save. Membership is updated on the catalog worker when current metadata changes. Refresh recomputes saved membership explicitly. Cancel stops a preview without saving; Remove leaves an empty manual crate.
 
 Workflow: Prepare a DJ deck.
 
@@ -186,7 +218,7 @@ Workflow: Audio setup.
 
 Exact device at the active output nominal rate
 
-Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. Faults, missing callbacks and output changes disable input and require fresh confirmation. A bounded queue reports missing frames and overflow; separate device clocks are not resampled. Safe mode disables device access.
+Saved input choices never open automatically. Preview fresh advertised capabilities, then explicitly stop and enable input. A bounded cushion waits for two actual callback blocks before delivering input; its frame count and nominal buffering target are shown. Startup silence, later missing frames, source discontinuities and overflow have separate counters. Input/output blocks above 2730 frames are refused. Faults, missing callbacks and output changes disable input and require fresh confirmation. Separate device clocks are not resampled. Safe mode disables device access.
 
 Workflow: Audio setup.
 
@@ -690,7 +722,7 @@ Workflow: Prepare a DJ deck.
 
 Saved collections; All tracks is a virtual view
 
-Choose a named crate or All tracks. Named crates contain only their direct members, in manual order; nested children are separate views. Browse is available during performance protection, while edits require Studio. Closing this manager does not cancel an admitted edit.
+Choose a named crate or All tracks. Search crate names separately from tracks, filter saved favorites, or reveal the selected track’s direct manual and automatic memberships. Choosing discovery results retains the original track query, selection and scroll for Return to previous crate view. Nested children are separate views. Use Alt+Up/Down to browse the filtered results and Alt+Home/End for the first/last. Learn Browse crates with an explicit relative encoder and Return with a note button; controller events capture exact crate identities. Browsing remains available during performance protection; pinning and edits require Studio. Closing this manager does not cancel an admitted edit.
 
 Workflow: Prepare a DJ deck.
 
@@ -922,15 +954,15 @@ Workflow: Stop and recover.
 
 Local source/version cache
 
-Open the bounded background analysis queue. Opening this panel neither decodes nor changes playback. Key detection is unavailable; existing filename hints and manual keys are not analysis results.
+Open the bounded background analysis queue. Opening this panel neither decodes nor changes playback. Musical-key estimates are stored separately from filename hints and saved tags. Review conventional and harmonic notation, unknown results and profile correlation before correcting a key through Audio metadata.
 
 Workflow: Prepare a DJ deck.
 
 ### Analysis fields
 
-BPM / duration / waveform
+BPM / duration / waveform / source level / musical key
 
-Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM.
+Choose which measured fields to prepare. Each result stays qualified by source identity, file fingerprint, digest and algorithm version. Manual BPM and locked preparation retain precedence. Waveforms store bounded low/mid/high band mean magnitudes, not playable PCM. Source level stores whole-track RMS, sample peak and a bounded gain recommendation; analysis does not apply gain. Musical key uses the first stereo pair or mono channel and keeps weak or ambiguous estimates unknown. Analysis never overwrites saved key edits.
 
 Workflow: Prepare a DJ deck.
 
@@ -938,7 +970,7 @@ Workflow: Prepare a DJ deck.
 
 Reanalysis of chosen fields only
 
-Recompute the chosen fields even if verified cache entries exist. Unselected analysis fields and manual preparation remain unchanged. A missing or corrupt waveform is recomputed without trusting that cached blob.
+Recompute the chosen fields even if verified cache entries exist. Unselected analysis fields and manual preparation remain unchanged. A missing or corrupt waveform is recomputed without trusting that cached blob. Force never overrides BPM or metadata locks.
 
 Workflow: Prepare a DJ deck.
 
@@ -962,7 +994,7 @@ Workflow: Prepare a DJ deck.
 
 Verified cached record and waveform
 
-Read the selected source/version's saved record and verify the waveform on the metadata worker. Missing fields are reported; inspection alone never starts source decoding. A changed source cannot inherit another version's result.
+Use Preview selected/filtered analysis changes to inspect the fields that will refresh and the current values protected by locks, without decoding or saving. Read the selected source/version's saved record and verify the waveform on the metadata worker. Missing fields are reported; inspection alone never starts source decoding. A changed source cannot inherit another version's result.
 
 Workflow: Prepare a DJ deck.
 
@@ -1722,7 +1754,7 @@ Workflow: Prepare a DJ deck.
 
 The reviewed deck and track
 
-Review load override captures the selected library item and current deck source. Confirm starts preparation while old audio keeps playing. A missing file, cancelled decode, changed source, lock choice or safety state refuses application. Review eject identifies the exact source and reports queued separately from renderer-completed. MIDI and IPC requests cannot supply a reviewed override; use this deliberate app decision.
+Loading or ejecting an active locked deck opens a review of its current track and captured replacement. Acknowledge the replacement before confirming. Preparation leaves old audio loaded until the renderer applies a ready replacement. Failed or cancelled work and changed source, lock or safety generations refuse application. A reviewed eject reports queued separately from renderer-completed. MIDI and IPC cannot confirm this decision.
 
 Workflow: Prepare a DJ deck.
 
@@ -1850,7 +1882,7 @@ Workflow: Prepare a DJ deck.
 
 20–400 BPM
 
-Change beat spacing while keeping the draft downbeat fixed. Enter a finite tempo; invalid text cannot be applied. This uniform grid does not implement changing meters or tempo maps.
+Scale every tempo segment around the draft downbeat. All segments must stay between 20 and 400 BPM. Anchors retain beat coordinates; original audio and absolute cues stay unchanged. Bars remain four beats.
 
 Workflow: Prepare a DJ deck.
 
@@ -1867,6 +1899,14 @@ Workflow: Prepare a DJ deck.
 Draft BPM multiplied by two; maximum 400
 
 Correct half-tempo ambiguity in the preview while retaining the downbeat. Disabled when the result would exceed the supported range.
+
+Workflow: Prepare a DJ deck.
+
+### Manual tempo anchors
+
+Up to 64 ordered anchors; 20–400 BPM per segment
+
+Map a beat after beat 0 to a position inside the loaded source audio. Insert in any order; an existing beat is replaced. Source and beat positions must increase together. The map stays continuous across boundaries and continues its final tempo after the last anchor. Delete reconnects neighboring segments. Apply commits one undoable grid edit for the same track; Cancel keeps the applied map.
 
 Workflow: Prepare a DJ deck.
 
@@ -2038,6 +2078,14 @@ Set the deck's level before mixing. Click or alternate actions can cut/solo the 
 
 Workflow: Mix a session.
 
+### Track source gain
+
+Source trim in dB, separate from the fader
+
+Review whole-track RMS and sample peak. Auto uses an explicit target and peak limit with at most 12 dB boost. Manual keeps your override. Apply requires this loaded track to be stopped, untouched and settled; Cancel keeps the current trim. Analysis alone never changes playback gain. This is not LUFS or true-peak limiting.
+
+Workflow: Mix a session.
+
 ### Deck platter
 
 Playback / cue / jog
@@ -2051,6 +2099,14 @@ Workflow: Prepare a DJ deck.
 0–source duration in seconds
 
 Seek within loaded media. Seeking resets grain history with a bounded transition; it does not change the stored file. A stopped deck stays stopped.
+
+Workflow: Prepare a DJ deck.
+
+### Waveform zoom and phase
+
+2 / 4 / 8 / 16 four-beat bars
+
+Cycle each deck's span. Link uses one musical span for both decks. Native projects retain their own view; Save waveform view also retains it in the current preference profile after its save receipt. Without a grid, spans use source seconds. Beat and downbeat lines, eight-bar phrase counts, saved cues and loop boundaries use the loaded source's grid. Phase is the nearest signed beat difference against the selected deck, not automatic phrase detection. Output position estimate follows the audio output’s reported playback time. Unknown, expired or replaced media timing and key-lock or transition mixtures show renderer position explicitly. Display, converters and listening alignment remain unqualified.
 
 Workflow: Prepare a DJ deck.
 
@@ -2342,6 +2398,38 @@ Retry the referenced missing source or reopen the reusable store. Source identit
 
 Workflow: Record a held note.
 
+### Sample slot play mode
+
+Trigger / Hold / Toggle
+
+Trigger restarts at the cue on every press and continues after release. Hold stops when the final input is released. Toggle stops on the next press. A sounding slot retains its captured mode across bank changes and edits.
+
+Workflow: Record a held note.
+
+### Repeat sample slot
+
+On / off
+
+Repeat wraps from the exclusive source endpoint to the captured cue or trim start. Hold release, Toggle press and Stop slot end repeat. Prepare and Apply change future onsets.
+
+Workflow: Record a held note.
+
+### Sample slot cue
+
+Source seconds; blank uses trim start
+
+Cue must be inside the prepared source range. Trigger and retrigger start at this point; repeating slots wrap back here. Preparing an invalid cue preserves the installed bank.
+
+Workflow: Record a held note.
+
+### Stop sample slot
+
+Exact slot; reserved admission
+
+Stop the sounding sample or synth pad without stopping other slots or transport. Right-click a pad or press Shift+Escape while it has focus. The editor stops its selected slot; MIDI learn assigns an exact slot button. Release a physically held input before triggering again.
+
+Workflow: Record a held note.
+
 ### Sampler slot gain
 
 0–2 linear
@@ -2470,11 +2558,51 @@ Press holds a gate; release stops it, including outside the cell. Space/Enter ho
 
 Workflow: Record a held note.
 
+### Library layouts
+
+Named layouts in the active profile
+
+Edit columns, density and ordering. Preview changes the browser locally. Save layouts writes through the preference owner; a busy or dirty Preferences draft must be finished first. Discard restores the saved profile. Copy uses a distinct name; Delete keeps at least one layout.
+
+Workflow: Prepare a DJ deck.
+
+### Library columns
+
+Visibility, order and width in points
+
+Show or hide any column while keeping at least one visible. Move a column with its arrows and resize it from 36 to 1024 points. Header and row cells share horizontal scrolling and clip long text to their own column.
+
+Workflow: Prepare a DJ deck.
+
+### Library sorting
+
+Primary and secondary metadata order
+
+Choose a primary and a different secondary column, with independent directions. Click a header for primary sorting; Shift-click sets secondary sorting. Missing metadata remains last, equal values preserve published/manual order, and Unicode text is compared without case differences. Manual order restores direct saved crate membership. Source selection and viewport anchors survive sorting.
+
+Workflow: Prepare a DJ deck.
+
+### Library density and artwork
+
+Compact, Comfortable or Artwork rows
+
+Compact retains small rows; Comfortable adds space; Artwork shows embedded PNG/JPEG covers for visible scanned local sources. One bounded worker reads source-version-checked pictures; previews retain a bounded cache. Missing, unsupported or failed artwork is reported. Reads pause under protection; artwork never substitutes for source identity.
+
+Workflow: Prepare a DJ deck.
+
 ### Search crate
 
-Text filter
+Text filter · AND terms and explicit fields
 
-Filter the crate without changing loaded media. Text editing owns its keys; clearing the filter restores the available rows.
+Combine ordinary words or quoted field values with AND. Text fields: title, artist, key (exact), tag (exact), group and note. Use bpm:120..128, bpm>=120, length:3:00..4:00, rating>=4, played:yes/no or color:#RRGGBB. Length also accepts seconds; ranges include both ends. Unknown fields and malformed values show an error and no results. Played means renderer-confirmed playback of the current source/version. Text editing owns its keys; filtering never changes loaded media.
+
+Workflow: Prepare a DJ deck.
+
+### Search all library
+
+Current crate / whole library
+
+Broaden the current query without changing the named crate. Returning restores that crate's saved query, selected source and scroll. Changing the selected crate deliberately discards the old return context. This switch changes only library navigation.
 
 Workflow: Prepare a DJ deck.
 
@@ -2622,6 +2750,14 @@ Open the MIDI window to inspect actual connection state, queue/drop/reset counte
 
 Workflow: Connect a controller.
 
+### MIDI learn
+
+256 exact-port assignments; one captured gesture
+
+Choose a performance action, target and compatible message type. Relative encoders require an explicit format and sensitivity. Capture consumes one gesture for review; unrelated controls retain their mapping. Conflicts require Replace. Test submits the captured action through ordinary control admission. Add/Replace/Edit/Remove affect this run; Save MIDI assignments retains the active profile after its durable preferences receipt. Remove restores any built-in action. Cancel, close, timeout and disconnect end learning; existing assignments remain. Input changes release older source gates and fence stale queued messages. Missing exact ports remain unavailable until recaptured.
+
+Workflow: Connect a controller.
+
 ### Retry / rescan MIDI
 
 Background connection request
@@ -2643,6 +2779,70 @@ Workflow: Save and reopen.
 Empty session
 
 Replace the document with an empty session and factory sampler resources only after the unsaved-work decision. Use Cancel to keep working.
+
+Workflow: Save and reopen.
+
+### Next live set
+
+One staged native project
+
+Preload and cue the next set while the current performance continues. Review its path, cue position, fade and unsaved-work decision before transition.
+
+Workflow: Save and reopen.
+
+### Next live set path
+
+Native .omat file
+
+Choose an embedded native project for bounded preflight. The current graph remains active; missing audio and unavailable processors refuse preload.
+
+Workflow: Save and reopen.
+
+### Preload next set
+
+One project; 256 MiB PCM
+
+Validate embedded audio and prepare processors on a background worker. Standard stereo master routes are required. Leave performance protection deliberately before preloading.
+
+Workflow: Save and reopen.
+
+### Cue next set
+
+Outputs 3/4 on the current device
+
+Listen to the next set through a separate stereo pair without changing the outgoing master. At least four output channels are required. Cue starts remembered clips and loaded decks and holds its position when stopped.
+
+Workflow: Save and reopen.
+
+### Live-set fade seconds
+
+0.01 to 30 seconds
+
+Choose a linear sample-by-sample fade between both complete renderer graphs. Active outgoing decks and effect histories continue until the fade finishes.
+
+Workflow: Save and reopen.
+
+### Discard current unsaved edits at transition
+
+Explicit current-document decision
+
+Allow the transition to retire unsaved current work. Save the current project first if you need those edits; preload itself does not discard them.
+
+Workflow: Save and reopen.
+
+### Transition to next set
+
+Reviewed current revision
+
+Commit the ready set at the next admitted audio block. Continue from its cue position, fade the outgoing graph and retire its storage on the worker. Recording, changed state and protected mode refuse it.
+
+Workflow: Save and reopen.
+
+### Cancel next set
+
+Before renderer commit
+
+Cancel preload or staging while preserving the current performance. A committed transition completes and cannot be undone by this button. Safety stop or silence remains authoritative.
 
 Workflow: Save and reopen.
 
@@ -2835,6 +3035,54 @@ Workflow: Stop and recover.
 Persistent preparation and media identity
 
 Inspect catalog save status or import an Omatainer catalog. The library is separate from native projects and never substitutes another file's preparation by path alone.
+
+Workflow: Prepare a DJ deck.
+
+### Back up and restore DJ library
+
+Complete independent catalog snapshot
+
+Export a fixed saved catalog, optionally collect authorized local tracks, verify a backup and restore into a new directory. Import is explicit and rejects conflicts before changing the live catalog.
+
+Workflow: Prepare a DJ deck.
+
+### Library backup paths
+
+Absolute local directories
+
+Choose a new directory for export or restore and an existing backup for verification. Existing destinations are never replaced. Restore must remain outside the read-only backup.
+
+Workflow: Prepare a DJ deck.
+
+### Authorized local music collection
+
+1–1024 GiB total; 8 GiB per file
+
+Explicitly authorize copying all local current catalog tracks. Encoded bytes and source identities are verified. Duplicate bytes share a backup asset; provider music is not collected. Originals remain read-only.
+
+Workflow: Prepare a DJ deck.
+
+### Export library snapshot
+
+Saved catalog and optional collected music
+
+Wait for the catalog owner to finish saving. The captured snapshot stays fixed during later edits. Cancellation and protection prevent incomplete publication.
+
+Workflow: Prepare a DJ deck.
+
+### Verify and restore library
+
+Versioned metadata and SHA-256 media checks
+
+Verify the complete backup before restoring preparation, identities, crates, favorites and history into a new directory. Each restored track keeps its own pathname; no catalog activates automatically.
+
+Workflow: Prepare a DJ deck.
+
+### Cancel library backup job
+
+Bounded worker cancellation
+
+Stop optional backup reads and discard uncommitted private staging. A completed publication reports its actual durability outcome. Closing the window alone does not cancel the job.
 
 Workflow: Prepare a DJ deck.
 

@@ -180,7 +180,7 @@ fn real_window_previews_persists_applies_and_reopens_supported_profile_settings(
     let loaded = storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();
     assert_eq!(loaded.preferences, gui.fixture.app.settings.applied);
     let startup = Startup::read(gui.dir.join("preferences.json"), gui.dir.clone());
-    let mut reopened = Fixture::new(64);
+    let mut reopened = Fixture::new(80);
     reopened.app.initialize_preferences(
         &gui.ctx,
         startup,
@@ -956,7 +956,7 @@ fn display_controls_apply_persist_reopen_and_cancel_without_audio_changes() {
     assert!(!gui.fixture.app.settings.pending_restart());
     let bytes = std::fs::read(gui.dir.join("preferences.json")).unwrap();
     let startup = Startup::read(gui.dir.join("preferences.json"), gui.dir.clone());
-    let mut reopened = Fixture::new(64);
+    let mut reopened = Fixture::new(80);
     reopened.app.initialize_preferences(&gui.ctx, startup, audio.clone());
     assert_eq!(reopened.app.theme, gui.fixture.app.theme);
     gui.click("High contrast dark"); gui.click("Cancel changes");
@@ -1100,7 +1100,7 @@ fn native_shortcut_capture_cancel_persist_export_import_and_failure_preserve_oth
     assert_eq!(saved.preferences.current().unwrap().shortcuts["transport"].as_ref().unwrap().key,"G");
     assert_eq!(saved.preferences.current().unwrap().audio,before.current().unwrap().audio);
     assert_eq!(saved.preferences.current().unwrap().library_roots,before.current().unwrap().library_roots);
-    let mut reopened = Fixture::new(64);
+    let mut reopened = Fixture::new(80);
     let startup = Startup::read(gui.dir.join("preferences.json"),gui.dir.clone());
     let context = egui::Context::default();
     reopened.app.initialize_preferences(&context,startup,saved.preferences.current().unwrap().audio.clone());
@@ -1160,7 +1160,7 @@ fn native_language_preview_cancel_apply_reopen_and_translated_layout_preserve_mu
         let loaded=storage::load(&gui.dir.join("preferences.json"),&AtomicBool::new(false)).unwrap();
         assert_eq!(loaded.preferences.current().unwrap().appearance.locale,locale);
         let startup=Startup::read(gui.dir.join("preferences.json"),gui.dir.clone());
-        let mut reopened=Fixture::new(64);reopened.app.initialize_preferences(&gui.ctx,startup,loaded.preferences.current().unwrap().audio.clone());
+        let mut reopened=Fixture::new(80);reopened.app.initialize_preferences(&gui.ctx,startup,loaded.preferences.current().unwrap().audio.clone());
         assert_eq!(reopened.app.settings.profile().appearance.locale,locale);
         let out=gui.frame(vec![]);
         for shape in &out.shapes {
@@ -1189,7 +1189,7 @@ fn real_workspace_controls_reorder_hide_resize_detach_persist_and_reopen_unicode
     assert_eq!(gui.fixture.app.settings.profile().workspaces,expected);
     let loaded=storage::load(&gui.dir.join("preferences.json"),&AtomicBool::new(false)).unwrap();
     assert_eq!(loaded.preferences.current().unwrap().workspaces,expected);
-    let mut reopened=Fixture::new(64);
+    let mut reopened=Fixture::new(80);
     reopened.app.initialize_preferences(&gui.ctx,Startup::read(gui.dir.join("preferences.json"),gui.dir.clone()),loaded.preferences.current().unwrap().audio.clone());
     assert_eq!(reopened.app.settings.profile().workspaces,expected);
     gui.click("Cancel changes"); gui.open(); gui.click("Reset workspace layouts"); gui.click("Cancel changes");

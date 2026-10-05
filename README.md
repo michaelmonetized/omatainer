@@ -6,7 +6,7 @@ Omarchy-native DAW + live DJ surface. One clock, one mixer, configurable workspa
 - **Compose** a MIDI piano roll and explicitly armed pad-note capture, with stable note identities and undo
 - **Two decks** with spinning platters, Serato-style waveforms, hot cues, loops, vinyl jog, sync, EQ, filter, and a crossfader
 
-Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; this build has no editable MIDI-learn mapping UI. Keyboard and pointer controls remain available.
+Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; the native MIDI learn editor captures exact-port assignments and retains them in the active profile after Save. Keyboard and pointer controls remain available.
 
 It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`) and font, registers in the keybind menu, and drops a Quickshell bar chip next to the rest of the shell.
 
@@ -87,8 +87,7 @@ MIDI input policy and folder availability. **Apply and save** commits the draft;
 **Cancel changes** keeps the current setup.
 
 Audio device, sample format, rate, channel count and buffer size are saved separately
-from the running output. Device loss retains the project and stops playback;
-explicit recovery preserves the accepted route where physical identity is known.
+from the running output. Device loss retains the project and stops playback.
 See [Recovering lost audio](docs/audio-recovery.md) for reconnect, fallback and
 pending physical qualification. **Audio routing** adds stable channel aliases, independent track/deck/bus taps, confirmed input activation and worker-written WAV record sources. See [audio routing](docs/audio-routing.md) for supported widths and verification limits. Open **Audio devices and latency**, select **Preview saved
 audio**, then **Use saved audio now** and **Stop and change output** to apply without
@@ -135,6 +134,8 @@ Use **Help** or the active **F1** binding for focused-control explanations, acce
 
 **Setup → Automation** exposes the versioned local API and native job inspector. Use `omatainer ctl api` for discovery, state subscriptions, commands, atomic edits and musical scheduling. Optional authenticated loopback OSC is disabled by default. See the [automation protocol and examples](docs/automation-api.md).
 
+The Library window also exports a fixed saved DJ catalog, optionally collects explicitly authorized local music, verifies the complete backup and restores into a new directory. Import remains explicit and rejects conflicts. See [library backup](docs/validation/issue-143-library-backup.md).
+
 The [offline manual](docs/manual.md) is generated from the same catalogue. This build has no Arrange timeline, external audio recording, warp editor, automation lane editor or plugin host. Native projects, piano roll, pad-note capture, clip gain, history, mixer/FX and DJ preparation are implemented workflows.
 
 ## Play without files
@@ -170,6 +171,21 @@ changes to the reviewed destination reject Apply; review again to use new state.
 Project → Named versions saves named snapshots and revision notes with shared immutable audio. Compare musical changes before restoring an unsaved copy or branching a new native project. Preview unreferenced assets before pruning. See [the version workflow](docs/project-versions.md).
 
 ## Native projects
+
+**Project → Next live set…** preflights one embedded project while the current
+mix continues. Standard stereo master routes use outputs 1/2; a four-channel
+device can cue the next set on outputs 3/4. Review the fade and any unsaved edits
+before **Transition to next set**. Both complete graphs render through the
+linear fade, including outgoing effect tails, then the worker retires the old
+graph. Cancel before commit preserves the current set. Safety stop and silence
+remain available after commit.
+
+Preload accepts up to 256 MiB of embedded audio, 32 MiB of metadata and the
+existing 256 MiB processor bound. It refuses missing sampler audio and
+unavailable processors. Leave performance protection deliberately before
+preloading. Cue playback starts remembered clips and loaded decks; transition
+continues from the preview position. Custom routing and physical transition
+qualification remain outside this first path.
 
 Use **Project → Save project as…** to choose a `.omat` path. Native projects embed
 the session's media alongside clips/notes, instruments, mixer/effects, sampler
@@ -280,7 +296,13 @@ waveform for selected local files or mounted removable libraries. **Analyze sele
 **Analyze filtered crate** captures the current filtered order, up to 4,096 rows.
 Later filtering or scanning does not retarget that queue. Choose individual
 fields and **Force selected fields** to reanalyze them; manual BPM and locked
-preparation remain authoritative. Key detection is unavailable.
+preparation remain authoritative. Musical-key analysis stores a separate,
+version-bound estimate. The key column shows conventional and harmonic notation;
+saved user or embedded keys take precedence. Inspect the cache for profile
+correlation, ambiguity margin and unknown results, or compare against another
+source key. Scores are not probabilities. Use Audio metadata to review a
+correction; an explicit clear stays cleared. Pitch changes are not included in
+the source-key comparison.
 
 The shared media worker hashes and decodes one source at a time. Explicit deck
 or sampler loads preempt background analysis; **Retry current analysis** resumes
@@ -291,6 +313,8 @@ values and the waveform without starting a source decode. Missing/corrupt cache
 or changed source versions remain explicit. Closing the panel leaves its queue
 running. Optional analysis is unavailable during Performance protection.
 
+
+Use **All tracks ▾** to open the **Named crates** manager. Search crate names independently of tracks, filter **Favorite crates only**, or **Find crates containing selected track**. Pin/unpin through the catalog save owner. Selecting a discovery result preserves the original query, track and scroll for **Return to previous crate view**. Learn **Browse crates** on a relative encoder and **Return to previous crate view** on a note button; captured IDs prevent queued input from retargeting another result.
 
 Use **All tracks ▾** to open the **Named crates** manager. Create root or child
 crates, rename them, reorder siblings or nest a crate in a chosen destination.
@@ -334,6 +358,10 @@ coverage: at most 64 inputs, 64 folder levels, one million visited entries and
 100,000 rows; the first 32 skipped paths are shown. Cancellation retains the
 prior crate. The worker does not follow descendant symlinks.
 
+**layout…** saves named library layouts in the active profile. Show or hide columns, move them with the editor’s arrows and resize their widths. Choose Compact, Comfortable or Artwork rows; Artwork reads real embedded PNG/JPEG covers for visible scanned local tracks. Missing artwork stays explicit, and **Retry artwork** refreshes the bounded cache after access changes.
+
+Choose a primary and secondary sort with independent directions. Header clicks sort by that column; Shift-click adds a different secondary column. Missing metadata remains last, equal values keep their published or manual crate order, and sorting preserves selected-source and scroll anchors. **Manual order / none** restores the direct saved crate order. **Preview layout** changes the browser locally; **Save layouts** persists through the preference owner; **Discard layout preview** restores saved layouts. Preferences version 13 migrates older profiles without writing until explicit save. [Layout qualification](docs/validation/issue-144-library-layouts.md) records the software checks.
+
 **Manage music folders in Preferences** edits saved watched roots. After the
 startup/manual scan, directory notifications coalesce into one pending rescan;
 a full-scan hint every 30 idle seconds catches missed events and reconnects. Watches
@@ -357,7 +385,7 @@ This catalog is independent of DAW projects. Its saving/error status appears
 below the crate controls; row tooltips include track ID and typed location.
 
 **library… → Import catalog** imports an Omatainer catalog JSON on the background
-worker. Version 7 is the current format; versions 1–6 migrate without changing
+worker. Version 13 is the current format; versions 1–12 migrate without changing
 IDs or preparation. Source-qualified analysis results and their algorithm versions
 are retained in the catalog; bounded waveform blobs live in the private cache. Conflicting identities or unknown
 fields/formats are rejected rather than discarded. Mounted removable libraries
@@ -371,12 +399,14 @@ fresh preparation, with old fingerprint versions preserved in the catalog. A
 new path receives a new identity unless the crate’s **relocate…** action
 verifies identical file bytes and deliberately preserves the existing track ID.
 Keep the original file available until its move-verification digest is saved.
-**Deck grid…** edits a manual downbeat and uniform tempo independently of analyzed
-BPM. Preview Set at playhead, slip, stretch, half/double tempo and Reset before
+**Deck grid…** edits a manual downbeat and up to 64 ordered tempo anchors independently of analyzed
+BPM. Map each anchor's beat number to its source time; insert, replace or delete
+anchors while previewing. Each segment must stay between 20 and 400 BPM.
+Preview Set at playhead, slip, stretch, half/double tempo and Reset before
 Apply; Cancel/Escape discards the draft. Applied grids are undoable, survive
 library/project/recovery reloads, and guide Match phase and quantized loops.
-Negative beat coordinates represent pickups; bars currently contain four beats
-(changing meters and tempo maps are not implemented). Cue positions stay in
+Negative beat coordinates represent pickups; deck bars currently contain four beats.
+Loops and synchronization follow local tempo segments. Cue positions stay in
 source seconds. Performance protection rejects grid edits; essential saving
 continues, with optional relocation hashing deferred until Studio mode.
 
@@ -519,6 +549,8 @@ available throughout. A disconnected device is detected on an explicit rescan
 or when its input worker ends; automatic hotplug detection is not implemented.
 See the [connection lifecycle validation](docs/validation/issue-73-midi-connections.md).
 
+**MIDI learn** selects an action and target, captures one compatible control, and previews its exact device/channel/message. Add or deliberately Replace an address, test its action through normal admission, edit/remove existing assignments, and **Save MIDI assignments** after review. Relative encoders require an explicit format and sensitivity. Cancel, Escape, close, timeout and disconnect restore normal input; stale capture-period packets cannot trigger later actions. Saved mappings require the exact port. See [learn behavior and qualification limits](docs/validation/issue-148-midi-learn.md).
+
 MIDI Start and Stop use the transport handlers. Received MIDI Clock ticks expose
 their accepted count and last source in `midi_clock` status; this reception hook
 does not synchronize tempo or phase. See the [MIDI framing validation](docs/validation/issue-41-midi-realtime.md).
@@ -530,6 +562,10 @@ Changing the selection affects new presses; held notes keep their original sound
 Sample pads **1–8** occupy the bottom row and **9–16** the top row, preserving the
 piano layout's natural/accidental positions. Number N triggers bank slot N−1.
 Hover a pad for its slot or piano MIDI note; blank piano positions are inactive.
+
+**Edit sampler banks** saves independent Trigger, Hold or Toggle modes per slot. Trigger starts at the cue on every press and continues after release. Hold stops on the final release. Toggle stops on the next press. Repeat wraps to the captured cue or trim start. Prepare validates cue/range changes before Apply; sounding samples retain their captured source, mode and range across bank edits or selection changes. Project schema 12 and reusable-bank schema 2 retain these settings. Older valid banks migrate without writing until explicit Save.
+
+**Stop slot** uses an independent reserved queue lane. Right-click a pad, press Shift+Escape on its focused pad, use the editor’s selected-slot stop, or learn a Note button for an exact sample slot. Other slots and transport keep playing. Release any held physical input before triggering it again. [Sampler qualification](docs/validation/issue-153-sampler-playback.md) separates software checks from pending USB input and listening.
 
 Select an empty or MIDI clip cell and open **Piano roll**. Draw notes, drag their
 bodies to move them and right edges to resize them, or use the named note fields
@@ -792,3 +828,5 @@ Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions
 [Touch and pen input](docs/touch-and-pen.md) supports independently held performance controls, reported pad pressure and cancellation. The Linux backend pressure and physical-device limits are documented.
 
 Use [Workspaces and panel windows](docs/workspaces.md) to save panel visibility, order, heights and secondary-window sizes through Preferences.
+
+Deck waveforms offer linked 2/4/8/16-bar zoom, saved cue/loop markers and phase against the selected deck. Save waveform view retains it in preference schema 14. The output position estimate uses the backend’s reported time; unknown timing, changed media, key-lock and fades show renderer position explicitly. [Waveform qualification and limits](docs/validation/issue-135-waveform-timing.md).
