@@ -8,6 +8,7 @@ pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
+pub(crate) mod monitor;
 #[cfg(test)]
 mod track_gain_tests;
 mod video_transport;
@@ -603,6 +604,7 @@ pub struct RtEngine {
     legacy_gain_math: bool,
     pub master: f32,
     pub cue_mix: f32,
+    monitor: monitor::Monitor,
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
     pub decks: [DeckRt; DECKS],
@@ -791,6 +793,7 @@ pub struct Snapshot {
     pub master: f32,
     pub xfader: f32,
     pub cue_mix: f32,
+    pub monitor: monitor::Status,
     pub view: u8,
     pub selected_track: usize,
     pub selected_scene: usize,
@@ -852,6 +855,7 @@ impl Default for Snapshot {
             master: 0.85,
             xfader: 0.5,
             cue_mix: 0.0,
+            monitor: monitor::Status::default(),
             view: 0,
             selected_track: 0,
             selected_scene: 0,
@@ -948,6 +952,7 @@ pub enum Command {
     Xfader(f32),
     Master(f32),
     CueMix(f32),
+    Monitor(monitor::Control),
     TrackGain { track: u8, value: f32 },
     ClipGain { track: u8, scene: u16, value: f32 },
     TrackPan { track: u8, value: f32 },
@@ -1086,6 +1091,7 @@ impl RtEngine {
             legacy_gain_math: false,
             master: 0.85,
             cue_mix: 0.0,
+            monitor: monitor::Monitor::default(),
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
@@ -1475,6 +1481,7 @@ impl RtEngine {
             let mut r = 0.0f32;
             let mut cue_l = 0.0f32;
             let mut cue_r = 0.0f32;
+            self.monitor.begin();
 
             let timer = self.load_profile.start();
             self.pad_output = self.tick_pad_sources();
@@ -1569,13 +1576,17 @@ impl RtEngine {
             let preview = self.tick_provider_preview();
             l += preview[0];
             r += preview[1];
-            self.safety_output.observe([l * self.master, r * self.master], self.sr);
+            let headphone = self.monitor.render([l * self.master, r * self.master], channels);
+            let main = [l * self.master, r * self.master];
+            self.safety_output.observe(std::array::from_fn(|channel| if !main[channel].is_finite() || !headphone[channel].is_finite() { f32::NAN } else { main[channel].abs().max(headphone[channel].abs()) }), self.sr);
             l = limiter(l * self.master);
             r = limiter(r * self.master);
+            let headphone = self.safety_output.preview(headphone.map(limiter));
             let [l, r] = self.safety_output.output([l, r]);
             let output = &mut out[i * channels..(i + 1) * channels];
             output.fill(0.0);
             if channels == 1 { output[0] = 0.5 * (l + r); } else { output[0] = l; output[1] = r; }
+            if channels >= 4 { output[2..4].copy_from_slice(&headphone); }
             self.render_output_probe(output);
             self.audible.push(&self.decks);
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
@@ -1942,6 +1953,7 @@ impl RtEngine {
             let [l, r] = d.transition_output([0.0; 2]);
             d.meter = d.meter * 0.9 + (l.abs() + r.abs()) * 0.05;
             self.routing_deck_taps = [[0.0; 2], [l, r]];
+            let [l, r] = self.monitor.deck(di, [l, r]);
             return (l, r);
         }
         // Vinyl contact follows the hand directly; OLA resumes from the
@@ -1987,6 +1999,7 @@ impl RtEngine {
         [l, r] = self.decks[di].transition_output([l, r]);
         self.decks[di].meter = self.decks[di].meter * 0.9 + ((l.abs() + r.abs()) * 0.5) * 0.1;
         self.routing_deck_taps[1] = [l, r];
+        let [l, r] = self.monitor.deck(di, [l, r]);
         (l, r)
     }
 
@@ -2572,6 +2585,7 @@ impl RtEngine {
             Command::Xfader(v) => self.xfader = v.clamp(0.0, 1.0),
             Command::Master(v) => self.master = v.clamp(0.0, 1.5),
             Command::CueMix(v) => self.cue_mix = v.clamp(0.0, 1.0),
+            Command::Monitor(control) => self.monitor.apply(control),
             Command::TrackGain { track, value } => {
                 if (track as usize) < self.tracks.len() {
                     self.tracks[track as usize].gain = value.clamp(0.0, 1.5);

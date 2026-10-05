@@ -497,6 +497,7 @@ fn handle_client_with_stop(
             "bar": s.bar,
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
+            "monitor": s.monitor,
             "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
             "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
                 || s.decks.iter().take(2).any(|deck| deck.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES),

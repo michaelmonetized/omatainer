@@ -45,6 +45,7 @@ fn original_ns7_production_audio_and_midi_io() {
             .unwrap()
     };
     let output_before = counter("midi_output_bytes");
+    let input_before = counter("midi_input_bytes");
     let playback_before = counter("pcm_playback_frames");
     let capture_before = counter("pcm_capture_frames");
     let feedback_before = counter("pcm_feedback_frames");
@@ -152,9 +153,9 @@ fn original_ns7_production_audio_and_midi_io() {
         "input_captured_frames":engine.routing.shared.captured.load(Ordering::Relaxed),
         "input_overflow":engine.routing.shared.overflow.load(Ordering::Relaxed),
         "input_underrun":engine.routing.shared.underrun.load(Ordering::Relaxed),
-        "recorded_frames":decoded.sample.data.len()/2,"midi_input":snapshot.midi_input,"midi_feedback":snapshot.midi_feedback,
+        "recorded_frames":decoded.sample.data.len()/2,"midi_input":snapshot.midi_input,"midi_feedback":snapshot.midi_feedback,"monitor":snapshot.monitor,
         "ns7_midi_output_bytes":counter("midi_output_bytes")-output_before,
-        "ns7_midi_input_bytes":counter("midi_input_bytes"),"ns7_midi_errors":counter("midi_errors")-midi_errors_before,
+        "ns7_midi_input_bytes":counter("midi_input_bytes")-input_before,"ns7_midi_errors":counter("midi_errors")-midi_errors_before,
         "ns7_pcm_playback_frames":counter("pcm_playback_frames")-playback_before,"ns7_pcm_capture_frames":counter("pcm_capture_frames")-capture_before,
         "ns7_pcm_feedback_frames":counter("pcm_feedback_frames")-feedback_before,"ns7_pcm_errors":counter("pcm_errors")-pcm_errors_before
     });
@@ -164,6 +165,7 @@ fn original_ns7_production_audio_and_midi_io() {
     )
     .unwrap();
     assert_eq!(metrics.backend_errors, 0, "{receipt}");
+    assert!(snapshot.monitor.available, "{receipt}");
     assert!(
         !engine.routing.shared.fault.load(Ordering::Acquire),
         "{receipt}"

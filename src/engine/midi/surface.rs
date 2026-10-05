@@ -57,19 +57,31 @@ mod tests {
         let values = received
             .try_iter()
             .map(|command| match command {
-                Command::DeckGain { deck, value } => (deck, value),
+                Command::DeckGain { deck, value } => ("trim", deck, value),
+                Command::Monitor(crate::engine::monitor::Control::Fader { deck, value }) => {
+                    ("fader", deck, value)
+                }
                 _ => panic!("unexpected command"),
             })
             .collect::<Vec<_>>();
-        assert_eq!(values, [(0, 0.0), (0, 0.0), (1, 1.0), (1, 1.0), (0, 1.5)]);
+        assert_eq!(
+            values,
+            [
+                ("fader", 0, 0.0),
+                ("trim", 0, 1.5),
+                ("fader", 1, 1.0),
+                ("trim", 1, 1.0),
+                ("fader", 0, 1.0)
+            ]
+        );
         decoder.reset();
         decoder.input(&map, &[0xb0, 0x08, 127], &cmd);
         assert!(matches!(
             received.try_iter().next(),
-            Some(Command::DeckGain {
+            Some(Command::Monitor(crate::engine::monitor::Control::Fader {
                 deck: 0,
                 value: 1.0
-            })
+            }))
         ));
     }
 
@@ -133,15 +145,11 @@ pub(super) fn numark_ns7() -> MidiMap {
         bindings.push(nbind(0, 0x10 + offset, Action::DeckCue, deck, 0));
         bindings.push(nbind(0, 0x0f + offset, Action::DeckSync, deck, 0));
         bindings.push(nbind(0, 0x21 + offset, Action::DeckVinyl, deck, 0));
+        bindings.push(nbind(0, 0x12 + offset, Action::Shift, deck, 0));
         bindings.push(nbind(0, 0x0c + deck * 2, Action::DeckLoad, deck, 0));
         bindings.push(nbind(0, 0x28 + offset, Action::DeckLoopIn, deck, 0));
-        bindings.push(nbind(
-            0,
-            if deck == 0 { 0x29 } else { 0x50 },
-            Action::DeckLoopOut,
-            deck,
-            0,
-        ));
+        bindings.push(nbind(0, 0x29 + offset, Action::DeckLoopOut, deck, 0));
+        bindings.push(nbind(0, 0x24 + offset, Action::DeckLoop4, deck, 0));
         for pad in 0..5 {
             bindings.push(nbind(0, 0x13 + offset + pad, Action::DeckHotCue, deck, pad));
         }
@@ -154,7 +162,6 @@ pub(super) fn numark_ns7() -> MidiMap {
         bindings.push(cbind(0, 0x09 + mixer, Action::DeckEqLow, deck, 0));
     }
     bindings.push(cbind(0, 7, Action::Xfader, 0, 0));
-    bindings.push(cbind(0, 0x12, Action::CueMix, 0, 0));
     bindings.push(cbind(0, 0x40, Action::Master, 0, 0));
     MidiMap {
         name: "Numark NS7 (original)".into(),
@@ -167,8 +174,6 @@ pub(super) fn numark_ns7() -> MidiMap {
 pub(super) struct Decoder {
     jog: [Option<u8>; 2],
     fx: [[Option<u8>; 3]; 2],
-    fader: [f32; 2],
-    trim: [f32; 2],
 }
 
 impl Default for Decoder {
@@ -176,8 +181,6 @@ impl Default for Decoder {
         Self {
             jog: [None; 2],
             fx: [[None; 3]; 2],
-            fader: [1.0; 2],
-            trim: [1.0; 2],
         }
     }
 }
@@ -191,20 +194,37 @@ impl Decoder {
     /// Takes the factory profile, a complete wire message and command port; returns whether the message was consumed.
     pub(super) fn input(&mut self, map: &MidiMap, message: &[u8; 3], cmd: &CommandPort) -> bool {
         let [status, control, value] = *message;
+        if map.name == "Numark NS7 (original)" && matches!(status, 0x90 | 0x80) && control == 0 {
+            let _ = cmd.send(Command::Monitor(crate::engine::monitor::Control::Master(
+                status == 0x90 && value != 0,
+            )));
+            return true;
+        }
+        if map.name == "Numark NS7 (original)" && status == 0xb0 && matches!(control, 0x12 | 0x42) {
+            let value = f32::from(value) / 127.0;
+            let _ = cmd.send(Command::Monitor(if control == 0x12 {
+                crate::engine::monitor::Control::Mix(value)
+            } else {
+                crate::engine::monitor::Control::Volume(value)
+            }));
+            return true;
+        }
         if map.name == "Numark NS7 (original)"
             && status == 0xb0
             && matches!(control, 0x08 | 0x0d | 0x0c | 0x11)
         {
             let deck = usize::from(matches!(control, 0x0d | 0x11));
             if matches!(control, 0x08 | 0x0d) {
-                self.fader[deck] = f32::from(value) / 127.0;
+                let _ = cmd.send(Command::Monitor(crate::engine::monitor::Control::Fader {
+                    deck: deck as u8,
+                    value: f32::from(value) / 127.0,
+                }));
             } else {
-                self.trim[deck] = (f32::from(value) / 64.0).min(1.5);
+                let _ = cmd.send(Command::DeckGain {
+                    deck: deck as u8,
+                    value: (f32::from(value) / 64.0).min(1.5),
+                });
             }
-            let _ = cmd.send(Command::DeckGain {
-                deck: deck as u8,
-                value: self.trim[deck] * self.fader[deck],
-            });
             return true;
         }
         if map.name == "Numark NS7 (original)" && status == 0xb0 && matches!(control, 0 | 2) {

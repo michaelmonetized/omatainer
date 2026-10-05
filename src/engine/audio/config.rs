@@ -41,11 +41,19 @@ pub struct Plan {
     pub warning: Option<String>,
 }
 impl Plan {
+    /// Identify the native NS7 headphone pair.
+    /// Takes the selected output plan; returns true only for the original NS7 ALSA card opened with four channels.
+    pub(crate) fn has_ns7_monitor(&self) -> bool {
+        self.backend == "ALSA" && self.channels == 4
+            && self.device.split_once(':').is_some_and(|(_, fields)| fields.split(',').any(|field| field == "CARD=NS7"))
+    }
     pub fn route(&self) -> String {
         if self.channels == 1 {
             "Main L+R summed to output 1".into()
         } else if self.channels == 2 {
             "Main left/right to outputs 1/2".into()
+        } else if self.has_ns7_monitor() {
+            "Main left/right to outputs 1/2; NS7 headphones to outputs 3/4".into()
         } else {
             format!(
                 "Main left/right to outputs 1/2; outputs 3–{} silent",

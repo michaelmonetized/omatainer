@@ -68,9 +68,19 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     ns7.push(&[0xb0, 0, 0]);
     assert!(matches!(receiver.try_recv(), Ok(Command::DeckJog { deck: 0, delta }) if delta == 0.35));
     ns7.push(&[0xb0, 8, 0]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::DeckGain { deck: 0, value: 0.0 })));
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Fader { deck: 0, value: 0.0 }))));
     ns7.push(&[0xb0, 12, 127]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::DeckGain { deck: 0, value: 0.0 })));
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckGain { deck: 0, value: 1.5 })));
+    ns7.push(&[0xb0, 0x12, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Mix(1.0)))));
+    ns7.push(&[0xb0, 0x42, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Volume(0.0)))));
+    ns7.push(&[0x90, 0, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Master(true)))));
+    ns7.push(&[0x90, 1, 127]);
+    assert!(receiver.is_empty());
+    ns7.push(&[0x90, 0, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Master(false)))));
 }
 
 #[test]

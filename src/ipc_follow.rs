@@ -30,6 +30,7 @@ struct SmallStatus {
     bar: u32,
     beat: f32,
     xfader: f32,
+    monitor: crate::engine::monitor::Status,
     master_fx: MasterFx,
     midi_clock: MidiClockInput,
     midi_routing: crate::engine::midi::routing::Summary,
@@ -57,6 +58,7 @@ impl SmallStatus {
             bar: snapshot.bar,
             beat: snapshot.beat_in_bar,
             xfader: snapshot.xfader,
+            monitor: snapshot.monitor,
             master_fx: MasterFx {
                 types: snapshot.fx_kind,
                 wet: snapshot.fx_wet,

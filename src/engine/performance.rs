@@ -575,6 +575,7 @@ fn destructive(command: &Command) -> bool {
         | Command::Xfader(_)
         | Command::Master(_)
         | Command::CueMix(_)
+        | Command::Monitor(_)
         | Command::TrackGain { .. }
         | Command::ClipGain { .. }
         | Command::TrackPan { .. }

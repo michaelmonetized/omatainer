@@ -141,6 +141,8 @@ impl Prepared {
             self.publish_stereo(index, taps);
         }
         let mut output = self.outputs(channels);
+        let headphone = rt.monitor.render([self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]], channels);
+        if channels >= 4 && self.monitor_channels_free { output[2..4].copy_from_slice(&headphone); }
         let mut peak = [0.0_f32; 2];
         for (channel, value) in output
             .iter()

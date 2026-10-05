@@ -342,6 +342,7 @@ impl Frame {
         target.master = rt.master;
         target.xfader = rt.xfader;
         target.cue_mix = rt.cue_mix;
+        target.monitor = rt.monitor.status;
         target.view = match rt.view {
             View::Session => 0,
             View::Arrange => 1,

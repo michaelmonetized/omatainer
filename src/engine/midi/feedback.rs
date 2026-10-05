@@ -62,7 +62,16 @@ impl Surface {
                         [0x09, 0x1f][deck],
                         if state.playing { 127 } else { 0 },
                     ]);
-                    messages.push([0xb0, [0x14, 0x18][deck], if state.pfl { 127 } else { 0 }]);
+                    messages.push([
+                        0xb0,
+                        [0x08, 0x1e][deck],
+                        if state.media_active && !state.playing {
+                            127
+                        } else {
+                            0
+                        },
+                    ]);
+                    messages.push([0xb0, [0x07, 0x1d][deck], if state.sync { 127 } else { 0 }]);
                 }
             }
             Self::ApcMk2 | Self::Apc => {
@@ -312,5 +321,13 @@ mod tests {
             .messages(&snapshot)
             .iter()
             .any(|message| message[0] != 0xb0));
+        snapshot.decks[1].media_active = true;
+        assert!(Surface::Ns7
+            .messages(&snapshot)
+            .contains(&[0xb0, 0x1e, 127]));
+        let before = Surface::Ns7.messages(&snapshot);
+        snapshot.decks[0].pfl = true;
+        snapshot.decks[1].pfl = true;
+        assert_eq!(before, Surface::Ns7.messages(&snapshot));
     }
 }
