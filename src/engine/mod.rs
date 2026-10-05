@@ -1964,14 +1964,14 @@ impl RtEngine {
                 && before_position >= d.loop_start
                 && before_position < d.loop_start + d.loop_len
                 && position >= d.loop_start + d.loop_len;
-            if d.loop_on && d.loop_len > 1.0 && before_position >= d.loop_start {
+            if d.loop_on && d.loop_len > 1.0 {
                 if position >= d.loop_start + d.loop_len {
                     position = if mapped_sync.is_some() && !d.touching {
                         d.mapped_loop_wrap(position)
                     } else { None }.unwrap_or_else(|| d.loop_start + (position - d.loop_start) % d.loop_len);
                 }
                 if position < d.loop_start {
-                    position = if d.rate < 0.0 { d.loop_start + (position - d.loop_start).rem_euclid(d.loop_len) } else { d.loop_start };
+                    position = if d.rate < 0.0 && (d.controls.held(deck_controls::Button::Reverse) || d.controls.held(deck_controls::Button::Bleep)) { d.loop_start + (position - d.loop_start).rem_euclid(d.loop_len) } else { d.loop_start };
                 }
             }
             if let Some(a) = &d.audio {

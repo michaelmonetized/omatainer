@@ -350,6 +350,7 @@ impl RtEngine {
             Control::Keylock => self.apply(Command::DeckKeylock { deck }),
             Control::PitchRange => self.apply(Command::DeckPitchRange { deck }),
             Control::Strip { value } => {
+                if self.decks[index].loop_on { self.apply(Command::DeckControl { source, deck, control: Control::LoopToggle }); }
                 self.apply(Command::DeckSeek { deck, frac: value });
                 let d = &mut self.decks[index];
                 if d.controls.forward.is_some() {
