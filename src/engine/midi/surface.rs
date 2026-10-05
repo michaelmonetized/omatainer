@@ -27,11 +27,6 @@ pub(super) fn pioneer_sp1() -> MidiMap {
     };
     bindings.push(rbind(6, 0x40, Action::Browse, 0, 0, browse));
     bindings.push(rbind(6, 0x64, Action::BrowseCrates, 0, 0, browse));
-    for channel in 4..6 {
-        for slot in 0..3 {
-            bindings.push(nbind(channel, 0x47 + slot, Action::FxSelect, 0, slot));
-        }
-    }
     MidiMap {
         name: "Pioneer DDJ-SP1".into(),
         matchers: vec!["ddj-sp1".into(), "ddj sp1".into()],
@@ -205,7 +200,7 @@ mod tests {
         assert!(received.try_iter().next().is_none());
         decoder.input(&map, &[0xb5, 0x24, 1], &cmd);
         assert!(
-            matches!(received.try_iter().next(), Some(Command::FxWet {slot:1,value}) if value == 8193.0/16383.0)
+            matches!(received.try_iter().next(), Some(Command::Surface(crate::engine::surface_controls::Input::FxValue {bank:1,slot:1,parameter:false,value})) if value == 8193.0/16383.0)
         );
         decoder.input(&map, &[0x9a, 15, 127], &cmd);
         assert!(matches!(

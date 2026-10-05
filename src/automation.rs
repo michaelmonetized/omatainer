@@ -167,6 +167,7 @@ pub(crate) enum Edit {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Request {
+    Surfaces {},
     Discover {},
     State {
         #[serde(default)]
@@ -224,7 +225,7 @@ fn discovery() -> Value {
     json!({
         "version": VERSION,
         "requests": {
-            "discover": {}, "state": {"page": "Page?"}, "subscribe": {"page": "Page?"},
+            "discover": {}, "state": {"page": "Page?"}, "surfaces": {}, "subscribe": {"page": "Page?"},
             "command": {"namespace": "Namespace", "action": "Action"},
             "schedule": {"namespace": "Namespace", "beat": "finite absolute quarter-note beat", "action": "Action"},
             "edit": {"expected": "Expected", "target": "Target", "action": "Edit"},
@@ -296,7 +297,7 @@ fn state(
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
-        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,"surfaces":s.surfaces,
+        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,
         "decks":s.decks.iter().take(2).map(|deck| json!({"title":ipc_transport::short_text(&deck.title,32),"playing":deck.playing,"position_seconds":deck.pos/f64::from(deck.source_sample_rate.max(1)),"duration":deck.duration,"keylock":deck.keylock,"keylock_mode":deck.keylock_mode,"pitch_range":deck.pitch_range,"controls":deck.controls,"loop_on":deck.loop_on,"hotcues":deck.hotcues})).collect::<Vec<_>>(),
         "transport_epoch":Count(s.transport_epoch),"performance":commands.performance().status(),
         "page":page,"total":slots.len(),"objects":objects,
@@ -388,6 +389,7 @@ fn dispatch(
 ) -> Result<Value, Error> {
     match request {
         Request::Discover {} => Ok(discovery()),
+        Request::Surfaces {} => snapshot.try_lock_for(limits.snapshot).map(|snapshot| json!(snapshot.surfaces)).ok_or_else(|| Error::new("snapshot_unavailable", "Controller state is temporarily unavailable")),
         Request::State { page } | Request::Subscribe { page } => {
             state(snapshot, commands, page, limits)
         }

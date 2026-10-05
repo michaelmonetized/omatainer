@@ -122,7 +122,7 @@ fn ns7_controls_source_retirement_preserves_another_button_owner_even_when_full(
         (
             0,
             Control::Hold {
-                button: Button::HotCue(5),
+                button: Button::HotCue(8),
                 on: true,
             },
         ),
