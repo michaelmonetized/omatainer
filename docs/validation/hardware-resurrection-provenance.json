@@ -1,0 +1,18 @@
+{
+  "source_commit": "43ce2b4a9a18aa5e2313708369e454a7afd43221",
+  "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
+  "kernel": "7.1.13-3-2-ARCH",
+  "binary_sha256": "7747dce2cf12587965771cf8e48b56e3aac4414d423eff482e0308a4a546e0cc",
+  "module_sha256": "33099112f013d0420e5b84f1533b93a1c4ac99728805aad86d18b3f57d1bfe2b",
+  "module_srcversion": "08A353365E52783AC35A50D",
+  "source_diff_sha256": "0ca469f3677f2dca74720a1217457fd5da04af4ce4c45e5df503c892cdec48d1",
+  "installed_binary": "/home/michael/.local/bin/omatainer",
+  "tests": {
+    "ordinary_passed": 1642,
+    "ordinary_failed": 0,
+    "ignored": 39,
+    "skipped_unchanged_invalid_scenes": 1,
+    "midi_passed": 132,
+    "native_pcm_midi_fixture_passed": true
+  }
+}

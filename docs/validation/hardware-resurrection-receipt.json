@@ -1,0 +1,49 @@
+{
+  "audio": {
+    "backend_errors": 0,
+    "callbacks": 345,
+    "deadline_overruns": 0,
+    "device_lost": 0,
+    "dropped_buffers": null,
+    "last_callback": {
+      "budget_ns": 22993197,
+      "channels": 4,
+      "elapsed_ns": 10681740,
+      "frames": 1014,
+      "output_latency_ns": 0,
+      "overrun_ns": 0,
+      "render_cpu_ns": 10134041,
+      "sample_rate": 44100
+    },
+    "max_elapsed_ns": 16636655,
+    "max_overrun_ns": 0
+  },
+  "input_captured_frames": 266752,
+  "input_overflow": 0,
+  "input_status": "Input enabled with a bounded two-block cushion. Startup silence, missing frames, source discontinuities and overflow are reported separately; independent clocks can still drift.",
+  "input_underrun": 0,
+  "midi_feedback": {
+    "connected": 3,
+    "failed": 0,
+    "sent": 86
+  },
+  "midi_input": {
+    "coalesced": 0,
+    "disconnected": 0,
+    "dispatched": 1,
+    "dropped": 0,
+    "oversized": 0,
+    "queued": 1,
+    "received": 1,
+    "resets": 0
+  },
+  "ns7_midi_errors": 0,
+  "ns7_midi_input_bytes": 3,
+  "ns7_midi_output_bytes": 9,
+  "ns7_pcm_capture_frames": 290424,
+  "ns7_pcm_errors": 0,
+  "ns7_pcm_feedback_frames": 6584,
+  "ns7_pcm_playback_frames": 290466,
+  "output": "Plan { graph: Routes { outputs: [], inputs: [] }, backend: \"ALSA\", device: \"sysdefault:CARD=NS7\", channels: 4, rate: 44100, format: I32, buffer: Some(2048), warning: None }",
+  "recorded_frames": 220167
+}
