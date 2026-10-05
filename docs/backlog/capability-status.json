@@ -693,6 +693,35 @@
         "docs/validation/issue-142-musical-key.md"
       ],
       "limits": "Whole-source major/minor estimate of the first stereo pair or mono. Fixed correlation/margin thresholds decline weak or ambiguous material; scores are not probabilities. Initial native-worker development corpus: 48 independent artist-labeled CC0 Bach piano recordings; 19 correct, 27 unknown, 2 wrong (9.52% error among returned estimates). This is not held-out or cross-genre/DJ accuracy proof. Comparison uses effective source keys and does not account for deck pitch changes or promise a transition. Physical listening and controllers remain unqualified. See linked evidence for individual source/binary checks. Software implementation status does not claim release or backlog completion."
+    },
+    "136": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/project/live_set.rs",
+          "entry": "Project → Next live set… → Preload → separate cue → unsaved-work review → explicit transition"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/live_set.rs",
+          "entry": "One reserved prepared graph; complete outgoing/incoming linear fade and worker-owned retirement"
+        },
+        {
+          "kind": "project ownership",
+          "file": "src/engine/project.rs",
+          "entry": "Preload reservation prevents competing graph/device replacement; captures remain available"
+        }
+      ],
+      "fixtures": [
+        "engine::live_set::tests",
+        "ui::project::live_set::tests",
+        "engine::audio::live_set_tests::large_live_set_transition_qualification"
+      ],
+      "evidence": [
+        "docs/validation/issue-136-live-set.md"
+      ],
+      "limits": "Standard stereo master outputs 1/2 only; four logical channels support independent cue on 3/4. One next project: 256 MiB PCM, 32 MiB metadata, existing 256 MiB processor bound. Missing assets and unavailable processors refuse preflight. Optional preload is cancelled by performance protection; committed transitions are explicit and not cancelled by the Cancel button. Large-session timing, maximum active/polyphony load, custom graph routes and physical controller/audio/listening acceptance remain incomplete; local fixture evidence does not close this issue."
     }
   }
 }

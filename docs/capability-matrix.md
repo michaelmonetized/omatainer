@@ -94,6 +94,16 @@ Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 B
 
 Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending.
 
+### Issue #136: partial
+
+- native UI: [src/ui/project/live_set.rs](../src/ui/project/live_set.rs) — Project → Next live set… → Preload → separate cue → unsaved-work review → explicit transition
+- renderer: [src/engine/live_set.rs](../src/engine/live_set.rs) — One reserved prepared graph; complete outgoing/incoming linear fade and worker-owned retirement
+- project ownership: [src/engine/project.rs](../src/engine/project.rs) — Preload reservation prevents competing graph/device replacement; captures remain available
+- Acceptance fixtures: `engine::live_set::tests`, `ui::project::live_set::tests`, `engine::audio::live_set_tests::large_live_set_transition_qualification`.
+- Evidence: [docs/validation/issue-136-live-set.md](../docs/validation/issue-136-live-set.md).
+
+Standard stereo master outputs 1/2 only; four logical channels support independent cue on 3/4. One next project: 256 MiB PCM, 32 MiB metadata, existing 256 MiB processor bound. Missing assets and unavailable processors refuse preflight. Optional preload is cancelled by performance protection; committed transitions are explicit and not cancelled by the Cancel button. Large-session timing, maximum active/polyphony load, custom graph routes and physical controller/audio/listening acceptance remain incomplete; local fixture evidence does not close this issue.
+
 ### Issue #137: partial
 
 - release tooling: [scripts/capability-matrix.py](../scripts/capability-matrix.py) — generate / check
@@ -248,7 +258,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#133](https://github.com/michaelmonetized/omatainer/issues/133) | Integrate low-latency PipeWire, JACK and ALSA workflows | implemented |
 | [#134](https://github.com/michaelmonetized/omatainer/issues/134) | Support manually mapped tempo changes within a track | implemented |
 | [#135](https://github.com/michaelmonetized/omatainer/issues/135) | Show aligned beatgrid, phase and phrase position on deck waveforms | partial |
-| [#136](https://github.com/michaelmonetized/omatainer/issues/136) | Switch live sets without interrupting the outgoing mix | planned |
+| [#136](https://github.com/michaelmonetized/omatainer/issues/136) | Switch live sets without interrupting the outgoing mix | partial |
 | [#137](https://github.com/michaelmonetized/omatainer/issues/137) | Maintain a versioned professional capability and compatibility matrix | partial |
 | [#138](https://github.com/michaelmonetized/omatainer/issues/138) | Deliver verified releases with safe updates and rollback | planned |
 | [#139](https://github.com/michaelmonetized/omatainer/issues/139) | Add field-aware search and filtering across the music library | implemented |

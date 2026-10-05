@@ -6,6 +6,7 @@ use crossbeam_channel::{bounded, Sender};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
+mod live_set;
 use worker::{Event, Job, Worker};
 
 pub(crate) const FACTORY_MAPPING_SCHEMA: u32 = 1;
@@ -197,6 +198,7 @@ struct Active {
 }
 
 pub(super) struct Projects {
+    live: live_set::Panel,
     worker: Option<Worker>,
     current_path: Option<PathBuf>,
     recent: Vec<PathBuf>,
@@ -238,6 +240,7 @@ impl Projects {
         };
         Self {
             worker,
+            live: live_set::Panel::default(),
             current_path: None,
             recent: Vec::new(),
             recent_warning: None,
@@ -290,6 +293,12 @@ impl App {
     /// Settle project workers before any close or restart route begins.
     /// Returns true while cancelled version/import work still needs acknowledgment.
     fn guard_project_workers_before_close(&mut self) -> bool {
+        if self.project.live.busy() {
+            self.project.live.cancel();
+            self.project.live.open = true;
+            self.project.message = Some("Close cancelled while the next set settles. Retry after cancellation or transition finishes.".into());
+            return true;
+        }
         self.project_versions.cancel();
         self.project_import.cancel();
         if self.project_versions.busy() {
@@ -437,6 +446,12 @@ impl App {
     }
     pub(super) fn restore_named_version(&mut self, record: super::project_versions::worker::Record) { self.request_project_action(Action::Version(record)); }
     fn request_project_action(&mut self, action: Action) {
+        if self.project.live.busy() {
+            self.project.live.cancel();
+            self.project.live.open = true;
+            self.project.message = Some("Project replacement cancelled while the next set settles. Retry after cancellation or transition finishes.".into());
+            return;
+        }
         if matches!(action, Action::Close) && self.guard_project_workers_before_close() { return; }
         if self.reject_protected_project() { return; }
         if !matches!(action, Action::Close) && self.guard_project_drafts() { return; }
@@ -568,6 +583,7 @@ impl App {
     }
 
     pub(super) fn poll_projects(&mut self, ctx: &egui::Context) {
+        self.poll_live_set(ctx);
         loop {
             let event = match self
                 .project
@@ -1001,6 +1017,7 @@ impl App {
                     |ui| {
                         self.undo_menu(ui);
                         let menu = ui.menu_button(tr!("Project"), |ui| {
+                            if ui.button(tr!("Next live set…")).help(ui, HelpControl::LiveSetOpen).clicked() { self.project.live.open = true; ui.close(); }
                             if ui.button(tr!("Support and crash reports…")).help(ui,HelpControl::SupportOpen).clicked(){self.support.open=true;ui.close();}
                             let recovery = ui.button(tr!("Autosave and recovery…"));
                             help::annotate(ui, &recovery, help::Control::RecoveryOpen);
@@ -1111,6 +1128,7 @@ impl App {
             self.request_project_save(kind, None);
         }
         self.project_dialogs(ctx);
+        self.live_set_panel(ctx);
     }
 
     fn project_dialogs(&mut self, ctx: &egui::Context) {

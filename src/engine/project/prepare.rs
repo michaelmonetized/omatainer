@@ -3,7 +3,7 @@ use super::{model::*, *};
 /// Owns a fully allocated renderer graph. Only its musical fields are swapped;
 /// the current stream, command receiver, snapshots and device ownership remain.
 pub struct Prepared {
-    pub(super) rt: Box<RtEngine>,
+    pub(in crate::engine) rt: Box<RtEngine>,
 }
 
 impl Prepared {

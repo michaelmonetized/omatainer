@@ -261,5 +261,15 @@
   "Compatibility compares source keys. Pitch changes and musical transitions still need your judgment.": "La compatibilidad compara las tonalidades de origen. Los cambios de tono y las transiciones musicales requieren tu criterio.",
   "Review a key correction for the selected library row": "Revisar una corrección de tonalidad de la fila seleccionada",
   "Locked saved key": "Tonalidad guardada bloqueada",
-  "Compared key: {} · {}": "Tonalidad comparada: {0} · {1}"
+  "Compared key: {} · {}": "Tonalidad comparada: {0} · {1}",
+  "Next live set…": "Siguiente sesión en vivo…",
+  "Next live set": "Siguiente sesión en vivo",
+  "Preload next set": "Precargar la siguiente sesión",
+  "Cue next set on outputs 3/4": "Escuchar la siguiente sesión en las salidas 3/4",
+  "Discard current unsaved edits at transition": "Descartar los cambios actuales sin guardar al cambiar de sesión",
+  "Transition to next set": "Cambiar a la siguiente sesión",
+  "Cancel next set": "Cancelar la siguiente sesión",
+  "Standard stereo master: outputs 1/2. Next-set cue: outputs 3/4 on the same output device.": "Máster estéreo estándar: salidas 1/2. Escucha de la siguiente sesión: salidas 3/4 del mismo dispositivo.",
+  "Cue requires four output channels; the stereo master remains available for transition.": "La escucha requiere cuatro canales de salida; el máster estéreo sigue disponible para el cambio de sesión.",
+  "Preload retains one next project, up to 256 MiB of embedded audio and 256 MiB of processors. Unavailable devices and missing sampler audio are refused.": "La precarga conserva un proyecto siguiente, hasta 256 MiB de audio incorporado y 256 MiB de procesadores. Se rechazan dispositivos no disponibles y audio ausente del sampler."
 }

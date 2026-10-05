@@ -172,6 +172,21 @@ Project → Named versions saves named snapshots and revision notes with shared 
 
 ## Native projects
 
+**Project → Next live set…** preflights one embedded project while the current
+mix continues. Standard stereo master routes use outputs 1/2; a four-channel
+device can cue the next set on outputs 3/4. Review the fade and any unsaved edits
+before **Transition to next set**. Both complete graphs render through the
+linear fade, including outgoing effect tails, then the worker retires the old
+graph. Cancel before commit preserves the current set. Safety stop and silence
+remain available after commit.
+
+Preload accepts up to 256 MiB of embedded audio, 32 MiB of metadata and the
+existing 256 MiB processor bound. It refuses missing sampler audio and
+unavailable processors. Leave performance protection deliberately before
+preloading. Cue playback starts remembered clips and loaded decks; transition
+continues from the preview position. Custom routing and physical transition
+qualification remain outside this first path.
+
 Use **Project → Save project as…** to choose a `.omat` path. Native projects embed
 the session's media alongside clips/notes, instruments, mixer/effects, sampler
 banks, deck cues/loops/positions, selections and the crate/panel view. The current

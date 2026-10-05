@@ -2,6 +2,7 @@ pub(crate) mod keylock;
 #[cfg(test)]
 mod keylock_tests;
 pub(crate) mod project;
+pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
@@ -575,6 +576,7 @@ pub struct RtEngine {
     project_pending: Option<Box<project::Task>>,
     project_waiting: Option<Box<project::Task>>,
     project_sealed: bool,
+    live_set: Option<Box<live_set::Stage>>,
     pub sr: f32,
     pub playing: bool,
     pub recording: bool,
@@ -1053,6 +1055,7 @@ impl RtEngine {
             project_pending: None,
             project_waiting: None,
             project_sealed: false,
+            live_set: None,
             sr,
             playing: false,
             recording: false,
@@ -1384,6 +1387,7 @@ impl RtEngine {
             if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
+        self.live_set_tick(channels);
         self.routing_pipe.shared.explicit.store(self.routing.is_some(), std::sync::atomic::Ordering::Release);
         self.prepare_midi_output_block();
         self.sync_midi_clock();
@@ -1391,7 +1395,7 @@ impl RtEngine {
         self.maintain_provider_preview();
         self.routing_pipe.recorder.preview(self.provider_preview.is_some());
         if let Some(history) = &mut self.history_measurement {
-            history.routing_compatibility(self.routing.is_none());
+            history.routing_compatibility(self.routing.is_none() && !self.live_set.as_ref().is_some_and(|stage| stage.transitioning()));
             history.service_requests([self.decks[0].history_key, self.decks[1].history_key]);
         }
         self.performance.publish_decks(self.deck_activity());
@@ -1572,6 +1576,7 @@ impl RtEngine {
             self.audible.push(&self.decks);
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
+        self.live_set_mix(out, channels);
         self.project.publish_timeline(self.timeline_seconds());
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));

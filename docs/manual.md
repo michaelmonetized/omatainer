@@ -2782,6 +2782,70 @@ Replace the document with an empty session and factory sampler resources only af
 
 Workflow: Save and reopen.
 
+### Next live set
+
+One staged native project
+
+Preload and cue the next set while the current performance continues. Review its path, cue position, fade and unsaved-work decision before transition.
+
+Workflow: Save and reopen.
+
+### Next live set path
+
+Native .omat file
+
+Choose an embedded native project for bounded preflight. The current graph remains active; missing audio and unavailable processors refuse preload.
+
+Workflow: Save and reopen.
+
+### Preload next set
+
+One project; 256 MiB PCM
+
+Validate embedded audio and prepare processors on a background worker. Standard stereo master routes are required. Leave performance protection deliberately before preloading.
+
+Workflow: Save and reopen.
+
+### Cue next set
+
+Outputs 3/4 on the current device
+
+Listen to the next set through a separate stereo pair without changing the outgoing master. At least four output channels are required. Cue starts remembered clips and loaded decks and holds its position when stopped.
+
+Workflow: Save and reopen.
+
+### Live-set fade seconds
+
+0.01 to 30 seconds
+
+Choose a linear sample-by-sample fade between both complete renderer graphs. Active outgoing decks and effect histories continue until the fade finishes.
+
+Workflow: Save and reopen.
+
+### Discard current unsaved edits at transition
+
+Explicit current-document decision
+
+Allow the transition to retire unsaved current work. Save the current project first if you need those edits; preload itself does not discard them.
+
+Workflow: Save and reopen.
+
+### Transition to next set
+
+Reviewed current revision
+
+Commit the ready set at the next admitted audio block. Continue from its cue position, fade the outgoing graph and retire its storage on the worker. Recording, changed state and protected mode refuse it.
+
+Workflow: Save and reopen.
+
+### Cancel next set
+
+Before renderer commit
+
+Cancel preload or staging while preserving the current performance. A committed transition completes and cannot be undone by this button. Safety stop or silence remains authoritative.
+
+Workflow: Save and reopen.
+
 ### Open project
 
 Native .omat file
