@@ -158,6 +158,19 @@ pub fn short_text(value: &str, limit: usize) -> &str {
     &value[..end]
 }
 
+/// Bound a text prefix by its JSON wire size.
+/// Takes UTF-8 text and an escaped-byte limit; returns a whole-character prefix excluding the two enclosing quotes.
+pub fn short_json_text(value: &str, limit: usize) -> &str {
+    let mut bytes = 0;
+    let mut end = 0;
+    for (offset, character) in value.char_indices() {
+        let cost = match character { '"' | '\\' | '\n' | '\r' | '\t' | '\u{8}' | '\u{c}' => 2, '\0'..='\u{1f}' => 6, _ => character.len_utf8() };
+        if bytes + cost > limit { break; }
+        bytes += cost; end = offset + character.len_utf8();
+    }
+    &value[..end]
+}
+
 pub fn reply(
     stream: &mut UnixStream,
     value: &serde_json::Value,

@@ -292,8 +292,8 @@ fn state(
         Axis::Scene => &layout.scenes,
     };
     let objects: Vec<_> = slots.iter().skip(page.offset).take(page.limit).map(|slot| {
-        let item = &items[*slot]; json!({"target":Target {namespace:Key(layout.namespace),axis:page.axis,id:ObjectId(item.id.0)},
-            "name":ipc_transport::short_text(&item.name,32),"name_truncated":item.name.len()>32,"color":item.color})
+        let item = &items[*slot]; let name = ipc_transport::short_json_text(&item.name,32); json!({"target":Target {namespace:Key(layout.namespace),axis:page.axis,id:ObjectId(item.id.0)},
+            "name":name,"name_truncated":name.len()<item.name.len(),"color":item.color})
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
