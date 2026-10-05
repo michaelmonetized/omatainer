@@ -146,7 +146,9 @@
       "release_value": 0,
       "sha256": "634b178e91a7707027302f99f97be1dac0810b382f9b7880ad8dd19410f220a4",
       "path": "target/hardware/ns7-strip-release-capture.txt"
-    }
+    },
+    "ns7_strip_release_engine_position_confirmed": true,
+    "ns7_strip_release_engine_position_receipt": "docs/validation/ns7-strip-release-receipt.json"
   },
   "runtime": {
     "ns7_buffer_frames": 512,
@@ -429,6 +431,40 @@
       "workspace": 9,
       "gui_mapped": true
     },
-    "strip_release_listening_pending": true
+    "strip_release_listening_pending": true,
+    "strip_release_after_controls_audio": {
+      "backend_errors": 0,
+      "callbacks": 62233,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 2993197,
+        "channels": 4,
+        "elapsed_ns": 189376,
+        "frames": 132,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 180500,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 3574153,
+      "max_overrun_ns": 0
+    },
+    "strip_release_after_controls_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 571112,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 571112,
+      "received": 571112,
+      "resets": 0
+    },
+    "strip_release_after_controls_feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 16596
+    }
   }
 }

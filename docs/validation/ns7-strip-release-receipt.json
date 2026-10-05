@@ -1,0 +1,109 @@
+{
+  "source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
+  "binary_sha256": "a1fd33650d25aaeb3d2f6c93ce772d87f86053e3ef0e414696739979b2ef3567",
+  "scope": "Physical left-strip input and returned engine playhead; physical listening confirmation pending",
+  "deck": 0,
+  "strip_messages": 359,
+  "release_messages": 51,
+  "other_deck_position_unchanged": true,
+  "final_touched_value": 22,
+  "release_value": 0,
+  "expected_touched_position_seconds": 45.968986931748276,
+  "control_events": [
+    {
+      "elapsed_seconds": 29.485686,
+      "wire_channel": 0,
+      "cc": 69,
+      "value": 34
+    },
+    {
+      "elapsed_seconds": 29.515774,
+      "wire_channel": 0,
+      "cc": 69,
+      "value": 24
+    },
+    {
+      "elapsed_seconds": 29.546206,
+      "wire_channel": 0,
+      "cc": 69,
+      "value": 22
+    },
+    {
+      "elapsed_seconds": 29.586178,
+      "wire_channel": 0,
+      "cc": 69,
+      "value": 0
+    }
+  ],
+  "engine_states": [
+    {
+      "elapsed_seconds": 29.70018720626831,
+      "position_seconds": 46.114232965148524,
+      "playing": true,
+      "other_deck_position_seconds": 0.0
+    },
+    {
+      "elapsed_seconds": 29.909634351730347,
+      "position_seconds": 46.32971893240056,
+      "playing": true,
+      "other_deck_position_seconds": 0.0
+    },
+    {
+      "elapsed_seconds": 30.12211585044861,
+      "position_seconds": 46.54712518702441,
+      "playing": true,
+      "other_deck_position_seconds": 0.0
+    },
+    {
+      "elapsed_seconds": 30.333223581314087,
+      "position_seconds": 46.74659310998228,
+      "playing": true,
+      "other_deck_position_seconds": 0.0
+    },
+    {
+      "elapsed_seconds": 30.54423451423645,
+      "position_seconds": 46.95059992328898,
+      "playing": true,
+      "other_deck_position_seconds": 0.0
+    }
+  ],
+  "timestamp_method": "Wall-clock stamp before the read-only ALSA capture; samples every approximately 200 ms. No acoustic latency claim.",
+  "audio": {
+    "backend_errors": 0,
+    "callbacks": 62233,
+    "deadline_overruns": 0,
+    "device_lost": 0,
+    "dropped_buffers": null,
+    "last_callback": {
+      "budget_ns": 2993197,
+      "channels": 4,
+      "elapsed_ns": 189376,
+      "frames": 132,
+      "output_latency_ns": 0,
+      "overrun_ns": 0,
+      "render_cpu_ns": 180500,
+      "sample_rate": 44100
+    },
+    "max_elapsed_ns": 3574153,
+    "max_overrun_ns": 0
+  },
+  "midi_input": {
+    "coalesced": 0,
+    "disconnected": 0,
+    "dispatched": 571112,
+    "dropped": 0,
+    "oversized": 0,
+    "queued": 571112,
+    "received": 571112,
+    "resets": 0
+  },
+  "midi_feedback": {
+    "connected": 4,
+    "failed": 0,
+    "sent": 16596
+  },
+  "artifacts": {
+    "strip_events_sha256": "f7b1811f4c1fbfbb411891ef4f71ca0239010a5fba80511a456053709770df19",
+    "engine_states_sha256": "80bc83bb84a381c79e8c8ccc3cb0092b1fac8e146b6195aebd7b90d294e86279"
+  }
+}
