@@ -1,31 +1,35 @@
 {
   "audio": {
     "backend_errors": 0,
-    "callbacks": 345,
+    "callbacks": 346,
     "deadline_overruns": 0,
     "device_lost": 0,
     "dropped_buffers": null,
     "last_callback": {
-      "budget_ns": 22993197,
+      "budget_ns": 23015873,
       "channels": 4,
-      "elapsed_ns": 10681740,
-      "frames": 1014,
+      "elapsed_ns": 8657824,
+      "frames": 1015,
       "output_latency_ns": 0,
       "overrun_ns": 0,
-      "render_cpu_ns": 10134041,
+      "render_cpu_ns": 8214828,
       "sample_rate": 44100
     },
-    "max_elapsed_ns": 16636655,
+    "max_elapsed_ns": 11810113,
     "max_overrun_ns": 0
   },
-  "input_captured_frames": 266752,
+  "input_captured_frames": 267776,
   "input_overflow": 0,
   "input_status": "Input enabled with a bounded two-block cushion. Startup silence, missing frames, source discontinuities and overflow are reported separately; independent clocks can still drift.",
   "input_underrun": 0,
+  "midi_clock_without_pcm": {
+    "pcm_closed": true,
+    "playback_frames": 4457
+  },
   "midi_feedback": {
     "connected": 3,
     "failed": 0,
-    "sent": 86
+    "sent": 88
   },
   "midi_input": {
     "coalesced": 0,
@@ -37,13 +41,25 @@
     "received": 1,
     "resets": 0
   },
+  "monitor": {
+    "active": false,
+    "available": true,
+    "faders": [
+      1.0,
+      1.0
+    ],
+    "master": false,
+    "mix": 0.5,
+    "volume": 0.0
+  },
   "ns7_midi_errors": 0,
-  "ns7_midi_input_bytes": 3,
-  "ns7_midi_output_bytes": 9,
-  "ns7_pcm_capture_frames": 290424,
+  "ns7_midi_input_bytes": 0,
+  "ns7_midi_output_bytes": 13,
+  "ns7_pcm_capture_frames": 302312,
   "ns7_pcm_errors": 0,
-  "ns7_pcm_feedback_frames": 6584,
-  "ns7_pcm_playback_frames": 290466,
+  "ns7_pcm_feedback_frames": 6855,
+  "ns7_pcm_playback_frames": 302290,
+  "ns7_pcm_startup_partial": 0,
   "output": "Plan { graph: Routes { outputs: [], inputs: [] }, backend: \"ALSA\", device: \"sysdefault:CARD=NS7\", channels: 4, rate: 44100, format: I32, buffer: Some(2048), warning: None }",
-  "recorded_frames": 220167
+  "recorded_frames": 221035
 }

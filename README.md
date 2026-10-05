@@ -96,7 +96,10 @@ it never resumes playback automatically. If both devices fail, the stopped sessi
 still supports Save, New/Open and Close while you recover an output. An unavailable
 startup setup offers **Use system default audio this time** without changing the
 saved profile. Projects without explicit routing send main left/right to outputs 1/2; mono sums both channels and extra
-channels are silent. There is no separate headphone cue bus yet.
+channels are silent. The original NS7's native four-channel ALSA output adds its
+HEADPHONE MIX, HEADPHONE MODE and headphone volume controls on outputs 3/4.
+Headphone volume starts at zero until the knob moves. Explicit output aliases
+retain their channel assignments.
 
 The audio window lists advertised input/output capabilities and distinguishes the
 backend-accepted logical configuration from observed callback sizes. Physical
