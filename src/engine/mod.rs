@@ -1921,10 +1921,6 @@ impl RtEngine {
                 d.target_rate = d.play_rate();
             }
             d.target_rate *= d.controls.multiplier() * transport;
-            if let Some(position) = &mut d.controls.forward {
-                if d.playing { *position += f64::from(d.target_rate.abs()) * d.audio.as_ref().map_or(sr, |a| f64::from(a.sr)) / sr; }
-                if d.loop_on && d.loop_len > 1.0 && *position >= d.loop_start + d.loop_len { *position = d.loop_start + (*position - d.loop_start).rem_euclid(d.loop_len); }
-            }
             if d.controls.braking {
                 d.rate = d.controls.brake_rate * transport;
             } else if d.touching {
@@ -1947,6 +1943,11 @@ impl RtEngine {
                     d.rate = d.target_rate;
                 }
                 d.scratch *= 0.85;
+            }
+            let forward_rate = if d.follows_spindle() { d.spindle.as_ref().unwrap().rate().abs() } else { d.target_rate.abs() };
+            if let Some(position) = &mut d.controls.forward {
+                if d.playing { *position += f64::from(forward_rate) * d.audio.as_ref().map_or(sr, |a| f64::from(a.sr)) / sr; }
+                if d.loop_on && d.loop_len > 1.0 && *position >= d.loop_start + d.loop_len { *position = d.loop_start + (*position - d.loop_start).rem_euclid(d.loop_len); }
             }
             let before_position = d.pos;
             if d.rendering() {

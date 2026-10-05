@@ -403,3 +403,26 @@ fn ns7_controls_loop_undo_restores_inactive_length_and_selected_bank() {
     assert_eq!(rt.decks[0].controls.status().loop_slot, 0);
     assert_eq!(rt.decks[0].loop_len, length * 2.0);
 }
+
+#[test]
+fn ns7_controls_bleep_return_uses_the_real_free_spindle_speed() {
+    let (_engine, mut rt) = fixture();
+    rt.apply(Command::DeckPlay { deck: 0 });
+    rt.apply(Command::DeckSpindle {
+        source: 42,
+        deck: 0,
+        motion: spindle::Motion {
+            ticks: 0,
+            rate: 0.94,
+            at: Instant::now(),
+            hold: 0.05,
+        },
+    });
+    render(&mut rt, 500);
+    let start = rt.decks[0].pos;
+    hold(&mut rt, 1, Button::Bleep, true);
+    render(&mut rt, 1200);
+    assert!(rt.decks[0].pos < start - 1000.0);
+    hold(&mut rt, 1, Button::Bleep, false);
+    assert!((rt.decks[0].pos - start - f64::from(0.94_f32) * 1200.0).abs() < 0.01);
+}
