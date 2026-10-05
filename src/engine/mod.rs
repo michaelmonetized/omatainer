@@ -1889,8 +1889,7 @@ impl RtEngine {
             if d.touching {
                 d.rate = d.scratch;
             } else if d.vinyl && d.spindle.is_some() {
-                let source_rate = d.audio.as_ref().map_or(sr, |audio| f64::from(audio.sr));
-                d.spindle.as_mut().unwrap().tempo(d.target_rate, d.pos / source_rate);
+                d.spindle.as_mut().unwrap().tempo(d.target_rate);
                 d.rate = d.spindle.as_ref().unwrap().rate();
             } else {
                 if mapped_sync.is_some() { d.rate = d.target_rate; }

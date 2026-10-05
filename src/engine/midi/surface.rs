@@ -129,6 +129,57 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a timestamped capture from the connected original NS7"]
+    fn ns7_captured_free_rotation_preserves_audio_continuity() {
+        use crate::engine::spindle::Playback;
+        use std::time::{Duration, Instant};
+        let path = std::env::var("OMATAINER_NS7_SPINDLE_CAPTURE").unwrap();
+        let text = std::fs::read_to_string(path).unwrap();
+        let mut events = text.lines().filter_map(|line| {
+            let fields = line.split_whitespace().map(|v| v.parse::<f64>().unwrap()).collect::<Vec<_>>();
+            (fields.len() == 5 && fields[0] >= 52.0 && fields[0] < 59.0 && fields[1] == 10.0 && fields[3] == 0.0)
+                .then(|| (fields[0] - 52.0, fields[4] as u8))
+        }).peekable();
+        let map = numark_ns7();
+        let mut decoder = Decoder::default();
+        let (commands, received) = CommandPort::channel(256);
+        let at = Instant::now();
+        let mut spindle = None;
+        let (mut previous, mut peak, mut minimum, mut maximum, mut count) = (None::<f64>, 0.0_f64, f32::MAX, f32::MIN, 0);
+        for frame in 0..7 * 44100 {
+            let seconds = frame as f64 / 44100.0;
+            let now = at + Duration::from_secs_f64(seconds);
+            while let Some(&(seconds, value)) = events.peek() {
+                if at + Duration::from_secs_f64(seconds) > now { break; }
+                decoder.input_at(&map, &[0xb0, 0, value], &commands, 42, at + Duration::from_secs_f64(seconds));
+                events.next();
+            }
+            if frame % 128 == 0 {
+                for command in received.try_iter() {
+                    if let Command::DeckSpindle { motion, .. } = command {
+                        if let Some(spindle) = &mut spindle { Playback::update(spindle, motion); }
+                        else { spindle = Some(Playback::new(42, motion, 10.0)); }
+                        count += 1;
+                    }
+                }
+            }
+            let Some(spindle) = &mut spindle else { continue; };
+            if frame % 128 == 0 { spindle.begin(now); }
+            let (position, rate) = spindle.next(44100.0);
+            let sample = (std::f64::consts::TAU * 1000.0 * position).sin();
+            if frame > 44100 {
+                if let Some(previous) = previous { peak = peak.max((sample - previous).abs()); }
+                minimum = minimum.min(rate); maximum = maximum.max(rate);
+            }
+            previous = Some(sample);
+        }
+        eprintln!("captured NS7: {count} motion updates; signed speed {minimum}..{maximum}; 1 kHz peak adjacent sample difference {peak}");
+        assert!(count > 1000);
+        assert!(minimum > 0.85 && maximum < 1.05, "free rotation must remain forward and stable");
+        assert!(peak < 0.16, "input arrivals must not splice the audio waveform");
+    }
+
+    #[test]
     fn sp1_knobs_require_a_complete_pair_and_shifted_pads_delete_the_right_deck() {
         let map = pioneer_sp1();
         let mut decoder = Decoder::default();
