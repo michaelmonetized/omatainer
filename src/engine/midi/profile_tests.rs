@@ -130,17 +130,24 @@ fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck
     for (deck, cc) in [(0usize, 0x45), (1, 0x4d)] {
         let other = 1 - deck;
         let other_position = rt.decks[other].pos;
-        for value in [1, 38, 64, 120, 127] {
+        for value in [1, 38, 64, 120, 126] {
             input.push(&[0xb0, cc, value]);
             rt.process(&mut [0.0; 256]);
             let position = rt.decks[deck].pos;
-            let expected = (f64::from(f32::from(value) / 127.0) * 48000.0).min(47999.0);
+            let expected = f64::from(f32::from(value) / 127.0) * 48000.0;
             assert!((position - expected).abs() < 0.001, "deck {deck}, value {value}: {position}, expected {expected}");
             input.push(&[0xb0, cc, 0]);
             rt.process(&mut [0.0; 256]);
             assert_eq!(rt.decks[deck].pos, position);
             assert_eq!(rt.decks[other].pos, other_position);
         }
+        input.push(&[0xb0, cc, 127]);
+        rt.process(&mut []);
+        assert_eq!(rt.decks[deck].pos, 48000.0);
+        input.push(&[0xb0, cc, 0]);
+        rt.process(&mut []);
+        assert_eq!(rt.decks[deck].pos, 48000.0);
+        assert_eq!(rt.decks[other].pos, other_position);
         input.push(&[0xb0, cc, 38, cc, 39, cc, 40, cc, 0]);
         rt.apply(Command::DeckPlay { deck: deck as u8 });
         rt.process(&mut [0.0; 256]);
