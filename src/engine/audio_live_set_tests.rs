@@ -35,7 +35,7 @@ fn large_state() -> project::State {
     state.session = Some(session::Layout::fresh(state.tracks.iter().map(|track| track.name.clone()), state.scene_fx.len()));
     for bank in &mut state.banks {
         bank.media = [None; 16];
-        bank.settings.as_mut().unwrap().slots = std::array::from_fn(|_| crate::sampler_bank::Slot::default());
+        Arc::make_mut(bank.settings.as_mut().unwrap()).slots = std::array::from_fn(|_| crate::sampler_bank::Slot::default());
     }
     state.builtin = [None; 2];
     for deck in &mut state.decks { deck.audio = Some(0); }

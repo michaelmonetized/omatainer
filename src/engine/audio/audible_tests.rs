@@ -36,7 +36,9 @@ fn captured_clicks_and_output_positions_agree_across_source_rates_and_a_tempo_ch
         rt.decks[0].grid = Some(
             Grid::new(0.0, 120.0)
                 .unwrap()
-                .set_anchor(1.0, 90.0)
+                .with_anchor(2.0, 1.0)
+                .unwrap()
+                .with_anchor(4.0, 1.0 + 4.0 / 3.0)
                 .unwrap(),
         );
         rt.decks[0].sync = true;
