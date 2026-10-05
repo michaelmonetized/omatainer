@@ -20,6 +20,23 @@ fn wait(mut condition: impl FnMut() -> bool) {
     }
 }
 
+/// Select the three stage controllers.
+/// Takes no arguments; returns exact discovered input names, excluding the resetting MPD232.
+fn stage_inputs() -> midi::InputPolicy {
+    let probe = midir::MidiInput::new("omatainer-stage-qualification").unwrap();
+    let names = probe
+        .ports()
+        .iter()
+        .filter_map(|port| probe.port_name(port).ok())
+        .filter(|name| {
+            name.contains("Numark NS7:")
+                || name.contains("Pioneer DDJ-SP1:")
+                || name.contains("APC40")
+        })
+        .collect();
+    midi::InputPolicy::Selected(names)
+}
+
 #[test]
 #[ignore = "Requires a powered original NS7 with snd_ns7 loaded and OMATAINER_NS7_QUALIFY_DIR on /home"]
 fn original_ns7_production_audio_and_midi_io() {
@@ -50,6 +67,7 @@ fn original_ns7_production_audio_and_midi_io() {
     let capture_before = counter("pcm_capture_frames");
     let feedback_before = counter("pcm_feedback_frames");
     let pcm_errors_before = counter("pcm_errors");
+    let partial_before = counter("pcm_feedback_partial");
     let midi_errors_before = counter("midi_errors");
     let (engine, mut rt) = Engine::headless_for_test(44100, 256);
     rt.master = 0.0;
@@ -101,7 +119,9 @@ fn original_ns7_production_audio_and_midi_io() {
         ..Default::default()
     };
     let audio = audio::start_with_settings(rt, &settings).unwrap();
-    let midi = midi::MidiHub::start(engine.cmd.clone(), engine.snap.clone()).unwrap();
+    let midi =
+        midi::MidiHub::start_with_policy(engine.cmd.clone(), engine.snap.clone(), stage_inputs())
+            .unwrap();
     wait(|| {
         engine.cmd.audio_metrics().callbacks > 20 && counter("midi_output_bytes") > output_before
     });
@@ -157,7 +177,8 @@ fn original_ns7_production_audio_and_midi_io() {
         "ns7_midi_output_bytes":counter("midi_output_bytes")-output_before,
         "ns7_midi_input_bytes":counter("midi_input_bytes")-input_before,"ns7_midi_errors":counter("midi_errors")-midi_errors_before,
         "ns7_pcm_playback_frames":counter("pcm_playback_frames")-playback_before,"ns7_pcm_capture_frames":counter("pcm_capture_frames")-capture_before,
-        "ns7_pcm_feedback_frames":counter("pcm_feedback_frames")-feedback_before,"ns7_pcm_errors":counter("pcm_errors")-pcm_errors_before
+        "ns7_pcm_feedback_frames":counter("pcm_feedback_frames")-feedback_before,"ns7_pcm_errors":counter("pcm_errors")-pcm_errors_before,
+        "ns7_pcm_startup_partial":counter("pcm_feedback_partial")-partial_before
     });
     std::fs::write(
         directory.join("receipt.json"),
@@ -166,6 +187,7 @@ fn original_ns7_production_audio_and_midi_io() {
     .unwrap();
     assert_eq!(metrics.backend_errors, 0, "{receipt}");
     assert!(snapshot.monitor.available, "{receipt}");
+    assert_eq!(receipt["ns7_pcm_errors"], 0, "{receipt}");
     assert!(
         !engine.routing.shared.fault.load(Ordering::Acquire),
         "{receipt}"
@@ -237,23 +259,9 @@ fn original_ns7_headphone_listening() {
         buffer_frames: Some(2048),
         ..Default::default()
     };
-    let probe = midir::MidiInput::new("omatainer-listening-discover").unwrap();
-    let names = probe
-        .ports()
-        .iter()
-        .filter_map(|port| probe.port_name(port).ok())
-        .filter(|name| {
-            name.contains("Numark NS7:")
-                || name.contains("Pioneer DDJ-SP1:")
-                || name.contains("APC40")
-        })
-        .collect();
-    let midi = midi::MidiHub::start_with_policy(
-        engine.cmd.clone(),
-        engine.snap.clone(),
-        midi::InputPolicy::Selected(names),
-    )
-    .unwrap();
+    let midi =
+        midi::MidiHub::start_with_policy(engine.cmd.clone(), engine.snap.clone(), stage_inputs())
+            .unwrap();
     let audio = audio::start_with_settings(rt, &settings).unwrap();
     wait(|| engine.cmd.audio_metrics().callbacks > 20);
     let started = Instant::now();

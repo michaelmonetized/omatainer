@@ -18,8 +18,7 @@ if [[ -d /sys/module/snd_ns7 ]]; then
     built=$(modinfo -F srcversion "$module")
     if [[ -z $installed || $installed != $built ]]; then
         for interface in /sys/bus/usb/drivers/snd_ns7/*:*(N); do
-            [[ -f $interface/bInterfaceNumber ]] || continue
-            number=$(cat "$interface/bInterfaceNumber")
+            number=$(cat "$interface/bInterfaceNumber" 2>/dev/null) || continue
             if [[ $number == 00 ]]; then
                 print -r -- "${interface:t}" | sudo -n tee /sys/bus/usb/drivers/snd_ns7/unbind >/dev/null
             fi

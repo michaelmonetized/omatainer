@@ -69,6 +69,7 @@ struct ns7 {
 	atomic64_t audio_errors;
 	atomic64_t feedback_frames;
 	atomic64_t feedback_idle;
+	atomic64_t feedback_partial;
 };
 
 static void ns7_send_locked(struct ns7 *chip);
@@ -271,6 +272,11 @@ static void ns7_feedback_complete(struct urb *urb)
 			chip->feedback_head = next;
 		}
 		atomic64_inc(&chip->feedback_frames);
+	} else if (!urb->status && !urb->iso_frame_desc[0].status &&
+		   urb->iso_frame_desc[0].actual_length == 3 &&
+		   wire[0] > 0 && wire[0] < 43 &&
+		   !chip->pcm[0].running && !chip->pcm[1].running) {
+		atomic64_inc(&chip->feedback_partial);
 	} else if (!urb->status && !urb->iso_frame_desc[0].status &&
 		   (!urb->iso_frame_desc[0].actual_length ||
 		    (urb->iso_frame_desc[0].actual_length == 3 && !wire[0]))) {
@@ -1056,6 +1062,16 @@ static ssize_t pcm_feedback_idle_show(struct device *device,
 }
 static DEVICE_ATTR_RO(pcm_feedback_idle);
 
+static ssize_t pcm_feedback_partial_show(struct device *device,
+					struct device_attribute *attr,
+					char *buffer)
+{
+	struct ns7 *chip = dev_get_drvdata(device);
+	return sysfs_emit(buffer, "%lld\n",
+			  atomic64_read(&chip->feedback_partial));
+}
+static DEVICE_ATTR_RO(pcm_feedback_partial);
+
 static ssize_t pcm_errors_show(struct device *device,
 			       struct device_attribute *attr, char *buffer)
 {
@@ -1068,7 +1084,8 @@ static struct attribute *ns7_attrs[] = {
     &dev_attr_midi_input_bytes.attr,   &dev_attr_midi_output_bytes.attr,
     &dev_attr_midi_errors.attr,	       &dev_attr_pcm_playback_frames.attr,
     &dev_attr_pcm_capture_frames.attr, &dev_attr_pcm_feedback_frames.attr,
-    &dev_attr_pcm_errors.attr, &dev_attr_pcm_feedback_idle.attr, NULL,
+    &dev_attr_pcm_errors.attr, &dev_attr_pcm_feedback_idle.attr,
+    &dev_attr_pcm_feedback_partial.attr, NULL,
 };
 ATTRIBUTE_GROUPS(ns7);
 
