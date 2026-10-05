@@ -91,6 +91,7 @@ pub(super) struct State {
     delete: bool,
     delete_used: bool,
     auto_loop: bool,
+    auto_button: Option<u8>,
     loops: [Option<(f64, f64)>; 8],
     selected: usize,
     edit: u8,
@@ -115,6 +116,7 @@ impl Default for State {
             delete: false,
             delete_used: false,
             auto_loop: false,
+            auto_button: None,
             loops: [None; 8],
             selected: 0,
             edit: 0,
@@ -214,6 +216,7 @@ impl State {
         self.counts.fill(0);
         self.forward = None;
         self.preview = None;
+        self.auto_button = None;
         self.delete = false;
         self.delete_used = false;
         self.braking = false;
@@ -244,6 +247,7 @@ impl State {
     /// Takes this state; returns no value and retains physical knob/switch settings.
     pub fn media_changed(&mut self) {
         self.loops.fill(None);
+        self.auto_button = None;
         self.selected = 0;
         self.edit = 0;
         self.edit_ticks = None;
@@ -350,7 +354,13 @@ impl RtEngine {
             Control::Keylock => self.apply(Command::DeckKeylock { deck }),
             Control::PitchRange => self.apply(Command::DeckPitchRange { deck }),
             Control::Strip { value } => {
-                if self.decks[index].loop_on { self.apply(Command::DeckControl { source, deck, control: Control::LoopToggle }); }
+                if self.decks[index].loop_on {
+                    self.apply(Command::DeckControl {
+                        source,
+                        deck,
+                        control: Control::LoopToggle,
+                    });
+                }
                 self.apply(Command::DeckSeek { deck, frac: value });
                 let d = &mut self.decks[index];
                 if d.controls.forward.is_some() {
@@ -399,18 +409,31 @@ impl RtEngine {
             Control::LoopMode => {
                 let c = &mut self.decks[index].controls;
                 c.auto_loop = !c.auto_loop;
+                c.auto_button = None;
                 c.edit = 0;
                 c.edit_ticks = None;
             }
             Control::LoopButton { index: button } => {
                 if self.decks[index].controls.auto_loop {
-                    if self.decks[index].loop_on {
-                        self.decks[index].loop_on = false;
+                    let d = &mut self.decks[index];
+                    if d.loop_on && d.controls.auto_button == Some(button) {
+                        d.clear_loop();
+                        d.controls.loops[d.controls.selected] = None;
+                        d.controls.auto_button = None;
+                    } else {
+                        d.loop_on = true;
+                        d.loop_start = if self.quantize && d.grid.is_some() {
+                            d.grid_snap(d.pos, self.sr, self.bpm)
+                        } else {
+                            d.pos
+                        };
+                        d.loop_len =
+                            d.grid_span(d.loop_start, f64::from(1 << button), self.sr, self.bpm);
+                        d.controls.auto_button = Some(button);
                     }
-                    self.apply(Command::DeckLoop {
-                        deck,
-                        beats: (1 << button) as f32,
-                    });
+                    d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+                    d.publish_preparation();
+                    self.project.edited();
                 } else {
                     self.deck_control(
                         source,
@@ -458,6 +481,7 @@ impl RtEngine {
                 let d = &mut self.decks[index];
                 d.controls.edit = 0;
                 d.controls.edit_ticks = None;
+                d.controls.auto_button = None;
                 d.controls.selected = (d.controls.selected + 1) % d.controls.loops.len();
                 if let Some((start, length)) = d.controls.loops[d.controls.selected] {
                     d.loop_start = start;

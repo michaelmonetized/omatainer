@@ -112,6 +112,9 @@ impl Plan {
                 Name::Deck,
                 420 + (*deck % 2) as u64,
             ),
+            DeckControl { deck, control: super::super::deck_controls::Control::LoopButton { .. }, .. } if rt.decks[usize::from(*deck)].controls.status().auto_loop => (
+                Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
+            ),
             DeckControl { deck, control: super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. }, .. } => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),

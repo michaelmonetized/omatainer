@@ -207,6 +207,11 @@ fn ns7_controls_manual_auto_loop_banks_scaling_shift_and_edge_edit_are_bounded()
         assert_eq!(rt.decks[0].loop_len, 24000.0 * f64::from(1 << button));
         assert!(rt.decks[0].loop_on);
     }
+    control(&mut rt, 1, Control::LoopButton { index: 3 });
+    assert!(!rt.decks[0].loop_on);
+    assert_eq!(rt.decks[0].loop_len, 0.0);
+    control(&mut rt, 1, Control::LoopButton { index: 3 });
+    assert!(rt.decks[0].loop_on);
     control(&mut rt, 1, Control::LoopMode);
     control(&mut rt, 1, Control::LoopButton { index: 0 });
     rt.decks[0].vinyl = false;
@@ -336,12 +341,26 @@ fn ns7_controls_keylock_keeps_pitch_during_free_rotation_and_bypasses_for_scratc
 #[test]
 fn ns7_controls_cue_preview_plays_with_a_stopped_physical_spindle() {
     let (_engine, mut rt) = fixture();
-    rt.apply(Command::DeckSpindle { source: 42, deck: 0, motion: spindle::Motion { ticks: 0, rate: 0.0, at: Instant::now(), hold: 0.008 } });
+    rt.apply(Command::DeckSpindle {
+        source: 42,
+        deck: 0,
+        motion: spindle::Motion {
+            ticks: 0,
+            rate: 0.0,
+            at: Instant::now(),
+            hold: 0.008,
+        },
+    });
     hold(&mut rt, 1, Button::Cue, true);
     let mut energy = 0.0;
-    for _ in 0..2000 { let (l, r) = rt.render_deck(0); energy += l * l + r * r; }
-    assert!(energy > 20.0); assert!(rt.decks[0].pos > rt.decks[0].cue_pos + 1800.0);
-    hold(&mut rt, 1, Button::Cue, false); render(&mut rt, 1000);
+    for _ in 0..2000 {
+        let (l, r) = rt.render_deck(0);
+        energy += l * l + r * r;
+    }
+    assert!(energy > 20.0);
+    assert!(rt.decks[0].pos > rt.decks[0].cue_pos + 1800.0);
+    hold(&mut rt, 1, Button::Cue, false);
+    render(&mut rt, 1000);
     assert_eq!(rt.decks[0].last_output, [0.0; 2]);
 }
 
@@ -353,7 +372,10 @@ fn ns7_controls_tap_updates_preparation_tempo_without_overriding_a_locked_grid()
     control(&mut rt, 1, Control::Tap);
     assert!((rt.decks[0].musical_bpm() - 60.0).abs() < 0.1);
     let grid = crate::engine::beatgrid::Grid::new(0.0, 120.0).unwrap();
-    let receipt = crate::engine::load_receipt::Receipt::new(); receipt.set_grid_protection(true, Some(grid));
-    rt.decks[0].load_receipt = Some(receipt); rt.decks[0].grid = Some(grid);
-    control(&mut rt, 1, Control::Tap); assert_eq!(rt.decks[0].grid, Some(grid));
+    let receipt = crate::engine::load_receipt::Receipt::new();
+    receipt.set_grid_protection(true, Some(grid));
+    rt.decks[0].load_receipt = Some(receipt);
+    rt.decks[0].grid = Some(grid);
+    control(&mut rt, 1, Control::Tap);
+    assert_eq!(rt.decks[0].grid, Some(grid));
 }
