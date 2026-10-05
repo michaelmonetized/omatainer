@@ -67,6 +67,7 @@ enum GateKey {
     Audition(u64),
     Piano(u64),
     Touch { source: u64, deck: u8 },
+    Spindle { source: u64, deck: u8 },
     Preview { deck: u8, expected: u64 },
 }
 
@@ -550,6 +551,7 @@ impl CommandPort {
                     deck,
                     on: false,
                 },
+                GateKey::Spindle { source: owner, deck } if owner == source => Command::DeckSpindleRelease { source, deck },
                 _ => continue,
             };
             let _ = self.send(command);
@@ -644,7 +646,7 @@ impl CommandPort {
                 return fail(SubmissionError::InvalidTarget);
             }
         }
-        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckPreview { deck, .. } if *deck as usize >= super::DECKS) {
+        if matches!(&command, Command::DeckLoadLock { deck, .. } | Command::DeckPreview { deck, .. } | Command::DeckSpindle { deck, .. } | Command::DeckSpindleRelease { deck, .. } if *deck as usize >= super::DECKS) {
             return fail(SubmissionError::InvalidTarget);
         }
         if let Command::DeckLoadSelected { deck } = command {
@@ -888,6 +890,7 @@ fn project_release(command: &Command) -> bool {
             | Command::DeckPreview { on: false, .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
+            | Command::DeckSpindleRelease { .. }
             | Command::Stop
             | Command::StopTrack { .. }
             | Command::ReservedStop { .. }
@@ -979,6 +982,8 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
             },
             on,
         )),
+        Command::DeckSpindle { source, deck, .. } => Some((GateKey::Spindle { source, deck }, true)),
+        Command::DeckSpindleRelease { source, deck } => Some((GateKey::Spindle { source, deck }, false)),
         _ => None,
     }
 }
@@ -1241,6 +1246,8 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::DeckPreview { on: false, .. }
             | Command::DeckTouch { .. }
             | Command::MidiDeckTouch { .. }
+            | Command::DeckSpindle { .. }
+            | Command::DeckSpindleRelease { .. }
             | Command::Stop
             | Command::StopTrack { .. }
             | Command::ReservedStop { .. }

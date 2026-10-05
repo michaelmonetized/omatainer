@@ -1,5 +1,6 @@
 use super::{cbind, nbind, rbind, Action, MidiMap, RelativeEncoding, RelativeSpec, UnmappedNotes};
 use crate::engine::{Command, CommandPort};
+mod spindle;
 
 pub(super) fn pioneer_sp1() -> MidiMap {
     let mut bindings = Vec::new();
@@ -89,40 +90,42 @@ mod tests {
     fn ns7_wheels_wrap_both_directions_and_reset_without_moving() {
         let map = numark_ns7();
         let mut decoder = Decoder::default();
-        let (cmd, received) = CommandPort::channel(32);
-        for message in [
+        let (cmd, received) = CommandPort::channel(64);
+        let at = std::time::Instant::now();
+        for (i, message) in [
             [0xb0, 0, 126],
             [0xb0, 0, 127],
             [0xb0, 0, 0],
             [0xb0, 0, 127],
             [0xb0, 2, 2],
             [0xb0, 2, 1],
-        ] {
-            assert!(decoder.input(&map, &message, &cmd));
+        ].into_iter().enumerate() {
+            assert!(decoder.input_at(&map, &message, &cmd, 7, at + std::time::Duration::from_millis(i as u64 * 5)));
         }
         let commands = received.try_iter().collect::<Vec<_>>();
         assert!(
-            matches!(commands.as_slice(), [Command::DeckJog {deck:0,delta:a}, Command::DeckJog {deck:0,delta:b}, Command::DeckJog {deck:0,delta:c}, Command::DeckJog {deck:1,delta:d}] if *a==0.35 && *b==0.35 && *c == -0.35 && *d == -0.35)
+            matches!(commands.as_slice(), [Command::DeckSpindle {deck:0,motion:a,..}, Command::DeckSpindle {deck:0,motion:b,..}, Command::DeckSpindle {deck:0,motion:c,..}, Command::DeckSpindle {deck:0,motion:d,..}, Command::DeckSpindle {deck:1,motion:e,..}, Command::DeckSpindle {deck:1,motion:f,..}] if a.ticks==0 && b.ticks==1 && c.ticks==2 && d.ticks==1 && e.ticks==0 && f.ticks == -1 && f.rate < 0.0), "{commands:?}"
         );
         decoder.reset();
         decoder.input(&map, &[0xb0, 0, 20], &cmd);
-        assert!(received.try_iter().next().is_none());
+        assert!(matches!(received.try_iter().next(),Some(Command::DeckSpindle {motion,..}) if motion.ticks == 0 && motion.rate == 0.0));
     }
 
     #[test]
-    fn ns7_running_motor_reports_cannot_nudge_the_audio_clock() {
+    fn ns7_spindle_accumulation_preserves_ticks_and_bounds_command_traffic() {
         let map = numark_ns7();
         let mut decoder = Decoder::default();
-        let (cmd, received) = CommandPort::channel(32);
-        cmd.performance().publish_decks(1);
-        for position in [125,126,127,0,1] { decoder.input(&map, &[0xb0,0,position], &cmd); }
+        let (cmd, received) = CommandPort::channel(64);
+        let at = std::time::Instant::now();
+        for i in 0..=100 { decoder.input_at(&map, &[0xb0,0,(i * 2 % 128) as u8], &cmd, 42, at + std::time::Duration::from_millis(i)); }
+        let motions = received.try_iter().map(|c| match c { Command::DeckSpindle {source:42,deck:0,motion} => motion, _=>panic!("spindle must use its own clock") }).collect::<Vec<_>>();
+        assert_eq!(motions.len(),26);
+        assert_eq!(motions.last().unwrap().ticks,200);
+        assert_eq!(motions.last().unwrap().rate,1.0);
+        cmd.release_midi_source(41);
         assert!(received.try_iter().next().is_none());
-        decoder.input(&map, &[0xb0,2,50], &cmd);
-        decoder.input(&map, &[0xb0,2,51], &cmd);
-        assert!(matches!(received.try_iter().next(),Some(Command::DeckJog {deck:1,delta}) if delta == 0.35));
-        cmd.performance().publish_decks(0);
-        decoder.input(&map, &[0xb0,0,2], &cmd);
-        assert!(matches!(received.try_iter().next(),Some(Command::DeckJog {deck:0,delta}) if delta == 0.35));
+        cmd.release_midi_source(42);
+        assert!(matches!(received.try_iter().next(),Some(Command::DeckSpindleRelease {source:42,deck:0})));
     }
 
     #[test]
@@ -188,14 +191,14 @@ pub(super) fn numark_ns7() -> MidiMap {
 }
 
 pub(super) struct Decoder {
-    jog: [Option<u8>; 2],
+    spindles: [spindle::Spindle; 2],
     fx: [[Option<u8>; 3]; 2],
 }
 
 impl Default for Decoder {
     fn default() -> Self {
         Self {
-            jog: [None; 2],
+            spindles: std::array::from_fn(|_| spindle::Spindle::default()),
             fx: [[None; 3]; 2],
         }
     }
@@ -209,6 +212,16 @@ impl Decoder {
     /// Decode controller state into engine commands.
     /// Takes the factory profile, a complete wire message and command port; returns whether the message was consumed.
     pub(super) fn input(&mut self, map: &MidiMap, message: &[u8; 3], cmd: &CommandPort) -> bool {
+        self.input_at(map, message, cmd, 0, std::time::Instant::now())
+    }
+
+    pub(super) fn idle(&mut self, source: u64, cmd: &CommandPort) {
+        for (deck, spindle) in self.spindles.iter_mut().enumerate() { spindle.flush(source, deck as u8, std::time::Instant::now(), cmd); }
+    }
+
+    /// Decode a wire message with its original callback time and owner.
+    /// Takes profile, message, command port, source and time; returns whether it was consumed.
+    pub(super) fn input_at(&mut self, map: &MidiMap, message: &[u8; 3], cmd: &CommandPort, source: u64, at: std::time::Instant) -> bool {
         let [status, control, value] = *message;
         if map.name == "Numark NS7 (original)" && matches!(status, 0x90 | 0x80) && control == 0 {
             let _ = cmd.send(Command::Monitor(crate::engine::monitor::Control::Master(
@@ -245,15 +258,11 @@ impl Decoder {
         }
         if map.name == "Numark NS7 (original)" && status == 0xb0 && matches!(control, 0 | 2) {
             let deck = usize::from(control / 2);
-            if let Some(previous) = self.jog[deck].replace(value) {
-                let delta = (i16::from(value) - i16::from(previous) + 64).rem_euclid(128) - 64;
-                if delta != 0 && !cmd.performance().deck_active(deck) {
-                    let _ = cmd.send(Command::DeckJog {
-                        deck: deck as u8,
-                        delta: delta as f32 * 0.35,
-                    });
-                }
-            }
+            self.spindles[deck].position(value, at);
+            self.spindles[deck].flush(source, deck as u8, at, cmd);
+            return true;
+        }
+        if map.name == "Numark NS7 (original)" && matches!(status, 0xe0 | 0xe2) {
             return true;
         }
         if map.name == "Pioneer DDJ-SP1" {

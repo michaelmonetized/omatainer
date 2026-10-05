@@ -553,6 +553,8 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckJog { .. }
         | Command::DeckTouch { .. }
         | Command::MidiDeckTouch { .. }
+        | Command::DeckSpindle { .. }
+        | Command::DeckSpindleRelease { .. }
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }
@@ -650,6 +652,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
         | Command::SamplerSlotStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
+            | Command::DeckSpindleRelease { .. }
             | Command::ComposeDisarm
             | Command::LibraryFence { .. }
             | Command::Select { .. }
@@ -793,6 +796,7 @@ impl super::RtEngine {
             deck.playing = false;
             deck.stop_preview(self.sr);
             deck.touching = false;
+            deck.spindle = None;
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;
         }

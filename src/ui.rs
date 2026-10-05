@@ -61,6 +61,7 @@ mod audio_status;
 mod diagnostics;
 mod support;
 pub(crate) mod deck_time;
+mod deck_motion;
 use deck_time::{DeckTimeSettings, Readout, TimeMode};
 #[cfg(test)]
 mod deck_time_tests;
@@ -824,7 +825,7 @@ impl App {
         self.poll_named_crates();
         self.poll_prepare_queue();
         self.poll_session_history();
-        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
+        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing || d.platter.is_some());
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
         }) {
@@ -1176,6 +1177,9 @@ impl App {
     }
 
     fn platter_col(&mut self, ui: &mut Ui, t: &Theme, d: usize, snap: &crate::engine::DeckSnap, col: Color32, wave_h: f32) {
+        let mut presented = snap.clone();
+        deck_motion::present(&mut presented, Instant::now());
+        let snap = &presented;
         ui.vertical(|ui| {
             ui.set_width(wave_h);
             let readout = Readout::from_snapshot(snap, self.deck_time[d]);
@@ -2081,7 +2085,7 @@ fn platter(
         if readout.warning { t.red } else { t.accent },
     );
     let angle = if !t.reduced_motion && snap.frames > 1.0 {
-        (snap.pos / snap.frames) as f32 * std::f32::consts::TAU * 18.0
+        (snap.platter.map_or_else(|| snap.pos / f64::from(snap.source_sample_rate.max(1)) * (33.333333 / 60.0), |p| p.0).rem_euclid(1.0) * std::f64::consts::TAU) as f32
     } else {
         0.0
     };

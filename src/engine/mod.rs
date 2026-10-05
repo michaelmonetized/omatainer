@@ -79,6 +79,7 @@ mod midi_schedule_tests;
 #[cfg(test)]
 mod sample_rate_tests;
 mod snapshot;
+mod spindle;
 pub(crate) mod audible;
 pub mod session;
 #[cfg(test)]
@@ -330,6 +331,7 @@ pub struct HotCue {
 
 #[derive(Clone, Debug)]
 pub struct DeckRt {
+    spindle: Option<spindle::Playback>,
     load_receipt: Option<load_receipt::Receipt>,
     playback_active: bool,
     pub audio: Option<Arc<Sample>>,
@@ -385,7 +387,7 @@ pub struct DeckRt {
 impl DeckRt {
     /// Check whether this deck is rendering source audio.
     /// Takes this deck; returns true for play, touch or an explicitly admitted paused preview.
-    fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() }
+    fn rendering(&self) -> bool { self.playing || self.touching || self.preview_position.is_some() || self.vinyl && self.spindle.as_ref().is_some_and(|s| s.rate().abs() > 0.001) }
     /// Keep media replacement guarded while this deck renders or fades.
     /// Takes its renderer state; returns whether load protection still owns audible activity.
     fn media_active(&self) -> bool {
@@ -408,6 +410,7 @@ impl DeckRt {
 
     fn new(sr: f32) -> Self {
         Self {
+            spindle: None,
             load_receipt: None,
             playback_active: false,
             audio: None,
@@ -469,6 +472,10 @@ impl DeckRt {
     /// fade or clearing its filter history for every controller message.
     fn transition_to(&mut self, pos: f64, sr: f32, transition: DeckTransition) {
         self.pos = pos;
+        if matches!(transition, DeckTransition::Jump) {
+            let source_rate = self.audio.as_ref().map_or(sr, |a| a.sr as f32);
+            if let Some(spindle) = &mut self.spindle { spindle.rebase(pos / f64::from(source_rate)); }
+        }
         let source_rate = self.audio.as_ref().map_or(sr, |audio| audio.sr as f32);
         self.keylock_dsp.reset(pos, source_rate as f64 / sr as f64);
         self.keylock_render_mode = self.keylock_mode();
@@ -531,7 +538,7 @@ impl DeckRt {
         } else if !self.rendering() {
             keylock::Mode::Stopped
         } else {
-            keylock::mode(true, self.touching, self.rate)
+            keylock::mode(true, self.touching || self.vinyl && self.spindle.is_some(), self.rate)
         }
     }
 
@@ -680,6 +687,10 @@ struct PadTarget {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
+    #[serde(skip)]
+    pub(crate) captured_at: Option<Instant>,
+    #[serde(skip)]
+    pub(crate) platter: Option<(f64, f32)>,
     pub media_active: bool,
     pub previewing: bool,
     pub load_locked: bool,
@@ -922,6 +933,8 @@ pub enum Command {
     DeckJog { deck: u8, delta: f32 },
     DeckTouch { deck: u8, on: bool },
     MidiDeckTouch { source: u64, deck: u8, on: bool },
+    DeckSpindle { source: u64, deck: u8, motion: spindle::Motion },
+    DeckSpindleRelease { source: u64, deck: u8 },
     DeckPitch { deck: u8, value: f32 },
     DeckGain { deck: u8, value: f32 },
     DeckEq { deck: u8, band: u8, value: f32 },
@@ -1398,6 +1411,8 @@ impl RtEngine {
             if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
+        let spindle_now = Instant::now();
+        for deck in &mut self.decks { if let Some(spindle) = &mut deck.spindle { spindle.begin(spindle_now); } }
         self.live_set_tick(channels);
         self.routing_pipe.shared.explicit.store(self.routing.is_some(), std::sync::atomic::Ordering::Release);
         self.prepare_midi_output_block();
@@ -1598,7 +1613,7 @@ impl RtEngine {
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
         if frames > 0 && self.has_held_project_notes() { self.project.edited();self.history_held_changed(); }
         self.frames_done += frames as u64;
-        if self.frames_done % (self.sr as u64 / 8).max(1) < frames as u64 {
+        if self.frames_done % (self.sr as u64 / 60).max(1) < frames as u64 {
             self.publish();
         }
         self.performance.publish_output(&self.safety_output);
@@ -1873,6 +1888,10 @@ impl RtEngine {
             }
             if d.touching {
                 d.rate = d.scratch;
+            } else if d.vinyl && d.spindle.is_some() {
+                let source_rate = d.audio.as_ref().map_or(sr, |audio| f64::from(audio.sr));
+                d.spindle.as_mut().unwrap().tempo(d.target_rate, d.pos / source_rate);
+                d.rate = d.spindle.as_ref().unwrap().rate();
             } else {
                 if mapped_sync.is_some() { d.rate = d.target_rate; }
                 else { d.rate += (d.target_rate - d.rate) * d.rate_smoothing; }
@@ -1891,7 +1910,11 @@ impl RtEngine {
             }
             let before_position = d.pos;
             if d.rendering() {
-                if let Some((position,_)) = mapped_sync.filter(|_| !d.touching) { d.pos = position; }
+                if !d.touching && d.vinyl && d.spindle.is_some() {
+                    let (seconds, rate) = d.spindle.as_mut().unwrap().next(self.sr);
+                    d.rate = rate;
+                    d.pos = seconds * d.audio.as_ref().map_or(sr, |audio| f64::from(audio.sr));
+                } else if let Some((position,_)) = mapped_sync.filter(|_| !d.touching) { d.pos = position; }
                 else { d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr); }
             }
             let mut position = d.pos;
@@ -1984,6 +2007,10 @@ impl RtEngine {
         } else {
             self.decks[di].sample_at(self.decks[di].pos)
         };
+        if !self.decks[di].touching && self.decks[di].vinyl && self.decks[di].spindle.is_some() {
+            let moving = (self.decks[di].rate.abs() * 100.0).min(1.0);
+            l *= moving; r *= moving;
+        }
         l *= self.decks[di].source_gain.linear();
         r *= self.decks[di].source_gain.linear();
         self.routing_deck_taps[0] = [l, r];
@@ -2375,6 +2402,23 @@ impl RtEngine {
             Command::MidiDeckTouch { source, deck, on } => {
                 self.deck_touch(source, deck, on);
             }
+            Command::DeckSpindle { source, deck, motion } => {
+                let Some(d) = self.decks.get_mut(usize::from(deck)) else { return; };
+                if !motion.rate.is_finite() || motion.rate.abs() > 16.0 || !motion.hold.is_finite() || !(0.0..=0.05).contains(&motion.hold) { return; }
+                if let Some(spindle) = &mut d.spindle {
+                    if spindle.source == source { spindle.update(motion); }
+                } else {
+                    let rate = d.audio.as_ref().map_or(self.sr, |a| a.sr as f32);
+                    d.spindle = Some(spindle::Playback::new(source, motion, d.pos / f64::from(rate)));
+                }
+            }
+            Command::DeckSpindleRelease { source, deck } => {
+                if let Some(d) = self.decks.get_mut(usize::from(deck)) {
+                    if d.spindle.as_ref().is_some_and(|s| s.source == source) {
+                        d.spindle = None; d.playing = false; d.fade_from_last_output(self.sr);
+                    }
+                }
+            }
             Command::DeckPitch { deck, value } => {
                 self.decks[deck as usize % DECKS].pitch = value.clamp(0.0, 1.0);
             }
@@ -2488,6 +2532,8 @@ impl RtEngine {
             Command::DeckVinyl { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.vinyl = !d.vinyl;
+                let sr = d.audio.as_ref().map_or(self.sr, |a| a.sr as f32);
+                if let Some(spindle) = &mut d.spindle { spindle.rebase(d.pos / f64::from(sr)); }
             }
             Command::DeckKeylock { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];

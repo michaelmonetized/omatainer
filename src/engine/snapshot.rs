@@ -271,6 +271,8 @@ impl Frame {
             out.load_locked = rt.performance.deck_load_locked(index);
             out.media_key = deck.history_key;
             out.pos = deck.pos;
+            out.captured_at = Some(Instant::now());
+            out.platter = deck.spindle.as_ref().map(|s| (s.turns(), s.turn_rate()));
             out.frames = deck
                 .audio
                 .as_ref()

@@ -14,6 +14,7 @@ const EVENTS: usize = 256;
 
 #[derive(Clone, Copy)]
 struct Event {
+    at: std::time::Instant,
     epoch: u64,
     sequence: u64,
     safety: u64,
@@ -25,6 +26,7 @@ struct Event {
 impl Event {
     fn new(epoch: u64, sequence: u64, bytes: &[u8]) -> Self {
         let mut event = Self {
+            at: std::time::Instant::now(),
             epoch,
             sequence,
             safety: 0,
@@ -272,6 +274,7 @@ struct InputWorker {
 }
 impl InputWorker {
     fn reset(&mut self) {
+        self.cmd.release_midi_source(self.source);
         self.decoder.reset();
         self.shared.routing.release(self.sources,&self.cmd);
         *self.shift.lock() = [false; 4];
@@ -310,7 +313,7 @@ impl InputWorker {
                         self.shared.routing.input(self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
-                                if !self.decoder.input(&self.map,&frame,&cmd) {
+                                if !self.decoder.input_at(&self.map,&frame,&cmd,self.source,event.at) {
                                     super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
                                 }
                             }
@@ -359,6 +362,7 @@ impl InputWorker {
                 worked = true;
             }
             if !worked {
+                self.decoder.idle(self.source, &self.cmd.for_input_epoch(self.safety));
                 std::thread::park_timeout(Duration::from_millis(1));
             }
         }

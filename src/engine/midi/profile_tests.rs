@@ -64,9 +64,15 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     assert!(matches!(receiver.try_recv(), Ok(Command::DeckHotCue { deck: 1, pad: 7, del: true })));
     let mut ns7 = hub.open_for_test(&commands, 72, surface::numark_ns7(), "synthetic NS7", "fixture:ns7");
     ns7.push(&[0xb0, 0, 127]);
-    assert!(receiver.is_empty());
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckSpindle { source:72, deck:0, motion }) if motion.ticks == 0 && motion.rate == 0.0));
     ns7.push(&[0xb0, 0, 0]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::DeckJog { deck: 0, delta }) if delta == 0.35));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
+    let movement = loop {
+        if let Ok(command) = receiver.try_recv() { break command; }
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
+    assert!(matches!(movement, Command::DeckSpindle { source:72, deck:0, motion } if motion.ticks == 1 && motion.rate > 0.0));
     ns7.push(&[0xb0, 8, 0]);
     assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Fader { deck: 0, value: 0.0 }))));
     ns7.push(&[0xb0, 12, 127]);

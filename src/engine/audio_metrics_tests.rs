@@ -21,7 +21,7 @@ fn totals_include_control_publication_and_conversion_delays_but_cpu_excludes_sle
     callback.rt.telemetry_delays[0] = Duration::from_millis(15);
     callback.rt.telemetry_delays[2] = Duration::from_millis(20);
     callback.conversion_delay = Duration::from_millis(10);
-    callback.rt.frames_done = 5900; // this block crosses the 125 ms publication period
+    callback.rt.frames_done = 48000 / 60 - 100;
     let observed = Instant::now();
     callback.render(&mut out);
     let outside = observed.elapsed();
