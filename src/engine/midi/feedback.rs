@@ -19,6 +19,28 @@ enum Surface {
 }
 
 impl Surface {
+    /// Prepare the controller connection.
+    /// Takes no arguments; returns identity requests and the MkII host-mode introduction before LED updates.
+    fn initialization(self) -> Vec<Vec<u8>> {
+        let mut messages = Vec::new();
+        if matches!(self, Self::Apc | Self::ApcMk2 | Self::Mpd232) {
+            messages.push(vec![0xf0, 0x7e, 0x7f, 6, 1, 0xf7]);
+        }
+        if self == Self::ApcMk2 {
+            let mut introduction = vec![0xf0, 0x47, 0x7f, 0x29, 0x60, 0, 4, 0x41];
+            for version in [
+                env!("CARGO_PKG_VERSION_MAJOR"),
+                env!("CARGO_PKG_VERSION_MINOR"),
+                env!("CARGO_PKG_VERSION_PATCH"),
+            ] {
+                introduction.push(version.parse::<u64>().unwrap_or(0).min(127) as u8);
+            }
+            introduction.push(0xf7);
+            messages.push(introduction);
+        }
+        messages
+    }
+
     fn named(name: &str) -> Option<Self> {
         if super::connections::application_port(name) {
             return None;
@@ -81,12 +103,12 @@ impl Surface {
                         let occupied = state
                             .and_then(|state| state.clips.get(scene))
                             .is_some_and(|clip| clip.kind != 0);
-                        let playing =
-                            state.is_some_and(|state| state.playing_scene == scene as i16);
+                        let playing = occupied
+                            && state.is_some_and(|state| state.playing_scene == scene as i16);
                         let color = if playing {
-                            1
+                            if self == Self::ApcMk2 { 21 } else { 1 }
                         } else if occupied {
-                            5
+                            if self == Self::ApcMk2 { 13 } else { 5 }
                         } else {
                             0
                         };
@@ -177,19 +199,18 @@ impl Manager {
                                     };
                                     match midi.connect(&port, "omatainer-feedback-out") {
                                         Ok(mut connection) => {
-                                            if matches!(
-                                                surface,
-                                                Surface::Apc | Surface::ApcMk2 | Surface::Mpd232
-                                            ) {
-                                                if connection
-                                                    .send(&[0xf0, 0x7e, 0x7f, 6, 1, 0xf7])
-                                                    .is_ok()
-                                                {
+                                            let mut ready = true;
+                                            for message in surface.initialization() {
+                                                if connection.send(&message).is_ok() {
                                                     counts.sent.fetch_add(1, Relaxed);
                                                 } else {
                                                     counts.failed.fetch_add(1, Relaxed);
-                                                    continue;
+                                                    ready = false;
+                                                    break;
                                                 }
+                                            }
+                                            if !ready {
+                                                continue;
                                             }
                                             outputs.insert(
                                                 port.id(),
@@ -283,6 +304,55 @@ impl Drop for Manager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn apc_mk2_initialization_selects_host_button_control_before_led_updates() {
+        let messages = Surface::ApcMk2.initialization();
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0], [0xf0, 0x7e, 0x7f, 6, 1, 0xf7]);
+        let introduction = &messages[1];
+        assert_eq!(introduction.len(), 12);
+        assert_eq!(introduction[..8], [0xf0, 0x47, 0x7f, 0x29, 0x60, 0, 4, 0x41]);
+        assert!(introduction[8..11].iter().all(|value| *value < 128));
+        assert_eq!(introduction[11], 0xf7);
+        assert_eq!(Surface::Apc.initialization(), messages[..1]);
+        assert_eq!(Surface::Mpd232.initialization(), messages[..1]);
+        assert!(Surface::Ns7.initialization().is_empty());
+        assert!(Surface::Sp1.initialization().is_empty());
+    }
+
+    #[test]
+    fn apc_clip_feedback_preserves_each_generations_colors_and_addresses() {
+        let mut snapshot = Snapshot::default();
+        snapshot.tracks = (0..8)
+            .map(|track| crate::engine::TrackSnap {
+                playing_scene: (track % 5) as i16,
+                clips: (0..5)
+                    .map(|scene| crate::engine::ClipSnap {
+                        kind: ((track + scene) % 3) as u8,
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            })
+            .collect();
+        for (surface, playing_color, loaded_color) in [(Surface::Apc, 1, 5), (Surface::ApcMk2, 21, 13)] {
+            let messages = surface.messages(&snapshot);
+            assert_eq!(messages.len(), 40);
+            for track in 0..8 {
+                for scene in 0..5 {
+                    let state = &snapshot.tracks[track];
+                    let expected = if state.clips[scene].kind == 0 { 0 }
+                        else if state.playing_scene == scene as i16 { playing_color }
+                        else { loaded_color };
+                    let address = if surface == Surface::ApcMk2 {
+                        [0x90, (scene * 8 + track) as u8, expected]
+                    } else { [0x90 + track as u8, 0x35 + scene as u8, expected] };
+                    assert!(messages.contains(&address), "{surface:?}: track {track}, scene {scene}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn own_ports_never_become_hardware_feedback_targets() {
         for name in [
