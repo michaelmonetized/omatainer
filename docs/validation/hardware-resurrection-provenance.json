@@ -1,14 +1,14 @@
 {
-  "source_commit": "19651b16dd02a7700020ecdbc7d65194cd8c321f",
+  "source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
   "native_driver_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "native_fixture_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
   "kernel": "7.1.13-3-2-ARCH",
-  "binary_sha256": "25207635ec5310a4cb4d812eea53ee8c6edba8f114d4491e5571ab709cefeac3",
+  "binary_sha256": "a1fd33650d25aaeb3d2f6c93ce772d87f86053e3ef0e414696739979b2ef3567",
   "module_sha256": "73506bfa6584f4e3cc61f84f19a9eee9d0e8acf6c0996fe7f7b81241eb26815d",
   "module_srcversion": "9874D71882F6752484E64FE",
   "native_fixture_binary_sha256": "781c5b3d0a071ea2635950265a2f08455a55739e05a309a60c8ce2072904e57b",
-  "source_diff_sha256": "3365a0b3fd3113b05cd51cae9e33f8bb4d0895e7cfefa2595eb50e2f6ec9ac6f",
+  "source_diff_sha256": "1989af4e7609f34ae633ced99b171d21dae8427887694111ecbc7379bf7745ae",
   "source_diff_paths": [
     "Cargo.toml",
     "Cargo.lock",
@@ -18,8 +18,8 @@
   ],
   "installed_binary": "/home/michael/.local/bin/omatainer",
   "tests": {
-    "ordinary_source_commit": "19651b16dd02a7700020ecdbc7d65194cd8c321f",
-    "ordinary_passed": 1663,
+    "ordinary_source_commit": "bb5aeb76d72f123b0faf25aec54fa83ac26fcf49",
+    "ordinary_passed": 1678,
     "ordinary_failed": 0,
     "ordinary_ignored": 41,
     "skipped_unchanged_invalid_scenes": 1,
@@ -64,7 +64,31 @@
     },
     "contour_recovery_isolated_recheck_passed": 1,
     "contour_regressions_in_ordinary_suite": 5,
-    "contour_final_ordinary_elapsed_seconds": 171.75
+    "contour_final_ordinary_elapsed_seconds": 171.75,
+    "ns7_button_controls": {
+      "source_commit": "bb5aeb76d72f123b0faf25aec54fa83ac26fcf49",
+      "focused_passed": 15,
+      "focused_failed": 0,
+      "ordinary_elapsed_seconds": 170.96,
+      "ordinary_log_sha256": "785745f2e9df8768d3b9522702cde6d654b8bc2c104ee86723dd030a246e7455",
+      "focused_log_sha256": "b99f6eae65058fc57980194087a925adb4a5ae96b5919646ec3cef1cceb34019",
+      "release_build_elapsed_seconds": 50.66,
+      "release_build_log_sha256": "163af329155d9ba0aea0fce42105d2265a1be7310696445672e84860e28bd420"
+    },
+    "ns7_strip_release": {
+      "source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
+      "focused_passed": 16,
+      "focused_failed": 0,
+      "engine_midi_passed": 101,
+      "engine_midi_failed": 0,
+      "engine_midi_ignored": 2,
+      "focused_log_sha256": "d7fd61eeb32815fb7bfaf4bb75efcefdd4f9c3cebe23196146e2862e600dc799",
+      "engine_midi_log_sha256": "b9d7c9572ffb633662841ec29f6f8838fc7a51d85b84eac5d5d09c8b5ae99a2f",
+      "release_build_elapsed_seconds": 54.51,
+      "release_build_log_sha256": "9fc6a3f24350c457c4b35c01f08f81601f25c60505bbdc1d1437d90368c49e33",
+      "ordinary_suite_repeated": false,
+      "retained_ordinary_source_commit": "bb5aeb76d72f123b0faf25aec54fa83ac26fcf49"
+    }
   },
   "physical": {
     "ns7_headphone_left_output": 3,
@@ -92,7 +116,7 @@
     "ns7_display_rotation_match_confirmed": true,
     "ns7_scratch_audio_quality_confirmed": true,
     "ns7_contour_polarity_confirmed": true,
-    "ns7_contour_listening_confirmed": false,
+    "ns7_contour_listening_confirmed": true,
     "ns7_scratch_audio_quality_source_commit": "969904e6a92f7df1ad7e5d55994a8f37e2328d88",
     "ns7_contour_wire": {
       "channel": 1,
@@ -103,15 +127,34 @@
       "final": 127,
       "application_curve_at_cut": 1,
       "capture_sha256": "bea4c153e346b57339030b51c7f3b6c8df555dc64971751ce767d6a48db0999a"
+    },
+    "ns7_keylock_bleep_reverse_listening_confirmed": true,
+    "ns7_keylock_bleep_reverse_listening_source_commit": "bb5aeb76d72f123b0faf25aec54fa83ac26fcf49",
+    "ns7_other_new_button_listening_confirmed": false,
+    "ns7_strip_release_fault_observed": true,
+    "ns7_strip_release_listening_confirmed": false,
+    "ns7_strip_release_capture": {
+      "deck": 0,
+      "wire_channel": 0,
+      "cc": 69,
+      "final_values": [
+        38,
+        39,
+        40,
+        0
+      ],
+      "release_value": 0,
+      "sha256": "634b178e91a7707027302f99f97be1dac0810b382f9b7880ad8dd19410f220a4",
+      "path": "target/hardware/ns7-strip-release-capture.txt"
     }
   },
   "runtime": {
     "ns7_buffer_frames": 512,
     "ns7_period_frames": 128,
-    "installed_gui_pid": 2042918,
+    "installed_gui_pid": 3439512,
     "physical_scratch_listening_pending": false,
     "continuous_clock_audio_listening_pending": false,
-    "audio_callback_tid": 2042950,
+    "audio_callback_tid": 3439542,
     "audio_callback_scheduling": {
       "policy": "SCHED_OTHER",
       "priority": 0,
@@ -284,6 +327,108 @@
       "queued": 530226,
       "received": 530226,
       "resets": 0
-    }
+    },
+    "button_controls_current_audio": {
+      "backend_errors": 0,
+      "callbacks": 32250,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 2993197,
+        "channels": 4,
+        "elapsed_ns": 145876,
+        "frames": 132,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 137710,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 2978934,
+      "max_overrun_ns": 0
+    },
+    "button_controls_current_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 70663,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 70663,
+      "received": 70663,
+      "resets": 0
+    },
+    "button_controls_current_feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 2116
+    },
+    "button_controls_startup": {
+      "master": 0.03999999910593033,
+      "crossfader": 0.0,
+      "contour": 1.0,
+      "deck_a_playing": true,
+      "deck_b_playing": false,
+      "workspace": 4,
+      "gui_mapped": true
+    },
+    "button_controls_live_smoke": {
+      "software_command_injection": true,
+      "hardware_button_presses": false,
+      "keylock_with_actual_free_spindle_mode": "locked",
+      "reverse_source_seconds_before": 67.09150122191717,
+      "reverse_source_seconds_held": 66.55063129696713,
+      "bleep_source_seconds_before": 66.58959731072716,
+      "bleep_source_seconds_held": 66.03748330793229,
+      "bleep_source_seconds_released": 67.27213200044818,
+      "all_job_receipts_applied": true,
+      "receipt_directory": "target/hardware/buttons-live",
+      "loop_banks_persisted_across_media": false,
+      "scratch_contact_sensor_decoded": false
+    },
+    "strip_release_source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
+    "strip_release_current_audio": {
+      "backend_errors": 0,
+      "callbacks": 11291,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 3015873,
+        "channels": 4,
+        "elapsed_ns": 157626,
+        "frames": 133,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 138584,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 2467686,
+      "max_overrun_ns": 0
+    },
+    "strip_release_current_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 69348,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 69348,
+      "received": 69348,
+      "resets": 0
+    },
+    "strip_release_current_feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 2054
+    },
+    "strip_release_startup": {
+      "master": 0.03999999910593033,
+      "crossfader": 0.0,
+      "contour": 1.0,
+      "deck_a_playing": true,
+      "deck_b_playing": false,
+      "workspace": 9,
+      "gui_mapped": true
+    },
+    "strip_release_listening_pending": true
   }
 }
