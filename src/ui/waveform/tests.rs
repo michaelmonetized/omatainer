@@ -4,6 +4,17 @@ use crate::ui::library_annotations::tests::{Files, Gui};
 use std::sync::atomic::AtomicBool;
 
 #[test]
+fn day_long_source_retains_single_frame_motion_at_ninety_six_khz() {
+    let snap = DeckSnap { source_sample_rate: 96000, frames: 86400.0 * 96000.0,
+        pos: 72000.0 * 96000.0, grid: Some(Grid::new(0.0, 120.0).unwrap()),
+        duration: 86400.0, ..Default::default() };
+    let first = Window::new(&snap, snap.pos, Zoom::TwoBars).unwrap();
+    let next = Window::new(&snap, snap.pos + 1.0, Zoom::TwoBars).unwrap();
+    assert!((next.seconds - first.seconds - 1.0 / 96000.0).abs() < 1e-10);
+    assert_eq!(first.end - first.start, 8.0);
+}
+
+#[test]
 fn long_source_zoom_phase_and_markers_use_exact_source_time_and_saved_grid() {
     let grid = Grid::new(0.125, 120.0)
         .unwrap()

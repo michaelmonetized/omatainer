@@ -89,7 +89,8 @@ Up to 64 manual beat/time anchors per deck; each segment stays within 20–400 B
 - native UI: [src/ui/waveform.rs](../src/ui/waveform.rs) — Deck waveforms → linked span, phase, cue/loop markers and Save waveform view
 - renderer: [src/engine/audible.rs](../src/engine/audible.rs) — Bounded source-qualified output-frame history with per-frame reported playback timestamps
 - preferences: [src/preferences/waveforms.rs](../src/preferences/waveforms.rs) — Schema-14 linked waveform view; legacy in-memory migration and explicit save
-- Acceptance fixtures: `engine::audible::tests`, `engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo`, `ui::waveform::tests`, `preferences::waveforms::tests`.
+- native project: [src/ui/project.rs](../src/ui/project.rs) — Capture, validate and restore per-project waveform views with legacy defaults
+- Acceptance fixtures: `engine::audible::tests`, `engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo`, `ui::waveform::tests`, `preferences::waveforms::tests`, `engine::audio::audible_tests`, `ui::project::tests::waveform_zoom_round_trips_new_open_and_legacy_views`.
 - Evidence: [docs/validation/issue-135-waveform-timing.md](../docs/validation/issue-135-waveform-timing.md).
 
 Reachable views and source-qualified playback estimates are implemented; software results are bound to exact sources and binaries in the linked validation receipt. CPAL uses reported playback delay; JACK uses cycle timing and one equal downstream latency range. Unknown/expired/overlapping timing, media replacement, key-lock and transition mixtures use explicitly labeled renderer positions. Phrase counts assume eight four-beat bars from the saved downbeat. This is not detected phrase structure or measured physical/display/converter alignment. External audio/controller and listening tests remain pending.

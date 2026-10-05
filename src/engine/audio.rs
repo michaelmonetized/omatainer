@@ -353,3 +353,6 @@ mod metrics_tests;
 #[cfg(test)]
 #[path = "audio_live_set_tests.rs"]
 mod live_set_tests;
+#[cfg(test)]
+#[path = "audio/audible_tests.rs"]
+mod audible_tests;

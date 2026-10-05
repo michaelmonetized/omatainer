@@ -10,6 +10,16 @@ pub(super) struct Panel {
     message: String,
 }
 
+impl Panel {
+    /// Restore the project's waveform view.
+    /// Takes saved settings; returns with local preference-save feedback cleared.
+    pub(super) fn install(&mut self, settings: Config) {
+        self.settings = settings;
+        self.saving = None;
+        self.message.clear();
+    }
+}
+
 impl App {
     /// Show linked spans and explicit saving.
     /// Takes the deck UI and theme; changes local views and returns an explicit save request.

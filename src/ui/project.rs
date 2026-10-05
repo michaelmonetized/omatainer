@@ -76,12 +76,15 @@ pub(crate) struct UiState {
     pub history_open: bool,
     #[serde(default)]
     pub deck_time: [DeckTimeSettings; DECKS],
+    #[serde(default)]
+    pub(super) waveform: crate::preferences::waveforms::Config,
     // Verified identities accompany captured receipts. Embedded path strings
     // alone cannot credit a same-path replacement in the live library.
     pub(super) deck_identities: [Option<SavedIdentity>; DECKS],
 }
 impl UiState {
     pub(super) fn validate(&self) -> Result<(), String> {
+        self.waveform.validate()?;
         if let Some(video) = &self.video { video.validate()?; }
         crate::project_dependencies::validate_origins(&self.media_origins)?;
         if self.selected_crate.as_ref().is_some_and(|id| id.0.len() != 32 || !id.0.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))) {
@@ -131,6 +134,7 @@ impl UiState {
             && self.diagnostics_open == other.diagnostics_open
             && self.history_open == other.history_open
             && self.deck_time == other.deck_time
+            && self.waveform == other.waveform
     }
 }
 
@@ -363,6 +367,7 @@ impl App {
             diagnostics_open: self.diagnostics.open,
             history_open: self.undo_history.open,
             deck_time: self.deck_time,
+            waveform: self.waveform.settings,
             deck_identities: Default::default(),
         }
     }
@@ -907,6 +912,7 @@ impl App {
         self.diagnostics.open = view.diagnostics_open;
         self.undo_history.open = view.history_open;
         self.deck_time = view.deck_time;
+        self.waveform.install(view.waveform);
         self.clip_gain_edit = None;
         // Retire producer gate reservations before forgetting the old GUI
         // input owners; later key-up may otherwise see an already-cleared bit.

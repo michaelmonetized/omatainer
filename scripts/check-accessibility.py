@@ -349,6 +349,8 @@ def private(binary,support=False):
                 print(f'{name}: {workflow_seconds[name]:.3f}s', file=sys.stderr, flush=True)
         from check_grid_accessibility import verify_grid
         grid_evidence=measured('grid', lambda: verify_grid(named, action, state, wait_for, Atspi))
+        from check_waveform_accessibility import verify_waveform
+        waveform_evidence=measured('waveform', lambda: verify_waveform(named, action, state, wait_for))
         from check_sampler_accessibility import verify_sampler
         sampler_evidence=measured('sampler', lambda: verify_sampler(named, action, state, wait_for, Atspi))
         from check_analysis_accessibility import verify_analysis
@@ -391,7 +393,7 @@ def private(binary,support=False):
                           'pitch_renderer_after_native_setvalue':verified_pitch,'reopened_project_pitch':result['pitch'],'frames':result['frames'],
                           'workflow_seconds':workflow_seconds,'beatgrid':grid_evidence,'sampler_editor':sampler_evidence,'track_analysis':analysis_evidence,'named_crates':crates_evidence,'session_history':history_evidence,'preferences_saved_scale':result['preferences_scale'],'help_recording_lesson':'native arm -> held note -> release -> disarm -> launch','lesson_notes':result['lesson_notes'],'pitch_help':pitch_description,
                           'actions':result['actions'],'platter_actions':platter_actions,
-                          'cue_actions':cue_actions,'pad_actions':pad_actions,
+                          'cue_actions':cue_actions,'pad_actions':pad_actions,'waveform_view':waveform_evidence,
                           'cue_editor_workflow':cue_editor_workflow,
                           'alternate_action_path':'production Actions menu using native AT-SPI Click',
                           'project_workflow':'New -> compose -> Undo -> Redo -> Save -> New -> Open recent',

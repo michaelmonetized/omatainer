@@ -607,13 +607,20 @@
           "kind": "preferences",
           "file": "src/preferences/waveforms.rs",
           "entry": "Schema-14 linked waveform view; legacy in-memory migration and explicit save"
+        },
+        {
+          "kind": "native project",
+          "file": "src/ui/project.rs",
+          "entry": "Capture, validate and restore per-project waveform views with legacy defaults"
         }
       ],
       "fixtures": [
         "engine::audible::tests",
         "engine::audio::tests::captured_clicks_follow_retained_output_positions_during_reverse_and_mapped_tempo",
         "ui::waveform::tests",
-        "preferences::waveforms::tests"
+        "preferences::waveforms::tests",
+        "engine::audio::audible_tests",
+        "ui::project::tests::waveform_zoom_round_trips_new_open_and_legacy_views"
       ],
       "evidence": [
         "docs/validation/issue-135-waveform-timing.md"
