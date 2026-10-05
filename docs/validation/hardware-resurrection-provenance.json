@@ -91,9 +91,19 @@
     "ns7_scratch_listening_confirmed": true,
     "ns7_display_rotation_match_confirmed": true,
     "ns7_scratch_audio_quality_confirmed": true,
-    "ns7_contour_polarity_confirmed": false,
+    "ns7_contour_polarity_confirmed": true,
     "ns7_contour_listening_confirmed": false,
-    "ns7_scratch_audio_quality_source_commit": "969904e6a92f7df1ad7e5d55994a8f37e2328d88"
+    "ns7_scratch_audio_quality_source_commit": "969904e6a92f7df1ad7e5d55994a8f37e2328d88",
+    "ns7_contour_wire": {
+      "channel": 1,
+      "cc": 85,
+      "messages": 105,
+      "fade": 0,
+      "cut": 127,
+      "final": 127,
+      "application_curve_at_cut": 1,
+      "capture_sha256": "bea4c153e346b57339030b51c7f3b6c8df555dc64971751ce767d6a48db0999a"
+    }
   },
   "runtime": {
     "ns7_buffer_frames": 512,
@@ -245,6 +255,35 @@
         "max_overrun_ns": 3262739
       },
       "output_stopped": true
+    },
+    "contour_knob_audio": {
+      "backend_errors": 0,
+      "callbacks": 88900,
+      "deadline_overruns": 1,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 2993197,
+        "channels": 4,
+        "elapsed_ns": 134793,
+        "frames": 132,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 131250,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 3132859,
+      "max_overrun_ns": 139662
+    },
+    "contour_knob_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 530226,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 530226,
+      "received": 530226,
+      "resets": 0
     }
   }
 }
