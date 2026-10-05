@@ -368,7 +368,7 @@ fn dispatch(
 ) -> Result<(), super::SubmissionError> {
     let mut failure = None;
     let mut send = |command| { let result = cmd.send(command);if let Err(error) = &result { if failure.is_none() { failure = Some(error.clone()); } } result };
-    let pressed = status == 0x90 && d2 > 0;
+    let pressed = matches!(status, 0x90 | 0xb0) && d2 > 0;
     let rel = match b.kind {
         MsgKind::CcRel => {
             let Some(delta) = b.relative.and_then(|spec| spec.decode(d2)) else {

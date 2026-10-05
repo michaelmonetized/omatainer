@@ -618,8 +618,11 @@ impl RtEngine {
                     d.loop_len = len;
                     d.transition_to(start, self.sr, DeckTransition::Jump);
                 } else {
-                    let start =
-                        d.hotcues[slot].unwrap_or_else(|| d.grid_snap(d.pos, self.sr, self.bpm));
+                    let start = if d.hotcues[slot].set {
+                        d.hotcues[slot].pos
+                    } else {
+                        d.grid_snap(d.pos, self.sr, self.bpm)
+                    };
                     let len = if d.loop_on {
                         d.loop_len
                     } else {
