@@ -1,0 +1,24 @@
+# Original Numark NS7 on Linux
+
+This native driver exposes duplex ALSA MIDI, four playback channels and two capture channels for the original NS7, USB `15e4:0071`. PCM uses 44,100 Hz S32_LE, carrying 24 significant bits. Omatainer selects its original NS7 map automatically. Ordinary ALSA applications can use the device without a root application or USB bridge daemon.
+
+Run `scripts/install-ns7-driver.sh` from the repository. Matching kernel headers and a C compiler are required. The build stays in `target/ns7-driver` on `/home`; installation links the built module into the running kernel's module catalog. USB modalias loading handles subsequent connections. Keep this checkout and its module file in place. Run the installer again after a kernel upgrade. Applications holding the old NS7 driver must close before it can be replaced.
+
+Select ALSA, `sysdefault:CARD=NS7`, 44,100 Hz, four channels and I32 in Omatainer's audio settings. The connected Asahi qualification used a 2,048-frame buffer. Add an NS7 stereo input in Audio routing to capture its two inputs. Saved output aliases determine which physical pair receives audio; opening four channels alone does not create a headphone cue mix.
+
+If the panel is powered but the audio clock remains idle, run `scripts/install-ns7-driver.sh --reset` with playback stopped, then reopen the output. This performs one USB reset specifically for `15e4:0071`. The driver retains the MIDI port across a USB reset and reports an audio XRUN; Omatainer stops the interrupted output. A clock that does not start within 500 ms fails preparation rather than claiming working audio. The driver owns both vendor interfaces; another USB driver or libusb process must not claim them concurrently.
+
+The transport was reconstructed from the [manufacturer's original NS7 downloads](https://www.numark.com/product/ns7), specifically the symbol-bearing Mac drivers 2.2.6 and 3.3.11. `AJ::configurationDone`, `USBMidiPattern::initNS7`, `AJ::fireOutputInternal`, `AJ::inACR_NS7`, `PGDevice::setAJDMAInputChannels`, `PGDevice::bulkAudioRun`, and `PGKernelDeviceNUMARKNS7::setFrequency/getFrequency` establish:
+
+- Interface 0, alternate 1: bulk OUT `0x04` and bulk IN `0x83`.
+- Interface 1 remains at alternate 1 while the device is active.
+- Fixed 42-byte transfers, at most 39 output MIDI bytes, idle byte `0xfd`, default trailing control byte `0xe0`.
+- Input MIDI occupies the first 41 bytes; idle bytes are excluded.
+- Vendor request `0x49`, index 0: read one status byte, preserve it while setting the driver's `0x30` transport bits, and restore it when unloading.
+- Endpoint sampling-frequency requests set 44,100 Hz on `0x81`, `0x02`, and `0x86`; readback on `0x86` must match.
+- Four interleaved 24-bit playback channels on isochronous OUT `0x02`, paced by the first byte of the three-byte millisecond clock on IN `0x81`.
+- Stereo capture on bulk IN `0x86`, with 64-byte frames carrying serial bit planes. Reserved DMA lanes are ignored.
+
+Read-only interface attributes `midi_input_bytes`, `midi_output_bytes`, `midi_errors`, `pcm_playback_frames`, `pcm_capture_frames`, `pcm_feedback_frames`, `pcm_feedback_idle`, and `pcm_errors` expose actual USB completion receipts. MIDI enqueue success is separate from these counters. Audio runs while an ALSA stream is prepared; an inactive playback direction sends silence to maintain the shared capture clock. MIDI payloads come from ALSA clients. No motor protocol is implemented.
+
+`make -C drivers/ns7 test` checks independent MIDI and PCM vectors, short transfers, padding boundaries, sample signs, capture lanes and frame distribution under bounds and undefined-behavior sanitizers. `make -C drivers/ns7` builds the native module. This directory is licensed GPL-2.0-only; manufacturer binaries are neither included nor required at runtime. See the [connected qualification and remaining physical checks](../../docs/validation/hardware-resurrection.md).

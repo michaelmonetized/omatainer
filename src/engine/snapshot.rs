@@ -46,6 +46,8 @@ impl Publisher {
                         let mut next = frame.materialize();
                         let mut current = snapshot.lock();
                         next.midi = std::mem::take(&mut current.midi);
+                        next.midi_feedback = current.midi_feedback;
+                        next.midi_input = current.midi_input;
                         *current = next;
                         worker_published.store(frame.sequence, Ordering::Release);
                     } else {
@@ -463,6 +465,8 @@ impl RtEngine {
         let mut next = frame.materialize();
         let mut current = self.snap.lock();
         next.midi = std::mem::take(&mut current.midi);
+        next.midi_feedback = current.midi_feedback;
+        next.midi_input = current.midi_input;
         *current = next;
     }
 

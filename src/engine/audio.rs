@@ -71,7 +71,9 @@ impl owner::Backend for Native {
         let errors = callback.rt.telemetry.clone();
         let error = move |e| {
             errors.error(&e);
-            fault.store(true, Ordering::Release);
+            if !fault.swap(true, Ordering::AcqRel) {
+                eprintln!("Audio backend error: {e}");
+            }
         };
         macro_rules! build {
             ($type:ty) => {

@@ -12,6 +12,8 @@ mod profile;
 mod handoff;
 mod framing;
 mod relative;
+mod surface;
+mod feedback;
 pub(crate) mod learn;
 pub(crate) mod routing;
 pub(crate) mod device_status;
@@ -21,6 +23,7 @@ pub use policy::{InputPolicy, PolicyError, PolicyStatus};
 #[cfg(test)]
 pub(crate) use connections::test_support as connection_test_support;
 pub use relative::RelativeSpec;
+pub use feedback::Stats as FeedbackStats;
 pub(crate) use relative::RelativeEncoding;
 #[cfg(test)]
 mod profile_tests;
@@ -115,6 +118,7 @@ pub enum UnmappedNotes {
 }
 
 pub struct MidiHub {
+    feedback: Option<feedback::Manager>,
     connections: Option<connections::Manager>,
     input_counters: Arc<handoff::InputCounters>,
     routing: Option<routing::Manager>,
@@ -182,6 +186,7 @@ impl MidiHub {
     /// Explicit safe startup: no manager, discovery or OS port construction.
     pub(super) fn without_devices() -> Self {
         Self {
+            feedback: None,
             connections: None,
             input_counters: Arc::new(handoff::InputCounters::default()),
             routing: None,
@@ -205,9 +210,10 @@ impl MidiHub {
         let routing=Some(routing::Manager::start(cmd.clone(),routes).map_err(anyhow::Error::msg)?);
         let connections = connections::Manager::start_with_policy(
             connections::MidirBackend,
-            &snapshot, cmd, maps, log.clone(),  input_counters.clone(), policy,
+            &snapshot, cmd.clone(), maps, log.clone(),  input_counters.clone(), policy,
         )?;
-        Ok(Self { connections: Some(connections), input_counters, routing, log })
+        let feedback = Some(feedback::Manager::start(Arc::downgrade(&snapshot), cmd, input_counters.clone(), connections.policy_reader())?);
+        Ok(Self { feedback, connections: Some(connections), input_counters, routing, log })
     }
 
     pub fn configure_routing(&self,routes:routing::Routing)->Result<u64,String>{
@@ -241,6 +247,7 @@ impl MidiHub {
     pub fn input_stats(&self) -> InputStats {
         self.input_counters.snapshot()
     }
+    pub fn feedback_stats(&self) -> feedback::Stats { self.feedback.as_ref().map_or_else(Default::default, |feedback| feedback.stats()) }
 
 
 }
@@ -580,6 +587,7 @@ fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: Relative
 
 pub fn builtin_maps() -> anyhow::Result<Vec<MidiMap>> {
     let mut maps = Vec::new();
+    maps.push(surface::pioneer_sp1());
     maps.push(pioneer_ddj_fx());
     maps.push(numark_ns7(true));
     maps.push(numark_ns7(false));
@@ -587,6 +595,7 @@ pub fn builtin_maps() -> anyhow::Result<Vec<MidiMap>> {
     // The specific MkII name must precede the original's broader matcher.
     maps.push(akai_apc40_mk2());
     maps.push(akai_apc40());
+    maps.push(akai_mpd232());
     maps.push(akai_mpk());
     maps.push(class_compliant());
     for map in &maps {
@@ -652,6 +661,7 @@ fn pioneer_ddj_fx() -> MidiMap {
 /// protocol: do not interpret guessed CC21/pitch-bend as relative movement.
 /// See docs/validation/issue-42-relative-jog.md for evidence and limitations.
 fn numark_ns7(fx: bool) -> MidiMap {
+    if !fx { return surface::numark_ns7(); }
     let mut b = Vec::new();
     for deck in 0..2u8 {
         let ch = deck;
@@ -783,6 +793,15 @@ fn akai_apc40_mk2() -> MidiMap {
     }
 }
 
+fn akai_mpd232() -> MidiMap {
+    MidiMap {
+        name: "Akai MPD232 (programmable)".into(),
+        matchers: vec!["mpd232".into(), "mpd 232".into(), "mpd-232".into()],
+        bindings: Vec::new(),
+        unmapped_notes: UnmappedNotes::Live,
+    }
+}
+
 fn akai_mpk() -> MidiMap {
     let mut b = Vec::new();
     // pads typically C1 (36) upward — treat as drum / hotcues
@@ -835,7 +854,7 @@ mod tests {
         assert!(map_for("Pioneer DDJ-FLX4").contains("DDJ"));
         assert!(map_for("DDJ-400").contains("DDJ"));
         assert_eq!(map_for("Numark NS7FX"), "Numark NS7FX (legacy; wheels unmapped)");
-        assert_eq!(map_for("Numark NS7"), "Numark NS7 (legacy; wheels unmapped)");
+        assert_eq!(map_for("Numark NS7"), "Numark NS7 (original)");
         assert!(map_for("APC Mini mk2").contains("APC Mini"));
         assert!(map_for("Akai APC40 mk2").contains("APC40"));
         assert!(map_for("MPK Mini Plus").contains("Akai"));

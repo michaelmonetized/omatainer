@@ -53,7 +53,7 @@ pub struct InputCounters {
     dispatched: AtomicU64,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct InputStats {
     pub received: u64,
     pub queued: u64,
@@ -252,6 +252,7 @@ impl InputSink {
 }
 
 struct InputWorker {
+    decoder: super::surface::Decoder,
     learning_revision: u64,
     consumer: rtrb::Consumer<Event>,
     shared: Arc<Shared>,
@@ -271,6 +272,7 @@ struct InputWorker {
 }
 impl InputWorker {
     fn reset(&mut self) {
+        self.decoder.reset();
         self.shared.routing.release(self.sources,&self.cmd);
         *self.shift.lock() = [false; 4];
         self.shared.counters.resets.fetch_add(1, Relaxed);
@@ -279,7 +281,7 @@ impl InputWorker {
         let learning = self.shared.learning.revision.load(Acquire);
         if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
         let safety = self.shared.performance.input_epoch();
-        if self.safety != safety { *self.shift.lock() = [false; 4]; self.safety = safety; }
+        if self.safety != safety { *self.shift.lock() = [false; 4]; self.decoder.reset(); self.safety = safety; }
         let epoch = self.shared.epoch.load(Acquire);
         let reset = epoch != self.epoch;
         if reset {
@@ -308,7 +310,9 @@ impl InputWorker {
                         self.shared.routing.input(self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
-                                super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
+                                if !self.decoder.input(&self.map,&frame,&cmd) {
+                                    super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
+                                }
                             }
                         });
                     },
@@ -432,6 +436,7 @@ fn channel(
             sequence: 0,
         },
         InputWorker {
+            decoder: super::surface::Decoder::default(),
             learning_revision: shared.learning.revision.load(Acquire),
             consumer,
             shared,

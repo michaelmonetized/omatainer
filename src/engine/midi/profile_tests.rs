@@ -26,10 +26,68 @@ fn with_bindings(bindings: Vec<Binding>) -> MidiMap {
 #[test]
 fn every_factory_profile_has_unambiguous_wire_addresses() {
     let maps = builtin_maps().unwrap();
-    assert_eq!(maps.len(), 8);
+    assert_eq!(maps.len(), 10);
     for map in maps {
         map.validate().unwrap();
     }
+}
+
+#[test]
+fn mpd232_programmable_pads_preserve_all_notes_channels_and_velocities() {
+    let map = pick_map(&builtin_maps().unwrap(), "Akai MPD232 MIDI 1");
+    assert_eq!(map.name, "Akai MPD232 (programmable)");
+    for channel in [0, 9, 15] {
+        for note in 0..128 {
+            assert!(matches!(observe(&map, &[0x90 | channel, note, 100]).as_slice(),
+                [Command::LiveNoteOn { ch, note: actual, vel: 100, .. }] if *ch == channel && *actual == note));
+            for status in [0x80, 0x90] {
+                assert!(matches!(observe(&map, &[0x90 | channel, note, 100, status | channel, note, 0]).as_slice(),
+                    [Command::LiveNoteOn { .. }, Command::LiveNoteOff { ch, note: actual, .. }] if *ch == channel && *actual == note));
+            }
+        }
+    }
+    assert!(observe(&map, &[0xb0, 1, 127]).is_empty());
+    assert!(matches!(observe(&map, &[0xfa]).as_slice(), [Command::Play]));
+    assert!(matches!(observe(&map, &[0xfc]).as_slice(), [Command::ReservedStop { lane: 0, .. }]));
+}
+
+#[test]
+fn stateful_surface_controls_reach_the_production_input_worker() {
+    let hub = MidiHub::without_devices();
+    let (commands, receiver) = crate::engine::CommandPort::channel(32);
+    let mut sp1 = hub.open_for_test(&commands, 71, surface::pioneer_sp1(), "synthetic SP1", "fixture:sp1");
+    sp1.push(&[0xb4, 2, 64]);
+    assert!(receiver.is_empty());
+    sp1.push(&[0xb4, 0x22, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::FxWet { slot: 0, value }) if (value - 8192.0 / 16383.0).abs() < 0.00001));
+    sp1.push(&[0x9a, 15, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckHotCue { deck: 1, pad: 7, del: true })));
+    let mut ns7 = hub.open_for_test(&commands, 72, surface::numark_ns7(), "synthetic NS7", "fixture:ns7");
+    ns7.push(&[0xb0, 0, 127]);
+    assert!(receiver.is_empty());
+    ns7.push(&[0xb0, 0, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckJog { deck: 0, delta }) if delta == 0.35));
+    ns7.push(&[0xb0, 8, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckGain { deck: 0, value: 0.0 })));
+    ns7.push(&[0xb0, 12, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckGain { deck: 0, value: 0.0 })));
+}
+
+#[test]
+fn sp1_and_original_ns7_use_their_own_wire_channels() {
+    let maps = builtin_maps().unwrap();
+    let sp1 = pick_map(&maps, "Pioneer DDJ-SP1 MIDI 1");
+    assert_eq!(sp1.name, "Pioneer DDJ-SP1");
+    assert!(matches!(observe(&sp1, &[0x9a,7,127]).as_slice(), [Command::DeckHotCue {deck:1,pad:7,del:false}]));
+    let browse = sp1.bindings.iter().find(|binding| binding.ch == 6 && binding.data == 0x40 && binding.kind == MsgKind::CcRel).unwrap();
+    assert_eq!(browse.action, Action::Browse);
+    assert_eq!(browse.relative.unwrap().decode(127), Some(-1.0));
+    assert!(observe(&sp1, &[0x90,0x0b,127]).is_empty());
+    let ns7 = pick_map(&maps, "Numark NS7 MIDI");
+    assert!(matches!(observe(&ns7, &[0x90,0x11,127]).as_slice(), [Command::DeckPlay {deck:0}]));
+    assert!(matches!(observe(&ns7, &[0x90,0x32,127]).as_slice(), [Command::DeckPlay {deck:1}]));
+    assert!(ns7.bindings.iter().any(|binding| binding.ch == 0 && binding.data == 0x0c && binding.kind == MsgKind::Note && binding.action == Action::DeckLoad && binding.deck == 0));
+    assert!(observe(&ns7, &[0x91,0x11,127]).is_empty());
 }
 
 #[test]

@@ -502,6 +502,8 @@ fn handle_client_with_stop(
                 || s.decks.iter().take(2).any(|deck| deck.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES),
             "midi_clock": s.midi_clock,
             "midi_routing": commands.midi_routing().summary(),
+            "midi_feedback": s.midi_feedback,
+            "midi_input": s.midi_input,
             "audio": commands.audio_metrics(),
             "master_fx": { "types": s.fx_kind, "wet": s.fx_wet },
             "commands": s.commands,

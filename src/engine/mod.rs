@@ -799,6 +799,8 @@ pub struct Snapshot {
     pub tracks: Vec<TrackSnap>,
     pub decks: Vec<DeckSnap>,
     pub midi: Vec<String>,
+    pub midi_feedback: midi::FeedbackStats,
+    pub midi_input: midi::InputStats,
     pub midi_clock: MidiClockInput,
     /// Legacy alias: actual last render-thread CPU divided by callback budget.
     pub cpu: Option<f32>,
@@ -858,6 +860,8 @@ impl Default for Snapshot {
             tracks: Vec::new(),
             decks: Vec::new(),
             midi: Vec::new(),
+            midi_feedback: midi::FeedbackStats::default(),
+            midi_input: midi::InputStats::default(),
             midi_clock: MidiClockInput::default(),
             cpu: None,
             audio: audio_metrics::AudioMetrics::default(),
