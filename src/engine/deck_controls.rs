@@ -106,7 +106,7 @@ pub(super) struct State {
     pub braking: bool,
     pub brake_rate: f32,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct LoopHistory {
     loops: [Option<(f64, f64)>; 8],
     selected: usize,
