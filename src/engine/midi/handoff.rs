@@ -125,6 +125,7 @@ impl Rules {
                             | Action::DeckEqLow
                             | Action::DeckFilter
                             | Action::Xfader
+                            | Action::XfaderCurve
                             | Action::Master
                             | Action::CueMix
                             | Action::TrackFader

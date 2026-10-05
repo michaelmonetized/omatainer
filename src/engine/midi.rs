@@ -80,6 +80,7 @@ pub enum Action {
     DeckLoadLock,
     DeckVinyl,
     Xfader,
+    XfaderCurve,
     Master,
     CueMix,
     Browse,
@@ -469,6 +470,9 @@ fn dispatch(
         }
         Action::Xfader => {
             let _ = send(Command::Xfader(rel));
+        }
+        Action::XfaderCurve => {
+            let _ = send(Command::XfaderCurve(rel));
         }
         Action::Master => {
             let _ = send(Command::Master(rel));

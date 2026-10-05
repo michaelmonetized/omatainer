@@ -42,6 +42,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn ns7_front_contour_dispatches_independently_of_crossfader_position() {
+        let map = numark_ns7();
+        let (cmd, received) = CommandPort::channel(32);
+        let log = std::sync::Arc::new(parking_lot::Mutex::new(Vec::new()));
+        let shift = std::sync::Arc::new(parking_lot::Mutex::new([false; 4]));
+        for message in [[0xb0, 7, 64], [0xb0, 0x55, 0], [0xb0, 0x55, 127], [0xb1, 0x55, 64]] {
+            super::super::handle_channel(&message, 42, &map, &cmd, &log, &shift, "NS7", false);
+        }
+        let commands = received.try_iter().collect::<Vec<_>>();
+        assert!(matches!(commands.as_slice(), [Command::Xfader(position), Command::XfaderCurve(0.0), Command::XfaderCurve(1.0)] if *position == 64.0 / 127.0));
+    }
+
+    #[test]
     fn ns7_trim_cannot_open_a_closed_fader_or_change_the_other_deck() {
         let map = numark_ns7();
         let mut decoder = Decoder::default();
@@ -232,6 +245,7 @@ pub(super) fn numark_ns7() -> MidiMap {
         bindings.push(cbind(0, 0x09 + mixer, Action::DeckEqLow, deck, 0));
     }
     bindings.push(cbind(0, 7, Action::Xfader, 0, 0));
+    bindings.push(cbind(0, 0x55, Action::XfaderCurve, 0, 0));
     bindings.push(cbind(0, 0x40, Action::Master, 0, 0));
     MidiMap {
         name: "Numark NS7 (original)".into(),

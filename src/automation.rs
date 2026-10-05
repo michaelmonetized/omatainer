@@ -153,6 +153,7 @@ pub(crate) enum Action {
     TrackGain { target: Target, value: f32 },
     TrackPan { target: Target, value: f32 },
     Crossfader { value: f32 },
+    CrossfaderContour { value: f32 },
     MasterGain { value: f32 },
 }
 #[derive(Clone, Debug, Deserialize)]
@@ -232,7 +233,7 @@ fn discovery() -> Value {
         "actions": {"play": {}, "stop": {}, "launch_scene": {"target":"scene Target"},
             "track_gain":{"target":"track Target","value":"number 0..1.5"},
             "track_pan":{"target":"track Target","value":"number 0..1; center 0.5"},
-            "crossfader":{"value":"number 0..1"},"master_gain":{"value":"number 0..1.5"}},
+            "crossfader":{"value":"number 0..1"},"crossfader_contour":{"value":"number 0..1, fade to cut"},"master_gain":{"value":"number 0..1.5"}},
         "edits":{"rename":{"name":"UTF-8 string, at most 1024 bytes"},
             "color":{"color":"null or three integer bytes"},"move":{"position":"zero-based display position"}},
         "types":{"Namespace":"32 hex characters; never a JSON number", "ObjectId":"16 nonzero hex characters",
@@ -293,7 +294,7 @@ fn state(
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
-        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,
+        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,
         "transport_epoch":Count(s.transport_epoch),"performance":commands.performance().status(),
         "page":page,"total":slots.len(),"objects":objects,
         "next_offset":(page.offset.saturating_add(page.limit)<slots.len()).then_some(page.offset+page.limit)}),
@@ -364,6 +365,7 @@ impl Action {
                 }
             }
             Self::Crossfader { value } => remote::Action::Crossfader(check(value, 1.0)?),
+            Self::CrossfaderContour { value } => remote::Action::CrossfaderContour(check(value, 1.0)?),
             Self::MasterGain { value } => remote::Action::Master(check(value, 1.5)?),
         })
     }

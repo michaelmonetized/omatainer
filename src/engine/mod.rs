@@ -803,6 +803,7 @@ pub struct Snapshot {
     pub(crate) timing: Option<Arc<midi_data::Conductor>>,
     pub master: f32,
     pub xfader: f32,
+    pub xfader_curve: f32,
     pub cue_mix: f32,
     pub monitor: monitor::Status,
     pub view: u8,
@@ -865,6 +866,7 @@ impl Default for Snapshot {
             timing: None,
             master: 0.85,
             xfader: 0.5,
+            xfader_curve: 0.35,
             cue_mix: 0.0,
             monitor: monitor::Status::default(),
             view: 0,
@@ -964,6 +966,7 @@ pub enum Command {
     DeckUnload { deck: u8 },
     LoadBuiltin { deck: u8, stem: u8 },
     Xfader(f32),
+    XfaderCurve(f32),
     Master(f32),
     CueMix(f32),
     Monitor(monitor::Control),
@@ -2633,6 +2636,9 @@ impl RtEngine {
                 self.undo.retire_command(command);
             }
             Command::Xfader(v) => self.xfader = v.clamp(0.0, 1.0),
+            Command::XfaderCurve(v) => {
+                if v.is_finite() { self.xfader_curve = v.clamp(0.0, 1.0); }
+            }
             Command::Master(v) => self.master = v.clamp(0.0, 1.5),
             Command::CueMix(v) => self.cue_mix = v.clamp(0.0, 1.0),
             Command::Monitor(control) => self.monitor.apply(control),

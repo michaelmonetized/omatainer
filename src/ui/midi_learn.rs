@@ -48,6 +48,7 @@ fn label(action: Action) -> &'static str {
         Action::DeckLoadLock => "Deck load lock",
         Action::DeckVinyl => "Deck vinyl mode",
         Action::Xfader => "Crossfader",
+        Action::XfaderCurve => "Crossfader contour",
         Action::Master => "Master gain",
         Action::CueMix => "Headphone mix",
         Action::Browse => "Browse library",

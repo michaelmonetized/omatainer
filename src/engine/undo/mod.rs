@@ -46,6 +46,7 @@ pub enum Name {
     Quantization,
     Metronome,
     Crossfader,
+    CrossfaderContour,
     Master,
     CueMix,
     MasterEffect,
@@ -73,6 +74,7 @@ impl Name {
             Self::Quantization => "Change quantization",
             Self::Metronome => "Toggle metronome",
             Self::Crossfader => "Move crossfader",
+            Self::CrossfaderContour => "Set crossfader contour",
             Self::Master => "Set master gain",
             Self::CueMix => "Set cue mix",
             Self::MasterEffect => "Edit master effect",
@@ -809,6 +811,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::ToggleQuant
             | Command::Metronome
             | Command::Xfader(_)
+            | Command::XfaderCurve(_)
             | Command::Master(_)
             | Command::CueMix(_)
             | Command::FxWet { .. }

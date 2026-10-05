@@ -41,6 +41,7 @@ pub(super) struct Global {
     quantize: bool,
     metronome: bool,
     xfader: f32,
+    xfader_curve: f32,
     master: f32,
     cue_mix: f32,
     fx_kind: [FxKind; 3],
@@ -61,6 +62,7 @@ impl Global {
             quantize: rt.quantize,
             metronome: rt.metronome,
             xfader: rt.xfader,
+            xfader_curve: rt.xfader_curve,
             master: rt.master,
             cue_mix: rt.cue_mix,
             fx_kind: rt.fx_kind,
@@ -84,6 +86,7 @@ impl Global {
         }
         rt.metronome = self.metronome;
         rt.xfader = self.xfader;
+        rt.xfader_curve = self.xfader_curve;
         rt.master = self.master;
         rt.cue_mix = self.cue_mix;
         for slot in 0..3 {

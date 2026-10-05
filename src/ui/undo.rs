@@ -77,6 +77,7 @@ impl History {
             Command::SetBpm(_)
                 | Command::NudgeBpm(_)
                 | Command::Xfader(_)
+                | Command::XfaderCurve(_)
                 | Command::Master(_)
                 | Command::CueMix(_)
                 | Command::TrackGain { .. }

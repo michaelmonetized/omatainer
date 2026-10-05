@@ -49,6 +49,7 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::DeckLoadLock,
         Action::DeckVinyl,
         Action::Xfader,
+        Action::XfaderCurve,
         Action::Master,
         Action::CueMix,
         Action::Browse,
@@ -84,6 +85,7 @@ pub(crate) fn kind(action: Action) -> MsgKind {
         | Action::DeckEqLow
         | Action::DeckFilter
         | Action::Xfader
+        | Action::XfaderCurve
         | Action::Master
         | Action::CueMix
         | Action::TrackFader

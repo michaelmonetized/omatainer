@@ -28,6 +28,7 @@ impl Plan {
             Quant(_) | ToggleQuant => (Target::Global, Name::Quantization, 2),
             Metronome => (Target::Global, Name::Metronome, 3),
             Xfader(_) => (Target::Global, Name::Crossfader, 4),
+            XfaderCurve(_) => (Target::Global, Name::CrossfaderContour, 7),
             Master(_) => (Target::Global, Name::Master, 5),
             CueMix(_) => (Target::Global, Name::CueMix, 6),
             FxWet { slot, .. } | FxSelect { slot } if *slot < 3 => {

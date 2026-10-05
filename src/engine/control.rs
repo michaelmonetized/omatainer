@@ -676,6 +676,9 @@ impl CommandPort {
         if matches!(&command, Command::TimelineSeek(seconds) if !seconds.is_finite() || !(0.0..=86400.0).contains(seconds)) {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command, Command::XfaderCurve(value) if !value.is_finite() || !(0.0..=1.0).contains(value)) {
+            return fail(SubmissionError::InvalidTarget);
+        }
         if !super::midi_edit::qualify_legacy_notes(&mut command) {
             return fail(SubmissionError::MidiIdentityUnavailable);
         }
@@ -1115,6 +1118,7 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
     match *command {
         Command::SetBpm(_) => Some((0, 0, 0)),
         Command::Xfader(_) => Some((1, 0, 0)),
+        Command::XfaderCurve(_) => Some((18, 0, 0)),
         Command::Master(_) => Some((2, 0, 0)),
         Command::CueMix(_) => Some((3, 0, 0)),
         Command::Monitor(crate::engine::monitor::Control::Mix(_)) => Some((15, 0, 0)),
@@ -1138,6 +1142,20 @@ fn parameter_key(command: &Command) -> Option<(u8, usize, usize)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn contour_updates_coalesce_without_overwriting_crossfader_position() {
+        let (tx, rx) = crossbeam_channel::bounded(32);
+        let rx = CommandReceiver::from(rx);
+        for command in [Command::Xfader(0.5), Command::XfaderCurve(0.0), Command::XfaderCurve(1.0)] {
+            tx.send(command).unwrap();
+        }
+        let batch = CommandBatch::receive(&rx);
+        assert_eq!(batch.received, 3);
+        assert_eq!(batch.applied, 2);
+        let commands = batch.commands.into_iter().flatten().collect::<Vec<_>>();
+        assert!(matches!(commands.as_slice(), [Command::Xfader(0.5), Command::XfaderCurve(1.0)]));
+    }
 
     #[test]
     fn parameter_updates_coalesce_without_crossing_event_or_target_boundaries() {

@@ -343,6 +343,7 @@ impl Frame {
         }
         target.master = rt.master;
         target.xfader = rt.xfader;
+        target.xfader_curve = rt.xfader_curve;
         target.cue_mix = rt.cue_mix;
         target.monitor = rt.monitor.status;
         target.view = match rt.view {

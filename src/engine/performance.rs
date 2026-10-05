@@ -582,6 +582,7 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckUnload { .. }
         | Command::LoadBuiltin { .. }
         | Command::Xfader(_)
+        | Command::XfaderCurve(_)
         | Command::Master(_)
         | Command::CueMix(_)
         | Command::Monitor(_)

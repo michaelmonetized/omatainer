@@ -2,6 +2,64 @@ use super::*;
 use mixer_gain::{crossfader_gains, pan_gains, GainPair};
 use std::hint::black_box;
 
+#[test]
+fn crossfader_fades_at_equal_power_and_cuts_without_a_centre_dip() {
+    for step in 0..=100 {
+        let x = step as f32 / 100.0;
+        let (a, b) = xfader_gains(x, 0.0);
+        assert!((a * a + b * b - 1.0).abs() < 1e-6);
+        for curve in [0.0, 0.35, 0.5, 1.0] {
+            let (a, b) = xfader_gains(x, curve);
+            let mirror = xfader_gains(1.0 - x, curve);
+            assert!((a - mirror.1).abs() < 1e-6 && (b - mirror.0).abs() < 1e-6);
+            assert!((0.0..=1.0).contains(&a) && (0.0..=1.0).contains(&b));
+        }
+    }
+    for x in [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98] {
+        assert_eq!(xfader_gains(x, 1.0), (1.0, 1.0));
+    }
+    for curve in [0.0, 0.35, 1.0] {
+        assert_eq!(xfader_gains(0.0, curve), (1.0, 0.0));
+        assert_eq!(xfader_gains(1.0, curve), (0.0, 1.0));
+    }
+    let halfway_into_cut = xfader_gains(0.01, 1.0);
+    assert_eq!(halfway_into_cut.0, 1.0);
+    assert!((halfway_into_cut.1 - std::f32::consts::FRAC_1_SQRT_2).abs() < 2e-6);
+}
+
+#[test]
+fn cut_contour_keeps_each_decks_rendered_level_at_centre_on_stereo_and_ns7_outputs() {
+    for channels in [2, 4] {
+        let mut rt = fixture(0, false);
+        rt.master = 1.0;
+        rt.apply(Command::XfaderCurve(1.0));
+        for (deck, signal) in rt.decks.iter_mut().zip([[0.02, 0.0], [0.0, 0.03]]) {
+            deck.audio = Some(Arc::new(Sample {
+                data: signal.repeat(100_000),
+                ..deck.audio.as_ref().unwrap().as_ref().clone()
+            }));
+        }
+        let mut output = vec![0.0; 4096 * channels];
+        let mut levels = Vec::new();
+        for position in [0.0, 0.5, 1.0] {
+            rt.apply(Command::Xfader(position));
+            rt.process_interleaved(&mut output, channels);
+            let last = &output[output.len() - channels..];
+            levels.push([last[0], last[1]]);
+        }
+        assert!(levels[0][0] > 0.015 && levels[2][1] > 0.025, "{levels:?}");
+        assert_eq!(levels[0][1], 0.0);
+        assert_eq!(levels[2][0], 0.0);
+        assert!((levels[1][0] - levels[0][0]).abs() < 1e-5, "{levels:?}");
+        assert!((levels[1][1] - levels[2][1]).abs() < 1e-5, "{levels:?}");
+        rt.apply(Command::Xfader(0.5));
+        rt.apply(Command::XfaderCurve(0.0));
+        rt.process_interleaved(&mut output, channels);
+        let last = &output[output.len() - channels..];
+        assert!(last[0] < levels[1][0] * 0.72 && last[1] < levels[1][1] * 0.72);
+    }
+}
+
 fn fixture(count: usize, legacy: bool) -> RtEngine {
     let (_tx, rx) = crossbeam_channel::bounded(32);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
@@ -177,6 +235,7 @@ fn control_sweeps_are_block_partition_invariant_and_warmed_rendering_stays_alloc
         let x = if index % 2 == 0 { 0.0 } else { 1.0 };
         for rt in [&mut whole, &mut split] {
             rt.apply(Command::Xfader(x));
+            rt.apply(Command::XfaderCurve(1.0 - x));
             rt.apply(Command::TrackPan { track: 0, value: x });
             rt.apply(Command::TrackGain {
                 track: 0,
@@ -195,6 +254,7 @@ fn control_sweeps_are_block_partition_invariant_and_warmed_rendering_stays_alloc
     let allocations = test_alloc::measure(|| {
         for index in 0..16 {
             whole.apply(Command::Xfader(index as f32 / 15.0));
+            whole.apply(Command::XfaderCurve(1.0 - index as f32 / 15.0));
             whole.apply(Command::TrackPan {
                 track: 0,
                 value: index as f32 / 15.0,
