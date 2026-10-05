@@ -379,3 +379,27 @@ fn ns7_controls_tap_updates_preparation_tempo_without_overriding_a_locked_grid()
     control(&mut rt, 1, Control::Tap);
     assert_eq!(rt.decks[0].grid, Some(grid));
 }
+
+#[test]
+fn ns7_controls_loop_undo_restores_inactive_length_and_selected_bank() {
+    let (_engine, mut rt) = fixture();
+    rt.quantize = false;
+    control(&mut rt, 1, Control::LoopMode);
+    control(&mut rt, 1, Control::LoopButton { index: 2 });
+    control(&mut rt, 1, Control::LoopToggle);
+    let length = rt.decks[0].loop_len;
+    control(&mut rt, 1, Control::LoopScale { double: true });
+    assert_eq!(rt.decks[0].loop_len, length * 2.0);
+    assert!(!rt.decks[0].loop_on);
+    rt.apply(Command::Undo);
+    assert_eq!(rt.decks[0].loop_len, length);
+    assert!(!rt.decks[0].loop_on);
+    rt.apply(Command::Redo);
+    assert_eq!(rt.decks[0].loop_len, length * 2.0);
+    assert!(!rt.decks[0].loop_on);
+    control(&mut rt, 1, Control::LoopSelect);
+    assert_eq!(rt.decks[0].controls.status().loop_slot, 1);
+    rt.apply(Command::Undo);
+    assert_eq!(rt.decks[0].controls.status().loop_slot, 0);
+    assert_eq!(rt.decks[0].loop_len, length * 2.0);
+}

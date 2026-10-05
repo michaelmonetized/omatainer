@@ -106,6 +106,12 @@ pub(super) struct State {
     pub braking: bool,
     pub brake_rate: f32,
 }
+#[derive(Clone, Copy)]
+pub(super) struct LoopHistory {
+    loops: [Option<(f64, f64)>; 8],
+    selected: usize,
+    auto_button: Option<u8>,
+}
 impl Default for State {
     fn default() -> Self {
         Self {
@@ -134,6 +140,24 @@ impl Default for State {
     }
 }
 impl State {
+    /// Capture bounded loop selections for Undo.
+    /// Takes this state; returns saved banks and the selected runtime slot.
+    pub fn loop_history(&self) -> LoopHistory {
+        LoopHistory {
+            loops: self.loops,
+            selected: self.selected,
+            auto_button: self.auto_button,
+        }
+    }
+    /// Restore loop selection without reviving held performance buttons.
+    /// Takes the captured loop state; replaces banks and clears any stale edge-edit baseline.
+    pub fn restore_loops(&mut self, history: LoopHistory) {
+        self.loops = history.loops;
+        self.selected = history.selected;
+        self.auto_button = history.auto_button;
+        self.edit = 0;
+        self.edit_ticks = None;
+    }
     /// Check a held button across independent input owners.
     /// Takes a button; returns whether any admitted source still holds it.
     pub fn held(&self, button: Button) -> bool {
@@ -508,7 +532,7 @@ impl RtEngine {
                 }
                 let active = self.decks[index].loop_on;
                 self.decks[index].loop_on = self.decks[index].loop_len > 1.0;
-                self.apply(if double {
+                self.apply_plain(if double {
                     Command::DeckLoopDouble { deck }
                 } else {
                     Command::DeckLoopHalf { deck }

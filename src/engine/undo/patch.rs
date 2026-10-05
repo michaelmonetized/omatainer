@@ -165,6 +165,7 @@ pub(super) struct DeckControls {
     loop_on: bool,
     loop_start: f64,
     loop_len: f64,
+    controller_loops: super::super::deck_controls::LoopHistory,
 }
 impl DeckControls {
     pub fn get(deck: &DeckRt) -> Self {
@@ -190,6 +191,7 @@ impl DeckControls {
             loop_on: deck.loop_on,
             loop_start: deck.loop_start,
             loop_len: deck.loop_len,
+            controller_loops: deck.controls.loop_history(),
         }
     }
     fn swap(&mut self, deck: &mut DeckRt, sr: f32) {
@@ -224,6 +226,7 @@ impl DeckControls {
         deck.loop_on = self.loop_on;
         deck.loop_start = self.loop_start;
         deck.loop_len = self.loop_len;
+        deck.controls.restore_loops(self.controller_loops);
         if jump {
             deck.transition_to(deck.pos, sr, DeckTransition::Jump);
         }
