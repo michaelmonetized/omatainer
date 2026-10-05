@@ -82,6 +82,12 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     ns7.push(&[0xb0, 0x42, 0]);
     assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Volume(0.0)))));
     ns7.push(&[0x90, 1, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::MeterMaster(true))));
+    ns7.push(&[0x80, 1, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::MeterMaster(false))));
+    ns7.push(&[0x90, 0x1b, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckControl { source:72, deck:0, control:crate::engine::deck_controls::Control::Keylock })));
+    ns7.push(&[0x80, 0x1b, 0]);
     assert!(receiver.is_empty());
     for (message, expected) in [
         ([0x90, 0, 99], false),
