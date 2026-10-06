@@ -1,18 +1,29 @@
 //! Record aliases feed a bounded queue; a worker writes and publishes complete WAV files.
 use super::prepared::Frame;
-use crossbeam_channel::{bounded, Receiver, Sender};
+use parking_lot::Mutex;
 use std::io::{Seek, SeekFrom, Write};
 use std::{
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering},
         Arc,
     },
     time::Duration,
 };
 
-const CAPACITY: usize = 4096;
+const CAPACITY: usize = 32768;
 const MAX_BYTES: u64 = 128 * 1024 * 1024;
+pub(crate) mod delivery;
+#[derive(Clone, Copy)]
+struct DeliveryStart {
+    request: u64,
+    alias: u64,
+    epoch: u64,
+    rate: u32,
+    limit: u64,
+    width: u8,
+    channels: [u16; 26],
+}
 #[derive(Clone, Copy)]
 struct Sample {
     frame: Frame,
@@ -28,19 +39,32 @@ struct Shared {
     preview: AtomicBool,
     generation: AtomicU64,
     epoch: AtomicU64,
+    output_width: AtomicU8,
+    output_channels: [AtomicU64; 4],
+    limit: AtomicU64,
+    failure: AtomicU8,
+    peak: AtomicU32,
+    request: AtomicU64,
+    acknowledged: AtomicU64,
+    accepted: AtomicBool,
 }
 #[derive(Clone)]
 pub(crate) struct Recorder {
-    sender: Sender<Sample>,
-    receiver: Receiver<Sample>,
+    sender: Arc<Mutex<rtrb::Producer<Sample>>>,
+    receiver: Arc<Mutex<rtrb::Consumer<Sample>>>,
     shared: Arc<Shared>,
+    starts: Arc<Mutex<rtrb::Producer<DeliveryStart>>>,
+    starting: Arc<Mutex<rtrb::Consumer<DeliveryStart>>>,
 }
 impl Default for Recorder {
     fn default() -> Self {
-        let (sender, receiver) = bounded(CAPACITY);
+        let (sender, receiver) = rtrb::RingBuffer::new(CAPACITY);
+        let (starts, starting) = rtrb::RingBuffer::new(1);
         Self {
-            sender,
-            receiver,
+            sender: Arc::new(Mutex::new(sender)),
+            receiver: Arc::new(Mutex::new(receiver)),
+            starts: Arc::new(Mutex::new(starts)),
+            starting: Arc::new(Mutex::new(starting)),
             shared: Arc::new(Shared {
                 alias: AtomicU64::new(0),
                 count: AtomicU64::new(0),
@@ -50,11 +74,40 @@ impl Default for Recorder {
                 preview: AtomicBool::new(false),
                 generation: AtomicU64::new(0),
                 epoch: AtomicU64::new(0),
+                output_width: AtomicU8::new(0),
+                output_channels: std::array::from_fn(|_| AtomicU64::new(0)),
+                limit: AtomicU64::new(0),
+                failure: AtomicU8::new(0),
+                peak: AtomicU32::new(0),
+                request: AtomicU64::new(0),
+                acknowledged: AtomicU64::new(0),
+                accepted: AtomicBool::new(false),
             }),
         }
     }
 }
 impl Recorder {
+    /// Wait for one numbered audio frame on the writer.
+    /// Takes a short timeout; returns the next published SPSC frame without making its producer wait for this consumer.
+    fn next_sample(&self, timeout: Duration) -> Option<Sample> {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            if let Ok(sample) = self.receiver.lock().pop() {
+                return Some(sample);
+            }
+            if std::time::Instant::now() >= deadline {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+    /// Report a live-input recording policy.
+    /// Takes this recorder; returns true for active raw alias capture, while recording final program outputs leaves track monitoring unchanged.
+    pub(crate) fn monitoring_inputs(&self) -> bool {
+        self.alias() != 0
+            && !self.shared.stop.load(Ordering::Acquire)
+            && self.shared.output_width.load(Ordering::Acquire) == 0
+    }
     /// Read the selected record source.
     /// Takes this recorder; returns its stable alias ID, or zero while idle.
     pub(crate) fn alias(&self) -> u64 {
@@ -71,23 +124,32 @@ impl Recorder {
             return;
         }
         if !complete {
-            self.shared.fault.store(true, Ordering::Release);
+            self.fail(1);
+            return;
+        }
+        let limit = self.shared.limit.load(Ordering::Relaxed);
+        if limit != 0 && self.frames() >= limit {
             self.stop();
             return;
         }
         let index = self.shared.count.fetch_add(1, Ordering::Relaxed);
-        if self
-            .sender
-            .try_send(Sample {
-                frame,
-                index,
-                generation,
-            })
-            .is_err()
-        {
-            self.shared.fault.store(true, Ordering::Release);
-            self.stop();
+        if !self.sender.try_lock().is_some_and(|mut sender| {
+            sender
+                .push(Sample {
+                    frame,
+                    index,
+                    generation,
+                })
+                .is_ok()
+        }) {
+            self.fail(2);
         }
+        let peak = frame
+            .iter()
+            .filter(|s| s.is_finite())
+            .fold(0.0_f32, |peak, s| peak.max(s.abs()))
+            .to_bits();
+        self.shared.peak.fetch_max(peak, Ordering::Relaxed);
     }
     /// Finish a capture without discarding completed audio.
     /// Takes this recorder; signals the writer to drain and finalize its bounded queue.
@@ -98,6 +160,12 @@ impl Recorder {
     /// Takes this recorder; invalidates pending writer activation and finishes an existing capture.
     pub(crate) fn invalidate(&self) {
         self.shared.epoch.fetch_add(1, Ordering::AcqRel);
+        if self.alias() != 0 {
+            let _ =
+                self.shared
+                    .failure
+                    .compare_exchange(0, 3, Ordering::Relaxed, Ordering::Relaxed);
+        }
         self.stop();
     }
     /// Exclude transient licensed preview audio.
@@ -153,9 +221,12 @@ impl Recorder {
         struct Guard<'a>(&'a Recorder);
         impl Drop for Guard<'_> {
             fn drop(&mut self) {
+                let _activation = self.0.starting.lock();
                 self.0.shared.alias.store(0, Ordering::Release);
                 self.0.shared.stop.store(true, Ordering::Release);
                 self.0.shared.busy.store(false, Ordering::Release);
+                self.0.shared.output_width.store(0, Ordering::Release);
+                self.0.shared.limit.store(0, Ordering::Release);
             }
         }
         let _guard = Guard(self);
@@ -172,10 +243,16 @@ impl Recorder {
             let durable = file.try_clone().map_err(|error| error.to_string())?;
             let mut writer = std::io::BufWriter::new(file);
             header(&mut writer, channels, rate, 0).map_err(|error| error.to_string())?;
-            while self.receiver.try_recv().is_ok() {}
+            while self.receiver.lock().pop().is_ok() {}
+            let mut activation = self.starting.lock();
+            while activation.pop().is_ok() {}
+            self.shared.request.fetch_add(1, Ordering::AcqRel);
             let generation = self.shared.generation.fetch_add(1, Ordering::AcqRel) + 1;
             self.shared.count.store(0, Ordering::Release);
             self.shared.fault.store(false, Ordering::Release);
+            self.shared.failure.store(0, Ordering::Release);
+            self.shared.output_width.store(0, Ordering::Release);
+            self.shared.limit.store(0, Ordering::Release);
             self.shared.stop.store(false, Ordering::Release);
             if self.shared.preview.load(Ordering::Acquire) {
                 return Err(
@@ -186,6 +263,7 @@ impl Recorder {
                 return Err("Record-source capture cancelled".into());
             }
             self.shared.alias.store(alias, Ordering::Release);
+            drop(activation);
             if self.epoch() != epoch || self.shared.preview.load(Ordering::Acquire) {
                 self.stop();
                 return Err("Record source changed before activation".into());
@@ -202,17 +280,16 @@ impl Recorder {
                 if self.shared.fault.load(Ordering::Acquire) {
                     return Err("Record-source capture has missing input, invalid frames or queue overflow; no incomplete file was published".into());
                 }
-                match self.receiver.recv_timeout(Duration::from_millis(20)) {
-                    Ok(sample) if sample.generation != generation => {},
-                    Ok(sample) => {
+                match self.next_sample(Duration::from_millis(20)) {
+                    Some(sample) if sample.generation != generation => {},
+                    Some(sample) => {
                         if sample.index != frames || sample.frame[..usize::from(channels)].iter().any(|value| !value.is_finite()) { return Err("Record-source capture has missing or invalid frames".into()); }
                         for value in &sample.frame[..usize::from(channels)] { writer.write_all(&value.to_le_bytes()).map_err(|error| error.to_string())?; }
                         frames += 1; last_frame = std::time::Instant::now();
                     }
-                    Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return Err("Record-source queue closed".into()),
-                    Err(_) if self.shared.stop.load(Ordering::Acquire) => break,
-                    Err(_) if last_frame.elapsed() > Duration::from_secs(5) => return Err("Record source stopped producing frames; no empty or incomplete file was published".into()),
-                    Err(_) => {},
+                    None if self.shared.stop.load(Ordering::Acquire) => break,
+                    None if last_frame.elapsed() > Duration::from_secs(5) => return Err("Record source stopped producing frames; no empty or incomplete file was published".into()),
+                    None => {},
                 }
             }
             self.shared.alias.store(0, Ordering::Release);
@@ -278,21 +355,33 @@ mod tests {
     #[test]
     fn incomplete_input_refuses_publication_and_the_next_complete_capture_can_finish() {
         let recorder = Recorder::default();
-        let directory = std::env::temp_dir().join(format!("omatainer-input-record-{}", crate::sampler_bank::BankId::new().unwrap()));
+        let directory = std::env::temp_dir().join(format!(
+            "omatainer-input-record-{}",
+            crate::sampler_bank::BankId::new().unwrap()
+        ));
         std::fs::create_dir(&directory).unwrap();
         for complete in [false, true] {
-            let path = directory.join(if complete { "complete.wav" } else { "incomplete.wav" });
+            let path = directory.join(if complete {
+                "complete.wav"
+            } else {
+                "incomplete.wav"
+            });
             let capture = recorder.clone();
             let destination = path.clone();
             let epoch = recorder.epoch();
-            let writer = std::thread::spawn(move || capture.write(7, 2, 48000, 1, &destination, &AtomicBool::new(false), epoch));
+            let writer = std::thread::spawn(move || {
+                capture.write(7, 2, 48000, 1, &destination, &AtomicBool::new(false), epoch)
+            });
             let deadline = std::time::Instant::now() + Duration::from_secs(3);
             while recorder.alias() != 7 {
                 assert!(std::time::Instant::now() < deadline);
                 std::thread::sleep(Duration::from_millis(1));
             }
             recorder.capture(7, [0.25; 32], true);
-            assert_eq!(crate::engine::test_alloc::measure(|| recorder.capture(7, [0.0; 32], complete)), crate::engine::test_alloc::Counts::default());
+            assert_eq!(
+                crate::engine::test_alloc::measure(|| recorder.capture(7, [0.0; 32], complete)),
+                crate::engine::test_alloc::Counts::default()
+            );
             recorder.stop();
             let result = writer.join().unwrap();
             if complete {

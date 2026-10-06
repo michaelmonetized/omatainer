@@ -247,3 +247,9 @@ fn queued_input_controls_retain_track_identity_and_reject_replacement_without_he
     assert_eq!(rt.tracks[2].input_monitor, None);
     assert!(!rt.tracks[2].armed && !rt.tracks[2].pfl);
 }
+
+#[test]
+fn final_output_recording_keeps_armed_auto_audio_clip_audible(){
+    use crate::engine::audio::routing::record::delivery::{Request,STANDARD_OUTPUT};
+    let mut rt=engine();clip(&mut rt,0.0);rt.tracks[0].input_monitor=Some(Mode::Auto);rt.tracks[0].armed=true;for _ in 0..512{raw(&mut rt);}let expected=raw(&mut rt);assert_eq!(expected,[0.05;2]);let r=rt.routing_pipe.recorder.clone();let destination=std::env::temp_dir().join(format!("omatainer-output-monitor-{}",crate::sampler_bank::BankId::new().unwrap()));let path=destination.clone();let request=Request{alias:STANDARD_OUTPUT,output_channels:Some(vec![0,1]),options:crate::audio_delivery::Options::default(),seconds:1,epoch:r.epoch()};let worker=r.clone();let work=std::thread::spawn(move||worker.write_delivery(&request,&path,&std::sync::atomic::AtomicBool::new(false)));let end=std::time::Instant::now()+std::time::Duration::from_secs(15);while r.alias()==0{r.begin_delivery(48000);assert!(std::time::Instant::now()<end);std::thread::sleep(std::time::Duration::from_millis(1));}assert_eq!(raw(&mut rt),expected);assert!(!r.monitoring_inputs());r.converted(&expected,2);r.stop();assert_eq!(work.join().unwrap().unwrap().frames,1);assert_eq!(raw(&mut rt),expected);std::fs::remove_dir_all(destination).unwrap();
+}

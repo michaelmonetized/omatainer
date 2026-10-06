@@ -14,6 +14,7 @@ mod library;
 mod playlist_import;
 mod music_provider;
 mod video;
+mod audio_delivery;
 mod project_versions;
 mod media_location;
 mod media_tags;

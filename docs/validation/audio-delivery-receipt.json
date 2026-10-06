@@ -1,0 +1,229 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T17:12:50.605Z",
+  "baseRevision": "30cb4d023f8a06d97eafaea733475475deba54de",
+  "sourceFiles": {
+    "src/audio_delivery.rs": "88eb51f26ae8b312bb8f2213090cdb9d6ea8ef9156ae087a95b2ff9790f4f1a7",
+    "src/audio_delivery/recovery.rs": "004fec1d8facd116bd4466e0860158dfcdc17ba20b1638e8185f2cfeb0af166f",
+    "src/audio_delivery/render.rs": "f25a1a7a757a5554d7a73bb778e451657f3153b9da0ce6c7c25e89d591ce0e76",
+    "src/audio_delivery/tests.rs": "d7d3fca987fbb9b5b42bb8302fbe20cc4fc1be94cb8abec9e8169ef1b4707e53",
+    "src/audio_delivery/wav.rs": "f17edb504de9784e09158b0189933fa8a86d1f04afb3cf8ada1fe01ad9d3a1ce",
+    "src/background.rs": "6dc93222db2a6634731c4e404002e8d4094dd78385de41076cf7b3b116a9c613",
+    "src/engine/audio.rs": "631eda00592e833b5df4868f8578f9df670dd2db63342a6d10ce60b535441d59",
+    "src/engine/audio/routing/record.rs": "cc70b095263b885de7bc00b33579d16ec677cbd54445853e7f760779fd2008df",
+    "src/engine/audio/routing/record/delivery.rs": "abd3ddc48db53d0726125f5605820bbd2b73dad1b0eeb00e20ca47d459f7cfaf",
+    "src/engine/audio/routing/record/delivery/tests.rs": "5a3d5c1c5d7e60d59fa4bc508bc29ea78fed7fbee763b774888201803eacddc0",
+    "src/engine/audio/routing/render.rs": "d9aa5a09dea6df411b23622d24aee031f0639657c3860095e2f8574e89ff0d44",
+    "src/engine/audio_export.rs": "e3c2150522d6d2c1dd7b4f6d070ff002f3ab9a392846235ad208b2a1c8242393",
+    "src/engine/input_monitor/tests.rs": "61c4a06ab07e2c9e983871d4dd677ddfe39014493f65403e1dc50f49758b2396",
+    "src/engine/mod.rs": "ce1ec61f7478c237d2ac9e251abe5fdbd554c329e86c5173916c8664f63ce95c",
+    "src/engine/snapshot.rs": "1fcb038e214693d31d9e79a484d9ac83a730bb8f09a28a852f2b6d2c39bb7f28",
+    "src/main.rs": "a641ffdf9c4e40e3cf0ddb10ad5b7d330354ce8a8f833ebf763baa0552244332",
+    "src/ui.rs": "5bc133529d64dfc8a74ada1bf22e3a60cfae5aac219f795a460561a3791e01cf",
+    "src/ui/audio_delivery.rs": "44b76f014c5d4329ebe5f98be07f5cd761ecf7c82962aa87c3f3ca86625594bd",
+    "src/ui/audio_delivery/tests.rs": "583cb78a9ad1d778dba4aba6385e61ebfd2e4f789b26baf20517902e03fb7090",
+    "src/ui/audio_status.rs": "c68e8dae5c5d888c23e068f12155f228bc28ec8077e61a4e2053a3b8d76b5b75",
+    "src/ui/help/catalogue.rs": "72991c6c8eb17ccd48162d01ff01f25aeee2a2fc4318207f84497762854c0fcc",
+    "src/ui/project_import/tests.rs": "f9d7339ef4070494efff3847bf1c3e06b51689fc5aeadd2898c997ceace73356",
+    "src/ui/project_versions/tests.rs": "10c0ef2301b54b3ae2ff9c64183592411e1eda90567587abdafb92b0dd5752b7",
+    "src/ui/test_support.rs": "9c8f3d38051491d1372b176e8bf2daef6e41dd789ca91b8258d4204a67398f37"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/audio-delivery-tests",
+    "sha256": "c519ea596d8d49a95ea06237b5ce019ecee72200084bed1d35a9f5fac3f28b00"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/audio-delivery-compiled-source-inventory.json",
+    "sha256": "cccb29d0b1ca4fb707265046498a3e5b8cf35fdb39bbc14cf01253b07ba195a5",
+    "files": 710
+  },
+  "tests": {
+    "core-ui-tests": {
+      "path": "target/app-backlog/audio-delivery-core-ui-tests.log",
+      "sha256": "d352cf85b248af292ece4603cf6b2ebfecdd980f46028141091343f2b63bf250",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1856,
+      "seconds": 1.94
+    },
+    "recording-tests": {
+      "path": "target/app-backlog/audio-delivery-recording-tests.log",
+      "sha256": "46fe7bd51e70ecb0bbb56f8be8d9dfaca66807907858e6ecf1815b381c27a8e6",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1865,
+      "seconds": 10.41
+    },
+    "monitor-regression": {
+      "path": "target/app-backlog/audio-delivery-monitor-regression.log",
+      "sha256": "351e114e5fec01dc8aa1264cdf09b1719c7b459ee26fba49915aedf9afc07885",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1870,
+      "seconds": 0.14
+    },
+    "manual-regeneration": {
+      "path": "target/app-backlog/audio-delivery-manual-regeneration.log",
+      "sha256": "dbc0b493711a40aeec5d9d543f902fede57185afb66ebbfa2d97362ecd8f19cc",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1870,
+      "seconds": 0.01
+    },
+    "manual-test": {
+      "path": "target/app-backlog/audio-delivery-manual-test.log",
+      "sha256": "e2f530e8562581041c497c2eb7aab93790f1b0acc08b528a63cb7ebff0963ac6",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1870,
+      "seconds": 0
+    },
+    "default-stack-cue-tests": {
+      "path": "target/app-backlog/audio-delivery-default-stack-cue-tests.log",
+      "sha256": "2dfc79fbc78364585358316bb2ccc2b8efc34d5eb312242b913bc247fd67b83d",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1866,
+      "seconds": 2.23
+    },
+    "telemetry-test": {
+      "path": "target/app-backlog/audio-delivery-telemetry-test.log",
+      "sha256": "dd94fa361a0df135c644169868388f267e34ea8969c7d97c6c86f38e3939644f",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1870,
+      "seconds": 0.11
+    },
+    "full-tests": {
+      "path": "target/app-backlog/audio-delivery-full-tests.log",
+      "sha256": "25898bca35c54daa32ebf6ee43cc88efac5e39785f11ab3a0f715e532e6fdaf2",
+      "passed": 1827,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 479.7
+    }
+  },
+  "checks": {
+    "node": {
+      "path": "target/app-backlog/audio-delivery-node-tests.log",
+      "sha256": "3a1a0ec8b5676c997a8a45bed951eb7c518bc1ea3439d92a4b1a9748a8158e61",
+      "passed": 15,
+      "failed": 0,
+      "scripts": [
+        "scripts/test-capability-matrix.mjs",
+        "scripts/test-release-package.mjs",
+        "scripts/test-retained-dependency-graph.mjs"
+      ],
+      "final": {
+        "path": "target/app-backlog/audio-delivery-node-tests-final.log",
+        "sha256": "a7423c10bbf301bc3936893099f08a32efe87bb687e9e9ab1dc9211908a8cd03",
+        "passed": 15,
+        "failed": 0
+      }
+    },
+    "offlineParityRates": [
+      44100,
+      48000,
+      96000
+    ],
+    "formats": [
+      "WAV float32",
+      "WAV PCM16",
+      "WAV PCM24",
+      "FLAC16",
+      "FLAC24",
+      "MP3 320kbps"
+    ],
+    "selectedChannelOrder": true,
+    "actualConvertedOutputParity": true,
+    "actualNativeEffectsAndTails": true,
+    "performanceModeRecordingAndRecovery": true,
+    "noCallbackHeapWork": true,
+    "pausedProducerDoesNotWait": true,
+    "sourceFaultsKeepExactPrefix": true,
+    "providerPreviewRefusesCapture": true,
+    "killedWriterRecoveredStereoFrames": 4096,
+    "realOsWriteFailureFinalizedStereoFrames": 512,
+    "twoHourSoftwareStream": {
+      "accelerated": true,
+      "hardware": false,
+      "rate": 12000,
+      "channels": 1,
+      "frames": 86400000,
+      "pcmBytes": 345600000,
+      "segments": 2,
+      "sha256OrderAndHeadersVerified": true
+    },
+    "hardwareOpened": false,
+    "folderOwnershipSpansCaptureAndEncoding": true
+  },
+  "diagnostics": {
+    "stack-layout-corrected": {
+      "path": "target/app-backlog/audio-delivery-stack-layout-corrected.log",
+      "sha256": "fb36f3bc4b2c1b1825122e684b2d707110fa815108c18941f8478fd9fd6fc117"
+    },
+    "stack-isolated": {
+      "path": "target/app-backlog/audio-delivery-stack-isolated.log",
+      "sha256": "c307412daabed8b41b4bf923968f0cbe401f6ccaf9e101b72569c6f5560f64e2"
+    },
+    "stack-prior-build": {
+      "path": "target/app-backlog/audio-delivery-stack-prior-build.log",
+      "sha256": "f451cdbfb3a4eb5d490b4414f079a10b0ed8b65f653dd03e78c480d22a8132f9"
+    },
+    "stack-size-diagnostic": {
+      "path": "target/app-backlog/audio-delivery-stack-size-diagnostic.log",
+      "sha256": "9d10e88076257953e9d1d14756534001ab047129d6747be2efbee0102fb734a0"
+    },
+    "telemetry-isolated": {
+      "path": "target/app-backlog/audio-delivery-telemetry-isolated.log",
+      "sha256": "d896910ea4920331620d3387be050eee9b528b1e4a115397da52b9d596bcfb13"
+    },
+    "telemetry-before-layout-settle": {
+      "path": "target/app-backlog/audio-delivery-telemetry-before-layout-settle.log",
+      "sha256": "825f51b449718a8d73e0ca3563502ed91c897a86799d5c8adacb45817b50b86a"
+    }
+  },
+  "corrections": [
+    "The first export gate passed eight checks and failed the source-reference parity fixture. Export explicitly includes both loaded decks; its reference had started only deck 0. The reference now starts both loaded decks and the new frozen build passes at every rate. The original failure log is retained.",
+    "Initial recording/recovery test compile failures were corrected; only successful new frozen source/build gates establish qualification."
+  ],
+  "previousCompleteRun": {
+    "path": "target/app-backlog/audio-delivery-full-tests-before-stack-fix.log",
+    "sha256": "09d8ddefbc7397f470bf92135a2dbce300f1900bfd41aacfc5b2d613bd9a7a76",
+    "exitCode": 134,
+    "reason": "Cue editor fixture overflowed the default test stack. It reproduced in isolation; the prior build passed, and increasing only the diagnostic test stack passed. Native GUI fixtures now own heap renderers; the delivery panel is boxed. The qualified complete rerun uses the default stack."
+  },
+  "previousTelemetryRun": {
+    "path": "target/app-backlog/audio-delivery-full-tests-before-telemetry-fix.log",
+    "sha256": "8d44d14eb04814db499851dd76bc6fb82b712b85b11ed33cba324c1168e1b121",
+    "passed": 1826,
+    "failed": 1,
+    "ignored": 44,
+    "filtered": 0,
+    "seconds": 475.18,
+    "reason": "The added Setup control wrapped telemetry below the first-pass panel clip. Actions and telemetry now have separate rows; the native visibility check settles two actual frames before asserting every painted readout."
+  },
+  "previousExportRun": {
+    "path": "target/app-backlog/audio-delivery-export-focused-tests-before-playback-fixture.log",
+    "sha256": "a0b3527bcf99eccfe2b224570342dfd3db64e99e5d51e80f2ea5eb74fe05616f",
+    "passed": 8,
+    "failed": 1,
+    "ignored": 0
+  },
+  "limits": [
+    "Fresh installation pending.",
+    "Offline current-session export means captured launches/deck cursors, not Arrangement/history replay.",
+    "Native WAV encoding is self-contained; FLAC/MP3 requires the real local FFmpeg encoder.",
+    "Worker scheduling and package qualification are Linux ARM64 only.",
+    "No physical or two-hour wall-clock hardware endurance test is claimed.",
+    "Process interruption recovery is not a power-loss or failed-storage guarantee."
+  ]
+}

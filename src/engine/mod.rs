@@ -38,6 +38,7 @@ mod mute_lifecycle_tests;
 #[cfg(test)]
 pub(crate) mod test_alloc;
 pub mod audio;
+mod audio_export;
 pub mod audio_metrics;
 pub(crate) mod history_measurement;
 pub mod performance;
@@ -1469,6 +1470,7 @@ impl RtEngine {
             if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
+        self.routing_pipe.recorder.begin_delivery(self.sr as u32);
         self.maintain_monitor(channels, !out.is_empty());
         self.quantized_deck_maintain();
         let spindle_now = Instant::now();
@@ -1726,7 +1728,7 @@ impl RtEngine {
         let explicit_region = playing.is_some_and(|p| self.tracks[ti].clips[p.scene as usize].region.is_some());
         let clock = if explicit_region { self.precise_midi_beat() } else { self.beat };
         let clip_sounding = playing.is_some_and(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON);
-        let recording = self.recording || self.routing_pipe.recorder.alias() != 0;
+        let recording = self.recording || self.routing_pipe.recorder.monitoring_inputs();
         let track = &mut self.tracks[ti];
         track.input_gain.prepare(track.input_gains(clip_sounding, recording), self.sr, input_monitor::identity);
         let [input_gain, clip_gain_value] = track.input_gain.tick();

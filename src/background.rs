@@ -149,6 +149,16 @@ impl Drop for Owner {
 #[derive(Clone, Default)]
 pub(crate) struct Reporter(Weak<Record>);
 impl Reporter {
+    /// Read measured worker progress.
+    /// Takes this weak reporter; returns completed units and a known total while its scheduler record remains available.
+    pub fn values(&self) -> Option<(u64, Option<u64>)> {
+        let record = self.0.upgrade()?;
+        let total = record.total.load(Ordering::Acquire);
+        Some((
+            record.done.load(Ordering::Acquire),
+            (total != u64::MAX).then_some(total),
+        ))
+    }
     /// Publish measured worker units without retaining its cancellation owner.
     /// Takes completed units and an optional known total; updates a still-retained job record only.
     pub fn progress(&self, done: u64, total: Option<u64>) {
@@ -437,6 +447,20 @@ pub(crate) fn identity(value: &impl serde::Serialize) -> Result<String, String> 
 /// Takes no arguments; returns the observed Linux nice value or an explicit unsupported/OS failure. The audio and GUI threads are untouched.
 #[cfg(target_os = "linux")]
 fn worker_priority() -> Result<u8, String> {
+    worker_budget(10, 3 << 13)
+}
+/// Prepare a recording writer budget.
+/// Takes no arguments; lowers only its owned CPU thread and retains normal disk service so a live audio queue can drain.
+#[cfg(target_os = "linux")]
+pub(crate) fn recording_priority() -> Result<u8, String> {
+    worker_budget(5, (2 << 13) | 4)
+}
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn recording_priority() -> Result<u8, String> {
+    Err("Native recording worker priorities are unavailable on this platform".into())
+}
+#[cfg(target_os = "linux")]
+fn worker_budget(nice: i32, disk: i32) -> Result<u8, String> {
     unsafe {
         let parameters = libc::sched_param { sched_priority: 0 };
         if libc::sched_setscheduler(0, libc::SCHED_OTHER, &parameters) != 0 {
@@ -450,8 +474,8 @@ fn worker_priority() -> Result<u8, String> {
         if *libc::__errno_location() != 0 {
             return Err(std::io::Error::last_os_error().to_string());
         }
-        if libc::setpriority(libc::PRIO_PROCESS, 0, old.max(10)) != 0
-            || libc::syscall(libc::SYS_ioprio_set, 1, 0, 3 << 13) != 0
+        if libc::setpriority(libc::PRIO_PROCESS, 0, old.max(nice)) != 0
+            || libc::syscall(libc::SYS_ioprio_set, 1, 0, disk) != 0
         {
             return Err(format!(
                 "Worker priority refused: {}",
@@ -459,9 +483,9 @@ fn worker_priority() -> Result<u8, String> {
             ));
         }
         let observed = libc::getpriority(libc::PRIO_PROCESS, 0);
-        if observed < 10
+        if observed < nice
             || libc::sched_getscheduler(0) != libc::SCHED_OTHER
-            || libc::syscall(libc::SYS_ioprio_get, 1, 0) != (3 << 13)
+            || libc::syscall(libc::SYS_ioprio_get, 1, 0) != i64::from(disk)
         {
             return Err("Worker CPU/I/O priority did not match its policy".into());
         }

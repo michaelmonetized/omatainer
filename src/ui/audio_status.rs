@@ -14,6 +14,7 @@ impl App {
                 if ui.button(tr!("Content & licenses")).help(ui, HelpControl::License).clicked() { self.licenses.open = true; }
                 if ui.button(tr!("Music providers")).help_detail(ui, HelpControl::MusicProvider, "Browse licensed remote music with explicit provider capabilities.").clicked() { self.music_provider.open = true; }
                 if ui.button(tr!("Video")).help(ui, HelpControl::VideoImport).clicked() { self.video.open = true; }
+                if ui.button(tr!("Audio export & recording")).help(ui,HelpControl::AudioExport).clicked() { self.audio_delivery.open = true; }
                 if ui.button(tr!("Automation")).help(ui, HelpControl::AutomationOpen).clicked() { self.automation_panel.open = true; }
                 if ui.button(tr!("Preferences")).help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; }
                 if ui.button(tr!("Workspaces")).help(ui, HelpControl::Preferences).clicked() {self.settings.open=true;self.settings.workspace_open=true;}
@@ -30,6 +31,8 @@ impl App {
                 if let Some(notice) = &self.settings.startup_notice {
                     if ui.button(tr!("Setup notice")).help_detail(ui, HelpControl::Preferences, notice).clicked() { self.settings.open = true; }
                 }
+            });
+            ui.horizontal_wrapped(|ui| {
                 if let Some(sample) = metrics.last_callback {
                     let cpu = sample.render_cpu_fraction().map(|value| format!("{:.1}%", value * 100.0))
                         .unwrap_or_else(|| "unavailable".into());
@@ -70,13 +73,16 @@ mod tests {
             ..Default::default()
         };
         let ctx = egui::Context::default();
-        let output = ctx.run(
+        let mut output = egui::FullOutput::default();
+        for _ in 0..2 {
+        output = ctx.run(
             egui::RawInput {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1440.0, 900.0))),
                 ..Default::default()
             },
             |ctx| fixture.app.audio_status(ctx),
         );
+        }
         for expected in [
             "Render CPU: 10.0%",
             "Callback elapsed: 20.00 ms / 10.00 ms budget",
@@ -87,7 +93,7 @@ mod tests {
             assert!(
                 output.shapes.iter().any(|shape| matches!(&shape.shape,
                 egui::epaint::Shape::Text(text) if text.galley.text().contains(expected))),
-                "missing {expected}"
+                "missing {expected}: {:?}", output.shapes.iter().filter_map(|s| match &s.shape { egui::epaint::Shape::Text(t)=>Some(t.galley.text()), _=>None }).collect::<Vec<_>>()
             );
         }
     }

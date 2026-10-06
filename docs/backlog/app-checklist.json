@@ -2483,9 +2483,12 @@
         82,
         130
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/audio-delivery.md",
+        "docs/validation/audio-delivery-receipt.json"
+      ]
     },
     {
       "issue": 180,
@@ -2509,9 +2512,12 @@
       "dependencies": [
         130
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/audio-delivery.md",
+        "docs/validation/audio-delivery-receipt.json"
+      ]
     },
     {
       "issue": 182,

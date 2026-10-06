@@ -236,7 +236,7 @@ impl Frame {
             out.solo = track.solo;
             out.armed = track.armed;
             out.input_monitor = track.input_monitor;
-            out.input_enabled = track.input_enabled(rt.recording || rt.routing_pipe.recorder.alias() != 0);
+            out.input_enabled = track.input_enabled(rt.recording || rt.routing_pipe.recorder.monitoring_inputs());
             out.pfl = track.pfl;
             out.meter = track.meter;
             out.playing_scene = track.playing.map(|p| p.scene as i16).unwrap_or(-1);

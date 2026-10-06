@@ -198,6 +198,22 @@ Render the selected Session scene from project zero with fresh DSP state, includ
 
 Workflow: Edit and undo.
 
+### Export master audio
+
+Reviewed scene/session range, repeats, tails and delivery format
+
+Open Audio export & recording, review the source, then choose the currently launched session or a scene. Ranges begin at the captured cursor or scene zero. Choose an exact program alias for routed projects, mono/stereo, rate, integer dither and optional peak normalization. Preroll rebuilds effects; repeated ranges copy the same audio and release sources once before the final tail. Native float32/PCM16/PCM24 WAV works without a codec tool; FLAC16/FLAC24/320 kbps MP3 requires FFmpeg. Physical input routes require real-time recording. A cancellable worker publishes a new folder only when rendering and encoding finish; existing outputs and live playback stay intact.
+
+Workflow: Offline operation.
+
+### Record a performance
+
+Exact final output or raw routed return; bounded WAV segments
+
+Review the source in Audio export & recording, choose an exact source alias, format, duration and new folder, then start recording. Final outputs include the limiter, output conversion and recovery fades; raw record aliases keep their selected tap and channel order. Recording works during Performance Mode and does not change Auto monitoring for a final-output capture. Native files split at 256 MiB. Stop or source loss finalizes the valid prefix and reports missing frames or disk errors. FLAC/MP3 encoding follows capture and retains original WAV files. Existing folders are never replaced. Review an interrupted recording folder, then recover its exact unchanged WAV prefixes; active files, foreign headers, linked files and changed reviews are refused.
+
+Workflow: Record a held note.
+
 ### Cancel video work
 
 Pending decoder or render

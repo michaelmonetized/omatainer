@@ -10,7 +10,7 @@ use std::time::Duration;
 
 pub(super) struct Fixture {
     pub app: App,
-    pub rt: RtEngine,
+    pub rt: Box<RtEngine>,
     pub decoder_jobs: mpsc::Receiver<(u8, PathBuf)>,
     pub decoder_results: mpsc::Sender<(u8, Result<DecodedAudio, DecodeFailure>)>,
 }
@@ -36,7 +36,7 @@ impl Fixture {
         let app = App::with_loader(engine, Theme::default(), Some(loader));
         Self {
             app,
-            rt,
+            rt: Box::new(rt),
             decoder_jobs,
             decoder_results,
         }

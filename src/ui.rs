@@ -75,6 +75,7 @@ mod preferences;
 mod automation;
 mod music_provider;
 mod video;
+mod audio_delivery;
 mod performance;
 mod background_jobs;
 mod audio_settings;
@@ -140,6 +141,7 @@ pub struct App {
     automation_panel: automation::Panel,
     music_provider: music_provider::Panel,
     video: video::Panel,
+    audio_delivery: Box<audio_delivery::Panel>,
     automation_network: crate::automation::osc::Manager,
     performance_panel: performance::Panel,
     background_jobs: background_jobs::Panel,
@@ -286,6 +288,7 @@ impl App {
             automation_panel: automation::Panel::default(),
             music_provider: music_provider::Panel::default(),
             video: video::Panel::default(),
+            audio_delivery: Box::default(),
             automation_network: crate::automation::osc::Manager::new(engine.cmd.clone(),engine.snap.clone()),
             performance_panel: performance::Panel::default(),
             background_jobs: background_jobs::Panel::default(),
@@ -837,6 +840,7 @@ impl App {
         self.snap = self.engine.snapshot();
         self.poll_music_provider();
         self.poll_video(ctx);
+        self.poll_audio_delivery(ctx);
         self.confirm_project_snapshot();
         self.poll_undo();
         self.poll_piano_roll();
@@ -961,6 +965,7 @@ impl App {
         self.automation_ui(ctx);
         self.music_provider_ui(ctx);
         self.video_ui(ctx);
+        self.audio_delivery_ui(ctx);
         self.preferences_ui(ctx);
         self.library_layout_ui(ctx);
         self.audio_settings_ui(ctx);

@@ -397,6 +397,7 @@ impl OutputCallback {
             *destination = T::from_sample(*source);
         }
         self.rt.routing_pipe.meters(data, self.channels);
+        self.rt.routing_pipe.recorder.converted(data, self.channels);
         if let Some(history) = &mut self.rt.history_measurement { history.converted(data, self.channels); }
         self.rt.audible.finish();
         self.rt.telemetry.record_output(

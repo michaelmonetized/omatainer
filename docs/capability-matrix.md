@@ -313,6 +313,28 @@ Nine new software checks and existing native NS7 regressions pass. Program outpu
 
 Nine new software checks plus existing import, version comparison, native Undo, manual and full regression gates pass: 1806 passed, 43 ignored, no failures or filters. Controlled raw input records exact frames while monitoring Off. Multiple track/deck cues preserve bit-identical program samples in both renderers. The verified release is installed as the default executable for its next launch; physical overdub timing remains outside this thread active scope, and graph compensation remains issue 178.
 
+### Issue #179: implemented
+
+- render and encode: [src/audio_delivery.rs](../src/audio_delivery.rs) — Reviewed ranges, repeats, native tails, channel/rate/format, normalization, integer dither and atomic folder publication
+- actual graph: [src/audio_delivery/render.rs](../src/audio_delivery/render.rs) — Coherent scene/session launch snapshot, actual offline renderer, exact program alias and source validation
+- native workflow: [src/ui/audio_delivery.rs](../src/ui/audio_delivery.rs) — Source review, destinations, progress, cancellation and live-session isolation
+- Acceptance fixtures: `audio_delivery::tests`, `audio_delivery::wav::tests`, `ui::audio_delivery::tests::native_source_review_export_decode_and_stale_review_preserve_live_session`.
+- Evidence: [docs/validation/audio-delivery.md](../docs/validation/audio-delivery.md).
+- Evidence: [docs/validation/audio-delivery-receipt.json](../docs/validation/audio-delivery-receipt.json).
+
+Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Fresh installation pending; physical acceptance remains outside this thread scope.
+
+### Issue #181: implemented
+
+- bounded recording: [src/engine/audio/routing/record/delivery.rs](../src/engine/audio/routing/record/delivery.rs) — Final converted output or raw selected return, actual stream rate/order, metering, asynchronous formats, safe splitting and explicit prefix/error reporting
+- recovery: [src/audio_delivery/recovery.rs](../src/audio_delivery/recovery.rs) — Locked exact reviewed native WAV prefixes, process interruption, invalid/stale/active-file refusal and durable manifests
+- native workflow: [src/ui/audio_delivery.rs](../src/ui/audio_delivery.rs) — Source, duration, format/dither, destination, start/stop, meters and recovery during Performance Mode
+- Acceptance fixtures: `engine::audio::routing::record::delivery::tests`, `audio_delivery::recovery::tests::interrupted_native_formats_recover_exact_prefix_and_refuse_active_or_changed_files`, `audio_delivery::recovery::tests::recovery_refuses_foreign_headers_links_and_preserves_only_finite_float_frames`, `audio_delivery::recovery::tests::killed_recording_worker_recovers_durable_samples`, `audio_delivery::recovery::tests::real_disk_write_error_finalizes_only_complete_frames_and_reports_the_failure`, `ui::audio_delivery::tests::native_performance_record_stop_decode_and_reviewed_recovery_work_in_performance_mode`, `engine::input_monitor::tests::final_output_recording_keeps_armed_auto_audio_clip_audible`.
+- Evidence: [docs/validation/audio-delivery.md](../docs/validation/audio-delivery.md).
+- Evidence: [docs/validation/audio-delivery-receipt.json](../docs/validation/audio-delivery-receipt.json).
+
+Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Fresh installation pending; Linux ARM64 only, no physical endurance or power-loss guarantee.
+
 ### Issue #185: implemented
 
 - native UI: [src/ui/beat_jump.rs](../src/ui/beat_jump.rs) — Per-deck backward/size/forward controls beneath platter
@@ -446,9 +468,9 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | implemented |
 | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | implemented |
 | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | planned |
-| [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | planned |
+| [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented |
 | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | planned |
-| [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | planned |
+| [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented |
 | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | planned |
 | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |

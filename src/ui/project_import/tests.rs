@@ -33,7 +33,7 @@ fn capture(engine: &Engine, rt: &mut RtEngine) -> Captured {
 }
 struct Gui {
     app: App,
-    rt: RtEngine,
+    rt: Box<RtEngine>,
     ctx: egui::Context,
     nodes: Vec<(NodeId, Node)>,
     time: f64,

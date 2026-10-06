@@ -942,6 +942,70 @@
       ],
       "limits": "Nine new software checks plus existing import, version comparison, native Undo, manual and full regression gates pass: 1806 passed, 43 ignored, no failures or filters. Controlled raw input records exact frames while monitoring Off. Multiple track/deck cues preserve bit-identical program samples in both renderers. The verified release is installed as the default executable for its next launch; physical overdub timing remains outside this thread active scope, and graph compensation remains issue 178."
     },
+    "179": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "render and encode",
+          "file": "src/audio_delivery.rs",
+          "entry": "Reviewed ranges, repeats, native tails, channel/rate/format, normalization, integer dither and atomic folder publication"
+        },
+        {
+          "kind": "actual graph",
+          "file": "src/audio_delivery/render.rs",
+          "entry": "Coherent scene/session launch snapshot, actual offline renderer, exact program alias and source validation"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/audio_delivery.rs",
+          "entry": "Source review, destinations, progress, cancellation and live-session isolation"
+        }
+      ],
+      "fixtures": [
+        "audio_delivery::tests",
+        "audio_delivery::wav::tests",
+        "ui::audio_delivery::tests::native_source_review_export_decode_and_stale_review_preserve_live_session"
+      ],
+      "evidence": [
+        "docs/validation/audio-delivery.md",
+        "docs/validation/audio-delivery-receipt.json"
+      ],
+      "limits": "Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Fresh installation pending; physical acceptance remains outside this thread scope."
+    },
+    "181": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded recording",
+          "file": "src/engine/audio/routing/record/delivery.rs",
+          "entry": "Final converted output or raw selected return, actual stream rate/order, metering, asynchronous formats, safe splitting and explicit prefix/error reporting"
+        },
+        {
+          "kind": "recovery",
+          "file": "src/audio_delivery/recovery.rs",
+          "entry": "Locked exact reviewed native WAV prefixes, process interruption, invalid/stale/active-file refusal and durable manifests"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/audio_delivery.rs",
+          "entry": "Source, duration, format/dither, destination, start/stop, meters and recovery during Performance Mode"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::record::delivery::tests",
+        "audio_delivery::recovery::tests::interrupted_native_formats_recover_exact_prefix_and_refuse_active_or_changed_files",
+        "audio_delivery::recovery::tests::recovery_refuses_foreign_headers_links_and_preserves_only_finite_float_frames",
+        "audio_delivery::recovery::tests::killed_recording_worker_recovers_durable_samples",
+        "audio_delivery::recovery::tests::real_disk_write_error_finalizes_only_complete_frames_and_reports_the_failure",
+        "ui::audio_delivery::tests::native_performance_record_stop_decode_and_reviewed_recovery_work_in_performance_mode",
+        "engine::input_monitor::tests::final_output_recording_keeps_armed_auto_audio_clip_audible"
+      ],
+      "evidence": [
+        "docs/validation/audio-delivery.md",
+        "docs/validation/audio-delivery-receipt.json"
+      ],
+      "limits": "Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Fresh installation pending; Linux ARM64 only, no physical endurance or power-loss guarantee."
+    },
     "185": {
       "status": "implemented",
       "paths": [
