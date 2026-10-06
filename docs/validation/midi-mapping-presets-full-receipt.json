@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T11:16:20.715Z",
+  "baseRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+  "kind": "Portable factory overrides, atomic exact-port review, native banking and durable cancellable file transfer",
+  "sourceFiles": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "docs/backlog/app-checklist.json": "7a1d680002fe53cd4641b747c534a4a768205653d16c92ba5a391b7b6e925360",
+    "docs/backlog/app-checklist.md": "4b1fc6767fe24bd8b2e29e996e74932861495b5ab8d7ed8f1967bc8818de0344",
+    "docs/backlog/capability-status.json": "3893603b9dfa2ed3c9b58282d9bddce90a909f4e8012d77f7387355d60992195",
+    "docs/capability-matrix.md": "572ac44e6e12d356499ac36e40107a20f6b481486e992da7fecedbf806af164a",
+    "docs/manual.md": "4b17580a373a8e0d06263a69a04483d9c0ceb1c027b76a4b9f2bc429e7d481fe",
+    "docs/validation/midi-mapping-presets.md": "f9a2f7a2a06589999e9665e8ca46e3450d0e19e56461399045f4f952912baeca",
+    "licenses/manifest.json": "03fb85e26b99cc8fb574c61df8c473e023c5e5e72e31bc62dab3e75545c37f8b",
+    "src/engine/control.rs": "a4b4f0c30a5b7c15a54893c17a6e06790ed4d94c1801661673b03c11a689973c",
+    "src/engine/control/admission_tests.rs": "87ebe9f413dc6e8352c9af7ae94589bad53a3e3bc6ef6ef350e3aeb9675c6560",
+    "src/engine/media_load/tests.rs": "1a407471b1cf9311c927128bca0d0e318a4fe593ecc9932fe4b142ce29bf0101",
+    "src/engine/midi.rs": "0c78be87f741d1e42e61200c0a7bd345b8c05925b76fc39e37f2271d38dc1721",
+    "src/engine/midi/handoff/tests.rs": "fbf1c1642ca7ee856a3461326fa62d1433913a210fc8b1ce546578d7f4a3739d",
+    "src/engine/midi/learn.rs": "67c6ee076408f1ba9483a42e7c2e32f5b29ff4efd18023bea2abf7f2654db8fe",
+    "src/engine/midi/presets.rs": "ac1283cb233095cb0292e250c151a0db463a9c8f9a4d4a4467528ebf31eba2fa",
+    "src/engine/midi/presets/tests.rs": "15a1610ae300233e9a24d156f3acf0834b134f2ef77476f48343115a4671a320",
+    "src/engine/project/prepare.rs": "d06ba8c2f6ad1612412b1252d99a17d88377e3028bd5117da7fa8a3381efb8f0",
+    "src/preferences/mod.rs": "a01571d348f1042dc98e5a2bc6c352aa7da351873da0cbbff90cdc5868c7fea8",
+    "src/preferences/storage.rs": "4489a2db0438928562f55443612ca3bd7c0f78fe6241a5d6235b887262199b6b",
+    "src/preferences/worker.rs": "54cc2257e77ac2faa177eff5087af79659bc0c94cf27c786cec24851a1a2b295",
+    "src/preferences/worker/midi_presets_tests.rs": "b7fb706f5929530463759a8be279b4b7fc050e3a17539446c7ce6cbfcf64cf9a",
+    "src/ui.rs": "639b91fd53bbe0f8af1605ee3079de592462408e21dd821f46fd09f6fbef6a3b",
+    "src/ui/help/catalogue.rs": "52075cd35192deb5b48bfb81e9d9f16176cbf675b8bea555a56bfd242bc53fe6",
+    "src/ui/midi_learn.rs": "2ecf6a08e87283b29bdb5e6012752757a239e2c4caf1cb73be3a951f7eda5532",
+    "src/ui/midi_presets.rs": "935e1dd3132a71793b8336402e82a41d59f853ce3d23f92178c287750fc0796d",
+    "src/ui/midi_presets/tests.rs": "be4fbdcd0c50a671451f496fbfc7fffd6115c8a559c831084e4b5cbf67712b2a",
+    "src/ui/preferences.rs": "c5649892a6480261dfb99b285f553d0d639301f8928fd9114ff37859726fe69f"
+  },
+  "testBinary": {
+    "path": "target/hardware/command-ring/final-omatainer-tests",
+    "sha256": "67d608ba88174b48d3745f3501cb597e4936318f836f19ef1d18eb9aa9693282"
+  },
+  "logs": {
+    "target/app-backlog/midi-presets-first-build.log": "43c54eda692c093e1bba7d1fb7dee872e3114c8bdaddaa6ddec965b4d7aad17d",
+    "target/app-backlog/midi-presets-second-build.log": "1640d8f966400a0c32a174650c317b62ad607d82c0980bf7111a0583203c9742",
+    "target/app-backlog/midi-presets-third-build.log": "7d3107239251153b81c1f308cee0c1b0b1eed16e71b2a0f9843291caa2224b70",
+    "target/app-backlog/midi-presets-first-ui-worker-tests.log": "0b4aa5feb24879907332fa9f2c44d50171a63b35c888dfa626992fd902e25047",
+    "target/app-backlog/midi-presets-first-model-tests.log": "04a3bde44e6c5b8d04274c03fbb6a8b0ce463aefb9b65f4957fad8123ff4c4b5",
+    "target/app-backlog/midi-presets-first-handoff-tests.log": "a790931e384f0ea88dab8c2b3b84f2c2d86398ed7595febf52725a9df11ebc19",
+    "target/app-backlog/midi-presets-complete-build.log": "e783418caade3c7d111d9839c5d7d37759e0a67cf2f4a77f78f1182bcae1101c",
+    "target/app-backlog/midi-presets-complete-ui-worker-tests.log": "fce54f6417d4decdf0cece4640a13e749d6349cfb27fdb227688d965f6f00467",
+    "target/app-backlog/midi-presets-complete-model-tests.log": "5298888de6e374589dad1d947fef13e6e442479ede0b3e8f47163abf96b30b0d",
+    "target/app-backlog/midi-presets-complete-handoff-tests.log": "75b905387536376c46dd6ef955fbe1142d8a08d3e5abfa9a2e1116dce4aa327e",
+    "target/app-backlog/midi-presets-final-build.log": "2ff14daf754ae87343f74c14f998fcc5ec12fe7a25303263c1a6c98b7270b263",
+    "target/app-backlog/midi-presets-final-complete-build.log": "a8807971d6bf059089cce0c78fc78bb69b55a66f98b579973a36b8cc6cdbb8d5",
+    "target/app-backlog/midi-presets-final-ui-worker-tests.log": "9fae9ec7fb77360f62fa5121388d7a3213efe91b363aeff6dd52f21ddc82e7a1",
+    "target/app-backlog/midi-presets-final-model-tests.log": "a9d20032c1133ed9ba12a0debc8da5db38861f0bbba258e789464923772de8ac",
+    "target/app-backlog/midi-presets-final-handoff-tests.log": "68ec3950154caedd4d261742fa7004a2a59692d35785b054562ac309d4328e75",
+    "target/app-backlog/midi-presets-manual-test.log": "24e116b74a19f9a40e9253fe036b4a6a7d9753ca5f5e0014e2a7e97338f7bce5",
+    "target/app-backlog/midi-presets-node-tests.log": "14b269583dbdfb3a44be8566283b3d82165f9c6acee7e7ce7ad6eab402cd6e30",
+    "target/app-backlog/midi-presets-first-full-tests.log": "683f484faa9a9efbc1779154530aff8d7819e6d063dd98dcd069119e6bb11134",
+    "target/app-backlog/midi-presets-loader-repro.log": "a6de28fae8a57b4b38dffe2dcf524fc266c1253ff64750ff723a63e31fee35c0",
+    "target/app-backlog/midi-presets-loader-fix-build.log": "313a97995f4e6693899c886ff2bfdbbf92926ad7f66c4d85b268bb5829925317",
+    "target/app-backlog/midi-presets-loader-regression-tests.log": "e82ba8b439a25ded21464875cf9081e850591ec3748c2e6b574ea86cf98d3d9f",
+    "target/app-backlog/midi-presets-second-full-tests.log": "77284eca9aa35061a4a2c101e72d9c4ed1d8c5cac5b800ef52f0589cf34b1147",
+    "target/app-backlog/midi-presets-private-build.log": "97314339302ada41288b7404ad9870bc1b38547918b6d5b9709ad7dcfe289ce0",
+    "target/app-backlog/midi-presets-private-child-tests.log": "65e34bef13050fd21f4bb4b366d895df235423b1ed80fde96c43b39d36bcc6d7",
+    "target/app-backlog/midi-presets-full-tests.log": "735b7c9f98a169591bdad2e12bcab23e36d311cbabce3afb7726baae61babc19",
+    "target/app-backlog/midi-presets-library-tags-repro.log": "8185e03dc068e8be35d900ad111bc4c36eb1311fcb2f1bbf7e4781be48c7c78a",
+    "target/app-backlog/midi-presets-library-tags-backtrace.log": "302e1e915b97654daccdf93a67611ddc8a98bd8e627329eb013b5daaae446ef9",
+    "target/app-backlog/midi-presets-library-tags-module.log": "822ff4a6a69183f53bca9286a19bff0fbe934061a6756a80c838fd7cb11a6e72",
+    "target/hardware/command-ring/full-tests.log": "3eefe291a856121f19e76204f76bc6ea3ac6d8a79cd80d5d38df5e818e221896"
+  },
+  "tests": {
+    "fullSerialRust": {
+      "passed": 1771,
+      "failed": 0,
+      "ignored": 43,
+      "filtered": 0,
+      "seconds": 516.29,
+      "threads": 1
+    },
+    "focused": {
+      "nativeUi": 2,
+      "fileWorker": 2,
+      "formatAndMigration": 4,
+      "actualMidiHandoff": 1,
+      "manualSynchronization": 1,
+      "loaderRegressions": 14,
+      "privateChildProcesses": 3
+    },
+    "node": {
+      "passed": 15,
+      "failed": 0
+    },
+    "corrections": "Initial fixtures accessed a private renderer control field and misspelled touching; they now use published Cue state and the existing touch field. The migration fixture used an invented deck-specific shortcut name; it now uses the actual selected-deck beat_jump_back action. The first MIDI handoff checks assumed a raw TrackGain command; the actual trace carries its existing session identity wrapper. Qualification now applies the complete trace and verifies the resulting exact renderer gain. One final build was deliberately stopped before qualification to correct a manual workflow heading and refresh the embedded source inventory; the later complete build supplied every final gate. The first full serial run retained 1768 passes and one media-load fixture failure. Its ready helper drained both deck slots while the test consumed them individually, discarding a completed second deck. Explicit worker barriers now consume deck 0 before allowing deck 1 to finish; a new batched-completion check verifies both ready results together and exactly once. The isolated old fixture passed, consistent with the observed timing race. A subsequent full run retained 1767 passes and three child-process launch failures with ENOENT. The shared Cargo executable was replaced after its build while tests ran; a separate Codex process was then observed compiling this worktree against the shared target. Qualification now uses a fresh, read-only private copy with a stable child-launch path, preserving source inventory checks and all subprocess tests. No decoder timeout or production loading policy was weakened. An earlier Cue installation receipt omitted deck positions due to a camelCase API lookup; it now records the observed position_seconds fields without claiming exact restoration.",
+    "libraryTags": {
+      "privateFull": {
+        "passed": 1770,
+        "failed": 1,
+        "ignored": 43,
+        "seconds": 507.58
+      },
+      "firstIsolated": {
+        "passed": 0,
+        "failed": 1,
+        "seconds": 16.17
+      },
+      "repeatedIsolated": {
+        "passed": 1,
+        "failed": 0,
+        "seconds": 3.62
+      },
+      "completeModule": {
+        "passed": 9,
+        "failed": 0,
+        "seconds": 9.3
+      },
+      "finding": "A library-tag UI wait expired in the private full run and first isolated attempt. The unchanged source passed the repeated isolated check, all nine tag-module checks and a concurrent unfiltered serial suite from the other immutable executable. This is an intermittent qualification failure, not a claimed source fix or a weakened timeout."
+    },
+    "concurrentSourceChange": "A separate session committed the preset implementation together with a reviewed SPSC command transport correction. Its source files match the frozen inventory used by this private test build. The full suite covers both changes; the command correction has one additional admission regression."
+  },
+  "checks": {
+    "portableVersionedFactoryLayer": true,
+    "everyImplementedActionRoundtrip": true,
+    "backendIdsOmitted": true,
+    "explicitDifferentMachineDestination": true,
+    "otherPortAssignmentsPreserved": true,
+    "unknownFieldsActionsOverlapAndLimitsRefused": true,
+    "atomicRevisionUniquePortAndReconnectRefusal": true,
+    "sourceGateRetirement": true,
+    "factoryFallbackAndRelativeDecode": true,
+    "nativeBankSaveDuplicateRenameExportImportDefaults": true,
+    "durableReopenAndFailedSavePreservation": true,
+    "importCancellationBeforeReadAndAfterDelivery": true,
+    "closedAndProfileChangedImportRefusal": true,
+    "privateAtomicNewExportsAndSymlinkRefusal": true,
+    "callbackAllocationsAndFrees": 0,
+    "manualMatchesCatalogue": true,
+    "atomicTwoDeckCompletionBatch": true,
+    "immutableQualificationExecutable": true,
+    "sourceInventoryFiles": 683,
+    "dependencyLicenseRecords": 341
+  },
+  "documentSchemas": {
+    "preferences": 18,
+    "midiPreset": 1,
+    "shortcutBundle": 2,
+    "project": 15
+  },
+  "limits": [
+    "Physical capture and new listening acceptance remain paused",
+    "Preset load requires a unique connected exact port; descriptive device hints never select or activate hardware",
+    "Active assignments and named banks save separately through the existing preference owner"
+  ],
+  "qualifiedSourceRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+  "independentPrivateBinary": {
+    "path": "target/app-backlog/qualification-bin/midi-presets-tests",
+    "sha256": "67d608ba88174b48d3745f3501cb597e4936318f836f19ef1d18eb9aa9693282"
+  }
+}

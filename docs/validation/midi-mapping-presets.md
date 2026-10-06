@@ -44,6 +44,10 @@ factory fallback, layer-change gate retirement, duplicate/rename/defaults,
 unknown and ambiguous imports, exact reconnect/config refusal, cancelled reads
 before work and after result delivery, closed/profile-changed editors, private
 exports, existing files, symlinks and failed saves. Callback and renderer
-allocation assertions remain zero. Physical capture and new listening tests are
-paused. The current source-bound result is recorded in
-[the qualification receipt](midi-mapping-presets-receipt.json).
+allocation assertions remain zero. The complete ordinary suite passes 1,771
+checks. Factory MPD bank and transport gestures were separately captured in the
+installed release; physical preset import/override and listening acceptance
+remain open. The current source-bound result is recorded in
+[the focused qualification receipt](midi-mapping-presets-receipt.json),
+[full software qualification](midi-mapping-presets-full-receipt.json) and
+[installed build receipt](midi-mapping-presets-installed-receipt.json).
