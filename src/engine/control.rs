@@ -22,7 +22,6 @@ pub struct CommandPort {
     input_epoch: Option<u64>,
     theme_requests: crate::theme::requests::Port,
     remote_jobs: std::sync::Arc<super::remote::Jobs>,
-    sender: crossbeam_channel::Sender<Command>,
     shared: std::sync::Arc<AdmissionShared>,
     admission: std::sync::Arc<parking_lot::Mutex<Admission>>,
     capacity: usize,
@@ -75,6 +74,7 @@ enum GateKey {
 }
 
 struct Admission {
+    producer: rtrb::Producer<Command>,
     gates: [Option<GateKey>; MAX_COMMANDS],
     held: usize,
     stop_reserve: usize,
@@ -149,14 +149,21 @@ impl AdmissionShared {
 /// store, never a producer-mutex operation or a blocking acknowledgment send.
 pub struct CommandReceiver {
     performance: super::performance::Handle,
-    receiver: crossbeam_channel::Receiver<Command>,
+    receiver: CommandInput,
     shared: Option<std::sync::Arc<AdmissionShared>>,
 }
 
+enum CommandInput {
+    Ring(std::cell::RefCell<rtrb::Consumer<Command>>),
+    #[cfg(test)]
+    Fixture(crossbeam_channel::Receiver<Command>),
+}
+
+#[cfg(test)]
 impl From<crossbeam_channel::Receiver<Command>> for CommandReceiver {
     fn from(receiver: crossbeam_channel::Receiver<Command>) -> Self {
         Self {
-            receiver,
+            receiver: CommandInput::Fixture(receiver),
             performance: super::performance::Handle::default(),
             shared: None,
         }
@@ -174,22 +181,56 @@ impl Drop for CommandReceiver {
 }
 
 impl CommandReceiver {
+    /// Prepare an offline renderer with no command producer.
+    /// Takes no arguments; returns an empty disconnected ring with no admission or device owners.
+    pub(crate) fn disconnected() -> Self {
+        let (producer, receiver) = rtrb::RingBuffer::new(1);
+        drop(producer);
+        Self {
+            performance: super::performance::Handle::default(),
+            receiver: CommandInput::Ring(std::cell::RefCell::new(receiver)),
+            shared: None,
+        }
+    }
+
     pub(crate) fn midi_routing(&self) -> std::sync::Arc<super::midi::routing::Shared> {
         self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::routing::Shared::default()),|s|s.midi_routing.clone())
     }
     pub(super) fn performance(&self) -> &super::performance::Handle { &self.performance }
     pub fn len(&self) -> usize {
-        self.receiver.len()
+        match &self.receiver {
+            CommandInput::Ring(receiver) => receiver.borrow().slots(),
+            #[cfg(test)]
+            CommandInput::Fixture(receiver) => receiver.len(),
+        }
     }
     pub fn is_empty(&self) -> bool {
-        self.receiver.is_empty()
+        self.len() == 0
+    }
+
+    /// Read only a completely published command.
+    /// Takes this audio-owned receiver; returns one command or leaves unfinished producer work for a later block.
+    fn receive_raw(&self) -> Result<Command, crossbeam_channel::TryRecvError> {
+        match &self.receiver {
+            CommandInput::Ring(receiver) => {
+                let mut receiver = receiver.borrow_mut();
+                receiver.pop().map_err(|_| {
+                    if receiver.is_abandoned() {
+                        crossbeam_channel::TryRecvError::Disconnected
+                    } else {
+                        crossbeam_channel::TryRecvError::Empty
+                    }
+                })
+            }
+            #[cfg(test)]
+            CommandInput::Fixture(receiver) => receiver.try_recv(),
+        }
     }
 
     /// Single-command consumers release credit on dequeue. The renderer batch
     /// holds all credits until its bounded receive loop has finished instead.
     pub fn try_recv(&self) -> Result<Command, crossbeam_channel::TryRecvError> {
-        self.receiver
-            .try_recv()
+        self.receive_raw()
             .inspect(|command| self.release_payload(owned_payload_bytes(command)))
     }
 
@@ -420,7 +461,7 @@ impl CommandPort {
     pub fn queue_pressure(&self) -> QueuePressure {
         use std::sync::atomic::Ordering::Relaxed;
         QueuePressure {
-            pending: self.sender.len(),
+            pending: self.len(),
             capacity: self.capacity,
             observed_high_water: self.shared.observed_high_water.load(Relaxed),
             reserved_releases: self.shared.reserved_releases.load(Relaxed),
@@ -468,7 +509,7 @@ impl CommandPort {
             capacity <= MAX_COMMANDS,
             "queue exceeds fixed reservation storage"
         );
-        let (sender, receiver) = crossbeam_channel::bounded(capacity);
+        let (producer, receiver) = rtrb::RingBuffer::new(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
             now_playing: std::sync::Arc::new(crate::performance_history::now_playing::Shared::default()),
             midi_learn: std::sync::Arc::new(super::midi::learn::Shared::default()),
@@ -496,9 +537,9 @@ impl CommandPort {
             input_epoch: None,
             theme_requests: crate::theme::requests::Port::default(),
             remote_jobs: std::sync::Arc::new(super::remote::Jobs::default()),
-            sender,
             shared: shared.clone(),
             admission: std::sync::Arc::new(parking_lot::Mutex::new(Admission {
+                producer,
                 gates: [None; MAX_COMMANDS],
                 held: 0,
                 stop_reserve: DEFAULT_STOP_LANES,
@@ -512,7 +553,7 @@ impl CommandPort {
             port,
             CommandReceiver {
                 performance: shared.performance.clone(),
-                receiver,
+                receiver: CommandInput::Ring(std::cell::RefCell::new(receiver)),
                 shared: Some(shared),
             },
         )
@@ -527,7 +568,7 @@ impl CommandPort {
     pub(crate) fn session_scene_exists(&self, slot: usize) -> bool { self.shared.midi_routing.identity.scene_exists(slot) }
     pub(crate) fn session_scene_count(&self) -> usize { self.shared.midi_routing.identity.scene_count() }
     pub fn len(&self) -> usize {
-        self.sender.len()
+        self.capacity - self.admission.lock().producer.slots()
     }
     pub fn stats(&self) -> SubmissionStats {
         self.shared.stats()
@@ -763,7 +804,7 @@ impl CommandPort {
         let reserves_new_gate = gate.is_some_and(|(_, down)| down && existing_gate.is_none());
         if stop_lane.is_none()
             && !releasing
-            && self.sender.len() + state.held + stop_reserve + 1 + usize::from(reserves_new_gate)
+            && self.capacity - state.producer.slots() + state.held + stop_reserve + 1 + usize::from(reserves_new_gate)
                 > self.capacity
         {
             return fail(SubmissionError::Full);
@@ -788,7 +829,7 @@ impl CommandPort {
         if !self.shared.reserve_payload(payload_bytes) {
             return fail(SubmissionError::PayloadFull);
         }
-        match self.sender.try_send(command) {
+        match state.producer.push(command) {
             Ok(()) => {
                 state.stop_reserve = stop_reserve;
                 if let Some(lane) = stop_lane {
@@ -812,7 +853,7 @@ impl CommandPort {
                 }
                 self.shared
                     .observed_high_water
-                    .fetch_max(self.sender.len() as u64, Relaxed);
+                    .fetch_max((self.capacity - state.producer.slots()) as u64, Relaxed);
                 self.shared
                     .reserved_releases
                     .store(state.held as u64, Relaxed);
@@ -826,14 +867,8 @@ impl CommandPort {
                 // Drop rejected command payloads only after releasing the
                 // producer mutex (large clips/media must not extend contention).
                 drop(state);
-                let reason = match &error {
-                    crossbeam_channel::TrySendError::Full(_) => SubmissionError::Full,
-                    crossbeam_channel::TrySendError::Disconnected(_) => {
-                        SubmissionError::Disconnected
-                    }
-                };
                 drop(error);
-                fail(reason)
+                fail(SubmissionError::Full)
             }
         }
     }
@@ -1093,7 +1128,7 @@ impl CommandBatch {
         self.received = 0; self.applied = 0; self.backlog = 0; self.queue_depth = rx.len();
         let mut payload_bytes = 0usize;
         for _ in 0..COMMANDS_PER_BLOCK {
-            let Ok(command) = rx.receiver.try_recv() else {
+            let Ok(command) = rx.receive_raw() else {
                 break;
             };
             payload_bytes = payload_bytes.saturating_add(owned_payload_bytes(&command));

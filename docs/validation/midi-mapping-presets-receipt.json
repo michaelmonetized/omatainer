@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T11:07:32.026Z",
+  "kind": "Portable exact-port MIDI preset definitions and saved native preset bank",
+  "testBinary": {
+    "path": "target/hardware/command-ring/final-omatainer-tests",
+    "sha256": "67d608ba88174b48d3745f3501cb597e4936318f836f19ef1d18eb9aa9693282"
+  },
+  "tests": {
+    "uiAndFiles": {
+      "path": "target/hardware/command-ring/final-preset-ui-worker-tests.log",
+      "sha256": "56086a3a22b7627419a732a966cd572931ee0aff273c452a024676706e9bb524",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1810,
+      "seconds": 0.92
+    },
+    "formatAndMigration": {
+      "path": "target/hardware/command-ring/final-preset-model-tests.log",
+      "sha256": "cb158a5de45783496ed42bbc4ea62601b3eb9e29ace2e1ff44097006b9f1f72c",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1810,
+      "seconds": 0
+    },
+    "nativeMidiHandoff": {
+      "path": "target/hardware/command-ring/final-preset-handoff-tests.log",
+      "sha256": "dc58fdfe143745bef869db177d6686218e4084fcf3eebb0686ae3a3fd2581ee6",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1813,
+      "seconds": 0.15
+    }
+  },
+  "fullSerialRust": {
+    "status": "running",
+    "path": "target/hardware/command-ring/full-tests.log"
+  },
+  "limits": [
+    "Native headless and file-worker gates pass; final full ordinary suite is still running",
+    "Physical preset import and override listening acceptance are separate from the factory MPD captures"
+  ]
+}

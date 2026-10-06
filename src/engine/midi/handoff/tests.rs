@@ -114,6 +114,29 @@ fn learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_withou
     assert!(rt.decks.iter().all(|d|d.preview_position.is_some()));
     drop(worker); render(&mut rt); assert!(rt.decks.iter().all(|d|d.preview_position.is_none()&&!d.controls.status().cue_held));
 }
+#[test]
+fn portable_presets_retarget_real_workers_keep_factory_input_and_retire_holds_without_callback_heap_work() {
+    use crate::engine::midi::{presets::Preset,learn::{Config,Endpoint,Mapping}};
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let origin=Endpoint{name:"test device".into(),id:"another machine".into()};
+    let target=Endpoint{name:"test device".into(),id:"test device".into()};
+    let config=Config{mappings:vec![Mapping{endpoint:origin.clone(),binding:nbind(0,20,Action::DeckCueHold,0,0)},Mapping{endpoint:origin.clone(),binding:rbind(0,8,Action::DeckJog,1,0,RelativeSpec{encoding:super::super::RelativeEncoding::OffsetBinary,scale:0.5})}]};
+    let preset=Preset::capture("Imported".into(),String::new(),&origin,&config).unwrap();
+    let preset=Preset::decode(&serde_json::to_vec(&preset).unwrap()).unwrap();
+    let (mut sink,mut worker)=input(64,1651,&engine.cmd);
+    let view=engine.cmd.midi_learn().view();let applied=preset.target(&target,&view.config).unwrap();
+    engine.cmd.midi_learn().configure_reviewed(view.revision,1651,&target,applied).unwrap();drain(&mut worker);render(&mut rt);
+    assert_eq!(crate::engine::test_alloc::measure(||sink.push(&[0x90,20,100])),crate::engine::test_alloc::Counts::default());drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),crate::engine::test_alloc::Counts::default());assert!(rt.decks[0].controls.status().cue_held);
+    sink.push(&[0x90,20,0]);drain(&mut worker);render(&mut rt);assert!(!rt.decks[0].controls.status().cue_held);
+    sink.push(&[0xb0,8,65]);drain(&mut worker);let command=rt.cmd_rx.try_recv().unwrap();assert!(matches!(command,Command::DeckJog{deck:1,delta} if delta==0.5));rt.apply(command);
+    sink.push(&[0xb0,7,80]);drain(&mut worker);let commands:Vec<_>=rt.cmd_rx.try_iter().collect();assert!(!commands.is_empty());for command in commands {rt.apply(command);}assert_eq!(rt.tracks[0].gain,80.0/127.0,"factory input must retain its identity-qualified renderer effect");
+    sink.push(&[0x90,20,100]);drain(&mut worker);render(&mut rt);assert!(rt.decks[0].controls.status().cue_held);
+    let view=engine.cmd.midi_learn().view();engine.cmd.midi_learn().configure_reviewed(view.revision,1651,&target,crate::engine::midi::presets::defaults(&target,&view.config)).unwrap();drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),crate::engine::test_alloc::Counts::default());assert!(!rt.decks[0].controls.status().cue_held);
+    sink.push(&[0x90,20,100]);drain(&mut worker);render(&mut rt);assert!(rt.decks[0].touching,"restoring defaults returns the original factory action");
+}
+
 fn held(rt: &RtEngine, source: u64, note: u8) -> bool {
     rt.tracks
         .iter()

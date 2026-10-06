@@ -18,7 +18,7 @@ impl Prepared {
         if !(8000..=384000).contains(&output_sr) {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
-        let (_, rx) = crossbeam_channel::bounded(1);
+        let rx = crate::engine::control::CommandReceiver::disconnected();
         let mut rt = Box::new(RtEngine::try_new(
             output_sr as f32,
             rx,
@@ -178,7 +178,7 @@ impl Prepared {
         if !(8000..=384000).contains(&output_sr) {
             return Err(Error::Invalid("unsupported output sample rate".into()));
         }
-        let (_, rx) = crossbeam_channel::bounded(1);
+        let rx = crate::engine::control::CommandReceiver::disconnected();
         let mut rt = Box::new(RtEngine::try_new(
             output_sr as f32,
             rx,

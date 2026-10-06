@@ -59,7 +59,7 @@ Guided example (use Start this lesson in Help; Next requires observed evidence):
 
 ## Connect a controller
 
-Open the MIDI window and Retry / rescan MIDI. Settings can request all inputs, selected exact port names or disabled inputs. Check requested versus applied policy and per-port errors before playing. The native callback only queues bounded input; overflow releases that source's gates and reports counters. Factory profiles are limited, documented mappings; a matching device name is not physical compatibility proof. NS7 motorized platter and NS7II support remain unverified. MIDI clock input is an observable tick hook, not tempo synchronization or clock output. There is no editable MIDI-learn mapping UI.
+Open the MIDI window and Retry / rescan MIDI. Settings can request all inputs, selected exact port names or disabled inputs. Check requested versus applied policy and per-port errors before playing. The native callback only queues bounded input; overflow releases that source's gates and reports counters. Factory profiles and the original NS7 bridge have separate compatibility receipts; a matching device name is not physical compatibility proof. NS7II remains unverified. MIDI clock input is an observable tick hook, not tempo synchronization or clock output. MIDI Learn captures and reviews compatible controls; named mapping presets save and transfer their factory overrides with explicit exact-port activation.
 
 Guided example (use Start this lesson in Help; Next requires observed evidence):
 
@@ -2811,6 +2811,14 @@ Workflow: Connect a controller.
 256 exact-port assignments; one captured gesture
 
 Choose a performance action, target and compatible message type. Relative encoders require an explicit format and sensitivity. Capture consumes one gesture for review; unrelated controls retain their mapping. Conflicts require Replace. Test submits the captured action through ordinary control admission. Add/Replace/Edit/Remove affect this run; Save MIDI assignments retains the active profile after its durable preferences receipt. Remove restores any built-in action. Cancel, close, timeout and disconnect end learning; existing assignments remain. Input changes release older source gates and fence stale queued messages. Missing exact ports remain unavailable until recaptured.
+
+Workflow: Connect a controller.
+
+### MIDI mapping presets
+
+32 named factory overlays per profile; 256 active assignments
+
+Save a selected exact port's learned overrides as a named definition. Duplicate, rename, delete or export definitions without changing active assignments. Portable version 1 JSON omits backend port IDs; Import validates the entire file for explicit review and bank save. A conflicting name needs a new name. Review load or factory defaults for one unique connected exact port; Apply checks its config revision, source owner and active profile again. Reconnects and other edits require fresh review. Unlisted factory controls and other port assignments remain intact. Save MIDI assignments persists the applied layer; bank save alone does not activate it. All file work is cancellable and owned by Preferences. A failed save retains previous settings and live assignments.
 
 Workflow: Connect a controller.
 

@@ -6,7 +6,7 @@ Physical hardware qualification is paused at Michael's request. Existing capture
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 24 implemented · 6 partial · 191 planned · 0 accepted · 8 outside release
+127 existing stack · 25 implemented · 6 partial · 190 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -205,7 +205,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | planned | #148, #98 |  |
 | [ ] | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned | #134 |  |
 | [ ] | [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned | #85, #139, #104, #81, #36, #44 |  |
-| [ ] | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | planned | #148 |  |
+| [x] | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented | #148 | [receipt](../../docs/validation/midi-mapping-presets.md) |
 | [ ] | [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | planned | #152 |  |
 | [ ] | [#197](https://github.com/michaelmonetized/omatainer/issues/197) | Schedule independent tracks across cores with bounded real-time execution | planned | #130, #81 |  |
 | [ ] | [#198](https://github.com/michaelmonetized/omatainer/issues/198) | Host CLAP instruments and effects with expression support | planned | #130 |  |

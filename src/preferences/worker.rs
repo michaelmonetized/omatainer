@@ -60,6 +60,8 @@ pub enum Job {
     },
     ImportShortcuts(PathBuf),
     ExportShortcuts { path: PathBuf, profile: super::Profile },
+    ImportMidiPreset { path: PathBuf, token: u64 },
+    ExportMidiPreset { path: PathBuf, preset: crate::engine::midi::presets::Preset },
     Reload,
     Reset(Preferences),
 }
@@ -79,6 +81,8 @@ pub enum Event {
     Exported(storage::Saved),
     ShortcutsImported(super::shortcuts::Bundle),
     ShortcutsExported(storage::Saved),
+    MidiPresetImported { token: u64, preset: crate::engine::midi::presets::Preset },
+    MidiPresetExported(storage::Saved),
     Reloaded(storage::Loaded),
     Failed(String),
     Cancelled,
@@ -163,7 +167,7 @@ impl Worker {
         match self.results.try_recv() {
             Ok(event) => {
                 let cancelled = self.cancel.take().is_some_and(|cancel| cancel.load(Ordering::Acquire));
-                Some(if cancelled && matches!(event, Event::ShortcutsImported(_)) { Event::Cancelled } else { event })
+                Some(if cancelled && matches!(event, Event::ShortcutsImported(_) | Event::MidiPresetImported { .. }) { Event::Cancelled } else { event })
             }
             Err(crossbeam_channel::TryRecvError::Disconnected) if self.busy() => {
                 self.cancel = None;
@@ -290,5 +294,25 @@ fn execute(
             Ok(loaded) => Event::Reloaded(loaded),
             Err(error) => failure(error),
         },
+        Job::ImportMidiPreset { path, token } => match storage::read_raw(&path, cancel) {
+            Ok((bytes, _)) => match crate::engine::midi::presets::Preset::decode(&bytes) {
+                Ok(preset) => Event::MidiPresetImported { token, preset },
+                Err(error) => Event::Failed(error),
+            },
+            Err(error) => failure(error),
+        },
+        Job::ExportMidiPreset { path, preset } => {
+            if let Err(error) = preset.validate() { return Event::Failed(error); }
+            match serde_json::to_vec_pretty(&preset) {
+                Ok(bytes) => match storage::publish_new(&path, &bytes, cancel, permit) {
+                    Ok(saved) => Event::MidiPresetExported(saved),
+                    Err(error) => failure(error),
+                },
+                Err(error) => Event::Failed(error.to_string()),
+            }
+        },
     }
 }
+
+#[cfg(test)]
+mod midi_presets_tests;

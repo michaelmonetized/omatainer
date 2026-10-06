@@ -37,11 +37,13 @@
       {
         "title": "What More Can I Say",
         "playing": false,
+        "positionSeconds": 0.12760565708236016,
         "keylock": false
       },
       {
         "title": "Public Service Announcement",
         "playing": false,
+        "positionSeconds": 3.9060474438022594,
         "keylock": true
       }
     ]
@@ -51,5 +53,8 @@
   "limits": [
     "No new physical gestures or listening qualification",
     "Native UI interaction proof uses the headless software renderer"
+  ],
+  "notes": [
+    "Deck positions are read from the snake_case API fields; the earlier receipt omitted these values. Observed positions are reported without claiming exact restoration."
   ]
 }

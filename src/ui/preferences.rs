@@ -30,6 +30,7 @@ pub(super) struct Settings {
     pub rescan: bool,
     pub(super) routing_pending: bool,
     pub theme_update: Option<Arc<crate::theme::reload::Update>>,
+    pub(super) midi_preset_import: Option<(u64, crate::engine::midi::presets::Preset)>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -93,6 +94,7 @@ impl Settings {
             rescan: false,
             routing_pending: false,
             theme_update: None,
+            midi_preset_import: None,
         };
         state.editor_strings();
         state
@@ -194,6 +196,13 @@ impl Settings {
             }
             Event::ShortcutsExported(saved) => {
                 self.message = saved.warning.unwrap_or_else(|| "Bindings exported. Current settings are unchanged.".into());
+            }
+            Event::MidiPresetImported { token, preset } => {
+                self.midi_preset_import = Some((token, preset));
+                self.message = "MIDI preset read; review and save it in MIDI Learn before loading it.".into();
+            }
+            Event::MidiPresetExported(saved) => {
+                self.message = saved.warning.unwrap_or_else(|| "MIDI preset exported; active assignments unchanged.".into());
             }
             Event::Failed(error) => self.message = format!("Preferences failed: {error}"),
             Event::Cancelled => self.message = "Cancelled; current settings are unchanged.".into(),
@@ -327,6 +336,7 @@ impl App {
                 self.settings.routing_pending=true;
             }
         }
+        self.poll_midi_preset_import();
         self.poll_library_layout_save();
         if self.settings.routing_pending && !self.engine.midi.connections_busy() && self.engine.midi.policy_status().is_none_or(|s|!s.pending()) {
             self.settings.routing_pending=false;
@@ -642,7 +652,7 @@ impl App {
         }
     }
 }
-fn text(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) -> bool {
+pub(super) fn text(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) -> bool {
     let label = ui.label(crate::localization::text_dynamic(name));
     ui.text_edit_singleline(value)
         .labelled_by(label.id)

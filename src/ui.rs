@@ -51,6 +51,7 @@ mod dependencies;
 mod portability;
 mod midi_routing;
 mod midi_learn;
+mod midi_presets;
 mod play_time;
 mod project;
 mod templates;

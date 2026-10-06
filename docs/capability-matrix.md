@@ -311,6 +311,17 @@ Software qualification only. Sizes are runtime state, not saved preparation. Phy
 
 Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged.
 
+### Issue #195: implemented
+
+- portable format: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Strict named factory overlays and exact-port candidates without backend IDs
+- native UI: [src/ui/midi_presets.rs](../src/ui/midi_presets.rs) — Save, duplicate, rename, delete, import/export, reviewed load and factory restoration
+- persistence: [src/preferences/worker.rs](../src/preferences/worker.rs) — Cancellable worker reads, private atomic exports and durable version 18 profile bank
+- dispatch: [src/engine/midi/learn.rs](../src/engine/midi/learn.rs) — Atomic review revision and unique connected source checks before replacement
+- Acceptance fixtures: `engine::midi::presets::tests`, `ui::midi_presets::tests`, `preferences::worker::midi_presets_tests`, `engine::midi::handoff::tests::portable_presets_retarget_real_workers_keep_factory_input_and_retire_holds_without_callback_heap_work`.
+- Evidence: [docs/validation/midi-mapping-presets.md](../docs/validation/midi-mapping-presets.md).
+
+Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical capture and listening remain paused. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -403,7 +414,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | planned |
 | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned |
 | [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned |
-| [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | planned |
+| [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented |
 | [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | planned |
 | [#197](https://github.com/michaelmonetized/omatainer/issues/197) | Schedule independent tracks across cores with bounded real-time execution | planned |
 | [#198](https://github.com/michaelmonetized/omatainer/issues/198) | Host CLAP instruments and effects with expression support | planned |

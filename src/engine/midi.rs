@@ -15,6 +15,7 @@ mod relative;
 mod surface;
 mod feedback;
 pub(crate) mod learn;
+pub(crate) mod presets;
 pub(crate) mod routing;
 pub(crate) mod device_status;
 pub use handoff::InputStats;

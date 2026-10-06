@@ -258,6 +258,21 @@ impl Shared {
     pub(crate) fn configure(&self, config: Config) -> Result<u64, String> {
         config.validate()?;
         let mut state = self.state.lock();
+        self.configure_locked(&mut state, config)
+    }
+    /// Apply an exact-port replacement only while its reviewed owners still match.
+    /// Takes the config revision, connected source, port and candidate; returns a revision or preserves current mappings.
+    pub(crate) fn configure_reviewed(&self, revision: u64, source: u64, port: &Endpoint, config: Config) -> Result<u64, String> {
+        config.validate()?;
+        let mut state = self.state.lock();
+        if self.revision.load(Ordering::Acquire) != revision || state.armed.is_some() || state.capture.is_some()
+            || state.devices.iter().filter(|device| &device.endpoint == port).count() != 1
+            || !state.devices.iter().any(|device| device.source == source && &device.endpoint == port) {
+            return Err("MIDI review changed or its exact port reconnected; review again".into());
+        }
+        self.configure_locked(&mut state, config)
+    }
+    fn configure_locked(&self, state: &mut State, config: Config) -> Result<u64, String> {
         if state.config == config && state.armed.is_none() && state.capture.is_none() {
             return Ok(self.revision.load(Ordering::Acquire));
         }
@@ -267,7 +282,7 @@ impl Shared {
         state.config = config;
         state.armed = None;
         state.capture = None;
-        self.refresh_ordered(&state);
+        self.refresh_ordered(state);
         state.message =
             "Learned assignments applied; built-in mappings handle other messages.".into();
         Ok(revision)

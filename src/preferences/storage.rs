@@ -154,13 +154,16 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
     if version < 6 && profiles.iter().any(|p|p.get("midi_routing").is_some()) {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
+    if version < 18 && profiles.iter().any(|profile| profile.get("midi_presets").is_some()) {
+        return Err(Error::Invalid("MIDI presets require preferences version 18".into()));
+    }
     let (mut preferences, migrated) = match version {
-        17 => (
+        18 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;

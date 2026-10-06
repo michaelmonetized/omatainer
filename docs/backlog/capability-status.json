@@ -942,6 +942,41 @@
       ],
       "limits": "Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged."
     },
+    "195": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "portable format",
+          "file": "src/engine/midi/presets.rs",
+          "entry": "Strict named factory overlays and exact-port candidates without backend IDs"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/midi_presets.rs",
+          "entry": "Save, duplicate, rename, delete, import/export, reviewed load and factory restoration"
+        },
+        {
+          "kind": "persistence",
+          "file": "src/preferences/worker.rs",
+          "entry": "Cancellable worker reads, private atomic exports and durable version 18 profile bank"
+        },
+        {
+          "kind": "dispatch",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Atomic review revision and unique connected source checks before replacement"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::presets::tests",
+        "ui::midi_presets::tests",
+        "preferences::worker::midi_presets_tests",
+        "engine::midi::handoff::tests::portable_presets_retarget_real_workers_keep_factory_input_and_retire_holds_without_callback_heap_work"
+      ],
+      "evidence": [
+        "docs/validation/midi-mapping-presets.md"
+      ],
+      "limits": "Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical capture and listening remain paused. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged."
+    },
     "205": {
       "status": "implemented",
       "paths": [

@@ -322,6 +322,44 @@ fn callback_never_acquires_the_producer_admission_mutex() {
 }
 
 #[test]
+fn an_unfinished_producer_never_stalls_audio_or_exposes_its_command() {
+    let (port, rt) = engine();
+    let mut rt = Box::new(rt);
+    port.send(Command::Master(0.1)).unwrap();
+    let (entered, seen) = std::sync::mpsc::channel();
+    let (resume, wait) = std::sync::mpsc::channel();
+    let producer = std::thread::spawn(move || {
+        let mut state = port.admission.lock();
+        let chunk = state.producer.write_chunk_uninit(1).unwrap();
+        entered.send(()).unwrap();
+        wait.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert_eq!(chunk.fill_from_iter([Command::Master(0.37)]), 1);
+    });
+    seen.recv_timeout(Duration::from_secs(2)).unwrap();
+    let (done, completed) = std::sync::mpsc::channel();
+    let audio = std::thread::spawn(move || {
+        let mut out = [0.0; 256];
+        let allocation = crate::engine::test_alloc::measure(|| {
+            for _ in 0..128 { rt.process(&mut out); }
+        });
+        assert_eq!(allocation.allocations, 0);
+        assert_eq!(allocation.frees, 0);
+        assert!(out.iter().all(|sample| sample.is_finite()));
+        assert!(rt.cmd_rx.is_empty());
+        assert!((rt.master - 0.1).abs() < 0.00001);
+        done.send(rt).unwrap();
+    });
+    let result = completed.recv_timeout(Duration::from_secs(2));
+    resume.send(()).unwrap();
+    producer.join().unwrap();
+    audio.join().unwrap();
+    let mut rt = result.expect("audio waited for an unfinished producer");
+    tick(&mut rt);
+    assert!((rt.master - 0.37).abs() < 0.00001);
+    assert!(rt.cmd_rx.is_empty());
+}
+
+#[test]
 fn concurrent_producers_cannot_consume_another_gates_release_reservation() {
     let (port, mut rt) = engine();
     let barrier = Arc::new(Barrier::new(5));

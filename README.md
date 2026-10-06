@@ -838,3 +838,5 @@ Use [Commands and shortcut bindings](docs/shortcuts.md) to search native actions
 Use [Workspaces and panel windows](docs/workspaces.md) to save panel visibility, order, heights and secondary-window sizes through Preferences.
 
 Deck waveforms offer linked 2/4/8/16-bar zoom, saved cue/loop markers and phase against the selected deck. Save waveform view retains it in preference schema 14. The output position estimate uses the backend’s reported time; unknown timing, changed media, key-lock and fades show renderer position explicitly. [Waveform qualification and limits](docs/validation/issue-135-waveform-timing.md).
+
+MIDI → **MIDI mapping presets** saves named factory overrides per device. Duplicate, rename, export or import portable definitions; explicitly review an exact port before loading or restoring factory defaults. **Save MIDI assignments** keeps the applied layer. [Preset details](docs/validation/midi-mapping-presets.md).
