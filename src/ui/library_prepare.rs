@@ -21,8 +21,31 @@ pub(super) struct Panel {
     pub message: String,
     pub saved: Option<CrateId>,
     preview: Option<(u8, u64)>,
+    published: Option<(u64, Arc<dyn crate::engine::ui_requests::SelectionView>)>,
 }
 impl App {
+    /// Publish exact Prepare identities for the hardware browser.
+    /// Takes this GUI; reuses the same immutable view until its queue revision changes.
+    pub(super) fn publish_prepare_controller_view(&mut self) {
+        struct PreparedView(Vec<Arc<Selection>>);
+        impl crate::engine::ui_requests::SelectionView for PreparedView {
+            fn len(&self) -> Option<usize> { Some(self.0.len()) }
+            fn selection(&self, index: usize) -> Option<Arc<Selection>> { self.0.get(index).cloned() }
+        }
+        let panel = &mut self.library_prepare;
+        if panel.published.as_ref().is_none_or(|(revision, _)| *revision != panel.revision) {
+            panel.published = Some((panel.revision, Arc::new(PreparedView(panel.entries.iter().map(|entry| entry.selection.clone()).collect()))));
+        }
+        let cursor = panel.selected.as_ref().and_then(|id| panel.entries.iter().position(|entry| &entry.id == id)).unwrap_or(0);
+        self.engine.ui_requests.publish_prepare(panel.published.as_ref().unwrap().1.clone(), cursor);
+    }
+    /// Follow a captured Prepare row without retargeting a changed queue.
+    /// Takes the native browse request; selects only the same captured source identity.
+    pub(super) fn select_prepared_controller_row(&mut self, request: &crate::engine::ui_requests::BrowseRequest) {
+        if let Some(entry) = self.library_prepare.entries.get(request.index).filter(|entry| entry.selection.source == request.selection.source && entry.selection.fingerprint == request.selection.fingerprint) {
+            self.library_prepare.selected = Some(entry.id.clone());
+        }
+    }
     fn prepare_available(&self) -> bool {
         !self.project.committing() && self.project.dialog_is_closed() && !self.library_closing()
     }

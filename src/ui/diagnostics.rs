@@ -121,6 +121,8 @@ impl App {
         let live = self.diagnostic_sample();
         let mut open = true;
         egui::Window::new(tr!("Performance diagnostics")).id(egui::Id::new("Performance diagnostics")).open(&mut open).default_width(780.0).default_height(800.0).vscroll(true).show(ctx, |ui| {
+            let feedback = self.engine.midi.feedback_stats();
+            ui.label(format!("MIDI feedback: {} outputs, {} sent, {} failed", feedback.connected, feedback.sent, feedback.failed));
             ui.label(tr!("Live output device · measured service times; backend XRUN count unavailable"));
             show_sample(ui, &live);
             ui.separator();

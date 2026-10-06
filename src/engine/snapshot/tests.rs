@@ -35,12 +35,30 @@ fn publish_without_allocating(rt: &mut RtEngine) {
 }
 
 #[test]
+fn snapshot_publication_preserves_controller_worker_counters() {
+    let mut rt = engine();
+    let feedback = midi::FeedbackStats { sent: 90, failed: 2, connected: 3 };
+    let input = midi::InputStats { received: 7, dispatched: 4, ..Default::default() };
+    {
+        let mut snapshot = rt.snap.lock();
+        snapshot.midi_feedback = feedback;
+        snapshot.midi_input = input;
+    }
+    rt.publish_initial();
+    assert_eq!(rt.snap.lock().midi_feedback, feedback);
+    assert_eq!(rt.snap.lock().midi_input, input);
+    rt.publish_for_test();
+    assert_eq!(rt.snap.lock().midi_feedback, feedback);
+    assert_eq!(rt.snap.lock().midi_input, input);
+}
+
+#[test]
 fn snapshot_periodic_publication_allocates_and_frees_nothing_on_audio() {
     let mut rt = engine();
     let mut output = [0.0; 1024];
     for _ in 0..12 {
         wait(|| rt.publisher.free.len() == FRAMES);
-        rt.frames_done = 6000 - 256;
+        rt.frames_done = rt.sr as u64 / 60 - 256;
         let before = rt.publisher.sequence;
         let counts = test_alloc::measure(|| rt.process(&mut output));
         assert_eq!(counts, test_alloc::Counts::default());

@@ -459,6 +459,11 @@ impl Handle {
     pub(super) fn publish_decks(&self, activity: u8) {
         self.0.deck_activity.store(activity, Ordering::Release);
     }
+    /// Read whether a deck is rendering or retaining audible output.
+    /// Takes a deck index; returns its renderer-confirmed activity without locking audio.
+    pub(crate) fn deck_active(&self, deck: usize) -> bool {
+        deck < super::DECKS && self.0.deck_activity.load(Ordering::Acquire) & (1 << deck) != 0
+    }
     /// Read the renderer-confirmed deck loading lock.
     /// Takes a deck index; returns its current protection state without touching audio.
     pub(crate) fn deck_load_locked(&self, deck: usize) -> bool {
@@ -496,6 +501,7 @@ pub(super) fn media_target(command: &Command) -> Option<usize> {
         Command::DeckAudio { deck, .. }
         | Command::DeckLoadRequested { deck, .. }
         | Command::DeckLoadSelected { deck }
+        | Command::DeckLoadFile { deck, .. }
         | Command::LoadBuiltin { deck, .. }
         | Command::DeckUnload { deck }
         | Command::DeckRestorePreparation { deck, .. } => Some(*deck as usize),
@@ -547,6 +553,12 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckJog { .. }
         | Command::DeckTouch { .. }
         | Command::MidiDeckTouch { .. }
+        | Command::DeckSpindle { .. }
+        | Command::DeckSpindleRelease { .. }
+        | Command::DeckControl { .. }
+        | Command::Surface(_)
+        | Command::MidiSamplerPad { .. }
+        | Command::DeckTrack { .. }
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }
@@ -560,6 +572,7 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckLoopOut { .. }
         | Command::DeckLoadLock { .. }
         | Command::DeckLoadSelected { .. }
+        | Command::DeckLoadFile { .. }
         | Command::PrepareSelected { .. }
         | Command::DeckPreview { .. }
         | Command::DeckVinyl { .. }
@@ -573,8 +586,13 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckUnload { .. }
         | Command::LoadBuiltin { .. }
         | Command::Xfader(_)
+        | Command::XfaderCurve(_)
+        | Command::XfaderReverse(_)
+        | Command::FaderStart { .. }
+        | Command::MeterMaster(_)
         | Command::Master(_)
         | Command::CueMix(_)
+        | Command::Monitor(_)
         | Command::TrackGain { .. }
         | Command::ClipGain { .. }
         | Command::TrackPan { .. }
@@ -583,6 +601,7 @@ fn destructive(command: &Command) -> bool {
         | Command::Arm { .. }
         | Command::Browse(_)
         | Command::BrowseCrates(_)
+        | Command::BrowsePanel(_)
         | Command::CrateReturn
         | Command::Select { .. }
         | Command::ComposeArm { .. }
@@ -637,11 +656,15 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::LiveNoteOn { vel: 0, .. }
             | Command::RoutedNoteOn { vel: 0, .. }
             | Command::SamplerPad { on: false, .. }
+            | Command::MidiSamplerPad { on: false, .. }
+            | Command::Surface(super::surface_controls::Input::Shift { on: false, .. })
             | Command::MidiAudition { on: false, .. }
             | Command::SamplerAuditionStop { .. }
         | Command::SamplerSlotStop { .. }
             | Command::DeckTouch { on: false, .. }
             | Command::MidiDeckTouch { on: false, .. }
+            | Command::DeckSpindleRelease { .. }
+            | Command::DeckControl { control: super::deck_controls::Control::Hold { on: false, .. }, .. }
             | Command::ComposeDisarm
             | Command::LibraryFence { .. }
             | Command::Select { .. }
@@ -650,6 +673,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
             | Command::SetView(_)
             | Command::Browse(_)
             | Command::BrowseCrates(_)
+            | Command::BrowsePanel(_)
             | Command::CrateReturn
             | Command::OpenFxTrack(_)
             | Command::OpenFxScene(_)
@@ -778,6 +802,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.release_surface_inputs();
         self.finish_sampler_audition();
         // Finite sample one-shots keep their existing Arc ownership and natural
         // tails. Emergency silence is applied after the entire output chain.
@@ -785,6 +810,8 @@ impl super::RtEngine {
             deck.playing = false;
             deck.stop_preview(self.sr);
             deck.touching = false;
+            deck.spindle = None;
+            deck.release_performance_controls();
             deck.touch_sources.fill(None);
             deck.scratch = 0.0;
         }

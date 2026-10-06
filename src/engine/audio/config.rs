@@ -41,11 +41,19 @@ pub struct Plan {
     pub warning: Option<String>,
 }
 impl Plan {
+    /// Identify the native NS7 headphone pair.
+    /// Takes the selected output plan; returns true only for the original NS7 ALSA card opened with four channels.
+    pub(crate) fn has_ns7_monitor(&self) -> bool {
+        self.backend == "ALSA" && self.channels == 4
+            && self.device.split_once(':').is_some_and(|(_, fields)| fields.split(',').any(|field| field == "CARD=NS7"))
+    }
     pub fn route(&self) -> String {
         if self.channels == 1 {
             "Main L+R summed to output 1".into()
         } else if self.channels == 2 {
             "Main left/right to outputs 1/2".into()
+        } else if self.has_ns7_monitor() {
+            "Main left/right to outputs 1/2; NS7 headphones to outputs 3/4".into()
         } else {
             format!(
                 "Main left/right to outputs 1/2; outputs 3–{} silent",
@@ -56,10 +64,16 @@ impl Plan {
     pub fn config(&self) -> cpal::StreamConfig {
         cpal::StreamConfig {
             channels: self.channels,
-            sample_rate: cpal::SampleRate(self.rate),
+            sample_rate: self.rate,
             buffer_size: self
                 .buffer
-                .map(cpal::BufferSize::Fixed)
+                .map(|frames| {
+                    cpal::BufferSize::Fixed(if self.backend == "ALSA" {
+                        frames.div_ceil(2)
+                    } else {
+                        frames
+                    })
+                })
                 .unwrap_or(cpal::BufferSize::Default),
         }
     }
@@ -79,8 +93,40 @@ fn supported(format: cpal::SampleFormat) -> bool {
             | cpal::SampleFormat::U64
     )
 }
+/// Retain stable ALSA card names and existing native endpoint names.
+/// Takes a discovered CPAL device; returns its endpoint without a host prefix.
+pub(super) fn name(device: &cpal::Device) -> Option<String> {
+    let id = device.id().ok()?;
+    if id.host().name() != "ALSA" {
+        return device.description().ok().map(|description| description.name().to_owned());
+    }
+    let endpoint = id.id();
+    for kind in ["hw", "plughw"] {
+        if let Some(route) = endpoint.strip_prefix(&format!("{kind}:CARD=")) {
+            if let Some((card, rest)) = route.split_once(',') {
+                if let Ok(index) = card.parse::<u16>() {
+                    if let Ok(card) =
+                        std::fs::read_to_string(format!("/sys/class/sound/card{index}/id"))
+                    {
+                        let card = card.trim();
+                        if !card.is_empty()
+                            && card
+                                .bytes()
+                                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+                        {
+                            return Some(format!("{kind}:CARD={card},{rest}"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Some(endpoint.to_owned())
+}
+
 fn inspect(device: &cpal::Device, is_default: bool, input: bool) -> Device {
-    let name = device.name().unwrap_or_else(|_| "Unnamed output".into());
+    let name = name(device).unwrap_or_else(|| "Unnamed output".into());
+    let buffer_scale = if device.id().is_ok_and(|id| id.host().name() == "ALSA") { 2 } else { 1 };
     let defaults = (if input {
         device.default_input_config()
     } else {
@@ -90,7 +136,7 @@ fn inspect(device: &cpal::Device, is_default: bool, input: bool) -> Device {
     .map(|config| {
         (
             config.channels(),
-            config.sample_rate().0,
+            config.sample_rate(),
             config.sample_format(),
         )
     });
@@ -109,11 +155,13 @@ fn inspect(device: &cpal::Device, is_default: bool, input: bool) -> Device {
                 .take(4096)
                 .map(|config| Range {
                     channels: config.channels(),
-                    min_rate: config.min_sample_rate().0,
-                    max_rate: config.max_sample_rate().0,
+                    min_rate: config.min_sample_rate(),
+                    max_rate: config.max_sample_rate(),
                     format: config.sample_format(),
                     buffer: match config.buffer_size() {
-                        cpal::SupportedBufferSize::Range { min, max } => Some((*min, *max)),
+                        cpal::SupportedBufferSize::Range { min, max } => {
+                            Some((min.saturating_mul(buffer_scale), max.saturating_mul(buffer_scale)))
+                        }
                         cpal::SupportedBufferSize::Unknown => None,
                     },
                 })
@@ -282,7 +330,7 @@ pub(super) fn select(settings: &Audio) -> anyhow::Result<(cpal::Device, Plan)> {
     let device = if let Some(name) = &settings.device {
         let mut matches: Vec<_> = host
             .output_devices()?
-            .filter(|device| device.name().ok().as_ref() == Some(name))
+            .filter(|device| self::name(device).as_ref() == Some(name))
             .collect();
         anyhow::ensure!(
             matches.len() == 1,
@@ -351,8 +399,12 @@ pub(crate) mod tests {
         settings.buffer_frames = Some(512);
         let chosen = plan(&settings, &inventory).unwrap();
         let native = chosen.config();
-        assert_eq!(native.sample_rate.0, 96000);
+        assert_eq!(native.sample_rate, 96000);
+        assert_eq!(chosen.buffer, Some(512));
         assert_eq!(native.buffer_size, cpal::BufferSize::Fixed(512));
+        let mut alsa = chosen.clone();
+        alsa.backend = "ALSA".into();
+        assert_eq!(alsa.config().buffer_size, cpal::BufferSize::Fixed(256));
         assert_eq!(native.channels, 2);
         for bad in [32, 2048] {
             settings.buffer_frames = Some(bad);
@@ -391,7 +443,7 @@ pub(super) fn select_exact(plan: &Plan) -> anyhow::Result<cpal::Device> {
     );
     let mut matching = host
         .output_devices()?
-        .filter(|device| device.name().ok().as_deref() == Some(plan.device.as_str()));
+        .filter(|device| name(device).as_deref() == Some(plan.device.as_str()));
     let device = matching
         .next()
         .context("Previously selected output is unavailable")?;
@@ -457,7 +509,7 @@ pub(super) fn select_input_exact(plan: &Plan) -> anyhow::Result<cpal::Device> {
     );
     let mut devices = host
         .input_devices()?
-        .filter(|device| device.name().ok().as_deref() == Some(plan.device.as_str()));
+        .filter(|device| name(device).as_deref() == Some(plan.device.as_str()));
     let device = devices
         .next()
         .context("Selected calibration input is unavailable")?;

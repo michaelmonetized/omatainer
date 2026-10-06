@@ -31,6 +31,7 @@ pub struct Prepared {
     outputs: Vec<usize>,
     pub scene_nodes: [Option<usize>; crate::engine::session::MAX_SCENES],
     pub main: usize,
+    pub monitor_channels_free: bool,
 }
 
 impl Prepared {
@@ -80,6 +81,7 @@ impl Prepared {
                 taps: [[0.0; MAX_PORT_CHANNELS]; 3],
             })
             .collect();
+        let monitor_channels_free = !model.ports.iter().any(|port| port.direction == Direction::Output && port.channels.iter().any(|channel| matches!(channel, 2 | 3)));
         Ok(Self {
             model,
             nodes,
@@ -87,6 +89,7 @@ impl Prepared {
             outputs,
             scene_nodes,
             main,
+            monitor_channels_free,
         })
     }
 

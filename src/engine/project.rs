@@ -580,6 +580,7 @@ impl RtEngine {
             | Command::DeckCueStyle { .. }
             | Command::DeckGrid { .. }
             | Command::Xfader(_)
+            | Command::XfaderCurve(_)
             | Command::Master(_)
             | Command::CueMix(_)
             | Command::TrackGain { .. }

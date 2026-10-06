@@ -19,7 +19,7 @@ fn assert_periodic_identity(rt: &mut RtEngine, expected: &Arc<Vec<[f32; 3]>>) {
     for _ in 0..12 {
         wait(|| rt.publisher.free.len() == FRAMES);
         let sequence = rt.publisher.sequence;
-        rt.frames_done = 6000 - 256;
+        rt.frames_done = rt.sr as u64 / 60 - 256;
         let counts = test_alloc::measure(|| rt.process(&mut output));
         assert_eq!(counts, test_alloc::Counts::default());
         assert_eq!(rt.publisher.sequence, sequence + 1);

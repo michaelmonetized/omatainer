@@ -14,6 +14,7 @@ const EVENTS: usize = 256;
 
 #[derive(Clone, Copy)]
 struct Event {
+    at: std::time::Instant,
     epoch: u64,
     sequence: u64,
     safety: u64,
@@ -25,6 +26,7 @@ struct Event {
 impl Event {
     fn new(epoch: u64, sequence: u64, bytes: &[u8]) -> Self {
         let mut event = Self {
+            at: std::time::Instant::now(),
             epoch,
             sequence,
             safety: 0,
@@ -53,7 +55,7 @@ pub struct InputCounters {
     dispatched: AtomicU64,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct InputStats {
     pub received: u64,
     pub queued: u64,
@@ -92,13 +94,15 @@ struct Shared {
 
 struct Rules {
     cc: [[bool; 128]; 16],
-    stop: [[bool; 128]; 16],
+    stop: [[[bool; 128]; 16]; 2],
+    mmc: bool,
 }
 impl Rules {
     fn new(map: &MidiMap) -> Self {
         let mut rules = Self {
             cc: [[false; 128]; 16],
-            stop: [[false; 128]; 16],
+            stop: [[[false; 128]; 16]; 2],
+            mmc: map.name.starts_with("Akai MPD232"),
         };
         for binding in &map.bindings {
             if binding.data >= 128 {
@@ -108,8 +112,8 @@ impl Rules {
                 if binding.ch != 0xff && binding.ch as usize != channel {
                     continue;
                 }
-                if binding.kind == MsgKind::Note && binding.action == Action::Stop {
-                    rules.stop[channel][binding.data as usize] = true;
+                if matches!(binding.kind, MsgKind::Note | MsgKind::Cc) && binding.action == Action::Stop {
+                    rules.stop[usize::from(binding.kind == MsgKind::Cc)][channel][binding.data as usize] = true;
                 }
                 // Only direct absolute assignments. Relative jog, browse,
                 // selection, transport and every note remain ordered barriers.
@@ -123,9 +127,13 @@ impl Rules {
                             | Action::DeckEqLow
                             | Action::DeckFilter
                             | Action::Xfader
+                            | Action::XfaderCurve
                             | Action::Master
                             | Action::CueMix
                             | Action::TrackFader
+                            | Action::TrackPan
+                            | Action::TrackSendA
+                            | Action::TrackSendB
                             | Action::FxWet
                     )
                 {
@@ -143,6 +151,7 @@ impl Rules {
             && self.cc[(bytes[0] & 15) as usize][bytes[1] as usize]
     }
     fn has_stop(&self, bytes: &[u8]) -> bool {
+        if self.mmc && bytes.windows(6).any(|packet| packet[0] == 0xf0 && packet[1] == 0x7f && packet[2] < 128 && packet[3..] == [6, 1, 0xf7]) { return true; }
         // Bounded overflow-only scan preserves stop even with interleaved
         // realtime bytes. Normal MIDI parsing remains in handle_msg.
         let mut note = [0; 3];
@@ -165,9 +174,9 @@ impl Rules {
             note[len] = byte;
             len += 1;
             if len == 3 {
-                if note[0] & 0xf0 == 0x90
+                if matches!(note[0] & 0xf0, 0x90 | 0xb0)
                     && note[2] > 0
-                    && self.stop[(note[0] & 15) as usize][note[1] as usize]
+                    && self.stop[usize::from(note[0] & 0xf0 == 0xb0)][(note[0] & 15) as usize][note[1] as usize]
                 {
                     return true;
                 }
@@ -252,6 +261,7 @@ impl InputSink {
 }
 
 struct InputWorker {
+    decoder: super::surface::Decoder,
     learning_revision: u64,
     consumer: rtrb::Consumer<Event>,
     shared: Arc<Shared>,
@@ -271,6 +281,8 @@ struct InputWorker {
 }
 impl InputWorker {
     fn reset(&mut self) {
+        self.cmd.release_midi_source(self.source);
+        self.decoder.reset();
         self.shared.routing.release(self.sources,&self.cmd);
         *self.shift.lock() = [false; 4];
         self.shared.counters.resets.fetch_add(1, Relaxed);
@@ -279,7 +291,7 @@ impl InputWorker {
         let learning = self.shared.learning.revision.load(Acquire);
         if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
         let safety = self.shared.performance.input_epoch();
-        if self.safety != safety { *self.shift.lock() = [false; 4]; self.safety = safety; }
+        if self.safety != safety { *self.shift.lock() = [false; 4]; self.decoder.reset(); self.safety = safety; }
         let epoch = self.shared.epoch.load(Acquire);
         let reset = epoch != self.epoch;
         if reset {
@@ -297,6 +309,7 @@ impl InputWorker {
             for frame in super::routing::packet::frames(event.bytes()) {
                 match frame {
                     super::routing::packet::Frame::Musical(packet) => {
+                        if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
                             match self.shared.learning.input_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning) {
@@ -308,7 +321,9 @@ impl InputWorker {
                         self.shared.routing.input(self.sources,&self.name,&self.port_id,event.routing,packet,&cmd,|allow_live| {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
-                                super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
+                                if !self.decoder.input_at(&self.map,&frame,&cmd,self.source,event.at) {
+                                    super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
+                                }
                             }
                         });
                     },
@@ -355,6 +370,7 @@ impl InputWorker {
                 worked = true;
             }
             if !worked {
+                self.decoder.idle(self.source, &self.cmd.for_input_epoch(self.safety));
                 std::thread::park_timeout(Duration::from_millis(1));
             }
         }
@@ -432,6 +448,7 @@ fn channel(
             sequence: 0,
         },
         InputWorker {
+            decoder: super::surface::Decoder::default(),
             learning_revision: shared.learning.revision.load(Acquire),
             consumer,
             shared,

@@ -92,18 +92,21 @@
       "version": "0.8.12"
     },
     {
-      "checksum": "ed7572b7ba83a31e20d1b48970ee402d2e3e0537dcfe0a3ff4d6eb7508617d43",
-      "features": [],
+      "checksum": "812947049edcd670a82cd5c73c3661d2e58468577ba8489de58e1a73c04cbd5d",
+      "features": [
+        "default",
+        "std"
+      ],
       "license": "Apache-2.0/MIT",
       "name": "alsa",
-      "version": "0.9.1"
+      "version": "0.11.0"
     },
     {
-      "checksum": "db8fee663d06c4e303404ef5f40488a53e062f89ba8bfed81f42325aafad1527",
+      "checksum": "ad7569085a265dd3f607ebecce7458eaab2132a84393534c95b18dcbc3f31e04",
       "features": [],
       "license": "MIT",
       "name": "alsa-sys",
-      "version": "0.3.1"
+      "version": "0.4.0"
     },
     {
       "checksum": "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470",
@@ -305,6 +308,16 @@
       "version": "0.9.0"
     },
     {
+      "checksum": "7b1b4a0adbf971420cca66a75361a1190f34a6762d66361e5cde03dda35d1ed3",
+      "features": [
+        "dbus",
+        "with_dbus"
+      ],
+      "license": "MPL-2.0",
+      "name": "audio_thread_priority",
+      "version": "0.35.1"
+    },
+    {
       "checksum": "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53",
       "features": [],
       "license": "Apache-2.0 OR MIT",
@@ -491,11 +504,15 @@
       "version": "2.5.0"
     },
     {
-      "checksum": "873dab07c8f743075e57f524c583985fbaf745602acbe916a01539364369a779",
-      "features": [],
+      "checksum": "6f02e8d0327b42d3e2e4ab2119af397344eb9fc54a34bf0ddeaa1277af8681f1",
+      "features": [
+        "default",
+        "realtime",
+        "realtime-dbus"
+      ],
       "license": "Apache-2.0",
       "name": "cpal",
-      "version": "0.15.3"
+      "version": "0.18.2"
     },
     {
       "checksum": "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280",
@@ -573,6 +590,13 @@
       "license": "MIT",
       "name": "data-encoding",
       "version": "2.11.1"
+    },
+    {
+      "checksum": "48b5f0f36f1eebe901b0e6bee369a77ed3396334bf3f09abd46454a576f71819",
+      "features": [],
+      "license": "Apache-2.0/MIT",
+      "name": "dbus",
+      "version": "0.6.5"
     },
     {
       "checksum": "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292",
@@ -1350,6 +1374,16 @@
       "version": "0.2.189"
     },
     {
+      "checksum": "328c4789d42200f1eeec05bd86c9c13c7f091d2ba9a6ea35acdf51f31bc0f043",
+      "features": [
+        "default",
+        "pkg-config"
+      ],
+      "license": "Apache-2.0/MIT",
+      "name": "libdbus-sys",
+      "version": "0.2.7"
+    },
+    {
       "checksum": "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f",
       "features": [],
       "license": "ISC",
@@ -1486,13 +1520,13 @@
       "version": "0.9.1"
     },
     {
-      "checksum": "56542e359bb7e4bd1a77cb79042be32d4af0713a9ce58160355eaf72df9db87c",
+      "checksum": "77c12e74a8604bc07f9a3fcf3d5889a81bc96ca6e07d6a114d63fc0371f3e5a4",
       "features": [
         "default"
       ],
       "license": "MIT",
       "name": "midir",
-      "version": "0.10.4"
+      "version": "0.11.0"
     },
     {
       "checksum": "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316",
@@ -3915,25 +3949,25 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:alsa@0.9.1",
+      "id": "crate:alsa@0.11.0",
       "license": "Apache-2.0/MIT",
       "members": [],
-      "name": "alsa 0.9.1",
+      "name": "alsa 0.11.0",
       "notices": [
         {
-          "location": "https://static.crates.io/crates/alsa/alsa-0.9.1.crate#LICENSE-APACHE",
+          "location": "https://static.crates.io/crates/alsa/alsa-0.11.0.crate#LICENSE-APACHE",
           "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
         },
         {
-          "location": "https://static.crates.io/crates/alsa/alsa-0.9.1.crate#LICENSE-MIT",
+          "location": "https://static.crates.io/crates/alsa/alsa-0.11.0.crate#LICENSE-MIT",
           "sha256": "3cc33f8e76680b9cba2e2a5bc94de5a92420045863ab2fadbef290a55b4d8530"
         }
       ],
       "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
       "sources": [
         {
-          "location": "https://static.crates.io/crates/alsa/alsa-0.9.1.crate",
-          "sha256": "ed7572b7ba83a31e20d1b48970ee402d2e3e0537dcfe0a3ff4d6eb7508617d43"
+          "location": "https://static.crates.io/crates/alsa/alsa-0.11.0.crate",
+          "sha256": "812947049edcd670a82cd5c73c3661d2e58468577ba8489de58e1a73c04cbd5d"
         }
       ]
     },
@@ -3941,21 +3975,21 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:alsa-sys@0.3.1",
+      "id": "crate:alsa-sys@0.4.0",
       "license": "MIT",
       "members": [],
-      "name": "alsa-sys 0.3.1",
+      "name": "alsa-sys 0.4.0",
       "notices": [
         {
-          "location": "https://static.crates.io/crates/alsa-sys/alsa-sys-0.3.1.crate#LICENSE",
+          "location": "https://static.crates.io/crates/alsa-sys/alsa-sys-0.4.0.crate#LICENSE",
           "sha256": "219766b3420f49f6204143c5f3ef750888fb6de29ce5f63e909f146e90b375a2"
         }
       ],
       "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
       "sources": [
         {
-          "location": "https://static.crates.io/crates/alsa-sys/alsa-sys-0.3.1.crate",
-          "sha256": "db8fee663d06c4e303404ef5f40488a53e062f89ba8bfed81f42325aafad1527"
+          "location": "https://static.crates.io/crates/alsa-sys/alsa-sys-0.4.0.crate",
+          "sha256": "ad7569085a265dd3f607ebecce7458eaab2132a84393534c95b18dcbc3f31e04"
         }
       ]
     },
@@ -4529,6 +4563,28 @@
     },
     {
       "category": "rust-component",
+      "commercial_use": "Commercial use is permitted by MPL-2.0.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:audio_thread_priority@0.35.1",
+      "license": "MPL-2.0",
+      "members": [],
+      "name": "audio_thread_priority 0.35.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/audio_thread_priority/audio_thread_priority-0.35.1.crate#LICENSE",
+          "sha256": "32ee9dbf6196874fc9d406c54a888a6c4cbb9aa4a7f35b46befeaff43a78fe85"
+        }
+      ],
+      "redistribution": "Keep notices and MPL-2.0 terms; make the covered source, including modifications, available to recipients. The exact unmodified source archive is linked below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/audio_thread_priority/audio_thread_priority-0.35.1.crate",
+          "sha256": "7b1b4a0adbf971420cca66a75361a1190f34a6762d66361e5cde03dda35d1ed3"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:autocfg@1.5.1",
@@ -5091,21 +5147,21 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:cpal@0.15.3",
+      "id": "crate:cpal@0.18.2",
       "license": "Apache-2.0",
       "members": [],
-      "name": "cpal 0.15.3",
+      "name": "cpal 0.18.2",
       "notices": [
         {
-          "location": "https://static.crates.io/crates/cpal/cpal-0.15.3.crate#LICENSE",
+          "location": "https://static.crates.io/crates/cpal/cpal-0.18.2.crate#LICENSE",
           "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
         }
       ],
       "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
       "sources": [
         {
-          "location": "https://static.crates.io/crates/cpal/cpal-0.15.3.crate",
-          "sha256": "873dab07c8f743075e57f524c583985fbaf745602acbe916a01539364369a779"
+          "location": "https://static.crates.io/crates/cpal/cpal-0.18.2.crate",
+          "sha256": "6f02e8d0327b42d3e2e4ab2119af397344eb9fc54a34bf0ddeaa1277af8681f1"
         }
       ]
     },
@@ -5318,6 +5374,32 @@
         {
           "location": "https://static.crates.io/crates/data-encoding/data-encoding-2.11.1.crate",
           "sha256": "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:dbus@0.6.5",
+      "license": "Apache-2.0/MIT",
+      "members": [],
+      "name": "dbus 0.6.5",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/dbus/dbus-0.6.5.crate#LICENSE-APACHE",
+          "sha256": "453745410e3be8cf25d56872ea2aec975a78e6c9f217443d0bf908a5bce7c8ff"
+        },
+        {
+          "location": "https://static.crates.io/crates/dbus/dbus-0.6.5.crate#LICENSE-MIT",
+          "sha256": "de3911c2d98c8bd2d701ee721347053d9b55995a11f9a8c955e44d3ca1b376bf"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/dbus/dbus-0.6.5.crate",
+          "sha256": "48b5f0f36f1eebe901b0e6bee369a77ed3396334bf3f09abd46454a576f71819"
         }
       ]
     },
@@ -7339,6 +7421,40 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:libdbus-sys@0.2.7",
+      "license": "Apache-2.0/MIT",
+      "members": [],
+      "name": "libdbus-sys 0.2.7",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/libdbus-sys/libdbus-sys-0.2.7.crate#LICENSE-APACHE",
+          "sha256": "453745410e3be8cf25d56872ea2aec975a78e6c9f217443d0bf908a5bce7c8ff"
+        },
+        {
+          "location": "https://static.crates.io/crates/libdbus-sys/libdbus-sys-0.2.7.crate#LICENSE-MIT",
+          "sha256": "de3911c2d98c8bd2d701ee721347053d9b55995a11f9a8c955e44d3ca1b376bf"
+        },
+        {
+          "location": "https://static.crates.io/crates/libdbus-sys/libdbus-sys-0.2.7.crate#vendor/dbus/COPYING",
+          "sha256": "e61807cd1c32ff4e7bd5b4b61dd21997c6dc5642cf19316124fe38d50e1f9fa3"
+        },
+        {
+          "location": "https://static.crates.io/crates/libdbus-sys/libdbus-sys-0.2.7.crate#vendor/dbus/cmake/modules/COPYING-CMAKE-SCRIPTS",
+          "sha256": "c666ec2313dba24523ccad88f4c04ea4b24fad6545263a35b1d4ab2b08efe50a"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/libdbus-sys/libdbus-sys-0.2.7.crate",
+          "sha256": "328c4789d42200f1eeec05bd86c9c13c7f091d2ba9a6ea35acdf51f31bc0f043"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:libloading@0.7.4",
       "license": "ISC",
       "members": [],
@@ -7703,21 +7819,21 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:midir@0.10.4",
+      "id": "crate:midir@0.11.0",
       "license": "MIT",
       "members": [],
-      "name": "midir 0.10.4",
+      "name": "midir 0.11.0",
       "notices": [
         {
-          "location": "https://static.crates.io/crates/midir/midir-0.10.4.crate#LICENSE",
+          "location": "https://static.crates.io/crates/midir/midir-0.11.0.crate#LICENSE",
           "sha256": "f2cf650a4c639ea1e7d472b17d90309bd038bc8f40523365bcbb5f94ee6aa60b"
         }
       ],
       "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
       "sources": [
         {
-          "location": "https://static.crates.io/crates/midir/midir-0.10.4.crate",
-          "sha256": "56542e359bb7e4bd1a77cb79042be32d4af0713a9ce58160355eaf72df9db87c"
+          "location": "https://static.crates.io/crates/midir/midir-0.11.0.crate",
+          "sha256": "77c12e74a8604bc07f9a3fcf3d5889a81bc96ca6e07d6a114d63fc0371f3e5a4"
         }
       ]
     },
@@ -12442,10 +12558,10 @@
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "500de073386cdbdf205211d67a757b4302c48801d3a5a5fba7791c40a6f58438",
-    "Cargo.toml": "be10a2f32185b5ab0e026e4f53b2987aba05ee0fe4eca507f837f255013cd4d2",
+    "Cargo.lock": "ba8b2308ca6e26f3d159fab0911813152a3ff073f565dc2a00e8f07f8c79594c",
+    "Cargo.toml": "07667dcb2daf0ab103c3abf5092b744b8a38535f9c77a49e46b78b54396c6f21",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
-    "README.md": "845cae109fbf7e8cdc3303fcdf19a3f8103f18abb6d21d0a4d57721032be83b3",
+    "README.md": "5822f3d35d620eec750807d70aa26d2f7b95cc2a0a0f412000df88cefaa779ed",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
     "benchmarks/policy.json": "fa1fb85c8f5c9aeac076920eaaf7eec5131a8ebe7019b3f81d6fa1e07ac9dd6c",
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
@@ -12504,50 +12620,53 @@
     "scripts/test-performance-gate.py": "e3bca84fae0eff9e098d023645b3b9855749aba7d659c0b260fb1e1283f76631",
     "scripts/test_offline_contract.py": "f26c137eb1ef0aeb1b8aa8f4a320fcdf43945d21eae2f0b858270d28f74d5b8d",
     "scripts/test_offline_guard.py": "092fb8dfdecb2798215aa5a5c1df213f26c8013467e537c09cdb39fccf7f514c",
-    "src/automation.rs": "75ef4ba733caae7f677ebc2480ad369767dc3ca172a53f681bc0d21f6289c6b7",
+    "src/automation.rs": "335892f6f968efcd876789d5d9c4417a509866c00674bd3db43989d426e80c22",
     "src/automation/osc.rs": "aa54ffd5461b9b661285f0aa76aa88dfc17cd597cab1f2a33b049c2b49d7fab4",
     "src/automation/osc/tests.rs": "3e91890e1294255b1b360d5f2bdc61b42ea11a07f9cc93781ec3308886178975",
-    "src/automation/tests.rs": "c8caf9f76a46d31d85390dabca4b9a2eb32aad604032fdbf605d07f2a7eb43a3",
+    "src/automation/tests.rs": "09fcb09630defc70b5c456989dd4fdef9143b84bfb8af7d903af11cdda0370d4",
     "src/background.rs": "557ca6e085fdb831ddd99cf9c1e428eae9a966b155fa8e58e18def3577e5eea3",
     "src/background/tests.rs": "802c0a2d254d51edc50cd254cd8e06b5bebf726386177f4e1b6a738ad3eae0bd",
     "src/engine/arp.rs": "5543f23955b3dfe8a31177291a998cd5e0aaff79b911f4fc4edcc321a5662254",
     "src/engine/arp_tests.rs": "f9414f93f1610d1fa8ae6a944acbe0554659c12764b0771c7ad5ebbd0e7c1206",
     "src/engine/audible.rs": "4681720d138656b3163f1e42e20a4e7b4df55dead24c5071930b6dff88787816",
-    "src/engine/audio.rs": "8ed9c00b39e20b42908f61ac62b0eabed0642dcd775bf8bbbde1daa17bccedcf",
+    "src/engine/audio.rs": "44e6cd08bede54d3f1cf0a627db3c8238e0186599639e32aa4da1c1336a210e7",
     "src/engine/audio/audible_tests.rs": "388353887ea6b5f96fa095270b7c4a0e92e79c491e59edc792f58a1385c855c6",
     "src/engine/audio/calibration.rs": "94a4daae48c7902fb7c23d0d95b3fedff4adb1039c8ccd8e668c2f305feb66ee",
-    "src/engine/audio/calibration/native.rs": "ce0325f686e8c022f49eb91d19cb6fe0457f1e613c0ae78889b037ae86a76961",
-    "src/engine/audio/config.rs": "76d7aaacb6e6852cffddf1a33d346d99dca71529ddcbe42fb92bb6a9aafa7588",
+    "src/engine/audio/calibration/native.rs": "ceb2a82d654e371d483bc8cd4783d94222f52578f243edc8abf5e44a66fbf6b9",
+    "src/engine/audio/config.rs": "dbec72a88fcf3481365040e2dfe2077918e1bc91981132f5b8132337589eb4cb",
     "src/engine/audio/graph.rs": "319d76e7b948249481c6a2f2d4b109ef7ee19b7369b22c33c1e4d302a02ea3fd",
     "src/engine/audio/jack.rs": "4303ba59074d63661a162b1bf33073c0c5af045d0ad311a57bf59798d467fd9d",
     "src/engine/audio/jack/native_tests.rs": "ad9d2329cfa837b9336eb615cdf8d7116a255003261974a2506d3259f50ffa2a",
-    "src/engine/audio/owner.rs": "bb415578930afea1d3b61507f4ee9dd423acff357f58b37dad6dca631bd8b475",
-    "src/engine/audio/recovery.rs": "e2e123b0977939fe0b9decaede97bbf85e8b6e6295cd8a3d9d6eb3a5aaa04b1c",
+    "src/engine/audio/owner.rs": "40649f274a7985b7232750ae4e1a786bbbb77a475ccdb1d29e166ea7d9d4888c",
+    "src/engine/audio/recovery.rs": "79cc0b34ae5f94709903cf63d781fa3eba70c5c7b3b8db88b7ec04cd18bba451",
     "src/engine/audio/recovery_tests.rs": "30578d59cd8a0af450d09373b4eae504425ac0a70a9621dc658e3608d1dca394",
-    "src/engine/audio/routing.rs": "c3008906a74dd204e1d7c1d4978bb9e2b5f87325ad3417db1b450671b56a58c0",
-    "src/engine/audio/routing/input.rs": "496df1136d86edcd0d4762094562489636019bd5a03c5cf52f89c355346b8eb5",
+    "src/engine/audio/routing.rs": "b1e66ba206b35a02e7fd5b074e50019ed44887a2fd59be161a351570234f86a6",
+    "src/engine/audio/routing/input.rs": "0e4770ebbed959279d436285e83f87fd7cbc37fde1e588fbe97172b4382393ec",
     "src/engine/audio/routing/model.rs": "4aca2948f718550b3b00b8c05f84453514bd87ec7b7ccbe891f43762164d06f0",
     "src/engine/audio/routing/native_tests.rs": "e31857b77f5ef6d9af47cc6082a4b6c57e79d8585179656e312c5485bdf96ee9",
-    "src/engine/audio/routing/prepared.rs": "4a125f79406f310ab7cb37216a6b24f5852a8c3f21837ac335a3f25b6265b706",
+    "src/engine/audio/routing/ns7_native_tests.rs": "c065f0a1fbe5d97bae2de53269ebf57e9802083197a8baf43869fbf9bd2e23ff",
+    "src/engine/audio/routing/prepared.rs": "22cdad9940780237e17234f0399add654bfa018a472a07730d981807077c6b57",
     "src/engine/audio/routing/probe.rs": "4729062a934c151e9e2c232aff7c8fd8c1cc46f1c3dd051676d1381098cce79f",
     "src/engine/audio/routing/record.rs": "dc6e8eef88dd1220a3758dcefee7aecccdd68587baf70209eef87b26d6791db9",
-    "src/engine/audio/routing/render.rs": "d3ed7602bfbcbda4425c1106680f2d2f2cf34e9251b139e22b42ff2ff270229a",
+    "src/engine/audio/routing/render.rs": "eb3f81eb408a8eeb005a27229a277bd44e4c19b508dfeed0a96ac09326fb3b5a",
     "src/engine/audio/routing/tests.rs": "5e8a701302d577abd6073eafbd070c9310a3c9c8cb2b7f254e748896bb0b2f11",
     "src/engine/audio_live_set_tests.rs": "ded1de25b85ccd58d74556be87798be4724290d6a4b0c58e7b6b7db62c174c2b",
-    "src/engine/audio_metrics.rs": "a0adccfe3b4140282d548ec8f992818871a4e10dec6aad8e3a45b62b5e11722d",
-    "src/engine/audio_metrics_tests.rs": "03dce060750befb77648cc1609889ec11767762639de642e3407e477bc6aa841",
+    "src/engine/audio_metrics.rs": "8a9550c5d010bda27c4613a7e59385f7ae38e64c15543a7f54a799885c13bb43",
+    "src/engine/audio_metrics_tests.rs": "b7834a183a52a3ecf4b5e67e4f780efe05720f3158d474b97a56a7ae32de7eb4",
     "src/engine/audio_tests.rs": "8b02a1ab291c096ad000f84a1da2645873b82fc621f13fbf233fe7a3587d0585",
     "src/engine/beatgrid.rs": "a2d54a90dad025dab035fc559a08f8dedc91f10eaa2b60358e484459700b15e9",
     "src/engine/beatgrid/variable_tests.rs": "7022c1dd318626cf6b84f383fc49b199b2610644c0cbc044e0ea2c5df1351c36",
     "src/engine/clip_gain_tests.rs": "7086ab57c71e5c7510631273cfe2ad8e58c2f9178e01a4e67bfa6c90308d02ce",
     "src/engine/clip_lifecycle_tests.rs": "08419b12714fb253405920b892cdc28a54697ccead077a1e32ed3c8f97123951",
     "src/engine/compose_tests.rs": "d314e9fce6934fce05c712b09a0ee44dea324334519adddafc869924fd85a1cc",
-    "src/engine/control.rs": "ce749a4124cb72ff23ea79a621c341fa91295dc8998664f287d631eeb23eb2b5",
+    "src/engine/control.rs": "3496915b9e9c160d7764b3e57105656ed882169ebfd8189935dde2994609f0c5",
     "src/engine/control/admission_tests.rs": "1705bccbdf853844d2e876d48802c75950819ba70c48f02d96f8fcad277e1d4a",
     "src/engine/control/payload_tests.rs": "3fa3ad8db8c02c417b3f4ec6551db42f3d303a4ec72c0e78f4fee0eecb19460c",
     "src/engine/control/project_gate_tests.rs": "850691c60345a42b7580c859ef98213bb65ed2d305e9e05b304a56bc582f04bf",
     "src/engine/control_tests.rs": "181d749a811f3955dc8ea3a5b32134ee6c33077bfc68adc186b72289f0a88517",
     "src/engine/cue_metadata.rs": "72fbc50b51de257d3ab350d5e08441256bfaabe8b81567274c132acb2e842695",
+    "src/engine/deck_controls.rs": "79d43764ecc65bca8c462110117edda05ad9fe3cc684f637721b4ae1e3040ae4",
+    "src/engine/deck_controls/tests.rs": "cc2a03fc0eb87e603320d360de6b25bf49e1f40c9ff95d188172b6fd029ea393",
     "src/engine/deck_filter.rs": "83305ad62e6316f8ea0645efdca62accfb4b85f3070d22eda3c40f06bc2df2eb",
     "src/engine/deck_filter_tests.rs": "36124076e46ca97dba7869fe8fb4e5cf54293765a53ab2dadfa032d0c7b8d508",
     "src/engine/deck_load_lock_tests.rs": "5794b05bb0012fddc68261947f1d9a7e5acfc402754bfccdd4d0f52602707635",
@@ -12560,7 +12679,7 @@
     "src/engine/diagnostics/tests.rs": "3c3f950705664d23a20025633415fd6e2bbfc76dfcde63c32271648d3ef5dcaf",
     "src/engine/drum_borrow_tests.rs": "b4c224f6ef6b09b25281e28e9e21d11b3699dd08f945fbdc9705cb3d1cdbbfe8",
     "src/engine/drum_velocity_tests.rs": "f803a20652a7d6492b3891a72eefbf73372006b9e873b6241ac49544e04118c8",
-    "src/engine/dsp.rs": "326dd7d9c532bebff381bc22d07b046beb38c44a2dc50e5ca3f5139643be8ced",
+    "src/engine/dsp.rs": "4e7cb003d0631f0fdb66e4ec28ee6be74698d3b4c19d91be8e226bdae94c8b0d",
     "src/engine/fx.rs": "c7da5aa4e79ba54c9575e07edd86a5eaa747ec03a00e5e4032e503c07568a06f",
     "src/engine/fx/bypass.rs": "2aba76379b6dd297d7947b60ad991b16fffafa08b159e308c43bda2d30df8798",
     "src/engine/fx/neutral_tests.rs": "0c92abb3b8508e09cc3e615725a7fd120bdc098fa5ee77950fe00b19fcee3161",
@@ -12596,7 +12715,7 @@
     "src/engine/live_set.rs": "dfadbf143d41f48261e6842e586507ad83b7651d6e8fbb99f90413df9e136b0a",
     "src/engine/live_set/tests.rs": "03a83c6b79c3d26f86f9e32e3c8db80f9dd7d994bc37ec3f0b56a60d10789ecf",
     "src/engine/load_receipt.rs": "78a689bc7ea3933f72a6fbad3baf8e0e116d97c05b0c16bd0a587d8bf09f58f5",
-    "src/engine/master_fx.rs": "df70bafe2470d73c21d787e929dca1d093ac63cda271bb1b6136377c4f4cdfa3",
+    "src/engine/master_fx.rs": "1de0b76f91aacfcfae89e9fdaf1aa65ec11dd2ca0ef3dff5f4d47432a45c7ecb",
     "src/engine/master_fx_tests.rs": "14d13e77e8f873832ed415430a93466269bd1243c1191fe217ff5a27ee983ade",
     "src/engine/master_fx_tests/wet.rs": "8115f9f3ecebfb94fefbe1f52115224d2ede19021b5e60db09e19dd23380add4",
     "src/engine/master_stereo_tests.rs": "fe70b3fb33b7d455027856abfa84327b4756f48c1b35b8e29ea4be396dd3df1c",
@@ -12609,22 +12728,23 @@
     "src/engine/media_load/tests.rs": "121a1847658957df238c2fb11200e46e6cc59c6b9e01ff084770b3e611ecf857",
     "src/engine/media_source.rs": "c0f57cb2fd1b1a6cc83c1842f1f9b5041b851589c23d92757416d8d81a7b6a23",
     "src/engine/metronome.rs": "add8a45e3e0c8552f75e77a548d991b6494550942204a2a02655b1ef311a7ccb",
-    "src/engine/midi.rs": "ac4239a7b6539d03555c06482ef92ff3ae6a6e002ee721e7bd58ab5c0d910ef4",
-    "src/engine/midi/connections.rs": "04038a9633ef5e4b0e750bd0fe7b27190588fb8f6badece8d24867e206aaeb42",
+    "src/engine/midi.rs": "c89fffc2907a3b0b49c427fef34da6bebebcf9dd7d9af3194f2dae3b221babee",
+    "src/engine/midi/connections.rs": "d621cbc3e4caa4771279badd3c43a94e66c432c0505491b07d6cbe05adc8d8f8",
     "src/engine/midi/connections/policy_tests.rs": "65a3e5565ca062f8ba9151cd494271305da7362f5777b820cf9f877b621227cd",
     "src/engine/midi/connections/test_support.rs": "0f12a6a9add46037bda0e44cedc4ec4e38c77adbbefc9ab975938c50633b1438",
     "src/engine/midi/connections/tests.rs": "c33c2899a2a9e276b6ce183e4ee3c89a2549ae5a5939c1bbd2438eccc702276f",
     "src/engine/midi/device_status.rs": "ba45667136368fc5ad3ba1d22e8404a10175d02a8ac71e7ab3e6c84966afb85b",
+    "src/engine/midi/feedback.rs": "fa635d41f93b11e5459e84bfb3f1dd778ccddd8dfbfb4efa66e3b2222492bc73",
     "src/engine/midi/framing.rs": "0a6e5f9f2aed173559bcaf1d8f015c32d6f06acb57828c5ad74092dee6160ff1",
-    "src/engine/midi/handoff.rs": "76fc587720c13d6955106efece6eedf3f692add02c39fa587cc948b76e321526",
+    "src/engine/midi/handoff.rs": "b115fbb68b0de18e19f774730934f1b8f21ac53543261bc7b18530c609c085bd",
     "src/engine/midi/handoff/latest.rs": "f24f8acbd4223afa4ce8fb96f6b1f7266f1a15a68496879b028498e9242651d1",
-    "src/engine/midi/handoff/tests.rs": "d73590ff1f8199d2ba7346d7f98bfd051622e127d806b25c063e29dc13ab8794",
-    "src/engine/midi/learn.rs": "e9809fce7ea5c65a38bb3e337589a68ea5ac326f19244da0a79294684b6992f6",
+    "src/engine/midi/handoff/tests.rs": "11e79a3e1f52cc8bad118fd9fa4bd133fc5a43c8a46459c1ee6370edaa94b79e",
+    "src/engine/midi/learn.rs": "ba7ae853af7041d39c55d0a68c76739897114d7b6e61bf9cb101441279caea8f",
     "src/engine/midi/learn/tests.rs": "0fed780194269281f51eed7da80f6012b6e8c11a21105ad354b869a65afc0edf",
     "src/engine/midi/policy.rs": "ab79a91714aebdab1869315f45f928adc313f541a2cfaf9c85ac43dec58e769c",
-    "src/engine/midi/profile.rs": "79d428d30e4932d642a61cc997ebf523e6af980e08e60b9f092e486d0d98628c",
-    "src/engine/midi/profile_tests.rs": "4324db79463baa86f85d907139330429980289751147d8dd4c369c7d09163012",
-    "src/engine/midi/realtime_tests.rs": "9b824aa5c4e2af94c42ea2670cc878f60d69b5cf7447724d72f34a9620b54579",
+    "src/engine/midi/profile.rs": "08ce5eee1c4738ca94f291c97f02f36bb4e769e81868a45368fe2a5399d3ee26",
+    "src/engine/midi/profile_tests.rs": "5d639861f324cfddfa1b3cffd75627bf83879ccff1d8baf676462afaf295d2e0",
+    "src/engine/midi/realtime_tests.rs": "885192cab5732e85d0ee34559fc63ade3d80388ef58153af1ac40db8bdd12cdc",
     "src/engine/midi/relative.rs": "362e1ba1336bbb8ba88a8bdb92c51f78a37dfc1b54dfca8d2920ed7dcbda1958",
     "src/engine/midi/relative_tests.rs": "5fc71f834ca7909bc339638a7b74dc644936b2d8b0b47b0511ca39bd0a23cbcb",
     "src/engine/midi/routing.rs": "bad93e5019c4c68d19b44be4c537169b5856ebd716220b8b8078385b4bc47bb8",
@@ -12637,6 +12757,12 @@
     "src/engine/midi/routing/playback.rs": "187f1096b326a9ca8c60b54cb9e8c3eb3b6c9e45fce2a05f90f1b5ee49ffb45b",
     "src/engine/midi/routing/playback/tests.rs": "7a2472709c983b9e2562bb81adcf0f9a98788bfce06049ec173061cc06864652",
     "src/engine/midi/routing/tests.rs": "25bd534953a8791e5beb002710dc4d298ee91171b650db2275e3563d1b156d62",
+    "src/engine/midi/surface.rs": "6e6d17fd2553c1279559556e5c9a6adfb482974b178f0bad2ac590780a088749",
+    "src/engine/midi/surface/mpd232.rs": "7be965cfd5e3cb95114e11bc48eb0a170ecc1625f7deb1b1818233c1fc801b39",
+    "src/engine/midi/surface/ns7.rs": "c099b29820d68c18d7ebac9713252d798ca9cb99de4111008dd1c298580a8dae",
+    "src/engine/midi/surface/sp1.rs": "79854017b454bc29e3509c3381f2e8d4a59ad6b03a1a6949863617e7db00cfc3",
+    "src/engine/midi/surface/spindle.rs": "f19e406914946b721bd29a280a0a67a09f9f0a5c14726829a8d086b845ec9b80",
+    "src/engine/midi/surface_tests.rs": "b6803d31e34dbb730f4afaeeada50cffe027d9a497dcd27fe209e2d6f54e9482",
     "src/engine/midi_data.rs": "16d6ccd7a2cf2a570a0eb96a54f50ad9eb155d04fc9b18193d3f56ba665ce81a",
     "src/engine/midi_data/lanes.rs": "8001f75de4cabd0df1b9ac17356b356ac609744d8f204d3b475bd0209c3ee287",
     "src/engine/midi_data/timeline.rs": "bed537e57a4eb7d0250ea8a914878e8e44b0b9ad1365e223ced747cd10fde4ec",
@@ -12645,17 +12771,19 @@
     "src/engine/midi_interchange/tests.rs": "b402f2978c57176d665cc645c64518e6f1624bb381a455df5670315f2ad64212",
     "src/engine/midi_schedule.rs": "ed9cb99ede170f747bea97704315d6f5bd1e073857ba89d75fdb1fb7e12bcc5c",
     "src/engine/midi_schedule_tests.rs": "665b77f63dddb92e122798699508c5b0b1348be58c856e18e5dafc38726a260b",
-    "src/engine/mixer_gain.rs": "f0b86e2d234a83410a7a54204b254deb2e6ccdbd173bbfd3b7c9e5124a968a65",
-    "src/engine/mixer_gain_tests.rs": "ab282c03872fb39a50c3f8cb457f987b505a856b8bef2a48242f8e2d1f1731d3",
-    "src/engine/mod.rs": "e0b33203ba0e34ece8f486074c2a32536bcacce651dd0028df102941da1a2f3d",
+    "src/engine/mixer_gain.rs": "f77cf3110ae9447dd5be5e5bc1d1018193d1c060950f58b5f9de1223deecf697",
+    "src/engine/mixer_gain_tests.rs": "c1513c0388801091f96ce479688cab6a87d418921f8f96495e9907cc5f343180",
+    "src/engine/mod.rs": "35a94a213d218395bc461e587e22d5cc671d0f0b3d9c7f86c1cc44a7c0b1a2fe",
+    "src/engine/monitor.rs": "3d383e8fb762cf33af15f0bfbbfaee360a989e62273c870007607bbe717139fb",
+    "src/engine/monitor/tests.rs": "21c21efe29b04de1fbee568cfd27a2cf6806214b667ab871139f4eb4f37f6816",
     "src/engine/mute_lifecycle_tests.rs": "e0186faea31396b9fd8f2d4f891f8d7f28d6229e60682f42bacd0b9b397b8fd1",
     "src/engine/pad_routing_tests.rs": "7be4fb7cbf68dd0fb82b24108537bc3337afdee32aa91fcaa0899c408d2bf5fa",
-    "src/engine/performance.rs": "fa2f7c4e5ea74fc5d9a2b4b6b2f0274e9013b25abb4d7627b025cd16b7b881d1",
+    "src/engine/performance.rs": "bd21ce813f96f77e1162f668c8b3f80b8c91ab75e397017c7611cf5205cb3aa0",
     "src/engine/performance/deck_load.rs": "5664c61a6ef7421fe244045047db2ffc5cc611549197355bae3cb7795a99a836",
     "src/engine/performance/tests.rs": "d3a322a6e6980d4a0a69e8c867dda21e83bb777437413034afb682860bcf9883",
     "src/engine/performance_workload_tests.rs": "1335225937a20262039d9703ba1c63cb07f012da6daea56f7ebe8282e7794e8f",
     "src/engine/preparation.rs": "205069e150fcf6e4975f77007aa65be3805c09e4394d26be3dddf36130cad591",
-    "src/engine/project.rs": "2bdaf7bc39a187c247f80b326916a789fa2ad96e6237c5e3c7d2915801da8673",
+    "src/engine/project.rs": "903e59b5bd3aacd745cba3c5a3bbf7aedd60d801957bf24615e99dc75f6c0c95",
     "src/engine/project/capture.rs": "3e4765d158a28bcebd39dce4596c738daf4a869c07ec8abec8c21cdc37dad9d4",
     "src/engine/project/model.rs": "091d8ccd364b801fd3e902b464d6c35a01caf3bf4261eb91b906c8c189d74c8b",
     "src/engine/project/prepare.rs": "6e93c5f27a15e0de53e7f8ad91e4e67422f8f22bfc3f34c045ba74cc711039ed",
@@ -12672,7 +12800,7 @@
     "src/engine/recording.rs": "06c78f1a3940e020d83863d635ec16b3610198ab6c245672289d3f61c760c5c3",
     "src/engine/recording_duration_tests.rs": "fd6dcf23b2f2f704220c981348b89841fb3fd12aea876a8c2f89b6b9e81c1ced",
     "src/engine/recording_position_tests.rs": "bf6f47a46e499b8a62ebe4104eaee0f04d3e873805cf236df197c87c4fd40ab9",
-    "src/engine/remote.rs": "ac2e916b8e033a5f7b58798dc449d5408856dbd05f9f268e58bf009b16d11a20",
+    "src/engine/remote.rs": "1f956e256c3c38c072b571c42b284202ee249093cec59fe5453cbd6402b4c574",
     "src/engine/remote/tests.rs": "9962aea6fb3393a3ee16d0313bf1fee05858cb6ad3b65eb7855d416a61181c80",
     "src/engine/sample_rate_tests.rs": "2bab1e2073a0febb3fd3be9235232d81aaf0a45e24cb2b3dcd18876478967444",
     "src/engine/sampler.rs": "3ff01a1ffa2f0325ce7bccd2a262d87bcd2a963d89b810208768f97cdf1eb9f3",
@@ -12690,35 +12818,37 @@
     "src/engine/session/transaction/import/tests.rs": "da5e094ec7e79301b2feb1c912c2f872e9a10603ebf4e317418af7adada9846f",
     "src/engine/session/transaction/structural.rs": "72bdeffaa9da47dfce644d61b9fbbc3f6612c3fd2f4f58c2a30d36c776e961bc",
     "src/engine/session/transaction/tests.rs": "3163cf9a363c25f562e5d57483376a590cad8646ecb1cbae05f7ab5e6a6b2141",
-    "src/engine/snapshot.rs": "9c238b41ed3af6723da50a257ccbf74120f268aaa17f7e39c559fc9c3e31584f",
-    "src/engine/snapshot/tests.rs": "4ae1489563c8e7ba7a71b6a2e26e24736b6d4a8d339ce7c7cfcf93405ac9c034",
-    "src/engine/snapshot/waveform_tests.rs": "234e80d5f4943371d7fa0b73b897169134b34c243a76ea3b06b4510125bdd507",
+    "src/engine/snapshot.rs": "c1100239c676220100b2e1c66c3a494b5fec6ded54f704a169e507ef0c415d9a",
+    "src/engine/snapshot/tests.rs": "5c11c3f510d33cac778d2d906f2302eb60c37fb429100d6c8bfe0c5b7562b6a2",
+    "src/engine/snapshot/waveform_tests.rs": "265be06d30f98aeda172bbf2277346eff63457053d40208950aafb1c6647632a",
+    "src/engine/spindle.rs": "3eef784d998c1420e455a0efd150cd0f6f15e1c5c531982638d2317a8a23480a",
     "src/engine/stopped_deck_tests.rs": "a2310ac4a5206aeed23dea62e3ea3986ee1f6ba1105d475d278583bb8f02f237",
+    "src/engine/surface_controls.rs": "b777bcf63c558d6d7f9bd3b909544059e3a3ed1a2162aeac33ff01053286ba9d",
     "src/engine/svf_tests.rs": "496114be396af2750f075c00b49b7388639ba8bb69b4c6c0e93011c0fd9bc313",
     "src/engine/test_alloc.rs": "dbc2eb39146150d15ceccecaead08de85f3c4f421dea7c827b02bbce15f7c363",
     "src/engine/track_gain_tests.rs": "7a7337f367cc13660cd2bb67ea0fd2684b7e6f1d2bb7b5da1672aea5d549d22f",
-    "src/engine/ui_requests.rs": "cc5a73817c8649802d9ab228422ed69bc738e469a4a60cf9ba39650c80a15fbf",
-    "src/engine/undo/capture.rs": "99075aa88a501914ee8768ea251ce3b7cf5f05e56c9bbc40a71dae5610ea4ab6",
+    "src/engine/ui_requests.rs": "0f9747f3080365c43129514e29379fe24517757cdec89b485e300ebb0d3cf7be",
+    "src/engine/undo/capture.rs": "856dea1af557267449b60be23f64f9bc18e3e934d4eedd1ca3e1b642d0fa3d21",
     "src/engine/undo/midi_import.rs": "7ca1eaba34c40dae9ff8d15b21584a29d2c3c0b4a48d5c3925149395398e49d4",
-    "src/engine/undo/mod.rs": "7efa2625917d6f6aa2b2cbf935281aac90b5e43cf3268f1790fe4928308f1dfb",
-    "src/engine/undo/patch.rs": "fd0c70489c4db7fea930553467678e288ea331f8765679fd5cd3830e46c4b8ba",
+    "src/engine/undo/mod.rs": "a7dd4958612f26f684a08fb033fe6df949b71ba4f9b709d531c0e4d2888c4c42",
+    "src/engine/undo/patch.rs": "11e6ed53491ce287c76daa113610c28ae86c9c55aa9d294510dd3374b9bc7fbd",
     "src/engine/undo/recording.rs": "906a437382e17103b7c4a685d849e755e05cc10f0d6668612fae3b4a17746cc7",
-    "src/engine/undo/tests.rs": "37d2ccf6162a1f897a18cca38e81242dbb75f862cec48ac5b1bca31a009bb93b",
+    "src/engine/undo/tests.rs": "14ed24b97906efd8ee4df5429d75be3477ee3ed9d7460d30350efe4d51e7d55b",
     "src/engine/video_transport.rs": "b3a09659055dbbc17200f0c6d21d4e6396e31c6da042ed284a91dfd805168150",
     "src/engine/voice_pitch_tests.rs": "0842859db49b0302059622d156153f929f96bd542a7933d90d8929e465d01d4d",
     "src/instance.rs": "23f44d05040770939d3bdcd09b4feeb3c3afc038b5160b9a16741a11e208b7d4",
     "src/instance_tests.rs": "c3281a01779978cfcb72d9964589eaf720dbf5a0d91a596df7f7c772c31999ba",
-    "src/ipc_control_tests.rs": "f1fccf6e4e4ea1ffe9f5213b5025d1e5e7a907abc065f747adf23a9b5a4c48a5",
+    "src/ipc_control_tests.rs": "cda2e1f1629dd6bcdee463d5f1daa87f0c14cd8821841c7a179d4f9f3fa6a191",
     "src/ipc_error_tests.rs": "9c5c2af07003d37b2a066c17539e4582830ad2a9fbd8b7684fa0cb4e2eddadde",
-    "src/ipc_follow.rs": "d0d859d324d2dac52040fe12109a2682698dbc4190f1fa454d32807e4cf09536",
+    "src/ipc_follow.rs": "68b13324602f0efa253edc44773e46864bdc0b4fa66f5a962d695931de9395eb",
     "src/ipc_follow_tests.rs": "d8ea8ffda689a7fe583b3c69ff0c14e26dad50cd676e2e5d71fc0ec50e84dc7e",
     "src/ipc_limits_tests.rs": "c0654214b0e364b05dc6a0b7ff9278ade843a55030afdb157279524d38b82ac2",
     "src/ipc_request.rs": "d2d681d54baf06f9da70d9b90f1f711e4be5aa40f4b93aa0790dd0c2504dabd5",
-    "src/ipc_schema.rs": "d9f2a3ac688decc9920b6aa83770e1cd38183a7f987aa5acfd899eb5ef71149d",
+    "src/ipc_schema.rs": "70b79da0d7a15dd8d7a4ffef9b841d8c0d928f32250612eeb00e7c71beb58331",
     "src/ipc_schema_tests.rs": "2e5431a0cfcb035fa5629efd38bcddfb38c948e5af2d372b288432c4832fbf3d",
     "src/ipc_server.rs": "4bb335a3bc3ab4f2cf64aa8ef7c95c3501b1dc2c105bd031a201dd5ca97c8585",
     "src/ipc_startup_tests.rs": "51f6f452a5bfd1c8630004fdecd38da38a13fba425d35473b14db6683be77a80",
-    "src/ipc_transport.rs": "34658c654a0d2258bb2b3207a67899fa9eea0bd7158f04dc7085703358d06269",
+    "src/ipc_transport.rs": "07e56d375e5552bb283fbeb3f51fad3b7cade1cbc77adb62d4c209bd6e14e8f1",
     "src/library.rs": "56dfa9e1c8b09087cacc7a7e20e58b85b0870bcebbdc38ce29d2fef262807c00",
     "src/library/analysis.rs": "24102e0f9219e6f648b937b8398abee7bfeacb2b5b07b0e81a3cf4bad942b0e3",
     "src/library/analysis/tests.rs": "573b24340d9dd354b72307ce0307e7bb9317968d0c5bbe2b3d12bbcec845cd19",
@@ -12747,7 +12877,7 @@
     "src/licenses.rs": "ceaccf567edf45d474add759018ac094a6b9eff37d2320fefbe817f4f1a1a9fb",
     "src/localization.rs": "6adf674b76f671256579864460444a9a39e5214dbe3a95e85886bf4bf558aaa3",
     "src/localization/tests.rs": "f6dba5b95ae73bc793b358e2b823ac31e438935fb4e259ee53a1daa47a79b306",
-    "src/main.rs": "1da602686c601e997b715f3d640d3431afa0a1c6d5ec47aebe85b01f61f3bb04",
+    "src/main.rs": "bbf7f9d5ad9cdd8bbf32e08f5882c45a61d692d738d7f8d27422343a5dd31ec7",
     "src/media_location.rs": "e705b3dbeb3c472e78bf053ff23b9d4a71cbd20d4ec9171907c012e7a8c0559b",
     "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
     "src/media_location/tests.rs": "89fb64ff9dc6a8bf41926cd3d67dcf1659fc7362e2684d14175fda3184ab261f",
@@ -12833,7 +12963,7 @@
     "src/track_analysis/cache.rs": "2350205a7a8de86ef6c2c497a90db3bf8d03d3e514929e138917afedf4b002b8",
     "src/track_analysis/cache/tests.rs": "d3e9f7b86248d794a7b0b088cd92d1af97e45e5a63944b6414f77e0d96aae736",
     "src/track_gain.rs": "658acdd74d88989afe73b4d4ccef79821463d470e8335016e48e9ae46825b7b7",
-    "src/ui.rs": "15292a11f6fa420c0cafe7a6faa3a90309a78faaa251534d5901094704928912",
+    "src/ui.rs": "11ef6f80d31085989c5db90cb28240202bc66643cb066b948eaaf89104cacf8e",
     "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
     "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
     "src/ui/atspi_tests.rs": "0cb10dde33a2a7ef35a2ce052565c95e5f434b73cc33c675ffb1dc52dbafe5ac",
@@ -12857,6 +12987,7 @@
     "src/ui/cue_editor/tests.rs": "939cd4e7e1364cd7d27ce74a0ae646f1cec7dec9296784a584b9cd1b4055dc8d",
     "src/ui/deck_load_lock.rs": "8eb615ad2f240a5e3678117af3363a15aff8ad4d05201e8a745a830fc3156868",
     "src/ui/deck_load_lock/tests.rs": "ab538e183e2fb72c47f829fdeac35f394296c85ed69bc044cc58f02c2d7988ed",
+    "src/ui/deck_motion.rs": "f52e6ab2001dba9aa8a2d680c3f7963b162ec521a7c30656eac5aea1056d7709",
     "src/ui/deck_selection.rs": "96c4b87cdc85e442f2027351032546ffd586f542dde5996be0344f505b9304fd",
     "src/ui/deck_selection/tests.rs": "8c9a894357e9a13b05a1a5270947285e761edd0548705db20f0f88938e5bbe55",
     "src/ui/deck_time.rs": "92ad18a3cd83d0f9030fbba0672ca4251ac3520a6fef8f22bd4edaf28760d105",
@@ -12864,7 +12995,7 @@
     "src/ui/dependencies.rs": "d5f4cced80690f1bc077b532a3a56420feebc234578461674965133453623394",
     "src/ui/dependencies/tests.rs": "6e22c0a9dc924095afbbc1a43af8ba861ad4252c0c72832ef4954e3a9ad4e634",
     "src/ui/dependencies/worker.rs": "835d158a1eec393fa429528f85c64b92e6ffcee2fd13f27a2910a873cdc26d0c",
-    "src/ui/diagnostics.rs": "38a213bf60e44c16e3ea1b4ed0b99abcd7e47ef3c77c868307cf2d4b35ec18a8",
+    "src/ui/diagnostics.rs": "48166655fd7447bbf14cbb24c7b28158f0f3ab963600e4a013c829868295cbb8",
     "src/ui/diagnostics/capture.rs": "2a80471f3a58c9c1dd5d2bd27fd5d40edd8df0f43bb0e88809409dd2b41d5e3d",
     "src/ui/diagnostics/tests.rs": "314e95ae40ac6ba4d288ebd143d9c3c30a96b60e22d5e0b6cb761aa82901ab2b",
     "src/ui/display_tests.rs": "977965bf16c1c9c02c301bfd27306158777c60354bc84937146f92c38c4f1a7f",
@@ -12910,8 +13041,8 @@
     "src/ui/library_metadata/tags.rs": "69ffbb71c713118cbee76fb45e9d0990bbf4a13073feef8ceea6413c3edd4d15",
     "src/ui/library_metadata/tags/tests.rs": "4231bd68c0c9cf0f9cc535fe676e24cb1d77aac5bd9c3bc3abd7e4bd91a460a1",
     "src/ui/library_metadata/tests.rs": "fbe712b28a1a8f78afef5059783d7615185658f73e99f6dee00271a2cffd2ad2",
-    "src/ui/library_prepare.rs": "26fb7b218fe4290d5025cc07de1ec1d8e8b7c3b0e8bf1cf42faa8c2bed9c394f",
-    "src/ui/library_prepare/tests.rs": "eacbf8b49cb53dbf8cab9c0f8e4c77d7a00b5842ff421d2f3428dfa1061c3dfc",
+    "src/ui/library_prepare.rs": "3f9d76d920a6a59ea42989edbd6c9e74d7eb3286fe8be6ed2136331c71b4e0fa",
+    "src/ui/library_prepare/tests.rs": "5fe0442fe0cc587c368903aea794d480c9f4c9b33f39e84420ed5b27b3ec17d9",
     "src/ui/library_protection.rs": "06e2214aec6af01deac905ded1b95d2261d073adb1855461f804dfbd89678348",
     "src/ui/library_protection/tests.rs": "8725d3f611c0a6e6f966325cf3c24f0ffdf4a5729b277911f004d793c7732aea",
     "src/ui/library_scan.rs": "23fcd9dc7633950fa656bc7ae3df2a7412cfe4adea6a08edfcea3735fd66cc77",
@@ -12926,7 +13057,7 @@
     "src/ui/library_store.rs": "250289f6f2bf684701460110297bb3c489406f6fea2d9bb65dd34dbf6494888c",
     "src/ui/library_store/import_tests.rs": "c52558c06482d1901b3229955a38b34d7d82925ed32376b23f071735ebe5594c",
     "src/ui/library_store/import_tests/relocation.rs": "15102faf246b0dbfaa66e9d03b3e7a3a4e2be1d97aafca8bee1a9a31d62c34ee",
-    "src/ui/library_store/tests.rs": "980b86e8402aed9654acdd5789458bf998851f80cec61e6134386579ef1cc359",
+    "src/ui/library_store/tests.rs": "e418b25ee91285900aec4a010ca378d5db602a07688a41a734be4d35d9dc254c",
     "src/ui/library_tags.rs": "b9c8e665726078102448f5a5a64893ccbb96279f98817ec34933c0bfac97068f",
     "src/ui/library_tags/tests.rs": "80b0e8b9fe536611fc33e9149490d1354aca9a61510ba7f2ec9090a39ccbbd9c",
     "src/ui/library_view.rs": "5eeb92d372d2176b2ef8d30b05b4461924f7b6a8c88f2ad8d8f27f9be202478b",
@@ -12940,7 +13071,7 @@
     "src/ui/midi_files.rs": "5aad9e1c5877d4ea5a53487779a3af844ce04f19e05404037eefeb6215f9d555",
     "src/ui/midi_files/tests.rs": "b4524722dac72b478299fdaaf7e7e6adefb4d14177369ca36ff021e23ee57b33",
     "src/ui/midi_files/worker.rs": "532fb3f91cce34fce07b7c9425bfe44bc5a58b04cdd8e9899db5e14c5d7be261",
-    "src/ui/midi_learn.rs": "d6cb47559b0fc767b3c4a381de388c469ca67cbff22edf6fa27472476bb44da0",
+    "src/ui/midi_learn.rs": "141f068b04cfdd902941ba1e56070d8bb00cd4cb616c7a39f457a35901426a0e",
     "src/ui/midi_learn/tests.rs": "b93a3bddbabfca4765866e19ec38fbd1c72e585f691e076277c31cb1ef7c728a",
     "src/ui/midi_routing.rs": "5ad2bbbf72b1862830bdfd09ef8e6ce9a7112d168eb1f51a693e5b5a15322b79",
     "src/ui/music_provider.rs": "4fde2b8189140832163f0ffedb434aef9132fa3e47a8a5545589313e21aed2bd",
@@ -13004,7 +13135,7 @@
     "src/ui/touch/tests.rs": "642bff28408d81d41cd9f1c02a68cae065fc5e57c639972a14ad3a2f6650d51e",
     "src/ui/track_gain.rs": "deec3f7ef20cc664652cbb1ab6b7fe1b1bba605a54ad620b7106972c10d8a0f4",
     "src/ui/track_gain/tests.rs": "eea68b1d2164777e8b2b68c2323fb77a12dd85652f2bc2a46c6e667bc67c2c63",
-    "src/ui/undo.rs": "29e9e55ddfdfc17f9ab1cdac2fbe0bb7533a088bc0e0a1728ec4f7d1e2647179",
+    "src/ui/undo.rs": "cad58fb82cc129739d69360c8b4257d7a1930a68419b9be2f50245937ebe62ac",
     "src/ui/undo/tests.rs": "e7b165a87f28635f0e90fec9a04009123b32ee7ac26a0823dfc693a5467e8d80",
     "src/ui/video.rs": "6c8d2bf9d829017eee9cc5395c5262a942a93bb447cb12101f950c6759a9e9da",
     "src/ui/video/tests.rs": "cf58e06dad854276265c9283982d601d4b40c476888bf1b47bc1f5dfa49d7587",
@@ -13047,6 +13178,8 @@
     "tests/fixtures/midi/ardour-9.8-region-ppqn19200.mid": "e20b3ab9a40a45b032451df776a7a189bb3e0e886b25f8aeb0be2899ce5aecde",
     "tests/fixtures/midi/generate.py": "16c30a593146b1b9804e8b21c3c6ae87b0b058b70a15cfe559980551d1b45e49",
     "tests/fixtures/midi/sixteen-bars-ppqn960.mid": "20e7f67fd87e28d7e7846dc673f4f66930df43ad49017d4a6920b85e76db0cc4",
+    "tests/fixtures/mpd232-bank-a.midi": "9a3653a54173bc73c6923d772d866d7c0f8de342c717d7def0f7252d378cbba1",
+    "tests/fixtures/mpd232-livelite.syx": "c81d4f24e8c736edcd651bbfa11b1dbd9cb2ab2b39a75f2f6e539b7d3d47066e",
     "vendor/egui-winit/.cargo_vcs_info.json": "7494c24c1baaec2d440e20d7541946734696d6baaf49ae498bd45a9127473928",
     "vendor/egui-winit/Cargo.lock": "92c309f835ffbf6c529c53836ddf05d14ab554eccba57b32f06aa7032d9c9b99",
     "vendor/egui-winit/Cargo.toml": "33b510b0fe4cc4cb80835cc36f16b920c22300d86cc24de0a969098a3f043f28",

@@ -174,6 +174,12 @@ pub struct Reverb {
 }
 
 impl Reverb {
+    /// Read the feedback used by each comb for measured rendering.
+    /// Takes this reverb; returns the four current feedback coefficients.
+    pub(super) fn feedback(&self) -> [f32; 4] { self.delays.each_ref().map(|delay| delay.fb) }
+    /// Set comb feedback without replacing delay storage.
+    /// Takes normalized decay; updates all four delay feedback coefficients.
+    pub(super) fn decay(&mut self, value: f32) { for delay in &mut self.delays { delay.fb = value.clamp(0.0, 0.85); } }
     pub(super) fn storage_bytes(&self) -> usize { self.delays.iter().map(Delay::storage_bytes).sum() }
     pub fn new() -> Self {
         Self::at_sample_rate(48_000.0)
@@ -608,13 +614,16 @@ pub fn db(g: f32) -> f32 {
     }
 }
 
+/// Set the crossfader's fade or cut shape.
+/// Takes position (0 = A, 1 = B) and contour (0 = equal power fade, 1 = cut).
+/// Returns deck gains; cut reaches full level within two percent of either end.
 pub fn xfader_gains(x: f32, curve: f32) -> (f32, f32) {
-    // x 0 = full A, 1 = full B. curve 0 = linear, 1 = fast cut (Serato).
     let x = x.clamp(0.0, 1.0);
-    let pow = 1.0 + curve * 2.5;
-    let a = (1.0 - x).powf(pow);
-    let b = x.powf(pow);
-    (a, b)
+    let fade = 1.0 - curve.clamp(0.0, 1.0) * 0.98;
+    let gain = |distance: f32| {
+        ((distance / fade).clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2).sin()
+    };
+    (gain(1.0 - x), gain(x))
 }
 
 pub fn cubic(p: f32) -> f32 {

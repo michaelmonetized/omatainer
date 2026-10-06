@@ -65,7 +65,14 @@ fn settle(f: &mut Fixture) {
 }
 fn start(f: &mut Fixture, path: PathBuf) {
     f.app.start_library_store(path);
-    settle(f);
+    let ctx = egui::Context::default();
+    let mut time = 0.0;
+    wait(|| {
+        time += 0.02;
+        frame(&ctx, f, time, vec![]);
+        settle(f);
+        f.app.library_initialized
+    });
     assert_eq!(f.app.library_metadata.label(), "DJ library saved");
 }
 fn select(f: &mut Fixture, source: &LibSource) {

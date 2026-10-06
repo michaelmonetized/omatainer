@@ -94,8 +94,17 @@ impl Manager {
                         && !shared.policy.status().pending()
                     {
                         shared.busy.store(false, Release);
-                        if receiver.recv().is_err() {
-                            break;
+                        match receiver.recv_timeout(std::time::Duration::from_millis(1500)) {
+                            Ok(()) => {},
+                            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
+                            Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
+                                if let Ok(_permit) = worker.cmd.performance().project_change() {
+                                    shared.busy.store(true, Release);
+                                    let request = shared.policy.requested();
+                                    worker.refresh(&request);
+                                    shared.busy.store(false, Release);
+                                }
+                            }
                         }
                         continue;
                     }
@@ -104,9 +113,6 @@ impl Manager {
                     }
                     drop(request);
                     shared.busy.store(false, Release);
-                    if receiver.recv().is_err() {
-                        break;
-                    }
                 }
                 // Connections close, then input worker guards join, on this worker.
             })?;
@@ -136,6 +142,10 @@ impl Manager {
     }
     pub(super) fn policy_status(&self) -> Arc<PolicyStatus> {
         self.activity.policy.status()
+    }
+    pub(super) fn policy_reader(&self) -> impl Fn() -> Arc<PolicyStatus> + Send + 'static {
+        let activity = self.activity.clone();
+        move || activity.policy.status()
     }
     pub(super) fn retry(&self) -> Retry {
         if !self.available() {
@@ -410,12 +420,13 @@ impl<B: Backend> Worker<B> {
 }
 
 pub(super) struct MidirBackend;
+pub(super) fn application_port(name: &str) -> bool { name.to_ascii_lowercase().starts_with("omatainer") }
 impl Backend for MidirBackend {
     type Port = midir::MidiInputPort;
     type Connection = MidiInputConnection<()>;
     fn discover(&mut self) -> Result<Vec<Port<Self::Port>>, String> {
         let probe = MidiInput::new("omatainer-discover").map_err(|error| error.to_string())?;
-        probe
+        let ports = probe
             .ports()
             .into_iter()
             .map(|port| {
@@ -426,7 +437,8 @@ impl Backend for MidirBackend {
                     port,
                 })
             })
-            .collect()
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(ports.into_iter().filter(|port| !application_port(&port.name)).collect())
     }
     fn connect(
         &mut self,

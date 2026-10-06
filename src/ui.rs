@@ -61,6 +61,7 @@ mod audio_status;
 mod diagnostics;
 mod support;
 pub(crate) mod deck_time;
+mod deck_motion;
 use deck_time::{DeckTimeSettings, Readout, TimeMode};
 #[cfg(test)]
 mod deck_time_tests;
@@ -505,11 +506,20 @@ impl App {
         use crate::engine::ui_requests::Request;
         for request in self.engine.ui_requests.take_requests().into_iter().flatten() {
             match request {
+                Request::TrackStart { deck, selection } => {
+                    if self.loads[usize::from(deck)].as_ref().and_then(|load| load.selection.as_ref()).is_some_and(|current| current.source == selection.source && current.fingerprint == selection.fingerprint) { self.send(Command::DeckSeek { deck, frac: 0.0 }); }
+                }
+                Request::Panel(panel) => {
+                    self.library_prepare.open = panel == 2;
+                    self.library_crates.open = panel == 1;
+                    if panel == 2 { self.publish_prepare_controller_view(); }
+                }
                 Request::Crate(request) => self.handle_crate_browse(request),
                 Request::CrateReturn(token) => self.handle_crate_return(token),
                 Request::Prepare(selections) => self.prepare_selections(selections),
                 Request::Load(request) => self.load_source(request.deck, Some(&request.selection)),
                 Request::Browse(request) => {
+                    if request.panel == 2 { self.select_prepared_controller_row(&request); continue; }
                     if request.epoch != self.engine.ui_requests.epoch() { continue; }
                     self.refresh_library_view();
                     let matches = |&i: &usize| self.library[i].source == request.selection.source;
@@ -535,6 +545,12 @@ impl App {
     }
 
     fn publish_library_selection(&mut self) {
+        self.publish_prepare_controller_view();
+        for deck in 0..DECKS {
+            let loaded = self.loads[deck].as_ref().filter(|load| load.receipt.as_ref().is_some_and(|receipt| receipt.state() == crate::engine::load_receipt::State::Current));
+            let seconds = self.snap.decks.get(deck).map_or(0.0, |state| state.pos / f64::from(state.source_sample_rate.max(1)));
+            self.engine.ui_requests.publish_deck(deck, loaded.and_then(|load| load.selection.as_ref()), seconds);
+        }
         self.refresh_library_view();
         self.publish_crate_navigation();
         let selected = self.library_view.indices.get(self.lib_sel).map(|&i| &self.library[i]);
@@ -824,7 +840,7 @@ impl App {
         self.poll_named_crates();
         self.poll_prepare_queue();
         self.poll_session_history();
-        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing);
+        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing || d.platter.is_some());
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
         }) {
@@ -1176,6 +1192,9 @@ impl App {
     }
 
     fn platter_col(&mut self, ui: &mut Ui, t: &Theme, d: usize, snap: &crate::engine::DeckSnap, col: Color32, wave_h: f32) {
+        let mut presented = snap.clone();
+        deck_motion::present(&mut presented, Instant::now());
+        let snap = &presented;
         ui.vertical(|ui| {
             ui.set_width(wave_h);
             let readout = Readout::from_snapshot(snap, self.deck_time[d]);
@@ -2081,7 +2100,7 @@ fn platter(
         if readout.warning { t.red } else { t.accent },
     );
     let angle = if !t.reduced_motion && snap.frames > 1.0 {
-        (snap.pos / snap.frames) as f32 * std::f32::consts::TAU * 18.0
+        (snap.platter.map_or_else(|| snap.pos / f64::from(snap.source_sample_rate.max(1)) * (33.333333 / 60.0), |p| p.0).rem_euclid(1.0) * std::f64::consts::TAU) as f32
     } else {
         0.0
     };

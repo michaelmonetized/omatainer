@@ -1,11 +1,11 @@
 use crate::engine::RtEngine;
 pub mod calibration;
 pub mod config;
-pub mod owner;
-pub mod recovery;
 pub(crate) mod graph;
 #[cfg(target_os = "linux")]
 pub(crate) mod jack;
+pub mod owner;
+pub mod recovery;
 pub(crate) mod routing;
 use cpal::traits::{DeviceTrait, StreamTrait};
 pub use owner::AudioOut;
@@ -64,18 +64,32 @@ impl owner::Backend for Native {
         #[cfg(target_os = "linux")]
         if plan.backend == jack::BACKEND { return jack::output(plan, callback, fault).map(NativeStream::Jack); }
         let device = config::select_exact(plan).map_err(|e| e.to_string())?;
-        if identity.is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected)) {
-            return Err("Physical output changed before opening; no other output was activated".into());
+        if identity
+            .is_some_and(|expected| recovery::identity(&plan.device).as_deref() != Some(expected))
+        {
+            return Err(
+                "Physical output changed before opening; no other output was activated".into(),
+            );
         }
         let cfg = plan.config();
         let errors = callback.rt.telemetry.clone();
-        let error = move |e| {
-            errors.error(&e);
-            fault.store(true, Ordering::Release);
+        let discontinuity = Arc::new(AtomicBool::new(false));
+        let output_discontinuity = discontinuity.clone();
+        let error = move |e: cpal::Error| {
+            if e.kind() == cpal::ErrorKind::Xrun {
+                discontinuity.store(true, Ordering::Release);
+            }
+            if errors.error(&e) && !fault.swap(true, Ordering::AcqRel) {
+                eprintln!("Audio backend error: {e}");
+            } else if e.kind() == cpal::ErrorKind::RealtimeDenied {
+                eprintln!("Audio scheduling warning: {e}");
+            }
         };
         macro_rules! build {
             ($type:ty) => {
-                build::<$type>(&device, &cfg, callback, error).map(NativeStream::Alsa).map_err(|e| e.to_string())
+                build::<$type>(&device, &cfg, callback, error, output_discontinuity)
+                    .map(NativeStream::Alsa)
+                    .map_err(|e| e.to_string())
             };
         }
         let stream = match plan.format {
@@ -105,8 +119,15 @@ impl owner::Backend for Native {
     fn reconnect(&mut self, target: &recovery::Target) -> Result<config::Plan, String> {
         #[cfg(target_os = "linux")]
         if target.plan.backend == jack::BACKEND {
-            if target.identity.as_ref() != jack::identity().as_ref() { return Err("Retained graph server identity changed; preview another output explicitly".into()); }
-            let mut saved = recovery::settings(&target.plan); saved.sample_rate = None; saved.buffer_frames = None;
+            if target.identity.as_ref() != jack::identity().as_ref() {
+                return Err(
+                    "Retained graph server identity changed; preview another output explicitly"
+                        .into(),
+                );
+            }
+            let mut saved = recovery::settings(&target.plan);
+            saved.sample_rate = None;
+            saved.buffer_frames = None;
             return jack::select(&saved);
         }
         recovery::discover(target)
@@ -142,17 +163,27 @@ fn build<T>(
     device: &cpal::Device,
     cfg: &cpal::StreamConfig,
     mut callback: OutputCallback,
-    err_fn: impl Fn(cpal::StreamError) + Send + 'static,
-) -> Result<cpal::Stream, cpal::BuildStreamError>
+    err_fn: impl Fn(cpal::Error) + Send + 'static,
+    discontinuity: Arc<AtomicBool>,
+) -> Result<cpal::Stream, cpal::Error>
 where
     T: cpal::SizedSample + cpal::FromSample<f32>,
     f64: cpal::FromSample<T>,
 {
     device.build_output_stream(
-        cfg,
+        cfg.clone(),
         move |data: &mut [T], info| {
+            if discontinuity.swap(false, Ordering::AcqRel) {
+                callback.rt.audible.restart();
+                callback.resume_ramp = Some((0, 0, 1));
+            }
             let timestamp = info.timestamp();
-            callback.render_timed(data, timestamp.playback.duration_since(&timestamp.callback));
+            callback.render_timed(
+                data,
+                timestamp
+                    .playback
+                    .checked_duration_since(timestamp.callback),
+            );
         },
         err_fn,
         None,
@@ -203,6 +234,8 @@ pub(crate) struct OutputCallback {
     resume_ramp: Option<(u8, u32, u32)>,
     #[cfg(test)]
     conversion_delay: std::time::Duration,
+    #[cfg(test)]
+    stall_once: Option<(u32, std::time::Duration)>,
 }
 
 impl OutputCallback {
@@ -225,6 +258,8 @@ impl OutputCallback {
             resume_ramp: None,
             #[cfg(test)]
             conversion_delay: std::time::Duration::ZERO,
+            #[cfg(test)]
+            stall_once: None,
         }
     }
 
@@ -248,6 +283,8 @@ impl OutputCallback {
             resume_ramp: Some((0, 0, 1)),
             #[cfg(test)]
             conversion_delay: std::time::Duration::ZERO,
+            #[cfg(test)]
+            stall_once: None,
         }
     }
 
@@ -264,14 +301,23 @@ impl OutputCallback {
         T: cpal::SizedSample + cpal::FromSample<f32>,
     f64: cpal::FromSample<T>,
     {
-        let playback_ns = latency.and_then(|duration| self.rt.audible.now_ns().checked_add(super::audio_metrics::nanoseconds(duration)));
+        let playback_ns = latency.and_then(|duration| {
+            self.rt
+                .audible
+                .now_ns()
+                .checked_add(super::audio_metrics::nanoseconds(duration))
+        });
         self.render_at(data, latency, playback_ns);
     }
 
     /// Render a block against its scheduled first output frame.
     /// Takes destination samples, reported delay and absolute playback time; returns after bounded conversion and timing publication.
-    fn render_at<T>(&mut self, data: &mut [T], latency: Option<std::time::Duration>, playback_ns: Option<u64>)
-    where
+    fn render_at<T>(
+        &mut self,
+        data: &mut [T],
+        latency: Option<std::time::Duration>,
+        playback_ns: Option<u64>,
+    ) where
         T: cpal::SizedSample + cpal::FromSample<f32>,
         f64: cpal::FromSample<T>,
     {
@@ -295,7 +341,11 @@ impl OutputCallback {
             let width = self.buffer.len();
             let mut offset = 0u64;
             for block in data.chunks_mut(width) {
-                let start = playback_ns.and_then(|ns| ns.checked_add(offset.saturating_mul(1_000_000_000) / (self.rt.sr as u64).max(1)));
+                let start = playback_ns.and_then(|ns| {
+                    ns.checked_add(
+                        offset.saturating_mul(1_000_000_000) / (self.rt.sr as u64).max(1),
+                    )
+                });
                 self.render_at(block, latency, start);
                 offset += (block.len() / self.channels.max(1)) as u64;
             }
@@ -308,7 +358,15 @@ impl OutputCallback {
         self.rt.audible.begin(sample_rate, playback_ns);
         self.rt.process_interleaved(slice, self.channels);
         if let Some((was_playing, remaining, total)) = &mut self.resume_ramp {
-            let playing = u8::from(self.rt.playing) | self.rt.decks.iter().enumerate().fold(0, |bits,(index,deck)| bits | (u8::from(deck.playing) << (index+1)));
+            let playing = u8::from(self.rt.playing)
+                | self
+                    .rt
+                    .decks
+                    .iter()
+                    .enumerate()
+                    .fold(0, |bits, (index, deck)| {
+                        bits | (u8::from(deck.playing) << (index + 1))
+                    });
             if playing != 0 && *was_playing == 0 && *total == 1 {
                 *total = (self.rt.sr as u32).saturating_mul(2).div_ceil(1000).max(1);
                 *remaining = *total;
@@ -326,6 +384,15 @@ impl OutputCallback {
         }
         #[cfg(test)]
         std::thread::sleep(self.conversion_delay);
+        #[cfg(test)]
+        if let Some((remaining, delay)) = &mut self.stall_once {
+            if *remaining == 0 {
+                std::thread::sleep(*delay);
+                self.stall_once = None;
+            } else {
+                *remaining -= 1;
+            }
+        }
         for (destination, source) in data.iter_mut().zip(slice) {
             *destination = T::from_sample(*source);
         }
@@ -348,11 +415,11 @@ impl OutputCallback {
 mod tests;
 
 #[cfg(test)]
-#[path = "audio_metrics_tests.rs"]
-mod metrics_tests;
+#[path = "audio/audible_tests.rs"]
+mod audible_tests;
 #[cfg(test)]
 #[path = "audio_live_set_tests.rs"]
 mod live_set_tests;
 #[cfg(test)]
-#[path = "audio/audible_tests.rs"]
-mod audible_tests;
+#[path = "audio_metrics_tests.rs"]
+mod metrics_tests;

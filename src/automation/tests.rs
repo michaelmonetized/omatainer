@@ -2,6 +2,21 @@ use super::*;
 use crate::engine::{Engine, RtEngine};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+
+#[test]
+fn ns7_controls_api_jobs_apply_and_invalid_targets_or_schedules_refuse() {
+    let mut service = Service::new(); let namespace = service.state()["expected"]["namespace"].clone();
+    for control in [json!({"op":"keylock"}), json!({"op":"hold","button":"reverse","on":true}), json!({"op":"hold","button":"reverse","on":false})] {
+        let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}}));
+        assert_eq!(response["ok"], true, "{response}");
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    }
+    assert!(service.rt.decks[0].keylock); service.publish(); assert_eq!(service.state()["decks"][0]["controls"]["reverse"], false);
+    for action in [json!({"op":"deck_control","deck":2,"control":{"op":"keylock"}}), json!({"op":"deck_control","deck":0,"control":{"op":"strip","value":2.0}})] {
+        assert_eq!(service.query(json!({"op":"command","namespace":namespace,"action":action}))["ok"], false);
+    }
+    assert_eq!(service.query(json!({"op":"schedule","namespace":namespace,"beat":4.0,"action":{"op":"deck_control","deck":0,"control":{"op":"keylock"}}}))["error_code"], "invalid_schedule");
+}
 use std::path::PathBuf;
 use std::time::Instant;
 

@@ -17,6 +17,15 @@ operations reject. State pages contain at most 16 summaries (default 8); follow
 `name_truncated`. Identifiers always refer to the original native object, even
 after display order changes. Deleted objects and replaced projects reject.
 
+For local deck loading, `omatainer ctl deck-load A /absolute/path/track.mp3`
+captures that file's identity and queues the ordinary asynchronous GUI loader.
+Use B for the other deck; omit the path to load the selected library row.
+The legacy socket request is `{"op":"deckLoadFile","deck":0,"path":"/absolute/path/track.mp3"}`.
+Admission is not decode completion: read `deckA`/`deckB` in `ctl status` and
+check the visible load result before Play. Relative paths, missing files,
+directories and invalid decks reject. Existing performance and deck-load locks
+remain enforced.
+
 ## Local transport and replies
 
 The Linux desktop creates a Unix stream socket in its private runtime directory.

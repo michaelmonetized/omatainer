@@ -27,6 +27,25 @@ fn notes(rt: &RtEngine, t: usize, s: usize) -> Vec<u8> {
 }
 
 #[test]
+fn contour_edits_are_validated_dirty_and_undoable() {
+    let (engine, mut rt) = fixture();
+    let before = rt.xfader_curve;
+    let revision = rt.project.revision();
+    send(&engine, &mut rt, Command::XfaderCurve(1.0));
+    assert_eq!(rt.xfader_curve, 1.0);
+    assert!(rt.project.revision() > revision);
+    send(&engine, &mut rt, Command::Undo);
+    assert_eq!(rt.xfader_curve, before);
+    send(&engine, &mut rt, Command::Redo);
+    assert_eq!(rt.xfader_curve, 1.0);
+    for value in [f32::NAN, f32::INFINITY, -0.1, 1.1] {
+        assert!(engine.send(Command::XfaderCurve(value)).is_err());
+        tick(&mut rt);
+        assert_eq!(rt.xfader_curve, 1.0);
+    }
+}
+
+#[test]
 fn grid_acknowledges_real_history_budget_rejection_without_callback_heap_work() {
     use crate::engine::beatgrid::{Grid, GridEditAck, GridEditState};
     let (engine, mut rt) = fixture();

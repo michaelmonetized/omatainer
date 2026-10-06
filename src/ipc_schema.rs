@@ -61,6 +61,7 @@ pub(crate) enum Operation {
     DeckLoadLock { deck: DeckIndex, enabled: bool },
     DeckEject { deck: DeckIndex },
     DeckLoad { deck: DeckIndex },
+    DeckLoadFile { deck: DeckIndex, path: std::path::PathBuf },
     DeckUnload { deck: DeckIndex },
 }
 
@@ -97,6 +98,7 @@ impl Operation {
             Self::DeckLoadLock { deck, enabled } => Command::DeckLoadLock { deck: deck.0, enabled },
             Self::DeckEject { deck } => Command::DeckUnload { deck: deck.0 },
             Self::DeckLoad { deck } => Command::DeckLoadSelected { deck: deck.0 },
+            Self::DeckLoadFile { deck, path } => Command::DeckLoadFile { deck: deck.0, path },
             Self::DeckUnload { deck } => Command::DeckUnload { deck: deck.0 },
         })
     }

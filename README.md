@@ -6,7 +6,7 @@ Omarchy-native DAW + live DJ surface. One clock, one mixer, configurable workspa
 - **Compose** a MIDI piano roll and explicitly armed pad-note capture, with stable note identities and undo
 - **Two decks** with spinning platters, Serato-style waveforms, hot cues, loops, vinyl jog, sync, EQ, filter, and a crossfader
 
-Hardware is optional. USB class-compliant MIDI is first-class. Factory maps ship for Akai APC Mini / APC40 / MPK and Pioneer DDJ-FX / FLX / SB / 400, with legacy partial NS7 / NS7FX control maps. These profiles do not establish physical compatibility; NS7 motorized wheels and NS7II support remain unverified. Unmapped musical inputs can play notes where the profile allows; the native MIDI learn editor captures exact-port assignments and retains them in the active profile after Save. Keyboard and pointer controls remain available.
+Hardware is optional. USB class-compliant MIDI is first-class. Profiles ship for Akai APC Mini / APC40 / MPK / MPD232, Pioneer DDJ-SP1 / DDJ-FX / FLX / SB / 400, and original Numark NS7, with a legacy partial NS7FX map. The [native original NS7 driver](drivers/ns7/README.md) supplies ALSA audio and MIDI on Linux. Controller feedback runs outside the audio callback. See the [connected hardware evidence](docs/validation/hardware-resurrection.md) for qualified I/O and remaining physical checks. Unmapped musical inputs can play notes where the profile allows; MIDI learn retains exact-port assignments in the active profile after Save. Keyboard and pointer controls remain available.
 
 It reads the current Omarchy theme (`~/.local/state/omarchy/current/theme/colors.toml`) and font, registers in the keybind menu, and drops a Quickshell bar chip next to the rest of the shell.
 
@@ -96,7 +96,10 @@ it never resumes playback automatically. If both devices fail, the stopped sessi
 still supports Save, New/Open and Close while you recover an output. An unavailable
 startup setup offers **Use system default audio this time** without changing the
 saved profile. Projects without explicit routing send main left/right to outputs 1/2; mono sums both channels and extra
-channels are silent. There is no separate headphone cue bus yet.
+channels are silent. The original NS7's native four-channel ALSA output adds its
+HEADPHONE MIX, HEADPHONE MODE and headphone volume controls on outputs 3/4.
+Headphone volume starts at zero until the knob moves. Explicit output aliases
+retain their channel assignments.
 
 The audio window lists advertised input/output capabilities and distinguishes the
 backend-accepted logical configuration from observed callback sizes. Physical
@@ -533,20 +536,19 @@ the native tree. The automated private-bus fixture verifies real AT-SPI queries
 and actions; Orca and human workflow qualification remain to be performed.
 See [accessibility validation](docs/validation/issue-87-accessibility.md).
 
-Unmapped live musical notes route to their captured selected track where the profile allows. MIDI clock reception reports ticks; tempo synchronization and clock output are not implemented. APC grids launch clips. Pioneer relative jog bindings decode forward and reverse movement using their documented centered value. NS7 wheel input is deliberately unmapped: its absolute-position protocol cannot use the old guessed relative-CC/pitch-bend bindings. See the [jog decoder evidence and hardware limits](docs/validation/issue-42-relative-jog.md).
+Unmapped live musical notes route to their captured selected track where the profile allows. MIDI clock reception reports ticks; tempo synchronization and clock output are not implemented. APC grids launch clips. Pioneer relative jog bindings decode forward and reverse movement using their documented centered value. Original NS7 wheel positions use a stateful wrapping decoder; its first position establishes a reference without moving a deck. Motor and platter-touch control remain unimplemented. DDJ-SP1 has its own deck, pad, browser and paired 14-bit FX addresses. MPD232 preserves all programmable pad notes and velocities, with MIDI learn for its configurable controls; it does not assume an eight-pad MPK layout.
 
 The APC40 original and mkII use separate protocol-based input profiles for eight
 track faders, the master fader, clip grid and five scene buttons. Other APC40
 buttons are ignored; record-arm and track-select do not operate unrelated
 controls. Device-name selection and synthetic MIDI tests do not establish
-physical compatibility. Controller QA remains pending; see the
+physical compatibility. Connected mkII identity and feedback are qualified; physical fader and pad checks remain pending. See the
 [APC40 mapping evidence](docs/validation/issue-38-apc40-profiles.md).
 
 Ctrl+M shows each MIDI port's discovery/connection state and failure reason.
 **Retry / rescan MIDI** checks current ports in a background worker and retries
 failed connections without reopening working ones. Keyboard and mouse remain
-available throughout. A disconnected device is detected on an explicit rescan
-or when its input worker ends; automatic hotplug detection is not implemented.
+available throughout. While performance protection permits device changes, a background rescan every 1.5 seconds discovers arrivals and removals without reopening working inputs. Protected performances retain their active connections; use the explicit rescan when device changes are permitted.
 See the [connection lifecycle validation](docs/validation/issue-73-midi-connections.md).
 
 **MIDI learn** selects an action and target, captures one compatible control, and previews its exact device/channel/message. Add or deliberately Replace an address, test its action through normal admission, edit/remove existing assignments, and **Save MIDI assignments** after review. Relative encoders require an explicit format and sensitivity. Cancel, Escape, close, timeout and disconnect restore normal input; stale capture-period packets cannot trigger later actions. Saved mappings require the exact port. See [learn behavior and qualification limits](docs/validation/issue-148-midi-learn.md).

@@ -67,6 +67,8 @@ pub(super) fn crossfader_gains(position: f32, curve: f32) -> [f32; 2] {
 
 impl super::RtEngine {
     pub(super) fn prepare_mixer_gains(&mut self) {
+        self.monitor.prepare(self.sr);
+        self.surface.prepare(self.sr, self.crossfader_position(), self.xfader_curve);
         // The reference path models the previous loop without preparing a
         // cache. Production has only the cached path.
         #[cfg(test)]
@@ -74,7 +76,7 @@ impl super::RtEngine {
             return;
         }
         self.xfader_gain
-            .prepare([self.xfader, self.xfader_curve], self.sr, crossfader_gains);
+            .prepare([self.crossfader_position(), self.xfader_curve], self.sr, crossfader_gains);
         for track in &mut self.tracks {
             track
                 .mixer_gain

@@ -29,7 +29,9 @@ pub(crate) enum Action {
         value: f32,
     },
     Crossfader(f32),
+    CrossfaderContour(f32),
     Master(f32),
+    DeckControl { deck: u8, control: super::deck_controls::Control },
 }
 impl Action {
     /// Resolve a prepared control.
@@ -48,7 +50,9 @@ impl Action {
                 value,
             },
             Self::Crossfader(value) => Command::Xfader(value),
+            Self::CrossfaderContour(value) => Command::XfaderCurve(value),
             Self::Master(value) => Command::Master(value),
+            Self::DeckControl { deck, control } => Command::DeckControl { source: 0, deck, control },
         }
     }
 
@@ -76,7 +80,9 @@ impl Action {
                     && (0.0..=1.0).contains(&value)
             }
             Self::Crossfader(value) => value.is_finite() && (0.0..=1.0).contains(&value),
+            Self::CrossfaderContour(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::Master(value) => value.is_finite() && (0.0..=1.5).contains(&value),
+            Self::DeckControl { deck, control } => usize::from(deck) < super::DECKS && control.valid(),
             Self::Play | Self::Stop => true,
         }
     }
@@ -260,8 +266,8 @@ impl RtEngine {
                         super::mixer_gain::pan_gains,
                     );
                 }
-                Action::Crossfader(_) => self.xfader_gain.prepare(
-                    [self.xfader, self.xfader_curve],
+                Action::Crossfader(_) | Action::CrossfaderContour(_) => self.xfader_gain.prepare(
+                    [self.crossfader_position(), self.xfader_curve],
                     self.sr,
                     super::mixer_gain::crossfader_gains,
                 ),

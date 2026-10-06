@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "checked_utc": "2026-10-06T03:10:17.369Z",
+  "source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
+  "binary_sha256": "0a6a939cf2ad62af5b43806aa4645a8fb31f98d557e3a4f39c73648e0afc6e5c",
+  "notification": {
+    "command": "omatainer ctl follow",
+    "log": "target/hardware/ns7-scratch-follow.jsonl",
+    "exit_code": 1,
+    "error": "Input/output error (os error 5)",
+    "exact_cause_established": false,
+    "last_log_write_utc": "2026-10-06T03:06:02.910Z"
+  },
+  "app": {
+    "pid": 2811860,
+    "uptime_seconds": 2984,
+    "restarted": false,
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 514129,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 194293,
+        "frames": 256,
+        "output_latency_ns": 5238095,
+        "overrun_ns": 0,
+        "render_cpu_ns": 181417,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 4920568,
+      "max_overrun_ns": 0,
+      "realtime_denied": 0,
+      "xruns": 0
+    },
+    "midi_input": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 2,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 2,
+      "received": 2,
+      "resets": 0
+    },
+    "midi_feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 480
+    },
+    "master": 0.14173229038715363,
+    "decks": [
+      {
+        "title": "What More Can I Say",
+        "playing": false,
+        "position_seconds": 264.646629781992
+      },
+      {
+        "title": "Public Service Announcement",
+        "playing": false,
+        "position_seconds": 3.9060474438022594
+      }
+    ],
+    "analog_listening_confirmed": false
+  },
+  "recorder": {
+    "ActiveState": "active",
+    "MainPID": "3437163",
+    "NRestarts": "0",
+    "unit": "omatainer-ns7-qualification-follow.service",
+    "output": "target/hardware/audio-recovery/live/status-follow.jsonl",
+    "restart_policy": "on-failure",
+    "restart_seconds": 1,
+    "read_only": true,
+    "valid_frames": 574,
+    "first_callbacks": 489412,
+    "last_callbacks": 514101,
+    "stderr_bytes": 0
+  },
+  "mpd_capture": {
+    "ActiveState": "active",
+    "MainPID": "2297832",
+    "NRestarts": "0",
+    "timeout": false,
+    "bank_b_c_and_transport_gestures_still_pending": true
+  },
+  "qualification": "Continuous quiet output only; no new musical performance or physical button claim"
+}

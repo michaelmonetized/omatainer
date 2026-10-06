@@ -16,7 +16,7 @@ impl Prepared {
         let gains = {
             #[cfg(test)]
             if rt.legacy_gain_math {
-                mixer_gain::crossfader_gains(rt.xfader, rt.xfader_curve)
+                mixer_gain::crossfader_gains(rt.crossfader_position(), rt.xfader_curve)
             } else {
                 rt.xfader_gain.tick()
             }
@@ -90,7 +90,8 @@ impl Prepared {
                     [rt.routing_deck_taps[0], [left, right], mixed]
                 }
                 Group::Main => {
-                    let before = [input[0] + click, input[1] + click];
+                    let sends = rt.surface.render_sends(f64::from(rt.sr) * 60.0 / f64::from(rt.bpm.max(1.0)));
+                    let before = [input[0] + click + sends[0], input[1] + click + sends[1]];
                     let mut output = before;
                     for slot in 0..rt.master_fx.len() {
                         let timer = rt.load_profile.start();
@@ -141,6 +142,8 @@ impl Prepared {
             self.publish_stereo(index, taps);
         }
         let mut output = self.outputs(channels);
+        let headphone = rt.monitor.render([self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]], channels);
+        if channels >= 4 && self.monitor_channels_free { output[2..4].copy_from_slice(&headphone); }
         let mut peak = [0.0_f32; 2];
         for (channel, value) in output
             .iter()
@@ -163,6 +166,7 @@ impl Prepared {
                 0.0
             };
         }
+        rt.observe_master_meter([output[0], output[1]]);
         output
     }
 }

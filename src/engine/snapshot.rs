@@ -46,6 +46,8 @@ impl Publisher {
                         let mut next = frame.materialize();
                         let mut current = snapshot.lock();
                         next.midi = std::mem::take(&mut current.midi);
+                        next.midi_feedback = current.midi_feedback;
+                        next.midi_input = current.midi_input;
                         *current = next;
                         worker_published.store(frame.sequence, Ordering::Release);
                     } else {
@@ -269,6 +271,8 @@ impl Frame {
             out.load_locked = rt.performance.deck_load_locked(index);
             out.media_key = deck.history_key;
             out.pos = deck.pos;
+            out.captured_at = Some(Instant::now());
+            out.platter = deck.spindle.as_ref().map(|s| (s.turns(), s.turn_rate()));
             out.frames = deck
                 .audio
                 .as_ref()
@@ -288,6 +292,7 @@ impl Frame {
             out.vinyl = deck.vinyl;
             out.sync = deck.sync;
             out.keylock = deck.keylock;
+            out.controls = deck.controls.status();
             out.keylock_mode = deck.keylock_mode();
             out.pfl = deck.pfl;
             out.loop_on = deck.loop_on;
@@ -339,7 +344,14 @@ impl Frame {
         }
         target.master = rt.master;
         target.xfader = rt.xfader;
+        target.xfader_curve = rt.xfader_curve;
+        target.xfader_reverse = rt.xfader_reverse;
+        target.fader_start = rt.fader_start;
+        target.meter_master = rt.meter_master;
+        target.master_meters = rt.master_meters;
         target.cue_mix = rt.cue_mix;
+        target.monitor = rt.monitor.status;
+        target.surfaces = rt.surface_status();
         target.view = match rt.view {
             View::Session => 0,
             View::Arrange => 1,
@@ -463,6 +475,8 @@ impl RtEngine {
         let mut next = frame.materialize();
         let mut current = self.snap.lock();
         next.midi = std::mem::take(&mut current.midi);
+        next.midi_feedback = current.midi_feedback;
+        next.midi_input = current.midi_input;
         *current = next;
     }
 

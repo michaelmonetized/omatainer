@@ -13,7 +13,7 @@ categories = ["multimedia::audio"]
 ab_glyph = "0.2"
 anyhow = "1"
 arc-swap = "1.7"
-cpal = "0.15"
+cpal = "=0.18.2"
 crossbeam-channel = "0.5"
 eframe = { version = "0.32", default-features = true }
 egui = "0.32"
@@ -21,7 +21,7 @@ libc = "0.2"
 icu_normalizer = "=2.3.0"
 icu_casemap = "=2.3.0"
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg"] }
-midir = "0.10"
+midir = "=0.11.0"
 parking_lot = "0.12"
 rtrb = "0.3"
 serde = { version = "1", features = ["derive", "rc"] }
@@ -50,4 +50,5 @@ symphonia-format-riff = { path = "vendor/symphonia-format-riff" }
 egui-winit = { path = "vendor/egui-winit" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+cpal = { version = "=0.18.2", features = ["realtime-dbus"] }
 jack-sys = { version = "=0.5.1", features = ["dynamic_loading"] }

@@ -153,7 +153,9 @@ pub(crate) enum Action {
     TrackGain { target: Target, value: f32 },
     TrackPan { target: Target, value: f32 },
     Crossfader { value: f32 },
+    CrossfaderContour { value: f32 },
     MasterGain { value: f32 },
+    DeckControl { deck: u8, control: engine::deck_controls::Control },
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
@@ -165,6 +167,7 @@ pub(crate) enum Edit {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Request {
+    Surfaces {},
     Discover {},
     State {
         #[serde(default)]
@@ -222,7 +225,7 @@ fn discovery() -> Value {
     json!({
         "version": VERSION,
         "requests": {
-            "discover": {}, "state": {"page": "Page?"}, "subscribe": {"page": "Page?"},
+            "discover": {}, "state": {"page": "Page?"}, "surfaces": {}, "subscribe": {"page": "Page?"},
             "command": {"namespace": "Namespace", "action": "Action"},
             "schedule": {"namespace": "Namespace", "beat": "finite absolute quarter-note beat", "action": "Action"},
             "edit": {"expected": "Expected", "target": "Target", "action": "Edit"},
@@ -232,7 +235,8 @@ fn discovery() -> Value {
         "actions": {"play": {}, "stop": {}, "launch_scene": {"target":"scene Target"},
             "track_gain":{"target":"track Target","value":"number 0..1.5"},
             "track_pan":{"target":"track Target","value":"number 0..1; center 0.5"},
-            "crossfader":{"value":"number 0..1"},"master_gain":{"value":"number 0..1.5"}},
+            "crossfader":{"value":"number 0..1"},"crossfader_contour":{"value":"number 0..1, fade to cut"},"master_gain":{"value":"number 0..1.5"},
+            "deck_control":{"deck":"0|1","control":"immediate controller control: hold, keylock, pitch_range, strip, loop_mode, loop_button, loop_toggle, loop_select, reloop, loop_scale, loop_shift, tap, start_time, stop_time, track_start"}},
         "edits":{"rename":{"name":"UTF-8 string, at most 1024 bytes"},
             "color":{"color":"null or three integer bytes"},"move":{"position":"zero-based display position"}},
         "types":{"Namespace":"32 hex characters; never a JSON number", "ObjectId":"16 nonzero hex characters",
@@ -288,12 +292,13 @@ fn state(
         Axis::Scene => &layout.scenes,
     };
     let objects: Vec<_> = slots.iter().skip(page.offset).take(page.limit).map(|slot| {
-        let item = &items[*slot]; json!({"target":Target {namespace:Key(layout.namespace),axis:page.axis,id:ObjectId(item.id.0)},
-            "name":ipc_transport::short_text(&item.name,32),"name_truncated":item.name.len()>32,"color":item.color})
+        let item = &items[*slot]; let name = ipc_transport::short_json_text(&item.name,32); json!({"target":Target {namespace:Key(layout.namespace),axis:page.axis,id:ObjectId(item.id.0)},
+            "name":name,"name_truncated":name.len()<item.name.len(),"color":item.color})
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
-        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,
+        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,
+        "decks":s.decks.iter().take(2).map(|deck| json!({"title":ipc_transport::short_text(&deck.title,32),"playing":deck.playing,"position_seconds":deck.pos/f64::from(deck.source_sample_rate.max(1)),"duration":deck.duration,"keylock":deck.keylock,"keylock_mode":deck.keylock_mode,"pitch_range":deck.pitch_range,"controls":deck.controls,"loop_on":deck.loop_on,"hotcues":deck.hotcues})).collect::<Vec<_>>(),
         "transport_epoch":Count(s.transport_epoch),"performance":commands.performance().status(),
         "page":page,"total":slots.len(),"objects":objects,
         "next_offset":(page.offset.saturating_add(page.limit)<slots.len()).then_some(page.offset+page.limit)}),
@@ -364,7 +369,12 @@ impl Action {
                 }
             }
             Self::Crossfader { value } => remote::Action::Crossfader(check(value, 1.0)?),
+            Self::CrossfaderContour { value } => remote::Action::CrossfaderContour(check(value, 1.0)?),
             Self::MasterGain { value } => remote::Action::Master(check(value, 1.5)?),
+            Self::DeckControl { deck, control } => {
+                if usize::from(deck) >= engine::DECKS || !control.valid() { return Err(Error::new("invalid_operation", "Invalid deck controller target or value")); }
+                remote::Action::DeckControl { deck, control }
+            }
         })
     }
 }
@@ -379,6 +389,7 @@ fn dispatch(
 ) -> Result<Value, Error> {
     match request {
         Request::Discover {} => Ok(discovery()),
+        Request::Surfaces {} => snapshot.try_lock_for(limits.snapshot).map(|snapshot| json!(snapshot.surfaces)).ok_or_else(|| Error::new("snapshot_unavailable", "Controller state is temporarily unavailable")),
         Request::State { page } | Request::Subscribe { page } => {
             state(snapshot, commands, page, limits)
         }
@@ -466,6 +477,7 @@ fn submit_action(
     at: Option<f64>,
     action: Action,
 ) -> Result<Value, Error> {
+    if at.is_some() && matches!(action, Action::DeckControl { .. }) { return Err(Error::new("invalid_schedule", "Deck controller gestures require immediate commands")); }
     let s = snapshot.try_lock_for(limits.snapshot).ok_or_else(|| {
         Error::new(
             "snapshot_unavailable",

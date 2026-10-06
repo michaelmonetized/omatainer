@@ -207,7 +207,15 @@ impl Pipe {
                 decay(&self.shared.input[index], value.abs());
             }
             let index = self.shared.captured.fetch_add(1, Ordering::Relaxed);
-            if self.sender.try_send(Sample { generation, index, frame }).is_err() {
+            if self
+                .sender
+                .try_send(Sample {
+                    generation,
+                    index,
+                    frame,
+                })
+                .is_err()
+            {
                 self.shared.overflow.fetch_add(1, Ordering::Relaxed);
             }
         }
@@ -334,9 +342,13 @@ where
     let fault = pipe.shared.clone();
     device
         .build_input_stream(
-            &plan.config(),
+            plan.config(),
             move |data: &[T], _| pipe.capture(data, channels, generation),
-            move |_| fault.fault.store(true, Ordering::Release),
+            move |error| {
+                if error.kind() != cpal::ErrorKind::RealtimeDenied {
+                    fault.fault.store(true, Ordering::Release);
+                }
+            },
             None,
         )
         .map_err(|error| error.to_string())
@@ -351,9 +363,17 @@ fn open(plan: &config::Plan, pipe: &Pipe, cancel: &AtomicBool) -> Result<NativeI
     if plan.backend == super::super::jack::BACKEND {
         pipe.stop(); pipe.shared.fault.store(false, Ordering::Release);
         let generation = pipe.shared.generation.load(Ordering::Acquire);
-        let stream = super::super::jack::capture(plan, pipe.clone(), generation, Arc::new(AtomicBool::new(false)))?;
-        if cancel.load(Ordering::Acquire) || pipe.shared.fault.load(Ordering::Acquire) { return Err("Graph input activation cancelled or faulted".into()); }
-        pipe.shared.rate.store(plan.rate, Ordering::Release); pipe.shared.enabled.store(true, Ordering::Release);
+        let stream = super::super::jack::capture(
+            plan,
+            pipe.clone(),
+            generation,
+            Arc::new(AtomicBool::new(false)),
+        )?;
+        if cancel.load(Ordering::Acquire) || pipe.shared.fault.load(Ordering::Acquire) {
+            return Err("Graph input activation cancelled or faulted".into());
+        }
+        pipe.shared.rate.store(plan.rate, Ordering::Release);
+        pipe.shared.enabled.store(true, Ordering::Release);
         return Ok(NativeInput::Jack(stream));
     }
     if !(1..=MAX_PHYSICAL_CHANNELS).contains(&usize::from(plan.channels)) {
@@ -394,7 +414,10 @@ fn open(plan: &config::Plan, pipe: &Pipe, cancel: &AtomicBool) -> Result<NativeI
 
 /// Start the sole native input owner.
 /// Takes a fixed pipe and output owner; returns a request handle without enumerating or opening any input.
-pub(crate) fn start(pipe: Pipe, output: owner::Handle) -> std::io::Result<(Handle, std::thread::JoinHandle<()>)> {
+pub(crate) fn start(
+    pipe: Pipe,
+    output: owner::Handle,
+) -> std::io::Result<(Handle, std::thread::JoinHandle<()>)> {
     let status = Arc::new(ArcSwap::from_pointee(Status {
         generation: 0,
         active: None,

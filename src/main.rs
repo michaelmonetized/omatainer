@@ -222,7 +222,7 @@ fn focus_existing() {
 /// Build an explicitly targeted deck media request.
 /// Takes deck-load or deck-unload and A/B; returns a validated IPC payload before any socket opens.
 fn deck_media_payload(args: &[String]) -> anyhow::Result<String> {
-    anyhow::ensure!(args.len() == 2, "usage: omatainer ctl deck-load|deck-unload A|B");
+    anyhow::ensure!(args.len() == 2 || (args.len() == 3 && args[0] == "deck-load"), "usage: omatainer ctl deck-load A|B [absolute-file] | deck-unload A|B");
     let op = match args[0].as_str() {
         "deck-load" => "deckLoad", "deck-unload" => "deckUnload",
         _ => anyhow::bail!("usage: omatainer ctl deck-load|deck-unload A|B"),
@@ -231,7 +231,10 @@ fn deck_media_payload(args: &[String]) -> anyhow::Result<String> {
         "A" | "a" => 0, "B" | "b" => 1,
         _ => anyhow::bail!("deck must be A or B"),
     };
-    let value = serde_json::json!({"op": op, "deck": deck});
+    let value = if let Some(path) = args.get(2) {
+        anyhow::ensure!(std::path::Path::new(path).is_absolute(), "deck file must use an absolute path");
+        serde_json::json!({"op":"deckLoadFile", "deck":deck, "path":path})
+    } else { serde_json::json!({"op": op, "deck": deck}) };
     ipc_schema::Operation::parse(&value)?;
     Ok(value.to_string())
 }
@@ -497,11 +500,14 @@ fn handle_client_with_stop(
             "bar": s.bar,
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
+            "monitor": s.monitor,
             "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
             "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
                 || s.decks.iter().take(2).any(|deck| deck.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES),
             "midi_clock": s.midi_clock,
             "midi_routing": commands.midi_routing().summary(),
+            "midi_feedback": s.midi_feedback,
+            "midi_input": s.midi_input,
             "audio": commands.audio_metrics(),
             "master_fx": { "types": s.fx_kind, "wet": s.fx_wet },
             "commands": s.commands,

@@ -1,6 +1,6 @@
 use super::*;
 
-fn observe(map: &MidiMap, message: &[u8]) -> Vec<Command> {
+pub(super) fn observe(map: &MidiMap, message: &[u8]) -> Vec<Command> {
     let (commands, receiver) = crate::engine::CommandPort::channel(32);
     handle_msg(
         message,
@@ -26,10 +26,173 @@ fn with_bindings(bindings: Vec<Binding>) -> MidiMap {
 #[test]
 fn every_factory_profile_has_unambiguous_wire_addresses() {
     let maps = builtin_maps().unwrap();
-    assert_eq!(maps.len(), 8);
+    assert_eq!(maps.len(), 10);
     for map in maps {
         map.validate().unwrap();
     }
+}
+
+#[test]
+fn mpd232_programmable_pads_preserve_all_notes_channels_and_velocities() {
+    let map = akai_mpd232();
+    assert_eq!(map.name, "Akai MPD232 (programmable)");
+    for channel in [0, 9, 15] {
+        for note in 0..128 {
+            assert!(matches!(observe(&map, &[0x90 | channel, note, 100]).as_slice(),
+                [Command::LiveNoteOn { ch, note: actual, vel: 100, .. }] if *ch == channel && *actual == note));
+            for status in [0x80, 0x90] {
+                assert!(matches!(observe(&map, &[0x90 | channel, note, 100, status | channel, note, 0]).as_slice(),
+                    [Command::LiveNoteOn { .. }, Command::LiveNoteOff { ch, note: actual, .. }] if *ch == channel && *actual == note));
+            }
+        }
+    }
+    assert!(observe(&map, &[0xb0, 1, 127]).is_empty());
+    assert!(matches!(observe(&map, &[0xfa]).as_slice(), [Command::Play]));
+    assert!(matches!(observe(&map, &[0xfc]).as_slice(), [Command::ReservedStop { lane: 0, .. }]));
+}
+
+#[test]
+fn stateful_surface_controls_reach_the_production_input_worker() {
+    let hub = MidiHub::without_devices();
+    let (commands, receiver) = crate::engine::CommandPort::channel(32);
+    let mut sp1 = hub.open_for_test(&commands, 71, surface::pioneer_sp1(), "synthetic SP1", "fixture:sp1");
+    sp1.push(&[0xb4, 2, 64]);
+    assert!(receiver.is_empty());
+    sp1.push(&[0xb4, 0x22, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Surface(crate::engine::surface_controls::Input::FxValue { bank: 0, slot: 0, parameter: false, value })) if (value - 8192.0 / 16383.0).abs() < 0.00001));
+    sp1.push(&[0x9a, 15, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckHotCue { deck: 1, pad: 7, del: true })));
+    let mut ns7 = hub.open_for_test(&commands, 72, surface::numark_ns7(), "synthetic NS7", "fixture:ns7");
+    ns7.push(&[0xb0, 0, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckSpindle { source:72, deck:0, motion }) if motion.ticks == 0 && motion.rate == 0.0));
+    ns7.push(&[0xb0, 0, 0]);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
+    let movement = loop {
+        if let Ok(command) = receiver.try_recv() { break command; }
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
+    assert!(matches!(movement, Command::DeckSpindle { source:72, deck:0, motion } if motion.ticks == 1 && motion.rate > 0.0));
+    ns7.push(&[0xb0, 8, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Fader { deck: 0, value: 0.0 }))));
+    ns7.push(&[0xb0, 12, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckGain { deck: 0, value: 1.5 })));
+    ns7.push(&[0xb0, 0x12, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Mix(1.0)))));
+    ns7.push(&[0xb0, 0x42, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Volume(0.0)))));
+    ns7.push(&[0x90, 1, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::MeterMaster(true))));
+    ns7.push(&[0x80, 1, 0]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::MeterMaster(false))));
+    ns7.push(&[0x90, 0x1b, 127]);
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckControl { source:72, deck:0, control:crate::engine::deck_controls::Control::Keylock })));
+    ns7.push(&[0x80, 0x1b, 0]);
+    assert!(receiver.is_empty());
+    for (message, expected) in [
+        ([0x90, 0, 99], false),
+        ([0x80, 0, 64], true),
+        ([0x90, 0, 127], false),
+        ([0x90, 0, 0], true),
+        ([0x90, 0, 127], false),
+    ] {
+        ns7.push(&message);
+        assert!(matches!(receiver.try_recv(), Ok(Command::Monitor(crate::engine::monitor::Control::Master(value))) if value == expected));
+    }
+}
+
+#[test]
+fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck() {
+    use crate::engine::{deck_controls::Control, Engine, Sample};
+    let (engine, mut rt) = Engine::headless_for_test(48000, 256);
+    for deck in 0..2 {
+        rt.apply(Command::DeckAudio {
+            deck,
+            audio: Arc::new(Sample {
+                name: "NS7 strip release".into(),
+                sr: 48000,
+                ch: 2,
+                data: vec![0.25; 96000],
+                peaks: Vec::new().into(),
+                bpm: 120.0,
+                path: String::new(),
+            }),
+        });
+    }
+    let hub = MidiHub::without_devices();
+    let mut input = hub.open_for_test(
+        &engine.cmd,
+        72,
+        surface::numark_ns7(),
+        "synthetic NS7",
+        "fixture:strip",
+    );
+    for (deck, cc) in [(0usize, 0x45), (1, 0x4d)] {
+        let other = 1 - deck;
+        let other_position = rt.decks[other].pos;
+        for value in [1, 38, 64, 120, 126] {
+            input.push(&[0xb0, cc, value]);
+            rt.process(&mut [0.0; 256]);
+            let position = rt.decks[deck].pos;
+            let expected = f64::from(f32::from(value) / 127.0) * 48000.0;
+            assert!((position - expected).abs() < 0.001, "deck {deck}, value {value}: {position}, expected {expected}");
+            input.push(&[0xb0, cc, 0]);
+            rt.process(&mut [0.0; 256]);
+            assert_eq!(rt.decks[deck].pos, position);
+            assert_eq!(rt.decks[other].pos, other_position);
+        }
+        input.push(&[0xb0, cc, 127]);
+        rt.process(&mut []);
+        assert_eq!(rt.decks[deck].pos, 48000.0);
+        input.push(&[0xb0, cc, 0]);
+        rt.process(&mut []);
+        assert_eq!(rt.decks[deck].pos, 48000.0);
+        assert_eq!(rt.decks[other].pos, other_position);
+        input.push(&[0xb0, cc, 38, cc, 39, cc, 40, cc, 0]);
+        rt.process(&mut []);
+        let touched = rt.decks[deck].pos;
+        assert!((touched - f64::from(40.0_f32 / 127.0) * 48000.0).abs() < 0.001);
+        rt.apply(Command::DeckPlay { deck: deck as u8 });
+        rt.process(&mut [0.0; 256]);
+        let position = rt.decks[deck].pos;
+        assert!(position > touched && position <= touched + 128.001);
+        input.push(&[0xb0, cc, 0, cc, 0]);
+        rt.process(&mut [0.0; 256]);
+        assert!(rt.decks[deck].pos > position && rt.decks[deck].pos <= position + 128.001);
+        assert!(rt.decks[deck].playing);
+        assert_eq!(rt.decks[other].pos, other_position);
+        rt.apply(Command::DeckPlay { deck: deck as u8 });
+        for time_cc in [cc + 1, cc + 2] {
+            input.push(&[0xb0, time_cc, 127, time_cc, 0]);
+        }
+        rt.process(&mut [0.0; 256]);
+        let status = rt.decks[deck].controls.status();
+        assert_eq!(status.start_seconds, 0.0);
+        assert_eq!(status.stop_seconds, 0.0);
+        rt.apply(Command::DeckControl {
+            source: 72,
+            deck: deck as u8,
+            control: Control::Strip { value: 0.0 },
+        });
+        assert_eq!(rt.decks[deck].pos, 0.0);
+    }
+}
+
+#[test]
+fn sp1_and_original_ns7_use_their_own_wire_channels() {
+    let maps = builtin_maps().unwrap();
+    let sp1 = pick_map(&maps, "Pioneer DDJ-SP1 MIDI 1");
+    assert_eq!(sp1.name, "Pioneer DDJ-SP1");
+    assert!(matches!(observe(&sp1, &[0x9a,7,127]).as_slice(), [Command::DeckHotCue {deck:1,pad:7,del:false}]));
+    let browse = sp1.bindings.iter().find(|binding| binding.ch == 6 && binding.data == 0x40 && binding.kind == MsgKind::CcRel).unwrap();
+    assert_eq!(browse.action, Action::Browse);
+    assert_eq!(browse.relative.unwrap().decode(127), Some(-1.0));
+    assert!(observe(&sp1, &[0x90,0x0b,127]).is_empty());
+    let ns7 = pick_map(&maps, "Numark NS7 MIDI");
+    assert!(matches!(observe(&ns7, &[0x90,0x11,127]).as_slice(), [Command::DeckPlay {deck:0}]));
+    assert!(matches!(observe(&ns7, &[0x90,0x32,127]).as_slice(), [Command::DeckPlay {deck:1}]));
+    assert!(ns7.bindings.iter().any(|binding| binding.ch == 0 && binding.data == 0x0c && binding.kind == MsgKind::Note && binding.action == Action::DeckLoad && binding.deck == 0));
+    assert!(observe(&ns7, &[0x91,0x11,127]).is_empty());
 }
 
 #[test]

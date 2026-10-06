@@ -204,7 +204,7 @@ fn realtime_bypasses_learn_but_complete_channel_capture_is_preserved() {
 fn unsupported_system_statuses_are_safe_and_do_not_swallow_realtime() {
     let (commands, receiver) = crate::engine::CommandPort::channel(48);
     for status in 0xf0..=0xff {
-        if [0xfa, 0xfc, 0xf8].contains(&status) {
+        if [0xfa, 0xfb, 0xfc, 0xf8].contains(&status) {
             continue;
         }
         send(&[status], 1, &commands);

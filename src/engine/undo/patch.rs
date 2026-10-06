@@ -41,6 +41,7 @@ pub(super) struct Global {
     quantize: bool,
     metronome: bool,
     xfader: f32,
+    xfader_curve: f32,
     master: f32,
     cue_mix: f32,
     fx_kind: [FxKind; 3],
@@ -61,6 +62,7 @@ impl Global {
             quantize: rt.quantize,
             metronome: rt.metronome,
             xfader: rt.xfader,
+            xfader_curve: rt.xfader_curve,
             master: rt.master,
             cue_mix: rt.cue_mix,
             fx_kind: rt.fx_kind,
@@ -84,6 +86,7 @@ impl Global {
         }
         rt.metronome = self.metronome;
         rt.xfader = self.xfader;
+        rt.xfader_curve = self.xfader_curve;
         rt.master = self.master;
         rt.cue_mix = self.cue_mix;
         for slot in 0..3 {
@@ -162,6 +165,7 @@ pub(super) struct DeckControls {
     loop_on: bool,
     loop_start: f64,
     loop_len: f64,
+    controller_loops: super::super::deck_controls::LoopHistory,
 }
 impl DeckControls {
     pub fn get(deck: &DeckRt) -> Self {
@@ -187,6 +191,7 @@ impl DeckControls {
             loop_on: deck.loop_on,
             loop_start: deck.loop_start,
             loop_len: deck.loop_len,
+            controller_loops: deck.controls.loop_history(),
         }
     }
     fn swap(&mut self, deck: &mut DeckRt, sr: f32) {
@@ -221,6 +226,7 @@ impl DeckControls {
         deck.loop_on = self.loop_on;
         deck.loop_start = self.loop_start;
         deck.loop_len = self.loop_len;
+        deck.controls.restore_loops(self.controller_loops);
         if jump {
             deck.transition_to(deck.pos, sr, DeckTransition::Jump);
         }

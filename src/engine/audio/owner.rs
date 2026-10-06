@@ -293,6 +293,7 @@ impl<B: Backend> Owner<B> {
         let callback_floor = graph.telemetry.read().callbacks;
         let telemetry = graph.telemetry.clone();
         graph.cmd_rx.set_audio_offline(false);
+        graph.monitor.output(&plan);
         let callback = OutputCallback::managed(
             graph,
             plan.channels as usize,

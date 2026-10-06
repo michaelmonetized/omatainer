@@ -1,5 +1,5 @@
 //! Recovery retains the accepted route and verifies physical identity off the callback.
-use super::config::Plan;
+use super::config::{self, Plan};
 use cpal::traits::{DeviceTrait, HostTrait};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -142,7 +142,7 @@ pub(super) fn discover(target: &Target) -> Result<Plan, String> {
     }
     let mut names = devices
         .iter()
-        .filter_map(|device| device.name().ok())
+        .filter_map(config::name)
         .filter(|name| identity(name).as_ref() == Some(expected));
     let name = names
         .next()

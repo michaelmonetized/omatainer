@@ -28,6 +28,7 @@ impl Plan {
             Quant(_) | ToggleQuant => (Target::Global, Name::Quantization, 2),
             Metronome => (Target::Global, Name::Metronome, 3),
             Xfader(_) => (Target::Global, Name::Crossfader, 4),
+            XfaderCurve(_) => (Target::Global, Name::CrossfaderContour, 7),
             Master(_) => (Target::Global, Name::Master, 5),
             CueMix(_) => (Target::Global, Name::CueMix, 6),
             FxWet { slot, .. } | FxSelect { slot } if *slot < 3 => {
@@ -110,6 +111,12 @@ impl Plan {
                 Target::Deck(*deck % 2),
                 Name::Deck,
                 420 + (*deck % 2) as u64,
+            ),
+            DeckControl { deck, control: super::super::deck_controls::Control::LoopButton { .. }, .. } if rt.decks[usize::from(*deck)].controls.status().auto_loop => (
+                Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
+            ),
+            DeckControl { deck, control: super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. }, .. } => (
+                Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
             DeckHotCue { deck, pad, del }
                 if *del || !rt.decks[(*deck % 2) as usize].hotcues[(*pad % 8) as usize].set =>
