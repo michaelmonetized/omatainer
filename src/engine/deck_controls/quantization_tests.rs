@@ -336,6 +336,8 @@ fn pending_work_retires_on_input_reset_overload_grid_undo_stop_scratch_and_media
                                 deck: 0,
                                 extra: 0,
                                 relative: None,
+                                controls: None,
+                                pair_order: None,
                             },
                         }],
                     })

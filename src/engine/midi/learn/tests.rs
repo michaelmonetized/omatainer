@@ -13,6 +13,8 @@ fn binding(action: Action) -> Binding {
             encoding: super::super::relative::RelativeEncoding::OffsetBinary,
             scale: 1.0,
         }),
+     controls: None,
+     pair_order: None,
     }
 }
 fn map(bindings: Vec<Binding>) -> MidiMap {

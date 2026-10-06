@@ -5,15 +5,17 @@ use super::{Action, Binding, MidiMap, MsgKind};
 fn message_class(kind: MsgKind) -> u8 {
     match kind {
         MsgKind::Note => 0x90,
-        MsgKind::Cc | MsgKind::CcRel => 0xb0,
+        MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel => 0xb0,
         MsgKind::Pitch => 0xe0,
     }
 }
 
-fn overlaps(first: &Binding, second: &Binding) -> bool {
+pub(super) fn overlaps(first: &Binding, second: &Binding) -> bool {
     message_class(first.kind) == message_class(second.kind)
         && (first.ch == second.ch || first.ch == 0xff || second.ch == 0xff)
-        && (first.kind == MsgKind::Pitch || first.data == second.data)
+        && (first.kind == MsgKind::Pitch || first.data == second.data
+            || first.kind == MsgKind::Cc14 && first.data + 32 == second.data
+            || second.kind == MsgKind::Cc14 && second.data + 32 == first.data)
 }
 
 impl MidiMap {
@@ -26,7 +28,7 @@ impl MidiMap {
                 binding.ch
             );
             anyhow::ensure!(
-                binding.data < 128,
+                binding.data < if binding.kind == MsgKind::Cc14 { 32 } else { 128 },
                 "MIDI profile {:?}: binding {index} has invalid data byte {}",
                 self.name,
                 binding.data
@@ -41,6 +43,11 @@ impl MidiMap {
                 "MIDI profile {:?}: binding {index} has invalid relative encoding/scale metadata",
                 self.name
             );
+            anyhow::ensure!(binding.controls.is_none_or(|spec| spec.valid(binding.action))
+                && (binding.pair_order.is_none() || binding.kind == MsgKind::Cc14)
+                && (!matches!(binding.kind, MsgKind::Cc14 | MsgKind::Pitch) || super::controls::continuous(binding.action))
+                && (binding.kind != MsgKind::CcRel || super::controls::continuous(binding.action) || matches!(binding.action, Action::DeckJog | Action::Browse | Action::BrowseCrates)),
+                "MIDI profile {:?}: binding {index} has incompatible parameter controls", self.name);
             anyhow::ensure!(
                 !matches!(binding.action,Action::Browse | Action::BrowseCrates) || (binding.kind == MsgKind::CcRel
                     && binding.relative.is_some_and(|spec| spec.scale == 1.0)),

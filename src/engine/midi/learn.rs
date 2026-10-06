@@ -111,16 +111,14 @@ pub(crate) fn kind(action: Action) -> MsgKind {
 fn class(kind: MsgKind) -> u8 {
     match kind {
         MsgKind::Note => 0x90,
-        MsgKind::Cc | MsgKind::CcRel => 0xb0,
+        MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel => 0xb0,
         MsgKind::Pitch => 0xe0,
     }
 }
 /// Detect overlapping channel and controller addresses.
 /// Takes two bindings; returns true when the same wire message can reach both.
 fn address(first: &Binding, second: &Binding) -> bool {
-    class(first.kind) == class(second.kind)
-        && (first.ch == second.ch || first.ch == 0xff || second.ch == 0xff)
-        && (first.kind == MsgKind::Pitch || first.data == second.data)
+    super::profile::overlaps(first, second)
 }
 /// Match a complete message against a reviewed address.
 /// Takes a binding and three wire bytes; returns whether it owns that message.
@@ -132,7 +130,8 @@ fn hit(binding: &Binding, msg: &[u8; 3]) -> bool {
     };
     class(binding.kind) == message
         && (binding.ch == msg[0] & 15 || binding.ch == 0xff)
-        && (binding.kind == MsgKind::Pitch || binding.data == msg[1])
+        && (binding.kind == MsgKind::Pitch || binding.data == msg[1]
+            || binding.kind == MsgKind::Cc14 && binding.data + 32 == msg[1])
 }
 /// Validate a learned action before it can replace any input behavior.
 /// Takes a binding; refuses invalid target slots or incompatible wire encoding.
@@ -142,7 +141,7 @@ pub(crate) fn validate_binding(binding: &Binding) -> Result<(), String> {
     }
     let expected = kind(binding.action);
     if binding.kind != expected
-        && !(binding.action == Action::DeckPitch && binding.kind == MsgKind::Pitch)
+        && !(super::controls::continuous(binding.action) && matches!(binding.kind, MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel | MsgKind::Pitch))
     {
         return Err("Message type cannot operate this action".into());
     }
@@ -191,6 +190,7 @@ pub(crate) struct Capture {
     pub mapping: Mapping,
     pub source: u64,
     pub bytes: [u8; 3],
+    pub value: Option<u16>,
     pub conflicts: Vec<Binding>,
 }
 #[derive(Clone, Debug)]
@@ -459,6 +459,12 @@ impl Shared {
         map: &MidiMap,
         revision: u64,
     ) -> Dispatch {
+        self.input_value_at(source, name, id, msg, map, revision, super::controls::PairValues::default())
+    }
+    pub(super) fn input_value_at(
+        &self, source: u64, name: &str, id: &str, msg: &[u8; 3],
+        map: &MidiMap, revision: u64, paired: super::controls::PairValues,
+    ) -> Dispatch {
         let mut state = self.state.lock();
         if self.revision.load(Ordering::Acquire) != revision {
             return Dispatch::Consume;
@@ -491,9 +497,13 @@ impl Shared {
                 && state.devices.iter().any(|device| device.source == source)
         });
         if capture {
+            if state.armed.as_ref().is_some_and(|armed| armed.binding.kind == MsgKind::Cc14) {
+                if msg[1] >= 64 { return Dispatch::Normal; }
+                if !paired.complete(state.armed.as_ref().unwrap().binding.pair_order) { return Dispatch::Consume; }
+            }
             let mut binding = state.armed.take().unwrap().binding;
             binding.ch = channel;
-            binding.data = if status == 0xe0 { 0 } else { msg[1] };
+            binding.data = if status == 0xe0 { 0 } else if binding.kind == MsgKind::Cc14 { msg[1] % 32 } else { msg[1] };
             if state
                 .devices
                 .iter()
@@ -526,6 +536,7 @@ impl Shared {
                 mapping: Mapping { endpoint, binding },
                 source,
                 bytes: *msg,
+                value: (binding.kind == MsgKind::Cc14).then(|| paired.value(binding.pair_order).unwrap()),
                 conflicts,
             });
             state.message="Message captured. Review its exact port, channel, address and action before assignment.".into();
@@ -549,7 +560,8 @@ impl Shared {
                         .into();
                 return Dispatch::Consume;
             }
-            Dispatch::Binding(mapping.binding)
+            if mapping.binding.kind == MsgKind::Cc14 && paired.value(mapping.binding.pair_order).is_none() { Dispatch::Consume }
+            else { Dispatch::Binding(mapping.binding) }
         } else {
             Dispatch::Normal
         }

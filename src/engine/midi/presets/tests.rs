@@ -20,6 +20,8 @@ fn binding(action: Action, data: u8) -> Binding {
             encoding: RelativeEncoding::OffsetBinary,
             scale: 1.0,
         }),
+     controls: None,
+     pair_order: None,
     }
 }
 fn fixture() -> Preset {
@@ -102,7 +104,7 @@ fn unknown_fields_actions_ambiguous_addresses_and_limits_refuse_complete_definit
     let mut bad = base.clone();
     bad["endpoint"] = "machine-a:7".into();
     assert!(Preset::decode(&serde_json::to_vec(&bad).unwrap()).is_err());
-    for version in [0, 2, u32::MAX] {
+    for version in [0, VERSION + 1, u32::MAX] {
         let mut bad = preset.clone();
         bad.version = version;
         assert!(bad.validate().is_err());
@@ -192,7 +194,7 @@ fn preferences_seventeen_migrate_exactly_and_preset_banks_require_eighteen() {
     let (mut migrated, changed) =
         crate::preferences::storage::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
     assert!(changed);
-    old.version = 18;
+    old.version = crate::preferences::VERSION;
     assert_eq!(migrated, old);
     migrated
         .profiles

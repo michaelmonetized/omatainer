@@ -3120,9 +3120,12 @@
         195,
         42
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-encoders.md",
+        "docs/validation/midi-encoders-receipt.json"
+      ]
     },
     {
       "issue": 224,

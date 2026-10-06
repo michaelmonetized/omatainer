@@ -567,6 +567,7 @@ fn destructive(command: &Command) -> bool {
         | Command::Surface(_)
         | Command::MidiSamplerPad { .. }
         | Command::DeckTrack { .. }
+        | Command::MidiAdjust(_)
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }

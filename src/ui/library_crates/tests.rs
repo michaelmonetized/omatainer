@@ -201,8 +201,12 @@ fn nested_4096_crates_restore_track_query_scroll_and_browse_actual_controller_in
     let mut input = gui.app.engine.midi.open_for_test(&gui.app.engine.cmd,15400,MidiMap { name:"Crate fixture".into(),matchers:vec![],bindings:vec![],unmapped_notes:UnmappedNotes::Ignore },"Fixture crate controller","fixture:154");
     let endpoint = midi::learn::Endpoint { name:"Fixture crate controller".into(),id:"fixture:154".into() };
     gui.app.engine.cmd.midi_learn().configure(midi::learn::Config { mappings:vec![
-        midi::learn::Mapping { endpoint:endpoint.clone(),binding:Binding { kind:MsgKind::CcRel,ch:0,data:55,action:MidiAction::BrowseCrates,deck:0,extra:0,relative:Some(RelativeSpec { encoding:RelativeEncoding::OffsetBinary,scale:1.0 }) } },
-        midi::learn::Mapping { endpoint,binding:Binding { kind:MsgKind::Note,ch:0,data:56,action:MidiAction::CrateReturn,deck:0,extra:0,relative:None } }
+        midi::learn::Mapping { endpoint:endpoint.clone(),binding:Binding { kind:MsgKind::CcRel,ch:0,data:55,action:MidiAction::BrowseCrates,deck:0,extra:0,relative:Some(RelativeSpec { encoding:RelativeEncoding::OffsetBinary,scale:1.0 }) , controls: None,
+         pair_order: None,
+        } },
+        midi::learn::Mapping { endpoint,binding:Binding { kind:MsgKind::Note,ch:0,data:56,action:MidiAction::CrateReturn,deck:0,extra:0,relative:None , controls: None,
+         pair_order: None,
+        } }
     ] }).unwrap();
     for _ in 0..3 { input.push(&[0xb0,55,65]); }
     gui.frame(vec![]);

@@ -222,16 +222,18 @@ impl App {
             ui.add_enabled_ui(allowed, |ui| {
                 let panel = &mut self.midi_learn.presets;
                 let before = panel.target.clone();
-                egui::ComboBox::from_label("Preset destination port").selected_text(panel.target.as_ref().map_or("Select exact port".into(), |port|format!("{} / {}",port.name,port.id))).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut panel.target, None, "Select exact port");
-                    for device in &view.devices { ui.selectable_value(&mut panel.target, Some(device.endpoint.clone()), format!("{} / {}",device.endpoint.name,device.endpoint.id)); }
+                let destination = egui::ComboBox::from_label("Preset destination port").selected_text(panel.target.as_ref().map_or("Select exact port".into(), |port|format!("{} / {}",port.name,port.id))).show_ui(ui, |ui| {
+                    if ui.selectable_value(&mut panel.target, None, "Select exact port").clicked() { ui.close(); }
+                    for device in &view.devices { if ui.selectable_value(&mut panel.target, Some(device.endpoint.clone()), format!("{} / {}",device.endpoint.name,device.endpoint.id)).clicked() { ui.close(); } }
                 });
+                accessibility::button(ui, &destination.response, "Preset destination port", None);
                 if before != panel.target { panel.review = None; }
                 let before = panel.selected.clone();
-                egui::ComboBox::from_label("Saved MIDI preset").selected_text(panel.selected.as_deref().unwrap_or("Select preset")).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut panel.selected, None, "Select preset");
-                    for preset in &bank { ui.selectable_value(&mut panel.selected, Some(preset.name.clone()), &preset.name); }
+                let saved = egui::ComboBox::from_label("Saved MIDI preset").selected_text(panel.selected.as_deref().unwrap_or("Select preset")).show_ui(ui, |ui| {
+                    if ui.selectable_value(&mut panel.selected, None, "Select preset").clicked() { ui.close(); }
+                    for preset in &bank { if ui.selectable_value(&mut panel.selected, Some(preset.name.clone()), &preset.name).clicked() { ui.close(); } }
                 });
+                accessibility::button(ui, &saved.response, "Saved MIDI preset", None);
                 if before != panel.selected { panel.review = None; }
                 preferences::text(ui, "MIDI preset name", &mut panel.name, HelpControl::MidiPresets);
                 preferences::text(ui, "Device revision hint (optional)", &mut panel.revision_hint, HelpControl::MidiPresets);

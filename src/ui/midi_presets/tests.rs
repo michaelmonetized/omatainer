@@ -25,6 +25,8 @@ fn binding(action: Action, data: u8) -> Binding {
         deck: 0,
         extra: 0,
         relative: None,
+        controls: None,
+        pair_order: None,
     }
 }
 fn map() -> MidiMap {

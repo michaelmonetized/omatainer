@@ -1395,6 +1395,45 @@
       ],
       "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
     },
+    "223": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native assignment editor and full-value capture",
+          "file": "src/ui/midi_learn.rs",
+          "entry": "Absolute/relative/14-bit/bend formats; explicit pair order, direction, scalar limits and sensitivity; capture → preview → apply"
+        },
+        {
+          "kind": "renderer-owned relative parameters and independent pair state",
+          "file": "src/engine/midi/controls.rs",
+          "entry": "Current parameter accumulation, limits, standard coarse/fine and explicit reverse pair order; channel/controller/port/reset separation"
+        },
+        {
+          "kind": "production callback and worker integration",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Bounded callback handoff, worker-owned pairing and revision-qualified dispatch"
+        },
+        {
+          "kind": "preset and native preference persistence",
+          "file": "src/engine/midi/presets.rs",
+          "entry": "Preset 2, preference 19; actual native Save/Export/Import and reopening; legacy default migration and injection refusal"
+        },
+        {
+          "kind": "accessible preset banking and text fields",
+          "file": "src/ui/midi_presets.rs",
+          "entry": "Named destination and saved-preset selectors; shared named preference text fields for actual preset name/path editing"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::controls::tests",
+        "ui::midi_learn::encoder_tests::native_encoder_format_pair_capture_preview_assignment_and_saved_preset_reopen_use_real_handlers"
+      ],
+      "evidence": [
+        "docs/validation/midi-encoders.md",
+        "docs/validation/midi-encoders-receipt.json"
+      ],
+      "limits": "Software qualification exhausts 16,384 CC-pair/bend values and signed-bit byte vectors, production synthetic workers, current renderer-relative state, actual native capture/preview/save/export/import and native preference reopening. Standard fine-only updates retain coarse state; explicit reverse-order pairs require one-second freshness. Browser steps remain one item per step. Existing scalar Undo paths are reused; baseline send-control Undo/persistence is not newly qualified. No physical audio or MIDI device was opened; physical encoder response stays outside this software pass."
+    },
     "226": {
       "status": "implemented",
       "paths": [

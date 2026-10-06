@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 36 implemented · 6 partial · 179 planned · 0 accepted · 8 outside release
+127 existing stack · 37 implemented · 6 partial · 178 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -233,7 +233,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | planned | #85, #188 |  |
 | [ ] | [#221](https://github.com/michaelmonetized/omatainer/issues/221) | Enforce streaming capabilities and protect playback during service failures | partial | #120, #181 | [receipt](../../docs/validation/issue-120-providers.md) |
 | [ ] | [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | planned | #112, #193, #41 |  |
-| [ ] | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | planned | #195, #42 |  |
+| [x] | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | implemented | #195, #42 | [receipt](../../docs/validation/midi-encoders.md), [receipt](../../docs/validation/midi-encoders-receipt.json) |
 | [ ] | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned | #195, #112 |  |
 | [ ] | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned | #112, #195, #73 |  |
 | [x] | [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | implemented | #113, #82, #83, #179 | [receipt](../../docs/validation/arrangement.md), [receipt](../../docs/validation/arrangement-receipt.json) |

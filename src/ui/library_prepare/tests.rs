@@ -188,6 +188,8 @@ fn captured_hardware_order_and_changed_file_load_fail_without_consuming_queue() 
                 deck: 0,
                 extra: 0,
                 relative: None,
+                controls: None,
+                pair_order: None,
             }],
         },
         "Synthetic prepare controller",

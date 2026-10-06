@@ -263,6 +263,8 @@ impl InputSink {
 struct InputWorker {
     decoder: super::surface::Decoder,
     learning_revision: u64,
+    routing_revision: u64,
+    pairs: super::controls::Pairs,
     consumer: rtrb::Consumer<Event>,
     shared: Arc<Shared>,
     epoch: u64,
@@ -283,6 +285,7 @@ impl InputWorker {
     fn reset(&mut self) {
         self.cmd.release_midi_source(self.source);
         self.decoder.reset();
+        self.pairs.clear();
         self.shared.routing.release(self.sources,&self.cmd);
         *self.shift.lock() = [false; 4];
         self.shared.counters.resets.fetch_add(1, Relaxed);
@@ -290,8 +293,10 @@ impl InputWorker {
     fn step(&mut self) -> bool {
         let learning = self.shared.learning.revision.load(Acquire);
         if learning != self.learning_revision { self.reset(); self.learning_revision = learning; }
+        let routing = self.shared.routing.generation.load(Acquire);
+        if self.routing_revision != routing { self.pairs.clear(); self.routing_revision = routing; }
         let safety = self.shared.performance.input_epoch();
-        if self.safety != safety { *self.shift.lock() = [false; 4]; self.decoder.reset(); self.safety = safety; }
+        if self.safety != safety { *self.shift.lock() = [false; 4]; self.decoder.reset(); self.pairs.clear(); self.safety = safety; }
         let epoch = self.shared.epoch.load(Acquire);
         let reset = epoch != self.epoch;
         if reset {
@@ -307,15 +312,17 @@ impl InputWorker {
         if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
             let cmd=self.cmd.for_input_epoch(event.safety);
             for frame in super::routing::packet::frames(event.bytes()) {
+                let mut paired = super::controls::PairValues::default();
                 match frame {
                     super::routing::packet::Frame::Musical(packet) => {
                         if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
                             if let Some(release) = crate::engine::clip_launch::wire_release(&message, self.source) { let _ = cmd.send(Command::ClipRelease(release)); }
-                            match self.shared.learning.input_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning) {
+                            if event.routing == routing { paired = self.pairs.input(&message, event.at); }
+                            match self.shared.learning.input_value_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning,paired) {
                                 super::learn::Dispatch::Consume => continue,
-                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift);continue; },
+                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch_value(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift,paired.value(binding.pair_order));continue; },
                                 super::learn::Dispatch::Normal => {},
                             }
                         }
@@ -323,12 +330,12 @@ impl InputWorker {
                             if packet.bytes().len()==3 && packet.channel().is_some() {
                                 let frame:[u8;3]=packet.bytes().try_into().unwrap();
                                 if !self.decoder.input_at(&self.map,&frame,&cmd,self.source,event.at) {
-                                    super::handle_channel(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live);
+                                    super::handle_channel_value(&frame,self.source,&self.map,&cmd,&self.log,&self.shift,&self.name,allow_live,paired);
                                 }
                             }
                         });
                     },
-                    super::routing::packet::Frame::Realtime(status) => handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name),
+                    super::routing::packet::Frame::Realtime(status) => { if status == 0xff { self.pairs.clear(); } handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name) },
                     super::routing::packet::Frame::Malformed => self.shared.routing.malformed(),
                 }
             }
@@ -451,6 +458,8 @@ fn channel(
         InputWorker {
             decoder: super::surface::Decoder::default(),
             learning_revision: shared.learning.revision.load(Acquire),
+            routing_revision: shared.routing.generation.load(Acquire),
+            pairs: super::controls::Pairs::default(),
             consumer,
             shared,
             epoch: 0,

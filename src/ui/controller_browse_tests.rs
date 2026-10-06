@@ -62,6 +62,8 @@ fn map() -> MidiMap {
                     encoding: RelativeEncoding::OffsetBinary,
                     scale: 1.0,
                 }),
+             controls: None,
+             pair_order: None,
             },
             Binding {
                 kind: MsgKind::Note,
@@ -71,6 +73,8 @@ fn map() -> MidiMap {
                 deck: 0,
                 extra: 0,
                 relative: None,
+                controls: None,
+                pair_order: None,
             },
         ],
     }

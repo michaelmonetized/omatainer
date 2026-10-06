@@ -36,6 +36,10 @@ impl Scoped {
                     _ => unreachable!(),
                 }
             }
+            Command::MidiAdjust(adjust) => {
+                let Some(track) = adjust.track() else { return Ok(command); };
+                (Some(track), None)
+            }
             Command::TrackGain { track, .. }
             | Command::ClipCancel { track }
             | Command::TrackPan { track, .. }

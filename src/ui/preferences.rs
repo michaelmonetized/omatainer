@@ -653,10 +653,11 @@ impl App {
     }
 }
 pub(super) fn text(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) -> bool {
-    let label = ui.label(crate::localization::text_dynamic(name));
-    ui.text_edit_singleline(value)
-        .labelled_by(label.id)
-        .help(ui, control).changed()
+    let name = crate::localization::text_dynamic(name);
+    let label = ui.label(name);
+    let response = ui.text_edit_singleline(value).labelled_by(label.id);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, response.enabled(), name));
+    response.help(ui, control).changed()
 }
 fn multiline(ui: &mut Ui, name: &str, value: &mut String, control: HelpControl) {
     let label = ui.label(crate::localization::text_dynamic(name));

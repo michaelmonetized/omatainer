@@ -12,6 +12,9 @@ mod profile;
 mod handoff;
 mod framing;
 mod relative;
+pub(crate) mod controls;
+pub use controls::Spec as ControlSpec;
+pub use controls::PairOrder;
 mod surface;
 mod feedback;
 pub(crate) mod learn;
@@ -47,6 +50,7 @@ pub(crate) fn next_source_id() -> u64 {
 pub enum MsgKind {
     Note,
     Cc,
+    Cc14,
     CcRel,
     Pitch,
 }
@@ -61,6 +65,10 @@ pub struct Binding {
     pub deck: u8,
     pub extra: u16,
     pub relative: Option<RelativeSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub controls: Option<ControlSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pair_order: Option<PairOrder>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -169,7 +177,7 @@ impl MidiHub {
         if cmd.performance().protected() {return Err("Performance protection excludes MIDI assignment tests".into());}
         if capture.mapping.binding.action==Action::Shift {return Err("Assign Shift and test its following hardware gesture".into());}
         let shift=Arc::new(Mutex::new([false;4]));let bytes=capture.bytes;
-        dispatch(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift).map_err(|e|e.to_string())?;
+        dispatch_value(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift,capture.value).map_err(|e|e.to_string())?;
         if bytes[0]&0xf0==0x90 {let off=[bytes[0]&15|0x80,bytes[1],0];dispatch(&capture.mapping.binding,capture.source,0x80,0,&off,cmd,&shift).map_err(|e|e.to_string())?;}
         Ok("Captured action admitted. Check its normal control or load receipt.".into())
     }
@@ -310,6 +318,13 @@ fn handle_channel(
     dev: &str,
     allow_live: bool,
 ) {
+    handle_channel_value(msg, source, map, cmd, log, shift, dev, allow_live, controls::PairValues::default());
+}
+fn handle_channel_value(
+    msg: &[u8; 3], source: u64, map: &MidiMap, cmd: &super::CommandPort,
+    log: &Arc<Mutex<Vec<String>>>, shift: &Arc<Mutex<[bool; 4]>>, dev: &str,
+    allow_live: bool, paired: controls::PairValues,
+) {
     let st = msg[0];
     let kind_hi = st & 0xF0;
     let ch = st & 0x0F;
@@ -337,17 +352,17 @@ fn handle_channel(
         }
         let hit = match b.kind {
             MsgKind::Note => kind_hi == 0x90 || kind_hi == 0x80,
-            MsgKind::Cc | MsgKind::CcRel => kind_hi == 0xB0,
+            MsgKind::Cc | MsgKind::Cc14 | MsgKind::CcRel => kind_hi == 0xB0,
             MsgKind::Pitch => kind_hi == 0xE0,
         };
         if !hit {
             continue;
         }
-        if b.kind != MsgKind::Pitch && b.data != d1 {
+        if b.kind != MsgKind::Pitch && b.data != if b.kind == MsgKind::Cc14 { d1 % 32 } else { d1 } {
             continue;
         }
         matched = true;
-        let _ = dispatch(b, source, kind_hi, d2, msg, cmd, shift);
+        let _ = dispatch_value(b, source, kind_hi, d2, msg, cmd, shift, paired.value(b.pair_order));
     }
 
     // Live MIDI notes onto the selected track when no map consumed a note
@@ -375,10 +390,17 @@ fn dispatch(
     cmd: &super::CommandPort,
     shift: &Arc<Mutex<[bool; 4]>>,
 ) -> Result<(), super::SubmissionError> {
+    dispatch_value(b, source, status, d2, msg, cmd, shift, None)
+}
+fn dispatch_value(
+    b: &Binding, source: u64, status: u8, d2: u8, msg: &[u8; 3],
+    cmd: &super::CommandPort, shift: &Arc<Mutex<[bool; 4]>>, paired: Option<u16>,
+) -> Result<(), super::SubmissionError> {
     let mut failure = None;
     let mut send = |command| { let result = cmd.send(command);if let Err(error) = &result { if failure.is_none() { failure = Some(error.clone()); } } result };
     let pressed = matches!(status, 0x90 | 0xb0) && d2 > 0;
     if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = send(Command::ClipRelease(release)); }
+    if b.kind == MsgKind::Cc14 && (msg[1] >= 64 || paired.is_none()) { return Ok(()); }
     let rel = match b.kind {
         MsgKind::CcRel => {
             let Some(delta) = b.relative.and_then(|spec| spec.decode(d2)) else {
@@ -388,14 +410,19 @@ fn dispatch(
             if delta == 0.0 {
                 return Ok(());
             }
-            delta
+            b.controls.unwrap_or_default().direction(delta)
         }
+        MsgKind::Cc14 => paired.unwrap() as f32 / 16383.0,
         MsgKind::Pitch => {
             let v = (msg[1] as u16) | ((msg[2] as u16) << 7);
-            (v as f32 - 8192.0) / 8192.0
+            if v <= 8192 { v as f32 / 16384.0 } else { 0.5 + (v - 8192) as f32 / 16382.0 }
         }
         _ => d2 as f32 / 127.0,
     };
+    if b.kind == MsgKind::CcRel && controls::continuous(b.action) {
+        return cmd.send(Command::MidiAdjust(controls::Adjust { binding: *b, delta: rel })).map(|_| ());
+    }
+    let rel = if b.kind != MsgKind::CcRel { b.controls.map_or(rel, |spec| spec.absolute(rel)) } else { rel };
     let deck = b.deck.min((DECKS - 1) as u8);
     match b.action {
         Action::Shift => shift.lock()[deck as usize] = pressed,
@@ -600,6 +627,8 @@ fn nbind(ch: u8, note: u8, action: Action, deck: u8, extra: u8) -> Binding {
         deck,
         extra: u16::from(extra),
         relative: None,
+        controls: None,
+        pair_order: None,
     }
 }
 fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
@@ -611,6 +640,8 @@ fn cbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8) -> Binding {
         deck,
         extra: u16::from(extra),
         relative: None,
+        controls: None,
+        pair_order: None,
     }
 }
 fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: RelativeSpec) -> Binding {
@@ -622,6 +653,8 @@ fn rbind(ch: u8, cc: u8, action: Action, deck: u8, extra: u8, relative: Relative
         deck,
         extra: u16::from(extra),
         relative: Some(relative),
+        controls: None,
+        pair_order: None,
     }
 }
 

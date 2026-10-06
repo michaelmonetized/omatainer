@@ -113,6 +113,13 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 19 && profiles.iter().any(|profile| {
+        let assignments = profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array());
+        let presets = profile.get("midi_presets").and_then(|v| v.as_array());
+        assignments.is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(crate::engine::midi::controls::new_fields)))
+            || presets.is_some_and(|rows| rows.iter().any(|row| row.get("version").and_then(|v| v.as_u64()).is_some_and(|version| version > 1)
+                || row.get("bindings").and_then(|v| v.as_array()).is_some_and(|bindings| bindings.iter().any(crate::engine::midi::controls::new_fields))))
+    }) { return Err(Error::Invalid("Encoder controls require preferences version 19".into())); }
     if version < 17 && profiles.iter().any(|p| p.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row|
         row.get("binding").and_then(|v| v.get("action")).and_then(|v| v.as_str()) == Some("DeckCueHold")))) {
         return Err(Error::Invalid("Held Cue assignments require preferences version 17".into()));
@@ -158,12 +165,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI presets require preferences version 18".into()));
     }
     let (mut preferences, migrated) = match version {
-        18 => (
+        19 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -833,7 +840,9 @@ mod cue_audition_migration_tests {
         let profile=old.profiles.get_mut("Studio").unwrap();
         profile.shortcuts.insert("play_a".into(),Some(Shortcut {key:"[".into(),ctrl:false,shift:true,alt:false}));
         profile.shortcuts.insert("beat_jump_back".into(),Some(Shortcut {key:"J".into(),ctrl:false,shift:false,alt:false}));
-        profile.midi_learn.mappings.push(crate::engine::midi::learn::Mapping {endpoint:crate::engine::midi::learn::Endpoint {name:"Test".into(),id:"port".into()},binding:crate::engine::midi::Binding {kind:crate::engine::midi::MsgKind::Note,ch:0,data:60,action:crate::engine::midi::Action::DeckCue,deck:1,extra:0,relative:None}});
+        profile.midi_learn.mappings.push(crate::engine::midi::learn::Mapping {endpoint:crate::engine::midi::learn::Endpoint {name:"Test".into(),id:"port".into()},binding:crate::engine::midi::Binding {kind:crate::engine::midi::MsgKind::Note,ch:0,data:60,action:crate::engine::midi::Action::DeckCue,deck:1,extra:0,relative:None, controls: None,
+         pair_order: None,
+        }});
         let (loaded,migrated)=decode(&serde_json::to_vec(&old).unwrap()).unwrap(); assert!(migrated);
         old.version=VERSION; assert_eq!(loaded,old);
         let mut newer=loaded.clone(); newer.profiles.get_mut("Studio").unwrap().midi_learn.mappings[0].binding.action=crate::engine::midi::Action::DeckCueHold;

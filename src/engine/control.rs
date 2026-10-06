@@ -711,6 +711,7 @@ impl CommandPort {
             return fail(SubmissionError::InvalidTarget);
         }
         if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command,Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Apc(pad),..}) if *pad>=40)

@@ -8,6 +8,7 @@ pub enum RelativeEncoding {
     /// Defined by Akai APC40 MkII protocol v1.2, p. 37; no new APC action
     /// is assigned here. Available for explicitly configured relative bindings.
     TwosComplement,
+    SignedBit,
 }
 
 impl RelativeEncoding {
@@ -19,6 +20,8 @@ impl RelativeEncoding {
             Self::OffsetBinary => i16::from(value) - 64,
             Self::TwosComplement if value >= 64 => i16::from(value) - 128,
             Self::TwosComplement => i16::from(value),
+            Self::SignedBit if value >= 64 => -i16::from(value - 64),
+            Self::SignedBit => i16::from(value),
         })
     }
 }

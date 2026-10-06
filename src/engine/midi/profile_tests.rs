@@ -219,6 +219,8 @@ fn validation_rejects_duplicates_conflicts_wildcards_and_decoder_aliases() {
         deck: 1,
         extra: 0,
         relative: None,
+        controls: None,
+        pair_order: None,
     };
     let mut second = pitch;
     second.data = 127; // Dispatch ignores data1 for pitch bend.

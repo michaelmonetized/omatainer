@@ -1,0 +1,454 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; unopened-device renderer, production synthetic MIDI input workers, native egui/AccessKit handlers and actual preset/preference files",
+  "sourceFiles": {
+    "src/engine/control.rs": "122f4ee379cf80995d404ab75ad041fb3638c9a14b35ff1778c10a170e553a5d",
+    "src/engine/deck_controls/quantization_tests.rs": "18fb53bda24fa49e52bef44b037b48466b26da1cf93da369aa5e669553d416b5",
+    "src/engine/deck_load_lock_tests.rs": "342d88161fbff1c659c1d91e1d4e9708b820efaad6715c8651d7c6213fe254d6",
+    "src/engine/midi.rs": "668612ab6605503c5fd3552362044c6d6c434db6f9fc9aa93aa7d58a4472ee05",
+    "src/engine/midi/controls.rs": "308a54dc24bd56aaa828eb7c4b252552cb4d166c1051b39d89c7cbf7d508f9af",
+    "src/engine/midi/controls/tests.rs": "bbaa4af3ff8498053a56ca45fb34417524f60a81d9bed7f09604752c7ef67933",
+    "src/engine/midi/handoff.rs": "89d2dcb7a554aa0ae1923293401e69fec0c3523f2fa249df1d9cf8d08b491397",
+    "src/engine/midi/learn.rs": "5ed2fb1e576140039f45444cb5ccf332faf31a6727fe0cb6d5008a780476a58b",
+    "src/engine/midi/learn/tests.rs": "d5690551d7be18ec0d98642909ccaaf26d877975dd76f1c1e4e3a4b816ddca13",
+    "src/engine/midi/presets.rs": "50af61f74b8ce3fea577a681e4d4a3c447d59a23694d66eac1486898c46a1a01",
+    "src/engine/midi/presets/tests.rs": "e5e521a8f3213360faea3c80a1fdf4a2076a5fd2f5c9809d79af5fe10a9bc693",
+    "src/engine/midi/profile.rs": "d347d1e341b7bdaf0d6990fdb5cd75b571dc9fe218d4d273c2d5c6204550ac72",
+    "src/engine/midi/profile_tests.rs": "5e491284a469e7658485db0900265ea201bc660f8ca0783ee175c1a48dda67b2",
+    "src/engine/midi/relative.rs": "729e09a93409be7cda5e186742ad226405b09847ea792d22dca171ed2c4a00dc",
+    "src/engine/mod.rs": "1117beb5d94b065e5e1520751d237505fb5fdb10540c551db0584a10185fed9b",
+    "src/engine/performance.rs": "09afd5723d09d8805e304f1146c30484a03521c86c24e9dfc6583a66164a8651",
+    "src/engine/sampler/playback_tests.rs": "87f6475213f967c5c4abc2405329876d2c6b64134621de3d169ff3154e964892",
+    "src/engine/session/scoped.rs": "f0e498a339ca549d5e03b3171796390c68a3757ff6faefbde042c0839d711e5b",
+    "src/preferences/mod.rs": "d00931589810dbfba64e331aa9e737f092682389f72e016f66e2c99a0bc13401",
+    "src/preferences/storage.rs": "acbf1a4f86eea6326d7ccbcce0b8dfb80f18d7cfe94bd39ec91c0ca1c57d92e1",
+    "src/preferences/worker/midi_presets_tests.rs": "be7d2483d1adc473666ce5f41e4b4297b764e411809e41d83d6f5f3495399cf8",
+    "src/ui.rs": "c9c6671de887c7f1663a8e0621234eb8c2ccb274bb949e04e7e584178890bf64",
+    "src/ui/controller_browse_tests.rs": "2a7f293c5854ab264a2a87acfb29447cce14ee265d72fb86f904f1ae39a1bfa3",
+    "src/ui/help/catalogue.rs": "9f7c651ceb7bcbdc7295404d280d4709ffe47a7d194f862823c05f31d97b4e89",
+    "src/ui/library_crates/tests.rs": "60a610a82b30a871aef2de1343a49f62a375d4c7908e29fd3810e48cdb22f31d",
+    "src/ui/library_prepare/tests.rs": "b19b60ae87d04c664153667c0e0cc3d39730f607031b095232c43a623c30ac32",
+    "src/ui/midi_learn.rs": "186e53f4d6245776cae3f1851a211e5709ba3f71df3d838f689e99792d981b02",
+    "src/ui/midi_learn/encoder_tests.rs": "35bec798fd27cf1a5d931a703fff130ff268dc02d8c60879f7a8e52729381936",
+    "src/ui/midi_learn/tests.rs": "efe3c39cc0aba16ce4beb584c7af25157c862310a1286b0610dcd1f76a01ec47",
+    "src/ui/midi_presets.rs": "d7bbafb1f8dc583831953151867d070f58d99956e30313d087e57ee6b52bbf8f",
+    "src/ui/midi_presets/tests.rs": "61253019b83f3b4f7fa3564d34dc70692634996149712598939e65ff93ce7d50",
+    "src/ui/preferences.rs": "b214dd15a202fc2d42efcd392541bc0a39de26072fdeb09f72acb29dc4051c62"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/encoder-tests-eighth",
+    "sha256": "aa8ddffdd20fb15db5b50c0a8cc95d0b63c2acdd08cd4778ae0f883514338b18"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/encoder-eighth-compiled-source-inventory.json",
+    "sha256": "456cdde8bc372c2cdefbe0aead8a041542e0a76aa0b369febd001cd79f3d6c43",
+    "baseRevision": "8d3a31d90730a711880c7891801b30ab0254b18d",
+    "files": 724
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/encoder-eighth-core-tests.log",
+      "sha256": "8fd50d4fe2bb957d89dc4cf8f3446a3a1aaae49557f4e9dd2e0057a4c0009dae",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1934,
+      "seconds": 0.12
+    },
+    "native": {
+      "path": "target/app-backlog/encoder-eighth-native-tests.log",
+      "sha256": "4d16336e9a7e14f996eb27f78b8338eea457739abca353ec6d960ea58ea52572",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1940,
+      "seconds": 0.39
+    },
+    "legacy-capture": {
+      "path": "target/app-backlog/encoder-eighth-legacy-capture-tests.log",
+      "sha256": "2518de01727a72d378cf304c0714e2ddff063b2c63b4c27da1a59c0f54eb0255",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1940,
+      "seconds": 0.24
+    },
+    "learn": {
+      "path": "target/app-backlog/encoder-eighth-learn-tests.log",
+      "sha256": "e682e8cf42652e7382b30d9a42b155be5784affc9613f80545aa295e0a38478a",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1936,
+      "seconds": 1.36
+    },
+    "midi": {
+      "path": "target/app-backlog/encoder-eighth-midi-tests.log",
+      "sha256": "093b5dc400cccc6eafcd782ac77ebd5d0e05fac8b751c4acd6b4fe6811210409",
+      "outcome": "ok",
+      "passed": 185,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1754,
+      "seconds": 37.54
+    },
+    "preferences": {
+      "path": "target/app-backlog/encoder-eighth-preferences-tests.log",
+      "sha256": "2ca0f8a12e3d1263fe45ef79e7acd8e9c75387e1a95cb5b24274dd93521f95c3",
+      "outcome": "ok",
+      "passed": 51,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1890,
+      "seconds": 5.84
+    },
+    "full": {
+      "path": "target/app-backlog/encoder-eighth-full-tests.log",
+      "sha256": "180e84dc634da60c1223c8dc9b38e3e7d3923098f5ca5f543add65f3535581cb",
+      "outcome": "ok",
+      "passed": 1897,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 476.26
+    },
+    "manual": {
+      "path": "target/app-backlog/encoder-eighth-manual-regenerate.log",
+      "sha256": "76a9a6c1643548db7c89d62855f60bd44cf98e69070feeb7912c9172a73962f8",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1940,
+      "seconds": 0
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/encoder-eighth-node-tests.log",
+    "sha256": "080fdf7c90fffede0858dbcd31d6005b953d4659894b2f3af8ff5e878796e3d5",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": [
+    {
+      "attempt": "first",
+      "reason": "Compilation refused the new command because performance admission did not yet classify it. The exhaustive match was completed before a test executable was produced.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-first-compiled-source-inventory.json",
+        "sha256": "3c9ee26a4ccd60d715ec2c783b1507695fa4d07e14144e1c86a1e727f8e91416",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Inputs unchanged during the first encoder build; recheck before qualification."
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-first-build.log",
+        "sha256": "ff38b4bc514c77d44d5af025c8f1a6fe4366106e3a5634ee3a0bac6b1e40ff8d",
+        "outcome": "compile refused"
+      }
+    },
+    {
+      "attempt": "second",
+      "reason": "Six core checks and native capture passed. One reset fixture requested the already-active default mapping and incorrectly expected a revision change. The corrected fixture installs a real changed mapping. Primary protocol review also refined standard coarse/fine updates and added explicit reverse pair order.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-second-compiled-source-inventory.json",
+        "sha256": "f98fd13dc152daf8883f97024f3fe9c3e260a583ea03b0bcc71e0809532a3c06",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Inputs frozen before second encoder compilation."
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-second-build.log",
+        "sha256": "8a54b439dbcb5be10484e5edf85ccc238979f84b01b9d670fa62b23a705f3fc9",
+        "outcome": "passed"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/encoder-tests-second",
+        "sha256": "14b5f9ed999af43f0cfcfd98a854a343d6c5dab03f82463d6ee9950a1ed990a1"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/encoder-second-core-tests.log",
+          "sha256": "5572a56bccfbc4bc7076081d1ee7b774d67a4eec487667c5c5be8ab737c5e394",
+          "outcome": "FAILED",
+          "passed": 6,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1934,
+          "seconds": 0.11
+        },
+        "native": {
+          "path": "target/app-backlog/encoder-second-native-tests.log",
+          "sha256": "cbe54e215399ba2a971eef6826e20b39ff469590e19b9a079e733b9c3e07556d",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1940,
+          "seconds": 0.29
+        }
+      }
+    },
+    {
+      "attempt": "third",
+      "reason": "All seven core checks and native capture passed. The final native check was expanded to use the actual Save, Export, Import and native preferences reopen routes.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-third-compiled-source-inventory.json",
+        "sha256": "e24a88727f668c53708b5ddbc2934296898d3e9c2d438692f9a9b79719dd5e23",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Inputs frozen before third encoder build."
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-third-build.log",
+        "sha256": "0bb24279bbca90df98741259057f828774c2480a50cb8094027a9995d1a3e89b",
+        "outcome": "passed"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/encoder-tests-third",
+        "sha256": "17a6ee59eadcad14ebde89d2eb31707418297dbed13c5e77591919aa1f1b760f"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/encoder-third-core-tests.log",
+          "sha256": "593011de152abf47294a1d039eab22a4584247822b99be80b31fc2096b5ce516",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1934,
+          "seconds": 0.15
+        },
+        "native": {
+          "path": "target/app-backlog/encoder-third-native-tests.log",
+          "sha256": "cbe54e215399ba2a971eef6826e20b39ff469590e19b9a079e733b9c3e07556d",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1940,
+          "seconds": 0.29
+        }
+      }
+    },
+    {
+      "attempt": "fourth",
+      "reason": "Compilation refused the expanded test because it accessed sibling-private preset fields. The test now uses the real named destination selector and native text/buttons; no field visibility was widened.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-fourth-compiled-source-inventory.json",
+        "sha256": "23f16428a1092124db88c98f8046d62f9dbf640267d5a4dc2d54e720ef7f34b5",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        },
+        "scope": "Inputs frozen before fourth encoder build."
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-fourth-build.log",
+        "sha256": "a6e8bff1d9104f3b8cc046a480f9e0e3794b7029461bf6d99f5abd9a2bccc0ec",
+        "outcome": "compile refused"
+      }
+    },
+    {
+      "attempt": "fifth",
+      "reason": "All seven core checks passed. The actual native preset editing flow exposed missing direct AccessKit names on text fields. Shared native single-line preference fields now retain their visible label and publish an explicit widget name; the flow is rerun from fresh compilation.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-fifth-compiled-source-inventory.json",
+        "sha256": "dea53d79dd5b4c74fcbd8b1fd75ec01d25d53eea23525cc782ab1bb81a3fe48f",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        }
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-fifth-build.log",
+        "sha256": "976e5a255040869a790578443d361b4e41de0cd0316ec9e4a8e190637f60a8dc",
+        "outcome": "passed"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/encoder-tests-fifth",
+        "sha256": "21f88e2db375288e1f30609499d6f234834a84187363b5176290d392e092094b"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/encoder-fifth-core-tests.log",
+          "sha256": "92e68b7b013b0577ea6f4506e556bf70de3eaf3409a60dd7c1e3259276731601",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1934,
+          "seconds": 0.13
+        },
+        "native": {
+          "path": "target/app-backlog/encoder-fifth-native-tests.log",
+          "sha256": "678e333d500ea209f593a880c8606d0748c07f936031d822a8a6cacaac4ef860",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1940,
+          "seconds": 0.31
+        }
+      }
+    },
+    {
+      "attempt": "sixth",
+      "reason": "All core, native preset, 185 MIDI and 51 preference checks passed. The complete suite reported one legacy native capture failure after changing editor format: an automatically assigned button identity moved. Capture now has a persistent native identity; its old regression and the complete suite are rerun from fresh compilation.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-sixth-compiled-source-inventory.json",
+        "sha256": "6125091a79a1f574a9ba13978c7303ca03489a7e8973fe2e61d1454a9c6b9888",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        }
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-sixth-build.log",
+        "sha256": "c21aefe6cd2f75b0c2a2dfe5baa1c2888702627462b2e7a3edf967a18ca333bd",
+        "outcome": "passed"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/encoder-tests-sixth",
+        "sha256": "a7e337668b1b7253b5a0d7667846d21a50fe72e1489c415aaac0b611d38ad992"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/encoder-sixth-core-tests.log",
+          "sha256": "593011de152abf47294a1d039eab22a4584247822b99be80b31fc2096b5ce516",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1934,
+          "seconds": 0.15
+        },
+        "native": {
+          "path": "target/app-backlog/encoder-sixth-native-tests.log",
+          "sha256": "d188338c19263b9568d2e1b15aec29dab1af19b9152cbd0e6070f4cf0a988b99",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1940,
+          "seconds": 0.4
+        },
+        "full": {
+          "path": "target/app-backlog/encoder-sixth-full-tests.log",
+          "sha256": "8cd874d9d8d42bd6cc44eecc11a55e5481c97f8b739f09131cb71e071f58d71b",
+          "outcome": "FAILED",
+          "passed": 1896,
+          "failed": 1,
+          "ignored": 44,
+          "filtered": 0,
+          "seconds": 477.28
+        }
+      }
+    },
+    {
+      "attempt": "seventh",
+      "reason": "The persistent Capture button alone did not resolve the old native fixture. Its external binding mutation bypassed layout settling. The final regression selects Master gain through the real action menu, verifies Capture is armed, and preserves the old input/save/disconnect assertions. The action menu closes after selection and the whole editor has a persistent identity independent of preceding device rows.",
+      "compiledInventory": {
+        "path": "target/app-backlog/encoder-seventh-compiled-source-inventory.json",
+        "sha256": "f14677d5f0e0fcfa7f59205018daf602cd79b463b717d7b1d0d07ff4e93c6737",
+        "files": 724
+      },
+      "embeddedInputs": {
+        "schema": 1,
+        "embeddedInputs": {
+          "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+          "licenses/manifest.json": "7a97a165be98c09d3679d2d1eb3871752fba5cbbaf74099aa175a8f8309b1dc2",
+          "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+        }
+      },
+      "build": {
+        "path": "target/app-backlog/encoder-seventh-build.log",
+        "sha256": "c21aefe6cd2f75b0c2a2dfe5baa1c2888702627462b2e7a3edf967a18ca333bd",
+        "outcome": "passed"
+      },
+      "testBinary": {
+        "path": "target/app-backlog/qualification-bin/encoder-tests-seventh",
+        "sha256": "d2a9e95d931c22e231578fe025f8e302ce3c8d33dd697fe3f0225c5cbef2ea8c"
+      },
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/encoder-seventh-core-tests.log",
+          "sha256": "f98d165e6e1f05509bd6be86defff63390a593a556e35b1e73ce3313919f94ae",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1934,
+          "seconds": 0.17
+        },
+        "native": {
+          "path": "target/app-backlog/encoder-seventh-native-tests.log",
+          "sha256": "f8cc8ee65a58eedaee7a91e6c5022a8974379c5af0d03bb5506da82f870d5324",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 1940,
+          "seconds": 0.38
+        },
+        "legacyCapture": {
+          "path": "target/app-backlog/encoder-seventh-legacy-capture-tests.log",
+          "sha256": "03c5ca85c69e6accc9382d7f6d35834fa968eca12204301b6e5d1afbba54cabb",
+          "outcome": "FAILED",
+          "passed": 0,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 1940,
+          "seconds": 0.2
+        }
+      }
+    }
+  ],
+  "limits": "No physical controller or audio device was opened. Every 14-bit value and signed-bit byte is fixture-qualified, ports/channels/controller addresses and reset generations remain isolated, renderer-relative adjustments follow current state with measured zero heap work, and actual native Save/Export/Import plus preference reopening retain metadata. Existing scalar Undo paths are reused; no new claim is made about baseline send-control Undo or persistence. Physical encoder response remains outside this software pass."
+}

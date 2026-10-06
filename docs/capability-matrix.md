@@ -463,6 +463,19 @@ Native UI, real catalog-owner transactions, persistence/migration, stale approva
 
 Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim.
 
+### Issue #223: implemented
+
+- native assignment editor and full-value capture: [src/ui/midi_learn.rs](../src/ui/midi_learn.rs) — Absolute/relative/14-bit/bend formats; explicit pair order, direction, scalar limits and sensitivity; capture → preview → apply
+- renderer-owned relative parameters and independent pair state: [src/engine/midi/controls.rs](../src/engine/midi/controls.rs) — Current parameter accumulation, limits, standard coarse/fine and explicit reverse pair order; channel/controller/port/reset separation
+- production callback and worker integration: [src/engine/midi/handoff.rs](../src/engine/midi/handoff.rs) — Bounded callback handoff, worker-owned pairing and revision-qualified dispatch
+- preset and native preference persistence: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Preset 2, preference 19; actual native Save/Export/Import and reopening; legacy default migration and injection refusal
+- accessible preset banking and text fields: [src/ui/midi_presets.rs](../src/ui/midi_presets.rs) — Named destination and saved-preset selectors; shared named preference text fields for actual preset name/path editing
+- Acceptance fixtures: `engine::midi::controls::tests`, `ui::midi_learn::encoder_tests::native_encoder_format_pair_capture_preview_assignment_and_saved_preset_reopen_use_real_handlers`.
+- Evidence: [docs/validation/midi-encoders.md](../docs/validation/midi-encoders.md).
+- Evidence: [docs/validation/midi-encoders-receipt.json](../docs/validation/midi-encoders-receipt.json).
+
+Software qualification exhausts 16,384 CC-pair/bend values and signed-bit byte vectors, production synthetic workers, current renderer-relative state, actual native capture/preview/save/export/import and native preference reopening. Standard fine-only updates retain coarse state; explicit reverse-order pairs require one-second freshness. Browser steps remain one item per step. Existing scalar Undo paths are reused; baseline send-control Undo/persistence is not newly qualified. No physical audio or MIDI device was opened; physical encoder response stays outside this software pass.
+
 ### Issue #226: implemented
 
 - native timeline: [src/ui/arrangement.rs](../src/ui/arrangement.rs) — Real source/instance editing, pointer move/trim, exact beats, snap, zoom/scroll, range/overview navigation and actual transport controls
@@ -575,7 +588,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | planned |
 | [#221](https://github.com/michaelmonetized/omatainer/issues/221) | Enforce streaming capabilities and protect playback during service failures | partial |
 | [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | planned |
-| [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | planned |
+| [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | implemented |
 | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned |
 | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned |
 | [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | implemented |

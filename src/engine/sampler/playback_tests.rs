@@ -248,6 +248,8 @@ fn learned_controller_slot_stop_survives_saturated_admission_and_performance_pro
                     deck: 0,
                     extra: 0,
                     relative: None,
+                    controls: None,
+                    pair_order: None,
                 },
             }],
         })

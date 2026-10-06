@@ -976,6 +976,7 @@ pub enum Command {
     ProviderPreview(provider_preview::Request),
     SessionEdit(session::Request),
     SessionControl(session::Scoped),
+    MidiAdjust(midi::controls::Adjust),
     PerformanceMode(bool),
     SafetyStop(performance::Safety),
     RecoverPerformance,
@@ -2356,6 +2357,11 @@ impl RtEngine {
                 self.undo.retire_command(command);
                 return;
             }
+            Command::MidiAdjust(adjust) => {
+                if let Some(command) = adjust.command(self) { self.apply(command); }
+                else { self.undo.reject(undo::Failure::Invalid); }
+                return;
+            }
             Command::SessionControl(mut scoped) => {
                 if scoped.current(self) {
                     let next = std::mem::replace(scoped.command.as_mut(), Command::ComposeDisarm);
@@ -2428,7 +2434,7 @@ impl RtEngine {
         if matches!(&c,Command::Select {..}|Command::SelectDeck(_)|Command::SelectDeckRequested {..}|Command::SetView(_)|Command::OpenFxTrack(_)|Command::OpenFxScene(_)|Command::CloseFx) {self.undo.untracked_change();}
         if self.project_command_edits(&c) { self.project.edited(); }
         match c {
-            Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
+            Command::MidiAdjust(_)|Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::Surface(input) => self.surface_input(input),
             Command::MidiSamplerPad { source, pad, on, pressure } => self.surface_sampler(source, pad, on, pressure),
             Command::ReservedStop { lane, ticket, target } => {

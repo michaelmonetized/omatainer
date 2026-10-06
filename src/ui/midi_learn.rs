@@ -21,6 +21,8 @@ impl Default for Panel {
                 deck: 0,
                 extra: 0,
                 relative: None,
+                controls: None,
+                pair_order: None,
             },
             endpoint: None,
             selected: None,
@@ -140,12 +142,13 @@ impl App {
                 .selected_text(tr!(label(previous)))
                 .show_ui(ui, |ui| {
                     for &action in learn::actions() {
-                        ui.selectable_value(
+                        let choice = ui.selectable_value(
                             &mut self.midi_learn.binding.action,
                             action,
                             tr!(label(action)),
-                        )
-                        .help(ui, HelpControl::MidiLearn);
+                        );
+                        if choice.clicked() { ui.close(); }
+                        choice.help(ui, HelpControl::MidiLearn);
                     }
                 })
                 .response
@@ -155,6 +158,8 @@ impl App {
                 binding.kind = learn::kind(binding.action);
                 binding.deck = 0;
                 binding.extra = 0;
+                binding.controls = None;
+                binding.pair_order = None;
                 binding.relative = (binding.kind == MsgKind::CcRel).then_some(RelativeSpec {
                     encoding: crate::engine::midi::RelativeEncoding::OffsetBinary,
                     scale: if matches!(binding.action, Action::Browse | Action::BrowseCrates) {
@@ -205,18 +210,46 @@ impl App {
                 );
                 binding.extra = extra.round() as u16 - 1;
             }
-            if binding.action == Action::DeckPitch {
-                let mut pitch = binding.kind == MsgKind::Pitch;
-                if ui
-                    .checkbox(&mut pitch, tr!("Capture pitch bend instead of CC"))
-                    .help(ui, HelpControl::MidiLearn)
-                    .changed()
-                {
-                    binding.kind = if pitch { MsgKind::Pitch } else { MsgKind::Cc };
+            if crate::engine::midi::controls::continuous(binding.action) {
+                let previous = binding.kind;
+                ui.label("Message format");
+                let response = egui::ComboBox::from_id_salt("MIDI message format")
+                    .selected_text(match binding.kind { MsgKind::Cc14 => "14-bit CC pair", MsgKind::Pitch => "Pitch bend", MsgKind::CcRel => "Relative CC", _ => "Absolute CC" })
+                    .show_ui(ui, |ui| {
+                        for (kind, label) in [(MsgKind::Cc, "Absolute CC"), (MsgKind::Cc14, "14-bit CC pair"), (MsgKind::Pitch, "Pitch bend"), (MsgKind::CcRel, "Relative CC")] {
+                            if ui.selectable_value(&mut binding.kind, kind, label).clicked() { ui.close(); }
+                        }
+                    });
+                accessibility::button(ui, &response.response, "MIDI message format", None);
+                if previous != binding.kind {
+                    binding.relative = (binding.kind == MsgKind::CcRel).then_some(RelativeSpec { encoding: crate::engine::midi::RelativeEncoding::OffsetBinary, scale: 0.01 });
+                    if binding.kind != MsgKind::Cc14 { binding.pair_order = None; }
                 }
             }
+            if binding.kind == MsgKind::Cc14 {
+                let mut order = binding.pair_order.unwrap_or_default();
+                let before = order;
+                let response = egui::ComboBox::from_id_salt("CC pair order")
+                    .selected_text(match order { crate::engine::midi::PairOrder::MsbFirst => "MSB first (MIDI standard)", crate::engine::midi::PairOrder::LsbFirst => "LSB first (paired)" })
+                    .show_ui(ui, |ui| { for (value, label) in [(crate::engine::midi::PairOrder::MsbFirst, "MSB first (MIDI standard)"), (crate::engine::midi::PairOrder::LsbFirst, "LSB first (paired)")] { if ui.selectable_value(&mut order, value, label).clicked() { ui.close(); } } });
+                accessibility::button(ui, &response.response, "CC pair order", None);
+                if order != before { binding.pair_order = Some(order); }
+            }
+            if crate::engine::midi::controls::continuous(binding.action) || matches!(binding.action, Action::DeckJog | Action::Browse | Action::BrowseCrates) {
+                let before = binding.controls.unwrap_or_default();
+                let mut spec = before;
+                let response = ui.checkbox(&mut spec.invert, "Invert MIDI direction");
+                accessibility::button(ui, &response, "Invert MIDI direction", Some(spec.invert));
+                if crate::engine::midi::controls::continuous(binding.action) {
+                    let max = if matches!(binding.action, Action::DeckGain | Action::TrackFader | Action::Master) { 1.5 } else { 1.0 };
+                    preferences::float_control(ui, "MIDI minimum", &mut spec.min, 0.0, max, 0.01, "", HelpControl::MidiLearn);
+                    preferences::float_control(ui, "MIDI maximum", &mut spec.max, 0.0, max, 0.01, "", HelpControl::MidiLearn);
+                    ui.label("Minimum must be below maximum. Bend center is 0.5. Standard CC pairs retain the coarse byte for fine updates; a new coarse byte clears the fine value. Capture waits for both bytes. Choose reverse order only when your controller sends it.");
+                }
+                if spec != before { binding.controls = Some(spec); }
+            }
             if let Some(relative) = &mut binding.relative {
-                egui::ComboBox::from_label(tr!("Relative encoder format"))
+                let format = egui::ComboBox::from_id_salt("Relative encoder format")
                     .selected_text(format!("{:?}", relative.encoding))
                     .show_ui(ui, |ui| {
                         for (value, text) in [
@@ -224,17 +257,20 @@ impl App {
                                 crate::engine::midi::RelativeEncoding::OffsetBinary,
                                 "Offset binary: 64 is stationary",
                             ),
+                            (crate::engine::midi::RelativeEncoding::SignedBit, "Signed bit: 0/64 stationary; 1 forward, 65 backward"),
                             (
                                 crate::engine::midi::RelativeEncoding::TwosComplement,
                                 "Two's complement: 0 is stationary",
                             ),
                         ] {
-                            ui.selectable_value(&mut relative.encoding, value, tr!(text))
-                                .help(ui, HelpControl::MidiLearn);
+                            let response = ui.selectable_value(&mut relative.encoding, value, tr!(text));
+                            if response.clicked() { ui.close(); }
+                            response.help(ui, HelpControl::MidiLearn);
                         }
                     })
-                    .response
-                    .help(ui, HelpControl::MidiLearn);
+                    ;
+                accessibility::button(ui, &format.response, "Relative encoder format", None);
+                format.response.help(ui, HelpControl::MidiLearn);
                 if matches!(binding.action, Action::Browse | Action::BrowseCrates) {
                     relative.scale = 1.0;
                 } else {
@@ -276,10 +312,9 @@ impl App {
                 })
                 .response
                 .help(ui, HelpControl::MidiLearn);
-            if ui
-                .button(tr!("Capture MIDI control"))
-                .help(ui, HelpControl::MidiLearn)
-                .clicked()
+            if ui.push_id("midi_learn_capture", |ui| {
+                ui.button(tr!("Capture MIDI control")).help(ui, HelpControl::MidiLearn).clicked()
+            }).inner
             {
                 self.midi_learn.message = handle
                     .begin(self.midi_learn.binding, self.midi_learn.endpoint.clone())
@@ -292,7 +327,7 @@ impl App {
         }
         if let Some(capture) = &view.capture {
             ui.label(description(&capture.mapping));
-            let value = if capture.bytes[0] & 0xf0 == 0xe0 {
+            let value = if let Some(value) = capture.value { value } else if capture.bytes[0] & 0xf0 == 0xe0 {
                 u16::from(capture.bytes[1]) | u16::from(capture.bytes[2]) << 7
             } else {
                 u16::from(capture.bytes[2])
@@ -401,6 +436,8 @@ impl App {
                         deck: target.deck,
                         extra: target.extra,
                         relative: target.relative,
+                        controls: target.controls,
+                        pair_order: target.pair_order,
                     };
                     self.apply_learn_config(config);
                 }
@@ -479,3 +516,6 @@ impl App {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod encoder_tests;

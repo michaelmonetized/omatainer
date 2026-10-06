@@ -980,7 +980,7 @@ impl App {
                     ui.label(d);
                 }
                 self.midi_routing_status_ui(ui,ctx);
-                self.midi_learn_ui(ui,ctx);
+                ui.push_id("midi_learn_editor", |ui| self.midi_learn_ui(ui,ctx));
             });
         }
         if !self.midi_open {self.engine.cmd.midi_learn().close();}

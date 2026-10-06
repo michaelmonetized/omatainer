@@ -5,7 +5,7 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 
-pub(crate) const VERSION: u32 = 1;
+pub(crate) const VERSION: u32 = 2;
 pub(crate) const MAX_PRESETS: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,6 +71,11 @@ impl Preset {
         if bytes.len() > 65_536 {
             return Err("MIDI preset exceeds 64 KiB".into());
         }
+        let raw: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| error.to_string())?;
+        if raw.get("version").and_then(|v| v.as_u64()) == Some(1)
+            && raw.get("bindings").and_then(|v| v.as_array()).is_some_and(|bindings| bindings.iter().any(super::controls::new_fields)) {
+            return Err("Encoder controls require MIDI preset version 2".into());
+        }
         let preset: Self = serde_json::from_slice(bytes).map_err(|error| error.to_string())?;
         preset.validate()?;
         Ok(preset)
@@ -78,7 +83,7 @@ impl Preset {
     /// Validate supported actions and distinct wire addresses.
     /// Takes this definition; returns an error without changing any active input.
     pub(crate) fn validate(&self) -> Result<(), String> {
-        if self.version != VERSION {
+        if !matches!(self.version, 1 | VERSION) {
             return Err("Unsupported MIDI preset version; current mappings retained".into());
         }
         visible(&self.name, 80)?;
@@ -90,6 +95,7 @@ impl Preset {
             return Err("Keep at most 256 assignments per preset".into());
         }
         for binding in &self.bindings {
+            if self.version == 1 && super::controls::modern(*binding) { return Err("Encoder controls require MIDI preset version 2".into()); }
             super::learn::validate_binding(binding)?;
         }
         MidiMap {

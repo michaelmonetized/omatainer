@@ -39,6 +39,8 @@ fn preset() -> Preset {
             deck: 0,
             extra: 0,
             relative: None,
+            controls: None,
+            pair_order: None,
         }],
     }
 }
