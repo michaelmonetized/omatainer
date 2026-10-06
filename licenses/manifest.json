@@ -12762,7 +12762,7 @@
     "src/engine/midi/presets.rs": "ac1283cb233095cb0292e250c151a0db463a9c8f9a4d4a4467528ebf31eba2fa",
     "src/engine/midi/presets/tests.rs": "15a1610ae300233e9a24d156f3acf0834b134f2ef77476f48343115a4671a320",
     "src/engine/midi/profile.rs": "ea07d579610913228f55f89958b754a2a54ebac5247803ec189616e45afb6ef2",
-    "src/engine/midi/profile_tests.rs": "837ade07d09f2be99e01295d1d24720b831ef051a5476a03d9afcee5c4e5b260",
+    "src/engine/midi/profile_tests.rs": "b296342b93a46693d3e98581bfefba5a7f9fe7ce18fd7e336935aa97a1bb4d45",
     "src/engine/midi/realtime_tests.rs": "885192cab5732e85d0ee34559fc63ade3d80388ef58153af1ac40db8bdd12cdc",
     "src/engine/midi/relative.rs": "362e1ba1336bbb8ba88a8bdb92c51f78a37dfc1b54dfca8d2920ed7dcbda1958",
     "src/engine/midi/relative_tests.rs": "5fc71f834ca7909bc339638a7b74dc644936b2d8b0b47b0511ca39bd0a23cbcb",
