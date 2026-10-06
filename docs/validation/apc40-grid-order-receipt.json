@@ -1,0 +1,340 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-06T13:47:59.009Z",
+  "beforeCorrection": {
+    "testedCodeRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+    "testedBinarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
+    "physicalRows": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "gridPads": 40,
+    "clipStops": 8,
+    "rawMessages": 96,
+    "admittedCommands": 96,
+    "consumedCommands": 96,
+    "midiDrops": 0,
+    "refusals": 0,
+    "xruns": 0,
+    "deadlineOverruns": 0,
+    "loadedFixture": {
+      "track": 8,
+      "scene": 1,
+      "feedbackNote": 7,
+      "feedbackVelocity": 13,
+      "physicalReport": "The bottom right light track 8 scene 5"
+    },
+    "topRightLaunchCaptured": false
+  },
+  "correction": {
+    "releaseCodeRevision": "935d1ebe7a2e8aacbc7e1f1f996051434b97f161",
+    "baselineCodeRevision": "f1ff6e5d09d8b5ca25eefd700db9e012477cec3a",
+    "releaseBinarySha256": "81f3e6af03e5a37d8da168bef9cde8ee797c2f7e1b32647ca4c6d2c8a2057b16",
+    "manifestSha256": "28c1ef2075a8b67640abcfb6234a583610a1dfd3b28a16352ba0bb236d7c4df1",
+    "runningPid": 3622839,
+    "firstMidiRun": {
+      "passed": 134,
+      "failed": 1,
+      "ignored": 2,
+      "failure": "Existing factory profile fixture expected the reversed MkII rows; both new grid regressions passed."
+    },
+    "finalTestCodeRevision": "725ff8990d9aa33adbc784927305a652f62a4779",
+    "finalTestStatus": "passed",
+    "productionSourceChangesFromReleaseToFinalTests": 0,
+    "changedTestFile": "src/engine/midi/profile_tests.rs",
+    "nativeFixture": {
+      "track": 8,
+      "scene": 1,
+      "name": "APC grid test",
+      "notes": 1,
+      "feedbackNote": 39,
+      "feedbackVelocity": 13,
+      "master": 0,
+      "playing": false,
+      "selectionSource": "Software fixture sent track-8 Select to the application input; not counted as a physical gesture."
+    },
+    "physicalConfirmation": {
+      "report": "Correct pad lit yellow. Press changed color to green. Clip stop changed it back to yellow.",
+      "loaded": "top-right yellow",
+      "launched": "top-right green",
+      "clipStopped": "top-right yellow",
+      "rawMessages": 4,
+      "admittedCommands": 4,
+      "consumedCommands": 4,
+      "midiDrops": 0,
+      "refusals": 0,
+      "xruns": 13,
+      "deadlineOverruns": 12,
+      "transportStoppedAfterCapture": true,
+      "master": 0
+    },
+    "qualification": {
+      "completedAt": "2026-10-06T13:46:29.973Z",
+      "passed": true,
+      "releaseCodeRevision": "935d1ebe7a2e8aacbc7e1f1f996051434b97f161",
+      "correctedTestCodeRevision": "725ff8990d9aa33adbc784927305a652f62a4779",
+      "productionSourceChanges": 0,
+      "sourceFilesCompared": 590,
+      "optimizedMidi": {
+        "testBinarySha256": "425dce457c1b1bf324b26fdffc86490fbf7b02a4fbb672d208588527a66ee5a5",
+        "result": "test result: ok. 134 passed; 0 failed; 2 ignored; 0 measured; 1695 filtered out; finished in 17.52s",
+        "excludedTest": "engine::midi::profile_tests::apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons",
+        "reason": "Only this cfg(test) fixture changed after the release build; its corrected assertion is qualified separately."
+      },
+      "correctedFactory": {
+        "testBinarySha256": "831d1abcdce9a7d6be54d29d32738df0db19852d8fe655457a507e384a16e7f6",
+        "result": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1830 filtered out; finished in 0.83s",
+        "testCrateFlags": [
+          "-C opt-level=0",
+          "-C debuginfo=0"
+        ],
+        "normalTestThreadStack": true
+      },
+      "earlierAttempts": {
+        "originalFullMidi": "134 passed, 1 stale factory assertion failed, 2 ignored",
+        "normalRebuild": "Interrupted with SIGTERM; did not produce a new executable",
+        "staleRunner": "Selected the earlier executable and repeated the same stale factory assertion; superseded",
+        "unoptimizedBroadRun": "Aborted on a stack overflow in an unchanged routing fixture. That fixture passed in the optimized release-source run; reduced flags are used only for the corrected factory assertion."
+      },
+      "hashes": {
+        "target/apc-grid-test-build.log": "8b51cfacc08aefc5bad2b9e8bb46158cbe847ca681479b946eae38f2ab828604",
+        "target/apc-grid-midi-tests.log": "21f68552db9e3b0c8d07c568dace9546fb9cf294aaf88adac1d2987b86cef05e",
+        "target/apc-grid-test-build-final.log": "4ca8f38b6d278f30d344c47006e0c4d99ad2f3c8805f2c90301a9f841813f8fe",
+        "target/apc-grid-functional-build.log": "ea160f3b5dcecb3da0c89c804e082f249069e30f3209633aea59d783d42b5399",
+        "target/apc-grid-midi-tests-stale-path.log": "98b774b280c0cd16a07b9faf33e43e83bf507f905cd55c787ef2c3ac555c2f10",
+        "target/apc-grid-unoptimized-broad-abort.log": "8d3dacaa813efc8d2976893e09bd511336c3e18111e30d6c694ddf1b59322b1c",
+        "target/apc-grid-optimized-midi-tests-final.log": "afb052d268f621f25efa61e19bbad70777b78318bc9c29af26396581f95b45f1",
+        "target/apc-grid-corrected-factory-test.log": "ce6750c7c85cf80db237accd4305710c5109a79dded84663375f6516da5a40a9",
+        "target/apc-grid-release-build.log": "c6cfd1ff5edef4945859b6aeddab50883c9deb5f3b839929af1e487fefa56d93",
+        "target/apc-grid-release-source-inventory.json": "fc61f0d5bb8865bf23bb8ac23dac113f4d2fa67c8acd2a5f40da33367a4fdf4d",
+        "target/apc-grid-final-test-source-inventory.json": "fa4eecf5cae2470f133838f17601700dc182662ba8c24eae9c426493cb8c94ea",
+        "target/apc-grid-release-package/manifest.json": "28c1ef2075a8b67640abcfb6234a583610a1dfd3b28a16352ba0bb236d7c4df1"
+      }
+    },
+    "integratedSourceCommits": [
+      "6d96629",
+      "195cb5c",
+      "3943b10958f5da4debb47a3e6aa7aade112ad4bd"
+    ],
+    "integratedCommittedSource": {
+      "at": "2026-10-06T13:49:10.300Z",
+      "committedRevision": "3943b10958f5da4debb47a3e6aa7aade112ad4bd",
+      "committedInventoryFiles": 691,
+      "inventoryMismatches": 0,
+      "qualifiedSourceFiles": 590,
+      "qualifiedSourceRevision": "725ff8990d9aa33adbc784927305a652f62a4779",
+      "qualifiedSourceMismatches": 0
+    }
+  },
+  "unresolvedPhysicalInputs": [
+    "Scene Launch 1–5",
+    "Stop All Clips",
+    "Pan",
+    "Sends",
+    "User"
+  ],
+  "evidence": [
+    {
+      "path": "target/hardware/pioneer-apc/apc-grid-before.json",
+      "sha256": "f7292026a11259acaa5cf2409a020527193c7d8e4ec6cb1935a1935be72483d5"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-grid-input.log",
+      "sha256": "d1dc1f3dbdd9e8fa7c2ba4cd9b4aeff7122a0305bfcca042f83daf8b93d3eac8"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-grid-feedback.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-grid-after.json",
+      "sha256": "e8e9a0a3a85c3acd10959ae5db40fc114ab3a1c256977dfcce6445aaf62bf78b"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixture-before.json",
+      "sha256": "90caec2e8ef3c6ad7cdc882b19c5866d8ebdc03c919e0fbc9299c6aaddd39925"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixture-ready.json",
+      "sha256": "e69311707ac9f7a028cd3ffda0c94c0ee9a7230fd22ac04516409dd4cda2d5dd"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixture-feedback.log",
+      "sha256": "3dac5ef84847b2231b19e62fee1bfddaade19e5090f99f16945bf5793effc09a"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-row-physical.json",
+      "sha256": "26138d683bf3ffc57f6f9f7af87cc5884bb2dcc5e978fb486189b35c8057ad2a"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-top-right-input.log",
+      "sha256": "d3c98d5bf6964c9b19b8b92c9d7b1a8fc25bea81aeae83fc26881576a20ebd3a"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-top-right-feedback.log",
+      "sha256": "f5dc44e83a3d9d49d61971b7f5f5d20aadc23b769f15de46fe50847447d964e5"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fix-installation.json",
+      "sha256": "deb6bfcf0c6ab59d1321c272f3f1db68b456eee762884ac180e935ef0d18b3fd"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fix-private-installation.json",
+      "sha256": "60c6d8d878c0fee339a9f0432ae366c955c57d618acb23043ef7cf9833677ff5"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fix-restored.json",
+      "sha256": "30b588a23a9d69adcd7e6d65592d826ee502b80e6d9b335d2f5fb916b9337bba"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-fixture-before.json",
+      "sha256": "6839ca4fbeb77ac3fa83b5a802cc9a966695fcf9aa5f123623b92b93f46fad3f"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-fixture-draft.png",
+      "sha256": "7088123fbfd5e9a079183f88659c9e2325aa058cd62d8c9e691dd698725dd823"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-fixture-applied.png",
+      "sha256": "35557f47ebf86b4ebd3fbf7193278e221e94240d43aefd972ec5e036eaa26a63"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-fixture-feedback.log",
+      "sha256": "35a2915b173120fe23acdcbccc61f4920d61a064485eb0ac6598306ede7e2ae1"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-fixture-ready.json",
+      "sha256": "14308830c77ccc8449cd0dc206d8b426e9d4a1d3cc1f32185e832063919833ba"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-session-fixture.png",
+      "sha256": "f9ec8ddf0883aeaad2b6118cb35c8215a73d5ac34ecbd9d3a91a48995145dfee"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixture-software-selection.log",
+      "sha256": "10620af58bf8b31b2194d9820c9300f2fa5ba299c0523c18a1a74be9765e4389"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-physical-input.log",
+      "sha256": "52ec43d075f767028512ee77e029b290b71d5d9bf0fd1b2748e5465d8a930b6e"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-physical-feedback.log",
+      "sha256": "4369c3b08f9d97a2fff6cbccc8ad02d9bc2372e3c0902dfc58efd66b8b18dd91"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-physical-after.json",
+      "sha256": "21f05aaa5e9f24af591b5de42b52dcc66682194f7247050a93cd6d0db3a83f37"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-physical-stopped-clip.png",
+      "sha256": "12ec73f20a29868e0f374351327bd30f5f6fde440644b6f362eba6ec148ee702"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-fixed-stop-ack.json",
+      "sha256": "e70b27cd89cdc38c56defac4b67e9bb93b2e439feaf0ff0b412cb86e89d8b240"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-final-qualification.json",
+      "sha256": "dfe6a9a1cf6ebb2cd2cbcce84bb0f8abfd572f60a5abbd0c56003d34c9079afb"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-functional-rustc.json",
+      "sha256": "09fc41ffe5983fa0be6d57029706540981ea5d038febac57ca25086d8afb4977"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-test-build.log",
+      "sha256": "8b51cfacc08aefc5bad2b9e8bb46158cbe847ca681479b946eae38f2ab828604"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-midi-tests.log",
+      "sha256": "21f68552db9e3b0c8d07c568dace9546fb9cf294aaf88adac1d2987b86cef05e"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-test-build-final.log",
+      "sha256": "4ca8f38b6d278f30d344c47006e0c4d99ad2f3c8805f2c90301a9f841813f8fe"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-functional-build.log",
+      "sha256": "ea160f3b5dcecb3da0c89c804e082f249069e30f3209633aea59d783d42b5399"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-midi-tests-stale-path.log",
+      "sha256": "98b774b280c0cd16a07b9faf33e43e83bf507f905cd55c787ef2c3ac555c2f10"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-stale-path-qualification.json",
+      "sha256": "4374b5cb3c866a22b961977f535113f243ed547616a9f58343513462b5670bf0"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-unoptimized-broad-abort.log",
+      "sha256": "8d3dacaa813efc8d2976893e09bd511336c3e18111e30d6c694ddf1b59322b1c"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-optimized-midi-tests-final.log",
+      "sha256": "afb052d268f621f25efa61e19bbad70777b78318bc9c29af26396581f95b45f1"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-corrected-factory-test.log",
+      "sha256": "ce6750c7c85cf80db237accd4305710c5109a79dded84663375f6516da5a40a9"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-release-build.log",
+      "sha256": "c6cfd1ff5edef4945859b6aeddab50883c9deb5f3b839929af1e487fefa56d93"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-release-source-inventory.json",
+      "sha256": "fc61f0d5bb8865bf23bb8ac23dac113f4d2fa67c8acd2a5f40da33367a4fdf4d"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/apc-grid-final-test-source-inventory.json",
+      "sha256": "fa4eecf5cae2470f133838f17601700dc182662ba8c24eae9c426493cb8c94ea"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/qualification/release-manifest.json",
+      "sha256": "28c1ef2075a8b67640abcfb6234a583610a1dfd3b28a16352ba0bb236d7c4df1"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/grid-integrated-committed-source.json",
+      "sha256": "e3d7e4a5b002fb79e970a40ecf3908abd5ad5b0fc9bb25a1c287941c36780850"
+    }
+  ]
+}

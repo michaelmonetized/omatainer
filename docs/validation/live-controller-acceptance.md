@@ -13,6 +13,12 @@ The [receipt](live-controller-acceptance-receipt.json) belongs to installed code
 The installed executable and running GUI, PID 1771583, matched that hash.
 Later loop-editor source changes are outside this physical qualification.
 
+The later [grid row-order check](apc40-grid-order.md) independently qualifies
+all forty grid inputs and eight Clip Stop inputs, and the corrected scene-1,
+track-8 pad's physical yellow/green/yellow loaded, launched and stopped states.
+Its executable and test receipts have their own source identities. Scene
+Launch, Stop All and the missing selector inputs remain unresolved.
+
 ## Pioneer
 
 Every HOT CUE pad returned a press and release, set its native deck cue, and
