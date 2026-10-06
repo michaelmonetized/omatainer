@@ -289,6 +289,18 @@ Local software export/worker/native UI/API qualification; no provider-hosted pub
 
 Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction.
 
+### Issue #176: implemented
+
+- separate monitor bus: [src/engine/monitor.rs](../src/engine/monitor.rs) — Pre-fader PFL, independent level/blend/split, explicit pair and finite routing tone
+- routing preparation: [src/engine/audio/routing/model.rs](../src/engine/audio/routing/model.rs) — Version-2 saved headphone alias and actual physical map conflict validation
+- native workflow: [src/ui/headphones.rs](../src/ui/headphones.rs) — Native exact alias selection, live controls, route availability and quiet stopped checks
+- typed IPC and Undo: [src/automation.rs](../src/automation.rs) — Validated immediate monitor gestures, published state and dirty/Undo-preserved saved blend
+- Acceptance fixtures: `engine::monitor::qualification_tests`, `engine::monitor::tests`, `ui::headphones::tests`, `ui::audio_routing::tests::native_headphone_pair_review_persists_exact_alias_and_rejects_program_overlap`, `automation::tests::headphone_api_validates_values_and_rejects_unavailable_checks_without_changing_program`.
+- Evidence: [docs/validation/headphone-monitoring.md](../docs/validation/headphone-monitoring.md).
+- Evidence: [docs/validation/headphone-monitoring-receipt.json](../docs/validation/headphone-monitoring-receipt.json).
+
+Nine new software checks and existing native NS7 regressions pass. Program output remains bit-identical through cue/blend/level/split changes in both renderers; separate tone duration/channel checks cover 44.1/48/96 kHz with zero callback heap work. Exact aliases, missing channels, overlaps, project reopen, typed API, native controls and saved blend Undo/Redo are covered. The complete 1797-test unfiltered suite passes with 43 ignored cases. Default ARM64 executable installed and checksum-verified for its next launch; the separate controller GUI was preserved; simultaneous physical main/headphone capture remains outside this thread active scope.
+
 ### Issue #185: implemented
 
 - native UI: [src/ui/beat_jump.rs](../src/ui/beat_jump.rs) — Per-deck backward/size/forward controls beneath platter
@@ -419,7 +431,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#173](https://github.com/michaelmonetized/omatainer/issues/173) | Support negotiated MIDI 2.0 and high-resolution expression | planned |
 | [#174](https://github.com/michaelmonetized/omatainer/issues/174) | Offer notation and MusicXML exchange for composer collaboration | planned |
 | [#175](https://github.com/michaelmonetized/omatainer/issues/175) | Offer optional cross-device project transfer with explicit conflict handling | planned |
-| [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | planned |
+| [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | implemented |
 | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | planned |
 | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | planned |
 | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | planned |
