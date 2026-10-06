@@ -2,10 +2,13 @@ use super::{Command, DeckTransition, RtEngine};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 mod beat_jump;
+mod loop_edit;
 #[cfg(test)]
 mod beat_jump_tests;
 #[cfg(test)]
 mod cue_audition_tests;
+#[cfg(test)]
+mod loop_edit_tests;
 #[cfg(test)]
 mod tests;
 
@@ -54,6 +57,9 @@ pub enum Control {
     Reloop,
     LoopScale { double: bool },
     LoopShift { forward: bool },
+    LoopBounds { #[serde(with = "loop_edit::media_key")] media_key: u64, start_seconds: f64, end_seconds: f64 },
+    LoopMove { #[serde(with = "loop_edit::media_key")] media_key: u64, beats: f64 },
+    LoopLength { #[serde(with = "loop_edit::media_key")] media_key: u64, beats: f64 },
     BeatJump { forward: bool },
     BeatJumpSize { index: u8 },
     BeatJumpScale { up: bool },
@@ -78,6 +84,13 @@ impl Control {
                 value.is_finite() && (0.0..=1.0).contains(&value)
             }
             Self::LoopButton { index } => index < 4,
+            Self::LoopBounds { media_key, start_seconds, end_seconds } => media_key != 0
+                && start_seconds.is_finite() && end_seconds.is_finite()
+                && start_seconds >= 0.0 && end_seconds > start_seconds,
+            Self::LoopMove { media_key, beats } => media_key != 0 && beats.is_finite()
+                && beats.abs() > 0.0 && beats.abs() <= 16384.0,
+            Self::LoopLength { media_key, beats } => media_key != 0 && beats.is_finite()
+                && (0.125..=64.0).contains(&beats),
             Self::BeatJumpSize { index } => usize::from(index) < BEAT_JUMP_SIZES.len(),
             Self::Hold {
                 button: Button::HotCue(pad),
@@ -856,24 +869,12 @@ impl RtEngine {
                 self.remember_controller_loop(index);
             }
             Control::LoopShift { forward } => {
-                let d = &mut self.decks[index];
-                if d.loop_len > 1.0 {
-                    let frames = d.audio.as_ref().map_or(0.0, |a| a.frames() as f64);
-                    let next = d.loop_start + d.loop_len * if forward { 1.0 } else { -1.0 };
-                    if next >= 0.0 && next + d.loop_len <= frames {
-                        let shift = next - d.loop_start;
-                        d.loop_start = next;
-                        d.transition_to(
-                            if d.loop_on { d.pos + shift } else { d.pos },
-                            self.sr,
-                            DeckTransition::Jump,
-                        );
-                        d.publish_preparation();
-                        self.project.edited();
-                    }
-                }
-                self.remember_controller_loop(index);
+                let d = &self.decks[index];
+                let beats = d.grid_beats_between(d.loop_start, d.loop_start + d.loop_len, self.sr, self.bpm)
+                    * if forward { 1.0 } else { -1.0 };
+                self.edit_deck_loop(index, Control::LoopMove { media_key: d.history_key, beats });
             }
+            control @ (Control::LoopBounds { .. } | Control::LoopMove { .. } | Control::LoopLength { .. }) => self.edit_deck_loop(index, control),
         }
     }
     /// Keep the selected manual loop available for later relooping.

@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T11:37:40.652Z",
+  "baseRevision": "9431780ba6838b1a366ec0759bf5797d8ffd9ebb",
+  "sourceFiles": {
+    "src/engine/deck_controls.rs": "ff472ac01c1d702c68b2dc769895246e5b9e6264b72ff547e7aaf76b8caa6cf5",
+    "src/engine/deck_controls/loop_edit.rs": "194e0e35f1f4a4a69fc520a09e4fb1e352be21d0bc4cdc6b6a9900b1b93610ac",
+    "src/engine/deck_controls/loop_edit_tests.rs": "1ee880e736dc4dedcf508eb41d86d965f80a0f0e00fa948f2693b6e965d9fcd6",
+    "src/engine/undo/capture.rs": "d3696bae48a4a716ae9f46faf9d57938efc1a3bff60f92833bba3441de76469a",
+    "src/ui.rs": "b88285bc47e519eee30381c6692ce789395b66b5d0f561358ccd75d335164daf",
+    "src/ui/loop_editor.rs": "bd6f72cd4fa9a290c9447f81ba0936601798edd987097ecb041ec7acff2716ac",
+    "src/ui/loop_editor/tests.rs": "4eafae1a77b52e6e70efac35d85aa390b957c5536d6e0ef53b69f370df788932",
+    "src/ui/help/catalogue.rs": "b5285fd9a1dbd58121dcd09d9fd19acf480e1236918c0a4717067af8863f74bb",
+    "src/automation.rs": "b42803ac12f01f88e6b67426abd6a87b82f1167530f7148e6998564b1502aee5",
+    "src/automation/tests.rs": "8c4385eef6d3503e7e59506ab4e2cbc3349331235103265bab07f2899a8999b4"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/loop-editing-tests",
+    "sha256": "fdddea9ab94ddde927ad89e962f645b3ab52af3a966d2240e8bd5cf898b13fb1"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/loop-editing-compiled-source-inventory.json",
+    "sha256": "c4062c130ae31ff84edf00397841d32015afcb762c0a062057f7e7ae9bef145d",
+    "files": 687
+  },
+  "tests": {
+    "engine-tests": {
+      "path": "target/app-backlog/loop-editing-engine-tests.log",
+      "sha256": "cfb13c2d49ec6ebdb6a2023339be99d037814c09d7c5b184053afc0f5aaa5157",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1817,
+      "seconds": 3.16
+    },
+    "ui-tests": {
+      "path": "target/app-backlog/loop-editing-ui-tests.log",
+      "sha256": "b05ec39013015296071d2f6602b76233e9ebf5995ed92d288c59a67c7a8011a3",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1819,
+      "seconds": 0.42
+    },
+    "api-tests": {
+      "path": "target/app-backlog/loop-editing-api-tests.log",
+      "sha256": "6ac7399ad0a2b4a519378e5f2f98dc835e1e849326e3c4f00ff6f29aba7173bf",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1820,
+      "seconds": 0.27
+    },
+    "manual-test": {
+      "path": "target/app-backlog/loop-editing-manual-test.log",
+      "sha256": "8f3ea642f4606c95dd6bcbe15d135d54712c3ccee1a0c0bffd6678bbb1363c85",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1820,
+      "seconds": 0
+    },
+    "deck-regressions": {
+      "path": "target/app-backlog/loop-editing-deck-regressions.log",
+      "sha256": "4be3778f2debb9f5402eea28fc3ebca90742f9f33caedcad4240c027c7a0575d",
+      "passed": 20,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1801,
+      "seconds": 14.58
+    },
+    "automation-regressions": {
+      "path": "target/app-backlog/loop-editing-automation-regressions.log",
+      "sha256": "71c350ee6bda8fa3f08f7a2e07580a5bbbabc86bb3d34b0dbf075f55680bab03",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1806,
+      "seconds": 4.4
+    },
+    "waveform-regressions": {
+      "path": "target/app-backlog/loop-editing-waveform-regressions.log",
+      "sha256": "49e66aa2532f33ed3da7d330081145a19f8a3f3536b163e03740160feec75624",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1816,
+      "seconds": 0.58
+    },
+    "undo-regressions": {
+      "path": "target/app-backlog/loop-editing-undo-regressions.log",
+      "sha256": "ebebd9ed48a081535f52689e0b428f6be47828cbcbde6abaf5110689b16dbbc2",
+      "passed": 36,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1784,
+      "seconds": 4.48
+    }
+  },
+  "checks": {
+    "sourceAndOutputRates": [
+      44100,
+      48000,
+      96000
+    ],
+    "independentStereoRenderPeakErrorBelow": 0.000001,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "variableTempoMusicalSpan": true,
+    "exact64FrameMinimum": true,
+    "allFractionalMultiBarSizes": true,
+    "completeRegionTrackBoundaryFit": true,
+    "staleMediaRefusedBeforeMutation": true,
+    "heldRollConflictRefused": true,
+    "nativeNumericFieldAndFrameNudges": true,
+    "activeToggleWithoutPlay": true,
+    "nativeWaveformMarkers": true,
+    "undoAndSourceSecondPreparationRoundtrip": true,
+    "exactDecimalStringMediaKeys": true,
+    "apiRejectedAndAppliedJobs": true
+  },
+  "corrections": [
+    "The first compile found a nested visibility boundary and two UI labels moved from reusable closures; the resolver now has engine-only visibility and labels are borrowed. The complete build supplied every final gate.",
+    "The initial build was followed by exact string media keys, typed published loop state and an explicit native loop toggle. Those additions are included in the complete source-bound binary.",
+    "The new manual entry uses the existing Prepare a DJ deck workflow, verified against generated catalogue output."
+  ],
+  "limits": [
+    "Seven new software tests and surrounding regression modules passed; this batch has not yet had a new unfiltered full release run",
+    "Physical captures and new listening acceptance remain closed",
+    "Movement and length selectors are local native drafts; applied regions use existing saved preparation",
+    "No release containing this loop editor has been installed yet"
+  ]
+}

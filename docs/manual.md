@@ -2198,6 +2198,14 @@ Primary action sets loop in; right-click or Loop out action sets loop out. The l
 
 Workflow: Prepare a DJ deck.
 
+### Loop editor
+
+64 source frames minimum; 1/8–64 beat presets
+
+Expand Loop editor below each platter. Edit exact source seconds, drag at one-source-frame precision, or nudge either edge one frame. The waveform shows the applied boundaries. Choose a fractional or multi-bar length, then Set loop length; this prepares the region without starting playback or enabling a stopped loop. Move by the selected beat increment while preserving the complete musical length through tempo anchors. Track edges shift the whole loop into range; an oversized or reversed region is refused. A changed source identity or a held roll/slice refuses the edit. Moves preserve the active playhead's relative musical position. Applied regions follow the existing preparation, project and Undo owners; size selectors are local drafts.
+
+Workflow: Prepare a DJ deck.
+
 ### Double loop
 
 ×2 duration

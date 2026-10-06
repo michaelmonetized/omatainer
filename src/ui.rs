@@ -88,6 +88,7 @@ mod load_status_tests;
 mod keyboard;
 mod shortcuts;
 mod beat_jump;
+mod loop_editor;
 mod cue_audition;
 mod command_palette;
 mod touch;
@@ -183,6 +184,7 @@ pub struct App {
     playback_watches: Vec<play_history::Watch>,
     cue_editor: cue_editor::Cues,
     grid_editor: Option<grid_editor::Editor>,
+    loop_settings: [loop_editor::Settings; DECKS],
     track_gain: Option<track_gain::Editor>,
     waveform: waveform::Panel,
     session_editor: session_editor::Editor,
@@ -325,6 +327,7 @@ impl App {
             playback_watches,
             cue_editor: cue_editor::Cues::default(),
             grid_editor: None,
+            loop_settings: std::array::from_fn(|_| loop_editor::Settings::default()),
             track_gain: None,
             waveform: waveform::Panel::default(),
             session_editor: session_editor::Editor::default(),
@@ -1250,6 +1253,7 @@ impl App {
             if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             });
             self.deck_beat_jump(ui, d as u8, snap.controls.beat_jump_size);
+            self.deck_loop_editor(ui, d as u8, snap);
         });
     }
 
@@ -1276,7 +1280,9 @@ impl App {
                 self.send(Command::DeckLoopHalf { deck: d as u8 });
             }
             if sq_btn(ui, t, "↻", snap.loop_on, t.magenta, sq).help(ui, HelpControl::Reloop).clicked() {
-                self.send(Command::DeckReloop { deck: d as u8 });
+                if snap.loop_len >= 64.0 {
+                    self.send(Command::DeckControl { source: 0, deck: d as u8, control: crate::engine::deck_controls::Control::Reloop });
+                } else { self.send(Command::DeckReloop { deck: d as u8 }); }
             }
             if sq_btn(ui, t, "⇄", snap.sync, t.green, sq).help(ui, HelpControl::Match).clicked() {
                 self.send(Command::DeckMatch);

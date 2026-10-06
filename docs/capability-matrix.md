@@ -311,6 +311,18 @@ Software qualification only. Sizes are runtime state, not saved preparation. Phy
 
 Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged.
 
+### Issue #190: implemented
+
+- source musical engine: [src/engine/deck_controls/loop_edit.rs](../src/engine/deck_controls/loop_edit.rs) — loop_edit_bounds, fit_loop_beats and edit_deck_loop
+- native UI: [src/ui/loop_editor.rs](../src/ui/loop_editor.rs) — Per-deck Loop editor: exact seconds, one-frame nudges, musical lengths and moves
+- typed API: [src/automation.rs](../src/automation.rs) — Exact decimal media keys, applied loop state and immediate loop controls
+- undo and preparation: [src/engine/undo/capture.rs](../src/engine/undo/capture.rs) — Source-guarded complete-region edits through existing history and preparation owners
+- Acceptance fixtures: `engine::deck_controls::loop_edit_tests`, `ui::loop_editor::tests`, `automation::tests::loop_edit_api_reports_stale_or_unusable_regions_as_rejected_and_applied_exact_bounds`.
+- Evidence: [docs/validation/loop-editing.md](../docs/validation/loop-editing.md).
+- Evidence: [docs/validation/loop-editing-receipt.json](../docs/validation/loop-editing-receipt.json).
+
+Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. A fresh full software batch and installation remain open; physical qualification is paused.
+
 ### Issue #195: implemented
 
 - portable format: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Strict named factory overlays and exact-port candidates without backend IDs
@@ -320,7 +332,7 @@ Native headless UI, actual learned MIDI workers and stereo source-reference soft
 - Acceptance fixtures: `engine::midi::presets::tests`, `ui::midi_presets::tests`, `preferences::worker::midi_presets_tests`, `engine::midi::handoff::tests::portable_presets_retarget_real_workers_keep_factory_input_and_retire_holds_without_callback_heap_work`.
 - Evidence: [docs/validation/midi-mapping-presets.md](../docs/validation/midi-mapping-presets.md).
 
-Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical capture and listening remain paused. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged.
+Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical portable-preset import and override listening remain open; factory MPD captures are separate. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged.
 
 ### Issue #205: implemented
 
@@ -409,7 +421,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned |
 | [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | planned |
 | [#189](https://github.com/michaelmonetized/omatainer/issues/189) | Support four independently controlled DJ decks | planned |
-| [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | planned |
+| [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented |
 | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned |
 | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | planned |
 | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned |

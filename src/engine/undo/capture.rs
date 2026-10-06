@@ -115,7 +115,7 @@ impl Plan {
             DeckControl { deck, control: super::super::deck_controls::Control::LoopButton { .. }, .. } if rt.decks[usize::from(*deck)].controls.status().auto_loop => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
-            DeckControl { deck, control: super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. }, .. } => (
+            DeckControl { deck, control: super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. } | super::super::deck_controls::Control::LoopBounds { .. } | super::super::deck_controls::Control::LoopMove { .. } | super::super::deck_controls::Control::LoopLength { .. }, .. } => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
             DeckHotCue { deck, pad, del }
@@ -175,6 +175,15 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if matches!(&c, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= DECKS || !control.valid()) {
+            self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+        }
+        if let Command::DeckControl { deck, control: control @ (super::super::deck_controls::Control::LoopBounds { .. }
+            | super::super::deck_controls::Control::LoopMove { .. } | super::super::deck_controls::Control::LoopLength { .. }), .. } = &c {
+            if self.decks.get(usize::from(*deck)).and_then(|d| d.loop_edit_bounds(*control, self.sr, self.bpm)).is_none() {
+                self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+            }
+        }
         if let Command::FxAdd(index)=&c {
             if let Some(id)=fx::FxId::all().get(*index as usize) {
                 let current=self.tracks.iter().map(|t|t.fx.slots.iter().map(fx::FxSlot::storage_bytes).sum::<usize>()).sum::<usize>()

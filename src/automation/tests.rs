@@ -44,6 +44,32 @@ fn beat_jump_api_jobs_report_applied_positions_sizes_and_strict_immediate_target
 }
 
 #[test]
+fn loop_edit_api_reports_stale_or_unusable_regions_as_rejected_and_applied_exact_bounds() {
+    let mut service=Service::new();let namespace=service.state()["expected"]["namespace"].clone();
+    let key=service.state()["decks"][0]["media_key"].clone();
+    let request=|control|json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}});
+    let response=service.query(request(json!({"op":"loop_bounds","media_key":key,"start_seconds":0.1,"end_seconds":0.2})));
+    assert_eq!(response["ok"],true);assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"applied");
+    let old=(service.rt.decks[0].loop_start,service.rt.decks[0].loop_len);
+    for control in [json!({"op":"loop_bounds","media_key":key,"start_seconds":0.1,"end_seconds":100000}),
+        json!({"op":"loop_length","media_key":(key.as_str().unwrap().parse::<u64>().unwrap()+1).to_string(),"beats":4})] {
+        let response=service.query(request(control));assert_eq!(response["ok"],true);
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected");
+        assert_eq!((service.rt.decks[0].loop_start,service.rt.decks[0].loop_len),old);
+    }
+    for control in [json!({"op":"loop_bounds","media_key":key,"start_seconds":0.2,"end_seconds":0.1}),
+        json!({"op":"loop_length","media_key":key,"beats":0}),
+        json!({"op":"loop_move","media_key":key,"beats":0}),
+        json!({"op":"loop_move","media_key":key,"beats":1,"unknown":1}),
+        json!({"op":"loop_move","media_key":9223372036854775809_u64,"beats":1}),
+        json!({"op":"loop_move","media_key":"01","beats":1})] {
+        assert_eq!(service.query(request(control))["ok"],false);
+    }
+    service.publish();assert!(!service.state()["decks"][0]["playing"].as_bool().unwrap());
+    assert_eq!(service.state()["decks"][1]["loop_region"],serde_json::Value::Null);
+}
+
+#[test]
 fn shipped_cli_builds_typed_versioned_envelopes_before_connecting() {
     let args = vec!["api".into(), r#"{"op":"discover"}"#.into()];
     assert_eq!(

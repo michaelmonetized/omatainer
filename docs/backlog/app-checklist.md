@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 25 implemented · 6 partial · 190 planned · 0 accepted · 8 outside release
+127 existing stack · 26 implemented · 6 partial · 189 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -200,7 +200,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned | #130, #55, #62 |  |
 | [ ] | [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | planned | #134 |  |
 | [ ] | [#189](https://github.com/michaelmonetized/omatainer/issues/189) | Support four independently controlled DJ decks | planned | #130 |  |
-| [ ] | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | planned | #134 |  |
+| [x] | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented | #134 | [receipt](../../docs/validation/loop-editing.md), [receipt](../../docs/validation/loop-editing-receipt.json) |
 | [ ] | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned | #85, #130 |  |
 | [ ] | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | planned | #148, #98 |  |
 | [ ] | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned | #134 |  |
