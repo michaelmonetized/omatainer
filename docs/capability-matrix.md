@@ -333,7 +333,7 @@ Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats,
 - Evidence: [docs/validation/mic-aux.md](../docs/validation/mic-aux.md).
 - Evidence: [docs/validation/mic-aux-receipt.json](../docs/validation/mic-aux-receipt.json).
 
-Eleven software checks and complete 1838-test unfiltered suite pass with 44 ignored cases. Actual source pipe, converted output, raw/final recording decode, mono/stereo order, master/PFL, loss/width/nonfinite handling, finite tone/talkover envelopes, native protected controls, schema 17 save/reopen/restore, Undo and selective import are qualified. No physical microphone, line source, PA feedback or clock-compensation acceptance is claimed in this closed capture thread.
+Eleven software checks and complete 1838-test unfiltered suite pass with 44 ignored cases. Actual source pipe, converted output, raw/final recording decode, mono/stereo order, master/PFL, loss/width/nonfinite handling, finite tone/talkover envelopes, native protected controls, schema 17 save/reopen/restore, Undo and selective import are qualified. No physical microphone, line source, PA feedback or clock-compensation acceptance is claimed in this closed capture thread. Forced fresh source 475c9d550026 installed and checksum-verified for the next default launch; the existing independent controller app stayed unchanged.
 
 ### Issue #181: implemented
 

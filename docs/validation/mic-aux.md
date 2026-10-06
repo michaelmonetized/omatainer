@@ -17,3 +17,7 @@ The initial extended gate passed ten checks and failed one expected-level assert
 ## Boundaries
 
 Qualification is Linux ARM64 software with controlled source frames and unopened physical devices. A microphone, external line source, PA feedback behavior and sustained hardware listening remain physical acceptance work. These receipts do not claim those outcomes. The final-output recorder always captures the actual output including selected voices; use a raw recording mix for voice exclusion. Physical clock compensation remains tracked by #178.
+
+## Installed release
+
+Forced fresh Linux ARM64 release source `475c9d550026472bb338bb3cde9cdc558bd10a64`, version `0.1.0+475c9d550026`, executable SHA256 `96b7bc4a36197555f05c570fc54d85653ed57a195732f588b453d947fc84f320`, package manifest SHA256 `f3e6cde20a299b330d06d1c30bfcd317e5dcbe9149bb5490c17786ab8e98db5d`. The verified default executable is installed for the next normal launch. Existing independent controller GUI and follower processes retained their exact executable hashes. Pre/post state kept master 1, session stopped, recording off and both decks paused; no hardware was opened or playback restarted.
