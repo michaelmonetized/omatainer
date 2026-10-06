@@ -20,6 +20,77 @@ fn wait(mut condition: impl FnMut() -> bool) {
     }
 }
 
+#[test]
+#[ignore = "Requires a powered original NS7, rtkit and OMATAINER_NS7_QUALIFY_DIR on /home; output is silent"]
+fn original_ns7_recovers_an_underrun_without_retiring_the_output() {
+    use audio::owner::Backend;
+    let directory = PathBuf::from(
+        std::env::var_os("OMATAINER_NS7_QUALIFY_DIR").expect("qualification directory"),
+    );
+    assert!(directory.starts_with("/home"));
+    std::fs::create_dir_all(&directory).unwrap();
+    let (engine, mut rt) = Engine::headless_for_test(44100, 256);
+    rt.master = 0.0;
+    let mut callback = audio::OutputCallback::new(rt, 4);
+    callback.stall_once = Some((8, Duration::from_millis(40)));
+    let settings = crate::preferences::Audio {
+        backend: Some("ALSA".into()),
+        device: Some("hw:CARD=NS7,DEV=0".into()),
+        sample_rate: Some(44100),
+        channels: Some(4),
+        format: Some(crate::preferences::AudioFormat::I32),
+        buffer_frames: Some(512),
+        ..Default::default()
+    };
+    let mut backend = audio::Native;
+    let plan = backend.select(&settings).unwrap();
+    let fault = Arc::new(AtomicBool::new(false));
+    let identity = backend.identity(&plan).expect("physical NS7 identity");
+    let stream = backend
+        .open(&plan, callback, fault.clone(), Some(&identity))
+        .unwrap();
+    backend.play(&stream).unwrap();
+    wait(|| engine.cmd.audio_metrics().xruns > 0 && engine.cmd.audio_metrics().callbacks > 100);
+    let tid = std::fs::read_dir("/proc/self/task")
+        .unwrap()
+        .filter_map(Result::ok)
+        .find_map(|entry| {
+            (std::fs::read_to_string(entry.path().join("comm"))
+                .ok()?
+                .trim()
+                == "cpal_alsa_out")
+                .then(|| entry.file_name().to_string_lossy().parse::<i32>().unwrap())
+        })
+        .expect("native ALSA callback thread");
+    let policy = unsafe { libc::sched_getscheduler(tid) };
+    let base_policy = policy & !libc::SCHED_RESET_ON_FORK;
+    let metrics = engine.cmd.audio_metrics();
+    let hw = std::fs::read_to_string("/proc/asound/NS7/pcm0p/sub0/hw_params").unwrap();
+    let receipt = serde_json::json!({"device":plan.device,"master":0,"injected_stall_ms":40,
+        "audio":metrics,"fault":fault.load(Ordering::Acquire),"callback_tid":tid,
+        "callback_policy":policy,"callback_base_policy":base_policy,
+        "callback_reset_on_fork":policy & libc::SCHED_RESET_ON_FORK != 0,
+        "hw_params":hw,"analog_listening":false});
+    std::fs::write(
+        directory.join("ns7-underrun-recovery.json"),
+        serde_json::to_vec_pretty(&receipt).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(metrics.backend_errors, 0, "{receipt}");
+    assert_eq!(metrics.device_lost, 0, "{receipt}");
+    assert_eq!(metrics.realtime_denied, 0, "{receipt}");
+    assert!(!fault.load(Ordering::Acquire), "{receipt}");
+    assert!(
+        matches!(base_policy, libc::SCHED_FIFO | libc::SCHED_RR),
+        "{receipt}"
+    );
+    assert!(
+        hw.contains("buffer_size: 512") && hw.contains("period_size: 256"),
+        "{receipt}"
+    );
+    backend.close(stream);
+}
+
 /// Select the three stage controllers.
 /// Takes no arguments; returns exact discovered input names, excluding the resetting MPD232.
 fn stage_inputs() -> midi::InputPolicy {

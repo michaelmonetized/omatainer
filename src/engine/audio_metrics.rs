@@ -35,7 +35,11 @@ pub struct AudioMetrics {
     pub max_overrun_ns: u64,
     pub backend_errors: u64,
     pub device_lost: u64,
-    /// CPAL 0.15 does not expose an exact backend dropped-buffer count.
+    #[serde(default)]
+    pub xruns: u64,
+    #[serde(default)]
+    pub realtime_denied: u64,
+    /// Backend underrun events do not reveal an exact dropped-buffer count.
     pub dropped_buffers: Option<u64>,
 }
 
@@ -57,6 +61,8 @@ pub(super) struct Telemetry {
     max_overrun: AtomicU64,
     backend_errors: AtomicU64,
     device_lost: AtomicU64,
+    xruns: AtomicU64,
+    realtime_denied: AtomicU64,
 }
 
 pub(super) fn nanoseconds(duration: Duration) -> u64 {
@@ -108,11 +114,25 @@ impl Telemetry {
         self.sequence.fetch_add(1, Ordering::Release);
     }
 
-    pub fn error(&self, error: &cpal::StreamError) {
+    /// Count a backend event without allocation.
+    /// Takes its classified error; returns whether the output must be retired.
+    pub fn error(&self, error: &cpal::Error) -> bool {
+        match error.kind() {
+            cpal::ErrorKind::Xrun => {
+                self.xruns.fetch_add(1, Ordering::Relaxed);
+                return false;
+            }
+            cpal::ErrorKind::RealtimeDenied => {
+                self.realtime_denied.fetch_add(1, Ordering::Relaxed);
+                return false;
+            }
+            _ => {}
+        }
         self.backend_errors.fetch_add(1, Ordering::Relaxed);
-        if matches!(error, cpal::StreamError::DeviceNotAvailable) {
+        if error.kind() == cpal::ErrorKind::DeviceNotAvailable {
             self.device_lost.fetch_add(1, Ordering::Relaxed);
         }
+        true
     }
 
     pub fn read(&self) -> AudioMetrics {
@@ -140,6 +160,8 @@ impl Telemetry {
             max_overrun_ns: self.max_overrun.load(Ordering::Relaxed),
             backend_errors: self.backend_errors.load(Ordering::Relaxed),
             device_lost: self.device_lost.load(Ordering::Relaxed),
+            xruns: self.xruns.load(Ordering::Relaxed),
+            realtime_denied: self.realtime_denied.load(Ordering::Relaxed),
             dropped_buffers: None,
         }
     }

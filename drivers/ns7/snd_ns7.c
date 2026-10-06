@@ -989,8 +989,11 @@ static int ns7_pre_reset(struct usb_interface *interface)
 	ns7_audio_stop(chip);
 	ns7_midi_pause(chip);
 	for (int i = 0; i < 2; i++)
-		if (streams[i])
-			snd_pcm_stop_xrun(streams[i]);
+		if (streams[i]) {
+			snd_pcm_stream_lock_irqsave(streams[i], flags);
+			snd_pcm_stop(streams[i], SNDRV_PCM_STATE_DISCONNECTED);
+			snd_pcm_stream_unlock_irqrestore(streams[i], flags);
+		}
 	return 0;
 }
 

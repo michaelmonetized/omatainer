@@ -121,20 +121,22 @@ fn fixed_metrics_and_warmed_callback_do_not_allocate_or_wait_for_readers() {
 #[test]
 fn stream_errors_are_counted_without_logging_or_inventing_dropped_buffers() {
     let metrics = Telemetry::default();
-    let device_lost = cpal::StreamError::DeviceNotAvailable;
-    let other = cpal::StreamError::BackendSpecific {
-        err: cpal::BackendSpecificError {
-            description: "test backend failure".into(),
-        },
-    };
+    let device_lost = cpal::Error::new(cpal::ErrorKind::DeviceNotAvailable);
+    let other = cpal::Error::with_message(cpal::ErrorKind::BackendError, "test backend failure");
+    let xrun = cpal::Error::new(cpal::ErrorKind::Xrun);
+    let priority = cpal::Error::new(cpal::ErrorKind::RealtimeDenied);
     let counts = test_alloc::measure(|| {
-        metrics.error(&device_lost);
-        metrics.error(&other);
+        assert!(metrics.error(&device_lost));
+        assert!(metrics.error(&other));
+        assert!(!metrics.error(&xrun));
+        assert!(!metrics.error(&priority));
     });
     assert_eq!((counts.allocations, counts.frees), (0, 0));
     let stats = metrics.read();
     assert_eq!(stats.backend_errors, 2);
     assert_eq!(stats.device_lost, 1);
+    assert_eq!(stats.xruns, 1);
+    assert_eq!(stats.realtime_denied, 1);
     assert_eq!(stats.dropped_buffers, None);
     assert!(stats.last_callback.is_none());
 }

@@ -92,14 +92,14 @@ fn input<T>(
     origin: Instant,
     full: Arc<AtomicBool>,
     fault: Arc<AtomicBool>,
-) -> Result<cpal::Stream, cpal::BuildStreamError>
+) -> Result<cpal::Stream, cpal::Error>
 where
     T: cpal::SizedSample,
     f32: cpal::FromSample<T>,
 {
     let channels = plan.channels as usize;
     device.build_input_stream(
-        &plan.config(),
+        plan.config(),
         move |data: &[T], _| {
             capture.push(
                 data,
@@ -112,7 +112,11 @@ where
                 full.store(true, Ordering::Release);
             }
         },
-        move |_| fault.store(true, Ordering::Release),
+        move |error| {
+            if error.kind() != cpal::ErrorKind::RealtimeDenied {
+                fault.store(true, Ordering::Release);
+            }
+        },
         None,
     )
 }
@@ -126,13 +130,13 @@ fn output<T>(
     stopped: Arc<AtomicBool>,
     full: Arc<AtomicBool>,
     fault: Arc<AtomicBool>,
-) -> Result<cpal::Stream, cpal::BuildStreamError>
+) -> Result<cpal::Stream, cpal::Error>
 where
     T: cpal::SizedSample + cpal::FromSample<f32>,
 {
     let channels = plan.channels as usize;
     device.build_output_stream(
-        &plan.config(),
+        plan.config(),
         move |data: &mut [T], _| {
             if !enabled.load(Ordering::Acquire) || stopped.load(Ordering::Acquire) {
                 for sample in data {
@@ -150,7 +154,11 @@ where
                 full.store(true, Ordering::Release);
             }
         },
-        move |_| fault.store(true, Ordering::Release),
+        move |error| {
+            if error.kind() != cpal::ErrorKind::RealtimeDenied {
+                fault.store(true, Ordering::Release);
+            }
+        },
         None,
     )
 }
@@ -160,7 +168,7 @@ macro_rules! formats {($format:expr,$call:ident,$($argument:expr),*)=>{match $fo
     cpal::SampleFormat::I32=>$call::<i32>($($argument),*),cpal::SampleFormat::I64=>$call::<i64>($($argument),*),
     cpal::SampleFormat::U8=>$call::<u8>($($argument),*),cpal::SampleFormat::U16=>$call::<u16>($($argument),*),
     cpal::SampleFormat::U32=>$call::<u32>($($argument),*),cpal::SampleFormat::U64=>$call::<u64>($($argument),*),
-    _=>Err(cpal::BuildStreamError::StreamConfigNotSupported),
+    _=>Err(cpal::ErrorKind::UnsupportedConfig.into()),
 }}}
 /// Explicit confirmed action only. The caller always restores session output.
 pub(crate) fn run(
