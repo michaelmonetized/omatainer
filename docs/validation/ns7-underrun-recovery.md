@@ -19,3 +19,9 @@ The final GUI is visible on workspace 10 with both tracks and playheads restored
 During UI cleanup, a scaled pointer movement accidentally started deck 2. Safe Stop halted it, and a fresh paused launch restored its saved playhead. The correction and state receipts are retained.
 
 The [machine-readable receipt](ns7-underrun-recovery-receipt.json) records results, hashes, earlier failed check expectations and the final restored state. No new listening or physical-button claim is inferred from these tests. MPD232 bank B/C and transport gestures remain pending while Michael is AFK; the independent four-port capture stays open without a timeout.
+
+## Subsequent status-capture exit
+
+A background status recorder later exited with OS I/O error 5. Omatainer retained the same PID and binary throughout. A subsequent snapshot at about 49 minutes of uptime contained 514,129 audio callbacks with zero underruns, backend errors, lost-device events, priority denials or missed deadlines. Both decks remained paused at their saved positions. This is continuous quiet-output evidence, not a musical-performance check.
+
+The recorder now runs as a read-only transient user service with direct file output and restart on failure. It produced 574 valid status frames with no stderr output or service restarts. The four-port MPD capture remains active without a timeout. The [status-capture receipt](ns7-status-capture-recovery-receipt.json) preserves the original exit and current process continuity; the exact cause of the old recorder's I/O error remains unestablished.

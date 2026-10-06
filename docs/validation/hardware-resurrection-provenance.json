@@ -1034,5 +1034,6 @@
   },
   "stage_controls_receipt": "docs/validation/stage-controls-receipt.json",
   "latest_native_fixture_source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
-  "audio_recovery_receipt": "docs/validation/ns7-underrun-recovery-receipt.json"
+  "audio_recovery_receipt": "docs/validation/ns7-underrun-recovery-receipt.json",
+  "status_capture_recovery_receipt": "docs/validation/ns7-status-capture-recovery-receipt.json"
 }
