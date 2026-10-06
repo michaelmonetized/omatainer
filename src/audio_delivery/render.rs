@@ -8,6 +8,8 @@ pub(super) fn prepare(
     request: &Export,
 ) -> Result<(Box<crate::engine::RtEngine>, Vec<usize>, usize), String> {
     let state = &mut captured.state;
+    if request.source==Source::Arrangement&&state.arrangement.is_none(){return Err("This project has no Arrangement song".into());}
+    if let Some(model)=&mut state.arrangement{std::sync::Arc::make_mut(model).enabled=request.source==Source::Arrangement;}
     if state.mic_aux.is_some_and(|c| c.needs_input()) {return Err("Live mic/aux sources need performance recording".into());}
     if request.source == Source::Scene
         && state.session.as_ref().is_none_or(|s| {
@@ -32,6 +34,7 @@ pub(super) fn prepare(
                 .into(),
         );
     }
+    if request.source==Source::Arrangement{if let Some(model)=&state.arrangement{for instance in &model.instances{let Some(slot)=state.session.as_ref().and_then(|layout|layout.tracks.iter().position(|t|t.active&&t.id==instance.track.id))else{continue};if model.sources.iter().find(|s|s.id==instance.source).is_some_and(|s|s.clip.kind==crate::engine::ClipKind::Midi&&!s.clip.notes.is_empty())&&state.tracks[slot].kind!=0&&state.tracks[slot].synth.offline.is_some(){return Err("A song instrument is unavailable; restore it before exporting".into());}}}}
     for track in &state.tracks {
         let scene = if request.source == Source::Scene {
             Some(request.scene)
@@ -95,7 +98,7 @@ pub(super) fn prepare(
             options.count_in = 0;
         }
     }
-    if request.source == Source::Scene {
+    if matches!(request.source,Source::Scene|Source::Arrangement) {
         state.beat = 0.0;
         state.timeline_seconds = 0.0;
         for t in &mut state.tracks {

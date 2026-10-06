@@ -26,6 +26,7 @@ pub(super) struct Import {
     heap_bytes: usize,
     fx_bytes: usize,
     fx_ids: Vec<fx::FxId>,
+    pub(super) arrangement: Option<Box<crate::engine::arrangement::Playback>>,
 }
 impl Import {
     pub(super) fn bytes(&self) -> usize {
@@ -47,7 +48,8 @@ impl Import {
         } else {
             (self.base_tracks, self.base_scenes)
         };
-        rt.tracks.len() == tracks
+        (self.arrangement.is_none()||!rt.playing&&!rt.recording&&!rt.decks.iter().any(|d|d.playing||d.touching))
+            && rt.tracks.len() == tracks
             && rt.scene_fx.len() == scenes
             && rt.tracks.capacity() >= self.base_tracks + self.added_tracks
             && rt.scene_fx.capacity() >= self.base_scenes + self.added_scenes
@@ -80,6 +82,7 @@ impl Import {
             rt.tracks.append(&mut self.nodes);
             rt.scene_fx.append(&mut self.racks);
         }
+        if let Some(arrangement)=&mut self.arrangement{std::mem::swap(arrangement,&mut rt.arrangement);rt.arrangement.reset(rt.precise_midi_beat());}
         self.installed = !self.installed;
     }
     pub(super) fn prepare_rate(&mut self, sr: f32) {
@@ -232,6 +235,9 @@ impl Request {
                 .clips
                 .extend((0..scenes.len()).map(|_| super::structural::empty_cell()));
         }
+        let before_song=state.arrangement.clone();
+        let before_media=media.clone();
+        let mut imported_tracks=std::collections::HashMap::new();
         let mut remap = std::collections::HashMap::new();
         let mut pins = Vec::new();
         let mut index = |original: usize| -> usize {
@@ -288,8 +294,13 @@ impl Request {
                 Axis::Track,
                 source_layout.tracks[source_slot].clone(),
             )?;
+            imported_tracks.insert(source_layout.reference(Axis::Track,source_slot).unwrap(),next.reference(Axis::Track,state.tracks.len()).unwrap());
             state.tracks.push(track);
         }
+        let mut song_changed=false;
+        if selection.clips{if let Some(source_song)=&source.arrangement{let mut song=state.arrangement.as_deref().cloned().unwrap_or_default();let mut source_ids=std::collections::HashMap::new();for instance in &source_song.instances{let Some(&target)=imported_tracks.get(&instance.track)else{continue};let source_id=if let Some(&id)=source_ids.get(&instance.source){id}else{let mut shared=source_song.sources.iter().find(|s|s.id==instance.source).ok_or("Imported song source disappeared")?.clone();let id=song.identity()?;shared.id=id;shared.clip.audio=shared.clip.audio.map(&mut index);source_ids.insert(instance.source,id);song.sources.push(shared);id};let mut instance=*instance;instance.id=song.identity()?;instance.source=source_id;instance.track=target;song.instances.push(instance);song_changed=true;}if song_changed{state.arrangement=Some(Arc::new(song));}}}
+        drop(index);
+        state.version=project::STATE_VERSION;
         state.session = Some(next.clone());
         state.capture_media_order(&mut media)?;
         state.validate_processor_storage(rate)?;
@@ -300,6 +311,8 @@ impl Request {
             return Err("Imported dependencies exceed native project limits".into());
         }
         preflight(&state, &media)?;
+        let mut song_bytes=0;
+        let arrangement=if song_changed{let plan=crate::engine::arrangement::Plan::prepare(state.arrangement.as_ref().unwrap().clone(),&media,&next,&std::sync::atomic::AtomicBool::new(false))?;song_bytes+=plan.bytes();for audio in plan.media(){pins.push(audio.clone());}if let Some(song)=before_song{let before_plan=crate::engine::arrangement::Plan::prepare(song,&before_media,&before,&std::sync::atomic::AtomicBool::new(false))?;song_bytes+=before_plan.bytes();for audio in before_plan.media(){pins.push(audio.clone());}}Some(crate::engine::arrangement::Playback::new(Some(plan),state.beat))}else{None};
         let nodes = state
             .tracks
             .into_iter()
@@ -325,7 +338,7 @@ impl Request {
             .iter()
             .map(|id| fx::FxSlot::required_storage(*id, rate as f32))
             .sum();
-        let heap_bytes = fx_storage.len() * std::mem::size_of::<fx::FxId>()
+        let heap_bytes = song_bytes + arrangement.as_ref().map_or(0,|p|p.storage_bytes()) + fx_storage.len() * std::mem::size_of::<fx::FxId>()
             + nodes.capacity() * std::mem::size_of::<Box<TrackRt>>()
             + nodes.iter().map(|t| t.retained_bytes()).sum::<usize>()
             + racks.capacity() * std::mem::size_of::<fx::FxChain>()
@@ -347,6 +360,7 @@ impl Request {
             heap_bytes,
             fx_bytes: reserved_fx_bytes,
             fx_ids: fx_storage.clone(),
+            arrangement,
         };
         let ack = Ack::new();
         Ok((

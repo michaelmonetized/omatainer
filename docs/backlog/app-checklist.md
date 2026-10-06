@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 32 implemented · 7 partial · 182 planned · 0 accepted · 8 outside release
+127 existing stack · 34 implemented · 6 partial · 181 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -192,7 +192,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented | #82, #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
 | [x] | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented | #130 | [receipt](../../docs/validation/mic-aux.md), [receipt](../../docs/validation/mic-aux-receipt.json) |
 | [x] | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented | #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
-| [ ] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | partial | #82, #130 | [receipt](../../docs/validation/audio-clips.md), [receipt](../../docs/validation/audio-clips-receipt.json) |
+| [x] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | implemented | #82, #130 | [receipt](../../docs/validation/audio-clips.md), [receipt](../../docs/validation/audio-clips-receipt.json), [receipt](../../docs/validation/arrangement.md), [receipt](../../docs/validation/arrangement-receipt.json) |
 | [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned | #130 |  |
 | [ ] | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned | #132 |  |
 | [x] | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented | #134 | [receipt](../../docs/validation/beat-jump.md) |
@@ -236,7 +236,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | planned | #195, #42 |  |
 | [ ] | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned | #195, #112 |  |
 | [ ] | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned | #112, #195, #73 |  |
-| [ ] | [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | planned | #113, #82, #83, #179 |  |
+| [x] | [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | implemented | #113, #82, #83, #179 | [receipt](../../docs/validation/arrangement.md), [receipt](../../docs/validation/arrangement-receipt.json) |
 | [ ] | [#227](https://github.com/michaelmonetized/omatainer/issues/227) | Give scenes names, tempo, meter and launch-state semantics | planned | #113, #196, #114 |  |
 | [ ] | [#228](https://github.com/michaelmonetized/omatainer/issues/228) | Record and overdub audio or MIDI directly into Session slots | planned | #182, #196, #130, #112 |  |
 | [ ] | [#229](https://github.com/michaelmonetized/omatainer/issues/229) | Export aligned stems, track groups and delivery versions in batches | planned | #179 |  |

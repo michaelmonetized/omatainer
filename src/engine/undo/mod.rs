@@ -4,6 +4,7 @@
 mod capture;
 mod midi_import;
 mod audio_clip;
+mod arrangement;
 mod patch;
 mod recording;
 #[cfg(test)]
@@ -57,6 +58,7 @@ pub enum Name {
     ClipGain,
     ClipNotes,
     AudioClip,
+    Arrangement,
     RecordNotes,
     Deck,
     DeckSeek,
@@ -87,6 +89,7 @@ impl Name {
             Self::ClipGain => "Set clip gain",
             Self::ClipNotes => "Edit clip notes",
             Self::AudioClip => "Edit audio clip",
+            Self::Arrangement => "Edit arrangement",
             Self::RecordNotes => "Record notes",
             Self::Deck => "Edit deck",
             Self::DeckSeek => "Seek deck",
@@ -871,6 +874,7 @@ impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
         if let Command::MicAuxConfigure(request)=&command {request.ack.reject();}
         if let Command::AudioClipEdit(request)=&command {request.ack.reject();}
+        if let Command::ArrangementEdit(request)=&command {request.ack.reject();}
         if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
@@ -886,6 +890,7 @@ impl Journal {
                     | Command::SessionEdit(_)
                     | Command::Gesture { .. }
                     | Command::AudioClipEdit(_)
+                    | Command::ArrangementEdit(_)
                     | Command::MidiImport(_)
             | Command::MidiEdit(_)
                     | Command::SetNotes { .. }

@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; unopened-device headless engine and actual native GUI handlers",
+  "sourceFiles": {
+    "src/audio_delivery.rs": "75d45f87aef52e2b207cdae532425b046fcab55e222b4259d701145dacc98c53",
+    "src/audio_delivery/render.rs": "281d672baee9f4a1e34cb8cd45cbb01840b73028d7ca54b2c43defb91ddab566",
+    "src/audio_delivery/tests.rs": "7b5a64418b31aa4c011a49690bf462b35b778e48e9831b087400ff02ee9819f8",
+    "src/engine/control.rs": "8db857291e22b240ca4ffaf5be13ae11a2aa5cb446530cecf6445e6dabe7a645",
+    "src/engine/midi/routing/playback.rs": "1d47fb856ee5a9ff37afa90f87e7f9febf58d419ae4411c25860869a6ea1b45e",
+    "src/engine/midi/routing/playback/tests.rs": "1cfe570273e15c144e7dddc6dfd58ba705b643b9898b06aed281606ace33af35",
+    "src/engine/midi_data.rs": "8a6c683aa964b9987791aaa440da1d563acc37ca4289a09f5b525d942f5eb83b",
+    "src/engine/midi_data/control.rs": "a2f1c192a245974481e5b412f869b0eaac31c57ca5c9c4dee7593dcce5fe7e3a",
+    "src/engine/midi_data/timeline.rs": "cbdc98dffdaf5f8edc9bfb921e7553b6d6bb72cb0e8ed0b8548b8e51aac4ae72",
+    "src/engine/midi_edit.rs": "8f914e4a7e92363b11bf59c914835807825cc4d3440771d34587b5985036f028",
+    "src/engine/mod.rs": "745324d29ff7edc360dbce479ffd2d135915fa7e5093a309da49c42032c20bae",
+    "src/engine/performance.rs": "7d3074a7f1c318a295e63a94c5f866ba15ed45637f2d8916f07ad95dec69e342",
+    "src/engine/project.rs": "2ce014a92c6eeb0ebab803cfa166120a231fc298b3f5ff95dcca385d66ad70ff",
+    "src/engine/project/capture.rs": "c0bc137b1f3e7dc3da9e4d5cbee9003f1b481ad0b9fa5c51b7c22b2876d8710f",
+    "src/engine/project/model.rs": "0f35fbc2212c01ba356878072b81f1e0d8b37f18bf4a5f296114e989e54e0e06",
+    "src/engine/project/prepare.rs": "7ee09c59d5093049a3f23ce8b58bbf05b57537498cb0574ae3b4f813f2819787",
+    "src/engine/session/registry.rs": "73ca266b8b0d7434444f2d3b46c870a28c88619a9117fc9775436e3d7d8ebb91",
+    "src/engine/session/transaction.rs": "22f5eb66c72965d19a3e4faf5fa83fc7ff7807ede3288af28caa014fb25a69bd",
+    "src/engine/session/transaction/import.rs": "13f7be7fea3731c24c1f52fffe71ffc9eed209b9b560335c8bc065980d1c7421",
+    "src/engine/snapshot.rs": "57fef39b76ab7e76d08bfb5e7ed8691b1a7c1f2a4137105475a302e8ff77fb2b",
+    "src/engine/undo/capture.rs": "70924612631d1e4f7e7b57d2fc99a50ca1a3dd379dfb72616af9b3106bb92abd",
+    "src/engine/undo/midi_import.rs": "3591413e6117667a58f78f9843f7e056d82d847f33c873185b5d78cc09f712c8",
+    "src/engine/undo/mod.rs": "b22940e61c43eca8927f8592411c9d2a8609bbc801df8c95c5e9afe0be28076e",
+    "src/engine/undo/patch.rs": "63464aabeda4a02d290fc75e025346e79491caf76b6bd9e07d687e20750967f8",
+    "src/engine/video_transport.rs": "bab969354bb8b656131a6660f9bfddfa32ac75bb1fe15f8e6e0c7ca29c5e1e92",
+    "src/ui.rs": "eba39d7c5e834481ee237bd8dd590101aaa75ab616f0d5869297a8c150abd0c6",
+    "src/ui/audio_delivery.rs": "d2130366afe7feed309131b7978ae5777a2c2ef0c4e67444d3f6e4615cc3f574",
+    "src/ui/audio_status.rs": "40a28679151c49c1700568f954f64bb07a8917ae9ec08399dbd0542a094a9b83",
+    "src/ui/help/catalogue.rs": "9360ba00c40b0ec74189002df1c16ed62f004b57f8063bb43a6da295f2d42608",
+    "src/ui/project_versions/worker.rs": "7302078a32930bd6020cdf52e5378acae48d211762b84b9ac39e8aee23252837",
+    "src/ui/templates/worker.rs": "28489610c6ee8bb0967da385317c20cc8116abbf7da85e8791eda41b2944c47f",
+    "src/engine/arrangement.rs": "08fdfd15303ecc5449592a97fc5af96b42be35bcdb1f25b1ce11686e7aff6003",
+    "src/engine/arrangement/edit.rs": "74724b95b5f01d345fab8c03ff7141dbf144eeb27f7c2aa7aa5c9495fb38a7dc",
+    "src/engine/arrangement/playback.rs": "743d0bba449637ddcf71dff16c326a32dc20457a3bb58267f70a8ad7f6ecd230",
+    "src/engine/arrangement/prepare.rs": "94a4499993235d6a3ab9309b72f4eec5cceaedfc3b9d388dbca83893d3fd7839",
+    "src/engine/arrangement/tests.rs": "7e5b318456de8952ae813311f4b1a9c9a0900abbdb23c55f0bea0ab5918383e2",
+    "src/engine/undo/arrangement.rs": "d280d47b1e1d1d4019cabeedaad1b91ca5b93c2e9a37d5d5d7c58d4dbb8aff67",
+    "src/ui/arrangement.rs": "2c9a464bf7a2c1b3b75061211a8696546a040e87b67ab02809b413353410186e",
+    "src/ui/arrangement/tests.rs": "d029ec23e34d8e080e1bb302e6d14bf2528802a33ef123d88b25783af53c24c2",
+    "src/ui/arrangement/worker.rs": "11fab297166a397a26c2bbcdd643112afca162a11d6de4311262a331059d9ec2"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/arrangement-tests-fifth",
+    "sha256": "565faf860d7c4ed3bf497d98d0e5f403a1727d7c77d4e352018235e5844460e4"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/arrangement-fifth-compiled-source-inventory.json",
+    "sha256": "4303aee447d1a9a5d7fa9921014c3fa5ce8319475bb836962e4b66daac7a3520",
+    "files": 710
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "1729b39cde8e3c0ab3e821125badc27c5382b57efde6e4334cac0ed9ebb2215f",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    },
+    "scope": "These embedded inputs remained unchanged through the fifth build and are retained alongside the code and fixture inventory. Release source licensing metadata is refreshed after qualification."
+  },
+  "tests": {
+    "focused": {
+      "path": "target/app-backlog/arrangement-fifth-focused-tests.log",
+      "sha256": "a9355ae6fffeae931655b3a248eca03edfe6fe9e13377b4d8da25447cf83f213",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1893,
+      "seconds": 13.44
+    },
+    "full": {
+      "path": "target/app-backlog/arrangement-full-tests.log",
+      "sha256": "7a513d7f0266f2d286070fd0b082c8cce50985cab0c4d49311114a894cf5e4cd",
+      "passed": 1863,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 460.6
+    },
+    "manual": {
+      "path": "target/app-backlog/arrangement-manual-regenerate.log",
+      "sha256": "d38d6f51288a1f88caafdf534055bde6c21e01cfe9b7e8bd1402b3b490ddf39d",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1906,
+      "seconds": 0
+    }
+  },
+  "retainedAttempts": [
+    {
+      "name": "first",
+      "passed": 0,
+      "failed": 7,
+      "reason": "Invalid synthetic source-state validation and an unlabeled native source selector. Its preliminary inventory was retained before focused execution, after compilation began.",
+      "log": {
+        "path": "target/app-backlog/arrangement-first-focused-tests.log",
+        "sha256": "c1adc7a8e5b359d1b299cdd7c1d43a23df9df2826c7aecbb6304d3e390031068"
+      },
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/arrangement-tests-first",
+        "sha256": "b629266c30c1bf9c66ca75670fc36cb7b428043374ef943c01e2356293b5c883"
+      },
+      "inventory": {
+        "path": "target/app-backlog/arrangement-first-compiled-source-inventory.json",
+        "sha256": "a1893834aed071257fbd0ddc19bd7aa8df7c8626d45cb73cc463e4c147a197a9"
+      }
+    },
+    {
+      "name": "second",
+      "passed": 6,
+      "failed": 1,
+      "reason": "A real rejected transaction stayed Pending; common prepared-edit and command-wrapper rejection now acknowledges it.",
+      "log": {
+        "path": "target/app-backlog/arrangement-second-focused-tests.log",
+        "sha256": "9a3d248302791c2fdc6af42279273613bc560c5ed415fc259e8e4f76960c359f"
+      },
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/arrangement-tests-second",
+        "sha256": "d9c5d2aaf0fa422ff75a679af723cc9a5404f75623a60db0232416cfa53cf7aa"
+      },
+      "inventory": {
+        "path": "target/app-backlog/arrangement-second-compiled-source-inventory.json",
+        "sha256": "2c2512bd5f5b1eea1a53decb764f0a5f1e136db2bd0d94d4b2159d7259965199"
+      }
+    },
+    {
+      "name": "third",
+      "passed": 8,
+      "failed": 0,
+      "reason": "Initial source, ownership, native editing and five-minute export qualification before expanded transport/routing checks.",
+      "log": {
+        "path": "target/app-backlog/arrangement-third-focused-tests.log",
+        "sha256": "3f369874f1968b93a60195420a996fae9078a1058d7f593336af47d42f3884fe"
+      },
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/arrangement-tests-third",
+        "sha256": "13694b76f877ac55f622ff00ab098757efa5c33a5a21a4cbd95bff589fe688b1"
+      },
+      "inventory": {
+        "path": "target/app-backlog/arrangement-third-compiled-source-inventory.json",
+        "sha256": "37d91f2abc2d3fa896db40e232442055da23140f1ef53bd345905fd971a14d71"
+      }
+    },
+    {
+      "name": "fourth",
+      "passed": 12,
+      "failed": 2,
+      "reason": "Tempo-ramp callback reanchoring differed by at most 7e-10; integer-frame mapping now preserves exact export parity. The count-in fixture read the last mixed track tap instead of actual output; it now reads program output. Target-device assertions now explicitly inspect the target track raw and post-effect taps.",
+      "log": {
+        "path": "target/app-backlog/arrangement-fourth-focused-tests.log",
+        "sha256": "7b1e58bae88776a3e1f84cc5fe76df448a24933718303d3a9cbd6e5856f2aeb9"
+      },
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/arrangement-tests-fourth",
+        "sha256": "007e9ec0b12e892dd36613f790a503c5eb16a8617118ecee6e145913e4807ae1"
+      },
+      "inventory": {
+        "path": "target/app-backlog/arrangement-fourth-compiled-source-inventory.json",
+        "sha256": "86d68ce2c11f7e748fc936091823ede4112da03d2851bc53a424a5ba3c2b5fb9"
+      }
+    }
+  ],
+  "limits": [
+    "256 shared sources, 4096 song instances, 64 overlaps per track, 256 held MIDI notes per track, 262144 scheduled boundaries and 64 MiB prepared-plan capacity; native MIDI/media/History budgets also apply.",
+    "Audio PCM is shared and embedded; asynchronous streaming remains issue 184.",
+    "Pitch resampling changes pitch and duration; independent warp modes remain issue 250.",
+    "External MIDI output retains the bounded 256-event block refusal policy.",
+    "No hardware device was opened, captured or auditioned; Windows/macOS and physical-stage qualification remain outside this software pass."
+  ],
+  "checks": {
+    "node": {
+      "path": "target/app-backlog/arrangement-node-tests.log",
+      "sha256": "8c06d63ebebb73ede32efe83acff39ec52e79d22ff68e2b415436ab4f155c9d3",
+      "passed": 15,
+      "failed": 0
+    },
+    "capabilityMatrix": "Passed against the frozen compiled fixture inventory",
+    "checklist": "356 software feature issues; dependency order verified; 34 implemented and 6 partial above 127 existing stack items",
+    "sourceInventory": "731 files; locked dependency versions, features, checksums, licenses and source locations verified unchanged",
+    "compiledSource": "710 unchanged code and fixture files; release license metadata refreshed after qualification",
+    "diff": "git diff --check passed",
+    "liveOpenIssueReview": {
+      "path": "target/app-backlog/open-issues-arrangement-review.json",
+      "open": 358,
+      "additionalHardwareIssue": 508,
+      "missingTrackedSoftwareIssues": []
+    }
+  }
+}

@@ -518,7 +518,9 @@ fn destructive(command: &Command) -> bool {
         Command::SessionEdit(request) => request.disruptive(),
         Command::MicAuxConfigure(_)
         | Command::TimelineSeek(_)
+        | Command::SongSeek(_)
         | Command::AudioClipEdit(_)
+            | Command::ArrangementEdit(_)
         | Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }
@@ -759,6 +761,7 @@ impl Output {
 }
 
 pub(super) fn reject_receipt(command: &Command) {
+    super::midi_edit::reject_retired(command);
     match command {
         Command::Remote(request) => request.ack.reject(),
         Command::ProviderPreview(request) => request.reject(),

@@ -49,6 +49,7 @@ mod waveform;
 mod piano_roll;
 mod midi_files;
 mod audio_clips;
+mod arrangement;
 mod timing;
 mod dependencies;
 mod portability;
@@ -200,6 +201,7 @@ pub struct App {
     piano_roll: piano_roll::Editor,
     midi_files: midi_files::Editor,
     audio_clips: Box<audio_clips::Editor>,
+    arrangement:Box<arrangement::Editor>,
     timing: timing::Editor,
     dependencies: dependencies::Dependencies,
     portability: portability::Portability,
@@ -345,6 +347,7 @@ impl App {
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
             audio_clips: Box::default(),
+            arrangement:Box::default(),
             timing: timing::Editor::default(),
             dependencies: dependencies::Dependencies::default(),
             portability: portability::Portability::default(),
@@ -852,6 +855,7 @@ impl App {
         self.poll_piano_roll();
         self.poll_midi_files();
         self.poll_audio_clips();
+        self.poll_arrangement();
         self.timing.poll(&self.engine);
         self.poll_dependencies();
         self.poll_portability();
@@ -904,6 +908,7 @@ impl App {
         self.piano_roll_ui(ctx);
         self.midi_files_ui(ctx);
         self.audio_clips_ui(ctx);
+        self.arrangement_ui(ctx);
         self.timing_ui(ctx);
         self.dependencies_ui(ctx);
         self.portability_ui(ctx);

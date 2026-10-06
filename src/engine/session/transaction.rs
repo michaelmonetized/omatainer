@@ -463,7 +463,7 @@ impl Content {
 impl Inverse {
     pub(crate) fn reserve(&mut self, rt: &RtEngine) {
         self.reserved_heap = match &self.content {
-            Some(Content::Import(import)) => import.bytes(),
+            Some(Content::Import(import)) => import.bytes() + if import.arrangement.is_some() {rt.arrangement.storage_bytes()} else {0},
             None => 0,
             Some(Content::Track { slot, node }) => {
                 node.as_ref().map_or(0, |node| node.retained_bytes())

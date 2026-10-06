@@ -2,6 +2,7 @@ use super::{model::*, *};
 
 pub(super) struct Frame {
     pub state: State,
+    pub arrangement: Option<Arc<arrangement::Plan>>,
     pub media: Vec<Arc<Sample>>,
     pub revision: u64,
     pub checkpoint: undo::Checkpoint,
@@ -33,6 +34,7 @@ impl Frame {
     pub fn new() -> Self {
         Self {
             state: { let mut state = State::blank(); state.session = Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)); state },
+            arrangement: None,
             media: Vec::with_capacity(MAX_MEDIA_REFS),
             checkpoint: undo::Checkpoint::default(),
             revision: 0,
@@ -268,6 +270,7 @@ impl Frame {
         target.builtin =
             std::array::from_fn(|i| rt.builtin[i].as_ref().map(|s| media(&mut self.media, s)));
         rt.capture_held_durations(target);
+        self.arrangement = rt.arrangement.plan.clone();
         self.playback_receipts = std::array::from_fn(|i| rt.decks[i].load_receipt.clone());
         self.revision = rt.project.revision();
         self.checkpoint = rt.undo.checkpoint();

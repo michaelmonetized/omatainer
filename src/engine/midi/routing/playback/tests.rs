@@ -1,6 +1,20 @@
 use super::*;
 use crate::engine::{midi_data::Lanes, test_alloc, MidiNote};
 
+#[test]
+fn arrangement_seek_emits_original_program_pending_banks_and_owned_notes_without_devices(){
+    use crate::engine::{arrangement::{Model,Source,Instance},Command,Engine};
+    use std::sync::atomic::{AtomicBool,Ordering::Release};
+    let(engine,rt)=Engine::headless_for_test(48000,256);let mut rt=Box::new(rt);rt.bpm=120.0;
+    let handle=engine.project.clone();let capture=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)).unwrap());while !capture.is_finished(){rt.process(&mut []);std::thread::sleep(std::time::Duration::from_millis(1));}let captured=capture.join().unwrap();
+    let clip=controller_clip(&[(0,&[0xb3,0,2]),(0,&[0xb3,32,3]),(0,&[0xc3,5]),(960,&[0xb3,0,9]),(960,&[0xb3,32,10]),(1920,&[0xb3,74,88]),(2880,&[0xe3,9,70]),(3840,&[0xd3,12]),(5760,&[0xb3,74,99])]);
+    let mut saved=captured.state.tracks[2].clips[7].clone();saved.kind=clip.kind;saved.name="owned song MIDI".into();saved.bars=clip.bars;saved.region=clip.region;saved.notes=clip.notes;saved.lanes=clip.lanes;
+    let track=captured.state.session.as_ref().unwrap().reference(crate::engine::session::Axis::Track,2).unwrap();let model=Model{enabled:true,next_id:3,sources:vec![Source{id:1,clip:saved}],instances:vec![Instance{id:2,source:1,track,start:0.0,offset:0.0,duration:16.0,repeating:false,gain:1.0}]};let(request,ack)=crate::engine::arrangement::edit::Request::prepare(captured,model,&AtomicBool::new(false)).unwrap();assert_eq!(test_alloc::measure(||rt.apply(Command::ArrangementEdit(request))),Default::default());assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
+    let shared=engine.cmd.midi_routing();let events=shared.receiver.lock().take().unwrap();shared.bind_identity(&super::super::Routing{enabled:true,routes:vec![super::super::Route{track:2,inputs:vec![],output:None,output_channel:None,monitor:false,thru:false,filter:Default::default()}]});shared.mask.store(1<<2,Release);shared.alive.store(true,Release);
+    let mut packets=Vec::with_capacity(16);assert_eq!(test_alloc::measure(||{rt.apply(Command::Play);rt.apply(Command::TimelineSeek(2.5));rt.process(&mut[0.0;4]);while let Ok(event)=events.try_recv(){if event.clear.is_none(){packets.push(event);}}}),Default::default());
+    assert_eq!(packets.iter().map(|p|p.packet.bytes()).collect::<Vec<_>>(),vec![&[0xb3,0,2][..],&[0xb3,32,3],&[0xc3,5],&[0xb3,0,9],&[0xb3,32,10],&[0xb3,74,88],&[0xe3,9,70],&[0xd3,12],&[0x93,60,100]]);assert!(matches!(packets.last().unwrap().owner,Owner::Clip{track:2,..}));shared.alive.store(false,Release);
+}
+
 fn controller_clip(messages: &[(u64, &[u8])]) -> Clip {
     let mut clip = Clip::empty(); clip.kind = crate::engine::ClipKind::Midi; clip.bars = 4.0;
     clip.region = Some(Region { loop_enabled: false, ..Region::full(4.0) });

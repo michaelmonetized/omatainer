@@ -334,6 +334,8 @@ impl Frame {
         target.bpm = rt.bpm;
         target.beat = rt.beat;
         target.timeline_seconds = rt.timeline_seconds();
+        target.arrangement_enabled=rt.arrangement.enabled();
+        target.arrangement_end=rt.arrangement.plan.as_ref().map_or(0.0,|p|p.end);
         target.file_conductor = rt.conductor.is_some();
         target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {

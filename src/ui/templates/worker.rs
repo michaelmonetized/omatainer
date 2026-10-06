@@ -139,6 +139,7 @@ pub(in crate::ui) fn validate(bundle: &Bundle<Native>) -> Result<(), String> {
             || state.scene_fx.len() != 1
             || state.tracks[0].launch.is_some()
             || state.conductor.is_some()
+            || state.arrangement.as_ref().is_some_and(|s|!s.sources.is_empty()||!s.instances.is_empty())
             || state.scene_fx.iter().any(|rack| !rack.is_empty())
             || state.decks.iter().any(|deck| deck.audio.is_some())
             || state

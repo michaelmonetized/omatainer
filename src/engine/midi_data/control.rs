@@ -120,3 +120,20 @@ pub(crate) fn index(messages: &[Message]) -> Vec<StateLane> {
         })
         .collect()
 }
+
+/// Restore controller state in the order required by MIDI devices.
+/// Takes indexed state lookup and a bounded packet sink; restores reset, original program banks, pending banks and ordinary controls before notes without replaying parameter transactions.
+pub(crate) fn chase(mut point:impl FnMut(u16)->Option<StatePoint>,mut emit:impl FnMut([u8;3],u8,u64)){
+    for channel in 0..16u16{
+        let reset=point(channel*256+121);if let Some(reset)=reset{emit(reset.message.bytes,3,u64::from(channel));}
+        let program=point(channel*256+130);
+        if let Some(program)=program{for(i,cc)in[0,32].into_iter().enumerate(){if let Some(value)=program.banks[i]{emit([0xb0|channel as u8,cc,value],3,32+u64::from(channel)*4+i as u64);}}emit(program.message.bytes,2,34+u64::from(channel)*4);}
+        for kind in(0..120u16).chain([128,129]){
+            if matches!(kind,6|38|96..=101){continue;}
+            let Some(value)=point(channel*256+kind)else{continue};
+            if !matches!(kind,0|7|10|32)&&reset.is_some_and(|r|(value.message.tick,value.message.order)<(r.message.tick,r.message.order)){continue;}
+            if matches!(kind,0|32)&&program.is_some_and(|p|p.banks[usize::from(kind==32)]==Some(value.message.bytes[2])){continue;}
+            emit(value.message.bytes,value.message.length,128+u64::from(channel)*256+u64::from(kind));
+        }
+    }
+}

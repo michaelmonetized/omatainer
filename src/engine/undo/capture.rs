@@ -198,6 +198,7 @@ impl RtEngine {
             }
         }
         if let Command::SessionEdit(request) = c { self.history_session(request); return None; }
+        if let Command::ArrangementEdit(request) = c {self.history_arrangement(request);return None;}
         if let Command::AudioClipEdit(request) = c { self.history_audio_clip(request); return None; }
         if let Command::MidiImport(request) = c {
             self.history_midi_import(request); return None;
@@ -463,6 +464,7 @@ pub(super) fn command_bytes(command: &Command) -> usize {
         Command::MicAuxConfigure(_) => std::mem::size_of::<audio::routing::mic_aux::control::Request>(),
         Command::SessionEdit(request) => request.bytes(),
         Command::AudioClipEdit(request) => request.bytes(),
+        Command::ArrangementEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),

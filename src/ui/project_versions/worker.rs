@@ -290,6 +290,7 @@ pub(super) fn compare(
         let scene = |slot: usize| format!("{:x?}/{}", layout.namespace, layout.scenes[slot].id.0);
         let mut labels = BTreeMap::new();
         let mut out: [BTreeMap<String, Value>; 4] = std::array::from_fn(|_| BTreeMap::new());
+        if let Some(song)=&state.arrangement{let mut song=serde_json::to_value(song).map_err(|e|e.to_string())?;for (index,source) in state.arrangement.as_ref().unwrap().sources.iter().enumerate(){song["sources"][index]["clip"]["audio"]=json!(source.clip.audio.and_then(|i|hashes.get(i)));}labels.insert("Arrangement song".into(),"Shared song sources and placements".into());out[1].insert("Arrangement song".into(),song);}
         for &slot in &layout.track_order {
             let slot = slot as usize;
             let track = &state.tracks[slot];

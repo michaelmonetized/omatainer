@@ -94,11 +94,19 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Arrange a song
+
+Shared sources and independent musical-beat placements
+
+Open Arrangement timeline in Setup. Retain a reviewed Session audio or MIDI clip, choose a destination track and place it at the selected range start or double-click an empty track row. Copies share source audio and keep independent start, offset, duration, repetition and gain. Drag to move; Shift-drag trims the end. Use exact beat fields, snap, zoom, selected range and the overview for long songs. The instance chooser includes placements whose track was deleted; choose a destination and move the instance to recover it. Review Use Arrangement playback and Apply with transport, decks and recording stopped in Studio mode. Apply creates one Undo entry. Play, Pause, Rewind and Seek range start use the actual transport and tempo map; the playhead follows the renderer. Save keeps sources and instances, and selected-track imports copy their song placements. Export audio offers Arrangement using the same renderer. Audio pitch resampling changes pitch and duration; independent time stretching is separate.
+
+Workflow: Edit and undo.
+
 ### Edit Session audio clips
 
 Source frames, tempo, pitch, reverse, gain and loops
 
-Choose an empty or audio slot, then open Audio clip in Setup or use the clip's alternate audio action. Inspect a supported local file or reuse a shared project source. Review the rainbow waveform, zoom and source scroll; trim and loop bounds use exact half-open source frames. Pitch resampling changes pitch and duration; source tempo places the audio against the musical clock. Gain, reverse and source settings are nondestructive. Stop the target clip and recording and use Studio mode before Apply. A bounded worker decodes and prepares the edit; the renderer acknowledges one complete Undo entry. Stale targets preserve current work. Save retains the embedded shared source and all settings. Older clips keep whole-buffer stretching until explicitly converted by Apply. This Session editor does not yet create Arrangement instances.
+Choose an empty or audio slot, then open Audio clip in Setup or use the clip's alternate audio action. Inspect a supported local file or reuse a shared project source. Review the rainbow waveform, zoom and source scroll; trim and loop bounds use exact half-open source frames. Pitch resampling changes pitch and duration; source tempo places the audio against the musical clock. Gain, reverse and source settings are nondestructive. Stop the target clip and recording and use Studio mode before Apply. A bounded worker decodes and prepares the edit; the renderer acknowledges one complete Undo entry. Stale targets preserve current work. Save retains the embedded shared source and all settings. Older clips keep whole-buffer stretching until explicitly converted by Apply. Use Arrangement timeline in Setup to retain a reviewed clip as a shared song source and place independent instances on tracks.
 
 Workflow: Edit and undo.
 

@@ -2,18 +2,20 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 18;
+pub const STATE_VERSION: u32 = 19;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
 pub const MAX_TOTAL_NOTES: usize = 65536;
 pub const MAX_TEXT_BYTES: usize = 4096;
-pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6) + DECKS + 2 + MAX_BANKS * 16;
+pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6) + DECKS + 2 + MAX_BANKS * 16 + arrangement::MAX_SOURCES;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub(crate) arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -55,6 +57,8 @@ pub struct State {
 struct StateWire {
     version: u32,
     #[serde(default)]
+    arrangement: Option<Arc<arrangement::Model>>,
+    #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default)]
     mic_aux: Option<audio::routing::mic_aux::Configuration>,
@@ -95,6 +99,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version<19 && raw.get("arrangement").is_some(){return Err(serde::de::Error::custom("Arrangement sources require project state version 19"));}
         if version < 18 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).any(|clip|clip.get("audio_region").is_some()) {return Err(serde::de::Error::custom("Audio clip source regions require project state version 18"));}
         if version < 17 && raw.get("mic_aux").is_some() { return Err(serde::de::Error::custom("Mic/aux controls require project state version 17")); }
         if version < 16 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|track| track.get("input_monitor").is_some()) {
@@ -149,6 +154,7 @@ impl<'de> Deserialize<'de> for State {
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            arrangement: wire.arrangement,
             routing: wire.routing,
             mic_aux: wire.mic_aux,
             session: wire.session,
@@ -390,6 +396,7 @@ impl State {
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            arrangement: None,
             routing: None,
             mic_aux: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
@@ -560,7 +567,6 @@ impl State {
         let reference = |index: usize| index < media.len();
         let optional = |index: Option<usize>| index.is_none_or(reference);
         let mut note_count = 0usize;
-        let mut note_ids = std::collections::HashSet::new();
         for track in &self.tracks {
             if !text_ok(&track.name)
                 || track.scene_bus >= self.scene_fx.len()
@@ -581,40 +587,9 @@ impl State {
                     return fail("clip resume target");
                 }
             }
-            for clip in &track.clips {
-                if let Some(lanes) = &clip.lanes {
-                    if self.version < 6 || clip.kind != ClipKind::Midi { return fail("legacy or non-MIDI lanes"); }
-                    if self.version < 15 && !lanes.labels.is_empty() { return fail("MIDI labels in a legacy state"); }
-                    lanes.validate()?; midi_bytes += lanes.bytes();
-                }
-                if let Some(region)=clip.audio_region {if self.version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
-                note_ids.clear();
-                if !text_ok(&clip.name)
-                    || !finite_range(clip.bars as f64, if clip.audio_region.is_some(){0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
-                    || !finite_range(clip.gain as f64, 0.0, 1.5)
-                    || !optional(clip.audio)
-                    || clip.notes.len() > MAX_NOTES_PER_CLIP
-                    || clip.region.is_some_and(|region| !region.allows(&clip.notes) || clip.kind != ClipKind::Midi || clip.bars != (region.end / 4.0) as f32)
-                    || self.version < 5 && clip.region.is_some()
-                {
-                    return fail("clip controls or media reference");
-                }
-                note_count += clip.notes.len();
-                for note in &clip.notes {
-                    if !note.interchange_valid()
-                        || self.version<6 && (note.channel!=0 || note.release_vel!=64 || note.source_timing.is_some())
-                        || note.pitch > 127
-                        || note.vel > 127
-                        || !finite_range(note.start as f64, 0.0, 262144.0)
-                        || !finite_range(note.len as f64, 0.0, 262144.0)
-                        || self.version >= 5 && (!note.id.valid() || !note_ids.insert(note.id))
-                        || self.version < 5 && note.muted
-                    {
-                        return fail("MIDI note");
-                    }
-                }
-            }
+            for clip in &track.clips {let (notes,bytes)=clip.validate(self.version,media)?;note_count+=notes;midi_bytes+=bytes;}
         }
+        if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
         if midi_bytes > midi_data::MAX_LANE_BYTES { return fail("MIDI metadata exceeds 16 MiB"); }
         if note_count > MAX_TOTAL_NOTES {
             return fail("note count (maximum 65536)");
@@ -719,6 +694,7 @@ impl State {
             }
         }
         for index in self.builtin.iter_mut().flatten() { visit(index); }
+        if let Some(arrangement)=&mut self.arrangement{for source in &mut Arc::make_mut(arrangement).sources{if let Some(index)=&mut source.clip.audio{visit(index);}}}
     }
 
     /// Number media in the same attachment order as a native renderer capture.
@@ -778,6 +754,7 @@ impl State {
         self.validate(&media)?;
         configuration.validate(source_media)?;
         if configuration.tracks.len() != 1 || configuration.scene_fx.len() != 1
+            || configuration.arrangement.as_ref().is_some_and(|s|!s.sources.is_empty()||!s.instances.is_empty())
             || configuration.tracks[0].launch.is_some()
             || configuration.tracks[0].clips.iter().any(|clip| clip.kind != ClipKind::Empty || !clip.notes.is_empty() || clip.audio.is_some() || clip.lanes.is_some()) {
             return Err("Track template contains song content or multiple tracks".into());
@@ -857,4 +834,46 @@ fn routing_schema_requires_native_identity_and_rejects_legacy_injection() {
     assert!(model.order(state.session.as_ref().unwrap()).is_err());
 }
 
+}
+
+impl SavedClip{
+    /// Validate one retained clip without constructing a project graph.
+    /// Takes the schema and shared media; returns its note and lane budgets or the same native source refusal used by project validation.
+    pub(crate) fn validate(&self,version:u32,media:&[Arc<Sample>])->Result<(usize,usize),String>{
+        let clip=self;let fail=|name:&str|Err(format!("invalid project {name}"));let reference=|index:usize|index<media.len();let optional=|index:Option<usize>|index.is_none_or(reference);let mut note_ids=std::collections::HashSet::new();let mut midi_bytes=0;let mut note_count=0;
+
+                if let Some(lanes) = &clip.lanes {
+                    if version < 6 || clip.kind != ClipKind::Midi { return fail("legacy or non-MIDI lanes"); }
+                    if version < 15 && !lanes.labels.is_empty() { return fail("MIDI labels in a legacy state"); }
+                    lanes.validate()?; midi_bytes += lanes.bytes();
+                }
+                if let Some(region)=clip.audio_region {if version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
+                note_ids.clear();
+                if !text_ok(&clip.name)
+                    || !finite_range(clip.bars as f64, if clip.audio_region.is_some(){0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
+                    || !finite_range(clip.gain as f64, 0.0, 1.5)
+                    || !optional(clip.audio)
+                    || clip.notes.len() > MAX_NOTES_PER_CLIP
+                    || clip.region.is_some_and(|region| !region.allows(&clip.notes) || clip.kind != ClipKind::Midi || clip.bars != (region.end / 4.0) as f32)
+                    || version < 5 && clip.region.is_some()
+                {
+                    return fail("clip controls or media reference");
+                }
+                note_count += clip.notes.len();
+                for note in &clip.notes {
+                    if !note.interchange_valid()
+                        || version<6 && (note.channel!=0 || note.release_vel!=64 || note.source_timing.is_some())
+                        || note.pitch > 127
+                        || note.vel > 127
+                        || !finite_range(note.start as f64, 0.0, 262144.0)
+                        || !finite_range(note.len as f64, 0.0, 262144.0)
+                        || version >= 5 && (!note.id.valid() || !note_ids.insert(note.id))
+                        || version < 5 && note.muted
+                    {
+                        return fail("MIDI note");
+                    }
+                }
+
+        Ok((note_count,midi_bytes))
+    }
 }

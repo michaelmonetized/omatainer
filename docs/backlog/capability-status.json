@@ -953,7 +953,7 @@
         {
           "kind": "actual graph",
           "file": "src/audio_delivery/render.rs",
-          "entry": "Coherent scene/session launch snapshot, actual offline renderer, exact program alias and source validation"
+          "entry": "Coherent Session/Scene/Arrangement snapshot, actual offline renderer, exact program alias and source validation"
         },
         {
           "kind": "native workflow",
@@ -970,7 +970,7 @@
         "docs/validation/audio-delivery.md",
         "docs/validation/audio-delivery-receipt.json"
       ],
-      "limits": "Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope."
+      "limits": "Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement replay uses the same timeline schedule; delivery versions and batch stems remain issue 229. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope."
     },
     "180": {
       "status": "implemented",
@@ -1038,7 +1038,7 @@
       "limits": "Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Forced fresh source 278025cc1a3d installed for next default launch; Linux ARM64 only, no physical endurance or power-loss guarantee."
     },
     "182": {
-      "status": "partial",
+      "status": "implemented",
       "paths": [
         {
           "kind": "native editor",
@@ -1058,18 +1058,27 @@
         {
           "kind": "project and History",
           "file": "src/engine/audio_clip/edit.rs",
-          "entry": "Strict schema 18, shared native PCM, cancellation, budgets, complete source Undo and worker retirement"
+          "entry": "Strict schema 19, shared native PCM, cancellation, budgets, complete source Undo and worker retirement"
+        },
+        {
+          "kind": "Arrangement instances",
+          "file": "src/ui/arrangement.rs",
+          "entry": "Setup → Arrangement timeline; retained source snapshots, independent track/song placements, offsets, duration, gain and repetition"
         }
       ],
       "fixtures": [
         "engine::audio_clip::tests",
-        "ui::audio_clips::tests"
+        "ui::audio_clips::tests",
+        "engine::arrangement::tests",
+        "ui::arrangement::tests"
       ],
       "evidence": [
         "docs/validation/audio-clips.md",
-        "docs/validation/audio-clips-receipt.json"
+        "docs/validation/audio-clips-receipt.json",
+        "docs/validation/arrangement.md",
+        "docs/validation/arrangement-receipt.json"
       ],
-      "limits": "Session audio clips qualified at 44.1/48/96 kHz, with actual native WAV/MP3 import, shared-buffer reuse, trims/reverse/pitch/loops, normal track paths, save/reopen and exact export parity. Actual linear Arrangement editing/playback is still issue 226, so issue 182 remains partial. Pitch resampling changes duration; independent time stretching and streaming remain issues 200 and 184. Physical capture stays closed."
+      "limits": "Session and Arrangement paths qualified with immutable shared sources, WAV/MP3 import, trims/reverse/pitch/loops, actual track devices/routing/PFL/input precedence, native save/reopen/import/Undo and exact realtime/export parity. Pitch resampling changes duration; independent warp modes and asynchronous streaming remain issues 250 and 184. Physical capture stays closed."
     },
     "185": {
       "status": "implemented",
@@ -1309,6 +1318,42 @@
         "docs/validation/issue-120-providers.md"
       ],
       "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
+    },
+    "226": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native timeline",
+          "file": "src/ui/arrangement.rs",
+          "entry": "Real source/instance editing, pointer move/trim, exact beats, snap, zoom/scroll, range/overview navigation and actual transport controls"
+        },
+        {
+          "kind": "prepared renderer",
+          "file": "src/engine/arrangement.rs",
+          "entry": "Independent audio/MIDI song placements, shared source PCM, half-open spans, owned MIDI and seek indexes"
+        },
+        {
+          "kind": "native persistence and History",
+          "file": "src/engine/arrangement/edit.rs",
+          "entry": "Coherent worker preparation, strict schema 19, capacity/save budgets, acknowledged admission and complete allocation-free Undo/Redo"
+        },
+        {
+          "kind": "exact offline graph",
+          "file": "src/audio_delivery/render.rs",
+          "entry": "Arrangement export uses the same track graph and timeline schedule as listening"
+        }
+      ],
+      "fixtures": [
+        "engine::arrangement::tests",
+        "ui::arrangement::tests",
+        "engine::midi::routing::playback::tests::arrangement_seek_emits_original_program_pending_banks_and_owned_notes_without_devices",
+        "audio_delivery::tests::arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock"
+      ],
+      "evidence": [
+        "docs/validation/arrangement.md",
+        "docs/validation/arrangement-receipt.json"
+      ],
+      "limits": "Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate."
     }
   }
 }

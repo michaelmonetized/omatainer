@@ -84,6 +84,7 @@ impl Prepared {
         rt.tracks.clear();
         rt.tracks.reserve(session::MAX_TRACKS);
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
+        rt.arrangement=arrangement::Playback::new(state.arrangement.as_ref().map(|model|arrangement::Plan::prepare(model.clone(),&media,&rt.session,&AtomicBool::new(false))).transpose().map_err(Error::Invalid)?,state.beat);
         rt.sync_midi_clock();
         rt.playing = false;
         rt.recording = false;
@@ -229,6 +230,7 @@ impl Prepared {
             midi_beat,
             midi_beat_reference,
             conductor,
+            arrangement,
             routing,
             mic_aux,
             last_midi_step,

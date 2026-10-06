@@ -277,6 +277,7 @@ impl Handle {
                 let Operation::Capture(mut frame) = task.operation else {
                     unreachable!()
                 };
+                frame.state.arrangement=frame.arrangement.as_ref().map(|plan|plan.capture(&mut frame.media));
                 frame.state.deduplicate(&mut frame.media);
                 frame.state.validate(&frame.media).map_err(Error::Invalid)?;
                 return Ok(Captured {
@@ -596,6 +597,7 @@ impl RtEngine {
             | Command::TrackMonitor { .. }
             | Command::ComposeArm { .. }
             | Command::AudioClipEdit(_)
+            | Command::ArrangementEdit(_)
             | Command::MidiEdit(_)
             | Command::SetNotes { .. }
             | Command::FxWet { .. }

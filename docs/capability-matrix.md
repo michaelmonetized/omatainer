@@ -316,13 +316,13 @@ Nine new software checks plus existing import, version comparison, native Undo, 
 ### Issue #179: implemented
 
 - render and encode: [src/audio_delivery.rs](../src/audio_delivery.rs) — Reviewed ranges, repeats, native tails, channel/rate/format, normalization, integer dither and atomic folder publication
-- actual graph: [src/audio_delivery/render.rs](../src/audio_delivery/render.rs) — Coherent scene/session launch snapshot, actual offline renderer, exact program alias and source validation
+- actual graph: [src/audio_delivery/render.rs](../src/audio_delivery/render.rs) — Coherent Session/Scene/Arrangement snapshot, actual offline renderer, exact program alias and source validation
 - native workflow: [src/ui/audio_delivery.rs](../src/ui/audio_delivery.rs) — Source review, destinations, progress, cancellation and live-session isolation
 - Acceptance fixtures: `audio_delivery::tests`, `audio_delivery::wav::tests`, `ui::audio_delivery::tests::native_source_review_export_decode_and_stale_review_preserve_live_session`.
 - Evidence: [docs/validation/audio-delivery.md](../docs/validation/audio-delivery.md).
 - Evidence: [docs/validation/audio-delivery-receipt.json](../docs/validation/audio-delivery-receipt.json).
 
-Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope.
+Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement replay uses the same timeline schedule; delivery versions and batch stems remain issue 229. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope.
 
 ### Issue #180: implemented
 
@@ -346,17 +346,20 @@ Eleven software checks and complete 1838-test unfiltered suite pass with 44 igno
 
 Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Forced fresh source 278025cc1a3d installed for next default launch; Linux ARM64 only, no physical endurance or power-loss guarantee.
 
-### Issue #182: partial
+### Issue #182: implemented
 
 - native editor: [src/ui/audio_clips.rs](../src/ui/audio_clips.rs) — Setup → Audio clip; clip alternate audio action; source inspection, rainbow waveform and nondestructive controls
 - bounded worker: [src/ui/audio_clips/worker.rs](../src/ui/audio_clips/worker.rs) — Strict decode, shared sources, stable target capture and prepared application
 - renderer: [src/engine/audio_clip.rs](../src/engine/audio_clip.rs) — Half-open source/loop sampling, reverse, pitch resampling and musical playback
-- project and History: [src/engine/audio_clip/edit.rs](../src/engine/audio_clip/edit.rs) — Strict schema 18, shared native PCM, cancellation, budgets, complete source Undo and worker retirement
-- Acceptance fixtures: `engine::audio_clip::tests`, `ui::audio_clips::tests`.
+- project and History: [src/engine/audio_clip/edit.rs](../src/engine/audio_clip/edit.rs) — Strict schema 19, shared native PCM, cancellation, budgets, complete source Undo and worker retirement
+- Arrangement instances: [src/ui/arrangement.rs](../src/ui/arrangement.rs) — Setup → Arrangement timeline; retained source snapshots, independent track/song placements, offsets, duration, gain and repetition
+- Acceptance fixtures: `engine::audio_clip::tests`, `ui::audio_clips::tests`, `engine::arrangement::tests`, `ui::arrangement::tests`.
 - Evidence: [docs/validation/audio-clips.md](../docs/validation/audio-clips.md).
 - Evidence: [docs/validation/audio-clips-receipt.json](../docs/validation/audio-clips-receipt.json).
+- Evidence: [docs/validation/arrangement.md](../docs/validation/arrangement.md).
+- Evidence: [docs/validation/arrangement-receipt.json](../docs/validation/arrangement-receipt.json).
 
-Session audio clips qualified at 44.1/48/96 kHz, with actual native WAV/MP3 import, shared-buffer reuse, trims/reverse/pitch/loops, normal track paths, save/reopen and exact export parity. Actual linear Arrangement editing/playback is still issue 226, so issue 182 remains partial. Pitch resampling changes duration; independent time stretching and streaming remain issues 200 and 184. Physical capture stays closed.
+Session and Arrangement paths qualified with immutable shared sources, WAV/MP3 import, trims/reverse/pitch/loops, actual track devices/routing/PFL/input precedence, native save/reopen/import/Undo and exact realtime/export parity. Pitch resampling changes duration; independent warp modes and asynchronous streaming remain issues 250 and 184. Physical capture stays closed.
 
 ### Issue #185: implemented
 
@@ -435,6 +438,18 @@ Native UI, real catalog-owner transactions, persistence/migration, stale approva
 
 Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim.
 
+### Issue #226: implemented
+
+- native timeline: [src/ui/arrangement.rs](../src/ui/arrangement.rs) — Real source/instance editing, pointer move/trim, exact beats, snap, zoom/scroll, range/overview navigation and actual transport controls
+- prepared renderer: [src/engine/arrangement.rs](../src/engine/arrangement.rs) — Independent audio/MIDI song placements, shared source PCM, half-open spans, owned MIDI and seek indexes
+- native persistence and History: [src/engine/arrangement/edit.rs](../src/engine/arrangement/edit.rs) — Coherent worker preparation, strict schema 19, capacity/save budgets, acknowledged admission and complete allocation-free Undo/Redo
+- exact offline graph: [src/audio_delivery/render.rs](../src/audio_delivery/render.rs) — Arrangement export uses the same track graph and timeline schedule as listening
+- Acceptance fixtures: `engine::arrangement::tests`, `ui::arrangement::tests`, `engine::midi::routing::playback::tests::arrangement_seek_emits_original_program_pending_banks_and_owned_notes_without_devices`, `audio_delivery::tests::arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock`.
+- Evidence: [docs/validation/arrangement.md](../docs/validation/arrangement.md).
+- Evidence: [docs/validation/arrangement-receipt.json](../docs/validation/arrangement-receipt.json).
+
+Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate.
+
 ## One remaining checklist
 
 Music source: FreeToUse public keyless API. Michael excludes other third-party provider integrations from this release. FreeToUse catalog/preview remains optional. Generic capability/error handling in #221 remains in scope. Exclusion is not issue completion.
@@ -494,7 +509,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented |
 | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented |
 | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented |
-| [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | partial |
+| [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | implemented |
 | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |
 | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |
@@ -538,7 +553,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | planned |
 | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned |
 | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned |
-| [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | planned |
+| [#226](https://github.com/michaelmonetized/omatainer/issues/226) | Build an editable linear audio and MIDI Arrangement timeline | implemented |
 | [#227](https://github.com/michaelmonetized/omatainer/issues/227) | Give scenes names, tempo, meter and launch-state semantics | planned |
 | [#228](https://github.com/michaelmonetized/omatainer/issues/228) | Record and overdub audio or MIDI directly into Session slots | planned |
 | [#229](https://github.com/michaelmonetized/omatainer/issues/229) | Export aligned stems, track groups and delivery versions in batches | planned |

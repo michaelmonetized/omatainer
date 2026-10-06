@@ -255,27 +255,10 @@ impl Playback {
                 }
                 value
             };
-            let mut chase = |bytes: [u8; 3], length: u8, order: u64| {
+            let chase = |bytes: [u8; 3], length: u8, order: u64| {
                 self.events.push(Reverse(Event { beat: elapsed, order, cycle: i64::MIN, weight: 1, kind: Kind::Chase(bytes, length), repeating: false }));
             };
-            for channel in 0..16u16 {
-                let reset = point(channel * 256 + 121);
-                if let Some(reset) = reset { chase(reset.message.bytes, 3, u64::from(channel)); }
-                let program = point(channel * 256 + 130);
-                if let Some(program) = program {
-                    for (i, cc) in [0, 32].into_iter().enumerate() {
-                        if let Some(value) = program.banks[i] { chase([0xb0 | channel as u8, cc, value], 3, 32 + u64::from(channel) * 4 + i as u64); }
-                    }
-                    chase(program.message.bytes, 2, 34 + u64::from(channel) * 4);
-                }
-                for kind in (0..120u16).chain([128, 129]) {
-                    if matches!(kind, 6 | 38 | 96..=101) { continue; }
-                    let Some(value) = point(channel * 256 + kind) else { continue; };
-                    if !matches!(kind, 0 | 7 | 10 | 32) && reset.is_some_and(|r| (value.message.tick, value.message.order) < (r.message.tick, r.message.order)) { continue; }
-                    if matches!(kind, 0 | 32) && program.is_some_and(|p| p.banks[usize::from(kind == 32)] == Some(value.message.bytes[2])) { continue; }
-                    chase(value.message.bytes, value.message.length, 128 + u64::from(channel) * 256 + u64::from(kind));
-                }
-            }
+            crate::engine::midi_data::chase(point,chase);
             let beat = |index: usize| lanes.messages[index].tick as f64 / f64::from(lanes.ppqn);
             let first = lanes
                 .messages
@@ -428,6 +411,7 @@ impl crate::engine::RtEngine {
         let (mask, generation, epoch) = self.midi_routing.output_state();
         self.midi_output_mask = mask;
         self.midi_output_budget = 256;
+        self.arrangement.output_block((generation,epoch),self.precise_midi_beat());
         for (t, track) in self.tracks.iter_mut().enumerate() {
             let output = &mut track.midi_output;
             if output.generation != generation || output.epoch != epoch {
@@ -441,7 +425,7 @@ impl crate::engine::RtEngine {
                 // owner. Do not refill an overflowing queue with clip clears.
                 output.clear = false;
             }
-            self.midi_routing.clip_refused(t, output.refused);
+            self.midi_routing.clip_refused(t, output.refused||self.arrangement.output_refused(t));
             if output.clear {
                 if mask & (1 << t) != 0 {
                     self.midi_routing.clear_clip(t as u8);

@@ -229,6 +229,9 @@ fn valid_note(note: &super::MidiNote) -> bool {
 pub(super) fn reject_retired(mut command: &super::Command) {
     loop {
         match command {
+            super::Command::ArrangementEdit(request)=>{request.ack.reject();return;}
+            super::Command::AudioClipEdit(request)=>{request.ack.reject();return;}
+            super::Command::MicAuxConfigure(request)=>{request.ack.reject();return;}
             super::Command::SessionEdit(request) => { request.ack.reject(); return; }
             super::Command::MidiImport(request) => { request.ack.reject(); return; }
             super::Command::MidiEdit(request) => {
@@ -236,6 +239,7 @@ pub(super) fn reject_retired(mut command: &super::Command) {
                 return;
             }
             super::Command::Gesture { command: inner, .. } => command = inner,
+            super::Command::SessionControl(scoped)=>command=&scoped.command,
             _ => return,
         }
     }

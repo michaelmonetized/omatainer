@@ -2,7 +2,7 @@
 
 Issue #182's Session path adds imported/shared audio sources, exact half-open source-frame trims, an inner loop, reverse, pitch resampling, source tempo and clip gain. A native Audio clip editor shows the measured rainbow source waveform, source scrolling/zoom, markers and precise controls. It uses an owned bounded worker for coherent inspection, strict WAV/MP3 decoding and saveable preparation. Identical decoded PCM reuses a retained source rather than copying audio per clip. Sources decode at most 128 MiB of PCM per import; native project and History limits also apply.
 
-Explicit source regions use the normal track renderer, EQ/devices, mixer/routing, PFL and input-monitor policy. Source-frame interpolation stays inside the active trim/loop, including reverse and fractional edges. Musical playback uses the compensated song clock. Older clips retain their original whole-buffer stretching until an explicit edit converts them. Pitch resampling changes pitch and duration; independent time stretching remains #200.
+Explicit source regions use the normal track renderer, EQ/devices, mixer/routing, PFL and input-monitor policy. Source-frame interpolation stays inside the active trim/loop, including reverse and fractional edges. Musical playback uses the compensated song clock. Older clips retain their original whole-buffer stretching until an explicit edit converts them. Pitch resampling changes pitch and duration; independent time stretching remains #250.
 
 Application requires Studio mode, no recording and a stopped target clip. Preparation validates exact stable track/scene and source identities, project metadata/media budgets and cancellation. Renderer admission rejects stale or active targets. One named Undo entry owns the complete edit and reserves both original and replacement media across swap directions. Commands and retired payloads use existing bounded admission and worker retirement.
 
@@ -12,7 +12,7 @@ The first focused attempt passed twelve checks and failed one fixture reading th
 
 The complete unfiltered suite passed 1,849 checks with 44 existing explicit qualification checks ignored, zero failures and zero filtered checks (479.56 s). Private executable SHA256: `f0d9f2d82e32d02695b3b517bbc9ba21e9d478320491411550430d0dfbc991a7`; compiled source inventory: 701 unchanged files. [Source-bound receipt](audio-clips-receipt.json) retains source, executable and log digests. The installed release is recorded below.
 
-Issue #182 remains partial until the actual linear Arrangement timeline (#226) can place and replay these sources at independent song positions. This editor is the Session path; it does not claim Arrangement instances, independent time stretching, streaming files or physical acceptance. Capture is closed for this thread. Hardware control software and independent GUI processes remain separate.
+At this Session-only qualification, issue #182 remained partial. The subsequent [Arrangement timeline qualification](arrangement.md) completes independent song placements and replay; the earlier Session receipt below retains its original scope. This editor is the Session path; it does not claim Arrangement instances, independent time stretching, streaming files or physical acceptance. Capture is closed for this thread. Hardware control software and independent GUI processes remain separate.
 
 ## Installed release
 

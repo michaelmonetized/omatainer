@@ -41,6 +41,7 @@ impl RtEngine {
             let bytes = self.conductor.as_ref().map_or(0, |c| c.bytes())
                 + request.conductor.as_ref().map_or(0, |c| c.bytes());
             let value = std::mem::replace(&mut self.conductor, request.conductor.take());
+            self.mapped_clock = None;
             self.undo.append(Patch::Conductor {
                 bpm: self.bpm,
                 value,

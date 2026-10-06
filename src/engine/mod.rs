@@ -5,6 +5,7 @@ pub(crate) mod project;
 pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod audio_clip;
+pub(crate) mod arrangement;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
@@ -622,6 +623,7 @@ pub struct RtEngine {
     #[cfg(test)]
     current_sample_frame: u64,
     pub(crate) conductor: Option<Arc<midi_data::Conductor>>,
+    mapped_clock: Option<midi_data::ConductorClock>,
     last_midi_step: f64,
     pub quant: f32,
     pub view: View,
@@ -641,6 +643,7 @@ pub struct RtEngine {
     surface: Box<surface_controls::State>,
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
+    pub(crate) arrangement: Box<arrangement::Playback>,
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
@@ -844,6 +847,8 @@ pub struct Snapshot {
     pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
+    pub(crate) arrangement_enabled: bool,
+    pub(crate) arrangement_end: f64,
     pub surfaces: surface_controls::Status,
     pub view: u8,
     pub selected_track: usize,
@@ -913,6 +918,8 @@ impl Default for Snapshot {
             master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
             mic_aux: audio::routing::mic_aux::Status::default(),
+            arrangement_enabled: false,
+            arrangement_end: 0.0,
             surfaces: surface_controls::Status::default(),
             view: 0,
             selected_track: 0,
@@ -969,6 +976,7 @@ pub enum Command {
     Stop,
     TogglePlay,
     TimelineSeek(f64),
+    SongSeek(f64),
     Record,
     Tap(Instant),
     MidiClock { source: u64 },
@@ -1047,6 +1055,7 @@ pub enum Command {
     RoutedNoteOn { source: u64, ch: u8, note: u8, vel: u8, track: u8, target: Option<session::Reference> },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
     AudioClipEdit(Box<audio_clip::edit::Request>),
+    ArrangementEdit(Box<arrangement::edit::Request>),
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
     MidiAudition { id: u64, track: u8, note: u8, vel: u8, on: bool },
@@ -1130,6 +1139,7 @@ impl RtEngine {
         let session = session::Layout::fresh(names.iter().map(|n| (*n).into()), SCENES);
         let mut e = Self {
             session,
+            arrangement: arrangement::Playback::new(None,0.0),
             midi_routing:cmd_rx.midi_routing(),
             midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
@@ -1158,6 +1168,7 @@ impl RtEngine {
             #[cfg(test)]
             current_sample_frame: 0,
             conductor: None,
+            mapped_clock: None,
             last_midi_step: 0.0,
             quant: 1.0,
             view: View::Session,
@@ -1263,6 +1274,7 @@ impl RtEngine {
         self.timeline_anchor = self.timeline_seconds();
         self.timeline_frames = 0;
         self.sr = sr as f32;
+        self.mapped_clock = None;
         self.project.set_sample_rate(sr);
         self.mic_aux.set_sample_rate(self.sr);
         let active_history=self.active_recording_history();
@@ -1456,6 +1468,7 @@ impl RtEngine {
 
     fn start_count_in(&mut self) {
         if !self.playing {
+            self.mapped_clock = None;
             self.count_in = self.conductor.as_ref().and_then(|map| metronome::CountIn::new(map, self.precise_midi_beat(), self.sr as u32));
             self.metro.reset();
         }
@@ -1514,8 +1527,9 @@ impl RtEngine {
         for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
         if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
 
-        let conductor_seconds = self.conductor.as_ref().map(|c| c.seconds_at(self.precise_midi_beat()));
-        let mut transport_frames = 0usize;
+        if let Some(map)=&self.conductor {
+            if self.mapped_clock.as_ref().is_none_or(|clock|clock.beat!=self.precise_midi_beat()) {self.mapped_clock=Some(midi_data::ConductorClock::new(map,self.precise_midi_beat()));}
+        }else {self.mapped_clock=None;}
         let mut conductor_spb = spb;
         let any_solo = self.tracks.iter().enumerate().any(|(slot,t)| self.session.tracks.get(slot).is_some_and(|item| item.active) && t.solo);
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
@@ -1548,12 +1562,11 @@ impl RtEngine {
             if !counting_in && (!self.playing || self.conductor.is_none()) { self.note_recording.clock += self.last_midi_step; }
             let beat_start = self.beat;
             if self.playing && !counting_in {
-                transport_frames += 1;
                 self.timeline_frames += 1;
                 // Compensate accumulated rounding so a long clip cannot move
                 // an exact note boundary to the preceding output sample.
-                if let Some(seconds) = conductor_seconds {
-                    let next = self.conductor.as_ref().unwrap().beat_at_seconds(seconds + transport_frames as f64 / f64::from(self.sr));
+                if let Some(map) = &self.conductor {
+                    let next = self.mapped_clock.as_mut().unwrap().advance(map,self.sr);
                     self.last_midi_step = next - self.midi_beat;
                     self.midi_beat = next; self.beat = next;
                     self.midi_beat_reference = next; self.beat_roundoff = 0.0;
@@ -1731,10 +1744,11 @@ impl RtEngine {
     }
 
     fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
-        self.render_midi_output(ti);
+        let arrangement_enabled=self.arrangement.enabled();
+        let (arrangement_audio,arrangement_sounding)=if arrangement_enabled{self.render_arrangement(ti)}else{self.render_midi_output(ti);([0.0;2],false)};
         let mut fallback = [0.0; 2];
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
-        let playing = self.tracks[ti].playing;
+        let playing = if arrangement_enabled{None}else{self.tracks[ti].playing};
         // Pending launches do not emit or advance clip-local state. The
         // engine beat denotes the end of this output sample's beat interval.
         let explicit_region = playing.is_some_and(|p| { let clip = &self.tracks[ti].clips[p.scene as usize]; clip.region.is_some() || clip.audio_region.is_some() });
@@ -1742,7 +1756,7 @@ impl RtEngine {
         let clip_sounding = playing.is_some_and(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON);
         let recording = self.recording || self.routing_pipe.recorder.monitoring_inputs();
         let track = &mut self.tracks[ti];
-        track.input_gain.prepare(track.input_gains(clip_sounding, recording), self.sr, input_monitor::identity);
+        track.input_gain.prepare(track.input_gains(clip_sounding||arrangement_sounding, recording), self.sr, input_monitor::identity);
         let [input_gain, clip_gain_value] = track.input_gain.tick();
         if let Some(p) = playing.filter(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON)
         {
@@ -1878,6 +1892,7 @@ impl RtEngine {
         }
         // Mute/solo gates the output, never the musical clock or DSP history.
         // Drum one-shots, synth releases and effect tails advance naturally.
+        fallback[0]+=arrangement_audio[0]*clip_gain_value;fallback[1]+=arrangement_audio[1]*clip_gain_value;
         let s = if self.tracks[ti].kind == 0 {
             self.tick_drums(ti)
         } else {
@@ -2398,7 +2413,7 @@ impl RtEngine {
             Command::MidiClock { source } => self.midi_clock.receive_tick(source),
             Command::Play => {
                 self.start_count_in();
-                self.resume_project_clips();
+                if self.arrangement.enabled(){self.arrangement.reset(self.precise_midi_beat());}else{self.resume_project_clips();}
                 self.playing = true;
             }
             Command::Stop => {
@@ -2406,6 +2421,7 @@ impl RtEngine {
                 self.history_finish_take();
                 self.finish_recording_all();
                 self.playing = false;
+                self.arrangement.reset(self.precise_midi_beat());
                 for deck in &mut self.decks { deck.stop_preview(self.sr); }
                 self.recording = false;
                 self.compose_target = None;
@@ -2417,15 +2433,16 @@ impl RtEngine {
                 for t in 0..self.tracks.len() {self.midi_routing.clear_clip(t as u8);}
             }
             Command::TimelineSeek(seconds) => self.seek_timeline(seconds),
+            Command::SongSeek(beat)=>{if beat.is_finite()&&(0.0..=262144.0).contains(&beat){let seconds=self.conductor.as_ref().map_or(beat*60.0/f64::from(self.bpm),|c|c.seconds_at(beat));if seconds<=86400.0{self.seek_timeline(seconds);}else{self.undo.reject(undo::Failure::Invalid);}}},
             Command::TogglePlay => {
                 if self.playing {
                     self.apply(Command::Stop);
                 } else {
                     self.start_count_in();
-                    self.resume_project_clips();
+                    if self.arrangement.enabled(){self.arrangement.reset(self.precise_midi_beat());}else{self.resume_project_clips();}
                     self.playing = true;
                     // launch scene 0 if nothing running
-                    if self.tracks.iter().all(|t| t.playing.is_none()) {
+                    if !self.arrangement.enabled() && self.tracks.iter().all(|t| t.playing.is_none()) {
                         self.apply(Command::LaunchScene { scene: 0 });
                     }
                 }
@@ -2868,7 +2885,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) => unreachable!("import is applied atomically in history admission"),
+            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) | Command::ArrangementEdit(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);

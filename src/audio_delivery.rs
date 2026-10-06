@@ -114,6 +114,7 @@ pub(crate) enum Source {
     #[default]
     Session,
     Scene,
+    Arrangement,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Export {

@@ -89,7 +89,7 @@
   },
   "limits": [
     "Issue 182 is partial until actual Arrangement instance editing/playback in issue 226 is implemented.",
-    "Pitch resampling changes pitch and duration; independent time stretching is separate issue 200.",
+    "Pitch resampling changes pitch and duration; independent time stretching is separate issue 250.",
     "Strict imported PCM is bounded to 128 MiB per file; shared project and History budgets also apply. Streaming is separate issue 184.",
     "No physical device was opened, captured or auditioned in these checks."
   ],

@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 mod lanes;
 mod control;
 pub(crate) use control::{ControlKind, Label, StatePoint, StateLane};
+pub(crate) use control::chase;
 mod timeline;
 pub(crate) use timeline::Settings as TimingSettings;
+pub(crate) use timeline::Clock as ConductorClock;
 pub(crate) use lanes::{Conductor, Lanes, Meter, Tempo, MAX_CONDUCTOR_POINTS, MAX_LANE_BYTES};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -235,6 +237,7 @@ mod tests {
 impl super::RtEngine {
     pub(super) fn retire_conductor(&mut self) {
         self.count_in = None;
+        self.mapped_clock = None;
         if let Some(conductor) = self.conductor.take() {
             let bytes = conductor.bytes();
             self.undo.retire_midi_conductor(conductor, bytes);

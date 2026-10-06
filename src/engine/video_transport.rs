@@ -27,6 +27,8 @@ impl RtEngine {
         self.midi_beat = beat;
         self.midi_beat_reference = beat;
         self.beat_roundoff = 0.0;
+        self.mapped_clock = None;
+        self.arrangement.reset(beat);
         self.timeline_anchor = seconds;
         self.timeline_frames = 0;
         for (slot, track) in self.tracks.iter_mut().enumerate() {

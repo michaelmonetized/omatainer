@@ -2532,11 +2532,13 @@
         82,
         130
       ],
-      "state": "partial",
+      "state": "implemented",
       "prs": [],
       "evidence": [
         "docs/validation/audio-clips.md",
-        "docs/validation/audio-clips-receipt.json"
+        "docs/validation/audio-clips-receipt.json",
+        "docs/validation/arrangement.md",
+        "docs/validation/arrangement-receipt.json"
       ]
     },
     {
@@ -3157,9 +3159,12 @@
         83,
         179
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/arrangement.md",
+        "docs/validation/arrangement-receipt.json"
+      ]
     },
     {
       "issue": 227,

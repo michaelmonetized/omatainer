@@ -15,6 +15,7 @@ impl App {
                 if ui.button(tr!("Music providers")).help_detail(ui, HelpControl::MusicProvider, "Browse licensed remote music with explicit provider capabilities.").clicked() { self.music_provider.open = true; }
                 if ui.button(tr!("Video")).help(ui, HelpControl::VideoImport).clicked() { self.video.open = true; }
                 if ui.button(tr!("Audio export & recording")).help(ui,HelpControl::AudioExport).clicked() { self.audio_delivery.open = true; }
+                if ui.button("Arrangement timeline").help(ui,HelpControl::Arrangement).clicked(){self.open_arrangement();}
                 if ui.button(tr!("Audio clip")).help(ui,HelpControl::AudioClip).clicked() { self.open_audio_clip(self.snap.selected_track as u8, self.snap.selected_scene as u16); }
                 if ui.button(tr!("Automation")).help(ui, HelpControl::AutomationOpen).clicked() { self.automation_panel.open = true; }
                 if ui.button(tr!("Preferences")).help(ui, HelpControl::Preferences).clicked() { self.settings.open = true; }

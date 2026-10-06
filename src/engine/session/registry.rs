@@ -4,7 +4,7 @@ use super::{Axis, Id, Layout, MAX_SCENES, MAX_TRACKS};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::*};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Reference {
     pub namespace: [u64; 2],
