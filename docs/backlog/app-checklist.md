@@ -2,7 +2,7 @@
 
 Reviewed 2026-10-06. Source base: `6c06d18a41c1d49de5c338b0471b45087f9ccc8b`. Tracking: [#1](https://github.com/michaelmonetized/omatainer/issues/1).
 
-Physical hardware qualification is paused at Michael's request. Existing captures are closed; software work continues without new physical gestures.
+Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captured; the installed app matched B/C send values and Play/Record/Stop states. Capture services are closed. Extended performance and remaining hardware checks stay open. [Receipt](../validation/audio-command-handoff.md)
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 

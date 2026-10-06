@@ -38,3 +38,26 @@ ignored `target/hardware/`. The extracted private core copy was deleted after
 inspection. The system's original coredump was retained. The compact
 [qualification receipt](audio-command-handoff-receipt.json) records source,
 tests and the subsequent running application check.
+
+The complete final ordinary suite passes 1,771 checks, with zero failures,
+43 explicit ignores and no filtered cases. The earlier run under simultaneous
+build load had ten decoder/library completion timeouts; its log is retained,
+as are successful isolated reruns. Both connected silent NS7 fixtures pass:
+duplex capture/feedback and recovery from an injected 40 ms callback stall.
+
+The clean source revision `7db2dc58faa4962f2eff824cde2a7374d2fbafea` was packaged,
+verified and installed. Its manifest, installed executable and running GUI
+agree on SHA-256 `617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1`.
+The GUI remains on workspace 10, with master zero and both decks paused at their
+restored positions. Repeated physical B/C controls reached the corrected app;
+all sixteen final send values match the last emitted knob values. Three complete
+Stop/Play/Stop/Record/Stop sequences produced the expected native playing and
+recording transitions. There were 1,251 additional MIDI messages, all dispatched,
+with no input drops, resets, command submission refusals or pending commands.
+
+At the retained final snapshot, audio had completed 51,480 callbacks with four
+recoverable underruns and four deadline overruns, maximum overrun 5.529 ms.
+There were no backend errors or device-loss events. The app survived these checks;
+this does not qualify extended musical performance or acoustic latency.
+Both temporary capture services were stopped after the check. The independent
+pre-existing control follower and installed GUI were preserved.

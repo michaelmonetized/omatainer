@@ -975,7 +975,7 @@
       "evidence": [
         "docs/validation/midi-mapping-presets.md"
       ],
-      "limits": "Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical capture and listening remain paused. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged."
+      "limits": "Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical portable-preset import and override listening remain open; factory MPD captures are separate. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged."
     },
     "205": {
       "status": "implemented",

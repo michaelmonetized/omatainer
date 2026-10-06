@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "qualifiedAt": "2026-10-06T11:07:33.745Z",
+  "qualifiedAt": "2026-10-06T11:20:00.448Z",
   "crash": {
     "pid": 808758,
     "signal": 24,
@@ -85,13 +85,19 @@
     }
   },
   "fullSerialRust": {
-    "status": "running",
-    "path": "target/hardware/command-ring/full-tests.log"
+    "path": "target/hardware/command-ring/full-tests.log",
+    "sha256": "3eefe291a856121f19e76204f76bc6ea3ac6d8a79cd80d5d38df5e818e221896",
+    "status": "passed",
+    "passed": 1771,
+    "failed": 0,
+    "ignored": 43,
+    "filtered": 0,
+    "seconds": 516.29
   },
   "physicalMpd": {
     "capturedAt": "2026-10-06T10:51:53.640Z",
     "raw": {
-      "path": "target/hardware/mpd232-return-live-capture.log",
+      "path": "target/hardware/command-ring/mpd-first-pass.log",
       "sha256": "6d831b3ae9d4afdd722363728d952d42de3b0391e5cf32923d0ef664e59bbdf6"
     },
     "banks": {
@@ -1010,8 +1016,641 @@
     "recorded_frames": 221184
   },
   "limitations": [
-    "Final full ordinary software run is in progress after build-load timeouts",
-    "Corrected GUI and physical transport engine check remain to be installed and captured",
-    "Extended musical performance and acoustic latency remain unqualified"
-  ]
+    "The first raw pass includes controls captured while the previous GUI crashed; only the later live pass has corrected-engine acceptance",
+    "Final native snapshots expose all B/C send values and transport state; individual gain/pan/mute/solo/arm values are not asserted from this snapshot",
+    "The GUI retained four recoverable underruns and four deadline overruns at the final snapshot; extended musical performance and acoustic latency remain unqualified",
+    "Physical portable-preset import and override listening are separate from the factory MPD checks",
+    "The native driver counter interval also spans the subsequent clean reopen and records one MIDI error; its PCM error delta is zero"
+  ],
+  "sourceRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+  "priorBuildLoadRun": {
+    "path": "target/hardware/command-ring/build-load-full-tests.log",
+    "sha256": "7de86a12645e289af84a7c3fa872147acf8da5fba37354bb6afcb6d749773add",
+    "status": "failed",
+    "passed": 1761,
+    "failed": 10,
+    "ignored": 43,
+    "filtered": 0,
+    "seconds": 617.73,
+    "interpretation": "Ten decoder or library completion timeouts occurred while independent builds imposed high memory and IO pressure. Successful isolated checks and the final full run are retained; load is an inference, not a recovered schedule trace."
+  },
+  "isolatedAfterBuildLoad": {
+    "gainDecoder": {
+      "path": "target/hardware/command-ring/gain-decoder-rerun.log",
+      "sha256": "c051dce6531d90bfe32c84f1bc685ec3d6aab44b82ca935020b48b617e86ece5",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1813,
+      "seconds": 1.01
+    },
+    "controllerLoad": {
+      "path": "target/hardware/command-ring/controller-load-rerun.log",
+      "sha256": "e56b8cb2f91131b87737a7611e2add8dcc0d1d9e457877e51e9abf89e39992e1",
+      "status": "passed",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1807,
+      "seconds": 1
+    },
+    "duration": {
+      "path": "target/hardware/command-ring/duration-rerun.log",
+      "sha256": "31a926dd7c3fd78ac07ab0a3e80e29fb118a690e222dfb118916f99b860fe92c",
+      "status": "passed",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1809,
+      "seconds": 1.83
+    }
+  },
+  "installedRelease": {
+    "revision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+    "binarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
+    "manifest": {
+      "path": "target/hardware/command-ring/release-package/manifest.json",
+      "sha256": "bbb7e8172b4ceecbcdcd76a9e7e1c2d65a23f1b5a78909524d4c5bd083028683"
+    },
+    "verification": {
+      "path": "target/hardware/command-ring/package-verification.json",
+      "sha256": "0c5e920b066eed2194273672778cf0476fcff42a1c6890ba598f4003c8a9fb58"
+    },
+    "install": {
+      "path": "target/hardware/command-ring/install.json",
+      "sha256": "3ccd653d7b490a5e85ea7290009eb40b51adc523eb234e1e740b833e06ada6fa"
+    },
+    "pid": 1658497,
+    "audioTid": 1658517,
+    "workspace": 10,
+    "scheduler": "pid 1658517's current scheduling policy: SCHED_RR|SCHED_RESET_ON_FORK\npid 1658517's current scheduling priority: 10",
+    "hwParams": "access: RW_INTERLEAVED\nformat: S32_LE\nsubformat: STD\nchannels: 4\nrate: 44100 (44100/1)\nperiod_size: 256\nbuffer_size: 512"
+  },
+  "reopenedRelease": {
+    "pid": 1771583,
+    "binarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
+    "status": {
+      "path": "target/hardware/command-ring/live/reopened-status.json",
+      "sha256": "6465911726c3b143552b1f9389762338d723590d25f96e4ce9826e1208b35edb"
+    },
+    "state": {
+      "path": "target/hardware/command-ring/live/reopened-state.json",
+      "sha256": "cb7cc8bff810984f0cc9dee39e05a45ba04f7faff9514e01b517c1890468adc3"
+    },
+    "reason": "A still-running session from before the T3 restart cleanly stopped and reopened the same release after the gesture capture. The retained capture belongs to PID 1658497; the current GUI remains muted and paused."
+  },
+  "liveMpd": {
+    "raw": {
+      "path": "target/hardware/mpd232-return-live-capture.log",
+      "sha256": "11d27b8852a57f1951dcc172983db7ba7554d4cf971f2dc654afded43698c498"
+    },
+    "follow": {
+      "path": "target/hardware/hardware-return-follow.ndjson",
+      "sha256": "60d11f7ca6984b6ae0500dfe02b8c953b4eb56d5544eceaab5bf2b03b21ff75b"
+    },
+    "baseline": {
+      "path": "target/hardware/command-ring/live/pre-gesture-status.json",
+      "sha256": "f35b9ef7d8bc34a540c80c57db67421233f3eec34129277923075c65086ebc69"
+    },
+    "finalStatus": {
+      "path": "target/hardware/command-ring/live/final-status.json",
+      "sha256": "77b310f0233ff3766d91577c1541368f44185546c338a549791ce2313f11efa0"
+    },
+    "finalState": {
+      "path": "target/hardware/command-ring/live/final-state.json",
+      "sha256": "08f01b8e26108778d33d88495ba9bb8d7064389d65d470176307ce375254ad23"
+    },
+    "finalSurfaces": {
+      "path": "target/hardware/command-ring/live/final-surfaces.json",
+      "sha256": "911c189cbdaa468db01084d6dfe816f9fa829e6e31c3a3efb604e0b836eadc1c"
+    },
+    "rawLineOffset": 2132,
+    "controlCoverage": [
+      {
+        "bank": "B",
+        "wireChannel": 1,
+        "controllers": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      },
+      {
+        "bank": "C",
+        "wireChannel": 2,
+        "controllers": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ]
+      }
+    ],
+    "knobSendComparisons": [
+      {
+        "bank": "B",
+        "knob": 1,
+        "controller": 22,
+        "wireValue": 127,
+        "actual": 1,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 2,
+        "controller": 23,
+        "wireValue": 65,
+        "actual": 0.5118110179901123,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 3,
+        "controller": 24,
+        "wireValue": 68,
+        "actual": 0.5354330539703369,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 4,
+        "controller": 25,
+        "wireValue": 91,
+        "actual": 0.7165354490280151,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 5,
+        "controller": 26,
+        "wireValue": 93,
+        "actual": 0.7322834730148315,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 6,
+        "controller": 27,
+        "wireValue": 75,
+        "actual": 0.5905511975288391,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 7,
+        "controller": 28,
+        "wireValue": 75,
+        "actual": 0.5905511975288391,
+        "matched": true
+      },
+      {
+        "bank": "B",
+        "knob": 8,
+        "controller": 29,
+        "wireValue": 82,
+        "actual": 0.6456692814826965,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 1,
+        "controller": 22,
+        "wireValue": 127,
+        "actual": 1,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 2,
+        "controller": 23,
+        "wireValue": 69,
+        "actual": 0.5433070659637451,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 3,
+        "controller": 24,
+        "wireValue": 67,
+        "actual": 0.5275590419769287,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 4,
+        "controller": 25,
+        "wireValue": 71,
+        "actual": 0.5590550899505615,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 5,
+        "controller": 26,
+        "wireValue": 79,
+        "actual": 0.6220472455024719,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 6,
+        "controller": 27,
+        "wireValue": 79,
+        "actual": 0.6220472455024719,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 7,
+        "controller": 28,
+        "wireValue": 67,
+        "actual": 0.5275590419769287,
+        "matched": true
+      },
+      {
+        "bank": "C",
+        "knob": 8,
+        "controller": 29,
+        "wireValue": 81,
+        "actual": 0.6377952694892883,
+        "matched": true
+      }
+    ],
+    "transport": [
+      {
+        "line": 3370,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3371,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 118,
+        "value": 127
+      },
+      {
+        "line": 3372,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3373,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 119,
+        "value": 127
+      },
+      {
+        "line": 3374,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3375,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3376,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 118,
+        "value": 127
+      },
+      {
+        "line": 3377,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3378,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 119,
+        "value": 127
+      },
+      {
+        "line": 3379,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3380,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3381,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 118,
+        "value": 127
+      },
+      {
+        "line": 3382,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      },
+      {
+        "line": 3383,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 119,
+        "value": 127
+      },
+      {
+        "line": 3384,
+        "port": "36:0",
+        "channel": 0,
+        "controller": 117,
+        "value": 127
+      }
+    ],
+    "transitions": [
+      {
+        "line": 762,
+        "callbacks": 307,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 2,
+        "commandsApplied": 8
+      },
+      {
+        "line": 1328,
+        "callbacks": 24704,
+        "playing": true,
+        "recording": false,
+        "midiReceived": 1240,
+        "commandsApplied": 1215
+      },
+      {
+        "line": 1333,
+        "callbacks": 24919,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 1241,
+        "commandsApplied": 1216
+      },
+      {
+        "line": 1340,
+        "callbacks": 25221,
+        "playing": false,
+        "recording": true,
+        "midiReceived": 1242,
+        "commandsApplied": 1217
+      },
+      {
+        "line": 1343,
+        "callbacks": 25350,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 1243,
+        "commandsApplied": 1218
+      },
+      {
+        "line": 1532,
+        "callbacks": 33494,
+        "playing": true,
+        "recording": false,
+        "midiReceived": 1245,
+        "commandsApplied": 1220
+      },
+      {
+        "line": 1535,
+        "callbacks": 33623,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 1246,
+        "commandsApplied": 1221
+      },
+      {
+        "line": 1538,
+        "callbacks": 33752,
+        "playing": false,
+        "recording": true,
+        "midiReceived": 1247,
+        "commandsApplied": 1222
+      },
+      {
+        "line": 1545,
+        "callbacks": 34054,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 1248,
+        "commandsApplied": 1223
+      },
+      {
+        "line": 1570,
+        "callbacks": 35131,
+        "playing": true,
+        "recording": false,
+        "midiReceived": 1250,
+        "commandsApplied": 1225
+      },
+      {
+        "line": 1576,
+        "callbacks": 35389,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 1251,
+        "commandsApplied": 1226
+      },
+      {
+        "line": 1581,
+        "callbacks": 35605,
+        "playing": false,
+        "recording": true,
+        "midiReceived": 1252,
+        "commandsApplied": 1227
+      },
+      {
+        "line": 1587,
+        "callbacks": 35864,
+        "playing": false,
+        "recording": false,
+        "midiReceived": 1253,
+        "commandsApplied": 1228
+      }
+    ],
+    "midiDelta": 1251,
+    "midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 1253,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 1253,
+      "received": 1253,
+      "resets": 0
+    },
+    "commands": {
+      "applied": 1228,
+      "applied_last_block": 0,
+      "backlog": 0,
+      "budget_exhaustions": 0,
+      "coalesced": 7,
+      "high_water": 4,
+      "received": 1235,
+      "received_last_block": 0
+    },
+    "submissions": {
+      "accepted": 1237,
+      "coalesced": 0,
+      "last_error": null,
+      "rejected": 0
+    },
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 51480,
+      "deadline_overruns": 4,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 197168,
+        "frames": 256,
+        "output_latency_ns": 5646259,
+        "overrun_ns": 0,
+        "render_cpu_ns": 180999,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 11333864,
+      "max_overrun_ns": 5528876,
+      "realtime_denied": 0,
+      "xruns": 4
+    },
+    "feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 630
+    },
+    "nativeDriverDelta": {
+      "midi_input_bytes": 3,
+      "midi_output_bytes": 170,
+      "midi_errors": 1,
+      "pcm_playback_frames": 26063543,
+      "pcm_capture_frames": 26063376,
+      "pcm_feedback_frames": 590951,
+      "pcm_errors": 0
+    },
+    "nativeDriverDeltaIncludesSubsequentCleanReopen": true,
+    "captureServicesStopped": true,
+    "master": 0,
+    "playing": false,
+    "recording": false,
+    "decks": [
+      {
+        "title": "What More Can I Say",
+        "playing": false,
+        "positionSeconds": 0.12760565708236016
+      },
+      {
+        "title": "Public Service Announcement",
+        "playing": false,
+        "positionSeconds": 3.9060474438022594
+      }
+    ]
+  },
+  "nativeNs7Underrun": {
+    "receipt": {
+      "path": "target/hardware/command-ring/ns7-underrun/ns7-underrun-recovery.json",
+      "sha256": "594cf64f3fd58a9705eb04612a4a8f5472a50a725c5d2d63914e56e85d21c8a0"
+    },
+    "analog_listening": false,
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 104,
+      "deadline_overruns": 1,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 280085,
+        "frames": 256,
+        "output_latency_ns": 5668934,
+        "overrun_ns": 0,
+        "render_cpu_ns": 243374,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 40309445,
+      "max_overrun_ns": 34504457,
+      "realtime_denied": 0,
+      "xruns": 1
+    },
+    "callback_base_policy": 2,
+    "callback_policy": 1073741826,
+    "callback_reset_on_fork": true,
+    "callback_tid": 1512391,
+    "device": "hw:CARD=NS7,DEV=0",
+    "fault": false,
+    "hw_params": "access: RW_INTERLEAVED\nformat: S32_LE\nsubformat: STD\nchannels: 4\nrate: 44100 (44100/1)\nperiod_size: 256\nbuffer_size: 512\n",
+    "injected_stall_ms": 40,
+    "master": 0
+  },
+  "sourceInventory": {
+    "path": "target/hardware/command-ring/receipt-source/licenses/manifest.json",
+    "qualifiedCodeRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+    "method": "Checked from committed sources with the final backlog documentation overlay; concurrent unfinished loop-editor changes were excluded"
+  }
 }
