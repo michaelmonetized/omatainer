@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T14:05:29.167Z",
+  "baseRevision": "a0a0a52a933a2f205ace14a3c9d496d52736d0c6",
+  "sourceFiles": {
+    "src/automation.rs": "fb0147c3d067021a130576f645ab11ef209de34715799ca09140d00ac0cd1248",
+    "src/automation/tests.rs": "234305a646c6dacbc0c08897af839ed6fa2ee600be9cf72f7ecc102d8871ce98",
+    "src/engine/audio/routing/model.rs": "5fdf7a2916e3a60556b920b8a8025044b15a44af7d6f304076585bd9604aae12",
+    "src/engine/audio/routing/prepared.rs": "5a7abe76c177970c204a5d9ebb3695c9ece04a92f0ce1f1c8ac68069638297ed",
+    "src/engine/audio/routing/render.rs": "c01d6e0dfafca13485b4dc51424f8444da35ad225578a97ea146ad66068e9341",
+    "src/engine/history_measurement/capture_tests.rs": "339ec4298b80e88171ec67f0399c43ac98725b5d9595a4c8316fd3de105f8b29",
+    "src/engine/mixer_gain.rs": "b16410508a7795b1e9634354ca8a04c617f8aa067a5f6d5b7f4c026f9ed1351d",
+    "src/engine/mod.rs": "d8dcaed610d9f9cf8fceb9e98daf8e358ed92472477b5a469f4d2f3d1f8bcfed",
+    "src/engine/monitor.rs": "f81e5e471926e241abd0e62b97324a4779c63b1b9b5c5aa65745d17529c8cc41",
+    "src/engine/monitor/qualification_tests.rs": "ca3facc04b4c1fdd32cbf9f892ced448b1d01581f3ec4b174b3026040de154f4",
+    "src/engine/monitor/tests.rs": "d607b0c84436485df671a9e80308735cb98c8a10fa5613db1b6bf412bea91f3e",
+    "src/engine/performance.rs": "84e8a9ca6ee3c01d9dc9390c3922c79429e0f6383a13cf8172158f54dd9096e2",
+    "src/engine/project.rs": "07ddbbd2c7422917279f0fed13dacedadda4c74b666f5535de962dc4000fa382",
+    "src/engine/project/prepare.rs": "cae03e6dcfa34c1728d3c238bf31f71cc005ebcc8cea57be55b033752f01a12e",
+    "src/engine/remote.rs": "c8b60bc32765f8654f362946e5c088f114d459cdbf6178e14d6a94a9e4b53d28",
+    "src/engine/undo/capture.rs": "1b992b07b25a926e73dba7e3f4026170fc4d208abdbcd327fc1c306d4d422860",
+    "src/ipc_follow.rs": "d8ca8eec0d9697dcacdc1a083513d7fa2a7a992aa8d8092a4e9eda7f7523dac1",
+    "src/ipc_limits_tests.rs": "4243336163a3f52dcadac5bb097d2f24dc320c2bb52fea25760e5321cc111884",
+    "src/ipc_transport.rs": "20a79ff9da7e942bf8502387c56c0cde9d4d1bfa3cddb5eb3be62348b6892b43",
+    "src/main.rs": "1679ccd5cce89248fe2ee72b59001b37f9eb688dab04c189a9faa047f72b54b7",
+    "src/ui.rs": "09b93d0d17898ee263d3ad4cc7f5ee5cc02a7fde96ad72b2e3b77ab7f9932220",
+    "src/ui/audio_routing.rs": "fac2dfe9857878a70e63c41b31cd46fee30f8e0d92c08c267b38f527eca9875a",
+    "src/ui/audio_routing/tests.rs": "89cf11b64e716d7be688caebabd565ae068ff9abe227cdee352b87387cb7ab4d",
+    "src/ui/headphones.rs": "b7fbac16cd0ef815a18d601b345c946e594ae23d0d593d9cc2b8da2530be4e8c",
+    "src/ui/headphones/tests.rs": "92ea070f545663f9d1f0e12097172dcc9b447864a752055559b1b66f96de6f59",
+    "src/ui/help/catalogue.rs": "6ac25d57290441395ae113eabfbe117e539e763f71b5f74cc70ba6db14322bce",
+    "src/ui/undo.rs": "177d7de6e7b46b992efbc24ea4642498dd6ae2deca59975cb5c4e9fa1bc3a133"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/headphone-monitoring-tests",
+    "sha256": "b47a10fa26941787ec1d0ae85b3a8cc4a49d9c3c6100b242f036d9f38284ec50"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/headphone-monitoring-compiled-source-inventory.json",
+    "sha256": "72d017a9e730afc1dfbadf6e3b48a53bfa60d7643c0504301ca475da49c1d422",
+    "files": 694
+  },
+  "tests": {
+    "engine-tests": {
+      "path": "target/app-backlog/headphone-monitoring-engine-tests.log",
+      "sha256": "817e7429fd9d61ed188b5090eb1dc45c7d458584516df150418deb3f27701a3d",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1828,
+      "seconds": 2.74
+    },
+    "ui-tests": {
+      "path": "target/app-backlog/headphone-monitoring-ui-tests.log",
+      "sha256": "b3d85d8f57f5337446be58d1cbae7c5e8a655c057491699a8d56add406acfbf4",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1839,
+      "seconds": 0.19
+    },
+    "routing-ui-tests": {
+      "path": "target/app-backlog/headphone-monitoring-routing-ui-tests.log",
+      "sha256": "47fbc4476c3a612724eaa1bdb15effaa800c871a2e4ac5279c5a3db6695df7af",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1839,
+      "seconds": 0.31
+    },
+    "api-tests": {
+      "path": "target/app-backlog/headphone-monitoring-api-tests.log",
+      "sha256": "3504542445deea8de4834b93c1be3073cecc545c8a2c53995e57f679fad262b3",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1839,
+      "seconds": 0.34
+    },
+    "manual-test": {
+      "path": "target/app-backlog/headphone-monitoring-manual-test.log",
+      "sha256": "771ceee39b14b060b4f1b9c601cad51ca26cc7c5733751fd83b2f18888d8fedd",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1839,
+      "seconds": 0
+    },
+    "ipc-bound-test": {
+      "path": "target/app-backlog/headphone-monitoring-ipc-bound-test.log",
+      "sha256": "2e7ba0833a49f57afa4a1d52ea2092ba6632628025546061b3951c619b900722",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1839,
+      "seconds": 0.02
+    },
+    "follow-bound-test": {
+      "path": "target/app-backlog/headphone-monitoring-follow-bound-test.log",
+      "sha256": "9d91407de9fdf64203e30e5277d1ddeb8c74315720dcb5e737c0389327e0f5cf",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1839,
+      "seconds": 0.01
+    },
+    "full-tests": {
+      "path": "target/app-backlog/headphone-monitoring-full-tests.log",
+      "sha256": "19b81fb8f615d2b2b5b452dcef810c2d8379bfbf33d2b2bec377169840ea81d2",
+      "passed": 1797,
+      "failed": 0,
+      "ignored": 43,
+      "filtered": 0,
+      "seconds": 474.35
+    }
+  },
+  "checks": {
+    "checklistPackageDependencyGraph": {
+      "path": "target/app-backlog/headphone-monitoring-node-tests.log",
+      "sha256": "21433434b8d110fca118b8252653f6bd01b9e46d59b99dea4e45547b53146856",
+      "passed": 15,
+      "failed": 0
+    },
+    "noCallbackHeapWork": true,
+    "programBitExactInLegacyAndExplicitRenderers": true,
+    "toneSampleRates": [
+      44100,
+      48000,
+      96000
+    ],
+    "cuePreChannelAndCrossfaders": true,
+    "physicalHardwareOpenedByQualification": false
+  },
+  "corrections": [
+    "Initial test-only compile errors were corrected without production API shortcuts.",
+    "The tone fixture now uses a fresh engine per safety/replacement fence; recovery correctly refused a new tone after emergency stop.",
+    "An impossible scheduled Play while stopped was replaced with a direct per-sample playback guard check.",
+    "The headphone output selector now has a named native accessibility role and retained value.",
+    "The initial full run was intentionally interrupted when review found that saved headphone blend did not participate in dirty-state/Undo; both native slider and typed IPC now exercise Undo/Redo and revision changes.",
+    "The first complete suite found an oversized escaped-metadata IPC status; status/follow now cap actual escaped wire text within the existing 8 KiB limit, with maximal monitor fields covered.",
+    "The source includes the independently integrated APC grid correction and its profile fixture, with no new physical test in this thread."
+  ],
+  "limits": [
+    "Physical main/headphone simultaneous capture remains open and outside this thread current scope.",
+    "Transient headphone volume/source/split are not stored in project documents; the existing saved cue blend and new version-2 routing alias are persisted.",
+    "Default ARM64 executable installed and verified for its next launch. The currently visible controller-session GUI uses its unchanged private executable."
+  ],
+  "installation": {
+    "schema": 1,
+    "before": "81f3e6af03e5a37d8da168bef9cde8ee797c2f7e1b32647ca4c6d2c8a2057b16",
+    "after": "2e156490f9f22f8d6398b7f51d1694a5c2a311fe2490eb38f596a883c84eff16",
+    "installedAt": "2026-10-06T14:05:30.340Z",
+    "revision": "a0a0a52a933a2f205ace14a3c9d496d52736d0c6",
+    "version": "0.1.0+a0a0a52a933a",
+    "manifestSha256": "68659248a35656c741fe3e314e2cb5ce72facc688c288b934d7827b8b3ab030d",
+    "executableSha256": "2e156490f9f22f8d6398b7f51d1694a5c2a311fe2490eb38f596a883c84eff16",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "preservedGui": {
+      "pid": 3622839,
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+      "sha256": "81f3e6af03e5a37d8da168bef9cde8ee797c2f7e1b32647ca4c6d2c8a2057b16"
+    },
+    "beforeState": {
+      "path": "target/app-backlog/headphone-monitoring-preinstall-state.json",
+      "sha256": "bbeb670e6083e1b623f22a875e503e99b608491ee16aacb7f1d1c46445676f54"
+    },
+    "afterState": {
+      "path": "target/app-backlog/headphone-monitoring-after-install-state.json",
+      "sha256": "c84e12e3a44a986ab1707c8797713524273b04c3bb4ebe862f20c829af53f788"
+    },
+    "scope": "Default executable installed for its next launch; the separate controller session private GUI and both followers were preserved. No physical audio/control test or second hardware GUI was opened."
+  }
+}

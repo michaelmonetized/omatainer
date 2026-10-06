@@ -2437,9 +2437,12 @@
       "dependencies": [
         130
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/headphone-monitoring.md",
+        "docs/validation/headphone-monitoring-receipt.json"
+      ]
     },
     {
       "issue": 177,

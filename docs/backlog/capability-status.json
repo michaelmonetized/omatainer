@@ -867,6 +867,43 @@
       ],
       "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
     },
+    "176": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "separate monitor bus",
+          "file": "src/engine/monitor.rs",
+          "entry": "Pre-fader PFL, independent level/blend/split, explicit pair and finite routing tone"
+        },
+        {
+          "kind": "routing preparation",
+          "file": "src/engine/audio/routing/model.rs",
+          "entry": "Version-2 saved headphone alias and actual physical map conflict validation"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/headphones.rs",
+          "entry": "Native exact alias selection, live controls, route availability and quiet stopped checks"
+        },
+        {
+          "kind": "typed IPC and Undo",
+          "file": "src/automation.rs",
+          "entry": "Validated immediate monitor gestures, published state and dirty/Undo-preserved saved blend"
+        }
+      ],
+      "fixtures": [
+        "engine::monitor::qualification_tests",
+        "engine::monitor::tests",
+        "ui::headphones::tests",
+        "ui::audio_routing::tests::native_headphone_pair_review_persists_exact_alias_and_rejects_program_overlap",
+        "automation::tests::headphone_api_validates_values_and_rejects_unavailable_checks_without_changing_program"
+      ],
+      "evidence": [
+        "docs/validation/headphone-monitoring.md",
+        "docs/validation/headphone-monitoring-receipt.json"
+      ],
+      "limits": "Nine new software checks and existing native NS7 regressions pass. Program output remains bit-identical through cue/blend/level/split changes in both renderers; separate tone duration/channel checks cover 44.1/48/96 kHz with zero callback heap work. Exact aliases, missing channels, overlaps, project reopen, typed API, native controls and saved blend Undo/Redo are covered. The complete 1797-test unfiltered suite passes with 43 ignored cases. Default ARM64 executable installed and checksum-verified for its next launch; the separate controller GUI was preserved; simultaneous physical main/headphone capture remains outside this thread active scope."
+    },
     "185": {
       "status": "implemented",
       "paths": [

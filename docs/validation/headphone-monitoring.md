@@ -42,7 +42,11 @@ project owners. Older builds reject version-2 routes; retain a document copy
 for rollback. Headphone level, source and split settings remain transient;
 existing saved cue/master blend is preserved.
 
-Software qualification and installed-build evidence will be recorded after
-the engine, native UI, typed API and complete software suite pass. No new
+Nine new engine/native/API checks, existing NS7 regressions and the complete
+1797-test software suite pass (43 explicitly ignored cases). The
+[source-bound receipt](headphone-monitoring-receipt.json) retains the earlier
+corrections, unfiltered result, exact binary and source inventory. Native slider
+and API changes update the saved blend through dirty-state tracking and
+Undo/Redo. Fresh ARM64 release `0.1.0+a0a0a52a933a` is installed at the default executable path, matching SHA-256 `2e156490f9f22f8d6398b7f51d1694a5c2a311fe2490eb38f596a883c84eff16`. The separate controller session's private GUI and control followers remain alive with their original executable; this update takes effect on the default app's next launch. No new
 physical capture or listening test is requested by this thread. Simultaneous
 physical main/headphone capture required for hardware acceptance remains open.
