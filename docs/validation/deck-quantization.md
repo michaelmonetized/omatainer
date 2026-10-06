@@ -42,7 +42,7 @@ Unknown fields, invalid divisions and invalid value types refuse admission.
 
 The eight new software checks pass; their source-bound result is in the
 [qualification receipt](deck-quantization-receipt.json). The complete 1786-test software batch passes
-(43 ignored acceptance/maintainer cases). Fresh installation remains open. The independent source-time fixtures cover
+(43 ignored acceptance/maintainer cases). Source-qualified ARM64 release `0.1.0+f1ff6e5d09d8` is installed; the running executable matches SHA-256 `e85b8820d2f18f614eb06e749b688eeb88fc3519bb7444b437151c1c897ff784`. Both decks and transport are paused, master is muted, and the independent status follower remains alive. The independent source-time fixtures cover
 tempo anchors, click onsets at three source and three output rates,
 tempo-synchronized playback, rapid replacements, independent held owners,
 release before onset, input retirement under queue overload, grid history,

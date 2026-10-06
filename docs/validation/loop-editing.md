@@ -35,7 +35,7 @@ launch. No project or preference schema changes are needed.
 The seven new checks and surrounding regression modules pass; the current
 source-bound result is in the [qualification receipt](loop-editing-receipt.json).
 The complete 1786-test software batch passes (43 ignored cases).
-Fresh installation remains open. The engine fixtures
+Source-qualified ARM64 release `0.1.0+f1ff6e5d09d8` is installed; the running executable matches SHA-256 `e85b8820d2f18f614eb06e749b688eeb88fc3519bb7444b437151c1c897ff784`. Both decks and transport are paused, master is muted, and the independent status follower remains alive. The engine fixtures
 compare independent stereo
 rendering at three source and three output rates, tempo-anchor moves, exact
 edges, all preset lengths, file limits, stale identities, owner conflicts,

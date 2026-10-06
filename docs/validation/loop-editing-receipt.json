@@ -163,5 +163,33 @@
       "src/automation.rs": "560b08c9161b75063530dadfd5e05bf7801aebb302ced66732815d33d0b0f9e6",
       "src/automation/tests.rs": "11bdfe3a26599914d0b7a0b5b67025aeb66b16c967b7e40781a8dc343dbd6736"
     }
+  },
+  "installation": {
+    "qualifiedAt": "2026-10-06T12:56:09.477Z",
+    "revision": "f1ff6e5d09d8b5ca25eefd700db9e012477cec3a",
+    "version": "0.1.0+f1ff6e5d09d8",
+    "manifestSha256": "93498097d80450e0be59b47b785963ec54c44ddef4466860a594cb1c1b17162a",
+    "executableSha256": "e85b8820d2f18f614eb06e749b688eeb88fc3519bb7444b437151c1c897ff784",
+    "runningPid": 3169368,
+    "packageFiles": 29,
+    "preferences": 18,
+    "project": 15,
+    "verificationLog": {
+      "path": "target/app-backlog/deck-quantization-installed-verification.log",
+      "sha256": "de45c26f71067f6d44c4e1ee0f3c0513ad93d0c5fe94cf3f4205c0f9fe8d4cfc"
+    },
+    "state": {
+      "path": "target/app-backlog/deck-quantization-installed-state.json",
+      "sha256": "affcc235610ebeb44995ecda107229751acc6243cbd5c204f6667575b9d68362",
+      "master": 0,
+      "playing": false,
+      "recording": false,
+      "decksPaused": true,
+      "quantizeDivisions": [
+        3,
+        3
+      ]
+    },
+    "scope": "Software installation and live read-only state; no physical listening or gesture acceptance"
   }
 }

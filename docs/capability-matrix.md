@@ -321,7 +321,7 @@ Native headless UI, actual learned MIDI workers and stereo source-reference soft
 - Evidence: [docs/validation/deck-quantization.md](../docs/validation/deck-quantization.md).
 - Evidence: [docs/validation/deck-quantization-receipt.json](../docs/validation/deck-quantization-receipt.json).
 
-Eight new software checks pass. Independent mapped click timing covers all nine 44.1/48/96 kHz source/output combinations, constant and tempo-synchronized playback around tempo anchors, with onset within one output frame and zero callback allocations/frees. Release/reset/reconfiguration, scratch, grid Undo, media, safety and project fences are exercised. One fixed pending action per deck replaces rapid retriggers. Source-second loop editing stays exact. The complete 1786-test unfiltered software batch passes (43 ignored cases). Fresh installation remains open; physical qualification remains paused.
+Eight new software checks pass. Independent mapped click timing covers all nine 44.1/48/96 kHz source/output combinations, constant and tempo-synchronized playback around tempo anchors, with onset within one output frame and zero callback allocations/frees. Release/reset/reconfiguration, scratch, grid Undo, media, safety and project fences are exercised. One fixed pending action per deck replaces rapid retriggers. Source-second loop editing stays exact. The complete 1786-test unfiltered software batch passes (43 ignored cases). Source-qualified ARM64 release installed with paused decks and muted master.; physical qualification remains paused.
 
 ### Issue #190: implemented
 
@@ -333,7 +333,7 @@ Eight new software checks pass. Independent mapped click timing covers all nine 
 - Evidence: [docs/validation/loop-editing.md](../docs/validation/loop-editing.md).
 - Evidence: [docs/validation/loop-editing-receipt.json](../docs/validation/loop-editing-receipt.json).
 
-Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Fresh installation remains open; physical qualification is paused.
+Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Source-qualified ARM64 release installed with paused decks and muted master.; physical qualification is paused.
 
 ### Issue #195: implemented
 
