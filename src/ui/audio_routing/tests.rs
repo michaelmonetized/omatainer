@@ -182,34 +182,126 @@ fn native_input_buffer_control_is_reviewed_saved_reopened_and_cancelled() {
     settled(&mut gui);
     gui.click("Use explicit routing");
     gui.click("Live input choices");
-    for _ in 0..8 { gui.frame(vec![]); }
+    for _ in 0..8 {
+        gui.frame(vec![]);
+    }
     gui.click("Save input choice");
-    gui.app.audio_routing.draft.as_mut().unwrap().model.input.as_mut().unwrap().device = "Reviewed fixture device".into();
+    gui.app
+        .audio_routing
+        .draft
+        .as_mut()
+        .unwrap()
+        .model
+        .input
+        .as_mut()
+        .unwrap()
+        .device = "Reviewed fixture device".into();
     gui.click("Request input buffer size");
-    for _ in 0..8 { gui.frame(vec![]); }
-    let label = gui.nodes.iter().filter_map(|(_, node)| node.label()).find(|label| label.ends_with("Input buffer frames")).unwrap().to_owned();
-    gui.action(&label, Action::SetValue, Some(ActionData::NumericValue(1024.0)));
-    assert_eq!(gui.app.audio_routing.draft.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    for _ in 0..8 {
+        gui.frame(vec![]);
+    }
+    let label = gui
+        .nodes
+        .iter()
+        .filter_map(|(_, node)| node.label())
+        .find(|label| label.ends_with("Input buffer frames"))
+        .unwrap()
+        .to_owned();
+    gui.action(
+        &label,
+        Action::SetValue,
+        Some(ActionData::NumericValue(1024.0)),
+    );
+    assert_eq!(
+        gui.app
+            .audio_routing
+            .draft
+            .as_ref()
+            .unwrap()
+            .model
+            .input
+            .as_ref()
+            .unwrap()
+            .buffer_frames,
+        Some(1024)
+    );
     gui.click("Review routing change…");
     gui.click("Apply routing");
     settled(&mut gui);
-    assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
-    assert_eq!(gui.rt.routing.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    assert!(
+        gui.app.audio_routing.error.is_none(),
+        "{:?}",
+        gui.app.audio_routing.error
+    );
+    assert_eq!(
+        gui.rt
+            .routing
+            .as_ref()
+            .unwrap()
+            .model
+            .input
+            .as_ref()
+            .unwrap()
+            .buffer_frames,
+        Some(1024)
+    );
     let handle = gui.app.engine.project.clone();
     let capture = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)));
     let deadline = Instant::now() + Duration::from_secs(15);
-    while !capture.is_finished() { gui.frame(vec![]); assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1)); }
+    while !capture.is_finished() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
     let state = capture.join().unwrap().unwrap();
-    let reopened = crate::engine::project::Prepared::from_state(state.state, state.media, 96000).unwrap().into_offline();
-    assert_eq!(reopened.routing.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    let reopened = crate::engine::project::Prepared::from_state(state.state, state.media, 96000)
+        .unwrap()
+        .into_offline();
+    assert_eq!(
+        reopened
+            .routing
+            .as_ref()
+            .unwrap()
+            .model
+            .input
+            .as_ref()
+            .unwrap()
+            .buffer_frames,
+        Some(1024)
+    );
     gui.click("Refresh routes");
     settled(&mut gui);
-    for _ in 0..8 { gui.frame(vec![]); }
+    for _ in 0..8 {
+        gui.frame(vec![]);
+    }
     gui.click("Request input buffer size");
-    assert_eq!(gui.app.audio_routing.draft.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, None);
+    assert_eq!(
+        gui.app
+            .audio_routing
+            .draft
+            .as_ref()
+            .unwrap()
+            .model
+            .input
+            .as_ref()
+            .unwrap()
+            .buffer_frames,
+        None
+    );
     gui.click("Review routing change…");
     gui.click("Cancel routing change");
-    assert_eq!(gui.rt.routing.as_ref().unwrap().model.input.as_ref().unwrap().buffer_frames, Some(1024));
+    assert_eq!(
+        gui.rt
+            .routing
+            .as_ref()
+            .unwrap()
+            .model
+            .input
+            .as_ref()
+            .unwrap()
+            .buffer_frames,
+        Some(1024)
+    );
 }
 
 #[test]
@@ -247,7 +339,8 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
     settled(&mut gui);
     gui.click("Refresh routes");
     settled(&mut gui);
-    gui.rt.decks[0].audio = Some(Arc::new(crate::engine::dsp::Sample { spectrum: None,
+    gui.rt.decks[0].audio = Some(Arc::new(crate::engine::dsp::Sample {
+        spectrum: None,
         name: "Print source".into(),
         sr: 48000,
         ch: 2,
@@ -306,4 +399,86 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
             std::fs::remove_file(&path).unwrap();
         }
     }
+}
+
+#[test]
+fn native_headphone_pair_review_persists_exact_alias_and_rejects_program_overlap() {
+    let mut gui = Gui::new();
+    gui.click("Audio routing");
+    gui.click("Refresh routes");
+    settled(&mut gui);
+    gui.click("Use explicit routing");
+    let model = &mut gui.app.audio_routing.draft.as_mut().unwrap().model;
+    model.next_id = 3;
+    model.ports.push(Port {
+        id: 2,
+        alias: "Booth headphones".into(),
+        direction: Direction::Output,
+        channels: vec![4, 5],
+    });
+    gui.frame(vec![]);
+    gui.click("Headphone output");
+    gui.click("Headphones: Booth headphones (outputs 5/6)");
+    gui.click("Review routing change…");
+    gui.click("Apply routing");
+    settled(&mut gui);
+    assert!(
+        gui.app.audio_routing.error.is_none(),
+        "{:?}",
+        gui.app.audio_routing.error
+    );
+    assert_eq!(
+        gui.rt.routing.as_ref().unwrap().model.monitor_output,
+        Some(2)
+    );
+    let handle = gui.app.engine.project.clone();
+    let capture = std::thread::spawn(move || handle.capture(&AtomicBool::new(false)));
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while !capture.is_finished() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let captured = capture.join().unwrap().unwrap();
+    let bytes = serde_json::to_vec(&captured.state).unwrap();
+    let state = serde_json::from_slice(&bytes).unwrap();
+    let prepared =
+        crate::engine::project::Prepared::from_state(state, captured.media, 48000).unwrap();
+    let handle = gui.app.engine.project.clone();
+    let reopen = std::thread::spawn(move || {
+        handle.install(prepared, handle.revision(), &AtomicBool::new(false))
+    });
+    while !reopen.is_finished() {
+        gui.frame(vec![]);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    reopen.join().unwrap().unwrap();
+    assert_eq!(
+        gui.rt.routing.as_ref().unwrap().model.monitor_output,
+        Some(2)
+    );
+    assert_eq!(gui.rt.routing.as_ref().unwrap().model.version, 2);
+    gui.click("Refresh routes");
+    settled(&mut gui);
+    let draft = gui.app.audio_routing.draft.as_mut().unwrap();
+    draft.model.ports[0].channels = vec![4, 5];
+    gui.click("Review routing change…");
+    gui.click("Apply routing");
+    settled(&mut gui);
+    assert!(gui
+        .app
+        .audio_routing
+        .error
+        .as_ref()
+        .unwrap()
+        .contains("overlap"));
+    assert_eq!(
+        gui.rt.routing.as_ref().unwrap().model.ports[0].channels,
+        [0, 1]
+    );
+    assert_eq!(
+        gui.rt.routing.as_ref().unwrap().model.monitor_output,
+        Some(2)
+    );
 }

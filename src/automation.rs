@@ -156,6 +156,7 @@ pub(crate) enum Action {
     CrossfaderContour { value: f32 },
     MasterGain { value: f32 },
     DeckControl { deck: u8, control: engine::deck_controls::Control },
+    Monitor { control: engine::monitor::Control },
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
@@ -238,7 +239,7 @@ fn discovery() -> Value {
             "track_gain":{"target":"track Target","value":"number 0..1.5"},
             "track_pan":{"target":"track Target","value":"number 0..1; center 0.5"},
             "crossfader":{"value":"number 0..1"},"crossfader_contour":{"value":"number 0..1, fade to cut"},"master_gain":{"value":"number 0..1.5"},
-            "deck_control":{"deck":"0|1","control":"controller control: quantize (enabled: bool, division: 0..5 = 1/8, 1/4, 1/2, 1, 2, 4 beats), hold, keylock, pitch_range, strip, loop_mode, loop_button, loop_toggle, loop_select, reloop, loop_scale, loop_shift, loop_bounds (media_key, start_seconds, end_seconds), loop_move (media_key, signed beats), loop_length (media_key, 0.125..64 beats), beat_jump (forward: bool), beat_jump_size (index: 0..9), beat_jump_scale (up: bool), tap, start_time, stop_time, track_start, slip, pad_mode, parameter, hot_loop, auto_loop_pad, manual_pad, sync_off","quantized_onset":"applied acknowledges the accepted controller gesture; state.decks[].controls.pending reports any deferred musical onset and disappears on dispatch or cancellation"}},
+            "monitor":{"control":"{op: source, value: pfl|deck_mix}; volume/blend/mix: 0..1; master/split: bool; pfl: {deck: 0|1, enabled: bool}; tone: 0|1 (one second at -40 dBFS, stopped available pair); cancel_tone"},"deck_control":{"deck":"0|1","control":"controller control: quantize (enabled: bool, division: 0..5 = 1/8, 1/4, 1/2, 1, 2, 4 beats), hold, keylock, pitch_range, strip, loop_mode, loop_button, loop_toggle, loop_select, reloop, loop_scale, loop_shift, loop_bounds (media_key, start_seconds, end_seconds), loop_move (media_key, signed beats), loop_length (media_key, 0.125..64 beats), beat_jump (forward: bool), beat_jump_size (index: 0..9), beat_jump_scale (up: bool), tap, start_time, stop_time, track_start, slip, pad_mode, parameter, hot_loop, auto_loop_pad, manual_pad, sync_off","quantized_onset":"applied acknowledges the accepted controller gesture; state.decks[].controls.pending reports any deferred musical onset and disappears on dispatch or cancellation"}},
         "edits":{"rename":{"name":"UTF-8 string, at most 1024 bytes"},
             "color":{"color":"null or three integer bytes"},"move":{"position":"zero-based display position"}},
         "types":{"Namespace":"32 hex characters; never a JSON number", "ObjectId":"16 nonzero hex characters",
@@ -299,7 +300,7 @@ fn state(
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
-        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,
+        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,"monitor":s.monitor,
         "decks":s.decks.iter().take(2).map(|deck| json!({"title":ipc_transport::short_text(&deck.title,32),"playing":deck.playing,"position_seconds":deck.pos/f64::from(deck.source_sample_rate.max(1)),"duration":deck.duration,"keylock":deck.keylock,"keylock_mode":deck.keylock_mode,"pitch_range":deck.pitch_range,"controls":deck.controls,"loop_on":deck.loop_on,"hotcues":deck.hotcues,
             "media_key":Count(deck.media_key),"source_sample_rate":deck.source_sample_rate,
             "loop_region":(deck.loop_len>=64.0).then(||json!({"start_seconds":deck.loop_start/f64::from(deck.source_sample_rate.max(1)),"end_seconds":(deck.loop_start+deck.loop_len)/f64::from(deck.source_sample_rate.max(1)),"enabled":deck.loop_on}))})).collect::<Vec<_>>(),
@@ -378,6 +379,10 @@ impl Action {
             Self::DeckControl { deck, control } => {
                 if usize::from(deck) >= engine::DECKS || !control.valid() { return Err(Error::new("invalid_operation", "Invalid deck controller target or value")); }
                 remote::Action::DeckControl { deck, control }
+            }
+            Self::Monitor { control } => {
+                if !control.valid() { return Err(Error::new("invalid_operation", "Invalid headphone control or value")); }
+                remote::Action::Monitor(control)
             }
         })
     }
@@ -482,7 +487,7 @@ fn submit_action(
     at: Option<f64>,
     action: Action,
 ) -> Result<Value, Error> {
-    if at.is_some() && matches!(action, Action::DeckControl { .. }) { return Err(Error::new("invalid_schedule", "Deck controller gestures require immediate commands")); }
+    if at.is_some() && matches!(action, Action::DeckControl { .. } | Action::Monitor { .. }) { return Err(Error::new("invalid_schedule", "Deck and monitor gestures require immediate commands")); }
     let s = snapshot.try_lock_for(limits.snapshot).ok_or_else(|| {
         Error::new(
             "snapshot_unavailable",

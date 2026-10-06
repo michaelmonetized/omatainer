@@ -28,7 +28,7 @@ where T: cpal::SizedSample + cpal::FromSample<f32>, f64: cpal::FromSample<T>,
             (false, 1.0, 0.0, false, 0.0, true),
             (false, 0.0, 0.0, false, 0.0, false),
             (false, 1.0, 1.0, true, 0.0, false),
-            (false, 1.0, 1.0, true, 1.0, true),
+            (false, 1.0, 1.0, true, 1.0, false),
             (true, 1.0, 0.0, false, 0.0, channels != 1),
         ] {
             let (mut callback, receiver, key) = callback(channels, anti, gain, xfader, pfl, cue_mix);
@@ -129,7 +129,7 @@ fn output_sidecar_and_disconnected_consumer_fail_explicitly_without_breaking_aud
 fn prepare_monitor_confirms_playing_output_without_starting_a_history_session() {
     for (gain, xfader, pfl, cue_mix, active) in [
         (1.0,0.0,false,0.0,true), (0.0,0.0,false,0.0,false),
-        (1.0,1.0,true,0.0,false), (1.0,1.0,true,1.0,true),
+        (1.0,1.0,true,0.0,false), (1.0,1.0,true,1.0,false),
     ] {
         let (mut callback, receiver, key) = callback(2,false,gain,xfader,pfl,cue_mix);
         let handle = callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();

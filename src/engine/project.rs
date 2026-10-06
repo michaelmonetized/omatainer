@@ -583,6 +583,7 @@ impl RtEngine {
             | Command::XfaderCurve(_)
             | Command::Master(_)
             | Command::CueMix(_)
+            | Command::Monitor(monitor::Control::Blend(_))
             | Command::TrackGain { .. }
             | Command::ClipGain { .. }
             | Command::TrackPan { .. }

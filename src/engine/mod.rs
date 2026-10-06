@@ -1448,6 +1448,7 @@ impl RtEngine {
             }
         }
         self.performance_tick();
+        self.maintain_monitor(channels, !out.is_empty());
         self.command_batch.receive_into(&self.cmd_rx);
         self.command_stats.record(&self.command_batch);
         for index in 0..control::COMMANDS_PER_BLOCK {
@@ -1457,6 +1458,7 @@ impl RtEngine {
             if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
+        self.maintain_monitor(channels, !out.is_empty());
         self.quantized_deck_maintain();
         let spindle_now = Instant::now();
         for deck in &mut self.decks { if let Some(spindle) = &mut deck.spindle { spindle.begin(spindle_now); } }
@@ -1569,8 +1571,8 @@ impl RtEngine {
                 let (tl, tr, pfl) = self.render_track_cached(ti, any_solo);
                 self.load_profile.track(ti, timer);
                 if pfl {
-                    cue_l += tl;
-                    cue_r += tr;
+                    cue_l += self.routing_track_taps[1][0];
+                    cue_r += self.routing_track_taps[1][1];
                 }
                 let bus = self.tracks[ti].scene_bus;
                 scene_inputs[bus][0] += tl;
@@ -1609,12 +1611,12 @@ impl RtEngine {
             l += dl;
             r += dr;
             if self.decks[0].pfl {
-                cue_l += al;
-                cue_r += ar;
+                cue_l += self.monitor.tap(0)[0];
+                cue_r += self.monitor.tap(0)[1];
             }
             if self.decks[1].pfl {
-                cue_l += bl;
-                cue_r += br;
+                cue_l += self.monitor.tap(1)[0];
+                cue_r += self.monitor.tap(1)[1];
             }
 
             let click = self.render_click(counting_in, count_click, beat_start);
@@ -1628,23 +1630,20 @@ impl RtEngine {
                 self.load_profile.master(slot, timer, self.fx_kind[slot]);
             }
 
-            let cm = self.cue_mix;
-            l = l * (1.0 - cm) + cue_l * cm;
-            r = r * (1.0 - cm) + cue_r * cm;
             if let Some(history) = self.history_measurement.as_mut().filter(|history| history.available) {
                 let contribution = history.tracker.process(
                     [self.decks[0].history_last, self.decks[1].history_last],
                     [self.decks[0].history_key, self.decks[1].history_key],
-                    [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], cm);
+                    [[al, ar], [bl, br]], [ga, gb], [self.decks[0].pfl, self.decks[1].pfl], 0.0);
                 history.record_rendered(i, contribution, [l, r], self.master, &self.safety_output,
                     std::array::from_fn(|deck| if self.decks[deck].playing { self.decks[deck].history_key } else { 0 }));
             }
             let preview = self.tick_provider_preview();
             l += preview[0];
             r += preview[1];
-            let headphone = self.monitor.render([l * self.master, r * self.master], channels);
+            let headphone = self.render_monitor([l * self.master, r * self.master], [cue_l, cue_r]);
             let main = [l * self.master, r * self.master];
-            self.safety_output.observe(std::array::from_fn(|channel| if !main[channel].is_finite() || !headphone[channel].is_finite() { f32::NAN } else { main[channel].abs().max(headphone[channel].abs()) }), self.sr);
+            self.safety_output.observe(main.map(|sample| if sample.is_finite() { sample.abs() } else { f32::NAN }), self.sr);
             l = limiter(l * self.master);
             r = limiter(r * self.master);
             let headphone = self.safety_output.preview(headphone.map(limiter));
@@ -1653,7 +1652,9 @@ impl RtEngine {
             let output = &mut out[i * channels..(i + 1) * channels];
             output.fill(0.0);
             if channels == 1 { output[0] = 0.5 * (l + r); } else { output[0] = l; output[1] = r; }
-            if channels >= 4 { output[2..4].copy_from_slice(&headphone); }
+            if let Some(pair) = self.monitor.status.channels.filter(|_| self.monitor.status.available) {
+                for (channel, value) in pair.into_iter().zip(headphone) { output[channel] = value; }
+            }
             self.render_output_probe(output);
             self.audible.push(&self.decks);
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
@@ -2245,9 +2246,12 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        if let Command::Monitor(control) = &c {
+            if !self.monitor_can_apply(*control) { self.undo.retire_command(c); return; }
+        }
         match c {
             Command::PerformanceMode(enabled) => { let _ = self.performance.set_enabled(enabled); return; }
-            Command::SafetyStop(safety) => { self.performance.request_safety(safety); self.performance_tick(); return; }
+            Command::SafetyStop(safety) => { self.monitor.cancel_tone(); self.performance.request_safety(safety); self.performance_tick(); return; }
             Command::RecoverPerformance => { let _ = self.performance.acknowledge_inputs_released(); return; }
             _ => {}
         }
@@ -2720,8 +2724,22 @@ impl RtEngine {
             Command::FaderStart { deck, on } => { if let Some(value) = self.fader_start.get_mut(usize::from(deck)) { *value = on; } }
             Command::MeterMaster(on) => self.meter_master = on,
             Command::Master(v) => self.master = v.clamp(0.0, 1.5),
-            Command::CueMix(v) => self.cue_mix = v.clamp(0.0, 1.0),
-            Command::Monitor(control) => self.monitor.apply(control),
+            Command::CueMix(v) if v.is_finite() => {
+                self.cue_mix = v.clamp(0.0, 1.0);
+                self.monitor.apply(monitor::Control::Blend(self.cue_mix));
+                self.monitor.apply(monitor::Control::Source(monitor::Source::Pfl));
+            }
+            Command::CueMix(_) => {}
+            Command::Monitor(control) => {
+                if self.monitor_can_apply(control) {
+                    match control {
+                        monitor::Control::Pfl { deck, enabled } => self.decks[usize::from(deck)].pfl = enabled,
+                        monitor::Control::Blend(value) => self.cue_mix = value,
+                        _ => {}
+                    }
+                    self.monitor.apply(control);
+                }
+            }
             Command::TrackGain { track, value } => {
                 if (track as usize) < self.tracks.len() {
                     self.tracks[track as usize].gain = value.clamp(0.0, 1.5);

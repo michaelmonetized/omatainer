@@ -502,9 +502,9 @@ fn handle_client_with_stop(
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
             "monitor": s.monitor,
-            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
-            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| name.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
-                || s.decks.iter().take(2).any(|deck| deck.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES),
+            "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
+            "state_truncated": s.midi.len() > 8 || s.midi.iter().take(8).any(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < name.len())
+                || s.decks.iter().take(2).any(|deck| ipc_transport::short_json_text(&deck.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < deck.title.len()),
             "midi_clock": s.midi_clock,
             "midi_routing": commands.midi_routing().summary(),
             "midi_feedback": s.midi_feedback,
@@ -514,8 +514,8 @@ fn handle_client_with_stop(
             "commands": s.commands,
             "submissions": commands.stats(),
             "performance": commands.performance().status(),
-            "deckA": s.decks.first().map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
-            "deckB": s.decks.get(1).map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
+            "deckA": s.decks.first().map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
+            "deckB": s.decks.get(1).map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES)).unwrap_or_default(),
             "deckAPlaying": s.decks.first().map(|d| d.playing).unwrap_or(false),
             "deckBPlaying": s.decks.get(1).map(|d| d.playing).unwrap_or(false),
             "deckALoadLocked": s.decks.first().map(|d| d.load_locked).unwrap_or(false),

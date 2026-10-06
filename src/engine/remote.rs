@@ -32,6 +32,7 @@ pub(crate) enum Action {
     CrossfaderContour(f32),
     Master(f32),
     DeckControl { deck: u8, control: super::deck_controls::Control },
+    Monitor(super::monitor::Control),
 }
 impl Action {
     /// Resolve a prepared control.
@@ -53,6 +54,7 @@ impl Action {
             Self::CrossfaderContour(value) => Command::XfaderCurve(value),
             Self::Master(value) => Command::Master(value),
             Self::DeckControl { deck, control } => Command::DeckControl { source: 0, deck, control },
+            Self::Monitor(control) => Command::Monitor(control),
         }
     }
 
@@ -83,6 +85,7 @@ impl Action {
             Self::CrossfaderContour(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::Master(value) => value.is_finite() && (0.0..=1.5).contains(&value),
             Self::DeckControl { deck, control } => usize::from(deck) < super::DECKS && control.valid(),
+            Self::Monitor(control) => control.valid(),
             Self::Play | Self::Stop => true,
         }
     }
@@ -106,6 +109,7 @@ impl Request {
             && self.transport_epoch == rt.transport_epoch
             && self.safety_epoch == rt.performance.safety_epoch()
             && self.action.current(&rt.session)
+            && match self.action { Action::Monitor(control) => rt.monitor_can_apply(control), _ => true }
     }
 }
 

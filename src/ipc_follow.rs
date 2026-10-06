@@ -93,16 +93,16 @@ impl Metadata {
         let a = s
             .decks
             .first()
-            .map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES))
+            .map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES))
             .unwrap_or("");
         let b = s
             .decks
             .get(1)
-            .map(|d| ipc_transport::short_text(&d.title,ipc_transport::STATUS_DECK_TITLE_BYTES))
+            .map(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES))
             .unwrap_or("");
         let truncated = s.midi.len() > 8
-            || s.midi.iter().take(8).any(|s| s.len() > ipc_transport::STATUS_MIDI_NAME_BYTES)
-            || s.decks.iter().take(2).any(|d| d.title.len() > ipc_transport::STATUS_DECK_TITLE_BYTES);
+            || s.midi.iter().take(8).any(|s| ipc_transport::short_json_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < s.len())
+            || s.decks.iter().take(2).any(|d| ipc_transport::short_json_text(&d.title, ipc_transport::STATUS_DECK_TITLE_BYTES).len() < d.title.len());
         let changed = self.deck_a != a
             || self.deck_b != b
             || self.state_truncated != truncated
@@ -111,7 +111,7 @@ impl Metadata {
                 .midi
                 .iter()
                 .zip(&s.midi)
-                .any(|(a, b)| a != ipc_transport::short_text(b, ipc_transport::STATUS_MIDI_NAME_BYTES));
+                .any(|(a, b)| a != ipc_transport::short_json_text(b, ipc_transport::STATUS_MIDI_NAME_BYTES));
         if changed {
             self.deck_a.clear();
             self.deck_a.push_str(a);
@@ -122,7 +122,7 @@ impl Metadata {
                 s.midi
                     .iter()
                     .take(8)
-                    .map(|s| ipc_transport::short_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).to_owned()),
+                    .map(|s| ipc_transport::short_json_text(s, ipc_transport::STATUS_MIDI_NAME_BYTES).to_owned()),
             );
             self.state_truncated = truncated;
         }

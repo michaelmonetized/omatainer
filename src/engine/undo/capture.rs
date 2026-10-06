@@ -30,7 +30,7 @@ impl Plan {
             Xfader(_) => (Target::Global, Name::Crossfader, 4),
             XfaderCurve(_) => (Target::Global, Name::CrossfaderContour, 7),
             Master(_) => (Target::Global, Name::Master, 5),
-            CueMix(_) => (Target::Global, Name::CueMix, 6),
+            CueMix(_) | Monitor(super::super::monitor::Control::Blend(_)) => (Target::Global, Name::CueMix, 6),
             FxWet { slot, .. } | FxSelect { slot } if *slot < 3 => {
                 (Target::Global, Name::MasterEffect, 10 + *slot as u64)
             }

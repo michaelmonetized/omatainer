@@ -105,6 +105,8 @@ pub struct Model {
     pub decks_without_default_send: [bool; 2],
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<InputConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monitor_output: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -150,6 +152,7 @@ impl Default for Model {
             tracks_without_default_send: Vec::new(),
             decks_without_default_send: [false; 2],
             input: None,
+            monitor_output: None,
         }
     }
 }
@@ -254,7 +257,8 @@ impl Model {
         }) {
             return Err("Invalid saved input configuration".into());
         }
-        if self.version != 1
+        if !(1..=2).contains(&self.version)
+            || (self.version == 1 && self.monitor_output.is_some())
             || self.next_id == 0
             || self.buses.len() > MAX_BUSES
             || self.connections.len() > MAX_CONNECTIONS
@@ -406,6 +410,18 @@ impl Model {
                 .entry(connection.destination)
                 .or_default()
                 .insert(connection.source.group);
+        }
+        if let Some(id) = self.monitor_output {
+            let monitor = self.port(id, Direction::Output).filter(|port| port.channels.len() == 2)
+                .ok_or("Headphones require a distinct stereo output alias")?;
+            for connection in &self.connections {
+                if let Group::Output(output) = connection.destination {
+                    let port = self.port(output, Direction::Output).unwrap();
+                    if output == id || connection.map.iter().any(|map| monitor.channels.contains(&port.channels[usize::from(map.destination)])) {
+                        return Err("Headphone channels overlap a program output route".into());
+                    }
+                }
+            }
         }
         let mut order = Vec::with_capacity(graph.len());
         while !graph.is_empty() {

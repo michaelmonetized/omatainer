@@ -84,8 +84,8 @@ impl Prepared {
                         self.legacy_send(self.main, mixed, self.nodes[index].valid);
                     }
                     if rt.decks[slot].pfl {
-                        cue[0] += left;
-                        cue[1] += right;
+                        cue[0] += rt.monitor.tap(slot)[0];
+                        cue[1] += rt.monitor.tap(slot)[1];
                     }
                     [rt.routing_deck_taps[0], [left, right], mixed]
                 }
@@ -102,10 +102,7 @@ impl Prepared {
                     let post_fx = output;
                     let preview = rt.tick_provider_preview();
                     for channel in 0..2 {
-                        output[channel] = (output[channel] * (1.0 - rt.cue_mix)
-                            + cue[channel] * rt.cue_mix
-                            + preview[channel])
-                            * rt.master;
+                        output[channel] = (output[channel] + preview[channel]) * rt.master;
                     }
                     [before, post_fx, output]
                 }
@@ -142,14 +139,16 @@ impl Prepared {
             self.publish_stereo(index, taps);
         }
         let mut output = self.outputs(channels);
-        let headphone = rt.monitor.render([self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]], channels);
-        if channels >= 4 && self.monitor_channels_free { output[2..4].copy_from_slice(&headphone); }
+        let headphone = rt.render_monitor([self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]], cue);
+        let monitor_pair = rt.monitor.status.channels.filter(|_| rt.monitor.status.available);
+        if let Some(pair) = monitor_pair { for (channel, value) in pair.into_iter().zip(headphone) { output[channel] = value; } }
         let mut peak = [0.0_f32; 2];
         for (channel, value) in output
             .iter()
             .take(channels.min(MAX_PHYSICAL_CHANNELS))
             .enumerate()
         {
+            if monitor_pair.is_some_and(|pair| pair.contains(&channel)) { continue; }
             let slot = channel % 2;
             if !value.is_finite() {
                 peak[slot] = f32::NAN;

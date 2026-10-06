@@ -602,6 +602,7 @@ impl App {
         let mut open = true;
         egui::Window::new(tr!("Audio routing")).id(egui::Id::new("audio-routing-window")).open(&mut open).default_width(850.0).default_height(650.0).vscroll(true).show(ctx, |ui| {
             ui.label(tr!("Aliases retain exact physical channels. Missing channels stay silent. Drafts require confirmation; routes save with the project."));
+            ui.collapsing(tr!("Headphone controls"), |ui| headphones::controls(ui, &self.snap, &self.engine.cmd, &self.undo_history));
             ui.label(&panel.message);
             if let Some(error) = &panel.error { ui.colored_label(ui.visuals().warn_fg_color, error); }
             if panel.busy() { if ui.button(tr!("Cancel routing operation")).clicked() { panel.cancel(); } }
@@ -614,6 +615,7 @@ impl App {
                     ui.checkbox(&mut draft.enabled, tr!("Use explicit routing"));
                     if draft.enabled {
                         ui.collapsing(tr!("Channel aliases and buses"), |ui| aliases(ui, &mut draft.model));
+                        headphones::output(ui, &mut draft.model);
                         ui.collapsing(tr!("Default sends"), |ui| {
                             for track in draft.layout.tracks.iter().filter(|item| item.active) {
                                 let mut send = !draft.model.tracks_without_default_send.contains(&track.id);

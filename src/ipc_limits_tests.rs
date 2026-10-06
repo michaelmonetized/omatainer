@@ -341,6 +341,10 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
     {
         let mut snapshot = snap.lock();
         snapshot.midi = vec!["\u{1}".repeat(8192); 64];
+        snapshot.monitor.output_alias = Some(u64::MAX);
+        snapshot.monitor.channels = Some([usize::MAX; 2]);
+        snapshot.monitor.meters = [f32::MAX; 2];
+        snapshot.monitor.tone = Some(1);
         snapshot.commands.received = u64::MAX;
         snapshot.commands.applied = u64::MAX;
         snapshot.commands.coalesced = u64::MAX;
@@ -383,8 +387,8 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
     assert_eq!(reply["state_truncated"], true);
     assert_eq!(reply["midi_routing"]["sent"],u64::MAX);
     assert_eq!(reply["midi_routing"]["refused_tracks"],255);
-    assert_eq!(reply["midi"][0].as_str().unwrap().len(),ipc_transport::STATUS_MIDI_NAME_BYTES);
-    assert_eq!(reply["deckA"].as_str().unwrap().len(),ipc_transport::STATUS_DECK_TITLE_BYTES);
+    assert_eq!(reply["midi"][0].as_str().unwrap().len(),ipc_transport::STATUS_MIDI_NAME_BYTES / 6);
+    assert_eq!(reply["deckA"].as_str().unwrap().len(),ipc_transport::STATUS_DECK_TITLE_BYTES / 6);
     assert_eq!(reply["midi"].as_array().unwrap().len(), 8);
     drop(client);
     let counts = worker.join().unwrap();

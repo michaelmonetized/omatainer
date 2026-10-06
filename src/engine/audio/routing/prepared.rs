@@ -32,6 +32,7 @@ pub struct Prepared {
     pub scene_nodes: [Option<usize>; crate::engine::session::MAX_SCENES],
     pub main: usize,
     pub monitor_channels_free: bool,
+    pub monitor_output: Option<(u64, [usize; 2])>,
 }
 
 impl Prepared {
@@ -82,6 +83,10 @@ impl Prepared {
             })
             .collect();
         let monitor_channels_free = !model.ports.iter().any(|port| port.direction == Direction::Output && port.channels.iter().any(|channel| matches!(channel, 2 | 3)));
+        let monitor_output = model.monitor_output.map(|id| {
+            let port = model.port(id, Direction::Output).unwrap();
+            (id, [usize::from(port.channels[0]), usize::from(port.channels[1])])
+        });
         Ok(Self {
             model,
             nodes,
@@ -90,6 +95,7 @@ impl Prepared {
             scene_nodes,
             main,
             monitor_channels_free,
+            monitor_output,
         })
     }
 

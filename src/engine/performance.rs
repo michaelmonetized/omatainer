@@ -782,6 +782,7 @@ impl super::RtEngine {
         // released. All bounded synth voices enter their normal release stage.
         self.history_finish_take();
         self.routing_pipe.recorder.invalidate();
+        self.monitor.cancel_tone();
         self.finish_recording_all();
         self.playing = false;
         self.recording = false;

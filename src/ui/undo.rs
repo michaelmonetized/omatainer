@@ -80,6 +80,7 @@ impl History {
                 | Command::XfaderCurve(_)
                 | Command::Master(_)
                 | Command::CueMix(_)
+                | Command::Monitor(crate::engine::monitor::Control::Blend(_))
                 | Command::TrackGain { .. }
                 | Command::TrackPan { .. }
                 | Command::ClipGain { .. }

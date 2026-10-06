@@ -495,3 +495,31 @@ fn now_playing_api_bounds_worst_case_labels_and_drops_expired_or_disabled_data()
     feed.configure(Default::default());feed.publish(generation,true,[Some(crate::performance_history::Source::Unresolved),None]);
     assert_eq!(service.query(json!({"op":"now_playing"}))["result"]["status"],"disabled");
 }
+
+#[test]
+fn headphone_api_validates_values_and_rejects_unavailable_checks_without_changing_program() {
+    let mut service=Service::new();let namespace=service.state()["expected"]["namespace"].clone();
+    let request=|control|json!({"op":"command","namespace":namespace,"action":{"op":"monitor","control":control}});
+    let master=service.rt.master;
+    for control in [json!({"op":"source","value":"pfl"}),json!({"op":"volume","value":0.5}),
+        json!({"op":"blend","value":0.75}),json!({"op":"split","value":true}),
+        json!({"op":"pfl","value":{"deck":0,"enabled":true}})] {
+        let response=service.query(request(control));assert_eq!(response["ok"],true,"{response}");
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"applied");
+    }
+    service.publish();let state=service.state();assert_eq!(state["monitor"]["source"],"pfl");
+    assert_eq!(state["monitor"]["volume"],0.5);assert_eq!(state["monitor"]["blend"],0.75);assert_eq!(state["monitor"]["split"],true);
+    assert_eq!(service.rt.master,master);
+    let revision=state["expected"]["revision"].clone();
+    service.rt.apply(Command::Undo);service.publish();
+    assert_eq!(service.state()["monitor"]["blend"],0.0);
+    assert_ne!(service.state()["expected"]["revision"],revision);
+    service.rt.apply(Command::Redo);service.publish();assert_eq!(service.state()["monitor"]["blend"],0.75);
+    for control in [json!({"op":"volume","value":1.1}),json!({"op":"split","value":1}),json!({"op":"tone","value":2}),
+        json!({"op":"pfl","value":{"deck":2,"enabled":true}}),json!({"op":"volume","value":0.5,"extra":1})] {
+        assert_eq!(service.query(request(control))["ok"],false);
+    }
+    let response=service.query(request(json!({"op":"tone","value":0})));assert_eq!(response["ok"],true);
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected");
+    assert_eq!(service.query(json!({"op":"schedule","namespace":namespace,"beat":4,"action":{"op":"monitor","control":{"op":"volume","value":0.5}}}))["error_code"],"invalid_schedule");
+}
