@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T05:35:29.095Z",
+  "sourceRevision": "b5045980add7150789488cfadb6af2cb3a0ea455",
+  "platform": "linux-aarch64",
+  "packageManifestSha256": "0413973b1bf52b779252011deb07dfc4ddf462885ca6e3b9be043330e9de7702",
+  "executableSha256": "75b3a6aa56ea3e77351b1de0269f153129e9199d2298f8064d0cb4272446520c",
+  "previousExecutableSha256": "0a6a939cf2ad62af5b43806aa4645a8fb31f98d557e3a4f39c73648e0afc6e5c",
+  "checks": {
+    "freshRelease": true,
+    "packageFilesVerified": 29,
+    "embeddedLicenseInventoryMatched": true,
+    "installedAndRunningExecutableMatched": true,
+    "fullRust": {
+      "passed": 1704,
+      "failed": 0,
+      "ignored": 42,
+      "filtered": 1,
+      "scope": "Before final sampler/help reuse; final focused checks cover that change"
+    },
+    "finalFocusedRust": {
+      "passed": 83,
+      "failed": 0
+    },
+    "node": {
+      "passed": 11,
+      "failed": 0
+    },
+    "captureServicesStopped": true,
+    "independentControlFollowerPreserved": true,
+    "visibleNativeApp": true
+  },
+  "state": {
+    "master": 0,
+    "playing": false,
+    "recording": false,
+    "decks": [
+      {
+        "title": "What More Can I Say",
+        "playing": false,
+        "positionSeconds": 264.646629781992,
+        "keylock": false
+      },
+      {
+        "title": "Public Service Announcement",
+        "playing": false,
+        "positionSeconds": 3.9060474438022594,
+        "keylock": true
+      }
+    ]
+  },
+  "evidence": {
+    "waveform": "docs/validation/rainbow-waveform.png",
+    "nativeScreenshot": "target/app-backlog/visible-app/app-waveforms.png",
+    "package": "target/app-backlog/release-final",
+    "install": "target/app-backlog/install-receipt.json",
+    "native": "target/app-backlog/visible-app"
+  },
+  "limits": [
+    "Linux aarch64 qualification only",
+    "No new physical controller or PA listening qualification",
+    "No publisher signature claim",
+    "The professional backlog remains open; see docs/backlog/app-checklist.md"
+  ]
+}
