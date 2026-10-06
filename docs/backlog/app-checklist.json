@@ -2062,9 +2062,11 @@
         112,
         111
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-controller-lanes.md"
+      ]
     },
     {
       "issue": 150,

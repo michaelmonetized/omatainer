@@ -94,6 +94,14 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### MIDI controller lanes
+
+Wire channels 1–16; CC/pressure 0–127; pitch bend 0–16383
+
+Open MIDI controller lanes in the piano roll. Choose channel and lane, enter an exact musical beat and value, then Insert controller point. Select a point in the plot or list to change or delete it. Save device label names a controller or a specific bank/program patch. Bank/program insertion sends CC 0 MSB, CC 32 LSB, then the two-byte Program Change. Pitch bend center is 8192. Apply prepares source ticks on a worker, commits one Undo entry and saves labels in project schema 15. Seek and launch restore earlier scalar controllers and the last patch before active notes. Stop releases owned notes/pedals and restores another managed owner's bend, pressure, modulation, breath or expression on a shared channel; otherwise those controls return to neutral. Volume, pan, arbitrary CC and patch selection retain their values. Imported RPN/NRPN/data-entry/channel-mode transactions retain normal playback/export but are not inferred during seek. Dense output still uses the existing 256-event block refusal limit.
+
+Workflow: Edit and undo.
+
 ### Prepare upcoming tracks
 
 4096 tracks and 2 MiB of captured references

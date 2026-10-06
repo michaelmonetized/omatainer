@@ -128,7 +128,7 @@ impl Gui {
     pub(crate) fn click(&mut self, label: &str) {
         self.action(label, Action::Click, None);
     }
-    fn number(&mut self, label: &str, value: f64) {
+    pub(crate) fn number(&mut self, label: &str, value: f64) {
         self.action(
             &format!("MIDI piano roll: {label}"),
             Action::SetValue,
@@ -192,7 +192,7 @@ impl Gui {
             self.app.piano_roll.error
         );
     }
-    fn apply(&mut self) {
+    pub(crate) fn apply(&mut self) {
         self.click("MIDI piano roll: Apply MIDI edit");
         self.settle();
         assert!(

@@ -1,6 +1,48 @@
 use super::*;
 use crate::engine::{midi_data::Lanes, test_alloc, MidiNote};
 
+fn controller_clip(messages: &[(u64, &[u8])]) -> Clip {
+    let mut clip = Clip::empty(); clip.kind = crate::engine::ClipKind::Midi; clip.bars = 4.0;
+    clip.region = Some(Region { loop_enabled: false, ..Region::full(4.0) });
+    clip.notes = vec![MidiNote { id: crate::engine::midi_edit::NoteId::new(), channel: 3, release_vel: 64, pitch: 60, start: 0.0, len: 10.0, vel: 100, muted: false, source_timing: None }];
+    clip.lanes = Some(Lanes::new(960, 15360, messages.iter().enumerate().map(|(i, (tick, bytes))| { let mut saved = [0; 3]; saved[..bytes.len()].copy_from_slice(bytes); crate::midi_file::Message { tick: *tick, order: i as u32, bytes: saved, length: bytes.len() as u8 } }).collect(), vec![]).unwrap());
+    clip
+}
+#[test]
+fn controller_chase_selects_the_original_patch_then_restores_pending_banks_before_notes() {
+    let clip = controller_clip(&[(0, &[0xb3, 0, 2]), (0, &[0xb3, 32, 3]), (0, &[0xc3, 5]), (960, &[0xb3, 0, 9]), (960, &[0xb3, 32, 10]), (1920, &[0xb3, 74, 88]), (2880, &[0xe3, 9, 70]), (3840, &[0xd3, 12]), (5760, &[0xb3, 74, 99])]);
+    let mut playback = Playback::default();
+    assert_eq!(test_alloc::measure(|| playback.rebuild(&clip, 5.0, false, &[])), test_alloc::Counts::default());
+    let mut trace = Vec::with_capacity(16);
+    assert_eq!(test_alloc::measure(|| while let Some((packet, _, _)) = playback.next(2, &clip, 5.0001) { trace.push(packet); }), test_alloc::Counts::default());
+    assert_eq!(trace.iter().map(|p| p.bytes()).collect::<Vec<_>>(), vec![&[0xb3,0,2][..], &[0xb3,32,3][..], &[0xc3,5][..], &[0xb3,0,9][..], &[0xb3,32,10][..], &[0xb3,74,88][..], &[0xe3,9,70][..], &[0xd3,12][..], &[0x93,60,100][..]]);
+    assert_eq!(playback.next(2, &clip, 6.0001).unwrap().0.bytes(), &[0xb3,74,99]);
+}
+#[test]
+fn controller_chase_honors_reset_boundaries_and_does_not_guess_parameter_transactions() {
+    let clip = controller_clip(&[(0,&[0xb3,7,90]), (0,&[0xb3,1,70]), (0,&[0xe3,0,70]), (960,&[0xb3,101,0]), (960,&[0xb3,100,1]), (960,&[0xb3,6,5]), (1920,&[0xb3,121,0]), (2880,&[0xd3,33])]);
+    let mut playback = Playback::default(); playback.rebuild(&clip, 4.0, false, &[]);
+    let mut trace = vec![]; while let Some((packet,_,_)) = playback.next(2,&clip,4.0001) { trace.push(packet.bytes().to_vec()); }
+    assert_eq!(trace, vec![vec![0xb3,121,0],vec![0xb3,7,90],vec![0xd3,33],vec![0x93,60,100]]);
+}
+#[test]
+fn controller_chase_after_a_loop_uses_the_previous_pass_until_a_new_point_arrives() {
+    let mut clip = controller_clip(&[(0,&[0xb3,74,10]), (2880,&[0xb3,74,99])]);
+    clip.region = Some(Region { loop_enabled: true, start: 0.0, end: 4.0, loop_start: 1.0, loop_end: 4.0 });
+    let mut playback = Playback::default(); playback.rebuild(&clip, 4.5, true, &[]);
+    assert_eq!(playback.next(2,&clip,4.5001).unwrap().0.bytes(), &[0xb3,74,99]);
+}
+#[test]
+fn controller_points_at_launch_and_seek_arrive_before_new_or_chased_native_notes() {
+    let clip = controller_clip(&[(0,&[0xb3,0,2]), (0,&[0xb3,32,3]), (0,&[0xc3,5]), (1920,&[0xb3,74,99])]);
+    let mut playback = Playback::default(); playback.rebuild(&clip,0.0,false,&[]);
+    let mut start = vec![]; while let Some((p,_,_)) = playback.next(2,&clip,0.0001) { start.push(p.bytes().to_vec()); }
+    assert_eq!(start, vec![vec![0xb3,0,2],vec![0xb3,32,3],vec![0xc3,5],vec![0x93,60,100]]);
+    playback.rebuild(&clip,2.0,false,&[]);
+    let mut seek = vec![]; while let Some((p,_,_)) = playback.next(2,&clip,2.0001) { seek.push(p.bytes().to_vec()); }
+    assert_eq!(&seek[seek.len()-2..], &[vec![0xb3,74,99],vec![0x93,60,100]]);
+}
+
 #[test]
 fn actual_ramp_controller_lane_emission_matches_an_independent_sample_timestamp_oracle() {
     use crate::engine::midi_data::{Conductor, Meter, Tempo, TimingSettings};

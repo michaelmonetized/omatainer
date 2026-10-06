@@ -6,7 +6,7 @@ Physical hardware qualification is paused at Michael's request. Existing capture
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 19 implemented · 6 partial · 196 planned · 0 accepted · 8 outside release
+127 existing stack · 20 implemented · 6 partial · 195 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -159,7 +159,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented | #105 | [receipt](../../docs/validation/issue-146-prepare-queue.md) |
 | [ ] | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned | #112, #81 |  |
 | [x] | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented | #112, #39 | [receipt](../../docs/validation/issue-148-midi-learn.md) |
-| [ ] | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | planned | #110, #112, #111 |  |
+| [x] | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | implemented | #110, #112, #111 | [receipt](../../docs/validation/midi-controller-lanes.md) |
 | [ ] | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned | #110, #112 |  |
 | [x] | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | implemented | #110 | [receipt](../../docs/validation/midi-step-rhythm.md), [#510](https://github.com/michaelmonetized/omatainer/pull/510) |
 | [ ] | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned | #113, #82, #83 |  |

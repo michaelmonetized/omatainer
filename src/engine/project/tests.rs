@@ -4,6 +4,50 @@ mod sampler_tests;
 mod gain_tests;
 mod dependency_tests;
 mod template_tests;
+#[test]
+fn named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_invalid_labels() {
+    let mut original = rt();
+    let lanes = midi_data::Lanes::named(960, 15360, vec![crate::midi_file::Message { tick: 120, order: 1, bytes: [0xbf,74,99], length: 3 }], vec![], vec![midi_data::Label { channel: 15, control: midi_data::ControlKind::Cc { controller: 74 }, name: "Filter cutoff".into() }]).unwrap();
+    original.tracks[2].clips[7].kind = ClipKind::Midi; original.tracks[2].clips[7].lanes = Some(lanes.clone());
+    let saved = captured(&original);
+    let json = serde_json::to_value(&saved.state).unwrap();
+    assert_eq!(json["version"], 15);
+    assert!(json["tracks"][2]["clips"][7]["lanes"].get("state").is_none());
+    let decoded: State = serde_json::from_value(json.clone()).unwrap();
+    let prepared = Prepared::from_state(decoded, saved.media.clone(), 48000).unwrap();
+    assert_eq!(prepared.rt.tracks[2].clips[7].lanes, Some(lanes));
+    assert!(prepared.rt.tracks[2].clips[7].lanes.as_ref().unwrap().prepared());
+    for labels in [serde_json::json!([]), serde_json::Value::Null] {
+        let mut old = json.clone(); old["version"] = 14.into(); old["tracks"][2]["clips"][7]["lanes"]["labels"] = labels;
+        assert!(serde_json::from_value::<State>(old).is_err());
+    }
+    let mut invalid = saved.state.clone(); let source = invalid.tracks[2].clips[7].lanes.as_mut().unwrap();
+    Arc::make_mut(source).labels[0].channel = 16;
+    assert!(invalid.validate(&saved.media).is_err());
+}
+#[test]
+fn prepared_controller_edit_is_saveable_allocation_free_and_rejects_concurrent_project_changes() {
+    let (engine, mut live) = Engine::headless_for_test(48000, 256);
+    let baseline = midi_edit::Document::capture(captured(&live), 2, 7).unwrap();
+    let lanes = midi_data::Lanes::new(960,15360,vec![crate::midi_file::Message { tick: 960, order: 1, bytes: [0xb2,74,88], length: 3 }],vec![]).unwrap();
+    let create = |live: &RtEngine| {
+        let (request, ack, _) = midi_edit::Request::with_lanes(baseline.clone(), "Filter".into(), midi_edit::Region::full(4.0), vec![], Some(lanes.clone())).unwrap();
+        (request.guard_metadata(captured(live), &AtomicBool::new(false)).unwrap(), ack)
+    };
+    let (request, rejected) = create(&live);
+    engine.send(Command::TrackGain { track: 3, value: 0.25 }).unwrap(); live.process(&mut []);
+    engine.send(Command::MidiEdit(request)).unwrap(); live.process(&mut []);
+    assert_eq!(rejected.state(), midi_edit::Outcome::Rejected);
+    assert!(live.tracks[2].clips[7].lanes.is_none());
+    let (request, applied) = create(&live); engine.send(Command::MidiEdit(request)).unwrap();
+    assert_eq!(super::super::test_alloc::measure(|| live.process(&mut [])), super::super::test_alloc::Counts::default());
+    assert_eq!(applied.state(), midi_edit::Outcome::Applied);
+    let saved = captured(&live); saved.state.validate(&saved.media).unwrap();
+    let bytes = serde_json::to_vec(&saved.state).unwrap();
+    let state: State = serde_json::from_slice(&bytes).unwrap();
+    let reopened = Prepared::from_state(state,saved.media,48000).unwrap();
+    assert_eq!(reopened.rt.tracks[2].clips[7].lanes,Some(lanes));
+}
 pub(super) mod session_tests;
 
 fn legacy_midi_fields(state: &mut serde_json::Value) {

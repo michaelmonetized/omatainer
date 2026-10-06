@@ -13,10 +13,12 @@ use std::sync::{
 mod canvas;
 mod step;
 mod rhythm;
+mod control;
 
 pub(super) struct Editor {
     open: bool,
     loading: Option<Loading>,
+    preparing: Option<Preparing>,
     draft: Option<Draft>,
     pending: Option<Pending>,
     message: String,
@@ -40,6 +42,14 @@ struct Pending {
     ack: Ack,
     next: Arc<Document>,
 }
+type PreparedEdit = (Request, Ack, Arc<Document>);
+struct Preparing {
+    receiver: mpsc::Receiver<Result<PreparedEdit, String>>,
+    cancel: Arc<AtomicBool>,
+}
+impl Drop for Preparing {
+    fn drop(&mut self) { self.cancel.store(true, Ordering::Release); }
+}
 struct Draft {
     baseline: Arc<Document>,
     name: String,
@@ -62,6 +72,7 @@ struct Draft {
     step_grid: usize,
     step_chord: BTreeSet<NoteId>,
     rhythm: rhythm::Generator,
+    controls: control::Controls,
 }
 #[derive(Clone, Copy)]
 struct Values {
@@ -86,6 +97,7 @@ impl Default for Editor {
         Self {
             open: false,
             loading: None,
+            preparing: None,
             draft: None,
             pending: None,
             message: "Choose an empty or MIDI slot to edit its notes.".into(),
@@ -113,6 +125,7 @@ impl Draft {
                 baseline.playback_region()
             },
             notes: baseline.notes.clone(),
+            controls: control::Controls::new(baseline.lanes.as_deref()),
             baseline,
             selected: BTreeSet::new(),
             dirty: false,
@@ -306,7 +319,7 @@ fn pitch_name(pitch: u8) -> String {
 }
 impl Editor {
     fn busy(&self) -> bool {
-        self.loading.is_some() || self.pending.is_some()
+        self.loading.is_some() || self.preparing.is_some() || self.pending.is_some()
     }
     fn stop(&mut self, engine: &Engine) {
         if let Some(id) = self.audition {
@@ -349,6 +362,7 @@ impl Editor {
     fn discard(&mut self, engine: &Engine) {
         self.stop(engine);
         self.loading = None;
+        self.preparing = None;
         self.draft = None;
         self.confirm_discard = false;
         if let Some(pending) = &self.pending {
@@ -421,6 +435,7 @@ impl Editor {
                         draft.steps.clear();
                         draft.step_chord.clear();
                         draft.rhythm.committed();
+                        draft.controls.dirty = false;
                     }
                     self.pending = None;
                     self.message =
@@ -442,6 +457,22 @@ impl Editor {
             }
         }
     }
+    fn submit_prepared(&mut self, engine: &Engine) {
+        if let Some(preparing) = &self.preparing {
+            match preparing.receiver.try_recv() {
+                Ok(Ok((request, ack, next))) => {
+                    self.preparing = None;
+                    match engine.send(Command::MidiEdit(request)) {
+                        Ok(_) => { self.pending = Some(Pending { ack, next }); self.message = "Apply queued; waiting for the renderer’s actual outcome.".into(); }
+                        Err(error) => self.error = Some(format!("MIDI edit was not accepted: {error}. Draft retained.")),
+                    }
+                }
+                Ok(Err(error)) => { self.preparing = None; self.error = Some(error); }
+                Err(mpsc::TryRecvError::Disconnected) => { self.preparing = None; self.error = Some("MIDI preparation worker disconnected; draft retained.".into()); }
+                Err(mpsc::TryRecvError::Empty) => {}
+            }
+        }
+    }
     fn apply(&mut self, engine: &Engine) {
         if self.busy() {
             return;
@@ -451,6 +482,30 @@ impl Editor {
         let Some(draft) = &self.draft else {
             return;
         };
+        if draft.controls.dirty {
+            let baseline = draft.baseline.clone();
+            let name = draft.name.clone();
+            let notes = draft.notes.clone();
+            let region = draft.region;
+            let controls = draft.controls.clone();
+            let project = engine.project.clone();
+            let cancel = Arc::new(AtomicBool::new(false));
+            let worker_cancel = cancel.clone();
+            let (sender, receiver) = mpsc::sync_channel(1);
+            match std::thread::Builder::new().name("midi-controller-prepare".into()).spawn(move || {
+                let result = controls.prepared(&notes, region.end, &worker_cancel).and_then(|lanes| {
+                    if worker_cancel.load(Ordering::Acquire) { return Err("MIDI edit cancelled during preparation".into()); }
+                    let captured = project.capture(&worker_cancel).map_err(|e| e.to_string())?;
+                    let (request, ack, next) = Request::with_lanes(baseline, name, region, notes, lanes)?;
+                    Ok((request.guard_metadata(captured, &worker_cancel)?, ack, next))
+                });
+                let _ = sender.send(result);
+            }) {
+                Ok(_) => { self.preparing = Some(Preparing { receiver, cancel }); self.error = None; self.message = "Preparing controller lanes for Apply…".into(); }
+                Err(error) => self.error = Some(format!("MIDI preparation worker unavailable: {error}")),
+            }
+            return;
+        }
         match Request::new(
             draft.baseline.clone(),
             draft.name.clone(),
@@ -515,6 +570,7 @@ impl App {
     }
     pub(super) fn poll_piano_roll(&mut self) {
         self.piano_roll.poll(&self.engine);
+        self.piano_roll.submit_prepared(&self.engine);
     }
     pub(super) fn piano_roll_ui(&mut self, ctx: &egui::Context) {
         let mut editor = std::mem::take(&mut self.piano_roll);
@@ -619,6 +675,7 @@ impl App {
                                 });
                                 ui.label("Focus musical keyboard: A W S E D F T G Y H U J K play C through C. Z/X change octave; C/V change velocity. Space inserts held notes or a rest; Shift+Space ties; Backspace removes the last step. With Record steps enabled, releasing a chord inserts it and advances. Tab away releases all notes.");
                                 match rhythm::show(ui, draft) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
+                                match control::show(ui, draft, &self.theme) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
                                 if let Err(error) = canvas::show(ui, &self.theme, draft, self.snap.timing.as_deref()) { editor.error = Some(error); }
                                 let selected = ui.label(draft.selected_label());
                                 accessibility::status(ui, &selected, &draft.selected_label());

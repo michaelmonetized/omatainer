@@ -5,12 +5,13 @@ use crate::engine::{midi_edit::Region, midi_schedule::BEAT_EPSILON, Clip};
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
 
-const CAPACITY: usize = 3 * crate::engine::project::MAX_NOTES_PER_CLIP + 2;
+const CAPACITY: usize = 3 * crate::engine::project::MAX_NOTES_PER_CLIP + 16 * 140 + 2;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind {
     On(usize),
     Off(usize),
     Lane(usize, bool),
+    Chase([u8; 3], u8),
 }
 #[derive(Clone, Copy, Debug)]
 struct Event {
@@ -163,12 +164,13 @@ impl Playback {
             if duration <= 0.0 {
                 continue;
             }
+            let native_order = if clip.lanes.is_some() { u64::from(u32::MAX) + 1 } else { 0 };
             let on_order = note
                 .source_timing
-                .map_or(2 * index as u64 + 1, |t| u64::from(t.start_order));
+                .map_or(native_order + 2 * index as u64 + 1, |t| u64::from(t.start_order));
             let off_order = note
                 .source_timing
-                .map_or(2 * index as u64, |t| u64::from(t.end_order));
+                .map_or(native_order + 2 * index as u64, |t| u64::from(t.end_order));
             let next = |beat: f64| {
                 if beat < elapsed - BEAT_EPSILON {
                     if repeat {
@@ -182,8 +184,6 @@ impl Playback {
             };
             let on = next(start);
             let off = next(start + duration);
-            // A new route/seek chases the currently active note once. It does
-            // not replay old bank/controller messages or elapsed onsets.
             if elapsed > start + BEAT_EPSILON {
                 let last = if repeat {
                     start + ((elapsed - BEAT_EPSILON - start) / self.period).floor() * self.period
@@ -204,8 +204,8 @@ impl Playback {
                     if weight > 0.0 && weight <= f64::from(u32::MAX) {
                         self.events.push(Reverse(Event {
                             beat: elapsed,
-                            order: on_order,
-                            cycle: i64::MIN,
+                            order: u64::MAX - crate::engine::project::MAX_NOTES_PER_CLIP as u64 + index as u64,
+                            cycle: i64::MAX,
                             weight: weight as u32,
                             kind: Kind::On(index),
                             repeating: false,
@@ -241,6 +241,41 @@ impl Playback {
             }
         }
         if let Some(lanes) = &clip.lanes {
+            let first_pass = end - self.region.start;
+            let cycling = self.looping && elapsed >= first_pass;
+            let source = if cycling { self.region.loop_start + (elapsed - first_pass).rem_euclid(self.period) } else { (self.region.start + elapsed).min(end) };
+            let tick = source * f64::from(lanes.ppqn);
+            let previous_end = end * f64::from(lanes.ppqn);
+            let loop_tick = self.region.loop_start * f64::from(lanes.ppqn);
+            let point = |key: u16| {
+                let lane = lanes.state.binary_search_by_key(&key, |l| l.key).ok().map(|i| &lanes.state[i])?;
+                let mut value = lane.before(tick);
+                if cycling && value.is_none_or(|p| (p.message.tick as f64) < loop_tick) {
+                    value = lane.before(previous_end).or(value);
+                }
+                value
+            };
+            let mut chase = |bytes: [u8; 3], length: u8, order: u64| {
+                self.events.push(Reverse(Event { beat: elapsed, order, cycle: i64::MIN, weight: 1, kind: Kind::Chase(bytes, length), repeating: false }));
+            };
+            for channel in 0..16u16 {
+                let reset = point(channel * 256 + 121);
+                if let Some(reset) = reset { chase(reset.message.bytes, 3, u64::from(channel)); }
+                let program = point(channel * 256 + 130);
+                if let Some(program) = program {
+                    for (i, cc) in [0, 32].into_iter().enumerate() {
+                        if let Some(value) = program.banks[i] { chase([0xb0 | channel as u8, cc, value], 3, 32 + u64::from(channel) * 4 + i as u64); }
+                    }
+                    chase(program.message.bytes, 2, 34 + u64::from(channel) * 4);
+                }
+                for kind in (0..120u16).chain([128, 129]) {
+                    if matches!(kind, 6 | 38 | 96..=101) { continue; }
+                    let Some(value) = point(channel * 256 + kind) else { continue; };
+                    if !matches!(kind, 0 | 7 | 10 | 32) && reset.is_some_and(|r| (value.message.tick, value.message.order) < (r.message.tick, r.message.order)) { continue; }
+                    if matches!(kind, 0 | 32) && program.is_some_and(|p| p.banks[usize::from(kind == 32)] == Some(value.message.bytes[2])) { continue; }
+                    chase(value.message.bytes, value.message.length, 128 + u64::from(channel) * 256 + u64::from(kind));
+                }
+            }
             let beat = |index: usize| lanes.messages[index].tick as f64 / f64::from(lanes.ppqn);
             let first = lanes
                 .messages
@@ -312,6 +347,7 @@ impl Playback {
         }
         let Reverse(event) = self.events.pop()?;
         match event.kind {
+            Kind::Chase(bytes, length) => Some((Packet::new(&bytes[..usize::from(length)])?, Owner::ClipLane(track), 1)),
             Kind::On(index) | Kind::Off(index) => {
                 if event.repeating {
                     let beat = event.beat + self.period;

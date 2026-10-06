@@ -216,6 +216,17 @@ Merged-source qualification pending. Physical controller actions and listening r
 
 All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified.
 
+### Issue #149: implemented
+
+- native UI: [src/ui/piano_roll/control.rs](../src/ui/piano_roll/control.rs) — Named CC, 14-bit bend, channel-pressure and bank/program points with exact beat editing
+- renderer: [src/engine/midi/routing/playback.rs](../src/engine/midi/routing/playback.rs) — Prepared logarithmic state chase and patch-before-note ordering
+- MIDI output owner: [src/engine/midi/routing/output.rs](../src/engine/midi/routing/output.rs) — Owner-aware bend, pressure, expression, sustain and note cleanup
+- project and history: [src/engine/midi_edit.rs](../src/engine/midi_edit.rs) — Worker saveability preflight, concurrent-edit guard, allocation-free Apply and Undo
+- Acceptance fixtures: `ui::piano_roll::control::tests`, `engine::midi::routing::playback::tests::controller_chase_selects_the_original_patch_then_restores_pending_banks_before_notes`, `engine::midi::routing::playback::tests::controller_points_at_launch_and_seek_arrive_before_new_or_chased_native_notes`, `engine::midi::routing::output::tests::controller_stop_restores_a_shared_channel_owner_then_releases_bend_pressure_expression`, `engine::project::tests::named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_invalid_labels`, `engine::project::tests::prepared_controller_edit_is_saveable_allocation_free_and_rejects_concurrent_project_changes`.
+- Evidence: [docs/validation/midi-controller-lanes.md](../docs/validation/midi-controller-lanes.md).
+
+Native UI, actual renderer and software output-owner wire traces pass; physical-synth acceptance remains unclaimed under the paused hardware plan. Imported RPN/NRPN/data-entry transactions retain normal playback/export but are not inferred on seek. Dense output retains its visible 256-event/block refusal policy. Device labels use project schema 15; preferences remain schema 14.
+
 ### Issue #151: implemented
 
 - native UI: [src/ui/piano_roll.rs](../src/ui/piano_roll.rs) — Stopped step cursor, held chords, rests, ties, triplet durations and focused computer input
@@ -303,7 +314,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#146](https://github.com/michaelmonetized/omatainer/issues/146) | Add a reorderable prepare queue for upcoming tracks | implemented |
 | [#147](https://github.com/michaelmonetized/omatainer/issues/147) | Transmit stable MIDI clock and transport to external instruments | planned |
 | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented |
-| [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | planned |
+| [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | implemented |
 | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned |
 | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | implemented |
 | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned |

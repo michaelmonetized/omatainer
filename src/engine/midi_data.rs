@@ -2,6 +2,8 @@
 //! is checked, so a stale tick record cannot override an intentional edit.
 use serde::{Deserialize, Serialize};
 mod lanes;
+mod control;
+pub(crate) use control::{ControlKind, Label, StatePoint, StateLane};
 mod timeline;
 pub(crate) use timeline::Settings as TimingSettings;
 pub(crate) use lanes::{Conductor, Lanes, Meter, Tempo, MAX_CONDUCTOR_POINTS, MAX_LANE_BYTES};

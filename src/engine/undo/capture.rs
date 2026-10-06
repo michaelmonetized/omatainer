@@ -307,6 +307,7 @@ impl RtEngine {
                     + 2 * NOTE_LIMIT * std::mem::size_of::<MidiNote>()
                     + old.audio.as_ref().map_or(0, |a| sample_bytes(a))
                     + old.lanes.as_ref().map_or(0, |l| l.bytes())
+                    + match &c { Command::MidiEdit(request) => request.lanes.as_ref().map_or(0, |l| l.bytes()), _ => 0 }
             }
             Target::Slot(..) => match &c {
                 Command::FxAdd(kind) => {
@@ -380,7 +381,10 @@ impl RtEngine {
                         audio: clip.audio.clone(),
                     },
                     spare_notes: prepared.notes,
-                    reserved_midi_bytes: 0,
+                    reserved_midi_bytes: match &c {
+                        Command::MidiEdit(request) => request.baseline.lanes.as_ref().map_or(0, |l| l.bytes()) + request.lanes.as_ref().map_or(0, |l| l.bytes()),
+                        _ => 0,
+                    },
                 }
             }
             Target::Media(d) => {

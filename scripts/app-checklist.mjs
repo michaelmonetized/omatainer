@@ -2,8 +2,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { load } from './capability-matrix.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Synchronize reviewed software state. Takes the issue checklist and capability registry; returns a copy with explicit reviewed states and receipts while preserving dependencies, stack links and exclusions. */
+export function synchronize(registry, capabilities) {
+    return { ...registry, issues: registry.issues.map(row => {
+        const record = capabilities.issues[row.issue];
+        return !record || row.state === 'outside release' ? row : { ...row, state: record.status, evidence: record.evidence || [] };
+    }) };
+}
 
 /** Validate the app backlog. Takes a registry; returns dependency-ordered work or refuses missing and circular dependencies. */
 export function order(registry) {
@@ -52,10 +61,12 @@ export function render(registry) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-    const registry = JSON.parse(fs.readFileSync(path.join(root, 'docs/backlog/app-checklist.json'), 'utf8'));
-    const result = render(registry), destination = path.join(root, 'docs/backlog/app-checklist.md');
+    const source = path.join(root, 'docs/backlog/app-checklist.json');
+    const registry = JSON.parse(fs.readFileSync(source, 'utf8'));
+    const reviewed = synchronize(registry, load().status);
+    const result = render(reviewed), destination = path.join(root, 'docs/backlog/app-checklist.md');
     const action = process.argv[2] || 'check';
-    if (action === 'generate') fs.writeFileSync(destination, result);
-    else if (action !== 'check' || fs.readFileSync(destination, 'utf8') !== result) throw new Error('App checklist is stale; run node scripts/app-checklist.mjs generate');
+    if (action === 'generate') { fs.writeFileSync(source, JSON.stringify(reviewed, null, 2) + '\n'); fs.writeFileSync(destination, result); }
+    else if (action !== 'check' || JSON.stringify(registry) !== JSON.stringify(reviewed) || fs.readFileSync(destination, 'utf8') !== result) throw new Error('App checklist is stale; run node scripts/app-checklist.mjs generate');
     console.log(`App checklist ${action}: ${registry.issues.length} issues, dependency order verified`);
 }

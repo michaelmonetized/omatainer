@@ -2,7 +2,7 @@
 //! acquired before renderer ownership; note creation uses an atomic counter.
 use serde::{Deserialize, Serialize};
 use std::sync::{
-    atomic::{AtomicU64, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
     Arc, OnceLock,
 };
 
@@ -112,14 +112,28 @@ pub(crate) struct Request {
     pub(super) name: String,
     pub(super) region: Region,
     pub(super) notes: Vec<super::MidiNote>,
+    pub(super) lanes: Option<Arc<super::midi_data::Lanes>>,
+    metadata_baseline: Option<super::undo::Checkpoint>,
     pub(super) ack: Ack,
 }
 impl Request {
     pub fn new(
         baseline: Arc<Document>,
+        name: String,
+        region: Region,
+        notes: Vec<super::MidiNote>,
+    ) -> Result<(Self, Ack, Arc<Document>), String> {
+        let lanes = baseline.lanes.clone();
+        Self::with_lanes(baseline, name, region, notes, lanes)
+    }
+    /// Prepare one note and controller edit.
+    /// Takes the captured target, name, region, notes and immutable prepared lanes; returns the guarded request, acknowledgment and next document.
+    pub fn with_lanes(
+        baseline: Arc<Document>,
         mut name: String,
         region: Region,
         mut notes: Vec<super::MidiNote>,
+        lanes: Option<Arc<super::midi_data::Lanes>>,
     ) -> Result<(Self, Ack, Arc<Document>), String> {
         if name.len() > 4096
             || notes.len() > super::project::MAX_NOTES_PER_CLIP
@@ -135,6 +149,9 @@ impl Request {
                 return Err("Each note needs a unique identity, MIDI pitch/velocity and finite nonnegative beat values".into());
             }
         }
+        if lanes.as_ref().is_some_and(|l| !l.prepared()) {
+            return Err("Controller lanes must finish preparation before Apply".into());
+        }
         notes.shrink_to_fit();
         name.shrink_to_fit();
         let next = Arc::new(Document {
@@ -148,7 +165,7 @@ impl Request {
             bars: (region.end / 4.0) as f32,
             region: Some(region),
             notes: notes.clone(),
-            lanes: baseline.lanes.clone(),
+            lanes: lanes.clone(),
         });
         let ack = Ack::new();
         Ok((
@@ -157,6 +174,8 @@ impl Request {
                 name,
                 region,
                 notes,
+                lanes,
+                metadata_baseline: None,
                 ack: ack.clone(),
             },
             ack,
@@ -167,12 +186,36 @@ impl Request {
         self.baseline.bytes()
             + self.name.capacity()
             + self.notes.capacity() * std::mem::size_of::<super::MidiNote>()
+            + self.lanes.as_ref().map_or(0, |l| l.bytes())
+    }
+    /// Check that an edited clip can still be saved.
+    /// Takes a coherent project capture and cancellation flag; returns a request guarded against concurrent project edits or a metadata limit error.
+    pub fn guard_metadata(mut self, mut captured: super::project::Captured, cancel: &AtomicBool) -> Result<Self, String> {
+        let clip = captured.state.tracks.get_mut(self.baseline.track as usize).and_then(|t| t.clips.get_mut(self.baseline.scene as usize)).ok_or("MIDI target no longer exists")?;
+        clip.name = self.name.clone(); clip.kind = super::ClipKind::Midi; clip.region = Some(self.region); clip.bars = (self.region.end / 4.0) as f32;
+        clip.notes = self.notes.clone(); clip.lanes = self.lanes.clone();
+        captured.state.validate(&captured.media).map_err(|e| e.to_string())?;
+        struct Size<'a> { bytes: usize, limit: usize, cancel: &'a AtomicBool }
+        impl std::io::Write for Size<'_> {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                if self.cancel.load(Ordering::Acquire) { return Err(std::io::Error::other("MIDI preparation cancelled")); }
+                self.bytes = self.bytes.saturating_add(bytes.len());
+                if self.bytes > self.limit { return Err(std::io::Error::other("MIDI edit exceeds the native project's metadata limit")); }
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+        }
+        let limit = captured.state.import_metadata_limits().max_metadata_bytes.min(crate::project_file::DEFAULT_METADATA_LIMIT - 128 * 1024);
+        serde_json::to_writer(Size { bytes: 0, limit, cancel }, &captured.state).map_err(|e| e.to_string())?;
+        self.metadata_baseline = Some(captured.checkpoint);
+        Ok(self)
     }
     pub(super) fn unchanged(&self) -> bool {
         self.baseline.kind == super::ClipKind::Midi
             && self.baseline.name == self.name
             && self.baseline.region == Some(self.region)
             && self.baseline.notes == self.notes
+            && self.baseline.lanes == self.lanes
     }
 }
 fn valid_note(note: &super::MidiNote) -> bool {
@@ -238,6 +281,7 @@ impl super::RtEngine {
             return false;
         };
         baseline.epoch == self.undo.checkpoint().epoch
+            && request.metadata_baseline.is_none_or(|checkpoint| checkpoint == self.undo.checkpoint())
             && baseline.track_identity.is_none_or(|r| self.session.resolves(super::session::Axis::Track, baseline.track as usize, r))
             && baseline.scene_identity.is_none_or(|r| self.session.resolves(super::session::Axis::Scene, baseline.scene as usize, r))
             && !self.recording_clip_held(baseline.track as usize, baseline.scene as usize)
@@ -258,6 +302,11 @@ impl super::RtEngine {
                 <= super::project::MAX_TOTAL_NOTES
             && request.region.allows(&request.notes)
             && request.notes.iter().all(|n| n.id.valid() && valid_note(n))
+            && request.lanes.as_ref().is_none_or(|l| l.prepared())
+            && self.tracks.iter().flat_map(|t| &t.clips).map(|c| c.lanes.as_ref().map_or(0, |l| l.bytes())).sum::<usize>()
+                .saturating_sub(clip.lanes.as_ref().map_or(0, |l| l.bytes()))
+                .saturating_add(request.lanes.as_ref().map_or(0, |l| l.bytes()))
+                .saturating_add(self.conductor.as_ref().map_or(0, |c| c.bytes())) <= super::midi_data::MAX_LANE_BYTES
     }
     pub(super) fn apply_midi_edit(&mut self, mut request: Request) {
         let t = request.baseline.track as usize;
@@ -274,6 +323,7 @@ impl super::RtEngine {
         let clip = &mut self.tracks[t].clips[s];
         std::mem::swap(&mut clip.notes, &mut request.notes);
         std::mem::swap(&mut clip.name, &mut request.name);
+        std::mem::swap(&mut clip.lanes, &mut request.lanes);
         clip.kind = super::ClipKind::Midi;
         clip.bars = (request.region.end / 4.0) as f32;
         clip.region = Some(request.region);

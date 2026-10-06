@@ -108,6 +108,8 @@ impl Manager {
                     safety: 0,
                     gates: HashMap::with_capacity(crate::engine::project::MAX_TOTAL_NOTES + 256),
                     pedals: HashMap::with_capacity(MAX_PEDALS),
+                    controls: HashMap::new(),
+                    control_order: 0,
                     retire: Vec::with_capacity(crate::engine::project::MAX_TOTAL_NOTES + 256),
                 };
                 worker.run(receiver);
@@ -267,6 +269,16 @@ struct PedalKey {
     port: usize,
     channel: u8,
 }
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct ControlKey {
+    track: u8,
+    owner: Owner,
+    port: usize,
+    channel: u8,
+    kind: u8,
+}
+const RESET_CONTROLS: [u8; 5] = [1, 2, 11, 128, 129];
+const MAX_CONTROLS: usize = 16 * 5 * (TRACKS + 256);
 enum Candidate<C> {
     New(Active<C>),
     Reuse(usize),
@@ -291,6 +303,8 @@ struct Worker<B: Backend> {
     safety: u64,
     gates: HashMap<GateKey, u32>,
     pedals: HashMap<PedalKey, ()>,
+    controls: HashMap<ControlKey, ([u8; 3], u8, u64)>,
+    control_order: u64,
     retire: Vec<GateKey>,
 }
 impl<B: Backend> Worker<B> {
@@ -454,6 +468,7 @@ impl<B: Backend> Worker<B> {
         active.clip_channels.fill(0);
         self.gates.retain(|key, _| key.port != index);
         self.pedals.retain(|key, _| key.port != index);
+        self.controls.retain(|key, _| key.port != index);
         first.map_or(Ok(()), Err)
     }
     fn reset(&mut self) -> Result<(), String> {
@@ -463,6 +478,7 @@ impl<B: Backend> Worker<B> {
                 first.get_or_insert(error);
             }
         }
+        self.control_order = 0;
         first.map_or(Ok(()), Err)
     }
     fn apply(&mut self, r: Request) {
@@ -584,6 +600,28 @@ impl<B: Backend> Worker<B> {
             return;
         }
         let packet = event.packet.with_channel(route.output_channel);
+        if let Some(channel) = packet.channel() {
+            let bytes = packet.bytes();
+            let kind = match bytes[0] & 0xf0 {
+                0xe0 => Some(128),
+                0xd0 => Some(129),
+                0xb0 if matches!(bytes[1], 1 | 2 | 11) => Some(bytes[1]),
+                _ => None,
+            };
+            if bytes[0] & 0xf0 == 0xb0 && bytes[1] == 121 {
+                self.controls.retain(|key, _| key.port != index || key.channel != channel);
+            }
+            if let Some(kind) = kind {
+                let key = ControlKey { track: event.track, owner: event.owner, port: index, channel, kind };
+                if self.controls.len() >= MAX_CONTROLS && !self.controls.contains_key(&key) {
+                    self.shared.overrun(usize::from(event.track)); return;
+                }
+                let Some(order) = self.control_order.checked_add(1) else { self.shared.reset_outputs(); return; };
+                self.control_order = order;
+                let mut saved = [0; 3]; saved[..bytes.len()].copy_from_slice(bytes);
+                self.controls.insert(key, (saved, bytes.len() as u8, order));
+            }
+        }
         if let Some(channel) = packet.channel() {
             if matches!(event.owner, Owner::Clip { .. } | Owner::ClipLane(_)) {
                 self.active[index].clip_channels[usize::from(event.track)] |= 1 << channel;
@@ -727,6 +765,14 @@ impl<B: Backend> Worker<B> {
             }
             Clear::Source(source) => matches!(owner,Owner::Live {source:owner,..} if owner==source),
         };
+        let mut restore = [[false; 5]; 16];
+        for (channel, kinds) in restore.iter_mut().enumerate() {
+            for (i, &kind) in RESET_CONTROLS.iter().enumerate() {
+                kinds[i] = self.controls.iter().filter(|(key, _)| key.port == index && usize::from(key.channel) == channel && key.kind == kind)
+                    .max_by_key(|(_, (_, _, order))| *order).is_some_and(|(key, _)| matches(key.owner, key.track));
+            }
+        }
+        self.controls.retain(|key, _| key.port != index || !matches(key.owner, key.track));
         self.retire.clear();
         self.retire.extend(
             self.gates
@@ -760,6 +806,17 @@ impl<B: Backend> Worker<B> {
                         super::packet::Packet::new(&[0x80 | ch as u8, note as u8, 64]).unwrap(),
                     );
                 }
+            }
+            for (i, &kind) in RESET_CONTROLS.iter().enumerate() {
+                if !restore[ch][i] { continue; }
+                let prior = self.controls.iter().filter(|(key, _)| key.port == index && usize::from(key.channel) == ch && key.kind == kind)
+                    .max_by_key(|(_, (_, _, order))| *order).map(|(_, (bytes, length, _))| (*bytes, *length));
+                let (bytes, length) = prior.unwrap_or_else(|| match kind {
+                    128 => ([0xe0 | ch as u8, 0, 64], 3),
+                    129 => ([0xd0 | ch as u8, 0, 0], 2),
+                    _ => ([0xb0 | ch as u8, kind, if kind == 11 { 127 } else { 0 }], 3),
+                });
+                self.wire(track, index, super::packet::Packet::new(&bytes[..usize::from(length)]).unwrap());
             }
             if pedals[ch]
                 && !self

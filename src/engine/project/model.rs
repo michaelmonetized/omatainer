@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 14;
+pub const STATE_VERSION: u32 = 15;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -91,6 +91,11 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 15 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
+            .flat_map(|track| track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten())
+            .any(|clip| clip.get("lanes").is_some_and(|lanes| lanes.get("labels").is_some())) {
+            return Err(serde::de::Error::custom("MIDI device labels require project state version 15"));
+        }
         if version < 14 && raw.get("decks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|deck| deck.get("source_gain").is_some()) {
             return Err(serde::de::Error::custom("Source gain requires project state version 14"));
         }
@@ -560,6 +565,7 @@ impl State {
             for clip in &track.clips {
                 if let Some(lanes) = &clip.lanes {
                     if self.version < 6 || clip.kind != ClipKind::Midi { return fail("legacy or non-MIDI lanes"); }
+                    if self.version < 15 && !lanes.labels.is_empty() { return fail("MIDI labels in a legacy state"); }
                     lanes.validate()?; midi_bytes += lanes.bytes();
                 }
                 note_ids.clear();

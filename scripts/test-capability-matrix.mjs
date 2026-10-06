@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { load, render, verifyFixtureNames } from './capability-matrix.mjs';
-import { order } from './app-checklist.mjs';
+import { order, synchronize } from './app-checklist.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const directory = path.join(root, 'target/app-backlog/matrix-tests');
@@ -14,6 +14,18 @@ after(() => fs.rmSync(fixture, { recursive: true }));
 fs.cpSync(path.join(root, 'docs/backlog'), path.join(fixture, 'docs/backlog'), { recursive: true });
 const read = name => JSON.parse(fs.readFileSync(path.join(fixture, 'docs/backlog', name)));
 const write = (name, value) => fs.writeFileSync(path.join(fixture, 'docs/backlog', name), JSON.stringify(value));
+test('the app checklist follows reviewed capabilities without changing scope or dependency order', () => {
+    const original = read('app-checklist.json');
+    const registry = structuredClone(original);
+    registry.issues.find(row => row.issue === 149).state = 'planned';
+    const next = synchronize(registry, read('capability-status.json'));
+    assert.equal(registry.issues.find(row => row.issue === 149).state, 'planned');
+    assert.equal(next.issues.find(row => row.issue === 149).state, 'implemented');
+    assert.deepEqual(next.issues.find(row => row.issue === 149).evidence, read('capability-status.json').issues[149].evidence);
+    for (const excluded of original.issues.filter(row => row.state === 'outside release')) assert.deepEqual(next.issues.find(row => row.issue === excluded.issue), excluded);
+    assert.deepEqual(next.issues.map(row => [row.issue,row.dependencies,row.prs]), original.issues.map(row => [row.issue,row.dependencies,row.prs]));
+    assert.equal(next.issues.filter(row => row.state === 'accepted').length, 0);
+});
 for (const record of Object.values(read('capability-status.json').issues)) {
     for (const route of record.paths) {
         const target = path.join(fixture, route.file);

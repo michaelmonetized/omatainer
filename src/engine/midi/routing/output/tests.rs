@@ -5,6 +5,25 @@ use crate::engine::{test_alloc, Command, Engine, RtEngine};
 use parking_lot::Mutex;
 use std::time::Instant;
 
+#[test]
+fn controller_stop_restores_a_shared_channel_owner_then_releases_bend_pressure_expression() {
+    let (engine, _rt) = Engine::headless_for_test(48000, 256);
+    let fixture = Arc::new(Fixture::default());
+    let mut routes = config(); routes.routes[1].output_channel = Some(4);
+    let manager = Manager::start_backend(engine.cmd.clone(), routes, Fake(fixture.clone())).unwrap();
+    until(|| !manager.status().pending); assert!(manager.status().error.is_none()); fixture.trace.lock().clear();
+    let shared = engine.cmd.midi_routing();
+    for (track, packets) in [(2, vec![vec![0xe0, 3, 70],vec![0xd0, 12],vec![0xb0,11,90]]), (3, vec![vec![0xe0,9,80],vec![0xd0,55],vec![0xb0,11,40]])] {
+        for bytes in packets { assert!(shared.emit_owned(track, super::super::packet::Packet::new(&bytes).unwrap(), Owner::ClipLane(track))); }
+    }
+    until(|| fixture.trace.lock().len() == 6);
+    assert!(shared.clear_clip(3)); until(|| fixture.trace.lock().len() == 9);
+    assert_eq!(&fixture.trace.lock()[6..], &[vec![0xb4,11,90],vec![0xe4,3,70],vec![0xd4,12]]);
+    assert!(shared.clear_clip(2)); until(|| fixture.trace.lock().len() == 12);
+    assert_eq!(&fixture.trace.lock()[9..], &[vec![0xb4,11,127],vec![0xe4,0,64],vec![0xd4,0]]);
+    drop(manager);
+}
+
 #[derive(Default)]
 struct Fixture {
     trace: Mutex<Vec<Vec<u8>>>,
