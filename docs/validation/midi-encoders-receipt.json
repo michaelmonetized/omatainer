@@ -450,5 +450,81 @@
       }
     }
   ],
-  "limits": "No physical controller or audio device was opened. Every 14-bit value and signed-bit byte is fixture-qualified, ports/channels/controller addresses and reset generations remain isolated, renderer-relative adjustments follow current state with measured zero heap work, and actual native Save/Export/Import plus preference reopening retain metadata. Existing scalar Undo paths are reused; no new claim is made about baseline send-control Undo or persistence. Physical encoder response remains outside this software pass."
+  "limits": "No physical controller or audio device was opened. Every 14-bit value and signed-bit byte is fixture-qualified, ports/channels/controller addresses and reset generations remain isolated, renderer-relative adjustments follow current state with measured zero heap work, and actual native Save/Export/Import plus preference reopening retain metadata. Existing scalar Undo paths are reused; no new claim is made about baseline send-control Undo or persistence. Physical encoder response remains outside this software pass.",
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-midi-encoders-qualified",
+      "manifestSha256": "e4b5284a54224a12e3f0b6d225c6b3b0b9d365d5729315f046f531c22081c9b2",
+      "revision": "7a06c2d61afb8b1b5d8c28df491e523c63759a15",
+      "version": "0.1.0+7a06c2d61afb",
+      "executableSha256": "570902e75b3b28f7d1d8e4fcdeb78805f275f0ec239f7b637611920e36d03c62"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "9d85fb54e53dcd3e40ea0d676c25ce331babda60bc2bb5e83a8f52d43d3a7970",
+      "after": "570902e75b3b28f7d1d8e4fcdeb78805f275f0ec239f7b637611920e36d03c62",
+      "installedAt": "2026-10-06T23:44:26.460Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
