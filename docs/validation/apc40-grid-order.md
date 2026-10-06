@@ -110,8 +110,30 @@ the missing inputs; their cause remains unresolved.
 
 The interval had 11 underruns and 11 callback deadline overruns. The normal
 `0x41`/`0.1.0` introduction was restored, and the engine was checked paused
-and muted afterward. A full USB power reset is the next separate physical
-diagnostic; it is not yet qualified.
+and muted afterward.
+
+## USB reset check
+
+Michael unplugged only the APC40 USB cable, waited ten seconds and reconnected
+it before touching any buttons. The device re-enumerated from USB device 021
+to 042. The unchanged private GUI automatically reopened its input and LED
+output without an application restart. The separate raw-input and feedback
+capture subscriptions were reattached to the newly created ports before the
+button check. Normal host mode `0x41` and application version `0.1.0` were
+confirmed through the introduction helper.
+
+The same Pan, Sends, User, scene-launch, Stop All Clips and Arm sequence again
+produced only four channel-0 note-48 messages: two Arm presses and releases.
+All four were queued, dispatched, accepted and consumed, with zero input
+drops or refusals. Arm feedback switched on and off. Michael reported,
+"Done. Rec changed only." Native knob mode remained Pan; both decks and
+transport stayed paused. The interval recorded zero underruns and deadline
+overruns. This short check does not establish sustained stage audio stability.
+
+The reset did not restore the missing raw inputs. Their cause remains
+unresolved, and the row correction does not claim to fix them. The temporary
+reconnection mute guard was stopped after Michael confirmed the PA amps were
+off; no automatic mute loop remains.
 
 Earlier Pioneer/APC checks retain their original provenance in the
 [live controller receipt](live-controller-acceptance-receipt.json).

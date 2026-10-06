@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-10-06T14:03:51.403Z",
+  "generatedAt": "2026-10-06T14:13:33.370Z",
   "beforeCorrection": {
     "testedCodeRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
     "testedBinarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
@@ -371,6 +371,46 @@
     {
       "path": "target/hardware/pioneer-apc/host-version-restored-after.json",
       "sha256": "0233b9e2b60340eee81e0363d293af35ec4c6c75e1d43e11dbfcbf0d5835a31a"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-before.json",
+      "sha256": "7ad8ccb9a74ea8aeedee2dd6dba3d335ccabdcad8d6f628ceaa00206249a00ec"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/guard-reconnect-mute.mjs",
+      "sha256": "87858828cb67d73da2b17ac68003babb07e16fa7d28bc8c6a5baff16dd184f5f"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-mute-guard.ndjson",
+      "sha256": "792cd897eb6137b55203a003a38b98600a922e2e063047fc82a14a334a87d585"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-reconnected.json",
+      "sha256": "277b4af40fdf9339f1fe06a6b963f666235b8a93e0898cce0d992cc2f742440f"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-normal-setup.log",
+      "sha256": "e15edeefd79be3f2674ab1a0779a8bd8e03e891da0d70ad829bdef60335070d9"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-ready.json",
+      "sha256": "51e15ee25bf5ad620fbb4926c5940fb18a0948dd47c185d4c0f613034c4d3997"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-physical-input.log",
+      "sha256": "3e0a045838df2bfdb6ec7210d5570a28012ff137f9f150347ef0eb4b80ae4a87"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-physical-feedback.log",
+      "sha256": "ce9e1666ffcf32850735ec9863d8924808742a285c4ab019ac54f4e3dd6b4a6d"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-physical-after.json",
+      "sha256": "46d6365beb6827c3ce566bdd60a95c90dede1d1bfad3b1f30f1fe212b2faca75"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-cold-reset-result.json",
+      "sha256": "d389519170c95c7f47d58253cd0ab3e5247b647a375b6c5f575909614b5a4362"
     }
   ],
   "hostVersionTrial": {
@@ -446,5 +486,84 @@
       "playing": false,
       "decksPaused": true
     }
+  },
+  "usbResetTrial": {
+    "requested": "Unplug only the APC40 USB cable, wait ten seconds, reconnect and leave buttons untouched until capture is reattached.",
+    "reconnectionReport": "Reconnected. You don’t have to keep muting the pa amps are turned off.",
+    "usbDeviceBefore": "Bus 001 Device 021: 09e8:0029 APC40 mkII",
+    "usbDeviceAfter": "Bus 001 Device 042: 09e8:0029 APC40 mkII",
+    "appRestarted": false,
+    "runningPid": 3622839,
+    "releaseCodeRevision": "935d1ebe7a2e8aacbc7e1f1f996051434b97f161",
+    "releaseBinarySha256": "81f3e6af03e5a37d8da168bef9cde8ee797c2f7e1b32647ca4c6d2c8a2057b16",
+    "automaticAppInputReconnect": "28:0 → 129:0",
+    "automaticAppFeedbackReconnect": "133:0 → 28:0",
+    "rawCaptureReattached": "28:0 → 132:0",
+    "feedbackCaptureReattached": "133:0 → 137:0",
+    "normalSetup": {
+      "mode": 65,
+      "version": [
+        0,
+        1,
+        0
+      ]
+    },
+    "requestedButtons": [
+      "Pan",
+      "Sends",
+      "User",
+      "Pan",
+      "Scene Launch 1",
+      "Scene Launch 2",
+      "Scene Launch 3",
+      "Scene Launch 4",
+      "Scene Launch 5",
+      "Stop All Clips",
+      "Track 1 Record Arm twice"
+    ],
+    "physicalReport": "Done. Rec changed only",
+    "rawMessages": 4,
+    "rawInputs": [
+      {
+        "channel": 0,
+        "note": 48,
+        "presses": 2,
+        "releases": 2
+      }
+    ],
+    "missingInputs": [
+      "Pan",
+      "Sends",
+      "User",
+      "Scene Launch 1–5",
+      "Stop All Clips"
+    ],
+    "feedback": [
+      {
+        "channel": 0,
+        "note": 48,
+        "states": [
+          "on",
+          "off"
+        ]
+      }
+    ],
+    "inputReceived": 4,
+    "inputQueued": 4,
+    "inputDispatched": 4,
+    "inputDropped": 0,
+    "commandsAccepted": 4,
+    "commandsRejected": 0,
+    "commandsReceived": 4,
+    "commandsApplied": 4,
+    "xruns": 0,
+    "deadlineOverruns": 0,
+    "master": 0,
+    "playing": false,
+    "decksPaused": true,
+    "knobMode": 0,
+    "muteGuardStopped": true,
+    "paAmplifiers": "Off per user report; no further automatic mute loop.",
+    "conclusion": "USB reconnection did not restore the missing global-button inputs. Record Arm remained a working positive control. No software mapping fix is established for those absent raw inputs. This short interval does not qualify sustained stage audio stability."
   }
 }
