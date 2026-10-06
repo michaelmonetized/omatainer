@@ -277,6 +277,7 @@ impl App {
         } else { self.status = self.library_scan.label(); }
     }
     pub(super) fn start_library_store(&mut self, path: PathBuf) {
+        self.library_playlist.review=None;
         self.library_metadata = library_metadata::Metadata::new(Some(path));
         self.library_metadata.set_performance(self.engine.cmd.performance().clone());
         self.library_initialized = false;

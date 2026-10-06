@@ -90,6 +90,25 @@ impl Gui {
 }
 
 #[test]
+fn native_playlist_review_exclusion_consent_save_reopen_and_stale_action_guards() {
+    let files=Files::new();let playlist=files.0.join("Stage.m3u8");std::fs::write(&playlist,"Two.flac\nOne.flac\nTwo.flac\nmissing.mp3\n").unwrap();
+    let mut gui=Gui::new(&files);gui.click("Import playlists…");gui.text("Playlist file",playlist.to_str().unwrap());gui.click("Review playlist file");
+    gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    assert!(gui.app.library_metadata.catalog.crates.nodes().is_empty());
+    gui.click("Import reviewed playlists");gui.finish();assert!(gui.app.library_metadata.catalog.crates.nodes().is_empty());
+    gui.click("Import resolved entries and exclude 1 reported failures");let old_import=gui.node("Import reviewed playlists");
+    gui.click("Review playlist file");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());gui.action(old_import,Action::Click,None);gui.finish();assert!(gui.app.library_metadata.catalog.crates.nodes().is_empty());gui.click("Import resolved entries and exclude 1 reported failures");
+    gui.click("Import reviewed playlists");gui.finish();let id=gui.app.library_crates.selected.clone().unwrap();let members=gui.members(&id);assert_eq!(members.len(),2);
+    let saved=crate::library::read(&files.0.join("catalog.json")).unwrap();let first=saved.tracks.iter().find(|t|t.id==members[0]).unwrap();assert_eq!(first.source,LibSource::File(files.0.join("Two.flac")));assert_eq!(saved.crates.node(&id).unwrap().members,members);
+    assert!(gui.app.library_playlist.review.is_none());
+    let second=files.0.join("Second.m3u8");std::fs::write(&second,"Three.flac\n").unwrap();gui.text("Playlist file",second.to_str().unwrap());gui.click("Review playlist file");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.action(old_import,Action::Click,None);gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),1);
+    gui.click("Import reviewed playlists");gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),2);
+    assert_eq!(std::fs::read(playlist).unwrap(),b"Two.flac\nOne.flac\nTwo.flac\nmissing.mp3\n");
+    drop(gui);let deadline=Instant::now()+Duration::from_secs(5);let reopened=loop {if let Ok(store)=crate::library::Store::open(files.0.join("catalog.json")) {break store;}assert!(Instant::now()<deadline);std::thread::sleep(Duration::from_millis(2));};assert_eq!(reopened.catalog.crates.nodes().len(),2);assert_eq!(reopened.catalog.crates.node(&id).unwrap().members,members);
+}
+
+#[test]
 fn native_favorites_save_reopen_search_separately_and_ignore_stale_pin_actions() {
     let files = Files::new();
     let original = std::fs::read(files.0.join("One.flac")).unwrap();

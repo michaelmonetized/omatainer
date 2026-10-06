@@ -2166,9 +2166,11 @@
       "dependencies": [
         105
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/playlist-import.md"
+      ]
     },
     {
       "issue": 157,

@@ -11,6 +11,7 @@ mod licenses;
 mod engine;
 mod background;
 mod library;
+mod playlist_import;
 mod music_provider;
 mod video;
 mod project_versions;

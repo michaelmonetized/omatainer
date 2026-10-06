@@ -21,6 +21,7 @@ mod library_annotations;
 mod library_protection;
 mod library_smart_crates;
 mod library_crates;
+mod library_playlist;
 mod library_store;
 pub(crate) mod bpm;
 use bpm::{Bpm, Origin};
@@ -165,6 +166,7 @@ pub struct App {
     library_protection: library_protection::Panel,
     smart_crates: library_smart_crates::Panel,
     library_crates: library_crates::Crates,
+    library_playlist: library_playlist::Import,
     library_import_open: bool,
     library_initialized: bool,
     library_close: library_store::Close,
@@ -307,6 +309,7 @@ impl App {
             library_protection: library_protection::Panel::default(),
             smart_crates: library_smart_crates::Panel::default(),
             library_crates: library_crates::Crates::default(),
+            library_playlist: library_playlist::Import::default(),
             library_import_open: false,
             library_initialized: false,
             library_close: library_store::Close::default(),
@@ -891,6 +894,7 @@ impl App {
         self.library_annotations_ui(ctx);
         self.library_protection_ui(ctx);
         self.named_crates_ui(ctx);
+        self.playlist_import_ui(ctx);
         self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
         self.load_status(ctx);

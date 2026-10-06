@@ -767,6 +767,37 @@
       ],
       "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
     },
+    "156": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/library_playlist.rs",
+          "entry": "Named crates → Import playlists → exact review, selected playlists and explicit exclusion consent"
+        },
+        {
+          "kind": "bounded worker parser",
+          "file": "src/playlist_import.rs",
+          "entry": "UTF-8 M3U/M3U8, Apple UTF-8/UTF-16 XML, local URI and explicit cross-machine prefix mapping"
+        },
+        {
+          "kind": "sole catalog writer",
+          "file": "src/ui/library_metadata/collections.rs",
+          "entry": "Atomic candidate import with selected ordered memberships, changed-version guards and truthful save receipt"
+        }
+      ],
+      "fixtures": [
+        "playlist_import::tests",
+        "ui::library_metadata::collections::tests::playlist_review_single_writer_save_reopen_preserves_order_versions_and_source_bytes",
+        "ui::library_metadata::collections::tests::playlist_cancel_and_failed_save_do_not_publish_partial_tracks_or_crates",
+        "ui::library_crates::tests::native_playlist_review_exclusion_consent_save_reopen_and_stale_action_guards",
+        "scripts/test-retained-dependency-graph.mjs"
+      ],
+      "evidence": [
+        "docs/validation/playlist-import.md"
+      ],
+      "limits": "Software/native UI/filesystem qualification with actual local M3U and pinned upstream Windows/macOS XML exports. Missing upstream audio remains explicitly unresolved. Imports references only; full audio decode is a separate load/validation step. Up to 32 MiB, 128 static non-folder playlists and 4096 total references. First duplicate position retained. Apple folders flattened and smart rules not recreated. One explicit case-sensitive prefix mapping; no automatic relocation/content merge. Protected/provider-only entries require explicit exclusion consent. Existing exact versions retain preparation; changed catalog/media rejects publication. No new hardware qualification or schema change."
+    },
     "157": {
       "status": "implemented",
       "paths": [

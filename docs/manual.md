@@ -742,6 +742,14 @@ Choose a named crate or All tracks. Search crate names separately from tracks, f
 
 Workflow: Prepare a DJ deck.
 
+### Import local playlists
+
+M3U/M3U8 and Apple XML; 4096 references in 128 playlists
+
+Open Import playlists from Named crates. Choose an absolute UTF-8 file and optional explicit path-prefix mapping. Review resolved local containers, missing paths, protected/provider-only entries and duplicates. Select playlists and explicitly permit any reported exclusions before importing. Fresh static crates retain first-occurrence order; Apple folders are flattened and smart-playlist rules are not recreated. Existing exact versions retain preparation. Changed media refuses publication and requires another review. Closing the panel does not cancel an admitted operation; Cancel works before the catalog save claim. Source files are never rewritten.
+
+Workflow: Prepare a DJ deck.
+
 ### Crate name
 
 1–256 UTF-8 bytes

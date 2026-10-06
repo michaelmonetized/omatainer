@@ -6,7 +6,7 @@ Physical hardware qualification is paused at Michael's request. Existing capture
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 21 implemented · 6 partial · 194 planned · 0 accepted · 8 outside release
+127 existing stack · 22 implemented · 6 partial · 193 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -166,7 +166,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented | #101 | [receipt](../../docs/validation/issue-153-sampler-playback.md) |
 | [x] | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented | #105 | [receipt](../../docs/validation/issue-154-crate-discovery.md) |
 | [ ] | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned | #108 |  |
-| [ ] | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | planned | #105 |  |
+| [x] | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | implemented | #105 | [receipt](../../docs/validation/playlist-import.md) |
 | [x] | [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | implemented | #106 | [receipt](../../docs/validation/setlist-exports.md) |
 | [ ] | [#158](https://github.com/michaelmonetized/omatainer/issues/158) | Integrate an authorized Beatport streaming workflow | outside release | #120 |  |
 | [ ] | [#159](https://github.com/michaelmonetized/omatainer/issues/159) | Integrate authorized SoundCloud catalog and playlists | outside release | #120 |  |

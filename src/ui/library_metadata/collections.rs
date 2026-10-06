@@ -32,6 +32,8 @@ pub(in crate::ui) enum Action {
         before: Option<CrateId>,
     },
     CreatePrepared { name: String, members: Vec<TrackId> },
+    ReviewPlaylist(crate::playlist_import::Input),
+    ImportPlaylist { review: Arc<crate::playlist_import::Review>, selected: Vec<usize> },
     Edit(Edit<TrackId>),
     Annotate { ids: Vec<TrackId>, patch: crate::library::annotations::Patch },
     Protect { targets: Vec<crate::library::protection::Target>, patch: crate::library::protection::Patch },
@@ -42,6 +44,11 @@ impl Action {
         // Only bounded shape checks at UI admission. Duplicate membership and
         // whole-forest validation/allocation remain on the metadata worker.
         let invalid = |text: &str| Admission::Invalid(text.into());
+        if let Self::ReviewPlaylist(input)=self {return input.validate().map_err(Admission::Invalid);}
+        if let Self::ImportPlaylist{review,selected}=self {
+            if selected.is_empty() || selected.len()>128 || selected.iter().any(|&i|i>=review.playlists.len()) {return Err(invalid("Select reviewed playlists before importing"));}
+            return Ok(());
+        }
         if let Self::Protect { targets,patch }=self {
             if targets.is_empty() || targets.len()>4096 || patch.is_empty() || targets.iter().any(|target|target.track.0.len()!=32 || !target.track.0.bytes().all(|b|b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) {return Err(invalid("Review 1–4096 current track versions and at least one changed lock field"));}
             return Ok(());
@@ -118,7 +125,7 @@ impl Action {
                     && before.as_ref().is_none_or(|id| valid(&id.0))
             }
             Self::Read => true,
-            Self::Annotate { .. } | Self::Protect { .. } => unreachable!(),
+            Self::Annotate { .. } | Self::Protect { .. } | Self::ReviewPlaylist(_) | Self::ImportPlaylist {..} => unreachable!(),
             Self::Edit(Edit::Create { .. }) => false,
         };
         if !shape || members.is_some_and(|members| members.iter().any(|id| !valid(&id.0))) {
@@ -218,6 +225,7 @@ pub(in crate::ui) struct Receipt {
     pub id: u64,
     pub revision: u64,
     pub created: Option<CrateId>,
+    pub review: Option<Arc<crate::playlist_import::Review>>,
     pub outcome: Outcome,
 }
 impl Receipt {
@@ -232,6 +240,7 @@ impl Receipt {
             id: token.id,
             revision,
             created: None,
+            review: None,
             outcome,
         }
     }
@@ -241,6 +250,7 @@ impl Receipt {
             id: request.token.id,
             revision,
             created: None,
+            review: None,
             outcome: Outcome::Rejected(failure),
         }
     }
@@ -322,6 +332,7 @@ fn apply_using(
         work,
     } = request;
     let mut created = None;
+    let mut review = None;
     let mut outcome = None;
     let attempt = (|| {
         let check = || {
@@ -339,8 +350,18 @@ fn apply_using(
             outcome = Some(Outcome::Read);
             return Ok(());
         }
+        if let Action::ReviewPlaylist(input)=&action {
+            let ticket=work.as_ref().unwrap().background(crate::background::Kind::Index,crate::background::identity(&input.path).map_err(Failure::Invalid)?,256*crate::background::MIB).map_err(Failure::Invalid)?;
+            let running=ticket.enter(||check().is_err()).map_err(Failure::Invalid)?;
+            let result=crate::playlist_import::review(input,&store.catalog,||check().is_ok()).map_err(Failure::Invalid)?;
+            check()?;token.claim()?;review=Some(Arc::new(result));outcome=Some(Outcome::Read);ticket.progress(1,Some(1));drop(running);return Ok(());
+        }
         let mut candidate = store.catalog.clone();
-        let changed = if let Action::Protect {targets,patch}=&action {
+        let changed = if let Action::ImportPlaylist{review,selected}=&action {
+            if expected!=candidate.crates.revision() {return Err(Failure::Invalid("Catalog crates changed; review the playlist again".into()));}
+            let ids=crate::playlist_import::apply(review,selected,&mut candidate,||check().is_ok()).map_err(Failure::Invalid)?;
+            created=ids.first().cloned();!ids.is_empty()
+        } else if let Action::Protect {targets,patch}=&action {
             if expected!=candidate.crates.revision() {return Err(Failure::Invalid("Crate selection changed; review preparation locks again".into()));}
             candidate.protect(targets,*patch).map_err(Failure::Invalid)?
         } else if let Action::Annotate { ids, patch } = &action {
@@ -367,7 +388,7 @@ fn apply_using(
                 }
             }
             Action::Edit(edit) => edit,
-            Action::Read | Action::Annotate { .. } | Action::Protect { .. } | Action::CreatePrepared { .. } => unreachable!(),
+            Action::Read | Action::Annotate { .. } | Action::Protect { .. } | Action::CreatePrepared { .. } | Action::ReviewPlaylist(_) | Action::ImportPlaylist {..} => unreachable!(),
         };
         let changed = candidate.edit_crates(expected, &edit).map_err(Failure::Invalid)?;
         if let Some(members) = prepared {
@@ -407,6 +428,7 @@ fn apply_using(
         id: token.id,
         revision: store.catalog.crates.revision(),
         created,
+        review,
         outcome: outcome.unwrap(),
     }
 }

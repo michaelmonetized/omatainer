@@ -3,12 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { verifyGraph } from './retained-dependency-graph.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const file = path.join(root, 'licenses/manifest.json');
 const manifest = JSON.parse(fs.readFileSync(file));
 const sha = source => crypto.createHash('sha256').update(fs.readFileSync(path.join(root, source))).digest('hex');
-for (const file of ['Cargo.lock', 'Cargo.toml']) if (manifest.source_files[file] !== sha(file)) throw new Error('Dependency configuration changed; refresh complete dependency license records first');
+if (process.argv.includes('--verify-unchanged-dependencies')) {
+    const metadata = JSON.parse(execFileSync('cargo', ['metadata', '--locked', '--offline', '--format-version', '1', '--filter-platform', manifest.target], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }));
+    verifyGraph(metadata, fs.readFileSync(path.join(root, 'Cargo.lock'), 'utf8'), manifest.cargo, root);
+} else for (const file of ['Cargo.lock', 'Cargo.toml']) if (manifest.source_files[file] !== sha(file)) throw new Error('Dependency configuration changed; refresh complete dependency license records first');
 for (const row of manifest.cargo) for (const [file, expected] of Object.entries(row.vendored_source?.files || {})) {
     if (sha(file) !== expected) throw new Error('Vendored dependency changed; refresh its complete license/source records first');
 }

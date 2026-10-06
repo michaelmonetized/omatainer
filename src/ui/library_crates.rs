@@ -106,18 +106,25 @@ impl App {
                 let prepared = matches!(&action, CollectionAction::CreatePrepared { .. });
                 let annotation = matches!(&action, CollectionAction::Annotate { .. });
                 let protection=matches!(&action,CollectionAction::Protect { .. });
-                self.library_crates.message = match receipt.outcome {
+                let playlist=matches!(&action,CollectionAction::ImportPlaylist {..});
+                let imported=playlist && matches!(&receipt.outcome,CollectionOutcome::Durable{changed:true}|CollectionOutcome::CommittedUnconfirmed(_));
+                let review_error=receipt.review.and_then(|review|self.library_playlist.accept_review(receipt.revision,review).err());
+                self.library_crates.message = if let Some(error)=review_error {error} else {match receipt.outcome {
+                    CollectionOutcome::Read if matches!(&action,CollectionAction::ReviewPlaylist(_))=>"Playlist review ready; select playlists and inspect excluded entries before importing.".into(),
                     CollectionOutcome::Read => "Crates refreshed from the catalog owner.".into(),
+                    CollectionOutcome::Durable{changed} if playlist=>if changed {"Reviewed playlists and local references saved.".into()}else{"No playlist changes were needed.".into()},
                     CollectionOutcome::Durable { changed } if protection => if changed {"Preparation locks saved.".into()} else {"Preparation locks already match.".into()},
                     CollectionOutcome::Durable { changed } if annotation => if changed { "Annotations saved.".into() } else { "Annotations already match; no changes needed.".into() },
                     CollectionOutcome::Durable { changed } => if changed { "Crate changes saved.".into() } else { "Crates already match; no changes needed.".into() },
                     CollectionOutcome::CommittedUnconfirmed(error) => format!("Crate changes committed; durability unconfirmed: {error}. Do not repeat this edit."),
                     CollectionOutcome::Unknown(error) => format!("Crate outcome unknown: {error}. Reopen the catalog before repeating this edit."),
                     CollectionOutcome::Rejected(error) => {
-                        self.library_crates.retry = Some((receipt.revision, action));
+                        self.library_crates.retry = Some((receipt.revision, action.clone()));
                         format!("Crate edit was not applied: {error}")
                     }
-                };
+                }};
+                if matches!(&action,CollectionAction::ReviewPlaylist(_)|CollectionAction::ImportPlaylist {..}) {self.library_playlist.message=self.library_crates.message.clone();}
+                if imported {self.library_playlist.review=None;}
                 if prepared { self.library_prepare.message = self.library_crates.message.clone(); }
                 if let Some(created) = receipt.created {
                     if prepared { self.library_prepare.saved = Some(created); }
@@ -208,6 +215,7 @@ impl App {
                 ui.scope(|ui| {
                     ui.label(tr!("Crates store ordered references only. Source audio and sampler banks are never moved or deleted."));
                     ui.label(&self.library_crates.message);
+                    if ui.button("Import playlists…").help(ui,HelpControl::PlaylistImport).clicked() {self.library_playlist.open=true;}
                 });
                 self.crate_discovery_ui(ui);
                 let id = self.library_crates.selected.clone();

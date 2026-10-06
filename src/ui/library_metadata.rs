@@ -356,6 +356,7 @@ impl Metadata {
                                     analysis_result = Some(receipt);
                                 }
                                 if let Some(request) = job.collection.take() {
+                                    let playlist_import=matches!(&request.action,collections::Action::ImportPlaylist{..});
                                     let receipt = if durable { collections::apply(store, request) }
                                         else { CollectionReceipt::refused(request, store.catalog.crates.revision(),
                                             collections::Failure::Storage("Crate edit requires confirmed essential catalog persistence".into())) };
@@ -370,6 +371,9 @@ impl Metadata {
                                         _ => {}
                                     }
                                     collection_result = Some(receipt);
+                                    if playlist_import && matches!(&collection_result.as_ref().unwrap().outcome,CollectionOutcome::Durable{changed:true}|CollectionOutcome::CommittedUnconfirmed(_)) {
+                                        items=store.catalog.tracks.iter().map(|track|LibItem::from_stored(track.source.clone(),&track.versions[track.current])).collect();
+                                    }
                                 }
                                 if let Some(request) = job.inspection.take() {
                                     inspection_result = Some(if durable {

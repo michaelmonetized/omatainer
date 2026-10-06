@@ -2694,6 +2694,7 @@ dependencies = [
  "lofty",
  "midir",
  "parking_lot",
+ "quick-xml",
  "rtrb",
  "serde",
  "serde_json",

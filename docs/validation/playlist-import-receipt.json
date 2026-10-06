@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T08:24:19.632Z",
+  "baseRevision": "e3f0be8700eff26fc1917ee664988be893309ce7",
+  "kind": "Native UI, sole catalog writer, bounded parsers and real private filesystem qualification",
+  "sourceFiles": {
+    "Cargo.lock": "239d244ddd933e4b9484e017985154e2c47b763940f00cfa934271740bc7d695",
+    "Cargo.toml": "aa734acca2d609c311d6b956a0ce8811392777e4f12b2ba14b1ec963f725a0bd",
+    "docs/backlog/app-checklist.json": "b30bce261db85d34401a72b4e0f89d6ee65f0665a58ff01132206489b61bac89",
+    "docs/backlog/app-checklist.md": "52cf80e8da2d925b4fe2d39d9dabe2b52ce9477642d52e334aa05919f0614561",
+    "docs/backlog/capability-status.json": "dc423117c9ffbb76a2ef26f3222d546a6cdbcd2d4ebdad631725b390d92aefc7",
+    "docs/capability-matrix.md": "bd503b03fbf8b06c07f93b4085f70b35f79827475ac37d06c3c109321d3d53d1",
+    "docs/manual.md": "dd9662afbfdd706559f47b29e825b46d27309c75a15462aeab1cefc286521303",
+    "docs/validation/playlist-import.md": "7a8f5eec367569cfd6ff93c6f681c97724ecf8cfb49d649a605d144fbca66734",
+    "licenses/manifest.json": "4777c88740bd23a9f6b1f9a971180cb4a66bae66e5319b7b2bc7c06a32242b2d",
+    "scripts/refresh-source-inventory.mjs": "15301a6465bbadf843b6ed27e8d4edb7abc4a2963f20f5b4b0ef86e1295c92ae",
+    "scripts/retained-dependency-graph.mjs": "62f20d0bb9e22198af444b8c1876ce528a820fb560b02ac18ead6054fe944046",
+    "scripts/test-retained-dependency-graph.mjs": "41e1857c8123e42b2cf1a851a93a53205582a2f5e5df5d7bfd0e2b98b9e0da54",
+    "src/main.rs": "06187e2ccad8d9ecc7a934df811bf45abd6f5c142a137e9ff3ffdb3a4a3186b6",
+    "src/playlist_import.rs": "a679b8898a061c6b99b5c7ed91579c6c21004b475a9943e2c4070a71800cae06",
+    "src/playlist_import/m3u.rs": "4fc5a506a88d3f41c3a171ba37d638e44b48d4c670f90661353d54743400cb62",
+    "src/playlist_import/plist.rs": "d41ac14dfce1d18cc6e8e11aeeea8e6ab84f321048ea9054d082fe63c3ca1ede",
+    "src/playlist_import/tests.rs": "0a05821e999f54340520578379f64cf24a260e66b97924371dda8dbf1346e379",
+    "src/ui.rs": "d4798ccf74efd74550c6609a7c55dbe3e047e1384e9d7176c163415955404bab",
+    "src/ui/help/catalogue.rs": "3905139e65ac1acc38cfdcd637001290fe8be4100d500063b469b85697a40ee6",
+    "src/ui/library_crates.rs": "653eb3bc01d3720767bd7b965334460ce9d128f5a75550cb062207712468121d",
+    "src/ui/library_crates/tests.rs": "95efa53674539722720a1d857007d86b81e1dcb9dae4130f3d96199eab6a570b",
+    "src/ui/library_metadata.rs": "4c607f6012d088c11cdcddf68d3bb3ccb9cf56cc4853704249906ee6821b1820",
+    "src/ui/library_metadata/collections.rs": "a52e1e8fcf71441aa1a9a48b6389f6ef5dfd3b592e3f9c71f257adf2aa6f2a6b",
+    "src/ui/library_metadata/collections/tests.rs": "1d83b2055d17e566acd101bdbef7a31dd930786fee5d2e9bdd34a45b196fd8d5",
+    "src/ui/library_playlist.rs": "427ed6b2935f73438e18cb10fbe51ceb3714bcbbcab5e8dd7f924d6df3758cf5",
+    "src/ui/library_store.rs": "3504ab21793922b74f50aeefa710af048fd069daa55dc666ac8519e4e4c8a0f4"
+  },
+  "testBinary": {
+    "path": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+    "sha256": "01244de7347949d3b7738c4c9cbfd82eec31b9fefdec1896897e83f15f147fae"
+  },
+  "logs": {
+    "target/app-backlog/playlist-qualified-build.log": "07f064caa56ca6471640c4ba16557a3b1bb0737d8af4f7e2233be4b668dfbc3a",
+    "target/app-backlog/playlist-serial-full-tests.log": "602b819cb528deff3644ff506bae6c5c9d6abda44f4e83b159899af6cc650108",
+    "target/app-backlog/playlist-final-parser-tests.log": "6a22a834ddb1fade91e8cc3742d70ed1aba57001b2733c3108570dfe2f70c664",
+    "target/app-backlog/playlist-final-owner-tests.log": "0eaac7fd38fb477ed5806eb0b12b4c39fa0843da2759b558f8bd7d1998c60344",
+    "target/app-backlog/playlist-final-native-tests.log": "438748185982a460f8f5444ca69e424d3ed06e1ee42b0795e1ab37efc3589099",
+    "target/app-backlog/playlist-final-node-tests.log": "517a244df6d0846973e54e07c50dca5b3ddea2b160bb4e55534a0d774a79843b",
+    "target/app-backlog/playlist-qualified-real-mixxx-itunes.xml.log": "8dd044780bbddf2f0f3c867860aecc7d1147594c6aa2fc9e55791c3745549c6d",
+    "target/app-backlog/playlist-qualified-real-mixxx-music-macos.xml.log": "64f6dc73fe5d5bf5ea0c55293daa9209cba56defcbf824d65fe08fe40c5121f0",
+    "target/app-backlog/playlist-qualified-real-stratify-itunes-macos.xml.log": "c7136ee248a824e9c7af671c73bf707b759164efab6918cf08354d7f66e137e3",
+    "target/app-backlog/playlist-qualified-owner-tests.log": "bf467e784f68748d4d1e4d5598a2122364b3b1affade5fff2149970cc049788c",
+    "target/app-backlog/playlist-first-native-ui.log": "25aca4349250539ab0aa033e201053297bd1fe756dc7e07066f52f14fb150046",
+    "target/app-backlog/playlist-corrected-owner-tests.log": "7a31e4ba8bcd403e97a04125c9c01584dd9eaec8cc6a2558b4b55c608c03842a",
+    "target/app-backlog/playlist-corrected-native-ui.log": "722471e2ae8a9a390b96ab055202e80b05291f17de823862f3f84bebf7bf9543"
+  },
+  "tests": {
+    "fullSerialRust": {
+      "passed": 1741,
+      "failed": 0,
+      "ignored": 43,
+      "filtered": 0,
+      "seconds": 428.05,
+      "threads": 1
+    },
+    "node": {
+      "passed": 15,
+      "failed": 0
+    },
+    "focused": {
+      "parser": 5,
+      "catalogOwner": 10,
+      "nativeCrates": 6
+    },
+    "earlierCorrections": "Native fields now have explicit accessible names. New fixtures use the actual save-failure hook and close the owner before opening another writer. Corrected focused tests and the full suite passed. An earlier build command ended with SIGTERM; the final complete build passed."
+  },
+  "realExports": {
+    "localM3u": {
+      "references": 12,
+      "resolved": 12,
+      "orderedMembers": 12,
+      "sha256": "d588a5860028306fbd26e71238e0463a6e27e2bcd0e027eeadff29434f77c4a3",
+      "sourceModified": false
+    },
+    "windowsItunes": {
+      "playlists": 15,
+      "references": 30,
+      "resolved": 0
+    },
+    "macosMusic": {
+      "playlists": 8,
+      "references": 30,
+      "resolved": 0
+    },
+    "macosItunes": {
+      "playlists": 17,
+      "references": 148,
+      "resolved": 0
+    },
+    "upstreamSources": [
+      {
+        "repo": "mixxxdj/mixxx",
+        "revision": "3a4f2a56c2e55a5cf2a5eeec508b8fac874573f6",
+        "path": "src/test/itunes/iTunes Music Library.xml",
+        "url": "https://raw.githubusercontent.com/mixxxdj/mixxx/3a4f2a56c2e55a5cf2a5eeec508b8fac874573f6/src/test/itunes/iTunes%20Music%20Library.xml",
+        "bytes": 28719,
+        "sha256": "effabdab376b5b945d297b1ded4f23178c39415d1780898c582bf1be166b8bbf"
+      },
+      {
+        "repo": "mixxxdj/mixxx",
+        "revision": "3a4f2a56c2e55a5cf2a5eeec508b8fac874573f6",
+        "path": "src/test/itunes/macOS Music Library.xml",
+        "url": "https://raw.githubusercontent.com/mixxxdj/mixxx/3a4f2a56c2e55a5cf2a5eeec508b8fac874573f6/src/test/itunes/macOS%20Music%20Library.xml",
+        "bytes": 17689,
+        "sha256": "3b95d2514120e247168ea6314bfc1aaa630858963a403eeda7f74eb4f2835719"
+      },
+      {
+        "repo": "jasonrudolph/stratify",
+        "revision": "12995a9d99a358ca950e784eeba07e6cadaad68d",
+        "path": "spec/fixtures/iTunes Music Library.xml",
+        "url": "https://raw.githubusercontent.com/jasonrudolph/stratify/12995a9d99a358ca950e784eeba07e6cadaad68d/spec/fixtures/iTunes%20Music%20Library.xml",
+        "bytes": 89657,
+        "sha256": "655a0d84bac657e71a102b20ee066e2375c7def9051128496133bdfc64408af9"
+      }
+    ]
+  },
+  "checks": {
+    "compiledFixtureSelectors": true,
+    "dependencyChecklist": true,
+    "sourceInventoryFiles": 671,
+    "retainedDependencyComponents": 341,
+    "resolvedGraphUnchanged": true,
+    "privateAtomicSaveAndReopen": true,
+    "selectedPlaylistsOnly": true,
+    "staleUiAndMediaGuards": true,
+    "explicitExclusionConsent": true,
+    "offlineManualSynchronized": true
+  },
+  "documentSchemas": {
+    "preferences": 15,
+    "project": 15,
+    "library": 15
+  },
+  "limits": [
+    "Missing upstream media stays unresolved; XML parsing does not claim those tracks played",
+    "Import stores local references; complete audio decoding remains a separate load/validation route",
+    "No physical gestures or listening qualification; captures remain stopped"
+  ]
+}

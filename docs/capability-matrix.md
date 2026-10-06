@@ -258,6 +258,16 @@ Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native
 
 Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication.
 
+### Issue #156: implemented
+
+- native UI: [src/ui/library_playlist.rs](../src/ui/library_playlist.rs) — Named crates → Import playlists → exact review, selected playlists and explicit exclusion consent
+- bounded worker parser: [src/playlist_import.rs](../src/playlist_import.rs) — UTF-8 M3U/M3U8, Apple UTF-8/UTF-16 XML, local URI and explicit cross-machine prefix mapping
+- sole catalog writer: [src/ui/library_metadata/collections.rs](../src/ui/library_metadata/collections.rs) — Atomic candidate import with selected ordered memberships, changed-version guards and truthful save receipt
+- Acceptance fixtures: `playlist_import::tests`, `ui::library_metadata::collections::tests::playlist_review_single_writer_save_reopen_preserves_order_versions_and_source_bytes`, `ui::library_metadata::collections::tests::playlist_cancel_and_failed_save_do_not_publish_partial_tracks_or_crates`, `ui::library_crates::tests::native_playlist_review_exclusion_consent_save_reopen_and_stale_action_guards`, `scripts/test-retained-dependency-graph.mjs`.
+- Evidence: [docs/validation/playlist-import.md](../docs/validation/playlist-import.md).
+
+Software/native UI/filesystem qualification with actual local M3U and pinned upstream Windows/macOS XML exports. Missing upstream audio remains explicitly unresolved. Imports references only; full audio decode is a separate load/validation step. Up to 32 MiB, 128 static non-folder playlists and 4096 total references. First duplicate position retained. Apple folders flattened and smart rules not recreated. One explicit case-sensitive prefix mapping; no automatic relocation/content merge. Protected/provider-only entries require explicit exclusion consent. Existing exact versions retain preparation; changed catalog/media rejects publication. No new hardware qualification or schema change.
+
 ### Issue #157: implemented
 
 - native UI: [src/ui/session_history.rs](../src/ui/session_history.rs) — History → selected session → JSON / Text / CSV / M3U8 playlist export with location consent
@@ -332,7 +342,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented |
 | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
 | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned |
-| [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | planned |
+| [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | implemented |
 | [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | implemented |
 | [#158](https://github.com/michaelmonetized/omatainer/issues/158) | Integrate an authorized Beatport streaming workflow | excluded from release |
 | [#159](https://github.com/michaelmonetized/omatainer/issues/159) | Integrate authorized SoundCloud catalog and playlists | excluded from release |
