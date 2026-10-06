@@ -354,6 +354,7 @@ impl Frame {
         target.master_meters = rt.master_meters;
         target.cue_mix = rt.cue_mix;
         target.monitor = rt.monitor.status;
+        target.mic_aux = rt.mic_aux.status();
         target.surfaces = rt.surface_status();
         target.view = match rt.view {
             View::Session => 0,

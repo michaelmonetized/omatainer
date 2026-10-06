@@ -198,6 +198,14 @@ Render the selected Session scene from project zero with fresh DSP state, includ
 
 Workflow: Edit and undo.
 
+### Mic and auxiliary mixer
+
+Reviewed live inputs, independent mixes and deliberate talkover
+
+Open Mic & aux and review retained aliases. Select a mono or stereo input, then master, booth and raw recording mixes independently. New sources start muted. Stop playback and recording and use Studio mode before applying or removing selection. Use Audio routing to enable the intended native input; this panel never opens a device. Live gain, mute, optional three-band tone and talkover remain available in Performance Mode. Talkover offers a voice threshold, attenuation, attack/release and automatic, held or bypassed ducking. Source changes fade out before the new source fades in. Meters show source availability and decaying input/output peaks. Final-output recording includes the actual audience mix; select a raw recording alias for independent voice exclusion. Save and History retain controls; foreign selective imports keep the current external-source choices.
+
+Workflow: Offline operation.
+
 ### Export master audio
 
 Reviewed scene/session range, repeats, tails and delivery format

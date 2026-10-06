@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 16;
+pub const STATE_VERSION: u32 = 17;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -16,6 +16,8 @@ pub struct State {
     pub version: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub routing: Option<Arc<audio::routing::model::Model>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mic_aux: Option<audio::routing::mic_aux::Configuration>,
     #[serde(default)]
     pub session: Option<session::Layout>,
     pub bpm: f32,
@@ -55,6 +57,8 @@ struct StateWire {
     #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
     #[serde(default)]
+    mic_aux: Option<audio::routing::mic_aux::Configuration>,
+    #[serde(default)]
     session: Option<session::Layout>,
     bpm: f32,
     #[serde(default)]
@@ -91,6 +95,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 17 && raw.get("mic_aux").is_some() { return Err(serde::de::Error::custom("Mic/aux controls require project state version 17")); }
         if version < 16 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|track| track.get("input_monitor").is_some()) {
             return Err(serde::de::Error::custom("Input monitoring requires project state version 16"));
         }
@@ -144,6 +149,7 @@ impl<'de> Deserialize<'de> for State {
         Ok(Self {
             version: wire.version,
             routing: wire.routing,
+            mic_aux: wire.mic_aux,
             session: wire.session,
             bpm: wire.bpm,
             beat: wire.beat,
@@ -382,6 +388,7 @@ impl State {
         Self {
             version: STATE_VERSION,
             routing: None,
+            mic_aux: None,
             session: Some(session::Layout::legacy((0..TRACKS).map(|_| String::new()), SCENES)),
             conductor: None,
             bpm: 124.0,
@@ -490,6 +497,8 @@ impl State {
     }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
+        if self.version < 17 && self.mic_aux.is_some() {return fail("mic/aux controls in a legacy state");}
+        if let Some(cfg)=self.mic_aux {cfg.validate(self.routing.as_deref()).map_err(str::to_owned)?;}
         if self.version < 16 && self.tracks.iter().any(|track| track.input_monitor.is_some()) { return fail("input monitoring in a legacy state"); }
         if self.version < 9 && (self.sampler_synth.offline.is_some() || self.tracks.iter().any(|track| track.synth.offline.is_some())
             || self.tracks.iter().flat_map(|track| &track.fx).chain(self.scene_fx.iter().flatten()).any(|effect| effect.offline.is_some())) {

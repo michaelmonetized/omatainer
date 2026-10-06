@@ -34,6 +34,8 @@ impl Plan {
             FxWet { slot, .. } | FxSelect { slot } if *slot < 3 => {
                 (Target::Global, Name::MasterEffect, 10 + *slot as u64)
             }
+            MicAuxConfigure(_) => (Target::Global,Name::MicAux,30),
+            MicAuxControl(c) => (Target::Global,Name::MicAux,31+u64::from(c.role)),
             SamplerBank(_) | SamplerInst(_) | SamplerOct(_) => (Target::Global, Name::Sampler, 20),
             SamplerEdit(edit) => (Target::Sampler(rt.sampler_edit_index(edit)?), Name::Sampler, 21),
             TrackGain { track, .. }
@@ -446,6 +448,7 @@ impl RtEngine {
     }
     pub(super) fn history_reject(&mut self, c: Command, reason: Failure) {
         self.undo.reject(reason);
+        if let Command::MicAuxConfigure(request)=&c {request.ack.reject();}
         super::super::midi_edit::reject_retired(&c);
         let bytes = command_bytes(&c);
         self.undo.retire(Retired::Command(c), bytes);
@@ -454,6 +457,7 @@ impl RtEngine {
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
         Command::SessionControl(scoped) => std::mem::size_of::<Command>() + command_bytes(&scoped.command),
+        Command::MicAuxConfigure(_) => std::mem::size_of::<audio::routing::mic_aux::control::Request>(),
         Command::SessionEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),

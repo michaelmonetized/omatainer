@@ -108,6 +108,7 @@ impl Request {
     pub(crate) fn routing(captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>) -> Result<(Self, Ack), String> {
         let layout = captured.state.session.as_ref().ok_or("Session identity is unavailable")?;
         layout.validate()?;
+        if let Some(cfg)=captured.state.mic_aux {cfg.validate(model.as_deref()).map_err(str::to_owned)?;}
         let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::new(model, layout).map(Box::new)).transpose()?;
         let ack = Ack::new();
         Ok((Self {
@@ -249,7 +250,8 @@ impl Inverse {
                 .map_or(0, |(_, name)| name.capacity())
     }
     pub(crate) fn valid(&self, rt: &RtEngine) -> bool {
-        self.layout.namespace == rt.session.namespace
+        rt.mic_aux.configuration().is_none_or(|cfg|cfg.validate(self.routing.as_ref().map_or_else(||rt.routing.as_ref().map(|r|r.model.as_ref()),|routing|routing.as_ref().map(|r|r.model.as_ref()))).is_ok())
+            && self.layout.namespace == rt.session.namespace
             && rt.session.generation < u64::MAX
             && match &self.content {
                 Some(Content::Import(import)) => import.valid(rt),

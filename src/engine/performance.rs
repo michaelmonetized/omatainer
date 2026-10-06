@@ -516,7 +516,8 @@ fn destructive(command: &Command) -> bool {
     match command {
         Command::Remote(request) => destructive(&request.action.command()),
         Command::SessionEdit(request) => request.disruptive(),
-        Command::TimelineSeek(_)
+        Command::MicAuxConfigure(_)
+        | Command::TimelineSeek(_)
         | Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }
@@ -592,6 +593,7 @@ fn destructive(command: &Command) -> bool {
         | Command::MeterMaster(_)
         | Command::Master(_)
         | Command::CueMix(_)
+        | Command::MicAuxControl(_)
         | Command::Monitor(_)
         | Command::TrackGain { .. }
         | Command::ClipGain { .. }

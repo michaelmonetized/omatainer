@@ -49,6 +49,7 @@ pub enum Name {
     CrossfaderContour,
     Master,
     CueMix,
+    MicAux,
     MasterEffect,
     Sampler,
     Track,
@@ -77,6 +78,7 @@ impl Name {
             Self::CrossfaderContour => "Set crossfader contour",
             Self::Master => "Set master gain",
             Self::CueMix => "Set cue mix",
+            Self::MicAux => "Edit mic/aux",
             Self::MasterEffect => "Edit master effect",
             Self::Sampler => "Edit sampler",
             Self::Track => "Edit track mixer",
@@ -814,6 +816,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::XfaderCurve(_)
             | Command::Master(_)
             | Command::CueMix(_)
+            | Command::MicAuxControl(_)
             | Command::FxWet { .. }
             | Command::FxSelect { .. }
             | Command::SamplerBank(_)
@@ -863,6 +866,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
+        if let Command::MicAuxConfigure(request)=&command {request.ack.reject();}
         if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
@@ -872,7 +876,8 @@ impl Journal {
         if self.enabled
             && matches!(
                 command,
-                Command::Remote(_)
+                Command::MicAuxConfigure(_)
+                    | Command::Remote(_)
                     | Command::SessionControl(_)
                     | Command::SessionEdit(_)
                     | Command::Gesture { .. }

@@ -324,6 +324,17 @@ Nine new software checks plus existing import, version comparison, native Undo, 
 
 Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope.
 
+### Issue #180: implemented
+
+- bounded voice processing: [src/engine/audio/routing/mic_aux.rs](../src/engine/audio/routing/mic_aux.rs) — Mono/stereo aliases, gain/mute/tone/metering, source-loss/replacement ramps and talkover before independently selected mixes
+- reviewed saved controls: [src/engine/audio/routing/mic_aux/control.rs](../src/engine/audio/routing/mic_aux/control.rs) — Stable source and project guards, scalar performance controls and explicit application receipts
+- native workflow: [src/ui/mic_aux.rs](../src/ui/mic_aux.rs) — Source review, master/booth/raw recording inclusion, live levels, tone and deliberate talkover
+- Acceptance fixtures: `engine::audio::routing::mic_aux::tests`, `engine::control::mic_aux_absolute_controls_coalesce_only_the_same_reviewed_source_and_parameter`, `ui::mic_aux::tests`, `ui::project_versions::tests::comparison_reports_saved_mic_aux_controls_as_a_mixer_change`.
+- Evidence: [docs/validation/mic-aux.md](../docs/validation/mic-aux.md).
+- Evidence: [docs/validation/mic-aux-receipt.json](../docs/validation/mic-aux-receipt.json).
+
+Eleven software checks and complete 1838-test unfiltered suite pass with 44 ignored cases. Actual source pipe, converted output, raw/final recording decode, mono/stereo order, master/PFL, loss/width/nonfinite handling, finite tone/talkover envelopes, native protected controls, schema 17 save/reopen/restore, Undo and selective import are qualified. No physical microphone, line source, PA feedback or clock-compensation acceptance is claimed in this closed capture thread.
+
 ### Issue #181: implemented
 
 - bounded recording: [src/engine/audio/routing/record/delivery.rs](../src/engine/audio/routing/record/delivery.rs) — Final converted output or raw selected return, actual stream rate/order, metering, asynchronous formats, safe splitting and explicit prefix/error reporting
@@ -469,7 +480,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | implemented |
 | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | planned |
 | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented |
-| [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | planned |
+| [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented |
 | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented |
 | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | planned |
 | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |

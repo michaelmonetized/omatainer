@@ -8,6 +8,7 @@ pub(super) fn prepare(
     request: &Export,
 ) -> Result<(Box<crate::engine::RtEngine>, Vec<usize>, usize), String> {
     let state = &mut captured.state;
+    if state.mic_aux.is_some_and(|c| c.needs_input()) {return Err("Live mic/aux sources need performance recording".into());}
     if request.source == Source::Scene
         && state.session.as_ref().is_none_or(|s| {
             s.scenes

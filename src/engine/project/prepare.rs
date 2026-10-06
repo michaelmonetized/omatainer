@@ -80,6 +80,7 @@ impl Prepared {
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
         rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::new(model, &rt.session).map(Box::new)).transpose().map_err(Error::Invalid)?;
+        rt.mic_aux.set(state.mic_aux);
         rt.tracks.clear();
         rt.tracks.reserve(session::MAX_TRACKS);
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
@@ -229,6 +230,7 @@ impl Prepared {
             midi_beat_reference,
             conductor,
             routing,
+            mic_aux,
             last_midi_step,
             quant,
             view,

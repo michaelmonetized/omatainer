@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T18:09:00.888Z",
+  "baseRevision": "f088d315114d6a8c1e51c9a6711bc1d92571249f",
+  "sourceFiles": {
+    "src/audio_delivery/render.rs": "cf94aae3f19a69ce95c334e3c1a180cfb369bfbda95a07df5ff4fe8d9ea7bece",
+    "src/engine/audio/routing.rs": "1930c0f5cba89d6feff1a15cb8a56f8602ef9e468f224ba0ed7a5665fd62f5f0",
+    "src/engine/audio/routing/input.rs": "4fa0b1947688319737ad057a237ee8c06dcdcc1035c20904638dc8580de8987f",
+    "src/engine/audio/routing/mic_aux.rs": "d45509363b652b1804795850ae1ebf92e22d8abae36ec03d571f0e60a1fec2a5",
+    "src/engine/audio/routing/mic_aux/control.rs": "6dd8a596c9ee9657c13009f080d15124ec493bb752984458c54081d5e7c89b29",
+    "src/engine/audio/routing/mic_aux/tests.rs": "a9b361dcad5c10b871ac3f37e8b5cb236ff606360bd3374833936ef50954e8ef",
+    "src/engine/audio/routing/record.rs": "048bad7e0ad29d9af1da38c293f8f268803c88e06b304ea61a7493c693534673",
+    "src/engine/audio/routing/render.rs": "6f267a4a6ac1242e5053a45f7426fbe122ba0882ef2f2c6f061c573ff423b86d",
+    "src/engine/control.rs": "d61d970c6c7e05002ff8a75c4df326e30ebd4b904b21cbe96a1320edd2205519",
+    "src/engine/mod.rs": "37c1a41e85c4e87d7cf073ebf311b746d5c525423137330e95cf6a93876257fb",
+    "src/engine/performance.rs": "dca0c870f8745eb7a1621284f248ffb7082885ef56e17003cbdc253933757487",
+    "src/engine/project.rs": "895d8637bcd1e9eb4ba330f0b1ee82e9d34f027556f1bad262888a54be39709a",
+    "src/engine/project/capture.rs": "09862083b33c4b28e86fce579268e6baa903e546d0c351c2ffd68db5b2f334e1",
+    "src/engine/project/model.rs": "821c0605b1cd29bd67487784b7a154c170b3618211d73ad53bd609e232541ea8",
+    "src/engine/project/prepare.rs": "f8e58e5a5be6424528acfca0a3afe1cd24eec53cf03ad4ef64f9cfc3c9e3846f",
+    "src/engine/project/tests/input_monitor_tests.rs": "31e33cb46021370914212b12f3ffc239fdda27f01e7ad6a20e772017a8fe7f6f",
+    "src/engine/session/transaction.rs": "832183b81b586dd9f26182c20cb97faaa43bfbbb9ab49afc31801e4602e886ad",
+    "src/engine/snapshot.rs": "ea57f7c80d8d8bf07097ec488cee0f2ae399d9f3d65f571ff892ce0192240c7a",
+    "src/engine/undo/capture.rs": "88c3bde3c2b98db7ee3956d5df9c29aefb809bffde92c55e7594ed5f78821425",
+    "src/engine/undo/mod.rs": "6b5fcc14a872667b00d4e40da0ea12948b79ed87fb53960936d28b1fa20ddc8a",
+    "src/engine/undo/patch.rs": "3697fd13a7ac2057c562dd4fd1bedd34daa3479590847c8bcd8c0d7b04010347",
+    "src/ui.rs": "cf8a9536cba63d3292c9d056c9c329e197a589746613816cfa80544e5afc1a8d",
+    "src/ui/audio_status.rs": "ec4688477064b7fd312910e166ae713adf1390ce27996d680f451699ee73ceeb",
+    "src/ui/help/catalogue.rs": "78b6a5a876ff84ff77771bd83f3ab0ce772f8331a123feabf0d0fe3043777bd0",
+    "src/ui/mic_aux.rs": "131476748df55f4efdb5474ac842b78ea994ccbd3e4e0433e1d0ec1666b3099b",
+    "src/ui/mic_aux/tests.rs": "a50d6079973b4a2d8b7444b968cd4252207a7a855d88a14f8e4a8adc40be2968",
+    "src/ui/project_versions/tests.rs": "0df4599f388f43ffee242a04f8095c44f53c8830356062d8975404dad8e5e179",
+    "src/ui/project_versions/worker.rs": "d31edad159b058f6ffa32e5a7c05078d31a7e0ba5b395ce6eb508cf0de0fdb21"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/mic-aux-tests",
+    "sha256": "7a864c2308dd3bd60df16fb0cb4122b52da39139e1d62e33f7d1fdce8cce8756"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/mic-aux-compiled-source-inventory.json",
+    "sha256": "3740d2caba82ad36519e61f8cd313618bd02d076bac833415528beea17fd0fa6",
+    "files": 694
+  },
+  "tests": {
+    "focused": {
+      "path": "target/app-backlog/mic-aux-focused-tests.log",
+      "sha256": "2b96187f99a9adf25f491113617b2a8a57c91144d56429d82a5f03414e9c868e",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1871,
+      "seconds": 1.68
+    },
+    "manual": {
+      "path": "target/app-backlog/mic-aux-manual-regenerate.log",
+      "sha256": "295f9efe397f51077413ad5b9f4724df76625ab6c2985f677d00a634b74ad622",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1881,
+      "seconds": 0
+    },
+    "full": {
+      "path": "target/app-backlog/mic-aux-full-tests.log",
+      "sha256": "27e9c487f453620d14b057ff7619c77933d92434024d71b5c535f4e55cee6f4f",
+      "passed": 1838,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 473.58
+    }
+  },
+  "limits": [
+    "Linux ARM64 controlled input, native GUI, actual output/recording and filesystem qualification; no physical microphone, line source, PA feedback or hardware acceptance in this closed capture thread.",
+    "No input device is opened by source selection. External input ownership remains explicit in Audio routing.",
+    "Final-output recordings retain the actual audience mix. Independent voice exclusion uses a selected raw recording mix."
+  ],
+  "retainedFailure": {
+    "path": "target/app-backlog/mic-aux-focused-tests-before-limiter-reference-fix.log",
+    "sha256": "43033c21ebc84e3729eb1d476cdc6bf60667df65c490718740be6ffa8c57460c",
+    "testBinarySha256": "8a5ed9f08f2088a5a36699190366b043e722c58603f723befffb77ea3c186388",
+    "sourceInventorySha256": "8c3f804ad8648e1e7a5b57e45e19ce42e41eabfbc22ae9c306199a2ea0b074e7",
+    "passed": 10,
+    "failed": 1,
+    "reason": "The missing-channel fixture compared final samples with an unlimited level. Correcting only its reference to the actual limiter output produced the complete final pass."
+  },
+  "checks": {
+    "node": {
+      "path": "target/app-backlog/mic-aux-node-tests.log",
+      "sha256": "b45bcbeaa037f03d94a8f98559b806cafe8d5623702b575d08779d058526ec22",
+      "passed": 15,
+      "failed": 0
+    },
+    "capabilityMatrix": true,
+    "completeChecklistIssues": 356,
+    "sourceInventoryFiles": 715,
+    "sourceInventoryChecked": true
+  }
+}

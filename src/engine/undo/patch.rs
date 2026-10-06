@@ -44,6 +44,7 @@ pub(super) struct Global {
     xfader_curve: f32,
     master: f32,
     cue_mix: f32,
+    mic_aux: Option<audio::routing::mic_aux::Configuration>,
     fx_kind: [FxKind; 3],
     fx_wet: [f32; 3],
     bank: usize,
@@ -65,6 +66,7 @@ impl Global {
             xfader_curve: rt.xfader_curve,
             master: rt.master,
             cue_mix: rt.cue_mix,
+            mic_aux: rt.mic_aux.configuration(),
             fx_kind: rt.fx_kind,
             fx_wet: rt.fx_wet,
             bank: rt.sampler_bank,
@@ -89,6 +91,7 @@ impl Global {
         rt.xfader_curve = self.xfader_curve;
         rt.master = self.master;
         rt.cue_mix = self.cue_mix;
+        rt.mic_aux.set(self.mic_aux);
         for slot in 0..3 {
             if rt.fx_kind[slot] != self.fx_kind[slot] {
                 rt.master_fx[slot].reset(self.fx_kind[slot]);
@@ -370,7 +373,8 @@ impl Patch {
                 (value.source_gain == deck.source_gain || !deck.source_gain_active())
                 && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
             Self::Session(value) => value.valid(rt),
-            Self::Conductor { .. } | Self::Global(_) => rt.count_in.is_none(),
+            Self::Conductor { .. } => rt.count_in.is_none(),
+            Self::Global(value) => rt.count_in.is_none() && value.mic_aux.is_none_or(|cfg|cfg.validate(rt.routing.as_ref().map(|r|r.model.as_ref())).is_ok()),
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
                 && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
                 else { *index < rt.sampler_banks.len() },

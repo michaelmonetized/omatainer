@@ -178,6 +178,7 @@ impl Frame {
         );
         target.conductor = rt.conductor.clone();
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());
+        target.mic_aux = rt.mic_aux.configuration();
         target.sampler_synth = synth(&rt.sampler_poly);
         for (i, track) in rt.tracks.iter().take(self.shape.track_count).enumerate() {
             let out = &mut target.tracks[i];

@@ -633,6 +633,7 @@ pub struct RtEngine {
     pub master: f32,
     pub cue_mix: f32,
     monitor: monitor::Monitor,
+    pub(crate) mic_aux: Box<audio::routing::mic_aux::Mixer>,
     surface: Box<surface_controls::State>,
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
@@ -838,6 +839,7 @@ pub struct Snapshot {
     pub meter_master: bool,
     pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
+    pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub surfaces: surface_controls::Status,
     pub view: u8,
     pub selected_track: usize,
@@ -906,6 +908,7 @@ impl Default for Snapshot {
             meter_master: false,
             master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
+            mic_aux: audio::routing::mic_aux::Status::default(),
             surfaces: surface_controls::Status::default(),
             view: 0,
             selected_track: 0,
@@ -1015,6 +1018,8 @@ pub enum Command {
     Master(f32),
     CueMix(f32),
     Monitor(monitor::Control),
+    MicAuxConfigure(Box<audio::routing::mic_aux::control::Request>),
+    MicAuxControl(audio::routing::mic_aux::control::Control),
     TrackGain { track: u8, value: f32 },
     ClipGain { track: u8, scene: u16, value: f32 },
     TrackPan { track: u8, value: f32 },
@@ -1163,6 +1168,7 @@ impl RtEngine {
             master: 0.85,
             cue_mix: 0.0,
             monitor: monitor::Monitor::default(),
+            mic_aux: Box::new(audio::routing::mic_aux::Mixer::new(None, sr)),
             surface: Box::new(surface_controls::State::new(sr).map_err(|error| error.to_string())?),
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
@@ -1253,6 +1259,7 @@ impl RtEngine {
         self.timeline_frames = 0;
         self.sr = sr as f32;
         self.project.set_sample_rate(sr);
+        self.mic_aux.set_sample_rate(self.sr);
         let active_history=self.active_recording_history();
         self.undo.prepare_sample_rate(self.sr,active_history);
         self.metro = metronome::Click::new(self.sr);
@@ -2264,6 +2271,8 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        let voice_valid=match &c {Command::MicAuxConfigure(r)=>r.current(self),Command::MicAuxControl(v)=>v.resolve(self).is_some(),_=>true};
+        if !voice_valid {self.undo.reject(undo::Failure::Invalid);self.undo.retire_command(c);return;}
         if let Command::Monitor(control) = &c {
             if !self.monitor_can_apply(*control) { self.undo.retire_command(c); return; }
         }
@@ -2330,6 +2339,7 @@ impl RtEngine {
             }
         }
         if self.defer_quantized_deck_command(&c) { return; }
+        if let Command::MicAuxConfigure(request)=&c {if !request.ack.claim(){self.undo.retire_command(c);return;}}
         let Some(c)=self.history_before(c) else{return;};
         self.apply_plain(c);
     }
@@ -2758,6 +2768,11 @@ impl RtEngine {
                     self.monitor.apply(control);
                 }
             }
+            Command::MicAuxConfigure(request) => {
+                self.mic_aux.set(request.configuration);request.ack.applied();
+                self.undo.retire_command(Command::MicAuxConfigure(request));
+            }
+            Command::MicAuxControl(control) => {if let Some(cfg)=control.resolve(self){self.mic_aux.set(Some(cfg));}}
             Command::TrackGain { track, value } => {
                 if (track as usize) < self.tracks.len() {
                     self.tracks[track as usize].gain = value.clamp(0.0, 1.5);

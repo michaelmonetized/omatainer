@@ -31,7 +31,7 @@ fn input_mode_persists_with_arm_undo_and_legacy_files_keep_their_original_mix() 
     });
     let saved = captured(&live);
     let json = serde_json::to_value(&saved.state).unwrap();
-    assert_eq!(json["version"], 16);
+    assert_eq!(json["version"], crate::engine::project::STATE_VERSION);
     assert_eq!(json["tracks"][2]["input_monitor"], "off");
     let state: State = serde_json::from_value(json.clone()).unwrap();
     let reopened = Prepared::from_state(state, saved.media.clone(), 44100).unwrap();

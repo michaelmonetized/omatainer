@@ -29,6 +29,7 @@ pub(crate) struct Shared {
     pub(crate) explicit: AtomicBool,
     pub(crate) probe: AtomicU32,
     generation: AtomicU64,
+    channels: AtomicU32,
     rate: AtomicU32,
     enabled: AtomicBool,
     pub(crate) fault: AtomicBool,
@@ -62,6 +63,7 @@ impl Default for Pipe {
                 explicit: AtomicBool::new(false),
                 probe: AtomicU32::new(0),
                 generation: AtomicU64::new(0),
+                channels: AtomicU32::new(0),
                 rate: AtomicU32::new(0),
                 enabled: AtomicBool::new(false),
                 fault: AtomicBool::new(false),
@@ -79,6 +81,8 @@ impl Default for Pipe {
     }
 }
 impl Pipe {
+    #[cfg(test)]
+    pub(crate) fn controlled_for_test(rate:u32)->Self {let pipe=Self::default();pipe.shared.rate.store(rate,Ordering::Release);pipe.shared.enabled.store(true,Ordering::Release);pipe}
     /// Prime a bounded input cushion.
     /// Takes the active output rate and actual block width; waits for two callback quanta without consuming or discarding source frames.
     pub(crate) fn begin_block(&mut self, rate: u32, frames: usize) {
@@ -107,6 +111,9 @@ impl Pipe {
             self.reader.started = true;
         }
     }
+    /// Read the active capture width.
+    /// Takes this pipe; returns physical channels in the current input callback.
+    pub(crate) fn channels(&self)->usize {self.shared.channels.load(Ordering::Acquire) as usize}
     /// Read the last input delivery result.
     /// Takes this renderer's pipe; returns whether the current frame belongs to a continuous active source.
     pub(crate) fn valid(&self) -> bool {
@@ -189,6 +196,7 @@ impl Pipe {
             self.shared.fault.store(true, Ordering::Release);
             return;
         }
+        self.shared.channels.store(channels as u32,Ordering::Release);
         let frames = data.len() / channels;
         if frames > CAPACITY / 3 {
             self.shared.fault.store(true, Ordering::Release);

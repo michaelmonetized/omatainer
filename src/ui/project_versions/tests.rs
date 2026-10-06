@@ -433,3 +433,10 @@ fn safe_mode_restart_uses_the_same_worker_close_gate_as_the_viewport() {
     while app.project_versions.busy() {app.project_versions.poll();assert!(Instant::now()<end);std::thread::sleep(Duration::from_millis(1));}
     assert!(!files.0.join("restart-versions/versions.omat").exists());
 }
+#[test]
+fn comparison_reports_saved_mic_aux_controls_as_a_mixer_change(){
+    let (engine,mut rt)=Engine::headless_for_test(48000,256);let captured=capture(&engine,&mut rt);
+    let current=Bundle{state:project::Document{engine:captured.state,view:project::UiState::default(),mapping_schema:project::FACTORY_MAPPING_SCHEMA},media:captured.media};
+    let mut changed=project::Document{engine:current.state.engine.clone(),view:project::UiState::default(),mapping_schema:project::FACTORY_MAPPING_SCHEMA};changed.engine.mic_aux=Some(crate::engine::audio::routing::mic_aux::Configuration::default());
+    let saved=Bundle{state:changed,media:current.media.clone()};let text=worker::compare(&current,&saved,&AtomicBool::new(false)).unwrap();assert!(text.contains("Changed: Master and decks"),"{text}");
+}

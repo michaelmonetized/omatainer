@@ -1358,6 +1358,7 @@ fn history_monitoring(command: &Command) -> bool {
 
 fn same_parameter(a: &Command, b: &Command) -> bool {
     match (a, b) {
+        (Command::MicAuxControl(a),Command::MicAuxControl(b))=>a.namespace==b.namespace&&a.role==b.role&&a.input==b.input&&match(a.parameter,b.parameter){(super::audio::routing::mic_aux::control::Parameter::Eq{band:a,..},super::audio::routing::mic_aux::control::Parameter::Eq{band:b,..})=>a==b,(a,b)=>std::mem::discriminant(&a)==std::mem::discriminant(&b)},
         (Command::SessionControl(a), Command::SessionControl(b)) => a.track == b.track && a.scene == b.scene && same_parameter(&a.command, &b.command),
         (Command::SessionControl(_), _) | (_, Command::SessionControl(_)) => false,
         (Command::Gesture { id: a, command: ac }, Command::Gesture { id: b, command: bc }) => {
@@ -1366,4 +1367,16 @@ fn same_parameter(a: &Command, b: &Command) -> bool {
         (Command::Gesture { .. }, _) | (_, Command::Gesture { .. }) => false,
         _ => parameter_key(a).is_some() && parameter_key(a) == parameter_key(b),
     }
+}
+
+#[cfg(test)]
+#[test]
+fn mic_aux_absolute_controls_coalesce_only_the_same_reviewed_source_and_parameter(){
+    use super::audio::routing::mic_aux::control::{Control,Parameter};
+    let control=Control{namespace:[1,2],role:0,input:Some(2),parameter:Parameter::Gain(1.0)};
+    let (tx,rx)=crossbeam_channel::bounded(256);let rx=CommandReceiver::from(rx);
+    for i in 0..COMMANDS_PER_BLOCK {tx.send(Command::MicAuxControl(Control{parameter:Parameter::Gain(i as f32/32.0),..control})).unwrap();}
+    let batch=CommandBatch::receive(&rx);assert_eq!(batch.received,COMMANDS_PER_BLOCK);assert_eq!(batch.applied,1);
+    tx.send(Command::MicAuxControl(control)).unwrap();tx.send(Command::MicAuxControl(Control{namespace:[3,4],..control})).unwrap();tx.send(Command::MicAuxControl(Control{input:Some(3),..control})).unwrap();tx.send(Command::MicAuxControl(Control{role:1,..control})).unwrap();tx.send(Command::MicAuxControl(Control{parameter:Parameter::Mute(true),..control})).unwrap();
+    let batch=CommandBatch::receive(&rx);assert_eq!(batch.applied,5);
 }

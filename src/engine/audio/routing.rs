@@ -1,6 +1,7 @@
 //! Prepared channel routing shared by native capture, rendering and project state.
 pub(crate) mod input;
 pub(crate) mod model;
+pub(crate) mod mic_aux;
 #[cfg(test)]
 mod native_tests;
 #[cfg(test)]

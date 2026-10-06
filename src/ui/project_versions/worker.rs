@@ -315,7 +315,7 @@ pub(super) fn compare(
         for (i, deck) in state.decks.iter().enumerate() {
             decks[i]["audio"] = json!(deck.audio.and_then(|i| hashes.get(i)));
         }
-        out[2].insert("Master and decks".into(), json!({"master":state.master,"xfader":state.xfader,"curve":state.xfader_curve,"cue":state.cue_mix,"decks":decks}));
+        out[2].insert("Master and decks".into(), json!({"master":state.master,"xfader":state.xfader,"curve":state.xfader_curve,"cue":state.cue_mix,"mic_aux":state.mic_aux,"decks":decks}));
         let mut banks = serde_json::to_value(&state.banks).map_err(|e| e.to_string())?;
         for (i, bank) in state.banks.iter().enumerate() {
             banks[i]["media"] = json!(bank.media.map(|i| i.and_then(|i| hashes.get(i))));

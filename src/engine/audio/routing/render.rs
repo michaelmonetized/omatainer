@@ -13,6 +13,7 @@ impl Prepared {
         channels: usize,
     ) -> [f32; MAX_PHYSICAL_CHANNELS] {
         self.begin();
+        rt.mic_aux.begin();
         let gains = {
             #[cfg(test)]
             if rt.legacy_gain_math {
@@ -92,6 +93,7 @@ impl Prepared {
                     [rt.routing_deck_taps[0], [left, right], mixed]
                 }
                 Group::Main => {
+                    rt.mic_aux.music_gain();
                     let sends = rt.surface.render_sends(f64::from(rt.sr) * 60.0 / f64::from(rt.bpm.max(1.0)));
                     let before = [input[0] + click + sends[0], input[1] + click + sends[1]];
                     let mut output = before;
@@ -108,8 +110,14 @@ impl Prepared {
                     }
                     [before, post_fx, output]
                 }
-                Group::Output(_) => continue,
+                Group::Output(_) => {
+                    let node=&mut self.nodes[index];
+                    rt.mic_aux.add(group,node.width,&mut node.input,&mut node.valid,rt.master);
+                    continue;
+                },
                 Group::Record(id) => {
+                    let node=&mut self.nodes[index];
+                    rt.mic_aux.add(group,node.width,&mut node.input,&mut node.valid,rt.master);
                     if record_alias == id {
                         rt.routing_pipe.recorder.capture(id, self.nodes[index].input, self.nodes[index].valid);
                     }
@@ -125,6 +133,7 @@ impl Prepared {
                             for (value, physical) in frame.iter_mut().zip(&port.channels) {
                                 *value = rt.routing_input_frame[usize::from(*physical)];
                             }
+                            rt.mic_aux.feed(port.id,frame,port.channels.len(),self.nodes[index].valid && port.channels.iter().all(|c|usize::from(*c)<rt.routing_pipe.channels()));
                             [frame; 3]
                         }
                         Group::Bus(_) => {
@@ -141,7 +150,8 @@ impl Prepared {
             self.publish_stereo(index, taps);
         }
         let mut output = self.outputs(channels);
-        let headphone = rt.render_monitor([self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]], cue);
+        let program=rt.mic_aux.program_alias().and_then(|id|self.nodes.iter().find(|n|n.group==Group::Output(id))).map_or([self.nodes[self.main].taps[2][0], self.nodes[self.main].taps[2][1]],|n|[n.input[0],n.input[if n.width==1 {0}else{1}]]);
+        let headphone = rt.render_monitor(program, cue);
         let monitor_pair = rt.monitor.status.channels.filter(|_| rt.monitor.status.available);
         if let Some(pair) = monitor_pair { for (channel, value) in pair.into_iter().zip(headphone) { output[channel] = value; } }
         let mut peak = [0.0_f32; 2];

@@ -972,6 +972,37 @@
       ],
       "limits": "Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope."
     },
+    "180": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "bounded voice processing",
+          "file": "src/engine/audio/routing/mic_aux.rs",
+          "entry": "Mono/stereo aliases, gain/mute/tone/metering, source-loss/replacement ramps and talkover before independently selected mixes"
+        },
+        {
+          "kind": "reviewed saved controls",
+          "file": "src/engine/audio/routing/mic_aux/control.rs",
+          "entry": "Stable source and project guards, scalar performance controls and explicit application receipts"
+        },
+        {
+          "kind": "native workflow",
+          "file": "src/ui/mic_aux.rs",
+          "entry": "Source review, master/booth/raw recording inclusion, live levels, tone and deliberate talkover"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::mic_aux::tests",
+        "engine::control::mic_aux_absolute_controls_coalesce_only_the_same_reviewed_source_and_parameter",
+        "ui::mic_aux::tests",
+        "ui::project_versions::tests::comparison_reports_saved_mic_aux_controls_as_a_mixer_change"
+      ],
+      "evidence": [
+        "docs/validation/mic-aux.md",
+        "docs/validation/mic-aux-receipt.json"
+      ],
+      "limits": "Eleven software checks and complete 1838-test unfiltered suite pass with 44 ignored cases. Actual source pipe, converted output, raw/final recording decode, mono/stereo order, master/PFL, loss/width/nonfinite handling, finite tone/talkover envelopes, native protected controls, schema 17 save/reopen/restore, Undo and selective import are qualified. No physical microphone, line source, PA feedback or clock-compensation acceptance is claimed in this closed capture thread."
+    },
     "181": {
       "status": "implemented",
       "paths": [

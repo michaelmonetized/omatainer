@@ -108,6 +108,9 @@ impl Recorder {
             && !self.shared.stop.load(Ordering::Acquire)
             && self.shared.output_width.load(Ordering::Acquire) == 0
     }
+    /// Check capture or recording delivery ownership.
+    /// Takes this recorder; returns true through activation, capture and final encoding.
+    pub(crate) fn busy(&self)->bool {self.shared.busy.load(Ordering::Acquire) || self.alias()!=0}
     /// Read the selected record source.
     /// Takes this recorder; returns its stable alias ID, or zero while idle.
     pub(crate) fn alias(&self) -> u64 {
