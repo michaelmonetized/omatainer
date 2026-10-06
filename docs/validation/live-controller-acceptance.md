@@ -3,8 +3,9 @@
 The connected DDJ-SP1 passed the sixteen HOT CUE pads, six FX On buttons, and
 six full-range FX knob checks. The APC40 mkII passed all eight track faders,
 Pan knobs, Arm, Solo, Activator and Track Select inputs. Its Pan, Sends and User
-selector buttons remain unqualified: their presses produced no raw MIDI, and
-Michael reported that their lights stayed dark.
+selector buttons remain unqualified: their presses produced no raw MIDI in
+either host mode. In the alternate-mode comparison, Michael reported that
+Pan stayed lit while Sends and User stayed dark.
 
 The [receipt](live-controller-acceptance-receipt.json) belongs to installed code
 `7db2dc58faa4962f2eff824cde2a7374d2fbafea`, executable SHA-256
@@ -52,7 +53,17 @@ stayed Pan, with both send banks still zero. Resending mode `0x41` did not
 produce selector messages or visible lights. The documented alternate mode
 `0x42` was then sent and returned eight track-fader positions, master 127 and
 crossfader zero. A native command restored master zero while playback and
-recording stayed stopped. The alternate-mode button comparison is pending.
+recording stayed stopped. The alternate-mode comparison captured only the
+two Arm presses and releases, with matching native feedback. None of the
+four selector presses arrived. Michael reported that Arm changed, Pan stayed
+lit, and Sends/User stayed dark.
+
+A separate software-generated Sends press and release entered the existing
+APC input connection. Native knob mode changed from Pan to Sends, and the
+application sent Pan off and Sends on, with no refusals or dropped input.
+Master stayed zero and playback/recording stopped. Physical appearance of
+those lights is pending. This injection checks the installed application path;
+it does not qualify a physical selector press.
 
 Both host modes and the selector/LED addresses are specified in Akai's
 [communications protocol](https://cdn.inmusicbrands.com/akai/attachments/apc40II/APC40Mk2_Communications_Protocol_v1.2.pdf).
