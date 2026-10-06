@@ -2,7 +2,7 @@
   "schema": 1,
   "reviewed": "2026-10-06",
   "base": "6c06d18a41c1d49de5c338b0471b45087f9ccc8b",
-  "hardwareQualification": "Paused at user request. Existing captures closed; no new physical gestures required.",
+  "hardwareQualification": "Physical hardware qualification is paused at Michael's request. Existing captures are closed; software work continues without new physical gestures.",
   "issues": [
     {
       "issue": 2,
@@ -2089,9 +2089,13 @@
       "dependencies": [
         110
       ],
-      "state": "planned",
-      "prs": [],
-      "evidence": []
+      "state": "implemented",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/510"
+      ],
+      "evidence": [
+        "docs/validation/midi-step-rhythm.md"
+      ]
     },
     {
       "issue": 152,
@@ -2305,9 +2309,13 @@
       "dependencies": [
         110
       ],
-      "state": "planned",
-      "prs": [],
-      "evidence": []
+      "state": "implemented",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/510"
+      ],
+      "evidence": [
+        "docs/validation/midi-step-rhythm.md"
+      ]
     },
     {
       "issue": 168,

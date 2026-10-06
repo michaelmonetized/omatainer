@@ -11,6 +11,8 @@ use std::sync::{
     mpsc,
 };
 mod canvas;
+mod step;
+mod rhythm;
 
 pub(super) struct Editor {
     open: bool,
@@ -23,6 +25,7 @@ pub(super) struct Editor {
     audition: Option<u64>,
     stop_requested: bool,
     next_audition: u64,
+    keyboard: step::Keyboard,
 }
 struct Loading {
     receiver: mpsc::Receiver<Result<Arc<Document>, String>>,
@@ -54,6 +57,11 @@ struct Draft {
     fold: usize,
     root: u8,
     drag: Option<canvas::Drag>,
+    steps: Vec<step::Edit>,
+    step_record: bool,
+    step_grid: usize,
+    step_chord: BTreeSet<NoteId>,
+    rhythm: rhythm::Generator,
 }
 #[derive(Clone, Copy)]
 struct Values {
@@ -86,6 +94,7 @@ impl Default for Editor {
             audition: None,
             stop_requested: false,
             next_audition: 1,
+            keyboard: step::Keyboard::default(),
         }
     }
 }
@@ -123,6 +132,11 @@ impl Draft {
             fold: 0,
             root: 0,
             drag: None,
+            steps: Vec::new(),
+            step_record: false,
+            step_grid: 3,
+            step_chord: BTreeSet::new(),
+            rhythm: rhythm::Generator::default(),
         }
     }
     fn snap(&self, value: f64) -> f32 {
@@ -319,6 +333,8 @@ impl Editor {
                 }
             }
         }
+        self.keyboard.chord.clear();
+        self.stop_keyboard(engine);
     }
     pub(super) fn stop_for_close(&mut self, engine: &Engine) {
         self.stop(engine);
@@ -402,6 +418,9 @@ impl Editor {
                     if let Some(draft) = &mut self.draft {
                         draft.baseline = pending.next.clone();
                         draft.dirty = false;
+                        draft.steps.clear();
+                        draft.step_chord.clear();
+                        draft.rhythm.committed();
                     }
                     self.pending = None;
                     self.message =
@@ -427,6 +446,8 @@ impl Editor {
         if self.busy() {
             return;
         }
+        self.stop(engine);
+        if self.stop_requested { return; }
         let Some(draft) = &self.draft else {
             return;
         };
@@ -506,6 +527,7 @@ impl App {
         }
         keyboard::block_for_dialog(ctx);
         let escape = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
+        let musical_events = ctx.input(|i| i.events.clone());
         let available = ctx.screen_rect().shrink(8.0);
         let mut open = true;
         let mut close = escape;
@@ -513,6 +535,12 @@ impl App {
         let mut audition = false;
         let mut stop = false;
         let mut refresh = false;
+        let mut keyboard_focus = false;
+        let mut step_action = None;
+        let keyboard_was_enabled = editor.keyboard.enabled;
+        let mut keyboard_enabled = editor.keyboard.enabled;
+        let mut octave = editor.keyboard.octave;
+        let mut velocity = editor.keyboard.velocity;
         let busy = editor.busy();
         let shown = egui::Window::new(tr!("MIDI piano roll")).id(egui::Id::new("midi-piano-roll"))
             .open(&mut open).collapsible(false).resizable(true)
@@ -564,6 +592,33 @@ impl App {
                                     let mut zoom = draft.beat_pixels as f64; if number(ui, "Time zoom", &mut zoom, 8.0, 200.0) { draft.beat_pixels = zoom as f32; }
                                     let mut height = draft.row_pixels as f64; if number(ui, "Pitch zoom", &mut height, 12.0, 32.0) { draft.row_pixels = height as f32; }
                                 });
+                                ui.horizontal_wrapped(|ui| {
+                                    let record = ui.checkbox(&mut draft.step_record, "Record steps on key release");
+                                    accessibility::button(ui, &record, "Record steps on key release", Some(draft.step_record));
+                                    help::annotate(ui, &record, HelpControl::MidiStep);
+                                    let duration = egui::ComboBox::from_id_salt("midi-step-duration").selected_text(format!("Step: {}", GRIDS[draft.step_grid].0))
+                                        .show_ui(ui, |ui| { for (i, (name, _)) in GRIDS.iter().enumerate().skip(1) { ui.selectable_value(&mut draft.step_grid, i, *name); } });
+                                    help::annotate(ui, &duration.response, HelpControl::MidiStep);
+                                    ui.label(format!("Step cursor: {:.6} beats", draft.cursor.start));
+                                    for (label, action) in [("Insert cursor pitch", step::Action::Pitch), ("Advance / insert held chord", step::Action::Advance),
+                                        ("Rest step", step::Action::Rest), ("Tie previous step", step::Action::Tie), ("Delete last step", step::Action::Delete)] {
+                                        if button(ui, label).clicked() { step_action = Some(action); }
+                                    }
+                                });
+                                ui.horizontal_wrapped(|ui| {
+                                    let enabled = ui.checkbox(&mut keyboard_enabled, "Computer musical keyboard");
+                                    accessibility::button(ui, &enabled, "Computer musical keyboard", Some(keyboard_enabled));
+                                    help::annotate(ui, &enabled, HelpControl::MidiStep);
+                                    let mut value = octave as f64; if number(ui, "Keyboard octave", &mut value, -1.0, 9.0) { octave = value.round() as i8; }
+                                    let mut value = velocity as f64; if number(ui, "Keyboard velocity", &mut value, 1.0, 127.0) { velocity = value.round() as u8; }
+                                    let play = ui.add_enabled(keyboard_enabled, egui::Button::new("Focus musical keyboard"));
+                                    accessibility::button(ui, &play, "Focus musical keyboard", None);
+                                    help::annotate(ui, &play, HelpControl::MidiStep);
+                                    if play.clicked() { play.request_focus(); }
+                                    keyboard_focus = play.has_focus();
+                                });
+                                ui.label("Focus musical keyboard: A W S E D F T G Y H U J K play C through C. Z/X change octave; C/V change velocity. Space inserts held notes or a rest; Shift+Space ties; Backspace removes the last step. With Record steps enabled, releasing a chord inserts it and advances. Tab away releases all notes.");
+                                match rhythm::show(ui, draft) { Ok(true) => editor.error = None, Err(error) => editor.error = Some(error), _ => {} }
                                 if let Err(error) = canvas::show(ui, &self.theme, draft, self.snap.timing.as_deref()) { editor.error = Some(error); }
                                 let selected = ui.label(draft.selected_label());
                                 accessibility::status(ui, &selected, &draft.selected_label());
@@ -646,6 +701,14 @@ impl App {
                 editor.stop(&self.engine);
             }
         }
+        if keyboard_was_enabled != keyboard_enabled || editor.keyboard.octave != octave || editor.keyboard.velocity != velocity {
+            editor.stop(&self.engine);
+        }
+        editor.keyboard.enabled = keyboard_enabled;
+        editor.keyboard.octave = octave;
+        editor.keyboard.velocity = velocity;
+        if let Some(action) = step_action { editor.step_action(action); }
+        editor.keyboard_input(&self.engine, ctx, keyboard_focus && !busy && !self.project.committing(), musical_events);
         if apply {
             editor.apply(&self.engine);
         }
@@ -681,6 +744,10 @@ fn button(ui: &mut Ui, label: &str) -> egui::Response {
         &response,
         if label.contains("audition") {
             HelpControl::MidiAudition
+        } else if label.contains("step") || label.contains("held chord") || label.contains("cursor pitch") {
+            HelpControl::MidiStep
+        } else if label.contains("rhythm") {
+            HelpControl::MidiRhythm
         } else if label.contains("close") || label.contains("Discard") || label.contains("Keep") {
             HelpControl::MidiCancel
         } else {
@@ -695,6 +762,9 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool
         let integer = matches!(
             label,
             "Note pitch" | "Note velocity" | "Top pitch" | "Scale root"
+                | "Keyboard octave" | "Keyboard velocity"
+                | "Rhythm steps" | "Rhythm pulses" | "Rhythm rotation" | "Accent every"
+                | "Rhythm pitch" | "Rhythm velocity" | "Rhythm accent"
         );
         let step = if integer { 1.0 } else { 0.01 };
         let response = ui.add(
@@ -710,6 +780,10 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool
                 HelpControl::MidiRegion
             } else if label.starts_with("Note") {
                 HelpControl::MidiValues
+            } else if label.starts_with("Keyboard") {
+                HelpControl::MidiStep
+            } else if label.starts_with("Rhythm") || label == "Accent every" {
+                HelpControl::MidiRhythm
             } else {
                 HelpControl::MidiView
             },

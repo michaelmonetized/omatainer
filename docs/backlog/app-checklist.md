@@ -2,11 +2,11 @@
 
 Reviewed 2026-10-06. Source base: `6c06d18a41c1d49de5c338b0471b45087f9ccc8b`. Tracking: [#1](https://github.com/michaelmonetized/omatainer/issues/1).
 
-Paused at user request. Existing captures closed; no new physical gestures required.
+Physical hardware qualification is paused at Michael's request. Existing captures are closed; software work continues without new physical gestures.
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 17 implemented · 6 partial · 198 planned · 0 accepted · 8 outside release
+127 existing stack · 19 implemented · 6 partial · 196 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -161,7 +161,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented | #112, #39 | [receipt](../../docs/validation/issue-148-midi-learn.md) |
 | [ ] | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | planned | #110, #112, #111 |  |
 | [ ] | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned | #110, #112 |  |
-| [ ] | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | planned | #110 |  |
+| [x] | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | implemented | #110 | [receipt](../../docs/validation/midi-step-rhythm.md), [#510](https://github.com/michaelmonetized/omatainer/pull/510) |
 | [ ] | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned | #113, #82, #83 |  |
 | [x] | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented | #101 | [receipt](../../docs/validation/issue-153-sampler-playback.md) |
 | [x] | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented | #105 | [receipt](../../docs/validation/issue-154-crate-discovery.md) |
@@ -177,7 +177,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | planned | #110, #83 |  |
 | [ ] | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | planned | #110 |  |
 | [ ] | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned | #110 |  |
-| [ ] | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | planned | #110 |  |
+| [x] | [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented | #110 | [receipt](../../docs/validation/midi-step-rhythm.md), [#510](https://github.com/michaelmonetized/omatainer/pull/510) |
 | [ ] | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | planned | #110 |  |
 | [ ] | [#169](https://github.com/michaelmonetized/omatainer/issues/169) | Exchange editable sessions using an open DAW interchange format | planned | #116 |  |
 | [ ] | [#170](https://github.com/michaelmonetized/omatainer/issues/170) | Inspect project storage and safely clean unused media | planned | #124 |  |

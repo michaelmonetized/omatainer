@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T06:03:59.203Z",
+  "platform": "linux-aarch64",
+  "checks": {
+    "editor": {
+      "passed": 15,
+      "failed": 0
+    },
+    "broaderNativeUi": {
+      "passed": 563,
+      "failed": 0,
+      "ignored": 13,
+      "seconds": 174.49
+    },
+    "checklist": {
+      "passed": 5,
+      "failed": 0
+    },
+    "offlineManualSynchronized": true,
+    "compiledFixtureSelectorsVerified": true
+  },
+  "sourceFiles": {
+    "src/ui/piano_roll.rs": "2c60a8d7b8f690fedc56a13a67c0868c1be66e832030356e75d8908e03049bc1",
+    "src/ui/piano_roll/step.rs": "41f799812eb911eb83a25cb2d7e2fbd3d09352b10c6d3c257b9114be864e6299",
+    "src/ui/piano_roll/rhythm.rs": "fb2a433b2a8e98331171e1cd3741f3e260db1615faf57ea0023c1f10147839d7",
+    "src/ui/piano_roll/canvas.rs": "bd618940a1d36557f5e7af03f6a1f22644f26cfaac729a211af665eb2be4f220",
+    "src/ui/piano_roll/tests.rs": "363ce2786f340b51622db5e7ff97bcd04abdbc69c96d617e779b82484cf8cde6",
+    "src/ui/help/catalogue.rs": "e81c7d4a31140e03c982a9280243c383f2ba118af23c8d58957242760a0b7a10"
+  },
+  "evidence": {
+    "editor": "target/app-backlog/final-midi-tests.log",
+    "ui": "target/app-backlog/ui-regression-tests.log",
+    "checklist": "target/app-backlog/checklist-regression.log"
+  },
+  "limits": [
+    "Software input, native UI and renderer checks; no new physical hardware test",
+    "Installed release qualification is recorded separately"
+  ]
+}

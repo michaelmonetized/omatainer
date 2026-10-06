@@ -37,10 +37,10 @@
       "limits": "Discovery is not a captured audio or listening test."
     },
     {
-      "name": "Pioneer DDJ-FX; Numark NS7; Akai MPD232; Akai APC40; 88-key USB keyboard",
-      "status": "user available; pending attachment",
-      "versions": "Exact model, firmware and endpoint descriptors pending",
-      "limits": "No physical controller profile or custom NS7 driver is qualified yet."
+      "name": "Pioneer DDJ-SP1 08e4:0181; original Numark NS7 15e4:0071; Akai APC40 mkII 09e8:0029; Akai MPD232 09e8:0036",
+      "status": "Connected qualification recorded in PR #509; live captures now closed",
+      "versions": "Linux 7.1.13-3-2-ARCH; NS7 native ALSA module; MPD232 LiveLite preset",
+      "limits": "NS7 PA, scratching, contour, headphones and requested controls; Pioneer Sync; APC first fader/grid pad; MPD PAD 1 and bank-A CC capture have the specific receipts in docs/validation/hardware-resurrection.md. Other physical controls and stage-path power stability remain open. No new physical checks in this software batch."
     },
     {
       "name": "FreeToUse",
@@ -630,6 +630,36 @@
       ],
       "limits": "All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified."
     },
+    "151": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/piano_roll.rs",
+          "entry": "Stopped step cursor, held chords, rests, ties, triplet durations and focused computer input"
+        },
+        {
+          "kind": "editor",
+          "file": "src/ui/piano_roll/step.rs",
+          "entry": "Independent audition owners, repeat/focus guards and bounded reversible step edits"
+        },
+        {
+          "kind": "renderer and history",
+          "file": "src/engine/midi_edit.rs",
+          "entry": "Guarded atomic Apply with stable note identities and existing project Undo"
+        }
+      ],
+      "fixtures": [
+        "ui::piano_roll::tests::real_step_keyboard_enters_chords_rests_ties_triplets_and_plays_the_score",
+        "ui::piano_roll::tests::real_musical_keyboard_loses_focus_safely_and_keeps_physical_notes_owned",
+        "ui::piano_roll::tests::musical_keyboard_is_explicit_and_releases_on_tab_apply_and_close_at_laptop_size",
+        "ui::piano_roll::tests::step_bounds_deletion_and_intervening_edits_are_atomic"
+      ],
+      "evidence": [
+        "docs/validation/midi-step-rhythm.md"
+      ],
+      "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
+    },
     "153": {
       "status": "implemented",
       "paths": [
@@ -699,6 +729,35 @@
         "docs/validation/issue-154-crate-discovery.md"
       ],
       "limits": "Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication."
+    },
+    "167": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/piano_roll.rs",
+          "entry": "Independent rhythmic voices, seeded density, bounded common periods and guarded preview/restore"
+        },
+        {
+          "kind": "editor",
+          "file": "src/ui/piano_roll/rhythm.rs",
+          "entry": "Euclidean hit generation, exact integer seeds and least-common-period bounds"
+        },
+        {
+          "kind": "renderer and history",
+          "file": "src/engine/midi_edit.rs",
+          "entry": "Guarded atomic Apply with stable note identities and existing project Undo"
+        }
+      ],
+      "fixtures": [
+        "ui::piano_roll::rhythm::tests",
+        "ui::piano_roll::tests::real_rhythm_controls_preview_restore_regenerate_commit_and_undo",
+        "ui::piano_roll::tests::rhythm_restore_preserves_edits_and_bad_parameters_preserve_the_draft"
+      ],
+      "evidence": [
+        "docs/validation/midi-step-rhythm.md"
+      ],
+      "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
     },
     "205": {
       "status": "implemented",

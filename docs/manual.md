@@ -2294,6 +2294,22 @@ Enter pitch, start, length, velocity and mute. Add note creates a new identity; 
 
 Workflow: Record a held note.
 
+### MIDI step entry
+
+Stopped transport; quarter-note, straight or triplet steps
+
+Choose a step duration and the visible cursor. Insert cursor pitch, advance with a held chord, rest, tie the previous chord or delete the last step. Enable Computer musical keyboard and focus its input button: A W S E D F T G Y H U J K play C through C; Z/X change octave; C/V change velocity; Space advances, Shift+Space ties and Backspace deletes. Record steps on key release inserts a complete chord when its last key is released. Repeats are ignored; focus loss, text entry, Apply and closing release audition notes. Apply commits the draft as one Undo entry.
+
+Workflow: Record a held note.
+
+### Rhythm generation
+
+Up to eight voices, 64 steps per voice and 8192 notes
+
+Set each voice's pitch, independent steps and duration, pulses, rotation, density, velocity and accent interval. Swing and gate use fractions: 0.2 swing delays odd steps by 20% of one step; 0.5 gate holds for half a step. Density 0 is empty and 1 retains all pulses. The exact integer seed makes variations repeatable. Preview spans the least-common loop, keeps existing notes unless Replace draft notes is selected, and writes ordinary editable notes. Restore works until preview notes or loop bounds are edited; Apply commits one Undo change. Common periods above 262144 beats or 65536 generated steps are refused. Timing stays in quarter-note beats through meter or scale changes; pitches remain explicit.
+
+Workflow: Record a held note.
+
 ### MIDI clip and loop bounds
 
 0–262144 source quarter-note beats

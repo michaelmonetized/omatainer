@@ -16,7 +16,7 @@ Planned means no complete implementation is claimed. Partial means some work is 
 | Linux aarch64 / Asahi MacBook Pro J316 | local software fixtures | Linux 7.1.13-3-2-ARCH; Rust/Cargo 1.98.0; CPAL 0.18.2 | Physical converter timing, external audio paths and sustained listening are not qualified by unit tests. |
 | ALSA → private PipeWire null sink | backend restart exercised | ALSA 1.2.16.1; PipeWire 1.6.8 | Owned private server and real CPAL callbacks; no USB unplug, converter or system suspend evidence. |
 | MacBook built-in AppleJ316 / AppleJ316HPAI | discovered | sysfs/proc inventory 2026-10-03 | Discovery is not a captured audio or listening test. |
-| Pioneer DDJ-FX; Numark NS7; Akai MPD232; Akai APC40; 88-key USB keyboard | user available; pending attachment | Exact model, firmware and endpoint descriptors pending | No physical controller profile or custom NS7 driver is qualified yet. |
+| Pioneer DDJ-SP1 08e4:0181; original Numark NS7 15e4:0071; Akai APC40 mkII 09e8:0029; Akai MPD232 09e8:0036 | Connected qualification recorded in PR #509; live captures now closed | Linux 7.1.13-3-2-ARCH; NS7 native ALSA module; MPD232 LiveLite preset | NS7 PA, scratching, contour, headphones and requested controls; Pioneer Sync; APC first fader/grid pad; MPD PAD 1 and bank-A CC capture have the specific receipts in docs/validation/hardware-resurrection.md. Other physical controls and stage-path power stability remain open. No new physical checks in this software batch. |
 | FreeToUse | public keyless test source | API v3; current API/license reviewed 2026-10-03 | No paid account or music grant configured. Catalog tests and generated private-fixture audio are separate from provider music playback. Other provider integrations are excluded from this release. |
 | Audio plugins | planned | No hosted plugin formats or vendor versions qualified | Built-in effect racks are not VST3/CLAP/LV2 plugin hosting. |
 | Windows / macOS | unqualified | No native build/device qualification for this release | This run is Linux aarch64 only. |
@@ -216,6 +216,16 @@ Merged-source qualification pending. Physical controller actions and listening r
 
 All 1498 ordinary checks and private 32-channel native routing pass on the recorded MIDI-learn source. Synthetic callback delivery and native controls do not prove physical mapping, USB disconnect or listening. Exact backend port ids may require recapture after device identity changes; automatic hotplug is not claimed. NS7 motorized wheel protocols and custom drivers remain unqualified.
 
+### Issue #151: implemented
+
+- native UI: [src/ui/piano_roll.rs](../src/ui/piano_roll.rs) — Stopped step cursor, held chords, rests, ties, triplet durations and focused computer input
+- editor: [src/ui/piano_roll/step.rs](../src/ui/piano_roll/step.rs) — Independent audition owners, repeat/focus guards and bounded reversible step edits
+- renderer and history: [src/engine/midi_edit.rs](../src/engine/midi_edit.rs) — Guarded atomic Apply with stable note identities and existing project Undo
+- Acceptance fixtures: `ui::piano_roll::tests::real_step_keyboard_enters_chords_rests_ties_triplets_and_plays_the_score`, `ui::piano_roll::tests::real_musical_keyboard_loses_focus_safely_and_keeps_physical_notes_owned`, `ui::piano_roll::tests::musical_keyboard_is_explicit_and_releases_on_tab_apply_and_close_at_laptop_size`, `ui::piano_roll::tests::step_bounds_deletion_and_intervening_edits_are_atomic`.
+- Evidence: [docs/validation/midi-step-rhythm.md](../docs/validation/midi-step-rhythm.md).
+
+Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction.
+
 ### Issue #153: implemented
 
 - native UI: [src/ui/sampler_editor.rs](../src/ui/sampler_editor.rs) — Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save
@@ -236,6 +246,16 @@ Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native
 - Evidence: [docs/validation/issue-154-crate-discovery.md](../docs/validation/issue-154-crate-discovery.md).
 
 Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication.
+
+### Issue #167: implemented
+
+- native UI: [src/ui/piano_roll.rs](../src/ui/piano_roll.rs) — Independent rhythmic voices, seeded density, bounded common periods and guarded preview/restore
+- editor: [src/ui/piano_roll/rhythm.rs](../src/ui/piano_roll/rhythm.rs) — Euclidean hit generation, exact integer seeds and least-common-period bounds
+- renderer and history: [src/engine/midi_edit.rs](../src/engine/midi_edit.rs) — Guarded atomic Apply with stable note identities and existing project Undo
+- Acceptance fixtures: `ui::piano_roll::rhythm::tests`, `ui::piano_roll::tests::real_rhythm_controls_preview_restore_regenerate_commit_and_undo`, `ui::piano_roll::tests::rhythm_restore_preserves_edits_and_bad_parameters_preserve_the_draft`.
+- Evidence: [docs/validation/midi-step-rhythm.md](../docs/validation/midi-step-rhythm.md).
+
+Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction.
 
 ### Issue #205: implemented
 
@@ -285,7 +305,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#148](https://github.com/michaelmonetized/omatainer/issues/148) | Deliver a usable MIDI learn editor for performance controls | implemented |
 | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | planned |
 | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned |
-| [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | planned |
+| [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | implemented |
 | [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned |
 | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented |
 | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
@@ -301,7 +321,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#164](https://github.com/michaelmonetized/omatainer/issues/164) | Add quantize, stretch, reverse and tempo-curve MIDI transformations | planned |
 | [#165](https://github.com/michaelmonetized/omatainer/issues/165) | Edit multiple MIDI clips together with explicit focus and ghost notes | planned |
 | [#166](https://github.com/michaelmonetized/omatainer/issues/166) | Add per-note chance, velocity ranges and expressive note properties | planned |
-| [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | planned |
+| [#167](https://github.com/michaelmonetized/omatainer/issues/167) | Generate editable rhythmic and Euclidean MIDI patterns | implemented |
 | [#168](https://github.com/michaelmonetized/omatainer/issues/168) | Make keys and scales shared musical context for editing and devices | planned |
 | [#169](https://github.com/michaelmonetized/omatainer/issues/169) | Exchange editable sessions using an open DAW interchange format | planned |
 | [#170](https://github.com/michaelmonetized/omatainer/issues/170) | Inspect project storage and safely clean unused media | planned |

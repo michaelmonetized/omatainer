@@ -218,6 +218,192 @@ impl Drop for File {
     }
 }
 
+fn musical_key(gui: &mut Gui, key: Key, pressed: bool, repeat: bool, modifiers: egui::Modifiers) {
+    gui.frame(vec![egui::Event::Key { key, physical_key: Some(key), pressed, repeat, modifiers }]);
+}
+fn focus_musical_keyboard(gui: &mut Gui) {
+    gui.action("MIDI piano roll: Focus musical keyboard", Action::Focus, None);
+}
+
+#[test]
+fn real_step_keyboard_enters_chords_rests_ties_triplets_and_plays_the_score() {
+    let mut gui = Gui::new();
+    gui.open_editor();
+    gui.click("MIDI piano roll: Computer musical keyboard");
+    gui.click("MIDI piano roll: Record steps on key release");
+    focus_musical_keyboard(&mut gui);
+    for key in [Key::A, Key::D, Key::G] { musical_key(&mut gui, key, true, false, egui::Modifiers::NONE); }
+    musical_key(&mut gui, Key::A, true, true, egui::Modifiers::NONE);
+    musical_key(&mut gui, Key::A, false, false, egui::Modifiers::NONE);
+    assert!(gui.app.piano_roll.draft.as_ref().unwrap().notes.is_empty());
+    musical_key(&mut gui, Key::D, false, false, egui::Modifiers::NONE);
+    musical_key(&mut gui, Key::G, false, false, egui::Modifiers::NONE);
+    let draft = gui.app.piano_roll.draft.as_ref().unwrap();
+    assert_eq!(draft.notes.iter().map(|n| n.pitch).collect::<Vec<_>>(), [60, 64, 67]);
+    assert!(draft.notes.iter().all(|n| n.start == 0.0 && n.len == 0.25));
+    assert_eq!(draft.cursor.start, 0.25);
+    gui.key(Key::Space, egui::Modifiers::SHIFT);
+    assert!(gui.app.piano_roll.draft.as_ref().unwrap().notes.iter().all(|n| n.len == 0.5));
+    gui.key(Key::Space, egui::Modifiers::NONE);
+    assert_eq!(gui.app.piano_roll.draft.as_ref().unwrap().cursor.start, 0.75);
+    gui.key(Key::Backspace, egui::Modifiers::NONE);
+    assert_eq!(gui.app.piano_roll.draft.as_ref().unwrap().cursor.start, 0.5);
+    gui.key(Key::Space, egui::Modifiers::NONE);
+    gui.click_text("Step: Sixteenth notes");
+    gui.click_text("Eighth triplets");
+    focus_musical_keyboard(&mut gui);
+    for key in [Key::S, Key::F, Key::H] { gui.key(key, egui::Modifiers::NONE); }
+    let expected = gui.app.piano_roll.draft.as_ref().unwrap().notes.clone();
+    assert_eq!(expected.len(), 6);
+    for (index, note) in expected[3..].iter().enumerate() {
+        assert!((note.start - (0.75 + index as f32 / 3.0)).abs() < 1e-6);
+        assert!((note.len - 1.0 / 3.0).abs() < 1e-6);
+    }
+    assert!(!gui.rt.playing);
+    assert!(gui.rt.tracks[2].clips[7].notes.is_empty());
+    gui.apply();
+    assert_eq!(gui.rt.tracks[2].clips[7].notes, expected);
+    gui.app.engine.send(Command::Undo).unwrap(); gui.frame(vec![]);
+    assert!(gui.rt.tracks[2].clips[7].notes.is_empty());
+    gui.app.engine.send(Command::Redo).unwrap(); gui.frame(vec![]);
+    assert_eq!(gui.rt.tracks[2].clips[7].notes, expected);
+    gui.click("MIDI piano roll: Cancel / close MIDI editor");
+    gui.app.engine.send(Command::SetBpm(120.0)).unwrap();
+    gui.app.engine.send(Command::Quant(0.0)).unwrap();
+    gui.rt.process(&mut []);
+    gui.rt.begin_midi_trace_for_test(2);
+    gui.app.engine.send(Command::FireClip { track: 2, scene: 7, looping: false }).unwrap();
+    for _ in 0..100 { gui.rt.process(&mut [0.0; 1024]); }
+    let emitted = gui.rt.take_midi_trace_for_test(2);
+    let mut score = expected.iter().flat_map(|n| [(n.start as f64, true, n.pitch, n.vel), ((n.start + n.len) as f64, false, n.pitch, 0)])
+        .map(|(beat, on, pitch, vel)| (((beat * 24_000.0 + 1e-7).floor()) as u64, on, pitch, vel)).collect::<Vec<_>>();
+    score.sort_by_key(|e| (e.0, e.1, e.2));
+    assert_eq!(emitted, score);
+}
+
+#[test]
+fn real_musical_keyboard_loses_focus_safely_and_keeps_physical_notes_owned() {
+    use crate::engine::dsp::InputKey;
+    let mut gui = Gui::new(); gui.open_editor();
+    gui.click("MIDI piano roll: Computer musical keyboard");
+    gui.click("MIDI piano roll: Record steps on key release");
+    focus_musical_keyboard(&mut gui);
+    gui.app.engine.send(Command::LiveNoteOn { source: 999, ch: 1, note: 60, vel: 80 }).unwrap();
+    musical_key(&mut gui, Key::A, true, false, egui::Modifiers::NONE);
+    musical_key(&mut gui, Key::D, true, false, egui::Modifiers::NONE);
+    assert!(gui.rt.tracks[2].poly.voices.iter().any(|v| matches!(v.input, Some(InputKey::Preview(_))) && matches!(v.env.stage, 1..=3)));
+    gui.focused = false; gui.frame(vec![]); gui.frame(vec![]);
+    assert!(gui.rt.tracks[2].poly.voices.iter().all(|v| !matches!(v.input, Some(InputKey::Preview(_))) || !matches!(v.env.stage, 1..=3)));
+    assert!(gui.rt.tracks[2].poly.voices.iter().any(|v| v.input == Some(InputKey::Midi { source: 999, ch: 1, note: 60 }) && matches!(v.env.stage, 1..=3)));
+    assert!(gui.app.piano_roll.draft.as_ref().unwrap().notes.is_empty());
+    gui.focused = true; gui.frame(vec![]);
+    gui.action("MIDI clip name", Action::Focus, None);
+    gui.key(Key::A, egui::Modifiers::NONE);
+    assert!(gui.app.piano_roll.draft.as_ref().unwrap().notes.is_empty());
+    focus_musical_keyboard(&mut gui);
+    gui.key(Key::X, egui::Modifiers::NONE);
+    gui.key(Key::V, egui::Modifiers::NONE);
+    gui.key(Key::A, egui::Modifiers::NONE);
+    let draft = gui.app.piano_roll.draft.as_ref().unwrap();
+    assert_eq!((draft.notes[0].pitch, draft.notes[0].vel), (72, 110));
+    assert!(!gui.rt.playing);
+}
+
+#[test]
+fn step_bounds_deletion_and_intervening_edits_are_atomic() {
+    let mut gui = Gui::new(); gui.open_editor();
+    let draft = gui.app.piano_roll.draft.as_mut().unwrap();
+    draft.step_insert(&BTreeSet::from([60, 64]), 90).unwrap();
+    let initial = draft.notes.clone();
+    draft.step_tie().unwrap(); draft.step_delete().unwrap();
+    assert_eq!(draft.notes, initial);
+    draft.step_delete().unwrap(); assert!(draft.notes.is_empty());
+    assert_eq!(draft.cursor.start, 0.0);
+    draft.cursor.start = 262_144.0;
+    assert!(draft.step_insert(&BTreeSet::from([60]), 90).is_err());
+    assert!(draft.notes.is_empty());
+    draft.cursor.start = 0.0;
+    draft.step_insert(&BTreeSet::from([60]), 90).unwrap();
+    draft.notes[0].pitch = 61;
+    let edited = draft.notes.clone();
+    assert!(draft.step_delete().is_err()); assert_eq!(draft.notes, edited);
+    assert_eq!(draft.cursor.start, 0.25);
+}
+
+#[test]
+fn real_rhythm_controls_preview_restore_regenerate_commit_and_undo() {
+    let mut gui = Gui::new(); gui.open_editor();
+    gui.number("Note pitch", 60.0); gui.click("MIDI piano roll: Add note");
+    let original = gui.app.piano_roll.draft.as_ref().unwrap().notes.clone();
+    gui.click_text("Rhythm generator");
+    let set_voice = |gui: &mut Gui, voice: usize, name: &str, value: f64| {
+        gui.action(&format!("Rhythm voice {voice}: {name}"), Action::SetValue, Some(ActionData::NumericValue(value)));
+    };
+    set_voice(&mut gui, 1, "Rhythm steps", 5.0);
+    set_voice(&mut gui, 1, "Rhythm pulses", 2.0);
+    gui.click("MIDI piano roll: Add rhythm voice");
+    set_voice(&mut gui, 2, "Rhythm steps", 7.0);
+    set_voice(&mut gui, 2, "Rhythm pulses", 3.0);
+    set_voice(&mut gui, 2, "Rhythm pitch", 42.0);
+    gui.click("MIDI piano roll: Preview rhythm");
+    assert!(gui.app.piano_roll.error.is_none(), "{:?}", gui.app.piano_roll.error);
+    let notes = gui.app.piano_roll.draft.as_ref().unwrap().notes.clone();
+    assert_eq!(notes.len(), 30);
+    assert_eq!(notes[0], original[0]);
+    assert_eq!(gui.app.piano_roll.draft.as_ref().unwrap().region.loop_end, 8.75);
+    let musical = |notes: &[MidiNote]| notes.iter().map(|n| (n.pitch, n.start, n.len, n.vel)).collect::<Vec<_>>();
+    gui.click("MIDI piano roll: Preview rhythm");
+    assert_eq!(musical(&gui.app.piano_roll.draft.as_ref().unwrap().notes), musical(&notes));
+    assert_ne!(gui.app.piano_roll.draft.as_ref().unwrap().notes[1].id, notes[1].id);
+    gui.click("MIDI piano roll: Restore before rhythm preview");
+    assert_eq!(gui.app.piano_roll.draft.as_ref().unwrap().notes, original);
+    gui.click("MIDI piano roll: Preview rhythm");
+    let committed = gui.app.piano_roll.draft.as_ref().unwrap().notes.clone();
+    gui.apply(); assert_eq!(gui.rt.tracks[2].clips[7].notes, committed);
+    gui.app.engine.send(Command::Undo).unwrap(); gui.frame(vec![]);
+    assert!(gui.rt.tracks[2].clips[7].notes.is_empty());
+    gui.app.engine.send(Command::Redo).unwrap(); gui.frame(vec![]);
+    assert_eq!(gui.rt.tracks[2].clips[7].notes, committed);
+}
+
+#[test]
+fn rhythm_restore_preserves_edits_and_bad_parameters_preserve_the_draft() {
+    let mut gui = Gui::new(); gui.open_editor(); gui.click_text("Rhythm generator");
+    gui.click("MIDI piano roll: Preview rhythm");
+    gui.app.piano_roll.draft.as_mut().unwrap().notes[0].vel = 17;
+    let edited = gui.app.piano_roll.draft.as_ref().unwrap().notes.clone();
+    gui.click("MIDI piano roll: Restore before rhythm preview");
+    assert!(gui.app.piano_roll.error.is_some());
+    assert_eq!(gui.app.piano_roll.draft.as_ref().unwrap().notes, edited);
+    gui.click("MIDI piano roll: Preview rhythm");
+    assert!(gui.app.piano_roll.error.is_some());
+    assert_eq!(gui.app.piano_roll.draft.as_ref().unwrap().notes, edited);
+}
+
+#[test]
+fn musical_keyboard_is_explicit_and_releases_on_tab_apply_and_close_at_laptop_size() {
+    use crate::engine::dsp::InputKey;
+    let mut gui = Gui::new(); gui.screen = Vec2::new(1366.0, 768.0); gui.frame(vec![]); gui.open_editor();
+    gui.key(Key::A, egui::Modifiers::NONE);
+    assert!(gui.app.piano_roll.draft.as_ref().unwrap().notes.is_empty());
+    gui.click("MIDI piano roll: Computer musical keyboard"); focus_musical_keyboard(&mut gui);
+    musical_key(&mut gui, Key::A, true, false, egui::Modifiers::NONE);
+    gui.key(Key::Tab, egui::Modifiers::NONE);
+    assert!(gui.rt.tracks[2].poly.voices.iter().all(|v| !matches!(v.input, Some(InputKey::Preview(_))) || !matches!(v.env.stage, 1..=3)));
+    assert!(gui.app.piano_roll.draft.as_ref().unwrap().notes.is_empty());
+    gui.click("MIDI piano roll: Record steps on key release"); focus_musical_keyboard(&mut gui);
+    musical_key(&mut gui, Key::D, true, false, egui::Modifiers::NONE);
+    gui.apply();
+    assert!(gui.rt.tracks[2].poly.voices.iter().all(|v| !matches!(v.input, Some(InputKey::Preview(_))) || !matches!(v.env.stage, 1..=3)));
+    assert!(gui.rt.tracks[2].clips[7].notes.is_empty());
+    focus_musical_keyboard(&mut gui);
+    musical_key(&mut gui, Key::G, true, false, egui::Modifiers::NONE);
+    gui.click("MIDI piano roll: Cancel / close MIDI editor");
+    assert!(gui.rt.tracks[2].poly.voices.iter().all(|v| !matches!(v.input, Some(InputKey::Preview(_))) || !matches!(v.env.stage, 1..=3)));
+    assert!(!gui.app.piano_roll.open);
+    assert!(!gui.rt.playing);
+}
+
 #[test]
 fn real_accessible_editor_composes_revises_saves_reopens_sixteen_bars_and_matches_emitted_notes() {
     let file = File::new();

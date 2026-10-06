@@ -118,6 +118,11 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
     let grid_step = step * (4.0 / (step as f32 * draft.beat_pixels)).ceil().max(1.0) as f64;
     let first = (draft.view_beat / grid_step).ceil() * grid_step;
     let visible_end = draft.view_beat + body.width() as f64 / draft.beat_pixels as f64;
+    let cursor = body.left() + (draft.cursor.start as f64 - draft.view_beat) as f32 * draft.beat_pixels;
+    if (body.left()..=body.right()).contains(&cursor) {
+        painter.line_segment([Pos2::new(cursor, body.top()), Pos2::new(cursor, body.bottom())], Stroke::new(2.0_f32, theme.yellow));
+        painter.text(Pos2::new(cursor + 3.0, body.top()), egui::Align2::LEFT_TOP, "Step", FontId::monospace(theme.text_size(10.0)), theme.yellow);
+    }
     let count = ((visible_end - first) / grid_step).ceil().max(0.0) as usize;
     for index in 0..=count.min(1024) {
         let beat = first + index as f64 * grid_step;
