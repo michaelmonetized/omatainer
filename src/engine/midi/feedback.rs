@@ -159,7 +159,7 @@ impl Surface {
                             0
                         };
                         messages.push(if self == Self::ApcMk2 {
-                            [0x90, (scene * 8 + track) as u8, color]
+                            [0x90, ((4 - scene) * 8 + track) as u8, color]
                         } else {
                             [0x90 + track as u8, 0x35 + scene as u8, color]
                         });
@@ -508,6 +508,7 @@ mod tests {
             .collect();
         for (surface, playing_color, loaded_color) in [(Surface::Apc, 1, 5), (Surface::ApcMk2, 21, 13)] {
             let messages = surface.messages(&snapshot);
+            let first_notes = [32, 24, 16, 8, 0];
             assert_eq!(messages.iter().filter(|message| if surface == Surface::ApcMk2 { message[0] == 0x90 && message[1] < 40 } else { (0x90..=0x97).contains(&message[0]) && (0x35..=0x39).contains(&message[1]) }).count(), 40);
             for track in 0..8 {
                 for scene in 0..5 {
@@ -516,7 +517,7 @@ mod tests {
                         else if state.playing_scene == scene as i16 { playing_color }
                         else { loaded_color };
                     let address = if surface == Surface::ApcMk2 {
-                        [0x90, (scene * 8 + track) as u8, expected]
+                        [0x90, first_notes[scene] + track as u8, expected]
                     } else { [0x90 + track as u8, 0x35 + scene as u8, expected] };
                     assert!(messages.contains(&address), "{surface:?}: track {track}, scene {scene}");
                 }
@@ -541,6 +542,37 @@ mod tests {
             Surface::named("Numark NS7:Numark NS7 MIDI 32:0"),
             Some(Surface::Ns7)
         );
+    }
+
+    #[test]
+    fn apc_mk2_grid_feedback_keeps_top_rows_at_high_notes_after_banking() {
+        let mut snapshot = Snapshot::default();
+        snapshot.surfaces.track_offset = 8;
+        snapshot.surfaces.scene_offset = 6;
+        snapshot.tracks = (0..16)
+            .map(|track| crate::engine::TrackSnap {
+                playing_scene: 7,
+                clips: (0..8)
+                    .map(|scene| crate::engine::ClipSnap {
+                        kind: if scene == 6 && track % 2 == 0 || scene == 7 { 1 } else { 0 },
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            })
+            .collect();
+        let messages = Surface::ApcMk2.messages(&snapshot);
+        let first_notes = [32, 24, 16, 8, 0];
+        for (row, first_note) in first_notes.iter().enumerate() {
+            for column in 0..8 {
+                let expected = match row {
+                    0 if column % 2 == 0 => 13,
+                    1 => 21,
+                    _ => 0,
+                };
+                assert!(messages.contains(&[0x90, first_note + column, expected]));
+            }
+        }
     }
     #[test]
     fn feedback_uses_documented_led_addresses_and_mirrors_the_sp1_banks() {

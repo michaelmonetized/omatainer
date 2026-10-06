@@ -127,7 +127,7 @@ fn surfaces_apc_window_shift_selection_bank_lock_and_device_lock_follow_session_
     assert_eq!(rt.surface_status().track_offset, 8);
     send(&mut input, &mut rt, &[0x90, 0x5f, 127]);
     assert_eq!(rt.surface_status().scene_offset, 3);
-    send(&mut input, &mut rt, &[0x90, 0, 127]);
+    send(&mut input, &mut rt, &[0x90, 32, 127]);
     assert_eq!((rt.selected_track, rt.selected_scene), (8, 3));
     send(&mut input, &mut rt, &[0x80, 0x62, 0]);
     send(&mut input, &mut rt, &[0xb0, 7, 21]);
@@ -141,6 +141,76 @@ fn surfaces_apc_window_shift_selection_bank_lock_and_device_lock_follow_session_
     send(&mut input, &mut rt, &[0x91, 0x33, 127]);
     assert_eq!(rt.selected_track, 9);
     assert_eq!(rt.surface_status().device_lock, Some(8));
+}
+
+#[test]
+fn surfaces_apc_grid_rows_launch_and_select_the_matching_visible_scenes() {
+    let (_engine, mut rt, mut input) = fixture(akai_apc40_mk2(), 86);
+    for index in 8..16 {
+        let mut track = rt.tracks[0].as_ref().clone();
+        track.name = format!("Grid {index}");
+        rt.tracks.push(Box::new(track));
+    }
+    rt.session = crate::engine::session::Layout::fresh(
+        rt.tracks.iter().map(|track| track.name.clone()),
+        rt.scene_fx.len(),
+    );
+    for track in &mut rt.tracks {
+        for clip in &mut track.clips {
+            clip.kind = crate::engine::ClipKind::Midi;
+        }
+    }
+    let rows = [
+        [32, 33, 34, 35, 36, 37, 38, 39],
+        [24, 25, 26, 27, 28, 29, 30, 31],
+        [16, 17, 18, 19, 20, 21, 22, 23],
+        [8, 9, 10, 11, 12, 13, 14, 15],
+        [0, 1, 2, 3, 4, 5, 6, 7],
+    ];
+    let map = akai_apc40_mk2();
+    for (row, notes) in rows.iter().enumerate() {
+        for (column, note) in notes.iter().enumerate() {
+            let binding = map.bindings.iter().find(|binding| {
+                binding.kind == MsgKind::Note && binding.ch == 0xff && binding.data == *note
+            }).unwrap();
+            assert_eq!((binding.action, binding.deck, binding.extra), (Action::Clip, column as u8, row as u16));
+        }
+    }
+    for track_offset in [0, 8] {
+        for scene_offset in [0, 3] {
+            rt.surface.status.track_offset = track_offset;
+            rt.surface.status.scene_offset = scene_offset;
+            for shift in [false, true] {
+                send(&mut input, &mut rt, &[0x90, 0x62, if shift { 127 } else { 0 }]);
+                for (row, notes) in rows.iter().enumerate() {
+                    for (column, note) in notes.iter().enumerate() {
+                        let track = track_offset + column;
+                        let scene = scene_offset + row;
+                        rt.apply(Command::Stop);
+                        send(&mut input, &mut rt, &[0x90, *note, 127]);
+                        send(&mut input, &mut rt, &[0x80, *note, 0]);
+                        assert_eq!((rt.selected_track, rt.selected_scene), (track, scene));
+                        if shift {
+                            assert!(rt.tracks.iter().all(|track| track.playing.is_none()));
+                            assert!(!rt.playing);
+                        } else {
+                            assert_eq!(rt.tracks[track].playing.as_ref().unwrap().scene as usize, scene);
+                            assert!(rt.playing);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    rt.surface.status.track_offset = 15;
+    rt.surface.status.scene_offset = 7;
+    send(&mut input, &mut rt, &[0x90, 0x62, 127]);
+    send(&mut input, &mut rt, &[0x90, 32, 127]);
+    assert_eq!((rt.selected_track, rt.selected_scene), (15, 7));
+    for note in [33, 24, 40] {
+        send(&mut input, &mut rt, &[0x90, note, 127]);
+        assert_eq!((rt.selected_track, rt.selected_scene), (15, 7));
+    }
 }
 
 #[test]

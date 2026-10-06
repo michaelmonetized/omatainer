@@ -398,7 +398,7 @@ impl RtEngine {
             let command = match control {
                 0..=0x27 => {
                     let track = status.track_offset + usize::from(control % 8);
-                    let scene = status.scene_offset + usize::from(control / 8);
+                    let scene = status.scene_offset + usize::from(4 - control / 8);
                     if track >= self.tracks.len() || scene >= self.scene_fx.len() {
                         return;
                     }
