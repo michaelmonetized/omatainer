@@ -1,0 +1,1448 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-06T12:21:57.491Z",
+  "testedCodeRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
+  "testedBinarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
+  "runningPid": 1771583,
+  "evidence": [
+    {
+      "path": "target/hardware/pioneer-apc/controller-acceptance-input.log",
+      "sha256": "2ee3f3a33581e43b4d052ef55c632a9823552bee510cc74df777f3ce939f1ebb"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/controller-acceptance-feedback.log",
+      "sha256": "08a8d77bb7e9849e660bf29032b0d1d391abb67b10105e85aaba8e8e252b4349"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/pioneer-complete-input.log",
+      "sha256": "75a5bb24414130f201a2d87d603b5535b5b417bfb994ad6ea0ba6cc7c2369c1b"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/pioneer-complete-after-status.json",
+      "sha256": "b4eb58e9498e7aa9a503a10ef9678a7ef52c3f9b044277504573e8d6cd39f1ce"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/pioneer-complete-after-surfaces.json",
+      "sha256": "ef9e49c0c959c9485bb2dd2d20873d496a3d7a5e95408443626921a6f0ea3b55"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/recovery-ack.json",
+      "sha256": "54d072ea55656255d7598cd97d49d8bf74f25c6485e1aabc8e1fbc5dd6a95ac2"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/reconnected-status.json",
+      "sha256": "187fc455a2b85a9b68ea4e64c02f42a5cb0d391d6b4b3a05593c355f5bb5894c"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-modes-after-status.json",
+      "sha256": "6f30875985b367b6bfb3740a8e81744cdcbf08521326fc094e350d5fd862d80b"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-modes-after-surfaces.json",
+      "sha256": "4eb855d2b8c3e12ff6aea364ebc42dbe0726e2ca565d723a7a2242d62078dac1"
+    }
+  ],
+  "pioneer": {
+    "padsAndFxButtons": {
+      "schema": 1,
+      "capturedAt": "2026-10-06T11:34:55.855Z",
+      "installedBinary": {
+        "path": "/home/michael/.local/bin/omatainer",
+        "sha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1"
+      },
+      "runningBinary": {
+        "path": "/proc/1771583/exe",
+        "sha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1"
+      },
+      "pid": 1771583,
+      "input": {
+        "path": "target/hardware/pioneer-apc/pioneer-initial-input.log",
+        "sha256": "1d43bc865ce30da31fa6e4801b11a9766ac2058c498cd5bc0cf77ccf452bdd55"
+      },
+      "feedback": {
+        "path": "target/hardware/pioneer-apc/pioneer-initial-feedback.log",
+        "sha256": "aaceac96138c6a2c4965ef82420e23ce1dc85320207ceafc0c37189466a70834"
+      },
+      "observations": {
+        "path": "target/hardware/pioneer-apc/pioneer-initial-observations.ndjson",
+        "sha256": "91512bc8e6aac3dd9ede507fb7197e1d9ac2a671be211e397cce2aaa1fb7f486"
+      },
+      "nativeState": {
+        "path": "target/hardware/pioneer-apc/pioneer-final-state.json",
+        "sha256": "16fd0829e72c1ef958f2be5370a36b476912262356116ade28a3ef05fb6a3e00"
+      },
+      "nativeSurface": {
+        "path": "target/hardware/pioneer-apc/pioneer-final-surfaces.json",
+        "sha256": "0c4a812cab8605a5594a7a9e97b12240cacd5592ba1b4c4990017271928864d0"
+      },
+      "nativeStatus": {
+        "path": "target/hardware/pioneer-apc/pioneer-final-status.json",
+        "sha256": "5b029eca544c5607fb7d56f2d33cd47ee408efacc74b8836276f2e51dc076696"
+      },
+      "inputMessages": 176,
+      "pads": [
+        {
+          "deck": 0,
+          "pad": 1,
+          "wireChannel": 7,
+          "note": 0,
+          "presses": 3,
+          "releases": 3,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 2,
+          "wireChannel": 7,
+          "note": 1,
+          "presses": 3,
+          "releases": 3,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 3,
+          "wireChannel": 7,
+          "note": 2,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 4,
+          "wireChannel": 7,
+          "note": 3,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 5,
+          "wireChannel": 7,
+          "note": 4,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 6,
+          "wireChannel": 7,
+          "note": 5,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 7,
+          "wireChannel": 7,
+          "note": 6,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 0,
+          "pad": 8,
+          "wireChannel": 7,
+          "note": 7,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 1,
+          "wireChannel": 8,
+          "note": 0,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 2,
+          "wireChannel": 8,
+          "note": 1,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 3,
+          "wireChannel": 8,
+          "note": 2,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 4,
+          "wireChannel": 8,
+          "note": 3,
+          "presses": 2,
+          "releases": 2,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 5,
+          "wireChannel": 8,
+          "note": 4,
+          "presses": 3,
+          "releases": 3,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 6,
+          "wireChannel": 8,
+          "note": 5,
+          "presses": 3,
+          "releases": 3,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 7,
+          "wireChannel": 8,
+          "note": 6,
+          "presses": 3,
+          "releases": 3,
+          "engineCueSet": true,
+          "ledSetSent": true
+        },
+        {
+          "deck": 1,
+          "pad": 8,
+          "wireChannel": 8,
+          "note": 7,
+          "presses": 19,
+          "releases": 19,
+          "engineCueSet": true,
+          "ledSetSent": true
+        }
+      ],
+      "effects": [
+        {
+          "bank": 0,
+          "slot": 1,
+          "wireChannel": 4,
+          "note": 71,
+          "presses": 4,
+          "releases": 4,
+          "nativeOnObserved": true,
+          "ledValues": [
+            0,
+            127
+          ]
+        },
+        {
+          "bank": 0,
+          "slot": 2,
+          "wireChannel": 4,
+          "note": 72,
+          "presses": 4,
+          "releases": 4,
+          "nativeOnObserved": true,
+          "ledValues": [
+            0,
+            127
+          ]
+        },
+        {
+          "bank": 0,
+          "slot": 3,
+          "wireChannel": 4,
+          "note": 73,
+          "presses": 4,
+          "releases": 4,
+          "nativeOnObserved": true,
+          "ledValues": [
+            0,
+            127
+          ]
+        },
+        {
+          "bank": 1,
+          "slot": 1,
+          "wireChannel": 5,
+          "note": 71,
+          "presses": 4,
+          "releases": 4,
+          "nativeOnObserved": true,
+          "ledValues": [
+            0,
+            127
+          ]
+        },
+        {
+          "bank": 1,
+          "slot": 2,
+          "wireChannel": 5,
+          "note": 72,
+          "presses": 4,
+          "releases": 4,
+          "nativeOnObserved": true,
+          "ledValues": [
+            0,
+            127
+          ]
+        },
+        {
+          "bank": 1,
+          "slot": 3,
+          "wireChannel": 5,
+          "note": 73,
+          "presses": 4,
+          "releases": 4,
+          "nativeOnObserved": true,
+          "ledValues": [
+            0,
+            127
+          ]
+        }
+      ],
+      "knobs": {
+        "controlChangeMessages": 0,
+        "status": "No knob messages arrived in the initial pass; separate repeat captured subsequently"
+      },
+      "midi": {
+        "coalesced": 0,
+        "disconnected": 0,
+        "dispatched": 178,
+        "dropped": 0,
+        "oversized": 0,
+        "queued": 178,
+        "received": 178,
+        "resets": 0
+      },
+      "commands": {
+        "applied": 150,
+        "applied_last_block": 0,
+        "backlog": 0,
+        "budget_exhaustions": 1,
+        "coalesced": 0,
+        "high_water": 34,
+        "received": 150,
+        "received_last_block": 0
+      },
+      "submissions": {
+        "accepted": 152,
+        "coalesced": 0,
+        "last_error": null,
+        "rejected": 0
+      },
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 134050,
+        "deadline_overruns": 42,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 380961,
+          "frames": 256,
+          "output_latency_ns": 5351474,
+          "overrun_ns": 0,
+          "render_cpu_ns": 363917,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 40992102,
+        "max_overrun_ns": 35187114,
+        "realtime_denied": 0,
+        "xruns": 40
+      },
+      "audioDelta": {
+        "callbacks": 49282,
+        "xruns": 40,
+        "deadlineOverruns": 42
+      },
+      "master": 0,
+      "playing": false,
+      "recording": false,
+      "limits": [
+        "Native MIDI and feedback receipt, not an acoustic listening qualification",
+        "No inactive controls or lights were reported, but physical LED appearance is not inferred from outgoing bytes",
+        "Initial FX knob pass had no raw CC messages; repeats are recorded separately",
+        "The loaded audio interval includes forty recoverable underruns and forty-two deadline overruns; concurrent compilation was active"
+      ]
+    },
+    "fxKnobs": {
+      "at": "2026-10-06T12:04:00.596Z",
+      "ccMessages": 6836,
+      "controls": {
+        "4:2": {
+          "count": 603,
+          "min": 0,
+          "max": 16383,
+          "last": 0
+        },
+        "4:4": {
+          "count": 633,
+          "min": 0,
+          "max": 16383,
+          "last": 0
+        },
+        "4:6": {
+          "count": 561,
+          "min": 0,
+          "max": 16383,
+          "last": 0
+        },
+        "5:2": {
+          "count": 602,
+          "min": 0,
+          "max": 16383,
+          "last": 0
+        },
+        "5:4": {
+          "count": 487,
+          "min": 0,
+          "max": 16383,
+          "last": 0
+        },
+        "5:6": {
+          "count": 532,
+          "min": 0,
+          "max": 16383,
+          "last": 0
+        }
+      },
+      "nativeFx": [
+        {
+          "assigned": [
+            true,
+            false
+          ],
+          "beats": 0,
+          "kinds": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "on": [
+            false,
+            false,
+            false
+          ],
+          "parameter": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "wet": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "assigned": [
+            false,
+            true
+          ],
+          "beats": 0,
+          "kinds": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "on": [
+            false,
+            false,
+            false
+          ],
+          "parameter": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "wet": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "repeat": {
+      "inputMessages": 6836,
+      "decodedCommands": 3418,
+      "rejectedCommands": 0,
+      "droppedInput": 0,
+      "audioUnderruns": 0,
+      "deadlineOverruns": 0
+    }
+  },
+  "apc40MkII": {
+    "tracks": [
+      {
+        "track": 1,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 46,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 282,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      },
+      {
+        "track": 2,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 62,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 313,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      },
+      {
+        "track": 3,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 76,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 158,
+          "min": 0,
+          "max": 123,
+          "last": 123
+        },
+        "finalRingValue": 123
+      },
+      {
+        "track": 4,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 61,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 145,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      },
+      {
+        "track": 5,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 60,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 140,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      },
+      {
+        "track": 6,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 70,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 140,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      },
+      {
+        "track": 7,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          }
+        },
+        "fader": {
+          "count": 53,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 144,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      },
+      {
+        "track": 8,
+        "buttons": {
+          "arm": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "solo": {
+            "presses": 2,
+            "feedbackValues": [
+              1,
+              0
+            ]
+          },
+          "activator": {
+            "presses": 2,
+            "feedbackValues": [
+              0,
+              1
+            ]
+          },
+          "select": {
+            "presses": 1,
+            "feedbackValues": [
+              1
+            ]
+          }
+        },
+        "fader": {
+          "count": 45,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "knob": {
+          "count": 137,
+          "min": 0,
+          "max": 127,
+          "last": 127
+        },
+        "finalRingValue": 127
+      }
+    ],
+    "modes": {
+      "buttons": [],
+      "coverage": [
+        [
+          {
+            "count": 403,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          },
+          {
+            "count": 447,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          },
+          {
+            "count": 280,
+            "min": 0,
+            "max": 124,
+            "last": 124
+          },
+          {
+            "count": 272,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          },
+          {
+            "count": 276,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          },
+          {
+            "count": 264,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          },
+          {
+            "count": 264,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          },
+          {
+            "count": 283,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          }
+        ],
+        [
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          }
+        ],
+        [
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          },
+          {
+            "count": 0,
+            "min": 127,
+            "max": 0,
+            "last": null
+          }
+        ]
+      ],
+      "user": [
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        },
+        {
+          "count": 0,
+          "min": 127,
+          "max": 0,
+          "last": null
+        }
+      ],
+      "native": {
+        "assignments": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bank_lock": false,
+        "device": 0,
+        "device_lock": null,
+        "device_master": false,
+        "device_on": false,
+        "device_values": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx": [
+          {
+            "assigned": [
+              true,
+              false
+            ],
+            "beats": 0,
+            "kinds": [
+              "echo",
+              "reverb",
+              "filter"
+            ],
+            "on": [
+              false,
+              false,
+              false
+            ],
+            "parameter": [
+              0.5,
+              0.5,
+              0.5
+            ],
+            "wet": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "assigned": [
+              false,
+              true
+            ],
+            "beats": 0,
+            "kinds": [
+              "echo",
+              "reverb",
+              "filter"
+            ],
+            "on": [
+              false,
+              false,
+              false
+            ],
+            "parameter": [
+              0.5,
+              0.5,
+              0.5
+            ],
+            "wet": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "knob_mode": 0,
+        "master_parameter": [
+          0,
+          0,
+          0
+        ],
+        "parameter_bank": 0,
+        "sampler_playing": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "sampler_volume": 1,
+        "scene_offset": 0,
+        "send": 0,
+        "sends": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "shift": false,
+        "track_offset": 0
+      }
+    },
+    "physicalArmLight": "User confirmed track 1 RECORD ARM light turned on and off after output recovery",
+    "modeTrials": {
+      "hostMode41Resent": "User reported no lights; no new button messages arrived",
+      "alternateHostMode42": "Setup returned eight track-fader values, master 127, and crossfader zero. Master was restored to zero through an applied native command. Physical button comparison is pending.",
+      "setupRequests": [
+        {
+          "path": "target/hardware/pioneer-apc/apc-reinitialize-mode41.log",
+          "sha256": "e15edeefd79be3f2674ab1a0779a8bd8e03e891da0d70ad829bdef60335070d9"
+        },
+        {
+          "path": "target/hardware/pioneer-apc/apc-alternate-mode42.log",
+          "sha256": "8b4281ec85653cb3b114997e8ad5bc05c9ef87d9244940937eaf4ac61f6ee14e"
+        },
+        {
+          "path": "target/hardware/pioneer-apc/apc-mode42-mute-ack.json",
+          "sha256": "cfd078853ee726cb56e872b0ea37a94d1f19123943d1e5cf223fc39104939afa"
+        },
+        {
+          "path": "target/hardware/pioneer-apc/apc-mode42-muted-state.json",
+          "sha256": "e01500b6fc0d733cedab7392bfd2496c58cf0596cd781db97e84d6dd651d3549"
+        }
+      ]
+    }
+  },
+  "recovery": {
+    "staleStream": {
+      "backend_errors": 0,
+      "callbacks": 175640,
+      "deadline_overruns": 75,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 5357480790,
+        "frames": 256,
+        "output_latency_ns": 5691610,
+        "overrun_ns": 5351675802,
+        "render_cpu_ns": 417291,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 5357480790,
+      "max_overrun_ns": 5351675802,
+      "realtime_denied": 0,
+      "xruns": 76
+    },
+    "acknowledgement": {
+      "at": "2026-10-06T11:54:38.512Z",
+      "request": {
+        "op": "recoverPerformance",
+        "inputsReleased": true,
+        "id": "apc-recover-2026-10-06"
+      },
+      "response": {
+        "accepted": true,
+        "audio": {
+          "backend_errors": 0,
+          "callbacks": 175640,
+          "deadline_overruns": 75,
+          "device_lost": 0,
+          "dropped_buffers": null,
+          "last_callback": {
+            "budget_ns": 5804988,
+            "channels": 4,
+            "elapsed_ns": 5357480790,
+            "frames": 256,
+            "output_latency_ns": 5691610,
+            "overrun_ns": 5351675802,
+            "render_cpu_ns": 417291,
+            "sample_rate": 44100
+          },
+          "max_elapsed_ns": 5357480790,
+          "max_overrun_ns": 5351675802,
+          "realtime_denied": 0,
+          "xruns": 76
+        },
+        "bar": 1,
+        "beat": 0,
+        "bpm": 124,
+        "command_status": "accepted",
+        "commands": {
+          "applied": 485,
+          "applied_last_block": 0,
+          "backlog": 0,
+          "budget_exhaustions": 8,
+          "coalesced": 1561,
+          "high_water": 231,
+          "received": 2046,
+          "received_last_block": 0
+        },
+        "deckA": "What More Can I Say",
+        "deckALoadLocked": false,
+        "deckAPlaying": false,
+        "deckB": "Public Service Announcement",
+        "deckBLoadLocked": false,
+        "deckBPlaying": false,
+        "event": "state",
+        "id": "apc-recover-2026-10-06",
+        "master_fx": {
+          "types": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "wet": [
+            0,
+            0,
+            0
+          ]
+        },
+        "midi": [
+          "[connected] keyboard + mouse · built-in",
+          "[connected] Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 24:0 ",
+          "[connected] APC40 mkII:APC40 mkII MIDI 1 28:0 · Akai AP",
+          "[connected] Numark NS7:Numark NS7 MIDI 32:0 · Numark NS",
+          "[connected] MPD232:MPD232 Port A 36:0 · Akai MPD232 (Li",
+          "[disabled] MPD232:MPD232 Port B 36:1 · Akai MPD232 (Liv",
+          "[disabled] MPD232:MPD232 MIDI 36:2 · Akai MPD232 (LiveL",
+          "[disabled] MPD232:MPD232 Remote 36:3 · Akai MPD232 (Liv"
+        ],
+        "midi_clock": {
+          "last_source": null,
+          "ticks": 0
+        },
+        "midi_feedback": {
+          "connected": 4,
+          "failed": 0,
+          "sent": 1135
+        },
+        "midi_input": {
+          "coalesced": 0,
+          "disconnected": 0,
+          "dispatched": 11522,
+          "dropped": 0,
+          "oversized": 0,
+          "queued": 11522,
+          "received": 11522,
+          "resets": 0
+        },
+        "midi_routing": {
+          "enabled": false,
+          "failed": 0,
+          "generation": 1,
+          "overruns": 0,
+          "received": 11522,
+          "refused_tracks": 0,
+          "refused_tracks_extended": [
+            0,
+            0
+          ],
+          "sent": 0
+        },
+        "monitor": {
+          "active": false,
+          "available": true,
+          "faders": [
+            1,
+            1
+          ],
+          "master": false,
+          "mix": 0.5,
+          "volume": 0
+        },
+        "ok": true,
+        "performance": {
+          "changing": false,
+          "deck_load_locked": [
+            false,
+            false
+          ],
+          "last_rejection": "protected",
+          "nonfinite_tail": false,
+          "observation_complete": false,
+          "observed_frames": 0,
+          "optional_active": 0,
+          "output_muted": false,
+          "protected": false,
+          "quiet_frames": 0,
+          "recovery": false,
+          "rejected": 1563,
+          "safety_applied": 1,
+          "safety_requested": 1,
+          "stopped": false
+        },
+        "playing": false,
+        "recording": false,
+        "state_available": true,
+        "state_truncated": true,
+        "submissions": {
+          "accepted": 2049,
+          "coalesced": 0,
+          "last_error": {
+            "performance": "recovery"
+          },
+          "rejected": 1730
+        },
+        "xfader": 0.4566929042339325
+      }
+    },
+    "restoredStream": {
+      "backend_errors": 0,
+      "callbacks": 175644,
+      "deadline_overruns": 75,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 258918,
+        "frames": 256,
+        "output_latency_ns": 5419501,
+        "overrun_ns": 0,
+        "render_cpu_ns": 227999,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 5357480790,
+      "max_overrun_ns": 5351675802,
+      "realtime_denied": 0,
+      "xruns": 76
+    },
+    "procedure": "Used Audio offline, Reconnect retained output, and Confirm retained output reconnect in the native GUI. Retained NS7 ALSA four-channel i32 at 44100 Hz, buffer 512 and observed period 256. Master remained zero and playback stopped."
+  },
+  "limits": [
+    "Controller input, native state and feedback evidence; no new acoustic listening qualification",
+    "Initial APC switch attempts occurred during audio-offline recovery and were rejected",
+    "PAN, SENDS and USER physical button messages were absent in the initial mode tests; those modes have not passed physical acceptance",
+    "The first track was selected already, so its redundant Track Select press did not require a new LED-on message",
+    "The live session suffered a 5.357480790-second callback stall, underruns and an audio-offline recovery; extended stage stability remains open"
+  ]
+}
