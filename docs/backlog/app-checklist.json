@@ -2453,9 +2453,12 @@
       "dependencies": [
         130
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/input-monitoring.md",
+        "docs/validation/input-monitoring-receipt.json"
+      ]
     },
     {
       "issue": 178,

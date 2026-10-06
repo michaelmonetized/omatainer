@@ -47,7 +47,12 @@ an unavailable instrument. Audio clips now render their immutable source through
 track processing independently of instrument availability. Controlled input and
 clip sources exercise that behavior and monitoring precedence together.
 
-Software qualification and installed-build evidence will be recorded after the
-complete native, engine, API, import and regression gates pass. No physical input,
-listening or overdub test is requested by this thread. Interface/overdub timing
-acceptance remains open under the current scope.
+Nine new software checks and the complete unfiltered suite pass: 1806 passed,
+43 explicitly ignored cases, no failures. The [source-bound receipt](input-monitoring-receipt.json)
+retains exact source/binary digests, the initial failing run, its fixture
+corrections and the focused native/API/import checks. Fresh release `0.1.0+0c3d84c1f15e` is installed as the default executable
+for its next launch. The independent private GUI was absent at installation;
+its follower was preserved. No playback or physical audio route was opened.
+The receipt records the exact package manifest and installed executable digests.
+No physical input, listening or overdub test is requested by this thread.
+Interface/overdub timing acceptance remains open under the current scope.

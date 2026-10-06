@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 28 implemented · 6 partial · 187 planned · 0 accepted · 8 outside release
+127 existing stack · 29 implemented · 6 partial · 186 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -187,7 +187,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#174](https://github.com/michaelmonetized/omatainer/issues/174) | Offer notation and MusicXML exchange for composer collaboration | planned | #111 |  |
 | [ ] | [#175](https://github.com/michaelmonetized/omatainer/issues/175) | Offer optional cross-device project transfer with explicit conflict handling | planned | #116, #124 |  |
 | [x] | [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | implemented | #130 | [receipt](../../docs/validation/headphone-monitoring.md), [receipt](../../docs/validation/headphone-monitoring-receipt.json) |
-| [ ] | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | planned | #130 |  |
+| [x] | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | implemented | #130 | [receipt](../../docs/validation/input-monitoring.md), [receipt](../../docs/validation/input-monitoring-receipt.json) |
 | [ ] | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | planned | #130 |  |
 | [ ] | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | planned | #82, #130 |  |
 | [ ] | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | planned | #130 |  |

@@ -1,0 +1,245 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T15:17:14.485Z",
+  "baseRevision": "0c3d84c1f15ea8bd545f848c3c2422870fe7d637",
+  "sourceFiles": {
+    "src/automation.rs": "8fca9cea804e69c5e503ac04d34afbcc82e9f164f950f80a124ed10536dfd4b2",
+    "src/automation/tests.rs": "1dab90cb8765342ea1fef82dc9352843e72796e5e212243e915b1239671b13e1",
+    "src/engine/audio/routing/input.rs": "c616c9c4e2bf687a1693c295e425da71374694183fe2dcb5695ddc1f4427d564",
+    "src/engine/audio/routing/input/monitor_tests.rs": "f28f76288091e3dfe59327d28a305183ae9f438d089c20fa2e36abcde728043b",
+    "src/engine/audio/routing/render.rs": "0d630622690d95bd9b75fea6b46eb3d4d66b44ae8f2b7b66ca4bff8e8d49c070",
+    "src/engine/input_monitor.rs": "298b01a28dae74ebf17c135baeb3c724a21e4fea07c327c2585f88db5f82f3f6",
+    "src/engine/input_monitor/tests.rs": "67351f56e3982fdf5cebe2b118945b50049e178690fea8a5772c3eac5352bb4e",
+    "src/engine/mod.rs": "c0b926c518b04e0ceb2f94d7456e2d22d2063bfbd681c3d3c9c61b6bdf1fa727",
+    "src/engine/performance.rs": "c40542d5fbb116e041923c7b515431107a97026d12214779665e5339146b25b6",
+    "src/engine/project.rs": "615466bed81bb2df804c1ef687474d061d0a8944fca8733559529d13328c775f",
+    "src/engine/project/capture.rs": "4c6d92fed9a8a2475d29a0c624e155b075d958d9c7cacaf39aa9fb181b283da7",
+    "src/engine/project/model.rs": "1b7f163569e9196a005f0d6aa38e836c8b36eae73a8c94cb073a72d29e5ecde7",
+    "src/engine/project/prepare.rs": "e8068556369d8b4882ce7b5f1e608a879032ce03daf89c0c64c0e4aceb50c1e1",
+    "src/engine/project/tests.rs": "3d61b777804da7ac7f7dacf673c6ca3b80894427da0e053736c14f0e41c892e8",
+    "src/engine/project/tests/input_monitor_tests.rs": "dbf2e00b00d50b943be252b3c403e056bd197747ce92d6ce8696a665953ab534",
+    "src/engine/project/tests/structure_tests.rs": "68740771593fce31b4be79ed1e155974d06f781f7d1f48bf912a05198082ee0a",
+    "src/engine/remote.rs": "aec90bacea9724eddaad32cc672d7dc6e8905051a3c0082583c526fec3c09561",
+    "src/engine/session/scoped.rs": "ad70dd66ae4eb0cd224532ef335fea316eb2cab9a84efbd1af7d76f66b2d51a0",
+    "src/engine/session/transaction.rs": "b7f2431aafa37f1eefdccc6ed0ed662751f416ed45ba920b433dc575075373d7",
+    "src/engine/session/transaction/import.rs": "5f58c1a903787cd5d36bb7d1366e0423b4d663dae521ba11c09b06abcd40c368",
+    "src/engine/session/transaction/import/tests.rs": "525e8fdea7d5eefdb527db88400a0e89823192e40d06b5e95ce8076f2ca6320c",
+    "src/engine/session/transaction/structural.rs": "3aebe77faea93b3692e1dbaf147b68fc339321a4c4e790aced160ba103c697ba",
+    "src/engine/snapshot.rs": "ad18800c61014ecb96b3e87632c9030382bd2b42b207888c488e430238ae8675",
+    "src/engine/undo/capture.rs": "0c6baeb61be9c016699c0153cf0442fe7b3f947f319c1ff9a78687a56a911269",
+    "src/engine/undo/patch.rs": "2ebc0cce56aa93d86fbd388075a490776cedc2e6bdb5ec1d92275690a414430c",
+    "src/ui.rs": "bbbebc7322ea1ad6baa5b0529f355226013651f5c28be800c6ded31388c58286",
+    "src/ui/help/catalogue.rs": "6c7fd587824e0aedbd9c938e6f737c897c613251ea992e642d182a329fafe311",
+    "src/ui/input_monitoring.rs": "8f6cbbb4e3a2562bca7e4fdf37b0c0625045c755cce1564a612cce743a6f6894",
+    "src/ui/input_monitoring/tests.rs": "e6e0f8d89d7972291cfad4e29b60c6d2f1c966304acb32e73db6a5af119a395e",
+    "src/ui/preferences/tests.rs": "4aa231a948ce216d7244a448fffed7721de8d03167beaf906a4dba7acf06cb46",
+    "src/ui/project_import/tests.rs": "25b41d7c9d4fbaabf5cda01f6e7b7446619b49ba466cb2fa5e25ce0c5be16a2f",
+    "src/ui/project_import/worker.rs": "d05a6f63c87a1824ee188fbbdb9e3e2845b9fbf3a906c079fa0b67daf0f34d38",
+    "src/ui/project_versions/tests.rs": "c4b6ac1c595260cbb15a71ccddb32683a02f1a5aba8b2409c56c942e067d6e93",
+    "src/ui/project_versions/worker.rs": "c43688f6441388f2447fe1538ae44d47efa12a071419457cdad795b88cd9423b",
+    "src/ui/session_editor.rs": "6bf6e113073c47b2b44cf76c408673ebce6beef5df5b864c110eb55459dc0a9f"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/input-monitoring-tests",
+    "sha256": "9ae08be1333e6a197946021dde956daa507163385469e5712346fbc115920017"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/input-monitoring-compiled-source-inventory.json",
+    "sha256": "e166d979077a41a66873fa3ad2be748354446dbde8362855777c7010f9ace594",
+    "files": 700
+  },
+  "tests": {
+    "engine-tests": {
+      "path": "target/app-backlog/input-monitoring-engine-tests.log",
+      "sha256": "71b8c274699f1160bd519fe3de8f5a2d6bc07bdd1053750210841cb6574be236",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1845,
+      "seconds": 1.28
+    },
+    "input-pipe-tests": {
+      "path": "target/app-backlog/input-monitoring-input-pipe-tests.log",
+      "sha256": "ebb214a7e80e9cadc7bba44a4f3c04f9876815e6f07a2b009005da8157bacf0e",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.14
+    },
+    "project-tests": {
+      "path": "target/app-backlog/input-monitoring-project-tests.log",
+      "sha256": "49fce657c7ae649371d7981bac02b20dded2c110f21cb7b9543a5b4cfa732dcd",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.29
+    },
+    "ui-tests": {
+      "path": "target/app-backlog/input-monitoring-ui-tests.log",
+      "sha256": "918e8b4650078207f17f24cdc603ff4ec8e523834c017ddc63c1a50cf2773e1a",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.19
+    },
+    "api-tests": {
+      "path": "target/app-backlog/input-monitoring-api-tests.log",
+      "sha256": "47c06ffe0019678e4bfc4fca4b64fae041d4f12e70c2ef315f92ae14b05c8a36",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.26
+    },
+    "structural-tests": {
+      "path": "target/app-backlog/input-monitoring-structural-tests.log",
+      "sha256": "0dd77d113c31407b8cc374bb955832014ab49d9a130a2fdc262d8feaf425f362",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.11
+    },
+    "import-test": {
+      "path": "target/app-backlog/input-monitoring-import-test.log",
+      "sha256": "fd28c7033c8e2fd952908a1539c5c25630a32a17f73b6db63f3a9a46794a0f75",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.44
+    },
+    "version-comparison-test": {
+      "path": "target/app-backlog/input-monitoring-version-comparison-test.log",
+      "sha256": "3d838a12d25fda29d1ac7b79876477a032218503a4a50c96b99a9873c28226d4",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.22
+    },
+    "manual-test": {
+      "path": "target/app-backlog/input-monitoring-manual-test.log",
+      "sha256": "f39f6abb72c3f8492c13df8c58751a87659e3e07c341d0c7452e41be33afcffb",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.01
+    },
+    "undo-remap-recheck": {
+      "path": "target/app-backlog/input-monitoring-undo-remap-recheck.log",
+      "sha256": "c9bc61fdfd6ab0e3537bc0e02b00c54b499dffa4968c3c9049c13605b1116bee",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.17
+    },
+    "import-view-recheck": {
+      "path": "target/app-backlog/input-monitoring-import-view-recheck.log",
+      "sha256": "f5999c5530ed7439c941103e44c859c18622dfe7dfbcc9bc5c024a7f431c0f3b",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1848,
+      "seconds": 0.42
+    },
+    "full-tests": {
+      "path": "target/app-backlog/input-monitoring-full-tests.log",
+      "sha256": "a59c1e742120e92f3aa04232cfa8f8dcb5c7a5fc03b8c30680ad6a634ad711ae",
+      "passed": 1806,
+      "failed": 0,
+      "ignored": 43,
+      "filtered": 0,
+      "seconds": 482.15
+    }
+  },
+  "checks": {
+    "checklistPackageDependencyGraph": {
+      "path": "target/app-backlog/input-monitoring-node-tests.log",
+      "sha256": "3cd822b36321e87eac26f49db89170066633c01a1340ebe4beed58c1b41ef3bb",
+      "passed": 15,
+      "failed": 0
+    },
+    "monitorTransitionSamplesAt48k": 240,
+    "noCallbackHeapWork": true,
+    "pflDoesNotChangeProgram": true,
+    "rawInputRecordingWithMonitoringOff": true,
+    "strictProjectVersion": 16,
+    "hardwareOpenedByQualification": false
+  },
+  "corrections": [
+    "Initial test compile errors were fixed without exposing private renderer or Undo shortcuts.",
+    "The save/Undo fixture now uses the real history-enabled headless engine rather than the legacy fixture that disables history.",
+    "New and duplicated tracks start disarmed in Auto; selectively imported tracks start Off because their external input routes are not copied. Project comparisons include mode changes.",
+    "The first complete run passed 1804 tests with two UI fixture wait failures under concurrent builds and RAM/swap pressure. Both passed individually on that exact binary. The two bounded test helper waits now allow 15 seconds, exceeding the existing ten-second worker contract; runtime worker/audio deadlines are unchanged.",
+    "The diagnostic text initially referenced a nonexistent Settings error field; it now prints the retained message. A fresh build and all focused checks precede the complete unfiltered rerun."
+  ],
+  "previousFullRun": {
+    "path": "target/app-backlog/input-monitoring-full-tests-before-ui-waits.log",
+    "sha256": "6590f49eb4dd56a6dc9dbd922efd73608dec7c45137b9cda15250db8e94f14c5",
+    "passed": 1804,
+    "failed": 2,
+    "ignored": 43,
+    "filtered": 0,
+    "seconds": 586.94
+  },
+  "limits": [
+    "Physical input/listening/overdub timing acceptance is outside this thread current scope.",
+    "Graph latency compensation remains separate work in issue 178.",
+    "Default executable is installed for its next launch. The independent private GUI was absent during installation; its follower was preserved. No physical audio path was opened."
+  ],
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-input-monitoring-qualified",
+      "manifestSha256": "6f373ebace83e814dd8c928b42cf6686faf616c798ae0e652542bcbdbcfc7bb4",
+      "revision": "0c3d84c1f15ea8bd545f848c3c2422870fe7d637",
+      "version": "0.1.0+0c3d84c1f15e",
+      "executableSha256": "7568a51be19488efdedcbdc6637d0780470a32bfd211a4805584c21f8c9e774e"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "2e156490f9f22f8d6398b7f51d1694a5c2a311fe2490eb38f596a883c84eff16",
+      "after": "7568a51be19488efdedcbdc6637d0780470a32bfd211a4805584c21f8c9e774e",
+      "installedAt": "2026-10-06T15:16:59.868Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "unavailable": "Error: omatainer is not running\n\nCaused by:\n    Connection refused (os error 111)"
+    },
+    "postinstallState": {
+      "unavailable": "Error: omatainer is not running\n\nCaused by:\n    Connection refused (os error 111)"
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present.",
+    "followupProcessAudit": {
+      "auditedAt": "2026-10-06T15:18:38.296Z",
+      "followers": [
+        {
+          "pid": 3973522,
+          "executable": "/home/michael/.local/bin/omatainer (deleted)",
+          "arguments": [
+            "/home/michael/.local/bin/omatainer",
+            "ctl",
+            "follow"
+          ],
+          "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+        }
+      ],
+      "priorRetainedProcessEvidence": "target/app-backlog/headphone-monitoring-preserved-processes-after.txt",
+      "correction": "The first install inventory omitted a follower whose executable inode had already been unlinked by earlier updates. Read-only inventories before installation showed PID 3973522, and this follow-up confirms that same follower is still active. No GUI existed during this installation, and no process was stopped."
+    }
+  }
+}

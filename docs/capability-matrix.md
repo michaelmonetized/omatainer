@@ -301,6 +301,18 @@ Native headless UI and renderer qualification on Linux aarch64. Installed native
 
 Nine new software checks and existing native NS7 regressions pass. Program output remains bit-identical through cue/blend/level/split changes in both renderers; separate tone duration/channel checks cover 44.1/48/96 kHz with zero callback heap work. Exact aliases, missing channels, overlaps, project reopen, typed API, native controls and saved blend Undo/Redo are covered. The complete 1797-test unfiltered suite passes with 43 ignored cases. Default ARM64 executable installed and checksum-verified for its next launch; the separate controller GUI was preserved; simultaneous physical main/headphone capture remains outside this thread active scope.
 
+### Issue #177: implemented
+
+- sample policy: [src/engine/input_monitor.rs](../src/engine/input_monitor.rs) — In/Auto/Off input and audio clip precedence, arm, pre-fader cue and finite source ramps
+- saved state and Undo: [src/engine/project/model.rs](../src/engine/project/model.rs) — Strict version-16 optional monitoring mode, retained legacy behavior and saved arm/mode history
+- native workflow: [src/ui/input_monitoring.rs](../src/ui/input_monitoring.rs) — Selected stable track controls, cue and applied policy without changing input aliases
+- typed API: [src/automation.rs](../src/automation.rs) — Strict track_monitor, track_arm and track_cue actions with stable original targets
+- Acceptance fixtures: `engine::input_monitor::tests`, `engine::audio::routing::input::monitor_tests`, `engine::project::tests::input_monitor_tests`, `engine::project::tests::structure_tests::created_and_duplicated_input_tracks_start_disarmed_in_auto_without_copying_external_routes`, `ui::input_monitoring::tests`, `automation::tests::track_input_api_retains_exact_targets_modes_arm_cue_and_saved_undo`.
+- Evidence: [docs/validation/input-monitoring.md](../docs/validation/input-monitoring.md).
+- Evidence: [docs/validation/input-monitoring-receipt.json](../docs/validation/input-monitoring-receipt.json).
+
+Nine new software checks plus existing import, version comparison, native Undo, manual and full regression gates pass: 1806 passed, 43 ignored, no failures or filters. Controlled raw input records exact frames while monitoring Off. Multiple track/deck cues preserve bit-identical program samples in both renderers. The verified release is installed as the default executable for its next launch; physical overdub timing remains outside this thread active scope, and graph compensation remains issue 178.
+
 ### Issue #185: implemented
 
 - native UI: [src/ui/beat_jump.rs](../src/ui/beat_jump.rs) — Per-deck backward/size/forward controls beneath platter
@@ -432,7 +444,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#174](https://github.com/michaelmonetized/omatainer/issues/174) | Offer notation and MusicXML exchange for composer collaboration | planned |
 | [#175](https://github.com/michaelmonetized/omatainer/issues/175) | Offer optional cross-device project transfer with explicit conflict handling | planned |
 | [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | implemented |
-| [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | planned |
+| [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | implemented |
 | [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | planned |
 | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | planned |
 | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | planned |
