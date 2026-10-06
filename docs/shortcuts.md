@@ -39,3 +39,5 @@ version 2 add selected-deck beat jump actions. Migration preserves existing key
 owners and disables any conflicting new default. Configure that jump action in
 Preferences to choose another key. Older document headers cannot carry new jump
 action IDs.
+
+Hold the visible deck CUE button, focused Space/Enter or A/L to audition from pause. Release returns to the main cue; Play during the hold continues playback. Cue while playing stops and returns. MIDI Learn exposes Deck hold Cue audition separately from the existing one-shot Set/return Cue. Independent local and controller holds release separately. [Cue audition details](validation/cue-audition.md).

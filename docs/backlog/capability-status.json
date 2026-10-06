@@ -905,6 +905,43 @@
       ],
       "limits": "Software qualification only. Sizes are runtime state, not saved preparation. Physical pad acceptance remains paused."
     },
+    "186": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/cue_audition.rs",
+          "entry": "Visible per-deck Cue hold with owned pointer, keyboard, assistive and touch edges"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Source-owned Cue preview and ordinary Play latch with reserved releases"
+        },
+        {
+          "kind": "MIDI Learn",
+          "file": "src/engine/midi.rs",
+          "entry": "Distinct Note On/Off Cue audition assignment; existing one-shot Cue preserved"
+        },
+        {
+          "kind": "preferences",
+          "file": "src/preferences/storage.rs",
+          "entry": "Version 17 migration preserves existing custom shortcut and Cue assignment owners"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::cue_audition_tests",
+        "ui::cue_audition::tests",
+        "engine::midi::handoff::tests::learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_without_heap_work",
+        "preferences::storage::cue_audition_migration_tests",
+        "ui::keyboard_tests::unfocused_global_bindings_work_and_respect_each_events_modifiers",
+        "ui::touch::tests"
+      ],
+      "evidence": [
+        "docs/validation/cue-audition.md"
+      ],
+      "limits": "Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged."
+    },
     "205": {
       "status": "implemented",
       "paths": [

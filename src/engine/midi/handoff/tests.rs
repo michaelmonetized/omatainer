@@ -83,6 +83,37 @@ fn learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_
     }
     assert!(!Control::BeatJumpSize { index: 10 }.valid());
 }
+
+#[test]
+fn learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_without_heap_work() {
+    use crate::engine::midi::{Binding, learn::{Config, Endpoint, Mapping}};
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 64);
+    let (mut sink, mut worker) = input(16, 1501, &engine.cmd);
+    let mappings: Vec<_> = (0..2).flat_map(|deck| [Action::DeckCueHold, Action::DeckPlay].into_iter().enumerate().map(move |(i,action)| Mapping {
+        endpoint: Endpoint { name:"test device".into(), id:"test device".into() }, binding: nbind(0,70+deck*2+i as u8,action,deck,0),
+    })).collect();
+    engine.cmd.midi_learn().configure(Config { mappings:mappings.clone() }).unwrap();
+    for deck in 0..2usize {
+        rt.apply(Command::DeckSeek {deck:deck as u8,frac:0.25}); let cue=rt.decks[deck].pos; let other=rt.decks[1-deck].pos;
+        let note=70+deck as u8*2;
+        assert_eq!(crate::engine::test_alloc::measure(|| sink.push(&[0x90,note,100])),crate::engine::test_alloc::Counts::default());
+        drain(&mut worker); assert_eq!(crate::engine::test_alloc::measure(|| render(&mut rt)),crate::engine::test_alloc::Counts::default());
+        assert!(rt.decks[deck].controls.status().cue_held); assert!(!rt.decks[deck].playing); assert!(rt.decks[deck].preview_position.is_some());
+        let mut energy=0.0; for _ in 0..1024 {let (l,r)=rt.render_deck(deck);energy+=l*l+r*r;} assert!(energy>0.01);
+        sink.push(&[0x90,note+1,100,0x80,note+1,0,0x90,note,0]); drain(&mut worker); render(&mut rt);
+        assert!(rt.decks[deck].playing); assert!(!rt.decks[deck].controls.status().cue_held); assert!(rt.decks[deck].preview_position.is_none()); assert!(rt.decks[deck].pos>cue); assert_eq!(rt.decks[1-deck].pos,other);
+        sink.push(&[0x90,note,100,0x80,note,0]); drain(&mut worker); render(&mut rt);
+        assert!(!rt.decks[deck].playing); assert_eq!(rt.decks[deck].pos,cue);
+        sink.push(&[0x90,note,100]); drain(&mut worker); render(&mut rt);
+        sink.push(&[0x80,note,0]); drain(&mut worker); render(&mut rt); assert!(rt.decks[deck].preview_position.is_none());
+    }
+    for mapping in mappings.iter().filter(|m|m.binding.action==Action::DeckCueHold) {
+        for invalid in [Binding {deck:2,..mapping.binding},Binding {extra:1,..mapping.binding},Binding {kind:MsgKind::Cc,..mapping.binding}] {assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());}
+    }
+    sink.push(&[0x90,70,100,0x90,72,100]); drain(&mut worker); render(&mut rt);
+    assert!(rt.decks.iter().all(|d|d.preview_position.is_some()));
+    drop(worker); render(&mut rt); assert!(rt.decks.iter().all(|d|d.preview_position.is_none()&&!d.controls.status().cue_held));
+}
 fn held(rt: &RtEngine, source: u64, note: u8) -> bool {
     rt.tracks
         .iter()

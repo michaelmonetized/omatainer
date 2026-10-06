@@ -29,7 +29,8 @@ impl Default for Panel {
 fn label(action: Action) -> &'static str {
     match action {
         Action::DeckPlay => "Deck Play",
-        Action::DeckCue => "Deck Cue",
+        Action::DeckCue => "Deck set/return Cue",
+        Action::DeckCueHold => "Deck hold Cue audition",
         Action::DeckSync => "Deck Sync",
         Action::DeckJog => "Deck jog",
         Action::DeckJogTouch => "Deck platter touch",

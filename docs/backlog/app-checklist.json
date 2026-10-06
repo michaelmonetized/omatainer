@@ -2571,9 +2571,11 @@
       "dependencies": [
         148
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/cue-audition.md"
+      ]
     },
     {
       "issue": 187,

@@ -8,6 +8,7 @@ const MAX_EVENTS: usize = 256;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Target {
     Pad(u8),
+    Cue(u8),
     Pitch(u8),
     Crossfader,
 }
@@ -238,30 +239,32 @@ impl Input {
 
     /// Read the pads still owned by at least one contact.
     /// Takes this input state; returns one bit per held pad.
-    fn pads(&self) -> u16 {
+    fn gates(&self) -> u32 {
         self.contacts
             .iter()
             .fold(0, |mask, contact| match contact.hit.target {
                 Target::Pad(pad) => mask | (1 << pad),
+                Target::Cue(deck) => mask | (1 << (16 + deck)),
                 _ => mask,
             })
     }
 
     /// Preserve pad press and release transitions in native event order.
     /// Takes the earlier mask and output list; appends changed gates with their attack pressure.
-    fn edges(&self, before: u16, changes: &mut Vec<(u8, bool, f32)>) {
-        let after = self.pads();
-        for pad in 0..16 {
-            if (before ^ after) & (1 << pad) == 0 {
+    fn edges(&self, before: u32, changes: &mut Vec<(Target, bool, f32)>) {
+        let after = self.gates();
+        for index in 0..16 + DECKS {
+            if (before ^ after) & (1 << index) == 0 {
                 continue;
             }
-            let on = after & (1 << pad) != 0;
+            let target = if index < 16 { Target::Pad(index as u8) } else { Target::Cue((index - 16) as u8) };
+            let on = after & (1 << index) != 0;
             let pressure = self
                 .contacts
                 .iter()
-                .find(|contact| contact.hit.target == Target::Pad(pad))
+                .find(|contact| contact.hit.target == target)
                 .map_or(1.0, |contact| contact.pressure);
-            changes.push((pad, on, pressure));
+            changes.push((target, on, pressure));
         }
     }
 
@@ -271,7 +274,7 @@ impl Input {
         &mut self,
         ctx: &egui::Context,
         blocked: bool,
-    ) -> (Vec<(u8, bool, f32)>, Vec<(Target, f32)>) {
+    ) -> (Vec<(Target, bool, f32)>, Vec<(Target, f32)>) {
         if ctx.will_discard() {
             return (Vec::new(), Vec::new());
         }
@@ -287,7 +290,7 @@ impl Input {
         let focused = self.focused;
         let events = std::mem::take(&mut self.events);
         let mut changes = Vec::new();
-        let before = self.pads();
+        let before = self.gates();
         if blocked
             || !focused
             || self.viewport.is_some_and(|old| old != viewport)
@@ -330,7 +333,7 @@ impl Input {
                 device: device_id,
                 contact: id,
             };
-            let mut before = self.pads();
+            let mut before = self.gates();
             let index = self.contacts.iter().position(|contact| contact.key == key);
             if matches!(phase, egui::TouchPhase::End | egui::TouchPhase::Cancel) {
                 if let Some(index) = index {
@@ -356,7 +359,7 @@ impl Input {
                 if let Some(index) = index {
                     self.contacts.remove(index);
                     self.edges(before, &mut changes);
-                    before = self.pads();
+                    before = self.gates();
                 }
                 let layer = ctx.layer_id_at(pos);
                 if let Some(hit) = frame
@@ -367,7 +370,7 @@ impl Input {
                     .copied()
                 {
                     if self.contacts.len() == MAX_CONTACTS
-                        || (!matches!(hit.target, Target::Pad(_))
+                        || (!matches!(hit.target, Target::Pad(_) | Target::Cue(_))
                             && self
                                 .contacts
                                 .iter()
@@ -399,7 +402,7 @@ impl Input {
                 Target::Crossfader => {
                     (contact.pos.x - contact.hit.track.left()) / contact.hit.track.width()
                 }
-                Target::Pad(_) => continue,
+                Target::Pad(_) | Target::Cue(_) => continue,
             };
             if value.is_finite() {
                 faders.push((contact.hit.target, value.clamp(0.0, 1.0)));
@@ -420,7 +423,7 @@ impl App {
         let mut open = true;
         egui::Window::new(tr!("Touch and pen gestures")).id(egui::Id::new("touch-input-guide")).open(&mut open)
             .vscroll(true).max_height(self.theme.window_height(ctx)).show(ctx,|ui| {
-                ui.label(tr!("Hold multiple pads, pitch faders and the crossfader independently. Each touch keeps its control until lifted or cancelled; moving off a pad keeps it held. One touch owns each fader."));
+                ui.label(tr!("Hold multiple pads, Cue buttons, pitch faders and the crossfader independently. Each touch keeps its control until lifted or cancelled; moving off a pad or Cue keeps it held. One touch owns each fader."));
                 ui.label(tr!("Reported pressure changes pad attack loudness. Faders ignore pressure; no pressure information uses full attack. Mouse, keyboard and assistive controls remain available."));
                 ui.label(tr!("Opening an editor, losing focus or changing visible controls releases touch holds. A new press is required. Touches outside performance controls scroll normally; use UI scale in Preferences for larger targets."));
                 ui.label(tr!("On Linux, pressure is unavailable; pad attacks use full loudness."));
@@ -438,15 +441,21 @@ impl App {
             || self.project.committing()
             || !self.project.dialog_is_closed()
             || keyboard::dialogs_block_input(ctx);
-        let (pads, faders) = self.touch_input.finish(ctx, blocked);
-        for (pad, on, pressure) in pads {
-            self.set_pad_input_pressure(pad as usize, 16, on, Some(pressure));
+        self.guard_cue_inputs(ctx, blocked);
+        let (gates, faders) = self.touch_input.finish(ctx, blocked);
+        for (target, on, pressure) in gates {
+            match target {
+                Target::Pad(pad) => self.set_pad_input_pressure(pad as usize, 16, on, Some(pressure)),
+                Target::Cue(deck) => self.set_cue_input(deck, 4, on, ctx.viewport_id()),
+                _ => {}
+            }
         }
         let before = self.touch_input.contacts.len();
         self.touch_input
             .contacts
             .retain(|contact| match contact.hit.target {
                 Target::Pad(pad) => self.pad_inputs[pad as usize] & 16 != 0,
+                Target::Cue(deck) => self.cue_audition.owners[usize::from(deck)][4].is_some(),
                 _ => true,
             });
         self.touch_input.rejected = self
@@ -457,7 +466,7 @@ impl App {
             match target {
                 Target::Pitch(deck) => self.send(Command::DeckPitch { deck, value }),
                 Target::Crossfader => self.send(Command::Xfader(value)),
-                Target::Pad(_) => {}
+                Target::Pad(_) | Target::Cue(_) => {}
             }
         }
     }

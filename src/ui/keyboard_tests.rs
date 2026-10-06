@@ -335,7 +335,7 @@ fn unfocused_global_bindings_work_and_respect_each_events_modifiers() {
     for pressed in [Key::Q, Key::P, Key::A, Key::L, Key::Space, Key::Escape] {
         gui.stroke(pressed, Default::default(), None);
     }
-    assert_eq!(gui.command_count(), before + 6);
+    assert_eq!(gui.command_count(), before + 8);
     gui.stroke(Key::F1, Default::default(), None);
     assert!(gui.fixture.app.keys_open);
     gui.stroke(Key::Slash, egui::Modifiers::SHIFT, None);

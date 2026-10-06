@@ -31,6 +31,7 @@ pub(crate) fn actions() -> &'static [Action] {
     &[
         Action::DeckPlay,
         Action::DeckCue,
+        Action::DeckCueHold,
         Action::DeckSync,
         Action::DeckJog,
         Action::DeckJogTouch,

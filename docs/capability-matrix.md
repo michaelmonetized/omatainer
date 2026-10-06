@@ -300,6 +300,17 @@ Native headless UI and renderer qualification on Linux aarch64. Installed native
 
 Software qualification only. Sizes are runtime state, not saved preparation. Physical pad acceptance remains paused.
 
+### Issue #186: implemented
+
+- native UI: [src/ui/cue_audition.rs](../src/ui/cue_audition.rs) — Visible per-deck Cue hold with owned pointer, keyboard, assistive and touch edges
+- renderer: [src/engine/deck_controls.rs](../src/engine/deck_controls.rs) — Source-owned Cue preview and ordinary Play latch with reserved releases
+- MIDI Learn: [src/engine/midi.rs](../src/engine/midi.rs) — Distinct Note On/Off Cue audition assignment; existing one-shot Cue preserved
+- preferences: [src/preferences/storage.rs](../src/preferences/storage.rs) — Version 17 migration preserves existing custom shortcut and Cue assignment owners
+- Acceptance fixtures: `engine::deck_controls::cue_audition_tests`, `ui::cue_audition::tests`, `engine::midi::handoff::tests::learned_cue_holds_follow_note_edges_play_latches_and_worker_retirement_without_heap_work`, `preferences::storage::cue_audition_migration_tests`, `ui::keyboard_tests::unfocused_global_bindings_work_and_respect_each_events_modifiers`, `ui::touch::tests`.
+- Evidence: [docs/validation/cue-audition.md](../docs/validation/cue-audition.md).
+
+Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -383,7 +394,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |
 | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |
-| [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | planned |
+| [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | implemented |
 | [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned |
 | [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | planned |
 | [#189](https://github.com/michaelmonetized/omatainer/issues/189) | Support four independently controlled DJ decks | planned |

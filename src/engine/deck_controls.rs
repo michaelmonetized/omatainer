@@ -5,6 +5,8 @@ mod beat_jump;
 #[cfg(test)]
 mod beat_jump_tests;
 #[cfg(test)]
+mod cue_audition_tests;
+#[cfg(test)]
 mod tests;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,6 +99,7 @@ pub(crate) const BEAT_JUMP_SIZES: [f32; 10] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 
 
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct Status {
+    pub cue_held: bool,
     pub beat_jump_size: u8,
     pub reverse: bool,
     pub bleep: bool,
@@ -217,7 +220,7 @@ impl State {
         self.counts[button.index()] > 0
     }
     /// Turn a held Cue preview into continued playback.
-    /// Takes this state; returns whether an NS7 preview owned the transport.
+    /// Takes this state; returns whether a held Cue preview owned the transport.
     pub fn latch_preview(&mut self) -> bool {
         self.preview.take().is_some()
     }
@@ -309,6 +312,7 @@ impl State {
     /// Takes this state; returns the UI and feedback values.
     pub fn status(&self) -> Status {
         Status {
+            cue_held: self.held(Button::Cue),
             beat_jump_size: self.beat_jump_size,
             reverse: self.held(Button::Reverse),
             bleep: self.held(Button::Bleep),
@@ -432,6 +436,7 @@ impl RtEngine {
             Control::BeatJump { forward } => self.decks[index].beat_jump(forward, self.sr, self.bpm),
             Control::Hold { button, on } => {
                 let d = &mut self.decks[index];
+                if on && matches!(button, Button::Cue | Button::HotCue(_)) && d.audio.is_none() { return; }
                 if !d.controls.hold(source, button, on) {
                     return;
                 }

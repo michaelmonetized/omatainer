@@ -2134,6 +2134,14 @@ Jump backward or forward by the displayed size without starting a stopped deck o
 
 Workflow: Prepare a DJ deck.
 
+### Hold Cue audition
+
+Press / release; independent inputs
+
+From pause, Cue stores the current main cue and auditions while held. Release returns to that cue and pauses unless Play was pressed during the hold. While playing, Cue stops and returns; release does not restart. Repeated taps stutter from the cue. Hold the visible CUE button, focused Space/Enter or the deck's Cue shortcut (A/L by default). Assistive Click toggles a visible hold; Press/Release Cue actions are also available. MIDI Learn provides Deck hold Cue audition for Note On/Off; existing one-shot Deck set/return Cue remains available. Local and MIDI owners release independently. Focus loss, dialogs, source replacement and safety stops retire local holds. The command palette and platter's Cue action retain one-shot set/return behavior.
+
+Workflow: Prepare a DJ deck.
+
 ### Waveform zoom and phase
 
 2 / 4 / 8 / 16 four-beat bars
@@ -3268,10 +3276,10 @@ The in-app Help window shows the active bindings. Defaults follow; text fields a
 - 7: Launch scene 7
 - 8: Launch scene 8
 - Q: Play / pause deck A
-- A: Cue deck A
+- A: Hold Cue audition deck A
 - W: Toggle deck A tempo sync
 - P: Play / pause deck B
-- L: Cue deck B
+- L: Hold Cue audition deck B
 - O: Toggle deck B tempo sync
 - [: Crossfader fully to A
 - ]: Crossfader fully to B

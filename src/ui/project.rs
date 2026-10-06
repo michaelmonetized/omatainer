@@ -921,6 +921,7 @@ impl App {
         }
         self.pad_held = [false; 16];
         self.pad_inputs = [0; 16];
+        self.release_cue_inputs();
         self.touch_input.clear();
         accessibility::cancel_editor(ctx);
 

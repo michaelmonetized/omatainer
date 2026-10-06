@@ -407,6 +407,7 @@ impl DeckRt {
             || self.transition_remaining > 0 && self.transition_from.iter().any(|sample| *sample != 0.0)
     }
     fn stop_preview(&mut self, rate: f32) {
+        self.controls.latch_preview();
         if let Some(position) = self.preview_position.take() { self.transition_to(position, rate, DeckTransition::Jump); }
     }
     fn clear_loop(&mut self) {

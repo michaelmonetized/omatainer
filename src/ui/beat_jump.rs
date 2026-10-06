@@ -20,6 +20,7 @@ impl App {
                     }
                 });
             combo.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, combo.response.enabled(), format!("Deck {}: Beat jump size", (b'A' + deck) as char)));
+            ui.ctx().accesskit_node_builder(combo.response.id, |node| node.set_value(format!("{} beats", BEAT_JUMP_SIZES[usize::from(index)])));
             help::annotate(ui, &combo.response, HelpControl::BeatJump);
             accessibility::focus(ui, &combo.response);
             if index != size { self.send(Command::DeckControl { source: 0, deck, control: Control::BeatJumpSize { index } }); }

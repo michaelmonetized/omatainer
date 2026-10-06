@@ -127,7 +127,7 @@ pub(super) const BINDINGS: &[Binding] = &[
         "Play / pause deck A",
         Action::Play(0),
     ),
-    b(Key::A, Modifiers::NONE, "A", "Cue deck A", Action::Cue(0)),
+    b(Key::A, Modifiers::NONE, "A", "Hold Cue audition deck A", Action::Cue(0)),
     b(
         Key::W,
         Modifiers::NONE,
@@ -142,7 +142,7 @@ pub(super) const BINDINGS: &[Binding] = &[
         "Play / pause deck B",
         Action::Play(1),
     ),
-    b(Key::L, Modifiers::NONE, "L", "Cue deck B", Action::Cue(1)),
+    b(Key::L, Modifiers::NONE, "L", "Hold Cue audition deck B", Action::Cue(1)),
     b(
         Key::O,
         Modifiers::NONE,
@@ -227,6 +227,11 @@ pub(super) const BINDINGS: &[Binding] = &[
 ];
 
 impl Binding {
+    /// Describe a one-shot command without implying a keyboard hold.
+    /// Takes this binding; returns the command palette's action label.
+    pub(super) fn command_description(&self) -> &'static str {
+        match self.action { Action::Cue(0) => "Set/return Cue deck A", Action::Cue(_) => "Set/return Cue deck B", _ => self.description }
+    }
     pub(super) fn id(&self) -> &'static str {
         match self.action {
             Action::Transport => "transport", Action::Play(0) => "play_a", Action::Play(_) => "play_b",

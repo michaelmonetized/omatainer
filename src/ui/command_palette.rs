@@ -80,7 +80,7 @@ impl App {
                 if shortcuts::BINDINGS[..index].iter().any(|other| other.action == binding.action) { return None; }
                 let labels = shortcuts::BINDINGS.iter().filter(|other| other.action == binding.action)
                     .filter_map(|other| other.effective(&profile).map(|value| value.label())).collect::<Vec<_>>().join(" / ");
-                let description = crate::localization::text_dynamic(binding.description);
+                let description = crate::localization::text_dynamic(binding.command_description());
                 let context = crate::localization::text_dynamic(binding.action.context());
                 let searchable = format!("{description} {context} {labels}");
                 crate::localization::search_key(&searchable).contains(&query).then_some((binding, labels))
@@ -93,7 +93,7 @@ impl App {
                 for (index, (binding, labels)) in matches.iter().enumerate() {
                     ui.push_id(binding.id(), |ui| {
                         let enabled = project_ready && (!self.engine.safe_mode() || binding.action.context() == "Navigation");
-                        let response = ui.add_enabled(enabled, egui::Button::selectable(index == palette.selected, crate::localization::text_dynamic(binding.description)))
+                        let response = ui.add_enabled(enabled, egui::Button::selectable(index == palette.selected, crate::localization::text_dynamic(binding.command_description())))
                             .help(ui, HelpControl::PreferenceShortcut);
                         if response.clicked() { selected = Some(binding.action); }
                         if index == palette.selected && (up || down) { response.scroll_to_me(Some(Align::Center)); }

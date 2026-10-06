@@ -87,6 +87,7 @@ mod load_status_tests;
 mod keyboard;
 mod shortcuts;
 mod beat_jump;
+mod cue_audition;
 mod command_palette;
 mod touch;
 mod workspace;
@@ -212,6 +213,7 @@ pub struct App {
     last_play_idx: usize,
     pad_held: [bool; 16],
     pad_inputs: [u8; 16],
+    cue_audition: cue_audition::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
     deck_time: [DeckTimeSettings; DECKS],
@@ -352,6 +354,7 @@ impl App {
             last_play_idx: 0,
             pad_held: [false; 16],
             pad_inputs: [0; 16],
+            cue_audition: cue_audition::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
             deck_time: [DeckTimeSettings::default(); DECKS],
@@ -845,7 +848,7 @@ impl App {
         self.poll_named_crates();
         self.poll_prepare_queue();
         self.poll_session_history();
-        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing || d.platter.is_some());
+        let animating = self.snap.playing || self.snap.decks.iter().any(|d| d.playing || d.previewing || d.platter.is_some());
         if let Some(p) = ctx.input(|i| {
             (!self.project.committing() && self.project.dialog_is_closed()).then(|| i.raw.dropped_files.iter().find_map(|f| f.path.clone())).flatten()
         }) {
@@ -987,6 +990,7 @@ impl App {
 impl App {
     fn handle_keys(&mut self, ctx: &egui::Context) {
         let viewport=ctx.viewport_id();
+        self.release_cue_keys(ctx);
         // A bound function-key Help action is safe in text/dialog contexts.
         // Letter and punctuation bindings keep the ordinary typing protection.
         let help = ctx.input_mut(|input| {
@@ -1003,14 +1007,16 @@ impl App {
         }
         ctx.input(|i| {
             for ev in &i.events {
-                if let egui::Event::Key { key, pressed: true, repeat, modifiers: mods, .. } = ev {
+                if let egui::Event::Key { key, pressed, repeat, modifiers: mods, .. } = ev {
+                    if !pressed { self.release_cue_key(viewport, *key); continue; }
                     if Some(*key) == command_palette::chord(self.settings.profile()) && mods.ctrl && mods.shift && !mods.alt && !mods.mac_cmd && !repeat {
                         self.command_palette.open(viewport);
                         return;
                     }
                     if *key == Key::Comma && mods.ctrl && !mods.alt && !mods.shift && !repeat { self.settings.open = true; }
                     if let Some(action) = shortcuts::lookup_with(self.settings.profile(), *key, *mods, *repeat) {
-                        self.dispatch_shortcut(action);
+                        if let shortcuts::Action::Cue(deck) = action { self.press_cue_key(viewport, *key, deck); }
+                        else { self.dispatch_shortcut(action); }
                     }
                 }
             }
@@ -1219,6 +1225,7 @@ impl App {
                 self.send(Command::DeckPlay { deck: d as u8 });
             }
             ui.horizontal(|ui| {
+            self.deck_cue_audition(ui, d as u8, snap.frames > 0.0);
             ui.push_id(("deck-time", d), |ui| {
                 let button = ui.button(RichText::new(self.deck_time[d].button_label()).size(t.text_size(11.0))).help(ui, HelpControl::DeckTime);
                 egui::Popup::menu(&button)

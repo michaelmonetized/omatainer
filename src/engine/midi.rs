@@ -36,7 +36,9 @@ mod relative_tests;
 
 static NEXT_SOURCE: AtomicU64 = AtomicU64::new(1);
 
-fn next_source_id() -> u64 {
+/// Allocate an independent performance input owner.
+/// Takes no arguments; returns a unique positive ID, or zero after exhaustion.
+pub(crate) fn next_source_id() -> u64 {
     NEXT_SOURCE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |id|id.checked_add(1)).unwrap_or(0)
 }
 
@@ -64,6 +66,7 @@ pub struct Binding {
 pub enum Action {
     DeckPlay,
     DeckCue,
+    DeckCueHold,
     DeckSync,
     DeckJog,
     DeckJogTouch,
@@ -399,6 +402,11 @@ fn dispatch(
         Action::DeckCue if pressed => {
             let _ = send(Command::DeckCue { deck });
         }
+        Action::DeckCueHold => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold {
+                button: super::deck_controls::Button::Cue, on: pressed,
+            } });
+        }
         Action::DeckSync if pressed => {
             let _ = send(Command::DeckSync { deck });
         }
@@ -640,7 +648,7 @@ fn pioneer_ddj_fx() -> MidiMap {
     for deck in 0..2u8 {
         let ch = deck;
         b.push(nbind(ch, 0x0B, Action::DeckPlay, deck, 0));
-        b.push(nbind(ch, 0x0C, Action::DeckCue, deck, 0));
+        b.push(nbind(ch, 0x0C, Action::DeckCueHold, deck, 0));
         b.push(nbind(ch, 0x58, Action::DeckSync, deck, 0));
         b.push(nbind(ch, 0x3F, Action::Shift, deck, 0));
         b.push(nbind(ch, 0x36, Action::DeckJogTouch, deck, 0));
@@ -696,7 +704,7 @@ fn numark_ns7(fx: bool) -> MidiMap {
     for deck in 0..2u8 {
         let ch = deck;
         b.push(nbind(ch, 0x0C, Action::DeckPlay, deck, 0));
-        b.push(nbind(ch, 0x0D, Action::DeckCue, deck, 0));
+        b.push(nbind(ch, 0x0D, Action::DeckCueHold, deck, 0));
         b.push(nbind(ch, 0x0E, Action::DeckSync, deck, 0));
         b.push(nbind(ch, 0x1B, Action::DeckPfl, deck, 0));
         b.push(nbind(ch, 0x17, Action::DeckVinyl, deck, 0));
