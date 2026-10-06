@@ -37,6 +37,8 @@ impl App {
     /// Apply saved optional network intent.
     /// Takes the current app profile; queues worker configuration and reports admission errors.
     pub(super) fn apply_automation(&mut self) {
+        let config = if self.engine.safe_mode() { Default::default() } else { self.settings.profile().now_playing };
+        self.engine.cmd.now_playing().configure(config);
         if self.engine.safe_mode() {
             return;
         }

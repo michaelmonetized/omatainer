@@ -167,6 +167,7 @@ pub(crate) enum Edit {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Request {
+    NowPlaying {},
     Surfaces {},
     Discover {},
     State {
@@ -225,6 +226,7 @@ fn discovery() -> Value {
     json!({
         "version": VERSION,
         "requests": {
+            "now_playing": {"access":"read-only; explicit profile enablement and redaction; latest digital-output contributors; no paths"},
             "discover": {}, "state": {"page": "Page?"}, "surfaces": {}, "subscribe": {"page": "Page?"},
             "command": {"namespace": "Namespace", "action": "Action"},
             "schedule": {"namespace": "Namespace", "beat": "finite absolute quarter-note beat", "action": "Action"},
@@ -388,6 +390,7 @@ fn dispatch(
     limits: Limits,
 ) -> Result<Value, Error> {
     match request {
+        Request::NowPlaying {} => Ok(commands.now_playing().read()),
         Request::Discover {} => Ok(discovery()),
         Request::Surfaces {} => snapshot.try_lock_for(limits.snapshot).map(|snapshot| json!(snapshot.surfaces)).ok_or_else(|| Error::new("snapshot_unavailable", "Controller state is temporarily unavailable")),
         Request::State { page } | Request::Subscribe { page } => {

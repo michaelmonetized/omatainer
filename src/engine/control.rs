@@ -84,6 +84,7 @@ struct Admission {
 }
 
 struct AdmissionShared {
+    now_playing: std::sync::Arc<crate::performance_history::now_playing::Shared>,
     midi_learn: std::sync::Arc<super::midi::learn::Shared>,
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
     performance: super::performance::Handle,
@@ -403,6 +404,9 @@ pub struct QueuePressure {
 }
 
 impl CommandPort {
+    /// Access optional label publication outside the native callback.
+    /// Takes no arguments; returns the history-worker and local API owner.
+    pub(crate) fn now_playing(&self) -> std::sync::Arc<crate::performance_history::now_playing::Shared> { self.shared.now_playing.clone() }
     /// Access bounded learning and assignment state outside the native callback.
     /// Takes no arguments; returns the shared MIDI dispatch/editor owner.
     pub(crate) fn midi_learn(&self) -> std::sync::Arc<super::midi::learn::Shared> { self.shared.midi_learn.clone() }
@@ -466,6 +470,7 @@ impl CommandPort {
         );
         let (sender, receiver) = crossbeam_channel::bounded(capacity);
         let shared = std::sync::Arc::new(AdmissionShared {
+            now_playing: std::sync::Arc::new(crate::performance_history::now_playing::Shared::default()),
             midi_learn: std::sync::Arc::new(super::midi::learn::Shared::default()),
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
             performance: super::performance::Handle::default(),

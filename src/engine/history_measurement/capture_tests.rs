@@ -245,3 +245,19 @@ fn custom_routes_cannot_credit_prepare_removal_and_measurement_recovers_on_defau
     assert!(handle.digital_play(0).is_none(), "old stereo evidence cannot escape the route guard");
     assert!(receiver.is_empty());
 }
+
+#[test]
+fn independent_now_playing_monitor_preserves_prepare_intent_and_allocates_nothing() {
+    let (mut callback,receiver,key)=callback(2,false,1.0,0.0,false,0.0);
+    let handle=callback.renderer_for_test().history_measurement.as_ref().unwrap().handle();
+    handle.set_now_playing_monitor(true).unwrap();handle.set_prepare_monitor(false).unwrap();
+    for _ in 0..8 {callback.render(&mut [0.0_f32;256]);}
+    assert_eq!(handle.digital_play(0).unwrap().load,key);
+    let counts=test_alloc::measure(||{for _ in 0..8 {callback.render(&mut [0_i16;256]);}});
+    assert_eq!((counts.allocations,counts.frees),(0,0));assert!(receiver.is_empty());
+    handle.set_prepare_monitor(true).unwrap();handle.set_now_playing_monitor(false).unwrap();
+    let before=handle.digital_play(0).unwrap();for _ in 0..8 {callback.render(&mut [0.0_f32;256]);}
+    assert!(handle.digital_play(0).unwrap().first_frame>before.first_frame);
+    handle.set_prepare_monitor(false).unwrap();let before=handle.digital_play(0);
+    for _ in 0..8 {callback.render(&mut [0.0_f32;256]);}assert_eq!(handle.digital_play(0),before);
+}

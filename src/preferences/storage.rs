@@ -113,6 +113,9 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 15 && profiles.iter().any(|p|p.get("now_playing").is_some()) {
+        return Err(Error::Invalid("Now-playing publication requires preferences version 15".into()));
+    }
     if version < 14 && profiles.iter().any(|p| p.get("waveforms").is_some()) {
         return Err(Error::Invalid("Waveform views require preferences version 14".into()));
     }
@@ -141,12 +144,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
     let (preferences, migrated) = match version {
-        14 => (
+        15 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -762,6 +765,20 @@ mod midi_learn_migration_tests {
         for profile in old["profiles"].as_object_mut().unwrap().values_mut(){profile.as_object_mut().unwrap().remove("midi_learn");profile.as_object_mut().unwrap().remove("library_layout");profile.as_object_mut().unwrap().remove("waveforms");}
         let (migrated,changed)=decode(&serde_json::to_vec(&old).unwrap()).unwrap();assert!(changed);assert_eq!(migrated,current);
         old["profiles"]["Studio"]["midi_learn"]=serde_json::to_value(&current.current().unwrap().midi_learn).unwrap();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
-        old["version"]=15.into();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
+        old["version"]=(VERSION+1).into();assert!(decode(&serde_json::to_vec(&old).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod now_playing_migration_tests {
+    use super::*;
+    #[test]
+    fn version_fourteen_migrates_feed_disabled_and_cannot_carry_new_publication_intent() {
+        let current=Preferences::defaults(Path::new("/home/test"));let mut legacy=serde_json::to_value(&current).unwrap();legacy["version"]=14.into();
+        let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(migrated);assert_eq!(loaded,current);assert!(!loaded.current().unwrap().now_playing.enabled);
+        legacy["profiles"]["Studio"]["now_playing"]=serde_json::json!({"enabled":true,"title":false,"artist":false,"identity":true});
+        assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());legacy["version"]=15.into();
+        let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(!migrated);assert!(loaded.current().unwrap().now_playing.enabled);
+        legacy["profiles"]["Studio"]["now_playing"]["endpoint"]="https://example.com".into();assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());
     }
 }

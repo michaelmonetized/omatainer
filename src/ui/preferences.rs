@@ -487,6 +487,13 @@ impl App {
                             profile.midi_inputs = match mode { 0=>model::MidiInputs::All,1=>model::MidiInputs::Selected(state.midi_names.lines().filter(|s|!s.is_empty()).map(str::to_owned).collect()),_=>model::MidiInputs::Disabled };
                             midi_routing::edit(ui,&mut profile.midi_routing,self.engine.midi.routing_status().as_deref());
                             ui.heading(tr!("Automation and remote control"));
+                            ui.checkbox(&mut profile.now_playing.enabled, tr!("Enable now-playing feed")).help(ui, HelpControl::HistoryPublish);
+                            ui.horizontal_wrapped(|ui| {
+                                ui.checkbox(&mut profile.now_playing.title, tr!("Publish track titles")).help(ui, HelpControl::HistoryPublish);
+                                ui.checkbox(&mut profile.now_playing.artist, tr!("Publish artists")).help(ui, HelpControl::HistoryPublish);
+                                ui.checkbox(&mut profile.now_playing.identity, tr!("Publish catalog identities")).help(ui, HelpControl::HistoryPublish);
+                            });
+                            ui.label(tr!("Apply publishes the selected fields through the local automation API. Disabled and stale feeds contain no tracks. Media locations are never included."));
                             ui.checkbox(&mut profile.automation.enabled,tr!("Enable loopback OSC")).help(ui,HelpControl::AutomationOscEnable);
                             ui.horizontal(|ui| {
                                 let label=ui.label(tr!("OSC port (0 = automatic)"));

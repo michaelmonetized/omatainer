@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-pub const VERSION: u32 = 14;
+pub const VERSION: u32 = 15;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -170,6 +170,8 @@ pub struct Startup {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
+    #[serde(default, skip_serializing_if = "crate::performance_history::now_playing::Config::is_default")]
+    pub(crate) now_playing: crate::performance_history::now_playing::Config,
     #[serde(default)]
     pub(crate) waveforms: waveforms::Config,
     #[serde(default)]
@@ -197,6 +199,7 @@ pub struct Profile {
 impl Profile {
     pub fn defaults(home: &std::path::Path) -> Self {
         Self {
+            now_playing: Default::default(),
             waveforms: waveforms::Config::default(),
             library_layout: library_layout::Config::default(),
             workspaces: workspaces::Config::default(),

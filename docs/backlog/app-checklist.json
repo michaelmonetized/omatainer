@@ -2179,9 +2179,11 @@
       "dependencies": [
         106
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/setlist-exports.md"
+      ]
     },
     {
       "issue": 158,

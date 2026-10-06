@@ -21,8 +21,9 @@ pub(crate) enum Job {
     Mark { session: String, revision: u64, entry: u32, played: Option<bool> },
     External { session: String, revision: u64, title: String, artist: String },
     Export { session: String, path: PathBuf },
+    ExportAs { session: String, path: PathBuf, format: super::export::Format, locations: bool, catalog: Option<Arc<crate::library::Catalog>> },
 }
-impl Job { fn optional(&self) -> bool { matches!(self, Self::Mark { .. } | Self::External { .. } | Self::Export { .. }) } }
+impl Job { fn optional(&self) -> bool { matches!(self, Self::Mark { .. } | Self::External { .. } | Self::Export { .. } | Self::ExportAs { .. }) } }
 struct Request { id: u64, job: Job, permit: Option<WorkPermit> }
 enum Boundary { Start { id: String, nonce: u64 }, End { id: String, closing: bool } }
 struct Pending { request: u64, renderer_request: u64, boundary: Boundary }
@@ -34,7 +35,8 @@ pub(crate) struct Worker {
     stop: Arc<AtomicBool>, alive: Arc<AtomicBool>,
 }
 impl Worker {
-    pub fn start(root: PathBuf, renderer: Option<Handle>, show: performance::Handle) -> Result<Self, String> {
+    pub fn start(root: PathBuf, renderer: Option<Handle>, show: performance::Handle) -> Result<Self, String> { Self::start_with_feed(root, renderer, show, None) }
+    pub fn start_with_feed(root: PathBuf, renderer: Option<Handle>, show: performance::Handle, feed: Option<Arc<super::now_playing::Shared>>) -> Result<Self, String> {
         let observations = renderer.as_ref().map(|h| h.take_observations().ok_or("history observer already has a consumer")).transpose()?;
         let (jobs, requests) = crossbeam_channel::bounded(1);
         let (registrations, incoming) = crossbeam_channel::bounded(256);
@@ -45,6 +47,10 @@ impl Worker {
         std::thread::Builder::new().name("performance-history".into()).spawn(move || {
             struct Alive(Arc<AtomicBool>); impl Drop for Alive { fn drop(&mut self) { self.0.store(false, Ordering::Release); } }
             let _alive = Alive(connected);
+            struct FeedOwner(Option<Arc<super::now_playing::Shared>>, Option<Handle>);
+            impl Drop for FeedOwner { fn drop(&mut self) { if let Some(handle)=&self.1 {let _=handle.set_now_playing_monitor(false);} if let Some(feed)=&self.0 {feed.disconnect();} } }
+            let _feed_owner = FeedOwner(feed.clone(), renderer.clone());
+            let mut feed_generation = None; let mut feed_since = 0; let mut feed_at = Instant::now();
             let mut owner = Owner::new(root, renderer, observations);
             let mut publish_at = Instant::now();
             while !stopped.load(Ordering::Acquire) {
@@ -57,6 +63,17 @@ impl Worker {
                     Err(crossbeam_channel::RecvTimeoutError::Disconnected) => break,
                 }
                 owner.save_due(false);
+                if let Some(feed) = &feed {
+                    let (generation, config) = feed.config();
+                    if feed_generation != Some(generation) {
+                        feed_generation = Some(generation); feed_since = owner.renderer.as_ref().and_then(Handle::clock).unwrap_or(u64::MAX);
+                        if let Some(handle) = &owner.renderer { let _ = handle.set_now_playing_monitor(config.enabled); }
+                        feed_at = Instant::now() - Duration::from_millis(250);
+                    }
+                    if config.enabled && feed_at.elapsed() >= Duration::from_millis(250) {
+                        owner.publish_feed(feed, generation, feed_since); feed_at = Instant::now();
+                    }
+                }
                 if owner.publish && (publish_at.elapsed() >= Duration::from_millis(250) || owner.urgent) && !published.is_full() {
                     if published.try_send(Arc::new(owner.view())).is_ok() { owner.publish = false; owner.urgent = false; publish_at = Instant::now(); }
                 }
@@ -151,6 +168,18 @@ impl Owner {
             self.unresolved.entry(key).or_default().insert((id.to_owned(), deck));
         }
     }
+    fn publish_feed(&self, feed: &super::now_playing::Shared, generation: u64, since: u64) {
+        let available = self.renderer.as_ref().is_some_and(Handle::can_measure);
+        let now = self.renderer.as_ref().and_then(Handle::clock);
+        let decks = std::array::from_fn(|deck| {
+            let play = self.renderer.as_ref()?.digital_play(deck)?;
+            let age = now?.checked_sub(play.wall_ns)?;
+            if play.wall_ns < since || age > 750_000_000 { return None; }
+            let source = self.registrations.get(&play.load)?;
+            matches!(source, Source::Catalog { .. }).then(||source.clone())
+        });
+        feed.publish(generation, available, decks);
+    }
     fn source(&self, key: u64) -> Source { self.registrations.get(&key).cloned().unwrap_or(Source::Unresolved) }
     fn finish(&mut self, id: u64, result: Result<String, String>) {
         let (applied, message) = match result { Ok(message) => (true, message), Err(error) => (false, error) };
@@ -215,6 +244,14 @@ impl Owner {
                     candidate.external(revision, title, artist)?;
                     let result = store.save_optional(&candidate, permit.as_ref().ok_or("history edit permit missing")?)?;
                     self.commit_result(&session, result);
+                }
+                Job::ExportAs { session, path, format, locations, catalog } => {
+                    let store = self.store.as_ref().ok_or("history store unavailable")?;
+                    let session = store.sessions.get(&session).ok_or("history session no longer exists")?;
+                    return Ok(Some(match store.export_as(session, &path, format, locations, catalog.as_deref(), permit.as_ref().ok_or("history export permit missing")?)? {
+                        Commit::Durable => format!("{} setlist exported; existing files were preserved", format.name()),
+                        Commit::CommittedUnconfirmed(warning) => format!("Setlist export committed, durability unconfirmed: {warning}"),
+                    }));
                 }
                 Job::Export { session, path } => {
                     let store = self.store.as_ref().ok_or("history store unavailable")?;

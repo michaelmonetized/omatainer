@@ -401,3 +401,20 @@ fn state_pages_remain_within_the_wire_budget_for_escaped_names_and_maximal_count
         assert_eq!(response["result"]["objects"].as_array().unwrap().len(), 16);
     }
 }
+
+#[test]
+fn now_playing_api_bounds_worst_case_labels_and_drops_expired_or_disabled_data() {
+    let service=Service::new();let feed=service.engine.cmd.now_playing();
+    assert_eq!(service.query(json!({"op":"now_playing"}))["result"]["status"],"disabled");
+    let config=crate::performance_history::now_playing::Config{enabled:true,title:true,artist:true,identity:true};feed.configure(config);
+    let (generation,_)=feed.config();
+    let source=crate::performance_history::Source::Catalog{track_id:"a".repeat(32),version:u32::MAX,title:"\\".repeat(1024),artist:"音".repeat(341)};
+    feed.publish(generation,true,[Some(source.clone()),Some(source)]);
+    let value=service.query(json!({"op":"now_playing"}));assert_eq!(value["ok"],true);assert!(value.to_string().len()<crate::ipc_transport::RESPONSE_BYTES);
+    assert_eq!(value["result"]["decks"][0]["labels_truncated"],true);assert_eq!(value["result"]["decks"][0]["title"].as_str().unwrap().len(),512);assert_eq!(value["result"]["decks"][0]["artist"].as_str().unwrap().len(),510);
+    assert!(service.query(json!({"op":"discover"}))["result"]["requests"].get("now_playing").is_some());
+    std::thread::sleep(Duration::from_millis(1050));
+    let value=service.query(json!({"op":"now_playing"}));assert_eq!(value["result"]["status"],"stale");assert_eq!(value["result"]["decks"],json!([]));
+    feed.configure(Default::default());feed.publish(generation,true,[Some(crate::performance_history::Source::Unresolved),None]);
+    assert_eq!(service.query(json!({"op":"now_playing"}))["result"]["status"],"disabled");
+}

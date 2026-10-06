@@ -12,6 +12,7 @@ pub(super) struct Panel {
     pub worker: Option<Worker>,
     identities: VecDeque<Identity>,
     title: String, artist: String, export_path: String, notice: String,
+    export_format: crate::performance_history::export::Format, export_locations: bool,
     closing: bool, close_job: Option<u64>, keep_pending: bool, close_epoch: u64,
 }
 impl Panel {
@@ -74,7 +75,7 @@ impl App {
         }
     }
     pub(super) fn start_session_history(&mut self, root: PathBuf) {
-        match Worker::start(root, self.engine.performance_history.clone(), self.engine.cmd.performance().clone()) {
+        match Worker::start_with_feed(root, self.engine.performance_history.clone(), self.engine.cmd.performance().clone(), Some(self.engine.cmd.now_playing())) {
             Ok(worker) => self.session_history.worker = Some(worker),
             Err(error) => { self.session_history.notice = error; self.session_history.open = true; },
         }
@@ -105,6 +106,8 @@ impl App {
         let sealed = self.project_admission_sealed();
         let safe = self.engine.safe_mode();
         let output = self.engine.cmd.audio_metrics();
+        let catalog = self.library_metadata.catalog.clone();
+        let feed = self.engine.cmd.now_playing().read();
         let panel = &mut self.session_history;
         let mut open = panel.open;
         let mut action = None;
@@ -112,6 +115,7 @@ impl App {
         egui::Window::new(tr!("Performance history")).id(egui::Id::new("Performance history")).open(&mut open).default_width(720.0).show(ctx, |ui| {
             ui.label(tr!("Tracks contributing to digital main output, measured in 10 ms windows above −90 dBFS. Cue blend is part of main output in this build. Hardware delivery and listening are not measured."));
             ui.label({ let __omatainer_args = (&(output.deadline_overruns),&(output.backend_errors),&(output.device_lost),); crate::localization::format("Output diagnostics since launch: {} late callbacks · {} backend errors · {} device losses. Backend dropped-buffer count unavailable.", &[format!("{}", __omatainer_args.0), format!("{}", __omatainer_args.1), format!("{}", __omatainer_args.2)]) });
+            ui.horizontal_wrapped(|ui| { ui.label(format!("Now-playing feed: {}", feed["status"].as_str().unwrap_or("unavailable"))); ui.label("Enable and redact fields in Preferences → Automation."); });
             if !panel.notice.is_empty() { ui.label(&panel.notice); }
             if ui.button(tr!("Close history")).help(ui, HelpControl::HistoryOpen).clicked() { close_panel = true; }
             let Some(worker) = &panel.worker else { ui.label(tr!("Performance history unavailable.")); return; };
@@ -173,10 +177,15 @@ impl App {
                 artist.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "External track artist"));
             });
             if ui.add_enabled(idle && action.is_none() && !sealed && !panel.title.trim().is_empty(), egui::Button::new(tr!("Add external track"))).help(ui, HelpControl::HistoryExternal).clicked() { action = Some(Job::External { session: session.id.clone(), revision: session.edit_revision, title: panel.title.trim().into(), artist: panel.artist.trim().into() }); }
+            ui.horizontal_wrapped(|ui| { for format in crate::performance_history::export::Format::ALL { ui.radio_value(&mut panel.export_format, format, tr!(format.name())).help(ui, HelpControl::HistoryExport); } });
+            if panel.export_format == crate::performance_history::export::Format::M3u8 {
+                ui.checkbox(&mut panel.export_locations, tr!("Allow file locations in this playlist")).help(ui, HelpControl::HistoryExport);
+                ui.label(tr!("Played entries only. Offline, changed, external or unresolved entries refuse the entire playlist. File URIs reveal local locations."));
+            }
             ui.horizontal(|ui| {
-                ui.label(tr!("New JSON file")); let path = ui.text_edit_singleline(&mut panel.export_path).help(ui, HelpControl::HistoryExport);
+                ui.label(tr!("New export file")); let path = ui.text_edit_singleline(&mut panel.export_path).help(ui, HelpControl::HistoryExport);
                 path.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "History export destination"));
-                if ui.add_enabled(idle && action.is_none() && !panel.export_path.trim().is_empty(), egui::Button::new(tr!("Export session"))).help(ui, HelpControl::HistoryExport).clicked() { action = Some(Job::Export { session: session.id.clone(), path: PathBuf::from(panel.export_path.trim()) }); }
+                if ui.add_enabled(idle && action.is_none() && !panel.export_path.trim().is_empty(), egui::Button::new(tr!("Export session"))).help(ui, HelpControl::HistoryExport).clicked() { action = Some(Job::ExportAs { session: session.id.clone(), path: PathBuf::from(panel.export_path.trim()), format: panel.export_format, locations: panel.export_locations, catalog: (panel.export_format == crate::performance_history::export::Format::M3u8).then(||catalog.clone()) }); }
             });
             ui.label(tr!("Manual marks and external tracks are assertions; they never alter measured duration. Export contains titles, artists and opaque catalog IDs; review these labels before sharing."));
             }); });

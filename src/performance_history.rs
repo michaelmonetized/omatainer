@@ -2,6 +2,8 @@
 //! The typed export contains labels and opaque identity, never media locations.
 use crate::engine::history_measurement::{Classification, Observation};
 use serde::{Deserialize, Serialize};
+pub(crate) mod export;
+pub(crate) mod now_playing;
 pub(crate) mod storage;
 pub(crate) mod worker;
 
@@ -49,7 +51,7 @@ pub(crate) struct Entry {
     pub last_frame: Option<u64>,
 }
 impl Entry {
-    pub fn measured_seconds(&self) -> f64 { self.rates.iter().map(|r| r.active as f64 / f64::from(r.rate)).sum() }
+    pub fn measured_seconds(&self) -> f64 { self.rates.iter().fold(0.0, |seconds, r| seconds + r.active as f64 / f64::from(r.rate)) }
     pub fn played(&self) -> bool { self.played_override.unwrap_or_else(|| self.rates.iter().any(|r| r.active > 0)) }
 }
 

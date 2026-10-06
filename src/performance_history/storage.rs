@@ -140,21 +140,22 @@ fn staging(parent: &Path) -> Result<(Temp, File), String> {
     Ok((temp, file))
 }
 impl Store {
-    pub fn export(&self, session: &Session, path: &Path, permit: &crate::engine::performance::WorkPermit) -> Result<Commit, String> {
+    pub fn export(&self, session: &Session, path: &Path, permit: &crate::engine::performance::WorkPermit) -> Result<Commit, String> { self.export_as(session,path,super::export::Format::Json,false,None,permit) }
+    /// Publish a selected session as a new private setlist.
+    /// Takes the session, destination, format, location consent, catalog and work permit; returns durable publication or a committed durability warning.
+    pub fn export_as(&self, session: &Session, path: &Path, format: super::export::Format, locations: bool, catalog: Option<&crate::library::Catalog>, permit: &crate::engine::performance::WorkPermit) -> Result<Commit, String> {
+        if !path.is_absolute() { return Err("choose an absolute setlist export path".into()); }
         let parent = path.parent().ok_or("export path has no parent")?;
-        if parent.canonicalize().map_err(|e| e.to_string())?.starts_with(self.root.canonicalize().map_err(|e| e.to_string())?) {
-            return Err("export outside the managed history directory".into());
-        }
-        export(session, path, permit)
+        if parent.canonicalize().map_err(|e|e.to_string())?.starts_with(self.root.canonicalize().map_err(|e|e.to_string())?) { return Err("export outside the managed history directory".into()); }
+        let bytes = super::export::encode(session, format, locations, catalog, permit)?;
+        export_bytes(&bytes, path, permit)
     }
 }
-fn export(session: &Session, path: &Path, permit: &crate::engine::performance::WorkPermit) -> Result<Commit, String> {
-    if !path.is_absolute() { return Err("choose an absolute history export path".into()); }
+fn export_bytes(bytes: &[u8], path: &Path, permit: &crate::engine::performance::WorkPermit) -> Result<Commit, String> {
     let parent = path.parent().ok_or("export path has no parent")?;
-    let bytes = session.export()?;
     if bytes.len() as u64 > MAX_SESSION_BYTES { return Err("history export exceeds 16 MiB".into()); }
     let (temp, mut file) = staging(parent)?;
-    file.write_all(&bytes).map_err(|e| e.to_string())?; file.sync_all().map_err(|e| e.to_string())?;
+    file.write_all(bytes).map_err(|e| e.to_string())?; file.sync_all().map_err(|e| e.to_string())?;
     let _commit = permit.commit().map_err(|e| e.to_string())?;
     // hard_link atomically refuses any existing destination, including symlinks.
     fs::hard_link(&temp.0, path).map_err(|e| e.to_string())?;

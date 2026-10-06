@@ -696,9 +696,17 @@ Workflow: Prepare a DJ deck.
 
 ### Export performance session
 
-New local JSON file
+New JSON, text, CSV or M3U8 file
 
-Export labels, opaque catalog IDs, boundaries and measurement counts. Media paths and fingerprints are omitted. Review user-supplied labels before sharing. Existing files are never overwritten. Performance protection excludes exports.
+JSON, text and CSV retain measured history and manual marks without media paths. M3U8 includes only played entries and requires explicit file-location consent plus the exact recorded local version. Unavailable entries refuse the whole playlist. Existing files are never overwritten. Performance protection excludes exports.
+
+Workflow: Prepare a DJ deck.
+
+### Optional now-playing feed
+
+Preferences → Automation and remote control
+
+Off by default. Apply enables a read-only now_playing automation endpoint and chooses title, artist and opaque identity fields. Only recent renderer-confirmed digital output contributes tracks. Muted, paused, disabled, stale and disconnected feeds remove labels. Paths and fingerprints are never published. This does not measure speakers or listening.
 
 Workflow: Prepare a DJ deck.
 

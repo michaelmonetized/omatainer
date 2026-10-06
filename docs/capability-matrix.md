@@ -225,7 +225,7 @@ All 1498 ordinary checks and private 32-channel native routing pass on the recor
 - Acceptance fixtures: `ui::piano_roll::control::tests`, `engine::midi::routing::playback::tests::controller_chase_selects_the_original_patch_then_restores_pending_banks_before_notes`, `engine::midi::routing::playback::tests::controller_points_at_launch_and_seek_arrive_before_new_or_chased_native_notes`, `engine::midi::routing::output::tests::controller_stop_restores_a_shared_channel_owner_then_releases_bend_pressure_expression`, `engine::project::tests::named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_invalid_labels`, `engine::project::tests::prepared_controller_edit_is_saveable_allocation_free_and_rejects_concurrent_project_changes`.
 - Evidence: [docs/validation/midi-controller-lanes.md](../docs/validation/midi-controller-lanes.md).
 
-Native UI, actual renderer and software output-owner wire traces pass; physical-synth acceptance remains unclaimed under the paused hardware plan. Imported RPN/NRPN/data-entry transactions retain normal playback/export but are not inferred on seek. Dense output retains its visible 256-event/block refusal policy. Device labels use project schema 15; preferences remain schema 14.
+Native UI, actual renderer and software output-owner wire traces pass; physical-synth acceptance remains unclaimed under the paused hardware plan. Imported RPN/NRPN/data-entry transactions retain normal playback/export but are not inferred on seek. Dense output retains its visible 256-event/block refusal policy. Device labels use project schema 15.
 
 ### Issue #151: implemented
 
@@ -257,6 +257,17 @@ Source 31a7a36 passes all 1517 ordinary checks and the private 32-channel native
 - Evidence: [docs/validation/issue-154-crate-discovery.md](../docs/validation/issue-154-crate-discovery.md).
 
 Focused software checks include 4096 nested crates, native keyboard and synthetic controller navigation, restart, conflicts, cache reuse and selection/scroll restoration. Complete merged optimized qualification and physical controller navigation remain pending. Direct membership requires the exact catalog/row publication.
+
+### Issue #157: implemented
+
+- native UI: [src/ui/session_history.rs](../src/ui/session_history.rs) — History → selected session → JSON / Text / CSV / M3U8 playlist export with location consent
+- catalog and filesystem worker: [src/performance_history/export.rs](../src/performance_history/export.rs) — Private bounded exports with exact-version file URI resolution and no-overwrite publication
+- native preferences: [src/ui/preferences.rs](../src/ui/preferences.rs) — Automation → opt-in now-playing feed with title, artist and catalog identity redaction
+- local API: [src/automation.rs](../src/automation.rs) — Read-only now_playing request, bounded latest snapshot and existing client deadlines
+- Acceptance fixtures: `performance_history::export::tests`, `performance_history::storage::tests::all_setlist_formats_publish_private_new_files_and_refuse_existing_symlinks`, `performance_history::worker::tests::actual_worker_feed_runs_without_a_history_session_and_survives_consumer_reconnect`, `performance_history::worker::tests::export_as_job_uses_selected_session_and_reports_a_durable_csv_receipt`, `ui::session_history::tests::native_history_selects_text_csv_and_requires_playlist_location_consent`, `ui::preferences::tests::now_playing_profile_apply_cancel_and_reopen_preserve_redaction_intent`, `preferences::storage::now_playing_migration_tests`, `automation::tests::now_playing_api_bounds_worst_case_labels_and_drops_expired_or_disabled_data`, `engine::history_measurement::capture_tests::independent_now_playing_monitor_preserves_prepare_intent_and_allocates_nothing`.
+- Evidence: [docs/validation/setlist-exports.md](../docs/validation/setlist-exports.md).
+
+Local software export/worker/native UI/API qualification; no provider-hosted publishing or new physical listening acceptance. Text/CSV include all entries in history insertion order. M3U8 requires explicit location consent and every played entry to have its exact recorded local file; unavailable entries refuse the entire playlist. Local feed is off by default, removes stale labels, caps requested labels at 512 UTF-8 bytes and never publishes paths. Preferences schema 15; project schema stays 15.
 
 ### Issue #167: implemented
 
@@ -322,7 +333,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
 | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned |
 | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | planned |
-| [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | planned |
+| [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | implemented |
 | [#158](https://github.com/michaelmonetized/omatainer/issues/158) | Integrate an authorized Beatport streaming workflow | excluded from release |
 | [#159](https://github.com/michaelmonetized/omatainer/issues/159) | Integrate authorized SoundCloud catalog and playlists | excluded from release |
 | [#160](https://github.com/michaelmonetized/omatainer/issues/160) | Integrate an authorized TIDAL DJ account and catalog | excluded from release |

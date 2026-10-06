@@ -1216,3 +1216,15 @@ fn workspace_preview_cancel_and_invalid_layout_keep_saved_and_applied_state() {
     gui.click("Cancel changes");
     assert_eq!(gui.fixture.app.settings.draft,previous);
 }
+
+#[test]
+fn now_playing_profile_apply_cancel_and_reopen_preserve_redaction_intent() {
+    let mut gui=Gui::new();gui.height=2400.0;gui.open();
+    gui.click("Enable now-playing feed");gui.click("Publish track titles");gui.click("Publish catalog identities");gui.click("Cancel changes");
+    assert!(!gui.fixture.app.settings.profile().now_playing.enabled);assert_eq!(gui.fixture.app.engine.cmd.now_playing().read()["status"],"disabled");
+    gui.open();gui.click("Enable now-playing feed");gui.click("Publish track titles");gui.click("Publish catalog identities");gui.click("Preview changes");gui.wait();gui.click("Apply and save");gui.wait();
+    let config=gui.fixture.app.settings.profile().now_playing;assert!(config.enabled && !config.title && config.artist && config.identity);
+    assert_eq!(gui.fixture.app.engine.cmd.now_playing().config().1,config);
+    let saved=crate::preferences::storage::load(&gui.dir.join("preferences.json"), &AtomicBool::new(false)).unwrap();assert_eq!(saved.preferences.current().unwrap().now_playing,config);
+    gui.open();gui.click("Enable now-playing feed");gui.click("Preview changes");gui.wait();gui.click("Apply and save");gui.wait();assert_eq!(gui.fixture.app.engine.cmd.now_playing().read()["status"],"disabled");
+}
