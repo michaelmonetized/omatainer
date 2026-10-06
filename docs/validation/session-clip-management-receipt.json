@@ -340,5 +340,62 @@
         "sha256": "6c64fe2c68b89450ff29a015301b4c0e17e0bb2480d402d1fecc3f724b9ff4d1"
       }
     }
-  ]
+  ],
+  "installation": {
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-session-clips-corrected-qualified",
+      "manifestSha256": "2c8fd7247e62a1ccf6f1a03e577420721fe2b3560b3dcf67c093bd1ce4660c8d",
+      "revision": "d07398cc99086fc68461ccc07b27e99371e93b20",
+      "version": "0.1.0+d07398cc9908",
+      "executableSha256": "4bb19c8badccaad87bc11eb67a1691ad1a0a96b09982bb70c4d137bcb2e8808a"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "preinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
