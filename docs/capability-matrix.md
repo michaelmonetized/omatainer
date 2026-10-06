@@ -322,7 +322,7 @@ Nine new software checks plus existing import, version comparison, native Undo, 
 - Evidence: [docs/validation/audio-delivery.md](../docs/validation/audio-delivery.md).
 - Evidence: [docs/validation/audio-delivery-receipt.json](../docs/validation/audio-delivery-receipt.json).
 
-Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Fresh installation pending; physical acceptance remains outside this thread scope.
+Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats, native tails, exact alias order and protected destinations. Current session means captured launches/deck cursors; Arrangement/history replay remains separate work. Live physical inputs use performance recording. FFmpeg is required for FLAC/MP3. Forced fresh source 278025cc1a3d installed for next default launch; physical acceptance remains outside this thread scope.
 
 ### Issue #181: implemented
 
@@ -333,7 +333,7 @@ Software qualification: actual mixer parity at 44.1/48/96 kHz, six real formats,
 - Evidence: [docs/validation/audio-delivery.md](../docs/validation/audio-delivery.md).
 - Evidence: [docs/validation/audio-delivery-receipt.json](../docs/validation/audio-delivery-receipt.json).
 
-Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Fresh installation pending; Linux ARM64 only, no physical endurance or power-loss guarantee.
+Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Forced fresh source 278025cc1a3d installed for next default launch; Linux ARM64 only, no physical endurance or power-loss guarantee.
 
 ### Issue #185: implemented
 

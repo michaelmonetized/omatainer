@@ -47,5 +47,11 @@ write failure; only its 512 complete stereo frames survive and decode exactly.
 The source-bound receipt records the focused results, complete regression gate,
 original export-fixture failure and package/install provenance. The complete
 unfiltered regression gate passes: 1,827 passed, 44 explicitly ignored cases, no
-failures or filters. Fresh installation is pending. No physical audio or device
-capture is opened for this qualification.
+failures or filters. A forced fresh release of source
+`278025cc1a3d06375ef66b975bdf1c65d72bf259` is installed as
+`0.1.0+278025cc1a3d`; executable SHA-256
+`c161c7dab9467eacf3bd21918bab5c07937ee9be7b79192333be4dc5efb5d1b4`.
+The independent private controller app and old CLI follower retained their exact
+processes and executable hashes. Playback stayed paused with master 1 before and
+after installation. The default is for the next normal launch. No physical audio
+or device capture is opened for this qualification.

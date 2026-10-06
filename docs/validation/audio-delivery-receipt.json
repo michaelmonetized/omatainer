@@ -219,11 +219,72 @@
     "ignored": 0
   },
   "limits": [
-    "Fresh installation pending.",
     "Offline current-session export means captured launches/deck cursors, not Arrangement/history replay.",
     "Native WAV encoding is self-contained; FLAC/MP3 requires the real local FFmpeg encoder.",
     "Worker scheduling and package qualification are Linux ARM64 only.",
     "No physical or two-hour wall-clock hardware endurance test is claimed.",
-    "Process interruption recovery is not a power-loss or failed-storage guarantee."
-  ]
+    "Process interruption recovery is not a power-loss or failed-storage guarantee.",
+    "The installed default is for next launch; the independent private controller app retains its own executable."
+  ],
+  "installation": {
+    "path": "target/app-backlog/audio-delivery-install.json",
+    "sha256": "3b790be45727ff12a00940ccb2c698b5f3fdefce88a0ff9ad4f0ec780b4faaec",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-audio-delivery-qualified",
+      "manifestSha256": "d505740dcaa03e42d58e83ec8d023a0ddb9df51072779673fbd23db957416621",
+      "revision": "278025cc1a3d06375ef66b975bdf1c65d72bf259",
+      "version": "0.1.0+278025cc1a3d",
+      "executableSha256": "c161c7dab9467eacf3bd21918bab5c07937ee9be7b79192333be4dc5efb5d1b4"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "preservedProcesses": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "preinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
