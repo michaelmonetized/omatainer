@@ -189,5 +189,91 @@
       "additionalHardwareIssue": 508,
       "missingTrackedSoftwareIssues": []
     }
+  },
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-arrangement-qualified",
+      "manifestSha256": "2c5ac4ae63e0cb5046795c53037ef5896590f66ea3cbe22bc274fc39c70bbc6b",
+      "revision": "0ecb09081d02d2a16968f71357d92b22f2243db2",
+      "version": "0.1.0+0ecb09081d02",
+      "executableSha256": "53e2e0ee3cff87a88f7fcdd797346aaa880fbf982c75fb39a06bd56112ed20c5"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "4d4b8b1b354f0a9d8900396cd9057ff0d747593876be9751a3978d51831e270f",
+      "after": "53e2e0ee3cff87a88f7fcdd797346aaa880fbf982c75fb39a06bd56112ed20c5",
+      "installedAt": "2026-10-06T20:21:35.252Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 1,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  },
+  "installationArtifacts": {
+    "build": {
+      "path": "target/app-backlog/arrangement-release-build.log",
+      "sha256": "35662dae41b3dcbbf36d71e75a6d963f029b1c45eb02b12fa433003ef16713fc"
+    },
+    "receipt": {
+      "path": "target/app-backlog/arrangement-install.json",
+      "sha256": "c5e9d671054b02247ee2957e940b7b2f4b880b661f47aa450d3009441e10b354"
+    }
   }
 }
