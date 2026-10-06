@@ -12618,7 +12618,7 @@
     "scripts/performance-gate.py": "0171f3d8fd4aba35f22c26a0ac1d6cf3de83e828e72154dc5e63285b906758c5",
     "scripts/performance-test-support.py": "33a6783da423046ec22e696faee6b50ea654637d63c85479bd107047fc2507de",
     "scripts/refresh-source-inventory.mjs": "94ebfbe972109d3b44c114607958dfef7e5056cc167d05e60f4ba6c6f3f01119",
-    "scripts/release-package.mjs": "b4b740b2954aa117da363829b56e65c3dd43c0aef76ff5832bbafbb7893f6361",
+    "scripts/release-package.mjs": "47bb5696ceb1f317bcdca4de8b05a6394fb50592113b52b947f23e33fb7c7aea",
     "scripts/test-capability-matrix.mjs": "5cdf85b01c85d53694c8d4c8fb6e8f6dcf98b0f15343a58b0199843b888daf9f",
     "scripts/test-check-analysis.py": "57adbc43e1be64bcc4cf8ded279905c6f37feb5d7dd85a4dcc1fd44c6511fb3f",
     "scripts/test-install-executable.py": "d1e310f727540f263fdefae4b2880b1a1b2ca5bbfecf8c645439bdf936be8928",

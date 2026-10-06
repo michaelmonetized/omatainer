@@ -101,7 +101,10 @@ function stopped(destination) {
         try {
             if (fs.statSync(`/proc/${pid}`).uid !== process.getuid()) continue;
             const executable = fs.readlinkSync(`/proc/${pid}/exe`).replace(/ \(deleted\)$/, '');
-            if (executable === destination || executable === destination + '.previous') throw new Error(`Close Omatainer before updating or rolling back (PID ${pid}); active performances are deferred`);
+            if (executable === destination || executable === destination + '.previous') {
+                const args = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\0');
+                if (args[1] !== 'ctl') throw new Error(`Close Omatainer before updating or rolling back (PID ${pid}); active performances are deferred`);
+            }
         } catch (error) { if (!['ENOENT', 'EACCES', 'EPERM'].includes(error.code)) throw error; }
     }
 }
