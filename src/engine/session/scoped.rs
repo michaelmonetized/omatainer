@@ -37,6 +37,7 @@ impl Scoped {
                 }
             }
             Command::TrackGain { track, .. }
+            | Command::ClipCancel { track }
             | Command::TrackPan { track, .. }
             | Command::Mute { track }
             | Command::Solo { track }
@@ -46,6 +47,7 @@ impl Scoped {
             | Command::TrackPfl { track, .. }
             | Command::OpenFxTrack(track) => (Some(*track as usize), None),
             Command::LaunchClip { track, scene }
+            | Command::ClipPress(super::super::clip_launch::Press { target: super::super::clip_launch::Target::Slot { track, scene, .. }, .. })
             | Command::FireClip { track, scene, .. }
             | Command::ClipGain { track, scene, .. }
             | Command::SetNotes { track, scene, .. } => {

@@ -13,6 +13,28 @@ fn fixture(map: MidiMap, source: u64) -> (Engine, RtEngine, TestInput) {
     );
     (engine, rt, input)
 }
+#[test]
+fn clip_launch_apc_release_keeps_its_original_target_after_bank_and_selection_changes(){
+    let(_engine,mut rt,mut input)=fixture(akai_apc40_mk2(),83);
+    rt.quant=0.0;
+    rt.tracks[0].clips[0].properties.launch=crate::engine::clip_launch::Policy{mode:crate::engine::clip_launch::Mode::Gate,grid:crate::engine::clip_launch::Grid::Immediate,legato:false};
+    send(&mut input,&mut rt,&[0x90,0x20,127]);assert_eq!(rt.tracks[0].playing.unwrap().scene,0);
+    rt.surface.status.scene_offset=1;rt.apply(Command::Select{track:1,scene:1});rt.apply(Command::LaunchClip{track:1,scene:0});
+    send(&mut input,&mut rt,&[0x80,0x20,64]);rt.process(&mut[0.0;2]);
+    assert!(rt.tracks[0].playing.is_none());assert_eq!(rt.tracks[1].playing.unwrap().scene,0);
+}
+#[test]
+fn clip_launch_controller_disconnect_reserves_release_at_full_queue_and_preserves_other_owners(){
+    let(engine,mut rt,mut input)=fixture(akai_apc40_mk2(),83);
+    let hub=MidiHub::without_devices();let mut other=hub.open_for_test(&engine.cmd,84,akai_apc40_mk2(),"other held clip","fixture:clip");
+    rt.quant=0.0;
+    for scene in 0..2{rt.tracks[0].clips[scene].properties.launch=crate::engine::clip_launch::Policy{mode:crate::engine::clip_launch::Mode::Gate,grid:crate::engine::clip_launch::Grid::Immediate,legato:false};}
+    send(&mut input,&mut rt,&[0x90,0x20,127]);send(&mut other,&mut rt,&[0x90,0x18,127]);
+    drop(input);rt.process(&mut[0.0;2]);assert_eq!(rt.tracks[0].playing.unwrap().scene,1);
+    while engine.cmd.send(Command::NudgeBpm(0.0)).is_ok(){}
+    drop(other);for _ in 0..16{rt.process(&mut[0.0;2]);}
+    assert!(rt.tracks[0].playing.is_none());
+}
 fn send(input: &mut TestInput, rt: &mut RtEngine, bytes: &[u8]) {
     input.push(bytes);
     rt.process(&mut []);

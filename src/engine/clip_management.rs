@@ -9,6 +9,8 @@ pub(crate) mod preset;
 pub(crate) struct Properties {
     pub color: Option<[u8; 3]>,
     pub disabled: bool,
+    #[serde(default, skip_serializing_if = "super::clip_launch::Policy::is_default")]
+    pub launch: super::clip_launch::Policy,
 }
 impl Properties {
     /// Omit unchanged legacy clip properties.

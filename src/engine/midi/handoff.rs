@@ -312,6 +312,7 @@ impl InputWorker {
                         if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
+                            if let Some(release) = crate::engine::clip_launch::wire_release(&message, self.source) { let _ = cmd.send(Command::ClipRelease(release)); }
                             match self.shared.learning.input_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning) {
                                 super::learn::Dispatch::Consume => continue,
                                 super::learn::Dispatch::Binding(binding) => { let _=super::dispatch(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift);continue; },

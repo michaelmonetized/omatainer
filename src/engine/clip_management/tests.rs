@@ -53,6 +53,7 @@ fn midi(t: usize, s: usize) -> crate::engine::Clip {
         properties: Properties {
             color: Some([20 + t as u8, 40 + s as u8, 210]),
             disabled: false,
+            ..Properties::default()
         },
         audio_region: None,
         lanes: Some(
@@ -118,6 +119,7 @@ fn eight_contrasting_clips_copy_move_metadata_delete_undo_and_native_reopen_reta
                     properties: Properties {
                         color: Some([200, t as u8 * 40, 80]),
                         disabled: t == 3,
+                        ..Properties::default()
                     },
                     kind: ClipKind::Audio,
                     name: format!("audio {t}"),
@@ -160,6 +162,7 @@ fn eight_contrasting_clips_copy_move_metadata_delete_undo_and_native_reopen_reta
     let p = Properties {
         color: Some([17, 240, 65]),
         disabled: true,
+        ..Properties::default()
     };
     apply(
         &engine,

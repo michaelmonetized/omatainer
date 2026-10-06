@@ -1290,6 +1290,52 @@
       ],
       "limits": "Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical portable-preset import and override listening remain open; factory MPD captures are separate. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged."
     },
+    "196": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native clip policy editor",
+          "file": "src/ui/clip_manager.rs",
+          "entry": "Session clips manager → Trigger/Gate/Toggle/Repeat, inherited or explicit timing, legato → Create/Apply"
+        },
+        {
+          "kind": "native held input and cancellation",
+          "file": "src/ui/clip_launch.rs",
+          "entry": "Primary mouse, Space/Enter and assistive press/release; original-target releases outside the grid or after focus loss; cancel queued transition"
+        },
+        {
+          "kind": "source-owned renderer scheduling",
+          "file": "src/engine/clip_launch.rs",
+          "entry": "Exact pending start/stop, repeat and unequal-length legato; generation ownership, renderer-safe stale identity refusal"
+        },
+        {
+          "kind": "musical bar timing",
+          "file": "src/engine/midi_data/lanes.rs",
+          "entry": "Allocation-free pickup-aware groups of bars through odd and fragmentary meter changes"
+        },
+        {
+          "kind": "release reservation and recovery",
+          "file": "src/engine/control.rs",
+          "entry": "Retained Session identity admission reserves held releases at full queue; bank/remapping/disconnect releases retain original owners"
+        },
+        {
+          "kind": "native project and preset persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 21 policies, strict legacy migration, nonresuming held Gate/Repeat modes and real .omat/.omatclip reopen"
+        }
+      ],
+      "fixtures": [
+        "engine::clip_launch::tests",
+        "engine::midi::surface_tests::clip_launch_apc_release_keeps_its_original_target_after_bank_and_selection_changes",
+        "engine::midi::surface_tests::clip_launch_controller_disconnect_reserves_release_at_full_queue_and_preserves_other_owners",
+        "ui::clip_manager::tests::native_clip_launch_properties_and_keyboard_pointer_releases_use_real_handlers"
+      ],
+      "evidence": [
+        "docs/validation/session-launch.md",
+        "docs/validation/session-launch-receipt.json"
+      ],
+      "limits": "Session launch policies are software-qualified through unopened-device MIDI workers, native mouse/key/assistive handlers, timestamped MIDI, independent actual audio PCM boundaries, file reopening and measured zero renderer heap work. Positive Global repeat subdivisions are at least 1/64 of a whole note; Immediate repeat uses clip length. Bar groups honor the saved meter/pickup. Explicit one-shot/loop actions use timing/legato but do not invent held input. Arrangement snapshots retain policy metadata while Arrangement scheduling owns their instance positions. New physical held-pad and listening acceptance is outside this software pass."
+    },
     "205": {
       "status": "implemented",
       "paths": [

@@ -497,6 +497,26 @@ impl Conductor {
             meter,
         )
     }
+    /// Find the next pickup-aware group of bars without creating a list.
+    /// Takes a quarter-note position and a positive group size; returns the first matching boundary at or after it.
+    pub fn next_bar_boundary(&self, beat: f64, group: u32) -> f64 {
+        let epsilon = super::super::midi_schedule::BEAT_EPSILON;
+        let group = f64::from(group.max(1));
+        let mut bar = 1.0;
+        for (index, meter) in self.meters.iter().enumerate() {
+            let origin = if index == 0 { self.native.map_or(0.0, |s| s.pickup) } else { meter.tick as f64 / f64::from(self.ppqn) };
+            let next = self.meters.get(index + 1).map_or(f64::INFINITY, |m| m.tick as f64 / f64::from(self.ppqn));
+            let length = f64::from(meter.numerator) * 4.0 / f64::from(1u32 << meter.denominator_power);
+            let first = ((beat - origin - epsilon) / length).ceil().max(0.0);
+            let aligned = first + (1.0 - bar - first).rem_euclid(group);
+            let boundary = origin + aligned * length;
+            if boundary < next - epsilon { return boundary; }
+            let count = (next - origin) / length;
+            let rounded = count.round();
+            bar += if ((count - rounded) * length).abs() <= epsilon { rounded } else { count.ceil() };
+        }
+        beat
+    }
     pub fn meta(&self) -> Vec<Meta> {
         let tempos = self.tempos.iter().enumerate().map(|(i, p)| Meta {
             tick: p.tick,

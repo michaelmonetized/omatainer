@@ -65,6 +65,7 @@ enum GateKey {
     Pad(u8),
     MidiPad { source: u64, pad: u8 },
     SurfaceShift(u64),
+    ClipPad { source: u64, key: u32 },
     Audition(u64),
     Piano(u64),
     Touch { source: u64, deck: u8 },
@@ -610,6 +611,7 @@ impl CommandPort {
                 GateKey::DeckButton { source: owner, deck, button } if owner == source => Command::DeckControl { source, deck, control: super::deck_controls::Control::Hold { button, on: false } },
                 GateKey::MidiPad { source: owner, pad } if owner == source => Command::MidiSamplerPad { source, pad, on: false, pressure: 0.0 },
                 GateKey::SurfaceShift(owner) if owner == source => Command::Surface(super::surface_controls::Input::Shift { source, on: false }),
+                GateKey::ClipPad { source: owner, key } if owner == source => Command::ClipRelease(super::clip_launch::Release { source, key }),
                 _ => continue,
             };
             let _ = self.send(command);
@@ -711,6 +713,8 @@ impl CommandPort {
         if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command,Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Apc(pad),..}) if *pad>=40)
+            || matches!(&command,Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Slot{track,scene,..},..}) if usize::from(*track)>=super::session::MAX_TRACKS||usize::from(*scene)>=super::session::MAX_SCENES) {return fail(SubmissionError::InvalidTarget);}
         if let Command::DeckLoadSelected { deck } = command {
             return self.shared.submit_ui(self.shared.ui_requests.load(deck));
         }
@@ -944,6 +948,8 @@ fn owned_payload_bytes(command: &Command) -> usize {
 }
 
 fn project_release(command: &Command) -> bool {
+    if let Command::SessionControl(scoped)=command{return project_release(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return project_release(command);}
     if let Command::Remote(request) = command { return project_release(&request.action.command()); }
     matches!(
         command,
@@ -964,6 +970,8 @@ fn project_release(command: &Command) -> bool {
             | Command::DeckControl { control: super::deck_controls::Control::Hold { on: false, .. }, .. }
             | Command::Stop
             | Command::StopTrack { .. }
+            | Command::ClipRelease(_)
+            | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
     )
 }
@@ -1008,8 +1016,12 @@ mod gui_routing_tests {
 }
 
 fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
+    if let Command::SessionControl(scoped)=command{return gate_change(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return gate_change(command);}
     if let Command::Remote(request) = command { return gate_change(&request.action.command()); }
     match *command {
+        Command::ClipPress(super::clip_launch::Press { source, key, .. }) => Some((GateKey::ClipPad { source, key }, true)),
+        Command::ClipRelease(super::clip_launch::Release { source, key }) => Some((GateKey::ClipPad { source, key }, false)),
         Command::LiveNoteOn {
             source,ch,note,vel,
         } | Command::RoutedNoteOn {
@@ -1064,8 +1076,11 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
 }
 
 fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
+    if let Command::SessionControl(scoped)=command{return blocked_by_stop(&scoped.command,pending);}
+    if let Command::Gesture{command,..}=command{return blocked_by_stop(command,pending);}
     if let Command::Remote(request) = command { return blocked_by_stop(&request.action.command(), pending); }
     let clip_track = match *command {
+        Command::ClipPress(super::clip_launch::Press { target: super::clip_launch::Target::Slot { track, .. }, .. }) => Some(track as usize),
         Command::LaunchClip { track, .. } | Command::FireClip { track, .. } => Some(track as usize),
         _ => None,
     };
@@ -1079,7 +1094,7 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
     let transport_start = matches!(
         command,
         Command::Play | Command::TogglePlay | Command::Record
-    ) || matches!(command, Command::Surface(super::surface_controls::Input::Apc { control: 0..=0x27 | 0x52..=0x56 | 0x5b | 0x5d | 0x66, value: 1..=127, note: true, .. }) | Command::Surface(super::surface_controls::Input::Recording(true)));
+    ) || matches!(command, Command::ClipPress(super::clip_launch::Press {target:super::clip_launch::Target::Apc(_),..}) | Command::Surface(super::surface_controls::Input::Apc { control: 0..=0x27 | 0x52..=0x56 | 0x5b | 0x5d | 0x66, value: 1..=127, note: true, .. }) | Command::Surface(super::surface_controls::Input::Recording(true)));
     let pad = match *command {
         Command::SamplerPad { pad, on: true } => Some(usize::from(pad % 16)),
         Command::SamplerPadPressure { pad, .. } => Some(usize::from(pad)),
@@ -1331,6 +1346,8 @@ mod tests {
 }
 
 fn history_monitoring(command: &Command) -> bool {
+    if let Command::SessionControl(scoped)=command{return history_monitoring(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return history_monitoring(command);}
     matches!(
         command,
         Command::PrepareSelected { .. }
@@ -1354,6 +1371,8 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::DeckControl { .. }
             | Command::Stop
             | Command::StopTrack { .. }
+            | Command::ClipRelease(_)
+            | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
             | Command::Play
             | Command::TogglePlay

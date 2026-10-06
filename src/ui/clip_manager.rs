@@ -299,6 +299,7 @@ impl App {
                 });
                 if let Some(color)=&mut editor.properties.color{ui.horizontal(|ui|{for (channel,label) in ["Clip color red","Clip color green","Clip color blue"].into_iter().enumerate(){let mut value=f32::from(color[channel]);let r=ui.add(egui::Slider::new(&mut value,0.0..=255.0).text(label));if let Some(next)=accessibility::numeric(ui,&r,label,value,0.0,255.0,1.0,""){value=next;}color[channel]=value.round()as u8;}});}
                 let r=ui.add(egui::Slider::new(&mut editor.bars,0.25..=256.0).text("New MIDI clip bars"));
+                super::clip_launch::policy_ui(ui,&mut editor.properties.launch);
                 if let Some(v)=accessibility::numeric(ui,&r,"New MIDI clip bars",editor.bars,0.25,256.0,0.25," bars"){editor.bars=v;}
                 let key=|key,modifiers|ctx.input_mut(|i|i.consume_key(modifiers,key));
                 let apply=key(egui::Key::Enter,egui::Modifiers::CTRL);

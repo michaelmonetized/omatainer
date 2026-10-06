@@ -10,12 +10,23 @@ use std::{
 
 /// Retain one reusable clip with its complete native musical settings.
 /// The native container embeds at most one shared audio source; importing assigns new MIDI identities and leaves source files untouched.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Preset {
     schema: u32,
     clip_schema: u32,
     pub clip: project::SavedClip,
+}
+impl<'de> Deserialize<'de> for Preset {
+    fn deserialize<D:serde::Deserializer<'de>>(deserializer:D)->Result<Self,D::Error>{
+        let raw=serde_json::Value::deserialize(deserializer)?;
+        if raw["clip_schema"].as_u64().unwrap_or(0)<21 && raw.get("clip").and_then(|c|c.get("properties")).is_some_and(|p|p.get("launch").is_some()){return Err(serde::de::Error::custom("Clip launch policy requires preset clip schema 21"));}
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {schema:u32,clip_schema:u32,clip:project::SavedClip}
+        let wire:Wire=serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
+        Ok(Self{schema:wire.schema,clip_schema:wire.clip_schema,clip:wire.clip})
+    }
 }
 pub(crate) type Bundle = crate::project_file::Bundle<Preset>;
 fn limits() -> crate::project_file::Limits {
@@ -59,7 +70,7 @@ impl Preset {
         cancel: &AtomicBool,
     ) -> Result<(), String> {
         if self.schema != 1
-            || self.clip_schema != project::STATE_VERSION
+            || !(20..=project::STATE_VERSION).contains(&self.clip_schema)
             || self.clip.kind == ClipKind::Empty
             || media.len() != usize::from(self.clip.audio.is_some())
             || self.clip.audio.is_some_and(|i| i != 0)

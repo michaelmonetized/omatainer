@@ -317,7 +317,7 @@ pub(in crate::engine) fn prepare_track(saved: Track, media: &[Arc<Sample>], sr: 
     track.fx = effects(saved.fx, sr);
     track.clips = saved.clips.into_iter().map(|c|prepare_clip(c,media)).collect::<Result<Vec<_>,String>>()?;
     track.clips.reserve(session::MAX_SCENES - track.clips.len());
-    track.project_resume = saved.launch.filter(|p|!track.clips[usize::from(p.scene)].properties.disabled).map(|p| PlayingClip { scene: p.scene,
+    track.project_resume = saved.launch.filter(|p|!track.clips[usize::from(p.scene)].properties.disabled && !matches!(track.clips[usize::from(p.scene)].properties.launch.mode,clip_launch::Mode::Gate|clip_launch::Mode::Repeat)).map(|p| PlayingClip { scene: p.scene,
         start_beat: p.start_beat, midi_start_beat: p.start_beat, last_beat: -0.0001, looping: p.looping });
     track.midi_schedule.prepare_history(8192); track.recorded_playback.reserve(8192);
     Ok(track)

@@ -550,6 +550,9 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiClock { .. }
         | Command::SetBpm(_)
         | Command::LaunchClip { .. }
+        | Command::ClipPress(_)
+        | Command::ClipRelease(_)
+        | Command::ClipCancel { .. }
         | Command::LaunchScene { .. }
         | Command::StopTrack { .. }
         | Command::DeckPlay { .. }
@@ -655,11 +658,15 @@ fn destructive(command: &Command) -> bool {
     }
 }
 pub(super) fn recovery_safe(command: &Command) -> bool {
+    if let Command::SessionControl(scoped)=command{return recovery_safe(&scoped.command);}
+    if let Command::Gesture{command,..}=command{return recovery_safe(command);}
     if let Command::Remote(request) = command { return recovery_safe(&request.action.command()); }
     matches!(
         command,
         Command::Stop
             | Command::StopTrack { .. }
+            | Command::ClipRelease(_)
+            | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
             | Command::LiveNoteOff { .. }
             | Command::LiveNoteOn { vel: 0, .. }
@@ -813,6 +820,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.clip_launch_inputs.clear();
         self.release_surface_inputs();
         self.finish_sampler_audition();
         // Finite sample one-shots keep their existing Arc ownership and natural

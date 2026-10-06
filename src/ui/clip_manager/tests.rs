@@ -271,3 +271,26 @@ fn native_preset_save_inspect_insert_and_audition_produce_real_audio() {
     g.click("Stop destination track");
     assert!(g.rt.tracks[0].playing.is_none());
 }
+#[test]
+fn native_clip_launch_properties_and_keyboard_pointer_releases_use_real_handlers(){
+    let mut g=Gui::new();g.click("Session clips");g.wait();
+    g.click("Clip launch mode");g.click("Gate");g.click("Clip launch timing");g.click("Immediate");g.click("Legato clip switching");
+    g.key(egui::Key::N,egui::Modifiers::CTRL);g.wait();
+    let policy=g.rt.tracks[0].clips[7].properties.launch;
+    assert_eq!(policy.mode,crate::engine::clip_launch::Mode::Gate);assert_eq!(policy.grid,crate::engine::clip_launch::Grid::Immediate);assert!(policy.legato);
+    g.click("Close window");assert!(!g.app.clip_manager.open);g.frame(vec![]);
+    let label="Clip track 1 scene 8: Empty";
+    g.action(label,Action::Focus,None);
+    let event=|pressed|egui::Event::Key{key:egui::Key::Space,physical_key:Some(egui::Key::Space),pressed,repeat:false,modifiers:Default::default()};
+    g.frame(vec![event(true)]);assert_eq!(g.rt.tracks[0].playing.unwrap().scene,7);
+    g.rt.quant=0.0;g.rt.apply(Command::LaunchClip{track:1,scene:0});
+    let before=format!("{:?}",g.app.clip_launch_holds);
+    g.frame(vec![event(false)]);assert!(g.rt.tracks[0].playing.is_none(),"Before {before}; after {:?}; engine {:?}",g.app.clip_launch_holds,g.rt.tracks[0].launch);assert_eq!(g.rt.tracks[1].playing.unwrap().scene,0);
+    let bounds=g.nodes.iter().find(|(_,node)|node.label()==Some(label)).unwrap().1.bounds().unwrap();let pos=egui::pos2(((bounds.x0+bounds.x1)*0.5)as f32,((bounds.y0+bounds.y1)*0.5)as f32);
+    let mouse=|pressed,pos|egui::Event::PointerButton{pos,button:egui::PointerButton::Primary,pressed,modifiers:Default::default()};
+    g.frame(vec![egui::Event::PointerMoved(pos),mouse(true,pos)]);assert_eq!(g.rt.tracks[0].playing.unwrap().scene,7);
+    let outside=egui::pos2(1790.0,1790.0);g.frame(vec![egui::Event::PointerMoved(outside),mouse(false,outside)]);
+    assert!(g.rt.tracks[0].playing.is_none());assert_eq!(g.rt.tracks[1].playing.unwrap().scene,0);
+    g.click(label);assert_eq!(g.rt.tracks[0].playing.unwrap().scene,7);
+    g.click(label);assert!(g.rt.tracks[0].playing.is_none());assert_eq!(g.rt.tracks[1].playing.unwrap().scene,0);
+}

@@ -32,6 +32,7 @@ impl RtEngine {
         self.timeline_anchor = seconds;
         self.timeline_frames = 0;
         for (slot, track) in self.tracks.iter_mut().enumerate() {
+            track.launch.seek();
             self.midi_routing.clear_clip(slot as u8);
             track.release_clip_notes();
             track.drum_pos.fill(None);

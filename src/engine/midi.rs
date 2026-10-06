@@ -315,6 +315,7 @@ fn handle_channel(
     let ch = st & 0x0F;
     let d1 = msg[1];
     let d2 = msg[2];
+    if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = cmd.send(Command::ClipRelease(release)); }
 
     {
         let mut l = log.lock();
@@ -377,6 +378,7 @@ fn dispatch(
     let mut failure = None;
     let mut send = |command| { let result = cmd.send(command);if let Err(error) = &result { if failure.is_none() { failure = Some(error.clone()); } } result };
     let pressed = matches!(status, 0x90 | 0xb0) && d2 > 0;
+    if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = send(Command::ClipRelease(release)); }
     let rel = match b.kind {
         MsgKind::CcRel => {
             let Some(delta) = b.relative.and_then(|spec| spec.decode(d2)) else {
@@ -529,10 +531,9 @@ fn dispatch(
             });
         }
         Action::Clip if pressed => {
-            let _ = send(Command::LaunchClip {
-                track: b.deck.min((super::session::MAX_TRACKS - 1) as u8),
-                scene: b.extra.min((super::session::MAX_SCENES - 1) as u16),
-            });
+            let _ = send(Command::ClipPress(super::clip_launch::Press { source, key: super::clip_launch::wire_key(msg), target: super::clip_launch::Target::Slot {
+                track: b.deck.min((super::session::MAX_TRACKS - 1) as u8), scene: b.extra.min((super::session::MAX_SCENES - 1) as u16), looping: true,
+            }}));
         }
         Action::TrackFader => {
             let _ = send(Command::TrackGain {

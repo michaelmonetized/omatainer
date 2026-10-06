@@ -241,6 +241,8 @@ impl Frame {
             out.meter = track.meter;
             out.playing_scene = track.playing.map(|p| p.scene as i16).unwrap_or(-1);
             out.clip_pending = track.playing.is_some_and(|p| p.last_beat < 0.0);
+            out.clip_queued = track.launch.queued_scene();
+            out.clip_stopping = track.launch.stopping();
             out.clip_progress = track
                 .playing
                 .map(|p| {

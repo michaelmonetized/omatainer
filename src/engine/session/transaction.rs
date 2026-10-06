@@ -335,6 +335,7 @@ impl Inverse {
                     .is_none_or(|next| !next.active || next.id != rt.session.scenes[slot].id)
             {
                 for track in 0..rt.tracks.len() {
+                    rt.tracks[track].launch.cancel_scene(slot as u16);
                     if rt.tracks[track].scene_bus == slot {
                         self.scene_buses[track] = slot;
                         self.bus_mask |= 1u128 << track;

@@ -429,6 +429,20 @@ Seven new source-bound engine, native and typed-IPC checks pass, with deck, auto
 
 Native headless UI, real file storage and synthetic MIDI workers qualify portable definitions and factory fallback. Physical portable-preset import and override listening remain open; factory MPD captures are separate. Loading requires a unique connected exact port and explicit review; no inferred cross-machine device selection. Preferences 18, portable MIDI preset 1; project 15 and portable shortcut 2 unchanged.
 
+### Issue #196: implemented
+
+- native clip policy editor: [src/ui/clip_manager.rs](../src/ui/clip_manager.rs) — Session clips manager → Trigger/Gate/Toggle/Repeat, inherited or explicit timing, legato → Create/Apply
+- native held input and cancellation: [src/ui/clip_launch.rs](../src/ui/clip_launch.rs) — Primary mouse, Space/Enter and assistive press/release; original-target releases outside the grid or after focus loss; cancel queued transition
+- source-owned renderer scheduling: [src/engine/clip_launch.rs](../src/engine/clip_launch.rs) — Exact pending start/stop, repeat and unequal-length legato; generation ownership, renderer-safe stale identity refusal
+- musical bar timing: [src/engine/midi_data/lanes.rs](../src/engine/midi_data/lanes.rs) — Allocation-free pickup-aware groups of bars through odd and fragmentary meter changes
+- release reservation and recovery: [src/engine/control.rs](../src/engine/control.rs) — Retained Session identity admission reserves held releases at full queue; bank/remapping/disconnect releases retain original owners
+- native project and preset persistence: [src/engine/project/model.rs](../src/engine/project/model.rs) — State 21 policies, strict legacy migration, nonresuming held Gate/Repeat modes and real .omat/.omatclip reopen
+- Acceptance fixtures: `engine::clip_launch::tests`, `engine::midi::surface_tests::clip_launch_apc_release_keeps_its_original_target_after_bank_and_selection_changes`, `engine::midi::surface_tests::clip_launch_controller_disconnect_reserves_release_at_full_queue_and_preserves_other_owners`, `ui::clip_manager::tests::native_clip_launch_properties_and_keyboard_pointer_releases_use_real_handlers`.
+- Evidence: [docs/validation/session-launch.md](../docs/validation/session-launch.md).
+- Evidence: [docs/validation/session-launch-receipt.json](../docs/validation/session-launch-receipt.json).
+
+Session launch policies are software-qualified through unopened-device MIDI workers, native mouse/key/assistive handlers, timestamped MIDI, independent actual audio PCM boundaries, file reopening and measured zero renderer heap work. Positive Global repeat subdivisions are at least 1/64 of a whole note; Immediate repeat uses clip length. Bar groups honor the saved meter/pickup. Explicit one-shot/loop actions use timing/legato but do not invent held input. Arrangement snapshots retain policy metadata while Arrangement scheduling owns their instance positions. New physical held-pad and listening acceptance is outside this software pass.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -534,7 +548,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned |
 | [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned |
 | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented |
-| [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | planned |
+| [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | implemented |
 | [#197](https://github.com/michaelmonetized/omatainer/issues/197) | Schedule independent tracks across cores with bounded real-time execution | planned |
 | [#198](https://github.com/michaelmonetized/omatainer/issues/198) | Host CLAP instruments and effects with expression support | planned |
 | [#199](https://github.com/michaelmonetized/omatainer/issues/199) | Host LV2 instruments, effects and native Linux plugin UIs | planned |

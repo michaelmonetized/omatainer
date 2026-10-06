@@ -106,7 +106,7 @@ Workflow: Edit and undo.
 
 Create, organize and reuse complete clip content
 
-Open Session clips in Setup or the clip grid alternate Manage clip action. Choose source and destination by track and scene. Create MIDI clips with Ctrl+N or use Edit or import audio for audio sources. Rename, disable or choose an exact RGB color and commit properties with Ctrl+Enter. Ctrl+D duplicates with fresh note identities; Ctrl+M moves the original content; Ctrl+Shift+Backspace deletes. Copy and move require an empty destination and retain notes, lanes, regions, gain, reverse, loop and color settings. MIDI uses the destination track instrument and routes; audio shares immutable PCM. Stop affected clips and recording before applying in Studio mode. Every edit is one atomic Undo operation. Save a new .omatclip preset with Ctrl+Shift+S; existing files are preserved. Inspect with Ctrl+O, insert into an empty destination and audition through its normal instrument and mixer, then stop its track. Presets embed up to 128 MiB audio and preserve complete clip settings. Refresh after another project edit before audition or apply. Source files stay intact.
+Open Session clips in Setup or the clip grid alternate Manage clip action. Choose source and destination by track and scene. Create MIDI clips with Ctrl+N or use Edit or import audio for audio sources. Rename, disable, choose an exact RGB color and set launch mode, musical timing and legato; commit properties with Ctrl+Enter. Ctrl+D duplicates with fresh note identities; Ctrl+M moves the original content; Ctrl+Shift+Backspace deletes. Copy and move require an empty destination and retain notes, lanes, regions, gain, reverse, loop and color settings. MIDI uses the destination track instrument and routes; audio shares immutable PCM. Stop affected clips and recording before applying in Studio mode. Every edit is one atomic Undo operation. Save a new .omatclip preset with Ctrl+Shift+S; existing files are preserved. Inspect with Ctrl+O, insert into an empty destination and audition through its normal instrument and mixer, then stop its track. Presets embed up to 128 MiB audio and preserve complete clip settings. Refresh after another project edit before audition or apply. Source files stay intact.
 
 Workflow: Edit and undo.
 
@@ -2810,7 +2810,7 @@ Workflow: Mix a session.
 
 Track × scene
 
-Click launches once; right-click launches looping. Shift-click explicitly arms composition; Alt-click opens gain. Shift+F10 exposes named actions. Queued launch is distinct from playing.
+Use Session clips to choose Trigger, Gate, Toggle or Repeat, inherited Global timing or an explicit musical grid, and Legato. Primary mouse or held Space/Enter uses those settings. Trigger starts on press; Gate stops on release; Toggle stops on the next press; Repeat retriggers while held, on its grid or at clip length for Immediate. A queued switch keeps the old clip sounding until its boundary. Legato carries its musical phase into the new length. Right-click launches looping; Shift-click explicitly arms composition; Alt-click opens gain. Shift+F10 exposes configured Press/Release and Cancel queued clip transition, plus explicit one-shot and loop actions. Assistive click toggles Gate/Repeat holds; Trigger/Toggle click sends a complete press. Queued, playing and stopping states are distinct. Releasing outside the clip or changing selection still releases the original held target. Native reopening retains settings, but Gate/Repeat never resume without a new hold.
 
 Workflow: Record a held note.
 

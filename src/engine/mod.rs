@@ -97,6 +97,7 @@ mod scene_ownership_tests;
 
 #[cfg(test)]
 mod clip_lifecycle_tests;
+pub(crate) mod clip_launch;
 #[cfg(test)]
 mod deck_loop_tests;
 #[cfg(test)]
@@ -240,6 +241,7 @@ pub struct TrackRt {
     pub name: String,
     pub clips: Vec<Clip>,
     pub playing: Option<PlayingClip>,
+    pub(crate) launch: clip_launch::State,
     project_resume: Option<PlayingClip>,
     // The bus stays selected through stops/tails until a new clip starts.
     pub scene_bus: usize,
@@ -274,7 +276,7 @@ impl TrackRt {
         let mut clips: Vec<_> = (0..scenes).map(|_| Clip::empty()).collect();
         clips.reserve(session::MAX_SCENES - clips.len());
         Self {
-            name, clips, playing: None, project_resume: None, scene_bus: 0,
+            name, clips, playing: None, launch: Default::default(), project_resume: None, scene_bus: 0,
             gain: 0.8, pan: 0.0, mixer_gain: mixer_gain::GainPair::default(),
             mute: false, solo: false, armed: false, kind,
             input_monitor: None, input_gain: mixer_gain::GainPair::default(), pfl: false,
@@ -334,6 +336,7 @@ impl TrackRt {
     }
 
     fn stop_clip(&mut self) {
+        self.launch.clear();
         self.playing = None;
         self.project_resume = None;
         self.release_clip_notes();
@@ -645,6 +648,7 @@ pub struct RtEngine {
     monitor: monitor::Monitor,
     pub(crate) mic_aux: Box<audio::routing::mic_aux::Mixer>,
     surface: Box<surface_controls::State>,
+    clip_launch_inputs: Box<clip_launch::Inputs>,
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
     pub(crate) arrangement: Box<arrangement::Playback>,
@@ -790,6 +794,8 @@ pub struct TrackSnap {
     pub playing_scene: i16,
     pub clip_progress: f32,
     pub clip_pending: bool,
+    pub clip_queued: Option<u16>,
+    pub clip_stopping: bool,
     pub clip_looping: bool,
     pub clips: Vec<ClipSnap>,
 }
@@ -989,6 +995,9 @@ pub enum Command {
     LaunchClip { track: u8, scene: u16 },
     LaunchScene { scene: u16 },
     StopTrack { track: u8 },
+    ClipPress(clip_launch::Press),
+    ClipRelease(clip_launch::Release),
+    ClipCancel { track: u8 },
     DeckPlay { deck: u8 },
     DeckCue { deck: u8 },
     DeckSync { deck: u8 },
@@ -1192,6 +1201,7 @@ impl RtEngine {
             monitor: monitor::Monitor::default(),
             mic_aux: Box::new(audio::routing::mic_aux::Mixer::new(None, sr)),
             surface: Box::new(surface_controls::State::new(sr).map_err(|error| error.to_string())?),
+            clip_launch_inputs: Box::default(),
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
@@ -1756,6 +1766,7 @@ impl RtEngine {
 
     fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
         let arrangement_enabled=self.arrangement.enabled();
+        if !arrangement_enabled { self.clip_launch_tick(ti); }
         let (arrangement_audio,arrangement_sounding)=if arrangement_enabled{self.render_arrangement(ti)}else{self.render_midi_output(ti);([0.0;2],false)};
         let mut fallback = [0.0; 2];
         let silent = self.tracks[ti].mute || (any_solo && !self.tracks[ti].solo);
@@ -1898,7 +1909,9 @@ impl RtEngine {
             }
             if ending {
                 self.finish_recording_track(ti);
-                self.tracks[ti].stop_clip();
+                self.tracks[ti].playing = None;
+                self.tracks[ti].project_resume = None;
+                self.tracks[ti].release_clip_notes();
             }
         }
         // Mute/solo gates the output, never the musical clock or DSP history.
@@ -2284,6 +2297,8 @@ impl RtEngine {
             return;
         }
         if self.tracks[track].clips[scene_index].properties.disabled {return;}
+        let policy=self.tracks[track].clips[scene_index].properties.launch;
+        if self.tracks[track].clips[scene_index].occupied() && (!policy.is_default()||self.tracks[track].playing.is_some()&&start>self.beat+midi_schedule::BEAT_EPSILON){self.clip_queue_explicit(track,scene,true);return;}
         self.finish_recording_track(track);
         self.tracks[track].stop_clip();
         if self.tracks[track].clips[scene_index].occupied() {
@@ -2495,6 +2510,11 @@ impl RtEngine {
                     self.finish_recording_track(track as usize);
                     self.tracks[track as usize].stop_clip();
                 }
+            }
+            Command::ClipPress(input) => self.clip_press(input),
+            Command::ClipRelease(input) => self.clip_release(input),
+            Command::ClipCancel { track } => {
+                if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.launch.cancel(); if track.playing.is_some_and(|p|p.last_beat<0.0){track.stop_clip();} }
             }
             Command::DeckPlay { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
@@ -3042,6 +3062,7 @@ impl RtEngine {
             }
             Command::FireClip { track, scene, looping } => {
                 self.apply(Command::LaunchClip { track, scene });
+                if let Some(t)=self.tracks.get_mut(usize::from(track)){if t.launch.queued_scene()==Some(scene){t.launch.set_looping(scene,looping);return;}}
                 if let Some(p) = self.tracks.get_mut(track as usize).and_then(|t| t.playing.as_mut()).filter(|p|p.scene==scene) {
                     p.looping = looping;
                 }
@@ -3242,6 +3263,7 @@ impl RtEngine {
         if self.count_in.is_some() { return None; }
         let t = self.tracks.get(track)?;
         let clip = t.clips.get(scene)?;
+        if t.launch.queued_scene() == Some(scene as u16) { return None; }
         match t.playing.filter(|p| p.scene as usize == scene) {
             Some(p) if if clip.region.is_some() { self.precise_midi_beat() < p.midi_start_beat } else { self.beat < p.start_beat } => None,
             Some(p) => clip.region.map_or_else(|| Some((self.beat - p.start_beat)

@@ -285,7 +285,7 @@ impl Inverse {
                 rt.session.resolves(Axis::Track, c.track, c.slot.track)
                     && rt.session.resolves(Axis::Scene, c.scene, c.slot.scene)
                     && rt.tracks.get(c.track).is_some_and(|t| {
-                        t.playing
+                        t.launch.queued_scene().is_none_or(|s|usize::from(s)!=c.scene) && t.playing
                             .or(t.project_resume)
                             .is_none_or(|p| usize::from(p.scene) != c.scene)
                     })

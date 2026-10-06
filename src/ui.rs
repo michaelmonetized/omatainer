@@ -51,6 +51,7 @@ mod midi_files;
 mod audio_clips;
 mod arrangement;
 mod clip_manager;
+mod clip_launch;
 mod timing;
 mod dependencies;
 mod portability;
@@ -204,6 +205,7 @@ pub struct App {
     audio_clips: Box<audio_clips::Editor>,
     arrangement:Box<arrangement::Editor>,
     clip_manager:Box<clip_manager::Editor>,
+    clip_launch_holds:clip_launch::Holds,
     timing: timing::Editor,
     dependencies: dependencies::Dependencies,
     portability: portability::Portability,
@@ -351,6 +353,7 @@ impl App {
             audio_clips: Box::default(),
             arrangement:Box::default(),
             clip_manager:Box::default(),
+            clip_launch_holds:Default::default(),
             timing: timing::Editor::default(),
             dependencies: dependencies::Dependencies::default(),
             portability: portability::Portability::default(),
@@ -831,6 +834,7 @@ impl App {
         #[cfg(test)]
         std::thread::sleep(self.diagnostics.ui_delay);
         self.shortcut_focus.begin_frame(ctx);
+        self.clip_launch_releases(ctx);
         self.touch_input.begin(ctx);
         accessibility::begin_frame(ctx);
         self.undo_history.begin_frame(ctx, &self.engine.undo);
@@ -1686,7 +1690,7 @@ impl App {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing = Vec2::splat(gap);
                             let on = self.snap.playing && self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && !tr.clip_pending);
-                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending);
+                            let queued = self.snap.tracks.iter().any(|tr| tr.playing_scene == sc as i16 && tr.clip_pending || tr.clip_queued==Some(sc as u16));
                             let (hr, _) = ui.allocate_exact_size(Vec2::new(scene_w, row_h), Sense::hover());
                             let hresp = ui.interact(hr, egui::Id::new(("session-scene",layout.namespace,layout.scenes[sc].id.0)), Sense::click());
                             let scene_color=layout.scenes[sc].color.map(|c|Color32::from_rgb(c[0],c[1],c[2])).unwrap_or(t.accent);
@@ -1716,8 +1720,9 @@ impl App {
                             let tr = usize::from(layout.track_order[display_track]);
                                 let clip = self.snap.tracks.get(tr).and_then(|x| x.clips.get(sc));
                                 let filled = clip.map(|c| c.kind != 0).unwrap_or(false);
-                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending);
+                                let queued = self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && x.clip_pending || x.clip_queued==Some(sc as u16));
                                 let playing = self.snap.playing && self.snap.tracks.get(tr).is_some_and(|x| x.playing_scene == sc as i16 && !x.clip_pending);
+                                let stopping=playing && self.snap.tracks.get(tr).is_some_and(|x|x.clip_stopping);
                                 let looping = self.snap.tracks.get(tr).map(|x| x.clip_looping).unwrap_or(false);
                                 let color = clip.and_then(|c|c.properties.color).or(layout.tracks[tr].color).map(|c| Color32::from_rgb(c[0],c[1],c[2])).unwrap_or_else(||t.track_color(tr));
                                 let disabled = clip.is_some_and(|c|c.properties.disabled);
@@ -1739,7 +1744,7 @@ impl App {
                                 );
                                 if filled {
                                     let name = clip.map(|c| c.name.as_str()).unwrap_or("");
-                                    let label = format!("{} {name}", if disabled {"Off"}else if queued { "Q" } else if playing { ">" } else { "[]" });
+                                    let label = format!("{} {name}", if disabled {"Off"}else if stopping {"Stop queued"}else if queued { "Q" } else if playing { ">" } else { "[]" });
                                     ui.painter_at(rect).text(
                                         rect.center(),
                                         egui::Align2::CENTER_CENTER,
@@ -1754,11 +1759,14 @@ impl App {
                                 }
                                 grid_gained_focus |= resp.gained_focus();
                                 accessibility::button(ui, &resp, &format!("Clip track {} scene {}: {}", display_track + 1, display_scene + 1, clip.map(|c| c.name.as_str()).filter(|name| !name.is_empty()).unwrap_or("Empty")), Some(playing));
-                                accessibility::status(ui, &resp, &format!("{}; {}", if disabled {"Disabled"}else if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
-                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Edit audio clip", "Manage clip"] } else { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Import audio clip", "Manage clip"] };
+                                accessibility::status(ui, &resp, &format!("{}; {}", if disabled {"Disabled"}else if stopping {"Stopping"}else if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
+                                let mode=clip.map_or(crate::engine::clip_launch::Mode::Trigger,|c|c.properties.launch.mode);
+                                let clip_level=clip.map(|c|c.gain).unwrap_or(1.0);
+                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Edit audio clip", "Manage clip", "Press configured clip", "Release configured clip", "Cancel queued clip transition"] } else { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Import audio clip", "Manage clip", "Press configured clip", "Release configured clip", "Cancel queued clip transition"] };
                                 let action = accessibility::actions(ui, &resp, labels);
+                                let configured=self.clip_launch_input(&resp,tr,sc,mode,filled&&!disabled,action);
                                 help::annotate(ui, &resp, HelpControl::Clip);
-                                if resp.clicked() || matches!(action, Some(0 | 2 | 3 | 4 | 5)) {
+                                if resp.clicked()&&!configured || matches!(action, Some(0 | 2 | 3 | 4 | 5)) {
                                     if action == Some(5) {self.open_clip_manager(tr,sc);}
                                     else if action == Some(4) || action.is_none() && ui.input(|i| i.modifiers.alt && i.modifiers.shift) {
                                         self.open_audio_clip(tr as u8, sc as u16);
@@ -1766,7 +1774,7 @@ impl App {
                                         if filled {
                                             self.clip_gain_edit = Some(ClipGainEdit {
                                                 track: tr as u8, scene: sc as u16,
-                                                value: clip.map(|c| c.gain).unwrap_or(1.0),
+                                                value: clip_level,
                                                 target: layout.reference(crate::engine::session::Axis::Track,tr).zip(layout.reference(crate::engine::session::Axis::Scene,sc)),
                                             });
                                         }
