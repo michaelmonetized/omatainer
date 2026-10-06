@@ -308,7 +308,7 @@ impl App {
                 let create=key(egui::Key::N,egui::Modifiers::CTRL);
                 ui.horizontal_wrapped(|ui|{
                     if (ui.add_enabled(!empty,egui::Button::new("Apply clip properties")).clicked()||apply)&&!empty{editor.apply(&self.engine,Action::Metadata{target:source,name:editor.name.clone(),properties:editor.properties});}
-                    if (ui.add_enabled(empty,egui::Button::new("Create MIDI clip")).clicked()||create)&&empty{editor.apply(&self.engine,Action::CreateMidi{target:source,name:editor.name.clone(),bars:editor.bars});}
+                    if (ui.add_enabled(empty,egui::Button::new("Create MIDI clip")).clicked()||create)&&empty{editor.apply(&self.engine,Action::CreateMidi{target:source,name:editor.name.clone(),bars:editor.bars,properties:editor.properties});}
                     if ui.button("Edit or import audio").clicked(){audio=preview.indices(source);}
                     if (ui.add_enabled(!empty&&destination.is_some(),egui::Button::new("Duplicate clip")).clicked()||duplicate)&&!empty{if let Some(destination)=destination{editor.apply(&self.engine,Action::Copy{source,destination});}}
                     if (ui.add_enabled(!empty&&destination.is_some(),egui::Button::new("Move clip")).clicked()||moving)&&!empty{if let Some(destination)=destination{editor.apply(&self.engine,Action::Move{source,destination});editor.source=Some(destination);}}

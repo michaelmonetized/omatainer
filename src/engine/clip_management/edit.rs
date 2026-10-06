@@ -63,6 +63,7 @@ pub(crate) enum Action {
         target: Slot,
         name: String,
         bars: f32,
+        properties: Properties,
     },
     Copy {
         source: Slot,
@@ -131,13 +132,18 @@ impl Request {
                 clip.properties = properties;
                 vec![(target, clip)]
             }
-            Action::CreateMidi { target, name, bars } => {
+            Action::CreateMidi {
+                target,
+                name,
+                bars,
+                properties,
+            } => {
                 let mut clip = original(&captured.state, target, &layout)?;
                 empty(&clip)?;
                 clip.kind = ClipKind::Midi;
                 clip.name = name;
                 clip.bars = bars;
-                clip.properties.disabled = false;
+                clip.properties = properties;
                 vec![(target, clip)]
             }
             Action::Copy {

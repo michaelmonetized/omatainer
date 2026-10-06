@@ -353,7 +353,8 @@ fn cancelled_stale_active_protected_and_budget_refusals_acknowledge_and_preserve
         Action::CreateMidi {
             target,
             name: "cancelled".into(),
-            bars: 1.0
+            bars: 1.0,
+            properties: Properties::default(),
         },
         &AtomicBool::new(true)
     )
