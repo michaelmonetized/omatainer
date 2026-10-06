@@ -349,7 +349,7 @@ fn apc40_generations_use_separate_clip_grids_and_ignore_unmapped_buttons() {
         for track in 0..8u8 {
             for scene in 0..5u8 {
                 let address = if mk2 {
-                    [0x90, scene * 8 + track, 127]
+                    [0x90, [32, 24, 16, 8, 0][scene as usize] + track, 127]
                 } else {
                     [0x90 | track, 0x35 + scene, 127]
                 };
