@@ -4,8 +4,8 @@ The connected DDJ-SP1 passed the sixteen HOT CUE pads, six FX On buttons, and
 six full-range FX knob checks. The APC40 mkII passed all eight track faders,
 Pan knobs, Arm, Solo, Activator and Track Select inputs. Its Pan, Sends and User
 selector buttons remain unqualified: their presses produced no raw MIDI in
-either host mode. In the alternate-mode comparison, Michael reported that
-Pan stayed lit while Sends and User stayed dark.
+either host mode or the isolated generic-mode check. Software selection
+changed native Sends/User modes and their physical lights correctly.
 
 The [receipt](live-controller-acceptance-receipt.json) belongs to installed code
 `7db2dc58faa4962f2eff824cde2a7374d2fbafea`, executable SHA-256
@@ -61,9 +61,27 @@ lit, and Sends/User stayed dark.
 A separate software-generated Sends press and release entered the existing
 APC input connection. Native knob mode changed from Pan to Sends, and the
 application sent Pan off and Sends on, with no refusals or dropped input.
-Master stayed zero and playback/recording stopped. Physical appearance of
-those lights is pending. This injection checks the installed application path;
-it does not qualify a physical selector press.
+Michael confirmed Sends lit and Pan dark. A software User gesture then
+changed native mode to User and sent Sends off and User on, again without
+refusals or dropped input; Michael confirmed both light changes. Master
+stayed zero and playback/recording stopped. These injections qualify the
+installed application path and observed lights; they do not qualify physical
+selector presses.
+
+The generic-mode `0x40` comparison disconnected the APC input subscription
+to Omatainer while keeping the independent raw capture subscribed. Setup
+returned ten fader positions to the capture and none to Omatainer. Two
+physical Arm presses produced one Note On and one Note Off, matching the
+controller’s documented generic toggle behavior. Pan/Sends/User produced
+no messages; Michael reported that only Record Arm changed. Omatainer
+received no input and sent no feedback during this physical check.
+
+Host mode `0x41`, the app input subscription and native Pan mode were restored.
+Master remained zero and playback/recording stopped. The first restoration
+launcher failed before changing state because system Node rejected an
+inherited option; the retry removed that option and verified restoration.
+The absent selector input is isolated from Omatainer’s input processing and
+Sends/User light output. Its hardware or firmware cause is not established.
 
 Both host modes and the selector/LED addresses are specified in Akai's
 [communications protocol](https://cdn.inmusicbrands.com/akai/attachments/apc40II/APC40Mk2_Communications_Protocol_v1.2.pdf).

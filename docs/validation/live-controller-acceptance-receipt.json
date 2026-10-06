@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-10-06T12:36:27.480Z",
+  "generatedAt": "2026-10-06T12:45:19.101Z",
   "testedCodeRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
   "testedBinarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
   "runningPid": 1771583,
@@ -80,6 +80,70 @@
     {
       "path": "target/hardware/pioneer-apc/selector-software-sends-feedback.log",
       "sha256": "6421e6f0c8ef7936e4efdaa90f56ec65dbebf1946b4c120901ac88cacd1b41f7"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/selector-software-sends-physical.json",
+      "sha256": "03bcd143070148543c1d60249313983582cff09b822dd308ce600577326fb7ba"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/selector-software-user.log",
+      "sha256": "73804e6a3e440c82a1efb5789c6f1607615d47834d0955ba96fa7f48eca2e93b"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/selector-software-user-before.json",
+      "sha256": "8e06b67c776444116da45fe5cbb65d9f4ba10ee84cbbfafac008de50872ff209"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/selector-software-user-after.json",
+      "sha256": "73d822a3f01472a8d2ed53cb61f578eddb71a4d6283a868d2ee2249ca04cd8fc"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/selector-software-user-feedback.log",
+      "sha256": "fd1f61feeeeba9026cd24f49dfb0b9583e99c5cb6ef3394f862f2330e7336e79"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/selector-software-user-physical.json",
+      "sha256": "b8fcc410bfa0f2040047055d9751158972c1e3c92581f3a3d5a4c3b4011cfeb2"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-generic-mode.c",
+      "sha256": "8778fd8179ea85ee93a6ee471cb3ee487b471126a0c39b27211985e532f8e8a8"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-mode40.log",
+      "sha256": "f0c3e37e62c256da4e3a53daad0081fd5f7546494c909778544ee10a60aabecb"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-mode-before.json",
+      "sha256": "f14be44c370885cda5ae88745910170b69aac41458f94ed5b4f1a71b144ea445"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-mode-ready.json",
+      "sha256": "023ce2e87c887b39fba2197f8c33133e17b501931c4ccc825d1c818f1d1e3617"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-physical-input.log",
+      "sha256": "5a343657d6dc7347ae2da240aacb115438dac56aa0803a34881de7a47c6f874f"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-physical-feedback.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-physical-after.json",
+      "sha256": "e2692136764afeff8207fd73c95a7936157ac7285322c9ca0c8e93cd0062d97d"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-restoration-manual.json",
+      "sha256": "e064a7ffd40ba1b4e6d458c85050406316ee00438c8fc763dc05e83f83275872"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-restored-connections.log",
+      "sha256": "ad0558af5757287bd17229ec01549bc0a0ea97a00310dd77a3370852483efff0"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/generic-restoration-first-error.log",
+      "sha256": "e4549d14abf2e8adf1c52852e02cb66ce58476c668bc572cdbf0bc79a0690970"
     }
   ],
   "pioneer": {
@@ -1316,7 +1380,59 @@
         "master": 0,
         "playing": false,
         "recording": false,
-        "physicalLightObservation": "pending"
+        "physicalLightObservation": "Michael confirmed SENDS lit and PAN dark."
+      },
+      "softwareUserProbe": {
+        "source": "Software-generated Note On/Off 89, channel 0, sent directly to the existing APC input port 128:0. These are not physical device messages.",
+        "nativeKnobModeBefore": 1,
+        "nativeKnobModeAfter": 2,
+        "inputMessages": 2,
+        "commandRefusals": 0,
+        "inputDrops": 0,
+        "feedback": [
+          "Sends note 88 off",
+          "User note 89 on, velocity 1"
+        ],
+        "master": 0,
+        "playing": false,
+        "recording": false,
+        "physicalLightObservation": "Michael confirmed USER lit and SENDS dark."
+      },
+      "genericMode40": {
+        "status": "Physical selector input absent",
+        "requested": [
+          "Pan",
+          "Sends",
+          "User",
+          "Pan",
+          "Track 1 Arm",
+          "Track 1 Arm"
+        ],
+        "appInputSubscription": "Disconnected 28:0 → 128:0 during the physical check; independent raw input capture stayed subscribed to 28:0. Restored after the check.",
+        "hardwareSetupReadbackMessages": 10,
+        "appInputReadbackMessages": 0,
+        "physicalInputMessages": 2,
+        "selectorInputMessages": 0,
+        "armInput": [
+          "Note On 48, velocity 127",
+          "Note Off 48, velocity 127"
+        ],
+        "appInputPhysicalMessages": 0,
+        "appFeedbackMessages": 0,
+        "physicalLights": "Michael reported only Record Arm changed.",
+        "master": 0,
+        "playing": false,
+        "recording": false,
+        "restoration": {
+          "hostMode": "0x41",
+          "appInputReconnected": true,
+          "nativeKnobMode": 0,
+          "master": 0,
+          "playing": false,
+          "recording": false,
+          "automaticTimer": "Stopped before manual restoration; automatic restoration was not exercised.",
+          "firstAttempt": "System Node rejected the inherited --use-system-ca NODE_OPTIONS before restoration started; retry removed NODE_OPTIONS and verified the normal mode, input subscription and native mute."
+        }
       }
     }
   },
@@ -1521,7 +1637,7 @@
   "limits": [
     "Controller input, native state and feedback evidence; no new acoustic listening qualification",
     "Initial APC switch attempts occurred during audio-offline recovery and were rejected",
-    "PAN, SENDS and USER physical button messages were absent in both host modes 0x41 and 0x42; selector input and Sends/User knob modes have not passed physical acceptance",
+    "PAN, SENDS and USER physical button messages were absent in host modes 0x41/0x42 and isolated generic mode 0x40. Software Sends/User selection and both physical lights worked. The missing physical input remains unresolved; its hardware or firmware cause is not established.",
     "The first track was selected already, so its redundant Track Select press did not require a new LED-on message",
     "The live session suffered a 5.357480790-second callback stall, underruns and an audio-offline recovery; extended stage stability remains open"
   ]
