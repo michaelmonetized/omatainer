@@ -288,6 +288,7 @@ impl Decoder {
     /// Takes profile, message, command port, source and time; returns whether it was consumed.
     pub(super) fn input_at(&mut self, map: &MidiMap, message: &[u8; 3], cmd: &CommandPort, source: u64, at: std::time::Instant) -> bool {
         let [status, control, value] = *message;
+        if map.name.starts_with("Akai MPD232") && mpd232::cc_transport(*message, cmd) { return true; }
         if map.name == "Pioneer DDJ-SP1" && self.sp1.input(*message, source, cmd) { return true; }
         if map.name == "Akai APC40 mkII" && matches!(status & 0xf0, 0x80 | 0x90 | 0xb0) {
             if status & 0xf0 != 0xb0 && control == 0x62 { let _ = cmd.send(Command::Surface(crate::engine::surface_controls::Input::Shift { source, on: status & 0xf0 == 0x90 && value > 0 })); return true; }

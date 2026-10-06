@@ -461,6 +461,7 @@ fn cancel_fences_queued_capture_gestures_and_accepts_the_next_performance_note()
 #[test]
 fn surfaces_apc_and_mpd_stop_survive_callback_overflow() {
     for (map, stop) in [(crate::engine::midi::akai_apc40_mk2(), vec![0x90, 0x5c, 127]),
+        (crate::engine::midi::akai_mpd232(), vec![0xb4, 117, 127]),
         (crate::engine::midi::akai_mpd232(), vec![0xf0, 0x7f, 0x7f, 6, 1, 0xf7])] {
         let (engine, mut rt) = Engine::headless_for_test(48000, 32);
         rt.playing = true;

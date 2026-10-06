@@ -94,14 +94,14 @@ struct Shared {
 
 struct Rules {
     cc: [[bool; 128]; 16],
-    stop: [[bool; 128]; 16],
+    stop: [[[bool; 128]; 16]; 2],
     mmc: bool,
 }
 impl Rules {
     fn new(map: &MidiMap) -> Self {
         let mut rules = Self {
             cc: [[false; 128]; 16],
-            stop: [[false; 128]; 16],
+            stop: [[[false; 128]; 16]; 2],
             mmc: map.name.starts_with("Akai MPD232"),
         };
         for binding in &map.bindings {
@@ -112,8 +112,8 @@ impl Rules {
                 if binding.ch != 0xff && binding.ch as usize != channel {
                     continue;
                 }
-                if binding.kind == MsgKind::Note && binding.action == Action::Stop {
-                    rules.stop[channel][binding.data as usize] = true;
+                if matches!(binding.kind, MsgKind::Note | MsgKind::Cc) && binding.action == Action::Stop {
+                    rules.stop[usize::from(binding.kind == MsgKind::Cc)][channel][binding.data as usize] = true;
                 }
                 // Only direct absolute assignments. Relative jog, browse,
                 // selection, transport and every note remain ordered barriers.
@@ -174,9 +174,9 @@ impl Rules {
             note[len] = byte;
             len += 1;
             if len == 3 {
-                if note[0] & 0xf0 == 0x90
+                if matches!(note[0] & 0xf0, 0x90 | 0xb0)
                     && note[2] > 0
-                    && self.stop[(note[0] & 15) as usize][note[1] as usize]
+                    && self.stop[usize::from(note[0] & 0xf0 == 0xb0)][(note[0] & 15) as usize][note[1] as usize]
                 {
                     return true;
                 }

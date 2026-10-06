@@ -226,7 +226,7 @@ fn surfaces_mpd_captured_preset_maps_all_banks_and_preserves_musical_pads() {
     let bytes = include_bytes!("../../../tests/fixtures/mpd232-livelite.syx");
     let map = surface::mpd232::parse(bytes).unwrap();
     assert_eq!(map.name, "Akai MPD232 (LiveLite)");
-    assert_eq!(map.bindings.len(), 72);
+    assert_eq!(map.bindings.len(), 75);
     let (_engine, mut rt, mut input) = fixture(map, 87);
     for bank in 0..3u8 {
         for index in 0..8u8 {
@@ -279,6 +279,27 @@ fn surfaces_mpd_mmc_is_idempotent_and_remains_specific_to_the_mpd() {
     assert!(!rt.recording);
     send(&mut input, &mut rt, &[0xf0, 0x7f, 0x7f, 6, 1, 0xf7]);
     assert!(!rt.playing);
+}
+
+#[test]
+fn surfaces_mpd_cc_transport_is_idempotent_on_every_common_channel() {
+    let map = surface::mpd232::parse(include_bytes!("../../../tests/fixtures/mpd232-livelite.syx")).unwrap();
+    let (_engine, mut rt, mut input) = fixture(map, 101);
+    for channel in 0..16 {
+        for _ in 0..2 {
+            send(&mut input, &mut rt, &[0xb0 + channel, 118, 127]);
+            send(&mut input, &mut rt, &[0xb0 + channel, 118, 0]);
+            assert!(rt.playing);
+            send(&mut input, &mut rt, &[0xb0 + channel, 119, 127]);
+            send(&mut input, &mut rt, &[0xb0 + channel, 119, 0]);
+            assert!(rt.recording);
+        }
+        send(&mut input, &mut rt, &[0xb0 + channel, 117, 127]);
+        assert!(!rt.playing);
+        send(&mut input, &mut rt, &[0xb0 + channel, 118, 127]);
+        send(&mut input, &mut rt, &[0xb0 + channel, 117, 0]);
+        assert!(rt.playing, "Stop release cannot stop playback");
+    }
 }
 
 #[test]
@@ -378,6 +399,7 @@ fn surfaces_mpd_rejects_corrupt_conflicting_and_non_usb_a_presets() {
         (734, 3),
         (735, 0),
         (735, 17),
+        (736, 117),
         (737, 1),
         (738, 64),
         (1095, 2),

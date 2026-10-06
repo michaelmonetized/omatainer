@@ -1,6 +1,33 @@
 use super::super::{cbind, nbind, Action, MidiMap, UnmappedNotes};
 use crate::engine::{Command, CommandPort};
 
+/// Describe Akai's fixed transport addresses on the selected common channel.
+/// Takes no arguments; returns Stop, Play and Record CC bindings with any-channel matching.
+pub(crate) fn transport_bindings() -> Vec<super::super::Binding> {
+    [Action::Stop, Action::Play, Action::Record]
+        .into_iter()
+        .enumerate()
+        .map(|(index, action)| cbind(0xff, 117 + index as u8, action, 0, 0))
+        .collect()
+}
+
+/// Apply fixed Akai CC transport without toggling on repeated presses or releases.
+/// Takes a complete channel message and command port; returns whether it consumed a transport address.
+pub(crate) fn cc_transport([status, address, value]: [u8; 3], cmd: &CommandPort) -> bool {
+    if status & 0xf0 != 0xb0 || !(117..=119).contains(&address) {
+        return false;
+    }
+    if value > 0 {
+        let command = match address {
+            117 => Command::Stop,
+            118 => Command::Play,
+            _ => Command::Surface(crate::engine::surface_controls::Input::Recording(true)),
+        };
+        let _ = cmd.send(command);
+    }
+    true
+}
+
 /// Apply standard Machine Control messages from the programmable MPD transport.
 /// Takes a complete packet and command port; returns whether a supported MMC command was consumed.
 pub(crate) fn transport(bytes: &[u8], cmd: &CommandPort) -> bool {
@@ -48,7 +75,7 @@ pub(crate) fn parse(bytes: &[u8]) -> anyhow::Result<MidiMap> {
     );
     let name = std::str::from_utf8(&bytes[8..16])?.trim_end_matches(['\0', ' ']);
     anyhow::ensure!(!name.is_empty(), "MPD232 preset has no name");
-    let mut bindings = Vec::with_capacity(72);
+    let mut bindings = transport_bindings();
     for bank in 0..3 {
         for index in 0..8 {
             let knob = &bytes[734 + (bank * 8 + index) * 9..][..9];

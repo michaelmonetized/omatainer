@@ -814,7 +814,7 @@ fn akai_mpd232() -> MidiMap {
     MidiMap {
         name: "Akai MPD232 (programmable)".into(),
         matchers: vec!["mpd232".into(), "mpd 232".into(), "mpd-232".into()],
-        bindings: Vec::new(),
+        bindings: surface::mpd232::transport_bindings(),
         unmapped_notes: UnmappedNotes::Live,
     }
 }
