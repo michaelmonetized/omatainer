@@ -813,7 +813,7 @@ fn akai_apc40_mk2() -> MidiMap {
     // with the same eight per-channel CC7 track faders as the original.
     for scene in 0..5u8 {
         for track in 0..8u8 {
-            b.push(nbind(0xff, scene * 8 + track, Action::Clip, track, scene));
+            b.push(nbind(0xff, (4 - scene) * 8 + track, Action::Clip, track, scene));
         }
     }
     MidiMap {
