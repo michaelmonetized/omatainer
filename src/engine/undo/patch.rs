@@ -266,6 +266,7 @@ impl Effect {
 }
 
 pub(super) enum Patch {
+    ClipManagement(Box<clip_management::edit::Inverse>),
     Arrangement {value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
     Global(Global),
@@ -358,7 +359,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -377,6 +378,7 @@ impl Patch {
                 (value.source_gain == deck.source_gain || !deck.source_gain_active())
                 && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
             Self::Session(value) => value.valid(rt),
+            Self::ClipManagement(value) => value.valid(rt),
             Self::Arrangement {..} => !rt.playing&&!rt.recording&&rt.count_in.is_none()&&!rt.decks.iter().any(|d|d.playing||d.touching),
             Self::Conductor { .. } => rt.count_in.is_none(),
             Self::Global(value) => rt.count_in.is_none() && value.mic_aux.is_none_or(|cfg|cfg.validate(rt.routing.as_ref().map(|r|r.model.as_ref())).is_ok()),
@@ -412,6 +414,7 @@ impl Patch {
         match self {
             Self::Arrangement {value,..} => {for (slot,track) in rt.tracks.iter_mut().enumerate(){track.release_clip_notes();rt.midi_routing.clear_clip(slot as u8);}std::mem::swap(value,&mut rt.arrangement);rt.arrangement.reset(rt.precise_midi_beat());},
             Self::Session(value) => value.swap(rt),
+            Self::ClipManagement(value) => value.swap(rt),
             Self::Sampler { index, value, selected, .. } => {
                 let selection = rt.sampler_bank;
                 if let Some(mut prior) = value.take() {
@@ -516,6 +519,7 @@ impl Patch {
         match self {
             Self::Arrangement {bytes,..} => *bytes,
             Self::Session(value) => value.bytes(),
+            Self::ClipManagement(value) => value.bytes(),
             Self::Sampler { original, replacement, .. } => original.as_ref().map_or(0, |bank| bank.metadata_bytes()) + replacement.metadata_bytes(),
             Self::Global(value) => value.conductor.as_ref().map_or(0, |c| c.bytes()) + value.offline.as_ref().map_or(0, |d| d.bytes()),
             Self::Conductor { reserved_bytes, .. } => *reserved_bytes,
@@ -543,6 +547,7 @@ impl Patch {
         match self {
             Self::Arrangement {reserved,..} => {for plan in reserved.iter().flatten(){for sample in plan.media(){add(Arc::as_ptr(sample)as usize,sample_bytes(sample));}}},
             Self::Session(value) => value.media_reservations(add),
+            Self::ClipManagement(value) => {for sample in value.media(){add(Arc::as_ptr(sample)as usize,sample_bytes(sample));}},
             Self::Sampler { original, replacement, .. } => {
                 for bank in original.iter().chain(std::iter::once(replacement)) {
                     for audio in &bank.audio { visit(audio); }

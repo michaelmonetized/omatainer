@@ -697,6 +697,36 @@
       ],
       "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
     },
+    "152": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native clip management",
+          "file": "src/ui/clip_manager.rs",
+          "entry": "Setup and grid actions; source/destination selection, create/copy/move/delete/rename/exact RGB/disable, keyboard equivalents and actual audition"
+        },
+        {
+          "kind": "native preset files",
+          "file": "src/engine/clip_management/preset.rs",
+          "entry": "Strict embedded clip bundles, 128 MiB source limit, preserved existing files, finite PCM, cancellation and bit-exact source reuse"
+        },
+        {
+          "kind": "atomic native edits and History",
+          "file": "src/engine/clip_management/edit.rs",
+          "entry": "Coherent worker preparation, complete aggregate native limits, retained slot identities, fresh copied notes, preserved moved content and stopped-slot inverse swaps"
+        }
+      ],
+      "fixtures": [
+        "engine::clip_management::tests",
+        "ui::clip_manager::tests",
+        "engine::arrangement::tests::clip_management_disabled_arrangement_snapshots_have_no_audio_notes_or_monitor_activity"
+      ],
+      "evidence": [
+        "docs/validation/session-clip-management.md",
+        "docs/validation/session-clip-management-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight contrasting clips, real native keyboard/AccessKit edits, exact RGB, audio/MIDI content and lane/settings retention, project and preset file save/reopen, bit-exact shared audio, real preset audition, default/strict schema migration, canceled/stale/occupied/removed/active/recording/protected/aggregate-note/source-memory refusals and zero renderer edit/Undo/Redo allocation/free. Occupied destinations are preserved, MIDI uses destination instruments/routes, presets retain source media, and disabled content cannot launch/resume or suppress Arrangement input. Per-clip trigger/gate/toggle/repeat remains issue 196. Physical capture stays closed."
+    },
     "153": {
       "status": "implemented",
       "paths": [

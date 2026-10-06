@@ -307,23 +307,27 @@ pub(in crate::engine) fn effects(values: Vec<Effect>, sr: u32) -> fx::FxChain {
 }
 
 /// Builds only the edited node; existing playing nodes and DSP histories stay live.
-pub(in crate::engine) fn prepare_track(mut saved: Track, media: &[Arc<Sample>], sr: u32) -> Result<Box<TrackRt>, String> {
+pub(in crate::engine) fn prepare_track(saved: Track, media: &[Arc<Sample>], sr: u32) -> Result<Box<TrackRt>, String> {
     let drums = saved.drums.map(|index| media[index].clone());
     let mut track = Box::new(TrackRt::empty(sr as f32, saved.name, saved.kind, drums, 0));
-    for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose()?; }
     track.scene_bus = saved.scene_bus;
     track.gain = saved.gain; track.pan = saved.pan;
     track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed; track.input_monitor = saved.input_monitor;
     track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
     track.fx = effects(saved.fx, sr);
-    track.clips = saved.clips.into_iter().map(|c| {
-        let audio=c.audio.map(|i|media[i].clone());
-        let audio_region=c.audio_region.map(|r|r.prepare(audio.as_deref().ok_or("Audio region has no source")?).map_err(str::to_owned)).transpose()?;
-        Ok(Clip {audio_region, region:c.region, lanes:c.lanes, kind:c.kind, name:c.name, bars:c.bars, notes:c.notes, gain:c.gain, audio})
-    }).collect::<Result<Vec<_>,String>>()?;
+    track.clips = saved.clips.into_iter().map(|c|prepare_clip(c,media)).collect::<Result<Vec<_>,String>>()?;
     track.clips.reserve(session::MAX_SCENES - track.clips.len());
-    track.project_resume = saved.launch.map(|p| PlayingClip { scene: p.scene,
+    track.project_resume = saved.launch.filter(|p|!track.clips[usize::from(p.scene)].properties.disabled).map(|p| PlayingClip { scene: p.scene,
         start_beat: p.start_beat, midi_start_beat: p.start_beat, last_beat: -0.0001, looping: p.looping });
     track.midi_schedule.prepare_history(8192); track.recorded_playback.reserve(8192);
     Ok(track)
+}
+
+/// Prepare a retained clip on its producer.
+/// Takes validated musical content and the shared media table; returns renderer-ready source regions and MIDI indexes without copying PCM.
+pub(in crate::engine) fn prepare_clip(cell:SavedClip,media:&[Arc<Sample>])->Result<Clip,String> {
+    cell.validate(STATE_VERSION,media)?;
+    let audio=cell.audio.map(|i|media[i].clone());
+    let audio_region=cell.audio_region.map(|r|r.prepare(audio.as_deref().ok_or("Audio region has no source")?).map_err(str::to_owned)).transpose()?;
+    Ok(Clip{properties:cell.properties,audio_region,region:cell.region,lanes:cell.lanes.as_ref().map(|l|l.prepare()).transpose()?,kind:cell.kind,name:cell.name,bars:cell.bars,notes:cell.notes,gain:cell.gain,audio})
 }

@@ -148,7 +148,7 @@ impl Surface {
                         let scene_index = scene + if self == Self::ApcMk2 { snapshot.surfaces.scene_offset } else { 0 };
                         let occupied = state
                             .and_then(|state| state.clips.get(scene_index))
-                            .is_some_and(|clip| clip.kind != 0);
+                            .is_some_and(|clip| clip.kind != 0 && !clip.properties.disabled);
                         let playing = occupied
                             && state.is_some_and(|state| state.playing_scene == scene_index as i16);
                         let color = if playing {

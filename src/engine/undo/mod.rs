@@ -5,6 +5,7 @@ mod capture;
 mod midi_import;
 mod audio_clip;
 mod arrangement;
+mod clip_management;
 mod patch;
 mod recording;
 #[cfg(test)]
@@ -59,6 +60,7 @@ pub enum Name {
     ClipNotes,
     AudioClip,
     Arrangement,
+    ClipManagement,
     RecordNotes,
     Deck,
     DeckSeek,
@@ -90,6 +92,7 @@ impl Name {
             Self::ClipNotes => "Edit clip notes",
             Self::AudioClip => "Edit audio clip",
             Self::Arrangement => "Edit arrangement",
+            Self::ClipManagement => "Manage clips",
             Self::RecordNotes => "Record notes",
             Self::Deck => "Edit deck",
             Self::DeckSeek => "Seek deck",
@@ -891,6 +894,7 @@ impl Journal {
                     | Command::Gesture { .. }
                     | Command::AudioClipEdit(_)
                     | Command::ArrangementEdit(_)
+                    | Command::ClipManage(_)
                     | Command::MidiImport(_)
             | Command::MidiEdit(_)
                     | Command::SetNotes { .. }

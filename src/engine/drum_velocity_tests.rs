@@ -16,6 +16,7 @@ fn engine() -> RtEngine {
 
 fn clip(notes: Vec<MidiNote>, gain: f32) -> Clip {
     Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,

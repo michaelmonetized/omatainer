@@ -212,6 +212,7 @@ impl Frame {
                 copy_string(&mut saved.name, &clip.name);
                 saved.bars = clip.bars;
                 saved.gain = clip.gain;
+                saved.properties = clip.properties;
                 saved.notes.clear();
                 saved.notes.extend_from_slice(&clip.notes);
                 saved.audio = clip.audio.as_ref().map(|s| media(&mut self.media, s));

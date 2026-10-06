@@ -598,6 +598,7 @@ impl RtEngine {
             | Command::ComposeArm { .. }
             | Command::AudioClipEdit(_)
             | Command::ArrangementEdit(_)
+                    | Command::ClipManage(_)
             | Command::MidiEdit(_)
             | Command::SetNotes { .. }
             | Command::FxWet { .. }

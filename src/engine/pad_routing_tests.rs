@@ -173,6 +173,7 @@ fn capture_fixture(arp: bool) -> RtEngine {
     let mut rt = engine();
     rt.apply(Command::SamplerInst(SamplerInstrument::Synth(SynthInstrument::Keys)));
     rt.tracks[DEST].clips[0] = Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,

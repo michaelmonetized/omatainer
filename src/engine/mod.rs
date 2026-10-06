@@ -6,6 +6,7 @@ pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
+pub(crate) mod clip_management;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
@@ -172,6 +173,8 @@ pub struct MidiNote {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Clip {
+    #[serde(default)]
+    pub(crate) properties: clip_management::Properties,
     #[serde(skip)]
     pub(crate) audio_region: Option<audio_clip::Plan>,
     #[serde(default)]
@@ -195,6 +198,7 @@ impl Clip {
 
     pub fn empty() -> Self {
         Self {
+            properties: Default::default(),
             audio_region: None,
             lanes: None,
             region: None,
@@ -792,6 +796,7 @@ pub struct TrackSnap {
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct ClipSnap {
+    pub(crate) properties: clip_management::Properties,
     /// Renderer-confirmed note data; lesson/UI observers never inspect live Vecs.
     pub note_count: usize,
     pub recording_held: bool,
@@ -1056,6 +1061,7 @@ pub enum Command {
     LiveNoteOff { source: u64, ch: u8, note: u8 },
     AudioClipEdit(Box<audio_clip::edit::Request>),
     ArrangementEdit(Box<arrangement::edit::Request>),
+    ClipManage(Box<clip_management::edit::Request>),
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
     MidiAudition { id: u64, track: u8, note: u8, vel: u8, on: bool },
@@ -1371,6 +1377,7 @@ impl RtEngine {
             vel: 90,
         });
         self.tracks[0].clips[0] = Clip {
+            properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
@@ -1381,6 +1388,7 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[1].clips[0] = Clip {
+            properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
@@ -1398,6 +1406,7 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[2].clips[0] = Clip {
+            properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
@@ -1415,6 +1424,7 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[3].clips[0] = Clip {
+            properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
@@ -1438,6 +1448,7 @@ impl RtEngine {
             vel: 80,
         });
         self.tracks[0].clips[1] = Clip {
+            properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
@@ -2272,6 +2283,7 @@ impl RtEngine {
         if track >= self.tracks.len() || scene_index >= self.scene_fx.len() {
             return;
         }
+        if self.tracks[track].clips[scene_index].properties.disabled {return;}
         self.finish_recording_track(track);
         self.tracks[track].stop_clip();
         if self.tracks[track].clips[scene_index].occupied() {
@@ -2885,7 +2897,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) | Command::ArrangementEdit(_) => unreachable!("import is applied atomically in history admission"),
+            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) | Command::ArrangementEdit(_) | Command::ClipManage(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);
@@ -3030,7 +3042,7 @@ impl RtEngine {
             }
             Command::FireClip { track, scene, looping } => {
                 self.apply(Command::LaunchClip { track, scene });
-                if let Some(p) = self.tracks.get_mut(track as usize).and_then(|t| t.playing.as_mut()) {
+                if let Some(p) = self.tracks.get_mut(track as usize).and_then(|t| t.playing.as_mut()).filter(|p|p.scene==scene) {
                     p.looping = looping;
                 }
             }

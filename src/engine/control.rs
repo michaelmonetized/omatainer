@@ -638,11 +638,12 @@ impl CommandPort {
         self.shared.performance.check(command, None)
     }
     pub fn send(&self, command: Command) -> Result<SubmissionOutcome, SubmissionError> {
+        let edit_ack = super::midi_edit::admission_ack(&command);
         let sampler_ack = super::sampler::admission_ack(&command);
         let session_ack = super::session::admission_ack(&command);
         let remote_ack = match &command { Command::Remote(request) => Some(request.ack.clone()), _ => None };
         let result = self.send_after_preflight(command, || {});
-        if result.is_err() { if let Some(ack) = remote_ack { ack.reject(); } if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
+        if result.is_err() { if let Some(ack)=edit_ack{ack.reject();} if let Some(ack) = remote_ack { ack.reject(); } if let Some(ack) = sampler_ack { ack.reject(); } if let Some(ack) = session_ack { ack.reject(); } }
         result
     }
 
@@ -907,6 +908,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
         Command::SessionEdit(request) => request.bytes(),
         Command::AudioClipEdit(request) => request.bytes(),
         Command::ArrangementEdit(request) => request.bytes(),
+        Command::ClipManage(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::ProviderPreview(request) => request.bytes(),

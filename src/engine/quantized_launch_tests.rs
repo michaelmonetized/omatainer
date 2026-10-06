@@ -17,6 +17,7 @@ fn engine(sr: u32) -> RtEngine {
 
 fn clip(pitch: u8, length: f32) -> Clip {
     Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,

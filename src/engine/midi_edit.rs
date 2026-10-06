@@ -226,23 +226,26 @@ fn valid_note(note: &super::MidiNote) -> bool {
             .into_iter()
             .all(|v| v.is_finite() && (0.0..=262_144.0).contains(&v))
 }
-pub(super) fn reject_retired(mut command: &super::Command) {
+/// Retain a prepared edit acknowledgment during producer submission.
+/// Takes any command, including its ownership wrappers; returns the shared acknowledgment so rejected submissions cannot remain pending.
+pub(super) fn admission_ack(mut command: &super::Command) -> Option<Ack> {
     loop {
         match command {
-            super::Command::ArrangementEdit(request)=>{request.ack.reject();return;}
-            super::Command::AudioClipEdit(request)=>{request.ack.reject();return;}
-            super::Command::MicAuxConfigure(request)=>{request.ack.reject();return;}
-            super::Command::SessionEdit(request) => { request.ack.reject(); return; }
-            super::Command::MidiImport(request) => { request.ack.reject(); return; }
-            super::Command::MidiEdit(request) => {
-                request.ack.reject();
-                return;
-            }
+            super::Command::ClipManage(request) => return Some(request.ack.clone()),
+            super::Command::ArrangementEdit(request) => return Some(request.ack.clone()),
+            super::Command::AudioClipEdit(request) => return Some(request.ack.clone()),
+            super::Command::MicAuxConfigure(request) => return Some(request.ack.clone()),
+            super::Command::SessionEdit(request) => return Some(request.ack.clone()),
+            super::Command::MidiImport(request) => return Some(request.ack.clone()),
+            super::Command::MidiEdit(request) => return Some(request.ack.clone()),
             super::Command::Gesture { command: inner, .. } => command = inner,
             super::Command::SessionControl(scoped)=>command=&scoped.command,
-            _ => return,
+            _ => return None,
         }
     }
+}
+pub(super) fn reject_retired(command: &super::Command) {
+    if let Some(ack) = admission_ack(command) {ack.reject();}
 }
 impl super::RtEngine {
     pub(super) fn midi_note_count(&self) -> usize {

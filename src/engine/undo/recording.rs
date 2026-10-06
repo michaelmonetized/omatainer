@@ -54,6 +54,7 @@ impl RtEngine {
             track: track as u8,
             scene: scene as u16,
             value: Clip {
+                properties: clip.properties,
                 audio_region: clip.audio_region, lanes: clip.lanes.clone(),
                         region: clip.region,
                 kind: clip.kind,

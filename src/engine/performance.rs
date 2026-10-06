@@ -521,6 +521,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SongSeek(_)
         | Command::AudioClipEdit(_)
             | Command::ArrangementEdit(_)
+                    | Command::ClipManage(_)
         | Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }

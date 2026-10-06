@@ -9,6 +9,7 @@ fn fixture(drums: bool, arp: bool) -> RtEngine {
     track.kind = if drums { 0 } else { 3 };
     track.poly = Poly::new(rt.sr, SynthInstrument::Pad, 16);
     track.clips[0] = Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         name: "Mute lifecycle".into(),

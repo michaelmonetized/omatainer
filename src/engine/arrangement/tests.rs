@@ -626,3 +626,48 @@ fn arrangement_audio_uses_track_devices_program_routes_prefader_cue_and_input_pr
         assert_eq!(rt.routing_track_taps[0], [0.3, -0.4]);
     }
 }
+
+#[test]
+fn clip_management_disabled_arrangement_snapshots_have_no_audio_notes_or_monitor_activity() {
+    use crate::engine::arrangement::{Instance, Model, Plan, Playback, Source};
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    let captured = capture(&engine, &mut rt);
+    let mut clip = captured.state.tracks[2].clips[0].clone();
+    clip.properties.disabled = true;
+    let target = captured
+        .state
+        .session
+        .as_ref()
+        .unwrap()
+        .reference(crate::engine::session::Axis::Track, 2)
+        .unwrap();
+    let model = Model {
+        enabled: true,
+        next_id: 3,
+        sources: vec![Source { id: 1, clip }],
+        instances: vec![Instance {
+            id: 2,
+            source: 1,
+            track: target,
+            start: 0.0,
+            offset: 0.0,
+            duration: 4.0,
+            repeating: true,
+            gain: 1.0,
+        }],
+    };
+    let plan = Plan::prepare(
+        Arc::new(model),
+        &captured.media,
+        captured.state.session.as_ref().unwrap(),
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    let mut playback = Playback::new(Some(plan), 0.0);
+    for beat in [0.0, 1.0, 3.999, 4.0] {
+        playback.reset(beat);
+        assert_eq!(playback.sample(2, beat), ([0.0; 2], false));
+        assert!(playback.gate(2, beat + 0.1).is_none());
+    }
+}

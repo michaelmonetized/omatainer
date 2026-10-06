@@ -10,6 +10,7 @@ fn fixture(bars: f32) -> RtEngine {
     rt.bpm = 120.0;
     rt.beat = 5.375;
     rt.tracks[1].clips[2] = Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,

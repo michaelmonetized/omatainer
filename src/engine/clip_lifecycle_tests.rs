@@ -14,6 +14,7 @@ fn render(rt: &mut RtEngine, seconds: f32) {
 
 fn chord() -> Clip {
     Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
@@ -46,6 +47,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     }
     rt.tracks[1].clips[0] = chord();
     rt.tracks[1].clips[1] = Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         notes: Vec::new(),

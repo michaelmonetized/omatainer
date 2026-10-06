@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; unopened-device headless engine and actual native egui/AccessKit/keyboard handlers",
+  "sourceFiles": {
+    "src/engine/arrangement/prepare.rs": "3d0d10b6ca982a52212239247f6de35f7116d2c18609e32b04d2a6fa52269c6f",
+    "src/engine/arrangement/tests.rs": "9faf95a705dcf3e2569a83c91e177bcc2d71a427e011e9356ea2cb58eef4143b",
+    "src/engine/audio_clip/edit.rs": "7c37d8da3bec443da05929ac8c8dc150d44ac2a370e4a55b4fdab73751827e28",
+    "src/engine/clip_gain_tests.rs": "f29718d0246dfc8d7ce0ab40e755e0a74b502f6cd1e16c3562c476d6c3f34e2a",
+    "src/engine/clip_lifecycle_tests.rs": "99ebf633a67d9870a7267490f620eb309e3d851213a00d836b384e797f1f7732",
+    "src/engine/control.rs": "cca825f0a3396c18a3887e894445b7a76b2f5798131b45b9a35198c78f3e1585",
+    "src/engine/drum_velocity_tests.rs": "21e41cb9bdded8cb1c78c80656bb4f304de029fdf637518a45af471691b75151",
+    "src/engine/midi/feedback.rs": "153d4d6c01cb7ee260219b92f07b191eb3a35ec815e23ed56f4fd64d7fd8926f",
+    "src/engine/midi_edit.rs": "a41f913758eef65f03e784c8079dfb610342f804c6b3a4385d8b073a9f3491e3",
+    "src/engine/midi_interchange.rs": "88b90ba8d2f4f305e34348281792b6938bc2a96497d53ebf5f03f5302c72ad04",
+    "src/engine/mod.rs": "a05b022bde0a85dbd472e36a627e86a229ee3e40678c51c2400cfd0eddef9e82",
+    "src/engine/mute_lifecycle_tests.rs": "be6b82605c43fe108b50f166672c1ce9ae3c606b7c7574ccd7105c8ea193081e",
+    "src/engine/pad_routing_tests.rs": "bcfd7287f083a5bed59aed114c3756467039822ece76d3f2724c1b0a5440b22d",
+    "src/engine/performance.rs": "0aa08005d452938833c040ca985d4c60464219e244c8709fe233f54b8b32363b",
+    "src/engine/project.rs": "f292af5b3ac1b67d0539466009ee875bc802a96b9f7b681026903319c0391d93",
+    "src/engine/project/capture.rs": "653615d93b1c8f67c801d74d49801de65541814ae21def0438b94b8610033167",
+    "src/engine/project/model.rs": "c582eabc9a38ce52a3daf306a4e9a2590392be141be4197de9ce515225fb6f85",
+    "src/engine/project/prepare.rs": "4168d4c28ee70cae2f57bbaf72c35a91617d918774884ed38647bdfb17a53854",
+    "src/engine/project/tests.rs": "a5d40743aa1c11decef8684fefa41ce0338c741a684a9388903b816ec1df3d93",
+    "src/engine/quantized_launch_tests.rs": "6555869457f786853835164b9392c19720430226a70d179c2c7d0c01a101c9c0",
+    "src/engine/recording_position_tests.rs": "f31230159de6f92d2e8cea3398ad29ccf669ca8e702780615dd581b58303f4bf",
+    "src/engine/session/transaction/structural.rs": "826f5eed89dbc780a3db86999feb439ae73761ab36006a7169db9f73b0637344",
+    "src/engine/snapshot.rs": "f22e2850fd14f0181ba0e26ddfdee1d57e4a185feff5fe3dbba5d52923e47691",
+    "src/engine/undo/capture.rs": "b8d39990690463a74eb75cb879782319eeb82454038ba1b6b9054f2890de997e",
+    "src/engine/undo/mod.rs": "ffe34daf203da9134af95eb683338c93d2ee296b55c1c28c2b951ebc1defbc28",
+    "src/engine/undo/patch.rs": "84e2c4244ec0a00ece25ba96e36f016cade9fed89ed40decf2b6818f46e3419f",
+    "src/engine/undo/recording.rs": "67d57f91ed6a7e91710f0ffc92bb630177ee60c4262179db185a7461894a9921",
+    "src/engine/undo/tests.rs": "8cc48928ec04bc6b3e282cb1f98126327404b67c9e031623823cc2e4f1bfcfb1",
+    "src/ui.rs": "4424508f73f87ee9c6c1bdc79d22216c1b61dfa5e7226dd1af8a50511e5d355e",
+    "src/ui/audio_status.rs": "6cf63b6d240f733d50fc22af2ca67ff96015de30a5b58ee6c4bec30776af0cc2",
+    "src/ui/help/catalogue.rs": "4113849eb061223c57ce5d31e5950f903d6f56fdc4a57e83d11b9615ee658d6d",
+    "src/engine/clip_management.rs": "4cf41a594e97d6260c01beeed1be043274a9abd02a59de788d4df64c37ce81d7",
+    "src/engine/clip_management/edit.rs": "7c644222ae687b1ef1a0717a7080731928801fa840ebb333fda1b25c04767146",
+    "src/engine/clip_management/preset.rs": "bab5a1140290f8d4c974a195252ae35fba9e549fd9090795255d91e567d98681",
+    "src/engine/clip_management/tests.rs": "4e62b487169eed84260bedaed3683681ec38c47dc93f44cad36533aeea26f391",
+    "src/engine/undo/clip_management.rs": "3a5c26adeb1664adc7374e31a479d62f880a01ff4ff06309acc4b4ddd16497f4",
+    "src/ui/clip_manager.rs": "7c7da45dd3fc793d49f11155b16084f16f6f4f25f1f85f03c87c766b248f97d2",
+    "src/ui/clip_manager/tests.rs": "881feb277c1af1df07d25a075b42c8529e8a71d883ea8eef81ffc2c50d71eb23",
+    "src/ui/clip_manager/worker.rs": "2a40c1957653e49c08c9a7935ae8b7dcf8baf13653dbb6cc5922a6a36b6cfea8"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/session-clips-tests-third",
+    "sha256": "16a8ca0be380d45eb7fa6f37c814d111bc8ff6626d47930d6bf68a3710a99d09"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/session-clips-third-compiled-source-inventory.json",
+    "sha256": "c0f34990bf402c9339e6cfbcf31cb85bec1e8ac9d6ec570ce6fb5f4657b3ee3e",
+    "files": 718
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "54ba6e69090147e1787b3ab71684cec0dc816b5007d5bbf80e2481953947761f",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    },
+    "scope": "Embedded inputs matched the prior frozen values during this build; they will be rechecked before qualification. Source licensing is refreshed after qualification."
+  },
+  "tests": {
+    "engine": {
+      "path": "target/app-backlog/session-clips-third-engine-tests.log",
+      "sha256": "e6bd7f9fd4fc898910c254fe09adaea27fec87798aa91619c9f22309a143716c",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1909,
+      "seconds": 2.06
+    },
+    "native": {
+      "path": "target/app-backlog/session-clips-third-native-tests.log",
+      "sha256": "e1224622a14a4e2c4f85f4c01332c825ced2358c22af8883aeadf64bce75138c",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1916,
+      "seconds": 0.64
+    },
+    "full": {
+      "path": "target/app-backlog/session-clips-full-tests.log",
+      "sha256": "a02f3cd5c2b4bf5d58949682de4c758fe5757a5ef92ba22ac86499fc901a4d73",
+      "passed": 1874,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 480.56
+    },
+    "manual": {
+      "path": "target/app-backlog/session-clips-manual-regenerate.log",
+      "sha256": "ab48c96f9896eff19fe3db273dd5cbcd7f7639fe1abb0084022ec678a964812e",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1917,
+      "seconds": 0
+    }
+  },
+  "retainedAttempts": [
+    {
+      "name": "first",
+      "engine": {
+        "passed": 3,
+        "failed": 1,
+        "path": "target/app-backlog/session-clips-first-engine-tests.log",
+        "sha256": "d7a8b8bbd420b3c828b2e96becd099ff1130465a7d6b126b0033c26bf9944e14"
+      },
+      "native": {
+        "passed": 1,
+        "failed": 1,
+        "path": "target/app-backlog/session-clips-first-native-tests.log",
+        "sha256": "78013702c25ebddebc42b4fc3f121a46709421f558f7a782a6e80dc4639c75f8"
+      },
+      "reason": "Producer refusal left a prepared clip acknowledgment Pending; all prepared edit submissions now retain and reject their acknowledgment. Native accessibility item selection left the slot menu open.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/session-clips-tests-first",
+        "sha256": "ea2b84f77a213abc73b5cbecc853c2386ea5d5321b61f012ad4bf7f69290291e"
+      },
+      "inventory": {
+        "path": "target/app-backlog/session-clips-first-compiled-source-inventory.json",
+        "sha256": "09d5cf8651b249e7e6012f807c9e5f3c26f8a1959707626b2eb22884282e2128"
+      }
+    },
+    {
+      "name": "second",
+      "engine": {
+        "passed": 7,
+        "failed": 1,
+        "path": "target/app-backlog/session-clips-second-focused-tests.log",
+        "sha256": "322da72370ee82eb1fbf07452e5e2fbda118dc051ecb8a2bb397c32223e00b4f"
+      },
+      "native": {
+        "passed": 1,
+        "failed": 1,
+        "path": "target/app-backlog/session-clips-second-native-tests.log",
+        "sha256": "709eab23fbbee746f5058c9bedf91f8233aca0f22129b99a4fad6b3aeb786ad0"
+      },
+      "reason": "The source-memory fixture incorrectly retained MIDI lanes after converting to audio and was correctly refused by validation; the fixture now clears those lanes. Explicit popup closure now handles keyboard/AccessKit selection.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/session-clips-tests-second",
+        "sha256": "7f2d93de6949700290ffb046657bbd38e8037334e3ab97d4423afbb5c687e8a0"
+      },
+      "inventory": {
+        "path": "target/app-backlog/session-clips-second-compiled-source-inventory.json",
+        "sha256": "aac01451acf542a1cc7fd12fd592436b343359a7c5ddbf28bd24148eff0a18a1"
+      }
+    }
+  ],
+  "limits": [
+    "The target slots and recording must be stopped for edit/Undo; unrelated clips and held live notes stay active. Studio mode and unchanged history are required.",
+    "Occupied destinations are preserved. MIDI uses the destination track instrument/routes and audio shares its immutable source.",
+    "Native clip presets embed at most one 128 MiB PCM source and preserve existing files. Their strict schema currently matches project clip schema 20.",
+    "Native project aggregate note/lane/media/metadata budgets and renderer History/queue payload budgets also apply.",
+    "Audition first inserts a reviewed preset into an explicitly empty destination, then uses normal clip playback through that track. Source files remain intact.",
+    "Trigger/gate/toggle/repeat and per-clip inherited quantization remain issue 196.",
+    "No physical device was opened, captured or auditioned; cross-platform and stage acceptance stay separate."
+  ]
+}

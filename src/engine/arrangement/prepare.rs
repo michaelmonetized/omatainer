@@ -84,6 +84,7 @@ impl Plan {
                 .unwrap();
             let clip = &model.sources[index].clip;
             let source = &sources[index];
+            if clip.properties.disabled {continue;}
             let repeating = if clip.kind == ClipKind::Midi {
                 clip.region
                     .map_or(instance.repeating, |r| r.repeating(instance.repeating))
@@ -265,7 +266,7 @@ impl Plan {
                 model
                     .instances
                     .iter()
-                    .filter(|i| i.track == track.reference)
+                    .filter(|i| i.track == track.reference && model.sources.iter().any(|s|s.id==i.source&&!s.clip.properties.disabled))
                     .map(|i| (i.start, i.start + i.duration)),
                 MAX_OVERLAP,
                 &mut bytes,

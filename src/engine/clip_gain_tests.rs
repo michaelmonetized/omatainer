@@ -22,6 +22,7 @@ fn engine(gain: f32, kind: u8, arp: bool, live: bool) -> RtEngine {
     track.pan = 0.0;
     track.clips = (0..SCENES).map(|_| Clip::empty()).collect();
     track.clips[0] = Clip {
+        properties: Default::default(),
         audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
@@ -146,6 +147,7 @@ fn edits_and_replacement_preserve_held_notes_release_tails_and_live_gain() {
         }
         let old = changed.tracks[TRACK].clips[0].clone();
         changed.tracks[TRACK].clips[1] = Clip {
+            properties: Default::default(),
             audio_region: None, lanes: None,
             region: None,
             gain: 0.0,

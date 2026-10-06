@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 19;
+pub const STATE_VERSION: u32 = 20;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -99,6 +99,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version<20 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some()){return Err(serde::de::Error::custom("Clip properties require project state version 20"));}
         if version<19 && raw.get("arrangement").is_some(){return Err(serde::de::Error::custom("Arrangement sources require project state version 19"));}
         if version < 18 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).any(|clip|clip.get("audio_region").is_some()) {return Err(serde::de::Error::custom("Audio clip source regions require project state version 18"));}
         if version < 17 && raw.get("mic_aux").is_some() { return Err(serde::de::Error::custom("Mic/aux controls require project state version 17")); }
@@ -215,6 +216,8 @@ pub struct Track {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SavedClip {
+    #[serde(default,skip_serializing_if="clip_management::Properties::is_default")]
+    pub(crate) properties: clip_management::Properties,
     #[serde(default,skip_serializing_if="Option::is_none")]
     pub(crate) audio_region: Option<audio_clip::Region>,
     #[serde(default)]
@@ -419,6 +422,7 @@ impl State {
             tracks: (0..TRACKS).map(|_| Track {
                 name: String::new(),
                 clips: (0..SCENES).map(|_| SavedClip {
+                    properties: Default::default(),
                     audio_region: None, lanes: None,
                     region: None,
                     kind: ClipKind::Empty,
@@ -840,6 +844,7 @@ impl SavedClip{
     /// Validate one retained clip without constructing a project graph.
     /// Takes the schema and shared media; returns its note and lane budgets or the same native source refusal used by project validation.
     pub(crate) fn validate(&self,version:u32,media:&[Arc<Sample>])->Result<(usize,usize),String>{
+        if version<20 && !self.properties.is_default(){return Err("Clip properties require project state version 20".into());}
         let clip=self;let fail=|name:&str|Err(format!("invalid project {name}"));let reference=|index:usize|index<media.len();let optional=|index:Option<usize>|index.is_none_or(reference);let mut note_ids=std::collections::HashSet::new();let mut midi_bytes=0;let mut note_count=0;
 
                 if let Some(lanes) = &clip.lanes {

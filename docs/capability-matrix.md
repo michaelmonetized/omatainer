@@ -237,6 +237,17 @@ Native UI, actual renderer and software output-owner wire traces pass; physical-
 
 Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction.
 
+### Issue #152: implemented
+
+- native clip management: [src/ui/clip_manager.rs](../src/ui/clip_manager.rs) — Setup and grid actions; source/destination selection, create/copy/move/delete/rename/exact RGB/disable, keyboard equivalents and actual audition
+- native preset files: [src/engine/clip_management/preset.rs](../src/engine/clip_management/preset.rs) — Strict embedded clip bundles, 128 MiB source limit, preserved existing files, finite PCM, cancellation and bit-exact source reuse
+- atomic native edits and History: [src/engine/clip_management/edit.rs](../src/engine/clip_management/edit.rs) — Coherent worker preparation, complete aggregate native limits, retained slot identities, fresh copied notes, preserved moved content and stopped-slot inverse swaps
+- Acceptance fixtures: `engine::clip_management::tests`, `ui::clip_manager::tests`, `engine::arrangement::tests::clip_management_disabled_arrangement_snapshots_have_no_audio_notes_or_monitor_activity`.
+- Evidence: [docs/validation/session-clip-management.md](../docs/validation/session-clip-management.md).
+- Evidence: [docs/validation/session-clip-management-receipt.json](../docs/validation/session-clip-management-receipt.json).
+
+Linux ARM64 software qualification: eight contrasting clips, real native keyboard/AccessKit edits, exact RGB, audio/MIDI content and lane/settings retention, project and preset file save/reopen, bit-exact shared audio, real preset audition, default/strict schema migration, canceled/stale/occupied/removed/active/recording/protected/aggregate-note/source-memory refusals and zero renderer edit/Undo/Redo allocation/free. Occupied destinations are preserved, MIDI uses destination instruments/routes, presets retain source media, and disabled content cannot launch/resume or suppress Arrangement input. Per-clip trigger/gate/toggle/repeat remains issue 196. Physical capture stays closed.
+
 ### Issue #153: implemented
 
 - native UI: [src/ui/sampler_editor.rs](../src/ui/sampler_editor.rs) — Saved per-slot Trigger / Hold / Toggle, Repeat and cue; prepared Apply and reusable Save
@@ -479,7 +490,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#149](https://github.com/michaelmonetized/omatainer/issues/149) | Edit MIDI CC, pitch-bend, program and channel-pressure data in clips | implemented |
 | [#150](https://github.com/michaelmonetized/omatainer/issues/150) | Record, edit and render per-note pitch, pressure and timbre expression | planned |
 | [#151](https://github.com/michaelmonetized/omatainer/issues/151) | Add cursor-based MIDI step recording and computer-keyboard note input | implemented |
-| [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | planned |
+| [#152](https://github.com/michaelmonetized/omatainer/issues/152) | Add editable Session clip management and reusable clip presets | implemented |
 | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented |
 | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented |
 | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned |
