@@ -152,6 +152,9 @@ pub(crate) enum Action {
     LaunchScene { target: Target },
     TrackGain { target: Target, value: f32 },
     TrackPan { target: Target, value: f32 },
+    TrackArm { target: Target, value: bool },
+    TrackMonitor { target: Target, mode: engine::input_monitor::Mode },
+    TrackCue { target: Target, value: bool },
     Crossfader { value: f32 },
     CrossfaderContour { value: f32 },
     MasterGain { value: f32 },
@@ -238,6 +241,9 @@ fn discovery() -> Value {
         "actions": {"play": {}, "stop": {}, "launch_scene": {"target":"scene Target"},
             "track_gain":{"target":"track Target","value":"number 0..1.5"},
             "track_pan":{"target":"track Target","value":"number 0..1; center 0.5"},
+            "track_arm":{"target":"track Target","value":"bool; controls Auto input monitoring"},
+            "track_monitor":{"target":"track Target","mode":"in|auto|off; migrated null modes retain additive routing"},
+            "track_cue":{"target":"track Target","value":"bool; transient pre-fader headphone PFL"},
             "crossfader":{"value":"number 0..1"},"crossfader_contour":{"value":"number 0..1, fade to cut"},"master_gain":{"value":"number 0..1.5"},
             "monitor":{"control":"{op: source, value: pfl|deck_mix}; volume/blend/mix: 0..1; master/split: bool; pfl: {deck: 0|1, enabled: bool}; tone: 0|1 (one second at -40 dBFS, stopped available pair); cancel_tone"},"deck_control":{"deck":"0|1","control":"controller control: quantize (enabled: bool, division: 0..5 = 1/8, 1/4, 1/2, 1, 2, 4 beats), hold, keylock, pitch_range, strip, loop_mode, loop_button, loop_toggle, loop_select, reloop, loop_scale, loop_shift, loop_bounds (media_key, start_seconds, end_seconds), loop_move (media_key, signed beats), loop_length (media_key, 0.125..64 beats), beat_jump (forward: bool), beat_jump_size (index: 0..9), beat_jump_scale (up: bool), tap, start_time, stop_time, track_start, slip, pad_mode, parameter, hot_loop, auto_loop_pad, manual_pad, sync_off","quantized_onset":"applied acknowledges the accepted controller gesture; state.decks[].controls.pending reports any deferred musical onset and disappears on dispatch or cancellation"}},
         "edits":{"rename":{"name":"UTF-8 string, at most 1024 bytes"},
@@ -296,7 +302,8 @@ fn state(
     };
     let objects: Vec<_> = slots.iter().skip(page.offset).take(page.limit).map(|slot| {
         let item = &items[*slot]; let name = ipc_transport::short_json_text(&item.name,32); json!({"target":Target {namespace:Key(layout.namespace),axis:page.axis,id:ObjectId(item.id.0)},
-            "name":name,"name_truncated":name.len()<item.name.len(),"color":item.color})
+            "name":name,"name_truncated":name.len()<item.name.len(),"color":item.color,
+            "input":matches!(page.axis, Axis::Track).then(||s.tracks.get(*slot).map(|track|json!({"armed":track.armed,"mode":track.input_monitor,"enabled":track.input_enabled,"cue":track.pfl})))} )
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
@@ -372,6 +379,18 @@ impl Action {
                     target,
                     value: check(value, 1.0)?,
                 }
+            }
+            Self::TrackArm { target: t, value } => {
+                let (slot, target) = target(layout, t, session::Axis::Track)?;
+                remote::Action::Arm { slot, target, value }
+            }
+            Self::TrackMonitor { target: t, mode } => {
+                let (slot, target) = target(layout, t, session::Axis::Track)?;
+                remote::Action::TrackMonitor { slot, target, mode }
+            }
+            Self::TrackCue { target: t, value } => {
+                let (slot, target) = target(layout, t, session::Axis::Track)?;
+                remote::Action::TrackCue { slot, target, value }
             }
             Self::Crossfader { value } => remote::Action::Crossfader(check(value, 1.0)?),
             Self::CrossfaderContour { value } => remote::Action::CrossfaderContour(check(value, 1.0)?),

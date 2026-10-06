@@ -336,6 +336,7 @@ fn comparison_reports_stable_track_clip_routing_and_device_changes() {
     state.tracks[0].name = "Renamed track".into();
     state.tracks[0].clips[0].name = "Edited clip".into();
     state.tracks[0].gain = 0.43;
+    state.tracks[0].input_monitor = Some(crate::engine::input_monitor::Mode::In);
     state.tracks[0].synth.cutoff = 1200.0;
     let saved = Bundle {
         state: project::Document {
@@ -360,6 +361,7 @@ fn comparison_reports_stable_track_clip_routing_and_device_changes() {
     }
     assert!(text.contains("Renamed track"));
     assert!(text.contains("gain:"));
+    assert!(text.contains("input_monitor:"), "{text}");
     assert!(text.contains("cutoff:"));
     assert!(text.contains("Edited clip"));
     assert!(worker::compare(&current, &saved, &AtomicBool::new(true)).is_err());

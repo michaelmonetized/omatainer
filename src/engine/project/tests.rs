@@ -11,7 +11,7 @@ fn named_controller_lanes_roundtrip_in_schema_fifteen_and_reject_legacy_or_inval
     original.tracks[2].clips[7].kind = ClipKind::Midi; original.tracks[2].clips[7].lanes = Some(lanes.clone());
     let saved = captured(&original);
     let json = serde_json::to_value(&saved.state).unwrap();
-    assert_eq!(json["version"], 15);
+    assert_eq!(json["version"], STATE_VERSION);
     assert!(json["tracks"][2]["clips"][7]["lanes"].get("state").is_none());
     let decoded: State = serde_json::from_value(json.clone()).unwrap();
     let prepared = Prepared::from_state(decoded, saved.media.clone(), 48000).unwrap();
@@ -1073,3 +1073,5 @@ fn sample_based_position_roundtrips_and_legacy_headers_cannot_hide_it() {
     let legacy:State=serde_json::from_value(wire).unwrap();
     assert_eq!(legacy.timeline_seconds,saved.state.beat*60.0/f64::from(saved.state.bpm));
 }
+
+mod input_monitor_tests;

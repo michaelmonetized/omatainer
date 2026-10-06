@@ -34,6 +34,7 @@ mod library_artwork;
 mod key_hints;
 mod clip_gain;
 mod headphones;
+mod input_monitoring;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;

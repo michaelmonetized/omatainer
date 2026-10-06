@@ -297,7 +297,7 @@ pub(super) fn compare(
             let key = format!("Track [{:x?}/{}]", layout.namespace, item.id.0);
             labels.insert(key.clone(), format!("Track: {}", item.name));
             out[0].insert(key.clone(), json!({"name":item.name,"color":item.color,"position":layout.track_order.iter().position(|s| *s as usize == slot)}));
-            out[2].insert(key.clone(), json!({"bus":scene(track.scene_bus),"gain":track.gain,"pan":track.pan,"mute":track.mute,"solo":track.solo,"armed":track.armed}));
+            out[2].insert(key.clone(), json!({"bus":scene(track.scene_bus),"gain":track.gain,"pan":track.pan,"mute":track.mute,"solo":track.solo,"armed":track.armed,"input_monitor":track.input_monitor}));
             out[3].insert(key.clone(), json!({"instrument":track.synth,"kind":track.kind,"effects":track.fx,"eq":track.eq,"drums":track.drums.map(|i| hashes.get(i))}));
             for &s in &layout.scene_order {
                 let mut clip =

@@ -235,6 +235,9 @@ impl Frame {
             out.mute = track.mute;
             out.solo = track.solo;
             out.armed = track.armed;
+            out.input_monitor = track.input_monitor;
+            out.input_enabled = track.input_enabled(rt.recording || rt.routing_pipe.recorder.alias() != 0);
+            out.pfl = track.pfl;
             out.meter = track.meter;
             out.playing_scene = track.playing.map(|p| p.scene as i16).unwrap_or(-1);
             out.clip_pending = track.playing.is_some_and(|p| p.last_beat < 0.0);

@@ -488,6 +488,9 @@ pub(crate) fn start(
 }
 
 #[cfg(test)]
+mod monitor_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

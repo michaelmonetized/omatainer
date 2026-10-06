@@ -196,6 +196,7 @@ impl Frame {
             out.mute = track.mute;
             out.solo = track.solo;
             out.armed = track.armed;
+            out.input_monitor = track.input_monitor;
             out.kind = track.kind;
             out.synth = synth(&track.poly);
             out.eq = eq(&track.eq);

@@ -41,6 +41,8 @@ impl Plan {
             | Mute { track }
             | Solo { track }
             | Arm { track }
+            | TrackArm { track, .. }
+            | TrackMonitor { track, .. }
                 if (*track as usize) < rt.tracks.len() =>
             {
                 (Target::Track(*track), Name::Track, 1000 + *track as u64)

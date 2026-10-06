@@ -309,7 +309,7 @@ pub(in crate::engine) fn prepare_track(mut saved: Track, media: &[Arc<Sample>], 
     for c in &mut saved.clips { c.lanes = c.lanes.as_ref().map(|l| l.prepare()).transpose()?; }
     track.scene_bus = saved.scene_bus;
     track.gain = saved.gain; track.pan = saved.pan;
-    track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed;
+    track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed; track.input_monitor = saved.input_monitor;
     track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
     track.fx = effects(saved.fx, sr);
     track.clips = saved.clips.into_iter().map(|c| Clip {

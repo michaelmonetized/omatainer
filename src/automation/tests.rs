@@ -523,3 +523,23 @@ fn headphone_api_validates_values_and_rejects_unavailable_checks_without_changin
     assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected");
     assert_eq!(service.query(json!({"op":"schedule","namespace":namespace,"beat":4,"action":{"op":"monitor","control":{"op":"volume","value":0.5}}}))["error_code"],"invalid_schedule");
 }
+
+#[test]
+fn track_input_api_retains_exact_targets_modes_arm_cue_and_saved_undo() {
+    use crate::engine::input_monitor::Mode;
+    let mut service = Service::new(); let state = service.state();
+    let target = state["objects"][2]["target"].clone(); let namespace = state["expected"]["namespace"].clone();
+    for action in [json!({"op":"track_monitor","target":target,"mode":"auto"}),json!({"op":"track_arm","target":target,"value":true}),json!({"op":"track_cue","target":target,"value":true})] {
+        let response = service.query(json!({"op":"command","namespace":namespace,"action":action})); assert_eq!(response["ok"],true,"{response}"); assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"applied");
+    }
+    assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto)); assert!(service.rt.tracks[2].armed && service.rt.tracks[2].pfl);
+    service.publish(); let input=service.state()["objects"][2]["input"].clone(); assert_eq!(input["mode"],"auto"); assert_eq!(input["armed"],true); assert_eq!(input["cue"],true);
+    service.rt.apply(Command::Undo); assert!(!service.rt.tracks[2].armed); service.rt.apply(Command::Undo); assert_eq!(service.rt.tracks[2].input_monitor,None);
+    service.rt.apply(Command::Redo); assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto));
+    for action in [json!({"op":"track_monitor","target":target,"mode":"sideways"}), json!({"op":"track_monitor","target":target,"mode":0}), json!({"op":"track_arm","target":target,"value":1}), json!({"op":"track_cue","target":target,"value":true,"extra":true})] { assert_eq!(service.query(json!({"op":"command","namespace":namespace,"action":action}))["ok"],false); }
+    let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"track_monitor","target":target,"mode":"off"}})); assert_eq!(response["ok"],true);
+    let id = service.rt.session.tracks[2].id;
+    let (remove, _) = session::Request::metadata(&service.rt.session, service.engine.undo.checkpoint().epoch, session::Action::Delete { axis: session::Axis::Track, id }).unwrap();
+    service.rt.apply(Command::SessionEdit(remove));
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected"); assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto)); assert!(!service.rt.session.tracks[2].active);
+}

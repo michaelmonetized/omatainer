@@ -590,6 +590,8 @@ impl RtEngine {
             | Command::Mute { .. }
             | Command::Solo { .. }
             | Command::Arm { .. }
+            | Command::TrackArm { .. }
+            | Command::TrackMonitor { .. }
             | Command::ComposeArm { .. }
             | Command::MidiEdit(_)
             | Command::SetNotes { .. }

@@ -394,3 +394,17 @@ fn excessive_processor_storage_is_refused_before_graph_allocation() {
         .to_string();
     assert!(error.contains("256 MiB"), "{error}");
 }
+
+#[test]
+fn created_and_duplicated_input_tracks_start_disarmed_in_auto_without_copying_external_routes() {
+    let (engine, mut rt) = Engine::headless_for_test(48000,256);
+    rt.apply(Command::TrackMonitor { track: 2, mode: crate::engine::input_monitor::Mode::In });
+    let original = rt.session.tracks[2].id;
+    edit(&engine, &mut rt, Structure::Track { name: "Fresh input".into(), audio: true, position: 0 });
+    assert_eq!(rt.tracks[8].input_monitor, Some(crate::engine::input_monitor::Mode::Auto)); assert!(!rt.tracks[8].armed);
+    edit(&engine, &mut rt, Structure::Duplicate { axis: Axis::Track, id: original, name: "Duplicate input".into(), position: 1 });
+    assert_eq!(rt.tracks[9].input_monitor, Some(crate::engine::input_monitor::Mode::Auto)); assert!(!rt.tracks[9].armed);
+    assert_eq!(rt.tracks[2].input_monitor, Some(crate::engine::input_monitor::Mode::In));
+    replay(&mut rt, Command::Undo); replay(&mut rt, Command::Redo);
+    assert_eq!(rt.tracks[9].input_monitor, Some(crate::engine::input_monitor::Mode::Auto));
+}

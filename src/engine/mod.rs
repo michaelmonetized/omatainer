@@ -8,6 +8,7 @@ pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
 mod mixer_gain;
+pub mod input_monitor;
 pub(crate) mod monitor;
 pub(crate) mod surface_controls;
 #[cfg(test)]
@@ -238,6 +239,9 @@ pub struct TrackRt {
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
+    pub input_monitor: Option<input_monitor::Mode>,
+    input_gain: mixer_gain::GainPair,
+    pub pfl: bool,
     pub kind: u8, // 0 drums 1 bass 2 keys 3 pad 4 audio
     pub poly: Poly,
     pub eq: ThreeBand,
@@ -263,6 +267,7 @@ impl TrackRt {
             name, clips, playing: None, project_resume: None, scene_bus: 0,
             gain: 0.8, pan: 0.0, mixer_gain: mixer_gain::GainPair::default(),
             mute: false, solo: false, armed: false, kind,
+            input_monitor: None, input_gain: mixer_gain::GainPair::default(), pfl: false,
             poly: Poly::new(sr, match kind { 0 => SynthInstrument::Analog, 1 => SynthInstrument::Keys, _ => SynthInstrument::Pad }, 8),
             eq: ThreeBand::new(sr), eq_right: ThreeBand::new(sr), meter: 0.0,
             drum_samples: drums, drum_pos: [None; 16], fx: fx::FxChain::new(sr),
@@ -765,6 +770,9 @@ pub struct TrackSnap {
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
+    pub input_monitor: Option<input_monitor::Mode>,
+    pub input_enabled: bool,
+    pub pfl: bool,
     pub meter: f32,
     pub playing_scene: i16,
     pub clip_progress: f32,
@@ -1012,6 +1020,9 @@ pub enum Command {
     Mute { track: u8 },
     Solo { track: u8 },
     Arm { track: u8 },
+    TrackArm { track: u8, value: bool },
+    TrackMonitor { track: u8, mode: input_monitor::Mode },
+    TrackPfl { track: u8, value: bool },
     Browse(f32),
     BrowseCrates(f32),
     BrowsePanel(u8),
@@ -1245,7 +1256,7 @@ impl RtEngine {
         self.undo.prepare_sample_rate(self.sr,active_history);
         self.metro = metronome::Click::new(self.sr);
         self.xfader_gain = mixer_gain::GainPair::default();
-        for track in &mut self.tracks { track.mixer_gain = mixer_gain::GainPair::default(); }
+        for track in &mut self.tracks { track.mixer_gain = mixer_gain::GainPair::default(); track.input_gain = mixer_gain::GainPair::default(); }
         // Rate changes reconstruct all preallocated master histories; type and
         // wet controls remain intact and are configured on the next block.
         self.master_fx = std::array::from_fn(|_| master_fx::MasterSlot::new(sr as f32));
@@ -1714,6 +1725,11 @@ impl RtEngine {
         // engine beat denotes the end of this output sample's beat interval.
         let explicit_region = playing.is_some_and(|p| self.tracks[ti].clips[p.scene as usize].region.is_some());
         let clock = if explicit_region { self.precise_midi_beat() } else { self.beat };
+        let clip_sounding = playing.is_some_and(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON);
+        let recording = self.recording || self.routing_pipe.recorder.alias() != 0;
+        let track = &mut self.tracks[ti];
+        track.input_gain.prepare(track.input_gains(clip_sounding, recording), self.sr, input_monitor::identity);
+        let [input_gain, clip_gain_value] = track.input_gain.tick();
         if let Some(p) = playing.filter(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON)
         {
             let scene = p.scene as usize;
@@ -1731,12 +1747,12 @@ impl RtEngine {
                 let sample_elapsed = (elapsed - midi_schedule::BEAT_EPSILON).max(0.0);
                 let local = region.map_or_else(|| sample_elapsed.rem_euclid(clip_beats),
                     |region| region.position(sample_elapsed, p.looping).unwrap_or(region.end));
-                if !ending && self.tracks[ti].kind != 0 && self.tracks[ti].poly.offline.is_some() {
+                if !ending && (self.tracks[ti].clips[scene].kind == ClipKind::Audio || self.tracks[ti].kind != 0 && self.tracks[ti].poly.offline.is_some()) {
                     let clip = &self.tracks[ti].clips[scene];
                     if let Some(audio) = &clip.audio {
                         let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;
                         let (l, r) = audio.at(phase);
-                        let gain = clip_gain(clip.gain); fallback = [l * gain, r * gain];
+                        let gain = clip_gain(clip.gain) * clip_gain_value; fallback = [l * gain, r * gain];
                     }
                 }
                 let prev = p.last_beat;
@@ -1859,7 +1875,7 @@ impl RtEngine {
         track.eq_right.high_g = track.eq.high_g;
         let mut raw = [s + pad_l + fallback[0], s + pad_r + fallback[1]];
         if let Some(input) = self.routing_track_input {
-            raw[0] += input[0]; raw[1] += input[1];
+            raw[0] += input[0] * input_gain; raw[1] += input[1] * input_gain;
         }
         let l = track.eq.tick(raw[0]);
         let r = track.eq_right.tick(raw[1]);
@@ -1877,7 +1893,7 @@ impl RtEngine {
         self.routing_track_taps = [raw, [fl, fr], output];
         let output = self.surface.track(ti, output);
         self.routing_track_taps[2] = output;
-        (output[0], output[1], false)
+        (output[0], output[1], track.pfl)
     }
 
     fn trig_drum(&mut self, ti: usize, pitch: u8, vel: f32) {
@@ -2766,6 +2782,15 @@ impl RtEngine {
                 if (track as usize) < self.tracks.len() {
                     self.tracks[track as usize].solo = !self.tracks[track as usize].solo;
                 }
+            }
+            Command::TrackArm { track, value } => {
+                if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.armed = value; }
+            }
+            Command::TrackMonitor { track, mode } => {
+                if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.input_monitor = Some(mode); }
+            }
+            Command::TrackPfl { track, value } => {
+                if let Some(track) = self.tracks.get_mut(usize::from(track)) { track.pfl = value; self.monitor.apply(monitor::Control::Source(monitor::Source::Pfl)); }
             }
             Command::Arm { track } => {
                 if (track as usize) < self.tracks.len() {

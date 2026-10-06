@@ -118,6 +118,7 @@ pub(super) struct TrackControls {
     mute: bool,
     solo: bool,
     armed: bool,
+    input_monitor: Option<super::super::input_monitor::Mode>,
 }
 impl TrackControls {
     pub fn get(track: &TrackRt) -> Self {
@@ -127,6 +128,7 @@ impl TrackControls {
             mute: track.mute,
             solo: track.solo,
             armed: track.armed,
+            input_monitor: track.input_monitor,
         }
     }
     fn swap(&mut self, track: &mut TrackRt) {
@@ -136,6 +138,7 @@ impl TrackControls {
         track.mute = self.mute;
         track.solo = self.solo;
         track.armed = self.armed;
+        track.input_monitor = self.input_monitor;
         *self = current;
     }
 }

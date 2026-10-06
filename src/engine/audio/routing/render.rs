@@ -39,7 +39,9 @@ impl Prepared {
                     }) {
                         let timer = rt.load_profile.start();
                         rt.routing_track_input = Some([input[0], input[1]]);
-                        let (left, right, _) = rt.render_track_cached(slot, any_solo);
+                        let (left, right, pfl) = rt.render_track_cached(slot, any_solo);
+                        if pfl { for (target, value) in cue.iter_mut().zip(rt.routing_track_taps[1]) { *target += value; } }
+                        if !rt.tracks[slot].input_enabled(rt.recording || rt.routing_pipe.recorder.alias() != 0) { self.nodes[index].valid = true; }
                         rt.routing_track_input = None;
                         rt.load_profile.track(slot, timer);
                         if !self.model.tracks_without_default_send.contains(&id) {

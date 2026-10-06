@@ -524,6 +524,7 @@ impl Inverse {
                     node.eq.set_sample_rate(sr);
                     node.eq_right.set_sample_rate(sr);
                     node.mixer_gain = crate::engine::mixer_gain::GainPair::default();
+                    node.input_gain = crate::engine::mixer_gain::GainPair::default();
                     node.stop_clip();
                     node.drum_pos.fill(None);
                 }

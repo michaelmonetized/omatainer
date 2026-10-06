@@ -325,6 +325,7 @@ impl App {
                     if ui.button(crate::localization::format("Delete {label}", &[format!("{}", label)])).help(ui,HelpControl::SessionLayout).clicked() {self.session_editor.metadata(&self.engine,&layout,Action::Delete {axis,id});}
                 });
             });
+            if axis == Axis::Track { self.input_monitoring_controls(ui, slot); }
             if self.session_editor.busy() {if ui.button(tr!("Cancel session edit")).clicked() {self.session_editor.cancel();} ctx.request_repaint_after(std::time::Duration::from_millis(16));}
             if let Some(error)=&self.session_editor.error {ui.colored_label(self.theme.red,error);} else {ui.label(&self.session_editor.message);}
             ui.label(tr!("Choose any offscreen track or scene using Go to track and Go to scene above the grid. Those numbers follow display order; MIDI routing uses stable track slots."));

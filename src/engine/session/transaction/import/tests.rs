@@ -33,6 +33,7 @@ fn import_undo_redo_preserve_existing_processors_live_inputs_source_and_embedded
     let (source_engine, mut source_rt) = Engine::headless_for_test(44_100, 256);
     let mut source = capture(&source_engine, &mut source_rt);
     source.state.bpm = 91.0;
+    source.state.tracks[2].input_monitor = Some(crate::engine::input_monitor::Mode::In);
     source.state.tracks[2].clips[0].lanes = Some(
         crate::engine::midi_data::Lanes::new(
             960,
@@ -91,6 +92,7 @@ fn import_undo_redo_preserve_existing_processors_live_inputs_source_and_embedded
     let imported = &rt.tracks[old_tracks];
     assert!(!imported.armed && !imported.solo && imported.playing.is_none());
     assert_eq!(imported.scene_bus, old_scenes);
+    assert_eq!(imported.input_monitor, Some(crate::engine::input_monitor::Mode::Off));
     assert_eq!(
         imported.clips[old_scenes].lanes,
         source.state.tracks[2].clips[0].lanes

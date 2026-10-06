@@ -599,6 +599,9 @@ fn destructive(command: &Command) -> bool {
         | Command::Mute { .. }
         | Command::Solo { .. }
         | Command::Arm { .. }
+            | Command::TrackArm { .. }
+            | Command::TrackMonitor { .. }
+            | Command::TrackPfl { .. }
         | Command::Browse(_)
         | Command::BrowseCrates(_)
         | Command::BrowsePanel(_)

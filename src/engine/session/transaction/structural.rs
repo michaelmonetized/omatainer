@@ -84,6 +84,7 @@ impl Request {
                 saved.mute = false;
                 saved.solo = false;
                 saved.armed = false;
+                saved.input_monitor = Some(crate::engine::input_monitor::Mode::Auto);
                 saved.fx.clear();
                 saved.eq = [1.0; 3];
                 saved.synth = project::Synth {
@@ -134,6 +135,7 @@ impl Request {
                 saved.name = name;
                 saved.launch = None;
                 saved.armed = false;
+                saved.input_monitor = Some(crate::engine::input_monitor::Mode::Auto);
                 saved.clips = saved.clips.into_iter().map(duplicate_cell).collect();
                 let color = before.tracks[source].color;
                 Self::prepare_track_change(

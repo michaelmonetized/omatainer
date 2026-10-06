@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 15;
+pub const STATE_VERSION: u32 = 16;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -91,6 +91,9 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 16 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|track| track.get("input_monitor").is_some()) {
+            return Err(serde::de::Error::custom("Input monitoring requires project state version 16"));
+        }
         if version < 15 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten()
             .flat_map(|track| track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten())
             .any(|clip| clip.get("lanes").is_some_and(|lanes| lanes.get("labels").is_some())) {
@@ -187,6 +190,8 @@ pub struct Track {
     pub mute: bool,
     pub solo: bool,
     pub armed: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_monitor: Option<input_monitor::Mode>,
     pub kind: u8,
     pub synth: Synth,
     pub eq: [f32; 3],
@@ -413,6 +418,7 @@ impl State {
                 mute: false,
                 solo: false,
                 armed: false,
+                input_monitor: None,
                 kind: 0,
                 synth: Synth {
                     kind: SynthInstrument::Analog,
@@ -484,6 +490,7 @@ impl State {
     }
     pub fn validate(&self, media: &[Arc<Sample>]) -> Result<(), String> {
         let fail = |name: &str| Err(format!("invalid project {name}"));
+        if self.version < 16 && self.tracks.iter().any(|track| track.input_monitor.is_some()) { return fail("input monitoring in a legacy state"); }
         if self.version < 9 && (self.sampler_synth.offline.is_some() || self.tracks.iter().any(|track| track.synth.offline.is_some())
             || self.tracks.iter().flat_map(|track| &track.fx).chain(self.scene_fx.iter().flatten()).any(|effect| effect.offline.is_some())) {
             return fail("unavailable device in a legacy state");

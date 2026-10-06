@@ -28,6 +28,9 @@ pub(crate) enum Action {
         target: Reference,
         value: f32,
     },
+    Arm { slot: usize, target: Reference, value: bool },
+    TrackMonitor { slot: usize, target: Reference, mode: super::input_monitor::Mode },
+    TrackCue { slot: usize, target: Reference, value: bool },
     Crossfader(f32),
     CrossfaderContour(f32),
     Master(f32),
@@ -50,6 +53,9 @@ impl Action {
                 track: slot as u8,
                 value,
             },
+            Self::Arm { slot, value, .. } => Command::TrackArm { track: slot as u8, value },
+            Self::TrackMonitor { slot, mode, .. } => Command::TrackMonitor { track: slot as u8, mode },
+            Self::TrackCue { slot, value, .. } => Command::TrackPfl { track: slot as u8, value },
             Self::Crossfader(value) => Command::Xfader(value),
             Self::CrossfaderContour(value) => Command::XfaderCurve(value),
             Self::Master(value) => Command::Master(value),
@@ -81,6 +87,7 @@ impl Action {
                     && value.is_finite()
                     && (0.0..=1.0).contains(&value)
             }
+            Self::Arm { slot, target, .. } | Self::TrackMonitor { slot, target, .. } | Self::TrackCue { slot, target, .. } => layout.resolves(Axis::Track, slot, target),
             Self::Crossfader(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::CrossfaderContour(value) => value.is_finite() && (0.0..=1.0).contains(&value),
             Self::Master(value) => value.is_finite() && (0.0..=1.5).contains(&value),

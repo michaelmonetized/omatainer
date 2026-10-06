@@ -41,6 +41,9 @@ impl Scoped {
             | Command::Mute { track }
             | Command::Solo { track }
             | Command::Arm { track }
+            | Command::TrackArm { track, .. }
+            | Command::TrackMonitor { track, .. }
+            | Command::TrackPfl { track, .. }
             | Command::OpenFxTrack(track) => (Some(*track as usize), None),
             Command::LaunchClip { track, scene }
             | Command::FireClip { track, scene, .. }

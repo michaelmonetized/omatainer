@@ -89,6 +89,7 @@ impl Import {
             node.eq.set_sample_rate(sr);
             node.eq_right.set_sample_rate(sr);
             node.mixer_gain = crate::engine::mixer_gain::GainPair::default();
+            node.input_gain = crate::engine::mixer_gain::GainPair::default();
             node.stop_clip();
             node.drum_pos.fill(None);
         }
@@ -245,6 +246,7 @@ impl Request {
             let mut track = source.tracks[source_slot].clone();
             track.launch = None;
             track.armed = false;
+            track.input_monitor = Some(crate::engine::input_monitor::Mode::Off);
             track.solo = false;
             track.scene_bus = mapped_scenes
                 .get(&track.scene_bus)

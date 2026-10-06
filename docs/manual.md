@@ -246,11 +246,19 @@ Play a ramped 997 Hz tone on one active physical channel. Starting playback, can
 
 Workflow: Audio setup.
 
+### Audio input monitoring
+
+In / Auto / Off; Arm; Cue
+
+In hears routed audio and suppresses audio-clip playback. Auto hears input on an armed track while no clip is sounding or a recording is active. Off hears clips and removes software input monitoring for direct hardware monitoring. Pending launches keep input until onset. Migrated tracks retain their additive route until a mode is chosen; new and duplicated tracks use Auto, disarmed. Imported tracks use Off because external input routes are excluded. Audio routing chooses exact input and record aliases and shows the input cushion, gaps and availability. Monitoring changes never open devices or change raw input recording. Cue selects this track's post-effect, pre-fader signal in the separate headphone PFL bus. Arm and mode persist with project state and Undo; Cue is transient. Input buffering and effects add latency; complete graph compensation is separate.
+
+Workflow: Audio setup.
+
 ### Headphone mixing
 
 Independent stereo output, level and cue/master blend
 
-In Audio routing, choose a stereo headphone output alias and review/apply the stopped routing draft. Headphone channels cannot overlap any program route. Missing channels stay silent. Select PFL to hear selected decks before channel and crossfader gains, or deck A/B to retain the original NS7 front-panel policy. Cue/master blend affects PFL headphones only; main stays unchanged. Split cue folds selected cue to the left and master to the right at half the stereo sum. Level and source changes ramp over five milliseconds. Quiet left/right checks run for one second only while stopped on an available pair; playback, route/project/output changes, cancellation and emergency stop retire them. Digital availability and meters do not prove physical sound.
+In Audio routing, choose a stereo headphone output alias and review/apply the stopped routing draft. Headphone channels cannot overlap any program route. Missing channels stay silent. Select PFL to hear selected tracks before channel gain and selected decks before channel and crossfader gains, or deck A/B to retain the original NS7 front-panel policy. Cue/master blend affects PFL headphones only; main stays unchanged. Split cue folds selected cue to the left and master to the right at half the stereo sum. Level and source changes ramp over five milliseconds. Quiet left/right checks run for one second only while stopped on an available pair; playback, route/project/output changes, cancellation and emergency stop retire them. Digital availability and meters do not prove physical sound.
 
 Workflow: Audio setup.
 
