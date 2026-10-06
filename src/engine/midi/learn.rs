@@ -223,6 +223,7 @@ struct State {
 }
 pub(crate) struct Shared {
     pub revision: AtomicU64,
+    cancellation: AtomicU64,
     pub ordered: AtomicBool,
     state: Mutex<State>,
 }
@@ -230,6 +231,7 @@ impl Default for Shared {
     fn default() -> Self {
         Self {
             revision: AtomicU64::new(0),
+            cancellation: AtomicU64::new(1),
             ordered: AtomicBool::new(false),
             state: Mutex::new(State::default()),
         }
@@ -241,6 +243,14 @@ pub(super) enum Dispatch {
     Binding(Binding),
 }
 impl Shared {
+    /// Fence deferred performance work without taking the editor lock.
+    /// Takes this MIDI owner; returns the current monotonic cancellation epoch.
+    pub(in crate::engine) fn cancellation_epoch(&self) -> u64 { self.cancellation.load(Ordering::Acquire) }
+    /// Retire deferred performance work before input ownership changes.
+    /// Takes this MIDI owner; advances its epoch, saturating permanently if exhausted.
+    pub(in crate::engine) fn retire_pending(&self) {
+        let _ = self.cancellation.fetch_update(Ordering::AcqRel, Ordering::Acquire, |epoch| epoch.checked_add(1));
+    }
     #[cfg(test)]
     pub(super) fn with_editor_lock_for_test(&self, work: impl FnOnce()) {
         let _held = self.state.lock();
@@ -248,10 +258,12 @@ impl Shared {
     }
 
     fn advance(&self) -> Result<u64, String> {
-        self.revision
+        let revision = self.revision
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |r| r.checked_add(1))
             .map(|r| r + 1)
-            .map_err(|_| "MIDI assignment revision exhausted".into())
+            .map_err(|_| "MIDI assignment revision exhausted".to_string())?;
+        self.retire_pending();
+        Ok(revision)
     }
     /// Publish validated saved mappings outside the native callback.
     /// Takes the complete configuration; returns the new input revision or leaves the current one intact.
@@ -383,11 +395,13 @@ impl Shared {
                     id: id.into(),
                 },
             });
+            self.retire_pending();
         }
     }
     /// Retire an input and its uncommitted capture.
     /// Takes the source id; retains installed mappings for an explicit exact-port reconnect.
     pub(super) fn disconnected(&self, source: u64) {
+        self.retire_pending();
         let mut state = self.state.lock();
         let endpoint = state
             .devices

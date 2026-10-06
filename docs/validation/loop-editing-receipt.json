@@ -125,9 +125,43 @@
     "The new manual entry uses the existing Prepare a DJ deck workflow, verified against generated catalogue output."
   ],
   "limits": [
-    "Seven new software tests and surrounding regression modules passed; this batch has not yet had a new unfiltered full release run",
+    "Seven original loop-editing checks and the complete 1786-test software batch pass",
     "Physical captures and new listening acceptance remain closed",
     "Movement and length selectors are local native drafts; applied regions use existing saved preparation",
     "No release containing this loop editor has been installed yet"
-  ]
+  ],
+  "fullSoftwareQualification": {
+    "qualifiedAt": "2026-10-06T12:44:15.808Z",
+    "baseRevision": "0c5c67c6f21db7f66d59f756b2b3bd6d1f825088",
+    "testBinary": {
+      "path": "target/app-backlog/qualification-bin/deck-quantization-tests",
+      "sha256": "9ee71c2f0839f68421f4d57e90c621d216cb4fe5085deb7f153c363513b83662"
+    },
+    "compiledInventory": {
+      "path": "target/app-backlog/deck-quantization-compiled-source-inventory.json",
+      "sha256": "98064177d496be62813cdf6224fb4f2c015bbb6965e0de4c71ce4c1c5976b401"
+    },
+    "log": {
+      "path": "target/app-backlog/deck-quantization-full-tests.log",
+      "sha256": "169459e49f467d64024834e96a1415f7c91f50f5df77e0868860ea162cffad68"
+    },
+    "passed": 1786,
+    "failed": 0,
+    "ignored": 43,
+    "filtered": 0,
+    "seconds": 460.76,
+    "threads": 1,
+    "currentSourceFiles": {
+      "src/engine/deck_controls.rs": "f731c3ec95f5dfc00c1239facff207cc61ecb0bd0e789b3af631fca1eec97d80",
+      "src/engine/deck_controls/loop_edit.rs": "194e0e35f1f4a4a69fc520a09e4fb1e352be21d0bc4cdc6b6a9900b1b93610ac",
+      "src/engine/deck_controls/loop_edit_tests.rs": "1ee880e736dc4dedcf508eb41d86d965f80a0f0e00fa948f2693b6e965d9fcd6",
+      "src/engine/undo/capture.rs": "d3696bae48a4a716ae9f46faf9d57938efc1a3bff60f92833bba3441de76469a",
+      "src/ui.rs": "801f3e3972f14011a56568f152ce6ee2abbc3afaf898650cd1e8c2bcbabd6c29",
+      "src/ui/loop_editor.rs": "bd6f72cd4fa9a290c9447f81ba0936601798edd987097ecb041ec7acff2716ac",
+      "src/ui/loop_editor/tests.rs": "4eafae1a77b52e6e70efac35d85aa390b957c5536d6e0ef53b69f370df788932",
+      "src/ui/help/catalogue.rs": "f24b54ed5f3f85aceba4e7935e258aad8924c66cba111f2afd5762f0e727823f",
+      "src/automation.rs": "560b08c9161b75063530dadfd5e05bf7801aebb302ced66732815d33d0b0f9e6",
+      "src/automation/tests.rs": "11bdfe3a26599914d0b7a0b5b67025aeb66b16c967b7e40781a8dc343dbd6736"
+    }
+  }
 }

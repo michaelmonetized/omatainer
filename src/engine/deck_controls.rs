@@ -3,12 +3,17 @@ use serde::{Deserialize, Serialize};
 use std::time::Instant;
 mod beat_jump;
 mod loop_edit;
+mod quantization;
+pub use quantization::{PendingStatus, QuantizedAction};
+pub(crate) use quantization::DIVISIONS as QUANTIZE_DIVISIONS;
 #[cfg(test)]
 mod beat_jump_tests;
 #[cfg(test)]
 mod cue_audition_tests;
 #[cfg(test)]
 mod loop_edit_tests;
+#[cfg(test)]
+mod quantization_tests;
 #[cfg(test)]
 mod tests;
 
@@ -46,6 +51,7 @@ impl Button {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Control {
+    Quantize { enabled: bool, division: u8 },
     Hold { button: Button, on: bool },
     Keylock,
     PitchRange,
@@ -80,6 +86,7 @@ impl Control {
     /// Takes this control; returns whether its indices and values are supported.
     pub fn valid(self) -> bool {
         match self {
+            Self::Quantize { division, .. } => usize::from(division) < QUANTIZE_DIVISIONS.len(),
             Self::Strip { value } | Self::StartTime { value } | Self::StopTime { value } => {
                 value.is_finite() && (0.0..=1.0).contains(&value)
             }
@@ -112,6 +119,9 @@ pub(crate) const BEAT_JUMP_SIZES: [f32; 10] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 
 
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct Status {
+    pub quantize: bool,
+    pub quantize_division: u8,
+    pub pending: Option<PendingStatus>,
     pub cue_held: bool,
     pub beat_jump_size: u8,
     pub reverse: bool,
@@ -135,6 +145,11 @@ pub struct Status {
 
 #[derive(Clone, Debug)]
 pub(super) struct State {
+    quantize: Option<bool>,
+    quantize_division: u8,
+    pending: Option<quantization::Pending>,
+    quantize_dispatching: bool,
+    quantize_owner_hint: Option<(u64, Button)>,
     beat_jump_size: u8,
     owners: [Option<(u64, Button)>; super::control::MAX_COMMANDS],
     counts: [u16; 30],
@@ -175,6 +190,11 @@ pub(super) struct LoopHistory {
 impl Default for State {
     fn default() -> Self {
         Self {
+            quantize: None,
+            quantize_division: 3,
+            pending: None,
+            quantize_dispatching: false,
+            quantize_owner_hint: None,
             beat_jump_size: 5,
             owners: [None; super::control::MAX_COMMANDS],
             counts: [0; 30],
@@ -221,6 +241,7 @@ impl State {
     /// Restore loop selection without reviving held performance buttons.
     /// Takes the captured loop state; replaces banks and clears any stale edge-edit baseline.
     pub fn restore_loops(&mut self, history: LoopHistory) {
+        self.pending = None;
         self.loops = history.loops;
         self.selected = history.selected;
         self.auto_button = history.auto_button;
@@ -256,6 +277,9 @@ impl State {
         } else if let Some(index) = existing {
             self.owners[index] = None;
             self.counts[button.index()] -= 1;
+            if self.pending.is_some_and(|pending| pending.owner == Some((source, button))) {
+                self.pending = None;
+            }
             return true;
         }
         false
@@ -277,6 +301,7 @@ impl State {
     /// Arm a bounded transport acceleration or brake.
     /// Takes Play state, prior velocity and output rate; returns no value.
     pub fn transport(&mut self, playing: bool, velocity: f32, sr: f32) {
+        if !playing { self.pending = None; }
         self.braking = !playing && self.stop > 0.0;
         self.brake_rate = velocity;
         let seconds = if playing { self.start } else { self.stop };
@@ -305,6 +330,8 @@ impl State {
     /// Clear performance gestures during a safety stop.
     /// Takes this state; returns no value and retains knob preferences and loop slots.
     pub fn release(&mut self) {
+        self.pending = None;
+        self.quantize_owner_hint = None;
         self.owners.fill(None);
         self.counts.fill(0);
         self.forward = None;
@@ -325,6 +352,9 @@ impl State {
     /// Takes this state; returns the UI and feedback values.
     pub fn status(&self) -> Status {
         Status {
+            quantize: self.quantize == Some(true),
+            quantize_division: self.quantize_division,
+            pending: self.pending.map(|pending| pending.status),
             cue_held: self.held(Button::Cue),
             beat_jump_size: self.beat_jump_size,
             reverse: self.held(Button::Reverse),
@@ -351,6 +381,8 @@ impl State {
     /// Discard loop banks and preview clocks when source media changes.
     /// Takes this state; returns no value and retains physical knob/switch settings.
     pub fn media_changed(&mut self) {
+        self.pending = None;
+        self.quantize_owner_hint = None;
         self.owners.fill(None);
         self.counts.fill(0);
         self.performance_forward = None;
@@ -440,6 +472,12 @@ impl RtEngine {
         }
         let index = usize::from(deck);
         match control {
+            Control::Quantize { enabled, division } => {
+                let state = &mut self.decks[index].controls;
+                state.quantize = Some(enabled);
+                state.quantize_division = division;
+                state.pending = None;
+            }
             Control::BeatJumpSize { index: size } => self.decks[index].controls.beat_jump_size = size,
             Control::BeatJumpScale { up } => {
                 let size = &mut self.decks[index].controls.beat_jump_size;
@@ -452,6 +490,9 @@ impl RtEngine {
                 if on && matches!(button, Button::Cue | Button::HotCue(_)) && d.audio.is_none() { return; }
                 if !d.controls.hold(source, button, on) {
                     return;
+                }
+                if on && matches!(button, Button::Reverse | Button::Bleep | Button::Roll(_) | Button::Slice(_)) {
+                    d.controls.pending = None;
                 }
                 match button {
                     Button::Roll(_) | Button::Slice(_) => {
@@ -548,12 +589,14 @@ impl RtEngine {
                             let deleting = d.controls.delete;
                             let set = d.hotcues[usize::from(pad)].set;
                             let paused = !d.playing;
+                            d.controls.quantize_owner_hint = Some((source, button));
                             self.apply(Command::DeckHotCue {
                                 deck,
                                 pad,
                                 del: deleting,
                             });
                             let d = &mut self.decks[index];
+                            d.controls.quantize_owner_hint = None;
                             if deleting {
                                 d.controls.delete_used = true;
                                 if !d.controls.held(Button::Delete) {
@@ -746,6 +789,7 @@ impl RtEngine {
                     let bpm = (60.0 * (count - 1) as f64 / seconds).clamp(40.0, 300.0);
                     let origin = d.grid.map_or(0.0, |grid| grid.downbeat());
                     if let Ok(grid) = super::beatgrid::Grid::new(origin, bpm) {
+                        d.controls.pending = None;
                         d.grid = Some(grid);
                         d.publish_preparation();
                         self.project.edited();
@@ -754,6 +798,7 @@ impl RtEngine {
             }
             Control::LoopMode => {
                 let c = &mut self.decks[index].controls;
+                c.pending = None;
                 c.auto_loop = !c.auto_loop;
                 c.auto_button = None;
                 c.edit = 0;
@@ -768,11 +813,7 @@ impl RtEngine {
                         d.controls.auto_button = None;
                     } else {
                         d.loop_on = true;
-                        d.loop_start = if self.quantize && d.grid.is_some() {
-                            d.grid_snap(d.pos, self.sr, self.bpm)
-                        } else {
-                            d.pos
-                        };
+                        d.loop_start = d.loop_quantized_position(d.pos, self.quantize && d.grid.is_some(), self.sr, self.bpm);
                         d.loop_len =
                             d.grid_span(d.loop_start, f64::from(1 << button), self.sr, self.bpm);
                         d.controls.auto_button = Some(button);
@@ -827,6 +868,7 @@ impl RtEngine {
                 }
             }
             Control::LoopSelect => {
+                self.decks[index].controls.pending = None;
                 self.remember_controller_loop(index);
                 let d = &mut self.decks[index];
                 d.controls.edit = 0;

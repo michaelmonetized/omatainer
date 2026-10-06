@@ -102,6 +102,7 @@ impl super::DeckRt {
         let Some(audio) = &self.audio else { return };
         let frames = audio.frames() as f64;
         let sr = audio.sr as f64;
+        self.controls.cancel_pending();
         self.cue_styles = preparation.hotcue_styles;
         self.grid = preparation.grid;
         self.cue_pos = (preparation.cue * sr).clamp(0.0, frames);

@@ -311,6 +311,18 @@ Software qualification only. Sizes are runtime state, not saved preparation. Phy
 
 Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged.
 
+### Issue #188: implemented
+
+- musical renderer: [src/engine/deck_controls/quantization.rs](../src/engine/deck_controls/quantization.rs) — Fixed pending onset, mapped source time, per-deck divisions and due-sample dispatch
+- input ownership: [src/engine/midi/learn.rs](../src/engine/midi/learn.rs) — Atomic cancellation epoch shared with reserved source release
+- native UI: [src/ui/deck_quantization.rs](../src/ui/deck_quantization.rs) — Independent Q policy, division selector and renderer-confirmed pending label
+- typed IPC: [src/automation.rs](../src/automation.rs) — Quantize gesture and published pending onset distinct from API job acceptance
+- Acceptance fixtures: `engine::deck_controls::quantization_tests`, `ui::deck_quantization::tests`, `automation::tests::deck_quantization_api_reports_pending_onsets_separately_from_accepted_gestures`.
+- Evidence: [docs/validation/deck-quantization.md](../docs/validation/deck-quantization.md).
+- Evidence: [docs/validation/deck-quantization-receipt.json](../docs/validation/deck-quantization-receipt.json).
+
+Eight new software checks pass. Independent mapped click timing covers all nine 44.1/48/96 kHz source/output combinations, constant and tempo-synchronized playback around tempo anchors, with onset within one output frame and zero callback allocations/frees. Release/reset/reconfiguration, scratch, grid Undo, media, safety and project fences are exercised. One fixed pending action per deck replaces rapid retriggers. Source-second loop editing stays exact. The complete 1786-test unfiltered software batch passes (43 ignored cases). Fresh installation remains open; physical qualification remains paused.
+
 ### Issue #190: implemented
 
 - source musical engine: [src/engine/deck_controls/loop_edit.rs](../src/engine/deck_controls/loop_edit.rs) — loop_edit_bounds, fit_loop_beats and edit_deck_loop
@@ -321,7 +333,7 @@ Native headless UI, actual learned MIDI workers and stereo source-reference soft
 - Evidence: [docs/validation/loop-editing.md](../docs/validation/loop-editing.md).
 - Evidence: [docs/validation/loop-editing-receipt.json](../docs/validation/loop-editing-receipt.json).
 
-Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. A fresh full software batch and installation remain open; physical qualification is paused.
+Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Fresh installation remains open; physical qualification is paused.
 
 ### Issue #195: implemented
 
@@ -419,7 +431,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |
 | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | implemented |
 | [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned |
-| [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | planned |
+| [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | implemented |
 | [#189](https://github.com/michaelmonetized/omatainer/issues/189) | Support four independently controlled DJ decks | planned |
 | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented |
 | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned |

@@ -2184,9 +2184,9 @@ Workflow: Prepare a DJ deck.
 
 ### Quantize
 
-On / off
+Deck on / off; 1/8 to 4 beats
 
-Toggle session launch and supported deck cue/loop quantization. Pending clip launches display queued until the selected beat boundary.
+Toggle this deck's cue and loop quantization independently of session launches. Choose a division beneath the waveform. Queued onsets show their mapped beat and source time; release, scratch, stop or an input reset cancels them. Unprepared tracks use their source BPM. Settings last for this app launch.
 
 Workflow: Prepare a DJ deck.
 

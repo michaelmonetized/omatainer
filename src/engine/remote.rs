@@ -255,6 +255,8 @@ impl RtEngine {
             || !request.ack.claim()
         {
             request.ack.reject();
+        } else if self.defer_quantized_deck_command(&command) {
+            request.ack.applied();
         } else if let Some(command) = self.history_before(command) {
             self.apply_plain(command);
             match request.action {

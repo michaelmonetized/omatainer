@@ -70,6 +70,34 @@ fn loop_edit_api_reports_stale_or_unusable_regions_as_rejected_and_applied_exact
 }
 
 #[test]
+fn deck_quantization_api_reports_pending_onsets_separately_from_accepted_gestures() {
+    let mut service = Service::new();
+    let namespace = service.state()["expected"]["namespace"].clone();
+    let request = |control| json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}});
+    for invalid in [json!({"op":"quantize","enabled":true,"division":6}), json!({"op":"quantize","enabled":1,"division":3}),
+        json!({"op":"quantize","enabled":true,"division":3,"unknown":1})] {
+        assert_eq!(service.query(request(invalid))["ok"], false);
+    }
+    let response = service.query(request(json!({"op":"quantize","enabled":true,"division":1})));
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    service.publish(); let state = service.state();
+    assert_eq!(state["decks"][0]["controls"]["quantize"], true);
+    assert_eq!(state["decks"][0]["controls"]["quantize_division"], 1);
+    assert_eq!(state["decks"][1]["controls"]["quantize"], false);
+    service.rt.apply(Command::DeckSeek { deck: 0, frac: 0.2 });
+    service.rt.apply(Command::DeckHotCue { deck: 0, pad: 0, del: false });
+    service.rt.apply(Command::DeckPlay { deck: 0 });
+    service.rt.apply(Command::DeckSeek { deck: 0, frac: 0.031 });
+    let response = service.query(request(json!({"op":"hold","button":{"hot_cue":0},"on":true})));
+    assert_eq!(response["ok"], true, "{response}");
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    service.publish(); assert_eq!(service.state()["decks"][0]["controls"]["pending"]["action"]["kind"], "hot_cue");
+    let response = service.query(request(json!({"op":"hold","button":{"hot_cue":0},"on":false})));
+    assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+    service.publish(); assert!(service.state()["decks"][0]["controls"]["pending"].is_null());
+}
+
+#[test]
 fn shipped_cli_builds_typed_versioned_envelopes_before_connecting() {
     let args = vec!["api".into(), r#"{"op":"discover"}"#.into()];
     assert_eq!(

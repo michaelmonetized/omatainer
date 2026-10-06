@@ -89,6 +89,7 @@ mod keyboard;
 mod shortcuts;
 mod beat_jump;
 mod loop_editor;
+mod deck_quantization;
 mod cue_audition;
 mod command_palette;
 mod touch;
@@ -1253,6 +1254,7 @@ impl App {
             if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             });
             self.deck_beat_jump(ui, d as u8, snap.controls.beat_jump_size);
+            self.deck_quantization(ui, d as u8, &snap.controls, snap.grid.is_some());
             self.deck_loop_editor(ui, d as u8, snap);
         });
     }
@@ -1261,9 +1263,9 @@ impl App {
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing = Vec2::splat(4.0);
             ui.set_width(sq);
-            let q = self.snap.quantize;
+            let q = snap.controls.quantize;
             if sq_btn(ui, t, "Q", q, t.yellow, sq).help(ui, HelpControl::Quantize).clicked() {
-                self.send(Command::ToggleQuant);
+                self.send(Command::DeckControl { source: 0, deck: d as u8, control: crate::engine::deck_controls::Control::Quantize { enabled: !q, division: snap.controls.quantize_division } });
             }
             let io = sq_btn(ui, t, "I/O", snap.loop_on, t.accent, sq).help(ui, HelpControl::LoopBounds);
             let alternative = accessibility::actions(ui, &io, &["Loop in", "Loop out"]);

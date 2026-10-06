@@ -34,7 +34,8 @@ launch. No project or preference schema changes are needed.
 
 The seven new checks and surrounding regression modules pass; the current
 source-bound result is in the [qualification receipt](loop-editing-receipt.json).
-A new full software batch and installation remain open. The engine fixtures
+The complete 1786-test software batch passes (43 ignored cases).
+Fresh installation remains open. The engine fixtures
 compare independent stereo
 rendering at three source and three output rates, tempo-anchor moves, exact
 edges, all preset lengths, file limits, stale identities, owner conflicts,

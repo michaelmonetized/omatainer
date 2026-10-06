@@ -2601,9 +2601,12 @@
       "dependencies": [
         134
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/deck-quantization.md",
+        "docs/validation/deck-quantization-receipt.json"
+      ]
     },
     {
       "issue": 189,

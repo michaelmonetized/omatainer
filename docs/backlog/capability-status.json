@@ -942,6 +942,41 @@
       ],
       "limits": "Native headless UI, actual learned MIDI workers and stereo source-reference software qualification. Physical Cue buttons and new listening acceptance remain paused. Existing one-shot Cue and main-cue preparation persistence remain available. Held state is transient and never saved. Preferences schema 17; project 15 and portable shortcuts 2 unchanged."
     },
+    "188": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "musical renderer",
+          "file": "src/engine/deck_controls/quantization.rs",
+          "entry": "Fixed pending onset, mapped source time, per-deck divisions and due-sample dispatch"
+        },
+        {
+          "kind": "input ownership",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Atomic cancellation epoch shared with reserved source release"
+        },
+        {
+          "kind": "native UI",
+          "file": "src/ui/deck_quantization.rs",
+          "entry": "Independent Q policy, division selector and renderer-confirmed pending label"
+        },
+        {
+          "kind": "typed IPC",
+          "file": "src/automation.rs",
+          "entry": "Quantize gesture and published pending onset distinct from API job acceptance"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::quantization_tests",
+        "ui::deck_quantization::tests",
+        "automation::tests::deck_quantization_api_reports_pending_onsets_separately_from_accepted_gestures"
+      ],
+      "evidence": [
+        "docs/validation/deck-quantization.md",
+        "docs/validation/deck-quantization-receipt.json"
+      ],
+      "limits": "Eight new software checks pass. Independent mapped click timing covers all nine 44.1/48/96 kHz source/output combinations, constant and tempo-synchronized playback around tempo anchors, with onset within one output frame and zero callback allocations/frees. Release/reset/reconfiguration, scratch, grid Undo, media, safety and project fences are exercised. One fixed pending action per deck replaces rapid retriggers. Source-second loop editing stays exact. The complete 1786-test unfiltered software batch passes (43 ignored cases). Fresh installation remains open; physical qualification remains paused."
+    },
     "190": {
       "status": "implemented",
       "paths": [
@@ -975,7 +1010,7 @@
         "docs/validation/loop-editing.md",
         "docs/validation/loop-editing-receipt.json"
       ],
-      "limits": "Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. A fresh full software batch and installation remain open; physical qualification is paused."
+      "limits": "Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Fresh installation remains open; physical qualification is paused."
     },
     "195": {
       "status": "implemented",

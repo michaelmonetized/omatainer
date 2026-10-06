@@ -480,6 +480,7 @@ impl DeckRt {
     /// performance gesture: update its source immediately without restarting a
     /// fade or clearing its filter history for every controller message.
     fn transition_to(&mut self, pos: f64, sr: f32, transition: DeckTransition) {
+        self.controls.cancel_pending();
         self.pos = pos;
         if matches!(transition, DeckTransition::Jump) {
             let source_rate = self.audio.as_ref().map_or(sr, |a| a.sr as f32);
@@ -584,6 +585,7 @@ impl FxKind {
 
 pub struct RtEngine {
     midi_routing: Arc<midi::routing::Shared>,
+    midi_learning: Arc<midi::learn::Shared>,
     midi_output_mask:u128,
     midi_output_budget:usize,
     undo: undo::Journal,
@@ -1107,6 +1109,7 @@ impl RtEngine {
         let mut e = Self {
             session,
             midi_routing:cmd_rx.midi_routing(),
+            midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
             midi_output_budget:256,
             undo: undo::Journal::default(),
@@ -1441,7 +1444,7 @@ impl RtEngine {
     fn process_channels(&mut self, out: &mut [f32], channels: usize) {
         for deck in &mut self.decks {
             if let Some((true,grid))=deck.load_receipt.as_ref().and_then(load_receipt::Receipt::grid_protection) {
-                if deck.grid!=grid {deck.grid=grid;deck.publish_preparation();}
+                if deck.grid!=grid {deck.controls.cancel_pending();deck.grid=grid;deck.publish_preparation();}
             }
         }
         self.performance_tick();
@@ -1454,6 +1457,7 @@ impl RtEngine {
             if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
+        self.quantized_deck_maintain();
         let spindle_now = Instant::now();
         for deck in &mut self.decks { if let Some(spindle) = &mut deck.spindle { spindle.begin(spindle_now); } }
         self.live_set_tick(channels);
@@ -2016,6 +2020,7 @@ impl RtEngine {
                 }
             }
         }
+        self.quantized_deck_tick(di);
         {
             let d = &mut self.decks[di];
             if !d.playing {
@@ -2302,6 +2307,7 @@ impl RtEngine {
                 return;
             }
         }
+        if self.defer_quantized_deck_command(&c) { return; }
         let Some(c)=self.history_before(c) else{return;};
         self.apply_plain(c);
     }
@@ -2436,12 +2442,14 @@ impl RtEngine {
             }
             Command::DeckCue { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.controls.cancel_pending();
                 d.stop_preview(self.sr);
                 if d.playing {
                     d.playing = false;
-                    d.transition_to(d.cue_pos, self.sr, DeckTransition::Jump);
+                    let position = d.cue_quantized_position(d.cue_pos, self.sr, self.bpm);
+                    d.transition_to(position, self.sr, DeckTransition::Jump);
                 } else {
-                    d.cue_pos = d.pos;
+                    d.cue_pos = d.cue_quantized_position(d.pos, self.sr, self.bpm);
                 }
             }
             Command::DeckPreview { deck, expected, on } => {
@@ -2527,23 +2535,26 @@ impl RtEngine {
             }
             Command::DeckHotCue { deck, pad, del } => {
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.controls.cancel_pending();
                 let i = pad as usize % HOTCUES;
                 if del {
                     d.hotcues[i].set = false;
                     d.cue_styles[i] = cue_metadata::Style::default();
                 } else if d.hotcues[i].set {
-                    d.transition_to(d.hotcues[i].pos, self.sr, DeckTransition::Jump);
+                    let position = d.cue_quantized_position(d.hotcues[i].pos, self.sr, self.bpm);
+                    d.transition_to(position, self.sr, DeckTransition::Jump);
                     d.playing = true;
                 } else {
                     d.hotcues[i] = HotCue {
                         set: true,
-                        pos: d.pos,
+                        pos: d.cue_quantized_position(d.pos, self.sr, self.bpm),
                     };
                 }
             }
             command @ Command::DeckGrid { .. } => {
                 if let Command::DeckGrid { deck, grid, ack, .. } = &command {
                     let deck = &mut self.decks[*deck as usize];
+                    deck.controls.cancel_pending();
                     deck.grid = *grid;
                     deck.publish_preparation();
                     // Release acknowledgement only after coherent preparation is visible.
@@ -2574,30 +2585,23 @@ impl RtEngine {
                     d.loop_on = false;
                 } else {
                     d.loop_on = true;
-                    d.loop_start = if self.quantize && d.grid.is_some() { d.grid_snap(d.pos, self.sr, self.bpm) } else { d.pos };
+                    d.loop_start = d.loop_quantized_position(d.pos, self.quantize && d.grid.is_some(), self.sr, self.bpm);
                     d.loop_len = d.grid_span(d.loop_start, beats as f64, self.sr, self.bpm);
                 }
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckLoopIn { deck } => {
-                let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
-                let mut pos = d.pos;
-                if q {
-                    pos = d.grid_snap(pos, self.sr, self.bpm);
-                }
+                d.controls.cancel_pending();
+                let pos = d.loop_quantized_position(d.pos, self.quantize, self.sr, self.bpm);
                 d.loop_start = pos;
                 if d.loop_on {
                     d.transition_to(d.pos, self.sr, DeckTransition::Jump);
                 }
             }
             Command::DeckLoopOut { deck } => {
-                let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
-                let mut pos = d.pos;
-                if q {
-                    pos = d.grid_snap(pos, self.sr, self.bpm);
-                }
+                let pos = d.loop_quantized_position(d.pos, self.quantize, self.sr, self.bpm);
                 d.loop_len = (pos - d.loop_start).abs().max(64.0);
                 d.loop_on = true;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
@@ -2869,12 +2873,8 @@ impl RtEngine {
                 }
             }
             Command::DeckReloop { deck } => {
-                let q = self.quantize;
                 let d = &mut self.decks[deck as usize % DECKS];
-                let mut pos = d.pos;
-                if q {
-                    pos = d.grid_snap(pos, self.sr, self.bpm);
-                }
+                let pos = d.loop_quantized_position(d.pos, self.quantize, self.sr, self.bpm);
                 d.loop_start = pos;
                 d.loop_len = d.grid_span(pos, 16.0, self.sr, self.bpm);
                 d.loop_on = true;

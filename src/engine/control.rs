@@ -196,6 +196,11 @@ impl CommandReceiver {
     pub(crate) fn midi_routing(&self) -> std::sync::Arc<super::midi::routing::Shared> {
         self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::routing::Shared::default()),|s|s.midi_routing.clone())
     }
+    /// Share the input cancellation fence with the audio owner.
+    /// Takes this command receiver; returns its MIDI owner or an isolated owner for offline fixtures.
+    pub(crate) fn midi_learning(&self) -> std::sync::Arc<super::midi::learn::Shared> {
+        self.shared.as_ref().map_or_else(|| std::sync::Arc::new(super::midi::learn::Shared::default()), |shared| shared.midi_learn.clone())
+    }
     pub(super) fn performance(&self) -> &super::performance::Handle { &self.performance }
     pub fn len(&self) -> usize {
         match &self.receiver {
@@ -584,6 +589,7 @@ impl CommandPort {
     /// its release, so input overflow can retire exactly that source's gates
     /// even while ordinary engine queue capacity is exhausted.
     pub(super) fn release_midi_source(&self, source: u64) {
+        self.shared.midi_learn.retire_pending();
         let gates = self.admission.lock().gates;
         for gate in gates.into_iter().flatten() {
             let command = match gate {
