@@ -1,20 +1,23 @@
 {
-  "source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
+  "source_commit": "2d9b299e4295d0579f3a83cb0384632847a56769",
   "native_driver_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "native_fixture_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
   "kernel": "7.1.13-3-2-ARCH",
-  "binary_sha256": "a1fd33650d25aaeb3d2f6c93ce772d87f86053e3ef0e414696739979b2ef3567",
+  "binary_sha256": "98dfb23ee663b4fd30298f36aac8f2381a5eba239a59e3436d136fbdeeb6c2e0",
   "module_sha256": "73506bfa6584f4e3cc61f84f19a9eee9d0e8acf6c0996fe7f7b81241eb26815d",
   "module_srcversion": "9874D71882F6752484E64FE",
   "native_fixture_binary_sha256": "781c5b3d0a071ea2635950265a2f08455a55739e05a309a60c8ce2072904e57b",
-  "source_diff_sha256": "1989af4e7609f34ae633ced99b171d21dae8427887694111ecbc7379bf7745ae",
+  "source_diff_sha256": "c3cfacd712e9621231c117f38056f2f7019a3844a9d2c64c2f7011ab5b113d8d",
   "source_diff_paths": [
     "Cargo.toml",
     "Cargo.lock",
     "src",
     "drivers/ns7",
-    "scripts/install-ns7-driver.sh"
+    "drivers/mpd232",
+    "scripts/install-ns7-driver.sh",
+    "tests/fixtures/mpd232-bank-a.midi",
+    "tests/fixtures/mpd232-livelite.syx"
   ],
   "installed_binary": "/home/michael/.local/bin/omatainer",
   "tests": {
@@ -88,6 +91,154 @@
       "release_build_log_sha256": "9fc6a3f24350c457c4b35c01f08f81601f25c60505bbdc1d1437d90368c49e33",
       "ordinary_suite_repeated": false,
       "retained_ordinary_source_commit": "bb5aeb76d72f123b0faf25aec54fa83ac26fcf49"
+    },
+    "stage_controls": {
+      "ordinary": {
+        "result": "ok",
+        "passed": 1699,
+        "failed": 0,
+        "ignored": 41,
+        "measured": 0,
+        "filtered": 1,
+        "elapsed_seconds": 341.40
+      },
+      "focused_surfaces": {
+        "result": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 1719,
+        "elapsed_seconds": 2.69
+      },
+      "escaped_ipc_budget": {
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 1740,
+        "elapsed_seconds": 0.08
+      },
+      "startup_library_fixtures": {
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 1733,
+        "elapsed_seconds": 0.87
+      },
+      "unchanged_invalid_scenes_filtered": 1,
+      "initial_parallel_run": {
+        "source_commit": "b13fce1",
+        "passed": 1696,
+        "failed": 2,
+        "ignored": 41,
+        "filtered": 1,
+        "isolated_reruns_passed": 2
+      },
+      "intermediate_serial_attempt": {
+        "source_commit": "b13fce1",
+        "completed": false,
+        "aborted_for_final_source_rebuild": true,
+        "observed_grid_gui_failures": 3
+      },
+      "pre_fixture_fix_ordinary": {
+        "source_commit": "9e4b0fb5b8bb26fd78bf59f27a89b187698a08c1",
+        "passed": 1698,
+        "failed": 1,
+        "ignored": 41,
+        "filtered": 1,
+        "isolated_startup_reruns_passed": 10,
+        "correction": "Library start fixture now paints actual GUI frames and waits for initial preparation admission"
+      },
+      "logs": [
+        {
+          "path": "target/hardware/other-controls-final-test-build.log",
+          "sha256": "dd1e63b57ff5366e57a1c5dff4418247bc1e7269fbec5ce2e86ce4b9cc5544d5"
+        },
+        {
+          "path": "target/hardware/other-controls-final-ordinary-tests.log",
+          "sha256": "3a9a8bda0d0733d6a0ba9bf9a8f314d4d3099496d498e82ad88521c74c756d72"
+        },
+        {
+          "path": "target/hardware/other-controls-final-focused-tests.log",
+          "sha256": "ad225e613b89e4d8be09bb9072e442368f80f8c112c936b2939242c3f46767e5"
+        },
+        {
+          "path": "target/hardware/other-controls-final-budget-tests.log",
+          "sha256": "985b651baf562f9ad4cca1b0ea8d8c90e47afdfa4cebd3f71b7d4dea7b5efebb"
+        },
+        {
+          "path": "target/hardware/other-controls-release-build.log",
+          "sha256": "b8a05ff3cdd0a30b85ebf9820cf4137f09a8946244eed3f033da7c94fdc88102"
+        },
+        {
+          "path": "target/hardware/other-controls-ordinary-tests.log",
+          "sha256": "520fe552e5eadcacd24d6d73f021f1dfcd74b7e9dac4df0cc80b5545c99986d2"
+        },
+        {
+          "path": "target/hardware/other-controls-annotations-rerun.log",
+          "sha256": "43a45dd67945068d44a295c624e79008410cee6430378de5e2c5604e8595b7d6"
+        },
+        {
+          "path": "target/hardware/other-controls-portability-rerun.log",
+          "sha256": "bbed223db8e0a76189fc8cd5e5263b263c3a67e851e6e40a974b83848ab7f206"
+        },
+        {
+          "path": "target/hardware/other-controls-serial-tests.log",
+          "sha256": "c028d29f9bda1db029a0e85518f6c6ccc38beab552a05b82a433b5787352221d"
+        },
+        {
+          "path": "target/hardware/other-controls-cc-ordinary-tests.log",
+          "sha256": "6ebe14c0b897a7252da5d72babbe6ee653aafecacb8bd4c08b7275663789b997"
+        },
+        {
+          "path": "target/hardware/other-controls-final-library-tests.log",
+          "sha256": "21528f6c66ec3d0f3c64366c01942d3991b13f90e0f1077b6ec5461d3319ab12"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-1.log",
+          "sha256": "b63c65a3545246891585f1f8bb5cb5fd0dc187e2d867c015f0f2dc80c374085c"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-2.log",
+          "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-3.log",
+          "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-4.log",
+          "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-5.log",
+          "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-6.log",
+          "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-7.log",
+          "sha256": "b63c65a3545246891585f1f8bb5cb5fd0dc187e2d867c015f0f2dc80c374085c"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-8.log",
+          "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-9.log",
+          "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+        },
+        {
+          "path": "target/hardware/other-controls-library-startup-rerun-10.log",
+          "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+        }
+      ]
     }
   },
   "physical": {
@@ -150,15 +301,20 @@
     "ns7_strip_release_engine_position_confirmed": true,
     "ns7_strip_release_engine_position_receipt": "docs/validation/ns7-strip-release-receipt.json",
     "ns7_strip_release_listening_deck": 0,
-    "ns7_strip_release_listening_source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1"
+    "ns7_strip_release_listening_source_commit": "9b4b8590d4964214ed9e21da36f0dce7ddbf5bb1",
+    "mpd_preset_readback_confirmed": true,
+    "mpd_bank_a_faders_knobs_switches_confirmed": true,
+    "mpd_bank_a_source_commit": "2d9b299e4295d0579f3a83cb0384632847a56769",
+    "mpd_b_c_controls_confirmed": false,
+    "mpd_transport_confirmed": false
   },
   "runtime": {
     "ns7_buffer_frames": 512,
     "ns7_period_frames": 128,
-    "installed_gui_pid": 3439512,
+    "installed_gui_pid": 1256763,
     "physical_scratch_listening_pending": false,
     "continuous_clock_audio_listening_pending": false,
-    "audio_callback_tid": 3439542,
+    "audio_callback_tid": 1256813,
     "audio_callback_scheduling": {
       "policy": "SCHED_OTHER",
       "priority": 0,
@@ -467,6 +623,263 @@
       "connected": 4,
       "failed": 0,
       "sent": 16596
+    },
+    "stage_controls_current_audio": {
+      "backend_errors": 0,
+      "callbacks": 119643,
+      "deadline_overruns": 2,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 2993197,
+        "channels": 4,
+        "elapsed_ns": 102752,
+        "frames": 132,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 97374,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 6064299,
+      "max_overrun_ns": 1052962
+    },
+    "stage_controls_current_midi": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 6,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 6,
+      "received": 6,
+      "resets": 0
+    },
+    "stage_controls_current_feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 480
+    },
+    "stage_controls_startup": {
+      "beat": 0.0,
+      "bpm": 124.0,
+      "crossfader": 0.4566929042339325,
+      "crossfader_contour": 1.0,
+      "decks": [
+        {
+          "controls": {
+            "auto_loop": false,
+            "bend": 0.0,
+            "bleep": false,
+            "braking": false,
+            "delete": false,
+            "hotloops": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "loop_edit": 0,
+            "loop_slot": 0,
+            "pad_mode": 0,
+            "reverse": false,
+            "roll": null,
+            "roll_scale": 0,
+            "slice": null,
+            "slice_domain": 3,
+            "slip": false,
+            "start_seconds": 0.0,
+            "stop_seconds": 0.0
+          },
+          "duration": 265.3664245605469,
+          "hotcues": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "keylock": false,
+          "keylock_mode": "off",
+          "loop_on": false,
+          "pitch_range": 0,
+          "playing": false,
+          "position_seconds": 264.646629781992,
+          "title": "What More Can I Say"
+        },
+        {
+          "controls": {
+            "auto_loop": false,
+            "bend": 0.0,
+            "bleep": false,
+            "braking": false,
+            "delete": false,
+            "hotloops": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "loop_edit": 0,
+            "loop_slot": 0,
+            "pad_mode": 0,
+            "reverse": false,
+            "roll": null,
+            "roll_scale": 0,
+            "slice": null,
+            "slice_domain": 3,
+            "slip": false,
+            "start_seconds": 0.0,
+            "stop_seconds": 0.0
+          },
+          "duration": 165.3560028076172,
+          "hotcues": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "keylock": true,
+          "keylock_mode": "stopped",
+          "loop_on": false,
+          "pitch_range": 0,
+          "playing": false,
+          "position_seconds": 3.9060474438022594,
+          "title": "Public Service Announcement"
+        }
+      ],
+      "expected": {
+        "generation": "0",
+        "namespace": "9ea239133e3746190000000000000021",
+        "revision": "11"
+      },
+      "master": 0.14173229038715363,
+      "next_offset": null,
+      "objects": [
+        {
+          "color": null,
+          "name": "Drums",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000001",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Bass",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000002",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Keys",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000003",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Pad",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000004",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Perc",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000005",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Vocal",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000006",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "FX",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000007",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Spare",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000008",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        }
+      ],
+      "page": {
+        "axis": "track",
+        "limit": 8,
+        "offset": 0
+      },
+      "performance": {
+        "changing": false,
+        "deck_load_locked": [
+          false,
+          false
+        ],
+        "last_rejection": "changing",
+        "nonfinite_tail": false,
+        "observation_complete": false,
+        "observed_frames": 0,
+        "optional_active": 1,
+        "output_muted": false,
+        "protected": false,
+        "quiet_frames": 0,
+        "recovery": false,
+        "rejected": 4,
+        "safety_applied": 0,
+        "safety_requested": 0,
+        "stopped": false
+      },
+      "playing": false,
+      "recording": false,
+      "total": 8,
+      "transport_epoch": "1"
     }
-  }
+  },
+  "stage_controls_receipt": "docs/validation/stage-controls-receipt.json"
 }

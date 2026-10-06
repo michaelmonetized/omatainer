@@ -1,0 +1,990 @@
+{
+  "source_commit": "2d9b299e4295d0579f3a83cb0384632847a56769",
+  "qualified_at_utc": "2026-10-06T00:30:20Z",
+  "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
+  "binary_sha256": "98dfb23ee663b4fd30298f36aac8f2381a5eba239a59e3436d136fbdeeb6c2e0",
+  "test_binary_sha256": "70975bf4e5e57936b3a134b4cf121d7381879c6630ca556385e3ab3f2f30ba6b",
+  "source_diff_sha256": "c3cfacd712e9621231c117f38056f2f7019a3844a9d2c64c2f7011ab5b113d8d",
+  "source_diff_paths": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "src",
+    "drivers/ns7",
+    "drivers/mpd232",
+    "scripts/install-ns7-driver.sh",
+    "tests/fixtures/mpd232-bank-a.midi",
+    "tests/fixtures/mpd232-livelite.syx"
+  ],
+  "tests": {
+    "ordinary": {
+      "result": "ok",
+      "passed": 1699,
+      "failed": 0,
+      "ignored": 41,
+      "measured": 0,
+      "filtered": 1,
+      "elapsed_seconds": 341.40
+    },
+    "focused_surfaces": {
+      "result": "ok",
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 1719,
+      "elapsed_seconds": 2.69
+    },
+    "escaped_ipc_budget": {
+      "result": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 1740,
+      "elapsed_seconds": 0.08
+    },
+    "startup_library_fixtures": {
+      "result": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 1733,
+      "elapsed_seconds": 0.87
+    },
+    "unchanged_invalid_scenes_filtered": 1,
+    "initial_parallel_run": {
+      "source_commit": "b13fce1",
+      "passed": 1696,
+      "failed": 2,
+      "ignored": 41,
+      "filtered": 1,
+      "isolated_reruns_passed": 2
+    },
+    "intermediate_serial_attempt": {
+      "source_commit": "b13fce1",
+      "completed": false,
+      "aborted_for_final_source_rebuild": true,
+      "observed_grid_gui_failures": 3
+    },
+    "pre_fixture_fix_ordinary": {
+      "source_commit": "9e4b0fb5b8bb26fd78bf59f27a89b187698a08c1",
+      "passed": 1698,
+      "failed": 1,
+      "ignored": 41,
+      "filtered": 1,
+      "isolated_startup_reruns_passed": 10,
+      "correction": "Library start fixture now paints actual GUI frames and waits for initial preparation admission"
+    },
+    "logs": [
+      {
+        "path": "target/hardware/other-controls-final-test-build.log",
+        "sha256": "dd1e63b57ff5366e57a1c5dff4418247bc1e7269fbec5ce2e86ce4b9cc5544d5"
+      },
+      {
+        "path": "target/hardware/other-controls-final-ordinary-tests.log",
+        "sha256": "3a9a8bda0d0733d6a0ba9bf9a8f314d4d3099496d498e82ad88521c74c756d72"
+      },
+      {
+        "path": "target/hardware/other-controls-final-focused-tests.log",
+        "sha256": "ad225e613b89e4d8be09bb9072e442368f80f8c112c936b2939242c3f46767e5"
+      },
+      {
+        "path": "target/hardware/other-controls-final-budget-tests.log",
+        "sha256": "985b651baf562f9ad4cca1b0ea8d8c90e47afdfa4cebd3f71b7d4dea7b5efebb"
+      },
+      {
+        "path": "target/hardware/other-controls-release-build.log",
+        "sha256": "b8a05ff3cdd0a30b85ebf9820cf4137f09a8946244eed3f033da7c94fdc88102"
+      },
+      {
+        "path": "target/hardware/other-controls-ordinary-tests.log",
+        "sha256": "520fe552e5eadcacd24d6d73f021f1dfcd74b7e9dac4df0cc80b5545c99986d2"
+      },
+      {
+        "path": "target/hardware/other-controls-annotations-rerun.log",
+        "sha256": "43a45dd67945068d44a295c624e79008410cee6430378de5e2c5604e8595b7d6"
+      },
+      {
+        "path": "target/hardware/other-controls-portability-rerun.log",
+        "sha256": "bbed223db8e0a76189fc8cd5e5263b263c3a67e851e6e40a974b83848ab7f206"
+      },
+      {
+        "path": "target/hardware/other-controls-serial-tests.log",
+        "sha256": "c028d29f9bda1db029a0e85518f6c6ccc38beab552a05b82a433b5787352221d"
+      },
+      {
+        "path": "target/hardware/other-controls-cc-ordinary-tests.log",
+        "sha256": "6ebe14c0b897a7252da5d72babbe6ee653aafecacb8bd4c08b7275663789b997"
+      },
+      {
+        "path": "target/hardware/other-controls-final-library-tests.log",
+        "sha256": "21528f6c66ec3d0f3c64366c01942d3991b13f90e0f1077b6ec5461d3319ab12"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-1.log",
+        "sha256": "b63c65a3545246891585f1f8bb5cb5fd0dc187e2d867c015f0f2dc80c374085c"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-2.log",
+        "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-3.log",
+        "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-4.log",
+        "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-5.log",
+        "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-6.log",
+        "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-7.log",
+        "sha256": "b63c65a3545246891585f1f8bb5cb5fd0dc187e2d867c015f0f2dc80c374085c"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-8.log",
+        "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-9.log",
+        "sha256": "1ddf09b219ba7ba00fef32218143e022c176990e500954068cb95dfd32d0b8fd"
+      },
+      {
+        "path": "target/hardware/other-controls-library-startup-rerun-10.log",
+        "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
+      }
+    ]
+  },
+  "mpd232": {
+    "preset": "LiveLite",
+    "preset_bytes": 3483,
+    "preset_sha256": "c81d4f24e8c736edcd651bbfa11b1dbd9cb2ab2b39a75f2f6e539b7d3d47066e",
+    "installed_normal_mapping": "/home/michael/.config/omatainer/midi/mpd232.syx",
+    "isolated_mapping": "target/hardware/config/omatainer/midi/mpd232.syx",
+    "installed_mappings_match": true,
+    "read_only_duplicate_dumps_matched": true,
+    "reader_binary_sha256": "fbd9929fd0044669171d9084945479585fb43b2ccd08a27c1e26ae620bfb87a1",
+    "mixer_assignments": 72,
+    "transport_cc_bindings": 3,
+    "bank_a_capture": {
+      "port": "36:0",
+      "channel": 0,
+      "events": 402,
+      "all_eight_faders": true,
+      "all_eight_knobs": true,
+      "all_eight_switches": true,
+      "switch_press": 127,
+      "switch_release": 0,
+      "fixture_sha256": "9a3653a54173bc73c6923d772d866d7c0f8de342c717d7def0f7252d378cbba1",
+      "capture_sha256": "7b3dbb559e59819d8d7eee46b0c4104767c8c400fcad0c23b05fc5429d2b6eef"
+    },
+    "physical_b_c_gestures_confirmed": false,
+    "physical_transport_confirmed": false,
+    "transport_cc_source_scope": "Akai MPD32/MPK49 family transport guide; MPD232 capture pending",
+    "hardware_preset_written": false,
+    "original_stage_path_display_resets_fixed": false
+  },
+  "runtime": {
+    "status": {
+      "accepted": null,
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 119643,
+        "deadline_overruns": 2,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 2993197,
+          "channels": 4,
+          "elapsed_ns": 102752,
+          "frames": 132,
+          "output_latency_ns": 0,
+          "overrun_ns": 0,
+          "render_cpu_ns": 97374,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 6064299,
+        "max_overrun_ns": 1052962
+      },
+      "bar": 1,
+      "beat": 0.0,
+      "bpm": 124.0,
+      "command_status": null,
+      "commands": {
+        "applied": 14,
+        "applied_last_block": 0,
+        "backlog": 0,
+        "budget_exhaustions": 0,
+        "coalesced": 0,
+        "high_water": 2,
+        "received": 14,
+        "received_last_block": 0
+      },
+      "deckA": "What More Can I Say",
+      "deckALoadLocked": false,
+      "deckAPlaying": false,
+      "deckB": "Public Service Announcement",
+      "deckBLoadLocked": false,
+      "deckBPlaying": false,
+      "event": "state",
+      "id": "1349972-1",
+      "master_fx": {
+        "types": [
+          "echo",
+          "reverb",
+          "filter"
+        ],
+        "wet": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "midi": [
+        "[connected] keyboard + mouse · built-in",
+        "[connected] Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 24:0 ",
+        "[connected] APC40 mkII:APC40 mkII MIDI 1 28:0 · Akai AP",
+        "[connected] Numark NS7:Numark NS7 MIDI 32:0 · Numark NS",
+        "[connected] MPD232:MPD232 Port A 36:0 · Akai MPD232 (Li",
+        "[disabled] MPD232:MPD232 Port B 36:1 · Akai MPD232 (Liv",
+        "[disabled] MPD232:MPD232 MIDI 36:2 · Akai MPD232 (LiveL",
+        "[disabled] MPD232:MPD232 Remote 36:3 · Akai MPD232 (Liv"
+      ],
+      "midi_clock": {
+        "last_source": null,
+        "ticks": 0
+      },
+      "midi_feedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 480
+      },
+      "midi_input": {
+        "coalesced": 0,
+        "disconnected": 0,
+        "dispatched": 6,
+        "dropped": 0,
+        "oversized": 0,
+        "queued": 6,
+        "received": 6,
+        "resets": 0
+      },
+      "midi_routing": {
+        "enabled": false,
+        "failed": 0,
+        "generation": 1,
+        "overruns": 0,
+        "received": 6,
+        "refused_tracks": 0,
+        "refused_tracks_extended": [
+          0,
+          0
+        ],
+        "sent": 0
+      },
+      "monitor": {
+        "active": false,
+        "available": true,
+        "faders": [
+          1.0,
+          1.0
+        ],
+        "master": false,
+        "mix": 0.5,
+        "volume": 0.0
+      },
+      "ok": true,
+      "performance": {
+        "changing": false,
+        "deck_load_locked": [
+          false,
+          false
+        ],
+        "last_rejection": "changing",
+        "nonfinite_tail": false,
+        "observation_complete": false,
+        "observed_frames": 0,
+        "optional_active": 0,
+        "output_muted": false,
+        "protected": false,
+        "quiet_frames": 0,
+        "recovery": false,
+        "rejected": 5,
+        "safety_applied": 0,
+        "safety_requested": 0,
+        "stopped": false
+      },
+      "playing": false,
+      "recording": false,
+      "state_available": true,
+      "state_truncated": true,
+      "submissions": {
+        "accepted": 16,
+        "coalesced": 0,
+        "last_error": null,
+        "rejected": 0
+      },
+      "xfader": 0.4566929042339325
+    },
+    "startup": {
+      "beat": 0.0,
+      "bpm": 124.0,
+      "crossfader": 0.4566929042339325,
+      "crossfader_contour": 1.0,
+      "decks": [
+        {
+          "controls": {
+            "auto_loop": false,
+            "bend": 0.0,
+            "bleep": false,
+            "braking": false,
+            "delete": false,
+            "hotloops": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "loop_edit": 0,
+            "loop_slot": 0,
+            "pad_mode": 0,
+            "reverse": false,
+            "roll": null,
+            "roll_scale": 0,
+            "slice": null,
+            "slice_domain": 3,
+            "slip": false,
+            "start_seconds": 0.0,
+            "stop_seconds": 0.0
+          },
+          "duration": 265.3664245605469,
+          "hotcues": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "keylock": false,
+          "keylock_mode": "off",
+          "loop_on": false,
+          "pitch_range": 0,
+          "playing": false,
+          "position_seconds": 264.646629781992,
+          "title": "What More Can I Say"
+        },
+        {
+          "controls": {
+            "auto_loop": false,
+            "bend": 0.0,
+            "bleep": false,
+            "braking": false,
+            "delete": false,
+            "hotloops": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "loop_edit": 0,
+            "loop_slot": 0,
+            "pad_mode": 0,
+            "reverse": false,
+            "roll": null,
+            "roll_scale": 0,
+            "slice": null,
+            "slice_domain": 3,
+            "slip": false,
+            "start_seconds": 0.0,
+            "stop_seconds": 0.0
+          },
+          "duration": 165.3560028076172,
+          "hotcues": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "keylock": true,
+          "keylock_mode": "stopped",
+          "loop_on": false,
+          "pitch_range": 0,
+          "playing": false,
+          "position_seconds": 3.9060474438022594,
+          "title": "Public Service Announcement"
+        }
+      ],
+      "expected": {
+        "generation": "0",
+        "namespace": "9ea239133e3746190000000000000021",
+        "revision": "11"
+      },
+      "master": 0.14173229038715363,
+      "next_offset": null,
+      "objects": [
+        {
+          "color": null,
+          "name": "Drums",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000001",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Bass",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000002",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Keys",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000003",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Pad",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000004",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Perc",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000005",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Vocal",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000006",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "FX",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000007",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Spare",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000008",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        }
+      ],
+      "page": {
+        "axis": "track",
+        "limit": 8,
+        "offset": 0
+      },
+      "performance": {
+        "changing": false,
+        "deck_load_locked": [
+          false,
+          false
+        ],
+        "last_rejection": "changing",
+        "nonfinite_tail": false,
+        "observation_complete": false,
+        "observed_frames": 0,
+        "optional_active": 1,
+        "output_muted": false,
+        "protected": false,
+        "quiet_frames": 0,
+        "recovery": false,
+        "rejected": 4,
+        "safety_applied": 0,
+        "safety_requested": 0,
+        "stopped": false
+      },
+      "playing": false,
+      "recording": false,
+      "total": 8,
+      "transport_epoch": "1"
+    },
+    "settled_state": {
+      "beat": 0.0,
+      "bpm": 124.0,
+      "crossfader": 0.4566929042339325,
+      "crossfader_contour": 1.0,
+      "decks": [
+        {
+          "controls": {
+            "auto_loop": false,
+            "bend": 0.0,
+            "bleep": false,
+            "braking": false,
+            "delete": false,
+            "hotloops": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "loop_edit": 0,
+            "loop_slot": 0,
+            "pad_mode": 0,
+            "reverse": false,
+            "roll": null,
+            "roll_scale": 0,
+            "slice": null,
+            "slice_domain": 3,
+            "slip": false,
+            "start_seconds": 0.0,
+            "stop_seconds": 0.0
+          },
+          "duration": 265.3664245605469,
+          "hotcues": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "keylock": false,
+          "keylock_mode": "off",
+          "loop_on": false,
+          "pitch_range": 0,
+          "playing": false,
+          "position_seconds": 264.646629781992,
+          "title": "What More Can I Say"
+        },
+        {
+          "controls": {
+            "auto_loop": false,
+            "bend": 0.0,
+            "bleep": false,
+            "braking": false,
+            "delete": false,
+            "hotloops": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "loop_edit": 0,
+            "loop_slot": 0,
+            "pad_mode": 0,
+            "reverse": false,
+            "roll": null,
+            "roll_scale": 0,
+            "slice": null,
+            "slice_domain": 3,
+            "slip": false,
+            "start_seconds": 0.0,
+            "stop_seconds": 0.0
+          },
+          "duration": 165.3560028076172,
+          "hotcues": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "keylock": true,
+          "keylock_mode": "stopped",
+          "loop_on": false,
+          "pitch_range": 0,
+          "playing": false,
+          "position_seconds": 3.9060474438022594,
+          "title": "Public Service Announcement"
+        }
+      ],
+      "expected": {
+        "generation": "0",
+        "namespace": "9ea239133e3746190000000000000021",
+        "revision": "14"
+      },
+      "master": 0.14173229038715363,
+      "next_offset": null,
+      "objects": [
+        {
+          "color": null,
+          "name": "Drums",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000001",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Bass",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000002",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Keys",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000003",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Pad",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000004",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Perc",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000005",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Vocal",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000006",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "FX",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000007",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        },
+        {
+          "color": null,
+          "name": "Spare",
+          "name_truncated": false,
+          "target": {
+            "axis": "track",
+            "id": "0000000000000008",
+            "namespace": "9ea239133e3746190000000000000021"
+          }
+        }
+      ],
+      "page": {
+        "axis": "track",
+        "limit": 8,
+        "offset": 0
+      },
+      "performance": {
+        "changing": false,
+        "deck_load_locked": [
+          false,
+          false
+        ],
+        "last_rejection": "changing",
+        "nonfinite_tail": false,
+        "observation_complete": false,
+        "observed_frames": 0,
+        "optional_active": 0,
+        "output_muted": false,
+        "protected": false,
+        "quiet_frames": 0,
+        "recovery": false,
+        "rejected": 5,
+        "safety_applied": 0,
+        "safety_requested": 0,
+        "stopped": false
+      },
+      "playing": false,
+      "recording": false,
+      "total": 8,
+      "transport_epoch": "1"
+    },
+    "surfaces": {
+      "assignments": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "bank_lock": false,
+      "device": 0,
+      "device_lock": null,
+      "device_master": false,
+      "device_on": false,
+      "device_values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fx": [
+        {
+          "assigned": [
+            true,
+            false
+          ],
+          "beats": 0,
+          "kinds": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "on": [
+            false,
+            false,
+            false
+          ],
+          "parameter": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "wet": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "assigned": [
+            false,
+            true
+          ],
+          "beats": 0,
+          "kinds": [
+            "echo",
+            "reverb",
+            "filter"
+          ],
+          "on": [
+            false,
+            false,
+            false
+          ],
+          "parameter": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "wet": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        }
+      ],
+      "knob_mode": 0,
+      "master_parameter": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parameter_bank": 0,
+      "sampler_playing": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "sampler_volume": 1.0,
+      "scene_offset": 0,
+      "send": 0,
+      "sends": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "shift": false,
+      "track_offset": 0
+    },
+    "window": [
+      {
+        "pid": 1256763,
+        "class": "org.omarchy.omatainer",
+        "title": "* Untitled — omatainer",
+        "mapped": true,
+        "hidden": false,
+        "workspace": {
+          "id": 10,
+          "name": "10"
+        }
+      }
+    ],
+    "pcm_hw_params": "access: RW_INTERLEAVED\nformat: S32_LE\nsubformat: STD\nchannels: 4\nrate: 44100 (44100/1)\nperiod_size: 128\nbuffer_size: 512",
+    "native_counter_deltas": {
+      "midi_input_bytes": 15,
+      "midi_output_bytes": 85,
+      "midi_errors": 0,
+      "pcm_playback_frames": 16988149,
+      "pcm_capture_frames": 16988160,
+      "pcm_feedback_frames": 385189,
+      "pcm_errors": 0
+    },
+    "idle_counter_deltas": {
+      "callbacks": 32200,
+      "backend_errors": 0,
+      "deadline_overruns": 0,
+      "device_lost": 0
+    },
+    "previous_startup": {
+      "audio": {
+        "backend_errors": 184,
+        "callbacks": 447,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 3015873,
+          "channels": 4,
+          "elapsed_ns": 145546,
+          "frames": 133,
+          "output_latency_ns": 0,
+          "overrun_ns": 0,
+          "render_cpu_ns": 109375,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 2563333,
+        "max_overrun_ns": 0
+      },
+      "output_stopped": true,
+      "master": 0,
+      "correction": "Move exact CPAL-thread nice -10 adjustment before media loading; no real-time scheduling policy used"
+    },
+    "screenshot": {
+      "path": "target/hardware/controls-live/screen.png",
+      "sha256": "ffbd3149b88f46708923724103b1c56dfda845464aa2673f56b69b75e4aa49c9"
+    },
+    "restored_paused": true,
+    "master_from_prebuild_state": true,
+    "hardware_listening_claim_added": false
+  },
+  "retained_physical_evidence": "hardware-resurrection-provenance.json physical fields retain their original source commits; new fixtures are software evidence"
+}
