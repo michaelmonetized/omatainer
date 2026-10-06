@@ -1,18 +1,19 @@
 {
-  "source_commit": "2d9b299e4295d0579f3a83cb0384632847a56769",
-  "native_driver_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
+  "source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
+  "native_driver_source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
   "native_fixture_source_commit": "bb577ce03eff5677b62f439b063860b4090d3255",
   "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
   "kernel": "7.1.13-3-2-ARCH",
-  "binary_sha256": "98dfb23ee663b4fd30298f36aac8f2381a5eba239a59e3436d136fbdeeb6c2e0",
-  "module_sha256": "73506bfa6584f4e3cc61f84f19a9eee9d0e8acf6c0996fe7f7b81241eb26815d",
-  "module_srcversion": "9874D71882F6752484E64FE",
+  "binary_sha256": "0a6a939cf2ad62af5b43806aa4645a8fb31f98d557e3a4f39c73648e0afc6e5c",
+  "module_sha256": "640a86b351a1993396324c2393da84309e2f638c08363601e0f15e22387710f5",
+  "module_srcversion": "E251E6C876EE79547410C31",
   "native_fixture_binary_sha256": "781c5b3d0a071ea2635950265a2f08455a55739e05a309a60c8ce2072904e57b",
-  "source_diff_sha256": "c3cfacd712e9621231c117f38056f2f7019a3844a9d2c64c2f7011ab5b113d8d",
+  "source_diff_sha256": "219776a441b9ff1913645b2364b81e5642b80c23ff8c0b133731f40daa925603",
   "source_diff_paths": [
     "Cargo.toml",
     "Cargo.lock",
     "src",
+    "licenses",
     "drivers/ns7",
     "drivers/mpd232",
     "scripts/install-ns7-driver.sh",
@@ -100,7 +101,7 @@
         "ignored": 41,
         "measured": 0,
         "filtered": 1,
-        "elapsed_seconds": 341.40
+        "elapsed_seconds": 341.4
       },
       "focused_surfaces": {
         "result": "ok",
@@ -239,6 +240,37 @@
           "sha256": "13431c554b9a4da91f36f3fd99c95dd87f1433f3452cd648adc1e84a5a9c3ce4"
         }
       ]
+    },
+    "audio_recovery": {
+      "source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
+      "ordinary": {
+        "result": "ok",
+        "passed": 1699,
+        "failed": 0,
+        "ignored": 42,
+        "measured": 0,
+        "filtered": 1,
+        "elapsed_seconds": 349.31
+      },
+      "connected_underrun": {
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 1741,
+        "elapsed_seconds": 0.79
+      },
+      "connected_duplex": {
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 1741,
+        "elapsed_seconds": 7.18
+      },
+      "unchanged_exhaustive_invalid_scenes_filtered": 1
     }
   },
   "physical": {
@@ -310,16 +342,16 @@
   },
   "runtime": {
     "ns7_buffer_frames": 512,
-    "ns7_period_frames": 128,
-    "installed_gui_pid": 1256763,
+    "ns7_period_frames": 256,
+    "installed_gui_pid": 2811860,
     "physical_scratch_listening_pending": false,
     "continuous_clock_audio_listening_pending": false,
-    "audio_callback_tid": 1256813,
+    "audio_callback_tid": 2811907,
     "audio_callback_scheduling": {
-      "policy": "SCHED_OTHER",
-      "priority": 0,
-      "nice": -10,
-      "scope": "Current desktop-service callback"
+      "policy": "SCHED_RR",
+      "priority": 10,
+      "reset_on_fork": true,
+      "scope": "Current CPAL hardware output callback through rtkit"
     },
     "previous_f44_build_load_output": {
       "backend_errors": 24219,
@@ -524,8 +556,8 @@
     },
     "button_controls_startup": {
       "master": 0.03999999910593033,
-      "crossfader": 0.0,
-      "contour": 1.0,
+      "crossfader": 0,
+      "contour": 1,
       "deck_a_playing": true,
       "deck_b_playing": false,
       "workspace": 4,
@@ -582,8 +614,8 @@
     },
     "strip_release_startup": {
       "master": 0.03999999910593033,
-      "crossfader": 0.0,
-      "contour": 1.0,
+      "crossfader": 0,
+      "contour": 1,
       "deck_a_playing": true,
       "deck_b_playing": false,
       "workspace": 9,
@@ -659,15 +691,15 @@
       "sent": 480
     },
     "stage_controls_startup": {
-      "beat": 0.0,
-      "bpm": 124.0,
+      "beat": 0,
+      "bpm": 124,
       "crossfader": 0.4566929042339325,
-      "crossfader_contour": 1.0,
+      "crossfader_contour": 1,
       "decks": [
         {
           "controls": {
             "auto_loop": false,
-            "bend": 0.0,
+            "bend": 0,
             "bleep": false,
             "braking": false,
             "delete": false,
@@ -690,8 +722,8 @@
             "slice": null,
             "slice_domain": 3,
             "slip": false,
-            "start_seconds": 0.0,
-            "stop_seconds": 0.0
+            "start_seconds": 0,
+            "stop_seconds": 0
           },
           "duration": 265.3664245605469,
           "hotcues": [
@@ -715,7 +747,7 @@
         {
           "controls": {
             "auto_loop": false,
-            "bend": 0.0,
+            "bend": 0,
             "bleep": false,
             "braking": false,
             "delete": false,
@@ -738,8 +770,8 @@
             "slice": null,
             "slice_domain": 3,
             "slip": false,
-            "start_seconds": 0.0,
-            "stop_seconds": 0.0
+            "start_seconds": 0,
+            "stop_seconds": 0
           },
           "duration": 165.3560028076172,
           "hotcues": [
@@ -879,7 +911,128 @@
       "recording": false,
       "total": 8,
       "transport_epoch": "1"
+    },
+    "audio_recovery": {
+      "service": "omatainer-ns7-testdrive.service",
+      "gui_pid": 2811860,
+      "audio_tid": 2811907,
+      "callback_scheduler": "pid 2811907's current scheduling policy: SCHED_RR|SCHED_RESET_ON_FORK\npid 2811907's current scheduling priority: 10",
+      "pcm_hw_params": "access: RW_INTERLEAVED\nformat: S32_LE\nsubformat: STD\nchannels: 4\nrate: 44100 (44100/1)\nperiod_size: 256\nbuffer_size: 512",
+      "window": [
+        {
+          "pid": 2811860,
+          "class": "org.omarchy.omatainer",
+          "title": "* Untitled — omatainer",
+          "mapped": true,
+          "hidden": false,
+          "workspace": {
+            "id": 10,
+            "name": "10"
+          }
+        }
+      ],
+      "profile_audio": {
+        "backend": "ALSA",
+        "device": "hw:CARD=NS7,DEV=0",
+        "sample_rate": 44100,
+        "channels": 4,
+        "buffer_frames": 512,
+        "format": "i32"
+      },
+      "master": 0.14173229038715363,
+      "crossfader": 0.4566929042339325,
+      "crossfader_contour": 1,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false,
+          "position_seconds": 264.646629781992,
+          "keylock": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false,
+          "position_seconds": 3.9060474438022594,
+          "keylock": true
+        }
+      ],
+      "playing": false,
+      "recording": false,
+      "recovery": false,
+      "audio": {
+        "backend_errors": 0,
+        "callbacks": 15294,
+        "deadline_overruns": 0,
+        "device_lost": 0,
+        "dropped_buffers": null,
+        "last_callback": {
+          "budget_ns": 5804988,
+          "channels": 4,
+          "elapsed_ns": 191168,
+          "frames": 256,
+          "output_latency_ns": 5759637,
+          "overrun_ns": 0,
+          "render_cpu_ns": 182791,
+          "sample_rate": 44100
+        },
+        "max_elapsed_ns": 647005,
+        "max_overrun_ns": 0,
+        "realtime_denied": 0,
+        "xruns": 0
+      },
+      "midi_input": {
+        "coalesced": 0,
+        "disconnected": 0,
+        "dispatched": 2,
+        "dropped": 0,
+        "oversized": 0,
+        "queued": 2,
+        "received": 2,
+        "resets": 0
+      },
+      "midi_feedback": {
+        "connected": 4,
+        "failed": 0,
+        "sent": 480
+      },
+      "monitor": {
+        "active": false,
+        "available": true,
+        "faders": [
+          1,
+          1
+        ],
+        "master": false,
+        "mix": 0.5,
+        "volume": 0
+      },
+      "quiet_window_start_utc": "2026-10-06T02:20:34Z",
+      "quiet_window_end_utc": "2026-10-06T02:22:01Z",
+      "quiet_audio_delta": {
+        "callbacks": 15067,
+        "deadline_overruns": 0,
+        "backend_errors": 0,
+        "device_lost": 0,
+        "xruns": 0,
+        "realtime_denied": 0
+      },
+      "quiet_native_delta": {
+        "midi_input_bytes": 0,
+        "midi_output_bytes": 0,
+        "midi_errors": 0,
+        "pcm_playback_frames": 2999998,
+        "pcm_capture_frames": 3000016,
+        "pcm_feedback_frames": 68022,
+        "pcm_errors": 0
+      },
+      "screenshot": {
+        "path": "target/hardware/audio-recovery/live/screen.png",
+        "sha256": "44f938c9329e806f0692f095a67ddb39f228359fe5372b77809d52fb1c048214"
+      },
+      "analog_listening_confirmed": false
     }
   },
-  "stage_controls_receipt": "docs/validation/stage-controls-receipt.json"
+  "stage_controls_receipt": "docs/validation/stage-controls-receipt.json",
+  "latest_native_fixture_source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
+  "audio_recovery_receipt": "docs/validation/ns7-underrun-recovery-receipt.json"
 }

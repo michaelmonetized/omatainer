@@ -1,0 +1,475 @@
+{
+  "schema": 1,
+  "date_utc": "2026-10-06T02:22:01Z",
+  "base_commit": "1625ee063014a674d272f5d3fc01e80e8191fe2c",
+  "source_commit": "240fed5c0275396b2b328232098c2b0c1508619c",
+  "source_diff_paths": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "src",
+    "licenses",
+    "drivers/ns7",
+    "drivers/mpd232",
+    "scripts/install-ns7-driver.sh",
+    "tests/fixtures/mpd232-bank-a.midi",
+    "tests/fixtures/mpd232-livelite.syx"
+  ],
+  "source_diff_sha256": "219776a441b9ff1913645b2364b81e5642b80c23ff8c0b133731f40daa925603",
+  "dependencies": {
+    "cpal": "0.18.2",
+    "midir": "0.11.0",
+    "rtkit": "0.14-1"
+  },
+  "binary_sha256": "0a6a939cf2ad62af5b43806aa4645a8fb31f98d557e3a4f39c73648e0afc6e5c",
+  "test_binary_sha256": "b26c63cf44d2de631eed709cbb884f0bab29e13dba02d1062e11d3b9645f529d",
+  "module_sha256": "640a86b351a1993396324c2393da84309e2f638c08363601e0f15e22387710f5",
+  "module_srcversion": "E251E6C876EE79547410C31",
+  "license_manifest_sha256": "a53cf2427f7db0dd5ea969394069d20cc1efce72ee7e7778312a7375f84c6b8a",
+  "license_notices_sha256": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244",
+  "previous_failure": {
+    "source_commit": "2d9b299e4295d0579f3a83cb0384632847a56769",
+    "binary_sha256": "98dfb23ee663b4fd30298f36aac8f2381a5eba239a59e3436d136fbdeeb6c2e0",
+    "audio": {
+      "backend_errors": 2892,
+      "callbacks": 361630,
+      "deadline_overruns": 4,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 7981859,
+        "channels": 4,
+        "elapsed_ns": 289878,
+        "frames": 352,
+        "output_latency_ns": 0,
+        "overrun_ns": 0,
+        "render_cpu_ns": 273167,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 6064299,
+      "max_overrun_ns": 1532693
+    },
+    "events": [
+      {
+        "elapsed_ms": 0,
+        "code": "startup",
+        "failure": null,
+        "repeats": 0
+      },
+      {
+        "elapsed_ms": 1164411,
+        "code": "audio_backend_failed",
+        "failure": "unavailable",
+        "repeats": 0
+      },
+      {
+        "elapsed_ms": 1164411,
+        "code": "audio_output_offline",
+        "failure": "unavailable",
+        "repeats": 0
+      }
+    ],
+    "active_audio": null,
+    "claim": "Previous short quiet qualification did not establish sustained reliability"
+  },
+  "tests": {
+    "ordinary": {
+      "result": "ok",
+      "passed": 1699,
+      "failed": 0,
+      "ignored": 42,
+      "measured": 0,
+      "filtered": 1,
+      "elapsed_seconds": 349.31
+    },
+    "connected_underrun": {
+      "result": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 1741,
+      "elapsed_seconds": 0.79
+    },
+    "connected_duplex": {
+      "result": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 1741,
+      "elapsed_seconds": 7.18
+    },
+    "unchanged_exhaustive_invalid_scenes_filtered": 1
+  },
+  "connected_underrun": {
+    "analog_listening": false,
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 102,
+      "deadline_overruns": 1,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 267919,
+        "frames": 256,
+        "output_latency_ns": 5056689,
+        "overrun_ns": 0,
+        "render_cpu_ns": 252041,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 40300263,
+      "max_overrun_ns": 34495275,
+      "realtime_denied": 0,
+      "xruns": 1
+    },
+    "callback_base_policy": 2,
+    "callback_policy": 1073741826,
+    "callback_reset_on_fork": true,
+    "callback_tid": 2717669,
+    "device": "hw:CARD=NS7,DEV=0",
+    "fault": false,
+    "hw_params": "access: RW_INTERLEAVED\nformat: S32_LE\nsubformat: STD\nchannels: 4\nrate: 44100 (44100/1)\nperiod_size: 256\nbuffer_size: 512\n",
+    "injected_stall_ms": 40,
+    "master": 0
+  },
+  "connected_duplex": {
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 292,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 23219954,
+        "channels": 4,
+        "elapsed_ns": 1373012,
+        "frames": 1024,
+        "output_latency_ns": 22947846,
+        "overrun_ns": 0,
+        "render_cpu_ns": 1302708,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 14540500,
+      "max_overrun_ns": 0,
+      "realtime_denied": 0,
+      "xruns": 0
+    },
+    "input_captured_frames": 267264,
+    "input_overflow": 0,
+    "input_status": "Input enabled with a bounded two-block cushion. Startup silence, missing frames, source discontinuities and overflow are reported separately; independent clocks can still drift.",
+    "input_underrun": 0,
+    "midi_clock_without_pcm": {
+      "pcm_closed": true,
+      "playback_frames": 4457
+    },
+    "midi_feedback": {
+      "connected": 3,
+      "failed": 0,
+      "sent": 476
+    },
+    "midi_input": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 3,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 3,
+      "received": 3,
+      "resets": 0
+    },
+    "monitor": {
+      "active": false,
+      "available": true,
+      "faders": [
+        1,
+        1
+      ],
+      "master": false,
+      "mix": 0.5,
+      "volume": 0
+    },
+    "ns7_midi_errors": 0,
+    "ns7_midi_input_bytes": 9,
+    "ns7_midi_output_bytes": 83,
+    "ns7_pcm_capture_frames": 304560,
+    "ns7_pcm_errors": 0,
+    "ns7_pcm_feedback_frames": 6904,
+    "ns7_pcm_playback_frames": 304578,
+    "ns7_pcm_startup_partial": 1,
+    "output": "Plan { graph: Routes { outputs: [], inputs: [] }, backend: \"ALSA\", device: \"sysdefault:CARD=NS7\", channels: 4, rate: 44100, format: I32, buffer: Some(2048), warning: None }",
+    "recorded_frames": 221184
+  },
+  "reset": {
+    "master": 0,
+    "tracks_paused": true,
+    "before_audio": {
+      "backend_errors": 0,
+      "callbacks": 210,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 212001,
+        "frames": 256,
+        "output_latency_ns": 5238095,
+        "overrun_ns": 0,
+        "render_cpu_ns": 197417,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 253669,
+      "max_overrun_ns": 0,
+      "realtime_denied": 0,
+      "xruns": 0
+    },
+    "after_audio": {
+      "backend_errors": 1366,
+      "callbacks": 218,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 236335,
+        "frames": 256,
+        "output_latency_ns": 5691610,
+        "overrun_ns": 0,
+        "render_cpu_ns": 221001,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 253669,
+      "max_overrun_ns": 0,
+      "realtime_denied": 0,
+      "xruns": 0
+    },
+    "pcm_after": "closed",
+    "active_audio_after": null,
+    "events": [
+      {
+        "elapsed_ms": 0,
+        "code": "startup",
+        "failure": null,
+        "repeats": 0
+      },
+      {
+        "elapsed_ms": 2321,
+        "code": "audio_backend_failed",
+        "failure": "unavailable",
+        "repeats": 0
+      },
+      {
+        "elapsed_ms": 2321,
+        "code": "audio_output_offline",
+        "failure": "unavailable",
+        "repeats": 0
+      }
+    ],
+    "ns7_midi_port_retained": true,
+    "backend_message": "ALSA snd_pcm_avail_delay returned errno 77, a fatal BackendError; device_lost remains zero",
+    "analog_listening": false
+  },
+  "corrected_checks": {
+    "ordinary_initial": {
+      "passed": 1698,
+      "failed": 1,
+      "ignored": 42,
+      "filtered": 1,
+      "correction": "Generic fixture keeps a 512-frame request; only ALSA converts that request into two 256-frame periods"
+    },
+    "underrun_initial": {
+      "failed_assertion": "Raw scheduler value compared with SCHED_RR without masking SCHED_RESET_ON_FORK",
+      "correction": "Verify the base policy after masking the kernel reset-on-fork flag; actual underrun already recovered"
+    },
+    "reset_initial": {
+      "failed_assertion": "Expected USB reset to increment device_lost",
+      "correction": "Verify fatal backend error, closed PCM and Offline receipt; this ALSA reset reports errno 77 rather than DeviceNotAvailable"
+    }
+  },
+  "runtime": {
+    "service": "omatainer-ns7-testdrive.service",
+    "gui_pid": 2811860,
+    "audio_tid": 2811907,
+    "callback_scheduler": "pid 2811907's current scheduling policy: SCHED_RR|SCHED_RESET_ON_FORK\npid 2811907's current scheduling priority: 10",
+    "pcm_hw_params": "access: RW_INTERLEAVED\nformat: S32_LE\nsubformat: STD\nchannels: 4\nrate: 44100 (44100/1)\nperiod_size: 256\nbuffer_size: 512",
+    "window": [
+      {
+        "pid": 2811860,
+        "class": "org.omarchy.omatainer",
+        "title": "* Untitled — omatainer",
+        "mapped": true,
+        "hidden": false,
+        "workspace": {
+          "id": 10,
+          "name": "10"
+        }
+      }
+    ],
+    "profile_audio": {
+      "backend": "ALSA",
+      "device": "hw:CARD=NS7,DEV=0",
+      "sample_rate": 44100,
+      "channels": 4,
+      "buffer_frames": 512,
+      "format": "i32"
+    },
+    "master": 0.14173229038715363,
+    "crossfader": 0.4566929042339325,
+    "crossfader_contour": 1,
+    "decks": [
+      {
+        "title": "What More Can I Say",
+        "playing": false,
+        "position_seconds": 264.646629781992,
+        "keylock": false
+      },
+      {
+        "title": "Public Service Announcement",
+        "playing": false,
+        "position_seconds": 3.9060474438022594,
+        "keylock": true
+      }
+    ],
+    "playing": false,
+    "recording": false,
+    "recovery": false,
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 15294,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 191168,
+        "frames": 256,
+        "output_latency_ns": 5759637,
+        "overrun_ns": 0,
+        "render_cpu_ns": 182791,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 647005,
+      "max_overrun_ns": 0,
+      "realtime_denied": 0,
+      "xruns": 0
+    },
+    "midi_input": {
+      "coalesced": 0,
+      "disconnected": 0,
+      "dispatched": 2,
+      "dropped": 0,
+      "oversized": 0,
+      "queued": 2,
+      "received": 2,
+      "resets": 0
+    },
+    "midi_feedback": {
+      "connected": 4,
+      "failed": 0,
+      "sent": 480
+    },
+    "monitor": {
+      "active": false,
+      "available": true,
+      "faders": [
+        1,
+        1
+      ],
+      "master": false,
+      "mix": 0.5,
+      "volume": 0
+    },
+    "quiet_window_start_utc": "2026-10-06T02:20:34Z",
+    "quiet_window_end_utc": "2026-10-06T02:22:01Z",
+    "quiet_audio_delta": {
+      "callbacks": 15067,
+      "deadline_overruns": 0,
+      "backend_errors": 0,
+      "device_lost": 0,
+      "xruns": 0,
+      "realtime_denied": 0
+    },
+    "quiet_native_delta": {
+      "midi_input_bytes": 0,
+      "midi_output_bytes": 0,
+      "midi_errors": 0,
+      "pcm_playback_frames": 2999998,
+      "pcm_capture_frames": 3000016,
+      "pcm_feedback_frames": 68022,
+      "pcm_errors": 0
+    },
+    "screenshot": {
+      "path": "target/hardware/audio-recovery/live/screen.png",
+      "sha256": "44f938c9329e806f0692f095a67ddb39f228359fe5372b77809d52fb1c048214"
+    },
+    "analog_listening_confirmed": false
+  },
+  "ui_cleanup_correction": {
+    "unintended_deck_b_playback_started": true,
+    "safe_stop_applied": true,
+    "retained_playhead_restored": true,
+    "final_tracks_paused": true,
+    "receipt_paths": [
+      "target/hardware/audio-recovery/live-before-panel-correction/panel-click-after-stop.json",
+      "target/hardware/audio-recovery/live/final-state.json"
+    ]
+  },
+  "mpd_capture": {
+    "service": "omatainer-mpd232-qualification-capture.service",
+    "ports": [
+      "36:0",
+      "36:1",
+      "36:2",
+      "36:3"
+    ],
+    "timeout": false,
+    "log": "target/hardware/mpd232-banks-transport-capture-live.log",
+    "identity_reply_count": 4,
+    "control_gestures_captured": false,
+    "bank_b_c_physically_confirmed": false,
+    "transport_physically_confirmed": false,
+    "user_afk": true
+  },
+  "logs": [
+    {
+      "path": "target/hardware/cpal-upgrade-final-ordinary-tests.log",
+      "sha256": "b45478e2b857b30f39df28879bf5ff7face223fc196f6f3442f9adb9a932993a"
+    },
+    {
+      "path": "target/hardware/ns7-underrun-final-tests.log",
+      "sha256": "bac4260b324a439d68509e9cbd29172ae1e22a7716b768c876b92e838b0fccf9"
+    },
+    {
+      "path": "target/hardware/ns7-duplex-upgrade-final-tests.log",
+      "sha256": "7d3ad1894f2d23f79d81ce584f75b545e45ae97263967bffdef5bf718410bf31"
+    },
+    {
+      "path": "target/hardware/audio-recovery/release-build.log",
+      "sha256": "8d0553178e38c290aad6c3964d7b6295752ae7e87fbe328ea8383464b8df7e7f"
+    },
+    {
+      "path": "target/hardware/audio-recovery/ns7-driver-install.log",
+      "sha256": "90063a9a7aa13c7a868f3969698477d612ac1f7a5848a375043d7b9844fb49b7"
+    },
+    {
+      "path": "target/hardware/audio-recovery/reset-check.log",
+      "sha256": "3592a156090e8d408a12f2807e2f028856cfca6d0a45c9b10cae986fe343a667"
+    },
+    {
+      "path": "target/hardware/audio-recovery/live-launch.log",
+      "sha256": "5f253549c2cd107f1b514a22a6543cfcfbc2a960d053bd0a7a67917349676c08"
+    },
+    {
+      "path": "target/hardware/cpal-upgrade-ordinary-tests.log",
+      "sha256": "dc51595498d79c9c5d3a7b579989c575a0b87a4d1361f19adb760dd2e4227720"
+    },
+    {
+      "path": "target/hardware/ns7-underrun-first-attempt.log",
+      "sha256": "255674ba09bc7004bd288be3ff76116f9e94152aca812813aaf4693735cef167"
+    }
+  ]
+}
