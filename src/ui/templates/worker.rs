@@ -152,6 +152,7 @@ pub(in crate::ui) fn validate(bundle: &Bundle<Native>) -> Result<(), String> {
                     || clip.audio.is_some()
                     || clip.lanes.is_some()
                     || clip.region.is_some()
+                    || clip.audio_region.is_some()
             })
         {
             return Err("Track configuration template contains song content".into());

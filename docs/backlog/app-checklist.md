@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 32 implemented · 6 partial · 183 planned · 0 accepted · 8 outside release
+127 existing stack · 32 implemented · 7 partial · 182 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -192,7 +192,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented | #82, #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
 | [x] | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented | #130 | [receipt](../../docs/validation/mic-aux.md), [receipt](../../docs/validation/mic-aux-receipt.json) |
 | [x] | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented | #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
-| [ ] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | planned | #82, #130 |  |
+| [ ] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | partial | #82, #130 | [receipt](../../docs/validation/audio-clips.md), [receipt](../../docs/validation/audio-clips-receipt.json) |
 | [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned | #130 |  |
 | [ ] | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned | #132 |  |
 | [x] | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented | #134 | [receipt](../../docs/validation/beat-jump.md) |

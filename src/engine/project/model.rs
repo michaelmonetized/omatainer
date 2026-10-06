@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 17;
+pub const STATE_VERSION: u32 = 18;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -95,6 +95,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 18 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).any(|clip|clip.get("audio_region").is_some()) {return Err(serde::de::Error::custom("Audio clip source regions require project state version 18"));}
         if version < 17 && raw.get("mic_aux").is_some() { return Err(serde::de::Error::custom("Mic/aux controls require project state version 17")); }
         if version < 16 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().any(|track| track.get("input_monitor").is_some()) {
             return Err(serde::de::Error::custom("Input monitoring requires project state version 16"));
@@ -208,6 +209,8 @@ pub struct Track {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SavedClip {
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub(crate) audio_region: Option<audio_clip::Region>,
     #[serde(default)]
     pub(crate) lanes: Option<Arc<midi_data::Lanes>>,
     #[serde(default)]
@@ -409,7 +412,7 @@ impl State {
             tracks: (0..TRACKS).map(|_| Track {
                 name: String::new(),
                 clips: (0..SCENES).map(|_| SavedClip {
-                    lanes: None,
+                    audio_region: None, lanes: None,
                     region: None,
                     kind: ClipKind::Empty,
                     name: String::new(),
@@ -584,9 +587,10 @@ impl State {
                     if self.version < 15 && !lanes.labels.is_empty() { return fail("MIDI labels in a legacy state"); }
                     lanes.validate()?; midi_bytes += lanes.bytes();
                 }
+                if let Some(region)=clip.audio_region {if self.version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
                 note_ids.clear();
                 if !text_ok(&clip.name)
-                    || !finite_range(clip.bars as f64, if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
+                    || !finite_range(clip.bars as f64, if clip.audio_region.is_some(){0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)
                     || !finite_range(clip.gain as f64, 0.0, 1.5)
                     || !optional(clip.audio)
                     || clip.notes.len() > MAX_NOTES_PER_CLIP

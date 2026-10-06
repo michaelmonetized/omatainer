@@ -247,6 +247,7 @@ impl Frame {
                     if p.last_beat < 0.0 {
                         return 0.0;
                     }
+                    if let Some(plan)=track.clips[p.scene as usize].audio_region {return plan.progress(p.last_beat,p.looping);}
                     let len = (track.clips[p.scene as usize].bars.max(0.25) * 4.0) as f64;
                     (p.last_beat.rem_euclid(len) / len) as f32
                 })

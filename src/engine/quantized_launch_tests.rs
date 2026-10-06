@@ -17,7 +17,7 @@ fn engine(sr: u32) -> RtEngine {
 
 fn clip(pitch: u8, length: f32) -> Clip {
     Clip {
-        lanes: None,
+        audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "quantized probe".into(),

@@ -16,7 +16,7 @@ fn engine() -> RtEngine {
 
 fn clip(notes: Vec<MidiNote>, gain: f32) -> Clip {
     Clip {
-        lanes: None,
+        audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "velocity".into(),

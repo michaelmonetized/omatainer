@@ -904,6 +904,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
     match command {
         Command::SessionControl(scoped) => size_of::<Command>().saturating_add(owned_payload_bytes(&scoped.command)),
         Command::SessionEdit(request) => request.bytes(),
+        Command::AudioClipEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::ProviderPreview(request) => request.bytes(),

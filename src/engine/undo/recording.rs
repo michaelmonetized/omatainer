@@ -54,7 +54,7 @@ impl RtEngine {
             track: track as u8,
             scene: scene as u16,
             value: Clip {
-                lanes: clip.lanes.clone(),
+                audio_region: clip.audio_region, lanes: clip.lanes.clone(),
                         region: clip.region,
                 kind: clip.kind,
                 name,
@@ -65,6 +65,7 @@ impl RtEngine {
             },
             spare_notes: Vec::new(),
             reserved_midi_bytes: 0,
+            reserved_audio: [None, None],
         };
         if !grouped {
             let gesture = self.undo.gesture;

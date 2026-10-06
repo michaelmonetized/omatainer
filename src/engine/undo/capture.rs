@@ -198,6 +198,7 @@ impl RtEngine {
             }
         }
         if let Command::SessionEdit(request) = c { self.history_session(request); return None; }
+        if let Command::AudioClipEdit(request) = c { self.history_audio_clip(request); return None; }
         if let Command::MidiImport(request) = c {
             self.history_midi_import(request); return None;
         }
@@ -384,7 +385,7 @@ impl RtEngine {
                     track: t,
                     scene: s,
                     value: Clip {
-                        lanes: clip.lanes.clone(),
+                        audio_region: clip.audio_region, lanes: clip.lanes.clone(),
                         region: clip.region,
                         name,
                         notes,
@@ -394,7 +395,8 @@ impl RtEngine {
                         audio: clip.audio.clone(),
                     },
                     spare_notes: prepared.notes,
-                    reserved_midi_bytes: match &c {
+                    reserved_audio: [None, None],
+                reserved_midi_bytes: match &c {
                         Command::MidiEdit(request) => request.baseline.lanes.as_ref().map_or(0, |l| l.bytes()) + request.lanes.as_ref().map_or(0, |l| l.bytes()),
                         _ => 0,
                     },
@@ -449,6 +451,7 @@ impl RtEngine {
     pub(super) fn history_reject(&mut self, c: Command, reason: Failure) {
         self.undo.reject(reason);
         if let Command::MicAuxConfigure(request)=&c {request.ack.reject();}
+        if let Command::AudioClipEdit(request)=&c {request.ack.reject();}
         super::super::midi_edit::reject_retired(&c);
         let bytes = command_bytes(&c);
         self.undo.retire(Retired::Command(c), bytes);
@@ -459,6 +462,7 @@ pub(super) fn command_bytes(command: &Command) -> usize {
         Command::SessionControl(scoped) => std::mem::size_of::<Command>() + command_bytes(&scoped.command),
         Command::MicAuxConfigure(_) => std::mem::size_of::<audio::routing::mic_aux::control::Request>(),
         Command::SessionEdit(request) => request.bytes(),
+        Command::AudioClipEdit(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),
         Command::SamplerEdit(edit) => bank_bytes(&edit.bank),

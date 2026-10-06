@@ -205,6 +205,7 @@ impl Frame {
                 let saved = &mut out.clips[j];
                 saved.kind = clip.kind;
                 saved.region = clip.region;
+                saved.audio_region = clip.audio_region.map(|p|p.region);
                 saved.lanes = clip.lanes.clone();
                 copy_string(&mut saved.name, &clip.name);
                 saved.bars = clip.bars;

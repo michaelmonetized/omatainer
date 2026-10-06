@@ -77,6 +77,7 @@ impl RtEngine {
                 value,
                 spare_notes: std::mem::take(&mut target.spare_notes),
                 reserved_midi_bytes: target.reserved_lane_bytes,
+                reserved_audio: [None, None],
             });
             track.clip_notes_changed(s, self.beat, midi_beat);
         }

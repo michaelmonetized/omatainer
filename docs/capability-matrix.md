@@ -346,6 +346,18 @@ Eleven software checks and complete 1838-test unfiltered suite pass with 44 igno
 
 Software qualification: 86.4 million frames in an accelerated two-hour stream, two segments with ordered PCM hashes, actual converted callback parity, six encoders, killed-writer recovery and a real disk write failure. No heap work or waiting on suspended recording producers in the callback. Provider preview is refused. FLAC/MP3 retain original WAVs. Forced fresh source 278025cc1a3d installed for next default launch; Linux ARM64 only, no physical endurance or power-loss guarantee.
 
+### Issue #182: partial
+
+- native editor: [src/ui/audio_clips.rs](../src/ui/audio_clips.rs) — Setup → Audio clip; clip alternate audio action; source inspection, rainbow waveform and nondestructive controls
+- bounded worker: [src/ui/audio_clips/worker.rs](../src/ui/audio_clips/worker.rs) — Strict decode, shared sources, stable target capture and prepared application
+- renderer: [src/engine/audio_clip.rs](../src/engine/audio_clip.rs) — Half-open source/loop sampling, reverse, pitch resampling and musical playback
+- project and History: [src/engine/audio_clip/edit.rs](../src/engine/audio_clip/edit.rs) — Strict schema 18, shared native PCM, cancellation, budgets, complete source Undo and worker retirement
+- Acceptance fixtures: `engine::audio_clip::tests`, `ui::audio_clips::tests`.
+- Evidence: [docs/validation/audio-clips.md](../docs/validation/audio-clips.md).
+- Evidence: [docs/validation/audio-clips-receipt.json](../docs/validation/audio-clips-receipt.json).
+
+Session audio clips qualified at 44.1/48/96 kHz, with actual native WAV/MP3 import, shared-buffer reuse, trims/reverse/pitch/loops, normal track paths, save/reopen and exact export parity. Actual linear Arrangement editing/playback is still issue 226, so issue 182 remains partial. Pitch resampling changes duration; independent time stretching and streaming remain issues 200 and 184. Physical capture stays closed.
+
 ### Issue #185: implemented
 
 - native UI: [src/ui/beat_jump.rs](../src/ui/beat_jump.rs) — Per-deck backward/size/forward controls beneath platter
@@ -482,7 +494,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented |
 | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented |
 | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented |
-| [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | planned |
+| [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | partial |
 | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |
 | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |

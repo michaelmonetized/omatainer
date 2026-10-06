@@ -314,10 +314,11 @@ pub(in crate::engine) fn prepare_track(mut saved: Track, media: &[Arc<Sample>], 
     track.mute = saved.mute; track.solo = saved.solo; track.armed = saved.armed; track.input_monitor = saved.input_monitor;
     track.poly = synth(saved.synth, sr); track.eq = eq(saved.eq, sr); track.eq_right = track.eq;
     track.fx = effects(saved.fx, sr);
-    track.clips = saved.clips.into_iter().map(|c| Clip {
-        region: c.region, lanes: c.lanes, kind: c.kind, name: c.name,
-        bars: c.bars, notes: c.notes, gain: c.gain, audio: c.audio.map(|i| media[i].clone()),
-    }).collect();
+    track.clips = saved.clips.into_iter().map(|c| {
+        let audio=c.audio.map(|i|media[i].clone());
+        let audio_region=c.audio_region.map(|r|r.prepare(audio.as_deref().ok_or("Audio region has no source")?).map_err(str::to_owned)).transpose()?;
+        Ok(Clip {audio_region, region:c.region, lanes:c.lanes, kind:c.kind, name:c.name, bars:c.bars, notes:c.notes, gain:c.gain, audio})
+    }).collect::<Result<Vec<_>,String>>()?;
     track.clips.reserve(session::MAX_SCENES - track.clips.len());
     track.project_resume = saved.launch.map(|p| PlayingClip { scene: p.scene,
         start_beat: p.start_beat, midi_start_beat: p.start_beat, last_beat: -0.0001, looping: p.looping });

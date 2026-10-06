@@ -518,6 +518,7 @@ fn destructive(command: &Command) -> bool {
         Command::SessionEdit(request) => request.disruptive(),
         Command::MicAuxConfigure(_)
         | Command::TimelineSeek(_)
+        | Command::AudioClipEdit(_)
         | Command::MidiImport(_)
         | Command::MidiEdit(_)
         | Command::MidiAudition { on: true, .. }

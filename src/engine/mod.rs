@@ -4,6 +4,7 @@ mod keylock_tests;
 pub(crate) mod project;
 pub(crate) mod live_set;
 pub(crate) mod midi_edit;
+pub(crate) mod audio_clip;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
 pub(crate) mod undo;
@@ -170,6 +171,8 @@ pub struct MidiNote {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Clip {
+    #[serde(skip)]
+    pub(crate) audio_region: Option<audio_clip::Plan>,
     #[serde(default)]
     pub(crate) lanes: Option<Arc<midi_data::Lanes>>,
     #[serde(default)]
@@ -191,6 +194,7 @@ impl Clip {
 
     pub fn empty() -> Self {
         Self {
+            audio_region: None,
             lanes: None,
             region: None,
             kind: ClipKind::Empty,
@@ -1042,6 +1046,7 @@ pub enum Command {
     LiveNoteOn { source: u64, ch: u8, note: u8, vel: u8 },
     RoutedNoteOn { source: u64, ch: u8, note: u8, vel: u8, track: u8, target: Option<session::Reference> },
     LiveNoteOff { source: u64, ch: u8, note: u8 },
+    AudioClipEdit(Box<audio_clip::edit::Request>),
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
     MidiAudition { id: u64, track: u8, note: u8, vel: u8, on: bool },
@@ -1354,7 +1359,7 @@ impl RtEngine {
             vel: 90,
         });
         self.tracks[0].clips[0] = Clip {
-            lanes: None,
+            audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
             name: "House Kit".into(),
@@ -1364,7 +1369,7 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[1].clips[0] = Clip {
-            lanes: None,
+            audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
             name: "Bassline".into(),
@@ -1381,7 +1386,7 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[2].clips[0] = Clip {
-            lanes: None,
+            audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
             name: "Stab".into(),
@@ -1398,7 +1403,7 @@ impl RtEngine {
             audio: None,
         };
         self.tracks[3].clips[0] = Clip {
-            lanes: None,
+            audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
             name: "Pad".into(),
@@ -1421,7 +1426,7 @@ impl RtEngine {
             vel: 80,
         });
         self.tracks[0].clips[1] = Clip {
-            lanes: None,
+            audio_region: None, lanes: None,
             region: None,
             kind: ClipKind::Midi,
             name: "Fill".into(),
@@ -1732,7 +1737,7 @@ impl RtEngine {
         let playing = self.tracks[ti].playing;
         // Pending launches do not emit or advance clip-local state. The
         // engine beat denotes the end of this output sample's beat interval.
-        let explicit_region = playing.is_some_and(|p| self.tracks[ti].clips[p.scene as usize].region.is_some());
+        let explicit_region = playing.is_some_and(|p| { let clip = &self.tracks[ti].clips[p.scene as usize]; clip.region.is_some() || clip.audio_region.is_some() });
         let clock = if explicit_region { self.precise_midi_beat() } else { self.beat };
         let clip_sounding = playing.is_some_and(|p| self.count_in.is_none() && clock > (if explicit_region { p.midi_start_beat } else { p.start_beat }) + midi_schedule::BEAT_EPSILON);
         let recording = self.recording || self.routing_pipe.recorder.monitoring_inputs();
@@ -1743,7 +1748,8 @@ impl RtEngine {
         {
             let scene = p.scene as usize;
             self.tracks[ti].scene_bus = scene;
-            let clip_beats = self.tracks[ti].clips[scene].bars.max(0.25) as f64 * 4.0;
+            let audio_region=self.tracks[ti].clips[scene].audio_region;
+            let clip_beats = audio_region.map_or(self.tracks[ti].clips[scene].bars.max(0.25) as f64 * 4.0,|p|p.duration_beats);
             let region = self.tracks[ti].clips[scene].region;
             let repeating = region.map_or(p.looping, |region| region.repeating(p.looping));
             let duration = region.map_or(clip_beats, |region| region.end - region.start);
@@ -1753,14 +1759,14 @@ impl RtEngine {
             {
                 // Match the event heap's half-open sample interval. An exact
                 // endpoint belongs to the next sample, including arp/loop steps.
-                let sample_elapsed = (elapsed - midi_schedule::BEAT_EPSILON).max(0.0);
+                let step = if audio_region.is_some() { if self.conductor.is_some() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 } } else { midi_schedule::BEAT_EPSILON };
+                let sample_elapsed = (elapsed - step).max(0.0);
                 let local = region.map_or_else(|| sample_elapsed.rem_euclid(clip_beats),
                     |region| region.position(sample_elapsed, p.looping).unwrap_or(region.end));
                 if !ending && (self.tracks[ti].clips[scene].kind == ClipKind::Audio || self.tracks[ti].kind != 0 && self.tracks[ti].poly.offline.is_some()) {
                     let clip = &self.tracks[ti].clips[scene];
                     if let Some(audio) = &clip.audio {
-                        let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;
-                        let (l, r) = audio.at(phase);
+                        let (l,r)=if let Some(plan)=audio_region {let frame=plan.sample(audio,sample_elapsed,p.looping);(frame[0],frame[1])}else{let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;audio.at(phase)};
                         let gain = clip_gain(clip.gain) * clip_gain_value; fallback = [l * gain, r * gain];
                     }
                 }
@@ -1862,7 +1868,7 @@ impl RtEngine {
                     }
                 }
                 if let Some(playing) = self.tracks[ti].playing.as_mut() {
-                    playing.last_beat = local;
+                    playing.last_beat = if audio_region.is_some() { sample_elapsed } else { local };
                 }
             }
             if ending {
@@ -2862,7 +2868,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) => unreachable!("import is applied atomically in history admission"),
+            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);

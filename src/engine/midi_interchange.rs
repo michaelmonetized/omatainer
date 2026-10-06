@@ -338,7 +338,7 @@ impl Request {
             targets.push(Target {
                 baseline,
                 replacement: Clip {
-                    lanes: Some(lanes),
+                    audio_region: None, lanes: Some(lanes),
                     region: Some(region),
                     kind: ClipKind::Midi,
                     name,

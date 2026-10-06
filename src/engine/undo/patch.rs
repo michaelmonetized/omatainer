@@ -304,6 +304,7 @@ pub(super) enum Patch {
         value: Clip,
         spare_notes: Vec<MidiNote>,
         reserved_midi_bytes: usize,
+        reserved_audio: [Option<Arc<Sample>>; 2],
     },
     Media {
         deck: u8,
@@ -378,6 +379,7 @@ impl Patch {
             Self::Sampler { index, value, .. } => rt.sampler_revision != u64::MAX
                 && if value.is_some() { *index <= rt.sampler_banks.len() && (*index < rt.sampler_banks.len() || rt.sampler_banks.len() < sampler::MAX_BANKS) }
                 else { *index < rt.sampler_banks.len() },
+            Self::Clip { track, scene, reserved_audio, .. } if reserved_audio.iter().any(Option::is_some) => !rt.recording && rt.tracks.get(usize::from(*track)).is_some_and(|t| t.playing.or(t.project_resume).is_none_or(|p| p.scene != *scene)),
             Self::Effect { rack, index, .. } => *index < rack.get(rt).slots.len(),
             Self::Slot {
                 rack, index, slot, ..
@@ -538,7 +540,7 @@ impl Patch {
                     for audio in &bank.audio { visit(audio); }
                 }
             }
-            Self::Clip { value, .. } => visit(&value.audio),
+            Self::Clip { value, reserved_audio, .. } => { visit(&value.audio); for source in reserved_audio { visit(source); } },
             Self::Media {
                 reserved_original,
                 reserved_media,

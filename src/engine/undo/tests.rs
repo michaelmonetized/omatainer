@@ -205,7 +205,7 @@ fn note_replacement_owns_original_and_preserves_live_notes_while_playing() {
     let t = 2;
     let s = 7;
     rt.tracks[t].clips[s] = Clip {
-        lanes: None,
+        audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "original".into(),

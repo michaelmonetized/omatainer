@@ -237,7 +237,7 @@ fn populated() -> RtEngine {
             .collect();
         for s in 0..SCENES {
             rt.tracks[t].clips[s] = Clip {
-                lanes: None,
+                audio_region: None, lanes: None,
                 region: None,
                 kind: if s == 7 {
                     ClipKind::Audio

@@ -48,6 +48,7 @@ mod track_gain;
 mod waveform;
 mod piano_roll;
 mod midi_files;
+mod audio_clips;
 mod timing;
 mod dependencies;
 mod portability;
@@ -198,6 +199,7 @@ pub struct App {
     audio_routing: audio_routing::Panel,
     piano_roll: piano_roll::Editor,
     midi_files: midi_files::Editor,
+    audio_clips: Box<audio_clips::Editor>,
     timing: timing::Editor,
     dependencies: dependencies::Dependencies,
     portability: portability::Portability,
@@ -342,6 +344,7 @@ impl App {
             session_editor: session_editor::Editor::default(),
             piano_roll: piano_roll::Editor::default(),
             midi_files: midi_files::Editor::default(),
+            audio_clips: Box::default(),
             timing: timing::Editor::default(),
             dependencies: dependencies::Dependencies::default(),
             portability: portability::Portability::default(),
@@ -848,6 +851,7 @@ impl App {
         self.poll_undo();
         self.poll_piano_roll();
         self.poll_midi_files();
+        self.poll_audio_clips();
         self.timing.poll(&self.engine);
         self.poll_dependencies();
         self.poll_portability();
@@ -899,6 +903,7 @@ impl App {
         self.audio_routing_ui(ctx);
         self.piano_roll_ui(ctx);
         self.midi_files_ui(ctx);
+        self.audio_clips_ui(ctx);
         self.timing_ui(ctx);
         self.dependencies_ui(ctx);
         self.portability_ui(ctx);
@@ -1739,11 +1744,13 @@ impl App {
                                 grid_gained_focus |= resp.gained_focus();
                                 accessibility::button(ui, &resp, &format!("Clip track {} scene {}: {}", display_track + 1, display_scene + 1, clip.map(|c| c.name.as_str()).filter(|name| !name.is_empty()).unwrap_or("Empty")), Some(playing));
                                 accessibility::status(ui, &resp, &format!("{}; {}", if queued { "Queued" } else if playing { "Playing" } else { "Stopped" }, if looping { "Looping" } else { "One shot" }));
-                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain"] } else { &["Launch once", "Launch loop", "Arm compose"] };
+                                let labels: &[&str] = if filled { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Edit audio clip"] } else { &["Launch once", "Launch loop", "Arm compose", "Edit clip gain", "Import audio clip"] };
                                 let action = accessibility::actions(ui, &resp, labels);
                                 help::annotate(ui, &resp, HelpControl::Clip);
-                                if resp.clicked() || matches!(action, Some(0 | 2 | 3)) {
-                                    if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
+                                if resp.clicked() || matches!(action, Some(0 | 2 | 3 | 4)) {
+                                    if action == Some(4) || action.is_none() && ui.input(|i| i.modifiers.alt && i.modifiers.shift) {
+                                        self.open_audio_clip(tr as u8, sc as u16);
+                                    } else if action == Some(3) || action.is_none() && ui.input(|i| i.modifiers.alt) {
                                         if filled {
                                             self.clip_gain_edit = Some(ClipGainEdit {
                                                 track: tr as u8, scene: sc as u16,

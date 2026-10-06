@@ -334,7 +334,7 @@ fn reviewed_controls_save_reopen_undo_and_refuse_stale_aliases_protected_changes
     assert_eq!(rt.mic_aux.configuration(), Some(cfg));
     let saved = capture(&engine, &mut rt);
     let json = serde_json::to_value(&saved.state).unwrap();
-    assert_eq!(json["version"], 17);
+    assert_eq!(json["version"], crate::engine::project::STATE_VERSION);
     assert_eq!(json["mic_aux"]["channels"][1]["gain"], 2.0);
     let mut legacy = json.clone();
     legacy["version"] = 16.into();

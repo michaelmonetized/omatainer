@@ -14,7 +14,7 @@ fn render(rt: &mut RtEngine, seconds: f32) {
 
 fn chord() -> Clip {
     Clip {
-        lanes: None,
+        audio_region: None, lanes: None,
         region: None,
         kind: ClipKind::Midi,
         name: "Sustained chord".into(),
@@ -46,7 +46,7 @@ fn prepare(rt: &mut RtEngine, arp: bool) {
     }
     rt.tracks[1].clips[0] = chord();
     rt.tracks[1].clips[1] = Clip {
-        lanes: None,
+        audio_region: None, lanes: None,
         region: None,
         notes: Vec::new(),
         ..chord()

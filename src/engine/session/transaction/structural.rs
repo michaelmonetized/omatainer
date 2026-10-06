@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 pub(super) fn empty_cell() -> project::SavedClip {
     project::SavedClip {
-        lanes: None,
+        audio_region: None, lanes: None,
         region: None,
         kind: crate::engine::ClipKind::Empty,
         name: String::new(),
@@ -22,8 +22,9 @@ fn duplicate_cell(mut cell: project::SavedClip) -> project::SavedClip {
     cell
 }
 fn prepare_cell(cell: project::SavedClip, media: &[Arc<Sample>]) -> Result<Clip, String> {
+    let audio_region=cell.audio_region.map(|r|r.prepare(media.get(cell.audio.ok_or("Audio region has no source")?).ok_or("Audio region source was removed")?).map_err(str::to_owned)).transpose()?;
     Ok(Clip {
-        region: cell.region,
+        audio_region, region: cell.region,
         lanes: cell.lanes.map(|l| l.prepare()).transpose()?,
         kind: cell.kind,
         name: cell.name,

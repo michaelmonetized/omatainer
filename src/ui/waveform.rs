@@ -11,6 +11,17 @@ const SPECTRUM_COLORS: [Color32; 8] = [
 ];
 const SPECTRUM_LABELS: [&str; 8] = ["20–60", "60–150", "150–400", "400–1k", "1–2.5k", "2.5–6k", "6–12k", "12–24k Hz"];
 
+/// Show the source frequency scale.
+/// Takes a native UI and theme; returns after painting the measured eight-band rainbow legend.
+pub(super) fn legend(ui: &mut Ui, theme: &Theme) {
+    ui.horizontal_wrapped(|ui| {
+        for (color, label) in SPECTRUM_COLORS.into_iter().zip(SPECTRUM_LABELS) {
+            ui.label(RichText::new(label).color(theme.waveform(color, 1.0)).size(theme.text_size(8.0)))
+                .on_hover_text("Measured frequency energy; bands overlap. Upper range is limited by the source sample rate.");
+        }
+    });
+}
+
 /// Paint a continuous, pixel-scaled frequency envelope.
 /// Takes a painter, theme, rectangle, source snapshot, orientation and source-time mapping; returns whether detailed analysis is available.
 pub(super) fn paint_spectrum(painter: &egui::Painter, theme: &Theme, rect: Rect, snap: &DeckSnap, vertical: bool, seconds_at: impl Fn(f64) -> Option<f64>) -> bool {
@@ -153,12 +164,7 @@ impl App {
             help::annotate(ui, &response, HelpControl::WaveformZoom);
             save = response.clicked();
         });
-        ui.horizontal_wrapped(|ui| {
-            for (color, label) in SPECTRUM_COLORS.into_iter().zip(SPECTRUM_LABELS) {
-                ui.label(RichText::new(label).color(theme.waveform(color, 1.0)).size(theme.text_size(8.0)))
-                    .on_hover_text("Measured frequency energy; bands overlap. Upper range is limited by the source sample rate.");
-            }
-        });
+        legend(ui, theme);
         if !self.waveform.message.is_empty() {
             ui.label(RichText::new(&self.waveform.message).size(theme.text_size(9.0)));
         }

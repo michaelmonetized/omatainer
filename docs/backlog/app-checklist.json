@@ -2532,9 +2532,12 @@
         82,
         130
       ],
-      "state": "planned",
+      "state": "partial",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/audio-clips.md",
+        "docs/validation/audio-clips-receipt.json"
+      ]
     },
     {
       "issue": 183,

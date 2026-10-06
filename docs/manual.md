@@ -94,6 +94,14 @@ Omatainer starts without an account or cloud session. Locally available media, n
 
 ## Control reference
 
+### Edit Session audio clips
+
+Source frames, tempo, pitch, reverse, gain and loops
+
+Choose an empty or audio slot, then open Audio clip in Setup or use the clip's alternate audio action. Inspect a supported local file or reuse a shared project source. Review the rainbow waveform, zoom and source scroll; trim and loop bounds use exact half-open source frames. Pitch resampling changes pitch and duration; source tempo places the audio against the musical clock. Gain, reverse and source settings are nondestructive. Stop the target clip and recording and use Studio mode before Apply. A bounded worker decodes and prepares the edit; the renderer acknowledges one complete Undo entry. Stale targets preserve current work. Save retains the embedded shared source and all settings. Older clips keep whole-buffer stretching until explicitly converted by Apply. This Session editor does not yet create Arrangement instances.
+
+Workflow: Edit and undo.
+
 ### MIDI controller lanes
 
 Wire channels 1–16; CC/pressure 0–127; pitch bend 0–16383

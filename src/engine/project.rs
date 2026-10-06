@@ -595,6 +595,7 @@ impl RtEngine {
             | Command::TrackArm { .. }
             | Command::TrackMonitor { .. }
             | Command::ComposeArm { .. }
+            | Command::AudioClipEdit(_)
             | Command::MidiEdit(_)
             | Command::SetNotes { .. }
             | Command::FxWet { .. }

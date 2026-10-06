@@ -3,6 +3,7 @@
 //! replenishes recording and inverse scratch; it never owns or locks the live renderer.
 mod capture;
 mod midi_import;
+mod audio_clip;
 mod patch;
 mod recording;
 #[cfg(test)]
@@ -55,6 +56,7 @@ pub enum Name {
     Track,
     ClipGain,
     ClipNotes,
+    AudioClip,
     RecordNotes,
     Deck,
     DeckSeek,
@@ -84,6 +86,7 @@ impl Name {
             Self::Track => "Edit track mixer",
             Self::ClipGain => "Set clip gain",
             Self::ClipNotes => "Edit clip notes",
+            Self::AudioClip => "Edit audio clip",
             Self::RecordNotes => "Record notes",
             Self::Deck => "Edit deck",
             Self::DeckSeek => "Seek deck",
@@ -867,6 +870,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
 impl Journal {
     pub(super) fn retire_command(&mut self, command: Command) {
         if let Command::MicAuxConfigure(request)=&command {request.ack.reject();}
+        if let Command::AudioClipEdit(request)=&command {request.ack.reject();}
         if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
@@ -881,6 +885,7 @@ impl Journal {
                     | Command::SessionControl(_)
                     | Command::SessionEdit(_)
                     | Command::Gesture { .. }
+                    | Command::AudioClipEdit(_)
                     | Command::MidiImport(_)
             | Command::MidiEdit(_)
                     | Command::SetNotes { .. }
