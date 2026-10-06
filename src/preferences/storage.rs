@@ -113,6 +113,13 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 16 && profiles.iter().any(|p| {
+        p.get("shortcuts").and_then(|v| v.as_object()).is_some_and(|v| v.keys().any(|key| key.starts_with("beat_jump_")))
+            || p.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row|
+                row.get("binding").and_then(|v| v.get("action")).and_then(|v| v.as_str()).is_some_and(|v| v.starts_with("DeckBeatJump"))))
+    }) {
+        return Err(Error::Invalid("Beat jump assignments require preferences version 16".into()));
+    }
     if version < 15 && profiles.iter().any(|p|p.get("now_playing").is_some()) {
         return Err(Error::Invalid("Now-playing publication requires preferences version 15".into()));
     }
@@ -143,13 +150,13 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
     if version < 6 && profiles.iter().any(|p|p.get("midi_routing").is_some()) {
         return Err(Error::Invalid("MIDI routing requires preferences version6; an older version cannot carry newer fields".into()));
     }
-    let (preferences, migrated) = match version {
-        15 => (
+    let (mut preferences, migrated) = match version {
+        16 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;
@@ -185,6 +192,7 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
             )))
         }
     };
+    if migrated { for profile in preferences.profiles.values_mut() { crate::ui::migrate_beat_jump_shortcuts(profile); } }
     preferences.validate().map_err(Error::Invalid)?;
     Ok((preferences, migrated))
 }
@@ -778,7 +786,33 @@ mod now_playing_migration_tests {
         let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(migrated);assert_eq!(loaded,current);assert!(!loaded.current().unwrap().now_playing.enabled);
         legacy["profiles"]["Studio"]["now_playing"]=serde_json::json!({"enabled":true,"title":false,"artist":false,"identity":true});
         assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());legacy["version"]=15.into();
-        let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(!migrated);assert!(loaded.current().unwrap().now_playing.enabled);
+        let (loaded,migrated)=decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();assert!(migrated);assert!(loaded.current().unwrap().now_playing.enabled);
         legacy["profiles"]["Studio"]["now_playing"]["endpoint"]="https://example.com".into();assert!(decode(&serde_json::to_vec(&legacy).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod beat_jump_migration_tests {
+    use super::*;
+    #[test]
+    fn version_fifteen_preserves_owned_keys_and_refuses_new_actions_under_old_headers() {
+        let current = Preferences::defaults(Path::new("/home/test"));
+        let mut legacy = serde_json::to_value(&current).unwrap(); legacy["version"] = 15.into();
+        legacy["profiles"]["Studio"]["shortcuts"]["play_a"] = serde_json::json!({"key":"[","ctrl":false,"shift":true,"alt":false});
+        let (migrated, changed) = decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert!(changed); assert_eq!(migrated.version, 16);
+        assert_eq!(migrated.profiles["Studio"].shortcuts["play_a"], Some(Shortcut { key: "[".into(), ctrl: false, shift: true, alt: false }));
+        assert_eq!(migrated.profiles["Studio"].shortcuts["beat_jump_back"], None);
+        assert!(!migrated.profiles["Studio"].shortcuts.contains_key("beat_jump_forward"));
+        assert_eq!(decode(&serde_json::to_vec(&migrated).unwrap()).unwrap(), (migrated, false));
+        for key in ["beat_jump_back", "beat_jump_forward", "beat_jump_smaller", "beat_jump_larger"] {
+            let mut invalid = legacy.clone(); invalid["profiles"]["Studio"]["shortcuts"][key] = serde_json::Value::Null;
+            assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+        }
+        for action in ["DeckBeatJumpBack", "DeckBeatJumpForward", "DeckBeatJumpSmaller", "DeckBeatJumpLarger"] {
+            let mut invalid = legacy.clone();
+            invalid["profiles"]["Studio"]["midi_learn"] = serde_json::json!({"mappings":[{"endpoint":{"name":"Test","id":"port"},"binding":{"kind":"Note","ch":0,"data":60,"action":action,"deck":0,"extra":0,"relative":null}}]});
+            assert!(decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
+        }
     }
 }

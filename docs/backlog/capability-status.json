@@ -867,6 +867,44 @@
       ],
       "limits": "Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction."
     },
+    "185": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native UI",
+          "file": "src/ui/beat_jump.rs",
+          "entry": "Per-deck backward/size/forward controls beneath platter"
+        },
+        {
+          "kind": "renderer",
+          "file": "src/engine/deck_controls/beat_jump.rs",
+          "entry": "Musical source jump with loop wrapping and held return clocks"
+        },
+        {
+          "kind": "keyboard",
+          "file": "src/ui/shortcuts.rs",
+          "entry": "Selected-deck jump and size bindings; command palette and profile migration"
+        },
+        {
+          "kind": "MIDI Learn",
+          "file": "src/engine/midi.rs",
+          "entry": "Four exact-deck Note actions via ordinary input worker"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::beat_jump_tests",
+        "ui::beat_jump::tests",
+        "engine::midi::handoff::tests::learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_heap_work",
+        "preferences::storage::beat_jump_migration_tests",
+        "preferences::shortcuts::tests::old_portable_bindings_preserve_chord_ownership_and_new_action_ids_need_version_two",
+        "automation::tests::beat_jump_api_jobs_report_applied_positions_sizes_and_strict_immediate_targets",
+        "ui::keyboard_tests::unbound_modifiers_and_repeats_are_rejected_while_modified_brackets_dispatch_jump_controls"
+      ],
+      "evidence": [
+        "docs/validation/beat-jump.md"
+      ],
+      "limits": "Software qualification only. Sizes are runtime state, not saved preparation. Physical pad acceptance remains paused."
+    },
     "205": {
       "status": "implemented",
       "paths": [

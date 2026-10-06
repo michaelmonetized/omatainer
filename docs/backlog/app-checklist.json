@@ -2556,9 +2556,11 @@
       "dependencies": [
         134
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/beat-jump.md"
+      ]
     },
     {
       "issue": 186,

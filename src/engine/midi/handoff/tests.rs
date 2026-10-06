@@ -39,6 +39,50 @@ fn render(rt: &mut RtEngine) {
         rt.process(&mut []);
     }
 }
+
+#[test]
+fn learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_heap_work() {
+    use crate::engine::deck_controls::{Control, BEAT_JUMP_SIZES};
+    use crate::engine::midi::{Binding, learn::{Config, Endpoint, Mapping}};
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let (mut sink, mut worker) = input(64, 1401, &engine.cmd);
+    let actions = [Action::DeckBeatJumpBack, Action::DeckBeatJumpForward, Action::DeckBeatJumpSmaller, Action::DeckBeatJumpLarger];
+    let mappings: Vec<_> = (0..2).flat_map(|deck| actions.into_iter().enumerate().map(move |(i, action)| Mapping {
+        endpoint: Endpoint { name: "test device".into(), id: "test device".into() },
+        binding: nbind(0, 60 + deck * 4 + i as u8, action, deck, 0),
+    })).collect();
+    engine.cmd.midi_learn().configure(Config { mappings: mappings.clone() }).unwrap();
+    for deck in 0..2 {
+        let audio = rt.decks[deck].audio.as_ref().unwrap().clone();
+        for (i, action) in actions.into_iter().enumerate() {
+            rt.decks[deck].pos = audio.frames() as f64 * 0.5;
+            let old = rt.decks[deck].pos; let other = rt.decks[1 - deck].pos;
+            let size = rt.decks[deck].controls.status().beat_jump_size;
+            let note = 60 + deck as u8 * 4 + i as u8;
+            let counts = crate::engine::test_alloc::measure(|| { sink.push(&[0x90, note, 100]); sink.push(&[0x80, note, 0]); sink.push(&[0x90, note, 0]); });
+            assert_eq!(counts, crate::engine::test_alloc::Counts::default()); drain(&mut worker);
+            let actual = rt.cmd_rx.try_recv().unwrap();
+            assert!(matches!(actual, Command::DeckControl { source: 1401, deck: d, .. } if usize::from(d) == deck));
+            assert!(rt.cmd_rx.is_empty(), "note releases cannot duplicate a jump");
+            assert_eq!(crate::engine::test_alloc::measure(|| rt.apply(actual)), crate::engine::test_alloc::Counts::default());
+            assert_eq!(rt.decks[1 - deck].pos, other); assert!(!rt.decks[deck].playing);
+            match action {
+                Action::DeckBeatJumpBack => assert!(rt.decks[deck].pos < old),
+                Action::DeckBeatJumpForward => assert!(rt.decks[deck].pos > old),
+                Action::DeckBeatJumpSmaller => assert_eq!(rt.decks[deck].controls.status().beat_jump_size, size - 1),
+                Action::DeckBeatJumpLarger => assert_eq!(rt.decks[deck].controls.status().beat_jump_size, size + 1),
+                _ => unreachable!(),
+            }
+            assert!((rt.decks[deck].controls.status().beat_jump_size as usize) < BEAT_JUMP_SIZES.len());
+        }
+    }
+    for mapping in mappings {
+        for invalid in [Binding { deck: 2, ..mapping.binding }, Binding { extra: 1, ..mapping.binding }, Binding { kind: MsgKind::Cc, ..mapping.binding }] {
+            assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err());
+        }
+    }
+    assert!(!Control::BeatJumpSize { index: 10 }.valid());
+}
 fn held(rt: &RtEngine, source: u64, note: u8) -> bool {
     rt.tracks
         .iter()

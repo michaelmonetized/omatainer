@@ -78,6 +78,10 @@ pub enum Action {
     DeckLoop4,
     DeckLoopIn,
     DeckLoopOut,
+    DeckBeatJumpBack,
+    DeckBeatJumpForward,
+    DeckBeatJumpSmaller,
+    DeckBeatJumpLarger,
     DeckLoad,
     DeckLoadLock,
     DeckVinyl,
@@ -397,6 +401,16 @@ fn dispatch(
         }
         Action::DeckSync if pressed => {
             let _ = send(Command::DeckSync { deck });
+        }
+        Action::DeckBeatJumpBack | Action::DeckBeatJumpForward if pressed => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::BeatJump {
+                forward: b.action == Action::DeckBeatJumpForward,
+            } });
+        }
+        Action::DeckBeatJumpSmaller | Action::DeckBeatJumpLarger if pressed => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::BeatJumpScale {
+                up: b.action == Action::DeckBeatJumpLarger,
+            } });
         }
         Action::DeckJog => {
             let _ = send(Command::DeckJog {

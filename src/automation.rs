@@ -238,7 +238,7 @@ fn discovery() -> Value {
             "track_gain":{"target":"track Target","value":"number 0..1.5"},
             "track_pan":{"target":"track Target","value":"number 0..1; center 0.5"},
             "crossfader":{"value":"number 0..1"},"crossfader_contour":{"value":"number 0..1, fade to cut"},"master_gain":{"value":"number 0..1.5"},
-            "deck_control":{"deck":"0|1","control":"immediate controller control: hold, keylock, pitch_range, strip, loop_mode, loop_button, loop_toggle, loop_select, reloop, loop_scale, loop_shift, tap, start_time, stop_time, track_start"}},
+            "deck_control":{"deck":"0|1","control":"immediate controller control: hold, keylock, pitch_range, strip, loop_mode, loop_button, loop_toggle, loop_select, reloop, loop_scale, loop_shift, beat_jump (forward: bool), beat_jump_size (index: 0..9), beat_jump_scale (up: bool), tap, start_time, stop_time, track_start, slip, pad_mode, parameter, hot_loop, auto_loop_pad, manual_pad, sync_off"}},
         "edits":{"rename":{"name":"UTF-8 string, at most 1024 bytes"},
             "color":{"color":"null or three integer bytes"},"move":{"position":"zero-based display position"}},
         "types":{"Namespace":"32 hex characters; never a JSON number", "ObjectId":"16 nonzero hex characters",

@@ -21,6 +21,29 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 #[test]
+fn beat_jump_api_jobs_report_applied_positions_sizes_and_strict_immediate_targets() {
+    let mut service = Service::new();
+    let namespace = service.state()["expected"]["namespace"].clone();
+    for deck in 0..2 {
+        service.rt.decks[deck].pos = service.rt.decks[deck].audio.as_ref().unwrap().frames() as f64 * 0.5;
+        let old = service.rt.decks[deck].pos; let other = service.rt.decks[1 - deck].pos;
+        for control in [json!({"op":"beat_jump_size","index":3}), json!({"op":"beat_jump","forward":true})] {
+            let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":deck,"control":control}}));
+            assert_eq!(response["ok"], true); assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+        }
+        assert!(service.rt.decks[deck].pos > old); assert_eq!(service.rt.decks[1 - deck].pos, other);
+        let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":deck,"control":{"op":"beat_jump","forward":false}}}));
+        assert_eq!(service.complete(&response["result"]["job"])["result"]["status"], "applied");
+        assert!((service.rt.decks[deck].pos - old).abs() < 1.0e-6); assert!(!service.rt.decks[deck].playing);
+        service.publish(); assert_eq!(service.state()["decks"][deck]["controls"]["beat_jump_size"], 3);
+    }
+    for control in [json!({"op":"beat_jump_size","index":10}), json!({"op":"beat_jump_size","index":-1}), json!({"op":"beat_jump","forward":0}), json!({"op":"beat_jump","forward":true,"extra":1})] {
+        assert_eq!(service.query(json!({"op":"command","namespace":namespace,"action":{"op":"deck_control","deck":0,"control":control}}))["ok"], false);
+    }
+    assert_eq!(service.query(json!({"op":"schedule","namespace":namespace,"beat":4.0,"action":{"op":"deck_control","deck":0,"control":{"op":"beat_jump","forward":true}}}))["error_code"], "invalid_schedule");
+}
+
+#[test]
 fn shipped_cli_builds_typed_versioned_envelopes_before_connecting() {
     let args = vec!["api".into(), r#"{"op":"discover"}"#.into()];
     assert_eq!(

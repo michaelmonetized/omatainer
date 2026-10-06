@@ -2126,6 +2126,14 @@ Seek within loaded media. Seeking resets grain history with a bounded transition
 
 Workflow: Prepare a DJ deck.
 
+### Beat jump
+
+1/8–64 quarter-note beats; default 4
+
+Jump backward or forward by the displayed size without starting a stopped deck or changing its cue. Manual tempo anchors define the musical distance; otherwise use the source BPM. Active loops retain their bounds and wrap the destination within their musical span. Integer jumps preserve fractional beat phase except at file limits or when wrapping a non-integer loop. Bleep, roll and slip return clocks move by the same musical distance. Shift+[ / Shift+] jump on the selected deck; Alt+[ / Alt+] change its size. MIDI Learn exposes backward, forward, smaller and larger Note actions for either deck. Sizes remain for this launch across source loads; they are not saved preparation.
+
+Workflow: Prepare a DJ deck.
+
 ### Waveform zoom and phase
 
 2 / 4 / 8 / 16 four-beat bars
@@ -3269,6 +3277,10 @@ The in-app Help window shows the active bindings. Defaults follow; text fields a
 - ]: Crossfader fully to B
 - F: Load selected crate item onto selected deck
 - ? (Shift+/): Show / hide contextual help and lessons
+- Shift+[: Beat jump backward on selected deck
+- Shift+]: Beat jump forward on selected deck
+- Alt+[: Smaller beat jump on selected deck
+- Alt+]: Larger beat jump on selected deck
 - F1: Show / hide contextual help and lessons
 - Ctrl+M: Show / hide MIDI window
 - Escape: Close effect chain

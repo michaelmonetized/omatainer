@@ -492,6 +492,10 @@ Omarchy desktop bindings: `SUPER+O` launches/focuses the app;
 | `]` | Crossfader fully to B |
 | `F` | Load selected crate item onto selected deck |
 | `? (Shift+/)` | Show / hide contextual help and lessons |
+| `Shift+[` | Beat jump backward on selected deck |
+| `Shift+]` | Beat jump forward on selected deck |
+| `Alt+[` | Smaller beat jump on selected deck |
+| `Alt+]` | Larger beat jump on selected deck |
 | `F1` | Show / hide contextual help and lessons |
 | `Ctrl+M` | Show / hide MIDI window |
 | `Escape` | Close effect chain |

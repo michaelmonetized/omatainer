@@ -289,6 +289,17 @@ Local software export/worker/native UI/API qualification; no provider-hosted pub
 
 Native headless UI and renderer qualification on Linux aarch64. Installed native release and broader UI regression receipts accompany this batch. No new physical input or PA listening claim. Apply remains guarded against stale clip content and uses the existing project Undo transaction.
 
+### Issue #185: implemented
+
+- native UI: [src/ui/beat_jump.rs](../src/ui/beat_jump.rs) — Per-deck backward/size/forward controls beneath platter
+- renderer: [src/engine/deck_controls/beat_jump.rs](../src/engine/deck_controls/beat_jump.rs) — Musical source jump with loop wrapping and held return clocks
+- keyboard: [src/ui/shortcuts.rs](../src/ui/shortcuts.rs) — Selected-deck jump and size bindings; command palette and profile migration
+- MIDI Learn: [src/engine/midi.rs](../src/engine/midi.rs) — Four exact-deck Note actions via ordinary input worker
+- Acceptance fixtures: `engine::deck_controls::beat_jump_tests`, `ui::beat_jump::tests`, `engine::midi::handoff::tests::learned_beat_jump_pads_keep_note_edges_ordered_and_target_both_decks_without_heap_work`, `preferences::storage::beat_jump_migration_tests`, `preferences::shortcuts::tests::old_portable_bindings_preserve_chord_ownership_and_new_action_ids_need_version_two`, `automation::tests::beat_jump_api_jobs_report_applied_positions_sizes_and_strict_immediate_targets`, `ui::keyboard_tests::unbound_modifiers_and_repeats_are_rejected_while_modified_brackets_dispatch_jump_controls`.
+- Evidence: [docs/validation/beat-jump.md](../docs/validation/beat-jump.md).
+
+Software qualification only. Sizes are runtime state, not saved preparation. Physical pad acceptance remains paused.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -371,7 +382,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | planned |
 | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |
-| [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | planned |
+| [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |
 | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | planned |
 | [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned |
 | [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | planned |

@@ -6,7 +6,7 @@ Physical hardware qualification is paused at Michael's request. Existing capture
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 22 implemented · 6 partial · 193 planned · 0 accepted · 8 outside release
+127 existing stack · 23 implemented · 6 partial · 192 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -195,7 +195,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | planned | #82, #130 |  |
 | [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned | #130 |  |
 | [ ] | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned | #132 |  |
-| [ ] | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | planned | #134 |  |
+| [x] | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented | #134 | [receipt](../../docs/validation/beat-jump.md) |
 | [ ] | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | planned | #148 |  |
 | [ ] | [#187](https://github.com/michaelmonetized/omatainer/issues/187) | Add assignable deck DJ-FX units with tempo controls | planned | #130, #55, #62 |  |
 | [ ] | [#188](https://github.com/michaelmonetized/omatainer/issues/188) | Apply beatgrid quantization to deck cues and loop operations | planned | #134 |  |

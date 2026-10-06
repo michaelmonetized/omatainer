@@ -86,12 +86,14 @@ use crate::engine::load_receipt::{Media, Receipt};
 mod load_status_tests;
 mod keyboard;
 mod shortcuts;
+mod beat_jump;
 mod command_palette;
 mod touch;
 mod workspace;
 mod help;
 use help::{Control as HelpControl, ContextHelp as _};
 pub(crate) fn validate_shortcuts(profile: &crate::preferences::Profile) -> Result<(), String> { shortcuts::validate(profile) }
+pub(crate) fn migrate_beat_jump_shortcuts(profile: &mut crate::preferences::Profile) { shortcuts::migrate_beat_jump(profile); }
 mod deck_selection;
 use library_scan::LibraryScan;
 
@@ -1239,6 +1241,7 @@ impl App {
             accessibility::focus(ui, &response);
             if response.changed() { self.send(Command::DeckLoadLock { deck: d as u8, enabled: locked }); }
             });
+            self.deck_beat_jump(ui, d as u8, snap.controls.beat_jump_size);
         });
     }
 

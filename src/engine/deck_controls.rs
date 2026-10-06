@@ -1,6 +1,9 @@
 use super::{Command, DeckTransition, RtEngine};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+mod beat_jump;
+#[cfg(test)]
+mod beat_jump_tests;
 #[cfg(test)]
 mod tests;
 
@@ -49,6 +52,9 @@ pub enum Control {
     Reloop,
     LoopScale { double: bool },
     LoopShift { forward: bool },
+    BeatJump { forward: bool },
+    BeatJumpSize { index: u8 },
+    BeatJumpScale { up: bool },
     Tap,
     StartTime { value: f32 },
     StopTime { value: f32 },
@@ -70,6 +76,7 @@ impl Control {
                 value.is_finite() && (0.0..=1.0).contains(&value)
             }
             Self::LoopButton { index } => index < 4,
+            Self::BeatJumpSize { index } => usize::from(index) < BEAT_JUMP_SIZES.len(),
             Self::Hold {
                 button: Button::HotCue(pad),
                 ..
@@ -86,8 +93,11 @@ impl Control {
     }
 }
 
+pub(crate) const BEAT_JUMP_SIZES: [f32; 10] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0];
+
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct Status {
+    pub beat_jump_size: u8,
     pub reverse: bool,
     pub bleep: bool,
     pub bend: f32,
@@ -109,6 +119,7 @@ pub struct Status {
 
 #[derive(Clone, Debug)]
 pub(super) struct State {
+    beat_jump_size: u8,
     owners: [Option<(u64, Button)>; super::control::MAX_COMMANDS],
     counts: [u16; 30],
     pub forward: Option<f64>,
@@ -148,6 +159,7 @@ pub(super) struct LoopHistory {
 impl Default for State {
     fn default() -> Self {
         Self {
+            beat_jump_size: 5,
             owners: [None; super::control::MAX_COMMANDS],
             counts: [0; 30],
             forward: None,
@@ -297,6 +309,7 @@ impl State {
     /// Takes this state; returns the UI and feedback values.
     pub fn status(&self) -> Status {
         Status {
+            beat_jump_size: self.beat_jump_size,
             reverse: self.held(Button::Reverse),
             bleep: self.held(Button::Bleep),
             bend: (i32::from(self.held(Button::BendUp)) - i32::from(self.held(Button::BendDown)))
@@ -410,6 +423,13 @@ impl RtEngine {
         }
         let index = usize::from(deck);
         match control {
+            Control::BeatJumpSize { index: size } => self.decks[index].controls.beat_jump_size = size,
+            Control::BeatJumpScale { up } => {
+                let size = &mut self.decks[index].controls.beat_jump_size;
+                *size = if up { size.saturating_add(1).min((BEAT_JUMP_SIZES.len() - 1) as u8) }
+                    else { size.saturating_sub(1) };
+            }
+            Control::BeatJump { forward } => self.decks[index].beat_jump(forward, self.sr, self.bpm),
             Control::Hold { button, on } => {
                 let d = &mut self.decks[index];
                 if !d.controls.hold(source, button, on) {

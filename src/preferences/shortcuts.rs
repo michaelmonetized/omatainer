@@ -15,6 +15,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn old_portable_bindings_preserve_chord_ownership_and_new_action_ids_need_version_two() {
+        let legacy = br#"{"version":1,"enabled":true,"bindings":{"play_a":{"key":"[","ctrl":false,"shift":true,"alt":false}}}"#;
+        let bundle = Bundle::decode(legacy).unwrap();
+        assert_eq!(bundle.version, 2); assert_eq!(bundle.bindings["beat_jump_back"], None);
+        assert_eq!(Bundle::decode(&serde_json::to_vec(&bundle).unwrap()).unwrap(), bundle);
+        assert!(Bundle::decode(br#"{"version":1,"enabled":true,"bindings":{"beat_jump_back":null}}"#).is_err());
+        assert!(Bundle::decode(br#"{"version":2,"enabled":true,"bindings":{"beat_jump_forward":null}}"#).is_ok());
+    }
+
+    #[test]
     fn portable_bindings_validate_before_replacing_only_shortcuts() {
         let mut profile = Profile::defaults(std::path::Path::new("/private-library"));
         profile.shortcuts.insert("play_a".into(), Some(Shortcut {key:"G".into(),ctrl:false,shift:false,alt:false}));
@@ -44,7 +54,7 @@ impl Bundle {
     /// Capture this profile's binding overrides and performance shortcut switch.
     /// Takes a profile; returns a portable versioned binding document.
     pub(crate) fn from_profile(profile: &Profile) -> Self {
-        Self { version: 1, enabled: profile.shortcuts_enabled, bindings: profile.shortcuts.clone() }
+        Self { version: 2, enabled: profile.shortcuts_enabled, bindings: profile.shortcuts.clone() }
     }
 
     /// Validate a binding document before changing its destination profile.
@@ -59,7 +69,7 @@ impl Bundle {
     /// Validate only the shortcut fields carried by this portable document.
     /// Takes this bundle; returns success or refusal independently of unrelated draft settings.
     pub(crate) fn validate(&self) -> Result<(), String> {
-        if self.version != 1 { return Err("Unsupported shortcut export version; bindings were preserved".into()); }
+        if self.version != 2 { return Err("Unsupported shortcut export version; bindings were preserved".into()); }
         let mut candidate = Profile::defaults(std::path::Path::new("/tmp"));
         candidate.shortcuts_enabled = self.enabled;
         candidate.shortcuts = self.bindings.clone();
@@ -70,7 +80,15 @@ impl Bundle {
     /// Takes original file bytes; returns a validated bundle or a refusal.
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, String> {
         if bytes.len() > 32_768 { return Err("Shortcut export exceeds 32 KiB".into()); }
-        let bundle: Self = serde_json::from_slice(bytes).map_err(|error| format!("Invalid shortcut export: {error}"))?;
+        let mut bundle: Self = serde_json::from_slice(bytes).map_err(|error| format!("Invalid shortcut export: {error}"))?;
+        if bundle.version == 1 {
+            if bundle.bindings.keys().any(|key| key.starts_with("beat_jump_")) { return Err("Beat jump bindings require shortcut export version 2".into()); }
+            let mut profile = Profile::defaults(std::path::Path::new("/home"));
+            profile.shortcuts = bundle.bindings;
+            crate::ui::migrate_beat_jump_shortcuts(&mut profile);
+            bundle.bindings = profile.shortcuts;
+            bundle.version = 2;
+        }
         bundle.validate()?;
         Ok(bundle)
     }

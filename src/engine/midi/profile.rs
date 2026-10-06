@@ -53,6 +53,7 @@ impl MidiMap {
                 Action::TrackFader | Action::TrackMute | Action::TrackSolo | Action::TrackArm | Action::TrackPan | Action::TrackSendA | Action::TrackSendB => binding.extra < crate::engine::session::MAX_TRACKS as u16,
                 Action::SamplerSlotStop => binding.extra < 16 && binding.kind == MsgKind::Note,
                 Action::DeckHotCue => usize::from(binding.extra) < crate::engine::HOTCUES,
+                Action::DeckBeatJumpBack | Action::DeckBeatJumpForward | Action::DeckBeatJumpSmaller | Action::DeckBeatJumpLarger => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra == 0,
                 Action::FxWet | Action::FxSelect => binding.extra < 3,
                 _ => true,
             }, "MIDI profile {:?}: binding {index} target is outside its resource limit", self.name);

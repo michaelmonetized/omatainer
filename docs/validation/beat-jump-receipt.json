@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-06T09:24:18.458Z",
+  "baseRevision": "20cac72ec54fe1c08ebb29b0681952a6575a6ca1",
+  "kind": "Native controls, real MIDI input worker, musical position oracles and rendered stereo null comparison",
+  "sourceFiles": {
+    "README.md": "cdf033efee43f16f70367cc780c3ef63a3e01ceb1589ead54abf6ed36e5e3c5c",
+    "docs/backlog/app-checklist.json": "421306e14e8fd8265bf01eba341759756c4852d9569c261fe73e7e1a6fc0a3ff",
+    "docs/backlog/app-checklist.md": "7fe2d38057510bf2aa5208668f04f5bb9714b4cecaf80a4ed0b4f8a7739dea69",
+    "docs/backlog/capability-status.json": "48fe0b656b0e4f44815d2a874524c4a9d4f89d2f9985006efe0393a180ccf7ad",
+    "docs/capability-matrix.md": "a33da5b6d453b1f07b32ace5a7a7f4b1d684a2dace32bace8ac47c4491123f7f",
+    "docs/manual.md": "4ecc14766b2fe2b5b2fddbdddebf266185b9402e14df08c4c740b23001c1c04f",
+    "docs/shortcuts.md": "2e9a9448711567a9ab588992d74e4bdb7d59c5e539e87b05197f216c52a1fa9e",
+    "docs/validation/beat-jump.md": "fc5c4d99e76b61712a24e8791606c52efc9297a2776d0ddc92bad0a65c454438",
+    "licenses/manifest.json": "d36f11c5b506f1f60731d7d851b10859015f21e7be2bf9611f341bf8039f5360",
+    "src/automation.rs": "9c879560785df61258bfbe3ad80c6740ad60fb03848f849bb4e5d2333b500dce",
+    "src/automation/tests.rs": "11ed53b46d7bde9baf04148c5135d42c2002ee2568dbda6bda862b02411a2e10",
+    "src/engine/deck_controls.rs": "7720be2b4d3912d8f9851936538569ef638f7c9eefc92073e56579ad98ad6086",
+    "src/engine/deck_controls/beat_jump.rs": "18e4f9ebf4ad73ca2a0226d9e81aad94129f3aca2f52abf3a5cbdad5a7df4413",
+    "src/engine/deck_controls/beat_jump_tests.rs": "645df7d7da6b7a67c8b864ab1e63aa29dcf60985bf0a8b4d438eeed9ca0d1fb7",
+    "src/engine/midi.rs": "52c050eaf2b0610cd651034a6344edf071bcbc57906ba11cae886dd11d8d88c0",
+    "src/engine/midi/handoff/tests.rs": "328cb280e5bf5f11a345d2b07c6834b4f91dd9806df9387f98c738bfe9527487",
+    "src/engine/midi/learn.rs": "38db5f0060e173ca90c2fd7e7ccafcea90f6077bc05807190a378cf2a0933031",
+    "src/engine/midi/profile.rs": "fa7eab8764712f1288632636df5d6b11182c6249a66f02579e8f93fb75fcd000",
+    "src/preferences/mod.rs": "af616edab97484617c8c3aa8cf70b4053597a5c84edb6a0f91cb33fd27506735",
+    "src/preferences/shortcuts.rs": "4f712dd0c5f58027909e047104f87a75cb35a0f8f764c9825d197ef9bd85dbbb",
+    "src/preferences/storage.rs": "40d3db3bb90ed9ee459722650216e8cbc1e5dfb6fd8c2de2601db4970f4b684a",
+    "src/ui.rs": "735cd17f5f7c38ce5d923220241fedba5faa02c7e56c46ff8717695aaf7a4fd0",
+    "src/ui/beat_jump.rs": "93ff49f3c955ffc18b0f9c0366d7664fc6bda799e25ddb8d2ca27242fbccba58",
+    "src/ui/beat_jump/tests.rs": "10e4a69c5bd4651a38d20a50f2ff1bb2f55b29793d8ee83cf47fbc344fbdf8b6",
+    "src/ui/cue_editor/replacement.rs": "b73dd69fe4a0f38104f67ae13ca6ecbc8c726643d70fcb65f49d90f1b1183231",
+    "src/ui/help/catalogue.rs": "37dc16e9fd46cf002bdd5111a1025a36a2a8d723e76039f493246c2d92cb28f2",
+    "src/ui/keyboard_tests.rs": "467b5dba927c030f660dbfec03e5819cb2d1f7daba889c0bbf9fbfaae8076ffa",
+    "src/ui/library_store/import_tests/relocation.rs": "9b3217c5d0a6acb6da5ca99bd0a117fb078fdf729ec915ddeb115f993b29dfb0",
+    "src/ui/midi_learn.rs": "d1ee5ba39f558dc730ec222431e0d17ecb77a0acf5e64dccb87d6eabcb4b2f73",
+    "src/ui/shortcuts.rs": "dc853bbc20c941b64057acdfbe1f8001ae4ff7d02e200e529e208f3d29799a84"
+  },
+  "testBinary": {
+    "path": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+    "sha256": "01189c7bf061faa5dac5288421a0d8163dfe79f25ec4cfaf0a2e3719a9016ab3"
+  },
+  "logs": {
+    "target/app-backlog/beat-jump-relocation-fix-build.log": "72170c9112c12fa4e87e7b30dde43b74d4afa04347da450fa8cf1dd522987223",
+    "target/app-backlog/beat-jump-second-full-tests.log": "ddb75938f237d6569f0194f20032479b6bed3739d2d1c25862207f24a607d48c",
+    "target/app-backlog/beat-jump-relocation-final-tests.log": "911199d2ccdd2d751422105cbd0202429d0294da8cbd2d96267d1489d1755ed2",
+    "target/app-backlog/beat-jump-complete-source-build.log": "275a3ee08face184a2b6dbba085eaa5090efc59c1b160dd261914f3c8ecbb3b5",
+    "target/app-backlog/beat-jump-final-build.log": "70060e83b6a6161f125e269ed51dbe85375bc0960f415f6ff458c85b0bf67a8c",
+    "target/app-backlog/beat-jump-first-full-tests.log": "00e328f066da41f43b5c6778c225f44433501b93d82c9d1f1aac0f23fa4a6efe",
+    "target/app-backlog/beat-jump-keyboard-correction-tests.log": "c888d605fa197bf94ffd7bf96b121a2c3adeb544705d1a7ad2ae2382d8ffa7fd",
+    "target/app-backlog/beat-jump-final-focused-tests.log": "d1a133f0c408bde253a14b6882d047ffcfe496e80edfc07c922a83f702f87a3a",
+    "target/app-backlog/beat-jump-portable-tests.log": "6aa5e08dd107fefda8ea8e35530f262eb6cb13941b5067ede1743c87fc412ed6",
+    "target/app-backlog/beat-jump-shortcut-tests.log": "f3f22561e8db66c8d1c4c0d4749d3e4d17e10dad18d20e7c98d77842ebb3b43f",
+    "target/app-backlog/beat-jump-node-tests.log": "0c4d19ba68e49411c312e037ae60a9564e0e9bd5ec64030281865ec874c0c738",
+    "target/app-backlog/beat-jump-serial-full-tests.log": "f29471881ee94474243dbefee253332ba235a2361d1c7c6d0424a643ae7b4cdb",
+    "target/app-backlog/beat-jump-manual.log": "51902e776ac4352d9f68c4c44dc2f00d6ff34ce55cd514ab1d799b4d8282ad16",
+    "target/app-backlog/beat-jump-first-tests.log": "7d3554aeeb22c694910f9b38d04c9ebd487cb80cbe3a7ac4b8bd48c657eaa4ce",
+    "target/app-backlog/beat-jump-native-build.log": "d5635a59315e2a883cde1ba70accef046a20e4eca886cc5e99655fc8ab843bf8",
+    "target/app-backlog/beat-jump-corrected-build.log": "407886b70be3f7d755ce2fbe8fb32c9fa72a0d337a77815d7be18a83d5286e6a"
+  },
+  "tests": {
+    "fullSerialRust": {
+      "passed": 1750,
+      "failed": 0,
+      "ignored": 43,
+      "filtered": 0,
+      "seconds": 440.19,
+      "threads": 1
+    },
+    "focused": {
+      "beatJump": 8,
+      "portableBindings": 2,
+      "shortcutTable": 1,
+      "keyboardCorrection": 1,
+      "relocation": 5
+    },
+    "node": {
+      "passed": 15,
+      "failed": 0
+    },
+    "earlierCorrections": "New native fixtures now read published status instead of private renderer control state, and the handoff test imports its binding type. The complete corrected builds and focused tests passed. An earlier unfiltered run passed 1748 tests and failed one obsolete modified-bracket expectation; the corrected fixture explicitly accepts the four new bindings while checking every other modifier and held-key repeat. The intermediate final build was deliberately stopped after the embedded inventory changed. An ensuing unfiltered run passed 1749 tests and failed a replacement selection after the save-status row disappeared. The production row now preserves its presence and height; the real relocation fixture checks retained accessible IDs and bounds across readiness. Qualification uses the later complete relocation-fix build."
+  },
+  "checks": {
+    "sourceRates": [
+      44100,
+      48000,
+      96000
+    ],
+    "outputRates": [
+      44100,
+      48000,
+      96000
+    ],
+    "keylockModes": [
+      "off",
+      "on"
+    ],
+    "musicalMaps": [
+      "constant",
+      "variable tempo"
+    ],
+    "independentPositionOracle": true,
+    "maxStereoNullErrorLessThan": 0.000001,
+    "nonzeroAudioRequired": true,
+    "callbackAllocationsAndFrees": 0,
+    "heldClocksAndLoopBounds": true,
+    "nativeAccessibleControls": true,
+    "actualKeyboardDispatch": true,
+    "learnedNoteEdges": true,
+    "oldBindingOwnersPreserved": true,
+    "sourceInventoryFiles": 675,
+    "offlineManualSynchronized": true
+  },
+  "documentSchemas": {
+    "preferences": 16,
+    "shortcutBundle": 2,
+    "project": 15
+  },
+  "limits": [
+    "No physical gesture or listening acceptance; capture services remain stopped",
+    "Beat jump sizes persist only for the current launch",
+    "File clamps and non-integer loop wraps can change fractional beat phase"
+  ]
+}
