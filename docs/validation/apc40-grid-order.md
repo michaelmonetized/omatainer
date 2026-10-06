@@ -91,5 +91,27 @@ physical-input boundary.
 The [row-order receipt](apc40-grid-order-receipt.json) records the source,
 package, test and physical-capture identities separately.
 
+## Missing-button host-version check
+
+The controller's introduction message informs its firmware of the application
+version. A separate compatibility trial retained host mode `0x41` and changed
+the application-version bytes from `0.1.0` to `9.1.3`. This is a diagnostic
+comparison, not a demonstrated requirement for Omatainer's controller setup.
+The format is documented in the
+[Akai protocol](https://cdn.inmusicbrands.com/akai/attachments/apc40II/APC40Mk2_Communications_Protocol_v1.2.pdf).
+
+Michael pressed Pan, Sends, User, Pan, all five Scene Launch buttons, Stop All
+Clips and track 1 Record Arm twice. Only the two Arm presses and releases
+arrived: four channel-0 note-48 messages. All four were admitted and consumed,
+with no command refusals or input drops. Arm feedback changed on and off,
+matching the report, "Only rec changed." Native knob mode stayed Pan and
+transport stayed stopped at master zero. This version trial did not restore
+the missing inputs; their cause remains unresolved.
+
+The interval had 11 underruns and 11 callback deadline overruns. The normal
+`0x41`/`0.1.0` introduction was restored, and the engine was checked paused
+and muted afterward. A full USB power reset is the next separate physical
+diagnostic; it is not yet qualified.
+
 Earlier Pioneer/APC checks retain their original provenance in the
 [live controller receipt](live-controller-acceptance-receipt.json).

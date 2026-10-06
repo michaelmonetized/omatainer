@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-10-06T13:47:59.009Z",
+  "generatedAt": "2026-10-06T14:03:51.403Z",
   "beforeCorrection": {
     "testedCodeRevision": "7db2dc58faa4962f2eff824cde2a7374d2fbafea",
     "testedBinarySha256": "617c8161972f638d5f83b25c52e975f8a119ffdb461f23c7c77067d52674add1",
@@ -335,6 +335,116 @@
     {
       "path": "target/hardware/pioneer-apc/grid-integrated-committed-source.json",
       "sha256": "e3d7e4a5b002fb79e970a40ecf3908abd5ad5b0fc9bb25a1c287941c36780850"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/apc-host-version-probe.c",
+      "sha256": "f15daf01080c98058f892e147e2abbb39dfec93605762db55f9681fbff2aec7c"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-before.json",
+      "sha256": "cb35ebb0cfdb6ced8598492c933c3147eea99ce69417ae02d53b52bb72ecaddd"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-setup.log",
+      "sha256": "030c0c9bfc41b7f0b2fd0f0d4b81c6e2d5d5801d2e72289b4283c18c7ee20515"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-ready.json",
+      "sha256": "1c14a4d00518766bf7dc11b0372237b5cdd097a69bc5538b23f24b6d9de9e0ad"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-physical-input.log",
+      "sha256": "3e0a045838df2bfdb6ec7210d5570a28012ff137f9f150347ef0eb4b80ae4a87"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-physical-feedback.log",
+      "sha256": "906617b90b0d7d48bef758ac88d4cb0ebb7c8b5cd636471aa2e9dd3434f798bc"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-physical-after.json",
+      "sha256": "85687059b2a7263c3121e4fb364054c03343b46afca287aeffeb9ac6b16df907"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-restored-setup.log",
+      "sha256": "e15edeefd79be3f2674ab1a0779a8bd8e03e891da0d70ad829bdef60335070d9"
+    },
+    {
+      "path": "target/hardware/pioneer-apc/host-version-restored-after.json",
+      "sha256": "0233b9e2b60340eee81e0363d293af35ec4c6c75e1d43e11dbfcbf0d5835a31a"
     }
-  ]
+  ],
+  "hostVersionTrial": {
+    "mode": 65,
+    "originalVersion": [
+      0,
+      1,
+      0
+    ],
+    "trialVersion": [
+      9,
+      1,
+      3
+    ],
+    "requested": [
+      "Pan",
+      "Sends",
+      "User",
+      "Pan",
+      "Scene Launch 1",
+      "Scene Launch 2",
+      "Scene Launch 3",
+      "Scene Launch 4",
+      "Scene Launch 5",
+      "Stop All Clips",
+      "Track 1 Record Arm twice"
+    ],
+    "physicalReport": "Only rec changed",
+    "rawMessages": 4,
+    "rawInputs": [
+      {
+        "channel": 0,
+        "note": 48,
+        "presses": 2,
+        "releases": 2
+      }
+    ],
+    "feedback": [
+      {
+        "channel": 0,
+        "note": 48,
+        "states": [
+          "on",
+          "off"
+        ]
+      }
+    ],
+    "missingInputs": [
+      "Pan",
+      "Sends",
+      "User",
+      "Scene Launch 1–5",
+      "Stop All Clips"
+    ],
+    "admittedCommands": 4,
+    "consumedCommands": 4,
+    "refusals": 0,
+    "inputDrops": 0,
+    "xruns": 11,
+    "deadlineOverruns": 11,
+    "knobMode": 0,
+    "master": 0,
+    "playing": false,
+    "conclusion": "The tested host-version change did not restore the missing global-button inputs. Their cause remains unresolved.",
+    "restored": {
+      "mode": 65,
+      "version": [
+        0,
+        1,
+        0
+      ],
+      "master": 0,
+      "playing": false,
+      "decksPaused": true
+    }
+  }
 }
