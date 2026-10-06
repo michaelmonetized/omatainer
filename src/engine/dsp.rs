@@ -568,6 +568,7 @@ pub struct Sample {
     pub data: Vec<f32>,
     /// Immutable analysis metadata, prepared once with the media and shared by snapshots.
     pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
+    pub(crate) spectrum: Option<std::sync::Arc<super::waveform::Waveform>>,
     pub bpm: f32,
     pub path: String,
 }

@@ -153,7 +153,9 @@ impl Media {
         {
             return Err(invalid("immutable media shape differs from saved metadata"));
         }
-        Ok(Arc::new(Sample {
+        let spectrum = crate::engine::waveform::Waveform::analyze(&data, channels, rate, || false)
+            .ok_or_else(|| invalid("invalid source waveform"))?;
+        Ok(Arc::new(Sample { spectrum: Some(Arc::new(spectrum)),
             name: self.name,
             path: self.path,
             sr: rate,

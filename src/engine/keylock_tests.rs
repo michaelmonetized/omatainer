@@ -1,7 +1,7 @@
 use super::*;
 
 fn tone(source_sr: u32, frequency: f64) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "Original analytical stereo tone".into(),
         sr: source_sr,
         ch: 2,

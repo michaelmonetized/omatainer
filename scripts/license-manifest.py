@@ -267,7 +267,7 @@ def validate(root, meta=None):
     if found != set(document['package']):raise ManifestError('unmanifested or missing integration asset')
     if graph(meta if meta is not None else metadata(root), root) != document['cargo']:
         raise ManifestError('resolved Cargo components/features changed; refresh reviewed license records')
-    matrix = subprocess.run([sys.executable, str(root/'scripts/capability-matrix.py'), 'check'], capture_output=True, text=True)
+    matrix = subprocess.run(['node', str(root/'scripts/capability-matrix.mjs'), 'check'], capture_output=True, text=True)
     if matrix.returncode:
         raise ManifestError('capability release documentation is invalid or stale: ' + matrix.stderr.strip())
     return document

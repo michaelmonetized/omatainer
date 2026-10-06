@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 pub(super) fn sample(name: &str) -> DecodedAudio {
     DecodedAudio {
-        sample: crate::engine::dsp::Sample {
+        sample: crate::engine::dsp::Sample { spectrum: None,
             name: name.into(),
             sr: 48000,
             ch: 1,

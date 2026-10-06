@@ -3,6 +3,78 @@ use crate::engine::{audible::Position, DeckSnap};
 
 use crate::preferences::waveforms::{Config, Zoom};
 
+const SPECTRUM_COLORS: [Color32; 8] = [
+    Color32::from_rgb(255, 66, 82), Color32::from_rgb(255, 151, 49),
+    Color32::from_rgb(255, 224, 66), Color32::from_rgb(162, 234, 64),
+    Color32::from_rgb(49, 218, 151), Color32::from_rgb(48, 209, 246),
+    Color32::from_rgb(82, 125, 255), Color32::from_rgb(185, 105, 255),
+];
+const SPECTRUM_LABELS: [&str; 8] = ["20–60", "60–150", "150–400", "400–1k", "1–2.5k", "2.5–6k", "6–12k", "12–24k Hz"];
+
+/// Paint a continuous, pixel-scaled frequency envelope.
+/// Takes a painter, theme, rectangle, source snapshot, orientation and source-time mapping; returns whether detailed analysis is available.
+pub(super) fn paint_spectrum(painter: &egui::Painter, theme: &Theme, rect: Rect, snap: &DeckSnap, vertical: bool, seconds_at: impl Fn(f64) -> Option<f64>) -> bool {
+    let Some(spectrum) = &snap.spectrum else { return false; };
+    let pixels = painter.ctx().pixels_per_point();
+    let length = if vertical { rect.height() } else { rect.width() };
+    let rows = (length * pixels).ceil().clamp(1.0, 8192.0) as usize;
+    let half_width = (if vertical { rect.width() } else { rect.height() }) * 0.46;
+    let center = if vertical { rect.center().x } else { rect.center().y };
+    let start = if vertical { rect.top() } else { rect.left() };
+    let point = |across, along| if vertical { Pos2::new(across, along) } else { Pos2::new(along, across) };
+    let mut mesh = egui::Mesh::default();
+    mesh.vertices.reserve((rows + 1) * 72);
+    mesh.indices.reserve((rows + 1) * 108);
+    let mut previous = [[center; 9]; 2];
+    for row in 0..=rows {
+        let fraction = row as f64 / rows as f64;
+        let next = (row + 1).min(rows) as f64 / rows as f64;
+        let mut bin = crate::engine::waveform::Bin::default();
+        if let (Some(a), Some(b)) = (seconds_at(fraction), seconds_at(next)) {
+            let rate = f64::from(snap.source_sample_rate);
+            bin = spectrum.range(a * rate, b * rate + 1.0);
+        }
+        let total = bin.energy.iter().sum::<f32>();
+        let mut widths = [[center; 9]; 2];
+        for side in 0..2 {
+            let direction = if side == 0 { -1.0 } else { 1.0 };
+            let peak = bin.peak[side].clamp(0.0, 1.0) * half_width;
+            let mut width = 0.0;
+            for band in 0..8 {
+                width += if total > 0.0 { bin.energy[band] / total } else { f32::from(band == 0) };
+                widths[side][band + 1] = center + direction * width * peak;
+                if row == 0 { continue; }
+                let color = if total > 0.0 { theme.waveform(SPECTRUM_COLORS[band], 0.95) } else { theme.waveform(theme.fg_dim, 0.7) };
+                let base = mesh.vertices.len() as u32;
+                for pos in [point(previous[side][band], start + (row - 1) as f32 / rows as f32 * length),
+                    point(previous[side][band + 1], start + (row - 1) as f32 / rows as f32 * length),
+                    point(widths[side][band + 1], start + row as f32 / rows as f32 * length),
+                    point(widths[side][band], start + row as f32 / rows as f32 * length)] {
+                    mesh.colored_vertex(pos, color);
+                }
+                mesh.add_triangle(base, base + 1, base + 2);
+                mesh.add_triangle(base, base + 2, base + 3);
+            }
+            if row > 0 && (widths[side][8] != center || previous[side][8] != center) {
+                let edge = 1.0 / pixels;
+                let color = theme.waveform(theme.fg_dim, 0.65);
+                let base = mesh.vertices.len() as u32;
+                let from = start + (row - 1) as f32 / rows as f32 * length;
+                let to = start + row as f32 / rows as f32 * length;
+                mesh.colored_vertex(point(previous[side][8], from), color);
+                mesh.colored_vertex(point(previous[side][8] + direction * edge, from), Color32::TRANSPARENT);
+                mesh.colored_vertex(point(widths[side][8] + direction * edge, to), Color32::TRANSPARENT);
+                mesh.colored_vertex(point(widths[side][8], to), color);
+                mesh.add_triangle(base, base + 1, base + 2);
+                mesh.add_triangle(base, base + 2, base + 3);
+            }
+        }
+        previous = widths;
+    }
+    painter.add(egui::Shape::mesh(mesh));
+    true
+}
+
 #[derive(Default)]
 pub(super) struct Panel {
     pub settings: Config,
@@ -80,6 +152,12 @@ impl App {
             accessibility::status(ui, &response, &self.waveform.message);
             help::annotate(ui, &response, HelpControl::WaveformZoom);
             save = response.clicked();
+        });
+        ui.horizontal_wrapped(|ui| {
+            for (color, label) in SPECTRUM_COLORS.into_iter().zip(SPECTRUM_LABELS) {
+                ui.label(RichText::new(label).color(theme.waveform(color, 1.0)).size(theme.text_size(8.0)))
+                    .on_hover_text("Measured frequency energy; bands overlap. Upper range is limited by the source sample rate.");
+            }
         });
         if !self.waveform.message.is_empty() {
             ui.label(RichText::new(&self.waveform.message).size(theme.text_size(9.0)));
@@ -290,6 +368,7 @@ pub(super) fn paint(
     let rows = rect.height().ceil().clamp(1.0, 4096.0) as usize;
     let middle = rect.center().x;
     let half_width = rect.width() * 0.46;
+    if !paint_spectrum(&painter, theme, rect, snap, true, |fraction| window.seconds_at(window.start + fraction * (window.end - window.start))) {
     for row in 0..rows {
         let coordinate =
             window.start + (row as f64 + 0.5) / rows as f64 * (window.end - window.start);
@@ -332,6 +411,7 @@ pub(super) fn paint(
                 theme.waveform(theme.marker(color, theme.bg_darker), 0.5),
             ),
         );
+    }
     }
     if let Some(grid) = &window.grid {
         let first = window.start.ceil() as i64;

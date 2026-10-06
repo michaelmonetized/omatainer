@@ -819,7 +819,7 @@ fn source_label(bank: &Bank, slot: usize) -> String {
     }
 }
 fn waveform(ui: &mut Ui, bank: &Bank, slot: usize, theme: &Theme) {
-    ui.label(tr!("Sampled PCM waveform: left above / right below (narrow peaks may be missed)"));
+    ui.label(tr!("Stereo source waveform: left above / right below · bass red → treble violet"));
     let (rect, response) = ui.allocate_exact_size(
         Vec2::new(ui.available_width().clamp(160.0, 570.0), 82.0),
         Sense::hover(),
@@ -833,6 +833,9 @@ fn waveform(ui: &mut Ui, bank: &Bank, slot: usize, theme: &Theme) {
     if frames == 0 {
         return;
     }
+    let snap = crate::engine::DeckSnap { source_sample_rate: sample.sr, frames: frames as f64,
+        spectrum: sample.spectrum.clone(), ..Default::default() };
+    if !super::waveform::paint_spectrum(ui.painter(), theme, rect, &snap, false, |fraction| Some(fraction * frames as f64 / f64::from(sample.sr))) {
     for channel in 0..2 {
         let center = rect.top() + if channel == 0 { 20.0 } else { 61.0 };
         let mut previous = None;
@@ -851,6 +854,7 @@ fn waveform(ui: &mut Ui, bank: &Bank, slot: usize, theme: &Theme) {
             }
             previous = Some(point);
         }
+    }
     }
     if let Some((start, end)) = bank.data.ranges[slot] {
         for value in [start, end] {

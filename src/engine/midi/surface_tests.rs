@@ -20,7 +20,7 @@ fn send(input: &mut TestInput, rt: &mut RtEngine, bytes: &[u8]) {
 fn deck(rt: &mut RtEngine, index: u8) {
     rt.apply(Command::DeckAudio {
         deck: index,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "Surface stereo qualification".into(),
             sr: 48000,
             ch: 2,

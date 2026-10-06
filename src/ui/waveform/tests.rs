@@ -4,6 +4,53 @@ use crate::ui::library_annotations::tests::{Files, Gui};
 use std::sync::atomic::AtomicBool;
 
 #[test]
+fn spectrum_mesh_resolves_physical_pixels_and_uses_all_measured_frequency_colors() {
+    let rate = 48_000;
+    let pcm: Vec<f32> = (0..rate * 8).map(|frame| {
+        let band = (frame / rate) as usize;
+        let hz = [40.0, 100.0, 250.0, 700.0, 1600.0, 4000.0, 8500.0, 16000.0][band];
+        (std::f64::consts::TAU * hz * f64::from(frame) / f64::from(rate)).sin() as f32
+            * (0.25 + 0.65 * (std::f64::consts::TAU * f64::from(frame) / 7000.0).sin().abs() as f32)
+    }).collect();
+    let spectrum = Arc::new(crate::engine::waveform::Waveform::analyze(&pcm, 1, rate, || false).unwrap());
+    let snap = DeckSnap { frames: pcm.len() as f64, source_sample_rate: rate, spectrum: Some(spectrum.clone()), ..Default::default() };
+    for scale in [1.0, 2.0] {
+        let ctx = egui::Context::default();
+        ctx.set_pixels_per_point(scale);
+        let theme = Theme::default();
+        let mut rect = Rect::NOTHING;
+        let output = ctx.run(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1000.0, 240.0))), ..Default::default() }, |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                rect = ui.allocate_exact_size(Vec2::new(960.0, 200.0), Sense::hover()).0;
+                ui.painter().rect_filled(rect, 0.0, theme.bg_darker);
+                assert!(paint_spectrum(ui.painter(), &theme, rect, &snap, false, |fraction| Some(fraction * 8.0)));
+            });
+        });
+        let mesh = output.shapes.iter().find_map(|shape| if let egui::Shape::Mesh(mesh) = &shape.shape { Some(mesh) } else { None }).unwrap();
+        assert!(mesh.vertices.len() >= (rect.width() * scale) as usize * 64);
+        for color in SPECTRUM_COLORS {
+            assert!(mesh.vertices.iter().any(|vertex| vertex.color == theme.waveform(color, 0.95)));
+        }
+        assert!(mesh.vertices.iter().all(|vertex| rect.expand(1.0).contains(vertex.pos)));
+        assert!(mesh.vertices.iter().any(|vertex| vertex.color == Color32::TRANSPARENT));
+        assert_eq!(Arc::strong_count(&spectrum), 2);
+        if scale == 1.0 {
+            if let Ok(directory) = std::env::var("OMAT_WAVEFORM_ARTIFACTS") {
+                let mut svg = String::from("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1000\" height=\"240\" viewBox=\"0 0 1000 240\"><rect width=\"1000\" height=\"240\" fill=\"#14161d\"/>");
+                for triangle in mesh.indices.chunks_exact(3) {
+                    let vertices = [0, 1, 2].map(|index| mesh.vertices[triangle[index] as usize]);
+                    let color = vertices[0].color;
+                    if color.a() == 0 { continue; }
+                    svg.push_str(&format!("<path d=\"M{},{} L{},{} L{},{} Z\" fill=\"#{:02x}{:02x}{:02x}\"/>", vertices[0].pos.x, vertices[0].pos.y, vertices[1].pos.x, vertices[1].pos.y, vertices[2].pos.x, vertices[2].pos.y, color.r(), color.g(), color.b()));
+                }
+                svg.push_str("</svg>");
+                std::fs::write(std::path::Path::new(&directory).join("native-frequency-waveform.svg"), svg).unwrap();
+            }
+        }
+    }
+}
+
+#[test]
 fn day_long_source_retains_single_frame_motion_at_ninety_six_khz() {
     let snap = DeckSnap { source_sample_rate: 96000, frames: 86400.0 * 96000.0,
         pos: 72000.0 * 96000.0, grid: Some(Grid::new(0.0, 120.0).unwrap()),

@@ -234,7 +234,7 @@ fn managed_transport_resume_ramps_exactly_two_milliseconds_without_callback_heap
         let (_, mut rt) = Engine::headless_for_test(48000, 256);
         rt.apply(Command::DeckAudio {
             deck: 0,
-            audio: Arc::new(crate::engine::dsp::Sample {
+            audio: Arc::new(crate::engine::dsp::Sample { spectrum: None,
                 name: "ramp".into(),
                 sr: 48000,
                 ch: 2,

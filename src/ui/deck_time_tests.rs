@@ -108,7 +108,7 @@ fn only_a_valid_containing_repeat_loop_suppresses_runout() {
 }
 
 fn source(sr: u32, seconds: usize) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "Runout reference".into(),
         sr,
         ch: 1,

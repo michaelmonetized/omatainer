@@ -25,7 +25,7 @@ impl Drop for Root {
     }
 }
 fn sample() -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "stereo recovery".into(),
         path: "/missing/recovery-original.wav".into(),
         sr: 48_000,

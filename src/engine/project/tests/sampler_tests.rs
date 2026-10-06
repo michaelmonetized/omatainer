@@ -9,7 +9,7 @@ fn native(rt: &RtEngine) -> sampler::Bank {
         end_seconds: Some(0.015),
     };
     let mut audio = std::array::from_fn(|_| None);
-    audio[5] = Some(Arc::new(Sample {
+    audio[5] = Some(Arc::new(Sample { spectrum: None,
         name: "Missing original; valid embedded PCM".into(),
         sr: 16_000,
         ch: 1,

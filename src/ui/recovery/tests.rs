@@ -640,7 +640,7 @@ fn missing_provenance_is_visible_and_embedded_pcm_restores_but_missing_sidecar_k
     let files = Files::new();
     let root = files.path("recovery");
     let origin = files.path("disconnected-source.wav");
-    let sample = Arc::new(crate::engine::dsp::Sample {
+    let sample = Arc::new(crate::engine::dsp::Sample { spectrum: None,
         name: "Verified embedded source".into(),
         sr: 44100,
         ch: 1,

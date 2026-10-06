@@ -18,7 +18,7 @@ impl Drop for Folder {
 fn fixture(value: f32) -> Bundle<serde_json::Value> {
     Bundle {
         state: serde_json::json!({"mix": value}),
-        media: vec![Arc::new(Sample {
+        media: vec![Arc::new(Sample { spectrum: None,
             name: "Recording".into(),
             path: "/missing/recording.wav".into(),
             sr: 48000,

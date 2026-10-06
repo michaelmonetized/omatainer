@@ -108,7 +108,7 @@ fn ns7_controls_strip_release_preserves_the_last_touch_and_playback_on_each_deck
     for deck in 0..2 {
         rt.apply(Command::DeckAudio {
             deck,
-            audio: Arc::new(Sample {
+            audio: Arc::new(Sample { spectrum: None,
                 name: "NS7 strip release".into(),
                 sr: 48000,
                 ch: 2,

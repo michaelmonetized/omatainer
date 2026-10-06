@@ -2,7 +2,7 @@ use super::*;
 use crate::sampler_bank::{Controls, PlayMode, Playback, resident};
 
 fn install(rt: &mut RtEngine, playback: Playback, cue: f64) -> Arc<Sample> {
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "Cue ramp".into(),
         sr: 16_000,
         ch: 1,

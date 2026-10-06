@@ -3,7 +3,7 @@ use crate::engine::{live_set, project::{self, Prepared}, session, test_alloc, Cl
 use std::time::{Duration, Instant};
 
 fn source(value: f32) -> Arc<crate::engine::dsp::Sample> {
-    Arc::new(crate::engine::dsp::Sample { name: "resident 32 MiB".into(), sr: 48_000, ch: 2,
+    Arc::new(crate::engine::dsp::Sample { spectrum: None, name: "resident 32 MiB".into(), sr: 48_000, ch: 2,
         data: vec![value; 8 * 1024 * 1024], peaks: Arc::new(vec![]), bpm: 120.0, path: String::new() })
 }
 

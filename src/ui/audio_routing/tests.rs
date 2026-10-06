@@ -247,7 +247,7 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
     settled(&mut gui);
     gui.click("Refresh routes");
     settled(&mut gui);
-    gui.rt.decks[0].audio = Some(Arc::new(crate::engine::dsp::Sample {
+    gui.rt.decks[0].audio = Some(Arc::new(crate::engine::dsp::Sample { spectrum: None,
         name: "Print source".into(),
         sr: 48000,
         ch: 2,

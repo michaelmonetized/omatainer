@@ -177,7 +177,7 @@ fn atomic_merge_preserves_filtered_selection_cached_metadata_and_inflight_histor
         .send((
             0,
             Ok(crate::engine::decode::DecodedAudio {
-                sample: crate::engine::dsp::Sample {
+                sample: crate::engine::dsp::Sample { spectrum: None,
                     name: "history fixture".into(),
                     sr: 48_000,
                     ch: 1,

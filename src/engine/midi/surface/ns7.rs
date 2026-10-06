@@ -168,7 +168,7 @@ mod tests {
         for deck in 0..2 {
             rt.apply(Command::DeckAudio {
                 deck,
-                audio: Arc::new(Sample {
+                audio: Arc::new(Sample { spectrum: None,
                     name: "NS7 controls".into(),
                     sr: 48000,
                     ch: 2,

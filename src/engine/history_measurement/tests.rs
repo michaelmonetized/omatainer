@@ -138,7 +138,7 @@ fn replacement_fade_keeps_old_identity_and_never_changes_rendered_samples() {
     use crate::engine::*;
     let (_, rx) = crossbeam_channel::bounded(32);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
-    let sample = |value| Arc::new(Sample { name: "attribution".into(), sr: 48_000,
+    let sample = |value| Arc::new(Sample { spectrum: None, name: "attribution".into(), sr: 48_000,
         ch: 2, data: vec![value; 8_192], peaks: vec![].into(), bpm: 120.0, path: String::new() });
     rt.apply(Command::DeckAudio { deck: 0, audio: sample(0.25) });
     rt.decks[0].gain = 1.0;

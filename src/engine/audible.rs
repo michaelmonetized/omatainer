@@ -355,7 +355,7 @@ mod tests {
         writer.push(&decks);
         writer.finish();
         assert_eq!(handle.positions_at(1_001_000_000).unwrap()[0].media_key, 73);
-        decks[0].audio = Some(Arc::new(super::super::Sample {
+        decks[0].audio = Some(Arc::new(super::super::Sample { spectrum: None,
             name: "grain mixture".into(),
             path: String::new(),
             sr: 48000,

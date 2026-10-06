@@ -553,4 +553,5 @@ pub(in crate::engine) fn sample_bytes(sample: &Sample) -> usize {
         + sample.path.capacity()
         + sample.data.capacity() * std::mem::size_of::<f32>()
         + sample.peaks.capacity() * std::mem::size_of::<[f32; 3]>()
+        + sample.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes())
 }

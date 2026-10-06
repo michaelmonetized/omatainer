@@ -40,7 +40,7 @@ fn load_fixture(rt: &mut RtEngine, deck: usize, samples: &[[f32; 2]], mono: bool
     data.extend_from_slice(&[0.0, 0.0][..channels]);
     rt.apply(Command::DeckAudio {
         deck: deck as u8,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "stereo regression".into(),
             sr: rt.sr as u32,
             ch: channels as u16,

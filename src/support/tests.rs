@@ -562,7 +562,7 @@ fn exact_recovery_lookup_and_later_restore_reject_a_replaced_assets_directory() 
     let mut store = crate::recovery::Store::open(&root).unwrap();
     let session = store.session_id().to_owned();
     let digest = crate::recovery::session_digest(&session);
-    let media = std::sync::Arc::new(crate::engine::dsp::Sample {
+    let media = std::sync::Arc::new(crate::engine::dsp::Sample { spectrum: None,
         name: "fixture".into(),
         path: String::new(),
         sr: 48000,

@@ -9,7 +9,7 @@ fn engine() -> RtEngine {
     rt.xfader = 1.0;
     rt.fx_wet = [0.0; 3];
     for (slot, deck) in rt.decks.iter_mut().enumerate() {
-        deck.audio = Some(Arc::new(Sample {
+        deck.audio = Some(Arc::new(Sample { spectrum: None,
             name: "monitor reference".into(),
             sr: 48_000,
             ch: 2,

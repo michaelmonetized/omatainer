@@ -152,7 +152,7 @@ fn snapshot_large_metadata_grows_off_audio_and_old_media_retires_on_worker() {
             slot
         })
         .collect();
-    let media = Arc::new(Sample {
+    let media = Arc::new(Sample { spectrum: None,
         name: "large media".repeat(8192),
         sr: 48_000,
         ch: 2,
@@ -246,7 +246,7 @@ fn isolated_publisher(capacity: usize) -> (Publisher, Receiver<Box<Frame>>, Send
 fn large_frame() -> (Box<Frame>, std::sync::Weak<Sample>) {
     let mut frame = Box::new(Frame::new(Arc::new(Vec::new())));
     frame.values.tracks[0].name = "old name".repeat(32_768);
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "old".into(),
         sr: 48_000,
         ch: 1,

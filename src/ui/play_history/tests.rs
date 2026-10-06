@@ -105,7 +105,7 @@ fn builtin_load(f: &mut Fixture, stem: BuiltinStem, deck: u8) {
 }
 fn fake_report(path: &PathBuf) -> DecodedAudio {
     DecodedAudio {
-        sample: Sample {
+        sample: Sample { spectrum: None,
             name: "controlled decoder".into(),
             sr: 48_000,
             ch: 1,
@@ -500,7 +500,7 @@ fn end_of_file_missing_empty_invalid_sources_and_transition_tails_never_create_a
         "EOF stopped before a source frame rendered"
     );
     for (frames, sr) in [(0, 48000), (1, 48000), (100, 0)] {
-        let invalid = Sample {
+        let invalid = Sample { spectrum: None,
             name: "invalid".into(),
             sr,
             ch: 1,

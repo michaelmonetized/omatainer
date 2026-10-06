@@ -25,7 +25,7 @@ pub(super) fn workload_observed(rate: u32, frames: usize, ratio: f32, blocks: us
     // Identical non-silent media and origins align both decks' expensive hops.
     // This original procedural source is a timing stressor, not listening proof.
     let (drums, harmony) = demo_stems(48_000, 124.0);
-    let audio = Arc::new(Sample {
+    let audio = Arc::new(Sample { spectrum: None,
         name: "Original procedural simultaneous-search stress".into(),
         sr: 48_000,
         ch: 2,

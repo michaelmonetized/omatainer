@@ -13,7 +13,7 @@ fn tick(rt: &mut RtEngine) {
 fn protected_loads_are_checked_again_on_renderer_without_dropping_payloads() {
     let (engine, mut rt) = fixture();
     let original = rt.decks[0].audio.clone().unwrap();
-    let audio = Arc::new(Sample {
+    let audio = Arc::new(Sample { spectrum: None,
         name: "queued replacement".into(),
         path: String::new(),
         sr: 48_000,
@@ -198,7 +198,7 @@ fn exclusive_jobs_and_optional_cancellation_close_mode_entry_races() {
 fn safety_mailbox_bypasses_full_owned_queue_and_retires_rejected_payloads_off_audio() {
     let (engine, mut rt) = fixture();
     let original = rt.decks[0].audio.clone().unwrap();
-    let replacement = Arc::new(Sample {
+    let replacement = Arc::new(Sample { spectrum: None,
         name: "rejected owned media".into(),
         path: String::new(),
         sr: 48_000,
@@ -493,7 +493,7 @@ fn explicit_deck_lock_guards_studio_loads_and_ejects_without_callback_heap_or_au
     rt.legacy_gain_math = true;
     rt.xfader = 0.0;
     rt.master = 1.0;
-    rt.apply(Command::DeckAudio { deck: 0, audio: Arc::new(Sample { name: "continuous source".into(), path: String::new(), sr: 48000, ch: 2,
+    rt.apply(Command::DeckAudio { deck: 0, audio: Arc::new(Sample { spectrum: None, name: "continuous source".into(), path: String::new(), sr: 48000, ch: 2,
         data: vec![0.25; 65536], peaks: Arc::new(Vec::new()), bpm: 120.0 }) });
     rt.apply(Command::DeckPlay { deck: 0 });
     tick(&mut rt);

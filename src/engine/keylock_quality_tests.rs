@@ -44,7 +44,7 @@ fn pcm_digest(data: &[f32]) -> String {
     format!("{:x}", hash.finalize())
 }
 fn sample(id: &str, sr: u32, data: Vec<f32>) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: id.into(),
         sr,
         ch: 2,

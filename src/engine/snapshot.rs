@@ -443,6 +443,7 @@ impl Frame {
                 // One shared reference for the published snapshot, never a peak
                 // vector copy. The temporary media owner also retires here.
                 deck.peaks = sample.peaks.clone();
+                deck.spectrum = sample.spectrum.clone();
             }
             // Otherwise retain the shared empty waveform captured by new().
         }

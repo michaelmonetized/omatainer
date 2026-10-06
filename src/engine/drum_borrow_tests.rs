@@ -69,7 +69,7 @@ fn idle_and_active_drum_rendering_have_no_heap_activity_and_rate_replacement_ret
     // Install a unique private bank so lifetime assertions do not count other
     // tracks sharing factory samples. Runtime rate replacement clears voices.
     rt.tracks[0].drum_samples = std::array::from_fn(|i| {
-        Arc::new(Sample {
+        Arc::new(Sample { spectrum: None,
             name: format!("private-{i}"),
             sr: 48_000,
             ch: 1,
@@ -113,7 +113,7 @@ fn local_drum_loop_benchmark_reports_idle_and_active_elapsed_time() {
     let mut old = engine();
     let mut new = engine();
     old.tracks[0].drum_samples = std::array::from_fn(|i| {
-        Arc::new(Sample {
+        Arc::new(Sample { spectrum: None,
             name: format!("bench-{i}"),
             sr: 48_000,
             ch: 1,

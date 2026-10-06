@@ -865,6 +865,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
         Command::SamplerEdit(edit) => edit.bank.data.metadata_bytes() + edit.bank.data.audio.iter().flatten().map(|audio| {
             size_of::<super::dsp::Sample>() + 4 * size_of::<usize>() + size_of::<Vec<[f32; 3]>>()
                 + audio.data.capacity() * size_of::<f32>() + audio.name.capacity() + audio.path.capacity() + audio.peaks.capacity() * size_of::<[f32; 3]>()
+                + audio.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes())
         }).sum::<usize>(),
         Command::Gesture { command, .. } => {
             size_of::<Command>().saturating_add(owned_payload_bytes(command))
@@ -885,6 +886,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
                 .saturating_add(audio.name.capacity())
                 .saturating_add(audio.path.capacity())
                 .saturating_add(audio.peaks.capacity().saturating_mul(size_of::<[f32; 3]>()))
+                .saturating_add(audio.spectrum.as_ref().map_or(0, |waveform| waveform.storage_bytes()))
         }
         _ => 0,
     }

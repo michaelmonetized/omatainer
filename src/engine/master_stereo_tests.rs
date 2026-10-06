@@ -11,7 +11,7 @@ fn engine(sr: u32, input: &[[f32; 2]]) -> RtEngine {
     data.extend_from_slice(&[0.0; 2]);
     rt.apply(Command::DeckAudio {
         deck: 0,
-        audio: Arc::new(Sample {
+        audio: Arc::new(Sample { spectrum: None,
             name: "master stereo fixture".into(),
             sr,
             ch: 2,

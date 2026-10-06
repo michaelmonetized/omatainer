@@ -19,7 +19,7 @@ fn captured_clicks_and_output_positions_agree_across_source_rates_and_a_tempo_ch
                 *sample = (1.0 - index.abs_diff(center) as f32 / radius as f32) * 0.3;
             }
         }
-        let audio = Arc::new(Sample {
+        let audio = Arc::new(Sample { spectrum: None,
             name: "Variable click clock".into(),
             sr: source_rate as u32,
             ch: 1,

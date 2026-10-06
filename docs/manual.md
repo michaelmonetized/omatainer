@@ -2520,9 +2520,9 @@ Workflow: Record a held note.
 
 ### Sampler waveform
 
-256 sampled PCM positions
+Source peaks and frequency energy
 
-Display bounded actual PCM samples in separate left and right lanes, plus prepared range markers. This sampled preview can miss narrow peaks and is not a complete peak analysis; audition checks the prepared sound.
+Display prepared stereo peak envelopes with left above and right below, plus range markers. Red represents bass, followed by orange, yellow, green, cyan, blue and violet toward treble. Overlapping frequency bands are measured at the source sample rate. Detail follows screen pixels and preserves narrow transients. Legacy samples without detailed analysis use the sampled PCM preview.
 
 Workflow: Record a held note.
 

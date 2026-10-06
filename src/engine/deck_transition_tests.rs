@@ -4,7 +4,7 @@ const FRAMES: usize = 65_536;
 const TARGET: usize = 8192;
 
 fn sample(sr: u32, value: impl Fn(usize) -> f32) -> Arc<Sample> {
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: None,
         name: "marked regions".into(),
         sr,
         ch: 2,

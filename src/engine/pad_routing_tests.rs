@@ -132,7 +132,7 @@ fn both_sample_and_instrument_pads_obey_destination_mute_gain_pan_solo_and_fx() 
 #[test]
 fn stereo_sample_and_release_tails_keep_the_original_destination() {
     let mut rt = engine();
-    rt.set_test_pad_sample(0, 0, Arc::new(Sample {
+    rt.set_test_pad_sample(0, 0, Arc::new(Sample { spectrum: None,
         name: "right only".into(),
         sr: SR as u32,
         ch: 2,

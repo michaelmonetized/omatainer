@@ -5,7 +5,7 @@ fn constant(value: f32) -> Prepared {
     prepared.rt.master = 1.0;
     prepared.rt.xfader = 0.0;
     prepared.rt.playing = true;
-    prepared.rt.decks[0].audio = Some(Arc::new(dsp::Sample { name: "resident".into(), sr: 48_000, ch: 2,
+    prepared.rt.decks[0].audio = Some(Arc::new(dsp::Sample { spectrum: None, name: "resident".into(), sr: 48_000, ch: 2,
         data: vec![value; 480_000], peaks: Arc::new(vec![]), bpm: 120.0, path: String::new() }));
     prepared.rt.decks[0].playing = true;
     prepared

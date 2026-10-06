@@ -1,0 +1,5011 @@
+{
+  "schema": 1,
+  "reviewed": "2026-10-06",
+  "base": "6c06d18a41c1d49de5c338b0471b45087f9ccc8b",
+  "hardwareQualification": "Paused at user request. Existing captures closed; no new physical gestures required.",
+  "issues": [
+    {
+      "issue": 2,
+      "title": "Reject invalid scene indexes at CLI, IPC and engine boundaries",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/2",
+      "priority": "P0",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/358"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 3,
+      "title": "Stop allocating and sorting arpeggiator chords every sample",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/3",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/359"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 4,
+      "title": "Release clip-owned voices when tracks or scenes stop or replace clips",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/4",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/360"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 5,
+      "title": "Bound control-command work per audio block",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/5",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/361"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 6,
+      "title": "Reset track-specific loop state when replacing deck audio",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/6",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/362"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 7,
+      "title": "Separate left and right deck EQ and filter histories",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/7",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/363"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 8,
+      "title": "Prevent GUI and IPC engine locks from zeroing audio buffers",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/8",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/364"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 9,
+      "title": "Give every stacked FX slot its own processing state",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/9",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/365"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 10,
+      "title": "Remove FX slot allocations from the sample loop",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/10",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/366"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 11,
+      "title": "Handle full control queues without silently dropping GUI commands",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/11",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/367"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 12,
+      "title": "Reset pitch-lock grain history after seeks, cues and media replacement",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/12",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/368"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 13,
+      "title": "Correct stereo timing and channel state in master delay and reverb",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/13",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/369"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 14,
+      "title": "Remove per-sample MIDI clip cloning and repeated full-note scans",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/14",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/370"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 15,
+      "title": "Advance note and drum lifecycles while tracks are muted or excluded by solo",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/15",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/371"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 16,
+      "title": "Route note-offs back to the track and voice that received note-on",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/16",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/372"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 17,
+      "title": "Render silence from stopped decks instead of a frozen sample",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/17",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/373"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 18,
+      "title": "Keep quantized clips pending until their scheduled start beat",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/18",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/374"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 19,
+      "title": "Record note positions relative to the selected clip and its actual length",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/19",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/375"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 20,
+      "title": "Record actual held note durations instead of fixed quarter-beat notes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/20",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/376"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 21,
+      "title": "Reconfigure every rate-dependent processor for the output sample rate",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/21",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/377"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 22,
+      "title": "Route instrument pads through one deliberate mixer destination",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/22",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/378"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 23,
+      "title": "Preserve session stereo when processing scene FX",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/23",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/379"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 24,
+      "title": "Keep FX state and settings separate for each scene",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/24",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/380"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 25,
+      "title": "Publish audio snapshots without blocking on UI or IPC readers",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/25",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/381"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 26,
+      "title": "Replace the installed executable atomically",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/26",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/382"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 27,
+      "title": "Make multi-file installation transactional and recoverable",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/27",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/383"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 28,
+      "title": "Return errors for malformed JSON and unknown IPC operations",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/28",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/384"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 29,
+      "title": "Surface IPC startup failure instead of running without the control surface",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/29",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/385"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 30,
+      "title": "Bound IPC request size and idle connection lifetime",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/30",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/386"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 31,
+      "title": "Do not unlink a live instance socket after a slow response",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/31",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/387"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 32,
+      "title": "Keep the fallback control socket private to the current user",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/32",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/388"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 33,
+      "title": "Report shell control results and avoid replacing in-flight commands",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/33",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/389"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 34,
+      "title": "Load built-in crate entries through the built-in media path",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/34",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/390"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 35,
+      "title": "Report corrupt and incomplete audio decoding instead of silently accepting it",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/35",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/391"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 36,
+      "title": "Move filesystem scanning off the UI and startup rendering path",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/36",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/392"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 37,
+      "title": "Reject stale deck load completions and cancel obsolete decode jobs",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/37",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/393"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 38,
+      "title": "Remove duplicate APC40 fader bindings that alter every track",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/38",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/394"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 39,
+      "title": "Keep MIDI input callbacks from blocking on the engine queue",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/39",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/395"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 40,
+      "title": "Connect controller load commands to the actual library loader",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/40",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/396"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 41,
+      "title": "Parse one-byte MIDI real-time messages before channel-message length checks",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/41",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/397"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 42,
+      "title": "Decode relative jog movement with correct signed deltas",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/42",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/398"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 43,
+      "title": "Make pad composition arming explicit and keep its target stable",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/43",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/399"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 44,
+      "title": "Virtualize crate rows and cache unchanged filter/format work",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/44",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/400"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 45,
+      "title": "Show loading, failure and completion status to the user",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/45",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/401"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 46,
+      "title": "Suppress global transport shortcuts while editing text",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/46",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/402"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 47,
+      "title": "Reject malformed UTF-8 color values without panicking",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/47",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/403"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 48,
+      "title": "Measure the entire audio callback workload in CPU telemetry",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/48",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/404"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 49,
+      "title": "Apply the stored clip gain during clip playback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/49",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/405"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 50,
+      "title": "Make the DJ low-pass sweep progress smoothly away from bypass",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/50",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/406"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 51,
+      "title": "Stop cloning drum sample Arcs on every output frame",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/51",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/407"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 52,
+      "title": "Apply MIDI velocity to drum voices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/52",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/408"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 53,
+      "title": "Make neutral and empty FX chains sample-transparent",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/53",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/409"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 54,
+      "title": "Apply delay, reverb and chorus wet mix exactly once",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/54",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/410"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 55,
+      "title": "Route legacy hardware FX selection into the actual renderer",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/55",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/411"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 56,
+      "title": "Render a timed metronome click instead of one sample per beat",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/56",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/412"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 57,
+      "title": "Cache unchanged crossfader and pan gain calculations",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/57",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/413"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 58,
+      "title": "Map sampler instrument choices to the sounds named by the UI",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/58",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/414"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 59,
+      "title": "Share immutable waveform peaks instead of cloning them on every snapshot",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/59",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/415"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 60,
+      "title": "Honor wet mix and chain order for Spread and Balance",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/60",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/416"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 61,
+      "title": "Apply the SVF cutoff limit in the correct frequency domain",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/61",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/417"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 62,
+      "title": "Connect or explicitly reject the third hardware FX wet control",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/62",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/418"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 63,
+      "title": "Cache synth pitch increments between note and tuning changes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/63",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/419"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 64,
+      "title": "Reuse a status connection instead of reconnecting and spawning a thread every poll",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/64",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/420"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 65,
+      "title": "Publish MIDI device status into the shared snapshot used by CLI and shell",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/65",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/421"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 66,
+      "title": "Forward the requested scene number through the shell service",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/66",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/422"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 67,
+      "title": "Reconcile decoded BPM with crate metadata and identify filename guesses",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/67",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/423"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 68,
+      "title": "Populate file duration in the existing crate length column",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/68",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/424"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 69,
+      "title": "Preserve accidentals when parsing filename key hints",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/69",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/425"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 70,
+      "title": "Update play history only after successful playback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/70",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/426"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 71,
+      "title": "Preserve existing crate history across rescans",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/71",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/427"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 72,
+      "title": "Connect controller browse events to the visible crate selection",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/72",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/428"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 73,
+      "title": "Report MIDI devices as connected only after connection succeeds",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/73",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/429"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 74,
+      "title": "Restore documented shortcuts for implemented scene, sync, crossfader and load actions",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/74",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/430"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 75,
+      "title": "Render effect-specific controls instead of inert generic sliders",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/75",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/431"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 76,
+      "title": "Align displayed sample pad numbers with dispatched pad indexes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/76",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/432"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 77,
+      "title": "Make deck selection control the crate double-click destination",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/77",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/433"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 78,
+      "title": "Reload font and shell theme settings when those sources change",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/78",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/434"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 79,
+      "title": "Use the current Omarchy font when installing application fonts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/79",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/435"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 80,
+      "title": "Display last-play times as meaningful dates or elapsed time",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/80",
+      "priority": "P3",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/436"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 81,
+      "title": "Expose audio deadlines, xruns, latency and device-level performance diagnostics",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/81",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/437"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 82,
+      "title": "Save and reopen complete native production and DJ projects",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/82",
+      "priority": "P0",
+      "area": "project",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/438"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 83,
+      "title": "Provide nondestructive undo history across all creative edits",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/83",
+      "priority": "P0",
+      "area": "project",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/439"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 84,
+      "title": "Add configurable elapsed, remaining and end-of-track deck warnings",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/84",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/440"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 85,
+      "title": "Create a persistent DJ library with stable track identity",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/85",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/441"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 86,
+      "title": "Track factory content, model and integration licensing in shipped assets",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/86",
+      "priority": "P1",
+      "area": "project",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/442"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 87,
+      "title": "Expose complete keyboard and assistive-technology operation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/87",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/443"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 88,
+      "title": "Persist user preferences and named studio/performance profiles",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/88",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/444"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 89,
+      "title": "Provide contextual help, interactive lessons and complete workflow documentation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/89",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/445"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 90,
+      "title": "Fail installation when Hyprland reload or configuration validation fails",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/90",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [
+        27
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/446"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 91,
+      "title": "Send valid status JSON from ctl follow",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/91",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [
+        28
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/447"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 92,
+      "title": "Validate IPC argument types instead of defaulting or wrapping targets",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/92",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [
+        2,
+        28
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/448"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 93,
+      "title": "Make reload-theme actually reload theme resources",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/93",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [
+        78
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/449"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 94,
+      "title": "Configure professional audio devices, sample rates and buffers",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/94",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        88
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/450"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 95,
+      "title": "Gate releases on production-scale audio and UI workloads",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/95",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        81
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/451"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 96,
+      "title": "Provide a performance mode that protects the active show",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/96",
+      "priority": "P0",
+      "area": "dj",
+      "dependencies": [
+        81
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/452"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 97,
+      "title": "Recover unsaved work after crashes and interrupted writes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/97",
+      "priority": "P0",
+      "area": "project",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/453"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 98,
+      "title": "Name, color and persist per-track hot cues",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/98",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/454"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 99,
+      "title": "Create and edit persistent per-track beatgrids",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/99",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/455"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 100,
+      "title": "Qualify DJ time stretching for transparent key lock across tempo ranges",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/100",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        81
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/456"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 101,
+      "title": "Load user samples into persistent DJ sampler banks",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/101",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/457"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 102,
+      "title": "Export actionable support bundles and recovery-safe crash diagnostics",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/102",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [
+        81
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/458"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 103,
+      "title": "Preserve and qualify offline operation as optional online features arrive",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/103",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/459"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 104,
+      "title": "Add persistent background track analysis with selective reanalysis",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/104",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85,
+        81
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/460"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 105,
+      "title": "Add named ordered crates and nested playlist organization",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/105",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/461"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 106,
+      "title": "Record actual DJ performance history with session boundaries",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/106",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85,
+        70,
+        71
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/462"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 107,
+      "title": "Import arbitrary folders, files and removable music libraries",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/107",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85,
+        36
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/463"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 108,
+      "title": "Relocate missing music while preserving DJ preparation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/108",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/464"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 109,
+      "title": "Read and edit real audio metadata instead of filename guesses",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/109",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/465"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 110,
+      "title": "Deliver a full MIDI piano-roll editor with keyboard-accessible editing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/110",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        82,
+        83
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/466"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 111,
+      "title": "Import and export Standard MIDI Files without losing musical timing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/111",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/467"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 112,
+      "title": "Route MIDI by device, port, channel and message type",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/112",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        88
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/468"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 113,
+      "title": "Support user-managed tracks and scenes beyond the fixed 8 by 8 grid",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/113",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        82,
+        83
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/469"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 114,
+      "title": "Implement tempo automation and changing time signatures",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/114",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/471"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 115,
+      "title": "Relink missing project media and restore unavailable devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/115",
+      "priority": "P1",
+      "area": "project",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/472"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 116,
+      "title": "Collect project media and package portable self-contained sessions",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/116",
+      "priority": "P1",
+      "area": "project",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/474"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 117,
+      "title": "Save reusable project, track and live-set templates",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/117",
+      "priority": "P1",
+      "area": "project",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/476"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 118,
+      "title": "Provide scalable, high-contrast and color-independent layouts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/118",
+      "priority": "P1",
+      "area": "ui",
+      "dependencies": [
+        88
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/478"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 119,
+      "title": "Expose a versioned automation and remote-control API",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/119",
+      "priority": "P2",
+      "area": "integration",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/480"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 120,
+      "title": "Add licensed music-provider integration with explicit capability contracts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/120",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/481"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 121,
+      "title": "Add track ratings, colors and performance annotations",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/121",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        85
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/483"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 122,
+      "title": "Score to video with frame-accurate playback and timecode",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/122",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/485"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 123,
+      "title": "Import tracks, clips and device chains from another project",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/123",
+      "priority": "P2",
+      "area": "project",
+      "dependencies": [
+        82,
+        83
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/487"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 124,
+      "title": "Manage named project versions and compare creative revisions",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/124",
+      "priority": "P2",
+      "area": "project",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/489"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 125,
+      "title": "Localize the interface and preserve international file and metadata handling",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/125",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [
+        82
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/492"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 126,
+      "title": "Customize shortcuts and find commands through a command palette",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/126",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [
+        88
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/494"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 127,
+      "title": "Support touch, pen and simultaneous performance gestures",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/127",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [
+        87
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/496"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 128,
+      "title": "Save configurable workspaces and multiple-window layouts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/128",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [
+        88
+      ],
+      "state": "existing stack",
+      "prs": [
+        "https://github.com/michaelmonetized/omatainer/pull/499"
+      ],
+      "evidence": []
+    },
+    {
+      "issue": 129,
+      "title": "Recover safely from audio-device loss and backend restarts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/129",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        94,
+        82
+      ],
+      "state": "partial",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-129-audio-recovery.md"
+      ]
+    },
+    {
+      "issue": 130,
+      "title": "Route independent multichannel inputs and outputs through an audio graph",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/130",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        94
+      ],
+      "state": "partial",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-130-audio-routing.md",
+        "docs/validation/issue-146-prepare-queue.md"
+      ]
+    },
+    {
+      "issue": 131,
+      "title": "Protect audible DJ decks from accidental load and eject",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/131",
+      "priority": "P0",
+      "area": "dj",
+      "dependencies": [
+        96
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-131-deck-load-lock.md"
+      ]
+    },
+    {
+      "issue": 132,
+      "title": "Prioritize and cancel expensive background audio jobs",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/132",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        96
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-132-background-work.md",
+        "docs/validation/remaining-backlog-qualification.md"
+      ]
+    },
+    {
+      "issue": 133,
+      "title": "Integrate low-latency PipeWire, JACK and ALSA workflows",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/133",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        94
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-133-linux-audio.md",
+        "docs/validation/remaining-backlog-qualification.md"
+      ]
+    },
+    {
+      "issue": 134,
+      "title": "Support manually mapped tempo changes within a track",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/134",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        99
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-134-variable-tempo-grid.md"
+      ]
+    },
+    {
+      "issue": 135,
+      "title": "Show aligned beatgrid, phase and phrase position on deck waveforms",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/135",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        99
+      ],
+      "state": "partial",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-135-waveform-timing.md",
+        "docs/validation/rainbow-waveforms.md"
+      ]
+    },
+    {
+      "issue": 136,
+      "title": "Switch live sets without interrupting the outgoing mix",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/136",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        82,
+        96
+      ],
+      "state": "partial",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-136-live-set.md"
+      ]
+    },
+    {
+      "issue": 137,
+      "title": "Maintain a versioned professional capability and compatibility matrix",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/137",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [
+        95
+      ],
+      "state": "partial",
+      "prs": [],
+      "evidence": [
+        "docs/capability-matrix.md"
+      ]
+    },
+    {
+      "issue": 138,
+      "title": "Deliver verified releases with safe updates and rollback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/138",
+      "priority": "P1",
+      "area": "integration",
+      "dependencies": [
+        82,
+        96
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/safe-updates.md"
+      ]
+    },
+    {
+      "issue": 139,
+      "title": "Add field-aware search and filtering across the music library",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/139",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85,
+        109
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-139-library-search.md"
+      ]
+    },
+    {
+      "issue": 140,
+      "title": "Protect prepared beatgrids and metadata from bulk reanalysis",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/140",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        104,
+        99
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-140-preparation-locks.md"
+      ]
+    },
+    {
+      "issue": 141,
+      "title": "Analyze and recall safe per-track gain adjustment",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/141",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        104
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-141-track-gain.md"
+      ]
+    },
+    {
+      "issue": 142,
+      "title": "Analyze musical key and display harmonic compatibility",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/142",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        104
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-142-musical-key.md"
+      ]
+    },
+    {
+      "issue": 143,
+      "title": "Back up and move the complete DJ library with preparation data",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/143",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85,
+        108
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-143-library-backup.md"
+      ]
+    },
+    {
+      "issue": 144,
+      "title": "Make library columns, sorting and view density configurable",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/144",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        109
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-144-library-layouts.md"
+      ]
+    },
+    {
+      "issue": 145,
+      "title": "Expose missing, corrupt, unsupported and read-only track status",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/145",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        104
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-145-library-health.md"
+      ]
+    },
+    {
+      "issue": 146,
+      "title": "Add a reorderable prepare queue for upcoming tracks",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/146",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        105
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-146-prepare-queue.md"
+      ]
+    },
+    {
+      "issue": 147,
+      "title": "Transmit stable MIDI clock and transport to external instruments",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/147",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        112,
+        81
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 148,
+      "title": "Deliver a usable MIDI learn editor for performance controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/148",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        112,
+        39
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-148-midi-learn.md"
+      ]
+    },
+    {
+      "issue": 149,
+      "title": "Edit MIDI CC, pitch-bend, program and channel-pressure data in clips",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/149",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        110,
+        112,
+        111
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 150,
+      "title": "Record, edit and render per-note pitch, pressure and timbre expression",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/150",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        110,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 151,
+      "title": "Add cursor-based MIDI step recording and computer-keyboard note input",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/151",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 152,
+      "title": "Add editable Session clip management and reusable clip presets",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/152",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        113,
+        82,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 153,
+      "title": "Add trigger, hold and toggle sample playback modes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/153",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        101
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-153-sampler-playback.md"
+      ]
+    },
+    {
+      "issue": 154,
+      "title": "Add crate favorites, search and membership discovery",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/154",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        105
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-154-crate-discovery.md"
+      ]
+    },
+    {
+      "issue": 155,
+      "title": "Manage music files and duplicates safely from the library",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/155",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        108
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 156,
+      "title": "Import standard playlists and existing local music-library exports",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/156",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        105
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 157,
+      "title": "Export and optionally publish performed setlists",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/157",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        106
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 158,
+      "title": "Integrate an authorized Beatport streaming workflow",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/158",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        120
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 159,
+      "title": "Integrate authorized SoundCloud catalog and playlists",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/159",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        120
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 160,
+      "title": "Integrate an authorized TIDAL DJ account and catalog",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/160",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        120
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 161,
+      "title": "Implement Link-compatible tempo, phase and start/stop synchronization",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/161",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        114
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 162,
+      "title": "Recover recent MIDI performances with retrospective capture",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/162",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 163,
+      "title": "Recombine note properties and shape velocity using editable transformation tools",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/163",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 164,
+      "title": "Add quantize, stretch, reverse and tempo-curve MIDI transformations",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/164",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 165,
+      "title": "Edit multiple MIDI clips together with explicit focus and ghost notes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/165",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 166,
+      "title": "Add per-note chance, velocity ranges and expressive note properties",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/166",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 167,
+      "title": "Generate editable rhythmic and Euclidean MIDI patterns",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/167",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 168,
+      "title": "Make keys and scales shared musical context for editing and devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/168",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 169,
+      "title": "Exchange editable sessions using an open DAW interchange format",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/169",
+      "priority": "P2",
+      "area": "project",
+      "dependencies": [
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 170,
+      "title": "Inspect project storage and safely clean unused media",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/170",
+      "priority": "P2",
+      "area": "project",
+      "dependencies": [
+        124
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 171,
+      "title": "Integrate Apple Music only through an authorized DJ playback path",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/171",
+      "priority": "P3",
+      "area": "library",
+      "dependencies": [
+        120
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 172,
+      "title": "Integrate Spotify only if an authorized DJ service agreement is available",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/172",
+      "priority": "P3",
+      "area": "library",
+      "dependencies": [
+        120
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 173,
+      "title": "Support negotiated MIDI 2.0 and high-resolution expression",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/173",
+      "priority": "P3",
+      "area": "midi",
+      "dependencies": [
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 174,
+      "title": "Offer notation and MusicXML exchange for composer collaboration",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/174",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        111
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 175,
+      "title": "Offer optional cross-device project transfer with explicit conflict handling",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/175",
+      "priority": "P3",
+      "area": "project",
+      "dependencies": [
+        116,
+        124
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 176,
+      "title": "Provide isolated cue/master headphone mixing and split cue",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/176",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 177,
+      "title": "Monitor live inputs with explicit In, Auto and Off modes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/177",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 178,
+      "title": "Compensate device and routing latency across the complete graph",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/178",
+      "priority": "P0",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 179,
+      "title": "Export offline and real-time master audio with professional format controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/179",
+      "priority": "P0",
+      "area": "project",
+      "dependencies": [
+        82,
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 180,
+      "title": "Add live microphone and auxiliary DJ input channels",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/180",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 181,
+      "title": "Record live DJ performances to reliable audio files",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/181",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 182,
+      "title": "Make audio a first-class Session and Arrangement clip type",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/182",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        82,
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 183,
+      "title": "Host native VST3 instruments and audio effects",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/183",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 184,
+      "title": "Stream long recordings and deck media with bounded caches",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/184",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        132
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 185,
+      "title": "Add beat-jump transport and controller pad controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/185",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        134
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 186,
+      "title": "Implement hold-to-audition and stutter behavior for temporary cues",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/186",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        148
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 187,
+      "title": "Add assignable deck DJ-FX units with tempo controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/187",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        130,
+        55,
+        62
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 188,
+      "title": "Apply beatgrid quantization to deck cues and loop operations",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/188",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        134
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 189,
+      "title": "Support four independently controlled DJ decks",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/189",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 190,
+      "title": "Add precise loop boundary editing and beat-based loop movement",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/190",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        134
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 191,
+      "title": "Add a dedicated track preparation and audition workflow",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/191",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        85,
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 192,
+      "title": "Add deck performance-pad modes with per-deck selection",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/192",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        148,
+        98
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 193,
+      "title": "Separate tempo matching from beat and bar synchronization",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/193",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        134
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 194,
+      "title": "Qualify sustained browsing and preparation on professional-size libraries",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/194",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        85,
+        139,
+        104,
+        81,
+        36,
+        44
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 195,
+      "title": "Persist, import and export MIDI mapping presets",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/195",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        148
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 196,
+      "title": "Implement per-clip launch modes, launch quantization and legato switching",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/196",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        152
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 197,
+      "title": "Schedule independent tracks across cores with bounded real-time execution",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/197",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        130,
+        81
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 198,
+      "title": "Host CLAP instruments and effects with expression support",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/198",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 199,
+      "title": "Host LV2 instruments, effects and native Linux plugin UIs",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/199",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 200,
+      "title": "Add deliberate continuous playback from an ordered crate",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/200",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        105,
+        131
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 201,
+      "title": "Add optional digital-vinyl control using a supported control-signal format",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/201",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 202,
+      "title": "Add independent deck key shift and harmonic key sync",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/202",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        100,
+        142
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 203,
+      "title": "Add slip playback with configurable release timing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/203",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        134
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 204,
+      "title": "Detect changing-tempo beatgrids automatically as a preview-comparison feature",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/204",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        134,
+        104
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 205,
+      "title": "Add automatically maintained smart crates",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/205",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        105,
+        139
+      ],
+      "state": "implemented",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-205-smart-crates.md"
+      ]
+    },
+    {
+      "issue": 206,
+      "title": "Manage provider-authorized offline lockers and readiness",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/206",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        158
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 207,
+      "title": "Build chord progression and voicing generation tools",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/207",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110,
+        168
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 208,
+      "title": "Create shape-guided and seeded melodic MIDI generators",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/208",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110,
+        168
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 209,
+      "title": "Generate arpeggios, strums, ornaments and articulated note repetitions",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/209",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        110,
+        168
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 210,
+      "title": "Support microtonal tuning systems and per-track tuning bypass",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/210",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        168,
+        150
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 211,
+      "title": "Support professional cross-platform collaboration and document native limits",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/211",
+      "priority": "P3",
+      "area": "integration",
+      "dependencies": [
+        116,
+        169
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 212,
+      "title": "Add a separately controlled booth monitor bus",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/212",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        130,
+        180
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 213,
+      "title": "Add deck-isolated output mode for external mixers",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/213",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        130,
+        189
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 214,
+      "title": "Implement transient detection and editable audio warp markers",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/214",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        182,
+        114
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 215,
+      "title": "Manage plugin presets, A/B states and reusable device chains",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/215",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        183,
+        82
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 216,
+      "title": "Scan, catalog and quarantine plugins outside the application process",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/216",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        183
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 217,
+      "title": "Add configurable crossfader assignments, curves and scratch cut-in",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/217",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        189
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 218,
+      "title": "Add selectable DJ waveform and library layouts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/218",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        189
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 219,
+      "title": "Add safe pitch-fader pickup and temporary pitch bend",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/219",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        193
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 220,
+      "title": "Add named persistent loop banks for each track",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/220",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        85,
+        188
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 221,
+      "title": "Enforce streaming capabilities and protect playback during service failures",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/221",
+      "priority": "P1",
+      "area": "library",
+      "dependencies": [
+        120,
+        181
+      ],
+      "state": "partial",
+      "prs": [],
+      "evidence": [
+        "docs/validation/issue-120-providers.md"
+      ]
+    },
+    {
+      "issue": 222,
+      "title": "Follow external MIDI clock with transport and loss handling",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/222",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        112,
+        193,
+        41
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 223,
+      "title": "Support configurable MIDI encoder encodings and high-resolution controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/223",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        195,
+        42
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 224,
+      "title": "Drive controller LEDs and meters from actual application state",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/224",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        195,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 225,
+      "title": "Add runtime controller discovery, enablement and reconnection",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/225",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        112,
+        195,
+        73
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 226,
+      "title": "Build an editable linear audio and MIDI Arrangement timeline",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/226",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        113,
+        82,
+        83,
+        179
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 227,
+      "title": "Give scenes names, tempo, meter and launch-state semantics",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/227",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        113,
+        196,
+        114
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 228,
+      "title": "Record and overdub audio or MIDI directly into Session slots",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/228",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        182,
+        196,
+        130,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 229,
+      "title": "Export aligned stems, track groups and delivery versions in batches",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/229",
+      "priority": "P1",
+      "area": "project",
+      "dependencies": [
+        179
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 230,
+      "title": "Expose a clean performance audio feed for OBS and broadcast tools",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/230",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        130,
+        176
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 231,
+      "title": "Validate loudness, true peaks and metadata before delivery",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/231",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        179
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 232,
+      "title": "Add selectable one-knob channel effects",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/232",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        187
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 233,
+      "title": "Add DVS signal calibration and diagnostics",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/233",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        201
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 234,
+      "title": "Save and share DJ effect presets and unit layouts",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/234",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        187
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 235,
+      "title": "Add instant doubles and deck transfer",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/235",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        189,
+        131
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 236,
+      "title": "Add momentary loop-roll pad performance",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/236",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        192,
+        203
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 237,
+      "title": "Add reverse playback and momentary censor controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/237",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        203
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 238,
+      "title": "Add beat-synced sampler playback and output assignments",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/238",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        101,
+        193,
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 239,
+      "title": "Add scratch banks with instant return to the previous deck track",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/239",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        192,
+        85,
+        98
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 240,
+      "title": "Add moving and fixed-loop slicer pad modes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/240",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        192,
+        134
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 241,
+      "title": "Link set recordings to performed-track and cue markers",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/241",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        181,
+        106
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 242,
+      "title": "Convert recorded melodies, harmony and drums to editable MIDI",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/242",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        182,
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 243,
+      "title": "Add probabilistic clip and scene follow actions",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/243",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        196
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 244,
+      "title": "Support lawful legacy and platform-specific plug-in interoperability",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/244",
+      "priority": "P3",
+      "area": "audio",
+      "dependencies": [
+        183
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 245,
+      "title": "Support multichannel and immersive production as an advanced workflow",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/245",
+      "priority": "P3",
+      "area": "audio",
+      "dependencies": [
+        130,
+        179
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 246,
+      "title": "Expose performance timing and mixer state for lighting systems",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/246",
+      "priority": "P3",
+      "area": "dj",
+      "dependencies": [
+        193,
+        161
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 247,
+      "title": "Add chromatic cue-point performance pads",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/247",
+      "priority": "P3",
+      "area": "dj",
+      "dependencies": [
+        202,
+        192
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 248,
+      "title": "Support post-production session exchange and broadcast media metadata",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/248",
+      "priority": "P3",
+      "area": "project",
+      "dependencies": [
+        179,
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 249,
+      "title": "Provide audio clip fades and editable arrangement crossfades",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/249",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        226,
+        182
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 250,
+      "title": "Offer distinct high-quality warp modes for drums, tones, textures and mixes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/250",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        214,
+        178,
+        179
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 251,
+      "title": "Isolate plugin failures and restore processing without losing sessions",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/251",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        216,
+        97
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 252,
+      "title": "Publish hardware profiles backed by end-to-end compatibility evidence",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/252",
+      "priority": "P1",
+      "area": "midi",
+      "dependencies": [
+        224,
+        223,
+        225,
+        38,
+        40,
+        72
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 253,
+      "title": "Add editable multitrack automation lanes and breakpoint curves",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/253",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        226,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 254,
+      "title": "Make device chains editable, inspectable and reusable with A/B states",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/254",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        82,
+        83,
+        130,
+        215
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 255,
+      "title": "Add named arrangement locators, musical scrubbing and loop-region navigation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/255",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        226,
+        114
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 256,
+      "title": "Add count-in, punch recording and multi-pass recording workflows",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/256",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        130,
+        226,
+        82
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 257,
+      "title": "Send and receive Link Audio streams with track-level routing and latency controls",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/257",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        161,
+        130,
+        228
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 258,
+      "title": "Extract editable production stems from complete clips or selected time ranges",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/258",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        182,
+        226
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 259,
+      "title": "Add momentary and latched performance-pad FX",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/259",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        192,
+        234
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 260,
+      "title": "Add controller layers, modifiers and takeover policies",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/260",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        195,
+        219
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 261,
+      "title": "Implement a groove pool with audio/MIDI extraction and commitment",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/261",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        110,
+        214
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 262,
+      "title": "Create reviewable collaboration packages with mix notes and references",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/262",
+      "priority": "P2",
+      "area": "project",
+      "dependencies": [
+        116,
+        229
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 263,
+      "title": "Trigger a saved loop from its associated cue marker",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/263",
+      "priority": "P3",
+      "area": "dj",
+      "dependencies": [
+        220,
+        98,
+        188
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 264,
+      "title": "Record and replay nondestructive cue and censor routines",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/264",
+      "priority": "P3",
+      "area": "dj",
+      "dependencies": [
+        98,
+        237,
+        188,
+        85
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 265,
+      "title": "Add optional synchronized DJ video playback and external output",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/265",
+      "priority": "P3",
+      "area": "dj",
+      "dependencies": [
+        81,
+        217
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 266,
+      "title": "Mix approved streaming providers concurrently as a preview-comparison feature",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/266",
+      "priority": "P3",
+      "area": "library",
+      "dependencies": [
+        120,
+        221
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 267,
+      "title": "Populate prearranged clip placeholders from a live recording",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/267",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        226,
+        228,
+        82
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 268,
+      "title": "Support safe DJ handover on qualified dual-computer hardware",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/268",
+      "priority": "P1",
+      "area": "dj",
+      "dependencies": [
+        130,
+        129,
+        252
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 269,
+      "title": "Implement arrangement split, consolidate and structural time editing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/269",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        226,
+        253,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 270,
+      "title": "Record performance automation with explicit override and re-enable behavior",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/270",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        253
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 271,
+      "title": "Implement take lanes and non-destructive audio/MIDI comping",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/271",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        226,
+        256,
+        249,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 272,
+      "title": "Build nested instrument and effect racks with key, velocity and chain zones",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/272",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        130,
+        254,
+        82
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 273,
+      "title": "Deliver a musician-facing mixer with pan laws, stereo controls and solo semantics",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/273",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        130,
+        113,
+        253
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 274,
+      "title": "Provide a fully editable stereo algorithmic reverb",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/274",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 275,
+      "title": "Implement a playable record/overdub audio looper device",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/275",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        130,
+        182
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 276,
+      "title": "Provide tempo-synced auto-pan, tremolo and rhythmic chopping",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/276",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 277,
+      "title": "Add tempo-synced beat repeat and controlled stutter processing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/277",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 278,
+      "title": "Add an analog/digital character echo with modulation and noise shaping",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/278",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 279,
+      "title": "Expand chorus into chorus, ensemble and vibrato processing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/279",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 280,
+      "title": "Implement convolution and hybrid reverb with licensed impulse responses",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/280",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        178,
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 281,
+      "title": "Add an integrated drum-bus processor with transient shaping and tuned low-end enhancement",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/281",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        178
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 282,
+      "title": "Implement parallel filtered delay lines with independent pan and feedback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/282",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 283,
+      "title": "Add granular pitch-shifted delay for sound design",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/283",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 284,
+      "title": "Provide a metered mastering limiter with lookahead and stereo modes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/284",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        178,
+        179
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 285,
+      "title": "Provide bit reduction, erosion and vinyl-style texture processing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/285",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 286,
+      "title": "Implement multiband compression, expansion and envelope shaping",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/286",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 287,
+      "title": "Build a routable multistage saturation device with modulation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/287",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 288,
+      "title": "Add a graphical parametric equalizer with stereo and mid/side editing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/288",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 289,
+      "title": "Add phaser and flanger effects with controllable feedback and modulation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/289",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 290,
+      "title": "Add real-time monophonic pitch correction and MIDI-driven harmony",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/290",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        168,
+        112,
+        178
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 291,
+      "title": "Add pitch shifting, frequency shifting and ring modulation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/291",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        178
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 292,
+      "title": "Provide tuned resonator banks and physically modeled resonant-body effects",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/292",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        168,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 293,
+      "title": "Provide waveshaping, tube and pedal-style saturation tools",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/293",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        178
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 294,
+      "title": "Add spectral resonation, spectral delay/freeze and spectral blur devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/294",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        178,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 295,
+      "title": "Build a configurable stereo delay with tempo divisions and advanced LFO shapes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/295",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 296,
+      "title": "Follow the tempo of live incoming audio with controlled fallback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/296",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        130,
+        114,
+        250
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 297,
+      "title": "Provide gain/stereo/alignment utilities plus spectrum and tuning analysis",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/297",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        210
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 298,
+      "title": "Enable live deck stem separation without interrupting playback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/298",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        258,
+        81
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 299,
+      "title": "Prepare and manage cached stems before a performance",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/299",
+      "priority": "P2",
+      "area": "library",
+      "dependencies": [
+        258,
+        85
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 300,
+      "title": "Support explicitly qualified HID DJ media players",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/300",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        252,
+        85
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 301,
+      "title": "Implement verified motorized platter control and calibration",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/301",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        252,
+        224
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 302,
+      "title": "Provide CC controls, MIDI monitoring and expression-shaping devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/302",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        112,
+        150,
+        253
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 303,
+      "title": "Build a programmable virtual-analog synth with mono, poly and expressive modes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/303",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        150
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 304,
+      "title": "Grab and release arrangement loops during live performance",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/304",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        226,
+        255,
+        196
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 305,
+      "title": "Provide linked and independent clip modulation envelopes",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/305",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        253,
+        152
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 306,
+      "title": "Create a per-hit drum sampler with transient shaping and creative playback",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/306",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        182
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 307,
+      "title": "Provide a modeled electric-piano instrument",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/307",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 308,
+      "title": "Host user-authored audio, MIDI and instrument devices through an open extension runtime",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/308",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 309,
+      "title": "Add an FM and additive synthesis instrument",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/309",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        150
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 310,
+      "title": "Freeze and unfreeze tracks without sacrificing editability",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/310",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        179,
+        182,
+        254,
+        82
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 311,
+      "title": "Provide a sample-based granular synthesis instrument",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/311",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        150,
+        182,
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 312,
+      "title": "Create an expressive dual-layer macro-oscillator instrument",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/312",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        150,
+        210
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 313,
+      "title": "Add physical-model mallet and resonant-percussion instruments",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/313",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        210
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 314,
+      "title": "Build an editable chromatic single-sample instrument",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/314",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        182,
+        250
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 315,
+      "title": "Add a physical-model string synthesis instrument",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/315",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        150,
+        210
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 316,
+      "title": "Add a morphing wavetable instrument with user-table import",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/316",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        150,
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 317,
+      "title": "Browse, tag and audition instruments, presets, clips and production samples",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/317",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [
+        116,
+        254,
+        152
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 318,
+      "title": "Support linked multitrack editing for phase-coherent recordings",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/318",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        226,
+        271,
+        214
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 319,
+      "title": "Provide a user-editable drum rack with per-pad chains and choke groups",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/319",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        272,
+        306,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 320,
+      "title": "Implement nested group tracks, subgroup mixing and track organization",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/320",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        113,
+        130,
+        273
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 321,
+      "title": "Add auxiliary sends, returns and musician-facing sidechain routing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/321",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        130,
+        178,
+        273
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 322,
+      "title": "Record Session performances into Arrangement and restore arrangement control",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/322",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        226,
+        196,
+        270
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 323,
+      "title": "Add guitar/bass amplifier and cabinet simulation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/323",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        280,
+        130
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 324,
+      "title": "Apply performance FX and rolls to selected stems",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/324",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        298,
+        187
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 325,
+      "title": "Add per-stem mute, solo and level controls on decks",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/325",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        298,
+        224
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 326,
+      "title": "Publish library and deck information to supported controller screens",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/326",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        300,
+        85
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 327,
+      "title": "Provide composable pitch, scale, chord, random, velocity and note-length MIDI effects",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/327",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        272,
+        168,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 328,
+      "title": "Add a multisample instrument with key/velocity zones and modulation",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/328",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        314,
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 329,
+      "title": "Map rack macros and recall named macro variations",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/329",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        272,
+        253
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 330,
+      "title": "Add sequenced, pitch-reversing and dual-buffer creative delay devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/330",
+      "priority": "P3",
+      "area": "audio",
+      "dependencies": [
+        295,
+        291
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 331,
+      "title": "Provide visual/code device authoring, a musical object API and custom MIDI tools",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/331",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        308,
+        164,
+        208,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 332,
+      "title": "Bounce clips, selected ranges and groups into editable audio tracks",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/332",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        179,
+        226,
+        320,
+        83
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 333,
+      "title": "Extend dynamics processing into configurable compressor and bus-compressor devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/333",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        321
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 334,
+      "title": "Add a fully controllable gate and expander with sidechain audition",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/334",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        321
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 335,
+      "title": "Add a modulation-capable filter device with envelope follower and sidechain",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/335",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        321
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 336,
+      "title": "Add a playable vocoder with external carrier routing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/336",
+      "priority": "P2",
+      "area": "audio",
+      "dependencies": [
+        254,
+        321,
+        112
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 337,
+      "title": "Split stems across linked deck mixer channels",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/337",
+      "priority": "P2",
+      "area": "dj",
+      "dependencies": [
+        189,
+        325,
+        235
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 338,
+      "title": "Provide evolving step, probability and polyrhythmic sequencer devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/338",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        327,
+        228
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 339,
+      "title": "Add performance arpeggiator and MIDI note-echo devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/339",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        327,
+        228
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 340,
+      "title": "Provide full production control for Push 1 and Push 2",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/340",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        228,
+        319,
+        254,
+        329
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 341,
+      "title": "Ship an original tagged production library of kits, presets, loops and clips",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/341",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        317,
+        319,
+        303,
+        116
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 342,
+      "title": "Provide editable kick, snare, clap, hat, cymbal, tom and metallic drum synthesis",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/342",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        254,
+        319
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 343,
+      "title": "Add assignable LFO, envelope, shaper and performance-expression modulators",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/343",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        253,
+        329,
+        321
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 344,
+      "title": "Slice samples to playable pads and reconstruct their rhythm as MIDI",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/344",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        214,
+        319,
+        110
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 345,
+      "title": "Create customizable performance macro pages spanning the whole set",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/345",
+      "priority": "P2",
+      "area": "ui",
+      "dependencies": [
+        329,
+        270
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 346,
+      "title": "Add stem-specific slip performance gestures",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/346",
+      "priority": "P3",
+      "area": "dj",
+      "dependencies": [
+        203,
+        325
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 347,
+      "title": "Find and swap acoustically similar production samples",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/347",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        317,
+        319
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 348,
+      "title": "Insert external hardware effects with round-trip latency calibration",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/348",
+      "priority": "P1",
+      "area": "audio",
+      "dependencies": [
+        130,
+        178,
+        332
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 349,
+      "title": "Integrate external MIDI instruments as latency-compensated track devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/349",
+      "priority": "P1",
+      "area": "production",
+      "dependencies": [
+        130,
+        112,
+        178,
+        332
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 350,
+      "title": "Support expressive Push 3 controller workflows without implying standalone licensing",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/350",
+      "priority": "P2",
+      "area": "midi",
+      "dependencies": [
+        340,
+        150
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 351,
+      "title": "Recall selective performance snapshots across tracks and devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/351",
+      "priority": "P2",
+      "area": "production",
+      "dependencies": [
+        345,
+        196,
+        82
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 352,
+      "title": "Integrate pitch, gates, clocks and modulation with modular hardware",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/352",
+      "priority": "P3",
+      "area": "audio",
+      "dependencies": [
+        130,
+        343,
+        114
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 353,
+      "title": "Add optional licensed acoustic drums, pianos, electric keys, guitar and bass libraries",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/353",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        328,
+        341
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 354,
+      "title": "Add original vocal, foley, cinematic, electronic and generative production packs",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/354",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        341,
+        311,
+        343
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 355,
+      "title": "Add optional orchestral, chamber and global-percussion instrument collections",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/355",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        328,
+        341,
+        210
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 356,
+      "title": "Provide playable physics-inspired modulation and generative sound devices",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/356",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        338,
+        343,
+        311
+      ],
+      "state": "planned",
+      "prs": [],
+      "evidence": []
+    },
+    {
+      "issue": 357,
+      "title": "Integrate optional licensed sample-provider search and audition for production",
+      "url": "https://github.com/michaelmonetized/omatainer/issues/357",
+      "priority": "P3",
+      "area": "production",
+      "dependencies": [
+        317,
+        347,
+        116
+      ],
+      "state": "outside release",
+      "prs": [],
+      "evidence": []
+    }
+  ],
+  "waveform": {
+    "state": "implemented",
+    "evidence": [
+      "docs/validation/rainbow-waveforms.md"
+    ]
+  }
+}

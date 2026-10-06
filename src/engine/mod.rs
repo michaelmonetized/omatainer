@@ -56,6 +56,7 @@ mod control_tests;
 mod quantized_launch_tests;
 pub mod decode;
 pub mod dsp;
+pub(crate) mod waveform;
 pub(crate) mod deck_controls;
 #[cfg(test)]
 mod svf_tests;
@@ -745,6 +746,8 @@ pub struct DeckSnap {
     pub meter: f32,
     #[serde(skip)]
     pub peaks: std::sync::Arc<Vec<[f32; 3]>>,
+    #[serde(skip)]
+    pub(crate) spectrum: Option<Arc<waveform::Waveform>>,
     pub duration: f32,
     pub eq_cut: [bool; 4],
     pub eq_solo: i8,
@@ -3277,7 +3280,7 @@ fn demo_stems(sr: u32, bpm: f32) -> (Arc<Sample>, Arc<Sample>) {
 
     let mk = |name: &str, data: Vec<f32>| {
         let peaks = peaks_3band(&data, 2, 2048);
-        Arc::new(Sample {
+        Arc::new(Sample { spectrum: waveform::Waveform::analyze(&data, 2, sr, || false).map(Arc::new),
             name: name.into(),
             sr,
             ch: 2,
@@ -3292,7 +3295,7 @@ fn demo_stems(sr: u32, bpm: f32) -> (Arc<Sample>, Arc<Sample>) {
 
 fn mk_samp(name: &str, sr: u32, data: Vec<f32>) -> Arc<Sample> {
     let peaks = peaks_3band(&data, 1, 64);
-    Arc::new(Sample {
+    Arc::new(Sample { spectrum: waveform::Waveform::analyze(&data, 1, sr, || false).map(Arc::new),
         name: name.into(),
         sr,
         ch: 1,
@@ -3335,7 +3338,7 @@ fn build_kit(sr: u32) -> [Arc<Sample>; 6] {
     std::array::from_fn(|i| {
         let data = synth_drum(i as u8, sr);
         let peaks = peaks_3band(&data, 1, 128);
-        Arc::new(Sample {
+        Arc::new(Sample { spectrum: waveform::Waveform::analyze(&data, 1, sr, || false).map(Arc::new),
             name: names[i].into(),
             sr,
             ch: 1,

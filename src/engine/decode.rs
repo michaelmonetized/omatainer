@@ -503,6 +503,10 @@ fn decode_source(
         peaks_3band_with_cancel(&data, ch, 2048, &cancelled).ok_or_else(||
             failure(DecodeFailureKind::Cancelled, DecodeStage::Analysis, &diagnostics, "decode cancelled"))?
     } else { Vec::new() };
+    let spectrum = if waveform {
+        Some(std::sync::Arc::new(super::waveform::Waveform::analyze(&data, ch, spec.rate, &cancelled)
+            .ok_or_else(|| failure(DecodeFailureKind::Cancelled, DecodeStage::Analysis, &diagnostics, "waveform analysis cancelled"))?))
+    } else { None };
     check_cancel(&cancelled, DecodeStage::Analysis, &diagnostics)?;
     let analysis = analyze(&data, ch, spec.rate);
     diagnostics.analysis_deferred = analysis.is_none();
@@ -510,7 +514,7 @@ fn decode_source(
     check_cancel(&cancelled, DecodeStage::Analysis, &diagnostics)?;
     Ok(DecodedAudio {
         diagnostics,
-        sample: Sample {
+        sample: Sample { spectrum,
             name: path
                 .file_stem()
                 .and_then(|s| s.to_str())

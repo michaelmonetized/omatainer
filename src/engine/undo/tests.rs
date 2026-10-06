@@ -1018,7 +1018,7 @@ fn rate_budget_pruning_preserves_only_current_holds_and_never_claims_saved_conte
 fn rejected_last_sample_owner_is_retired_by_worker_not_renderer() {
     let (engine, mut rt) = fixture();
     rt.undo.budget = 1;
-    let sample = Arc::new(Sample {
+    let sample = Arc::new(Sample { spectrum: None,
         name: "owned rejection".into(),
         path: "private fixture".into(),
         sr: 48000,
@@ -1111,7 +1111,7 @@ fn all_owned_request_early_exits_retire_last_payloads_off_renderer() {
         let mut token = loader
             .request(0, "/nonexistent/omatainer-undo-private-fixture.wav".into())
             .unwrap();
-        let audio = Arc::new(Sample {
+        let audio = Arc::new(Sample { spectrum: None,
             name: "last-owned request".into(),
             path: "private fixture".into(),
             sr: 48000,

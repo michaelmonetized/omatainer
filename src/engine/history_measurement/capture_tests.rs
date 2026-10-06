@@ -6,7 +6,7 @@ fn callback(channels: usize, anti_phase: bool, gain: f32, xfader: f32, pfl: bool
 {
     let (_, rx) = crossbeam_channel::bounded(64);
     let mut rt = RtEngine::new(48_000.0, rx, Arc::new(Mutex::new(Snapshot::default())));
-    let audio = Arc::new(Sample { name: "capture reference".into(), sr: 48_000, ch: 2,
+    let audio = Arc::new(Sample { spectrum: None, name: "capture reference".into(), sr: 48_000, ch: 2,
         data: (0..32_768).flat_map(|i| {
             let value = (std::f32::consts::TAU * 375.0 * i as f32 / 48_000.0).sin() * 0.2;
             [value, if anti_phase { -value } else { value * 0.75 }]
