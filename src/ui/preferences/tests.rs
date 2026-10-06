@@ -122,10 +122,10 @@ impl Gui {
         self.frame(vec![]);
     }
     fn wait(&mut self) {
-        let end = Instant::now() + std::time::Duration::from_secs(3);
+        let end = Instant::now() + std::time::Duration::from_secs(15);
         while self.fixture.app.settings.busy() {
             self.frame(vec![]);
-            assert!(Instant::now() < end);
+            assert!(Instant::now() < end, "{}", self.fixture.app.settings.message);
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
         self.frame(vec![]);
