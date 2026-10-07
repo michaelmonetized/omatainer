@@ -530,6 +530,10 @@ impl Metadata {
     pub(in crate::ui) fn bind_test_rows(&mut self, rows: &Arc<Vec<LibItem>>) {
         self.collection_rows = Arc::new(CollectionRows::build(rows, &self.catalog));
     }
+    #[cfg(test)]
+    pub(in crate::ui) fn bind_incremental_test_rows(&mut self, rows: &Arc<Vec<LibItem>>) {
+        self.collection_rows = Arc::new(CollectionRows::build_incremental(rows, &self.catalog, Some(&self.collection_rows)));
+    }
 
     /// Bounded handoff: one pending result, plus the worker's one in-flight job.
     pub fn save_analysis(&mut self, completion: crate::engine::media_load::AnalysisCompletion)

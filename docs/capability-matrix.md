@@ -460,6 +460,17 @@ Linux ARM64 software qualification: eight per-deck modes and fixed slot IDs, cur
 
 Linux ARM64 software qualification: explicit Off/Tempo/Beat/four-quarter-note Bar modes and deliberate Transport/Deck A/Deck B leaders; exact mapped source beat intervals, emitted paired click PCM at three output rates and unequal source rates through variable-tempo boundaries and both deck leaders; conductor ramps/pickup/quarter-note timing; default/routed output parity, compatible and incompatible loops; performed offset preservation and explicit re-arm; stopped arming without Play, leader stop/unload/replacement with retained choice and last tempo; invalid/foreign spindle message refusal; real native mode/leader and learned assignment choosers, production input workers, file reopening and strict old-header guards; fixed undo intent without playhead rewind; callback allocations/frees. Bar means four quarter notes; odd-meter bar alignment and global relative pitch are not claimed. Click PCM is measured with keylock disabled; existing keylock regression fixtures also pass. No physical device opened, no live capture or new GUI, no hardware acceptance claimed. Independent stage GUI/follower and session remain preserved.
 
+### Issue #194: implemented
+
+- full Unicode indexed search: [src/library/search.rs](../src/library/search.rs) — Prepared exact normalized fields preserve ordinary field semantics without query-time Unicode allocation
+- bounded existing worker publication: [src/ui/library_metadata/collection_rows/search_index.rs](../src/ui/library_metadata/collection_rows/search_index.rs) — 128 MiB retained records, unchanged record reuse, exact generation ownership and full eleven-column sort keys
+- incremental whole-library browsing: [src/ui/library_view.rs](../src/ui/library_view.rs) — Small metadata deltas retain sorted membership and source/scroll anchors; structural changes retain exact full membership
+- Acceptance fixtures: `library::search::tests`, `ui::library_metadata::collection_rows::search_index::tests`, `ui::library_view_tests::native_indexed_metadata_updates_preserve_selection_and_scrolling_without_full_refilter`, `ui::library_view_tests::native_indexed_10000_and_100000_track_search_scroll_and_updates_meet_budgets_during_a_mix`, `ui::library_analysis::tests::indexed_large_catalog_analysis_and_real_file_replacement_preserve_selected_row_and_loaded_audio`.
+- Evidence: [docs/validation/library-scale.md](../docs/validation/library-scale.md).
+- Evidence: [docs/validation/library-scale-receipt.json](../docs/validation/library-scale-receipt.json).
+
+Linux ARM64 software qualification at 10,000 and 100,000 catalog rows: actual native egui field queries, all eleven sorted columns, real wheel scrolling and prepared small whole-library metadata publications under at least 300 seconds of rendered two-deck audio. Search p95 below 100 ms; scrolling and GUI application of prepared small updates p95 below 16.7 ms; retained normalized search records capped at 128 MiB with explicit oversized metadata refusal. Synthetic scale publications use the real index builder through a fixture adapter, not the real metadata worker; measured GUI update excludes worker preparation. A separate actual metadata/analysis/scan/loader workflow on 10,005 rows qualifies a two-path replacement/import batch plus all analysis fields in under five seconds, preserving selected source and already loaded audio. Bulk import of 1,000 files and five minutes of wall-clock mixing are not claimed. Small incremental sorted/unsorted updates apply to whole-library views; selected crates and identity/order/large changes use exact full membership. No physical audio/MIDI device, new GUI or capture opened; stage processes/session preserved.
+
 ### Issue #195: implemented
 
 - portable format: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Strict named factory overlays and exact-port candidates without backend IDs
@@ -681,7 +692,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned |
 | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | implemented |
 | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | implemented |
-| [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned |
+| [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | implemented |
 | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented |
 | [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | implemented |
 | [#197](https://github.com/michaelmonetized/omatainer/issues/197) | Schedule independent tracks across cores with bounded real-time execution | planned |

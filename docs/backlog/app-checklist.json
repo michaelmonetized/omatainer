@@ -2724,9 +2724,12 @@
         36,
         44
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/library-scale.md",
+        "docs/validation/library-scale-receipt.json"
+      ]
     },
     {
       "issue": 195,
