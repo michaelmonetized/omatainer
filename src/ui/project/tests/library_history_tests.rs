@@ -28,10 +28,13 @@ fn stored(path: &PathBuf, stem: BuiltinStem) -> Preparation {
         .unwrap()
         .preparation
 }
-fn deck_preparation(gui: &Gui) -> Preparation {
+fn deck_preparation(gui: &mut Gui) -> Preparation {
+    gui.rt.publish_for_test();
+    let bank = gui.app.engine.snapshot().decks[0].saved_loops;
     let deck = &gui.rt.decks[0];
     let sr = f64::from(deck.audio.as_ref().unwrap().sr);
     Preparation {
+        saved_loops: bank,
         grid: None,        cue: deck.cue_pos / sr,
         source_gain: deck.source_gain.policy(),
         hotcue_styles: [crate::engine::cue_metadata::Style::default(); 8],
@@ -61,7 +64,7 @@ fn undo_redo_and_media_identity_restoration_publish_durable_preparation() {
         del: false,
     });
     gui.rt.process(&mut []);
-    let original = deck_preparation(&gui);
+    let original = deck_preparation(&mut gui);
     settle_library(&mut gui);
     assert_eq!(stored(&store, BuiltinStem::Drums), original);
 
@@ -73,7 +76,7 @@ fn undo_redo_and_media_identity_restoration_publish_durable_preparation() {
     );
     gui.rt.process(&mut []);
     settle_library(&mut gui);
-    let harmony = deck_preparation(&gui);
+    let harmony = deck_preparation(&mut gui);
     gui.app.send(Command::DeckSeek { deck: 0, frac: 0.6 });
     gui.rt.process(&mut []);
     settle_library(&mut gui);
@@ -83,7 +86,7 @@ fn undo_redo_and_media_identity_restoration_publish_durable_preparation() {
     assert_eq!(stored(&store, BuiltinStem::Harmony), harmony);
     history_key(&mut gui, false);
     settle_library(&mut gui);
-    assert_eq!(deck_preparation(&gui), original);
+    assert_eq!(deck_preparation(&mut gui), original);
     assert_eq!(stored(&store, BuiltinStem::Drums), original);
     // An undo-restored watch remains live and updates the original identity.
     gui.app.send(Command::DeckSeek {
@@ -91,7 +94,7 @@ fn undo_redo_and_media_identity_restoration_publish_durable_preparation() {
         frac: 0.42,
     });
     gui.rt.process(&mut []);
-    let changed = deck_preparation(&gui);
+    let changed = deck_preparation(&mut gui);
     settle_library(&mut gui);
     assert_eq!(stored(&store, BuiltinStem::Drums), changed);
     history_key(&mut gui, false);
@@ -122,7 +125,7 @@ fn native_project_reopen_publishes_saved_preparation_with_verified_identity() {
         beats: 4.0,
     });
     gui.rt.process(&mut []);
-    let saved = deck_preparation(&gui);
+    let saved = deck_preparation(&mut gui);
     gui.save_as_ui(&project);
     gui.app.send(Command::DeckSeek { deck: 0, frac: 0.7 });
     gui.app.send(Command::DeckHotCue {
@@ -141,7 +144,7 @@ fn native_project_reopen_publishes_saved_preparation_with_verified_identity() {
     gui.click_label("Open");
     gui.settle();
     settle_library(&mut gui);
-    assert_eq!(deck_preparation(&gui), saved);
+    assert_eq!(deck_preparation(&mut gui), saved);
     assert_eq!(stored(&store, BuiltinStem::Drums), saved);
     assert!(
         !gui.app.project_dirty(),
@@ -165,7 +168,7 @@ fn successful_startup_preparation_invalidates_earlier_clean_checkpoint_and_retir
     gui.rt.process(&mut []);
     assert_ne!(gui.app.engine.undo.checkpoint(), before);
     assert!(gui.app.project_dirty());
-    assert_eq!(deck_preparation(&gui), preparation);
+    assert_eq!(deck_preparation(&mut gui), preparation);
     let revision = gui.app.engine.project.revision();
     let ignored = Command::DeckRestorePreparation {
         deck: 0,
@@ -179,5 +182,5 @@ fn successful_startup_preparation_invalidates_earlier_clean_checkpoint_and_retir
         "stale last-owned receipt retires off audio"
     );
     assert_eq!(gui.app.engine.project.revision(), revision);
-    assert_eq!(deck_preparation(&gui), preparation);
+    assert_eq!(deck_preparation(&mut gui), preparation);
 }

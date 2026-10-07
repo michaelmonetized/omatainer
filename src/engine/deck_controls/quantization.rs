@@ -14,6 +14,7 @@ pub enum QuantizedAction {
     LoopOut,
     Reloop,
     NewLoop,
+    SavedLoop { id: u8 },
 }
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct PendingStatus {
@@ -28,6 +29,7 @@ pub(super) struct Pending {
     media_key: u64,
     position: f64,
     cue: Option<f64>,
+    saved_loop: Option<(f64, f64)>,
     cancellation: u64,
     routing: (u64, u64),
 }
@@ -129,6 +131,7 @@ impl RtEngine {
                 control: Control::Reloop,
                 ..
             } => (*deck, QuantizedAction::Reloop),
+            Command::DeckControl { deck, control: control @ Control::SavedLoop { id, action: super::SavedLoopAction::Recall { activate: true }, .. }, .. } if self.decks.get(usize::from(*deck)).is_some_and(|deck| deck.saved_loop_current(*control)) => (*deck, QuantizedAction::SavedLoop { id: *id }),
             _ => return false,
         };
         let Some(d) = self.decks.get_mut(usize::from(deck)) else {
@@ -181,6 +184,7 @@ impl RtEngine {
             media_key: d.history_key,
             position,
             cue,
+            saved_loop: match action { QuantizedAction::SavedLoop { id } => d.controls.loops[usize::from(id - 1)], _ => None },
             cancellation,
             routing: (generation, epoch),
         });
@@ -202,6 +206,7 @@ impl RtEngine {
                     d.hotcues[usize::from(pad)].set
                         && Some(d.hotcues[usize::from(pad)].pos) == pending.cue
                 }
+                QuantizedAction::SavedLoop { id } => d.controls.loops[usize::from(id - 1)] == pending.saved_loop,
                 _ => true,
             }
     }
@@ -246,6 +251,7 @@ impl RtEngine {
                 pad,
                 del: false,
             },
+            QuantizedAction::SavedLoop { id } => Command::DeckControl { source: 0, deck: deck as u8, control: Control::SavedLoop { media_key: pending.media_key, id, action: super::SavedLoopAction::Recall { activate: true } } },
             QuantizedAction::LoopIn => Command::DeckLoopIn { deck: deck as u8 },
             QuantizedAction::LoopOut => Command::DeckLoopOut { deck: deck as u8 },
             QuantizedAction::NewLoop => Command::DeckReloop { deck: deck as u8 },

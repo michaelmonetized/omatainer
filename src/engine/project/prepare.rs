@@ -125,6 +125,7 @@ impl Prepared {
             );
             deck.title = saved.title;
             deck.audio = saved.audio.map(|index| media[index].clone());
+            if let Some(audio) = &deck.audio { deck.controls.restore_saved_loops(saved.saved_loops, audio.sr, audio.frames()); }
             let level = deck.audio.as_ref().map(|sample| crate::track_gain::measure_channels(&sample.data, sample.ch, || false)).transpose().map_err(|error| Error::Invalid(error.into()))?;
             deck.source_gain = crate::track_gain::Resolved::prepare(saved.source_gain, level).map_err(|error| Error::Invalid(error.into()))?;
             deck.history_key = 0;

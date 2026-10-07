@@ -119,7 +119,7 @@ impl Plan {
             DeckControl { deck, control: super::super::deck_controls::Control::LoopButton { .. }, .. } if rt.decks[usize::from(*deck)].controls.status().auto_loop => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
-            DeckControl { deck, control: super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. } | super::super::deck_controls::Control::LoopBounds { .. } | super::super::deck_controls::Control::LoopMove { .. } | super::super::deck_controls::Control::LoopLength { .. }, .. } => (
+            DeckControl { deck, control: super::super::deck_controls::Control::SavedLoop { .. } | super::super::deck_controls::Control::HotLoop { .. } | super::super::deck_controls::Control::LoopScale { .. } | super::super::deck_controls::Control::Tap | super::super::deck_controls::Control::LoopToggle | super::super::deck_controls::Control::LoopSelect | super::super::deck_controls::Control::Reloop | super::super::deck_controls::Control::LoopShift { .. } | super::super::deck_controls::Control::LoopBounds { .. } | super::super::deck_controls::Control::LoopMove { .. } | super::super::deck_controls::Control::LoopLength { .. }, .. } => (
                 Target::Deck(*deck), Name::Deck, 420 + u64::from(*deck),
             ),
             DeckHotCue { deck, pad, del }
@@ -187,6 +187,9 @@ impl RtEngine {
             if self.decks.get(usize::from(*deck)).and_then(|d| d.loop_edit_bounds(*control, self.sr, self.bpm)).is_none() {
                 self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
             }
+        }
+        if let Command::DeckControl { deck, control: control @ super::super::deck_controls::Control::SavedLoop { .. }, .. } = &c {
+            if !self.decks[usize::from(*deck)].saved_loop_current(*control) { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; }
         }
         if let Command::FxAdd(index)=&c {
             if let Some(id)=fx::FxId::all().get(*index as usize) {

@@ -353,7 +353,7 @@ fn native_state_23_file_roundtrip_retains_scene_timing_but_not_pending_work_and_
     rt.apply(Command::LaunchScene { scene: 1 });
     assert!(rt.scenes.pending.is_some());
     let saved = capture(&engine, &mut rt);
-    assert_eq!(saved.state.version, 23);
+    assert_eq!(saved.state.version, crate::engine::project::STATE_VERSION);
     assert_eq!(saved.state.scene_timing, rt.scenes.timing);
     let path = std::env::temp_dir().join(format!(
         "omatainer-scene-properties-{}.omat",

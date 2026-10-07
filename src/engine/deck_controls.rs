@@ -4,6 +4,8 @@ use std::time::Instant;
 mod beat_jump;
 mod loop_edit;
 mod quantization;
+mod saved;
+pub(crate) use saved::Action as SavedLoopAction;
 pub use quantization::{PendingStatus, QuantizedAction};
 pub(crate) use quantization::DIVISIONS as QUANTIZE_DIVISIONS;
 #[cfg(test)]
@@ -59,6 +61,8 @@ pub enum Control {
     LoopMode,
     LoopButton { index: u8 },
     LoopToggle,
+    SavedLoop { #[serde(with = "loop_edit::media_key")] media_key: u64, id: u8, action: SavedLoopAction },
+    SavedPad { id: u8, action: SavedLoopAction },
     LoopSelect,
     Reloop,
     LoopScale { double: bool },
@@ -90,6 +94,8 @@ impl Control {
             Self::Strip { value } | Self::StartTime { value } | Self::StopTime { value } => {
                 value.is_finite() && (0.0..=1.0).contains(&value)
             }
+            Self::SavedLoop { media_key, id, action } => media_key != 0 && (1..=8).contains(&id) && action.valid(),
+            Self::SavedPad { id, action } => (1..=8).contains(&id) && matches!(action, SavedLoopAction::Save | SavedLoopAction::Recall { .. } | SavedLoopAction::Delete),
             Self::LoopButton { index } => index < 4,
             Self::LoopBounds { media_key, start_seconds, end_seconds } => media_key != 0
                 && start_seconds.is_finite() && end_seconds.is_finite()
@@ -160,6 +166,8 @@ pub(super) struct State {
     auto_loop: bool,
     auto_button: Option<u8>,
     loops: [Option<(f64, f64)>; 8],
+    loop_styles: [super::cue_metadata::Style; 8],
+    loop_order: [u8; 8],
     selected: usize,
     edit: u8,
     edit_ticks: Option<i64>,
@@ -184,6 +192,8 @@ pub(super) struct State {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct LoopHistory {
     loops: [Option<(f64, f64)>; 8],
+    loop_styles: [super::cue_metadata::Style; 8],
+    loop_order: [u8; 8],
     selected: usize,
     auto_button: Option<u8>,
 }
@@ -205,6 +215,8 @@ impl Default for State {
             auto_loop: false,
             auto_button: None,
             loops: [None; 8],
+            loop_styles: [Default::default(); 8],
+            loop_order: [1, 2, 3, 4, 5, 6, 7, 8],
             selected: 0,
             edit: 0,
             edit_ticks: None,
@@ -234,6 +246,8 @@ impl State {
     pub fn loop_history(&self) -> LoopHistory {
         LoopHistory {
             loops: self.loops,
+            loop_styles: self.loop_styles,
+            loop_order: self.loop_order,
             selected: self.selected,
             auto_button: self.auto_button,
         }
@@ -243,6 +257,8 @@ impl State {
     pub fn restore_loops(&mut self, history: LoopHistory) {
         self.pending = None;
         self.loops = history.loops;
+        self.loop_styles = history.loop_styles;
+        self.loop_order = history.loop_order;
         self.selected = history.selected;
         self.auto_button = history.auto_button;
         self.edit = 0;
@@ -389,6 +405,8 @@ impl State {
         self.saved_loop = None;
         self.slip_forward = None;
         self.loops.fill(None);
+        self.loop_styles.fill(Default::default());
+        self.loop_order = [1, 2, 3, 4, 5, 6, 7, 8];
         self.auto_button = None;
         self.selected = 0;
         self.edit = 0;
@@ -691,6 +709,8 @@ impl RtEngine {
                 let slot = usize::from(pad);
                 if clear {
                     d.controls.loops[slot] = None;
+                    d.controls.loop_styles[slot] = Default::default();
+                    d.publish_preparation();
                     return;
                 }
                 if let Some((start, len)) = d.controls.loops[slot] {
@@ -709,11 +729,17 @@ impl RtEngine {
                     } else {
                         d.grid_span(start, 4.0, self.sr, self.bpm)
                     };
+                    let len = len.min(d.audio.as_ref().map_or(0.0, |audio| audio.frames() as f64) - start);
+                    if start < 0.0 || len < 64.0 { return; }
                     d.controls.loops[slot] = Some((start, len));
                     d.loop_on = true;
                     d.loop_start = start;
                     d.loop_len = len;
                 }
+                d.controls.selected = slot;
+                d.transition_to(d.loop_start, self.sr, DeckTransition::Jump);
+                d.publish_preparation();
+                self.project.edited();
             }
             Control::AutoLoopPad { pad } => {
                 let beats = 2_f32
@@ -731,7 +757,7 @@ impl RtEngine {
                 2 => self.remember_controller_loop(index),
                 3 | 7 => {
                     let d = &mut self.decks[index];
-                    d.controls.selected = (d.controls.selected + if pad == 3 { 7 } else { 1 }) % 8;
+                    d.controls.next_loop(pad == 7);
                     d.controls.edit = 0;
                     d.controls.edit_ticks = None;
                     if let Some((start, len)) = d.controls.loops[d.controls.selected] {
@@ -810,6 +836,7 @@ impl RtEngine {
                     if d.loop_on && d.controls.auto_button == Some(button) {
                         d.clear_loop();
                         d.controls.loops[d.controls.selected] = None;
+                        d.controls.loop_styles[d.controls.selected] = Default::default();
                         d.controls.auto_button = None;
                     } else {
                         d.loop_on = true;
@@ -854,6 +881,8 @@ impl RtEngine {
                 }
                 self.remember_controller_loop(index);
             }
+            Control::SavedLoop { id, action, .. } => self.saved_loop_action(index, id, action),
+            Control::SavedPad { .. } => {},
             Control::LoopToggle => {
                 if self.decks[index].loop_len <= 1.0 {
                     self.apply(Command::DeckLoop { deck, beats: 4.0 });
@@ -874,7 +903,7 @@ impl RtEngine {
                 d.controls.edit = 0;
                 d.controls.edit_ticks = None;
                 d.controls.auto_button = None;
-                d.controls.selected = (d.controls.selected + 1) % d.controls.loops.len();
+                d.controls.next_loop(true);
                 if let Some((start, length)) = d.controls.loops[d.controls.selected] {
                     d.loop_start = start;
                     d.loop_len = length;
@@ -931,7 +960,8 @@ impl RtEngine {
                 d.loop_on = false;
             }
         }
-        if d.loop_len > 1.0 {
+        if d.loop_start.is_finite() && d.loop_start >= 0.0 && d.loop_len.is_finite() && d.loop_len >= 64.0
+            && d.audio.as_ref().is_some_and(|audio| d.loop_start + d.loop_len <= audio.frames() as f64) {
             d.controls.loops[d.controls.selected] = Some((d.loop_start, d.loop_len));
         }
         d.publish_preparation();

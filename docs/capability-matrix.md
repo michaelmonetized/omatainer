@@ -467,6 +467,20 @@ Session launch policies are software-qualified through unopened-device MIDI work
 
 Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines.
 
+### Issue #220: implemented
+
+- fixed media-relative loop bank: [src/engine/saved_loops.rs](../src/engine/saved_loops.rs) — Eight fixed IDs, names/colors, selected slot and independent display order, strict bounded atomic encoding
+- source-qualified deck and native Undo: [src/engine/deck_controls/saved.rs](../src/engine/deck_controls/saved.rs) — Save/Recall/Activate/name/move/delete, source and bounds refusal, no implicit Play and complete durable preparation publication
+- exact quantized loop activation: [src/engine/deck_controls/quantization.rs](../src/engine/deck_controls/quantization.rs) — Current source and captured tuple, real musical output boundary with cancellation and editing refusal
+- native loop editor: [src/ui/loop_editor/saved.rs](../src/ui/loop_editor/saved.rs) — Real Save/Recall/Activate/Rename/reorder/Delete and stable named slots through accessible controls
+- native project and library persistence: [src/engine/project/model.rs](../src/engine/project/model.rs) — State 24/library 16 complete banks, actual file reopen/backup/restore/merge, strict legacy injection guards and stopped armed policy
+- learned fixed-slot input and portable settings: [src/engine/midi.rs](../src/engine/midi.rs) — Recall/Save/Delete slot IDs on production worker, exact preset 4/preference 22 files, note-off neutrality and older-version guards
+- Acceptance fixtures: `engine::saved_loops::tests`, `engine::preparation::tests::bounded_receipt_publication_is_coherent_and_renderer_commands_allocate_nothing`, `ui::loop_editor::tests::native_saved_loop_save_rename_reorder_recall_activate_delete_and_undo_use_the_actual_deck_handlers`, `library::tests::saved_loop_bank_survives_real_catalog_save_backup_restore_merge_and_exact_track_reload`.
+- Evidence: [docs/validation/saved-loops.md](../docs/validation/saved-loops.md).
+- Evidence: [docs/validation/saved-loops-receipt.json](../docs/validation/saved-loops-receipt.json).
+
+Linux ARM64 software qualification: eight fixed loop IDs, independent reorder/delete/reuse, bounded Unicode names/colors and coherent complete preparation receipts; exact native project/catalog/backup/merge/MIDI-preset/preference files; actual learned input dispatch and native egui/AccessKit Save/name/reorder/Recall/Activate/Delete/Undo; stopped reload with selected and armed region, no resumed queue; source-qualified stale/invalid/temporary-loop refusal; sample-boundary activation before audible output across three rates and three musical positions including tempo anchors; independent stereo PCM loop playback at file start/end and across a tempo anchor for three source/two output rates; atomic receipt stress and zero renderer heap work. Current regions use source seconds, Recall disables looping without moving the playhead and Activate jumps to the saved start without starting a stopped deck. Names and existing colors persist; this editor does not add a color chooser. Library load drops invalid/out-of-source regions; native project validation refuses them. No physical audio/MIDI device opened and no new physical controller proof or ticket acceptance claimed. The independent stage application stays unchanged.
+
 ### Issue #221: partial
 
 - native UI: [src/ui/music_provider.rs](../src/ui/music_provider.rs) — FreeToUse search and preview
@@ -628,7 +642,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#217](https://github.com/michaelmonetized/omatainer/issues/217) | Add configurable crossfader assignments, curves and scratch cut-in | planned |
 | [#218](https://github.com/michaelmonetized/omatainer/issues/218) | Add selectable DJ waveform and library layouts | planned |
 | [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | planned |
-| [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | planned |
+| [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | implemented |
 | [#221](https://github.com/michaelmonetized/omatainer/issues/221) | Enforce streaming capabilities and protect playback during service failures | partial |
 | [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | planned |
 | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | implemented |

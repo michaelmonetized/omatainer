@@ -1,13 +1,20 @@
 use super::*;
 use crate::engine::deck_controls::{Control, BEAT_JUMP_SIZES};
 
+mod saved;
 pub(super) struct Settings {
+    bank_key: u64,
+    bank_styles: [crate::engine::cue_metadata::Style; 8],
+    bank_names: [String; 8],
     length: u8,
     movement: u8,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            bank_key: 0,
+            bank_styles: [Default::default(); 8],
+            bank_names: std::array::from_fn(|_| String::new()),
             length: 5,
             movement: 3,
         }
@@ -77,6 +84,7 @@ impl App {
                         help::annotate(ui, &response, HelpControl::LoopEditor);
                         if response.clicked() { self.send(Command::DeckControl { source: 0, deck, control: Control::LoopMove { media_key: snap.media_key, beats: movement * sign } }); }
                     });
+                    self.saved_loops_editor(ui, deck, snap);
                     ui.label("Track edges shift the complete loop. Lengths that cannot fit are refused. Minimum: 64 source frames.");
                 });
             });

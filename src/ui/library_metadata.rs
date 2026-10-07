@@ -222,7 +222,7 @@ impl Metadata {
                         // is available. Never grow optional backlog without bound.
                         if (qualifications.len() < 256 || qualifications.contains_key(&capture.source))
                             && matches!(capture.source, LibSource::File(_) | LibSource::Removable {..})
-                            && capture.preparation.is_some_and(|p| p.grid.is_some() || p.hotcues.iter().any(Option::is_some)) {
+                            && capture.preparation.is_some_and(|p| p.grid.is_some() || p.hotcues.iter().any(Option::is_some) || p.saved_loops.slots.iter().any(Option::is_some)) {
                             qualifications.insert(capture.source.clone(), capture.fingerprint);
                         }
                     }

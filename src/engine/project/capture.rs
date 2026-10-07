@@ -253,6 +253,7 @@ impl Frame {
             out.eq = eq(&deck.eq[0]);
             out.audio = deck.audio.as_ref().map(|s| media(&mut self.media, s));
             out.cue_styles = deck.cue_styles;
+            out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));
             out.grid = deck.grid;
             out.source_gain = deck.source_gain.policy();
             out.hotcues =

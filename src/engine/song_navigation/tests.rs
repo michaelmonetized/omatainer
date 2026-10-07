@@ -383,7 +383,7 @@ fn native_container_and_navigation_midi_presets_roundtrip_with_strict_legacy_gua
     let preset =
         midi::presets::Preset::capture("Song sections".into(), String::new(), &port, &config)
             .unwrap();
-    assert_eq!(preset.version, 3);
+    assert_eq!(preset.version, midi::presets::VERSION);
     let mut value = serde_json::to_value(&preset).unwrap();
     for version in [1, 2] {
         value["version"] = version.into();
@@ -400,9 +400,11 @@ fn native_container_and_navigation_midi_presets_roundtrip_with_strict_legacy_gua
     assert_eq!(reopened, preferences);
     let mut previous_navigation = preferences.clone();
     previous_navigation.version = 20;
+    for profile in previous_navigation.profiles.values_mut() { for preset in &mut profile.midi_presets { preset.version = 3; } }
     let (reopened, migrated) = crate::preferences::storage::decode(&serde_json::to_vec(&previous_navigation).unwrap()).unwrap();
     assert!(migrated);
-    assert_eq!(reopened, preferences);
+    previous_navigation.version = crate::preferences::VERSION;
+    assert_eq!(reopened, previous_navigation);
     let mut value = serde_json::to_value(&preferences).unwrap();
     value["version"] = 19.into();
     assert!(crate::preferences::storage::decode(&serde_json::to_vec(&value).unwrap()).is_err());

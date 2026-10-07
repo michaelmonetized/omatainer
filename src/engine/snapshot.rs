@@ -300,6 +300,7 @@ impl Frame {
             out.sync = deck.sync;
             out.keylock = deck.keylock;
             out.controls = deck.controls.status();
+            out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));
             out.keylock_mode = deck.keylock_mode();
             out.pfl = deck.pfl;
             out.loop_on = deck.loop_on;

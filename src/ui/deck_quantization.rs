@@ -58,6 +58,7 @@ impl App {
             if let Some(pending) = status.pending {
                 let action = match pending.action {
                     QuantizedAction::HotCue { pad } => format!("Cue {}", pad + 1),
+                    QuantizedAction::SavedLoop { id } => format!("Saved loop {id}"),
                     QuantizedAction::LoopIn => "Loop in".into(),
                     QuantizedAction::LoopOut => "Loop out".into(),
                     QuantizedAction::Reloop | QuantizedAction::NewLoop => "Reloop".into(),

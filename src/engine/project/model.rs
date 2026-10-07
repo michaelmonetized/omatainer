@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 23;
+pub const STATE_VERSION: u32 = 24;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -126,6 +126,7 @@ impl<'de> Deserialize<'de> for State {
             return Err(serde::de::Error::custom("Source gain requires project state version 14"));
         }
         if version < 7 && raw.get("session").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain session identity metadata")); }
+        if version < 24 && raw.get("decks").and_then(|v| v.as_array()).is_some_and(|decks| decks.iter().any(|deck| deck.get("saved_loops").is_some())) { return Err(serde::de::Error::custom("Saved loop banks require state version 24")); }
         if (7..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Supported versions 7 and newer require session identity metadata")); }
         if version < 8 && raw.get("conductor").and_then(serde_json::Value::as_object).is_some_and(|c| c.contains_key("native") || c.get("tempos").and_then(serde_json::Value::as_array).is_some_and(|points| points.iter().any(|p| p.get("ramp").is_some()))) {
             return Err(serde::de::Error::custom("Legacy projects cannot contain native tempo ramps or timing options"));
@@ -375,6 +376,8 @@ pub struct Deck {
     pub cue_styles: [crate::engine::cue_metadata::Style; HOTCUES],
     #[serde(default)]
     pub grid: Option<crate::engine::beatgrid::Grid>,
+    #[serde(default, skip_serializing_if = "saved_loops::Bank::is_default")]
+    pub(crate) saved_loops: saved_loops::Bank,
     pub loop_on: bool,
     pub loop_start: f64,
     pub loop_len: f64,
@@ -484,6 +487,7 @@ impl State {
                 hotcues: [None; HOTCUES],
                 cue_styles: [crate::engine::cue_metadata::Style::default(); HOTCUES],
                 grid: None,
+                saved_loops: Default::default(),
                 loop_on: false,
                 loop_start: 0.0,
                 loop_len: 0.0,
@@ -666,6 +670,9 @@ impl State {
                 || !finite_range(deck.cue_pos, -1.0e12, 1.0e12)
                 || !finite_range(deck.loop_start, -1.0e12, 1.0e12)
                 || !finite_range(deck.loop_len, 0.0, 1.0e12)
+                || !deck.saved_loops.valid()
+                || self.version < 24 && !deck.saved_loops.is_default()
+                || deck.saved_loops.slots.iter().flatten().any(|slot| deck.audio.and_then(|index|media.get(index)).is_none_or(|audio| slot.length * f64::from(audio.sr) + 1e-6 < 64.0 || (slot.start + slot.length) * f64::from(audio.sr) > audio.frames() as f64 + 1e-6))
                 || deck
                     .hotcues
                     .iter()

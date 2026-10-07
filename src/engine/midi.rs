@@ -91,6 +91,9 @@ pub enum Action {
     DeckLoop4,
     DeckLoopIn,
     DeckLoopOut,
+    DeckSavedLoopRecall,
+    DeckSavedLoopSave,
+    DeckSavedLoopDelete,
     DeckBeatJumpBack,
     DeckBeatJumpForward,
     DeckBeatJumpSmaller,
@@ -455,6 +458,10 @@ fn dispatch_value(
         }
         Action::DeckSync if pressed => {
             let _ = send(Command::DeckSync { deck });
+        }
+        Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete if pressed => {
+            let action = match b.action { Action::DeckSavedLoopSave => super::deck_controls::SavedLoopAction::Save, Action::DeckSavedLoopDelete => super::deck_controls::SavedLoopAction::Delete, _ => super::deck_controls::SavedLoopAction::Recall { activate: true } };
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::SavedPad { id: b.extra as u8 + 1, action } });
         }
         Action::DeckBeatJumpBack | Action::DeckBeatJumpForward if pressed => {
             let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::BeatJump {

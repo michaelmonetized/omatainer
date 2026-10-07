@@ -113,6 +113,11 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         .ok_or_else(|| Error::Invalid("Preferences need an integer version".into()))?;
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
+    if version < 22 && profiles.iter().any(|profile| {
+        let saved = |binding: &serde_json::Value| binding.get("action").and_then(|a|a.as_str()).is_some_and(|a|matches!(a,"DeckSavedLoopRecall"|"DeckSavedLoopSave"|"DeckSavedLoopDelete"));
+        profile.get("midi_learn").and_then(|v|v.get("mappings")).and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(|row|row.get("binding").is_some_and(saved)))
+        || profile.get("midi_presets").and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(|row|row.get("version").and_then(|v|v.as_u64()).is_some_and(|v|v>3) || row.get("bindings").and_then(|v|v.as_array()).is_some_and(|rows|rows.iter().any(saved))))
+    }) { return Err(Error::Invalid("Saved loop assignments require preferences version 22".into())); }
     if version < 21 && profiles.iter().any(|profile|profile.get("midi_clock").is_some()) {
         return Err(Error::Invalid("MIDI clock output requires preferences version 21".into()));
     }
@@ -173,12 +178,12 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
         return Err(Error::Invalid("MIDI presets require preferences version 18".into()));
     }
     let (mut preferences, migrated) = match version {
-        21 => (
+        22 => (
             serde_json::from_slice::<Preferences>(bytes)
                 .map_err(|error| Error::Invalid(format!("Invalid preferences: {error}")))?,
             false,
         ),
-        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 => {
+        2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 => {
             let mut preferences: Preferences = serde_json::from_slice(bytes).map_err(|error| {
                 Error::Invalid(format!("Invalid version {version} preferences: {error}"))
             })?;

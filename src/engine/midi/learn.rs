@@ -46,6 +46,9 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::DeckLoop4,
         Action::DeckLoopIn,
         Action::DeckLoopOut,
+        Action::DeckSavedLoopRecall,
+        Action::DeckSavedLoopSave,
+        Action::DeckSavedLoopDelete,
         Action::DeckBeatJumpBack,
         Action::DeckBeatJumpForward,
         Action::DeckBeatJumpSmaller,
@@ -93,6 +96,10 @@ pub(crate) fn actions() -> &'static [Action] {
 pub(crate) fn navigation(action: Action) -> bool {
     matches!(action, Action::SongLocator | Action::SongPrevious | Action::SongNext | Action::SongLoop | Action::SongCancel)
 }
+/// Identify actions addressing stable saved loop IDs.
+/// Takes an action; returns whether it needs MIDI preset 4 and preference 22 persistence.
+pub(crate) fn saved_loop(action: Action) -> bool { matches!(action, Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete) }
+
 /// Choose the required MIDI message class for a performance action.
 /// Takes an action; returns Note, absolute CC, or explicitly decoded relative CC.
 pub(crate) fn kind(action: Action) -> MsgKind {

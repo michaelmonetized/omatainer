@@ -49,6 +49,9 @@ fn label(action: Action) -> &'static str {
         Action::DeckLoop4 => "Deck four-beat loop",
         Action::DeckLoopIn => "Deck loop in",
         Action::DeckLoopOut => "Deck loop out",
+        Action::DeckSavedLoopRecall => "Deck activate saved loop",
+        Action::DeckSavedLoopSave => "Deck save loop slot",
+        Action::DeckSavedLoopDelete => "Deck delete saved loop",
         Action::DeckBeatJumpBack => "Deck beat jump backward",
         Action::DeckBeatJumpForward => "Deck beat jump forward",
         Action::DeckBeatJumpSmaller => "Deck beat jump smaller",
@@ -204,7 +207,7 @@ impl App {
             }
             let max = match binding.action {
                 Action::SamplerSlotStop => 16.0,
-                Action::DeckHotCue => 8.0,
+                Action::DeckHotCue | Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete => 8.0,
                 Action::Scene | Action::Clip => 512.0,
                 Action::TrackFader | Action::TrackMute | Action::TrackSolo | Action::TrackArm | Action::TrackPan | Action::TrackSendA | Action::TrackSendB => 127.0,
                 Action::FxWet | Action::FxSelect => 3.0,
@@ -214,7 +217,7 @@ impl App {
                 let mut extra = f32::from(binding.extra) + 1.0;
                 preferences::float_control(
                     ui,
-                    if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
+                    if learn::saved_loop(binding.action) { "MIDI saved loop slot ID" } else if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
                     &mut extra,
                     1.0,
                     max,

@@ -100,6 +100,7 @@ mod scene_ownership_tests;
 #[cfg(test)]
 mod clip_lifecycle_tests;
 pub(crate) mod clip_launch;
+pub(crate) mod saved_loops;
 #[cfg(test)]
 mod deck_loop_tests;
 #[cfg(test)]
@@ -772,6 +773,7 @@ pub struct DeckSnap {
     pub receipt_key: usize,
     pub hotcue_positions: [Option<f64>; HOTCUES],
     pub cue_styles: [cue_metadata::Style; HOTCUES],
+    pub(crate) saved_loops: saved_loops::Bank,
     pub grid: Option<beatgrid::Grid>,
     pub meter: f32,
     #[serde(skip)]
@@ -2349,6 +2351,11 @@ impl RtEngine {
     }
 
     pub fn apply(&mut self, c: Command) {
+        let c = match c {
+            Command::DeckControl { source, deck, control: deck_controls::Control::SavedPad { id, action } } if usize::from(deck) < DECKS => Command::DeckControl { source, deck, control: deck_controls::Control::SavedLoop { media_key: self.decks[usize::from(deck)].history_key, id, action } },
+            Command::DeckControl { source, deck, control: deck_controls::Control::HotLoop { pad, clear } } if usize::from(deck) < DECKS && pad < 8 && self.decks[usize::from(deck)].controls.status().hotloops[usize::from(pad)] => Command::DeckControl { source, deck, control: deck_controls::Control::SavedLoop { media_key: self.decks[usize::from(deck)].history_key, id: pad + 1, action: if clear { deck_controls::SavedLoopAction::Delete } else { deck_controls::SavedLoopAction::Recall { activate: true } } } },
+            other => other,
+        };
         let voice_valid=match &c {Command::MicAuxConfigure(r)=>r.current(self),Command::MicAuxControl(v)=>v.resolve(self).is_some(),_=>true};
         if !voice_valid {self.undo.reject(undo::Failure::Invalid);self.undo.retire_command(c);return;}
         if let Command::Monitor(control) = &c {
