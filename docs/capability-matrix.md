@@ -399,6 +399,16 @@ Software qualification: 86.4 million frames in an accelerated two-hour stream, t
 
 Session and Arrangement paths qualified with immutable shared sources, WAV/MP3 import, trims/reverse/pitch/loops, actual track devices/routing/PFL/input precedence, native save/reopen/import/Undo and exact realtime/export parity. Pitch resampling changes duration; independent warp modes and asynchronous streaming remain issues 250 and 184. Physical capture stays closed.
 
+### Issue #183: partial
+
+- isolated native VST3 processor core: [src/plugin_host/worker.rs](../src/plugin_host/worker.rs) — Stable factory classes, native bus buffers, timestamped channel MIDI and normalized automation, identity-bound opaque state, tempo/seek context and native editor owner
+- bounded nonblocking audio bridge: [src/plugin_host/realtime.rs](../src/plugin_host/realtime.rs) — Preallocated SPSC packet exchange with fixed three-block latency; worker-owned SDK locks and IPC
+- Acceptance fixtures: `plugin_host::scanner::tests::native_plugin_audio_automation_state_and_instruments`, `plugin_host::realtime::tests`.
+- Evidence: [docs/validation/vst3-core.md](../docs/validation/vst3-core.md).
+- Evidence: [docs/validation/vst3-core-receipt.json](../docs/validation/vst3-core-receipt.json).
+
+Native aarch64 Linux worker and bridge foundation only. SDK AGain, independently built Nekobi and MVerb audio/state exercised privately; no plugin binaries redistributed. Callback bridge checks have zero allocation and exact declared delay. The bridge is not yet installed in the native routing graph or project model. Live graph sidechain/multiple-output routing, parameter/editor UI, plugin automation persistence, automatic PDC updates, installed GUI and listening qualification remain in combined #511.
+
 ### Issue #185: implemented
 
 - native UI: [src/ui/beat_jump.rs](../src/ui/beat_jump.rs) — Per-deck backward/size/forward controls beneath platter
@@ -563,6 +573,16 @@ Linux ARM64 software qualification through actual OutputCallback/renderer PCM an
 - Evidence: [docs/validation/issue-205-smart-crates.md](../docs/validation/issue-205-smart-crates.md).
 
 Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines.
+
+### Issue #216: partial
+
+- isolated scanner and durable catalog: [src/plugin_host/scanner.rs](../src/plugin_host/scanner.rs) — Timed traversal/hash/probe processes, incremental content identities, quarantine, explicit retry and blacklist, atomic cache and cancel preservation
+- native scanner controls: [src/ui/plugins.rs](../src/ui/plugins.rs) — Preferences → VST3 plugins; custom paths, scan, cancel, reload, retry and blacklist; protected-mode admission
+- Acceptance fixtures: `plugin_host::scanner::tests`, `ui::plugins::tests::native_plugin_browser_controls_reload_persist_and_respect_protection`.
+- Evidence: [docs/validation/vst3-core.md](../docs/validation/vst3-core.md).
+- Evidence: [docs/validation/vst3-core-receipt.json](../docs/validation/vst3-core-receipt.json).
+
+Software/native egui and compiled child-process qualification on aarch64 Linux. Deliberately crashing, hanging and corrupt native factories remain isolated. Known catalog records remain available during scans; using them in the live app awaits #183 graph integration. Actual installed-GUI and physical playback scan-impact checks remain in #511.
 
 ### Issue #219: implemented
 
@@ -795,7 +815,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented |
 | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented |
 | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | implemented |
-| [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned |
+| [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | partial |
 | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned |
 | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented |
 | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | implemented |
@@ -828,7 +848,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#213](https://github.com/michaelmonetized/omatainer/issues/213) | Add deck-isolated output mode for external mixers | planned |
 | [#214](https://github.com/michaelmonetized/omatainer/issues/214) | Implement transient detection and editable audio warp markers | planned |
 | [#215](https://github.com/michaelmonetized/omatainer/issues/215) | Manage plugin presets, A/B states and reusable device chains | planned |
-| [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | planned |
+| [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | partial |
 | [#217](https://github.com/michaelmonetized/omatainer/issues/217) | Add configurable crossfader assignments, curves and scratch cut-in | planned |
 | [#218](https://github.com/michaelmonetized/omatainer/issues/218) | Add selectable DJ waveform and library layouts | planned |
 | [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | implemented |

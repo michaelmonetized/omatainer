@@ -1193,6 +1193,30 @@
       ],
       "limits": "Session and Arrangement paths qualified with immutable shared sources, WAV/MP3 import, trims/reverse/pitch/loops, actual track devices/routing/PFL/input precedence, native save/reopen/import/Undo and exact realtime/export parity. Pitch resampling changes duration; independent warp modes and asynchronous streaming remain issues 250 and 184. Physical capture stays closed."
     },
+    "183": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "isolated native VST3 processor core",
+          "file": "src/plugin_host/worker.rs",
+          "entry": "Stable factory classes, native bus buffers, timestamped channel MIDI and normalized automation, identity-bound opaque state, tempo/seek context and native editor owner"
+        },
+        {
+          "kind": "bounded nonblocking audio bridge",
+          "file": "src/plugin_host/realtime.rs",
+          "entry": "Preallocated SPSC packet exchange with fixed three-block latency; worker-owned SDK locks and IPC"
+        }
+      ],
+      "fixtures": [
+        "plugin_host::scanner::tests::native_plugin_audio_automation_state_and_instruments",
+        "plugin_host::realtime::tests"
+      ],
+      "evidence": [
+        "docs/validation/vst3-core.md",
+        "docs/validation/vst3-core-receipt.json"
+      ],
+      "limits": "Native aarch64 Linux worker and bridge foundation only. SDK AGain, independently built Nekobi and MVerb audio/state exercised privately; no plugin binaries redistributed. Callback bridge checks have zero allocation and exact declared delay. The bridge is not yet installed in the native routing graph or project model. Live graph sidechain/multiple-output routing, parameter/editor UI, plugin automation persistence, automatic PDC updates, installed GUI and listening qualification remain in combined #511."
+    },
     "185": {
       "status": "implemented",
       "paths": [
@@ -1696,6 +1720,30 @@
         "docs/validation/issue-205-smart-crates.md"
       ],
       "limits": "Native UI, real catalog-owner transactions, persistence/migration, stale approval and 100000-track software-renderer fixtures pass. Final release qualification is in progress. Supported fields are title, artist, key, tag, group, note, BPM, duration, rating and confirmed current-version played state. Genre/date/playcount are not authoritative catalog fields yet. Large-library measurements exercise software playback, not physical device deadlines."
+    },
+    "216": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "isolated scanner and durable catalog",
+          "file": "src/plugin_host/scanner.rs",
+          "entry": "Timed traversal/hash/probe processes, incremental content identities, quarantine, explicit retry and blacklist, atomic cache and cancel preservation"
+        },
+        {
+          "kind": "native scanner controls",
+          "file": "src/ui/plugins.rs",
+          "entry": "Preferences → VST3 plugins; custom paths, scan, cancel, reload, retry and blacklist; protected-mode admission"
+        }
+      ],
+      "fixtures": [
+        "plugin_host::scanner::tests",
+        "ui::plugins::tests::native_plugin_browser_controls_reload_persist_and_respect_protection"
+      ],
+      "evidence": [
+        "docs/validation/vst3-core.md",
+        "docs/validation/vst3-core-receipt.json"
+      ],
+      "limits": "Software/native egui and compiled child-process qualification on aarch64 Linux. Deliberately crashing, hanging and corrupt native factories remain isolated. Known catalog records remain available during scans; using them in the live app awaits #183 graph integration. Actual installed-GUI and physical playback scan-impact checks remain in #511."
     },
     "219": {
       "status": "implemented",
