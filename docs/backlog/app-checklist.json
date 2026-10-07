@@ -3507,9 +3507,12 @@
         202,
         192
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/chromatic-cue-pads.md",
+        "docs/validation/chromatic-cue-pads-receipt.json"
+      ]
     },
     {
       "issue": 248,

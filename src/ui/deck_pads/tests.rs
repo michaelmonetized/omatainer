@@ -258,3 +258,58 @@ fn native_deck_pad_presentation_uses_right_deck_sample_names_and_stable_saved_lo
         .saved_loops
         .is_default());
 }
+
+#[test]
+fn native_chromatic_root_ranges_reset_and_focus_release_use_actual_deck_pad_controls() {
+    use crate::engine::{deck_controls::Control, key_shift::Request};
+    let mut gui = Gui::new();
+    gui.fixture.rt.apply(Command::DeckAudio { deck: 0, audio: std::sync::Arc::new(crate::engine::dsp::Sample {
+        name: "Native chromatic cue source".into(), path: String::new(), sr: 48000, ch: 2, bpm: 120.0,
+        data: (0..144000).flat_map(|frame| { let value = (std::f64::consts::TAU * 440.0 * frame as f64 / 48000.0).sin() as f32 * 0.25; [value, -value] }).collect(), peaks: Vec::new().into(), spectrum: None,
+    }) });
+    gui.fixture.rt.publish_for_test();
+    gui.fixture.rt.apply(Command::DeckHotCue { deck: 0, pad: 2, del: false });
+    gui.fixture.rt.publish_for_test();
+    let shift = Request::new(0, &gui.fixture.app.engine.snapshot().decks[0], 3, false).unwrap();
+    gui.fixture.rt.apply(Command::DeckKeyShift(shift));
+    gui.fixture.rt.publish_for_test();
+    gui.frame(vec![]);
+    gui.mode(0, Mode::PitchCue);
+    gui.action("Deck A: Pitch root", Action::Click, None);
+    gui.action("Deck A: Pitch root cue 3", Action::Click, None);
+    assert_eq!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_cue, 2);
+    gui.action("Deck A: Pitch range high", Action::Click, None);
+    assert_eq!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_range, 2);
+    let label = "Deck A: Pitch Cue pad 8: +6 st";
+    gui.action(label, Action::CustomAction, Some(ActionData::CustomAction(1)));
+    assert_eq!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_semitones, Some(6));
+    assert!(gui.fixture.app.engine.snapshot().decks[0].previewing);
+    assert_eq!(gui.fixture.rt.decks[0].key_shift, 3);
+    assert!(gui.fixture.app.engine.snapshot().decks[1].controls.pitch_pad.is_none());
+    gui.action("Deck A: Pitch range low", Action::Click, None);
+    assert_eq!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_range, 0);
+    assert!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_pad.is_none());
+    assert!(!gui.fixture.app.engine.snapshot().decks[0].previewing);
+    gui.action("Deck A: Pitch Cue pad 8: +1 st", Action::CustomAction, Some(ActionData::CustomAction(2)));
+    gui.action("Deck A: Pitch Cue pad 1: -6 st", Action::CustomAction, Some(ActionData::CustomAction(1)));
+    assert_eq!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_semitones, Some(-6));
+    gui.focused = false; gui.frame(vec![]);
+    assert!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_pad.is_none());
+    assert!(!gui.fixture.app.engine.snapshot().decks[0].previewing);
+    assert_eq!(gui.fixture.rt.decks[0].key_shift, 3);
+    gui.focused = true; gui.frame(vec![]);
+    gui.action("Deck A: Pitch original key", Action::Click, None);
+    assert_eq!(gui.fixture.rt.decks[0].key_shift, 0);
+    gui.fixture.rt.apply(Command::Undo); gui.fixture.rt.publish_for_test(); gui.frame(vec![]);
+    assert_eq!(gui.fixture.rt.decks[0].key_shift, 3);
+    gui.fixture.rt.apply(Command::Redo); gui.fixture.rt.publish_for_test(); gui.frame(vec![]);
+    assert_eq!(gui.fixture.rt.decks[0].key_shift, 0);
+    gui.fixture.rt.apply(Command::DeckControl { source: 247, deck: 0, control: Control::Quantize { enabled: true, division: 3 } });
+    gui.fixture.rt.publish_for_test(); gui.frame(vec![]);
+    gui.action("Deck A: Pitch Cue pad 4: -3 st", Action::CustomAction, Some(ActionData::CustomAction(1)));
+    assert!(gui.fixture.app.engine.snapshot().decks[0].controls.pending.is_none());
+    gui.mode(0, Mode::Sampler);
+    assert!(gui.fixture.app.engine.snapshot().decks[0].controls.pitch_pad.is_none());
+    assert!(gui.fixture.app.engine.snapshot().decks[0].controls.quantize);
+    println!("CHROMATIC_CUE_NATIVE {{\"native_egui_accesskit\":true,\"root_range_labels\":true,\"original_reset_undo_redo\":true,\"range_mode_focus_cancel\":true,\"wrong_deck_mutations\":0,\"physical_devices_opened\":false}}");
+}

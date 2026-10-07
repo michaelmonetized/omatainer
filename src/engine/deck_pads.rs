@@ -11,6 +11,7 @@ pub(crate) enum Mode {
     AutoLoop,
     ManualLoop,
     VelocitySampler,
+    PitchCue,
 }
 impl Mode {
     pub(crate) const ALL: [Self; 8] = [
@@ -23,10 +24,11 @@ impl Mode {
         Self::ManualLoop,
         Self::VelocitySampler,
     ];
+    pub(crate) const CHOICES: [Self; 9] = [Self::HotCue, Self::Roll, Self::Slice, Self::Sampler, Self::SavedLoop, Self::AutoLoop, Self::ManualLoop, Self::VelocitySampler, Self::PitchCue];
     /// Resolve a stable mode number.
     /// Takes a zero-based mode index; returns the existing supported function or refuses an unknown mode.
     pub(crate) fn from_index(index: u8) -> Option<Self> {
-        Self::ALL.get(usize::from(index)).copied()
+        Self::CHOICES.get(usize::from(index)).copied()
     }
     /// Keep manufacturer and native mode identities consistent.
     /// Takes this mode; returns its existing zero-based controller index.
@@ -40,6 +42,7 @@ impl Mode {
             Self::AutoLoop => 5,
             Self::ManualLoop => 6,
             Self::VelocitySampler => 7,
+            Self::PitchCue => 8,
         }
     }
     /// Describe the actual supported pad function.
@@ -54,6 +57,7 @@ impl Mode {
             Self::AutoLoop => "Auto Loop",
             Self::ManualLoop => "Manual Loop",
             Self::VelocitySampler => "Velocity Sampler",
+            Self::PitchCue => "Pitch Cue",
         }
     }
     /// Show independent mode colors before a named slot supplies its own color.
@@ -68,6 +72,7 @@ impl Mode {
             Self::AutoLoop => [60, 145, 255],
             Self::ManualLoop => [165, 95, 255],
             Self::VelocitySampler => [235, 95, 200],
+            Self::PitchCue => [225, 105, 170],
         }
     }
 }
@@ -120,6 +125,8 @@ pub(crate) fn sp1_key(channel: u8, address: u8) -> u32 {
 }
 
 mod runtime;
+mod pitch;
+pub(crate) use pitch::semitones;
 pub(in crate::engine) use runtime::State;
 
 #[cfg(test)]

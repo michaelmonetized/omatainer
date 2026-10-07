@@ -669,6 +669,18 @@ Linux ARM64 software qualification: held beat-division rolls with per-deck onset
 
 Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved.
 
+### Issue #247: implemented
+
+- source-qualified chromatic cue renderer: [src/engine/deck_pads/runtime.rs](../src/engine/deck_pads/runtime.rs) — Newest original held cue owner, immediate cue onset, independent key/tempo and exact release retirement
+- chromatic semitone ranges: [src/engine/deck_pads/pitch.rs](../src/engine/deck_pads/pitch.rs) — Three fixed eight-note ranges containing the original key
+- native root, range and reset controls: [src/ui/deck_pads/pitch.rs](../src/ui/deck_pads/pitch.rs) — Existing-cue root, actual semitone labels, bypass consequences and undoable Original Key
+- saved ninth learned pad mode: [src/engine/midi/learn.rs](../src/engine/midi/learn.rs) — Qualified learned Pitch Cue dispatch without changing manufacturer mode addresses
+- Acceptance fixtures: `engine::deck_pads::pitch::tests`, `ui::deck_pads::tests::native_chromatic_root_ranges_reset_and_focus_release_use_actual_deck_pad_controls`, `engine::midi::learn::tests::learned_chromatic_mode_retains_ninth_bit_and_old_manufacturer_modes_without_opening_ports`.
+- Evidence: [docs/validation/chromatic-cue-pads.md](../docs/validation/chromatic-cue-pads.md).
+- Evidence: [docs/validation/chromatic-cue-pads-receipt.json](../docs/validation/chromatic-cue-pads-receipt.json).
+
+Linux ARM64 software qualification: eight monophonic chromatic cue pads, existing-cue root, labeled Low/Center/High ranges containing original key, source-qualified reset with Undo/Redo, independent tempo, newest original held-owner priority and source/mode/range/focus retirement. Immediate cue onset preserves quantize preference, paused cue audition returns on release and playing decks continue without rewinding. Actual renderer and OutputCallback tonal PCM, native egui/AccessKit and saved learned MIDI mapping dispatch passed. Existing forward pitch DSP range is 0.5–1.5; scratch/reverse and unsupported rates explicitly bypass pitch. Pad choices remain transient like existing pad modes; no new saved project version, dependency or manufacturer wire address. No physical device, capture, new OS GUI or listening acceptance.
+
 ### Issue #249: implemented
 
 - coherent source and loop fades: [src/engine/audio_clip/fades.rs](../src/engine/audio_clip/fades.rs) — Validated curved quarter-note envelope and optional automatic 4 ms edges; shared playback/waveform gain
@@ -833,7 +845,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#244](https://github.com/michaelmonetized/omatainer/issues/244) | Support lawful legacy and platform-specific plug-in interoperability | planned |
 | [#245](https://github.com/michaelmonetized/omatainer/issues/245) | Support multichannel and immersive production as an advanced workflow | planned |
 | [#246](https://github.com/michaelmonetized/omatainer/issues/246) | Expose performance timing and mixer state for lighting systems | planned |
-| [#247](https://github.com/michaelmonetized/omatainer/issues/247) | Add chromatic cue-point performance pads | planned |
+| [#247](https://github.com/michaelmonetized/omatainer/issues/247) | Add chromatic cue-point performance pads | implemented |
 | [#248](https://github.com/michaelmonetized/omatainer/issues/248) | Support post-production session exchange and broadcast media metadata | planned |
 | [#249](https://github.com/michaelmonetized/omatainer/issues/249) | Provide audio clip fades and editable arrangement crossfades | implemented |
 | [#250](https://github.com/michaelmonetized/omatainer/issues/250) | Offer distinct high-quality warp modes for drums, tones, textures and mixes | planned |

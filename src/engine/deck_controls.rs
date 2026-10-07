@@ -88,6 +88,8 @@ pub enum Control {
     Slip,
     SlipSettings { enabled: bool, division: Option<u8> },
     SlicerSettings { repeating: bool, domain: u8, repeat: u8, division: Option<u8> },
+    PitchPads { #[serde(with = "loop_edit::media_key")] media_key: u64, cue: u8, range: u8 },
+    PitchReset { #[serde(with = "loop_edit::media_key")] media_key: u64 },
     PadMode { mode: u8 },
     Parameter { mode: u8, up: bool, shifted: bool },
     HotLoop { pad: u8, clear: bool },
@@ -128,7 +130,9 @@ impl Control {
             }
             | Self::HotLoop { pad, .. } => pad < 8,
             Self::AutoLoopPad { pad } | Self::ManualPad { pad } => pad < 8,
-            Self::PadMode { mode } | Self::Parameter { mode, .. } => mode < 8,
+            Self::PitchPads { media_key, cue, range } => media_key != 0 && cue < 8 && range < 3,
+            Self::PitchReset { media_key } => media_key != 0,
+            Self::PadMode { mode } | Self::Parameter { mode, .. } => super::deck_pads::Mode::from_index(mode).is_some(),
             _ => true,
         }
     }
@@ -160,6 +164,10 @@ pub struct Status {
     pub slip_due: Option<f64>,
     pub slip_return: Option<f64>,
     pub pad_mode: u8,
+    pub pitch_cue: u8,
+    pub pitch_range: u8,
+    pub pitch_pad: Option<u8>,
+    pub pitch_semitones: Option<i8>,
     pub roll: Option<u8>,
     pub roll_active: Option<u8>,
     pub roll_pending: Option<u8>,
@@ -214,6 +222,10 @@ pub(super) struct State {
     slip_due: Option<f64>,
     slip_return: Option<f64>,
     pub pad_mode: u8,
+    pub(in crate::engine) pitch_cue: u8,
+    pub(in crate::engine) pitch_range: u8,
+    pub(in crate::engine) pitch_pad: Option<u8>,
+    pub(in crate::engine) pitch_semitones: Option<i8>,
     pub roll_scale: i8,
     slice_domain: u8,
     slice_quant: u8,
@@ -274,6 +286,10 @@ impl Default for State {
             slip_due: None,
             slip_return: None,
             pad_mode: 0,
+            pitch_cue: 0,
+            pitch_range: 1,
+            pitch_pad: None,
+            pitch_semitones: None,
             roll_scale: 0,
             slice_domain: 3,
             slice_quant: 0,
@@ -314,6 +330,11 @@ impl State {
     /// Takes a button; returns whether any admitted source still holds it.
     pub fn held(&self, button: Button) -> bool {
         self.counts[button.index()] > 0
+    }
+    /// Check one original hold without borrowing another input's ownership.
+    /// Takes source, raw key and action; returns whether that exact gesture is still admitted.
+    pub(in crate::engine) fn owns(&self, source: u64, key: Option<u32>, button: Button) -> bool {
+        self.owners.iter().any(|owner| *owner == Some((source, key, button)))
     }
     /// Recognize a selected or directly held slicer gesture.
     /// Takes this state; returns whether slicer setting changes must retire source-owned performance work.
@@ -400,6 +421,8 @@ impl State {
         self.quantize_owner_hint = None;
         self.owners.fill(None);
         self.reverse_latched = false;
+        self.pitch_pad = None;
+        self.pitch_semitones = None;
         self.counts.fill(0);
         self.forward = None;
         self.performance_forward = None;
@@ -444,6 +467,10 @@ impl State {
             slip_due: self.slip_due,
             slip_return: self.slip_return,
             pad_mode: self.pad_mode,
+            pitch_cue: self.pitch_cue,
+            pitch_range: self.pitch_range,
+            pitch_pad: self.pitch_pad,
+            pitch_semitones: self.pitch_semitones,
             roll: self.owners.iter().flatten().find_map(|owner| if let Button::Roll(pad) = owner.2 {Some(pad)}else{None}),
             roll_active: self.slicer.active_roll(),
             roll_pending: self.slicer.pending_roll().map(|pending| pending.0),
@@ -463,6 +490,9 @@ impl State {
         self.quantize_owner_hint = None;
         self.owners.fill(None);
         self.reverse_latched = false;
+        self.pitch_cue = 0;
+        self.pitch_pad = None;
+        self.pitch_semitones = None;
         self.counts.fill(0);
         self.performance_forward = None;
         self.saved_loop = None;
@@ -539,6 +569,17 @@ impl RtEngine {
                 0.0
             };
         }
+    }
+    /// Retrigger a chromatic pad's retained cue immediately without deleting or launching a linked loop.
+    /// Takes its original source, key, deck, cue and gate; temporarily scopes cue behavior and retains ordinary hold/release ownership.
+    pub(in crate::engine) fn pitch_cue_hold(&mut self, source: u64, key: u32, deck: u8, cue: u8, on: bool) {
+        let index = usize::from(deck);
+        let state = &mut self.decks[index].controls;
+        let prior = (state.quantize, state.cue_only, state.delete);
+        state.quantize = Some(false); state.cue_only = true; state.delete = false;
+        self.deck_control_owned(source, deck, Control::Hold { button: Button::HotCue(cue), on }, Some(key));
+        let state = &mut self.decks[index].controls;
+        state.quantize = prior.0; state.cue_only = prior.1; state.delete = prior.2;
     }
     /// Apply one source-owned controller gesture.
     /// Takes the source, deck and validated control; updates transport or delegates persistent edits to ordinary commands.
@@ -684,6 +725,17 @@ impl RtEngine {
             Control::StartTime { value } => self.decks[index].controls.start = value * 4.0,
             Control::Slip => {let state=&mut self.decks[index].controls;state.slip=!state.slip;if !state.slip {state.interrupt_slip();}else{state.slip_interrupted=false;}},
             Control::SlipSettings {enabled,division} => {let state=&mut self.decks[index].controls;let was_enabled=state.slip;state.slip=enabled;state.slip_release=division;state.slip_due=None;state.slip_return=None;if !enabled {state.interrupt_slip();}else if !was_enabled {state.slip_interrupted=false;}},
+            Control::PitchPads { media_key, cue, range } => {
+                if self.decks[index].history_key != media_key || !self.decks[index].hotcues[usize::from(cue)].set { return; }
+                self.cancel_deck_pads(index);
+                self.decks[index].controls.pitch_cue = cue;
+                self.decks[index].controls.pitch_range = range;
+            }
+            Control::PitchReset { media_key } => {
+                if self.decks[index].history_key != media_key || self.decks[index].audio.is_none() { return; }
+                self.cancel_deck_pads(index);
+                self.apply(Command::DeckKeyShift(super::key_shift::Request { deck, media: media_key, semitones: 0, enable_lock: false }));
+            }
             Control::PadMode { mode } => {
                 if self.decks[index].controls.pad_mode != mode {
                     if self.decks[index].controls.pad_mode==2 {self.decks[index].controls.interrupt_slip();}
@@ -719,6 +771,12 @@ impl RtEngine {
                                 + i16::from(delta))
                             .clamp(1, 6) as u8;
                         }
+                    }
+                    8 => {
+                        let current = controls.pitch_cue;
+                        let range = if shifted { controls.pitch_range } else { (i16::from(controls.pitch_range) + i16::from(delta)).clamp(0, 2) as u8 };
+                        let cue = if shifted { (1..=8).map(|step| (i16::from(current) + i16::from(delta) * step).rem_euclid(8) as u8).find(|cue| self.decks[index].hotcues[usize::from(*cue)].set).unwrap_or(current) } else { current };
+                        self.deck_control(source, deck, Control::PitchPads { media_key: self.decks[index].history_key, cue, range });
                     }
                     4 | 6 if !shifted => self.apply(Command::DeckControl {
                         source,

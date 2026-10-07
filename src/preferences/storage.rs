@@ -114,10 +114,10 @@ pub fn decode(bytes: &[u8]) -> Result<(Preferences, bool), Error> {
     let profiles: Vec<_> = if version == 1 { value.get("profile").into_iter().collect() }
         else { value.get("profiles").and_then(|p| p.as_object()).map_or(Vec::new(), |p| p.values().collect()) };
     if version < 24 && profiles.iter().any(|profile| {
-        let sync = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()).is_some_and(|a| matches!(a, "DeckSyncMode" | "DeckSyncLeader"));
+        let sync = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()).is_some_and(|a| matches!(a, "DeckSyncMode" | "DeckSyncLeader") || a == "DeckPadMode" && binding.get("extra").and_then(|v| v.as_u64()) == Some(8));
         profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(sync)))
         || profile.get("midi_presets").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("version").and_then(|v| v.as_u64()).is_some_and(|v| v > 5) || row.get("bindings").and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(sync))))
-    }) { return Err(Error::Invalid("Sync mode assignments require preferences version 24".into())); }
+    }) { return Err(Error::Invalid("Sync and chromatic pad assignments require preferences version 24".into())); }
     if version < 23 && profiles.iter().any(|profile| {
         let pad = |binding: &serde_json::Value| binding.get("action").and_then(|a| a.as_str()).is_some_and(|a| matches!(a, "DeckPad"|"DeckPadMode"|"DeckPadParameterLeft"|"DeckPadParameterRight"|"DeckPadParameterShiftLeft"|"DeckPadParameterShiftRight"));
         profile.get("midi_learn").and_then(|v| v.get("mappings")).and_then(|v| v.as_array()).is_some_and(|rows| rows.iter().any(|row| row.get("binding").is_some_and(pad)))

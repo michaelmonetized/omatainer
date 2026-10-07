@@ -95,6 +95,7 @@ impl Preset {
             return Err("Keep at most 256 assignments per preset".into());
         }
         for binding in &self.bindings {
+            if self.version < 6 && binding.action == super::Action::DeckPadMode && binding.extra == 8 { return Err("Chromatic cue pads require MIDI preset version 6".into()); }
             if self.version < 6 && super::learn::sync_mode(binding.action) { return Err("Explicit sync modes require MIDI preset version 6".into()); }
             if self.version < 5 && super::learn::deck_pad(binding.action) { return Err("Deck pad modes require MIDI preset version 5".into()); }
             if self.version < 4 && super::learn::saved_loop(binding.action) { return Err("Saved loop assignments require MIDI preset version 4".into()); }

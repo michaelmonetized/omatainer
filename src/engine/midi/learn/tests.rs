@@ -365,3 +365,25 @@ fn saved_overrides_and_captured_assignment_refuse_new_port_ambiguity() {
     );
     assert_eq!(shared.view().config.mappings.len(), 1);
 }
+
+#[test]
+fn learned_chromatic_mode_retains_ninth_bit_and_old_manufacturer_modes_without_opening_ports() {
+    let shared = Shared::default();
+    shared.connected_modes(7, "Fixture controller", "port-a", 255);
+    let mut chosen = binding(Action::DeckPadMode);
+    chosen.extra = u16::from(crate::engine::deck_pads::Mode::PitchCue.index());
+    let config = Config { mappings: vec![Mapping { endpoint: Endpoint { name: "Fixture controller".into(), id: "port-a".into() }, binding: chosen }] };
+    config.validate().unwrap();
+    let json = serde_json::to_vec(&config).unwrap();
+    let reopened: Config = serde_json::from_slice(&json).unwrap();
+    reopened.validate().unwrap();
+    shared.configure(reopened).unwrap();
+    assert_eq!(shared.view().devices[0].pad_modes, 511);
+    assert!(matches!(shared.input(7, "Fixture controller", "port-a", &[0x90,60,127], &map(vec![])), Dispatch::Binding(Binding { action: Action::DeckPadMode, extra: 8, .. })));
+    let mut invalid = shared.view().config;
+    invalid.mappings[0].binding.extra = 9;
+    assert!(invalid.validate().is_err());
+    invalid.mappings[0].binding = binding(Action::DeckPad);
+    invalid.mappings[0].binding.extra = 8;
+    assert!(invalid.validate().is_err());
+}

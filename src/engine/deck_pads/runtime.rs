@@ -8,6 +8,7 @@ use crate::engine::{
 enum Action {
     Hold(Button),
     Sampler(u8),
+    Pitch { cue: u8, pad: u8, semitones: i8, media: u64 },
 }
 #[derive(Clone, Copy, Debug)]
 struct Owner {
@@ -57,7 +58,9 @@ impl RtEngine {
             return;
         };
         let pad = press.id - 1;
+        if mode == Mode::PitchCue && !press.shifted && (self.decks[deck].audio.is_none() || !self.decks[deck].hotcues[usize::from(self.decks[deck].controls.pitch_cue)].set) { return; }
         let action = match mode {
+            Mode::PitchCue if !press.shifted => Some(Action::Pitch { cue: self.decks[deck].controls.pitch_cue, pad, semitones: super::semitones(self.decks[deck].controls.pitch_range, pad).unwrap(), media: self.decks[deck].history_key }),
             Mode::HotCue if !press.shifted => Some(Action::Hold(Button::HotCue(pad))),
             Mode::Roll => Some(Action::Hold(Button::Roll(pad))),
             Mode::Slice => Some(Action::Hold(Button::Slice(pad))),
@@ -66,13 +69,19 @@ impl RtEngine {
             }
             _ => None,
         };
-        self.deck_pad_inputs.owners[index] = Some(Owner {
+        self.deck_pad_inputs.owners[..=index].rotate_right(1);
+        self.deck_pad_inputs.owners[0] = Some(Owner {
             source: press.source,
             key: press.key,
             deck: press.deck,
             action,
         });
         match (mode, action) {
+            (_, Some(Action::Pitch { cue, .. })) => {
+                self.pitch_cue_hold(press.source, press.key, press.deck, cue, true);
+                self.refresh_pitch_pad(deck);
+            }
+            (Mode::PitchCue, None) => self.deck_control(press.source, press.deck, Control::PitchPads { media_key: self.decks[deck].history_key, cue: pad, range: self.decks[deck].controls.pitch_range }),
             (_, Some(Action::Hold(button))) => self.deck_control_owned(
                 press.source,
                 press.deck,
@@ -142,10 +151,31 @@ impl RtEngine {
             }
         }
     }
+    /// Follow the newest surviving chromatic pad without changing saved key or tempo settings.
+    /// Takes the exact deck; retires stale media/actions and retunes fixed overlap history only when the applied note changes.
+    pub(in crate::engine) fn refresh_pitch_pad(&mut self, deck: usize) {
+        let d = &self.decks[deck];
+        let next = self.deck_pad_inputs.owners.iter().flatten().find_map(|owner| {
+            if usize::from(owner.deck) != deck { return None; }
+            let Action::Pitch { cue, pad, semitones, media } = owner.action? else { return None; };
+            (media == d.history_key && d.controls.owns(owner.source, Some(owner.key), Button::HotCue(cue))).then_some((pad, semitones))
+        });
+        let d = &mut self.decks[deck];
+        let semitones = next.map(|note| note.1);
+        d.controls.pitch_pad = next.map(|note| note.0);
+        if d.controls.pitch_semitones != semitones {
+            d.controls.pitch_semitones = semitones;
+            d.retune(self.sr);
+        }
+    }
     /// Finish a captured action using its original owner.
     /// Takes the bounded owner receipt; releases only its exact held gesture or sampler input.
     fn finish_deck_pad(&mut self, owner: Owner) {
         match owner.action {
+            Some(Action::Pitch { cue, .. }) => {
+                self.pitch_cue_hold(owner.source, owner.key, owner.deck, cue, false);
+                self.refresh_pitch_pad(usize::from(owner.deck));
+            }
             Some(Action::Hold(button)) => self.deck_control_owned(
                 owner.source,
                 owner.deck,

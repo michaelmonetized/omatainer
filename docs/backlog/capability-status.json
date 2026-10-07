@@ -2007,6 +2007,41 @@
       ],
       "limits": "Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved."
     },
+    "247": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "source-qualified chromatic cue renderer",
+          "file": "src/engine/deck_pads/runtime.rs",
+          "entry": "Newest original held cue owner, immediate cue onset, independent key/tempo and exact release retirement"
+        },
+        {
+          "kind": "chromatic semitone ranges",
+          "file": "src/engine/deck_pads/pitch.rs",
+          "entry": "Three fixed eight-note ranges containing the original key"
+        },
+        {
+          "kind": "native root, range and reset controls",
+          "file": "src/ui/deck_pads/pitch.rs",
+          "entry": "Existing-cue root, actual semitone labels, bypass consequences and undoable Original Key"
+        },
+        {
+          "kind": "saved ninth learned pad mode",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Qualified learned Pitch Cue dispatch without changing manufacturer mode addresses"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_pads::pitch::tests",
+        "ui::deck_pads::tests::native_chromatic_root_ranges_reset_and_focus_release_use_actual_deck_pad_controls",
+        "engine::midi::learn::tests::learned_chromatic_mode_retains_ninth_bit_and_old_manufacturer_modes_without_opening_ports"
+      ],
+      "evidence": [
+        "docs/validation/chromatic-cue-pads.md",
+        "docs/validation/chromatic-cue-pads-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight monophonic chromatic cue pads, existing-cue root, labeled Low/Center/High ranges containing original key, source-qualified reset with Undo/Redo, independent tempo, newest original held-owner priority and source/mode/range/focus retirement. Immediate cue onset preserves quantize preference, paused cue audition returns on release and playing decks continue without rewinding. Actual renderer and OutputCallback tonal PCM, native egui/AccessKit and saved learned MIDI mapping dispatch passed. Existing forward pitch DSP range is 0.5–1.5; scratch/reverse and unsupported rates explicitly bypass pitch. Pad choices remain transient like existing pad modes; no new saved project version, dependency or manufacturer wire address. No physical device, capture, new OS GUI or listening acceptance."
+    },
     "249": {
       "status": "implemented",
       "paths": [

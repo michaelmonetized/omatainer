@@ -1,0 +1,775 @@
+{
+  "schema": 1,
+  "issue": 247,
+  "status": "implemented",
+  "platform": "Linux ARM64 software renderer/OutputCallback PCM and actual native egui/AccessKit",
+  "sourceFiles": {
+    "src/engine/deck_controls.rs": "6bbfc2eaabcbb48c66d0db385ade542114e8a4379063d3df9dc6984188ac0ce7",
+    "src/engine/deck_pads.rs": "10053e7ad236cc486e2c9734a4d0c4c98d119b9bd3fd0997a602e3b7aaeb13aa",
+    "src/engine/deck_pads/pitch.rs": "fba654eed2cf91f92c9ac1fb87f92b965f8ddd1ae17952b81a8a07b153207772",
+    "src/engine/deck_pads/pitch/tests.rs": "48a240aac19cd68e849702033d6005d0aef3eac9799d1a542b1b6e9fd7ac5664",
+    "src/engine/deck_pads/runtime.rs": "ff5fc87137e722ca0f703e32bafe8e0157b368c93bee8ba9877740b948d48fcd",
+    "src/engine/midi/learn.rs": "d33cea3a207b037cd5a320ae4add528bdfed86c488f12d5904d03fbf867e07c5",
+    "src/engine/midi/learn/tests.rs": "c26e094baf7505d013ee1a95f0417478745f8dee9d5ccf941d822236272fda29",
+    "src/engine/midi/presets.rs": "ce2331568c4ae85c1ee3449b552259e2aa867831682e384cb1be4928463c795d",
+    "src/engine/midi/profile.rs": "8c3e10d0d69478963ff09886f07a60e248f966b7cc651f5990f6ed1fe17cc19d",
+    "src/engine/mod.rs": "a47fa586d33a2b17d44668df70cd5294d84cfc84718ddb1c0f31b9091d553ef2",
+    "src/preferences/storage.rs": "c3c6b09c2e15a4bce69d88632289d30c520f1e5daf05ee4488f9d2356f7998e3",
+    "src/preferences/worker/midi_presets_tests.rs": "4d79f2d4de9126a53710423e959cac0f822a1c0a565656464bc5667aebe9ecf3",
+    "src/ui/deck_pads.rs": "de170867c958552df1fb74677e62670da6734aa61fa4693c0c7ac9dbaecf09cd",
+    "src/ui/deck_pads/pitch.rs": "a4615f108eeed52a8dd46bde20456e1dde08eb8f51c1ec7dcdcd16259836d648",
+    "src/ui/deck_pads/tests.rs": "97d14ef780d6eafc12b77c949061784044a77dbd903364f40753910c92e87f8c",
+    "src/ui/help/catalogue.rs": "f452efa9924dba2659c26e1e093319d8f36a3e16e228858e70cf7a3a56f860cc",
+    "src/ui/midi_learn.rs": "d7fc816dd585896a1f3d5047a0fd51b05be34fe4d44c38a7e9dafabcf8ec3d56"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/chromatic-cue-tests-fifth",
+    "sha256": "361bd5dc08b5b4d6e0607f8bd3922f2329f8f529d094e4ab9ea1f6d71a572fdd"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/chromatic-cue-fifth-source.json",
+    "sha256": "5281af826b165b90bf75981ed088f71b9268b15bda034b8424b7d2f7b3efc50a",
+    "baseRevision": "797c11d82ca52072e6bcec6f79eba8e93e236346",
+    "files": 803
+  },
+  "embeddedInputs": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "licenses/manifest.json": "7ee24b78e0716fbcf0bba8dc7e9997d29d8432ba532fa903114f8e9c4c54ce44",
+    "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+  },
+  "compileLog": {
+    "path": "target/app-backlog/chromatic-cue-fifth-build.log",
+    "sha256": "523cbf72a97b5e4caf93f75313e983be5ccc038f226e5ee3fee0c7ecb0e15ae7"
+  },
+  "productionCheck": {
+    "path": "target/app-backlog/chromatic-cue-fifth-production-check.log",
+    "sha256": "3a41938d312d09ce27ef06a2b6069a41696b78524ad2c8a9c3c63a7e6df6da1c",
+    "passed": true
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/chromatic-cue-fifth-core.log",
+      "sha256": "af458b7c0641c0feff1253034f4effe64b0789dda38026776a9583f79838c82d",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2145,
+      "seconds": 34.94
+    },
+    "native": {
+      "path": "target/app-backlog/chromatic-cue-fifth-native.log",
+      "sha256": "6d8a6a2685e359c061a76cb36359bd8ef8994de45210f53f7a8e027b6f034fb4",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2150,
+      "seconds": 0.25
+    },
+    "learn": {
+      "path": "target/app-backlog/chromatic-cue-fifth-learn.log",
+      "sha256": "8614376af3c25296776c067991521415eacca0af0cd3164c705df0f53d9815ff",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2150,
+      "seconds": 0
+    },
+    "presets": {
+      "path": "target/app-backlog/chromatic-cue-fifth-presets.log",
+      "sha256": "b0959803fbd04295b6378cbd8191f2eae41aa874d09966913812af57d8db2357",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2147,
+      "seconds": 0.08
+    },
+    "pads": {
+      "path": "target/app-backlog/chromatic-cue-fifth-pads.log",
+      "sha256": "ab8b459f72e199af2b8ee4a9e554e17d186fccf64e23285d5c547d96bca9f558",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2144,
+      "seconds": 0.82
+    },
+    "native-pads": {
+      "path": "target/app-backlog/chromatic-cue-fifth-native-pads.log",
+      "sha256": "371f0e629b3060acc8d2204c83f3a6ca8da1d3f9b21b829f0760682183078eb0",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2147,
+      "seconds": 0.76
+    },
+    "slicer": {
+      "path": "target/app-backlog/chromatic-cue-fifth-slicer.log",
+      "sha256": "4e5738fc4ce3b6a30cf68ca5272dbb97375eab249c7bd091cbfa96dfe1df3d92",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2141,
+      "seconds": 7.33
+    },
+    "slip": {
+      "path": "target/app-backlog/chromatic-cue-fifth-slip.log",
+      "sha256": "187f7d8fd86a08d178a158f5e5d76012499bafff6d22bbe331c3274bc286257c",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2143,
+      "seconds": 9.98
+    },
+    "key-shift": {
+      "path": "target/app-backlog/chromatic-cue-fifth-key-shift.log",
+      "sha256": "8543c88eac68f1109fb9c64de84e1445432bb33c3edd7c99bf17d57e1a1f791f",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2143,
+      "seconds": 40.29
+    },
+    "keylock": {
+      "path": "target/app-backlog/chromatic-cue-fifth-keylock.log",
+      "sha256": "7a7c31cddff4429554b96b43181a355829b5992e0ffb752a03e227c86112bee6",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2134,
+      "seconds": 33.64
+    },
+    "touch": {
+      "path": "target/app-backlog/chromatic-cue-fifth-touch.log",
+      "sha256": "cfcef5f61937aefc5932692da79c700c18af1676851298584d3668c49ac8a53c",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2139,
+      "seconds": 1.5
+    },
+    "workspace": {
+      "path": "target/app-backlog/chromatic-cue-fifth-workspace.log",
+      "sha256": "fff7cdcf518a5f2681c09b9f05592a174c37cd3494d943c37601a717524d717f",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2143,
+      "seconds": 0.99
+    },
+    "midi-learn": {
+      "path": "target/app-backlog/chromatic-cue-fifth-midi-learn.log",
+      "sha256": "2cc196150e490359231e5edb51e43fc751c43ec076d608d341f3c7e87ca68cd7",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2144,
+      "seconds": 0
+    },
+    "feedback": {
+      "path": "target/app-backlog/chromatic-cue-fifth-feedback.log",
+      "sha256": "ffaeb0f3971005cc4421c609a8aea09ba8516c7e6df8f84ee33623ee1466568c",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2142,
+      "seconds": 0.12
+    },
+    "ipc-limits": {
+      "path": "target/app-backlog/chromatic-cue-fifth-ipc-limits.log",
+      "sha256": "3eed7bc96f8867819bc59cf9cddbfa45c3947517d9f9cc2e2764d6952e7cf1d4",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2140,
+      "seconds": 1
+    },
+    "ipc-follow": {
+      "path": "target/app-backlog/chromatic-cue-fifth-ipc-follow.log",
+      "sha256": "8f4326c76dfdb00199f910d21bc7d156d9aa359cdb9091f633bc1946aa2be7d7",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2150,
+      "seconds": 0.01
+    },
+    "compose": {
+      "path": "target/app-backlog/chromatic-cue-fifth-compose.log",
+      "sha256": "612f28bcc951f3944cf76d60e7ea7ea3ddddea7c823207a430692f7218a71997",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2149,
+      "seconds": 0.31
+    },
+    "waveform": {
+      "path": "target/app-backlog/chromatic-cue-fifth-waveform.log",
+      "sha256": "cb3f744433b3e5fd2ce5c810648db1c4d5272b4a6b21cc8d628b9dab07773670",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2146,
+      "seconds": 0.74
+    },
+    "song-navigation": {
+      "path": "target/app-backlog/chromatic-cue-fifth-song-navigation.log",
+      "sha256": "c485692db6e0fd31a3423499bb45b08bf0db2ce63cfc985a2c748efd5c48fe08",
+      "outcome": "ok",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2140,
+      "seconds": 2.74
+    },
+    "project-timing": {
+      "path": "target/app-backlog/chromatic-cue-fifth-project-timing.log",
+      "sha256": "605cb9c2286f041c7e428666ef498dac3c585393dc9f89d5c13a8c9590371b37",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2144,
+      "seconds": 1.44
+    },
+    "metronome": {
+      "path": "target/app-backlog/chromatic-cue-fifth-metronome.log",
+      "sha256": "cafe810a1078a0cdba4dc512528caf2d8b446c2d63f8e06cbc4ab3b76c722ca6",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2145,
+      "seconds": 2.19
+    },
+    "recording": {
+      "path": "target/app-backlog/chromatic-cue-fifth-recording.log",
+      "sha256": "9e675b3573510edf66fe7d6219aec3ccd900fdb2961e93ec51fda7bc468c6eee",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2139,
+      "seconds": 4.09
+    },
+    "audio": {
+      "path": "target/app-backlog/chromatic-cue-fifth-audio.log",
+      "sha256": "7e1702c82442db5d8be027ac7ea785e94ed215974e6e7cb733e979a1d33ee622",
+      "outcome": "ok",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2147,
+      "seconds": 0.5
+    },
+    "manual": {
+      "path": "target/app-backlog/chromatic-cue-fifth-manual.log",
+      "sha256": "ba3865ddde7661614c33d73eb016215fa343c270b14a03052cb847edffd15499",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2150,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/chromatic-cue-fifth-help.log",
+      "sha256": "4808a41679eb651fc397c70dc3d9b5d56f3f1ee24d746a1638a147436b8d93df",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2136,
+      "seconds": 3.49
+    },
+    "full": {
+      "path": "target/app-backlog/chromatic-cue-fifth-full.log",
+      "sha256": "9b7880a407230184076272fe87cc0c09c468f17885e363e1b17e7daebdb2fccf",
+      "outcome": "ok",
+      "passed": 2107,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 708.62
+    }
+  },
+  "pcm": {
+    "callback_allocations": 0,
+    "groups": 288,
+    "maximum_source_frame_error": 1.2223608791828156e-8,
+    "minimum_fundamental_amplitude": 0.49928300767077255,
+    "physical_devices_opened": false
+  },
+  "callback": {
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "compared_frames": 61440,
+    "minimum_fundamental_amplitude": 0.47060143337033616,
+    "other_deck_and_master_unchanged": true,
+    "physical_devices_opened": false,
+    "semitones": [
+      -6,
+      -3,
+      0,
+      3,
+      6
+    ]
+  },
+  "native": {
+    "native_egui_accesskit": true,
+    "root_range_labels": true,
+    "original_reset_undo_redo": true,
+    "range_mode_focus_cancel": true,
+    "wrong_deck_mutations": 0,
+    "physical_devices_opened": false
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/chromatic-cue-fifth-full-output-timing.json",
+    "sha256": "b448c9ba85ec8b55e5fbdf7bf4e0b2a76ea997008967a586b4090a8f46106764",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 4932,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          43585,
+          1066189,
+          19032,
+          163256,
+          140188,
+          65453,
+          31301,
+          149733,
+          146165,
+          120055,
+          44487,
+          57419,
+          54975,
+          66241,
+          146257,
+          144564,
+          93662,
+          17344,
+          44359,
+          131125,
+          58765,
+          65864,
+          152755,
+          63228
+        ],
+        "max_delay_ns": 1066189
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          9585,
+          62235,
+          158968,
+          45242,
+          80725,
+          71375,
+          107608,
+          72424,
+          65282,
+          58307,
+          121998,
+          96814,
+          18338,
+          14821,
+          158846,
+          35828,
+          17936,
+          103586,
+          20860,
+          81635,
+          23701,
+          117226,
+          55792,
+          134942
+        ],
+        "max_delay_ns": 158968
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          152919,
+          5160,
+          161361,
+          107101,
+          125510,
+          43334,
+          128242,
+          133984,
+          153976,
+          40507,
+          122708,
+          81866,
+          126732,
+          16806,
+          14298,
+          56289,
+          88114,
+          117314,
+          48221,
+          17713,
+          96330,
+          92946,
+          20479,
+          72471
+        ],
+        "max_delay_ns": 161361
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          103503,
+          114688,
+          33539,
+          93517,
+          5826,
+          42429,
+          116656,
+          153383,
+          118652,
+          149670,
+          15647,
+          52332,
+          138310,
+          134079,
+          97305,
+          147824,
+          160885,
+          68736,
+          84422,
+          106982,
+          102917,
+          44436,
+          83996,
+          134681
+        ],
+        "max_delay_ns": 160885
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          130002,
+          17330,
+          147200,
+          132986,
+          78146,
+          11640,
+          103510,
+          45296,
+          5123,
+          110993,
+          139237,
+          37773,
+          108309,
+          63386,
+          84089,
+          69083,
+          155537,
+          108780,
+          48858,
+          20560,
+          134264,
+          132425,
+          57710,
+          30079
+        ],
+        "max_delay_ns": 155537
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          152628,
+          35603,
+          41703,
+          153636,
+          45194,
+          68502,
+          16143,
+          152953,
+          136219,
+          114152,
+          51044,
+          957190,
+          3784,
+          95802,
+          23943,
+          58793,
+          114435,
+          52826,
+          150176,
+          60901,
+          84459,
+          78059,
+          743788,
+          53842
+        ],
+        "max_delay_ns": 957190
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/chromatic-cue-fifth-node.log",
+    "sha256": "e29b0eafe27b7e3e6b2d9bc653a69ab67ef84e649addeafcfdef32a2ee75a9af",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "reason": "Compilation refused a native fixture accessing private renderer fields. The fixture now observes the actual published Engine snapshot without widening production visibility.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/chromatic-cue-first-build.log",
+          "sha256": "f2a5e7634d02aef2513caf499f70db9ce7b6bab48847fc7a1709ea677ce8740e"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-first-source.json",
+          "sha256": "f833ccbdd7f659db9a04a1c37e2615ff8eecaf52237f4e1839582cc797f5360d"
+        }
+      ]
+    },
+    "second": {
+      "reason": "Production check passed. Test compilation refused construction of a key-shift request with private fields; the fixture uses the existing source-qualified request constructor.",
+      "binary": null,
+      "artifacts": [
+        {
+          "path": "target/app-backlog/chromatic-cue-second-build.log",
+          "sha256": "61f103d36545382a56bf2d71b0052dce1a8daafceea9746e40de76120d39ded7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-second-production-check.log",
+          "sha256": "8ce36479b6864c4e72f579ac7b6aad8fa23d2978aae7eaf1bdcffdfabd1c7082"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-second-source.json",
+          "sha256": "0a7790292abce0e179fc7da20d1509e9a787e179ffe12c4114624c7ef72a65bb"
+        }
+      ]
+    },
+    "third": {
+      "reason": "All neighboring, native, callback and mapping checks passed. One tonal fixture asserted unity gain while leaving the default deck gain at 0.85. The final fixture explicitly selects unity; its amplitude threshold is unchanged. Final coverage also includes both paused audition and already-playing decks, 288 cases, and verifies that releasing a playing deck neither rewinds nor stops it. No production audio correction was needed for this fixture failure.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/chromatic-cue-tests-third",
+        "sha256": "1581e25b3d989577a7a34ff43e2169b2a24e3a56a4d76680b430e1d28f81de15"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/chromatic-cue-third-build.log",
+          "sha256": "ed28da2f2542a5b927e91001d0d98557c16d3af86c422bc8af9da6165bfa10b3"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-core.log",
+          "sha256": "84c7c7ea9483de8b9e7cf22552d2c56b1eb7a4b4f150f739ecd32f1c9305ba40"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-feedback.log",
+          "sha256": "ffaeb0f3971005cc4421c609a8aea09ba8516c7e6df8f84ee33623ee1466568c"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-ipc-follow.log",
+          "sha256": "8f4326c76dfdb00199f910d21bc7d156d9aa359cdb9091f633bc1946aa2be7d7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-ipc-limits.log",
+          "sha256": "7e28be8ff220b29a55d9f3b8c1f4994a7285acc1f95f094996c098666d99e265"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-key-shift.log",
+          "sha256": "6136fa1ccc15ee359ab896507734fd9e23661a91b9fe19eaf28b0127a48fe6c3"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-keylock.log",
+          "sha256": "3f7a0a68a3b20cce2aa8a3894bf38abedc423283439313ad7feb1c8ea38c7b5d"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-learn.log",
+          "sha256": "8614376af3c25296776c067991521415eacca0af0cd3164c705df0f53d9815ff"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-midi-learn.log",
+          "sha256": "2cc196150e490359231e5edb51e43fc751c43ec076d608d341f3c7e87ca68cd7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-native-pads.log",
+          "sha256": "25762c2a9cb4952f29ee6cf5a50e06064ab670432af2567c3864d172294cf9c7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-native.log",
+          "sha256": "6d8a6a2685e359c061a76cb36359bd8ef8994de45210f53f7a8e027b6f034fb4"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-pads.log",
+          "sha256": "278c5cdbcc584df2aff9648b72e30319ec968d59ac20d7e022403a739f685f5c"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-slicer.log",
+          "sha256": "85a3087302cd23bc98bf07783e2fc1d499f1232f75a00f59ba0b2c4cfaed75b8"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-slip.log",
+          "sha256": "21dcd2392757321cc996bc13ce58f2a10c73ff9ef7c12c84373a83a396ae288e"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-source.json",
+          "sha256": "8e0bf2f7d5c96104e8d6dbaa399405ca6d3e9b2f1b3356d6ae5f19fb06756f01"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-touch.log",
+          "sha256": "b86f990e18e1296e94bedb0e55d558f9bd762b4e2182130494d86ec3d219751e"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-third-workspace.log",
+          "sha256": "c4a0bc170d7ac182fa972000f653a36ab7167f5e7f6597479a321de7b1147315"
+        }
+      ]
+    },
+    "fourth": {
+      "reason": "All feature and neighboring focused checks passed. The full suite found an old preset fixture still refusing mode 8, which is now Pitch Cue. The final fixture exercises real ninth-mode export/import/preferences reopen, rejects mode 9 and pad 8, and qualifies older-header refusal while retaining old eight-mode compatibility. Production now requires existing current preset/preferences headers for the ninth mode; versions are unchanged. The final source and executable are fresh.",
+      "binary": {
+        "path": "target/app-backlog/qualification-bin/chromatic-cue-tests-fourth",
+        "sha256": "2ac12843d78ee23c97f0228a60be62d56501457787e10ce141e8aa9803cf98c2"
+      },
+      "artifacts": [
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-audio.log",
+          "sha256": "d0c588052ef5921f22f6c756f9243723d72ee6989c88b95681078b72c96728a5"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-build.log",
+          "sha256": "b9a8300324eb66aecd9d668403af5c634d1a78033678e61edc11084da3b49d1e"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-compose.log",
+          "sha256": "1fd18130895d51fb90be26ab76f9b6ecd08a80d6cf5af4feed813d2060a09437"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-core.log",
+          "sha256": "42094aed141d319dde633f26ee956c82afeb8c8a46f4d37eb07cb152e1487c3e"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-feedback.log",
+          "sha256": "5976055fbc1c4384a64401c7c3d2f92ffb1a5dcfab24c424a07cc8f4c31a4212"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-full.log",
+          "sha256": "ff4aabd8b3cd548b5a142ff27247912c41e5e990c929bc57e77a8065a483aee1"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-help.log",
+          "sha256": "ec5a801aa4c3688c2848eaa3b2b40e318eb51441db65d2fcb839a0a690884a98"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-ipc-follow.log",
+          "sha256": "8f4326c76dfdb00199f910d21bc7d156d9aa359cdb9091f633bc1946aa2be7d7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-ipc-limits.log",
+          "sha256": "7e28be8ff220b29a55d9f3b8c1f4994a7285acc1f95f094996c098666d99e265"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-key-shift.log",
+          "sha256": "4a9a78fbbbe264ff1b2d627bd7bde13cd8290f0cc1d5f7d9e12d43c9d694d174"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-keylock.log",
+          "sha256": "232c1e108b961806c221c6cdb30a70af17e0617a7b2291ed3100b53b30fcd73a"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-learn.log",
+          "sha256": "8614376af3c25296776c067991521415eacca0af0cd3164c705df0f53d9815ff"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-manual.log",
+          "sha256": "ba3865ddde7661614c33d73eb016215fa343c270b14a03052cb847edffd15499"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-metronome.log",
+          "sha256": "944d747762037b1c990747a849ebbaf14ae555f8320750bf1a14c5490b2fa85c"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-midi-learn.log",
+          "sha256": "2cc196150e490359231e5edb51e43fc751c43ec076d608d341f3c7e87ca68cd7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-native-pads.log",
+          "sha256": "ac9bc1a97074819e26b1ee7fdb35cec151725f6836f1ea54c3e09e99142a86ba"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-native.log",
+          "sha256": "73a1c07eeb58ca2e27964ac128ec2b41f45f0c464350046f170ad803bf49de86"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-pads.log",
+          "sha256": "45da76f3be61f7506737cc59136f39266f9d3d7226e98c396895af6b165e3d8b"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-production-check.log",
+          "sha256": "e34a9b9dd909371354f5df3476634bbfa74c72204ed5c4f65810ae11888f84ff"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-project-timing.log",
+          "sha256": "a1ca4ef6209d53b0feddf158119e62f5f943c13779717e5e594e2ba426e7f9fa"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-recording.log",
+          "sha256": "1aa4389f8285f89b8ea1094182c527a35b09da74894e0f7cd58b6d10dd811ec6"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-slicer.log",
+          "sha256": "a9de72733057b2986d233562b54fc04c853e9244eb69590c04dc61633481959c"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-slip.log",
+          "sha256": "e985197fc5201f2b102dbd7a1cd37d17c0012cf5a175e6748e1a22751058659f"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-song-navigation.log",
+          "sha256": "ee79412d84c51aef0dae46e2cb3281caeb8983c88b808237f82a0cfd0922fcec"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-source.json",
+          "sha256": "bf806038b45d048526b5ea637f6f3eba21116f0dcf906109b1036ba4157a35c7"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-touch.log",
+          "sha256": "cfcef5f61937aefc5932692da79c700c18af1676851298584d3668c49ac8a53c"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-waveform.log",
+          "sha256": "b7b4f33b4631f4162315cd294bb0d2dc2cae0513b9ba919afb02a2e9bfaebab3"
+        },
+        {
+          "path": "target/app-backlog/chromatic-cue-fourth-workspace.log",
+          "sha256": "9643459e1c2bd1601005ca338e886b5d563d8b8053023b7057abe71ed2138f48"
+        }
+      ]
+    }
+  },
+  "limits": "Linux ARM64 software qualification: eight monophonic chromatic cue pads, existing-cue root, labeled Low/Center/High ranges containing original key, source-qualified reset with Undo/Redo, independent tempo, newest original held-owner priority and source/mode/range/focus retirement. Immediate cue onset preserves quantize preference, paused cue audition returns on release and playing decks continue without rewinding. Actual renderer and OutputCallback tonal PCM, native egui/AccessKit and saved learned MIDI mapping dispatch passed. Existing forward pitch DSP range is 0.5–1.5; scratch/reverse and unsupported rates explicitly bypass pitch. Pad choices remain transient like existing pad modes; no new saved project version, dependency or manufacturer wire address. No physical device, capture, new OS GUI or listening acceptance."
+}

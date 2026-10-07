@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 54 implemented · 7 partial · 160 planned · 0 accepted · 8 outside release
+127 existing stack · 55 implemented · 7 partial · 159 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -257,7 +257,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#244](https://github.com/michaelmonetized/omatainer/issues/244) | Support lawful legacy and platform-specific plug-in interoperability | planned | #183 |  |
 | [ ] | [#245](https://github.com/michaelmonetized/omatainer/issues/245) | Support multichannel and immersive production as an advanced workflow | planned | #130, #179 |  |
 | [ ] | [#246](https://github.com/michaelmonetized/omatainer/issues/246) | Expose performance timing and mixer state for lighting systems | planned | #193, #161 |  |
-| [ ] | [#247](https://github.com/michaelmonetized/omatainer/issues/247) | Add chromatic cue-point performance pads | planned | #202, #192 |  |
+| [x] | [#247](https://github.com/michaelmonetized/omatainer/issues/247) | Add chromatic cue-point performance pads | implemented | #202, #192 | [receipt](../../docs/validation/chromatic-cue-pads.md), [receipt](../../docs/validation/chromatic-cue-pads-receipt.json) |
 | [ ] | [#248](https://github.com/michaelmonetized/omatainer/issues/248) | Support post-production session exchange and broadcast media metadata | planned | #179, #116 |  |
 | [x] | [#249](https://github.com/michaelmonetized/omatainer/issues/249) | Provide audio clip fades and editable arrangement crossfades | implemented | #226, #182 | [receipt](../../docs/validation/clip-fades.md), [receipt](../../docs/validation/clip-fades-receipt.json) |
 | [ ] | [#250](https://github.com/michaelmonetized/omatainer/issues/250) | Offer distinct high-quality warp modes for drums, tones, textures and mixes | planned | #214, #178, #179 |  |

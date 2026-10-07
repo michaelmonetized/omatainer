@@ -230,7 +230,7 @@ pub(crate) struct Capture {
 pub(crate) struct Device {
     pub source: u64,
     pub endpoint: Endpoint,
-    pub pad_modes: u8,
+    pub pad_modes: u16,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct View {
@@ -436,7 +436,7 @@ impl Shared {
         if state.devices.len() < 256 && name.len() <= 256 && id.len() <= 256 {
             state.devices.push(Device {
                 source,
-                pad_modes,
+                pad_modes: u16::from(pad_modes),
                 endpoint: Endpoint {
                     name: name.into(),
                     id: id.into(),

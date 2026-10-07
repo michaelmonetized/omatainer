@@ -581,35 +581,45 @@ impl DeckRt {
     /// Shared by rendering and publication: an armed but stopped/empty deck
     /// has no active rate to qualify and must not display a fallback warning.
     fn keylock_mode(&self) -> keylock::Mode {
-        if self.keylock { self.stretch_mode() } else { keylock::Mode::Off }
+        if self.effective_keylock() { self.stretch_mode() } else { keylock::Mode::Off }
     }
+
+    /// Resolve a held chromatic cue note independently of the saved deck transposition.
+    /// Takes this deck; returns its admitted pad override or the original saved key shift.
+    fn effective_key_shift(&self) -> i8 { self.controls.pitch_semitones.unwrap_or(self.key_shift) }
+
+    /// Preserve cue-pad pitch independently of the saved key-lock preference.
+    /// Takes this deck; returns whether ordinary lock or an admitted chromatic hold owns pitch-preserving processing.
+    fn effective_keylock(&self) -> bool { self.keylock || self.controls.pitch_semitones.is_some() }
 
     /// Report actual overlap processing for both lock and independent shift.
     /// Takes this deck; returns direct, active or a visible stopped/scratch/range bypass state.
     fn stretch_mode(&self) -> keylock::Mode {
-        if !self.keylock && self.key_shift == 0 { return keylock::Mode::Off; }
+        let shift = self.effective_key_shift();
+        if !self.effective_keylock() && shift == 0 { return keylock::Mode::Off; }
         if self.audio.is_none() { return keylock::Mode::NoMedia; }
         if !self.rendering() { return keylock::Mode::Stopped; }
         let touching = self.touching || self.follows_spindle() && self.spindle.as_ref().is_some_and(spindle::Playback::scratching);
         if touching { return keylock::Mode::ScratchBypass; }
-        if self.key_shift != 0 && !(0.5..=1.5).contains(&self.rate) { return keylock::Mode::UnsupportedRate; }
-        let factor = key_shift::factor(self.key_shift) as f32;
-        let ratio = if self.keylock { self.rate / factor } else { 1.0 / factor };
+        if shift != 0 && !(0.5..=1.5).contains(&self.rate) { return keylock::Mode::UnsupportedRate; }
+        let factor = key_shift::factor(shift) as f32;
+        let ratio = if self.effective_keylock() { self.rate / factor } else { 1.0 / factor };
         keylock::mode(true, false, ratio)
     }
 
     /// Report only the independent shift's renderer-confirmed state.
     /// Takes this deck; returns Off at zero semitones or its actual processing mode.
     fn key_shift_mode(&self) -> keylock::Mode {
-        if self.key_shift == 0 { keylock::Mode::Off } else { self.stretch_mode() }
+        if self.effective_key_shift() == 0 { keylock::Mode::Off } else { self.stretch_mode() }
     }
 
     /// Read the source sampling step inside each overlap grain.
     /// Takes output rate; returns source/output conversion times requested key shift, following the tempo fader when lock is off.
     fn processing_step(&self, output_sr: f64) -> f64 {
         let base = self.audio.as_ref().map_or(output_sr, |audio| f64::from(audio.sr)) / output_sr;
-        let tempo = if !self.keylock && self.key_shift != 0 && self.rate.is_finite() && self.rate > 0.0 { f64::from(self.rate) } else { 1.0 };
-        base * key_shift::factor(self.key_shift) * tempo
+        let shift = self.effective_key_shift();
+        let tempo = if !self.effective_keylock() && shift != 0 && self.rate.is_finite() && self.rate > 0.0 { f64::from(self.rate) } else { 1.0 };
+        base * key_shift::factor(shift) * tempo
     }
 
     /// Retune at the exact current playhead through the existing short envelope.
@@ -2154,9 +2164,9 @@ impl RtEngine {
             } else {
                 if mapped_sync.is_some() { d.rate = d.target_rate; }
                 else { d.rate += (d.target_rate - d.rate) * d.rate_smoothing; }
-                if d.keylock || d.key_shift != 0 {
-                    let (low, high) = key_shift::tempo_range(d.keylock, d.key_shift);
-                    let unity = if d.keylock { key_shift::factor(d.key_shift) as f32 } else { 1.0 };
+                if d.effective_keylock() || d.effective_key_shift() != 0 {
+                    let (low, high) = key_shift::tempo_range(d.effective_keylock(), d.effective_key_shift());
+                    let unity = if d.effective_keylock() { key_shift::factor(d.effective_key_shift()) as f32 } else { 1.0 };
                     if (d.target_rate == low || d.target_rate == unity || d.target_rate == high)
                         && (d.rate - d.target_rate).abs() <= keylock::boundary_tolerance(d.rate_smoothing)
                     {

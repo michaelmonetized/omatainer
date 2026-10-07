@@ -2160,9 +2160,17 @@ Workflow: Prepare a DJ deck.
 
 ### Deck performance pads
 
-Eight fixed pad IDs in eight modes
+Eight fixed pad IDs; independent performance modes
 
-Choose Hot Cue, Roll, Slice, Sampler, Saved Loop, Auto Loop, Manual Loop or Velocity Sampler independently on each deck. Parameter buttons change size, slice length or bank; Shift changes the slice domain or moves the loop. Held pads release their original action after mode, profile or deck-layer changes. Hot Cue stores or jumps to a position; Shift or Delete cue removes it. Saved loop pads retain their fixed IDs and source-qualified names.
+Choose Hot Cue, Roll, Slice, Sampler, Saved Loop, Auto Loop, Manual Loop, Velocity Sampler or Pitch Cue independently on each deck. Parameter buttons change size, slice length or bank; Shift changes the slice domain or moves the loop. Held pads release their original action after mode, profile or deck-layer changes. Hot Cue stores or jumps to a position; Shift or Delete cue removes it. Saved loop pads retain their fixed IDs and source-qualified names.
+
+Workflow: Prepare a DJ deck.
+
+### Chromatic cue pads
+
+Cue root; three eight-note ranges; original-key reset
+
+Choose Pitch Cue on the named deck and select an existing cue. Low gives -6 through +1 semitones; Center -3 through +4; High -1 through +6. Each pad displays its interval and retriggers that cue immediately, independently of deck quantization. The newest held pad owns the note; releasing it returns to an older surviving pad or the saved deck key. A stopped cue auditions while held, then returns to its cue. Playing playback continues at the chosen source position. Shift-pad chooses an existing root; ordinary parameter changes the range and Shift-parameter selects another existing cue. Original key cancels pad holds and resets saved transposition to zero in one undoable edit. Mode, root/range changes, focus loss, source replacement and safety stop retire original pad actions. Forward tempo/pitch ratios 0.5–1.5 are supported; scratch, reverse and wider tempo visibly bypass cue pitch. Root, range and mode are transient; existing cue positions and base key remain saved. Manufacturer mode IDs remain unchanged; a learned note can explicitly select Pitch Cue.
 
 Workflow: Prepare a DJ deck.
 

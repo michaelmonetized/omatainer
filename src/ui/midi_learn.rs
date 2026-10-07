@@ -164,7 +164,7 @@ impl App {
             if device.pad_modes != 0 {
                 ui.horizontal_wrapped(|ui| {
                     ui.small(format!("{} pad modes:", device.endpoint.name));
-                    for mode in crate::engine::deck_pads::Mode::ALL {
+                    for mode in crate::engine::deck_pads::Mode::CHOICES {
                         if device.pad_modes & (1 << mode.index()) != 0 { let [r,g,b] = mode.color(); ui.label(egui::RichText::new(mode.label()).color(egui::Color32::from_rgb(r,g,b))); }
                     }
                 });
@@ -243,7 +243,7 @@ impl App {
             if binding.action == Action::DeckPadMode {
                 let mode = crate::engine::deck_pads::Mode::from_index(binding.extra as u8).unwrap_or(crate::engine::deck_pads::Mode::HotCue);
                 egui::ComboBox::from_label("MIDI pad mode").selected_text(mode.label()).show_ui(ui, |ui| {
-                    for mode in crate::engine::deck_pads::Mode::ALL { ui.selectable_value(&mut binding.extra, u16::from(mode.index()), mode.label()); }
+                    for mode in crate::engine::deck_pads::Mode::CHOICES { ui.selectable_value(&mut binding.extra, u16::from(mode.index()), mode.label()); }
                 });
             }
             if binding.action == Action::DeckSyncMode {

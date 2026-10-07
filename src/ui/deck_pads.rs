@@ -1,4 +1,5 @@
 mod slicer;
+mod pitch;
 use super::*;
 use crate::engine::deck_pads::{Mode, Press, Release};
 
@@ -120,7 +121,7 @@ impl App {
                 .selected_text(mode.label())
                 .width((cell + 4.0) * 4.0)
                 .show_ui(ui, |ui| {
-                    for choice in Mode::ALL {
+                    for choice in Mode::CHOICES {
                         let [r, g, b] = choice.color();
                         let response = ui.selectable_label(
                             mode == choice,
@@ -172,6 +173,7 @@ impl App {
                 ui.small(parameter(mode, snap, self.snap.sampler_bank));
             });
             self.slicer_controls(ui,deck,snap,(cell+4.0)*4.0+9.0);
+            if mode == Mode::PitchCue { self.pitch_cue_controls(ui, deck, snap); }
             ui.push_id("fixed-deck-pad-grid",|ui| {
             for row in 0..2 {
                 ui.horizontal(|ui| {
@@ -202,7 +204,7 @@ impl App {
                         let description=if mode==Mode::Roll {format!("{description}; {}; {}",if snap.controls.roll_active==Some(pad as u8){"Active roll"}else{"No active roll"},if snap.controls.roll_pending==Some(pad as u8){format!("Queued at beat {:.5}",snap.controls.roll_due.unwrap_or(0.0))}else{"No queued roll".into()})}else{description};
                         accessibility::status(ui, &response, &description);
                         if mode==Mode::Roll&&snap.controls.roll_pending==Some(pad as u8){ui.painter().rect_stroke(response.rect.shrink(1.0),2.0,st(2.0,t.orange),egui::StrokeKind::Inside);}
-                        help::annotate(ui, &response, HelpControl::HotCue);
+                        help::annotate(ui, &response, if mode == Mode::PitchCue { HelpControl::PitchCue } else { HelpControl::HotCue });
                         self.deck_pad_gate(ui, deck as u8, pad as u8, &response, mode);
                     }
                 });
@@ -317,6 +319,7 @@ fn parameter(mode: Mode, snap: &crate::engine::DeckSnap, bank: usize) -> String 
         Mode::Sampler | Mode::VelocitySampler => format!("Bank {}", bank + 1),
         Mode::SavedLoop | Mode::ManualLoop => "Length · Shift: move".into(),
         Mode::HotCue => "Move loop".into(),
+        Mode::PitchCue => format!("{:+}…{:+} st · Shift: cue", crate::engine::deck_pads::semitones(snap.controls.pitch_range, 0).unwrap_or(-3), crate::engine::deck_pads::semitones(snap.controls.pitch_range, 7).unwrap_or(4)),
     }
 }
 
@@ -361,6 +364,7 @@ fn presentation(
                 },
             )
         }
+        Mode::PitchCue => (format!("{:+} st", crate::engine::deck_pads::semitones(snap.controls.pitch_range, pad as u8).unwrap_or(0)), snap.controls.pitch_pad == Some(pad as u8)),
         Mode::Slice => {
             if snap.controls.slicer.pending==Some(pad as u8) {color=Color32::from_rgb(255,160,40);}
             (format!("Slice {}",pad+1),snap.controls.slicer.active==Some(pad as u8))
