@@ -110,6 +110,7 @@ impl Plan {
                     offset: instance.offset,
                     repeating,
                     gain,
+                    fades: instance.fades,
                 });
             } else {
                 let region = clip

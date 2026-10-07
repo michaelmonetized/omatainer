@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(test)]
 mod tests;
 mod worker;
+mod fades;
 use worker::{Event, Job, Preview, Worker};
 
 #[derive(Default)]
@@ -22,6 +23,10 @@ pub(super) struct Editor {
     selected: Option<u64>,
     choice: usize,
     source_choice: Option<u64>,
+    fade_partner: Option<u64>,
+    fade_link_partner: Option<u64>,
+    crossfade_length: f64,
+    crossfade_curve: f32,
     target: Option<Reference>,
     start: f64,
     width: f64,
@@ -159,6 +164,7 @@ impl Editor {
                 },
                 |p| p.duration_beats,
             );
+        let fades=(source.clip.kind == crate::engine::ClipKind::Audio).then(||crate::engine::audio_clip::Fades { automatic:true,..source.clip.audio_region.map_or_else(Default::default,|r|r.fades) });
         let source = source.id;
         let id = self.model.identity()?;
         self.model.instances.push(Instance {
@@ -170,6 +176,9 @@ impl Editor {
             duration,
             repeating: false,
             gain: 1.0,
+            fades,
+            fade_link: 0,
+            crossfade: None,
         });
         self.selected = Some(id);
         Ok(())
@@ -539,7 +548,12 @@ impl App {
                         {
                             instance.track = editor.target.unwrap();
                         }
-                        editor.model.instances[index] = instance;
+                        if instance != editor.model.instances[index] {
+                            if instance.fade_link != 0 || instance.crossfade.is_some() || editor.model.instances.iter().any(|i| i.crossfade == Some(instance.id)) {
+                                if let Err(error)=editor.model.edit_fades(instance.id,instance,&preview.captured.media) { editor.message=error; }
+                            } else { editor.model.instances[index]=instance; }
+                        }
+                        fades::controls(ui,&mut editor,&preview,instance.id);
                         ui.horizontal(|ui| {
                             if ui.button("Copy instance").clicked() {
                                 if editor.model.instances.len()
@@ -549,13 +563,15 @@ impl App {
                                 } else if let Ok(id) = editor.model.identity() {
                                     let mut copy = instance;
                                     copy.id = id;
+                                    copy.fade_link = 0;
+                                    copy.crossfade = None;
                                     copy.start = editor.snap(instance.start + instance.duration);
                                     editor.model.instances.push(copy);
                                     editor.selected = Some(id);
                                 }
                             }
                             if ui.button("Delete instance").clicked() {
-                                editor.model.instances.remove(index);
+                                editor.model.remove_instance(instance.id);
                                 editor.selected = None;
                             }
                             if ui.button("Discard unused sources").clicked() {
@@ -728,6 +744,13 @@ fn timeline_row(
                     ) / f64::from(audio.sr),
                 )
             });
+            if let Some(fades)=instance.fades {
+                super::audio_fades::paint(&painter,block.shrink(2.0),fades,instance.duration,f64::from(preview.captured.state.bpm)/60.0,false);
+            } else if let Some(region) = region {
+                super::audio_fades::paint_gain(&painter, block.shrink(2.0), false, |fraction| {
+                    region.fade_gain(instance.offset + fraction * instance.duration, instance.repeating, f64::from(preview.captured.state.bpm) / 60.0)
+                });
+            }
         } else {
             midi_preview(
                 &source.clip,
@@ -788,9 +811,9 @@ fn timeline_row(
         editor.selected = Some(id);
     }
     if let Some((id, next)) = drag_update {
-        if let Some(i) = editor.model.instances.iter_mut().find(|i| i.id == id) {
-            *i = next;
-        }
+        if next.fade_link != 0 || next.crossfade.is_some() || editor.model.instances.iter().any(|i| i.crossfade == Some(next.id)) {
+            if let Err(error)=editor.model.edit_fades(id,next,&preview.captured.media) { editor.message=error; }
+        } else if let Some(i)=editor.model.instances.iter_mut().find(|i|i.id==id) { *i=next; }
     }
     let px = x(playhead);
     if rect.x_range().contains(px) {

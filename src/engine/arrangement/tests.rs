@@ -69,7 +69,10 @@ fn song_model(captured: &mut Captured, audio: Arc<Sample>) -> Model {
                 duration: 2.0,
                 repeating: false,
                 gain: 0.75,
-            },
+                            fades: None,
+                fade_link: 0,
+                crossfade: None,
+},
             Instance {
                 id: 3,
                 source: 1,
@@ -79,7 +82,10 @@ fn song_model(captured: &mut Captured, audio: Arc<Sample>) -> Model {
                 duration: 2.0,
                 repeating: false,
                 gain: 0.5,
-            },
+                            fades: None,
+                fade_link: 0,
+                crossfade: None,
+},
         ],
     }
 }
@@ -260,7 +266,10 @@ fn midi_same_pitch_holds_and_seek_chase_keep_independent_instance_owners() {
         duration: 4.0,
         repeating: false,
         gain: 1.0,
-    };
+            fades: None,
+        fade_link: 0,
+        crossfade: None,
+};
     let model = Model {
         enabled: true,
         next_id: 4,
@@ -655,7 +664,10 @@ fn clip_management_disabled_arrangement_snapshots_have_no_audio_notes_or_monitor
             duration: 4.0,
             repeating: true,
             gain: 1.0,
-        }],
+                    fades: None,
+            fade_link: 0,
+            crossfade: None,
+}],
     };
     let plan = Plan::prepare(
         Arc::new(model),

@@ -21,6 +21,7 @@ fn trim() -> Region {
         reverse: false,
         transpose: 0.0,
         tempo: 60.0,
+        fades: Fades::default(),
     }
 }
 #[test]
@@ -139,6 +140,7 @@ fn prepared_audio_source_edits_and_undo_redo_are_atomic_without_renderer_heap_wo
         reverse: true,
         transpose: 7.0,
         tempo: 120.0,
+        fades: Fades::default(),
     };
     let (request, ack) = edit(&engine, &mut live, 0, source.clone(), region);
     let before = engine.undo.view().cursor;
@@ -257,6 +259,7 @@ fn source_regions_reopen_at_other_rates_and_legacy_schemas_refuse_hidden_region_
         reverse: true,
         transpose: 3.5,
         tempo: 131.0,
+        fades: Fades::default(),
     };
     let (request, _) = edit(&engine, &mut live, 0, source, region);
     live.apply(Command::AudioClipEdit(request));
@@ -331,6 +334,7 @@ fn actual_track_audio_respects_trim_pitch_reverse_gain_input_monitor_and_half_op
                 reverse,
                 transpose,
                 tempo: 120.0,
+                fades: Fades::default(),
             };
             let plan = region.prepare(&source).unwrap();
             let (request, ack) = edit(&engine, &mut live, 0, source.clone(), region);
@@ -408,6 +412,7 @@ fn audio_regions_render_multiple_shared_instances_through_devices_routes_pfl_and
                 reverse,
                 transpose,
                 tempo: 120.0,
+                fades: Fades::default(),
             };
             let (request, ack) = edit(&engine, &mut live, track, source.clone(), region);
             live.apply(Command::AudioClipEdit(request));

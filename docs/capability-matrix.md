@@ -558,6 +558,18 @@ Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz referenc
 
 Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed.
 
+### Issue #249: implemented
+
+- coherent source and loop fades: [src/engine/audio_clip/fades.rs](../src/engine/audio_clip/fades.rs) — Validated curved quarter-note envelope and optional automatic 4 ms edges; shared playback/waveform gain
+- editable crossfades and linked tracks: [src/engine/arrangement/fades.rs](../src/engine/arrangement/fades.rs) — Adjacent/overlap resize, source-handle checks, aligned stable track groups, atomic refusal and cleanup
+- actual native source and placement editors: [src/ui/audio_fades.rs](../src/ui/audio_fades.rs) — Accessible duration/curve controls, automatic edge choice and audible waveform envelope; existing Apply/Undo route
+- versioned project and clip persistence: [src/engine/project/model.rs](../src/engine/project/model.rs) — State 26 source/placement envelopes and stable links with strict old-header guards
+- Acceptance fixtures: `engine::audio_clip::fades_tests`, `engine::arrangement::fades::tests`, `ui::audio_clips::tests::native_audio_fade_lengths_curves_auto_edges_and_apply_undo_preserve_source_pcm`, `ui::arrangement::tests::native_arrangement_crossfade_and_aligned_fade_links_use_actual_widgets_and_one_apply_undo`, `audio_delivery::tests::arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock`.
+- Evidence: [docs/validation/clip-fades.md](../docs/validation/clip-fades.md).
+- Evidence: [docs/validation/clip-fades-receipt.json](../docs/validation/clip-fades-receipt.json).
+
+Linux ARM64 software qualification: explicit curved quarter-note fades and automatic 4 ms edges, coherent stereo gain, trimmed/reverse/transposed source loops, real Session conductor ramps and unequal rates, editable adjacent/overlap Arrangement crossfades with available source audio, aligned linked fade groups and stable track references, atomic producer edits/cancellation/stale-target refusal and one Undo/Redo, native controls, real project/template files and version 26 old-header guards. Arrangement placement overrides replace source envelopes; inherited source fades follow source offsets and repeats. Source PCM stays immutable. Complete linked take comping, warp markers and unrelated grouped edit commands in issue 318 remain separate. No physical device opened, live capture or new GUI; stage processes/state/session preserved.
+
 ### Issue #255: implemented
 
 - native live section and loop editor: [src/ui/song_navigation.rs](../src/ui/song_navigation.rs) — Named creation/edit/move/delete, exact beat/time entry, quantized previous/next/ID jumps, loop braces and loop-to-next; keyboard/assistive handlers
@@ -699,7 +711,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#246](https://github.com/michaelmonetized/omatainer/issues/246) | Expose performance timing and mixer state for lighting systems | planned |
 | [#247](https://github.com/michaelmonetized/omatainer/issues/247) | Add chromatic cue-point performance pads | planned |
 | [#248](https://github.com/michaelmonetized/omatainer/issues/248) | Support post-production session exchange and broadcast media metadata | planned |
-| [#249](https://github.com/michaelmonetized/omatainer/issues/249) | Provide audio clip fades and editable arrangement crossfades | planned |
+| [#249](https://github.com/michaelmonetized/omatainer/issues/249) | Provide audio clip fades and editable arrangement crossfades | implemented |
 | [#250](https://github.com/michaelmonetized/omatainer/issues/250) | Offer distinct high-quality warp modes for drums, tones, textures and mixes | planned |
 | [#251](https://github.com/michaelmonetized/omatainer/issues/251) | Isolate plugin failures and restore processing without losing sessions | planned |
 | [#252](https://github.com/michaelmonetized/omatainer/issues/252) | Publish hardware profiles backed by end-to-end compatibility evidence | planned |

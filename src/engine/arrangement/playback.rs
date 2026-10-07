@@ -135,7 +135,9 @@ impl Playback {
             .and_then(Option::as_ref)
             .is_some_and(|t| layout.resolves(session::Axis::Track, slot, t.reference))
     }
-    pub(super) fn sample(&mut self, slot: usize, beat: f64) -> ([f32; 2], bool) {
+    #[cfg(test)]
+    pub(super) fn sample(&mut self, slot: usize, beat: f64) -> ([f32; 2], bool) { self.sample_with_tempo(slot,beat,2.0) }
+    pub(super) fn sample_with_tempo(&mut self, slot: usize, beat: f64, beats_per_second: f64) -> ([f32; 2], bool) {
         let Some(plan) = &self.plan else {
             return ([0.0; 2], false);
         };
@@ -152,7 +154,7 @@ impl Playback {
             let audio = source.audio.as_ref().unwrap();
             let local = span.offset + beat - span.start;
             let value = if let Some(region) = source.audio_region {
-                region.sample(audio, local, span.repeating)
+                if span.fades.is_some() { region.sample(audio, local, span.repeating) } else { region.faded_sample(audio,local,span.repeating,beats_per_second) }
             } else if span.repeating || local < source.length {
                 let (l, r) = audio
                     .at(local.rem_euclid(source.length) / source.length * audio.frames() as f64);
@@ -161,7 +163,7 @@ impl Playback {
                 [0.0; 2]
             };
             for channel in 0..2 {
-                output[channel] += value[channel] * span.gain;
+                output[channel] += value[channel] * span.gain * span.fades.map_or(1.0,|f| f.gain(beat-span.start,span.end-span.start,beats_per_second));
             }
         }
         (
@@ -481,6 +483,6 @@ impl RtEngine {
                 }
             }
         }
-        self.arrangement.sample(slot, (end - step).max(0.0))
+        self.arrangement.sample_with_tempo(slot, (end - step).max(0.0), step*f64::from(self.sr))
     }
 }

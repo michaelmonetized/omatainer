@@ -87,7 +87,7 @@ impl Editor {
             return;
         };
         self.source = Some(index);
-        self.region = Region::full(source, preview.tempo).ok();
+        self.region = Region::full(source, preview.tempo).ok().map(|mut r|{ r.fades.automatic=true; r });
         self.name = source.name.clone();
         self.view_start = 0.0;
         self.view_width = 1.0;
@@ -118,7 +118,7 @@ impl Editor {
                                 self.region = preview
                                     .source
                                     .as_ref()
-                                    .and_then(|s| Region::full(s, preview.tempo).ok());
+                                    .and_then(|s| Region::full(s, preview.tempo).ok()).map(|mut r|{ r.fades.automatic=true; r });
                             }
                             if preview
                                 .source
@@ -316,6 +316,10 @@ impl App {
                     let f = (frame as f64 / frames as f64 - editor.view_start) / editor.view_width;
                     if (0.0..=1.0).contains(&f) { let x = rect.left() + rect.width() * f as f32; painter.line_segment([Pos2::new(x, rect.top()), Pos2::new(x, rect.bottom())], Stroke::new(1.0_f32, color)); painter.text(Pos2::new(x, rect.top()), egui::Align2::LEFT_TOP, label, FontId::proportional(11.0), color); }
                 }
+                if let Ok(plan)=(Region { fades:crate::engine::audio_clip::Fades::default(),..region }).prepare(source) {
+                    let trim_rect=Rect::from_min_max(Pos2::new(rect.left()+rect.width()*((region.start as f64/frames as f64-editor.view_start)/editor.view_width)as f32,rect.top()),Pos2::new(rect.left()+rect.width()*((region.end as f64/frames as f64-editor.view_start)/editor.view_width)as f32,rect.bottom()));
+                    super::audio_fades::paint(&painter,trim_rect,region.fades,plan.duration_beats,f64::from(preview.tempo)/60.0,region.reverse);
+                }
                 response.on_hover_text(format!("Rainbow frequency waveform · {} Hz · {} channels · {} source frames", source.sr, source.ch, frames));
                 super::waveform::legend(ui, &self.theme);
                 frame_control(ui, "Source start frame", &mut region.start, frames, source.sr);
@@ -331,6 +335,9 @@ impl App {
                     if let Some(next) = accessibility::numeric(ui, &response, "Audio clip gain", editor.gain, 0.0, 1.5, 0.01, "") { editor.gain = next; }
                 });
                 ui.label(tr!("Pitch resampling changes pitch and duration. Source tempo sets playback speed against the song clock."));
+                if let Ok(neutral)=(Region { fades:crate::engine::audio_clip::Fades::default(),..region }).prepare(source) {
+                    super::audio_fades::controls(ui,&mut region.fades,neutral.duration_beats);
+                }
                 let plan = region.prepare(source);
                 match &plan { Ok(plan) => { ui.label(format!("Trim {:.6} s · musical length {:.6} beats", (region.end - region.start) as f64 / f64::from(source.sr), plan.duration_beats)); }, Err(error) => { ui.colored_label(Color32::LIGHT_RED, *error); } }
                 editor.region = Some(region);

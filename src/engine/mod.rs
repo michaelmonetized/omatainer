@@ -1844,18 +1844,18 @@ impl RtEngine {
             let duration = region.map_or(clip_beats, |region| region.end - region.start);
             let period = region.map_or(clip_beats, |region| region.period());
             let elapsed = clock - if explicit_region { p.midi_start_beat } else { p.start_beat };
-            let ending = !repeating && elapsed > duration + midi_schedule::BEAT_EPSILON;
+            let step = if audio_region.is_some() { if self.conductor.is_some() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 } } else { midi_schedule::BEAT_EPSILON };
+            let sample_elapsed = (elapsed - step).max(0.0);
+            let ending = !repeating && if audio_region.is_some() { sample_elapsed >= duration } else { elapsed > duration + midi_schedule::BEAT_EPSILON };
             {
                 // Match the event heap's half-open sample interval. An exact
                 // endpoint belongs to the next sample, including arp/loop steps.
-                let step = if audio_region.is_some() { if self.conductor.is_some() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 } } else { midi_schedule::BEAT_EPSILON };
-                let sample_elapsed = (elapsed - step).max(0.0);
                 let local = region.map_or_else(|| sample_elapsed.rem_euclid(clip_beats),
                     |region| region.position(sample_elapsed, p.looping).unwrap_or(region.end));
                 if !ending && (self.tracks[ti].clips[scene].kind == ClipKind::Audio || self.tracks[ti].kind != 0 && self.tracks[ti].poly.offline.is_some()) {
                     let clip = &self.tracks[ti].clips[scene];
                     if let Some(audio) = &clip.audio {
-                        let (l,r)=if let Some(plan)=audio_region {let frame=plan.sample(audio,sample_elapsed,p.looping);(frame[0],frame[1])}else{let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;audio.at(phase)};
+                        let (l,r)=if let Some(plan)=audio_region {let frame=plan.faded_sample(audio,sample_elapsed,p.looping,step*self.sr as f64);(frame[0],frame[1])}else{let phase = local / (f64::from(clip.bars) * 4.0) * audio.frames() as f64;audio.at(phase)};
                         let gain = clip_gain(clip.gain) * clip_gain_value; fallback = [l * gain, r * gain];
                     }
                 }

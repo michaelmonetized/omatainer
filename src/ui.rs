@@ -49,6 +49,7 @@ mod waveform;
 mod piano_roll;
 mod midi_files;
 mod audio_clips;
+mod audio_fades;
 mod arrangement;
 mod song_navigation;
 mod clip_manager;

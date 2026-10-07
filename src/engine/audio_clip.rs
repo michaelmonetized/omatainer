@@ -1,6 +1,10 @@
 use super::Sample;
 use serde::{Deserialize, Serialize};
 pub(crate) mod edit;
+mod fades;
+pub(crate) use fades::Fades;
+#[cfg(test)]
+mod fades_tests;
 #[cfg(test)]
 mod tests;
 
@@ -17,6 +21,8 @@ pub(crate) struct Region {
     pub reverse: bool,
     pub transpose: f32,
     pub tempo: f32,
+    #[serde(default, skip_serializing_if = "Fades::is_default")]
+    pub fades: Fades,
 }
 impl Region {
     /// Select a complete source at its intended musical tempo.
@@ -31,6 +37,7 @@ impl Region {
             reverse: false,
             transpose: 0.0,
             tempo,
+            fades: Fades::default(),
         };
         region.prepare(source)?;
         Ok(region)
@@ -58,6 +65,14 @@ impl Region {
         let duration_beats = (self.end - self.start) as f64 / frames_per_beat;
         if !(0.000001..=262144.0).contains(&duration_beats) {
             return Err("Audio clip duration exceeds its supported musical range");
+        }
+        if !self.fades.valid(duration_beats)
+            || self.loop_enabled
+                && !self
+                    .fades
+                    .valid((self.loop_end - self.loop_start) as f64 / frames_per_beat)
+        {
+            return Err("Audio fades must fit the trim and retained inner loop without overlapping; curves must be between -1 and 1");
         }
         Ok(Plan {
             region: self,
@@ -165,5 +180,59 @@ impl Plan {
                     as f32
             })
             .clamp(0.0, 1.0)
+    }
+}
+
+impl Plan {
+    /// Render the retained source through one coherent channel envelope.
+    /// Takes immutable PCM, emitted beats, repetition and quarter notes per second; returns trimmed stereo with identical fade gain on both channels and at each inner-loop edge.
+    pub(crate) fn faded_sample(
+        self,
+        source: &Sample,
+        beats: f64,
+        repeating: bool,
+        beats_per_second: f64,
+    ) -> [f32; 2] {
+        let value = self.sample(source, beats, repeating);
+        let gain = self.fade_gain(beats, repeating, beats_per_second);
+        value.map(|v| v * gain)
+    }
+    /// Read the audible envelope at a source or repeated-loop position.
+    /// Takes elapsed quarter notes, repetition and quarter notes per second; returns the common stereo multiplier for playback and waveform previews.
+    pub(crate) fn fade_gain(self, beats: f64, repeating: bool, beats_per_second: f64) -> f32 {
+        if self.region.fades.is_default() {
+            return 1.0;
+        }
+        let (elapsed, duration) = if repeating {
+            let r = self.region;
+            let (intro, period) = if r.loop_enabled {
+                (
+                    (if r.reverse {
+                        r.end - r.loop_start
+                    } else {
+                        r.loop_end - r.start
+                    }) as f64
+                        / self.frames_per_beat,
+                    (r.loop_end - r.loop_start) as f64 / self.frames_per_beat,
+                )
+            } else {
+                (self.duration_beats, self.duration_beats)
+            };
+            if beats < intro {
+                (beats, intro)
+            } else {
+                let phase = (beats - intro).rem_euclid(period);
+                let tolerance = f64::EPSILON * beats.abs().max(1.0) * 4.0;
+                let phase = if phase < tolerance || period - phase < tolerance {
+                    0.0
+                } else {
+                    phase
+                };
+                (phase, period)
+            }
+        } else {
+            (beats, self.duration_beats)
+        };
+        self.region.fades.gain(elapsed, duration, beats_per_second)
     }
 }

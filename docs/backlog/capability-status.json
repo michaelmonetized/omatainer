@@ -1702,6 +1702,43 @@
       ],
       "limits": "Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed."
     },
+    "249": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "coherent source and loop fades",
+          "file": "src/engine/audio_clip/fades.rs",
+          "entry": "Validated curved quarter-note envelope and optional automatic 4 ms edges; shared playback/waveform gain"
+        },
+        {
+          "kind": "editable crossfades and linked tracks",
+          "file": "src/engine/arrangement/fades.rs",
+          "entry": "Adjacent/overlap resize, source-handle checks, aligned stable track groups, atomic refusal and cleanup"
+        },
+        {
+          "kind": "actual native source and placement editors",
+          "file": "src/ui/audio_fades.rs",
+          "entry": "Accessible duration/curve controls, automatic edge choice and audible waveform envelope; existing Apply/Undo route"
+        },
+        {
+          "kind": "versioned project and clip persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State 26 source/placement envelopes and stable links with strict old-header guards"
+        }
+      ],
+      "fixtures": [
+        "engine::audio_clip::fades_tests",
+        "engine::arrangement::fades::tests",
+        "ui::audio_clips::tests::native_audio_fade_lengths_curves_auto_edges_and_apply_undo_preserve_source_pcm",
+        "ui::arrangement::tests::native_arrangement_crossfade_and_aligned_fade_links_use_actual_widgets_and_one_apply_undo",
+        "audio_delivery::tests::arrangement_song_export_matches_realtime_overlaps_midi_and_five_minute_clock"
+      ],
+      "evidence": [
+        "docs/validation/clip-fades.md",
+        "docs/validation/clip-fades-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: explicit curved quarter-note fades and automatic 4 ms edges, coherent stereo gain, trimmed/reverse/transposed source loops, real Session conductor ramps and unequal rates, editable adjacent/overlap Arrangement crossfades with available source audio, aligned linked fade groups and stable track references, atomic producer edits/cancellation/stale-target refusal and one Undo/Redo, native controls, real project/template files and version 26 old-header guards. Arrangement placement overrides replace source envelopes; inherited source fades follow source offsets and repeats. Source PCM stays immutable. Complete linked take comping, warp markers and unrelated grouped edit commands in issue 318 remain separate. No physical device opened, live capture or new GUI; stage processes/state/session preserved."
+    },
     "255": {
       "status": "implemented",
       "paths": [

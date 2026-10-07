@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 25;
+pub const STATE_VERSION: u32 = 26;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -111,6 +111,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 26 && (raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|t|t.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|a|a.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|s|s.get("clip"))).any(|c|c.get("audio_region").is_some_and(|r|r.get("fades").is_some())) || raw.get("arrangement").and_then(|a|a.get("instances")).and_then(serde_json::Value::as_array).into_iter().flatten().any(|i|["fades","fade_link","crossfade"].into_iter().any(|f|i.get(f).is_some()))) { return Err(serde::de::Error::custom("Audio fades and crossfade links require project state version 26")); }
         if version < 25 && (raw.get("sync_leader").is_some() || raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("sync_phase").is_some()))) { return Err(serde::de::Error::custom("Sync leaders and phase modes require project state version 25")); }
         if version < 23 && (raw.get("scene_timing").is_some() || raw.get("session").is_some_and(|layout| ["tracks", "scenes"].into_iter().flat_map(|axis| layout.get(axis).and_then(serde_json::Value::as_array).into_iter().flatten()).any(|item| item.get("scene").is_some()))) { return Err(serde::de::Error::custom("Scene properties require project state version 23")); }
         if version < 22 && raw.get("navigation").is_some() { return Err(serde::de::Error::custom("Song sections require project state version 22")); }
@@ -625,7 +626,7 @@ impl State {
             for clip in &track.clips {let (notes,bytes)=clip.validate(self.version,media)?;note_count+=notes;midi_bytes+=bytes;}
         }
         if let Some(navigation)=&self.navigation{if self.version<22{return fail("song sections in legacy state");}navigation.validate()?;}
-        if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
+        if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}if self.version<26 && (arrangement.instances.iter().any(|i|i.fades.is_some()||i.fade_link!=0||i.crossfade.is_some())||arrangement.sources.iter().any(|s|s.clip.audio_region.is_some_and(|r|!r.fades.is_default()))){return fail("audio fades in a legacy arrangement");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
         if midi_bytes > midi_data::MAX_LANE_BYTES { return fail("MIDI metadata exceeds 16 MiB"); }
         if note_count > MAX_TOTAL_NOTES {
             return fail("note count (maximum 65536)");
@@ -890,7 +891,7 @@ impl SavedClip{
                     if version < 15 && !lanes.labels.is_empty() { return fail("MIDI labels in a legacy state"); }
                     lanes.validate()?; midi_bytes += lanes.bytes();
                 }
-                if let Some(region)=clip.audio_region {if version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
+                if let Some(region)=clip.audio_region {if version<26 && !region.fades.is_default(){return fail("audio fades in a legacy clip");}if version<18||clip.kind!=ClipKind::Audio{return fail("audio source region in a legacy or non-audio clip");}let source=clip.audio.and_then(|i|media.get(i)).ok_or_else(||"Audio clip region has no embedded source".to_owned())?;let plan=region.prepare(source).map_err(str::to_owned)?;if clip.bars!=(plan.duration_beats/4.0)as f32{return fail("audio clip duration disagrees with its source region");}}
                 note_ids.clear();
                 if !text_ok(&clip.name)
                     || !finite_range(clip.bars as f64, if clip.audio_region.is_some(){0.0000001}else if clip.region.is_some() { 1.0 / 4096.0 } else { 0.25 }, 65536.0)

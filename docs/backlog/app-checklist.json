@@ -3505,9 +3505,12 @@
         226,
         182
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/clip-fades.md",
+        "docs/validation/clip-fades-receipt.json"
+      ]
     },
     {
       "issue": 250,

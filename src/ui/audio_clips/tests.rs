@@ -309,3 +309,57 @@ fn actual_mp3_and_damaged_file_import_have_explicit_results_and_midi_targets_are
         g.app.audio_clips.message
     );
 }
+
+#[test]
+fn native_audio_fade_lengths_curves_auto_edges_and_apply_undo_preserve_source_pcm() {
+    let mut g = Gui::new();
+    g.click("Audio clip");
+    g.wait();
+    let path = g.wav();
+    g.load(&path);
+    assert!(g.app.audio_clips.region.unwrap().fades.automatic);
+    g.set("Fade in beats", 0.25);
+    g.set("Fade out beats", 0.5);
+    g.set("Fade in curve", -0.75);
+    g.set("Fade out curve", 0.75);
+    let region = g.app.audio_clips.region.unwrap();
+    let source = g
+        .app
+        .audio_clips
+        .preview
+        .as_ref()
+        .unwrap()
+        .source
+        .as_ref()
+        .unwrap()
+        .clone();
+    let data = source.data.clone();
+    let cursor = g.app.engine.undo.view().cursor;
+    g.click("Apply audio clip");
+    g.wait();
+    assert_eq!(g.rt.tracks[2].clips[7].audio_region.unwrap().region, region);
+    assert_eq!(g.app.engine.undo.view().cursor, cursor + 1);
+    assert_eq!(source.data, data);
+    g.rt.apply(Command::Undo);
+    assert_eq!(g.rt.tracks[2].clips[7].kind, crate::engine::ClipKind::Empty);
+    g.rt.apply(Command::Redo);
+    assert_eq!(
+        g.rt.tracks[2].clips[7].audio_region.unwrap().region.fades,
+        region.fades
+    );
+    g.frame(vec![]);
+    g.click("Refresh audio clip");
+    g.wait();
+    g.click("Automatic 4 ms edge fades");
+    assert!(!g.app.audio_clips.region.unwrap().fades.automatic);
+    g.click("Apply audio clip");
+    g.wait();
+    assert!(
+        !g.rt.tracks[2].clips[7]
+            .audio_region
+            .unwrap()
+            .region
+            .fades
+            .automatic
+    );
+}

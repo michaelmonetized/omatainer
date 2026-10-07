@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 pub(crate) mod edit;
+mod fades;
 mod playback;
 mod prepare;
 #[cfg(test)]
@@ -53,7 +54,14 @@ pub(crate) struct Instance {
     pub duration: f64,
     pub repeating: bool,
     pub gain: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fades: Option<audio_clip::Fades>,
+    #[serde(default, skip_serializing_if = "no_link")]
+    pub fade_link: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crossfade: Option<u64>,
 }
+fn no_link(link: &u64) -> bool { *link == 0 }
 impl Model {
     /// Allocate a stable song identity on the producer.
     /// Takes the editable model; returns a nonzero unused identity or refuses exhausted storage.
@@ -118,6 +126,7 @@ impl Model {
                 );
             }
         }
+        self.validate_fades(media)?;
         Ok(())
     }
     /// Count retained MIDI content against the native project budget.
@@ -146,6 +155,7 @@ struct AudioSpan {
     offset: f64,
     repeating: bool,
     gain: f32,
+    fades: Option<audio_clip::Fades>,
 }
 #[derive(Clone, Copy, Debug)]
 struct NoteSpan {

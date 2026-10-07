@@ -590,7 +590,10 @@ fn quantized_audio_jump_changes_to_the_destination_on_the_exact_rendered_sample(
                 duration: 6.0,
                 repeating: false,
                 gain: 1.0,
-            }],
+                            fades: None,
+                fade_link: 0,
+                crossfade: None,
+}],
         };
         let (request, _) =
             arrangement::edit::Request::prepare(captured, song, &AtomicBool::new(false)).unwrap();
