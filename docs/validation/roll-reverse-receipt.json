@@ -795,5 +795,10 @@
       ]
     }
   },
-  "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved."
+  "limits": "Linux ARM64 software qualification: held beat-division rolls with per-deck onset timing, original source/key cancellation, newest-owner priority after slot reuse, shared advancing Slip root and original-loop release; independent native reverse latch and source-owned censor with defined first-frame/backward-loop behavior. Actual renderer/OutputCallback PCM, numbered source impulses, decoded WAV/FLAC/MP3, native egui/AccessKit pointer/key/touch/assistive inputs and confirmed waveform direction. Existing SP1 direction feedback bytes generated from actual snapshots without output ports; no NS7 direction LED or new motor address introduced. No new dependency or saved project/profile format. No physical audio/MIDI device, live capture, new OS GUI, listening or stage continuity acceptance; existing independent stage processes/session preserved.",
+  "releasePreflight": {
+    "path": "target/app-backlog/roll-reverse-release-build.log",
+    "sha256": "36cc5b661a9717886532a0d787621dc6e1864e289d1f9b618f0776a4336471a7",
+    "reason": "The source inventory was generated before the combined checklist, whose refreshed hashes therefore differed at release preflight. The final workflow generates capability/checklist metadata before refreshing and checking the inventory. Qualified Rust source and dependency records are unchanged; the refused preflight is retained."
+  }
 }
