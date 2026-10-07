@@ -5,6 +5,7 @@ mod keylock_tests;
 pub(crate) mod project;
 pub(crate) mod live_set;
 pub(crate) mod midi_edit;
+pub(crate) mod midi_tools;
 pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
 pub(crate) mod song_navigation;

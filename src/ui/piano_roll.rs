@@ -14,6 +14,7 @@ mod canvas;
 mod step;
 mod rhythm;
 mod control;
+mod tools;
 
 pub(super) struct Editor {
     open: bool,
@@ -73,6 +74,7 @@ struct Draft {
     step_chord: BTreeSet<NoteId>,
     rhythm: rhythm::Generator,
     controls: control::Controls,
+    tools: tools::Tools,
 }
 #[derive(Clone, Copy)]
 struct Values {
@@ -150,6 +152,7 @@ impl Draft {
             step_grid: 3,
             step_chord: BTreeSet::new(),
             rhythm: rhythm::Generator::default(),
+            tools: tools::Tools::default(),
         }
     }
     fn snap(&self, value: f64) -> f32 {
@@ -319,7 +322,7 @@ fn pitch_name(pitch: u8) -> String {
 }
 impl Editor {
     fn busy(&self) -> bool {
-        self.loading.is_some() || self.preparing.is_some() || self.pending.is_some()
+        self.loading.is_some() || self.preparing.is_some() || self.pending.is_some() || self.draft.as_ref().is_some_and(|draft|draft.tools.busy())
     }
     fn stop(&mut self, engine: &Engine) {
         if let Some(id) = self.audition {
@@ -403,6 +406,7 @@ impl Editor {
         }
     }
     fn poll(&mut self, engine: &Engine) {
+        if let Some(draft)=&mut self.draft {let mut tools=std::mem::take(&mut draft.tools);if let Err(error)=tools.poll(draft){self.error=Some(error);}draft.tools=tools;}
         if self.stop_requested {
             self.stop(engine);
         }
@@ -435,6 +439,7 @@ impl Editor {
                         draft.steps.clear();
                         draft.step_chord.clear();
                         draft.rhythm.committed();
+                        draft.tools.committed();
                         draft.controls.dirty = false;
                     }
                     self.pending = None;
@@ -615,7 +620,7 @@ impl App {
                         }
                         let scroll = egui::ScrollArea::vertical().id_salt("piano-roll-body")
                             .max_height((available.height() - 160.0).max(100.0)).show(ui, |ui| {
-                            ui.add_enabled_ui(!busy && !self.project.committing(), |ui| {
+                            ui.add_enabled_ui(!busy && !self.project.committing() && draft.tools.editing(), |ui| {
                                 ui.horizontal_wrapped(|ui| {
                                     ui.label(tr!("Clip name")); let name = ui.add(egui::TextEdit::singleline(&mut draft.name).char_limit(4096));
                                     name.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "MIDI clip name"));
@@ -720,6 +725,9 @@ impl App {
                                     });
                                 accessibility::scrollbars(ui, "MIDI note list", &rows);
                             });
+                            ui.add_enabled_ui(!busy && !self.project.committing(), |ui| {
+                                match tools::show(ui,draft,&self.theme){Ok(true)=>{editor.error=None;stop=true;},Err(error)=>editor.error=Some(error),_=>{}}
+                            });
                         });
                         accessibility::scrollbars(ui, "MIDI editor controls", &scroll);
                     }
@@ -765,7 +773,7 @@ impl App {
         editor.keyboard.octave = octave;
         editor.keyboard.velocity = velocity;
         if let Some(action) = step_action { editor.step_action(action); }
-        editor.keyboard_input(&self.engine, ctx, keyboard_focus && !busy && !self.project.committing(), musical_events);
+        editor.keyboard_input(&self.engine, ctx, keyboard_focus && !busy && !self.project.committing() && editor.draft.as_ref().is_none_or(|draft|draft.tools.editing()), musical_events);
         if apply {
             editor.apply(&self.engine);
         }
@@ -833,7 +841,9 @@ fn number(ui: &mut Ui, label: &str, value: &mut f64, min: f64, max: f64) -> bool
         help::annotate(
             ui,
             &response,
-            if label.starts_with("Clip") || label.starts_with("Loop") {
+            if label.starts_with("Transform") || label.starts_with("Velocity") || label.starts_with("Warp") || label.starts_with("Property") || label.starts_with("MPE") || label.starts_with("Stretch") {
+                HelpControl::MidiTransform
+            } else if label.starts_with("Clip") || label.starts_with("Loop") {
                 HelpControl::MidiRegion
             } else if label.starts_with("Note") {
                 HelpControl::MidiValues

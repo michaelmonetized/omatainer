@@ -276,6 +276,21 @@ impl Controls {
         self.dirty = true;
         Ok(())
     }
+    /// Capture editable MIDI content.
+    /// Takes draft notes; returns an owned producer payload with the current controller data.
+    pub(super) fn content(&self, notes:&[MidiNote]) -> crate::engine::midi_tools::Content {
+        crate::engine::midi_tools::Content {notes:notes.to_vec(),ppqn:self.ppqn,end_tick:self.end_tick,messages:self.messages.clone(),meta:self.meta.clone(),labels:self.labels.clone()}
+    }
+    /// Guard controller content.
+    /// Takes a captured payload; returns whether current source data still matches.
+    pub(super) fn matches(&self, content:&crate::engine::midi_tools::Content) -> bool {
+        self.ppqn==content.ppqn && self.end_tick==content.end_tick && self.messages==content.messages && self.meta==content.meta && self.labels==content.labels
+    }
+    /// Receive prepared controller content.
+    /// Takes an owned payload and original dirty decision; moves its lanes into the draft and rebuilds the visible point list.
+    pub(super) fn install(&mut self, content:&mut crate::engine::midi_tools::Content, dirty:bool) {
+        self.ppqn=content.ppqn;self.end_tick=content.end_tick;self.messages=std::mem::take(&mut content.messages);self.meta=std::mem::take(&mut content.meta);self.labels=std::mem::take(&mut content.labels);self.dirty=dirty;self.refresh();
+    }
     pub fn prepared(
         &self,
         notes: &[MidiNote],

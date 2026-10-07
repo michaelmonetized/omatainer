@@ -2470,6 +2470,14 @@ Set each voice's pitch, independent steps and duration, pulses, rotation, densit
 
 Workflow: Record a held note.
 
+### MIDI transformations
+
+Reversible selected-note drafts
+
+Choose a stable note selection and preview Quantize, Recombine, Velocity curve, Stretch, Reverse or Time curve. Starts/ends and strength are explicit. Draw curves or edit points; seeded settings history regenerates from the original selection. Restore returns the original notes and lanes; Keep makes this preview the next draft original. Apply MIDI edit commits the complete draft once through History. Poly pressure and explicitly chosen MPE member expression follow unique note identities; ambiguous voices refuse the operation. Other channel automation and metadata retain their timeline. Source-tick rounding and before/after extent, gaps, overlap and duration are visible. Ordinary note editing waits until Keep or Restore.
+
+Workflow: Edit and undo.
+
 ### MIDI clip and loop bounds
 
 0–262144 source quarter-note beats
