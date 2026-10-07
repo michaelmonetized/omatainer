@@ -548,5 +548,86 @@
       "reason": "All focused checks passed. Review identified that changing an already-present play timestamp must also move the Played sort row. The owned full-suite runner was stopped with its partial log retained; production now includes exact timestamp changes in its delta, and final index/native fixtures check Some-to-Some timestamp reinsertion. The stage app was untouched."
     }
   },
-  "limits": "Linux ARM64 software qualification at 10,000 and 100,000 catalog rows: actual native egui field queries, all eleven sorted columns, real wheel scrolling and prepared small whole-library metadata publications under at least 300 seconds of rendered two-deck audio. Search p95 below 100 ms; scrolling and GUI application of prepared small updates p95 below 16.7 ms; retained normalized search records capped at 128 MiB with explicit oversized metadata refusal. Synthetic scale publications use the real index builder through a fixture adapter, not the real metadata worker; measured GUI update excludes worker preparation. A separate actual metadata/analysis/scan/loader workflow on 10,005 rows qualifies a two-path replacement/import batch plus all analysis fields in under five seconds, preserving selected source and already loaded audio. Bulk import of 1,000 files and five minutes of wall-clock mixing are not claimed. Small incremental sorted/unsorted updates apply to whole-library views; selected crates and identity/order/large changes use exact full membership. No physical audio/MIDI device, new GUI or capture opened; stage processes/session preserved."
+  "limits": "Linux ARM64 software qualification at 10,000 and 100,000 catalog rows: actual native egui field queries, all eleven sorted columns, real wheel scrolling and prepared small whole-library metadata publications under at least 300 seconds of rendered two-deck audio. Search p95 below 100 ms; scrolling and GUI application of prepared small updates p95 below 16.7 ms; retained normalized search records capped at 128 MiB with explicit oversized metadata refusal. Synthetic scale publications use the real index builder through a fixture adapter, not the real metadata worker; measured GUI update excludes worker preparation. A separate actual metadata/analysis/scan/loader workflow on 10,005 rows qualifies a two-path replacement/import batch plus all analysis fields in under five seconds, preserving selected source and already loaded audio. Bulk import of 1,000 files and five minutes of wall-clock mixing are not claimed. Small incremental sorted/unsorted updates apply to whole-library views; selected crates and identity/order/large changes use exact full membership. No physical audio/MIDI device, new GUI or capture opened; stage processes/session preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-library-scale-qualified",
+      "manifestSha256": "67054fc425e49d04725a79bfaf81ba867bfe4563da4d024ce354c8148dd1dacc",
+      "revision": "c68a4c9e254f1085502f5e272e0bffaea584fb4f",
+      "version": "0.1.0+c68a4c9e254f",
+      "executableSha256": "973e7d90ae1a80f7d8ce9f7c514f72fd635c72c7c95672e6cdaf6a34b61b32f0"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "0ba496fa670b37d9f24099e12bf3de50371d308466f44649f952b9462e2715cd",
+      "after": "973e7d90ae1a80f7d8ce9f7c514f72fd635c72c7c95672e6cdaf6a34b61b32f0",
+      "installedAt": "2026-10-07T08:21:16.828Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
