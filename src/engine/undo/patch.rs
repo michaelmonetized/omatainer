@@ -170,6 +170,7 @@ pub(super) struct DeckControls {
     pfl: bool,
     vinyl: bool,
     keylock: bool,
+    key_shift: i8,
     pitch_range: u8,
     cue: f64,
     hotcues: [Option<f64>; HOTCUES],
@@ -197,6 +198,7 @@ impl DeckControls {
             pfl: deck.pfl,
             vinyl: deck.vinyl,
             keylock: deck.keylock,
+            key_shift: deck.key_shift,
             pitch_range: deck.pitch_range,
             cue: deck.cue_pos,
             cue_styles: deck.cue_styles,
@@ -210,6 +212,7 @@ impl DeckControls {
     }
     fn swap(&mut self, deck: &mut DeckRt, sr: f32) {
         let current = Self::get(deck);
+        let retune = self.key_shift != deck.key_shift;
         let jump = self.keylock != deck.keylock
             || self.loop_on != deck.loop_on
             || self.loop_start != deck.loop_start
@@ -232,6 +235,7 @@ impl DeckControls {
         deck.pfl = self.pfl;
         deck.vinyl = self.vinyl;
         deck.keylock = self.keylock;
+        deck.key_shift = self.key_shift;
         deck.pitch_range = self.pitch_range;
         deck.cue_pos = self.cue;
         deck.cue_styles = self.cue_styles;
@@ -246,7 +250,7 @@ impl DeckControls {
         deck.controls.restore_loops(self.controller_loops);
         if jump {
             deck.transition_to(deck.pos, sr, DeckTransition::Jump);
-        }
+        } else if retune { deck.retune(sr); }
         *self = current;
     }
 }

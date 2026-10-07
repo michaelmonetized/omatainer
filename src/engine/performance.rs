@@ -596,6 +596,7 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckPreview { .. }
         | Command::DeckVinyl { .. }
         | Command::DeckKeylock { .. }
+        | Command::DeckKeyShift(_)
         | Command::DeckAudio { .. }
         | Command::DeckDecoded { .. }
         | Command::DeckLoadRequested { .. }

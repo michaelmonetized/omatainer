@@ -234,6 +234,7 @@ impl Frame {
                 pitch,
                 vinyl,
                 keylock,
+                key_shift,
                 sync,
                 sync_phase,
                 gain,

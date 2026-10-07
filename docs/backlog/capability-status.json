@@ -1535,6 +1535,36 @@
       ],
       "limits": "Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed."
     },
+    "202": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "independent key shift and matching",
+          "file": "src/engine/key_shift.rs",
+          "entry": "Bounded equal-tempered offsets, exact same-mode target matching and source-qualified fixed renderer admission"
+        },
+        {
+          "kind": "native key controls",
+          "file": "src/ui/key_shift.rs",
+          "entry": "Independent accessible offsets/reset, exact loaded-version provenance, chosen target, one undoable key-lock match and actual bypass state"
+        },
+        {
+          "kind": "actual source-time renderer",
+          "file": "src/engine/mod.rs",
+          "entry": "Original stereo overlap/resampling, shifted tempo endpoint convergence, retune envelope and exact unchanged transport"
+        }
+      ],
+      "fixtures": [
+        "engine::key_shift::tests",
+        "ui::key_shift::tests",
+        "engine::project::tests::key_shift_offsets_roundtrip_native_project_pcm_and_reject_older_headers_or_invalid_ranges"
+      ],
+      "evidence": [
+        "docs/validation/key-shift.md",
+        "docs/validation/key-shift-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM, native egui/AccessKit, real source catalog files and native .omat round trip. Original MIT stereo-linked WSOLA plus bounded resampling, no new dependency. Independent ±6-semitone offsets; exact loaded-version same-mode key matching enables key lock in one undoable edit. Nonzero shifts support forward tempo 0.5–1.5 intersected with locked tempo/pitch factor 0.5–1.5; scratch, reverse and out-of-range playback disclose bypass. Saved state 28 rejects older offset headers; unknown reopened catalog provenance refuses matching. Source-time grain search and lookahead scale with requested grain step and output/source rates; no universal 67 ms bound or converter latency claim. Twelve complete Float32 mix/transition WAVs are retained for listening; no human transparency judgment, live capture, new GUI or physical audio/MIDI device is claimed. Independent stage processes/session stay preserved."
+    },
     "205": {
       "status": "implemented",
       "paths": [

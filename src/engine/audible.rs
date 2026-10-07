@@ -126,7 +126,7 @@ impl Writer {
         for (index, deck) in decks.iter().enumerate() {
             frame.positions[index].store(deck.pos.to_bits(), Ordering::Relaxed);
             let known_source = deck.transition_remaining == 0
-                && deck.keylock_mode() != super::keylock::Mode::Locked;
+                && deck.stretch_mode() != super::keylock::Mode::Locked;
             frame.keys[index].store(
                 if known_source { deck.history_key } else { 0 },
                 Ordering::Relaxed,

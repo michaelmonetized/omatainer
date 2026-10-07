@@ -507,6 +507,17 @@ Session launch policies are software-qualified through unopened-device MIDI work
 
 Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed.
 
+### Issue #202: implemented
+
+- independent key shift and matching: [src/engine/key_shift.rs](../src/engine/key_shift.rs) — Bounded equal-tempered offsets, exact same-mode target matching and source-qualified fixed renderer admission
+- native key controls: [src/ui/key_shift.rs](../src/ui/key_shift.rs) — Independent accessible offsets/reset, exact loaded-version provenance, chosen target, one undoable key-lock match and actual bypass state
+- actual source-time renderer: [src/engine/mod.rs](../src/engine/mod.rs) — Original stereo overlap/resampling, shifted tempo endpoint convergence, retune envelope and exact unchanged transport
+- Acceptance fixtures: `engine::key_shift::tests`, `ui::key_shift::tests`, `engine::project::tests::key_shift_offsets_roundtrip_native_project_pcm_and_reject_older_headers_or_invalid_ranges`.
+- Evidence: [docs/validation/key-shift.md](../docs/validation/key-shift.md).
+- Evidence: [docs/validation/key-shift-receipt.json](../docs/validation/key-shift-receipt.json).
+
+Linux ARM64 software qualification through actual OutputCallback/renderer PCM, native egui/AccessKit, real source catalog files and native .omat round trip. Original MIT stereo-linked WSOLA plus bounded resampling, no new dependency. Independent ±6-semitone offsets; exact loaded-version same-mode key matching enables key lock in one undoable edit. Nonzero shifts support forward tempo 0.5–1.5 intersected with locked tempo/pitch factor 0.5–1.5; scratch, reverse and out-of-range playback disclose bypass. Saved state 28 rejects older offset headers; unknown reopened catalog provenance refuses matching. Source-time grain search and lookahead scale with requested grain step and output/source rates; no universal 67 ms bound or converter latency claim. Twelve complete Float32 mix/transition WAVs are retained for listening; no human transparency judgment, live capture, new GUI or physical audio/MIDI device is claimed. Independent stage processes/session stay preserved.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -711,7 +722,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#199](https://github.com/michaelmonetized/omatainer/issues/199) | Host LV2 instruments, effects and native Linux plugin UIs | planned |
 | [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | implemented |
 | [#201](https://github.com/michaelmonetized/omatainer/issues/201) | Add optional digital-vinyl control using a supported control-signal format | planned |
-| [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | planned |
+| [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | implemented |
 | [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | planned |
 | [#204](https://github.com/michaelmonetized/omatainer/issues/204) | Detect changing-tempo beatgrids automatically as a preview-comparison feature | planned |
 | [#205](https://github.com/michaelmonetized/omatainer/issues/205) | Add automatically maintained smart crates | implemented |

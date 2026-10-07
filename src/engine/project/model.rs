@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 27;
+pub const STATE_VERSION: u32 = 28;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -111,6 +111,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 28 && raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("key_shift").is_some())) { return Err(serde::de::Error::custom("Independent key shift requires project state version 28")); }
         if version < 26 && (raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|t|t.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|a|a.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|s|s.get("clip"))).any(|c|c.get("audio_region").is_some_and(|r|r.get("fades").is_some())) || raw.get("arrangement").and_then(|a|a.get("instances")).and_then(serde_json::Value::as_array).into_iter().flatten().any(|i|["fades","fade_link","crossfade"].into_iter().any(|f|i.get(f).is_some()))) { return Err(serde::de::Error::custom("Audio fades and crossfade links require project state version 26")); }
         if version < 25 && (raw.get("sync_leader").is_some() || raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("sync_phase").is_some()))) { return Err(serde::de::Error::custom("Sync leaders and phase modes require project state version 25")); }
         if version < 23 && (raw.get("scene_timing").is_some() || raw.get("session").is_some_and(|layout| ["tracks", "scenes"].into_iter().flat_map(|axis| layout.get(axis).and_then(serde_json::Value::as_array).into_iter().flatten()).any(|item| item.get("scene").is_some()))) { return Err(serde::de::Error::custom("Scene properties require project state version 23")); }
@@ -371,6 +372,8 @@ pub struct Deck {
     pub pitch: f32,
     pub vinyl: bool,
     pub keylock: bool,
+    #[serde(default, skip_serializing_if = "key_shift::is_zero")]
+    pub key_shift: i8,
     pub sync: bool,
     #[serde(default, skip_serializing_if = "deck_sync::Phase::is_none")]
     pub(crate) sync_phase: deck_sync::Phase,
@@ -488,6 +491,7 @@ impl State {
                 pitch: 0.5,
                 vinyl: true,
                 keylock: false,
+                key_shift: 0,
                 sync: false,
                 sync_phase: deck_sync::Phase::None,
                 gain: 0.85,
@@ -665,6 +669,8 @@ impl State {
             if !optional(deck.audio)
                 || !text_ok(&deck.title)
                 || !unit(deck.pitch)
+                || !(-key_shift::MAX_SEMITONES..=key_shift::MAX_SEMITONES).contains(&deck.key_shift)
+                || self.version < 28 && deck.key_shift != 0
                 || !finite_range(deck.gain as f64, 0.0, 1.5)
                 || !deck.source_gain.valid()
                 || self.version < 14 && !deck.source_gain.is_off()

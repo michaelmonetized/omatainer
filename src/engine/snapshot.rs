@@ -308,6 +308,8 @@ impl Frame {
             out.sync_target_bpm = deck.sync_bpm;
             out.pitch_pickup = rt.pitch_pickup_status(index);
             out.keylock = deck.keylock;
+            out.key_shift = deck.key_shift;
+            out.key_shift_mode = deck.key_shift_mode();
             out.controls = deck.controls.status();
             out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));
             out.keylock_mode = deck.keylock_mode();

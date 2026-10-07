@@ -2758,6 +2758,14 @@ Broaden the current query without changing the named crate. Returning restores t
 
 Workflow: Prepare a DJ deck.
 
+### Deck key shift
+
+−6–+6 semitones; source-qualified
+
+Open key shift… for confirmed independent offsets, Reset, original/effective source key provenance and an explicit chosen target. Match chooses the closest same-mode offset and enables key lock in one undo edit. Manual shift leaves lock independent: with lock off the tempo fader still bends the shifted key. Supported forward tempo is 50–150%, further bounded by the displayed interval when key lock is on. Scratch, reverse and out-of-range processing visibly bypass the shift. Unknown keys and opposite major/minor mode refuse matching. Offsets save in project state version 28; source tags and files are unchanged.
+
+Workflow: Prepare a DJ deck.
+
 ### Continuous playback
 
 Independent deck · manual crate order · finite or repeat

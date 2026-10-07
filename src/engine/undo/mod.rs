@@ -864,6 +864,7 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckLoopOut { .. }
             | Command::DeckVinyl { .. }
             | Command::DeckKeylock { .. }
+            | Command::DeckKeyShift(_)
             | Command::DeckLoopDouble { .. }
             | Command::DeckLoopHalf { .. }
             | Command::DeckReloop { .. }

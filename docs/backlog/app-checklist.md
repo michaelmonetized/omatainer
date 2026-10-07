@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 48 implemented · 6 partial · 167 planned · 0 accepted · 8 outside release
+127 existing stack · 49 implemented · 6 partial · 166 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -212,7 +212,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#199](https://github.com/michaelmonetized/omatainer/issues/199) | Host LV2 instruments, effects and native Linux plugin UIs | planned | #130 |  |
 | [x] | [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | implemented | #105, #131 | [receipt](../../docs/validation/continuous-playback.md), [receipt](../../docs/validation/continuous-playback-receipt.json) |
 | [ ] | [#201](https://github.com/michaelmonetized/omatainer/issues/201) | Add optional digital-vinyl control using a supported control-signal format | planned | #130 |  |
-| [ ] | [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | planned | #100, #142 |  |
+| [x] | [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | implemented | #100, #142 | [receipt](../../docs/validation/key-shift.md), [receipt](../../docs/validation/key-shift-receipt.json) |
 | [ ] | [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | planned | #134 |  |
 | [ ] | [#204](https://github.com/michaelmonetized/omatainer/issues/204) | Detect changing-tempo beatgrids automatically as a preview-comparison feature | planned | #134, #104 |  |
 | [x] | [#205](https://github.com/michaelmonetized/omatainer/issues/205) | Add automatically maintained smart crates | implemented | #105, #139 | [receipt](../../docs/validation/issue-205-smart-crates.md) |

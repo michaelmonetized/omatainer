@@ -1,4 +1,5 @@
 pub(crate) mod keylock;
+pub(crate) mod key_shift;
 #[cfg(test)]
 mod keylock_tests;
 pub(crate) mod project;
@@ -380,6 +381,7 @@ pub struct DeckRt {
     touch_sources: [Option<u64>; control::MAX_COMMANDS],
     pub vinyl: bool,
     pub keylock: bool,
+    pub key_shift: i8,
     pub sync: bool,
     pub(crate) sync_phase: deck_sync::Phase,
     sync_phase_locked: bool,
@@ -468,6 +470,7 @@ impl DeckRt {
             touch_sources: [None; control::MAX_COMMANDS],
             vinyl: true,
             keylock: false,
+            key_shift: 0,
             sync: false,
             sync_phase: deck_sync::Phase::None,
             sync_phase_locked: false,
@@ -523,9 +526,9 @@ impl DeckRt {
             let source_rate = self.audio.as_ref().map_or(sr, |a| a.sr as f32);
             if let Some(spindle) = &mut self.spindle { spindle.rebase(pos / f64::from(source_rate)); }
         }
-        let source_rate = self.audio.as_ref().map_or(sr, |audio| audio.sr as f32);
-        self.keylock_dsp.reset(pos, source_rate as f64 / sr as f64);
-        self.keylock_render_mode = self.keylock_mode();
+        let step = self.processing_step(f64::from(sr));
+        self.keylock_dsp.reset(pos, step);
+        self.keylock_render_mode = self.stretch_mode();
         match transition {
             DeckTransition::Jump => {
                 self.fade_from_last_output(sr);
@@ -578,15 +581,44 @@ impl DeckRt {
     /// Shared by rendering and publication: an armed but stopped/empty deck
     /// has no active rate to qualify and must not display a fallback warning.
     fn keylock_mode(&self) -> keylock::Mode {
-        if !self.keylock {
-            keylock::Mode::Off
-        } else if self.audio.is_none() {
-            keylock::Mode::NoMedia
-        } else if !self.rendering() {
-            keylock::Mode::Stopped
-        } else {
-            keylock::mode(true, self.touching || self.follows_spindle() && self.spindle.as_ref().is_some_and(spindle::Playback::scratching), self.rate)
-        }
+        if self.keylock { self.stretch_mode() } else { keylock::Mode::Off }
+    }
+
+    /// Report actual overlap processing for both lock and independent shift.
+    /// Takes this deck; returns direct, active or a visible stopped/scratch/range bypass state.
+    fn stretch_mode(&self) -> keylock::Mode {
+        if !self.keylock && self.key_shift == 0 { return keylock::Mode::Off; }
+        if self.audio.is_none() { return keylock::Mode::NoMedia; }
+        if !self.rendering() { return keylock::Mode::Stopped; }
+        let touching = self.touching || self.follows_spindle() && self.spindle.as_ref().is_some_and(spindle::Playback::scratching);
+        if touching { return keylock::Mode::ScratchBypass; }
+        if self.key_shift != 0 && !(0.5..=1.5).contains(&self.rate) { return keylock::Mode::UnsupportedRate; }
+        let factor = key_shift::factor(self.key_shift) as f32;
+        let ratio = if self.keylock { self.rate / factor } else { 1.0 / factor };
+        keylock::mode(true, false, ratio)
+    }
+
+    /// Report only the independent shift's renderer-confirmed state.
+    /// Takes this deck; returns Off at zero semitones or its actual processing mode.
+    fn key_shift_mode(&self) -> keylock::Mode {
+        if self.key_shift == 0 { keylock::Mode::Off } else { self.stretch_mode() }
+    }
+
+    /// Read the source sampling step inside each overlap grain.
+    /// Takes output rate; returns source/output conversion times requested key shift, following the tempo fader when lock is off.
+    fn processing_step(&self, output_sr: f64) -> f64 {
+        let base = self.audio.as_ref().map_or(output_sr, |audio| f64::from(audio.sr)) / output_sr;
+        let tempo = if !self.keylock && self.key_shift != 0 && self.rate.is_finite() && self.rate > 0.0 { f64::from(self.rate) } else { 1.0 };
+        base * key_shift::factor(self.key_shift) * tempo
+    }
+
+    /// Retune at the exact current playhead through the existing short envelope.
+    /// Takes output rate; resets fixed overlap history without moving transport or resetting filter histories.
+    fn retune(&mut self, output_sr: f32) {
+        let step = self.processing_step(f64::from(output_sr));
+        self.keylock_dsp.reset(self.pos, step);
+        self.keylock_render_mode = self.stretch_mode();
+        self.fade_from_last_output(output_sr);
     }
 
     fn pitch_rate(&self) -> f32 {
@@ -793,8 +825,10 @@ pub struct DeckSnap {
     pub sync_target_bpm: f32,
     pub(crate) pitch_pickup: pitch_pickup::Status,
     pub keylock: bool,
+    pub key_shift: i8,
     pub controls: deck_controls::Status,
     pub keylock_mode: keylock::Mode,
+    pub key_shift_mode: keylock::Mode,
     pub pfl: bool,
     pub loop_on: bool,
     pub hotcues: [bool; HOTCUES],
@@ -1085,6 +1119,7 @@ pub enum Command {
     DeckLoadLock { deck: u8, enabled: bool },
     DeckVinyl { deck: u8 },
     DeckKeylock { deck: u8 },
+    DeckKeyShift(key_shift::Request),
     DeckAudio { deck: u8, audio: Arc<Sample> },
     DeckDecoded { request: media_load::LoadToken, audio: Arc<Sample> },
     DeckLoadRequested { deck: u8, media: load_receipt::Media, receipt: load_receipt::Receipt },
@@ -2096,16 +2131,14 @@ impl RtEngine {
             } else {
                 if mapped_sync.is_some() { d.rate = d.target_rate; }
                 else { d.rate += (d.target_rate - d.rate) * d.rate_smoothing; }
-                if d.keylock
-                    && (d.target_rate == keylock::MIN_RATIO || d.target_rate == 1.0
-                        || d.target_rate == keylock::MAX_RATIO)
-                    && (d.rate - d.target_rate).abs() <= keylock::boundary_tolerance(d.rate_smoothing)
-                {
-                    // f32 smoothing otherwise stalls beside the exact target,
-                    // missing unity bypass or supported-rate reentry. Only the
-                    // three declared boundaries converge; arbitrary targets
-                    // and unlocked playback retain the original trajectory.
-                    d.rate = d.target_rate;
+                if d.keylock || d.key_shift != 0 {
+                    let (low, high) = key_shift::tempo_range(d.keylock, d.key_shift);
+                    let unity = if d.keylock { key_shift::factor(d.key_shift) as f32 } else { 1.0 };
+                    if (d.target_rate == low || d.target_rate == unity || d.target_rate == high)
+                        && (d.rate - d.target_rate).abs() <= keylock::boundary_tolerance(d.rate_smoothing)
+                    {
+                        d.rate = d.target_rate;
+                    }
                 }
                 d.scratch *= 0.85;
             }
@@ -2166,7 +2199,7 @@ impl RtEngine {
                 if position == 0.0 && before_position == 0.0 && d.rate < 0.0 {
                     d.pos = 0.0;
                     if let Some(spindle) = &mut d.spindle { spindle.rebase(0.0); }
-                } else if natural_wrap && d.keylock_mode() == keylock::Mode::Locked {
+                } else if natural_wrap && d.stretch_mode() == keylock::Mode::Locked {
                     d.pos = position;
                     d.keylock_dsp.natural_wrap();
                 } else {
@@ -2205,10 +2238,10 @@ impl RtEngine {
         // release position rather than replaying grains from before the jog.
         let mode = {
             let d = &mut self.decks[di];
-            let mode = d.keylock_mode();
+            let mode = d.stretch_mode();
             if mode != d.keylock_render_mode {
                 if mode == keylock::Mode::Locked || d.keylock_render_mode == keylock::Mode::Locked {
-                    let source_step = d.audio.as_ref().map_or(sr, |audio| audio.sr as f64) / sr;
+                    let source_step = d.processing_step(sr);
                     d.keylock_dsp.reset(d.pos, source_step);
                     // A rate-mode transition retires overlap through the existing
                     // envelope but preserves the continuous deck filter histories.
@@ -2258,6 +2291,7 @@ impl RtEngine {
 
     fn deck_grain(&mut self, di: usize, sr: f64) -> (f32, f32) {
         let d = &mut self.decks[di];
+        let step = d.processing_step(sr);
         let Some(audio) = &d.audio else { return (0.0, 0.0) };
         if !d.rendering() { return (0.0, 0.0); }
         let source = keylock::Source {
@@ -2266,7 +2300,7 @@ impl RtEngine {
             loop_start: d.loop_start,
             loop_len: d.loop_len,
         };
-        d.keylock_dsp.render(source, d.pos, audio.sr as f64 / sr)
+        d.keylock_dsp.render(source, d.pos, step)
     }
 
     fn tick_pad_sources(&mut self) -> [[f32; 2]; session::MAX_TRACKS] {
@@ -2827,6 +2861,16 @@ impl RtEngine {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.keylock = !d.keylock;
                 d.transition_to(d.pos, self.sr, DeckTransition::Jump);
+            }
+            Command::DeckKeyShift(request) => {
+                if request.current(self) {
+                    let deck = &mut self.decks[usize::from(request.deck)];
+                    if deck.key_shift != request.semitones || request.enable_lock && !deck.keylock {
+                        deck.key_shift = request.semitones;
+                        if request.enable_lock { deck.keylock = true; }
+                        deck.retune(self.sr);
+                    }
+                }
             }
             Command::LibraryFence { acknowledged } => {
                 acknowledged.store(true, std::sync::atomic::Ordering::Release);

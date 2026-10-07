@@ -139,6 +139,7 @@ impl Plan {
             DeckCueStyle { deck, pad, .. } => (
                 Target::Deck(*deck), Name::CueStyle, 440 + (*deck as u64) * 8 + *pad as u64,
             ),
+            DeckKeyShift(request) => (Target::Deck(request.deck), Name::Deck, 482 + u64::from(request.deck)),
             DeckMatch => {
                 let other = if rt.xfader <= 0.5 { 1 } else { 0 };
                 (Target::Seek(other), Name::DeckSeek, 480 + other as u64)
@@ -182,6 +183,7 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if matches!(&c, Command::DeckKeyShift(request) if !request.current(self)) { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; }
         if matches!(&c, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= DECKS || !control.valid()) {
             self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
         }
