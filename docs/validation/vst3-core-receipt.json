@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-07T20:40:06.765Z",
+  "testedBaseRevision": "7909c5811cbcd6b4c8a175897eaabfa621e66028",
+  "scope": "Native VST3 processor/scanner/bridge foundation, headless native egui and explicitly selected private fixtures; partial combined #511. Graph/project integration and installed GUI remain required.",
+  "sourceFiles": {
+    "Cargo.lock": "0eee16cfd3454ba008b2a1e99c8ccb8ea327922070a1131bb1c814441428c70f",
+    "Cargo.toml": "85550c76ff6b9eaa7ef5a70da79b80c29336d982f03d8ed636cbbddbb34721ac",
+    "licenses/assets.json": "420f5e77de1db8c2bfbf2e8c7c0d4c1aee71c07dff781e187e85909e66f785b0",
+    "licenses/manifest.json": "ea54a24c5575314e9b175aa2d9c7d54742fb7f88a9080d39520ac386e8087362",
+    "licenses/notices.json": "dd7498b28934a242c10d680d4210331d5251dc1b3f75a576f6b0b380324febc6",
+    "licenses/supplements.json": "2c09779854818d17af56007e8a05b41b9103aa529c6dafd170b9f09e855dcfc1",
+    "scripts/license-inventory.mjs": "d6c77d6d0c9e83e7e9c73ea29a9adc75d5cd4b45c65456b4c7d3f21090e97280",
+    "scripts/license-manifest.py": "66e97d4bbf66c10a5167ffe09b902f35af3ba6dedc17f9047f51301f4fc9b8ae",
+    "src/main.rs": "51edd6217b97cba0c0766cfe98fc42e45965603c2731ea790ca98e9a55b83654",
+    "src/plugin_host/mod.rs": "57bd0ffee9f3eaa3fefa72e5f4b7722788e0d9da9361f1d8a07c59188da7f292",
+    "src/plugin_host/process.rs": "aed347b000fb47de6e3aba0b6404d564b7bd9acc91ccfbdb3ca44f1a4a9c770c",
+    "src/plugin_host/realtime.rs": "82ae5d908d680bd8d27b906626e53202fdb9789f0ab8ea34607e8eb4912f44c4",
+    "src/plugin_host/realtime/tests.rs": "286edd91080992eea50b68a8f8441faa36b0d035d4873da2d7ea8682ba78d477",
+    "src/plugin_host/scanner.rs": "265e3b8807da896870b7283459a9d88b005a386479edaaa9e8df302c7d63eefd",
+    "src/plugin_host/scanner/tests.rs": "aeafd8da5542c17e0b3fbbd6544c9e20c4542e6132d0958755bda21d9a6e3e33",
+    "src/plugin_host/worker.rs": "778a761a02225a030fac8f5bca2a9e6d6d834e7a84265b06933728a96b8b4464",
+    "src/ui.rs": "c28cddd17ec621c0f1542ffedff79e25df768b9ebe9948a3eead4079fdb65d8f",
+    "src/ui/plugins.rs": "29918795b203ae43d97a498a8a97aea1ecf5e3d62d504d0bdf370eb30d047373",
+    "src/ui/plugins/tests.rs": "88296fcc5e0da5f336aac605428f30d1ec7a7f13ecd2b838238c40eb17cae402",
+    "src/ui/preferences.rs": "bd119799758ae2c44e45ea192725a1478d167d53f224c48a82e3676f079c66c2",
+    "vendor/vst3-host/.cargo_vcs_info.json": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657",
+    "vendor/vst3-host/CHANGELOG.md": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667",
+    "vendor/vst3-host/Cargo.lock": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc",
+    "vendor/vst3-host/Cargo.toml": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2",
+    "vendor/vst3-host/Cargo.toml.orig": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e",
+    "vendor/vst3-host/LICENSE": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d",
+    "vendor/vst3-host/PATCHES.md": "53ed13875509f40a57dd381768c77030df3006e518f3c6dbfaa7fe85a7ec4434",
+    "vendor/vst3-host/README.md": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc",
+    "vendor/vst3-host/UPSTREAM.json": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5",
+    "vendor/vst3-host/run_plugin_gui.sh": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf",
+    "vendor/vst3-host/src/audio.rs": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c",
+    "vendor/vst3-host/src/backends/cpal_backend.rs": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e",
+    "vendor/vst3-host/src/backends/mod.rs": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f",
+    "vendor/vst3-host/src/bin/vst3-host-helper.rs": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481",
+    "vendor/vst3-host/src/bin/vst3-host-probe.rs": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110",
+    "vendor/vst3-host/src/discovery.rs": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec",
+    "vendor/vst3-host/src/embed.rs": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6",
+    "vendor/vst3-host/src/error.rs": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596",
+    "vendor/vst3-host/src/host.rs": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a",
+    "vendor/vst3-host/src/internal/com_implementations.rs": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f",
+    "vendor/vst3-host/src/internal/data_exchange.rs": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423",
+    "vendor/vst3-host/src/internal/denormal.rs": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2",
+    "vendor/vst3-host/src/internal/isolated_plugin_impl.rs": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8",
+    "vendor/vst3-host/src/internal/mod.rs": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5",
+    "vendor/vst3-host/src/internal/module_info.rs": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3",
+    "vendor/vst3-host/src/internal/module_loader/linux.rs": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab",
+    "vendor/vst3-host/src/internal/module_loader/macos.rs": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b",
+    "vendor/vst3-host/src/internal/module_loader/mod.rs": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07",
+    "vendor/vst3-host/src/internal/module_loader/private_namespace.rs": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0",
+    "vendor/vst3-host/src/internal/module_loader/windows.rs": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844",
+    "vendor/vst3-host/src/internal/plugin_impl.rs": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5",
+    "vendor/vst3-host/src/internal/utils.rs": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19",
+    "vendor/vst3-host/src/lib.rs": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c",
+    "vendor/vst3-host/src/midi.rs": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e",
+    "vendor/vst3-host/src/midi_input.rs": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56",
+    "vendor/vst3-host/src/parameters.rs": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef",
+    "vendor/vst3-host/src/playback.rs": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33",
+    "vendor/vst3-host/src/plugin.rs": "e153b6a969b71f5e418b93e1f4119ff312c0f3fbee42b3ba18657a0cc6fa12a3",
+    "vendor/vst3-host/src/process_isolation.rs": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42",
+    "vendor/vst3-host/src/realtime.rs": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6",
+    "vendor/vst3-host/src/simple.rs": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978",
+    "vendor/vst3-host/src/transport.rs": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79",
+    "vendor/vst3-host/src/window.rs": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74"
+  },
+  "binaries": {
+    "test": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/debug/deps/omatainer-0bf99dc97f49be76",
+      "sha256": "ddfb5d36cc1397ac6506cc1600a46818ea0280e8fe0c27c5facb356ced387dc4",
+      "bytes": 570180320,
+      "archive": {
+        "path": "target/validation/combined-completion/vst3-qualified-tests.zst",
+        "sha256": "9add546a2afba8d40b9a0ba24c792bfe616120dc14363681a160367d66d4ab2a",
+        "bytes": 99049909
+      }
+    },
+    "nativeWorker": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/debug/omatainer",
+      "sha256": "3044df92a4e5bcbd0244cbd5f7e2ae9142ead1dc4691d24b3d03ecc47d56345c",
+      "bytes": 480359616,
+      "archive": {
+        "path": "target/validation/combined-completion/vst3-qualified-native.zst",
+        "sha256": "740f7f5da5d6e2b646921cc261d23e9960c51d7321889bd34fdcea198fc19cc5",
+        "bytes": 87395405
+      }
+    }
+  },
+  "build": {
+    "rootOptimization": 0,
+    "rootDebugInfo": 0,
+    "incremental": false,
+    "jobs": 2,
+    "testThreadStackBytes": 16777216,
+    "platform": "aarch64-unknown-linux-gnu",
+    "note": "Existing dependency cache; no optimized-release performance claim"
+  },
+  "logs": {
+    "target/validation/combined-completion/vst3-qualified-native-build.log": "9c95188243b3c36f99be79507b64d6fa9108efda8ff4f88904760f9d5d39b054",
+    "target/validation/combined-completion/vst3-final-test-build.log": "75d4fc711939eca250f35869504116d65d379453c9bbdddd665e78e8ac45e387",
+    "target/validation/combined-completion/vst3-qualified-core-tests.log": "3ff447c397d532dd454c263bd8c087e1e67bf24fe9776024d933cb83fdc56e44",
+    "target/validation/combined-completion/vst3-qualified-native-ui-tests.log": "71b6f8a0a9fbc01483926eccfe3718daea1999d9f919920a73a5e39fdfd39365",
+    "target/validation/combined-completion/vst3-qualified-license-check.log": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14",
+    "target/validation/combined-completion/vst3-qualified-capability-tests.log": "c1746a3a3f603f22228bfd29e47907b80052ace19c18e60e5ca5bc47e7ed68f4",
+    "target/validation/combined-completion/nekobi-sdk-validator.log": "bf5759fcfeffa59f063f464a586b25a37ecc4f050fa7ace416b0fc7118529904",
+    "target/validation/combined-completion/mverb-sdk-validator.log": "c1690947799ef70b0dae3c0922701ff91ef74a9b1cecf80628fc7a2cef2e9267",
+    "target/validation/combined-completion/vst3sdk-build.log": "e5b9e8e7cb763c3560409bb353e39a9496964240be03b9b2893e46ee6d672eca"
+  },
+  "tests": {
+    "uniqueRustChecks": 11,
+    "nativePluginCases": "SDK sample-offset gain interpolation and state reopen/version refusal; Nekobi note audio; MVerb processing/tail; native fault factories and cancellation; catalog/cache/quarantine/blacklist/cancel/reopen; native egui protection and durable blacklist; zero-allocation fixed-delay callback fixtures and paced native SDK bridge.",
+    "nodeChecks": 6,
+    "failures": 0
+  },
+  "fixtures": {
+    "sdk": {
+      "repository": "https://github.com/steinbergmedia/vst3sdk",
+      "revision": "3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96",
+      "version": "3.8.1",
+      "license": "MIT",
+      "submodules": [
+        "fcf9da0bd27a16f7f03773a3a39822f28f5c8477 base (v3.8.1_build_84)",
+        " 054c9143cbb8d47fc4694e473f2ee3b4d951a8f5 cmake (v3.8.1_build_84)",
+        " 8bfca19d3b76a61d093951ba9297047f544caea1 doc (v3.8.1_build_84)",
+        " 4f547e8e102b47de4a8b8aaf343c73b700786372 pluginterfaces (v3.8.1_build_84)",
+        " 586dc5e6c8012c3e4b01c79389375cbe96bdb1da public.sdk (v3.8.1_build_84)",
+        " 33b73dfbb87f3fde3bce8c0a10cae934dc66ad34 tutorials (heads/main)",
+        " 5db272256172557818b6158cf0bb2c4410bddb25 vstgui4 (5db2722)"
+      ]
+    },
+    "dpf": {
+      "repository": "https://github.com/DISTRHO/DPF-Plugins",
+      "revision": "df5cb658a2d8dc6e944d8c26a53853a7c0c6c2b2",
+      "licenses": {
+        "Nekobi": "GPL-2.0-or-later",
+        "MVerb": "GPL-3.0-or-later"
+      },
+      "bundlesRedistributed": false
+    },
+    "faults": "Independent C ELF factories privately compiled by tests: abort, wait forever, null factory. No user-installed plugin enumeration."
+  },
+  "preliminaryFailuresRetained": [
+    "vst3-first-check.log (published host lacks explicit transport seek; added reviewed patch)",
+    "vst3-second-check.log (native browser borrow conflict)",
+    "vst3-third-check.log (missing newly introduced worker cases)",
+    "vst3-fourth-check.log (inspection error type inference)",
+    "vst3-first-tests-build.log (fixture float syntax)",
+    "vst3-second-tests-build.log (response Debug bound)",
+    "vst3-fourth-tests-build.log (missing optional-work argument)"
+  ],
+  "limits": [
+    "Not installed; active powered-hub app and sessions untouched by this work.",
+    "No native editor window, listening or hardware audio/MIDI claim.",
+    "Not yet graph/project hosting, plugin automation persistence, automatic graph PDC or sidechain/multi-output app workflow.",
+    "Native Linux aarch64 fixtures only; x86_64 and macOS/AU not qualified.",
+    "Private fixture validators are separate SDK evidence; Omatainer proof comes from its own compiled-worker tests.",
+    "Full combined producer migration/controller/audio-release acceptance remains incomplete."
+  ]
+}

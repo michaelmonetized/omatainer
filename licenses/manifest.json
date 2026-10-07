@@ -494,6 +494,13 @@
       "version": "0.12.0"
     },
     {
+      "checksum": "5ce183b975b8fc736a20919c4002717255fbd867df575c792aeefa9a56a73ad0",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "com-scrape-types",
+      "version": "0.1.1"
+    },
+    {
       "checksum": "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973",
       "features": [
         "default",
@@ -540,6 +547,17 @@
       "license": "MIT OR Apache-2.0",
       "name": "crossbeam-channel",
       "version": "0.5.17"
+    },
+    {
+      "checksum": "03e8bd762f7479489c70ed6c768ddca99d7296857de437a68dcb2a94365b3fae",
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "license": "MIT OR Apache-2.0",
+      "name": "crossbeam-queue",
+      "version": "0.3.14"
     },
     {
       "checksum": "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6",
@@ -2743,6 +2761,69 @@
       "version": "0.9.5"
     },
     {
+      "checksum": "e31e3fe7a6f028ded8c5a9984cf283319e6dc63572c9b71da1d4ee9d71d3b6bf",
+      "features": [],
+      "license": "MIT OR Apache-2.0",
+      "name": "vst3",
+      "version": "0.3.0"
+    },
+    {
+      "checksum": null,
+      "features": [],
+      "license": "MIT",
+      "name": "vst3-host",
+      "vendored_source": {
+        "files": {
+          "vendor/vst3-host/.cargo_vcs_info.json": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657",
+          "vendor/vst3-host/CHANGELOG.md": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667",
+          "vendor/vst3-host/Cargo.lock": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc",
+          "vendor/vst3-host/Cargo.toml": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2",
+          "vendor/vst3-host/Cargo.toml.orig": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e",
+          "vendor/vst3-host/LICENSE": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d",
+          "vendor/vst3-host/PATCHES.md": "53ed13875509f40a57dd381768c77030df3006e518f3c6dbfaa7fe85a7ec4434",
+          "vendor/vst3-host/README.md": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc",
+          "vendor/vst3-host/UPSTREAM.json": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5",
+          "vendor/vst3-host/run_plugin_gui.sh": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf",
+          "vendor/vst3-host/src/audio.rs": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c",
+          "vendor/vst3-host/src/backends/cpal_backend.rs": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e",
+          "vendor/vst3-host/src/backends/mod.rs": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f",
+          "vendor/vst3-host/src/bin/vst3-host-helper.rs": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481",
+          "vendor/vst3-host/src/bin/vst3-host-probe.rs": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110",
+          "vendor/vst3-host/src/discovery.rs": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec",
+          "vendor/vst3-host/src/embed.rs": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6",
+          "vendor/vst3-host/src/error.rs": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596",
+          "vendor/vst3-host/src/host.rs": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a",
+          "vendor/vst3-host/src/internal/com_implementations.rs": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f",
+          "vendor/vst3-host/src/internal/data_exchange.rs": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423",
+          "vendor/vst3-host/src/internal/denormal.rs": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2",
+          "vendor/vst3-host/src/internal/isolated_plugin_impl.rs": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8",
+          "vendor/vst3-host/src/internal/mod.rs": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5",
+          "vendor/vst3-host/src/internal/module_info.rs": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3",
+          "vendor/vst3-host/src/internal/module_loader/linux.rs": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab",
+          "vendor/vst3-host/src/internal/module_loader/macos.rs": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b",
+          "vendor/vst3-host/src/internal/module_loader/mod.rs": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07",
+          "vendor/vst3-host/src/internal/module_loader/private_namespace.rs": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0",
+          "vendor/vst3-host/src/internal/module_loader/windows.rs": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844",
+          "vendor/vst3-host/src/internal/plugin_impl.rs": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5",
+          "vendor/vst3-host/src/internal/utils.rs": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19",
+          "vendor/vst3-host/src/lib.rs": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c",
+          "vendor/vst3-host/src/midi.rs": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e",
+          "vendor/vst3-host/src/midi_input.rs": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56",
+          "vendor/vst3-host/src/parameters.rs": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef",
+          "vendor/vst3-host/src/playback.rs": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33",
+          "vendor/vst3-host/src/plugin.rs": "e153b6a969b71f5e418b93e1f4119ff312c0f3fbee42b3ba18657a0cc6fa12a3",
+          "vendor/vst3-host/src/process_isolation.rs": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42",
+          "vendor/vst3-host/src/realtime.rs": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6",
+          "vendor/vst3-host/src/simple.rs": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978",
+          "vendor/vst3-host/src/transport.rs": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79",
+          "vendor/vst3-host/src/window.rs": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74"
+        },
+        "path": "vendor/vst3-host",
+        "upstream_archive_sha256": "6ec579d54bd13b83c60c1fd8bb756cf234e36ccbfb4833ff756b417e64db7fea"
+      },
+      "version": "0.9.0"
+    },
+    {
       "checksum": "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b",
       "features": [],
       "license": "Unlicense/MIT",
@@ -3073,6 +3154,16 @@
       "license": "MIT OR Apache-2.0",
       "name": "x11rb-protocol",
       "version": "0.13.2"
+    },
+    {
+      "checksum": "a6c2ad15e0e922856ee89afe862b8992334bbe7953adad56cd1199358cb30566",
+      "features": [
+        "default",
+        "libxcb_v1_14"
+      ],
+      "license": "MIT",
+      "name": "xcb",
+      "version": "1.7.1"
     },
     {
       "checksum": "163b33ed8786455e2fa5d72f554057ce3f3182425434f756cd39c99839d88e23",
@@ -3712,6 +3803,128 @@
         {
           "location": "tests/fixtures/beatgrid/additional-sources.json",
           "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
+        }
+      ]
+    },
+    {
+      "category": "font",
+      "commercial_use": "Commercial use is permitted by the supplied MIT and Bitstream Vera terms; DejaVu contributions are identified as public domain.",
+      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
+      "id": "font:hack",
+      "license": "MIT AND Bitstream-Vera",
+      "members": [],
+      "name": "Hack Regular",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Hack-Regular.txt",
+          "sha256": "47c0cccbeec7e8614548cc485588b28149e7874188df5f41b36efebcee285c87"
+        },
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Hack-Regular.ttf (embedded name-table notices)",
+          "sha256": "d3f57eae40953475bd0914c39fe9d9b0f3994c672a6f53dc09adf6d2d015a468"
+        }
+      ],
+      "redistribution": "Keep all notices; Bitstream/Vera names have modification restrictions. Fonts may be sold in a larger package, not by themselves.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Hack-Regular.ttf",
+          "sha256": "15f55cc0c85a2988d2b4b3a8cdb5d77fdfbaf319e1bb5309d725db9818fb7125"
+        }
+      ]
+    },
+    {
+      "category": "font",
+      "commercial_use": "Use, embedding and redistribution, including commercial distribution, are permitted under Ubuntu Font Licence 1.0.",
+      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
+      "id": "font:ubuntu",
+      "license": "Ubuntu-font-1.0",
+      "members": [],
+      "name": "Ubuntu Light",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/UFL.txt",
+          "sha256": "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002"
+        },
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Ubuntu-Light.ttf (embedded name-table notices)",
+          "sha256": "d8b29cab75bf4af1dfc52fb9692377f8318ac174c978d338a32fd1ae8530c4c0"
+        }
+      ],
+      "redistribution": "Keep the original name and notices; modified fonts have naming requirements. Font software remains under this license; ordinary documents made with it do not.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Ubuntu-Light.ttf",
+          "sha256": "80307b8da7649aa4ee4d484b232140e3ce1ec0ca093073d3c53c8f5a5ced7a70"
+        }
+      ]
+    },
+    {
+      "category": "font",
+      "commercial_use": "Commercial use and bundling are permitted under SIL Open Font License 1.1.",
+      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
+      "id": "font:noto-emoji",
+      "license": "OFL-1.1",
+      "members": [],
+      "name": "Noto Emoji Regular",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/OFL.txt",
+          "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+        },
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/NotoEmoji-Regular.ttf (embedded name-table notices)",
+          "sha256": "2c813a777a0c164f0ac5076c74e1c995b17d24bd927b3a1b5e3f57391d83beab"
+        }
+      ],
+      "redistribution": "Keep copyright/license notices; do not sell the font by itself. Derivatives retain OFL and must respect reserved names. Ordinary documents are not required to use OFL.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/NotoEmoji-Regular.ttf",
+          "sha256": "415dc6290378574135b64c808dc640c1df7531973290c4970c51fdeb849cb0c5"
+        }
+      ]
+    },
+    {
+      "category": "font",
+      "commercial_use": "MIT permits commercial use, copying and sale subject to its conditions.",
+      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
+      "id": "font:emoji-icon",
+      "license": "MIT",
+      "members": [],
+      "name": "Emoji icon font",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/emoji-icon-font-mit-license.txt",
+          "sha256": "b9d2c1d909aa149996fd4c91dcb92b2362a04431640c1d200959da94caf8cde1"
+        }
+      ],
+      "redistribution": "Retain the John Slegers copyright and permission notice.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/emoji-icon-font.ttf",
+          "sha256": "3a706840d2f888b83c184f7d41900dbaa0151a806c4d130cc88539d53fedef0a"
+        }
+      ]
+    },
+    {
+      "category": "toolchain-runtime",
+      "commercial_use": "The Rust library is open-source software; commercial use is subject to the supplied library and constituent terms.",
+      "delivery": "standard library/runtime portions linked by rustc; compiler and documentation are not shipped",
+      "id": "toolchain:rust-library@1.98.0",
+      "license": "MIT OR Apache-2.0; constituent licenses are listed in the retained copyright record",
+      "members": [],
+      "name": "Rust standard library 1.98.0",
+      "notices": [
+        {
+          "location": "https://github.com/rust-lang/rust/tree/88d9e12ae178fab0fb5cc050a94da85685d449ea/library (toolchain COPYRIGHT-library.html text)",
+          "sha256": "a4bd7b11a9ccb0891ede2bc4272bc438de3a2e3baedecef9676c4d20bc2dc354"
+        }
+      ],
+      "redistribution": "Retain the library copyright and constituent notices. The exact upstream revision and complete toolchain-supplied library copyright record are retained.",
+      "sources": [
+        {
+          "location": "https://github.com/rust-lang/rust/tree/88d9e12ae178fab0fb5cc050a94da85685d449ea/library",
+          "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
         }
       ]
     },
@@ -5047,32 +5260,6 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:cfg-if@1.0.5",
-      "license": "MIT OR Apache-2.0",
-      "members": [],
-      "name": "cfg-if 1.0.5",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate#LICENSE-APACHE",
-          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
-        },
-        {
-          "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate#LICENSE-MIT",
-          "sha256": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate",
-          "sha256": "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:cfg_aliases@0.2.2",
       "license": "MIT",
       "members": [],
@@ -5099,6 +5286,32 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:cfg-if@1.0.5",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "cfg-if 1.0.5",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate#LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate#LICENSE-MIT",
+          "sha256": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/cfg-if/cfg-if-1.0.5.crate",
+          "sha256": "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:codespan-reporting@0.12.0",
       "license": "Apache-2.0",
       "members": [],
@@ -5114,6 +5327,32 @@
         {
           "location": "https://static.crates.io/crates/codespan-reporting/codespan-reporting-0.12.0.crate",
           "sha256": "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:com-scrape-types@0.1.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "com-scrape-types 0.1.1",
+      "notices": [
+        {
+          "location": "https://raw.githubusercontent.com/coupler-rs/vst3-rs/33f1859fbdcfa247c1fdd17d565cb5285860e4ce/LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "location": "https://raw.githubusercontent.com/coupler-rs/vst3-rs/33f1859fbdcfa247c1fdd17d565cb5285860e4ce/LICENSE-APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/com-scrape-types/com-scrape-types-0.1.1.crate",
+          "sha256": "5ce183b975b8fc736a20919c4002717255fbd867df575c792aeefa9a56a73ad0"
         }
       ]
     },
@@ -5244,6 +5483,32 @@
         {
           "location": "https://static.crates.io/crates/crossbeam-channel/crossbeam-channel-0.5.17.crate",
           "sha256": "98b0cc327b5bc766e7fda9c9260cc0fa81b43a8e240440422dff70788e3f9ef1"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:crossbeam-queue@0.3.14",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "crossbeam-queue 0.3.14",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/crossbeam-queue/crossbeam-queue-0.3.14.crate#LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "location": "https://static.crates.io/crates/crossbeam-queue/crossbeam-queue-0.3.14.crate#LICENSE-MIT",
+          "sha256": "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/crossbeam-queue/crossbeam-queue-0.3.14.crate",
+          "sha256": "03e8bd762f7479489c70ed6c768ddca99d7296857de437a68dcb2a94365b3fae"
         }
       ]
     },
@@ -5637,6 +5902,32 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:egui_glow@0.32.3",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "egui_glow 0.32.3",
+      "notices": [
+        {
+          "location": "https://raw.githubusercontent.com/emilk/egui/af96e0373c18477b77236e2bfc89735af007b1c2/LICENSE-MIT",
+          "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c"
+        },
+        {
+          "location": "https://raw.githubusercontent.com/emilk/egui/af96e0373c18477b77236e2bfc89735af007b1c2/LICENSE-APACHE",
+          "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/egui_glow/egui_glow-0.32.3.crate",
+          "sha256": "cc7037813341727937f9e22f78d912f3e29bc3c46e2f40a9e82bb51cbf5e4cfb"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:egui-wgpu@0.32.3",
       "license": "MIT OR Apache-2.0",
       "members": [],
@@ -5708,10 +5999,6 @@
           "sha256": "7a8ccbb9fbddf24243446291b8e5a4e6bddcb6b565602c9561581926d5ae362b"
         },
         {
-          "location": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
-          "sha256": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad"
-        },
-        {
           "location": ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs",
           "sha256": "d3b33a29a741bf4fdedb6bdc2d394b3cfb6f129da35cf9a3deaa247530098cef"
         },
@@ -5722,32 +6009,10 @@
         {
           "location": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs",
           "sha256": "dd932be8e17a69b222015ec1a25cb4e163aa44a204a41760c7b0f53418ef63de"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:egui_glow@0.32.3",
-      "license": "MIT OR Apache-2.0",
-      "members": [],
-      "name": "egui_glow 0.32.3",
-      "notices": [
-        {
-          "location": "https://raw.githubusercontent.com/emilk/egui/af96e0373c18477b77236e2bfc89735af007b1c2/LICENSE-MIT",
-          "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c"
         },
         {
-          "location": "https://raw.githubusercontent.com/emilk/egui/af96e0373c18477b77236e2bfc89735af007b1c2/LICENSE-APACHE",
-          "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/egui_glow/egui_glow-0.32.3.crate",
-          "sha256": "cc7037813341727937f9e22f78d912f3e29bc3c46e2f40a9e82bb51cbf5e4cfb"
+          "location": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
+          "sha256": "68dac19356ffd93234fd97a608517272a9a40907ceef820c2951ca2315f178ad"
         }
       ]
     },
@@ -6579,28 +6844,6 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:glutin-winit@0.5.0",
-      "license": "MIT",
-      "members": [],
-      "name": "glutin-winit 0.5.0",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/glutin-winit/glutin-winit-0.5.0.crate#LICENSE",
-          "sha256": "d35629aec828ca86834f76e4c813bd6a6f0dda9005da898b0f49021f8042c5bd"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/glutin-winit/glutin-winit-0.5.0.crate",
-          "sha256": "85edca7075f8fc728f28cb8fbb111a96c3b89e930574369e3e9c27eb75d3788f"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:glutin_egl_sys@0.7.1",
       "license": "Apache-2.0",
       "members": [],
@@ -6638,6 +6881,28 @@
         {
           "location": "https://static.crates.io/crates/glutin_glx_sys/glutin_glx_sys-0.6.1.crate",
           "sha256": "8a7bb2938045a88b612499fbcba375a77198e01306f52272e692f8c1f3751185"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:glutin-winit@0.5.0",
+      "license": "MIT",
+      "members": [],
+      "name": "glutin-winit 0.5.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/glutin-winit/glutin-winit-0.5.0.crate#LICENSE",
+          "sha256": "d35629aec828ca86834f76e4c813bd6a6f0dda9005da898b0f49021f8042c5bd"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/glutin-winit/glutin-winit-0.5.0.crate",
+          "sha256": "85edca7075f8fc728f28cb8fbb111a96c3b89e930574369e3e9c27eb75d3788f"
         }
       ]
     },
@@ -7321,6 +7586,28 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:khronos_api@3.1.0",
+      "license": "Apache-2.0",
+      "members": [],
+      "name": "khronos_api 3.1.0",
+      "notices": [
+        {
+          "location": "https://raw.githubusercontent.com/brendanzab/gl-rs/f150967b1c44ae888e6676f93f639ebc82771bdc/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/khronos_api/khronos_api-3.1.0.crate",
+          "sha256": "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:khronos-egl@6.0.0",
       "license": "MIT/Apache-2.0",
       "members": [],
@@ -7340,28 +7627,6 @@
         {
           "location": "https://static.crates.io/crates/khronos-egl/khronos-egl-6.0.0.crate",
           "sha256": "6aae1df220ece3c0ada96b8153459b67eebe9ae9212258bb0134ae60416fdf76"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:khronos_api@3.1.0",
-      "license": "Apache-2.0",
-      "members": [],
-      "name": "khronos_api 3.1.0",
-      "notices": [
-        {
-          "location": "https://raw.githubusercontent.com/brendanzab/gl-rs/f150967b1c44ae888e6676f93f639ebc82771bdc/LICENSE",
-          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/khronos_api/khronos_api-3.1.0.crate",
-          "sha256": "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
         }
       ]
     },
@@ -9992,10 +10257,6 @@
           "sha256": "6de8ce7c4832e7a33036a22449bb965f4d9fe78e93a963fbd188f365129d7232"
         },
         {
-          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/UPSTREAM.json",
-          "sha256": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84"
-        },
-        {
           "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/aiff/chunks.rs",
           "sha256": "43518ce7448268f924a986861f834982a597c15e768b553a3288f59671a1d7a5"
         },
@@ -10018,6 +10279,10 @@
         {
           "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs",
           "sha256": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/symphonia-format-riff/UPSTREAM.json",
+          "sha256": "1c8f6e9e9ccc29d217afdb0ce5238133b467ed061281aaf084dbbf2c28c78b84"
         }
       ]
     },
@@ -10927,32 +11192,6 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:utf8-zero@0.8.1",
-      "license": "MIT OR Apache-2.0",
-      "members": [],
-      "name": "utf8-zero 0.8.1",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate#LICENSE-APACHE",
-          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
-        },
-        {
-          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate#LICENSE-MIT",
-          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate",
-          "sha256": "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:utf8_iter@1.0.4",
       "license": "Apache-2.0 OR MIT",
       "members": [],
@@ -10976,6 +11215,32 @@
         {
           "location": "https://static.crates.io/crates/utf8_iter/utf8_iter-1.0.4.crate",
           "sha256": "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:utf8-zero@0.8.1",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "utf8-zero 0.8.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate#LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/utf8-zero/utf8-zero-0.8.1.crate",
+          "sha256": "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
         }
       ]
     },
@@ -11028,6 +11293,226 @@
         {
           "location": "https://static.crates.io/crates/version_check/version_check-0.9.5.crate",
           "sha256": "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:vst3@0.3.0",
+      "license": "MIT OR Apache-2.0",
+      "members": [],
+      "name": "vst3 0.3.0",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/vst3/vst3-0.3.0.crate#LICENSE-APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+        },
+        {
+          "location": "https://static.crates.io/crates/vst3/vst3-0.3.0.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/vst3/vst3-0.3.0.crate",
+          "sha256": "e31e3fe7a6f028ded8c5a9984cf283319e6dc63572c9b71da1d4ee9d71d3b6bf"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked; modified vendored component, exact covered source retained in package",
+      "id": "crate:vst3-host@0.9.0",
+      "license": "MIT",
+      "members": [],
+      "name": "vst3-host 0.9.0",
+      "notices": [
+        {
+          "location": "vendor/vst3-host/LICENSE",
+          "sha256": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/vst3-host/vst3-host-0.9.0.crate",
+          "sha256": "6ec579d54bd13b83c60c1fd8bb756cf234e36ccbfb4833ff756b417e64db7fea"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/.cargo_vcs_info.json",
+          "sha256": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/Cargo.lock",
+          "sha256": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/Cargo.toml",
+          "sha256": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/Cargo.toml.orig",
+          "sha256": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/CHANGELOG.md",
+          "sha256": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/LICENSE",
+          "sha256": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/PATCHES.md",
+          "sha256": "53ed13875509f40a57dd381768c77030df3006e518f3c6dbfaa7fe85a7ec4434"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/README.md",
+          "sha256": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/run_plugin_gui.sh",
+          "sha256": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/audio.rs",
+          "sha256": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/backends/cpal_backend.rs",
+          "sha256": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/backends/mod.rs",
+          "sha256": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/bin/vst3-host-helper.rs",
+          "sha256": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/bin/vst3-host-probe.rs",
+          "sha256": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/discovery.rs",
+          "sha256": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/embed.rs",
+          "sha256": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/error.rs",
+          "sha256": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/host.rs",
+          "sha256": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/com_implementations.rs",
+          "sha256": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/data_exchange.rs",
+          "sha256": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/denormal.rs",
+          "sha256": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/isolated_plugin_impl.rs",
+          "sha256": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/mod.rs",
+          "sha256": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_info.rs",
+          "sha256": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/linux.rs",
+          "sha256": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/macos.rs",
+          "sha256": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/mod.rs",
+          "sha256": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/private_namespace.rs",
+          "sha256": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/windows.rs",
+          "sha256": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/plugin_impl.rs",
+          "sha256": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/internal/utils.rs",
+          "sha256": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/lib.rs",
+          "sha256": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/midi_input.rs",
+          "sha256": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/midi.rs",
+          "sha256": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/parameters.rs",
+          "sha256": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/playback.rs",
+          "sha256": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/plugin.rs",
+          "sha256": "e153b6a969b71f5e418b93e1f4119ff312c0f3fbee42b3ba18657a0cc6fa12a3"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/process_isolation.rs",
+          "sha256": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/realtime.rs",
+          "sha256": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/simple.rs",
+          "sha256": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/transport.rs",
+          "sha256": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/src/window.rs",
+          "sha256": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74"
+        },
+        {
+          "location": ".local/share/omatainer/source/vendor/vst3-host/UPSTREAM.json",
+          "sha256": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5"
         }
       ]
     },
@@ -11737,6 +12222,28 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:xcb@1.7.1",
+      "license": "MIT",
+      "members": [],
+      "name": "xcb 1.7.1",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/xcb/xcb-1.7.1.crate#LICENSE",
+          "sha256": "e355254448b818e666ae0409aebbc812f4eac7abbd16e807600d943e911067ab"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/xcb/xcb-1.7.1.crate",
+          "sha256": "a6c2ad15e0e922856ee89afe862b8992334bbe7953adad56cd1199358cb30566"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:xcursor@0.3.11",
       "license": "MIT",
       "members": [],
@@ -11899,50 +12406,6 @@
       "category": "rust-component",
       "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
       "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:zbus-lockstep@0.5.2",
-      "license": "MIT",
-      "members": [],
-      "name": "zbus-lockstep 0.5.2",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/zbus-lockstep/zbus-lockstep-0.5.2.crate#LICENSE-MIT",
-          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/zbus-lockstep/zbus-lockstep-0.5.2.crate",
-          "sha256": "6998de05217a084b7578728a9443d04ea4cd80f2a0839b8d78770b76ccd45863"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
-      "id": "crate:zbus-lockstep-macros@0.5.2",
-      "license": "MIT",
-      "members": [],
-      "name": "zbus-lockstep-macros 0.5.2",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/zbus-lockstep-macros/zbus-lockstep-macros-0.5.2.crate#LICENSE-MIT",
-          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
-        }
-      ],
-      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/zbus-lockstep-macros/zbus-lockstep-macros-0.5.2.crate",
-          "sha256": "10da05367f3a7b7553c8cdf8fa91aee6b64afebe32b51c95177957efc47ca3a0"
-        }
-      ]
-    },
-    {
-      "category": "rust-component",
-      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
-      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
       "id": "crate:zbus_macros@5.19.0",
       "license": "MIT",
       "members": [],
@@ -12002,6 +12465,50 @@
         {
           "location": "https://static.crates.io/crates/zbus_xml/zbus_xml-5.2.1.crate",
           "sha256": "d1586c021a01ca0a9216dcd874e546382e156a5cbab5fab6cb5f10087e22682a"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:zbus-lockstep@0.5.2",
+      "license": "MIT",
+      "members": [],
+      "name": "zbus-lockstep 0.5.2",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/zbus-lockstep/zbus-lockstep-0.5.2.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/zbus-lockstep/zbus-lockstep-0.5.2.crate",
+          "sha256": "6998de05217a084b7578728a9443d04ea4cd80f2a0839b8d78770b76ccd45863"
+        }
+      ]
+    },
+    {
+      "category": "rust-component",
+      "commercial_use": "The recorded open-source license permits commercial use subject to its terms.",
+      "delivery": "resolved Linux build/runtime dependency; not a claim that every module is linked",
+      "id": "crate:zbus-lockstep-macros@0.5.2",
+      "license": "MIT",
+      "members": [],
+      "name": "zbus-lockstep-macros 0.5.2",
+      "notices": [
+        {
+          "location": "https://static.crates.io/crates/zbus-lockstep-macros/zbus-lockstep-macros-0.5.2.crate#LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ],
+      "redistribution": "Retain the supplied copyright, license and required notices. OR denotes a choice of terms; AND requires all applicable terms. See the exact notices, including any third-party portions, below.",
+      "sources": [
+        {
+          "location": "https://static.crates.io/crates/zbus-lockstep-macros/zbus-lockstep-macros-0.5.2.crate",
+          "sha256": "10da05367f3a7b7553c8cdf8fa91aee6b64afebe32b51c95177957efc47ca3a0"
         }
       ]
     },
@@ -12392,128 +12899,6 @@
           "sha256": "bad0294361a320b694a328460dc73add56c306150f5cb6bfafc44446120008a3"
         }
       ]
-    },
-    {
-      "category": "font",
-      "commercial_use": "Commercial use is permitted by the supplied MIT and Bitstream Vera terms; DejaVu contributions are identified as public domain.",
-      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
-      "id": "font:hack",
-      "license": "MIT AND Bitstream-Vera",
-      "members": [],
-      "name": "Hack Regular",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Hack-Regular.txt",
-          "sha256": "47c0cccbeec7e8614548cc485588b28149e7874188df5f41b36efebcee285c87"
-        },
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Hack-Regular.ttf (embedded name-table notices)",
-          "sha256": "d3f57eae40953475bd0914c39fe9d9b0f3994c672a6f53dc09adf6d2d015a468"
-        }
-      ],
-      "redistribution": "Keep all notices; Bitstream/Vera names have modification restrictions. Fonts may be sold in a larger package, not by themselves.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Hack-Regular.ttf",
-          "sha256": "15f55cc0c85a2988d2b4b3a8cdb5d77fdfbaf319e1bb5309d725db9818fb7125"
-        }
-      ]
-    },
-    {
-      "category": "font",
-      "commercial_use": "Use, embedding and redistribution, including commercial distribution, are permitted under Ubuntu Font Licence 1.0.",
-      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
-      "id": "font:ubuntu",
-      "license": "Ubuntu-font-1.0",
-      "members": [],
-      "name": "Ubuntu Light",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/UFL.txt",
-          "sha256": "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002"
-        },
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Ubuntu-Light.ttf (embedded name-table notices)",
-          "sha256": "d8b29cab75bf4af1dfc52fb9692377f8318ac174c978d338a32fd1ae8530c4c0"
-        }
-      ],
-      "redistribution": "Keep the original name and notices; modified fonts have naming requirements. Font software remains under this license; ordinary documents made with it do not.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/Ubuntu-Light.ttf",
-          "sha256": "80307b8da7649aa4ee4d484b232140e3ce1ec0ca093073d3c53c8f5a5ced7a70"
-        }
-      ]
-    },
-    {
-      "category": "font",
-      "commercial_use": "Commercial use and bundling are permitted under SIL Open Font License 1.1.",
-      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
-      "id": "font:noto-emoji",
-      "license": "OFL-1.1",
-      "members": [],
-      "name": "Noto Emoji Regular",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/OFL.txt",
-          "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
-        },
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/NotoEmoji-Regular.ttf (embedded name-table notices)",
-          "sha256": "2c813a777a0c164f0ac5076c74e1c995b17d24bd927b3a1b5e3f57391d83beab"
-        }
-      ],
-      "redistribution": "Keep copyright/license notices; do not sell the font by itself. Derivatives retain OFL and must respect reserved names. Ordinary documents are not required to use OFL.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/NotoEmoji-Regular.ttf",
-          "sha256": "415dc6290378574135b64c808dc640c1df7531973290c4970c51fdeb849cb0c5"
-        }
-      ]
-    },
-    {
-      "category": "font",
-      "commercial_use": "MIT permits commercial use, copying and sale subject to its conditions.",
-      "delivery": "embedded in the executable by epaint_default_fonts 0.32.3",
-      "id": "font:emoji-icon",
-      "license": "MIT",
-      "members": [],
-      "name": "Emoji icon font",
-      "notices": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/emoji-icon-font-mit-license.txt",
-          "sha256": "b9d2c1d909aa149996fd4c91dcb92b2362a04431640c1d200959da94caf8cde1"
-        }
-      ],
-      "redistribution": "Retain the John Slegers copyright and permission notice.",
-      "sources": [
-        {
-          "location": "https://static.crates.io/crates/epaint_default_fonts/epaint_default_fonts-0.32.3.crate#fonts/emoji-icon-font.ttf",
-          "sha256": "3a706840d2f888b83c184f7d41900dbaa0151a806c4d130cc88539d53fedef0a"
-        }
-      ]
-    },
-    {
-      "category": "toolchain-runtime",
-      "commercial_use": "The Rust library is open-source software; commercial use is subject to the supplied library and constituent terms.",
-      "delivery": "standard library/runtime portions linked by rustc; compiler and documentation are not shipped",
-      "id": "toolchain:rust-library@1.98.0",
-      "license": "MIT OR Apache-2.0; constituent licenses are listed in the retained copyright record",
-      "members": [],
-      "name": "Rust standard library 1.98.0",
-      "notices": [
-        {
-          "location": "https://github.com/rust-lang/rust/tree/88d9e12ae178fab0fb5cc050a94da85685d449ea/library (toolchain COPYRIGHT-library.html text)",
-          "sha256": "a4bd7b11a9ccb0891ede2bc4272bc438de3a2e3baedecef9676c4d20bc2dc354"
-        }
-      ],
-      "redistribution": "Retain the library copyright and constituent notices. The exact upstream revision and complete toolchain-supplied library copyright record are retained.",
-      "sources": [
-        {
-          "location": "https://github.com/rust-lang/rust/tree/88d9e12ae178fab0fb5cc050a94da85685d449ea/library",
-          "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
-        }
-      ]
     }
   ],
   "external": [
@@ -12552,14 +12937,57 @@
     "vendor/symphonia-format-riff/src/common.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/common.rs",
     "vendor/symphonia-format-riff/src/lib.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs",
     "vendor/symphonia-format-riff/src/wave/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs",
-    "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs"
+    "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs",
+    "vendor/vst3-host/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/vst3-host/.cargo_vcs_info.json",
+    "vendor/vst3-host/CHANGELOG.md": ".local/share/omatainer/source/vendor/vst3-host/CHANGELOG.md",
+    "vendor/vst3-host/Cargo.lock": ".local/share/omatainer/source/vendor/vst3-host/Cargo.lock",
+    "vendor/vst3-host/Cargo.toml": ".local/share/omatainer/source/vendor/vst3-host/Cargo.toml",
+    "vendor/vst3-host/Cargo.toml.orig": ".local/share/omatainer/source/vendor/vst3-host/Cargo.toml.orig",
+    "vendor/vst3-host/LICENSE": ".local/share/omatainer/source/vendor/vst3-host/LICENSE",
+    "vendor/vst3-host/PATCHES.md": ".local/share/omatainer/source/vendor/vst3-host/PATCHES.md",
+    "vendor/vst3-host/README.md": ".local/share/omatainer/source/vendor/vst3-host/README.md",
+    "vendor/vst3-host/UPSTREAM.json": ".local/share/omatainer/source/vendor/vst3-host/UPSTREAM.json",
+    "vendor/vst3-host/run_plugin_gui.sh": ".local/share/omatainer/source/vendor/vst3-host/run_plugin_gui.sh",
+    "vendor/vst3-host/src/audio.rs": ".local/share/omatainer/source/vendor/vst3-host/src/audio.rs",
+    "vendor/vst3-host/src/backends/cpal_backend.rs": ".local/share/omatainer/source/vendor/vst3-host/src/backends/cpal_backend.rs",
+    "vendor/vst3-host/src/backends/mod.rs": ".local/share/omatainer/source/vendor/vst3-host/src/backends/mod.rs",
+    "vendor/vst3-host/src/bin/vst3-host-helper.rs": ".local/share/omatainer/source/vendor/vst3-host/src/bin/vst3-host-helper.rs",
+    "vendor/vst3-host/src/bin/vst3-host-probe.rs": ".local/share/omatainer/source/vendor/vst3-host/src/bin/vst3-host-probe.rs",
+    "vendor/vst3-host/src/discovery.rs": ".local/share/omatainer/source/vendor/vst3-host/src/discovery.rs",
+    "vendor/vst3-host/src/embed.rs": ".local/share/omatainer/source/vendor/vst3-host/src/embed.rs",
+    "vendor/vst3-host/src/error.rs": ".local/share/omatainer/source/vendor/vst3-host/src/error.rs",
+    "vendor/vst3-host/src/host.rs": ".local/share/omatainer/source/vendor/vst3-host/src/host.rs",
+    "vendor/vst3-host/src/internal/com_implementations.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/com_implementations.rs",
+    "vendor/vst3-host/src/internal/data_exchange.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/data_exchange.rs",
+    "vendor/vst3-host/src/internal/denormal.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/denormal.rs",
+    "vendor/vst3-host/src/internal/isolated_plugin_impl.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/isolated_plugin_impl.rs",
+    "vendor/vst3-host/src/internal/mod.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/mod.rs",
+    "vendor/vst3-host/src/internal/module_info.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_info.rs",
+    "vendor/vst3-host/src/internal/module_loader/linux.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/linux.rs",
+    "vendor/vst3-host/src/internal/module_loader/macos.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/macos.rs",
+    "vendor/vst3-host/src/internal/module_loader/mod.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/mod.rs",
+    "vendor/vst3-host/src/internal/module_loader/private_namespace.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/private_namespace.rs",
+    "vendor/vst3-host/src/internal/module_loader/windows.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/windows.rs",
+    "vendor/vst3-host/src/internal/plugin_impl.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/plugin_impl.rs",
+    "vendor/vst3-host/src/internal/utils.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/utils.rs",
+    "vendor/vst3-host/src/lib.rs": ".local/share/omatainer/source/vendor/vst3-host/src/lib.rs",
+    "vendor/vst3-host/src/midi.rs": ".local/share/omatainer/source/vendor/vst3-host/src/midi.rs",
+    "vendor/vst3-host/src/midi_input.rs": ".local/share/omatainer/source/vendor/vst3-host/src/midi_input.rs",
+    "vendor/vst3-host/src/parameters.rs": ".local/share/omatainer/source/vendor/vst3-host/src/parameters.rs",
+    "vendor/vst3-host/src/playback.rs": ".local/share/omatainer/source/vendor/vst3-host/src/playback.rs",
+    "vendor/vst3-host/src/plugin.rs": ".local/share/omatainer/source/vendor/vst3-host/src/plugin.rs",
+    "vendor/vst3-host/src/process_isolation.rs": ".local/share/omatainer/source/vendor/vst3-host/src/process_isolation.rs",
+    "vendor/vst3-host/src/realtime.rs": ".local/share/omatainer/source/vendor/vst3-host/src/realtime.rs",
+    "vendor/vst3-host/src/simple.rs": ".local/share/omatainer/source/vendor/vst3-host/src/simple.rs",
+    "vendor/vst3-host/src/transport.rs": ".local/share/omatainer/source/vendor/vst3-host/src/transport.rs",
+    "vendor/vst3-host/src/window.rs": ".local/share/omatainer/source/vendor/vst3-host/src/window.rs"
   },
   "schema": 1,
   "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": {
     "CONTRACT.md": "a2b448e195c0e4990912a7dd65ef15506800ea3481fb8f0a30fcf83944a4106d",
-    "Cargo.lock": "239d244ddd933e4b9484e017985154e2c47b763940f00cfa934271740bc7d695",
-    "Cargo.toml": "aa734acca2d609c311d6b956a0ce8811392777e4f12b2ba14b1ec963f725a0bd",
+    "Cargo.lock": "0eee16cfd3454ba008b2a1e99c8ccb8ea327922070a1131bb1c814441428c70f",
+    "Cargo.toml": "85550c76ff6b9eaa7ef5a70da79b80c29336d982f03d8ed636cbbddbb34721ac",
     "LICENSE": "63b79db05f159e96dc02773307e5911c95bb851fd3adceda0d977e1adf79aa1e",
     "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
     "benchmarks/keylock-show-policy.json": "c0606e0ae958cbd9a45921d67f051797b8a9991f787119dbcd9c09a63226f431",
@@ -12567,16 +12995,17 @@
     "contrib/omatainer.lua": "28d5155bf959381587ae3fd832b69da00f953bba8904201cd73a25a182b806f5",
     "contrib/org.omarchy.omatainer.desktop": "34cf05581cc296a822ad9258a4956ca090adb7930453344eed926eaf86791fee",
     "contrib/org.omarchy.omatainer.svg": "2e94c06627d37ba87c8bb7ae3bfa34c970d3848cab082edbf5770ae30f940c5d",
-    "docs/backlog/app-checklist.json": "67bebdada7d4a8961365c3e786b40dbe88a6af455b34344cd81762099a53ae66",
-    "docs/backlog/app-checklist.md": "c44bb142dec9f609618580dccb5b52c07f92b94dfc6bdc39115361486087dd58",
-    "docs/backlog/capability-status.json": "51a078d13db152a510c5ee76eb23c0ecf2cc11c4ccd8e10bfce01cacd6408779",
+    "docs/backlog/app-checklist.json": "0b79efc6a05129c34bb7c2f9ec309181a67a8569cccc814c9b28c40cf64979dc",
+    "docs/backlog/app-checklist.md": "b13e79410dba56c20931b991651fb564831df13111b62568795b62b63ad5c88a",
+    "docs/backlog/capability-status.json": "ceef7952cd32384547cc3b05e2af5e6dec393014d0265e7596e098adfeb53b6b",
     "docs/backlog/previous-stack.json": "5e4e5ad9453e6f0ab813928e098101723f042aa739aa3f1c287eacedf6a4984d",
     "docs/backlog/release-scope.json": "5f7eb0b9875f42134a0113d1a8abf475610a516b8a83945399497b3f77078073",
     "docs/backlog/remaining-checklist.md": "d80b5fea43e83854267dc64bd7ff1d639416f2713656df679451302731d5d390",
     "docs/backlog/remaining-issues.json": "c852d3265ea2526be976a469ac3cd49aeb0e98626117cf42ea210b8432c99fd9",
-    "docs/capability-matrix.md": "d3a84f49796590395dc7d07207879eec2b19121a2976a9ada9c713b90a3c6fd5",
+    "docs/capability-matrix.md": "7518cf6aba654e90fe3200bc861624fea846a0783022597805e8debb85571d89",
     "docs/manual.md": "d4d50765b0c06796d3ecbb9f10c80f91609e9c0b44156091b43bbe615bd4d622",
-    "licenses/assets.json": "a2891bdb3276c15d3ed84b4e1b8a19b24b38c6e3f125b97399a6a7a2fdd04229",
+    "licenses/assets.json": "420f5e77de1db8c2bfbf2e8c7c0d4c1aee71c07dff781e187e85909e66f785b0",
+    "licenses/supplements.json": "2c09779854818d17af56007e8a05b41b9103aa529c6dafd170b9f09e855dcfc1",
     "locales/de.json": "c1017f46d9ca7b2cf7f7f41fe279f1605e50fde29f2e8bd178c96f976a7c5176",
     "locales/en.json": "d440923eb0d59db54c2ef2dee531715c9b766a4d355a6d98f68172bc222a7a24",
     "locales/es.json": "f4ed3aa80605a94a5bbe068a275519ccb8bb298849b579444eb327c45a645c02",
@@ -12613,7 +13042,8 @@
     "scripts/install-ns7-driver.sh": "7b6ac4be4babd4310aca552eda4a5ec46b68720cf6da286d5b15b95f7d483de6",
     "scripts/install-omarchy.sh": "f83b47871ab311e7f960863415d2419042b99a3a8a53936f899d68db3d35f5ff",
     "scripts/install-transaction.py": "477cd38ea21784ea5d3a25ae0eafb47caf6feb65f36fa72deb68f5ecd22a2e7b",
-    "scripts/license-manifest.py": "01fbc30f8568f03d6be2e0dfc60c8b59e8fbe88e2dd88bb7e9e700783bd7a956",
+    "scripts/license-inventory.mjs": "d6c77d6d0c9e83e7e9c73ea29a9adc75d5cd4b45c65456b4c7d3f21090e97280",
+    "scripts/license-manifest.py": "66e97d4bbf66c10a5167ffe09b902f35af3ba6dedc17f9047f51301f4fc9b8ae",
     "scripts/offline_guard.py": "1be43f773920f57a5340e9cb69b713f6deea2e17f73a2395fc7d8f48c94765e5",
     "scripts/performance-gate.py": "0171f3d8fd4aba35f22c26a0ac1d6cf3de83e828e72154dc5e63285b906758c5",
     "scripts/performance-test-support.py": "33a6783da423046ec22e696faee6b50ea654637d63c85479bd107047fc2507de",
@@ -12985,7 +13415,7 @@
     "src/licenses.rs": "ceaccf567edf45d474add759018ac094a6b9eff37d2320fefbe817f4f1a1a9fb",
     "src/localization.rs": "6adf674b76f671256579864460444a9a39e5214dbe3a95e85886bf4bf558aaa3",
     "src/localization/tests.rs": "f6dba5b95ae73bc793b358e2b823ac31e438935fb4e259ee53a1daa47a79b306",
-    "src/main.rs": "0e3197ff654375a09aae1cbd73e658a02b0de8cdb6a4adb62e2824c82eec28ef",
+    "src/main.rs": "51edd6217b97cba0c0766cfe98fc42e45965603c2731ea790ca98e9a55b83654",
     "src/media_location.rs": "27e526b0e057e48387c80a67d5f6f14bfd55ac280465b36cae8681bda5f26f94",
     "src/media_location/linux.rs": "2e4c87393afb593099ca1b61f23714157b8893059c3e12b18fe969a96484c406",
     "src/media_location/tests.rs": "89fb64ff9dc6a8bf41926cd3d67dcf1659fc7362e2684d14175fda3184ab261f",
@@ -13021,6 +13451,13 @@
     "src/playlist_import/plist.rs": "3f3329805022bd851a1cb760e65648ea9056b16885e18eb50601f95e23e0c931",
     "src/playlist_import/serato.rs": "5bbc071aef68a4624dcb8cba347329b998c4de4650d4d2277110884b2508fc9d",
     "src/playlist_import/tests.rs": "9e09118cbc792c4a268473f79870adef9e9e4bc21469ea41744bdc9b3e807cae",
+    "src/plugin_host/mod.rs": "57bd0ffee9f3eaa3fefa72e5f4b7722788e0d9da9361f1d8a07c59188da7f292",
+    "src/plugin_host/process.rs": "aed347b000fb47de6e3aba0b6404d564b7bd9acc91ccfbdb3ca44f1a4a9c770c",
+    "src/plugin_host/realtime.rs": "82ae5d908d680bd8d27b906626e53202fdb9789f0ab8ea34607e8eb4912f44c4",
+    "src/plugin_host/realtime/tests.rs": "286edd91080992eea50b68a8f8441faa36b0d035d4873da2d7ea8682ba78d477",
+    "src/plugin_host/scanner.rs": "265e3b8807da896870b7283459a9d88b005a386479edaaa9e8df302c7d63eefd",
+    "src/plugin_host/scanner/tests.rs": "aeafd8da5542c17e0b3fbbd6544c9e20c4542e6132d0958755bda21d9a6e3e33",
+    "src/plugin_host/worker.rs": "778a761a02225a030fac8f5bca2a9e6d6d834e7a84265b06933728a96b8b4464",
     "src/portable_project.rs": "9e774b7a3e960d71347ecc11bd270f71dd20c7df879679bfca3ed1c8bcb4b6b6",
     "src/portable_project/tests.rs": "a795e2cb9c8df18d91108e83a0e2225e0e1c2ccaa1f16e43d583417909f81955",
     "src/preferences/library_layout.rs": "9dd711a97024f3ae5c939e794504f651413a9880c2a37096b6a65bb51e375753",
@@ -13082,7 +13519,7 @@
     "src/track_analysis/cache.rs": "2350205a7a8de86ef6c2c497a90db3bf8d03d3e514929e138917afedf4b002b8",
     "src/track_analysis/cache/tests.rs": "d3e9f7b86248d794a7b0b088cd92d1af97e45e5a63944b6414f77e0d96aae736",
     "src/track_gain.rs": "658acdd74d88989afe73b4d4ccef79821463d470e8335016e48e9ae46825b7b7",
-    "src/ui.rs": "fcd9677e1c786d5faa5289a923f154ad96af001d7da9a748798ce8cb5f85a9bf",
+    "src/ui.rs": "8f56dc19ff4a6f4f6073a7f5adf1b7673733b3424956f7468d26f1b9268c6e38",
     "src/ui/accessibility.rs": "87c0923cc879a651cf28e9329def52a0c73607df645f2a127e4dc6a3c8c6500b",
     "src/ui/accessibility/tests.rs": "0d2678a1ecdedec6755f7e57b808d69f6d74a37b0a87be7f28187cee76f953b9",
     "src/ui/arrangement.rs": "3ebd6b600c25ab7bc2194018bef7a83fd5d89d643ea7ec1a7b88acf0b8b43e2f",
@@ -13266,10 +13703,12 @@
     "src/ui/play_history/tests.rs": "066860494e5432b71834648c8e5eaf9868c46723a9162936e844fdd9caf62041",
     "src/ui/play_time.rs": "eaf2fd3ee53933472c3972ea5f6ea186f2036c73b17195c33c35013fa022fe03",
     "src/ui/play_time/tests.rs": "17be78ff09807826c993a70213973164f1addd8370243396a30e97fad597dfa5",
+    "src/ui/plugins.rs": "29918795b203ae43d97a498a8a97aea1ecf5e3d62d504d0bdf370eb30d047373",
+    "src/ui/plugins/tests.rs": "88296fcc5e0da5f336aac605428f30d1ec7a7f13ecd2b838238c40eb17cae402",
     "src/ui/portability.rs": "52af93271305fc08620bb14aeb91dc6fe500d5ebf4d420903624767d5f1e56d6",
     "src/ui/portability/tests.rs": "adf6cdfd7eb99bd339c19f993bdd3b266e1848181d497718576a0351f3507dc7",
     "src/ui/portability/worker.rs": "8cd054a7f7dd22bb4241af640cdf4a7abd7157c37cd8c27129f882f4c975a5ee",
-    "src/ui/preferences.rs": "061d626161c4ceb11f4f51eb9e3614c26103e99a0b1bfc8e4f852916d60b6317",
+    "src/ui/preferences.rs": "bd119799758ae2c44e45ea192725a1478d167d53f224c48a82e3676f079c66c2",
     "src/ui/preferences/tests.rs": "4aa231a948ce216d7244a448fffed7721de8d03167beaf906a4dba7acf06cb46",
     "src/ui/project.rs": "df6d339d6f5ebc750414cc6f25f58ee4b5a32492085eb3578932832a8849a986",
     "src/ui/project/live_set.rs": "b0defac26a0d0950ceaa1b0ab12c279321ee8590407618ffa39cd2aec4f50bfb",
@@ -13390,7 +13829,50 @@
     "vendor/symphonia-format-riff/src/common.rs": "0f4ca3494b225e604acad3df8f5c1c55f70e3fc1b4e8d056121d4daf81f2da38",
     "vendor/symphonia-format-riff/src/lib.rs": "229f2ec28d7d020a7d1e1ad9cfa0a3c8145127a14d33b39028e5cfcd5f96bfb8",
     "vendor/symphonia-format-riff/src/wave/chunks.rs": "45f6db6456300e02b35e5cc3cb44eedcb5c44f38db1f2b9723c48aebcb963b7d",
-    "vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd"
+    "vendor/symphonia-format-riff/src/wave/mod.rs": "abdfe224d9c30e9b73fd088dcc640f1dee07aa60c7c828fa79ac5107653916fd",
+    "vendor/vst3-host/.cargo_vcs_info.json": "737b52ce29e201e3cc14bab20bc449c6e4a3238c78320391a14d8bc1cf8a9657",
+    "vendor/vst3-host/CHANGELOG.md": "5375dbfae069330fef7d9229b57e53b7d9f86a1eecee8dd9432e5cec5f5bc667",
+    "vendor/vst3-host/Cargo.lock": "8fff93ae955c9d77db19aa19dc677a91cf1fe5aa0be8ed2b933dcb1af7bc7cbc",
+    "vendor/vst3-host/Cargo.toml": "9d58457c3a05e1331fb76692fcb599b9c71b5e250a8f643047bfc33837b226a2",
+    "vendor/vst3-host/Cargo.toml.orig": "ba68c845370574dd9d90c92046788d7cd9a2409c77040d63d72bb0c8dd76b25e",
+    "vendor/vst3-host/LICENSE": "a65a537295910b776a8b2edb2e7410c3b0e975ca6388994e032c4d1842b4952d",
+    "vendor/vst3-host/PATCHES.md": "53ed13875509f40a57dd381768c77030df3006e518f3c6dbfaa7fe85a7ec4434",
+    "vendor/vst3-host/README.md": "a3b3f383c9b7af8d2a64c3c0d7ff7d4759722e751c77488daec3a89d9dddffcc",
+    "vendor/vst3-host/UPSTREAM.json": "097189bbc87141d7b2e2dd105eb86446778661d72264f273bf88467554558df5",
+    "vendor/vst3-host/run_plugin_gui.sh": "f59d98fd5d4e954d37352d23a1872aa6fe37954b64968734c4c3a8462a76cdcf",
+    "vendor/vst3-host/src/audio.rs": "a3f78a9d6190aca7f93c898270665c569b87ce05d2f47c6a1c20f58b461e826c",
+    "vendor/vst3-host/src/backends/cpal_backend.rs": "81ac2fb61dc337957e168c0927bd382ebb937b4d83ba33b18e1aca49b798361e",
+    "vendor/vst3-host/src/backends/mod.rs": "5d0bbb62d5bfeb1ec8fe4e097fed6ae1de62fb2f394092a1107978830f1c419f",
+    "vendor/vst3-host/src/bin/vst3-host-helper.rs": "04e7ce1c38187857d1f813fa07f1b6fa5fca599acf310118db63d8af59ca1481",
+    "vendor/vst3-host/src/bin/vst3-host-probe.rs": "9e2cc17f41aabbd8302fe171e2211c18bba4e0698de6aaee48abcfb101d1b110",
+    "vendor/vst3-host/src/discovery.rs": "568bab9374fd746e3ff983bd3364c1a64a3ec19cc5c77967c6bfcf01df51efec",
+    "vendor/vst3-host/src/embed.rs": "00cf4880ff976ad7ebe4491cf48e944986cc27a23148017922dc9b04390150f6",
+    "vendor/vst3-host/src/error.rs": "eeb7ac5dba88dce6743f7df46e3076511112f5107ed72305ee022c6f8ebe2596",
+    "vendor/vst3-host/src/host.rs": "872989605bfe462453a6928ce807078034f2692268754c177060c816b3fbf00a",
+    "vendor/vst3-host/src/internal/com_implementations.rs": "aa97b36cd66f95eb858b0bc68afbabdcaa6b3da411776c39acf180c0be592c9f",
+    "vendor/vst3-host/src/internal/data_exchange.rs": "a3312da17e69533edcbe8cf28c1df55d4f93e5fc31cddd1d4ebea95d59bf1423",
+    "vendor/vst3-host/src/internal/denormal.rs": "3a30c5e0067d32dab0ef8e5f49f9bac195e635c86cd83e265b3ccbdc4e397ab2",
+    "vendor/vst3-host/src/internal/isolated_plugin_impl.rs": "1faf76aff93a109c08479c9a0d81c56b7c89cc9978596b49cc9830a1acee66e8",
+    "vendor/vst3-host/src/internal/mod.rs": "0304738316f40839b650a1751a9882fb2e0b68de879d61a79326883935d244b5",
+    "vendor/vst3-host/src/internal/module_info.rs": "2c837fb62c8582f45f72aafa0d54a20848008e871a72d004f1e640d0e91d4ef3",
+    "vendor/vst3-host/src/internal/module_loader/linux.rs": "97a1f7e293f39fa61cebc38fb07df3ab3477f542b04303a4c01109a621bb1eab",
+    "vendor/vst3-host/src/internal/module_loader/macos.rs": "72eb4dbd44ba420dff1fa8197d6538415794b9a598cb05dff1a7f2cf033ca16b",
+    "vendor/vst3-host/src/internal/module_loader/mod.rs": "d7f0924f20602757c0e546ed6ac375819358c6ed4fecd6b52f38c4a92d80dd07",
+    "vendor/vst3-host/src/internal/module_loader/private_namespace.rs": "8eeda22b33aa1cca2aac3a361786572079371dd9252ddd8c2720fc991d47b0a0",
+    "vendor/vst3-host/src/internal/module_loader/windows.rs": "1bc518762553ae6c012d4f38f9b864d9105515d15c208635d7c72556580a9844",
+    "vendor/vst3-host/src/internal/plugin_impl.rs": "60add58bdd26914acb3da94ae4d7e1af625c0ee07a5ae22a0593114739eab3b5",
+    "vendor/vst3-host/src/internal/utils.rs": "3619b511f1a2ac5d48a7f954bdd4d721627008a831130720f7d058b883cd2e19",
+    "vendor/vst3-host/src/lib.rs": "5ce1016d14ccdccf3d92d05999a270ca8531f996b2e4ff77bbad415911b9755c",
+    "vendor/vst3-host/src/midi.rs": "13bf1e7e6dbed088adbc742a6c36366bac1c9b116c9881be76cda692a1a7a06e",
+    "vendor/vst3-host/src/midi_input.rs": "00eb0c1be43c99bae187951991f0ebba1ee5d34eeae00a6d3588c4b244fe4c56",
+    "vendor/vst3-host/src/parameters.rs": "b48bc7daa017470411370d0d540d3dde10c0bb2aea22efd32e910706e95817ef",
+    "vendor/vst3-host/src/playback.rs": "8fa44b9d3f425630bb2061dc20d624f5d121356eacbb218cac815f2662670e33",
+    "vendor/vst3-host/src/plugin.rs": "e153b6a969b71f5e418b93e1f4119ff312c0f3fbee42b3ba18657a0cc6fa12a3",
+    "vendor/vst3-host/src/process_isolation.rs": "a72ddbfffc1b6b873286fd5903e9983c92772a55fdfa17ed9fe818a94e962e42",
+    "vendor/vst3-host/src/realtime.rs": "538129d630954d15e1cb0b5469d99da202350370552fa0f985102f56b62ea7d6",
+    "vendor/vst3-host/src/simple.rs": "fe3879f15c2b3c9283c671d537b69436abf553935b6778f4726ae85e1f4f5978",
+    "vendor/vst3-host/src/transport.rs": "46285c2b3405cde078c15c49799f7a0d51fd4a719badbb9ecd5174fe64208d79",
+    "vendor/vst3-host/src/window.rs": "5f38ebba09c39c783ee13711281dedc5f4655e33a30007b4df4c0f057a5b5f74"
   },
   "target": "aarch64-unknown-linux-gnu",
   "toolchain": {

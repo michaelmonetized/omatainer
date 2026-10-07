@@ -28,6 +28,7 @@ use bpm::{Bpm, Origin};
 use crate::engine::media_source::FileFingerprint;
 mod fx_controls;
 mod dj_fx;
+mod plugins;
 mod library_view;
 mod library_layout;
 mod library_backup;
@@ -158,6 +159,7 @@ pub struct App {
     recovery: recovery::Recovery,
     session_history: session_history::Panel,
     settings: preferences::Settings,
+    plugins: crate::plugin_host::scanner::Browser,
     automation_panel: automation::Panel,
     music_provider: music_provider::Panel,
     video: video::Panel,
@@ -319,6 +321,7 @@ impl App {
             audio_settings: audio_settings::Panel::new(engine.audio_handle()),
             audio_routing: audio_routing::Panel::default(),
             settings: preferences::Settings::default(),
+            plugins: Default::default(),
             automation_panel: automation::Panel::default(),
             music_provider: music_provider::Panel::default(),
             video: video::Panel::default(),
@@ -883,6 +886,7 @@ impl App {
         }
         self.poll_recovery();
         self.poll_preferences(ctx);
+        self.poll_plugins();
         self.poll_audio_settings(ctx);
         self.poll_theme(ctx);
         if !self.project.committing() { self.poll_loads(); }
@@ -899,6 +903,7 @@ impl App {
         self.poll_arrangement();
         self.poll_clip_manager();
         self.timing.poll(&self.engine);
+        self.plugins_ui(ctx);
         self.poll_dependencies();
         self.poll_portability();
         self.poll_templates();

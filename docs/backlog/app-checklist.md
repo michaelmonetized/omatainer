@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 56 implemented · 7 partial · 158 planned · 0 accepted · 8 outside release
+127 existing stack · 56 implemented · 9 partial · 156 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -193,7 +193,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented | #130 | [receipt](../../docs/validation/mic-aux.md), [receipt](../../docs/validation/mic-aux-receipt.json) |
 | [x] | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented | #130 | [receipt](../../docs/validation/audio-delivery.md), [receipt](../../docs/validation/audio-delivery-receipt.json) |
 | [x] | [#182](https://github.com/michaelmonetized/omatainer/issues/182) | Make audio a first-class Session and Arrangement clip type | implemented | #82, #130 | [receipt](../../docs/validation/audio-clips.md), [receipt](../../docs/validation/audio-clips-receipt.json), [receipt](../../docs/validation/arrangement.md), [receipt](../../docs/validation/arrangement-receipt.json) |
-| [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | planned | #130 |  |
+| [ ] | [#183](https://github.com/michaelmonetized/omatainer/issues/183) | Host native VST3 instruments and audio effects | partial | #130 | [receipt](../../docs/validation/vst3-core.md), [receipt](../../docs/validation/vst3-core-receipt.json) |
 | [ ] | [#184](https://github.com/michaelmonetized/omatainer/issues/184) | Stream long recordings and deck media with bounded caches | planned | #132 |  |
 | [x] | [#185](https://github.com/michaelmonetized/omatainer/issues/185) | Add beat-jump transport and controller pad controls | implemented | #134 | [receipt](../../docs/validation/beat-jump.md) |
 | [x] | [#186](https://github.com/michaelmonetized/omatainer/issues/186) | Implement hold-to-audition and stutter behavior for temporary cues | implemented | #148 | [receipt](../../docs/validation/cue-audition.md) |
@@ -226,7 +226,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#213](https://github.com/michaelmonetized/omatainer/issues/213) | Add deck-isolated output mode for external mixers | planned | #130, #189 |  |
 | [ ] | [#214](https://github.com/michaelmonetized/omatainer/issues/214) | Implement transient detection and editable audio warp markers | planned | #182, #114 |  |
 | [ ] | [#215](https://github.com/michaelmonetized/omatainer/issues/215) | Manage plugin presets, A/B states and reusable device chains | planned | #183, #82 |  |
-| [ ] | [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | planned | #183 |  |
+| [ ] | [#216](https://github.com/michaelmonetized/omatainer/issues/216) | Scan, catalog and quarantine plugins outside the application process | partial | #183 | [receipt](../../docs/validation/vst3-core.md), [receipt](../../docs/validation/vst3-core-receipt.json) |
 | [ ] | [#217](https://github.com/michaelmonetized/omatainer/issues/217) | Add configurable crossfader assignments, curves and scratch cut-in | planned | #189 |  |
 | [ ] | [#218](https://github.com/michaelmonetized/omatainer/issues/218) | Add selectable DJ waveform and library layouts | planned | #189 |  |
 | [x] | [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | implemented | #193 | [receipt](../../docs/validation/pitch-pickup.md), [receipt](../../docs/validation/pitch-pickup-receipt.json) |

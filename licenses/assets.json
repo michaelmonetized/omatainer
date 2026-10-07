@@ -1,14 +1,26 @@
 {
-  "schema": 1,
-  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
+  "absent": [
+    "Impulse response assets: none shipped; the reverb uses an algorithm.",
+    "ML models / weights: none shipped.",
+    "Proprietary SDKs and reference-product content: none shipped."
+  ],
   "assets": [
     {
-      "id": "factory:drum-kit",
-      "name": "Six synthesized drum voices",
       "category": "samples",
-      "delivery": "generated in memory from original project source",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
+      "delivery": "generated in memory from original project source",
+      "id": "factory:drum-kit",
+      "license": "MIT",
+      "members": [
+        "builtin:Kick",
+        "builtin:Snare",
+        "builtin:Hat",
+        "builtin:Clap",
+        "builtin:OpenHat",
+        "builtin:Tom"
+      ],
+      "name": "Six synthesized drum voices",
+      "project_license": true,
       "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
       "sources": [
         {
@@ -19,35 +31,14 @@
           "location": "src/engine/dsp.rs#synth_drum",
           "sha256": null
         }
-      ],
-      "members": [
-        "builtin:Kick",
-        "builtin:Snare",
-        "builtin:Hat",
-        "builtin:Clap",
-        "builtin:OpenHat",
-        "builtin:Tom"
-      ],
-      "project_license": true
+      ]
     },
     {
-      "id": "factory:pad-banks",
-      "name": "Kit / Perc / Hits: 48 generated pads",
       "category": "samples",
-      "delivery": "generated in memory from original project source",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
-      "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
-      "sources": [
-        {
-          "location": "src/engine/mod.rs#build_pad_banks",
-          "sha256": null
-        },
-        {
-          "location": "src/engine/dsp.rs#synth_drum",
-          "sha256": null
-        }
-      ],
+      "delivery": "generated in memory from original project source",
+      "id": "factory:pad-banks",
+      "license": "MIT",
       "members": [
         "builtin:kit-0",
         "builtin:kit-1",
@@ -98,15 +89,32 @@
         "builtin:hit-14",
         "builtin:hit-15"
       ],
-      "project_license": true
+      "name": "Kit / Perc / Hits: 48 generated pads",
+      "project_license": true,
+      "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
+      "sources": [
+        {
+          "location": "src/engine/mod.rs#build_pad_banks",
+          "sha256": null
+        },
+        {
+          "location": "src/engine/dsp.rs#synth_drum",
+          "sha256": null
+        }
+      ]
     },
     {
-      "id": "factory:session-stems",
-      "name": "Drums and Harmony session stems",
       "category": "samples",
-      "delivery": "generated in memory from original project source",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
+      "delivery": "generated in memory from original project source",
+      "id": "factory:session-stems",
+      "license": "MIT",
+      "members": [
+        "builtin:Drums (session)",
+        "builtin:Harmony (session)"
+      ],
+      "name": "Drums and Harmony session stems",
+      "project_license": true,
       "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
       "sources": [
         {
@@ -117,20 +125,21 @@
           "location": "src/engine/dsp.rs#Poly",
           "sha256": null
         }
-      ],
-      "members": [
-        "builtin:Drums (session)",
-        "builtin:Harmony (session)"
-      ],
-      "project_license": true
+      ]
     },
     {
-      "id": "factory:instruments",
-      "name": "Analog / Keys / Pad instruments",
       "category": "presets",
-      "delivery": "generated in memory from original project source",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
+      "delivery": "generated in memory from original project source",
+      "id": "factory:instruments",
+      "license": "MIT",
+      "members": [
+        "Analog",
+        "Keys",
+        "Pad"
+      ],
+      "name": "Analog / Keys / Pad instruments",
+      "project_license": true,
       "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
       "sources": [
         {
@@ -141,28 +150,14 @@
           "location": "src/engine/dsp.rs",
           "sha256": null
         }
-      ],
-      "members": [
-        "Analog",
-        "Keys",
-        "Pad"
-      ],
-      "project_license": true
+      ]
     },
     {
-      "id": "factory:session-patterns",
-      "name": "Initial session MIDI patterns",
       "category": "presets",
-      "delivery": "generated in memory from original project source",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
-      "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
-      "sources": [
-        {
-          "location": "src/engine/mod.rs#seed_demo",
-          "sha256": null
-        }
-      ],
+      "delivery": "generated in memory from original project source",
+      "id": "factory:session-patterns",
+      "license": "MIT",
       "members": [
         "House Kit",
         "Bassline",
@@ -170,15 +165,32 @@
         "Pad",
         "Fill"
       ],
-      "project_license": true
+      "name": "Initial session MIDI patterns",
+      "project_license": true,
+      "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
+      "sources": [
+        {
+          "location": "src/engine/mod.rs#seed_demo",
+          "sha256": null
+        }
+      ]
     },
     {
-      "id": "integration:omarchy",
-      "name": "Original Omarchy / Quickshell integration",
       "category": "integration",
-      "delivery": "shipped project integration files",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
+      "delivery": "shipped project integration files",
+      "id": "integration:omarchy",
+      "license": "MIT",
+      "members": [
+        "contrib/org.omarchy.omatainer.desktop",
+        "contrib/org.omarchy.omatainer.svg",
+        "contrib/omatainer.lua",
+        "plugin/manifest.json",
+        "plugin/BarWidget.qml",
+        "plugin/Service.qml"
+      ],
+      "name": "Original Omarchy / Quickshell integration",
+      "project_license": true,
       "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
       "sources": [
         {
@@ -205,31 +217,14 @@
           "location": "plugin/Service.qml",
           "sha256": null
         }
-      ],
-      "members": [
-        "contrib/org.omarchy.omatainer.desktop",
-        "contrib/org.omarchy.omatainer.svg",
-        "contrib/omatainer.lua",
-        "plugin/manifest.json",
-        "plugin/BarWidget.qml",
-        "plugin/Service.qml"
-      ],
-      "project_license": true
+      ]
     },
     {
-      "id": "integration:midi-profiles",
-      "name": "Original controller protocol bindings",
       "category": "integration",
-      "delivery": "shipped project integration files",
-      "license": "MIT",
       "commercial_use": "The supplied original project material is covered by the project MIT license, which permits use and sale subject to its notice conditions. No external recordings or reference-product assets are included.",
-      "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
-      "sources": [
-        {
-          "location": "src/engine/midi.rs",
-          "sha256": null
-        }
-      ],
+      "delivery": "shipped project integration files",
+      "id": "integration:midi-profiles",
+      "license": "MIT",
       "members": [
         "APC40 mkII",
         "MPD232",
@@ -237,15 +232,31 @@
         "NS7FX",
         "generic MIDI"
       ],
-      "project_license": true
+      "name": "Original controller protocol bindings",
+      "project_license": true,
+      "redistribution": "Keep the project copyright and MIT permission notice with copies or substantial portions of the supplied material. This record does not license your imported media or grant vendor trademark rights.",
+      "sources": [
+        {
+          "location": "src/engine/midi.rs",
+          "sha256": null
+        }
+      ]
     },
     {
-      "id": "test:vocalset-1.2",
-      "name": "VocalSet 1.2: two recorded vocal qualification fixtures",
       "category": "test-fixture",
-      "delivery": "Source-tree test fixtures only; not compiled into the production executable or installed as factory samples.",
-      "license": "CC-BY-4.0",
       "commercial_use": "CC BY 4.0 permits reuse, including commercially, under its attribution and other conditions. See the retained complete legal text and source attribution.",
+      "delivery": "Source-tree test fixtures only; not compiled into the production executable or installed as factory samples.",
+      "id": "test:vocalset-1.2",
+      "license": "CC-BY-4.0",
+      "members": [
+        "f1_arpeggios_c_slow_forte_i.wav",
+        "m1_arpeggios_c_slow_forte_i.wav"
+      ],
+      "name": "VocalSet 1.2: two recorded vocal qualification fixtures",
+      "notice_files": [
+        "tests/fixtures/keylock/README.md",
+        "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt"
+      ],
       "redistribution": "Retain attribution to Julia Wilkins, Prem Seetharaman, Alison Wahl and Bryan Pardo (2018), the source DOI, CC BY 4.0 link/terms and warranty disclaimer. Identify any modifications to derived renderings. No endorsement is implied.",
       "sources": [
         {
@@ -256,23 +267,20 @@
           "location": "https://zenodo.org/records/1442513/files/VocalSet1-2.zip?download=1#data_by_vowel/i/m1_arpeggios_c_slow_forte_i.wav",
           "sha256": "8c25832b5e2aeeff6e2f93ff283015865c80cb32483a5931ab89da7074c6affa"
         }
-      ],
-      "notice_files": [
-        "tests/fixtures/keylock/README.md",
-        "tests/fixtures/keylock/VocalSet-CC-BY-4.0.txt"
-      ],
-      "members": [
-        "f1_arpeggios_c_slow_forte_i.wav",
-        "m1_arpeggios_c_slow_forte_i.wav"
       ]
     },
     {
-      "id": "test:smf-interchange",
-      "name": "Original Standard MIDI File and independent DAW return fixtures",
       "category": "test-fixture",
-      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory material.",
-      "license": "MIT",
       "commercial_use": "Original project material is covered by the root MIT license.",
+      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory material.",
+      "id": "test:smf-interchange",
+      "license": "MIT",
+      "members": [
+        "sixteen-bars-ppqn960.mid",
+        "ardour-9.8-region-ppqn19200.mid"
+      ],
+      "name": "Original Standard MIDI File and independent DAW return fixtures",
+      "project_license": true,
       "redistribution": "Retain the root project copyright and MIT permission notice.",
       "sources": [
         {
@@ -287,20 +295,25 @@
           "location": "tests/fixtures/midi/ardour-9.8-region-ppqn19200.mid",
           "sha256": "e20b3ab9a40a45b032451df776a7a189bb3e0e886b25f8aeb0be2899ce5aecde"
         }
-      ],
-      "members": [
-        "sixteen-bars-ppqn960.mid",
-        "ardour-9.8-region-ppqn19200.mid"
-      ],
-      "project_license": true
+      ]
     },
     {
-      "id": "test:groove-1.0.0",
-      "name": "Groove MIDI Dataset 1.0.0: human electronic drum qualification fixture",
       "category": "test-fixture",
-      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory samples.",
-      "license": "CC-BY-4.0",
       "commercial_use": "CC BY 4.0 permits reuse, including commercially, under its attribution and other conditions. See retained legal text and source attribution.",
+      "delivery": "Source-tree tests only; not compiled into the production executable or installed as factory samples.",
+      "id": "test:groove-1.0.0",
+      "license": "CC-BY-4.0",
+      "members": [
+        "11_rock_100_beat_4-4.wav",
+        "11_rock_100_beat_4-4.mid",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
+        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid"
+      ],
+      "name": "Groove MIDI Dataset 1.0.0: human electronic drum qualification fixture",
+      "notice_files": [
+        "tests/fixtures/beatgrid/README.md",
+        "tests/fixtures/beatgrid/CC-BY-4.0.txt"
+      ],
       "redistribution": "Retain Google LLC attribution, the listed paper authors and ICML 2019 citation, dataset source, CC BY 4.0 link/terms and warranty disclaimer. Identify processing of derivatives; no endorsement is implied.",
       "sources": [
         {
@@ -327,84 +340,95 @@
           "location": "tests/fixtures/beatgrid/additional-sources.json",
           "sha256": "424a9185db789463d40ee3dfa05d07bf5de42ad40aca1959fa77e77db4c01e66"
         }
-      ],
-      "notice_files": [
-        "tests/fixtures/beatgrid/README.md",
-        "tests/fixtures/beatgrid/CC-BY-4.0.txt"
-      ],
-      "members": [
-        "11_rock_100_beat_4-4.wav",
-        "11_rock_100_beat_4-4.mid",
-        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.wav",
-        "tests/fixtures/beatgrid/35_rock_92_beat_4-4.mid"
       ]
     }
   ],
+  "external": [
+    "JACK and PipeWire servers/client libraries are external system dependencies selected at launch, not bundled. The dynamically loaded graph library keeps its own upstream license.",
+    "System fonts chosen through fontconfig are loaded from the user's system, not redistributed by this package; their own license applies.",
+    "Imported samples and media remain subject to their owners' terms. Importing does not establish commercial or redistribution rights.",
+    "Omarchy, Quickshell, OS audio/graphics libraries, and controller firmware are external system dependencies, not bundled by this installer. Their licenses are not replaced by these records."
+  ],
+  "font_component": {
+    "name": "epaint_default_fonts",
+    "version": "0.32.3"
+  },
   "fonts": [
     {
-      "id": "font:hack",
-      "name": "Hack Regular",
       "category": "font",
+      "commercial_use": "Commercial use is permitted by the supplied MIT and Bitstream Vera terms; DejaVu contributions are identified as public domain.",
       "delivery": "embedded in the executable by epaint_default_fonts",
-      "license": "MIT AND Bitstream-Vera",
       "file": "fonts/Hack-Regular.ttf",
+      "id": "font:hack",
+      "license": "MIT AND Bitstream-Vera",
+      "members": [],
+      "name": "Hack Regular",
       "notice_files": [
         "fonts/Hack-Regular.txt"
       ],
-      "commercial_use": "Commercial use is permitted by the supplied MIT and Bitstream Vera terms; DejaVu contributions are identified as public domain.",
-      "redistribution": "Keep all notices; Bitstream/Vera names have modification restrictions. Fonts may be sold in a larger package, not by themselves.",
-      "members": []
+      "redistribution": "Keep all notices; Bitstream/Vera names have modification restrictions. Fonts may be sold in a larger package, not by themselves."
     },
     {
-      "id": "font:ubuntu",
-      "name": "Ubuntu Light",
       "category": "font",
+      "commercial_use": "Use, embedding and redistribution, including commercial distribution, are permitted under Ubuntu Font Licence 1.0.",
       "delivery": "embedded in the executable by epaint_default_fonts",
-      "license": "Ubuntu-font-1.0",
       "file": "fonts/Ubuntu-Light.ttf",
+      "id": "font:ubuntu",
+      "license": "Ubuntu-font-1.0",
+      "members": [],
+      "name": "Ubuntu Light",
       "notice_files": [
         "fonts/UFL.txt"
       ],
-      "commercial_use": "Use, embedding and redistribution, including commercial distribution, are permitted under Ubuntu Font Licence 1.0.",
-      "redistribution": "Keep the original name and notices; modified fonts have naming requirements. Font software remains under this license; ordinary documents made with it do not.",
-      "members": []
+      "redistribution": "Keep the original name and notices; modified fonts have naming requirements. Font software remains under this license; ordinary documents made with it do not."
     },
     {
-      "id": "font:noto-emoji",
-      "name": "Noto Emoji Regular",
       "category": "font",
+      "commercial_use": "Commercial use and bundling are permitted under SIL Open Font License 1.1.",
       "delivery": "embedded in the executable by epaint_default_fonts",
-      "license": "OFL-1.1",
       "file": "fonts/NotoEmoji-Regular.ttf",
+      "id": "font:noto-emoji",
+      "license": "OFL-1.1",
+      "members": [],
+      "name": "Noto Emoji Regular",
       "notice_files": [
         "fonts/OFL.txt"
       ],
-      "commercial_use": "Commercial use and bundling are permitted under SIL Open Font License 1.1.",
-      "redistribution": "Keep copyright/license notices; do not sell the font by itself. Derivatives retain OFL and must respect reserved names. Ordinary documents are not required to use OFL.",
-      "members": []
+      "redistribution": "Keep copyright/license notices; do not sell the font by itself. Derivatives retain OFL and must respect reserved names. Ordinary documents are not required to use OFL."
     },
     {
-      "id": "font:emoji-icon",
-      "name": "Emoji icon font",
       "category": "font",
+      "commercial_use": "MIT permits commercial use, copying and sale subject to its conditions.",
       "delivery": "embedded in the executable by epaint_default_fonts",
-      "license": "MIT",
       "file": "fonts/emoji-icon-font.ttf",
+      "id": "font:emoji-icon",
+      "license": "MIT",
+      "members": [],
+      "name": "Emoji icon font",
       "notice_files": [
         "fonts/emoji-icon-font-mit-license.txt"
       ],
-      "commercial_use": "MIT permits commercial use, copying and sale subject to its conditions.",
-      "redistribution": "Retain the John Slegers copyright and permission notice.",
-      "members": []
+      "redistribution": "Retain the John Slegers copyright and permission notice."
     }
   ],
   "package": {
+    "contrib/omatainer.lua": ".config/hypr/apps/omatainer.lua",
     "contrib/org.omarchy.omatainer.desktop": ".local/share/applications/org.omarchy.omatainer.desktop",
     "contrib/org.omarchy.omatainer.svg": ".local/share/icons/hicolor/scalable/apps/org.omarchy.omatainer.svg",
-    "contrib/omatainer.lua": ".config/hypr/apps/omatainer.lua",
-    "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json",
     "plugin/BarWidget.qml": ".config/omarchy/plugins/omatainer/BarWidget.qml",
     "plugin/Service.qml": ".config/omarchy/plugins/omatainer/Service.qml",
+    "plugin/manifest.json": ".config/omarchy/plugins/omatainer/manifest.json",
+    "vendor/egui-winit/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json",
+    "vendor/egui-winit/Cargo.lock": ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock",
+    "vendor/egui-winit/Cargo.toml": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml",
+    "vendor/egui-winit/Cargo.toml.orig": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml.orig",
+    "vendor/egui-winit/LICENSE": ".local/share/omatainer/source/vendor/egui-winit/LICENSE",
+    "vendor/egui-winit/PATCHES.md": ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md",
+    "vendor/egui-winit/README.md": ".local/share/omatainer/source/vendor/egui-winit/README.md",
+    "vendor/egui-winit/UPSTREAM.json": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
+    "vendor/egui-winit/src/clipboard.rs": ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs",
+    "vendor/egui-winit/src/lib.rs": ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs",
+    "vendor/egui-winit/src/window_settings.rs": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs",
     "vendor/symphonia-format-riff/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/symphonia-format-riff/.cargo_vcs_info.json",
     "vendor/symphonia-format-riff/Cargo.toml": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml",
     "vendor/symphonia-format-riff/Cargo.toml.orig": ".local/share/omatainer/source/vendor/symphonia-format-riff/Cargo.toml.orig",
@@ -418,37 +442,56 @@
     "vendor/symphonia-format-riff/src/lib.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/lib.rs",
     "vendor/symphonia-format-riff/src/wave/chunks.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/chunks.rs",
     "vendor/symphonia-format-riff/src/wave/mod.rs": ".local/share/omatainer/source/vendor/symphonia-format-riff/src/wave/mod.rs",
-    "vendor/egui-winit/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/egui-winit/.cargo_vcs_info.json",
-    "vendor/egui-winit/Cargo.lock": ".local/share/omatainer/source/vendor/egui-winit/Cargo.lock",
-    "vendor/egui-winit/Cargo.toml": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml",
-    "vendor/egui-winit/Cargo.toml.orig": ".local/share/omatainer/source/vendor/egui-winit/Cargo.toml.orig",
-    "vendor/egui-winit/README.md": ".local/share/omatainer/source/vendor/egui-winit/README.md",
-    "vendor/egui-winit/LICENSE": ".local/share/omatainer/source/vendor/egui-winit/LICENSE",
-    "vendor/egui-winit/UPSTREAM.json": ".local/share/omatainer/source/vendor/egui-winit/UPSTREAM.json",
-    "vendor/egui-winit/PATCHES.md": ".local/share/omatainer/source/vendor/egui-winit/PATCHES.md",
-    "vendor/egui-winit/src/clipboard.rs": ".local/share/omatainer/source/vendor/egui-winit/src/clipboard.rs",
-    "vendor/egui-winit/src/lib.rs": ".local/share/omatainer/source/vendor/egui-winit/src/lib.rs",
-    "vendor/egui-winit/src/window_settings.rs": ".local/share/omatainer/source/vendor/egui-winit/src/window_settings.rs"
+    "vendor/vst3-host/.cargo_vcs_info.json": ".local/share/omatainer/source/vendor/vst3-host/.cargo_vcs_info.json",
+    "vendor/vst3-host/CHANGELOG.md": ".local/share/omatainer/source/vendor/vst3-host/CHANGELOG.md",
+    "vendor/vst3-host/Cargo.lock": ".local/share/omatainer/source/vendor/vst3-host/Cargo.lock",
+    "vendor/vst3-host/Cargo.toml": ".local/share/omatainer/source/vendor/vst3-host/Cargo.toml",
+    "vendor/vst3-host/Cargo.toml.orig": ".local/share/omatainer/source/vendor/vst3-host/Cargo.toml.orig",
+    "vendor/vst3-host/LICENSE": ".local/share/omatainer/source/vendor/vst3-host/LICENSE",
+    "vendor/vst3-host/PATCHES.md": ".local/share/omatainer/source/vendor/vst3-host/PATCHES.md",
+    "vendor/vst3-host/README.md": ".local/share/omatainer/source/vendor/vst3-host/README.md",
+    "vendor/vst3-host/UPSTREAM.json": ".local/share/omatainer/source/vendor/vst3-host/UPSTREAM.json",
+    "vendor/vst3-host/run_plugin_gui.sh": ".local/share/omatainer/source/vendor/vst3-host/run_plugin_gui.sh",
+    "vendor/vst3-host/src/audio.rs": ".local/share/omatainer/source/vendor/vst3-host/src/audio.rs",
+    "vendor/vst3-host/src/backends/cpal_backend.rs": ".local/share/omatainer/source/vendor/vst3-host/src/backends/cpal_backend.rs",
+    "vendor/vst3-host/src/backends/mod.rs": ".local/share/omatainer/source/vendor/vst3-host/src/backends/mod.rs",
+    "vendor/vst3-host/src/bin/vst3-host-helper.rs": ".local/share/omatainer/source/vendor/vst3-host/src/bin/vst3-host-helper.rs",
+    "vendor/vst3-host/src/bin/vst3-host-probe.rs": ".local/share/omatainer/source/vendor/vst3-host/src/bin/vst3-host-probe.rs",
+    "vendor/vst3-host/src/discovery.rs": ".local/share/omatainer/source/vendor/vst3-host/src/discovery.rs",
+    "vendor/vst3-host/src/embed.rs": ".local/share/omatainer/source/vendor/vst3-host/src/embed.rs",
+    "vendor/vst3-host/src/error.rs": ".local/share/omatainer/source/vendor/vst3-host/src/error.rs",
+    "vendor/vst3-host/src/host.rs": ".local/share/omatainer/source/vendor/vst3-host/src/host.rs",
+    "vendor/vst3-host/src/internal/com_implementations.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/com_implementations.rs",
+    "vendor/vst3-host/src/internal/data_exchange.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/data_exchange.rs",
+    "vendor/vst3-host/src/internal/denormal.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/denormal.rs",
+    "vendor/vst3-host/src/internal/isolated_plugin_impl.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/isolated_plugin_impl.rs",
+    "vendor/vst3-host/src/internal/mod.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/mod.rs",
+    "vendor/vst3-host/src/internal/module_info.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_info.rs",
+    "vendor/vst3-host/src/internal/module_loader/linux.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/linux.rs",
+    "vendor/vst3-host/src/internal/module_loader/macos.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/macos.rs",
+    "vendor/vst3-host/src/internal/module_loader/mod.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/mod.rs",
+    "vendor/vst3-host/src/internal/module_loader/private_namespace.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/private_namespace.rs",
+    "vendor/vst3-host/src/internal/module_loader/windows.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/module_loader/windows.rs",
+    "vendor/vst3-host/src/internal/plugin_impl.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/plugin_impl.rs",
+    "vendor/vst3-host/src/internal/utils.rs": ".local/share/omatainer/source/vendor/vst3-host/src/internal/utils.rs",
+    "vendor/vst3-host/src/lib.rs": ".local/share/omatainer/source/vendor/vst3-host/src/lib.rs",
+    "vendor/vst3-host/src/midi.rs": ".local/share/omatainer/source/vendor/vst3-host/src/midi.rs",
+    "vendor/vst3-host/src/midi_input.rs": ".local/share/omatainer/source/vendor/vst3-host/src/midi_input.rs",
+    "vendor/vst3-host/src/parameters.rs": ".local/share/omatainer/source/vendor/vst3-host/src/parameters.rs",
+    "vendor/vst3-host/src/playback.rs": ".local/share/omatainer/source/vendor/vst3-host/src/playback.rs",
+    "vendor/vst3-host/src/plugin.rs": ".local/share/omatainer/source/vendor/vst3-host/src/plugin.rs",
+    "vendor/vst3-host/src/process_isolation.rs": ".local/share/omatainer/source/vendor/vst3-host/src/process_isolation.rs",
+    "vendor/vst3-host/src/realtime.rs": ".local/share/omatainer/source/vendor/vst3-host/src/realtime.rs",
+    "vendor/vst3-host/src/simple.rs": ".local/share/omatainer/source/vendor/vst3-host/src/simple.rs",
+    "vendor/vst3-host/src/transport.rs": ".local/share/omatainer/source/vendor/vst3-host/src/transport.rs",
+    "vendor/vst3-host/src/window.rs": ".local/share/omatainer/source/vendor/vst3-host/src/window.rs"
   },
+  "schema": 1,
+  "scope": "Native Linux executable and supplied Omarchy integration. Factory sounds are procedural originals. The source tree also contains separately licensed, test-only VocalSet and Groove MIDI Dataset recordings; these are not factory assets or production embedded media. The resolved Cargo inventory includes build-time and optional-feature dependencies conservatively; it is not a binary linker map. No reference-product sounds, projects, models or proprietary SDKs are supplied.",
   "source_files": [
     "src/engine/mod.rs",
     "src/engine/dsp.rs",
     "src/engine/instrument.rs",
     "src/engine/midi.rs"
-  ],
-  "absent": [
-    "Impulse response assets: none shipped; the reverb uses an algorithm.",
-    "ML models / weights: none shipped.",
-    "Proprietary SDKs and reference-product content: none shipped."
-  ],
-  "external": [
-    "JACK and PipeWire servers/client libraries are external system dependencies selected at launch, not bundled. The dynamically loaded graph library keeps its own upstream license.",
-    "System fonts chosen through fontconfig are loaded from the user's system, not redistributed by this package; their own license applies.",
-    "Imported samples and media remain subject to their owners' terms. Importing does not establish commercial or redistribution rights.",
-    "Omarchy, Quickshell, OS audio/graphics libraries, and controller firmware are external system dependencies, not bundled by this installer. Their licenses are not replaced by these records."
-  ],
-  "font_component": {
-    "name": "epaint_default_fonts",
-    "version": "0.32.3"
-  }
+  ]
 }

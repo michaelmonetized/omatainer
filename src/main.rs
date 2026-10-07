@@ -14,6 +14,7 @@ mod library;
 mod playlist_import;
 mod interchange_xml;
 mod dj_library;
+mod plugin_host;
 mod music_provider;
 mod video;
 mod audio_delivery;
@@ -66,6 +67,10 @@ const APPLICATION_ID: &str = "org.omarchy.omatainer";
 fn main() -> anyhow::Result<()> {
     let _audio_shutdown = engine::audio::owner::Shutdown;
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    if args.first().map(String::as_str)==Some("vst3-worker") {
+        anyhow::ensure!(args.len()==1,"usage: omatainer vst3-worker (private inherited socket)");
+        return plugin_host::worker::run().map_err(anyhow::Error::msg);
+    }
     if args.first().map(String::as_str)==Some("dj-discover-worker") {
         anyhow::ensure!(args.len()==1,"usage: omatainer dj-discover-worker (JSON request on stdin)");
         return dj_library::worker().map_err(anyhow::Error::msg);

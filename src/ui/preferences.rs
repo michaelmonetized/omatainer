@@ -222,6 +222,8 @@ impl App {
             self.settings.message = "Safe mode: saved preferences are available for inspection but not applied. Audio/MIDI, external theme and startup library scan remain disabled until an explicit normal restart.".into();
             return;
         }
+        self.plugins.set_performance(self.engine.cmd.performance().clone());
+        if let Some(path) = self.settings.path.as_ref().and_then(|p|p.parent()) { self.plugins.initialize(path.join("plugins-v1.json")); }
         if let Some(worker) = &mut self.settings.worker { worker.set_performance(self.engine.cmd.performance().clone()); }
         self.initialize_project_panels(
             self.settings.profile().startup.show_help,
@@ -405,6 +407,7 @@ impl App {
             .open(&mut open).default_width(680.0).default_height(620.0).vscroll(true).hscroll(true).max_height(self.theme.window_height(ctx)).show(ctx, |ui| {
                 if self.project.committing() || !self.project.dialog_is_closed() { ui.disable(); }
                 ui.label(tr!("Apply saves preferences. MIDI, folders, appearance and shortcuts follow that save. Audio can be applied explicitly in Audio devices, or after restart."));
+                if ui.button("VST3 plugins").clicked() { self.plugins.open = true; }
                 if ui.button(tr!("Audio devices and latency")).help(ui, HelpControl::AudioDevices).clicked() { self.audio_settings.open = true; }
                 if let Some(path) = &state.path { ui.label({ let __omatainer_args = (&(path.display()),); crate::localization::format("Preferences file: {}", &[format!("{}", __omatainer_args.0)]) }); }
                 if let Some(info) = self.engine.output_info() {
