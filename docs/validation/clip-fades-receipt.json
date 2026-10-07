@@ -1344,5 +1344,86 @@
   "sourceInventory": {
     "path": "target/app-backlog/clip-fades-third-source-inventory.log",
     "sha256": "ae3e18908b924c838b7d3ba7243a8c84279b86c56a4eed52318bfe2d83880c24"
+  },
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-clip-fades-qualified",
+      "manifestSha256": "d126f052189169d1eeee8fb3d0e7b07987220d6deb0e39cdc68d00a10a6ed10a",
+      "revision": "7857c3c61a2d976c2b86164da05936cc8566eafe",
+      "version": "0.1.0+7857c3c61a2d",
+      "executableSha256": "a0e1155244460ae40ef5b6a4445c8d05273e03615361bc21e5485b372afbbb5a"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "8588a5949b44c589a693e6bb6b0c2ac42bed2dfae0dad10dfb536bf1f199aa65",
+      "after": "a0e1155244460ae40ef5b6a4445c8d05273e03615361bc21e5485b372afbbb5a",
+      "installedAt": "2026-10-07T06:23:52.653Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
   }
 }
