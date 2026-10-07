@@ -437,5 +437,108 @@
       }
     ]
   },
-  "limits": "No physical controller or audio device was opened. Metadata edits during playback/recording, Ack/stale/cancel/Undo/Redo, monotonic section IDs through Undo and native reopening, exact PCM jump samples, loop timing through tempo/meter changes, actual recording-take completion with physical owner preservation, MIDI clip clear/state chase, production learned press/release and actual native editor/keyboard controls are software-qualified. Section metadata editing follows existing Studio/performance-protection admission. Pending jumps are not saved; saved braces and loop state wait for Play. DJ deck transport remains separate. Build inputs and preliminary failures are retained."
+  "limits": "No physical controller or audio device was opened. Metadata edits during playback/recording, Ack/stale/cancel/Undo/Redo, monotonic section IDs through Undo and native reopening, exact PCM jump samples, loop timing through tempo/meter changes, actual recording-take completion with physical owner preservation, MIDI clip clear/state chase, production learned press/release and actual native editor/keyboard controls are software-qualified. Section metadata editing follows existing Studio/performance-protection admission. Pending jumps are not saved; saved braces and loop state wait for Play. DJ deck transport remains separate. Build inputs and preliminary failures are retained.",
+  "postGeneration": {
+    "node": {
+      "path": "target/app-backlog/navigation-postgenerate-node-tests.log",
+      "sha256": "42518ba9e42cc6db93146db31f2593dd3e13123e540333ffc5481649f336ff36",
+      "passed": 15,
+      "failed": 0
+    },
+    "capabilityCheck": {
+      "path": "target/app-backlog/navigation-capability-check.log",
+      "sha256": "c2895831a60ec6308facb09cfcb0f03454f1eb9bff306569e8cbc17992cde56e"
+    },
+    "checklistCheck": {
+      "path": "target/app-backlog/navigation-checklist-check.log",
+      "sha256": "3ddce3293266fb35350053966d1f17437f3843a6c47e8c44a830980e7471bb8f"
+    },
+    "sourceInventory": {
+      "path": "target/app-backlog/navigation-source-inventory.log",
+      "sha256": "e08aef217b5285a82e53f9c1e9eebb30d5c2039c621b5a68b4a113d32f8d4127",
+      "files": 754,
+      "unchangedDependencyRecords": true
+    }
+  },
+  "installation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-song-navigation-qualified",
+      "manifestSha256": "ed4442dc82b6b757a2b440e2666ebcb496d87ee62cf11dc85c02b3738358e573",
+      "revision": "5df547ac0d05008086d33a5c05976c89758c2a4e",
+      "version": "0.1.0+5df547ac0d05",
+      "executableSha256": "d7755d959bf11fa0173855820c2ecb43dccb3270fc74d633b617c3e89a788137"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "570902e75b3b28f7d1d8e4fcdeb78805f275f0ec239f7b637611920e36d03c62",
+      "after": "d7755d959bf11fa0173855820c2ecb43dccb3270fc74d633b617c3e89a788137",
+      "installedAt": "2026-10-07T00:39:46.923Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  },
+  "releaseEmbeddedInputs": {
+    "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+    "licenses/manifest.json": "1e9c6aaa9c9fa68a73c45cb0ebaefa17a637873d1001261a614fa8439300ff8a",
+    "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+  }
 }
