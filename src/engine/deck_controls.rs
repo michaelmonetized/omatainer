@@ -508,6 +508,9 @@ impl RtEngine {
             return;
         }
         let index = usize::from(deck);
+        if matches!(control, Control::Hold {button:Button::Reverse|Button::Bleep|Button::Cue|Button::HotCue(_)|Button::Roll(_)|Button::Slice(_),on:true}|Control::BeatJump {..}|Control::CueOnly {..}|Control::LoopToggle|Control::AutoLoopPad {..}|Control::ManualPad {..}|Control::SavedLoop {action:SavedLoopAction::Recall {..},..}) {
+            self.decks[index].transport_generation=self.decks[index].transport_generation.wrapping_add(1);
+        }
         if matches!(control, Control::Hold { button: Button::Reverse | Button::Bleep | Button::BendDown | Button::BendUp | Button::Cue | Button::HotCue(_) | Button::Roll(_) | Button::Slice(_), on: true } | Control::Strip { .. } | Control::BeatJump { .. } | Control::TrackStart) { self.deck_sync_manipulation(index); }
         match control {
             Control::Quantize { enabled, division } => {

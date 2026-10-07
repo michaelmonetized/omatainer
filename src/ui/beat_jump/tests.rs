@@ -51,7 +51,10 @@ fn jump_shortcuts_use_pending_selection_and_text_dialog_and_repeat_guards() {
     let old_b = gui.fixture.rt.decks[1].pos;
     gui.fixture.app.deck_selection = deck_selection::Selection::new(gui.fixture.app.snap.selected_deck_request);
     let output = gui.frame(vec![]);
-    let target = output.platform_output.accesskit_update.unwrap().nodes.into_iter().find(|(_, n)| n.label() == Some("Deck B")).unwrap().0;
+    let nodes=output.platform_output.accesskit_update.unwrap().nodes;
+    let targets:Vec<_>=nodes.iter().filter(|(_,node)|node.label()==Some("Load target deck B")).collect();
+    assert_eq!(targets.len(),1,"Native controls: {:?}",nodes.iter().filter(|(_,node)|node.label().is_some()).map(|(id,node)|(id,node.role(),node.label(),node.bounds())).collect::<Vec<_>>());assert!(targets[0].1.supports_action(Action::Click));
+    let target=targets[0].0;
     let _ = gui.ctx.run(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 1200.0))), focused: true, events: vec![egui::Event::AccessKitActionRequest(ActionRequest { target, action: Action::Click, data: None })], ..Default::default() }, |ctx| gui.fixture.app.update_frame(ctx));
     assert_eq!(gui.fixture.app.load_target(), 1);
     let old_a = gui.fixture.rt.decks[0].pos;

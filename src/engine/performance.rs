@@ -560,6 +560,7 @@ fn destructive(command: &Command) -> bool {
         | Command::LaunchScene { .. }
         | Command::StopTrack { .. }
         | Command::DeckPlay { .. }
+        | Command::DeckContinue(_)
         | Command::DeckCue { .. }
         | Command::DeckSync { .. }
         | Command::DeckSyncMode { .. }
@@ -782,6 +783,7 @@ impl Output {
 pub(super) fn reject_receipt(command: &Command) {
     super::midi_edit::reject_retired(command);
     match command {
+        Command::DeckContinue(request) => request.reject(),
         Command::Remote(request) => request.ack.reject(),
         Command::ProviderPreview(request) => request.reject(),
         Command::SessionEdit(request) => request.ack.reject(),

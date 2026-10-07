@@ -1,0 +1,664 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual native egui/AccessKit, real source decode, renderer PCM and allocation/free checks",
+  "sourceFiles": {
+    "src/engine/deck_continue.rs": "3bc55cf54b990c156c6f4d7b7284e4544f376a7c8925f2cb3f27d7ce9558ad7c",
+    "src/engine/deck_continue/tests.rs": "a084dca1ee1d70a4e3d9ce0f9c090a0687761f627928046c46dd2d2dec6460bc",
+    "src/engine/deck_controls.rs": "57b8fae892e527461984bddde42cfc33326404ce78c1588aa865f54f59cc093b",
+    "src/engine/mod.rs": "4250976511eaa061d34590719ad5a18efb95a09d6e3b01cd2c1bc5ee4c3772d1",
+    "src/engine/performance.rs": "c8dc7beca12ea9db4b66fd73db8db05cc45ba3382a6627401600c0d85208dcca",
+    "src/engine/snapshot.rs": "99bc73fa429319db699ab9cba04a36af4816b77611611aedfe0f0cc247ef0486",
+    "src/engine/undo/capture.rs": "4ad5b7313bd8a3afc007f05db0760b05fd889fb38fa2f959094f053bbb4a4a7d",
+    "src/engine/undo/mod.rs": "8ac5f0fb6e0ec497d068ee0c38e9abcd76e4a27c66c5cf94b41eff12090b1e7f",
+    "src/ui.rs": "c6398c4b531803a5181e2a0bb361dc8d7e4194fb83cd6097c210b7523b9e9b7e",
+    "src/ui/beat_jump/tests.rs": "558de47f623887cbb96dc84abea46b684415c8fe7af9404283a13629a97aab80",
+    "src/ui/continuous_playback.rs": "d16af6ea9a9be6a18e86c043f259f53b12470a694b3776d7409103c5be579dce",
+    "src/ui/continuous_playback/tests.rs": "42aa3449a8f7ded8eacf0b0dfe2394feb278107632f0888237eb78a52d691cc4",
+    "src/ui/deck_selection.rs": "6c6db006f31a50a96f1802c2fba76396d95eb680013ae6271c3c72a12303f0bb",
+    "src/ui/help/catalogue.rs": "c2d39e8a88fb0216ca3a0ea5a757c3bb42e5fd8932a7c02113484ab038a0924c",
+    "src/ui/library_annotations/tests.rs": "9251931837e9afc1be32e2ca631b3fd2869651fb131868ff9b192f603a628c22",
+    "src/ui/load_status.rs": "4c168052dafb989d7def41f3b9b9688a8476287129ef33177ef8d6d22dc266c3"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/continuous-playback-tests-ninth",
+    "sha256": "bf68c3496f8ed7748f4d3ba2933bbf2a11c94b36d84c558388418c93853be35c"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/continuous-playback-ninth-compiled-source-inventory.json",
+    "sha256": "b997b4b0009a524a7956cf26c15a627617a2d654a0bba6abd028e852a152fd46",
+    "baseRevision": "b8bf466c025527a517da07bac4aaafe731b532a2",
+    "files": 774
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "b8bf466c025527a517da07bac4aaafe731b532a2",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "d4af20839ba52a7a0dc7a1ce09c0541434248057dc78692edb18739b7d9841ae",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/continuous-playback-ninth-core.log",
+      "sha256": "3a1bb6ecbc80e0cfd8bf3ee16a9e6016f7e1fdc658a6e660ecec6cc961364029",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2056,
+      "seconds": 2.04
+    },
+    "native": {
+      "path": "target/app-backlog/continuous-playback-ninth-native.log",
+      "sha256": "7795e84c01234d0e267ca4b35d1ec473fb4e9dfd9555f07e4f4ab23ddb755a4a",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2057,
+      "seconds": 3.79
+    },
+    "selection": {
+      "path": "target/app-backlog/continuous-playback-ninth-selection.log",
+      "sha256": "34a4eb4e17f5ed4be5ab467d520dab1aea530c3418ecac8a7c88f17f89e91cdb",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2055,
+      "seconds": 1
+    },
+    "beat-jump": {
+      "path": "target/app-backlog/continuous-playback-ninth-beat-jump.log",
+      "sha256": "4f3fdbe7e53e762d4804abe20ca7f762b608ac76428109a08b8c180402b4ecfc",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2061,
+      "seconds": 0.3
+    },
+    "manual": {
+      "path": "target/app-backlog/continuous-playback-ninth-manual.log",
+      "sha256": "4c18f762c4dd1ba2ba01e3990b2702f4e5141a2f2c62bb999381b5fb74ad56fa",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2062,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/continuous-playback-ninth-help.log",
+      "sha256": "1d0ec8a49afddb855fc9bc7f3c27c0733bf95143f9847836f5329c44fdb99521",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2048,
+      "seconds": 2.88
+    },
+    "ipc": {
+      "path": "target/app-backlog/continuous-playback-ninth-ipc.log",
+      "sha256": "cff057875e15b9d92fb766662fb4f2a0cae23d2060e403f9522929cc8093dc8c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2062,
+      "seconds": 0.01
+    },
+    "full": {
+      "path": "target/app-backlog/continuous-playback-ninth-full.log",
+      "sha256": "88d9e79b8f0be63b5f4cada95326c26270dc2c4b701925d51f81e58b0023fad5",
+      "outcome": "ok",
+      "passed": 2019,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 562.36
+    }
+  },
+  "start": {
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "captured_end": 0,
+    "duplicate_requests": 2,
+    "physical_devices_opened": false,
+    "published_end": 1
+  },
+  "files": {
+    "corrupt_files": 1,
+    "energy": 505.1536579267146,
+    "finite_policy_complete": true,
+    "missing_files": 1,
+    "natural_ends": 2,
+    "physical_devices_opened": false,
+    "real_readable_files": 2,
+    "skipped_reports": 2
+  },
+  "other": {
+    "compared_frames": 24320,
+    "disabled": true,
+    "max_sample_error": 0,
+    "other_audio_preserved": true,
+    "other_gain_and_pitch_preserved": true,
+    "physical_devices_opened": false,
+    "repeat_ends": 4
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/continuous-playback-ninth-full-output-timing.json",
+    "sha256": "c9af24122e1ec1862f2c921b5330863f67531bde4c1d0277d5a62ad4ba73b97f",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5049,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          112708,
+          79567,
+          76885,
+          132870,
+          6270,
+          82131,
+          44657,
+          67475,
+          103127,
+          11943,
+          91137,
+          45454,
+          144897,
+          56881,
+          152032,
+          14057,
+          21874,
+          47150,
+          82843,
+          110953,
+          91812,
+          47920,
+          72905,
+          34388
+        ],
+        "max_delay_ns": 152032
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          117457,
+          19293,
+          56590,
+          21968,
+          32098,
+          140561,
+          78523,
+          113695,
+          2948,
+          82453,
+          28290,
+          85045,
+          144841,
+          33385,
+          148932,
+          56519,
+          72898,
+          118070,
+          118282,
+          125036,
+          53498,
+          110586,
+          129465,
+          29343
+        ],
+        "max_delay_ns": 148932
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          142083,
+          22979,
+          138294,
+          35564,
+          149505,
+          11568,
+          43214,
+          35445,
+          98552,
+          43739,
+          152096,
+          9700,
+          32222,
+          37745,
+          86351,
+          138665,
+          102770,
+          10542,
+          41397,
+          95378,
+          103317,
+          137589,
+          58694,
+          13966
+        ],
+        "max_delay_ns": 152096
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          124331,
+          89783,
+          128485,
+          4561,
+          2388,
+          48632,
+          133543,
+          37160,
+          90696,
+          135315,
+          44016,
+          168220,
+          43754,
+          132457,
+          20407,
+          111360,
+          144145,
+          62096,
+          104132,
+          124667,
+          44660,
+          85403,
+          66230,
+          61223
+        ],
+        "max_delay_ns": 168220
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          107664,
+          130860,
+          27054,
+          132709,
+          120945,
+          107099,
+          32543,
+          11530,
+          112059,
+          122754,
+          145242,
+          145354,
+          115632,
+          4492,
+          15855,
+          146426,
+          75246,
+          124275,
+          17968,
+          120624,
+          26235,
+          66930,
+          69708,
+          37987
+        ],
+        "max_delay_ns": 146426
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          49789,
+          86239,
+          125604,
+          27884,
+          82709,
+          155991,
+          14605,
+          108138,
+          51461,
+          54034,
+          17524,
+          46556,
+          9712,
+          84037,
+          81694,
+          31766,
+          144092,
+          144123,
+          129446,
+          38144,
+          151260,
+          29457,
+          72990,
+          87688
+        ],
+        "max_delay_ns": 155991
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/continuous-playback-ninth-node.log",
+    "sha256": "2dbbc0bd7872c20b803c07e8fd77ded995315d63220fff82e17cc0e131f12999",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-first",
+        "sha256": "3e8e96d8439fa4231677389ee9577f0d269e76d0359719ab5a9489b0b3a89b49",
+        "compileLogSha256": "dd857734aa96fa9a02eb18cc1ab4c97aa036d37eff8e92f7e5441139a0c2f0b6"
+      },
+      "inventorySha256": "d0012c90995c49e0539a4cff608ff34321b205e8109905ae5e92ec61f108d908",
+      "core": {
+        "path": "target/app-backlog/continuous-playback-first-core.log",
+        "sha256": "47a6f548817eb2b2eaa6004bf09ef2972e83800b8809379bfc97beadc4b53e72",
+        "outcome": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2055,
+        "seconds": 0.76
+      },
+      "native": {
+        "path": "target/app-backlog/continuous-playback-first-native.log",
+        "sha256": "5de71f2cdf5990ff3321461681fe19cc1897147894a0315913a72910ed8617b8",
+        "complete": false
+      },
+      "reason": "The fixture assumed an extension-bearing title, then its additional inline renderer overflowed the ordinary test-thread stack. Actual prepared title expectations and boxed test owners correct the fixture; no larger thread stack is used. The native preview also now distinguishes a preparing index from a real end of crate."
+    },
+    "second": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-second",
+        "sha256": "32b1efff9630846592ead0decd2936b6b569e39657e7b62cfe4ecce153b2d7b9",
+        "compileLogSha256": "8b9924252cdf8c43808326f26847d606949c9b2831e110b76495bdcf4211e8b0"
+      },
+      "inventorySha256": "6c748c3ca86aed92d077bae92b29eb5ace7e48760d829c5093510f2796d6b3bf",
+      "core": {
+        "path": "target/app-backlog/continuous-playback-second-core.log",
+        "sha256": "8b23ec749b3b9734b49dda3179f5eb14dea439b90613880a97dba9318ede4a93",
+        "outcome": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2055,
+        "seconds": 0.7
+      },
+      "native": {
+        "path": "target/app-backlog/continuous-playback-second-native.log",
+        "sha256": "d2243a1068c639fa7c40584d2fae02d2287eceb2a8bda07c77d9e2433406ed35",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 5,
+        "ignored": 0,
+        "filtered": 2054,
+        "seconds": 24.09
+      },
+      "reason": "The native tests exposed initial demo playback being resumed outside the chosen crate. Production now resumes paused crate members, or loads the first chosen member. The exact independent PCM oracle now first settles both ordinary crossfader gain ramps while silent. Manual transport and outer refusal fencing plus final-owner worker retirement were added after review, retaining all assertions."
+    },
+    "third": {
+      "compileLog": {
+        "path": "target/app-backlog/continuous-playback-third-compile.log",
+        "sha256": "f265c9f1ee211301911d4a6c66159c208f7a5a7bd814b17725929989fe327dbd"
+      },
+      "inventorySha256": "d7c5c550eb3c09335c7b5760c049488ec7c2ec0a08e67dbd150ad846dfc818ea",
+      "compiled": false,
+      "reason": "A new fixture reused the helper name as a local request binding. The helper was renamed and final-owner retirement coverage added before the fresh final build."
+    },
+    "fourth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-fourth",
+        "sha256": "a5e4f63c4b6d3e61b0475dc095b6514251ffc6437f2102b7b439f608db6823a7",
+        "compileLogSha256": "c88d03222ffd68e30701efea4f6b078fd853ccbff2b7c6cd4a5fef00dbe1b6ae"
+      },
+      "inventorySha256": "a63b5cb878d1e20a3840d89beb6dfad98ef52203313785c1a830e0945afa61b4",
+      "core": {
+        "path": "target/app-backlog/continuous-playback-fourth-core.log",
+        "sha256": "1be3cf5f6ccf7c3feff4116ffed43f0e3903e0694afdc7700c4fb0a60697ad59",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2056,
+        "seconds": 2.01
+      },
+      "native": {
+        "path": "target/app-backlog/continuous-playback-fourth-native.log",
+        "sha256": "27d276fafba38d223f3614bc839e9d3dc35801294f012afc5190faac3cc0835b",
+        "outcome": "FAILED",
+        "passed": 1,
+        "failed": 5,
+        "ignored": 0,
+        "filtered": 2057,
+        "seconds": 12.13
+      },
+      "reason": "All seven callback admission and final-owner checks passed, but five actual native workflows exposed completion publication counting the same decode job as new ownership. Ordinary completion now updates progress without advancing the new-load revision; real-file, skip, repeat, loaded-member and queued-cancel assertions remain unchanged."
+    },
+    "fifth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-fifth",
+        "sha256": "516a211dd81aa7336d48c4a979153d9b5a08372ecdad455f078e29fb3c856f2a",
+        "compileLogSha256": "9959618d4d82317041d10483a7924209049f5a5c005933161294a8d188362791"
+      },
+      "inventorySha256": "a96884caa288fa56dd7874a5c0fab614d495fbc719262bc49e116eab60c3fa0c",
+      "core": {
+        "path": "target/app-backlog/continuous-playback-fifth-core.log",
+        "sha256": "5f16c1f099c8a03d730105620930b564e4309f4c8a7177c8e2093dda622ab9b6",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2056,
+        "seconds": 2.06
+      },
+      "native": {
+        "path": "target/app-backlog/continuous-playback-fifth-native.log",
+        "sha256": "fe056699ac1ef2fe1e90a1566f27ca7a7a6d85efd5c8eeb43ff67442a312de59",
+        "outcome": "FAILED",
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2057,
+        "seconds": 3.65
+      },
+      "reason": "Seven core and five native checks passed, including exact independent other-deck PCM and every ownership workflow. The remaining energy assertion revealed that the WAV fixture helper had been explicitly asked for silence. The final fixture requests actual nonzero source PCM; the positive-energy oracle remains unchanged."
+    },
+    "sixth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-sixth",
+        "sha256": "5bc14ba271b9d314923ce23a76831e1fcc49191037c0e60cfd88d479a63cdc67",
+        "compileLogSha256": "6ed343f10628dbf88a6df6d84da61519b661cd8f3f3e48a39b1d6bc76223e669"
+      },
+      "inventorySha256": "c72d0eb2af49641cca75c61502a7861f6dbc23a28c4ca6026fc2500fc856db28",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/continuous-playback-sixth-core.log",
+          "sha256": "1b30a2897b676105f20cc33460b0012fe27b017628b34e254ead0751dbdaf7b1",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2056,
+          "seconds": 2.13
+        },
+        "native": {
+          "path": "target/app-backlog/continuous-playback-sixth-native.log",
+          "sha256": "846aaeb4c49b30c0531cb464fe0f3f66a87fc4cc0670b218e917c81dc358a5d5",
+          "outcome": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2057,
+          "seconds": 3.92
+        },
+        "manual": {
+          "path": "target/app-backlog/continuous-playback-sixth-manual.log",
+          "sha256": "4c18f762c4dd1ba2ba01e3990b2702f4e5141a2f2c62bb999381b5fb74ad56fa",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2062,
+          "seconds": 0
+        },
+        "help": {
+          "path": "target/app-backlog/continuous-playback-sixth-help.log",
+          "sha256": "5fca342485502ecb1384ce4e63c37a0a214313d0d3b4997fa8171c1eaaaf3ad2",
+          "outcome": "ok",
+          "passed": 14,
+          "failed": 0,
+          "ignored": 1,
+          "filtered": 2048,
+          "seconds": 2.81
+        },
+        "ipc": {
+          "path": "target/app-backlog/continuous-playback-sixth-ipc.log",
+          "sha256": "cff057875e15b9d92fb766662fb4f2a0cae23d2060e403f9522929cc8093dc8c",
+          "outcome": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2062,
+          "seconds": 0.01
+        },
+        "full": {
+          "path": "target/app-backlog/continuous-playback-sixth-full.log",
+          "sha256": "030b66418a855228895d92c304fce80b5124454f17e75e745f668b3db4a00f87",
+          "outcome": "FAILED",
+          "passed": 2018,
+          "failed": 1,
+          "ignored": 44,
+          "filtered": 0,
+          "seconds": 571.62
+        }
+      },
+      "beatJumpRegression": {
+        "path": "target/app-backlog/continuous-playback-sixth-beat-jump-regression.log",
+        "sha256": "50fc615d5665588bde6580beb3e6c6e5bdc53407873a36bb5a2937196ccad17c",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2062,
+        "seconds": 0.15
+      },
+      "reason": "All thirteen focused checks and 2,018 full-suite cases passed. One existing assistive beat-jump fixture selected the ambiguous Deck B heading/button label. The later captured tree confirms Group nodes and native selector buttons share that visible label. Native load-target selectors now have distinct accessible names; the existing test requires exactly one click-capable Load target deck B button, preserving its pending-selection, both deck-position, keyboard and dialog assertions. All prior logs and executable remain retained."
+    },
+    "seventh": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-seventh",
+        "sha256": "f9a2bdf30c69e113853a6ec93831f1fbefbc6ef3e2bb2d6914afc61f82e000b1",
+        "compileLogSha256": "2505938a439a488e22acb0061614b6c9148220ee5569726a082b140fb9d430aa"
+      },
+      "inventorySha256": "99de2939e493c397af4d09e6de2f90eb2896d46fef4cbadac44b0141631b8c62",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/continuous-playback-seventh-core.log",
+          "sha256": "fc2c49437b853deab9a199a8a1d72da79b858b514ce583faea87f9ba1f09d358",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2056,
+          "seconds": 2.08
+        },
+        "native": {
+          "path": "target/app-backlog/continuous-playback-seventh-native.log",
+          "sha256": "3cd458d9bb327865036e075a996bba0f75febdf5e12e08ef8cf231cf5c6db7a5",
+          "outcome": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2057,
+          "seconds": 3.73
+        },
+        "selection": {
+          "path": "target/app-backlog/continuous-playback-seventh-selection.log",
+          "sha256": "02007a12c21903ed1cc25a64d9a75069c232f3f312c07d94cfcaa985e2ce7ce3",
+          "outcome": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2055,
+          "seconds": 1.08
+        },
+        "beat-jump": {
+          "path": "target/app-backlog/continuous-playback-seventh-beat-jump.log",
+          "sha256": "af5dd7c32d7df44acdc5da6a9f0f32b84ee9cc810742f658dec25c18c617648c",
+          "outcome": "FAILED",
+          "passed": 1,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2061,
+          "seconds": 0.27
+        }
+      },
+      "reason": "All thirteen feature checks and eight native selection workflows passed. The distinct assistive selector was absent under its expected name; the following fresh diagnostic build retained the actual tree rather than weakening selection assertions."
+    },
+    "eighth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/continuous-playback-tests-eighth",
+        "sha256": "fcc6748f422cedb82e35d231ac67a13a659159314dbd86b48c64959f151499e3",
+        "compileLogSha256": "9959618d4d82317041d10483a7924209049f5a5c005933161294a8d188362791"
+      },
+      "inventorySha256": "d086085f7036a1b9dbb2384ced620d5a4df59b3f78f2777230a9d2d38dfdbf31",
+      "tests": {
+        "core": {
+          "path": "target/app-backlog/continuous-playback-eighth-core.log",
+          "sha256": "de865a3c9d4aa0ec86aaf15a9acae73a8cb010f89bb97a0f682a8da36bc12174",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2056,
+          "seconds": 2.05
+        },
+        "native": {
+          "path": "target/app-backlog/continuous-playback-eighth-native.log",
+          "sha256": "93d47a0c5bbdc8abdb05307a1a03260a9fba674f2ff030947097fc02956ce1d1",
+          "outcome": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2057,
+          "seconds": 4.24
+        },
+        "selection": {
+          "path": "target/app-backlog/continuous-playback-eighth-selection.log",
+          "sha256": "ca0a9e7cfd37af86d4cb13fa2eaf63c9b22a8490269dff978fe735c828ff0870",
+          "outcome": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2055,
+          "seconds": 1.13
+        },
+        "beat-jump": {
+          "path": "target/app-backlog/continuous-playback-eighth-beat-jump.log",
+          "sha256": "ac91bb4c405c565366b8dda0c71ad865cc18ff280f5c0d3a69a204b5aa4ae5e8",
+          "outcome": "FAILED",
+          "passed": 1,
+          "failed": 1,
+          "ignored": 0,
+          "filtered": 2061,
+          "seconds": 0.29
+        }
+      },
+      "reason": "The actual AccessKit tree showed two click-capable load-target buttons at visible bounds, both named literal Load target deck {}. The new localization fallback used an anonymous placeholder whereas the formatter requires an indexed {0} placeholder. The corrected fresh build retains unique-name, click-action and pending-selection assertions."
+    }
+  },
+  "limits": "Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed."
+}

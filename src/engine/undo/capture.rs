@@ -474,6 +474,7 @@ impl RtEngine {
 pub(super) fn command_bytes(command: &Command) -> usize {
     match command {
         Command::SessionControl(scoped) => std::mem::size_of::<Command>() + command_bytes(&scoped.command),
+        Command::DeckContinue(request) => request.bytes(),
         Command::MicAuxConfigure(_) => std::mem::size_of::<audio::routing::mic_aux::control::Request>(),
         Command::SessionEdit(request) => request.bytes(),
         Command::AudioClipEdit(request) => request.bytes(),

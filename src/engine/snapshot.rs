@@ -272,6 +272,9 @@ impl Frame {
             }
         }
         for (index, (out, deck)) in target.decks.iter_mut().zip(&rt.decks).enumerate() {
+            out.natural_end=deck.natural_end;
+            out.end_media_key=deck.end_media_key;
+            out.transport_generation=deck.transport_generation;
             out.load_gate_word = rt.performance.deck_load_word(index);
             copy(&mut out.title, &deck.title);
             out.playing = deck.playing;

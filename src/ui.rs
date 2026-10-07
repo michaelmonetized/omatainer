@@ -38,6 +38,7 @@ mod input_monitoring;
 use clip_gain::ClipGainEdit;
 use library_view::{LibraryView, Cells};
 mod load_status;
+mod continuous_playback;
 mod deck_load_lock;
 mod play_history;
 mod session_history;
@@ -145,6 +146,8 @@ mod theme_requests;
 mod font_selection_tests;
 
 pub struct App {
+    continuous_playback: continuous_playback::Panel,
+    load_revision: [u64; DECKS],
     support: support::Panel,
     recovery: recovery::Recovery,
     session_history: session_history::Panel,
@@ -298,6 +301,8 @@ impl App {
         let playback_watches = play_history::initial_watches(&engine);
         let theme_requests = engine.cmd.theme_requests().attach();
         let mut app = Self {
+            continuous_playback: Default::default(),
+            load_revision: [0; DECKS],
             support: support::Panel::default(),
             recovery: recovery::Recovery::default(),
             session_history: session_history::Panel::default(),
@@ -465,12 +470,14 @@ impl App {
     }
 
     fn load_source(&mut self, deck: u8, picked: Option<&Selection>) {
+        self.disable_continuous_playback(usize::from(deck),"Manual track load ended continuous playback");
         if self.review_locked_load(deck, picked.cloned()) { return; }
         self.load_source_approved(deck, picked, None);
     }
     /// Prepare one captured library choice.
     /// Takes its target, selected source and optional review; preserves the current deck until renderer application.
     fn load_source_approved(&mut self, deck: u8, picked: Option<&Selection>, approval: Option<crate::engine::performance::DeckApproval>) {
+        self.disable_continuous_playback(usize::from(deck),"Manual track load ended continuous playback");
         if !self.deck_load_allows(deck, approval.as_ref()) { return; }
         self.project.local_edits = self.project.local_edits.wrapping_add(1);
         if deck as usize >= DECKS {
@@ -525,6 +532,7 @@ impl App {
         self.load_reference(deck,LibSource::File(path),name);
     }
     fn load_reference(&mut self, deck:u8,source:LibSource,name:&str) {
+        self.disable_continuous_playback(usize::from(deck),"Manual track load ended continuous playback");
         if self.review_locked_load(deck, Some(Selection { title: name.into(), source: source.clone(), fingerprint: None })) { return; }
         self.load_reference_approved(deck, source, name, None, None);
     }
@@ -675,7 +683,7 @@ impl App {
                     }
                     receipt = match receipt.with_source_level(completion.level) {
                         Ok(receipt) => receipt,
-                        Err(error) => { state.phase = Phase::Failed(error.into()); self.set_load_state(deck, state); continue; },
+                        Err(error) => { state.phase = Phase::Failed(error.into()); self.update_load_state(deck, state); continue; },
                     };
                     if let Some(approval) = state.approval.take() { receipt = receipt.with_deck_approval(approval); }
                     if let Some(generation)=state.deck_generation {receipt=receipt.with_deck_generation(generation);}
@@ -702,7 +710,7 @@ impl App {
                 }
                 Err(error) => state.phase = Phase::Failed(error.to_string()),
             }
-            self.set_load_state(deck, state);
+            self.update_load_state(deck, state);
         }
     }
 
@@ -866,6 +874,7 @@ impl App {
         self.poll_theme(ctx);
         if !self.project.committing() { self.poll_loads(); }
         self.snap = self.engine.snapshot();
+        self.poll_continuous_playback();
         self.poll_music_provider();
         self.poll_video(ctx);
         self.poll_audio_delivery(ctx);
@@ -944,6 +953,7 @@ impl App {
         self.library_annotations_ui(ctx);
         self.library_protection_ui(ctx);
         self.named_crates_ui(ctx);
+        self.continuous_playback_ui(ctx);
         self.playlist_import_ui(ctx);
         self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
@@ -1431,6 +1441,7 @@ impl App {
             ui.horizontal_wrapped(|ui| {
                 self.named_crate_selector(ui);
                 if ui.button("layout…").help(ui, HelpControl::LibraryLayouts).clicked() { self.library_layout.open=true; }
+                if ui.button("continuous…").help(ui,HelpControl::ContinuousPlayback).clicked() {self.continuous_playback.open=true;}
                 let mut all = self.library_view.search_all;
                 let scope = ui.checkbox(&mut all, tr!("Search all library"));
                 help::annotate(ui, &scope, HelpControl::CrateSearchScope);

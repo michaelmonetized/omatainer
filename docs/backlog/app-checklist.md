@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 47 implemented · 6 partial · 168 planned · 0 accepted · 8 outside release
+127 existing stack · 48 implemented · 6 partial · 167 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -210,7 +210,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#197](https://github.com/michaelmonetized/omatainer/issues/197) | Schedule independent tracks across cores with bounded real-time execution | planned | #130, #81 |  |
 | [ ] | [#198](https://github.com/michaelmonetized/omatainer/issues/198) | Host CLAP instruments and effects with expression support | planned | #130 |  |
 | [ ] | [#199](https://github.com/michaelmonetized/omatainer/issues/199) | Host LV2 instruments, effects and native Linux plugin UIs | planned | #130 |  |
-| [ ] | [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | planned | #105, #131 |  |
+| [x] | [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | implemented | #105, #131 | [receipt](../../docs/validation/continuous-playback.md), [receipt](../../docs/validation/continuous-playback-receipt.json) |
 | [ ] | [#201](https://github.com/michaelmonetized/omatainer/issues/201) | Add optional digital-vinyl control using a supported control-signal format | planned | #130 |  |
 | [ ] | [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | planned | #100, #142 |  |
 | [ ] | [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | planned | #134 |  |

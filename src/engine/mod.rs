@@ -8,6 +8,7 @@ pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
 pub(crate) mod song_navigation;
 pub(crate) mod scene;
+pub(crate) mod deck_continue;
 pub(crate) mod clip_management;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
@@ -358,6 +359,9 @@ pub struct HotCue {
 
 #[derive(Clone, Debug)]
 pub struct DeckRt {
+    natural_end: u64,
+    end_media_key: u64,
+    transport_generation: u64,
     spindle: Option<spindle::Playback>,
     controls: deck_controls::State,
     load_receipt: Option<load_receipt::Receipt>,
@@ -445,6 +449,9 @@ impl DeckRt {
 
     fn new(sr: f32) -> Self {
         Self {
+            natural_end: 0,
+            end_media_key: 0,
+            transport_generation: 0,
             spindle: None,
             controls: deck_controls::State::default(),
             load_receipt: None,
@@ -744,6 +751,12 @@ struct PadTarget {
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct DeckSnap {
     #[serde(skip)]
+    pub(crate) natural_end: u64,
+    #[serde(skip)]
+    pub(crate) end_media_key: u64,
+    #[serde(skip)]
+    pub(crate) transport_generation: u64,
+    #[serde(skip)]
     pub(crate) captured_at: Option<Instant>,
     #[serde(skip)]
     pub(crate) platter: Option<(f64, f32)>,
@@ -1040,6 +1053,7 @@ pub enum Command {
     ClipRelease(clip_launch::Release),
     ClipCancel { track: u8 },
     DeckPlay { deck: u8 },
+    DeckContinue(deck_continue::Request),
     DeckCue { deck: u8 },
     DeckSync { deck: u8 },
     DeckSyncMode { deck: u8, mode: deck_sync::Mode },
@@ -2137,6 +2151,9 @@ impl RtEngine {
                 if position >= a.frames() as f64 {
                     position = 0.0;
                     if !d.loop_on {
+                        if d.playing&&d.preview_position.is_none()&&!d.touching&&d.rate>0.0&&before_position<a.frames() as f64&&d.pos>=a.frames() as f64 {
+                            d.natural_end=d.natural_end.wrapping_add(1);d.end_media_key=d.history_key;
+                        }
                         d.playing = false;
                         if let Some(saved) = d.preview_position.take() { position = saved; }
                     }
@@ -2470,6 +2487,13 @@ impl RtEngine {
         self.apply_plain(c);
     }
     fn apply_plain(&mut self, c: Command) {
+        let manual_transport=match &c {
+            Command::DeckPlay {deck}|Command::DeckCue {deck}|Command::DeckPreview {deck,..}|Command::DeckSeek {deck,..}|Command::DeckJog {deck,..}
+            |Command::DeckTouch {deck,on:true}|Command::MidiDeckTouch {deck,on:true,..}
+            |Command::DeckHotCue {deck,del:false,..}|Command::DeckLoop {deck,..}|Command::DeckLoopIn {deck}|Command::DeckLoopOut {deck}
+            |Command::DeckLoopDouble {deck}|Command::DeckLoopHalf {deck}|Command::DeckReloop {deck}=>Some(usize::from(*deck)),_=>None,
+        };
+        if let Some(deck)=manual_transport.and_then(|index|self.decks.get_mut(index)) {deck.transport_generation=deck.transport_generation.wrapping_add(1);}
         let preparation_deck = match &c {
             Command::DeckCue { deck } | Command::DeckHotCue { deck, .. } | Command::DeckCueStyle { deck, .. }
             | Command::DeckLoop { deck, .. } | Command::DeckLoopIn { deck }
@@ -2608,6 +2632,10 @@ impl RtEngine {
                 d.controls.transport(d.playing, d.rate, self.sr);
                 let pos = if d.playing && d.pos < 1.0 { d.cue_pos } else { d.pos };
                 d.transition_to(pos, self.sr, DeckTransition::Jump);
+            }
+            command @ Command::DeckContinue(_) => {
+                if let Command::DeckContinue(request)=&command {request.apply(self);}
+                self.undo.retire_command(command);
             }
             Command::DeckCue { deck } => {
                 if self.decks[deck as usize % DECKS].playing { self.deck_sync_manipulation(deck as usize % DECKS); }

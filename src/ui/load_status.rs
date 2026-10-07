@@ -71,6 +71,12 @@ impl LoadState {
 
 impl App {
     pub(super) fn set_load_state(&mut self, deck: u8, state: LoadState) {
+        self.load_revision[usize::from(deck)]=self.load_revision[usize::from(deck)].wrapping_add(1);
+        self.update_load_state(deck,state);
+    }
+    /// Publish progress for the same admitted media job.
+    /// Takes its deck and updated state; preserves job ownership across decode completion.
+    pub(super) fn update_load_state(&mut self,deck:u8,state:LoadState) {
         self.status = state.text(deck as usize);
         self.loads[deck as usize] = Some(state);
     }

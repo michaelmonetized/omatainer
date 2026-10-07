@@ -1506,6 +1506,35 @@
       ],
       "limits": "Session launch policies are software-qualified through unopened-device MIDI workers, native mouse/key/assistive handlers, timestamped MIDI, independent actual audio PCM boundaries, file reopening and measured zero renderer heap work. Positive Global repeat subdivisions are at least 1/64 of a whole note; Immediate repeat uses clip length. Bar groups honor the saved meter/pickup. Explicit one-shot/loop actions use timing/legato but do not invent held input. Arrangement snapshots retain policy metadata while Arrangement scheduling owns their instance positions. New physical held-pad and listening acceptance is outside this software pass."
     },
+    "200": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native continuous playback",
+          "file": "src/ui/continuous_playback.rs",
+          "entry": "Independent accessible captured manual-crate mode, next preview, finite/repeat policy, bounded skips and owned protected loads"
+        },
+        {
+          "kind": "source-qualified natural end and start",
+          "file": "src/engine/deck_continue.rs",
+          "entry": "Lease, manual transport and safety fencing; pre-start end acknowledgement and exact refusal"
+        },
+        {
+          "kind": "callback ownership retirement",
+          "file": "src/engine/undo/mod.rs",
+          "entry": "Fixed automatic-start requests retire with their final Arc ownership on the existing worker"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_continue::tests",
+        "ui::continuous_playback::tests"
+      ],
+      "evidence": [
+        "docs/validation/continuous-playback.md",
+        "docs/validation/continuous-playback-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed."
+    },
     "205": {
       "status": "implemented",
       "paths": [

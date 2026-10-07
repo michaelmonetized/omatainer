@@ -884,6 +884,7 @@ impl Journal {
         if let Command::AudioClipEdit(request)=&command {request.ack.reject();}
         if let Command::ArrangementEdit(request)=&command {request.ack.reject();}
         if let Command::SongNavigationEdit(request)=&command {request.ack.reject();}
+        if let Command::DeckContinue(request) = &command { request.reject(); }
         if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
@@ -894,6 +895,7 @@ impl Journal {
             && matches!(
                 command,
                 Command::MicAuxConfigure(_)
+                    | Command::DeckContinue(_)
                     | Command::Remote(_)
                     | Command::SessionControl(_)
                     | Command::SessionEdit(_)

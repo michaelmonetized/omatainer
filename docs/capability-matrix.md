@@ -496,6 +496,17 @@ Native headless UI, real file storage and synthetic MIDI workers qualify portabl
 
 Session launch policies are software-qualified through unopened-device MIDI workers, native mouse/key/assistive handlers, timestamped MIDI, independent actual audio PCM boundaries, file reopening and measured zero renderer heap work. Positive Global repeat subdivisions are at least 1/64 of a whole note; Immediate repeat uses clip length. Bar groups honor the saved meter/pickup. Explicit one-shot/loop actions use timing/legato but do not invent held input. Arrangement snapshots retain policy metadata while Arrangement scheduling owns their instance positions. New physical held-pad and listening acceptance is outside this software pass.
 
+### Issue #200: implemented
+
+- native continuous playback: [src/ui/continuous_playback.rs](../src/ui/continuous_playback.rs) — Independent accessible captured manual-crate mode, next preview, finite/repeat policy, bounded skips and owned protected loads
+- source-qualified natural end and start: [src/engine/deck_continue.rs](../src/engine/deck_continue.rs) — Lease, manual transport and safety fencing; pre-start end acknowledgement and exact refusal
+- callback ownership retirement: [src/engine/undo/mod.rs](../src/engine/undo/mod.rs) — Fixed automatic-start requests retire with their final Arc ownership on the existing worker
+- Acceptance fixtures: `engine::deck_continue::tests`, `ui::continuous_playback::tests`.
+- Evidence: [docs/validation/continuous-playback.md](../docs/validation/continuous-playback.md).
+- Evidence: [docs/validation/continuous-playback-receipt.json](../docs/validation/continuous-playback-receipt.json).
+
+Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -698,7 +709,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#197](https://github.com/michaelmonetized/omatainer/issues/197) | Schedule independent tracks across cores with bounded real-time execution | planned |
 | [#198](https://github.com/michaelmonetized/omatainer/issues/198) | Host CLAP instruments and effects with expression support | planned |
 | [#199](https://github.com/michaelmonetized/omatainer/issues/199) | Host LV2 instruments, effects and native Linux plugin UIs | planned |
-| [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | planned |
+| [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | implemented |
 | [#201](https://github.com/michaelmonetized/omatainer/issues/201) | Add optional digital-vinyl control using a supported control-signal format | planned |
 | [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | planned |
 | [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | planned |

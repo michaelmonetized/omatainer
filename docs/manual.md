@@ -2758,6 +2758,14 @@ Broaden the current query without changing the named crate. Returning restores t
 
 Workflow: Prepare a DJ deck.
 
+### Continuous playback
+
+Independent deck · manual crate order · finite or repeat
+
+Enable a deck to continue through a captured manual ordered crate. A playing track finishes first; a paused crate member resumes. Otherwise the first member loads. Missing or unreadable tracks are skipped and reported. Repeat returns to the first member, but an entirely unavailable pass stops. Disable cancels future automatic starts and leaves current playback under manual control. Manual track or transport changes, project decisions and safety changes stop automatic playback. Other decks and mixer levels remain independent. Reopening starts disabled.
+
+Workflow: Prepare a DJ deck.
+
 ### Scan library
 
 Background filesystem discovery
