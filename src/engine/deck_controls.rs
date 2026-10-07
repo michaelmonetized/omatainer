@@ -6,6 +6,7 @@ mod loop_edit;
 mod quantization;
 mod saved;
 mod cue_loops;
+mod slip;
 pub(crate) use saved::Action as SavedLoopAction;
 pub use quantization::{PendingStatus, QuantizedAction};
 pub(crate) use quantization::DIVISIONS as QUANTIZE_DIVISIONS;
@@ -80,6 +81,7 @@ pub enum Control {
     StopTime { value: f32 },
     TrackStart,
     Slip,
+    SlipSettings { enabled: bool, division: Option<u8> },
     PadMode { mode: u8 },
     Parameter { mode: u8, up: bool, shifted: bool },
     HotLoop { pad: u8, clear: bool },
@@ -92,6 +94,7 @@ impl Control {
     /// Takes this control; returns whether its indices and values are supported.
     pub fn valid(self) -> bool {
         match self {
+            Self::SlipSettings {division,..} => division.is_none_or(|index|usize::from(index)<QUANTIZE_DIVISIONS.len()),
             Self::Quantize { division, .. } => usize::from(division) < QUANTIZE_DIVISIONS.len(),
             Self::Strip { value } | Self::StartTime { value } | Self::StopTime { value } => {
                 value.is_finite() && (0.0..=1.0).contains(&value)
@@ -144,6 +147,10 @@ pub struct Status {
     pub stop_seconds: f32,
     pub braking: bool,
     pub slip: bool,
+    pub slip_release: Option<u8>,
+    pub slip_position: Option<f64>,
+    pub slip_due: Option<f64>,
+    pub slip_return: Option<f64>,
     pub pad_mode: u8,
     pub roll: Option<u8>,
     pub slice: Option<u8>,
@@ -187,6 +194,12 @@ pub(super) struct State {
     pub braking: bool,
     pub brake_rate: f32,
     slip: bool,
+    slip_release: Option<u8>,
+    slip_loop: Option<(bool,f64,f64)>,
+    slip_beat: f64,
+    slip_interrupted: bool,
+    slip_due: Option<f64>,
+    slip_return: Option<f64>,
     pub pad_mode: u8,
     pub roll_scale: i8,
     slice_domain: u8,
@@ -239,6 +252,12 @@ impl Default for State {
             braking: false,
             brake_rate: 0.0,
             slip: false,
+            slip_release: None,
+            slip_loop: None,
+            slip_beat: 0.0,
+            slip_interrupted: false,
+            slip_due: None,
+            slip_return: None,
             pad_mode: 0,
             roll_scale: 0,
             slice_domain: 3,
@@ -328,7 +347,7 @@ impl State {
     /// Arm a bounded transport acceleration or brake.
     /// Takes Play state, prior velocity and output rate; returns no value.
     pub fn transport(&mut self, playing: bool, velocity: f32, sr: f32) {
-        if !playing { self.pending = None; }
+        if !playing { self.pending = None; self.interrupt_slip(); }
         self.braking = !playing && self.stop > 0.0;
         self.brake_rate = velocity;
         let seconds = if playing { self.start } else { self.stop };
@@ -364,7 +383,7 @@ impl State {
         self.forward = None;
         self.performance_forward = None;
         self.saved_loop = None;
-        self.slip_forward = None;
+        self.interrupt_slip();
         self.preview = None;
         self.auto_button = None;
         self.delete = false;
@@ -397,6 +416,10 @@ impl State {
             stop_seconds: self.stop,
             braking: self.braking,
             slip: self.slip,
+            slip_release: self.slip_release,
+            slip_position: self.slip_forward,
+            slip_due: self.slip_due,
+            slip_return: self.slip_return,
             pad_mode: self.pad_mode,
             roll: (0..8).find(|&pad| self.held(Button::Roll(pad))),
             slice: (0..8).find(|&pad| self.held(Button::Slice(pad))),
@@ -415,7 +438,7 @@ impl State {
         self.counts.fill(0);
         self.performance_forward = None;
         self.saved_loop = None;
-        self.slip_forward = None;
+        self.interrupt_slip();
         self.loops.fill(None);
         self.cue_loops.fill(None);
         self.cue_only = false;
@@ -471,19 +494,7 @@ impl RtEngine {
                 }
             }
         }
-        let scratching = d.touching
-            || d.follows_spindle()
-                && d.spindle
-                    .as_ref()
-                    .is_some_and(super::spindle::Playback::scratching);
-        if d.controls.slip && scratching && d.playing {
-            let position = d.controls.slip_forward.get_or_insert(d.pos);
-            *position += step;
-        } else if let Some(position) = d.controls.slip_forward.take() {
-            if d.playing {
-                d.transition_to(position, self.sr, DeckTransition::Jump);
-            }
-        }
+        d.tick_slip(step,self.sr,self.bpm);
     }
     /// Measure the actual audience output for the NS7's master meter mode.
     /// Takes the emitted stereo frame; updates two bounded envelopes without allocation.
@@ -535,6 +546,7 @@ impl RtEngine {
                 if on && matches!(button, Button::Reverse | Button::Bleep | Button::Roll(_) | Button::Slice(_)) {
                     d.controls.pending = None;
                 }
+                if on && State::slip_button(button) && !d.controls.delete {d.begin_slip(self.sr,self.bpm);}
                 match button {
                     Button::Roll(_) | Button::Slice(_) => {
                         if on && d.controls.saved_loop.is_none() {
@@ -593,7 +605,7 @@ impl RtEngine {
                                 d.loop_len = len;
                             }
                             if let Some(position) = d.controls.performance_forward.take() {
-                                d.transition_to(position, self.sr, DeckTransition::Jump);
+                                if d.controls.slip_forward.is_none() {d.transition_to(position, self.sr, DeckTransition::Jump);}
                             }
                         }
                     }
@@ -603,7 +615,7 @@ impl RtEngine {
                                 d.controls.forward = Some(d.pos);
                             }
                         } else if let Some(position) = d.controls.forward.take() {
-                            d.transition_to(position, self.sr, DeckTransition::Jump);
+                            if d.controls.slip_forward.is_none() {d.transition_to(position, self.sr, DeckTransition::Jump);}
                         }
                     }
                     Button::Delete => {
@@ -649,7 +661,7 @@ impl RtEngine {
                                 d.controls.preview = Some((source, key, button));
                             }
                         } else if d.playing {
-                            self.apply(Command::DeckCue { deck });
+                            if d.controls.slip_forward.is_some() {let position=d.cue_quantized_position(d.cue_pos,self.sr,self.bpm);d.transition_to(position,self.sr,DeckTransition::Jump);}else{self.apply(Command::DeckCue { deck });}
                         } else if d.preview_position.is_none() {
                             self.apply(Command::DeckCue { deck });
                             let d = &mut self.decks[index];
@@ -688,7 +700,8 @@ impl RtEngine {
             }
             Control::TrackStart => self.apply(Command::DeckSeek { deck, frac: 0.0 }),
             Control::StartTime { value } => self.decks[index].controls.start = value * 4.0,
-            Control::Slip => self.decks[index].controls.slip = !self.decks[index].controls.slip,
+            Control::Slip => {let state=&mut self.decks[index].controls;state.slip=!state.slip;if !state.slip {state.interrupt_slip();}else{state.slip_interrupted=false;}},
+            Control::SlipSettings {enabled,division} => {let state=&mut self.decks[index].controls;let was_enabled=state.slip;state.slip=enabled;state.slip_release=division;state.slip_due=None;state.slip_return=None;if !enabled {state.interrupt_slip();}else if !was_enabled {state.slip_interrupted=false;}},
             Control::PadMode { mode } => {
                 if self.decks[index].controls.pad_mode != mode {
                     self.cancel_deck_pads(index);

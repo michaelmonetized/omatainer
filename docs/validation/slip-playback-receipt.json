@@ -1,0 +1,431 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual native egui/AccessKit, renderer/OutputCallback PCM and allocation/free checks",
+  "sourceFiles": {
+    "src/engine/deck_controls.rs": "97f56897fb93f5eea52f62d8dac2f2f2edf964be6ddcd165e9479fc3691c27b7",
+    "src/engine/deck_controls/slip.rs": "29e0b2b4b8757bc3eaa934cededd111f7752ce5b7cef61fd50c0fc9eca6bf963",
+    "src/engine/deck_controls/slip/tests.rs": "c7862bb44432aea764787ecac4e251d6579dbac3c8ba60ea1c8df2e3e9c44420",
+    "src/engine/mod.rs": "ea206c1e7bfdb213dbd99e66dc21e6bd81eec534b883cedc531a015d5405b135",
+    "src/ui.rs": "c7b5002936b3d0a7f0fc198c440bc0c70afdb81924ec680955b547fd36975e16",
+    "src/ui/help/catalogue.rs": "116c3373829c9149bebee8a3455866aa7e92be22fbd34b7b70809f1373461b8f",
+    "src/ui/slip.rs": "4b634f7d313ebcb6cd7f787b5a41f394986bb0fc4d5ebdb31a4fe677961f13c9",
+    "src/ui/slip/tests.rs": "e4d87b70c88d63e769174a3b017355c50d31b06f706f525d181c63c3f3699f7e"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/slip-playback-tests-fifth",
+    "sha256": "3006517dceff47c57e17fd686e055566aa055d3c05bbb49094af54b25b458673"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/slip-playback-fifth-compiled-source-inventory.json",
+    "sha256": "8c8eafd85cf96cc5caf2194b10bbc90af4b5a0636ff0867cd036d5d55d4d568a",
+    "baseRevision": "3b9f115b60a8063ee8e8a777449d13a4d044170c",
+    "files": 782
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "3b9f115b60a8063ee8e8a777449d13a4d044170c",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "e437f4c14e2a03fb2978bc436cf8fd5e7ddc57606e4f6bdf480db56c42cdc494",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/slip-playback-fifth-core.log",
+      "sha256": "98958baffcdc6ff1a2d7a092e617583e122161f5dc118580ee8520109c1380cd",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2077,
+      "seconds": 10.03
+    },
+    "native": {
+      "path": "target/app-backlog/slip-playback-fifth-native.log",
+      "sha256": "212996fa7dc63ac7002307cae3b62cb25fbc2277b296e0076edc90e75da7df64",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2083,
+      "seconds": 0.29
+    },
+    "deck-controls": {
+      "path": "target/app-backlog/slip-playback-fifth-deck-controls.log",
+      "sha256": "644c001fded9cc425bf49853d43e49444926e12877c0bc118cb16156561c76b3",
+      "outcome": "ok",
+      "passed": 34,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2051,
+      "seconds": 32.49
+    },
+    "keylock": {
+      "path": "target/app-backlog/slip-playback-fifth-keylock.log",
+      "sha256": "fd182f180e9883c407424d84694903c6a646e2b195d4ca647419077012a1bbe6",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2068,
+      "seconds": 33.01
+    },
+    "beat-jump": {
+      "path": "target/app-backlog/slip-playback-fifth-beat-jump.log",
+      "sha256": "d61b9258aaa20823b76f70a066503ff619623fb727b6047f3b36411f1d278b3a",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2083,
+      "seconds": 0.31
+    },
+    "manual": {
+      "path": "target/app-backlog/slip-playback-fifth-manual.log",
+      "sha256": "b9f489604beaad7e17d7e2e675818fb2ec657315c752d6c83dd4bd64345dcfc7",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2084,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/slip-playback-fifth-help.log",
+      "sha256": "43b6ea24984a04d06cae167230aaef3f2c9234cedc3da797fe5341058b9dbc18",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2070,
+      "seconds": 2.84
+    },
+    "ipc": {
+      "path": "target/app-backlog/slip-playback-fifth-ipc.log",
+      "sha256": "d19977cae51c6acdab1b5bca88189029524815efe1f5617eaf0defb578ec1d43",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2084,
+      "seconds": 0.01
+    },
+    "full": {
+      "path": "target/app-backlog/slip-playback-fifth-full.log",
+      "sha256": "9c73aeeffacb24e98416c2e9117b1e06476d16ac5f5f48218285184291e6d893",
+      "outcome": "ok",
+      "passed": 2041,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 615.27
+    }
+  },
+  "nested": {
+    "cases": 18,
+    "gesture_frames": 1536,
+    "max_source_frame_error": 2.310844138264656e-8,
+    "nested_gestures": [
+      "cue",
+      "touch",
+      "roll"
+    ],
+    "physical_devices_opened": false,
+    "release_orders": 2
+  },
+  "callback": {
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "compared_other_deck_frames": 32768,
+    "energy": 1090.4115620371579,
+    "other_deck_max_error": 0,
+    "physical_devices_opened": false
+  },
+  "quantized": {
+    "cases": 36,
+    "max_wait_output_frames": 41674,
+    "original_loop_preserved": true,
+    "output_rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "physical_devices_opened": false,
+    "source_rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "tempo_change_during_hold": true,
+    "variable_grid": true
+  },
+  "native": {
+    "accessible_enablement_and_release": true,
+    "actual_shadow_and_pending_marker": true,
+    "other_deck_independent": true,
+    "physical_devices_opened": false
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/slip-playback-fifth-full-output-timing.json",
+    "sha256": "4635bf0c02a66e1c357f67c6a07f61466f683b902b50cc36b7ff9eec7cc7bd84",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5185,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          111937,
+          35094,
+          127586,
+          21034,
+          98234,
+          54892,
+          101466,
+          22165,
+          155990,
+          8147,
+          163389,
+          17462,
+          52829,
+          19194,
+          135603,
+          81968,
+          118918,
+          81617,
+          134567,
+          9474,
+          56257,
+          139790,
+          88239,
+          145314
+        ],
+        "max_delay_ns": 163389
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          42311,
+          115073,
+          119917,
+          9428,
+          36189,
+          115200,
+          109461,
+          40639,
+          6400,
+          83662,
+          50381,
+          112184,
+          21736,
+          60206,
+          54300,
+          153728,
+          131448,
+          15166,
+          168845,
+          146939,
+          128575,
+          87211,
+          83430,
+          20941
+        ],
+        "max_delay_ns": 168845
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          141396,
+          83421,
+          79571,
+          10761,
+          121537,
+          65062,
+          50086,
+          108945,
+          95845,
+          145619,
+          116352,
+          139169,
+          86110,
+          70718,
+          149202,
+          8809,
+          50459,
+          87776,
+          154342,
+          76867,
+          11184,
+          93583,
+          129400,
+          124300
+        ],
+        "max_delay_ns": 154342
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          82104,
+          90615,
+          148460,
+          151430,
+          89399,
+          35702,
+          64422,
+          92684,
+          41445,
+          129540,
+          19092,
+          137771,
+          110324,
+          163211,
+          83347,
+          139400,
+          41411,
+          3089897,
+          28892,
+          137488,
+          34082,
+          130344,
+          96147,
+          57199
+        ],
+        "max_delay_ns": 3089897
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          88645,
+          126093,
+          138915,
+          46695,
+          74183,
+          26714,
+          72953,
+          37567,
+          122264,
+          73835,
+          150033,
+          79897,
+          50594,
+          6790,
+          27029,
+          98310,
+          15549,
+          50412,
+          14526,
+          145557,
+          142296,
+          20409,
+          99815,
+          61554
+        ],
+        "max_delay_ns": 150033
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          52895,
+          147825,
+          94670,
+          115682,
+          108487,
+          59832,
+          106386,
+          13149,
+          135120,
+          139715,
+          39394,
+          134657,
+          139002,
+          147766,
+          96569,
+          119790,
+          20886,
+          30148,
+          35910,
+          142007,
+          128185,
+          43614,
+          36460,
+          41680
+        ],
+        "max_delay_ns": 147825
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/slip-playback-fifth-node.log",
+    "sha256": "a55231cd2ac8e438bb5afa9871872b035591583ae810a103ed68ccbd2a5dd925",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "compileLog": {
+        "path": "target/app-backlog/slip-playback-first-compile.log",
+        "sha256": "5016e8ef40c40e7650b1845060c9b37889a8b30b05dfe04ca47e6f627fe27f31"
+      },
+      "inventorySha256": "f303a3336fa797168a4eaa0a082ebba91f544916ab7b17d97716d028a0f52215",
+      "compiled": false,
+      "reason": "A native UI test called the private engine-only renderer method. The corrected fixture uses ordinary audio blocks, without widening renderer visibility."
+    },
+    "second": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slip-playback-tests-second",
+        "sha256": "362d46a7e3e4c0579212168ea924b34535edcef0a0c252c339e0d241ea37295d",
+        "compileLogSha256": "cecbc2ed581c2a135212e5f82e3a6b4254988b0c752240e7bb28d86bb0ddda1c"
+      },
+      "inventorySha256": "ea79e3afae375c70733ec0e6c498207d46f738db3b70bced408a654de94dd2ce",
+      "core": {
+        "path": "target/app-backlog/slip-playback-second-core.log",
+        "sha256": "1bfa9d1368749bf38bbf8259b30871c3ddad65df73b7346e1b023c3227a0aaf0",
+        "outcome": "FAILED",
+        "passed": 5,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 2077,
+        "seconds": 5.51
+      },
+      "reason": "Five checks passed. The quantized loop-return marker disagreed with its oracle, and the first actual rendered sample resumed at the scratch-slewed rate. Production now restores ordinary forward tempo before the return transition; marker diagnostics and held-seek interruption coverage were added."
+    },
+    "third": {
+      "compileLog": {
+        "path": "target/app-backlog/slip-playback-third-compile.log",
+        "sha256": "8cc7072b95781abfde81cf83f771f058fde105664be9dcff4f51096bcbe4be49"
+      },
+      "compiled": false,
+      "qualified": false,
+      "reason": "Diagnostic patch preparation refused an unexpected whitespace span; the shell then started an unfrozen compile. Owned cargo/rustc were stopped with SIGTERM. No source was edited while they were running. No third executable was retained or tested. Subsequent runners fail immediately on any preparation error."
+    },
+    "fourth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slip-playback-tests-fourth",
+        "sha256": "a0865611b40f3dc4364d64e8b940ded9bbecb07a15ed173c698527a9ed1e21a7",
+        "compileLogSha256": "a51895273dd4e5ed98ba1fe78b79fc4a3f40d9ee324d60dcf7d97c7d86ce9be2"
+      },
+      "inventorySha256": "594487b160b06994eab4b405b4578343436def541f092468b06cc1532a899f17",
+      "core": {
+        "path": "target/app-backlog/slip-playback-fourth-core.log",
+        "sha256": "e4888c3b54aaa1c085d22dd1ae04011e3fc57424989dbdbfbc2ba22ec6f1eb85",
+        "outcome": "FAILED",
+        "passed": 6,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 2077,
+        "seconds": 5.92
+      },
+      "reason": "Six checks passed, including exact first-sample release. The actual marker diagnostic located the original-loop endpoint a fraction below its exact boundary (5.124999999999657 instead of wrapped 2.125 seconds), and a seek-cancelled shadow rearmed under the same held touch. Production canonicalizes only the existing 1e-9-beat boundary deadband and fences deliberate interruptions until the old gesture ends or an explicit new press begins. All expanded assertions are retained."
+    }
+  },
+  "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM and native egui/AccessKit. Transient independent slip enablement with immediate or 1/8–4-beat release; nominal forward shadow through nested scratch/cue/hotcue/temporary roll/slice and reverse/bleep, manual tempo changes and variable grid/original-loop wraps. Source-owned scalar state, independent input owners, pending re-grab and deliberate interruption fence. First returned sample restores forward rate; existing transition envelope applies. New app instances start disabled; no project/profile schema change or persistence is claimed. No physical audio/MIDI device, live capture, new GUI, converter latency, human listening or stage continuity qualification; independent stage processes/session stay preserved."
+}

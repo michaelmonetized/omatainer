@@ -1565,6 +1565,35 @@
       ],
       "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM, native egui/AccessKit, real source catalog files and native .omat round trip. Original MIT stereo-linked WSOLA plus bounded resampling, no new dependency. Independent ±6-semitone offsets; exact loaded-version same-mode key matching enables key lock in one undoable edit. Nonzero shifts support forward tempo 0.5–1.5 intersected with locked tempo/pitch factor 0.5–1.5; scratch, reverse and out-of-range playback disclose bypass. Saved state 28 rejects older offset headers; unknown reopened catalog provenance refuses matching. Source-time grain search and lookahead scale with requested grain step and output/source rates; no universal 67 ms bound or converter latency claim. Twelve complete Float32 mix/transition WAVs are retained for listening; no human transparency judgment, live capture, new GUI or physical audio/MIDI device is claimed. Independent stage processes/session stay preserved."
     },
+    "203": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "nested source timeline and release",
+          "file": "src/engine/deck_controls/slip.rs",
+          "entry": "Fixed source-owned shadow, variable-grid musical return, original-loop wrapping, interrupted-held-input fence and restored first-sample forward rate"
+        },
+        {
+          "kind": "native slip controls and marker",
+          "file": "src/ui/slip.rs",
+          "entry": "Independent accessible enablement and explicit immediate/musical release with renderer-confirmed source and pending return positions"
+        },
+        {
+          "kind": "ordinary performance integration",
+          "file": "src/engine/deck_controls.rs",
+          "entry": "Shared held-cue, scratch and temporary-pad root; independent input ownership, no premature nested returns and safe transient boundaries"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_controls::slip::tests",
+        "ui::slip::tests"
+      ],
+      "evidence": [
+        "docs/validation/slip-playback.md",
+        "docs/validation/slip-playback-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM and native egui/AccessKit. Transient independent slip enablement with immediate or 1/8–4-beat release; nominal forward shadow through nested scratch/cue/hotcue/temporary roll/slice and reverse/bleep, manual tempo changes and variable grid/original-loop wraps. Source-owned scalar state, independent input owners, pending re-grab and deliberate interruption fence. First returned sample restores forward rate; existing transition envelope applies. New app instances start disabled; no project/profile schema change or persistence is claimed. No physical audio/MIDI device, live capture, new GUI, converter latency, human listening or stage continuity qualification; independent stage processes/session stay preserved."
+    },
     "205": {
       "status": "implemented",
       "paths": [

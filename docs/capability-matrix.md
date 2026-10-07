@@ -518,6 +518,17 @@ Linux ARM64 software qualification through native egui/AccessKit, real readable/
 
 Linux ARM64 software qualification through actual OutputCallback/renderer PCM, native egui/AccessKit, real source catalog files and native .omat round trip. Original MIT stereo-linked WSOLA plus bounded resampling, no new dependency. Independent ±6-semitone offsets; exact loaded-version same-mode key matching enables key lock in one undoable edit. Nonzero shifts support forward tempo 0.5–1.5 intersected with locked tempo/pitch factor 0.5–1.5; scratch, reverse and out-of-range playback disclose bypass. Saved state 28 rejects older offset headers; unknown reopened catalog provenance refuses matching. Source-time grain search and lookahead scale with requested grain step and output/source rates; no universal 67 ms bound or converter latency claim. Twelve complete Float32 mix/transition WAVs are retained for listening; no human transparency judgment, live capture, new GUI or physical audio/MIDI device is claimed. Independent stage processes/session stay preserved.
 
+### Issue #203: implemented
+
+- nested source timeline and release: [src/engine/deck_controls/slip.rs](../src/engine/deck_controls/slip.rs) — Fixed source-owned shadow, variable-grid musical return, original-loop wrapping, interrupted-held-input fence and restored first-sample forward rate
+- native slip controls and marker: [src/ui/slip.rs](../src/ui/slip.rs) — Independent accessible enablement and explicit immediate/musical release with renderer-confirmed source and pending return positions
+- ordinary performance integration: [src/engine/deck_controls.rs](../src/engine/deck_controls.rs) — Shared held-cue, scratch and temporary-pad root; independent input ownership, no premature nested returns and safe transient boundaries
+- Acceptance fixtures: `engine::deck_controls::slip::tests`, `ui::slip::tests`.
+- Evidence: [docs/validation/slip-playback.md](../docs/validation/slip-playback.md).
+- Evidence: [docs/validation/slip-playback-receipt.json](../docs/validation/slip-playback-receipt.json).
+
+Linux ARM64 software qualification through actual OutputCallback/renderer PCM and native egui/AccessKit. Transient independent slip enablement with immediate or 1/8–4-beat release; nominal forward shadow through nested scratch/cue/hotcue/temporary roll/slice and reverse/bleep, manual tempo changes and variable grid/original-loop wraps. Source-owned scalar state, independent input owners, pending re-grab and deliberate interruption fence. First returned sample restores forward rate; existing transition envelope applies. New app instances start disabled; no project/profile schema change or persistence is claimed. No physical audio/MIDI device, live capture, new GUI, converter latency, human listening or stage continuity qualification; independent stage processes/session stay preserved.
+
 ### Issue #205: implemented
 
 - native UI: [src/ui/library_smart_crates.rs](../src/ui/library_smart_crates.rs) — Named crates → Smart crate rules → Preview and Save
@@ -723,7 +734,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#200](https://github.com/michaelmonetized/omatainer/issues/200) | Add deliberate continuous playback from an ordered crate | implemented |
 | [#201](https://github.com/michaelmonetized/omatainer/issues/201) | Add optional digital-vinyl control using a supported control-signal format | planned |
 | [#202](https://github.com/michaelmonetized/omatainer/issues/202) | Add independent deck key shift and harmonic key sync | implemented |
-| [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | planned |
+| [#203](https://github.com/michaelmonetized/omatainer/issues/203) | Add slip playback with configurable release timing | implemented |
 | [#204](https://github.com/michaelmonetized/omatainer/issues/204) | Detect changing-tempo beatgrids automatically as a preview-comparison feature | planned |
 | [#205](https://github.com/michaelmonetized/omatainer/issues/205) | Add automatically maintained smart crates | implemented |
 | [#206](https://github.com/michaelmonetized/omatainer/issues/206) | Manage provider-authorized offline lockers and readiness | excluded from release |

@@ -2758,6 +2758,14 @@ Broaden the current query without changing the named crate. Returning restores t
 
 Workflow: Prepare a DJ deck.
 
+### Slip playback
+
+Independent deck; immediate or musical release
+
+Open slip… to enable each deck and choose Immediate or a beat division. Scratch, held cue/hotcue and temporary roll/slice gestures share one background timeline. Overlapping gestures keep the original root; the final release returns immediately or waits for the selected musical boundary through manual variable-tempo anchors. The panel shows the shadow and pending source return position. Pause, explicit seeking, source change, project replacement and safety stop cancel that transient timeline. New app instances start with Slip disabled; no physical input is required to configure it.
+
+Workflow: Prepare a DJ deck.
+
 ### Deck key shift
 
 −6–+6 semitones; source-qualified

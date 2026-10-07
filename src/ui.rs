@@ -40,6 +40,7 @@ use library_view::{LibraryView, Cells};
 mod load_status;
 mod continuous_playback;
 mod key_shift;
+mod slip;
 mod deck_load_lock;
 mod play_history;
 mod session_history;
@@ -149,6 +150,7 @@ mod font_selection_tests;
 pub struct App {
     continuous_playback: continuous_playback::Panel,
     key_shift: key_shift::Panel,
+    slip: slip::Panel,
     load_revision: [u64; DECKS],
     support: support::Panel,
     recovery: recovery::Recovery,
@@ -305,6 +307,7 @@ impl App {
         let mut app = Self {
             continuous_playback: Default::default(),
             key_shift: Default::default(),
+            slip: Default::default(),
             load_revision: [0; DECKS],
             support: support::Panel::default(),
             recovery: recovery::Recovery::default(),
@@ -958,6 +961,7 @@ impl App {
         self.named_crates_ui(ctx);
         self.continuous_playback_ui(ctx);
         self.key_shift_ui(ctx);
+        self.slip_ui(ctx);
         self.playlist_import_ui(ctx);
         self.smart_crates_ui(ctx);
         self.session_history_ui(ctx);
@@ -1481,6 +1485,7 @@ impl App {
                     self.load_sel(1);
                 }
                 if ui.button("key shift…").help(ui,HelpControl::KeyShift).clicked() { self.key_shift.open=true; }
+                if ui.button("slip…").help(ui,HelpControl::SlipPlayback).clicked() { self.slip.open=true; }
                 ui.label(RichText::new(if self.library_layout.live.current().primary.is_some() { "custom column sort" } else if self.library_crates.selected.as_ref().and_then(|id|self.library_metadata.catalog.crates.node(id)).is_some_and(|node|node.smart_rule.is_none() && node.annotation_rule.is_none()) { "manual crate order" } else { "published catalog order" }).size(t.text_size(10.0)).color(t.muted));
                 ui.label(RichText::new(tr!("metadata: inspect tags…")).size(t.text_size(10.0)).color(t.muted)).on_hover_text(key_hints::HELP);
                 let progress = self.library_scan.label();
