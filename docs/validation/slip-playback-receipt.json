@@ -427,5 +427,86 @@
       "reason": "Six checks passed, including exact first-sample release. The actual marker diagnostic located the original-loop endpoint a fraction below its exact boundary (5.124999999999657 instead of wrapped 2.125 seconds), and a seek-cancelled shadow rearmed under the same held touch. Production canonicalizes only the existing 1e-9-beat boundary deadband and fences deliberate interruptions until the old gesture ends or an explicit new press begins. All expanded assertions are retained."
     }
   },
-  "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM and native egui/AccessKit. Transient independent slip enablement with immediate or 1/8–4-beat release; nominal forward shadow through nested scratch/cue/hotcue/temporary roll/slice and reverse/bleep, manual tempo changes and variable grid/original-loop wraps. Source-owned scalar state, independent input owners, pending re-grab and deliberate interruption fence. First returned sample restores forward rate; existing transition envelope applies. New app instances start disabled; no project/profile schema change or persistence is claimed. No physical audio/MIDI device, live capture, new GUI, converter latency, human listening or stage continuity qualification; independent stage processes/session stay preserved."
+  "limits": "Linux ARM64 software qualification through actual OutputCallback/renderer PCM and native egui/AccessKit. Transient independent slip enablement with immediate or 1/8–4-beat release; nominal forward shadow through nested scratch/cue/hotcue/temporary roll/slice and reverse/bleep, manual tempo changes and variable grid/original-loop wraps. Source-owned scalar state, independent input owners, pending re-grab and deliberate interruption fence. First returned sample restores forward rate; existing transition envelope applies. New app instances start disabled; no project/profile schema change or persistence is claimed. No physical audio/MIDI device, live capture, new GUI, converter latency, human listening or stage continuity qualification; independent stage processes/session stay preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-slip-playback-qualified",
+      "manifestSha256": "ba6e04d90ff0f9c6c734f95c0ad62394b4c3491572e43562c68ec3f44b3fc42e",
+      "revision": "46a897d3c25da23c650ca766d17401f44cee42ad",
+      "version": "0.1.0+46a897d3c25d",
+      "executableSha256": "23f6dea7b809e6cda847d243e08d6e0ee0d5fb3494704174ac63f43bd3bacdb0"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "fee264b345ccdb01fe5363941be8b11172be0ee9e45a0eb0ace126a07725dc00",
+      "after": "23f6dea7b809e6cda847d243e08d6e0ee0d5fb3494704174ac63f43bd3bacdb0",
+      "installedAt": "2026-10-07T11:32:06.790Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
