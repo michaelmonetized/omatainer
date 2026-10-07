@@ -959,5 +959,93 @@
       "path": "target/app-backlog/clock-checklist-check.log",
       "sha256": "3ddce3293266fb35350053966d1f17437f3843a6c47e8c44a830980e7471bb8f"
     }
+  },
+  "installedPackage": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-midi-clock-qualified",
+      "manifestSha256": "1b3539e7e147ef060d4890972e3426a63ce0982b5323aadf8d06da44094f7c21",
+      "revision": "c850bcc1716afa4b41f9455226a75782d4e8232c",
+      "version": "0.1.0+c850bcc1716a",
+      "executableSha256": "5148378b6031756294ea2a97c7efe879af8ab9db7e7000df93558b1bba029c12"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "d7755d959bf11fa0173855820c2ecb43dccb3270fc74d633b617c3e89a788137",
+      "after": "5148378b6031756294ea2a97c7efe879af8ab9db7e7000df93558b1bba029c12",
+      "installedAt": "2026-10-07T01:35:40.572Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  },
+  "releaseBuild": {
+    "path": "target/app-backlog/clock-release-build.log",
+    "sha256": "f90b9e633f19c693ec0fbe4fb577f30c63795c46dffaa76c22d0fa1e203d7edd"
+  },
+  "releaseEmbeddedInputs": {
+    "baselineRevision": "c850bcc1716afa4b41f9455226a75782d4e8232c",
+    "files": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "db12fe98105162876305c5e05e0c9136b608782378067668591fb275d7d83c3c",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
   }
 }
