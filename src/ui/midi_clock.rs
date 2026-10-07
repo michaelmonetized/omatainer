@@ -1,3 +1,4 @@
+mod input;
 use super::*;
 use crate::engine::midi::{
     clock::{Config, Status},
@@ -84,6 +85,11 @@ impl App {
     pub(super) fn midi_clock_status_ui(&mut self, ui: &mut Ui, ctx: &egui::Context) {
         ui.separator();
         ui.heading("Song clock sync");
+        let status=self.snap.midi_clock_input;
+        let mut config=status.config;
+        let devices=self.engine.cmd.midi_learn().view().devices;
+        input::edit_input(ui,&mut config,status,&devices,self.engine.cmd.clock_output());
+        if config!=status.config {self.send(Command::ClockFollow(config));}
         let counters = self.engine.cmd.clock_output().counters();
         let state = if counters.running {
             "Song running; clock scheduled"

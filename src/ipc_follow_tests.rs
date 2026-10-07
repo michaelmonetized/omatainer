@@ -96,6 +96,7 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
     commands.midi_routing().maximum_activity_for_test();
     commands.clock_output().maximum_activity_for_test();
     let mut snapshot = Snapshot::default();
+    snapshot.midi_clock_input = crate::engine::midi::clock_input::Status::maximum_for_test();
     snapshot.midi = vec!["\u{1}".repeat(8192); 64];
     snapshot.decks = vec![
         crate::engine::DeckSnap {
@@ -115,6 +116,7 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
     let first: Value =
         serde_json::from_str(cache.update(&snapshot, &commands, &id).unwrap()).unwrap();
     assert_eq!(first["state_truncated"], true);
+    assert_eq!(first["midi_clock_input"]["accepted_ticks"],u64::MAX);
     assert_eq!(first["pitch_pickup"][0]["target"],0.75);
     assert_eq!(first["pitch_pickup"][0]["physical"],0.1_f32 as f64);
     let shared = Arc::new(Mutex::new(snapshot.clone()));
@@ -166,6 +168,10 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
     assert_eq!(changed["deckALoadLocked"], true);
     assert_eq!(changed["deckBLoadLocked"], false);
     assert_eq!(cache.serializations, 5);
+    snapshot.midi_clock_input.accepted_ticks = 123;
+    let changed: Value = serde_json::from_str(cache.update(&snapshot, &commands, &id).unwrap()).unwrap();
+    assert_eq!(changed["midi_clock_input"]["accepted_ticks"],123);
+    assert_eq!(cache.serializations, 6);
     let counts = crate::engine::test_alloc::measure(|| {
         for _ in 0..1000 { assert!(cache.update(&snapshot, &commands, &id).is_ok()); }
     });

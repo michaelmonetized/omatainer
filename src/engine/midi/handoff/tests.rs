@@ -703,3 +703,30 @@ fn absolute_pitch_factory_and_learned_crossings_keep_ordered_worker_samples_and_
         drop(worker);render(&mut rt);assert!(!rt.decks[0].playing && !rt.decks[1].playing);
     }
 }
+
+#[test]
+fn actual_raw_worker_overflow_preserves_selected_stop_and_command_pressure_cannot_block_clocks() {
+    use crate::engine::midi::clock_input::{Config,Message,Loss};
+    use crate::engine::test_alloc;
+    let (engine,mut rt)=Engine::headless_for_test(48000,128);
+    let map=MidiMap{name:"Clock pressure fixture".into(),matchers:vec![],bindings:vec![],unmapped_notes:UnmappedNotes::Live};
+    let (mut input,mut worker)=channel(1,71,map,engine.cmd.clone(),Arc::new(parking_lot::Mutex::new(Vec::new())),"Fixture clock".into(),"clock:1".into(),Arc::new(InputCounters::default())).unwrap();
+    rt.configure_clock_input(Config{source:Some(71),..Default::default()});
+    let shared=engine.cmd.clock_input().clone();let base=Instant::now()+std::time::Duration::from_secs(1);
+    rt.playing=true;
+    assert_eq!(test_alloc::measure(||{input.push_at(&[0xfa,0xf8],base);input.push_at(&[0xfc],base);}),Default::default());
+    while worker.step() {}
+    rt.clock_input.begin(48000,0,Some(base));
+    assert_eq!(test_alloc::measure(||rt.process(&mut [])),Default::default());
+    assert!(!rt.playing);assert!(rt.clock_input.enabled());assert_eq!(rt.clock_input.status().lost,Some(Loss::Overflow));
+    let mut admitted=0;
+    while engine.cmd.send(Command::Metronome).is_ok() {admitted+=1;assert!(admitted<10000);}
+    assert!(admitted>=64);
+    let next=base+std::time::Duration::from_nanos(20_833_333);
+    shared.input(71,shared.generation(),rt.performance.input_epoch(),next,Message::Start,false);
+    shared.input(71,shared.generation(),rt.performance.input_epoch(),next,Message::Tick{packet_ticks:1},false);
+    rt.clock_input.begin(48000,0,Some(next));
+    assert_eq!(test_alloc::measure(||rt.process(&mut [])),Default::default());
+    assert!(rt.playing);assert_eq!(rt.clock_input.status().accepted_ticks,1);
+    println!("CLOCK_INPUT_PRESSURE {{\"ordinary_commands_admitted\":{admitted},\"raw_worker_stop_preserved\":true,\"callback_allocations\":0,\"physical_devices_opened\":false}}");
+}

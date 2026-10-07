@@ -655,6 +655,7 @@ impl FxKind {
 pub struct RtEngine {
     midi_routing: Arc<midi::routing::Shared>,
     pub(crate) clock_output: midi::clock::Runtime,
+    pub(crate) clock_input: midi::clock_input::Runtime,
     midi_learning: Arc<midi::learn::Shared>,
     midi_output_mask:u128,
     midi_output_budget:usize,
@@ -949,6 +950,7 @@ pub struct Snapshot {
     pub midi_input: midi::InputStats,
     pub midi_clock: MidiClockInput,
     pub(crate) midi_clock_output: midi::clock::Counters,
+    pub(crate) midi_clock_input: midi::clock_input::Status,
     /// Legacy alias: actual last render-thread CPU divided by callback budget.
     pub cpu: Option<f32>,
     pub audio: audio_metrics::AudioMetrics,
@@ -1026,6 +1028,7 @@ impl Default for Snapshot {
             midi_clock: MidiClockInput::default(),
             cpu: None,
             midi_clock_output: midi::clock::Counters::default(),
+            midi_clock_input: midi::clock_input::Status::default(),
             audio: audio_metrics::AudioMetrics::default(),
             commands: control::CommandStats::default(),
             submissions: control::SubmissionStats::default(),
@@ -1078,6 +1081,7 @@ pub enum Command {
     Record,
     Tap(Instant),
     MidiClock { source: u64 },
+    ClockFollow(midi::clock_input::Config),
     SetBpm(f32),
     LaunchClip { track: u8, scene: u16 },
     LaunchScene { scene: u16 },
@@ -1253,6 +1257,7 @@ impl RtEngine {
             scenes: scene::State::default(),
             midi_routing:cmd_rx.midi_routing(),
             clock_output:midi::clock::Runtime::new(cmd_rx.clock_output()),
+            clock_input:midi::clock_input::Runtime::new(cmd_rx.clock_input()),
             midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
             midi_output_budget:256,
@@ -1642,6 +1647,8 @@ impl RtEngine {
         #[cfg(test)]
         std::thread::sleep(self.telemetry_delays[1]);
         let frames = out.len() / channels;
+        self.clock_input.ensure_begin(self.sr as u32,frames);
+        if frames==0 {self.external_clock_frame(0);}
         self.routing_pipe.begin_block(self.sr as u32, frames);
         if frames > 0 { self.prepare_mixer_gains(); }
         let spb = (self.sr as f64) * 60.0 / self.bpm as f64;
@@ -1658,6 +1665,7 @@ impl RtEngine {
         for i in 0..frames {
             #[cfg(test)]
             { self.current_sample_frame = self.frames_done + i as u64; }
+            let external_step = self.external_clock_frame(i);
             self.song_navigation_tick();
             if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
             self.scene_launch_tick();
@@ -1670,11 +1678,11 @@ impl RtEngine {
             // Compose holds still have a musical duration with the transport
             // stopped. This clock integrates actual tempo and never loops.
             let midi_position = self.precise_midi_beat();
-            let spb = self.conductor.as_ref().map_or(f64::from(self.sr) * 60.0 / f64::from(self.bpm), |c| {
+            let spb = if self.clock_input.enabled() { 1.0 / external_step.unwrap_or(f64::from(self.bpm) / 60.0 / f64::from(self.sr)) } else {self.conductor.as_ref().map_or(f64::from(self.sr) * 60.0 / f64::from(self.bpm), |c| {
                 let micros = c.micros_exact_at(midi_position);
                 self.bpm = (60000000.0 / f64::from(micros)) as f32;
                 f64::from(self.sr) * f64::from(micros) / 1000000.0
-            });
+            })};
             if spb != conductor_spb {
                 for (slot, wet) in self.master_fx.iter_mut().zip(self.fx_wet) { slot.configure(wet, spb); }
                 if let Some(history) = &mut self.history_measurement { history.configure(self.fx_kind, self.fx_wet, spb); }
@@ -1683,13 +1691,14 @@ impl RtEngine {
             self.last_midi_step = 1.0 / spb;
             // A mapped transport adds its analytically integrated sample span
             // below; recording and playback must share the same ramp interval.
-            if !counting_in && (!self.playing || self.conductor.is_none()) { self.note_recording.clock += self.last_midi_step; }
+            if !counting_in && (!self.playing || self.conductor.is_none() || self.clock_input.enabled()) { self.note_recording.clock += self.last_midi_step; }
             let beat_start = self.beat;
             if self.playing && !counting_in {
                 self.timeline_frames += 1;
                 // Compensate accumulated rounding so a long clip cannot move
                 // an exact note boundary to the preceding output sample.
-                if let Some(map) = &self.conductor {
+                if let Some(map) = self.conductor.as_ref().filter(|_|!self.clock_input.enabled()) {
+                    if self.mapped_clock.as_ref().is_none_or(|clock|clock.beat!=self.midi_beat) {self.mapped_clock=Some(midi_data::ConductorClock::new(map,self.midi_beat));}
                     let next = self.mapped_clock.as_mut().unwrap().advance(map,self.sr);
                     self.last_midi_step = next - self.midi_beat;
                     self.midi_beat = next; self.beat = next;
@@ -1703,7 +1712,7 @@ impl RtEngine {
                 self.midi_beat_reference = self.beat;
                 }
             }
-            if self.playing && !counting_in && self.conductor.is_some() { self.note_recording.clock += self.last_midi_step; }
+            if self.playing && !counting_in && self.conductor.is_some() && !self.clock_input.enabled() { self.note_recording.clock += self.last_midi_step; }
             let clock_beat = self.precise_midi_beat();
             self.clock_output.frame(midi_position, clock_beat, self.playing && !counting_in, self.transport_epoch, i);
             let mut l = 0.0f32;
@@ -1898,7 +1907,7 @@ impl RtEngine {
             let duration = region.map_or(clip_beats, |region| region.end - region.start);
             let period = region.map_or(clip_beats, |region| region.period());
             let elapsed = clock - if explicit_region { p.midi_start_beat } else { p.start_beat };
-            let step = if audio_region.is_some() { if self.conductor.is_some() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 } } else { midi_schedule::BEAT_EPSILON };
+            let step = if audio_region.is_some() { if self.conductor.is_some() || self.clock_input.enabled() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 } } else { midi_schedule::BEAT_EPSILON };
             let sample_elapsed = (elapsed - step).max(0.0);
             let ending = !repeating && if audio_region.is_some() { sample_elapsed >= duration } else { elapsed > duration + midi_schedule::BEAT_EPSILON };
             {
@@ -1974,7 +1983,7 @@ impl RtEngine {
                             self.tracks[ti].arp_note = Some(pitch);
                         }
                     } else {
-                        let sample_step = if self.conductor.is_some() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 };
+                        let sample_step = if self.conductor.is_some() || self.clock_input.enabled() { self.last_midi_step } else { self.bpm as f64 / 60.0 / self.sr as f64 };
                         let previous_sample = self.beat - sample_step;
                         let previous_midi_sample = self.precise_midi_beat() - sample_step;
                         let track = &mut self.tracks[ti];
@@ -2521,6 +2530,7 @@ impl RtEngine {
         self.apply_plain(c);
     }
     fn apply_plain(&mut self, c: Command) {
+        if matches!(&c,Command::Play|Command::Stop|Command::TogglePlay|Command::TimelineSeek(_)|Command::SongSeek(_)|Command::SetBpm(_)|Command::NudgeBpm(_)|Command::Tap(_)) {self.internal_clock();}
         let manual_transport=match &c {
             Command::DeckPlay {deck}|Command::DeckCue {deck}|Command::DeckPreview {deck,..}|Command::DeckSeek {deck,..}|Command::DeckJog {deck,..}
             |Command::DeckTouch {deck,on:true}|Command::MidiDeckTouch {deck,on:true,..}
@@ -2579,6 +2589,7 @@ impl RtEngine {
                 self.cmd_rx.complete_stop(lane as usize, ticket);
             }
             Command::MidiClock { source } => self.midi_clock.receive_tick(source),
+            Command::ClockFollow(config) => self.configure_clock_input(config),
             Command::Play => {
                 self.start_count_in();
                 if self.arrangement.enabled(){self.arrangement.reset(self.precise_midi_beat());}else{self.resume_project_clips();}

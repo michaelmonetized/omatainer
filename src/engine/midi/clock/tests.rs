@@ -298,6 +298,19 @@ fn actual_audio_callback_drives_only_selected_outputs_and_echoed_transport_prese
     });
     assert!(!engine.cmd.clock_output().counters().running);
 }
+
+#[test]
+fn explicitly_followed_input_cannot_follow_an_echo_from_an_actual_selected_fake_output() {
+    use super::super::clock_input::{Config as InputConfig,Loss};
+    let (engine,mut rt)=Engine::headless_for_test(48000,128);
+    let manager=output::Manager::start_backend(engine.cmd.clone(),policy(),fake()).unwrap();
+    wait(||!manager.status().pending);assert!(manager.status().error.is_none());
+    let map=crate::engine::midi::MidiMap{name:"Echo clock fixture".into(),matchers:vec![],bindings:vec![],unmapped_notes:crate::engine::midi::UnmappedNotes::Live};
+    let mut echo=engine.midi.open_for_test(&engine.cmd,555,map,"Another client port","21:7");
+    rt.configure_clock_input(InputConfig{source:Some(555),..Default::default()});
+    echo.push(&[0xfa,0xf8]);rt.process(&mut []);
+    assert_eq!(rt.clock_input.status().lost,Some(Loss::Feedback));assert_eq!(rt.clock_input.status().accepted_ticks,0);assert!(!rt.playing);
+}
 #[test]
 fn output_failure_stops_all_selected_clock_ports_and_requires_explicit_retry() {
     let (engine, mut rt) = Engine::headless_for_test(48000, 256);

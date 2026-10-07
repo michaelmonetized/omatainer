@@ -211,6 +211,7 @@ impl Prepared {
     pub(crate) fn into_offline(self) -> Box<RtEngine> { self.rt }
 
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
+        rt.configure_clock_input(super::super::midi::clock_input::Config::default());
         rt.monitor.cancel_tone();
         for deck in 0..DECKS { rt.performance.deck_media_changed(deck); }
         rt.routing_pipe.recorder.invalidate();

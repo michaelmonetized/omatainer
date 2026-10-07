@@ -575,6 +575,17 @@ Linux ARM64 software qualification: eight fixed loop IDs, independent reorder/de
 
 Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim.
 
+### Issue #222: implemented
+
+- timestamped clock renderer: [src/engine/midi/clock_input.rs](../src/engine/midi/clock_input.rs) — Explicit source, fixed-size interval/phase estimate, selected transport/SPP, loss/reacquisition and coherent sample clock with manual takeover
+- native source and loss controls: [src/ui/midi_clock/input.rs](../src/ui/midi_clock/input.rs) — Accessible confirmed source/transport/loss/deadline controls, output echo refusal and visible timing quality
+- private input worker and bounded status: [src/engine/midi/handoff.rs](../src/engine/midi/handoff.rs) — Original callback timestamp and source generation, separate bounded clock handoff, independent retirement and selected Stop under queue pressure
+- Acceptance fixtures: `engine::midi::clock_input::tests`, `ui::midi_clock::input::tests`, `engine::midi::handoff::tests`, `ipc_server::limits_tests`.
+- Evidence: [docs/validation/midi-clock-input.md](../docs/validation/midi-clock-input.md).
+- Evidence: [docs/validation/midi-clock-input-receipt.json](../docs/validation/midi-clock-input-receipt.json).
+
+Linux ARM64 software qualification only: selected timestamped source, stable 40–240 BPM tempo/phase, coherent Start/Continue/Stop/SPP, independent bounded handoff, generation-scoped retirement/overflow/feedback, configurable freewheel/stop and visible jitter/loss. Native egui/AccessKit, actual private input workers, software renderer and OutputCallback PCM, live-owner isolation, conductor/automatic-loop/manual-takeover and maximum bounded IPC status/follow checks. Internal preserves existing realtime dispatch. No new dependency or project/library/preferences schema. No physical audio/MIDI device, hardware capture, new OS GUI, listening or live-stage continuity acceptance; existing independent stage processes/session remain preserved.
+
 ### Issue #223: implemented
 
 - native assignment editor and full-value capture: [src/ui/midi_learn.rs](../src/ui/midi_learn.rs) — Absolute/relative/14-bit/bend formats; explicit pair order, direction, scalar limits and sensitivity; capture → preview → apply
@@ -764,7 +775,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | implemented |
 | [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | implemented |
 | [#221](https://github.com/michaelmonetized/omatainer/issues/221) | Enforce streaming capabilities and protect playback during service failures | partial |
-| [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | planned |
+| [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | implemented |
 | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | implemented |
 | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned |
 | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned |

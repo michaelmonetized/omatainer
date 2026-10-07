@@ -61,6 +61,7 @@ impl Packet {
 pub enum Frame {
     Musical(Packet),
     Realtime(u8),
+    SongPosition(u16),
     Malformed,
 }
 pub struct Frames<'a> {
@@ -130,6 +131,7 @@ impl Iterator for Frames<'_> {
                             3
                         };
                     }
+                    0xf2 => {self.status=b;self.frame[0]=b;self.len=1;self.needed=3;},
                     0xf0 => {
                         self.status = 0;
                         self.sysex = true;
@@ -156,6 +158,7 @@ impl Iterator for Frames<'_> {
             self.frame[self.len] = b;
             self.len += 1;
             if self.len == self.needed {
+                if self.status==0xf2 {let position=u16::from(self.frame[1])|u16::from(self.frame[2])<<7;self.status=0;self.len=0;return Some(Frame::SongPosition(position));}
                 let packet = Packet::new(&self.frame[..self.len]).unwrap();
                 self.len = 0;
                 return Some(Frame::Musical(packet));

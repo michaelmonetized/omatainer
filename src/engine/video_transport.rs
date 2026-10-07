@@ -25,6 +25,7 @@ impl RtEngine {
             .map_or(seconds * f64::from(self.bpm) / 60.0, |map| {
                 map.beat_at_seconds(seconds)
             });
+        self.clock_input.rebase(beat-self.precise_midi_beat());
         self.beat = beat;
         self.midi_beat = beat;
         self.midi_beat_reference = beat;

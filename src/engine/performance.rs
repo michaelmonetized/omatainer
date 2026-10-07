@@ -549,6 +549,7 @@ fn destructive(command: &Command) -> bool {
         | Command::Record
         | Command::Tap(_)
         | Command::MidiClock { .. }
+        | Command::ClockFollow(_)
         | Command::SetBpm(_)
         | Command::LaunchClip { .. }
         | Command::DeckPadParameter { .. }
@@ -811,6 +812,7 @@ impl super::RtEngine {
         };
         // Finalize exact original recording targets before any gate or arm is
         // released. All bounded synth voices enter their normal release stage.
+        self.configure_clock_input(super::midi::clock_input::Config::default());
         self.history_finish_take();
         self.routing_pipe.recorder.invalidate();
         self.monitor.cancel_tone();

@@ -175,6 +175,10 @@ pub(crate) struct Counters {
 }
 impl Shared {
     #[cfg(test)]
+    pub(crate) fn guard_ports_for_test(&self, ports:Vec<Endpoint>) {
+        self.actual_outputs.store(Arc::new(ports));
+    }
+    #[cfg(test)]
     pub(crate) fn maximum_activity_for_test(&self) {
         self.enabled.store(true, Release);
         self.running.store(true, Release);

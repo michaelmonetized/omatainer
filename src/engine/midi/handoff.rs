@@ -20,6 +20,7 @@ struct Event {
     safety: u64,
     routing: u64,
     learning: u64,
+    clock: u64,
     len: u16,
     bytes: [u8; EVENT_BYTES],
 }
@@ -32,6 +33,7 @@ impl Event {
             safety: 0,
             routing: 0,
             learning: 0,
+            clock: 0,
             len: bytes.len() as u16,
             bytes: [0; EVENT_BYTES],
         };
@@ -83,6 +85,8 @@ impl InputCounters {
 
 struct Shared {
     learning: Arc<super::learn::Shared>,
+    clock: Arc<super::clock_input::Shared>,
+    source: u64,
     epoch: AtomicU64,
     performance: crate::engine::performance::Handle,
     stop_pending: AtomicBool,
@@ -152,14 +156,14 @@ impl Rules {
             && bytes[2] < 128
             && self.cc[(bytes[0] & 15) as usize][bytes[1] as usize]
     }
-    fn has_stop(&self, bytes: &[u8]) -> bool {
+    fn has_stop(&self, bytes: &[u8], realtime:bool) -> bool {
         if self.mmc && bytes.windows(6).any(|packet| packet[0] == 0xf0 && packet[1] == 0x7f && packet[2] < 128 && packet[3..] == [6, 1, 0xf7]) { return true; }
         // Bounded overflow-only scan preserves stop even with interleaved
         // realtime bytes. Normal MIDI parsing remains in handle_msg.
         let mut note = [0; 3];
         let mut len = 0;
         for &byte in bytes {
-            if byte == 0xfc {
+            if byte == 0xfc && realtime {
                 return true;
             }
             if byte >= 0xf8 {
@@ -202,12 +206,15 @@ impl InputSink {
         if self.pending_cc.take().is_some() {
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
-        if bytes.len() > EVENT_BYTES || self.shared.learning.ordered.load(Acquire) || self.rules.has_stop(bytes) {
+        if bytes.iter().take(EVENT_BYTES).any(|&byte|byte==0xfc) {self.shared.clock.request_stop(self.shared.source,self.shared.clock.generation());}
+        self.shared.clock.retire(self.shared.source,super::clock_input::Loss::Overflow);
+        if bytes.len() > EVENT_BYTES && !self.shared.clock.enabled() || self.shared.learning.ordered.load(Acquire) || bytes.len() <= EVENT_BYTES && self.rules.has_stop(bytes,!self.shared.clock.enabled()) {
             self.shared.stop_pending.store(true, Release);
         }
         self.shared.epoch.fetch_add(1, Release);
     }
-    pub(super) fn push(&mut self, bytes: &[u8]) {
+    pub(super) fn push(&mut self, bytes: &[u8]) {self.push_at(bytes,std::time::Instant::now());}
+    pub(super) fn push_at(&mut self, bytes:&[u8], at:std::time::Instant) {
         self.shared.counters.received.fetch_add(1, Relaxed);
         if self.shared.shutdown.load(Acquire) || self.producer.is_abandoned() {
             self.shared.counters.disconnected.fetch_add(1, Relaxed);
@@ -227,6 +234,7 @@ impl InputSink {
         let epoch = self.shared.epoch.load(Acquire);
         self.sequence = self.sequence.wrapping_add(1);
         let mut event = Event::new(epoch, self.sequence, bytes);
+        event.at=at;event.clock=self.shared.clock.generation();
         event.safety = self.shared.performance.input_epoch();
         event.routing = self.shared.routing.generation.load(Acquire);
         event.learning = self.shared.learning.revision.load(Acquire);
@@ -313,6 +321,7 @@ impl InputWorker {
         };
         if event.epoch == self.shared.epoch.load(Acquire) && event.epoch == self.epoch && event.safety == safety && event.learning == learning {
             let cmd=self.cmd.for_input_epoch(event.safety).for_midi_context([event.epoch,learning,routing]);
+            let packet_ticks=super::routing::packet::frames(event.bytes()).filter(|frame|matches!(frame,super::routing::packet::Frame::Realtime(0xf8))).count() as u16;
             for frame in super::routing::packet::frames(event.bytes()) {
                 let mut paired = super::controls::PairValues::default();
                 match frame {
@@ -340,15 +349,18 @@ impl InputWorker {
                     },
                     super::routing::packet::Frame::Realtime(status) => {
                         if status == 0xff { self.pairs.clear(); }
-                        if matches!(status,0xfa|0xfb|0xfc) && cmd.clock_output().guards_transport_port(&self.name,&self.port_id) { continue; }
+                        use super::clock_input::Message;
+                        let message=match status {0xf8=>Some(Message::Tick{packet_ticks}),0xfa=>Some(Message::Start),0xfb=>Some(Message::Continue),0xfc=>Some(Message::Stop),_=>None};
+                        if let Some(message)=message {if self.shared.clock.input(self.source,event.clock,event.safety,event.at,message,cmd.clock_output().guards_transport_port(&self.name,&self.port_id)) {continue;}}
                         handle_msg(&[status],self.source,&self.map,&cmd,&self.log,&self.shift,&self.name)
                     },
+                    super::routing::packet::Frame::SongPosition(position)=>{self.shared.clock.input(self.source,event.clock,event.safety,event.at,super::clock_input::Message::Position(position),cmd.clock_output().guards_transport_port(&self.name,&self.port_id));},
                     super::routing::packet::Frame::Malformed => self.shared.routing.malformed(),
                 }
             }
             self.shared.counters.dispatched.fetch_add(1, Relaxed);
         } else {
-            if event.learning != learning && Rules::new(&self.map).has_stop(event.bytes()) { let _=self.cmd.send(Command::Stop); }
+            if event.learning != learning && Rules::new(&self.map).has_stop(event.bytes(),!self.shared.clock.enabled()) { let _=self.cmd.send(Command::Stop); }
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         true
@@ -398,7 +410,8 @@ impl InputWorker {
         let rules = Rules::new(&self.map);
         let mut stop = self.shared.stop_pending.swap(false, AcqRel);
         while let Some(event) = self.next_event() {
-            stop |= rules.has_stop(event.bytes());
+            if event.bytes().contains(&0xfc) {self.shared.clock.request_stop(self.source,event.clock);}
+            stop |= rules.has_stop(event.bytes(),!self.shared.clock.enabled());
             self.shared.counters.dropped.fetch_add(1, Relaxed);
         }
         let _ = self.pending_cc.take();
@@ -443,6 +456,8 @@ fn channel(
     let (producer, consumer) = rtrb::RingBuffer::new(capacity);
     let shared = Arc::new(Shared {
         learning: cmd.midi_learn(),
+        clock:cmd.clock_input().clone(),
+        source,
         epoch: AtomicU64::new(0),
         performance: cmd.performance().clone(),
         stop_pending: AtomicBool::new(false),

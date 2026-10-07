@@ -38,6 +38,7 @@ impl RtEngine {
         let timing_only = request.targets.is_empty() && (request.conductor.as_ref().is_some_and(|c| c.native.is_some()) || request.baseline_conductor.as_ref().is_some_and(|c| c.native.is_some()));
         self.undo.begin(if timing_only { Name::Timing } else { Name::Multiple }, 0, self.frames_done);
         if request.change_conductor {
+            self.internal_clock();
             self.scenes.cancel();
             self.metro.reset();
             let bytes = self.conductor.as_ref().map_or(0, |c| c.bytes())

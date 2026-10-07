@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 51 implemented · 6 partial · 164 planned · 0 accepted · 8 outside release
+127 existing stack · 52 implemented · 6 partial · 163 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -232,7 +232,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#219](https://github.com/michaelmonetized/omatainer/issues/219) | Add safe pitch-fader pickup and temporary pitch bend | implemented | #193 | [receipt](../../docs/validation/pitch-pickup.md), [receipt](../../docs/validation/pitch-pickup-receipt.json) |
 | [x] | [#220](https://github.com/michaelmonetized/omatainer/issues/220) | Add named persistent loop banks for each track | implemented | #85, #188 | [receipt](../../docs/validation/saved-loops.md), [receipt](../../docs/validation/saved-loops-receipt.json) |
 | [ ] | [#221](https://github.com/michaelmonetized/omatainer/issues/221) | Enforce streaming capabilities and protect playback during service failures | partial | #120, #181 | [receipt](../../docs/validation/issue-120-providers.md) |
-| [ ] | [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | planned | #112, #193, #41 |  |
+| [x] | [#222](https://github.com/michaelmonetized/omatainer/issues/222) | Follow external MIDI clock with transport and loss handling | implemented | #112, #193, #41 | [receipt](../../docs/validation/midi-clock-input.md), [receipt](../../docs/validation/midi-clock-input-receipt.json) |
 | [x] | [#223](https://github.com/michaelmonetized/omatainer/issues/223) | Support configurable MIDI encoder encodings and high-resolution controls | implemented | #195, #42 | [receipt](../../docs/validation/midi-encoders.md), [receipt](../../docs/validation/midi-encoders-receipt.json) |
 | [ ] | [#224](https://github.com/michaelmonetized/omatainer/issues/224) | Drive controller LEDs and meters from actual application state | planned | #195, #112 |  |
 | [ ] | [#225](https://github.com/michaelmonetized/omatainer/issues/225) | Add runtime controller discovery, enablement and reconnection | planned | #112, #195, #73 |  |

@@ -446,6 +446,7 @@ impl Patch {
             Self::Global(value) => value.swap(rt),
             Self::Sync(value) => value.swap(rt),
             Self::Conductor { bpm, value, scene_timing, .. } => {
+                rt.internal_clock();
                 rt.scenes.cancel();
                 std::mem::swap(scene_timing, &mut rt.scenes.timing);
                 rt.metro.reset();

@@ -489,7 +489,7 @@ fn handle_client_with_stop(
             continue;
         };
         let scene_names_truncated = [false, true].into_iter().any(|queued| ipc_transport::short_json_text(s.scene_name(queued), 256).len() < s.scene_name(queued).len());
-        let out = serde_json::json!({
+        let mut out = serde_json::json!({
             "ok": true,
             "id": request_id,
             // A queued command may not be reflected in this snapshot yet.
@@ -534,6 +534,7 @@ fn handle_client_with_stop(
             "deckALoadLocked": s.decks.first().map(|d| d.load_locked).unwrap_or(false),
             "deckBLoadLocked": s.decks.get(1).map(|d| d.load_locked).unwrap_or(false),
         });
+        out["midi_clock_input"] = serde_json::json!(s.midi_clock_input);
         drop(s);
         ipc_transport::reply(&mut writer, &out, limits.write)?;
     }

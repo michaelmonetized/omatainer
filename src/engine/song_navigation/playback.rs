@@ -116,6 +116,7 @@ impl RtEngine {
                     self.navigation.error = Some(Error::PositionLimit);
                     return;
                 }
+                self.internal_clock();
                 self.seek_timeline(seconds);
                 if pending.loop_after {
                     if let Some(saved) = &mut self.navigation.saved {
@@ -162,7 +163,10 @@ impl RtEngine {
             self.navigation.error = Some(Error::PositionLimit);
             return;
         }
-        self.seek_timeline(start + excess.rem_euclid(period));
+        let target = if self.clock_input.enabled() {
+            seconds(region.start+(now-region.end).max(0.0).rem_euclid(region.end-region.start))
+        } else { start + excess.rem_euclid(period) };
+        self.seek_timeline(target);
         self.mapped_clock = self
             .conductor
             .as_ref()

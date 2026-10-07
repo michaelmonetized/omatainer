@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 pub const REQUEST_BYTES: usize = 4096;
 pub const RESPONSE_BYTES: usize = 8192;
 pub const STATUS_MIDI_NAME_BYTES:usize=256;
-pub const STATUS_DECK_TITLE_BYTES:usize=1024;
+pub const STATUS_DECK_TITLE_BYTES:usize=512;
 pub const CLIENTS: usize = 8;
 
 #[derive(Clone, Copy)]

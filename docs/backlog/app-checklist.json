@@ -3133,9 +3133,12 @@
         193,
         41
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/midi-clock-input.md",
+        "docs/validation/midi-clock-input-receipt.json"
+      ]
     },
     {
       "issue": 223,

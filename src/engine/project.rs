@@ -561,6 +561,7 @@ impl RtEngine {
             | Command::OpenFxTrack(_)
             | Command::OpenFxScene(_)
             | Command::CloseFx
+            | Command::ClockFollow(_)
             | Command::SetBpm(_)
             | Command::NudgeBpm(_)
             | Command::Tap(_)

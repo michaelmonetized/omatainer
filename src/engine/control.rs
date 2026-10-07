@@ -91,6 +91,7 @@ struct AdmissionShared {
     midi_learn: std::sync::Arc<super::midi::learn::Shared>,
     midi_routing: std::sync::Arc<super::midi::routing::Shared>,
     clock_output: std::sync::Arc<super::midi::clock::Shared>,
+    clock_input: std::sync::Arc<super::midi::clock_input::Shared>,
     performance: super::performance::Handle,
     project_writers: std::sync::atomic::AtomicU64,
     audio_offline: std::sync::atomic::AtomicBool,
@@ -200,6 +201,7 @@ impl CommandReceiver {
     /// Share the bounded output clock queue with an audio graph.
     /// Takes this receiver; returns its persistent clock state or isolated offline state.
     pub(crate) fn clock_output(&self) -> std::sync::Arc<super::midi::clock::Shared> {self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::clock::Shared::default()),|shared|shared.clock_output.clone())}
+    pub(crate) fn clock_input(&self) -> std::sync::Arc<super::midi::clock_input::Shared> {self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::clock_input::Shared::default()),|shared|shared.clock_input.clone())}
     pub(crate) fn midi_routing(&self) -> std::sync::Arc<super::midi::routing::Shared> {
         self.shared.as_ref().map_or_else(||std::sync::Arc::new(super::midi::routing::Shared::default()),|s|s.midi_routing.clone())
     }
@@ -466,6 +468,7 @@ impl CommandPort {
     /// Access clock configuration and status outside the native callback.
     /// Takes this producer; returns its shared bounded clock scheduler state.
     pub(crate) fn clock_output(&self) -> &std::sync::Arc<super::midi::clock::Shared> {&self.shared.clock_output}
+    pub(crate) fn clock_input(&self) -> &std::sync::Arc<super::midi::clock_input::Shared> {&self.shared.clock_input}
     pub(crate) fn midi_routing(&self) -> &std::sync::Arc<super::midi::routing::Shared> { &self.shared.midi_routing }
     pub(crate) fn attach_support(&mut self,port:crate::support::worker::Port) {self.support=Some(port);}
     /// IPC/GUI producer use only, never from a renderer or raw MIDI callback.
@@ -530,6 +533,7 @@ impl CommandPort {
             midi_learn: std::sync::Arc::new(super::midi::learn::Shared::default()),
             midi_routing: std::sync::Arc::new(super::midi::routing::Shared::default()),
             clock_output: std::sync::Arc::new(super::midi::clock::Shared::default()),
+            clock_input: std::sync::Arc::new(super::midi::clock_input::Shared::default()),
             performance: super::performance::Handle::default(),
             project_writers: std::sync::atomic::AtomicU64::new(0),
             audio_offline: std::sync::atomic::AtomicBool::new(false),
@@ -601,6 +605,7 @@ impl CommandPort {
     /// its release, so input overflow can retire exactly that source's gates
     /// even while ordinary engine queue capacity is exhausted.
     pub(super) fn release_midi_source(&self, source: u64) {
+        self.shared.clock_input.retire(source, super::midi::clock_input::Loss::Retired);
         self.shared.midi_learn.retire_pending();
         let gates = self.admission.lock().gates;
         for gate in gates.into_iter().flatten() {
@@ -735,6 +740,7 @@ impl CommandPort {
         if matches!(&command, Command::DeckSyncMode { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::DeckKeyShift(request) if !request.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::DeckPadPress(press) if !press.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::ClockFollow(config) if !config.valid()) {return fail(SubmissionError::InvalidTarget);}
         if matches!(&command, Command::MidiPitch(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
@@ -1413,6 +1419,7 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::Play
             | Command::TogglePlay
             | Command::MidiClock { .. }
+            | Command::ClockFollow(_)
     )
 }
 

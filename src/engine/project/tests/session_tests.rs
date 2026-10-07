@@ -31,9 +31,12 @@ fn prepared_native_timing_is_atomic_undoable_cancelled_and_namespace_qualified_w
     let notes = live.tracks[2].clips[0].notes.clone();
     let (request, ack) =
         Request::prepare_timing(captured(&live), Some(map.clone()), || false).unwrap();
+    live.configure_clock_input(crate::engine::midi::clock_input::Config{source:Some(71),..Default::default()});
+    assert!(live.clock_input.enabled());
     let counts = test_alloc::measure(|| live.apply(Command::MidiImport(request)));
     assert_eq!(counts, test_alloc::Counts::default());
     assert_eq!(ack.state(), Outcome::Applied);
+    assert!(!live.clock_input.enabled());
     assert_eq!(live.conductor.as_ref(), Some(&map));
     assert_eq!(live.tracks[2].clips[0].notes, notes);
     assert_eq!((&*live.tracks[2]) as *const _ as usize, node);
@@ -42,11 +45,13 @@ fn prepared_native_timing_is_atomic_undoable_cancelled_and_namespace_qualified_w
     live.apply(Command::Undo);
     assert_eq!(live.conductor.as_ref(), Some(&map));
     live.apply(Command::Stop);
+    live.configure_clock_input(crate::engine::midi::clock_input::Config{source:Some(71),..Default::default()});
     assert_eq!(
         test_alloc::measure(|| live.apply(Command::Undo)),
         test_alloc::Counts::default()
     );
     assert!(live.conductor.is_none());
+    assert!(!live.clock_input.enabled());
     assert_eq!(
         test_alloc::measure(|| live.apply(Command::Redo)),
         test_alloc::Counts::default()

@@ -21,6 +21,7 @@ pub(crate) mod learn;
 pub(crate) mod presets;
 pub(crate) mod routing;
 pub(crate) mod clock;
+pub(crate) mod clock_input;
 pub(crate) mod device_status;
 pub use handoff::InputStats;
 pub use connections::Retry;
@@ -171,9 +172,10 @@ pub struct MidiHub {
 pub(crate) struct TestInput { callback: handoff::InputSink, _worker: handoff::InputGuard, counters: Arc<handoff::InputCounters> }
 #[cfg(test)]
 impl TestInput {
-    pub(crate) fn push(&mut self,message:&[u8]) {
+    pub(crate) fn push(&mut self,message:&[u8]) { self.push_at(message,Instant::now()); }
+    pub(crate) fn push_at(&mut self,message:&[u8],at:Instant) {
         let before=self.counters.snapshot().dispatched;
-        let allocation=super::test_alloc::measure(||self.callback.push(message));
+        let allocation=super::test_alloc::measure(||self.callback.push_at(message,at));
         assert_eq!((allocation.allocations,allocation.frees),(0,0));
         let until=Instant::now()+std::time::Duration::from_secs(2);
         while self.counters.snapshot().dispatched==before {assert!(Instant::now()<until,"synthetic input did not dispatch");std::thread::sleep(std::time::Duration::from_millis(1));}

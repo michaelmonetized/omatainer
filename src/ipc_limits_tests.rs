@@ -345,6 +345,7 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
         snapshot.monitor.channels = Some([usize::MAX; 2]);
         snapshot.monitor.meters = [f32::MAX; 2];
         snapshot.monitor.tone = Some(1);
+        snapshot.midi_clock_input = crate::engine::midi::clock_input::Status::maximum_for_test();
         snapshot.commands.received = u64::MAX;
         snapshot.commands.applied = u64::MAX;
         snapshot.commands.coalesced = u64::MAX;
@@ -389,6 +390,7 @@ fn large_snapshot_metadata_has_bounded_response_and_avoids_full_snapshot_clone()
     assert_eq!(reply["midi_routing"]["sent"],u64::MAX);
     assert_eq!(reply["midi_routing"]["refused_tracks"],255);
     assert_eq!(reply["midi_clock_output"]["sent"],u64::MAX);
+    assert_eq!(reply["midi_clock_input"]["accepted_ticks"],u64::MAX);
     assert_eq!(reply["midi_clock_output"]["max_late_ns"],u64::MAX);
     assert!(reply["midi_clock_output"]["error"].as_str().is_some());
     assert_eq!(reply["midi"][0].as_str().unwrap().len(),ipc_transport::STATUS_MIDI_NAME_BYTES / 6);

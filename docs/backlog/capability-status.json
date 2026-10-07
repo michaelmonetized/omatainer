@@ -1735,6 +1735,37 @@
       ],
       "limits": "Preview-only FreeToUse adapter. Earlier #120 evidence is historical; no blanket provider, derived-file or future recording/hosting claim."
     },
+    "222": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "timestamped clock renderer",
+          "file": "src/engine/midi/clock_input.rs",
+          "entry": "Explicit source, fixed-size interval/phase estimate, selected transport/SPP, loss/reacquisition and coherent sample clock with manual takeover"
+        },
+        {
+          "kind": "native source and loss controls",
+          "file": "src/ui/midi_clock/input.rs",
+          "entry": "Accessible confirmed source/transport/loss/deadline controls, output echo refusal and visible timing quality"
+        },
+        {
+          "kind": "private input worker and bounded status",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Original callback timestamp and source generation, separate bounded clock handoff, independent retirement and selected Stop under queue pressure"
+        }
+      ],
+      "fixtures": [
+        "engine::midi::clock_input::tests",
+        "ui::midi_clock::input::tests",
+        "engine::midi::handoff::tests",
+        "ipc_server::limits_tests"
+      ],
+      "evidence": [
+        "docs/validation/midi-clock-input.md",
+        "docs/validation/midi-clock-input-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification only: selected timestamped source, stable 40–240 BPM tempo/phase, coherent Start/Continue/Stop/SPP, independent bounded handoff, generation-scoped retirement/overflow/feedback, configurable freewheel/stop and visible jitter/loss. Native egui/AccessKit, actual private input workers, software renderer and OutputCallback PCM, live-owner isolation, conductor/automatic-loop/manual-takeover and maximum bounded IPC status/follow checks. Internal preserves existing realtime dispatch. No new dependency or project/library/preferences schema. No physical audio/MIDI device, hardware capture, new OS GUI, listening or live-stage continuity acceptance; existing independent stage processes/session remain preserved."
+    },
     "223": {
       "status": "implemented",
       "paths": [

@@ -1574,6 +1574,14 @@ Cancel keeps the previous applied routing when it wins before the worker's commi
 
 Workflow: Connect a controller.
 
+### External song clock input
+
+One source; 24 clocks per quarter; 40–240 BPM
+
+Choose one connected MIDI input by its exact name and identity. New sessions use Internal. Start starts at beat zero on the next clock; Continue resumes the held or complete song-position sixteenth on the next clock. Stop preserves clip identities and releases their notes while independent live notes and unsynced DJ decks keep their owners. Small timing errors correct forward speed smoothly. Select Keep playing at last tempo or Stop song for loss after 250–2,000 ms. Accepted clocks, estimated tempo, jitter, loss and reacquisition are confirmed runtime status. Local song transport, seeking or tempo edits return to Internal; source changes, safety recovery and project replacement discard old pending transport. Imported conductor maps remain stored. Following an output clock echo is refused. The choice applies to this session; MIDI timing from physical devices requires separate qualification.
+
+Workflow: Connect a controller.
+
 ### Song MIDI clock output
 
 24 pulses per quarter; 1–8 exact outputs; −500 to +500 ms
