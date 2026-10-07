@@ -665,5 +665,81 @@
       "sha256": "cc3702bbec01fd9eb9a6ecaa528c857c9a0e858d674a94dedce1be2c5df78ba1"
     }
   },
-  "limits": "Linux ARM64 software qualification: eight fixed loop IDs, independent reorder/delete/reuse, bounded Unicode names/colors and coherent complete preparation receipts; exact native project/catalog/backup/merge/MIDI-preset/preference files; actual learned input dispatch and native egui/AccessKit Save/name/reorder/Recall/Activate/Delete/Undo; stopped reload with selected and armed region, no resumed queue; source-qualified stale/invalid/temporary-loop refusal; sample-boundary activation before audible output across three rates and three musical positions including tempo anchors; independent stereo PCM loop playback at file start/end and across a tempo anchor for three source/two output rates; atomic receipt stress and zero renderer heap work. Current regions use source seconds, Recall disables looping without moving the playhead and Activate jumps to the saved start without starting a stopped deck. Names and existing colors persist; this editor does not add a color chooser. Library load drops invalid/out-of-source regions; native project validation refuses them. No physical audio/MIDI device opened and no new physical controller proof or ticket acceptance claimed. The independent stage application stays unchanged."
+  "limits": "Linux ARM64 software qualification: eight fixed loop IDs, independent reorder/delete/reuse, bounded Unicode names/colors and coherent complete preparation receipts; exact native project/catalog/backup/merge/MIDI-preset/preference files; actual learned input dispatch and native egui/AccessKit Save/name/reorder/Recall/Activate/Delete/Undo; stopped reload with selected and armed region, no resumed queue; source-qualified stale/invalid/temporary-loop refusal; sample-boundary activation before audible output across three rates and three musical positions including tempo anchors; independent stereo PCM loop playback at file start/end and across a tempo anchor for three source/two output rates; atomic receipt stress and zero renderer heap work. Current regions use source seconds, Recall disables looping without moving the playhead and Activate jumps to the saved start without starting a stopped deck. Names and existing colors persist; this editor does not add a color chooser. Library load drops invalid/out-of-source regions; native project validation refuses them. No physical audio/MIDI device opened and no new physical controller proof or ticket acceptance claimed. The independent stage application stays unchanged.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-saved-loops-qualified",
+      "manifestSha256": "4763a1bd4c69ff718cf5de73c10b936e4839bda4f8e78b3ef0a0858a640ab3e3",
+      "revision": "03c3cc846789c4bf2116867551631616bf6bebf7",
+      "version": "0.1.0+03c3cc846789",
+      "executableSha256": "dad7a0795626225ebdbb729c8e7b818e430adcaa3cd3bf34fb42d871f4d9eb37"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "370ab94d05db6cc1a7e21d689280489118cdd9631bac1dce50ca9a470f190849",
+      "after": "dad7a0795626225ebdbb729c8e7b818e430adcaa3cd3bf34fb42d871f4d9eb37",
+      "installedAt": "2026-10-07T03:11:04.321Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
