@@ -10,7 +10,7 @@ pub(super) fn parse(bytes: &[u8], title: &str, check: &impl Fn()->bool) -> Resul
         if line.len()>4096 || line.chars().any(char::is_control) {return Err("Playlist path exceeds 4096 bytes or contains a control character".into());}
         if entries.len()>=MAX_REFERENCES {return Err("Playlist exceeds 4096 references".into());}
         let (artist,title)=hint.split_once(" - ").map(|(a,t)|(a.to_owned(),t.to_owned())).unwrap_or_else(||(String::new(),hint.clone()));
-        entries.push(RawEntry{reference:line.into(),title:label(&title)?,artist:label(&artist)?,blocked:None});hint.clear();
+        entries.push(RawEntry{reference:line.into(),title:label(&title)?,artist:label(&artist)?,blocked:None,details:Default::default()});hint.clear();
     }
-    Ok(vec![RawPlaylist{name:name(title)?,entries,note:"Static UTF-8 M3U references; duplicates keep their first position".into()}])
+    Ok(vec![RawPlaylist{name:name(title)?,entries,note:"Static UTF-8 M3U references; duplicates keep their first position and original order is archived".into(),folders:Vec::new(),key:"m3u".into(),parent:None,folder:false}])
 }

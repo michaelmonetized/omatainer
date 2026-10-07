@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "release": "Unreleased app completion stack above #509",
-  "reviewed": "2026-10-06",
+  "reviewed": "2026-10-07",
   "references": [
     {
       "name": "Ableton Live",
@@ -852,12 +852,17 @@
         {
           "kind": "bounded worker parser",
           "file": "src/playlist_import.rs",
-          "entry": "UTF-8 M3U/M3U8, Apple UTF-8/UTF-16 XML, local URI and explicit cross-machine prefix mapping"
+          "entry": "UTF-8 M3U, Apple XML, rekordbox XML 1.0.0, Traktor NML 19 and legacy Serato crates"
         },
         {
           "kind": "sole catalog writer",
           "file": "src/ui/library_metadata/collections.rs",
           "entry": "Atomic candidate import with selected ordered memberships, changed-version guards and truthful save receipt"
+        },
+        {
+          "kind": "isolated discovery",
+          "file": "src/dj_library.rs",
+          "entry": "Bounded content probing across home/custom paths and visible mounts, resumable worker pages and debounced source notifications"
         }
       ],
       "fixtures": [
@@ -865,12 +870,16 @@
         "ui::library_metadata::collections::tests::playlist_review_single_writer_save_reopen_preserves_order_versions_and_source_bytes",
         "ui::library_metadata::collections::tests::playlist_cancel_and_failed_save_do_not_publish_partial_tracks_or_crates",
         "ui::library_crates::tests::native_playlist_review_exclusion_consent_save_reopen_and_stale_action_guards",
-        "scripts/test-retained-dependency-graph.mjs"
+        "scripts/test-retained-dependency-graph.mjs",
+        "playlist_import::dj_tests",
+        "dj_library::tests",
+        "library::tags::tests::imported_tempo_survives_tags_analysis_and_rescan_but_yields_to_user_corrections"
       ],
       "evidence": [
-        "docs/validation/playlist-import.md"
+        "docs/validation/playlist-import.md",
+        "docs/validation/dj-library-migration.md"
       ],
-      "limits": "Software/native UI/filesystem qualification with actual local M3U and pinned upstream Windows/macOS XML exports. Missing upstream audio remains explicitly unresolved. Imports references only; full audio decode is a separate load/validation step. Up to 32 MiB, 128 static non-folder playlists and 4096 total references. First duplicate position retained. Apple folders flattened and smart rules not recreated. One explicit case-sensitive prefix mapping; no automatic relocation/content merge. Protected/provider-only entries require explicit exclusion consent. Existing exact versions retain preparation; changed catalog/media rejects publication. No new hardware qualification or schema change."
+      "limits": "Extended software implementation on Linux aarch64 under single todo #511. Folder hierarchy, source/version identities, reviewed names, original repeated order and supported DJ metadata persist in schema 18; existing preparation and user corrections win. Isolated bounded pages and mount/database notifications are implemented. Vendor database/version limits and unsupported metadata are reported before import. Actual DJ source-application export comparisons, read-only removable-media hot removal/remount and scan impact during physical playback remain unqualified. This does not complete #511 or reopen/close consolidated #513."
     },
     "157": {
       "status": "implemented",

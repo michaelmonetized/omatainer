@@ -166,7 +166,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#153](https://github.com/michaelmonetized/omatainer/issues/153) | Add trigger, hold and toggle sample playback modes | implemented | #101 | [receipt](../../docs/validation/issue-153-sampler-playback.md) |
 | [x] | [#154](https://github.com/michaelmonetized/omatainer/issues/154) | Add crate favorites, search and membership discovery | implemented | #105 | [receipt](../../docs/validation/issue-154-crate-discovery.md) |
 | [ ] | [#155](https://github.com/michaelmonetized/omatainer/issues/155) | Manage music files and duplicates safely from the library | planned | #108 |  |
-| [x] | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | implemented | #105 | [receipt](../../docs/validation/playlist-import.md) |
+| [x] | [#156](https://github.com/michaelmonetized/omatainer/issues/156) | Import standard playlists and existing local music-library exports | implemented | #105 | [receipt](../../docs/validation/playlist-import.md), [receipt](../../docs/validation/dj-library-migration.md) |
 | [x] | [#157](https://github.com/michaelmonetized/omatainer/issues/157) | Export and optionally publish performed setlists | implemented | #106 | [receipt](../../docs/validation/setlist-exports.md) |
 | [ ] | [#158](https://github.com/michaelmonetized/omatainer/issues/158) | Integrate an authorized Beatport streaming workflow | outside release | #120 |  |
 | [ ] | [#159](https://github.com/michaelmonetized/omatainer/issues/159) | Integrate authorized SoundCloud catalog and playlists | outside release | #120 |  |

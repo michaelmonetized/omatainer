@@ -2,8 +2,8 @@ use super::*;
 use crate::engine::media_analysis::tests::Files;
 use crate::engine::media_source::LibSource;
 
-fn audio(files:&Files,name:&str) {std::fs::write(files.0.join(name),include_bytes!("../../tests/fixtures/audio/tone.flac")).unwrap();}
-fn input(files:&Files,name:&str,text:&str)->Input {let path=files.0.join(name);std::fs::write(&path,text).unwrap();Input{path,mapping:None}}
+pub(super) fn audio(files:&Files,name:&str) {std::fs::write(files.0.join(name),include_bytes!("../../tests/fixtures/audio/tone.flac")).unwrap();}
+pub(super) fn input(files:&Files,name:&str,text:&str)->Input {let path=files.0.join(name);std::fs::write(&path,text).unwrap();Input{path,mapping:None}}
 fn xml(tracks:&str,items:&str)->String {format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>Tracks</key><dict>{tracks}</dict><key>Playlists</key><array><dict><key>Name</key><string>Björk &amp; 東京</string><key>Playlist Items</key><array>{items}</array></dict></array></dict></plist>")}
 fn track(id:u64,location:&str,extra:&str)->String {format!("<key>{id}</key><dict><key>Track ID</key><integer>{id}</integer><key>Name</key><string>Track {id}</string><key>Artist</key><string>Artist</string><key>Location</key><string>{location}</string>{extra}</dict>")}
 fn item(id:u64)->String {format!("<dict><key>Track ID</key><integer>{id}</integer></dict>")}

@@ -33,7 +33,7 @@ pub(in crate::ui) enum Action {
     },
     CreatePrepared { name: String, members: Vec<TrackId> },
     ReviewPlaylist(crate::playlist_import::Input),
-    ImportPlaylist { review: Arc<crate::playlist_import::Review>, selected: Vec<usize> },
+    ImportPlaylist { review: Arc<crate::playlist_import::Review>, selected: Vec<usize>, new_snapshot: bool },
     Edit(Edit<TrackId>),
     Annotate { ids: Vec<TrackId>, patch: crate::library::annotations::Patch },
     Protect { targets: Vec<crate::library::protection::Target>, patch: crate::library::protection::Patch },
@@ -45,7 +45,7 @@ impl Action {
         // whole-forest validation/allocation remain on the metadata worker.
         let invalid = |text: &str| Admission::Invalid(text.into());
         if let Self::ReviewPlaylist(input)=self {return input.validate().map_err(Admission::Invalid);}
-        if let Self::ImportPlaylist{review,selected}=self {
+        if let Self::ImportPlaylist{review,selected,..}=self {
             if selected.is_empty() || selected.len()>128 || selected.iter().any(|&i|i>=review.playlists.len()) {return Err(invalid("Select reviewed playlists before importing"));}
             return Ok(());
         }
@@ -357,10 +357,11 @@ fn apply_using(
             check()?;token.claim()?;review=Some(Arc::new(result));outcome=Some(Outcome::Read);ticket.progress(1,Some(1));drop(running);return Ok(());
         }
         let mut candidate = store.catalog.clone();
-        let changed = if let Action::ImportPlaylist{review,selected}=&action {
+        let changed = if let Action::ImportPlaylist{review,selected,new_snapshot}=&action {
             if expected!=candidate.crates.revision() {return Err(Failure::Invalid("Catalog crates changed; review the playlist again".into()));}
-            let ids=crate::playlist_import::apply(review,selected,&mut candidate,||check().is_ok()).map_err(Failure::Invalid)?;
-            created=ids.first().cloned();!ids.is_empty()
+            let previous_revision=candidate.crates.revision();
+            let ids=crate::playlist_import::apply_snapshot(review,selected,&mut candidate,*new_snapshot,||check().is_ok()).map_err(Failure::Invalid)?;
+            created=ids.first().cloned();candidate.crates.revision()!=previous_revision
         } else if let Action::Protect {targets,patch}=&action {
             if expected!=candidate.crates.revision() {return Err(Failure::Invalid("Crate selection changed; review preparation locks again".into()));}
             candidate.protect(targets,*patch).map_err(Failure::Invalid)?

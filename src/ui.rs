@@ -873,6 +873,7 @@ impl App {
         if !self.project.committing() {
             self.poll_ui_requests();
             self.poll_library_scan();
+            self.poll_dj_libraries();
             ctx.request_repaint_after(std::time::Duration::from_millis(500));
         } else { keyboard::block_for_dialog(ctx); }
         let submissions = self.engine.cmd.stats();

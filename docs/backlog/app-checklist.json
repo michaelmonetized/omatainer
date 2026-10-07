@@ -2175,7 +2175,8 @@
       "state": "implemented",
       "prs": [],
       "evidence": [
-        "docs/validation/playlist-import.md"
+        "docs/validation/playlist-import.md",
+        "docs/validation/dj-library-migration.md"
       ]
     },
     {
