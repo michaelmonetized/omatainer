@@ -87,6 +87,14 @@ pub(super) struct Plan {
     pub monitor_target: u32,
     pub monitor: Vec<bool>,
     pub storage_bytes: usize,
+    incoming: Vec<Vec<(usize, usize)>>,
+    external: Vec<u32>,
+    processing: Vec<u32>,
+    terminals: Vec<bool>,
+    live_inputs: Vec<bool>,
+    monitor_external: u32,
+    terminal_floor: u32,
+    absolute: Vec<Option<u32>>,
 }
 impl Configuration {
     /// Validate saved latency reports independently of connected devices.
@@ -106,6 +114,7 @@ impl Configuration {
                 || !groups.insert(report.group)
                 || report.external_micros > self.reserve_micros
                 || report.processing_micros > self.reserve_micros
+                || matches!(report.group, Group::Plugin(_)) && (report.processing_micros != 0 || report.external_micros != 0)
                 || matches!(
                     report.group,
                     Group::Input(_) | Group::Output(_) | Group::Record(_)
@@ -126,9 +135,8 @@ impl Plan {
         order: &[Group],
         rate: u32,
     ) -> Result<Option<Self>, String> {
-        let Some(config) = &model.latency else {
-            return Ok(None);
-        };
+        let default = Configuration::default();
+        let config = match &model.latency { Some(config) => config, None if !model.plugins.is_empty() => &default, None => return Ok(None) };
         config.validate(model, layout)?;
         if !(8_000..=192_000).contains(&rate) {
             return Err("Latency compensation requires 8–192 kHz".into());
@@ -173,6 +181,7 @@ impl Plan {
                 Group::Main,
             );
         }
+        for plugin in &model.plugins { if plugin.scene_track.is_some() { for scene in &layout.scenes { connect(Source {group:Group::Plugin(plugin.id),tap:Tap::PostMixer},Group::Scene(scene.id)); } } }
         for deck in 0..2 {
             if !model.decks_without_default_send[usize::from(deck)] {
                 connect(
@@ -202,7 +211,7 @@ impl Plan {
                 .unwrap_or(0);
             let report = reports.get(group);
             let external = report.map_or(0, |report| frames(report.external_micros));
-            let processing = report.map_or(0, |report| frames(report.processing_micros));
+            let processing = report.map_or(0, |report| frames(report.processing_micros)).saturating_add(if let Group::Plugin(id) = group { model.plugins.iter().find(|p| p.id == *id).unwrap().latency } else { 0 });
             inputs[index] = input;
             taps[index] = [
                 input + external,
@@ -265,7 +274,7 @@ impl Plan {
             .iter()
             .enumerate()
             .map(|(index, group)| {
-                let width = model.width(*group, layout).unwrap();
+                let width = model.width(*group, layout).unwrap().max(model.input_width(*group, layout).unwrap());
                 width * required[index].iter().filter(|needed| **needed).count()
                     + if native[index] {
                         if index == main {
@@ -297,6 +306,14 @@ impl Plan {
             );
         }
         Ok(Some(Self {
+            external: order.iter().map(|g| reports.get(g).map_or(0, |r| frames(r.external_micros))).collect(),
+            processing: order.iter().map(|g| reports.get(g).map_or(0, |r| frames(r.processing_micros)).saturating_add(if let Group::Plugin(id) = g { model.plugins.iter().find(|p| p.id == *id).unwrap().latency } else { 0 })).collect(),
+            terminals: order.iter().map(|g| matches!(g, Group::Output(_) | Group::Record(_))).collect(),
+            live_inputs: order.iter().map(|g| matches!(g, Group::Input(_))).collect(),
+            monitor_external: model.monitor_output.and_then(|id| reports.get(&Group::Output(id))).map_or(0, |r| frames(r.external_micros)),
+            terminal_floor: 0,
+            absolute: vec![None;order.len()],
+            incoming,
             inputs,
             taps,
             program,
@@ -309,6 +326,24 @@ impl Plan {
             monitor,
             storage_bytes: bytes,
         }))
+    }
+
+    /// Recalculate a prepared delay graph without allocating or changing storage.
+    /// Takes the current intrinsic processor delays; returns false when any complete path exceeds its admitted reserve.
+    fn refresh(&mut self) -> bool {
+        for index in 0..self.inputs.len() {
+            let input = self.incoming[index].iter().map(|(source,tap)| self.taps[*source][*tap]).max().unwrap_or(0);
+            self.inputs[index] = input;
+            self.taps[index] = [input.saturating_add(self.external[index]), input.saturating_add(self.external[index]).saturating_add(self.processing[index]), input.saturating_add(self.external[index]).saturating_add(self.processing[index])];
+            if let Some(absolute) = self.absolute[index] { self.taps[index][1] = absolute; self.taps[index][2] = absolute; }
+            if self.taps[index][2] > self.reserve { return false; }
+        }
+        let live = self.live_inputs.iter().enumerate().filter(|(_,live)| **live).map(|(i,_)| self.taps[i][2]).max().unwrap_or(0);
+        self.program = self.terminals.iter().enumerate().filter(|(_,terminal)| **terminal).map(|(i,_)| self.inputs[i].max(live).saturating_add(self.external[i]).saturating_add(self.processing[i])).max().unwrap_or(self.taps[self.main][2]).max(self.terminal_floor);
+        if self.program > self.reserve { return false; }
+        for (index, terminal) in self.terminals.iter().enumerate() { if *terminal { self.inputs[index] = self.program - self.external[index] - self.processing[index]; self.taps[index] = [self.program;3]; } }
+        self.monitor_target = self.program.saturating_sub(self.monitor_external);
+        true
     }
 }
 
@@ -381,6 +416,7 @@ impl History {
 pub(super) struct Runtime {
     pub plan: Plan,
     prior: Plan,
+    candidate: Plan,
     histories: Vec<[Option<History>; 3]>,
     pub native: Vec<Option<History>>,
     monitor: Vec<Option<History>>,
@@ -390,6 +426,7 @@ pub(super) struct Runtime {
     processed: u32,
     auxiliary: [History; 2],
     auxiliary_inputs: [Option<(u64, usize)>; 2],
+    offline: bool,
 }
 impl Runtime {
     /// Allocate every used tap and native source before graph activation.
@@ -419,6 +456,7 @@ impl Runtime {
             .map(|needed| needed.then(|| History::new(2, plan.reserve)))
             .collect();
         Self {
+            candidate: plan.clone(),
             prior: plan.clone(),
             plan,
             histories,
@@ -430,7 +468,36 @@ impl Runtime {
             processed: 0,
             auxiliary: std::array::from_fn(|_| History::new(3, reserve)),
             auxiliary_inputs: [None; 2],
+            offline: false,
         }
+    }
+    /// Adopt reported plugin block delays using already-admitted histories.
+    /// Takes stable prepared plugin indices and their current delays; returns a bounded reserve refusal without touching the active plan.
+    pub(super) fn plugins(&mut self, reports: &[(usize,u32)]) -> bool {
+        if reports.iter().all(|(index,delay)| self.plan.taps[*index][2] == *delay) { return true; }
+        self.candidate.inputs.copy_from_slice(&self.plan.inputs);
+        self.candidate.taps.copy_from_slice(&self.plan.taps);
+        self.candidate.processing.copy_from_slice(&self.plan.processing);
+        self.candidate.absolute.copy_from_slice(&self.plan.absolute);
+        for (index,delay) in reports { self.candidate.absolute[*index] = Some(*delay); }
+        if !self.candidate.refresh() { return false; }
+        self.prior.inputs.copy_from_slice(&self.plan.inputs);
+        self.prior.taps.copy_from_slice(&self.plan.taps);
+        self.prior.program = self.plan.program; self.prior.monitor_target = self.plan.monitor_target;
+        std::mem::swap(&mut self.plan, &mut self.candidate);
+        self.remaining = if self.offline {0} else {self.transition_frames};
+        true
+    }
+    /// Keep offline output time fixed across processor latency changes.
+    /// Takes an admitted graph; reserves its maximum terminal delay, which the exporter trims exactly once.
+    pub(super) fn offline(&mut self) {
+        self.plan.terminal_floor = self.plan.reserve;
+        self.offline = true;
+        assert!(self.plan.refresh());
+        self.prior.inputs.copy_from_slice(&self.plan.inputs); self.prior.taps.copy_from_slice(&self.plan.taps);
+        self.prior.program = self.plan.program; self.prior.monitor_target = self.plan.monitor_target;
+        self.candidate.terminal_floor = self.plan.terminal_floor;
+        self.remaining = 0;
     }
     /// Advance one shared delay transition per graph frame.
     /// Takes this runtime; advances only fixed counters regardless of downstream fanout.
@@ -700,6 +767,11 @@ impl Runtime {
         {
             return;
         }
+        self.plan.absolute.copy_from_slice(&old.plan.absolute);
+        self.plan.terminal_floor = old.plan.terminal_floor;
+        self.plan.refresh();
+        self.candidate.absolute.copy_from_slice(&self.plan.absolute);
+        self.candidate.terminal_floor = self.plan.terminal_floor;
         self.prior.inputs.copy_from_slice(&old.plan.inputs);
         self.prior.taps.copy_from_slice(&old.plan.taps);
         self.prior.program = old.plan.program;
@@ -804,7 +876,7 @@ impl Runtime {
             + self.histories.capacity() * std::mem::size_of::<[Option<History>; 3]>()
             + self.native.capacity() * std::mem::size_of::<Option<History>>()
             + self.monitor.capacity() * std::mem::size_of::<Option<History>>()
-            + [&self.plan, &self.prior]
+            + [&self.plan, &self.prior, &self.candidate]
                 .iter()
                 .map(|plan| {
                     plan.inputs.capacity() * 4
@@ -812,6 +884,9 @@ impl Runtime {
                         + plan.required.capacity() * 3
                         + plan.native.capacity()
                         + plan.monitor.capacity()
+                        + plan.external.capacity()*4 + plan.processing.capacity()*4 + plan.terminals.capacity() + plan.live_inputs.capacity()
+                        + plan.absolute.capacity()*std::mem::size_of::<Option<u32>>()
+                        + plan.incoming.capacity()*std::mem::size_of::<Vec<(usize,usize)>>() + plan.incoming.iter().map(|links| links.capacity()*std::mem::size_of::<(usize,usize)>()).sum::<usize>()
                 })
                 .sum::<usize>()
     }

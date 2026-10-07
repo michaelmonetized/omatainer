@@ -252,6 +252,12 @@ impl Handle {
 
     /// Worker only: coherent capture, with capacity preparation between passes.
     pub fn capture(&self, cancel: &AtomicBool) -> Result<Captured, Error> {
+        self.capture_processors(cancel).map(|(capture,_)| capture)
+    }
+
+    /// Capture editable processor handles alongside a coherent native checkpoint.
+    /// Takes worker cancellation; returns saved musical state and bounded controls without exposing an audio endpoint.
+    pub(crate) fn capture_processors(&self, cancel: &AtomicBool) -> Result<(Captured,Vec<(u64,crate::plugin_host::realtime::Control)>), Error> {
         self.begin()?;
         let mut task = Box::new(Task {
             operation: Operation::Capture(capture::Frame::new()),
@@ -278,15 +284,17 @@ impl Handle {
                     unreachable!()
                 };
                 frame.state.arrangement=frame.arrangement.as_ref().map(|plan|plan.capture(&mut frame.media));
+                frame.finish_plugins(cancel)?;
                 frame.state.deduplicate(&mut frame.media);
                 frame.state.validate(&frame.media).map_err(Error::Invalid)?;
-                return Ok(Captured {
+                let controls = frame.controls();
+                return Ok((Captured {
                     checkpoint: frame.checkpoint,
                     state: frame.state,
                     media: frame.media,
                     revision: frame.revision,
                     playback_receipts: frame.playback_receipts,
-                });
+                },controls));
             }
             if cancel.load(Ordering::Acquire) {
                 self.shared.busy.store(0, Ordering::Release);

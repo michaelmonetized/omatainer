@@ -7,7 +7,7 @@ use crate::engine::{
 
 fn edit(engine: &Engine, rt: &mut RtEngine, operation: Structure) {
     let (request, ack) = Request::structural(captured(rt), rt.sr as u32, operation).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(
         test_alloc::measure(|| rt.process(&mut [])),
         test_alloc::Counts::default()
@@ -169,7 +169,7 @@ fn slot_reuse_undo_and_branched_create_never_reuse_an_identity() {
         },
     )
     .unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Applied);
     edit(
@@ -223,7 +223,7 @@ fn stale_cancelled_and_budget_refused_graph_edits_retire_without_callback_heap_a
     };
     let (request, ack) = prepare(&rt);
     ack.cancel();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(
         test_alloc::measure(|| rt.process(&mut [])),
         test_alloc::Counts::default()
@@ -231,7 +231,7 @@ fn stale_cancelled_and_budget_refused_graph_edits_retire_without_callback_heap_a
     assert_eq!(ack.state(), Outcome::Cancelled);
     let (request, ack) = prepare(&rt);
     rt.project.edited();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(
         test_alloc::measure(|| rt.process(&mut [])),
         test_alloc::Counts::default()
@@ -239,7 +239,7 @@ fn stale_cancelled_and_budget_refused_graph_edits_retire_without_callback_heap_a
     assert_eq!(ack.state(), Outcome::Rejected);
     let (request, ack) = prepare(&rt);
     rt.set_undo_budget_for_test(1);
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(
         test_alloc::measure(|| rt.process(&mut [])),
         test_alloc::Counts::default()
@@ -296,7 +296,7 @@ fn undo_after_rate_change_cannot_restore_a_graph_above_the_processor_limit() {
         },
     )
     .unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Applied);
     edit(
@@ -344,7 +344,7 @@ fn stale_piano_roll_cannot_edit_a_reused_empty_cell_with_identical_musical_conte
         },
     )
     .unwrap();
-    rt.apply(Command::SessionEdit(delete));
+    rt.apply(Command::session_edit(delete));
     edit(
         &engine,
         &mut rt,

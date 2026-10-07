@@ -252,13 +252,14 @@ fn metadata_worker_transactions_undo_redo_stale_cancel_and_identity_changes_are_
     };
     let (request, ack) = make(&rt, value);
     let (stale, stale_ack) = make(&rt, Default::default());
+    let command = Command::session_edit(request);
     assert_eq!(
-        test_alloc::measure(|| rt.apply(Command::SessionEdit(request))),
+        test_alloc::measure(|| rt.apply(command)),
         Default::default()
     );
     assert_eq!(ack.state(), Outcome::Applied);
     assert_eq!(rt.session.scenes[1].scene, value);
-    rt.apply(Command::SessionEdit(stale));
+    rt.apply(Command::session_edit(stale));
     assert_eq!(stale_ack.state(), Outcome::Rejected);
     rt.apply(Command::Undo);
     assert!(rt.session.scenes[1].scene.is_default());
@@ -266,7 +267,7 @@ fn metadata_worker_transactions_undo_redo_stale_cancel_and_identity_changes_are_
     assert_eq!(rt.session.scenes[1].scene, value);
     let (cancelled, cancel_ack) = make(&rt, Default::default());
     cancel_ack.cancel();
-    rt.apply(Command::SessionEdit(cancelled));
+    rt.apply(Command::session_edit(cancelled));
     assert_eq!(cancel_ack.state(), Outcome::Cancelled);
     assert_eq!(rt.session.scenes[1].scene, value);
     rt.session.scenes[0].scene.grid = Grid::Immediate;
@@ -284,10 +285,10 @@ fn metadata_worker_transactions_undo_redo_stale_cancel_and_identity_changes_are_
         },
     )
     .unwrap();
-    rt.apply(Command::SessionEdit(move_scene));
+    rt.apply(Command::session_edit(move_scene));
     assert_eq!(rt.scenes.pending, Some(pending));
     let (edit, _) = make(&rt, properties(110.0, 4, 2, Grid::Bar, Empty::Stop));
-    rt.apply(Command::SessionEdit(edit));
+    rt.apply(Command::session_edit(edit));
     assert!(rt.scenes.pending.is_none());
     assert_eq!(rt.scenes.error, Some(Error::ChangedScene));
     rt.apply(Command::LaunchScene { scene: 1 });

@@ -20,10 +20,38 @@ struct Draft {
     enabled: bool,
     model: Model,
     original: Option<Arc<Model>>,
+    controls: Vec<(u64,crate::plugin_host::realtime::Control)>,
 }
 impl Draft {
     fn latency_only(&self) -> bool {
         self.enabled && self.original.as_ref().is_some_and(|prior| self.model.latency_edit_of(prior))
+    }
+    /// Add a reviewed native processor to one retained track.
+    /// Takes its bounded catalog identity and target; returns an editable instrument route or an ordered post-mixer effect send without publishing audio.
+    fn attach(&mut self, mut plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) -> Result<(),String> {
+        if !self.layout.tracks.iter().any(|t| t.id == track && t.active) { return Err("Selected track changed before plugin inspection".into()); }
+        if self.model.plugins.len() >= crate::engine::audio::routing::plugins::MAX_PLUGINS || self.model.next_id == u64::MAX { return Err("This graph has no remaining processor capacity".into()); }
+        plugin.id = self.model.next_id; self.model.next_id += 1;
+        plugin.name = format!("{} {}",plugin.name,plugin.id);
+        plugin.midi_track = Some(track);
+        let maps = |source: usize, destination: usize| {
+            if destination == 1 && source >= 2 { vec![ChannelMap {source:0,destination:0,gain:0.5},ChannelMap {source:1,destination:0,gain:0.5}] }
+            else { (0..destination.min(2)).map(|i| ChannelMap {source:if source == 1 {0}else{i as u8},destination:i as u8,gain:1.}).collect() }
+        };
+        if plugin.instrument {
+            if self.model.plugins.iter().any(|p| p.instrument && p.midi_track == Some(track)) { return Err("This track already has a native plugin instrument; review its replacement explicitly".into()); }
+            self.model.connections.push(Connection { source:Source {group:Group::Plugin(plugin.id),tap:Tap::PostMixer},destination:Group::Track(track),map:maps(plugin.output_width(),2) });
+        } else {
+            if plugin.input_width() == 0 { return Err("This class has no audio input; choose an instrument or route its outputs manually".into()); }
+            let previous = self.model.plugins.iter_mut().find(|p| p.scene_track == Some(track));
+            let (source,width) = if let Some(previous) = previous { previous.scene_track = None; (Group::Plugin(previous.id),previous.output_width()) } else { (Group::Track(track),2) };
+            plugin.scene_track = Some(track);
+            self.model.connections.push(Connection {source:Source {group:source,tap:Tap::PostMixer},destination:Group::Plugin(plugin.id),map:maps(width,plugin.input_width())});
+            if !self.model.tracks_without_default_send.contains(&track) { self.model.tracks_without_default_send.push(track); }
+        }
+        self.model.plugins.push(plugin); self.model.version = 3;
+        self.model.order(&self.layout)?;
+        Ok(())
     }
 }
 #[derive(Clone)]
@@ -53,6 +81,10 @@ impl Drop for Panel {
     }
 }
 impl Panel {
+    pub(super) fn attach_plugin(&mut self, engine: &Engine, plugin: crate::engine::audio::routing::plugins::Instance, track: crate::engine::session::Id) {
+        self.open = true;
+        self.request(engine,|cancel| Job::Attach(plugin,track,cancel));
+    }
     /// Read pending routing work.
     /// Takes this panel; returns whether a worker or commit is active.
     fn busy(&self) -> bool {
@@ -242,6 +274,7 @@ fn endpoint(group: Group, model: &Model, layout: &Layout) -> String {
             .iter()
             .find(|bus| bus.id == id)
             .map_or_else(|| format!("Missing bus {id}"), |bus| bus.alias.clone()),
+        Group::Plugin(id) => model.plugins.iter().find(|p| p.id == id).map_or_else(|| format!("Missing plugin {id}"), |p| p.name.clone()),
         Group::Track(id) => layout.tracks.iter().find(|item| item.id == id).map_or_else(
             || format!("Retired track {}", id.0),
             |item| format!("Track: {}", item.name),
@@ -277,6 +310,7 @@ fn endpoints(model: &Model, layout: &Layout, source: bool) -> Vec<Group> {
         groups.extend([Group::Deck(0), Group::Deck(1)]);
     }
     groups.extend(model.buses.iter().map(|bus| Group::Bus(bus.id)));
+    groups.extend(model.plugins.iter().filter(|p| source || p.input_width() > 0).map(|p| Group::Plugin(p.id)));
     groups.extend(
         model
             .ports
@@ -515,8 +549,8 @@ fn connections(ui: &mut Ui, model: &mut Model, layout: &Layout) {
                     remove = Some(index);
                 }
             });
-            let source_width = labels.width(connection.source.group, layout).unwrap_or(1);
-            let destination_width = labels.width(connection.destination, layout).unwrap_or(1);
+            let source_width = labels.source_width(connection.source, layout).unwrap_or(1);
+            let destination_width = labels.input_width(connection.destination, layout).unwrap_or(1);
             let mut remove_map = None;
             for (map_index, map) in connection.map.iter_mut().enumerate() {
                 ui.push_id(map_index, |ui| {
@@ -623,6 +657,32 @@ impl App {
                     ui.checkbox(&mut draft.enabled, tr!("Use explicit routing"));
                     if draft.enabled {
                         ui.collapsing(tr!("Channel aliases and buses"), |ui| aliases(ui, &mut draft.model));
+                        ui.collapsing("Native plugin processors",|ui| {
+                            ui.label("Instrument audio feeds the track's native effects and mixer. Appended plugin effects follow its mixer and retain the active scene send. All extra outputs and sidechains remain explicit channel routes.");
+                            for plugin in &mut draft.model.plugins { ui.push_id(plugin.id,|ui| {
+                                ui.separator(); ui.label(format!("{} · class {} · version {}",plugin.name,plugin.saved.class_id,plugin.saved.plugin_version));
+                                if let Some(error)=&plugin.unavailable { ui.colored_label(ui.visuals().warn_fg_color,format!("Unavailable: {error}. Exact state is retained; relink the matching native binary or explicitly bypass this processor.")); }
+                                ui.checkbox(&mut plugin.bypass,"Bypass processor");
+                                ui.label(format!("Input buses {:?} · output buses {:?} · {} samples including the isolated bridge",plugin.inputs,plugin.outputs,plugin.latency));
+                                if let Some((_,control)) = draft.controls.iter().find(|(id,_)| *id == plugin.id) {
+                                    ui.label(format!("Late blocks: {}",control.missed_blocks()));
+                                    if let Some(error)=control.error() { ui.colored_label(ui.visuals().warn_fg_color,error); }
+                                    if let Some(error)=control.editor_error() { ui.colored_label(ui.visuals().warn_fg_color,format!("Editor: {error}")); }
+                                    ui.horizontal(|ui| {
+                                        for (label,open) in [("Open plugin editor",true),("Close plugin editor",false)] { if ui.add_enabled(!self.engine.cmd.performance().protected() && !self.engine.safe_mode() && (!open || control.class.info.has_gui),egui::Button::new(label)).clicked() { let _=self.engine.cmd.send(Command::PluginEditor {namespace:draft.namespace,id:plugin.id,open}); } }
+                                    });
+                                    ui.collapsing("Normalized parameters",|ui| { ui.label("Values use the plugin's 0–1 range. The native editor shows its engineering units. Refresh routes to capture editor changes before another graph edit.");
+                                        for parameter in control.class.parameters.iter().filter(|p| !p.is_read_only).take(crate::engine::audio::routing::plugins::MAX_PARAMETERS) {
+                                            let mut value=control.value(parameter.id).unwrap_or_else(||plugin.parameters.iter().find(|p|p.id==parameter.id).map_or(parameter.value,|p|p.value));
+                                            if ui.add_enabled(!control.editing(),egui::Slider::new(&mut value,0.0..=1.0).text(&parameter.name)).changed() {
+                                                if let Some(saved)=plugin.parameters.iter_mut().find(|p|p.id==parameter.id) { saved.value=value; } else if plugin.parameters.len() < crate::engine::audio::routing::plugins::MAX_PARAMETERS { plugin.parameters.push(crate::engine::audio::routing::plugins::Parameter {id:parameter.id,value}); }
+                                                if let Err(error)=self.engine.cmd.send(self.undo_history.wrap(Command::PluginParameter {namespace:draft.namespace,id:plugin.id,parameter:parameter.id,value})) { panel.error=Some(error.to_string()); }
+                                            }
+                                        }
+                                    });
+                                }
+                            }); }
+                        });
                         headphones::output(ui, &mut draft.model);
                         ui.collapsing(tr!("Default sends"), |ui| {
                             for track in draft.layout.tracks.iter().filter(|item| item.active) {

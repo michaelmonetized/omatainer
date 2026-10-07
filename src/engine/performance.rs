@@ -528,6 +528,7 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiAudition { on: true, .. }
         | Command::SetNotes { .. }
         | Command::SamplerEdit(_)
+        | Command::PluginEditor { .. }
         | Command::SamplerAudition(_)
         | Command::ProviderPreview(_)
         | Command::DeckGrid { .. }
@@ -638,6 +639,7 @@ fn destructive(command: &Command) -> bool {
         | Command::RoutedNoteOn { .. }
         | Command::LiveNoteOff { .. }
         | Command::FxWet { .. }
+        | Command::PluginParameter { .. }
         | Command::FxSelect { .. }
         | Command::Quant(_)
         | Command::Metronome

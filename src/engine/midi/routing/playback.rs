@@ -417,6 +417,7 @@ impl crate::engine::RtEngine {
             if output.generation != generation || output.epoch != epoch {
                 let refused = output.generation == generation
                     && (output.refused || track.playing.is_some() && output.epoch != epoch);
+                if self.plugin_midi.mask & (1 << t) != 0 { self.plugin_midi.clear_clip(t); }
                 output.invalidate();
                 output.refused = refused;
                 output.generation = generation;
@@ -427,6 +428,7 @@ impl crate::engine::RtEngine {
             }
             self.midi_routing.clip_refused(t, output.refused||self.arrangement.output_refused(t));
             if output.clear {
+                if self.plugin_midi.mask & (1 << t) != 0 { self.plugin_midi.clear_clip(t); }
                 if mask & (1 << t) != 0 {
                     self.midi_routing.clear_clip(t as u8);
                 }
@@ -435,7 +437,7 @@ impl crate::engine::RtEngine {
         }
     }
     pub(crate) fn render_midi_output(&mut self, track: usize) {
-        if self.midi_output_mask & (1 << track) == 0
+        if (self.midi_output_mask | self.plugin_midi.mask) & (1 << track) == 0
             || !self.playing
             || self.count_in.is_some()
             || self.tracks[track].midi_output.refused
@@ -479,7 +481,11 @@ impl crate::engine::RtEngine {
             if let Some(trace) = &mut self.tracks[track].midi_output.trace {
                 trace.push((elapsed, packet));
             }
-            if !self.midi_routing.emit_weighted(
+            if self.plugin_midi.mask & (1 << track) != 0 {
+                let b=packet.bytes();
+                if b.len() <= 3 { let mut bytes=[0;3]; bytes[..b.len()].copy_from_slice(b); self.plugin_midi.clip(track, bytes, weight); }
+            }
+            if self.midi_output_mask & (1 << track) != 0 && !self.midi_routing.emit_weighted(
                 track as u8,
                 packet,
                 owner,

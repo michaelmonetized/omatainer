@@ -531,7 +531,7 @@ fn project_container_restore_and_selective_import_retain_current_external_source
         48000,
     )
     .unwrap();
-    rt.apply(Command::SessionEdit(request));
+    rt.apply(Command::session_edit(request));
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
     assert_eq!(rt.mic_aux.configuration(), Some(cfg));
     rt.apply(Command::Undo);

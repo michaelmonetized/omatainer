@@ -35,7 +35,7 @@ pub(crate) enum Action {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Request {
     pub(super) namespace: [u64; 2],
     pub(super) generation: u64,
@@ -46,7 +46,7 @@ pub(crate) struct Request {
     receipt: Option<(u64, u32)>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Inverse {
     layout: Layout,
     routing: Option<Option<Box<crate::engine::audio::routing::prepared::Prepared>>>,
@@ -107,11 +107,17 @@ impl Request {
     /// Prepare an atomic routing edit.
     /// Takes a captured project, output rate and optional saved graph; returns a guarded, undoable edit and acknowledgment.
     pub(crate) fn routing(captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>) -> Result<(Self, Ack), String> {
+        Self::routing_cancelled(captured,rate,model,&std::sync::atomic::AtomicBool::new(false))
+    }
+    pub(crate) fn routing_cancelled(mut captured: crate::engine::project::Captured, rate: u32, model: Option<std::sync::Arc<crate::engine::audio::routing::model::Model>>, cancel: &std::sync::atomic::AtomicBool) -> Result<(Self,Ack),String> {
+        let original=std::mem::replace(&mut captured.state.routing,model.clone());
+        crate::project_file::validate_metadata(&crate::project_file::Bundle {state:&captured.state,media:captured.media.clone()},&Default::default(),cancel).map_err(|e|e.to_string())?;
+        captured.state.routing=original;
         let layout = captured.state.session.as_ref().ok_or("Session identity is unavailable")?;
         layout.validate()?;
         if let Some(cfg)=captured.state.mic_aux {cfg.validate(model.as_deref()).map_err(str::to_owned)?;}
         let latency_only = model.as_deref().zip(captured.state.routing.as_deref()).is_some_and(|(next, old)| next.latency_edit_of(old));
-        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::at_rate(model, layout,rate).map(Box::new)).transpose()?;
+        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::with_cancel(model, layout,rate,cancel).map(Box::new)).transpose()?;
         let ack = Ack::new();
         Ok((Self {
             namespace: layout.namespace, generation: layout.generation, epoch: captured.checkpoint.epoch,
@@ -362,7 +368,9 @@ impl Inverse {
         }
         std::mem::swap(&mut rt.session, &mut self.layout);
         if let Some(routing) = &mut self.routing {
+            let compatible = routing.as_ref().zip(rt.routing.as_ref()).is_some_and(|(next,prior)| next.model.latency_edit_of(&prior.model));
             if let(Some(next),Some(prior))=(routing.as_mut(),rt.routing.as_mut()){next.inherit(prior);}
+            if !compatible { rt.plugin_midi.reset(); for track in &mut rt.tracks { track.midi_output.invalidate(); } }
             std::mem::swap(&mut rt.routing, routing);
         }
         rt.session.generation = generation;
@@ -532,10 +540,11 @@ impl Inverse {
                 .map(|id| crate::engine::fx::FxSlot::required_storage(*id, sr))
                 .sum::<usize>()
     }
-    pub(crate) fn prepare_rate(&mut self, sr: f32) {
+    pub(crate) fn prepare_rate(&mut self, sr: f32) -> Result<(),String> {
         if let Some(Some(graph)) = &mut self.routing {
             self.reserved_heap = self.reserved_heap.saturating_sub(graph.bytes());
-            **graph = crate::engine::audio::routing::prepared::Prepared::at_rate(graph.model.clone(), &self.layout, sr as u32).expect("History rate admission validated routing storage");
+            let model = graph.checkpoint(&std::sync::atomic::AtomicBool::new(false))?;
+            **graph = crate::engine::audio::routing::prepared::Prepared::at_rate(model, &self.layout, sr as u32)?;
             self.reserved_heap = self.reserved_heap.saturating_add(graph.bytes());
         }
         if let Some(content) = &mut self.content {
@@ -566,5 +575,6 @@ impl Inverse {
             .sum::<usize>();
         self.reserved_heap = self.reserved_heap.saturating_sub(self.reserved_fx_bytes) + next;
         self.reserved_fx_bytes = next;
+        Ok(())
     }
 }

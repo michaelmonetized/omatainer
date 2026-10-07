@@ -15,6 +15,7 @@ enum Target {
     Media(u8),
     Slot(Rack, usize),
     Effect(Rack, usize),
+    Plugin(u64,u32),
 }
 struct Plan {
     target: Target,
@@ -25,6 +26,12 @@ impl Plan {
     fn get(rt: &RtEngine, c: &Command) -> Option<Self> {
         use Command::*;
         let (target, name, key) = match c {
+            PluginParameter { namespace,id,parameter,value } if *namespace == rt.session.namespace && value.is_finite() && (0.0..=1.0).contains(value) => {
+                let graph = rt.routing.as_ref()?;
+                graph.plugin_parameter_value(*id,*parameter)?;
+                let slot=graph.model.plugins.iter().position(|p|p.id==*id)?;
+                (Target::Plugin(*id,*parameter),Name::PluginParameter,0x1000000000000000 + ((slot as u64) << 32) + u64::from(*parameter))
+            }
             DeckSyncMode { deck, .. } => (Target::Sync, Name::Deck, 405 + u64::from(*deck)),
             DeckSyncLeader(_) => (Target::Sync, Name::Deck, 408),
             SetBpm(_) | NudgeBpm(_) | Tap(_) => (Target::Global, Name::Tempo, 1),
@@ -183,6 +190,9 @@ impl RtEngine {
     /// Capture an inverse before the first mutation. A rejected command still
     /// retires its owned payload on the worker, never at this callback boundary.
     pub(in crate::engine) fn history_before(&mut self, c: Command) -> Option<Command> {
+        if matches!(&c,Command::PluginParameter {..}) && Plan::get(self,&c).is_none() {
+            self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
+        }
         if matches!(&c, Command::DeckKeyShift(request) if !request.current(self)) { self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None; }
         if matches!(&c, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= DECKS || !control.valid()) {
             self.undo.reject(Failure::Invalid); self.undo.retire_command(c); return None;
@@ -368,6 +378,7 @@ impl RtEngine {
                 }
             }
             Target::Global => Patch::Global(Global::get(self)),
+            Target::Plugin(id,parameter) => Patch::PluginParameter { namespace:self.session.namespace,id,parameter,value:self.routing.as_ref().unwrap().plugin_parameter_value(id,parameter).unwrap() },
             Target::Sync => Patch::Sync(deck_sync::Saved::get(self)),
             Target::Track(t) => Patch::Track(t, TrackControls::get(&self.tracks[t as usize])),
             Target::Gain(t, s) => Patch::ClipGain {
@@ -505,10 +516,15 @@ pub(super) fn bank_bytes(bank: &sampler::Bank) -> usize {
 }
 
 impl RtEngine {
-    pub(in crate::engine) fn history_session(&mut self, mut request: session::Request) {
+    pub(in crate::engine) fn history_session(&mut self, mut owned: Arc<session::Request>) {
+        if Arc::get_mut(&mut owned).is_none() {
+            owned.ack.reject(); self.undo.reject(crate::engine::undo::Failure::Invalid);
+            self.undo.retire_command(Command::session_edit(owned)); return;
+        }
+        let request = Arc::get_mut(&mut owned).unwrap();
         if !request.current(self) || !request.ack.claim() {
             request.ack.reject(); self.undo.reject(crate::engine::undo::Failure::Invalid);
-            self.undo.retire_command(Command::SessionEdit(request)); return;
+            self.undo.retire_command(Command::session_edit(owned)); return;
         }
         request.inverse.as_mut().unwrap().reserve(self);
         let inverse = request.inverse.as_ref().unwrap();
@@ -518,7 +534,7 @@ impl RtEngine {
             let room = self.undo.assets.len().saturating_add(new_assets) <= self.undo.assets.capacity();
             if let Err(error) = if room { self.undo.preflight(request.bytes()) } else { Err(Failure::Budget) } {
                 request.ack.reject(); self.undo.reject(error);
-                self.undo.retire_command(Command::SessionEdit(request)); return;
+                self.undo.retire_command(Command::session_edit(owned)); return;
             }
         }
         let mut inverse = request.inverse.take().unwrap();
@@ -528,6 +544,6 @@ impl RtEngine {
             self.undo.append(crate::engine::undo::patch::Patch::Session(inverse)); self.undo.recount();
         } else { request.inverse = Some(inverse); }
         self.project.edited(); request.ack.applied();
-        self.undo.retire_command(Command::SessionEdit(request));
+        self.undo.retire_command(Command::session_edit(owned));
     }
 }

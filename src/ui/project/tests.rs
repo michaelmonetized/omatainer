@@ -1672,7 +1672,7 @@ fn native_save_open_cancel_preserve_non_latin_drive_paths_and_combining_project_
     let name="Cafe\u{301} / Straße / 東京 / مشروع";
     let layout=gui.rt.session.clone();
     let (edit,ack)=crate::engine::session::Request::metadata(&layout,gui.app.engine.undo.checkpoint().epoch,crate::engine::session::Action::Rename {axis:crate::engine::session::Axis::Track,id:layout.tracks[0].id,name:name.into()}).unwrap();
-    gui.app.engine.send(Command::SessionEdit(edit)).unwrap();gui.rt.process(&mut []);assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
+    gui.app.engine.send(Command::session_edit(edit)).unwrap();gui.rt.process(&mut []);assert_eq!(ack.state(),crate::engine::midi_edit::Outcome::Applied);
     gui.save_as_ui(&path);let bytes=std::fs::read(&path).unwrap();
     let saved=crate::project_file::load::<Document>(&path,&Limits::default(),&AtomicBool::new(false)).unwrap();assert_eq!(saved.state.engine.tracks[0].name,name);
     gui.menu("Open project…");gui.enter_path(&path);gui.click_label("Cancel");assert_eq!(gui.rt.tracks[0].name,name);assert_eq!(std::fs::read(&path).unwrap(),bytes);

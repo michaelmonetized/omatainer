@@ -18,7 +18,7 @@ Planned means no complete implementation is claimed. Partial means some work is 
 | MacBook built-in AppleJ316 / AppleJ316HPAI | discovered | sysfs/proc inventory 2026-10-03 | Discovery is not a captured audio or listening test. |
 | Pioneer DDJ-SP1 08e4:0181; original Numark NS7 15e4:0071; Akai APC40 mkII 09e8:0029; Akai MPD232 09e8:0036 | Connected qualification recorded in PR #509; live captures now closed | Linux 7.1.13-3-2-ARCH; NS7 native ALSA module; MPD232 LiveLite preset | NS7 PA, scratching, contour, headphones and requested controls; Pioneer Sync; APC first fader/grid pad; MPD PAD 1 and bank-A CC capture have the specific receipts in docs/validation/hardware-resurrection.md. Other physical controls and stage-path power stability remain open. No new physical checks in this software batch. |
 | FreeToUse | public keyless test source | API v3; current API/license reviewed 2026-10-03 | No paid account or music grant configured. Catalog tests and generated private-fixture audio are separate from provider music playback. Other provider integrations are excluded from this release. |
-| Audio plugins | planned | No hosted plugin formats or vendor versions qualified | Built-in effect racks are not VST3/CLAP/LV2 plugin hosting. |
+| Audio plugins | partial native VST3 qualification | vst3-host 0.9.0; SDK 3.8.1; native Linux aarch64; private Nekobi and MVerb | Isolated scanner, instrument/FX graph, state/automation, sidechain/multiple-output, automatic PDC and native-editor software qualification. Installed-app/hardware listening, ALS plugin-state migration, additional event buses/MIDI output, AU/VST2/CLAP/LV2 and other-platform qualification remain open. |
 | Windows / macOS | unqualified | No native build/device qualification for this release | This run is Linux aarch64 only. |
 
 ## Implemented paths and acceptance fixtures
@@ -345,11 +345,13 @@ Nine new software checks plus existing import, version comparison, native Undo, 
 - bounded prepared graph timing: [src/engine/audio/routing/latency.rs](../src/engine/audio/routing/latency.rs) — Declared source/processor offsets, causal parallel paths, independent program/headphone summing and report transitions
 - native reviewed latency controls: [src/ui/audio_routing/latency.rs](../src/ui/audio_routing/latency.rs) — Exact draft delays, monitor consequences and retained report identities
 - sample aligned delivery and capture metadata: [src/audio_delivery/render.rs](../src/audio_delivery/render.rs) — Selected-source delay trim, tail drain and exact live/export parity
-- Acceptance fixtures: `engine::audio::routing::latency::tests`, `ui::audio_routing::tests::native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners`, `audio_delivery::tests::compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame`.
+- Acceptance fixtures: `engine::audio::routing::latency::tests`, `ui::audio_routing::tests::native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners`, `audio_delivery::tests::compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame`, `engine::audio::routing::plugin_tests`.
 - Evidence: [docs/validation/graph-latency.md](../docs/validation/graph-latency.md).
 - Evidence: [docs/validation/graph-latency-receipt.json](../docs/validation/graph-latency-receipt.json).
+- Evidence: [docs/validation/vst3-graph.md](../docs/validation/vst3-graph.md).
+- Evidence: [docs/validation/vst3-graph-receipt.json](../docs/validation/vst3-graph-receipt.json).
 
-Partial #178 foundation on Linux ARM64: retained measured offsets and declared processor delays, exact causal compensation through existing graph paths at 8–192 kHz, separately aligned program/headphone mixes, explicit immediate cue override, bounded prepared histories, click-limited report transitions, sample-rate/Undo reconstruction, exact render/export parity and raw/delivery recording source-origin metadata. Actual native egui/AccessKit edit/apply/cancel/reopen/Undo path qualified. Plugin reports are entered explicitly; existing causal native DSP has no invented lookahead. Automatic external-plugin reports, broad parameter/MIDI event alignment, sidechain workflows, compensated audible history and recording clip placement remain open. No physical device, capture, new OS GUI or listening acceptance.
+Partial native aarch64 Linux qualification: declared/external delays and automatic native VST3 block latency, causal graph compensation with exact parallel cancellation and offline source trimming, sidechain/output maps, timestamped channel MIDI and normalized automation, independent program/headphone summing, explicit immediate cue override, bounded histories and sample-rate/Undo reconstruction. Native rendering and egui/AccessKit routes qualified; physical compensated recording clip placement, audible history, hardware loops and listening acceptance remain open.
 
 ### Issue #179: implemented
 
@@ -403,11 +405,14 @@ Session and Arrangement paths qualified with immutable shared sources, WAV/MP3 i
 
 - isolated native VST3 processor core: [src/plugin_host/worker.rs](../src/plugin_host/worker.rs) — Stable factory classes, native bus buffers, timestamped channel MIDI and normalized automation, identity-bound opaque state, tempo/seek context and native editor owner
 - bounded nonblocking audio bridge: [src/plugin_host/realtime.rs](../src/plugin_host/realtime.rs) — Preallocated SPSC packet exchange with fixed three-block latency; worker-owned SDK locks and IPC
-- Acceptance fixtures: `plugin_host::scanner::tests::native_plugin_audio_automation_state_and_instruments`, `plugin_host::realtime::tests`.
+- native graph, project and editor workflow: [src/engine/audio/routing/render_plugins.rs](../src/engine/audio/routing/render_plugins.rs) — Track MIDI → instrument → ordered native/plugin FX; explicit sidechain/output buses; automatic compensation; saved opaque state and manual/automation controls
+- Acceptance fixtures: `plugin_host::scanner::tests::native_plugin_audio_automation_state_and_instruments`, `plugin_host::realtime::tests`, `engine::audio::routing::plugin_tests`, `ui::audio_routing::tests`.
 - Evidence: [docs/validation/vst3-core.md](../docs/validation/vst3-core.md).
 - Evidence: [docs/validation/vst3-core-receipt.json](../docs/validation/vst3-core-receipt.json).
+- Evidence: [docs/validation/vst3-graph.md](../docs/validation/vst3-graph.md).
+- Evidence: [docs/validation/vst3-graph-receipt.json](../docs/validation/vst3-graph-receipt.json).
 
-Native aarch64 Linux worker and bridge foundation only. SDK AGain, independently built Nekobi and MVerb audio/state exercised privately; no plugin binaries redistributed. Callback bridge checks have zero allocation and exact declared delay. The bridge is not yet installed in the native routing graph or project model. Live graph sidechain/multiple-output routing, parameter/editor UI, plugin automation persistence, automatic PDC updates, installed GUI and listening qualification remain in combined #511.
+Native Linux aarch64 graph/project hosting with identity-bound missing placeholders, state/automation/rate reconstruction, generic parameter undo, safe editor errors, all declared audio buses and automatic graph PDC. Independent Nekobi/MVerb plus original SDK contract qualify software rendering and the separate native Xvfb editor. Installed-app/hardware audio, broad event-bus/note-expression/MIDI-output support, other-platform qualification and ALS dependency migration remain open in #511.
 
 ### Issue #185: implemented
 
@@ -581,8 +586,10 @@ Native UI, real catalog-owner transactions, persistence/migration, stale approva
 - Acceptance fixtures: `plugin_host::scanner::tests`, `ui::plugins::tests::native_plugin_browser_controls_reload_persist_and_respect_protection`.
 - Evidence: [docs/validation/vst3-core.md](../docs/validation/vst3-core.md).
 - Evidence: [docs/validation/vst3-core-receipt.json](../docs/validation/vst3-core-receipt.json).
+- Evidence: [docs/validation/vst3-graph.md](../docs/validation/vst3-graph.md).
+- Evidence: [docs/validation/vst3-graph-receipt.json](../docs/validation/vst3-graph-receipt.json).
 
-Software/native egui and compiled child-process qualification on aarch64 Linux. Deliberately crashing, hanging and corrupt native factories remain isolated. Known catalog records remain available during scans; using them in the live app awaits #183 graph integration. Actual installed-GUI and physical playback scan-impact checks remain in #511.
+Software/native egui and compiled child-process qualification on aarch64 Linux. Deliberately crashing, hanging and corrupt native factories remain isolated. Known catalog records can attach instrument/FX graphs while scans continue. Actual installed-GUI and physical playback scan-impact checks remain open in #511.
 
 ### Issue #219: implemented
 

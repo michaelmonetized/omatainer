@@ -8,8 +8,12 @@ mod native_tests;
 #[cfg(test)]
 mod ns7_native_tests;
 pub(crate) mod prepared;
+pub(crate) mod plugins;
 pub(crate) mod probe;
 pub(crate) mod record;
 mod render;
+mod render_plugins;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) mod plugin_tests;

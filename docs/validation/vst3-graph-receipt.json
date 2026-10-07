@@ -1,0 +1,351 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-07T22:40:16.639Z",
+  "testedBaseRevision": "54b917608676b468c3d755f7ff94f1d7cfce47fe",
+  "scope": "Native VST3 graph, project, automation, compensation, export, undo and native editor integration within combined #511; full migration and live-release criteria remain open.",
+  "sourceFiles": {
+    "src/audio_delivery/render.rs": "76428e079ed6c23bd4b0b2970af051e4e0336bfb013278afe9f883b539ef67cd",
+    "src/automation.rs": "6f2a683243e3dc54c0628776ed6d7d71855c9f3df44019a73d442c834d1c6b63",
+    "src/automation/tests.rs": "fc6e311572366ff48a7ab9ade35d2925ab0f38872a4f5fa87ec95a52667ea084",
+    "src/engine/arrangement/playback.rs": "38fbe3ca21b1fc5bebd9086639abbb0a05b0b92bb8e94269166645215f46cea1",
+    "src/engine/arrangement/tests.rs": "d172e6a06d8ae3b39c4cba528b81d8e75fb4115b5dea86a8f427d5b69d57a85e",
+    "src/engine/audio/routing.rs": "46b983c03443f256a9c87a625189e481b03f5a25cd0b10c31659148df76b7cd0",
+    "src/engine/audio/routing/latency.rs": "3da60f5cb2d24225c7175eb4cd97137134c1d60cac69ec4c9cb5c83e17db11de",
+    "src/engine/audio/routing/latency/tests.rs": "ce4059967b3356f7d1bae12dadfba158dd8336457b360236453394a9eade2095",
+    "src/engine/audio/routing/mic_aux/tests.rs": "5e19ca204bbb834151b3b8286bf56d92d00ca38713a7d07a544af81e2cd79ea8",
+    "src/engine/audio/routing/model.rs": "5b8578a225f99a8c04f0203a81a855d384f05243b4498c74c45f888b90b89940",
+    "src/engine/audio/routing/prepared.rs": "ef96f70b3261f5d2bd73add9a7074c3511eeffa0e826efda896aef22176d5b90",
+    "src/engine/audio/routing/render.rs": "f8a2de6a85fb998359c9213138fb08aed3a073c0ed8705deccd6b9f4f4ee603c",
+    "src/engine/input_monitor/tests.rs": "ec22a7672b40dc080a086d851704d633d9f6b975a057d73db2ca252c98c353c4",
+    "src/engine/midi/routing/output/tests.rs": "33c4ad7ece428916507c5f4b96c28a49f1d299978a481cb0ffc4bbc98653ff70",
+    "src/engine/midi/routing/playback.rs": "5ade8bef4ad885534c3f73986e53676ea1243b28b06d92b22bcbdaf3c7ced4e1",
+    "src/engine/mod.rs": "293d878d63c546ab36c91f1c682c82ca75138142b90f99bd81a26a476a06800d",
+    "src/engine/performance.rs": "72ee85af8fd88cdd8d262020ac64e11caa85119f82b1909a615674e671bd4d73",
+    "src/engine/project.rs": "3161c9b24f922ec6dc47405e0abfe46c88f548b868524c8e7dff8872316336a6",
+    "src/engine/project/capture.rs": "95ad2d5017717fb7dffc3415202bc05be013d022855afadd1548612d906a1f8d",
+    "src/engine/project/model.rs": "eedd069acc452c626fad0beacc1de97b94c552ed0b1059eebc352e74f4fc5f9b",
+    "src/engine/project/prepare.rs": "c8051137d151f4ac160d7754e6e64ea5fdff9c8c74d7cb860327680fa16868b7",
+    "src/engine/project/tests.rs": "d7a503ce831456ab0b4d2699552c5bd3dead8ee6e3cd0016e496dcb6cc84848c",
+    "src/engine/project/tests/session_tests.rs": "2af71358d7d304baaeef26b495edfd636abd8414decf91c9b2db29d8fbfe323c",
+    "src/engine/project/tests/structure_tests.rs": "e4895de4bbac5701f9c8304b97184b33878e0e34bcf1185e36ba58c00e63293e",
+    "src/engine/scene/tests.rs": "a2b0922912e0c35fdfc7c1fd131ac79d0ea406ab7018bddc3c5b5926fc42b3d4",
+    "src/engine/session/scoped.rs": "b1c9508b9b9ce6500dbfc7b8e1d50dc527600f5f96f5a3e877a00b38b78470f7",
+    "src/engine/session/transaction.rs": "2beb4ce4eae17817b10aec04f463ef4e8524712c0e3f090bcd47bdb39595f91a",
+    "src/engine/session/transaction/import/tests.rs": "c6e329ccc9460ab051342fc5b5f4136fe578bbef23d4f2ecf993964625e3b46c",
+    "src/engine/session/transaction/tests.rs": "0b1d7ed44d7d6e5deddcb5523e2536e9c9ce70406fb88ebf72e5b71ed2c1cf2c",
+    "src/engine/undo/capture.rs": "a1ced82bb01b703c692036f67a6a40360ead935249a72addbcf3853b3ec8833e",
+    "src/engine/undo/mod.rs": "4025cacb4da6f4c50c64127947abdb73185413738f610232fa247209ed582fb4",
+    "src/engine/undo/patch.rs": "a5155a58ef650ed078e262ce9e5c7f652613e12ceda03d3ec8ea43c9d7a199ef",
+    "src/plugin_host/mod.rs": "bdf198db9aac59ee85e1cfe065e6eda560758aff5d3580f698294451f560acad",
+    "src/plugin_host/process.rs": "909da22f3562d700ee7f004d70f3d74f9779ecc39554532809b79adbcb81ebe5",
+    "src/plugin_host/realtime.rs": "46be68b89267702dd0a4c9a258a3bd31b57bcbff92a4b7445f423c8b97ee9a5a",
+    "src/plugin_host/realtime/tests.rs": "3a0132150867a4b7f267c1faedadfc1381f7a3704ce5f3b337e2b45f5e057dad",
+    "src/plugin_host/scanner/tests.rs": "32959659ff6275738d58e927886bbf1e3ae998ef45fbca2f990141bfda73a6ed",
+    "src/plugin_host/worker.rs": "f558e1b2dc654040a2fb6a3b4716bf1048d97d3a0d9c08071ac93ce8c8c48fc7",
+    "src/ui/audio_routing.rs": "23cbca7f6980061f5c165964c4f558d59fd28f675f7d0e89793975df7ad6fbc9",
+    "src/ui/audio_routing/tests.rs": "2d1513fd438d3e60bacf69a708f3f1ab12d6ee20cc8a4ed296361f0f74878f7d",
+    "src/ui/audio_routing/worker.rs": "fbca14002f196c65fda3b3e59fce5484dcff27efad59faf4e0a6b9f2800310f2",
+    "src/ui/clip_gain.rs": "30e9c3c24b85ba48c5f7f5c65322a15d7ba155b5c79412c9fdb1d21eda270993",
+    "src/ui/headphones.rs": "e62808c164d7e245eb71fb8e114cdf5fef5900e0b7653a4f27403b5350468c22",
+    "src/ui/midi_files/tests.rs": "40301709527c3092797fca574d6c547e855273e4234ee75577c6d8b6fed24418",
+    "src/ui/plugins.rs": "05bc9319167aa7f4b1c1577e983532c821ab0ecb9db6edcc8e28f5fd9056b9ca",
+    "src/ui/project/tests.rs": "a76ee9c669e9a4ae0881d843419402f9314d077690974c4f54d84c1dbc84ce11",
+    "src/ui/project/worker.rs": "ab0183c096a2599e67a22c6d3e79e2ca02eba5ca004c445e19c6c34d5f9db0bc",
+    "src/ui/project_import/worker.rs": "5798d7ffd565768f1da34881c61046976a766cb048b87bd2d4742a9a0b9056f0",
+    "src/ui/session_editor/worker.rs": "b28c26a88b492834a7421c493ec2061c4087eaa9f5733ad103749ac7127b3abd",
+    "src/ui/test_support.rs": "28a38c1ed4829804d6c67c4d565789a22377237b9e108a73a666488f86889390",
+    "src/ui/undo.rs": "906a5cde662e24bdac8a151c4968b9d5c72a4f224ed0cbbb59b99c4b48cb8991",
+    "src/engine/audio/routing/plugin_tests.rs": "fcaaa31e09bf0bc586826fc8df6805d5c1dd23978d18c09cfa2df4c8714d18bc",
+    "src/engine/audio/routing/plugins.rs": "5ca874d21c0dcaa425460fce666944cd97baf732cc27aaf7bd1d492e91da4d55",
+    "src/engine/audio/routing/render_plugins.rs": "25bc04fcd9e01d78ee0db4d0cea93c8fbdf8c83266bec0ce158675c800ef7e6d",
+    "src/engine/plugin_midi.rs": "98ceb908f0281e313245810eb9b569e1bd53aa1720050cefd0d90044b1cf178f",
+    "tests/fixtures/vst3-contract/README.md": "9b2773e35db4811d3f923364fe0fb902658840be4b4cb3c93be0a038df7b84d7",
+    "tests/fixtures/vst3-contract/build.zsh": "d412e1327f73c6726598afc77cfe9c46dbf8e3b57059546f0aff17ddb010c653",
+    "tests/fixtures/vst3-contract/contract.cpp": "d456ba6d839fdde874a52e4ab72425a372982cf3549b5dd24b81722ddcf8ea03"
+  },
+  "binaries": {
+    "nativeWorker": {
+      "path": "target/validation/combined-completion/graph-qualified/final-12/omatainer",
+      "sha256": "5a12a16c1956031718f27d3fc2b03f40d9184fa33cd65b3a492fef5f738763f8",
+      "bytes": 482129080
+    },
+    "nativeGraphTests": {
+      "path": "target/validation/combined-completion/graph-qualified/final-12/tests",
+      "mode": 33261,
+      "size": 572499016,
+      "sha256": "1e827ae54ee198ad0fdd5f14f5dbe9a2f7ed0598959f3c0661412e999345e29e",
+      "archive": "target/validation/combined-completion/graph-qualified/final-12/tests.gz",
+      "archiveSize": 128114393
+    },
+    "projectUiTests": {
+      "path": "target/validation/combined-completion/graph-qualified/final-14/tests",
+      "sha256": "ec0c89fe58d24dcb15a6780b18175cd9344f664747eeced73fa927a394fd8b62",
+      "bytes": 573094328
+    },
+    "exportTests": {
+      "path": "target/validation/combined-completion/graph-qualified/final-15/tests",
+      "sha256": "541c1ccad799ef91821a691514c4615b2c55a28b39d91d73feee3fcc13f35aed",
+      "bytes": 573129712
+    }
+  },
+  "build": {
+    "platform": "aarch64-unknown-linux-gnu",
+    "rootOptimization": 0,
+    "rootDebugInfo": 0,
+    "jobs": 2,
+    "incremental": false,
+    "testThreadStackBytes": 16777216,
+    "releasePerformanceClaim": false
+  },
+  "logs": {
+    "target/validation/combined-completion/graph-regression-audio_delivery__-10.log": {
+      "sha256": "cee4995f6ec2c391080c381c7e6bb09e6d31ab8ad49703628cfeafa1cb0e1f5c",
+      "summary": [
+        "test result: ok. 16 passed; 0 failed; 1 ignored; 0 measured; 2181 filtered out; finished in 279.19s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__arrangement__-10.log": {
+      "sha256": "9ae451bb67d933b1c2985f03d1a94a52f366b6632cf4d49bc78f3cebcc0b8857",
+      "summary": [
+        "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 2183 filtered out; finished in 41.09s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__audio__routing__-10.log": {
+      "sha256": "faad5e17a214cd1d184cc5ebb42ec4b5e26113c25153b53adfec5e321c3f2da2",
+      "summary": [
+        "test result: ok. 43 passed; 0 failed; 11 ignored; 0 measured; 2144 filtered out; finished in 96.53s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__audio__routing__plugin_tests__-12.log": {
+      "sha256": "0450340eb9cdd78ebe6fe02b78f267a34cd6f0560ab0d01313f023291da9d4f4",
+      "summary": [
+        "test result: ok. 2 passed; 0 failed; 7 ignored; 0 measured; 2189 filtered out; finished in 1.10s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__input_monitor__tests__-12.log": {
+      "sha256": "82317b1f7b71194490dac1472ad9329bdaae493fbc826527ae0867e2666d28ed",
+      "summary": [
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 2193 filtered out; finished in 8.41s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__midi__routing__output__tests__-12.log": {
+      "sha256": "9860ef40b89022917ab2fb0cb2e2f024e3ff8e63bce70878ce506c0134e092d1",
+      "summary": [
+        "test result: ok. 12 passed; 0 failed; 1 ignored; 0 measured; 2185 filtered out; finished in 8.91s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__project__tests__-10.log": {
+      "sha256": "ea60be7c39f895e37781d2edba9d25ba22c35d3b64960d91f7916160d2c12590",
+      "summary": [
+        "test result: ok. 56 passed; 0 failed; 1 ignored; 0 measured; 2141 filtered out; finished in 83.58s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__scene__tests__-10.log": {
+      "sha256": "2c561c8b1328a1044b9715d7355e50231b96c9163b9193e3fc4e37977ceb4cfb",
+      "summary": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 2188 filtered out; finished in 14.14s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__session__transaction__-10.log": {
+      "sha256": "db3f480539b93f63b615a10e7e1180709e8f82a5385790d0ac94717145bc232f",
+      "summary": [
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 2186 filtered out; finished in 15.74s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__undo__-10.log": {
+      "sha256": "9a1dbd281fd416b44e090c1898888bda263ea3a0b4a3911c5dfb88f0837bab29",
+      "summary": [
+        "test result: ok. 36 passed; 0 failed; 1 ignored; 0 measured; 2161 filtered out; finished in 26.45s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-engine__undo__-12.log": {
+      "sha256": "1c1513e3edc0f4a8dbe7b541056ecfe320ef6ae9da5cee60a6ab7fe8e62407c1",
+      "summary": [
+        "test result: ok. 36 passed; 0 failed; 1 ignored; 0 measured; 2161 filtered out; finished in 26.16s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-plugin_host__-10.log": {
+      "sha256": "9bbdee37462595a2711331505ce01ef1664502cf6217b2df2e95f3737ebc3df1",
+      "summary": [
+        "test result: ok. 6 passed; 0 failed; 4 ignored; 0 measured; 2188 filtered out; finished in 0.04s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-plugin_host__-12.log": {
+      "sha256": "5530bf9541fec8d07f38f3bea4d0f4a0defd3aec62cb5842b4cd13329b98b38b",
+      "summary": [
+        "test result: ok. 6 passed; 0 failed; 4 ignored; 0 measured; 2188 filtered out; finished in 0.02s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-ui__audio_routing__-10.log": {
+      "sha256": "98e21592a9b69814579e92c9a73408a24c31e559f371a8de24c1bc9c60927f00",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 2189 filtered out; finished in 10.68s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-ui__audio_routing__-12.log": {
+      "sha256": "57ded9e43c4944dd53bc9e15b3b0db36b0cd6142278101b687e001c2d17d4cd6",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 2189 filtered out; finished in 9.30s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-ui__plugins__tests__-12.log": {
+      "sha256": "40286a52fb5ca7880695bbf62c3ceb05b493ddd7770db98f07dcc11534e99b69",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2197 filtered out; finished in 0.65s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-ui__project__tests__-14.log": {
+      "sha256": "deac6faf16e7ca789b38aa2c7bda547838574c653164b85753e8360c119ccd36",
+      "summary": [
+        "test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 2162 filtered out; finished in 74.82s"
+      ]
+    },
+    "target/validation/combined-completion/graph-regression-ui__undo__tests__-14.log": {
+      "sha256": "0868ad7aede2c7df4e97d1700ea4102f0b8acdc2a67af1879bae4de002eccc37",
+      "summary": [
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 2194 filtered out; finished in 3.21s"
+      ]
+    },
+    "target/validation/combined-completion/vst3-core-native-tests-12.log": {
+      "sha256": "f377b09c497f7dedff5e3a493cf29aa278272ae2ad3606bded1dba13cb5d8de8",
+      "summary": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 2194 filtered out; finished in 2.06s"
+      ]
+    },
+    "target/validation/combined-completion/vst3-graph-capability-tests.log": {
+      "sha256": "68eac1d4d25427bd220579216efe9b5e4c375bcb5758dda04c2e313df769d440",
+      "summary": null
+    },
+    "target/validation/combined-completion/vst3-graph-license-check.log": {
+      "sha256": "d94a5e067286d5c5aedd5ca514a33ee02642f635614378560b96a923d8b76c14",
+      "summary": null
+    },
+    "target/validation/combined-completion/vst3-graph-native-export-15.log": {
+      "sha256": "a783c1f8e02c29e9ac678380702696d79166d2b0039531fe9a96e46231e5b780",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2198 filtered out; finished in 2.06s"
+      ]
+    },
+    "target/validation/combined-completion/vst3-graph-native-tests-12.log": {
+      "sha256": "c8420bc8bdd94fba705ea6b4c9efdb6188a9605b8098a9455f3a9aa5671a68a3",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2191 filtered out; finished in 9.78s"
+      ]
+    },
+    "target/validation/combined-completion/vst3-graph-native-ui-tests-12.log": {
+      "sha256": "38f5eac9932b680a59cb7ba5f22597d68d1e0e81cef3484e7f44bac1a47d5aa3",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2197 filtered out; finished in 1.40s"
+      ]
+    },
+    "target/validation/combined-completion/vst3-native-editor-12-independent-display.log": {
+      "sha256": "2f7a8f67970723073f62565deedbd91331c016c8626d6450a7659ed18273d66c",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2197 filtered out; finished in 13.16s"
+      ]
+    }
+  },
+  "successfulNativeSelectors": [
+    {
+      "selector": "plugin_host::realtime::tests::native_processor_bridge_preserves_delay_state_and_samples",
+      "log": "target/validation/combined-completion/vst3-core-native-tests-12.log"
+    },
+    {
+      "selector": "plugin_host::scanner::tests::native_plugin_audio_automation_state_and_instruments",
+      "log": "target/validation/combined-completion/vst3-core-native-tests-12.log"
+    },
+    {
+      "selector": "plugin_host::scanner::tests::native_plugin_failures_are_bounded_and_cancelled",
+      "log": "target/validation/combined-completion/vst3-core-native-tests-12.log"
+    },
+    {
+      "selector": "plugin_host::scanner::tests::native_scanner_cache_quarantine_blacklist_cancel_and_reopen",
+      "log": "target/validation/combined-completion/vst3-core-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_plugin_export_trims_bridge_delay_refuses_missing_processing_and_keeps_cancel_atomic",
+      "log": "target/validation/combined-completion/vst3-graph-native-export-15.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_automation_corner_and_individual_panic_release_reach_the_processor",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_cancelled_graph_and_oversized_histories_refuse_without_replacing_the_session",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_editor_refusal_preserves_the_running_processor_and_its_state",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_graph_buses_context_bypass_latency_and_callback_storage",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_independent_nekobi_instrument_and_mverb_tail_use_the_same_session_graph",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_parallel_null_and_dynamic_latency_keep_exact_offline_output_time",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "engine::audio::routing::plugin_tests::native_plugin_instrument_release_capture_container_reopen_and_missing_identity",
+      "log": "target/validation/combined-completion/vst3-graph-native-tests-12.log"
+    },
+    {
+      "selector": "ui::audio_routing::tests::native_browser_attaches_instrument_and_ordered_effect_through_review_cancel_and_undo",
+      "log": "target/validation/combined-completion/vst3-graph-native-ui-tests-12.log"
+    },
+    {
+      "selector": "ui::audio_routing::tests::native_plugin_editor_opens_from_the_routing_widgets_and_closes_without_retiring_audio",
+      "log": "target/validation/combined-completion/vst3-native-editor-12-independent-display.log"
+    }
+  ],
+  "fixtures": {
+    "contract": {
+      "source": "tests/fixtures/vst3-contract",
+      "license": "MIT",
+      "binary": {
+        "path": "target/validation/combined-completion/Contract.vst3/Contents/aarch64-linux/Contract.so",
+        "sha256": "bd9f0ea2cb641f6bbd13ba64bcaa5c9d24d9598933a6bac1d7d7e11998bb0b5f",
+        "bytes": 509456
+      },
+      "sdkVersion": "3.8.1",
+      "sdkRevision": "3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96"
+    },
+    "dpf": {
+      "repository": "https://github.com/DISTRHO/DPF-Plugins",
+      "revision": "df5cb658a2d8dc6e944d8c26a53853a7c0c6c2b2",
+      "licenses": {
+        "Nekobi": "GPL-2.0-or-later",
+        "MVerb": "GPL-3.0-or-later"
+      },
+      "bundlesRedistributed": false
+    }
+  },
+  "editor": {
+    "display": "Private authenticated Xvfb 21.1.25 independent of desktop; no root disk lock or Unix socket",
+    "image": {
+      "path": "target/validation/combined-completion/graph-qualified/final-12/editor/opened-window.png",
+      "sha256": "261433af30b09caf5f2d67954f2d7fe33ad577c44dc1dbdd9fb34c422eccc91a",
+      "bytes": 29557
+    },
+    "visualInspection": "MVerb controls rendered and inspected after editor run-loop service fix; widget open and close preserved healthy processing",
+    "desktopAttempt": "Existing Xwayland socket unavailable; separately recorded failure"
+  },
+  "preliminaryFailuresRetained": [
+    "Native contract context requirements and active auxiliary bus fixture corrections",
+    "Native editor acknowledgement without rendered controls exposed omitted Linux editor loop service; fixed and repeated with inspected screenshot",
+    "Project UI clipped long-path click helper caused two failures; corrected and all 37 project UI and 5 undo UI checks passed",
+    "Native export first expected constant failed because unrelated default tracks played; isolated fixture track and repeated exact trim/amplitude test successfully"
+  ],
+  "limits": [
+    "Installed powered-hub app and saved user projects were preserved, not replaced.",
+    "No physical MIDI, hardware loopback, native installed-app UI or audible listening acceptance in this receipt.",
+    "No blanket stage-quality, optimized-release CPU or cross-platform compatibility claim.",
+    "Additional MIDI event buses, SysEx, typed note expressions and graph MIDI output chains remain unsupported.",
+    "ALS import, dependency/render relink, profiles and full combined #511 remain required."
+  ]
+}

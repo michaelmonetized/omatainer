@@ -491,7 +491,7 @@ fn dispatch(
                 .map_err(|e| Error::new("invalid_operation", e))?;
             let request = request.at_revision(expected.revision.0, s.sample_rate);
             drop(s);
-            submit(commands, Command::SessionEdit(request), ack)
+            submit(commands, Command::session_edit(request), ack)
         }
     }
 }

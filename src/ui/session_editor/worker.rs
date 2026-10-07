@@ -59,7 +59,7 @@ impl Worker {
                         }
                     };
                     if cancel.load(Ordering::Acquire) { ack.cancel(); return Err("Session edit cancelled".into()); }
-                    commands.send(Command::SessionEdit(request)).map_err(|e| e.to_string())?;
+                    commands.send(Command::session_edit(request)).map_err(|e| e.to_string())?;
                     Ok(ack)
                 })();
                 if cancel.load(Ordering::Acquire) { let _ = handle.retire_cancelled_capture(&cancel); }

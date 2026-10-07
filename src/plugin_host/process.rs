@@ -76,6 +76,7 @@ impl Process {
         message.extend_from_slice(&(data.len() as u32).to_le_bytes());
         message.extend_from_slice(&data);
         let started = Instant::now();
+        let mut application_refusal = false;
         let result = (|| {
             self.transfer(&mut message, false, cancel, started, timeout)?;
             let mut size = [0u8; 4];
@@ -89,11 +90,12 @@ impl Process {
             let response: Response = serde_json::from_slice(&output)
                 .map_err(|e| format!("Invalid plugin worker response: {e}"))?;
             if let Response::Error { message } = &response {
+                application_refusal = true;
                 return Err(message.clone());
             }
             Ok(response)
         })();
-        if result.is_err() {
+        if result.is_err() && !(application_refusal && matches!(request,Request::Editor{..})) {
             self.stop();
         }
         result
@@ -139,7 +141,7 @@ impl Process {
                 Ok(Some(_)) => {
                     ACTIVE.fetch_sub(1, Ordering::AcqRel);
                 }
-                _ => retiring()
+                _ => retiring().expect("Plugin reaper was admitted before its child")
                     .lock()
                     .unwrap_or_else(|p| p.into_inner())
                     .push(child),
@@ -154,13 +156,13 @@ impl Drop for Process {
 }
 
 static ACTIVE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-static RETIRING: std::sync::OnceLock<std::sync::Arc<std::sync::Mutex<Vec<Child>>>> =
+static RETIRING: std::sync::OnceLock<Result<std::sync::Arc<std::sync::Mutex<Vec<Child>>>,String>> =
     std::sync::OnceLock::new();
-fn retiring() -> &'static std::sync::Arc<std::sync::Mutex<Vec<Child>>> {
+fn retiring() -> Result<&'static std::sync::Arc<std::sync::Mutex<Vec<Child>>>,String> {
     RETIRING.get_or_init(|| {
         let children = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Child>::with_capacity(96)));
         let owner = children.clone();
-        let _ = std::thread::Builder::new()
+        std::thread::Builder::new()
             .name("plugin-reaper".into())
             .spawn(move || loop {
                 {
@@ -176,12 +178,11 @@ fn retiring() -> &'static std::sync::Arc<std::sync::Mutex<Vec<Child>>> {
                     }
                 }
                 std::thread::sleep(Duration::from_millis(25));
-            });
-        children
-    })
+            }).map(|_|children).map_err(|error|format!("Plugin process reaper could not start: {error}; restart after freeing system resources"))
+    }).as_ref().map_err(Clone::clone)
 }
 fn reserve() -> Result<(), String> {
-    retiring();
+    retiring()?;
     ACTIVE
         .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
             (n < 96).then_some(n + 1)

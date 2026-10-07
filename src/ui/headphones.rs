@@ -56,7 +56,7 @@ pub(super) fn output(ui: &mut Ui, model: &mut Model) {
     });
     accessibility::focus(ui, &response);
     if before != model.monitor_output {
-        model.version = 2;
+        model.version = model.version.max(2);
     }
     ui.label(tr!("Choose a separate stereo alias. Program routes cannot use its channels. Apply routing to activate this choice."));
 }

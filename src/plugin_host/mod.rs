@@ -198,7 +198,7 @@ pub(crate) fn layout_valid(layout: &vst3_host::AudioBusLayout) -> Result<(), Str
     Ok(())
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Saved {
     pub schema: u32,
@@ -306,10 +306,13 @@ pub(crate) enum Response {
         latency: u32,
         tail: u32,
         restart: u32,
+        editor_open: bool,
+        parameters: Vec<(u32,f64)>,
         midi: Vec<vst3_host::MidiEvent>,
     },
     State {
         saved: Saved,
+        parameters: Vec<(u32,f64)>,
     },
     Ok,
     Error {

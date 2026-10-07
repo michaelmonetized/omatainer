@@ -528,3 +528,45 @@ fn native_headphone_pair_review_persists_exact_alias_and_rejects_program_overlap
         Some(2)
     );
 }
+
+#[test]
+#[ignore="requires the freshly compiled native worker and original SDK contract fixture"]
+fn native_browser_attaches_instrument_and_ordered_effect_through_review_cancel_and_undo() {
+    use crate::ui::piano_roll::tests::Gui;
+    use crate::plugin_host::scanner::Record;
+    let (instrument,saved)=crate::engine::audio::routing::plugin_tests::fixture(true);
+    let (effect,_)=crate::engine::audio::routing::plugin_tests::fixture(false);
+    let mut gui=Gui::new();gui.app.plugins.catalog.records=vec![Record{path:saved.binary.bundle.clone(),binary:Some(saved.binary),classes:vec![instrument,effect],failure:None}];gui.app.plugins.selected=Some((0,0));gui.app.plugins.open=true;gui.frame(vec![]);
+    gui.click("Use as track instrument");settle_graph(&mut gui);gui.app.plugins.open=false;gui.frame(vec![]);
+    assert_eq!(gui.app.audio_routing.draft.as_ref().unwrap().model.plugins.len(),1);
+    gui.click("Review routing change…");gui.click("Cancel routing change");assert!(gui.rt.routing.is_none());
+    gui.click("Review routing change…");gui.click("Apply routing");settle_graph(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    let original=gui.rt.routing.as_ref().unwrap().model.clone();assert!(original.plugins[0].instrument);
+    gui.rt.apply(Command::Undo);assert!(gui.rt.routing.is_none());gui.rt.apply(Command::Redo);assert_eq!(gui.rt.routing.as_ref().unwrap().model,original);
+    gui.app.audio_routing.open=false;gui.app.plugins.selected=Some((0,1));gui.app.plugins.open=true;gui.frame(vec![]);gui.click("Append track effect");settle_graph(&mut gui);gui.app.plugins.open=false;gui.frame(vec![]);gui.click("Review routing change…");gui.click("Apply routing");settle_graph(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    let graph=gui.rt.routing.as_ref().unwrap();assert_eq!(graph.model.plugins.len(),2);assert!(!graph.model.plugins[1].instrument);assert_eq!(graph.model.plugins[1].scene_track,graph.model.plugins[0].midi_track);assert!(graph.plugins.iter().all(|p|p.error.is_none()));
+    gui.rt.apply(Command::Undo);assert_eq!(gui.rt.routing.as_ref().unwrap().model,original);
+}
+fn settle_graph(gui:&mut crate::ui::piano_roll::tests::Gui){
+    let deadline=Instant::now()+std::time::Duration::from_secs(20);
+    loop{gui.frame(vec![]);if !gui.app.audio_routing.busy(){break;}assert!(Instant::now()<deadline,"{:?}",gui.app.audio_routing.error);std::thread::sleep(std::time::Duration::from_millis(2));}
+    for _ in 0..4{gui.frame(vec![]);}
+}
+
+#[test]
+#[ignore="opens locally built GPL MVerb editor on the real X11 display; requires OMATAINER_VST3_EDITOR_QUALIFY_DIR"]
+fn native_plugin_editor_opens_from_the_routing_widgets_and_closes_without_retiring_audio() {
+    use crate::plugin_host::scanner::Record;
+    let dir=std::path::PathBuf::from(std::env::var_os("OMATAINER_VST3_EDITOR_QUALIFY_DIR").expect("Private editor qualification directory is required"));std::fs::create_dir_all(&dir).unwrap();
+    let root=std::path::PathBuf::from(std::env::var_os("OMATAINER_VST3_FIXTURES").unwrap());let (class,saved)=crate::engine::audio::routing::plugin_tests::probe(root.join("dpf-plugins/bin/MVerb.vst3"),false);assert!(class.info.has_gui);
+    let mut gui=Gui::new();gui.app.plugins.catalog.records=vec![Record{path:saved.binary.bundle.clone(),binary:Some(saved.binary),classes:vec![class],failure:None}];gui.app.plugins.selected=Some((0,0));gui.app.plugins.open=true;gui.frame(vec![]);gui.click("Append track effect");settle_graph(&mut gui);gui.app.plugins.open=false;gui.frame(vec![]);gui.click("Review routing change…");gui.click("Apply routing");settle_graph(&mut gui);assert!(gui.app.audio_routing.error.is_none(),"{:?}",gui.app.audio_routing.error);
+    gui.click("Refresh routes");settle_graph(&mut gui);gui.click("Native plugin processors");gui.click("Open plugin editor");
+    let control=gui.rt.routing.as_ref().unwrap().plugins[0].endpoint.as_ref().unwrap().control.clone();let until=Instant::now()+Duration::from_secs(10);
+    while !control.editor_open(){gui.frame(vec![]);assert!(Instant::now()<until,"{:?}",control.editor_error());std::thread::sleep(Duration::from_millis(20));}
+    std::fs::write(dir.join("editor-open.txt"),"MVerb native editor opened through routing widgets\n").unwrap();
+    let until=Instant::now()+Duration::from_secs(12);while Instant::now()<until{gui.frame(vec![]);std::thread::sleep(Duration::from_millis(20));}
+    gui.click("Close plugin editor");let until=Instant::now()+Duration::from_secs(10);while control.editor_open(){gui.frame(vec![]);assert!(Instant::now()<until);std::thread::sleep(Duration::from_millis(20));}
+    assert!(control.error().is_none(),"{:?}",control.error());assert!(control.editor_error().is_none());assert!(!gui.rt.routing.as_ref().unwrap().plugins[0].endpoint.as_ref().unwrap().faulted());std::fs::write(dir.join("editor-closed.txt"),"Editor closed; processor and state capture remain available\n").unwrap();
+}

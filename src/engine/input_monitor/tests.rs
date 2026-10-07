@@ -214,7 +214,7 @@ fn queued_input_controls_retain_track_identity_and_reject_replacement_without_he
         },
     )
     .unwrap();
-    rt.apply(Command::SessionEdit(request));
+    rt.apply(Command::session_edit(request));
     rt.process(&mut []);
     assert_eq!(rt.session.track_order[0], 2);
     assert_eq!(rt.tracks[2].input_monitor, Some(Mode::In));

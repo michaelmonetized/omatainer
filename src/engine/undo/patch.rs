@@ -284,6 +284,7 @@ pub(super) enum Patch {
     Arrangement {value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
     Global(Global),
+    PluginParameter { namespace:[u64;2],id:u64,parameter:u32,value:f64 },
     Sync(deck_sync::Saved),
     Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, scene_timing: Option<scene::Timing>, reserved_bytes: usize },
     Sampler {
@@ -376,6 +377,7 @@ impl Patch {
         match self {
             Self::SongNavigation {..} | Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Sync(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
+            Self::PluginParameter {id,..} => T::Plugin(*id),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
             }
@@ -393,6 +395,7 @@ impl Patch {
                 (value.source_gain == deck.source_gain || !deck.source_gain_active())
                 && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
             Self::Session(value) => value.valid(rt),
+            Self::PluginParameter {namespace,id,parameter,..} => *namespace==rt.session.namespace && rt.routing.as_ref().is_some_and(|g|g.plugin_parameter_value(*id,*parameter).is_some()),
             Self::ClipManagement(value) => value.valid(rt),
             Self::SongNavigation {..} => true,
             Self::Arrangement {..} => !rt.playing&&!rt.recording&&rt.count_in.is_none()&&!rt.decks.iter().any(|d|d.playing||d.touching),
@@ -444,6 +447,10 @@ impl Patch {
                 *selected = selection;
             }
             Self::Global(value) => value.swap(rt),
+            Self::PluginParameter {id,parameter,value,..} => {
+                let graph=rt.routing.as_mut().unwrap(); let current=graph.plugin_parameter_value(*id,*parameter).unwrap();
+                assert!(graph.plugin_parameter(*id,*parameter,*value)); *value=current;
+            },
             Self::Sync(value) => value.swap(rt),
             Self::Conductor { bpm, value, scene_timing, .. } => {
                 rt.internal_clock();

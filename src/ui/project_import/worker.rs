@@ -115,7 +115,7 @@ impl Worker {
                             }
                             if FileFingerprint::read(&catalog.path) != Some(catalog.fingerprint) { ack.cancel(); return Err("Source project changed after review; browse it again".into()); }
                             if cancel.load(Ordering::Acquire) { ack.cancel(); return Err("Project import cancelled".into()); }
-                            commands.send(Command::SessionEdit(request)).map_err(|e| e.to_string())?;
+                            commands.send(Command::session_edit(request)).map_err(|e| e.to_string())?;
                             Ok(Event::Finished(ack))
                         }
                     }
