@@ -25,7 +25,7 @@ pub struct PendingStatus {
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Pending {
     pub status: PendingStatus,
-    pub owner: Option<(u64, Button)>,
+    pub owner: Option<(u64, Option<u32>, Button)>,
     media_key: u64,
     position: f64,
     cue: Option<f64>,

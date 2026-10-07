@@ -125,7 +125,7 @@ pub(super) struct State {
     processors: [super::master_fx::MasterSlot; 2],
     send_input: [[f32; 2]; 2],
     deck_fx: [[[super::master_fx::MasterSlot; 3]; 2]; 2],
-    pad_owners: [Option<(u64, u8)>; super::control::MAX_COMMANDS],
+    pad_owners: [Option<(u64, Option<u32>, u8)>; super::control::MAX_COMMANDS],
     pad_gain: [f32; 16],
     master_saved: [f32; 3],
     shift_owners: [Option<u64>; super::control::MAX_COMMANDS],
@@ -255,11 +255,14 @@ impl RtEngine {
                 }
             }
             Input::SamplerPressure { source, pad, value } => {
-                if !self.surface.pad_owners.contains(&Some((source, pad))) {
+                if !self.surface.pad_owners.iter().flatten().any(|(owner, _, slot)| *owner == source && *slot == pad) {
                     return;
                 }
                 if value == 0.0 {
-                    self.surface_sampler(source, pad, false, 0.0);
+                    let owners = self.surface.pad_owners;
+                    for (owner, key, slot) in owners.into_iter().flatten().filter(|(owner, _, slot)| *owner == source && *slot == pad) {
+                        self.surface_sampler_owned(owner, key, slot, false, 0.0);
+                    }
                 } else if let Some(voice) = &mut self.pad_voices[usize::from(pad)] {
                     voice.gain = self.surface.pad_gain[usize::from(pad)] * value;
                 }
@@ -328,10 +331,15 @@ impl RtEngine {
     /// Keep sampler gates owned by their physical source.
     /// Takes source, pad, gate and attack level; releases a pad only when its last source releases it.
     pub(super) fn surface_sampler(&mut self, source: u64, pad: u8, on: bool, pressure: f32) {
+        self.surface_sampler_owned(source, None, pad, on, pressure);
+    }
+    /// Retain an exact sampler input owner through bank and mode changes.
+    /// Takes source, optional raw key, slot, pressed state and velocity; releases the voice only after its last owner.
+    pub(super) fn surface_sampler_owned(&mut self, source: u64, key: Option<u32>, pad: u8, on: bool, pressure: f32) {
         if pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(&pressure) {
             return;
         }
-        let key = (source, pad);
+        let key = (source, key, pad);
         let owner = self
             .surface
             .pad_owners
@@ -365,7 +373,7 @@ impl RtEngine {
                 .pad_owners
                 .iter()
                 .flatten()
-                .any(|(_, owned)| *owned == pad)
+                .any(|(_, _, owned)| *owned == pad)
             {
                 self.apply_sampler_pad(pad, false, pressure);
             }
@@ -374,6 +382,8 @@ impl RtEngine {
     /// Clear held controller inputs after a safety stop.
     /// Takes the renderer; clears source ownership without restoring any transport.
     pub(super) fn release_surface_inputs(&mut self) {
+        for deck in 0..2 { self.cancel_deck_pads(deck); }
+        self.deck_pad_inputs.clear();
         self.surface.pad_owners.fill(None);
         self.surface.shift_owners.fill(None);
         self.surface.status.shift = false;

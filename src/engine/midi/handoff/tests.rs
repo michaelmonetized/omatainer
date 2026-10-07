@@ -3,6 +3,60 @@ use crate::engine::midi::{cbind, nbind, rbind, RelativeSpec, UnmappedNotes};
 use crate::engine::{dsp::InputKey, Engine, RtEngine};
 use std::time::Instant;
 
+#[test]
+fn deck_pad_learned_sp1_override_releases_the_original_deck_after_a_manufacturer_mode_and_layer_change() {
+    use crate::engine::midi::learn::{Config,Endpoint,Mapping};
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let mut input=engine.midi.open_for_test(&engine.cmd,1930,crate::engine::midi::surface::pioneer_sp1(),"Pioneer DDJ-SP1","learned-SP1");
+    engine.cmd.midi_learn().configure(Config {mappings:vec![Mapping {endpoint:Endpoint {name:"Pioneer DDJ-SP1".into(),id:"learned-SP1".into()},binding:nbind(7,0x14,Action::DeckPad,1,5)}]}).unwrap();
+    rt.apply(Command::DeckControl {source:1931,deck:1,control:crate::engine::deck_controls::Control::PadMode {mode:1}});
+    input.push(&[0x97,0x14,90]);render(&mut rt);assert_eq!(rt.decks[1].controls.status().roll,Some(5));assert!(rt.decks[0].controls.status().roll.is_none());
+    input.push(&[0x90,0x6d,127]);render(&mut rt);assert_eq!(rt.decks[0].controls.status().pad_mode,6);assert_eq!(rt.decks[1].controls.status().roll,Some(5));
+    input.push(&[0x89,0x64,0]);render(&mut rt);assert!(rt.decks[1].controls.status().roll.is_none());
+    assert_eq!(engine.cmd.queue_pressure().reserved_releases,0);
+}
+
+#[test]
+fn deck_pad_learned_worker_modes_parameters_profile_changes_and_disconnect_preserve_exact_owners() {
+    use crate::engine::{deck_controls::{Control,Button},deck_pads::Mode};
+    use crate::engine::midi::learn::{Config,Endpoint,Mapping};
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let (mut sink,mut worker)=input(64,1921,&engine.cmd);
+    let endpoint=Endpoint{name:"test device".into(),id:"test device".into()};
+    let mut config=Config{mappings:vec![
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,60,Action::DeckPad,0,2)},
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,61,Action::DeckPadMode,0,1)},
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,62,Action::DeckPadParameterRight,0,0)},
+        Mapping{endpoint:endpoint.clone(),binding:nbind(0,63,Action::DeckPadMode,0,2)},
+    ]};
+    engine.cmd.midi_learn().configure(config.clone()).unwrap();drain(&mut worker);render(&mut rt);
+    assert_eq!(engine.cmd.midi_learn().view().devices[0].pad_modes&6,6);
+    sink.push(&[0x90,61,127,0x80,61,0,0x90,62,127,0x80,62,0,0x90,60,95]);drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(||render(&mut rt)),crate::engine::test_alloc::Counts::default());
+    assert_eq!(rt.decks[0].controls.status().roll_scale,1);assert_eq!(rt.decks[0].controls.status().roll,Some(2));
+    rt.apply(Command::DeckControl {source:1922,deck:1,control:Control::Hold {button:Button::Roll(6),on:true}});
+    sink.push(&[0x90,63,127,0x80,63,0]);drain(&mut worker);render(&mut rt);
+    assert_eq!(rt.decks[0].controls.status().pad_mode,Mode::Slice.index());assert!(rt.decks[0].controls.status().roll.is_none());
+    sink.push(&[0x80,60,0,0x90,60,95]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[0].controls.status().slice,Some(2));
+    config.mappings[0].binding.deck=1;engine.cmd.midi_learn().configure(config).unwrap();drain(&mut worker);render(&mut rt);
+    assert!(rt.decks[0].controls.status().slice.is_none());assert_eq!(rt.decks[1].controls.status().roll,Some(6));
+    sink.push(&[0x80,60,0]);drain(&mut worker);render(&mut rt);assert_eq!(rt.decks[1].controls.status().roll,Some(6));
+    drop(worker);render(&mut rt);assert_eq!(rt.decks[1].controls.status().roll,Some(6));
+    assert_eq!(engine.cmd.queue_pressure().reserved_releases,0);
+}
+
+#[test]
+fn deck_pad_factory_worker_normalizes_mode_and_deck_layer_release_keys() {
+    let (engine,mut rt)=Engine::headless_for_test(48_000,256);
+    let mut input=engine.midi.open_for_test(&engine.cmd,1925,crate::engine::midi::surface::pioneer_sp1(),"Pioneer DDJ-SP1","recorded-SP1");
+    input.push(&[0x97,0x13,110]);render(&mut rt);assert_eq!(rt.decks[0].controls.status().roll,Some(3));
+    input.push(&[0x89,0x03,0]);render(&mut rt);assert!(rt.decks[0].controls.status().roll.is_none());
+    input.push(&[0x98,0x25,110]);render(&mut rt);assert_eq!(rt.decks[1].controls.status().slice,Some(5));
+    input.push(&[0x8a,0x75,0]);render(&mut rt);assert!(rt.decks[1].controls.status().slice.is_none());
+    assert_eq!(engine.cmd.midi_learn().view().devices.iter().find(|d|d.source==1925).unwrap().pad_modes,255);
+    assert_eq!(engine.cmd.queue_pressure().reserved_releases,0);
+}
+
 fn map() -> MidiMap {
     MidiMap {
         name: "handoff test".into(),

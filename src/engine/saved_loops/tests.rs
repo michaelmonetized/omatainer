@@ -298,9 +298,15 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
     let preset =
         midi::presets::Preset::capture("Saved loops".into(), String::new(), &port, &config)
             .unwrap();
-    assert_eq!(preset.version, 4);
+    assert_eq!(preset.version, 5);
     let bytes = serde_json::to_vec(&preset).unwrap();
     assert_eq!(midi::presets::Preset::decode(&bytes).unwrap(), preset);
+    let mut previous = serde_json::to_value(&preset).unwrap();
+    previous["version"] = 4.into();
+    let previous = midi::presets::Preset::decode(&serde_json::to_vec(&previous).unwrap()).unwrap();
+    assert_eq!(previous.version, 4);
+    assert_eq!(previous.bindings, preset.bindings);
+    assert_eq!(previous.target(&port, &config).unwrap(), config);
     for version in [1, 2, 3] {
         let mut old = serde_json::to_value(&preset).unwrap();
         old["version"] = version.into();
@@ -381,7 +387,7 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
     let (decoded, migrated) =
         crate::preferences::storage::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
     assert!(migrated);
-    assert_eq!(decoded.version, 22);
+    assert_eq!(decoded.version, 23);
     for action in [
         midi::Action::DeckSavedLoopSave,
         midi::Action::DeckSavedLoopDelete,

@@ -49,6 +49,12 @@ fn label(action: Action) -> &'static str {
         Action::DeckLoop4 => "Deck four-beat loop",
         Action::DeckLoopIn => "Deck loop in",
         Action::DeckLoopOut => "Deck loop out",
+        Action::DeckPad => "Deck performance pad",
+        Action::DeckPadMode => "Deck pad mode",
+        Action::DeckPadParameterLeft => "Deck pad parameter left",
+        Action::DeckPadParameterRight => "Deck pad parameter right",
+        Action::DeckPadParameterShiftLeft => "Deck pad shifted parameter left",
+        Action::DeckPadParameterShiftRight => "Deck pad shifted parameter right",
         Action::DeckSavedLoopRecall => "Deck activate saved loop",
         Action::DeckSavedLoopSave => "Deck save loop slot",
         Action::DeckSavedLoopDelete => "Deck delete saved loop",
@@ -144,6 +150,16 @@ impl App {
         ));
         ui.label(&view.message);
         ui.label(&self.midi_learn.message);
+        for device in &view.devices {
+            if device.pad_modes != 0 {
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(format!("{} pad modes:", device.endpoint.name));
+                    for mode in crate::engine::deck_pads::Mode::ALL {
+                        if device.pad_modes & (1 << mode.index()) != 0 { let [r,g,b] = mode.color(); ui.label(egui::RichText::new(mode.label()).color(egui::Color32::from_rgb(r,g,b))); }
+                    }
+                });
+            }
+        }
         if !allowed {
             ui.label(tr!("Leave performance protection or the current project operation before editing MIDI assignments."));
         }
@@ -207,17 +223,23 @@ impl App {
             }
             let max = match binding.action {
                 Action::SamplerSlotStop => 16.0,
-                Action::DeckHotCue | Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete => 8.0,
+                Action::DeckPad | Action::DeckHotCue | Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete => 8.0,
                 Action::Scene | Action::Clip => 512.0,
                 Action::TrackFader | Action::TrackMute | Action::TrackSolo | Action::TrackArm | Action::TrackPan | Action::TrackSendA | Action::TrackSendB => 127.0,
                 Action::FxWet | Action::FxSelect => 3.0,
                 _ => 1.0,
             };
+            if binding.action == Action::DeckPadMode {
+                let mode = crate::engine::deck_pads::Mode::from_index(binding.extra as u8).unwrap_or(crate::engine::deck_pads::Mode::HotCue);
+                egui::ComboBox::from_label("MIDI pad mode").selected_text(mode.label()).show_ui(ui, |ui| {
+                    for mode in crate::engine::deck_pads::Mode::ALL { ui.selectable_value(&mut binding.extra, u16::from(mode.index()), mode.label()); }
+                });
+            }
             if max > 1.0 {
                 let mut extra = f32::from(binding.extra) + 1.0;
                 preferences::float_control(
                     ui,
-                    if learn::saved_loop(binding.action) { "MIDI saved loop slot ID" } else if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
+                    if binding.action == Action::DeckPad { "MIDI deck pad ID" } else if learn::saved_loop(binding.action) { "MIDI saved loop slot ID" } else if binding.action == Action::SamplerSlotStop { "MIDI target sample slot" } else { "MIDI target cue, scene, track or effect" },
                     &mut extra,
                     1.0,
                     max,

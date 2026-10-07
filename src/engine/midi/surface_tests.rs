@@ -39,6 +39,10 @@ fn send(input: &mut TestInput, rt: &mut RtEngine, bytes: &[u8]) {
     input.push(bytes);
     rt.process(&mut []);
 }
+fn tap(input: &mut TestInput, rt: &mut RtEngine, bytes: [u8;3]) {
+    send(input,rt,&bytes);
+    send(input,rt,&[bytes[0]&15|0x80,bytes[1],0]);
+}
 fn deck(rt: &mut RtEngine, index: u8) {
     rt.apply(Command::DeckAudio {
         deck: index,
@@ -302,9 +306,9 @@ fn surfaces_sp1_hotloops_all_pad_modes_and_sampler_volume_have_real_engine_targe
         send(&mut input, &mut rt, &[0x90, note, 127]);
         assert_eq!(rt.decks[0].controls.status().pad_mode, mode);
     }
-    send(&mut input, &mut rt, &[0x97, 0x40, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x40, 127]);
     assert!(rt.decks[0].controls.status().hotloops[0]);
-    send(&mut input, &mut rt, &[0x97, 0x48, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x48, 127]);
     assert!(!rt.decks[0].controls.status().hotloops[0]);
     send(&mut input, &mut rt, &[0xb6, 3, 64]);
     send(&mut input, &mut rt, &[0xb6, 0x23, 0]);
@@ -575,14 +579,14 @@ fn surfaces_mpd_physical_bank_a_capture_replays_through_the_production_worker() 
 fn surfaces_sp1_auto_loop_pads_replace_lengths_and_parameter_buttons_change_the_range() {
     let (_engine, mut rt, mut input) = fixture(surface::pioneer_sp1(), 100);
     deck(&mut rt, 0);
-    send(&mut input, &mut rt, &[0x97, 0x55, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x55, 127]);
     let first = rt.decks[0].loop_len;
-    send(&mut input, &mut rt, &[0x97, 0x56, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x56, 127]);
     assert!(rt.decks[0].loop_on && (rt.decks[0].loop_len - first * 2.0).abs() < 0.01);
     send(&mut input, &mut rt, &[0x90, 0x31, 127]);
-    send(&mut input, &mut rt, &[0x97, 0x56, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x56, 127]);
     assert!(rt.decks[0].loop_on && (rt.decks[0].loop_len - first * 4.0).abs() < 0.01);
-    send(&mut input, &mut rt, &[0x97, 0x56, 127]);
+    tap(&mut input, &mut rt, [0x97, 0x56, 127]);
     assert!(!rt.decks[0].loop_on);
 }
 

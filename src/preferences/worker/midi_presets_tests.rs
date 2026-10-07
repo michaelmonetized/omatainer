@@ -5,6 +5,25 @@ use crate::engine::midi::{
 };
 use std::time::{Duration, Instant};
 
+#[test]
+fn deck_pad_presets_export_import_and_real_preferences_reopen_preserve_fixed_modes_and_strict_versions() {
+    use crate::engine::midi::learn::{Config,Endpoint,Mapping};
+    let files=Files::new();let endpoint=Endpoint{name:"Recorded pad controller".into(),id:"recorded-exact-port".into()};
+    let actions=[Action::DeckPad,Action::DeckPadMode,Action::DeckPadParameterLeft,Action::DeckPadParameterRight,Action::DeckPadParameterShiftLeft,Action::DeckPadParameterShiftRight];
+    let config=Config {mappings:actions.into_iter().enumerate().map(|(i,action)|Mapping {endpoint:endpoint.clone(),binding:Binding {kind:MsgKind::Note,ch:3,data:50+i as u8,action,deck:1,extra:if i<2 {7}else{0},relative:None,controls:None,pair_order:None}}).collect()};
+    let preset=Preset::capture("Eight pad modes".into(),String::new(),&endpoint,&config).unwrap();
+    let path=files.0.join("deck-pads.json");let mut worker=Worker::with_discovery(files.0.join("prefs.json"),||Err("No device discovery".into())).unwrap();
+    worker.request(Job::ExportMidiPreset{path:path.clone(),preset:preset.clone()}).unwrap();assert!(matches!(wait(&mut worker),Event::MidiPresetExported(_)));
+    worker.request(Job::ImportMidiPreset{path:path.clone(),token:192}).unwrap();assert!(matches!(wait(&mut worker),Event::MidiPresetImported{token:192,preset:p} if p==preset));
+    let bytes=std::fs::read(&path).unwrap();for version in 1..5 {let mut old=serde_json::from_slice::<serde_json::Value>(&bytes).unwrap();old["version"]=version.into();assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err());}
+    let mut preferences=super::super::Preferences::defaults(&files.0);let profile=preferences.profiles.get_mut(&preferences.active).unwrap();profile.midi_learn=config.clone();profile.midi_presets=vec![preset];
+    let cancelled=AtomicBool::new(false);
+    let prefs_path=files.0.join("actual-preferences.json");super::storage::save(&prefs_path,&preferences,super::storage::Overwrite::Exact(None),&cancelled).unwrap();
+    let loaded=super::storage::load(&prefs_path,&cancelled).unwrap();assert_eq!(loaded.preferences,preferences);
+    let current=serde_json::to_value(&preferences).unwrap();let mut old=current.clone();old["version"]=22.into();assert!(super::storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
+    for mapping in &config.mappings {for bad in [Binding{deck:2,..mapping.binding},Binding{kind:MsgKind::Cc,..mapping.binding},Binding{extra:8,..mapping.binding}] {assert!(crate::engine::midi::learn::validate_binding(&bad).is_err());}}
+}
+
 struct Files(std::path::PathBuf);
 impl Files {
     fn new() -> Self {

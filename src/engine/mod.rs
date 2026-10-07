@@ -100,6 +100,7 @@ mod scene_ownership_tests;
 #[cfg(test)]
 mod clip_lifecycle_tests;
 pub(crate) mod clip_launch;
+pub(crate) mod deck_pads;
 pub(crate) mod saved_loops;
 #[cfg(test)]
 mod deck_loop_tests;
@@ -653,6 +654,7 @@ pub struct RtEngine {
     pub(crate) mic_aux: Box<audio::routing::mic_aux::Mixer>,
     surface: Box<surface_controls::State>,
     clip_launch_inputs: Box<clip_launch::Inputs>,
+    deck_pad_inputs: Box<deck_pads::State>,
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
     pub(crate) arrangement: Box<arrangement::Playback>,
@@ -987,6 +989,9 @@ impl Default for Snapshot {
 pub enum Command {
     Surface(surface_controls::Input),
     MidiSamplerPad { source: u64, pad: u8, on: bool, pressure: f32 },
+    DeckPadPress(deck_pads::Press),
+    DeckPadRelease(deck_pads::Release),
+    DeckPadParameter { source: u64, deck: u8, up: bool, shifted: bool },
     Remote(remote::Request),
     ProviderPreview(provider_preview::Request),
     SessionEdit(session::Request),
@@ -1224,6 +1229,7 @@ impl RtEngine {
             mic_aux: Box::new(audio::routing::mic_aux::Mixer::new(None, sr)),
             surface: Box::new(surface_controls::State::new(sr).map_err(|error| error.to_string())?),
             clip_launch_inputs: Box::default(),
+            deck_pad_inputs: Box::default(),
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
@@ -2472,6 +2478,11 @@ impl RtEngine {
         match c {
             Command::MidiAdjust(_)|Command::ProviderPreview(_)|Command::Undo|Command::Redo|Command::Gesture {..}|Command::DeckCuePoint {..}|Command::PerformanceMode(_)|Command::SafetyStop(_)|Command::RecoverPerformance=>unreachable!(),
             Command::Surface(input) => self.surface_input(input),
+            Command::DeckPadPress(press) => self.deck_pad_press(press),
+            Command::DeckPadRelease(release) => self.deck_pad_release(release),
+            Command::DeckPadParameter { source, deck, up, shifted } => {
+                if let Some(d) = self.decks.get(usize::from(deck)) { self.deck_control(source, deck, deck_controls::Control::Parameter { mode: d.controls.status().pad_mode, up, shifted }); }
+            },
             Command::MidiSamplerPad { source, pad, on, pressure } => self.surface_sampler(source, pad, on, pressure),
             Command::ReservedStop { lane, ticket, target } => {
                 if lane == 0 { self.apply(Command::Stop); }

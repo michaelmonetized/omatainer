@@ -2150,11 +2150,11 @@ Rehash the reviewed file and recheck its captured filesystem location before sav
 
 Workflow: Prepare a DJ deck.
 
-### Hot cue
+### Deck performance pads
 
-Eight positions per deck
+Eight fixed pad IDs in eight modes
 
-An empty slot stores the current position; a filled slot jumps there. Shift-click or Delete cue in alternate actions removes it. Loading and preparation follow the exact source identity.
+Choose Hot Cue, Roll, Slice, Sampler, Saved Loop, Auto Loop, Manual Loop or Velocity Sampler independently on each deck. Parameter buttons change size, slice length or bank; Shift changes the slice domain or moves the loop. Held pads release their original action after mode, profile or deck-layer changes. Hot Cue stores or jumps to a position; Shift or Delete cue removes it. Saved loop pads retain their fixed IDs and source-qualified names.
 
 Workflow: Prepare a DJ deck.
 

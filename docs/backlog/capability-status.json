@@ -1299,6 +1299,53 @@
       ],
       "limits": "Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Source-qualified ARM64 release installed with paused decks and muted master.; physical qualification is paused."
     },
+    "192": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "fixed per-deck mode identities",
+          "file": "src/engine/deck_pads.rs",
+          "entry": "Eight fixed mode IDs, names/colors, fixed pad IDs, exact raw MIDI and normalized manufacturer keys"
+        },
+        {
+          "kind": "captured renderer input ownership",
+          "file": "src/engine/deck_pads/runtime.rs",
+          "entry": "Bounded original action owners, mode-cancellation tombstones, independent keyed held deck/sampler gestures and safety retirement"
+        },
+        {
+          "kind": "reserved release admission",
+          "file": "src/engine/control.rs",
+          "entry": "Validated onsets and source-qualified reserved releases through full queues, source retirement and project/safety boundaries"
+        },
+        {
+          "kind": "native performance grids and parameters",
+          "file": "src/ui/deck_pads.rs",
+          "entry": "Actual mode chooser, names/colors, source-qualified cues/loops, right sampler slots and independent pointer/keyboard/assistive/touch keys"
+        },
+        {
+          "kind": "production controller routing",
+          "file": "src/engine/midi/handoff.rs",
+          "entry": "Raw release before profile lookup, normalized factory and learned SP1 pad addresses/layers and original software deck ownership"
+        },
+        {
+          "kind": "portable profile declarations",
+          "file": "src/engine/midi/learn.rs",
+          "entry": "Validated fixed mode-selector declarations, connected labels/colors and actual preset 5/preferences 23 file persistence with strict older-header guards"
+        }
+      ],
+      "fixtures": [
+        "engine::deck_pads::tests",
+        "ui::deck_pads::tests",
+        "ui::touch::tests::native_deck_pad_touch_contacts_preserve_both_decks_and_release_outside_after_mode_changes",
+        "engine::midi::handoff::tests::deck_pad_learned_sp1_override_releases_the_original_deck_after_a_manufacturer_mode_and_layer_change",
+        "preferences::worker::midi_presets_tests::deck_pad_presets_export_import_and_real_preferences_reopen_preserve_fixed_modes_and_strict_versions"
+      ],
+      "evidence": [
+        "docs/validation/deck-pad-modes.md",
+        "docs/validation/deck-pad-modes-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: eight per-deck modes and fixed slot IDs, current labels/colors and mode parameters; original source/key/deck action release through mode, learned profile and manufacturer pad-address/deck-layer changes; unrelated deck, ordinary control and source owner preservation; bounded reservations through a full command queue, safety and explicit recovery; mouse/keyboard/assistive/touch ownership and fresh-press-only keyboard behavior; actual native mode chooser, parameters, pad holds, cue descriptions and named saved slots; synthetic production MIDI workers including learned SP1 overrides; actual preset export/import and preference file reopening with strict legacy action/header refusal. The existing sampler preserves active voice bank ownership and its selected playback mode: Hold ends on release, while finite one-shots retain their normal tails. Pad mode selection starts at Hot Cue on a fresh app, and held input is never persisted. No physical audio/MIDI device opened, no live controller capture and no new physical acceptance claimed. The independent stage GUI and follower remain unchanged."
+    },
     "195": {
       "status": "implemented",
       "paths": [

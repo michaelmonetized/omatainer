@@ -318,11 +318,12 @@ impl InputWorker {
                         if self.map.name.starts_with("Akai MPD232") && super::surface::mpd232::transport(packet.bytes(), &cmd) { continue; }
                         if packet.bytes().len()==3 && packet.channel().is_some() {
                             let message:[u8;3]=packet.bytes().try_into().unwrap();
+                            if let Some(mut release) = crate::engine::deck_pads::wire_release(&message, self.source) { release.key=super::pad_key(&self.map.name,&message); let _ = cmd.send(Command::DeckPadRelease(release)); }
                             if let Some(release) = crate::engine::clip_launch::wire_release(&message, self.source) { let _ = cmd.send(Command::ClipRelease(release)); }
                             if event.routing == routing { paired = self.pairs.input(&message, event.at); }
                             match self.shared.learning.input_value_at(self.source,&self.name,&self.port_id,&message,&self.map,event.learning,paired) {
                                 super::learn::Dispatch::Consume => continue,
-                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch_value(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift,paired.value(binding.pair_order));continue; },
+                                super::learn::Dispatch::Binding(binding) => { let _=super::dispatch_value_key(&binding,self.source,message[0]&0xf0,message[2],&message,&cmd,&self.shift,paired.value(binding.pair_order),Some(super::pad_key(&self.map.name,&message)));continue; },
                                 super::learn::Dispatch::Normal => {},
                             }
                         }
@@ -448,7 +449,7 @@ fn channel(
         counters,
         routing,
     });
-    shared.learning.connected(source,&name,&port_id);
+    shared.learning.connected_modes(source,&name,&port_id, if map.name.contains("DDJ-SP1") { 255 } else { 0 });
     let rules = Rules::new(&map);
     let (pending_writer, pending_reader) = latest::channel();
     Ok((

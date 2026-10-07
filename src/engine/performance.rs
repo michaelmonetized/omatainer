@@ -551,6 +551,9 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiClock { .. }
         | Command::SetBpm(_)
         | Command::LaunchClip { .. }
+        | Command::DeckPadParameter { .. }
+        | Command::DeckPadPress(_)
+        | Command::DeckPadRelease(_)
         | Command::ClipPress(_)
         | Command::ClipRelease(_)
         | Command::ClipCancel { .. }
@@ -669,6 +672,7 @@ pub(super) fn recovery_safe(command: &Command) -> bool {
         command,
         Command::Stop
             | Command::StopTrack { .. }
+            | Command::DeckPadRelease(_)
             | Command::ClipRelease(_)
             | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }

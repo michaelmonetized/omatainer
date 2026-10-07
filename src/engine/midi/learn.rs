@@ -46,6 +46,12 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::DeckLoop4,
         Action::DeckLoopIn,
         Action::DeckLoopOut,
+        Action::DeckPad,
+        Action::DeckPadMode,
+        Action::DeckPadParameterLeft,
+        Action::DeckPadParameterRight,
+        Action::DeckPadParameterShiftLeft,
+        Action::DeckPadParameterShiftRight,
         Action::DeckSavedLoopRecall,
         Action::DeckSavedLoopSave,
         Action::DeckSavedLoopDelete,
@@ -99,6 +105,10 @@ pub(crate) fn navigation(action: Action) -> bool {
 /// Identify actions addressing stable saved loop IDs.
 /// Takes an action; returns whether it needs MIDI preset 4 and preference 22 persistence.
 pub(crate) fn saved_loop(action: Action) -> bool { matches!(action, Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete) }
+
+/// Identify the shared deck pad surface assignments.
+/// Takes an action; returns whether its persistence requires preset 5 and preference 23.
+pub(crate) fn deck_pad(action: Action) -> bool { matches!(action, Action::DeckPad | Action::DeckPadMode | Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight) }
 
 /// Choose the required MIDI message class for a performance action.
 /// Takes an action; returns Note, absolute CC, or explicitly decoded relative CC.
@@ -214,6 +224,7 @@ pub(crate) struct Capture {
 pub(crate) struct Device {
     pub source: u64,
     pub endpoint: Endpoint,
+    pub pad_modes: u8,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct View {
@@ -375,7 +386,14 @@ impl Shared {
         View {
             revision: self.revision.load(Ordering::Acquire),
             config: state.config.clone(),
-            devices: state.devices.clone(),
+            devices: state.devices.iter().map(|device| {
+                let mut device = device.clone();
+                for row in state.config.mappings.iter().filter(|row| row.endpoint == device.endpoint) {
+                    if row.binding.action == Action::DeckPadMode { device.pad_modes |= 1 << row.binding.extra; }
+                }
+                if device.pad_modes == 0 && state.config.mappings.iter().any(|row| row.endpoint == device.endpoint && row.binding.action == Action::DeckPad) { device.pad_modes = 1; }
+                device
+            }).collect(),
             armed: state.armed.is_some(),
             capture: state.capture.clone(),
             message: state.message.clone(),
@@ -403,10 +421,16 @@ impl Shared {
     /// Register an opened input with the editor.
     /// Takes its source, device name and port id; retains at most 256 bounded endpoint identities.
     pub(super) fn connected(&self, source: u64, name: &str, id: &str) {
+        self.connected_modes(source, name, id, 0);
+    }
+    /// Register declared controller pad modes alongside its exact input port.
+    /// Takes source, endpoint and reviewed supported-mode mask; exposes portable mode names and colors in the editor.
+    pub(super) fn connected_modes(&self, source: u64, name: &str, id: &str, pad_modes: u8) {
         let mut state = self.state.lock();
         if state.devices.len() < 256 && name.len() <= 256 && id.len() <= 256 {
             state.devices.push(Device {
                 source,
+                pad_modes,
                 endpoint: Endpoint {
                     name: name.into(),
                     id: id.into(),

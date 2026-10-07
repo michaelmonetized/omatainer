@@ -432,6 +432,20 @@ Eight new software checks pass. Independent mapped click timing covers all nine 
 
 Seven new source-bound engine, native and typed-IPC checks pass, with deck, automation, waveform and Undo regressions. Moves preserve complete musical span across tempo anchors and fit track bounds. Native applied waveform markers and numeric/frame edits are exercised. Minimum region is 64 source frames; lengths that cannot fit and stale/held-roll edits refuse. The complete 1786-test unfiltered software batch passes (43 ignored cases). Source-qualified ARM64 release installed with paused decks and muted master.; physical qualification is paused.
 
+### Issue #192: implemented
+
+- fixed per-deck mode identities: [src/engine/deck_pads.rs](../src/engine/deck_pads.rs) — Eight fixed mode IDs, names/colors, fixed pad IDs, exact raw MIDI and normalized manufacturer keys
+- captured renderer input ownership: [src/engine/deck_pads/runtime.rs](../src/engine/deck_pads/runtime.rs) — Bounded original action owners, mode-cancellation tombstones, independent keyed held deck/sampler gestures and safety retirement
+- reserved release admission: [src/engine/control.rs](../src/engine/control.rs) — Validated onsets and source-qualified reserved releases through full queues, source retirement and project/safety boundaries
+- native performance grids and parameters: [src/ui/deck_pads.rs](../src/ui/deck_pads.rs) — Actual mode chooser, names/colors, source-qualified cues/loops, right sampler slots and independent pointer/keyboard/assistive/touch keys
+- production controller routing: [src/engine/midi/handoff.rs](../src/engine/midi/handoff.rs) — Raw release before profile lookup, normalized factory and learned SP1 pad addresses/layers and original software deck ownership
+- portable profile declarations: [src/engine/midi/learn.rs](../src/engine/midi/learn.rs) — Validated fixed mode-selector declarations, connected labels/colors and actual preset 5/preferences 23 file persistence with strict older-header guards
+- Acceptance fixtures: `engine::deck_pads::tests`, `ui::deck_pads::tests`, `ui::touch::tests::native_deck_pad_touch_contacts_preserve_both_decks_and_release_outside_after_mode_changes`, `engine::midi::handoff::tests::deck_pad_learned_sp1_override_releases_the_original_deck_after_a_manufacturer_mode_and_layer_change`, `preferences::worker::midi_presets_tests::deck_pad_presets_export_import_and_real_preferences_reopen_preserve_fixed_modes_and_strict_versions`.
+- Evidence: [docs/validation/deck-pad-modes.md](../docs/validation/deck-pad-modes.md).
+- Evidence: [docs/validation/deck-pad-modes-receipt.json](../docs/validation/deck-pad-modes-receipt.json).
+
+Linux ARM64 software qualification: eight per-deck modes and fixed slot IDs, current labels/colors and mode parameters; original source/key/deck action release through mode, learned profile and manufacturer pad-address/deck-layer changes; unrelated deck, ordinary control and source owner preservation; bounded reservations through a full command queue, safety and explicit recovery; mouse/keyboard/assistive/touch ownership and fresh-press-only keyboard behavior; actual native mode chooser, parameters, pad holds, cue descriptions and named saved slots; synthetic production MIDI workers including learned SP1 overrides; actual preset export/import and preference file reopening with strict legacy action/header refusal. The existing sampler preserves active voice bank ownership and its selected playback mode: Hold ends on release, while finite one-shots retain their normal tails. Pad mode selection starts at Hot Cue on a fresh app, and held input is never persisted. No physical audio/MIDI device opened, no live controller capture and no new physical acceptance claimed. The independent stage GUI and follower remain unchanged.
+
 ### Issue #195: implemented
 
 - portable format: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Strict named factory overlays and exact-port candidates without backend IDs
@@ -614,7 +628,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#189](https://github.com/michaelmonetized/omatainer/issues/189) | Support four independently controlled DJ decks | planned |
 | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented |
 | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned |
-| [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | planned |
+| [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | implemented |
 | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned |
 | [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned |
 | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented |

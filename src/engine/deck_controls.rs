@@ -146,6 +146,7 @@ pub struct Status {
     pub slice: Option<u8>,
     pub roll_scale: i8,
     pub slice_domain: u8,
+    pub slice_quant: u8,
     pub hotloops: [bool; 8],
 }
 
@@ -155,12 +156,12 @@ pub(super) struct State {
     quantize_division: u8,
     pending: Option<quantization::Pending>,
     quantize_dispatching: bool,
-    quantize_owner_hint: Option<(u64, Button)>,
+    quantize_owner_hint: Option<(u64, Option<u32>, Button)>,
     beat_jump_size: u8,
-    owners: [Option<(u64, Button)>; super::control::MAX_COMMANDS],
+    owners: [Option<(u64, Option<u32>, Button)>; super::control::MAX_COMMANDS],
     counts: [u16; 30],
     pub forward: Option<f64>,
-    preview: Option<(u64, Button)>,
+    preview: Option<(u64, Option<u32>, Button)>,
     delete: bool,
     delete_used: bool,
     auto_loop: bool,
@@ -275,25 +276,25 @@ impl State {
         self.preview.take().is_some()
     }
     /// Retain or release exactly one button owner.
-    /// Takes source, button and pressed state; returns whether the ownership changed.
-    fn hold(&mut self, source: u64, button: Button, on: bool) -> bool {
+    /// Takes source, optional raw pad key, button and pressed state; returns whether the ownership changed.
+    fn hold(&mut self, source: u64, key: Option<u32>, button: Button, on: bool) -> bool {
         let existing = self
             .owners
             .iter()
-            .position(|owner| *owner == Some((source, button)));
+            .position(|owner| *owner == Some((source, key, button)));
         if on {
             if existing.is_some() {
                 return false;
             }
             if let Some(empty) = self.owners.iter_mut().find(|owner| owner.is_none()) {
-                *empty = Some((source, button));
+                *empty = Some((source, key, button));
                 self.counts[button.index()] += 1;
                 return true;
             }
         } else if let Some(index) = existing {
             self.owners[index] = None;
             self.counts[button.index()] -= 1;
-            if self.pending.is_some_and(|pending| pending.owner == Some((source, button))) {
+            if self.pending.is_some_and(|pending| pending.owner == Some((source, key, button))) {
                 self.pending = None;
             }
             return true;
@@ -391,6 +392,7 @@ impl State {
             slice: (0..8).find(|&pad| self.held(Button::Slice(pad))),
             roll_scale: self.roll_scale,
             slice_domain: self.slice_domain,
+            slice_quant: self.slice_quant,
             hotloops: self.loops.map(|slot| slot.is_some()),
         }
     }
@@ -485,6 +487,11 @@ impl RtEngine {
     /// Apply one source-owned controller gesture.
     /// Takes the source, deck and validated control; updates transport or delegates persistent edits to ordinary commands.
     pub(super) fn deck_control(&mut self, source: u64, deck: u8, control: Control) {
+        self.deck_control_owned(source, deck, control, None);
+    }
+    /// Apply an independently owned pad gesture.
+    /// Takes source, deck, validated control and optional physical key; retains its exact release identity.
+    pub(super) fn deck_control_owned(&mut self, source: u64, deck: u8, control: Control, key: Option<u32>) {
         if usize::from(deck) >= super::DECKS || !control.valid() {
             return;
         }
@@ -506,7 +513,7 @@ impl RtEngine {
             Control::Hold { button, on } => {
                 let d = &mut self.decks[index];
                 if on && matches!(button, Button::Cue | Button::HotCue(_)) && d.audio.is_none() { return; }
-                if !d.controls.hold(source, button, on) {
+                if !d.controls.hold(source, key, button, on) {
                     return;
                 }
                 if on && matches!(button, Button::Reverse | Button::Bleep | Button::Roll(_) | Button::Slice(_)) {
@@ -526,7 +533,7 @@ impl RtEngine {
                                 .iter()
                                 .rev()
                                 .flatten()
-                                .map(|(_, button)| *button)
+                                .map(|(_, _, button)| *button)
                                 .find(|button| matches!(button, Button::Roll(_) | Button::Slice(_)))
                         };
                         if let Some(button) = active {
@@ -607,7 +614,7 @@ impl RtEngine {
                             let deleting = d.controls.delete;
                             let set = d.hotcues[usize::from(pad)].set;
                             let paused = !d.playing;
-                            d.controls.quantize_owner_hint = Some((source, button));
+                            d.controls.quantize_owner_hint = Some((source, key, button));
                             self.apply(Command::DeckHotCue {
                                 deck,
                                 pad,
@@ -623,7 +630,7 @@ impl RtEngine {
                             } else if paused && set {
                                 d.playing = false;
                                 d.preview_position = Some(d.pos);
-                                d.controls.preview = Some((source, button));
+                                d.controls.preview = Some((source, key, button));
                             }
                         } else if d.playing {
                             self.apply(Command::DeckCue { deck });
@@ -633,7 +640,7 @@ impl RtEngine {
                             let position = d.cue_pos;
                             d.transition_to(position, self.sr, DeckTransition::Jump);
                             d.preview_position = Some(position);
-                            d.controls.preview = Some((source, button));
+                            d.controls.preview = Some((source, key, button));
                         }
                     }
                     _ => {}
@@ -666,7 +673,12 @@ impl RtEngine {
             Control::TrackStart => self.apply(Command::DeckSeek { deck, frac: 0.0 }),
             Control::StartTime { value } => self.decks[index].controls.start = value * 4.0,
             Control::Slip => self.decks[index].controls.slip = !self.decks[index].controls.slip,
-            Control::PadMode { mode } => self.decks[index].controls.pad_mode = mode,
+            Control::PadMode { mode } => {
+                if self.decks[index].controls.pad_mode != mode {
+                    self.cancel_deck_pads(index);
+                    self.decks[index].controls.pad_mode = mode;
+                }
+            },
             Control::Parameter { mode, up, shifted } => {
                 let controls = &mut self.decks[index].controls;
                 let delta = if up { 1 } else { -1 };

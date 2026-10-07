@@ -101,6 +101,7 @@ mod beat_jump;
 mod loop_editor;
 mod deck_quantization;
 mod cue_audition;
+mod deck_pads;
 mod command_palette;
 mod touch;
 mod workspace;
@@ -234,6 +235,7 @@ pub struct App {
     last_play_idx: usize,
     pad_held: [bool; 16],
     pad_inputs: [u8; 16],
+    deck_pad_inputs: deck_pads::Inputs,
     cue_audition: cue_audition::Inputs,
     shortcut_focus: keyboard::ShortcutFocus,
     clip_gain_edit: Option<ClipGainEdit>,
@@ -383,6 +385,7 @@ impl App {
             last_play_idx: 0,
             pad_held: [false; 16],
             pad_inputs: [0; 16],
+            deck_pad_inputs: deck_pads::Inputs::new(),
             cue_audition: cue_audition::Inputs::new(),
             shortcut_focus: keyboard::ShortcutFocus::default(),
             clip_gain_edit: None,
@@ -1176,32 +1179,7 @@ impl App {
             ui.spacing_mut().item_spacing = Vec2::splat(3.0);
             ui.set_width((cell + 4.0) * 4.0 + 9.0);
             ui.set_min_height(wave_h);
-            for row in 0..2 {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::splat(3.0);
-                    for c in 0..4 {
-                        let i = row * 4 + c;
-                        let on = snap.hotcues.get(i).copied().unwrap_or(false);
-                        let name = snap.cue_styles[i].name.as_str();
-                        let text = if name.is_empty() { format!("{}", i + 1) }
-                            else { format!("{}\n{}", i + 1, cue_editor::short_name(name, 5)) };
-                        let r = sq_btn(ui, t, &text, on, cue_editor::color(t, snap.cue_styles[i], i), cell);
-                        let label = cue_editor::label(i, snap.cue_styles[i]);
-                        accessibility::button(ui, &r, &label, Some(on));
-                        accessibility::status(ui, &r, &cue_editor::description(snap, i));
-                        let alternative = accessibility::actions(ui, &r, &["Set or jump to cue", "Delete cue", "Edit cue names and colors"]);
-                        help::annotate(ui, &r, HelpControl::HotCue);
-                        if alternative == Some(2) { self.open_cue_editor(d); }
-                        else if r.clicked() || alternative.is_some() {
-                            self.send(Command::DeckHotCue {
-                                deck: d as u8,
-                                pad: i as u8,
-                                del: alternative.map(|action| action == 1).unwrap_or_else(|| ui.input(|i| i.modifiers.shift)),
-                            });
-                        }
-                    }
-                });
-            }
+            self.deck_pad_grid(ui, t, d, snap, cell);
             ui.horizontal_wrapped(|ui| {
                 if ui.small_button(tr!("cues…")).help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
                 let grid = ui.small_button(tr!("grid…"));

@@ -66,6 +66,7 @@ enum GateKey {
     MidiPad { source: u64, pad: u8 },
     SurfaceShift(u64),
     ClipPad { source: u64, key: u32 },
+    DeckPad { source: u64, key: u32 },
     Audition(u64),
     Piano(u64),
     Touch { source: u64, deck: u8 },
@@ -620,6 +621,7 @@ impl CommandPort {
                 GateKey::MidiPad { source: owner, pad } if owner == source => Command::MidiSamplerPad { source, pad, on: false, pressure: 0.0 },
                 GateKey::SurfaceShift(owner) if owner == source => Command::Surface(super::surface_controls::Input::Shift { source, on: false }),
                 GateKey::ClipPad { source: owner, key } if owner == source => Command::ClipRelease(super::clip_launch::Release { source, key }),
+                GateKey::DeckPad { source: owner, key } if owner == source => Command::DeckPadRelease(super::deck_pads::Release { source, key }),
                 _ => continue,
             };
             let _ = self.send(command);
@@ -719,6 +721,8 @@ impl CommandPort {
             return fail(SubmissionError::InvalidTarget);
         }
         if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckPadParameter { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckPadPress(press) if !press.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiSamplerPad { pad, pressure, .. } if *pad >= 16 || !pressure.is_finite() || !(0.0..=1.0).contains(pressure)) { return fail(SubmissionError::InvalidTarget); }
@@ -981,6 +985,7 @@ fn project_release(command: &Command) -> bool {
             | Command::DeckControl { control: super::deck_controls::Control::Hold { on: false, .. }, .. }
             | Command::Stop
             | Command::StopTrack { .. }
+            | Command::DeckPadRelease(_)
             | Command::ClipRelease(_)
             | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }
@@ -1031,6 +1036,8 @@ fn gate_change(command: &Command) -> Option<(GateKey, bool)> {
     if let Command::Gesture{command,..}=command{return gate_change(command);}
     if let Command::Remote(request) = command { return gate_change(&request.action.command()); }
     match *command {
+        Command::DeckPadPress(super::deck_pads::Press { source, key, .. }) => Some((GateKey::DeckPad { source, key }, true)),
+        Command::DeckPadRelease(super::deck_pads::Release { source, key }) => Some((GateKey::DeckPad { source, key }, false)),
         Command::ClipPress(super::clip_launch::Press { source, key, .. }) => Some((GateKey::ClipPad { source, key }, true)),
         Command::ClipRelease(super::clip_launch::Release { source, key }) => Some((GateKey::ClipPad { source, key }, false)),
         Command::LiveNoteOn {
@@ -1110,9 +1117,11 @@ fn blocked_by_stop(command: &Command, pending: &[u64; STOP_LANES]) -> bool {
         Command::SamplerPad { pad, on: true } => Some(usize::from(pad % 16)),
         Command::SamplerPadPressure { pad, .. } => Some(usize::from(pad)),
         Command::MidiSamplerPad { pad, on: true, .. } => Some(usize::from(pad)),
+        Command::DeckPadPress(press) => Some(usize::from(press.deck) * 8 + usize::from(press.id - 1)),
         _ => None,
     };
     pad.is_some_and(|pad| pending[SAMPLER_STOP_BASE + pad] != 0)
+        || (pending[0] != 0 && matches!(command, Command::DeckPadPress(_)))
         || (pending[0] != 0 && (clip_track.is_some() || scene_start || transport_start))
         || clip_track.is_some_and(|track| track < super::session::MAX_TRACKS && pending[track + 1] != 0)
         || (scene_start && pending[1..SAMPLER_STOP_BASE].iter().any(|ticket| *ticket != 0))
@@ -1372,6 +1381,8 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::MidiAudition { .. }
             | Command::SamplerPad { .. }
             | Command::MidiSamplerPad { .. }
+            | Command::DeckPadPress(_)
+            | Command::DeckPadParameter { .. }
             | Command::SamplerPadPressure { .. }
             | Command::SamplerSlotStop { .. }
             | Command::DeckPreview { on: false, .. }
@@ -1382,6 +1393,7 @@ fn history_monitoring(command: &Command) -> bool {
             | Command::DeckControl { .. }
             | Command::Stop
             | Command::StopTrack { .. }
+            | Command::DeckPadRelease(_)
             | Command::ClipRelease(_)
             | Command::ClipCancel { .. }
             | Command::ReservedStop { .. }

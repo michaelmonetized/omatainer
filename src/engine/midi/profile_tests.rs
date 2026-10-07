@@ -61,7 +61,7 @@ fn stateful_surface_controls_reach_the_production_input_worker() {
     sp1.push(&[0xb4, 0x22, 0]);
     assert!(matches!(receiver.try_recv(), Ok(Command::Surface(crate::engine::surface_controls::Input::FxValue { bank: 0, slot: 0, parameter: false, value })) if (value - 8192.0 / 16383.0).abs() < 0.00001));
     sp1.push(&[0x9a, 15, 127]);
-    assert!(matches!(receiver.try_recv(), Ok(Command::DeckHotCue { deck: 1, pad: 7, del: true })));
+    assert!(matches!(receiver.try_recv(), Ok(Command::DeckPadPress(crate::engine::deck_pads::Press { source:71, deck:1, id:8, mode:Some(crate::engine::deck_pads::Mode::HotCue), shifted:true, .. }))));
     let mut ns7 = hub.open_for_test(&commands, 72, surface::numark_ns7(), "synthetic NS7", "fixture:ns7");
     ns7.push(&[0xb0, 0, 127]);
     assert!(matches!(receiver.try_recv(), Ok(Command::DeckSpindle { source:72, deck:0, motion }) if motion.ticks == 0 && motion.rate == 0.0));

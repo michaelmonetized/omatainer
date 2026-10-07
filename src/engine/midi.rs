@@ -91,6 +91,12 @@ pub enum Action {
     DeckLoop4,
     DeckLoopIn,
     DeckLoopOut,
+    DeckPad,
+    DeckPadMode,
+    DeckPadParameterLeft,
+    DeckPadParameterRight,
+    DeckPadParameterShiftLeft,
+    DeckPadParameterShiftRight,
     DeckSavedLoopRecall,
     DeckSavedLoopSave,
     DeckSavedLoopDelete,
@@ -187,8 +193,11 @@ impl MidiHub {
         if cmd.performance().protected() {return Err("Performance protection excludes MIDI assignment tests".into());}
         if capture.mapping.binding.action==Action::Shift {return Err("Assign Shift and test its following hardware gesture".into());}
         let shift=Arc::new(Mutex::new([false;4]));let bytes=capture.bytes;
-        dispatch_value(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift,capture.value).map_err(|e|e.to_string())?;
-        if bytes[0]&0xf0==0x90 {let off=[bytes[0]&15|0x80,bytes[1],0];dispatch(&capture.mapping.binding,capture.source,0x80,0,&off,cmd,&shift).map_err(|e|e.to_string())?;}
+        let maps=builtin_maps().map_err(|error|error.to_string())?;
+        let map=pick_map(&maps,&capture.mapping.endpoint.name);
+        let key=Some(pad_key(&map.name,&bytes));
+        dispatch_value_key(&capture.mapping.binding,capture.source,bytes[0]&0xf0,bytes[2],&bytes,cmd,&shift,capture.value,key).map_err(|e|e.to_string())?;
+        if bytes[0]&0xf0==0x90 {let off=[bytes[0]&15|0x80,bytes[1],0];dispatch_value_key(&capture.mapping.binding,capture.source,0x80,0,&off,cmd,&shift,None,key).map_err(|e|e.to_string())?;}
         Ok("Captured action admitted. Check its normal control or load receipt.".into())
     }
 
@@ -349,6 +358,7 @@ fn handle_channel_value(
     let ch = st & 0x0F;
     let d1 = msg[1];
     let d2 = msg[2];
+    if let Some(release) = super::deck_pads::wire_release(msg, source) { let _ = cmd.send(Command::DeckPadRelease(release)); }
     if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = cmd.send(Command::ClipRelease(release)); }
 
     {
@@ -415,9 +425,25 @@ fn dispatch_value(
     b: &Binding, source: u64, status: u8, d2: u8, msg: &[u8; 3],
     cmd: &super::CommandPort, shift: &Arc<Mutex<[bool; 4]>>, paired: Option<u16>,
 ) -> Result<(), super::SubmissionError> {
+    dispatch_value_key(b,source,status,d2,msg,cmd,shift,paired,None)
+}
+/// Resolve a controller's physical pad independently of its current note layer.
+/// Takes the reviewed factory map and wire message; returns its normalized SP1 key or ordinary channel/note key.
+fn pad_key(map: &str, message: &[u8; 3]) -> u32 {
+    let channel=message[0]&15;
+    if map == "Pioneer DDJ-SP1" && (7..=10).contains(&channel) { super::deck_pads::sp1_key(channel,message[1]) }
+    else { super::deck_pads::wire_key(channel,message[1]) }
+}
+/// Dispatch one assignment while retaining the controller's original physical key.
+/// Takes the binding, wire values, producer, shift state, paired value and optional normalized key; returns its actual admission result.
+fn dispatch_value_key(
+    b: &Binding, source: u64, status: u8, d2: u8, msg: &[u8; 3],
+    cmd: &super::CommandPort, shift: &Arc<Mutex<[bool; 4]>>, paired: Option<u16>, pad_key: Option<u32>,
+) -> Result<(), super::SubmissionError> {
     let mut failure = None;
     let mut send = |command| { let result = cmd.send(command);if let Err(error) = &result { if failure.is_none() { failure = Some(error.clone()); } } result };
     let pressed = matches!(status, 0x90 | 0xb0) && d2 > 0;
+    if let Some(mut release) = super::deck_pads::wire_release(msg, source) { release.key=pad_key.unwrap_or(release.key); let _ = send(Command::DeckPadRelease(release)); }
     if let Some(release) = super::clip_launch::wire_release(msg, source) { let _ = send(Command::ClipRelease(release)); }
     if b.kind == MsgKind::Cc14 && (msg[1] >= 64 || paired.is_none()) { return Ok(()); }
     let rel = match b.kind {
@@ -458,6 +484,15 @@ fn dispatch_value(
         }
         Action::DeckSync if pressed => {
             let _ = send(Command::DeckSync { deck });
+        }
+        Action::DeckPad if pressed => {
+            let _ = send(Command::DeckPadPress(super::deck_pads::Press { source, key: pad_key.unwrap_or_else(||super::deck_pads::wire_key(msg[0] & 15, msg[1])), deck, id: b.extra as u8 + 1, mode: None, pressure: f32::from(d2) / 127.0, shifted: shift.lock()[usize::from(deck)] }));
+        }
+        Action::DeckPadMode if pressed => {
+            let _ = send(Command::DeckControl { source, deck, control: super::deck_controls::Control::PadMode { mode: b.extra as u8 } });
+        }
+        Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight if pressed => {
+            let _ = send(Command::DeckPadParameter { source, deck, up: matches!(b.action, Action::DeckPadParameterRight | Action::DeckPadParameterShiftRight), shifted: matches!(b.action, Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight) });
         }
         Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete if pressed => {
             let action = match b.action { Action::DeckSavedLoopSave => super::deck_controls::SavedLoopAction::Save, Action::DeckSavedLoopDelete => super::deck_controls::SavedLoopAction::Delete, _ => super::deck_controls::SavedLoopAction::Recall { activate: true } };

@@ -205,11 +205,13 @@ mod tests {
         decoder.input(&map, &[0x9a, 15, 127], &cmd);
         assert!(matches!(
             received.try_iter().next(),
-            Some(Command::DeckHotCue {
+            Some(Command::DeckPadPress(crate::engine::deck_pads::Press {
                 deck: 1,
-                pad: 7,
-                del: true
-            })
+                id: 8,
+                mode: Some(crate::engine::deck_pads::Mode::HotCue),
+                shifted: true,
+                ..
+            }))
         ));
         decoder.input(&map, &[0xb4, 2, 127], &cmd);
         decoder.reset();
