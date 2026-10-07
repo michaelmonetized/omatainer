@@ -110,7 +110,8 @@ impl Request {
         let layout = captured.state.session.as_ref().ok_or("Session identity is unavailable")?;
         layout.validate()?;
         if let Some(cfg)=captured.state.mic_aux {cfg.validate(model.as_deref()).map_err(str::to_owned)?;}
-        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::new(model, layout).map(Box::new)).transpose()?;
+        let latency_only = model.as_deref().zip(captured.state.routing.as_deref()).is_some_and(|(next, old)| next.latency_edit_of(old));
+        let prepared = model.map(|model| crate::engine::audio::routing::prepared::Prepared::at_rate(model, layout,rate).map(Box::new)).transpose()?;
         let ack = Ack::new();
         Ok((Self {
             namespace: layout.namespace, generation: layout.generation, epoch: captured.checkpoint.epoch,
@@ -118,7 +119,7 @@ impl Request {
                 layout: layout.clone(), routing: Some(prepared), track_name: None, focus: None,
                 bus_mask: 0, scene_buses: [0; super::MAX_TRACKS], content: None,
                 reserved_heap: 0, media: Vec::new(), fx_storage: Vec::new(), reserved_fx_bytes: 0,
-            })), ack: ack.clone(), disruptive: true, receipt: Some((captured.revision, rate)),
+            })), ack: ack.clone(), disruptive: !latency_only, receipt: Some((captured.revision, rate)),
         }, ack))
     }
     /// Producer only. No mutation has happened when validation returns an error.
@@ -198,6 +199,8 @@ impl Request {
             && self.generation == rt.session.generation
             && rt.session.generation < u64::MAX
             && self.inverse.as_ref().is_none_or(|inverse| inverse.routing.is_none() || inverse.content.is_some()
+                || !self.disruptive && !rt.recording && !rt.routing_pipe.recorder.busy()
+                    && rt.routing.as_ref().is_some_and(|graph| graph.latency_status().transition_frames == 0 && graph.latency_status().priming_frames == 0)
                 || !rt.playing && !rt.recording && !rt.decks.iter().any(|deck| deck.playing || deck.touching))
             && self.receipt.is_none_or(|(revision, rate)| {
                 rt.project.revision() == revision && rt.sr as u32 == rate
@@ -358,7 +361,10 @@ impl Inverse {
             content.swap(rt, &self.layout);
         }
         std::mem::swap(&mut rt.session, &mut self.layout);
-        if let Some(routing) = &mut self.routing { std::mem::swap(&mut rt.routing, routing); }
+        if let Some(routing) = &mut self.routing {
+            if let(Some(next),Some(prior))=(routing.as_mut(),rt.routing.as_mut()){next.inherit(prior);}
+            std::mem::swap(&mut rt.routing, routing);
+        }
         rt.session.generation = generation;
         rt.session.next_id = next_id;
         rt.midi_routing.identity.publish(&rt.session);
@@ -511,7 +517,15 @@ impl Inverse {
 
 impl Inverse {
     pub(crate) fn rate_bytes(&self, sr: f32) -> usize {
-        self.bytes().saturating_sub(self.reserved_fx_bytes)
+        let graph = self.routing.as_ref().and_then(Option::as_ref);
+        let routing_bytes = match graph.map(|graph| graph.rate_bytes(&self.layout, sr as u32)).transpose() {
+            Ok(bytes) => bytes.unwrap_or(0),
+            Err(_) => return usize::MAX / 1024,
+        };
+        self.bytes().saturating_sub(self.reserved_fx_bytes).saturating_sub(graph.map_or(0, |graph| graph.bytes()))
+            .saturating_sub(graph.map_or(0, |graph| self.reserved_heap.min(graph.bytes())))
+            .saturating_add(routing_bytes)
+            .saturating_add(routing_bytes)
             + self
                 .fx_storage
                 .iter()
@@ -519,6 +533,11 @@ impl Inverse {
                 .sum::<usize>()
     }
     pub(crate) fn prepare_rate(&mut self, sr: f32) {
+        if let Some(Some(graph)) = &mut self.routing {
+            self.reserved_heap = self.reserved_heap.saturating_sub(graph.bytes());
+            **graph = crate::engine::audio::routing::prepared::Prepared::at_rate(graph.model.clone(), &self.layout, sr as u32).expect("History rate admission validated routing storage");
+            self.reserved_heap = self.reserved_heap.saturating_add(graph.bytes());
+        }
         if let Some(content) = &mut self.content {
             match content {
                 Content::Import(import) => import.prepare_rate(sr),

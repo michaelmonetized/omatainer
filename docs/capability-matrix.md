@@ -338,6 +338,17 @@ Nine new software checks and existing native NS7 regressions pass. Program outpu
 
 Nine new software checks plus existing import, version comparison, native Undo, manual and full regression gates pass: 1806 passed, 43 ignored, no failures or filters. Controlled raw input records exact frames while monitoring Off. Multiple track/deck cues preserve bit-identical program samples in both renderers. The verified release is installed as the default executable for its next launch; physical overdub timing remains outside this thread active scope, and graph compensation remains issue 178.
 
+### Issue #178: partial
+
+- bounded prepared graph timing: [src/engine/audio/routing/latency.rs](../src/engine/audio/routing/latency.rs) — Declared source/processor offsets, causal parallel paths, independent program/headphone summing and report transitions
+- native reviewed latency controls: [src/ui/audio_routing/latency.rs](../src/ui/audio_routing/latency.rs) — Exact draft delays, monitor consequences and retained report identities
+- sample aligned delivery and capture metadata: [src/audio_delivery/render.rs](../src/audio_delivery/render.rs) — Selected-source delay trim, tail drain and exact live/export parity
+- Acceptance fixtures: `engine::audio::routing::latency::tests`, `ui::audio_routing::tests::native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners`, `audio_delivery::tests::compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame`.
+- Evidence: [docs/validation/graph-latency.md](../docs/validation/graph-latency.md).
+- Evidence: [docs/validation/graph-latency-receipt.json](../docs/validation/graph-latency-receipt.json).
+
+Partial #178 foundation on Linux ARM64: retained measured offsets and declared processor delays, exact causal compensation through existing graph paths at 8–192 kHz, separately aligned program/headphone mixes, explicit immediate cue override, bounded prepared histories, click-limited report transitions, sample-rate/Undo reconstruction, exact render/export parity and raw/delivery recording source-origin metadata. Actual native egui/AccessKit edit/apply/cancel/reopen/Undo path qualified. Plugin reports are entered explicitly; existing causal native DSP has no invented lookahead. Automatic external-plugin reports, broad parameter/MIDI event alignment, sidechain workflows, compensated audible history and recording clip placement remain open. No physical device, capture, new OS GUI or listening acceptance.
+
 ### Issue #179: implemented
 
 - render and encode: [src/audio_delivery.rs](../src/audio_delivery.rs) — Reviewed ranges, repeats, native tails, channel/rate/format, normalization, integer dither and atomic folder publication
@@ -753,7 +764,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#175](https://github.com/michaelmonetized/omatainer/issues/175) | Offer optional cross-device project transfer with explicit conflict handling | planned |
 | [#176](https://github.com/michaelmonetized/omatainer/issues/176) | Provide isolated cue/master headphone mixing and split cue | implemented |
 | [#177](https://github.com/michaelmonetized/omatainer/issues/177) | Monitor live inputs with explicit In, Auto and Off modes | implemented |
-| [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | planned |
+| [#178](https://github.com/michaelmonetized/omatainer/issues/178) | Compensate device and routing latency across the complete graph | partial |
 | [#179](https://github.com/michaelmonetized/omatainer/issues/179) | Export offline and real-time master audio with professional format controls | implemented |
 | [#180](https://github.com/michaelmonetized/omatainer/issues/180) | Add live microphone and auxiliary DJ input channels | implemented |
 | [#181](https://github.com/michaelmonetized/omatainer/issues/181) | Record live DJ performances to reliable audio files | implemented |

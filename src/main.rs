@@ -534,6 +534,7 @@ fn handle_client_with_stop(
             "deckALoadLocked": s.decks.first().map(|d| d.load_locked).unwrap_or(false),
             "deckBLoadLocked": s.decks.get(1).map(|d| d.load_locked).unwrap_or(false),
         });
+        out["latency"] = serde_json::json!(s.latency);
         out["midi_clock_input"] = serde_json::json!(s.midi_clock_input);
         drop(s);
         ipc_transport::reply(&mut writer, &out, limits.write)?;

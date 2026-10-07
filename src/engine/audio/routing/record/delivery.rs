@@ -34,6 +34,17 @@ impl Recorder {
     /// Apply one recording activation at a graph boundary.
     /// Takes the current graph rate; installs a bounded channel plan and acknowledges only the current source epoch without heap work.
     pub(crate) fn begin_delivery(&self, rate: u32) {
+        self.begin_delivery_aligned(rate, |_| 0, None);
+    }
+
+    /// Activate final-output recording with the selected graph's exact timing.
+    /// Takes the current rate, alias-delay lookup and transport origin; acknowledges only a settled graph and records placement before converted audio is captured.
+    pub(crate) fn begin_delivery_aligned(
+        &self,
+        rate: u32,
+        delay: impl FnOnce(u64) -> u32,
+        seconds: Option<f64>,
+    ) {
         let Some(mut activation) = self.starting.try_lock() else {
             return;
         };
@@ -45,7 +56,8 @@ impl Recorder {
             && !self.shared.stop.load(Ordering::Acquire)
             && !self.shared.preview.load(Ordering::Acquire)
             && start.epoch == self.epoch()
-            && start.rate == rate;
+            && start.rate == rate
+            && self.shared.alignment_pending.load(Ordering::Acquire) == 0;
         if accepted {
             self.shared.generation.fetch_add(1, Ordering::AcqRel);
             self.shared.count.store(0, Ordering::Release);
@@ -65,6 +77,10 @@ impl Recorder {
                 .output_width
                 .store(start.width, Ordering::Release);
             self.shared.alias.store(start.alias, Ordering::Release);
+            self.shared.origin_available.store(false, Ordering::Release);
+            if let Some(seconds) = seconds {
+                self.mark_origin(start.alias, delay(start.alias), seconds);
+            }
         }
         self.shared.accepted.store(accepted, Ordering::Release);
         self.shared
@@ -171,13 +187,14 @@ impl Recorder {
             }
         }
         let _guard = Guard(self);
+        self.shared.origin_available.store(false, Ordering::Release);
         let stage = crate::portable_project::Stage::new(
             destination
                 .parent()
                 .ok_or("Recording folder needs an existing parent")?,
         )?;
         let current_first = destination.join("take-0001.wav");
-        write_metadata(
+        self.write_metadata(
             &stage.path,
             request,
             &[current_first.clone()],
@@ -362,9 +379,13 @@ impl Recorder {
                     Ok(frames) => {
                         closed_frames += frames;
                         files.push(current.clone());
-                        if let Err(e) =
-                            write_metadata(destination, request, &files, total, Some("Recording"))
-                        {
+                        if let Err(e) = self.write_metadata(
+                            destination,
+                            request,
+                            &files,
+                            total,
+                            Some("Recording"),
+                        ) {
                             warning = Some(e);
                             break;
                         }
@@ -467,7 +488,8 @@ impl Recorder {
                 }
             }
         }
-        if let Err(e) = write_metadata(destination, request, &files, total, warning.as_deref()) {
+        if let Err(e) = self.write_metadata(destination, request, &files, total, warning.as_deref())
+        {
             warning = Some(format!(
                 "{}; recording metadata could not flush: {e}",
                 warning.unwrap_or_default()
@@ -483,22 +505,28 @@ impl Recorder {
         })
     }
 }
-fn write_metadata(
-    folder: &Path,
-    request: &Request,
-    files: &[PathBuf],
-    frames: u64,
-    warning: Option<&str>,
-) -> Result<(), String> {
-    let metadata = serde_json::json!({"schema":1,"source_alias":request.alias.to_string(),"output_channels":request.output_channels,"rate":request.options.rate,"channels":request.options.channels,"format":request.options.format.title(),"frames":frames,"files":files.iter().map(|p|p.file_name().unwrap().to_string_lossy()).collect::<Vec<_>>(),"status":warning.unwrap_or("Complete"),"recoverable_wav_prefixes":true});
-    let mut metadata = metadata;
-    metadata["wav_encoding"] = match request.options.format.encoding() {
-        wav::Encoding::Float32 => "float32",
-        wav::Encoding::Pcm16 => "pcm16",
-        wav::Encoding::Pcm24 => "pcm24",
+impl Recorder {
+    /// Persist the recording's exact accepted origin alongside its recovered file list.
+    /// Takes folder, source request, files, frame count and optional warning; atomically updates the recoverable manifest without changing audio frames.
+    fn write_metadata(
+        &self,
+        folder: &Path,
+        request: &Request,
+        files: &[PathBuf],
+        frames: u64,
+        warning: Option<&str>,
+    ) -> Result<(), String> {
+        let metadata = serde_json::json!({"schema":1,"source_alias":request.alias.to_string(),"output_channels":request.output_channels,"rate":request.options.rate,"channels":request.options.channels,"format":request.options.format.title(),"frames":frames,"files":files.iter().map(|p|p.file_name().unwrap().to_string_lossy()).collect::<Vec<_>>(),"status":warning.unwrap_or("Complete"),"recoverable_wav_prefixes":true});
+        let mut metadata = metadata;
+        metadata["wav_encoding"] = match request.options.format.encoding() {
+            wav::Encoding::Float32 => "float32",
+            wav::Encoding::Pcm16 => "pcm16",
+            wav::Encoding::Pcm24 => "pcm24",
+        }
+        .into();
+        metadata["placement"] = self.placement(request.options.rate);
+        crate::audio_delivery::recovery::persist(folder, &metadata)
     }
-    .into();
-    crate::audio_delivery::recovery::persist(folder, &metadata)
 }
 
 #[cfg(test)]

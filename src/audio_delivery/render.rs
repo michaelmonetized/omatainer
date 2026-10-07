@@ -139,23 +139,19 @@ pub(super) fn run(
     let mut bytes = [0_u8; 1024 * 2 * 4];
     let mut position = 0_u64;
     let stop = bounds.0 + bounds.1;
-    let end = stop + bounds.2;
+    let delay = u64::from(request.output_alias.and_then(|alias| rt.routing.as_ref().map(|graph| graph.output_delay(alias))).unwrap_or(0));
+    let write_start = bounds.0 + delay;
+    let end = stop + bounds.2 + delay;
     progress.progress(0, Some(end));
     while position < end {
         active(cancel)?;
         if position == stop {
             rt.stop_export_sources();
         }
-        let boundary = if position < bounds.0 {
-            bounds.0
-        } else if position < stop {
-            stop
-        } else {
-            end
-        };
+        let boundary = [write_start, stop, end].into_iter().filter(|boundary| *boundary > position).min().unwrap_or(end);
         let n = (boundary - position).min(1024) as usize;
         rt.process_interleaved(&mut rendered[..n * width], width);
-        if position >= bounds.0 {
+        if position >= write_start {
             for (frame, encoded) in rendered[..n * width]
                 .chunks_exact(width)
                 .zip(bytes.chunks_exact_mut(usize::from(request.options.channels) * 4))

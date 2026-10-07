@@ -2475,9 +2475,12 @@
       "dependencies": [
         130
       ],
-      "state": "planned",
+      "state": "partial",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/graph-latency.md",
+        "docs/validation/graph-latency-receipt.json"
+      ]
     },
     {
       "issue": 179,

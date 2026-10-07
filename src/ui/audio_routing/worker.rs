@@ -45,7 +45,9 @@ impl Worker {
                         let captured = project.capture(&cancel).map_err(|error| error.to_string())?;
                         let layout = captured.state.session.ok_or("Session identity unavailable")?;
                         let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
-                        Ok(Draft { namespace: layout.namespace, generation: layout.generation, revision: captured.revision, rate: project.sample_rate(), layout, enabled: captured.state.routing.is_some(), model: captured.state.routing.map(|model| (*model).clone()).unwrap_or_else(|| Model::for_output_channels(channels)) })
+                        let original = captured.state.routing;
+                        let model = original.as_ref().map(|model| (**model).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        Ok(Draft { namespace: layout.namespace, generation: layout.generation, revision: captured.revision, rate: project.sample_rate(), layout, enabled: original.is_some(), model, original })
                     })()),
                     Job::Apply(draft, work) => Event::Applied((|| {
                         if work.cancelled() { return Err("Routing edit cancelled".into()); }

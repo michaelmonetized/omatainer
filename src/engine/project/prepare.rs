@@ -79,7 +79,7 @@ impl Prepared {
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
-        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::new(model, &rt.session).map(Box::new)).transpose().map_err(Error::Invalid)?;
+        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::at_rate(model, &rt.session,rt.sr as u32).map(Box::new)).transpose().map_err(Error::Invalid)?;
         rt.mic_aux.set(state.mic_aux);
         rt.tracks.clear();
         rt.tracks.reserve(session::MAX_TRACKS);

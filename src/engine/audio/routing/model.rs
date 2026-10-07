@@ -2,6 +2,7 @@
 use crate::engine::session::{Id, Layout};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+pub(crate) use super::latency::{Configuration as LatencyConfiguration, Report as LatencyReport};
 
 pub const MAX_PHYSICAL_CHANNELS: usize = 64;
 pub const MAX_PORT_CHANNELS: usize = 32;
@@ -107,6 +108,8 @@ pub struct Model {
     pub input: Option<InputConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub monitor_output: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latency: Option<super::latency::Configuration>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -153,7 +156,22 @@ impl Default for Model {
             decks_without_default_send: [false; 2],
             input: None,
             monitor_output: None,
+            latency: None,
         }
+    }
+}
+
+impl Model {
+    /// Identify a report-only edit that can retain the running signal graph.
+    /// Takes the active saved model; returns true only for enabled compensation with unchanged reserve, aliases, taps, sends and input choices.
+    pub(crate) fn latency_edit_of(&self, prior: &Self) -> bool {
+        self.latency.as_ref().zip(prior.latency.as_ref()).is_some_and(|(next, old)| next.reserve_micros == old.reserve_micros)
+            && self.version == prior.version && self.next_id == prior.next_id
+            && self.ports == prior.ports && self.buses == prior.buses
+            && self.connections == prior.connections
+            && self.tracks_without_default_send == prior.tracks_without_default_send
+            && self.decks_without_default_send == prior.decks_without_default_send
+            && self.input == prior.input && self.monitor_output == prior.monitor_output
     }
 }
 
@@ -190,6 +208,7 @@ impl Model {
             + self.input.as_ref().map_or(0, |input| {
                 input.backend.capacity() + input.device.capacity()
             })
+            + self.latency.as_ref().map_or(0, |config| config.reports.capacity() * std::mem::size_of::<LatencyReport>())
     }
     /// Retain both sides of a mono default mix.
     /// Takes the active output width; returns explicit stereo or averaged mono routes.
@@ -247,6 +266,7 @@ impl Model {
     /// Takes the retained session; returns each processing group once, or rejects invalid maps and feedback.
     pub fn order(&self, layout: &Layout) -> Result<Vec<Group>, String> {
         layout.validate()?;
+        if let Some(latency)=&self.latency {latency.validate(self,layout)?;}
         if self.input.as_ref().is_some_and(|input| {
             !named(&input.backend)
                 || !named(&input.device)

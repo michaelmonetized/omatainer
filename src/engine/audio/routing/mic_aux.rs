@@ -478,6 +478,18 @@ impl Mixer {
         valid: &mut bool,
         master: f32,
     ) {
+        self.add_aligned(group, width, frame, valid, master, self.frames, self.valid, self.duck);
+    }
+
+    /// Read processed voice identity and source continuity before compensation.
+    /// Takes this mixer; returns the current original voice frames and detector envelope without advancing DSP.
+    pub(super) fn contributions(&self) -> ([Option<u64>; 2], [[f32; 2]; 2], [bool; 2], f32) {
+        (self.active.unwrap_or_default().channels.map(|channel| channel.input), self.frames, self.valid, self.duck)
+    }
+
+    /// Add voice and detector samples aligned to this exact terminal mix.
+    /// Takes destination, width, mixer frame/continuity, master level and retained voice data; preserves source selection and ordered mono/stereo mixing.
+    pub(super) fn add_aligned(&self, group: Group, width: usize, frame: &mut Frame, valid: &mut bool, master: f32, voices: [[f32; 2]; 2], continuity: [bool; 2], duck: f32) {
         let Some(cfg) = self.active else {
             return;
         };
@@ -487,7 +499,7 @@ impl Mixer {
             _ => false,
         }) {
             for value in frame.iter_mut().take(width) {
-                *value *= self.duck;
+                *value *= duck;
             }
         }
         for i in 0..2 {
@@ -499,14 +511,14 @@ impl Mixer {
                 _ => continue,
             };
             if width == 1 {
-                frame[0] += (self.frames[i][0] + self.frames[i][1]) * 0.5 * level;
+                frame[0] += (voices[i][0] + voices[i][1]) * 0.5 * level;
             } else {
                 for ch in 0..2 {
-                    frame[ch] += self.frames[i][ch] * level;
+                    frame[ch] += voices[i][ch] * level;
                 }
             }
             if !c.mute && c.gain > 0.0 {
-                *valid &= self.valid[i];
+                *valid &= continuity[i];
             }
         }
     }

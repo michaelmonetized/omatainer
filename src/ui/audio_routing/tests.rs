@@ -2,6 +2,43 @@ use super::*;
 use crate::ui::piano_roll::tests::Gui;
 use std::time::Duration;
 
+#[test]
+fn native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners() {
+    let mut gui = Gui::new();
+    gui.click("Audio routing");
+    gui.click("Refresh routes");
+    settled(&mut gui);
+    gui.click("Use explicit routing");
+    gui.click("Latency compensation");
+    gui.click("Compensate reported latency");
+    gui.action("Delay reserve (ms)", egui::accesskit::Action::SetValue, Some(egui::accesskit::ActionData::NumericValue(12.0)));
+    assert_eq!(gui.app.audio_routing.draft.as_ref().unwrap().model.latency.as_ref().unwrap().reserve_micros, 12000);
+    gui.click("Review routing change…");
+    gui.click("Cancel routing change");
+    assert!(gui.rt.routing.is_none());
+    gui.click("Review routing change…");
+    gui.click("Apply routing");
+    settled(&mut gui);
+    assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
+    let saved = gui.rt.routing.as_ref().unwrap().model.clone();
+    assert_eq!(saved.latency.as_ref().unwrap().reserve_micros, 12000);
+    gui.rt.apply(Command::Play);
+    gui.click("Refresh routes");
+    settled(&mut gui);
+    gui.click("Immediate headphone monitoring");
+    gui.click("Review routing change…");
+    gui.click("Apply routing");
+    settled(&mut gui);
+    assert!(gui.rt.playing);
+    assert!(gui.app.audio_routing.error.is_none(), "{:?}", gui.app.audio_routing.error);
+    assert!(gui.rt.routing.as_ref().unwrap().model.latency.as_ref().unwrap().low_latency_monitor);
+    gui.rt.apply(Command::Undo);
+    assert_eq!(gui.rt.routing.as_ref().unwrap().model, saved);
+    let decoded: Model = serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
+    assert_eq!(decoded, *saved);
+    assert!(crate::engine::audio::routing::prepared::Prepared::at_rate(Arc::new(decoded), &gui.rt.session, 48000).is_ok());
+}
+
 fn settled(gui: &mut Gui) {
     let deadline = Instant::now() + Duration::from_secs(15);
     loop {
@@ -361,6 +398,10 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
         "omatainer-ui-routing-{}.wav",
         crate::sampler_bank::BankId::new().unwrap()
     ));
+    let metadata = path.with_file_name(format!(
+        "{}.omatainer.json",
+        path.file_name().unwrap().to_string_lossy()
+    ));
     for cancel in [false, true] {
         gui.app.audio_routing.record_path = path.to_string_lossy().into_owned();
         gui.frame(vec![]);
@@ -386,6 +427,7 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
         settled(&mut gui);
         if cancel {
             assert!(!path.exists());
+            assert!(!metadata.exists());
         } else {
             assert!(
                 gui.app.audio_routing.error.is_none(),
@@ -396,7 +438,11 @@ fn native_record_source_controls_publish_complete_audio_and_cancel_partial_files
             assert_eq!(decoded.sample.ch, 2);
             assert!(decoded.sample.frames() >= 512);
             assert!(decoded.sample.data.iter().all(|value| *value == 0.125));
+            let timing: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(&metadata).unwrap()).unwrap();
+            assert_eq!(timing["placement"]["graph_delay_frames"], 0);
             std::fs::remove_file(&path).unwrap();
+            std::fs::remove_file(&metadata).unwrap();
         }
     }
 }

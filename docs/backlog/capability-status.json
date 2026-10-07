@@ -1016,6 +1016,36 @@
       ],
       "limits": "Nine new software checks plus existing import, version comparison, native Undo, manual and full regression gates pass: 1806 passed, 43 ignored, no failures or filters. Controlled raw input records exact frames while monitoring Off. Multiple track/deck cues preserve bit-identical program samples in both renderers. The verified release is installed as the default executable for its next launch; physical overdub timing remains outside this thread active scope, and graph compensation remains issue 178."
     },
+    "178": {
+      "status": "partial",
+      "paths": [
+        {
+          "kind": "bounded prepared graph timing",
+          "file": "src/engine/audio/routing/latency.rs",
+          "entry": "Declared source/processor offsets, causal parallel paths, independent program/headphone summing and report transitions"
+        },
+        {
+          "kind": "native reviewed latency controls",
+          "file": "src/ui/audio_routing/latency.rs",
+          "entry": "Exact draft delays, monitor consequences and retained report identities"
+        },
+        {
+          "kind": "sample aligned delivery and capture metadata",
+          "file": "src/audio_delivery/render.rs",
+          "entry": "Selected-source delay trim, tail drain and exact live/export parity"
+        }
+      ],
+      "fixtures": [
+        "engine::audio::routing::latency::tests",
+        "ui::audio_routing::tests::native_latency_controls_preview_confirm_live_policy_and_undo_without_device_owners",
+        "audio_delivery::tests::compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame"
+      ],
+      "evidence": [
+        "docs/validation/graph-latency.md",
+        "docs/validation/graph-latency-receipt.json"
+      ],
+      "limits": "Partial #178 foundation on Linux ARM64: retained measured offsets and declared processor delays, exact causal compensation through existing graph paths at 8–192 kHz, separately aligned program/headphone mixes, explicit immediate cue override, bounded prepared histories, click-limited report transitions, sample-rate/Undo reconstruction, exact render/export parity and raw/delivery recording source-origin metadata. Actual native egui/AccessKit edit/apply/cancel/reopen/Undo path qualified. Plugin reports are entered explicitly; existing causal native DSP has no invented lookahead. Automatic external-plugin reports, broad parameter/MIDI event alignment, sidechain workflows, compensated audible history and recording clip placement remain open. No physical device, capture, new OS GUI or listening acceptance."
+    },
     "179": {
       "status": "implemented",
       "paths": [

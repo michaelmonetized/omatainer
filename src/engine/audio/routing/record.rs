@@ -47,6 +47,10 @@ struct Shared {
     request: AtomicU64,
     acknowledged: AtomicU64,
     accepted: AtomicBool,
+    alignment_pending: AtomicU32,
+    delay_frames: AtomicU32,
+    origin_seconds: AtomicU64,
+    origin_available: AtomicBool,
 }
 #[derive(Clone)]
 pub(crate) struct Recorder {
@@ -82,11 +86,47 @@ impl Default for Recorder {
                 request: AtomicU64::new(0),
                 acknowledged: AtomicU64::new(0),
                 accepted: AtomicBool::new(false),
+                alignment_pending: AtomicU32::new(0),
+                delay_frames: AtomicU32::new(0),
+                origin_seconds: AtomicU64::new(0),
+                origin_available: AtomicBool::new(false),
             }),
         }
     }
 }
 impl Recorder {
+    /// Publish whether the current graph is still warming or changing its delay.
+    /// Takes scalar timing from the audio boundary; refuses new recordings until alignment is settled without blocking existing audio.
+    pub(crate) fn alignment_pending(&self, frames: u32) {
+        self.shared
+            .alignment_pending
+            .store(frames, Ordering::Release);
+    }
+    /// Retain the first captured frame's transport origin and graph delay.
+    /// Takes the selected alias, software delay and transport seconds; publishes timing before the first numbered frame without callback allocation.
+    pub(crate) fn mark_origin(&self, alias: u64, delay: u32, seconds: f64) {
+        if self.alias() == alias
+            && self.frames() == 0
+            && !self.shared.origin_available.load(Ordering::Acquire)
+            && seconds.is_finite()
+        {
+            self.shared.delay_frames.store(delay, Ordering::Relaxed);
+            self.shared
+                .origin_seconds
+                .store(seconds.to_bits(), Ordering::Relaxed);
+            self.shared.origin_available.store(true, Ordering::Release);
+        }
+    }
+    /// Read recording placement after its first frame was accepted.
+    /// Takes the source rate; returns optional transport origin, exact graph delay and aligned source time for the recording manifest.
+    fn placement(&self, rate: u32) -> serde_json::Value {
+        if !self.shared.origin_available.load(Ordering::Acquire) {
+            return serde_json::Value::Null;
+        }
+        let seconds = f64::from_bits(self.shared.origin_seconds.load(Ordering::Relaxed));
+        let delay = self.shared.delay_frames.load(Ordering::Relaxed);
+        serde_json::json!({ "transport_seconds_at_start": seconds, "graph_delay_frames": delay, "source_seconds_at_start": seconds - f64::from(delay) / f64::from(rate) })
+    }
     /// Wait for one numbered audio frame on the writer.
     /// Takes a short timeout; returns the next published SPSC frame without making its producer wait for this consumer.
     fn next_sample(&self, timeout: Duration) -> Option<Sample> {
@@ -110,7 +150,9 @@ impl Recorder {
     }
     /// Check capture or recording delivery ownership.
     /// Takes this recorder; returns true through activation, capture and final encoding.
-    pub(crate) fn busy(&self)->bool {self.shared.busy.load(Ordering::Acquire) || self.alias()!=0}
+    pub(crate) fn busy(&self) -> bool {
+        self.shared.busy.load(Ordering::Acquire) || self.alias() != 0
+    }
     /// Read the selected record source.
     /// Takes this recorder; returns its stable alias ID, or zero while idle.
     pub(crate) fn alias(&self) -> u64 {
@@ -211,11 +253,22 @@ impl Recorder {
         if self.shared.preview.load(Ordering::Acquire) {
             return Err("Stop licensed provider preview before capturing a record source".into());
         }
+        if self.shared.alignment_pending.load(Ordering::Acquire) != 0 {
+            return Err(
+                "Wait for latency histories and their transition to settle before recording".into(),
+            );
+        }
         let limit = u64::from(rate) * u64::from(seconds);
         if limit * u64::from(channels) * 4 > MAX_BYTES {
             return Err("Capture exceeds the 128 MiB file limit; choose a shorter duration".into());
         }
-        if destination.exists() {
+        let mut metadata_name = destination
+            .file_name()
+            .ok_or("Capture needs a file name")?
+            .to_os_string();
+        metadata_name.push(".omatainer.json");
+        let metadata = destination.with_file_name(metadata_name);
+        if destination.exists() || metadata.exists() {
             return Err("Capture destination already exists; choose a new file".into());
         }
         if self.shared.busy.swap(true, Ordering::AcqRel) {
@@ -237,6 +290,7 @@ impl Recorder {
             "omatainer-record-{}.part",
             crate::sampler_bank::BankId::new().map_err(|error| error.to_string())?
         ));
+        let temporary_metadata = temporary.with_extension("timing.part");
         let result = (|| -> Result<PathBuf, String> {
             let file = std::fs::OpenOptions::new()
                 .write(true)
@@ -255,6 +309,7 @@ impl Recorder {
             self.shared.fault.store(false, Ordering::Release);
             self.shared.failure.store(0, Ordering::Release);
             self.shared.output_width.store(0, Ordering::Release);
+            self.shared.origin_available.store(false, Ordering::Release);
             self.shared.limit.store(0, Ordering::Release);
             self.shared.stop.store(false, Ordering::Release);
             if self.shared.preview.load(Ordering::Acquire) {
@@ -264,6 +319,9 @@ impl Recorder {
             }
             if cancel.load(Ordering::Acquire) || self.epoch() != epoch {
                 return Err("Record-source capture cancelled".into());
+            }
+            if self.shared.alignment_pending.load(Ordering::Acquire) != 0 {
+                return Err("Latency alignment changed before recording activation".into());
             }
             self.shared.alias.store(alias, Ordering::Release);
             drop(activation);
@@ -314,7 +372,27 @@ impl Recorder {
             .map_err(|error| error.to_string())?;
             writer.flush().map_err(|error| error.to_string())?;
             durable.sync_all().map_err(|error| error.to_string())?;
-            std::fs::hard_link(&temporary, destination).map_err(|error| error.to_string())?;
+            let timing = serde_json::json!({"schema": 1, "source_alias": alias.to_string(), "rate": rate, "channels": channels, "frames": frames, "placement": self.placement(rate)});
+            let mut metadata_file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&temporary_metadata)
+                .map_err(|error| error.to_string())?;
+            metadata_file
+                .write_all(&serde_json::to_vec_pretty(&timing).map_err(|error| error.to_string())?)
+                .map_err(|error| error.to_string())?;
+            metadata_file
+                .sync_all()
+                .map_err(|error| error.to_string())?;
+            if cancel.load(Ordering::Acquire) {
+                return Err("Record-source capture cancelled; no file was published".into());
+            }
+            std::fs::hard_link(&temporary_metadata, &metadata)
+                .map_err(|error| error.to_string())?;
+            if let Err(error) = std::fs::hard_link(&temporary, destination) {
+                let _ = std::fs::remove_file(&metadata);
+                return Err(error.to_string());
+            }
             if let Some(parent) = destination
                 .parent()
                 .filter(|parent| !parent.as_os_str().is_empty())
@@ -331,6 +409,7 @@ impl Recorder {
             Ok(destination.to_owned())
         })();
         let _ = std::fs::remove_file(&temporary);
+        let _ = std::fs::remove_file(&temporary_metadata);
         result
     }
 }
@@ -427,6 +506,7 @@ mod tests {
             std::thread::sleep(Duration::from_millis(1));
         }
         for frame in 0..512 {
+            recorder.mark_origin(7, 336, 4.0);
             let samples =
                 std::array::from_fn(|channel| (channel + 1) as f32 / 64.0 + frame as f32 / 65536.0);
             assert_eq!(
@@ -440,6 +520,15 @@ mod tests {
         assert_eq!(&wav[..4], b"RIFF");
         assert_eq!(u16::from_le_bytes(wav[22..24].try_into().unwrap()), 26);
         assert_eq!(wav.len(), 44 + 512 * 26 * 4);
+        let metadata_path = path.with_file_name(format!(
+            "{}.omatainer.json",
+            path.file_name().unwrap().to_string_lossy()
+        ));
+        let metadata: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&metadata_path).unwrap()).unwrap();
+        assert_eq!(metadata["placement"]["transport_seconds_at_start"], 4.0);
+        assert_eq!(metadata["placement"]["graph_delay_frames"], 336);
+        assert_eq!(metadata["placement"]["source_seconds_at_start"], 3.993);
         let decoded = crate::engine::decode::decode_audio(&path).unwrap();
         assert_eq!(decoded.sample.ch, 26);
         assert_eq!(decoded.sample.frames(), 512);
@@ -464,6 +553,11 @@ mod tests {
             .is_err());
         assert_eq!(std::fs::read(&path).unwrap(), wav);
         std::fs::remove_file(&path).unwrap();
+        std::fs::remove_file(path.with_file_name(format!(
+            "{}.omatainer.json",
+            path.file_name().unwrap().to_string_lossy()
+        )))
+        .unwrap();
         assert!(recorder
             .write(
                 7,

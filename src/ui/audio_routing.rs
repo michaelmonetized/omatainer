@@ -7,6 +7,7 @@ use crate::engine::{
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 mod worker;
+mod latency;
 use worker::{Event, Job, Worker};
 
 #[derive(Clone)]
@@ -18,6 +19,12 @@ struct Draft {
     layout: Layout,
     enabled: bool,
     model: Model,
+    original: Option<Arc<Model>>,
+}
+impl Draft {
+    fn latency_only(&self) -> bool {
+        self.enabled && self.original.as_ref().is_some_and(|prior| self.model.latency_edit_of(prior))
+    }
 }
 #[derive(Clone)]
 struct InputPreview {
@@ -317,6 +324,7 @@ fn remove_alias(model: &mut Model, id: u64) {
     model.buses.retain(|bus| bus.id != id);
     model.connections.retain(|connection| !matches!(connection.source.group, Group::Input(value) | Group::Bus(value) if value == id)
         && !matches!(connection.destination, Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id));
+    if let Some(latency) = &mut model.latency { latency.reports.retain(|report| !matches!(report.group, Group::Input(value) | Group::Output(value) | Group::Record(value) | Group::Bus(value) if value == id)); }
 }
 
 /// Edit one routing value through pointer, keyboard or native accessibility.
@@ -630,6 +638,7 @@ impl App {
                             }
                         });
                         ui.collapsing(tr!("Routes and tap positions"), |ui| connections(ui, &mut draft.model, &draft.layout));
+                        ui.collapsing(tr!("Latency compensation"), |ui| latency::controls(ui, &mut draft.model, &draft.layout, draft.rate, self.snap.latency));
                         ui.label(tr!("Track pre FX includes instruments and mapped input; post mixer includes mute, solo, gain and pan. Deck pre FX is the source; post FX includes deck gain/EQ/filter and transition; post mixer adds crossfader gain."));
                         ui.label(tr!("Stereo performance source attribution is unavailable while explicit routing is active. Playlist events remain available."));
                         ui.collapsing(tr!("Live input choices"), |ui| {
@@ -699,8 +708,11 @@ impl App {
         }
         if panel.confirm && !panel.busy() {
             egui::Window::new(tr!("Confirm routing change")).id(egui::Id::new("confirm-routing")).collapsible(false).show(ctx, |ui| {
-                ui.label(tr!("Apply this draft to the current project? Cycles, invalid maps and stale project state reject the entire change. Stop playback before changing routes."));
-                if ui.add_enabled(!self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching), egui::Button::new(tr!("Apply routing"))).clicked() { panel.confirm = false; panel.apply(&self.engine); }
+                let latency_only = panel.draft.as_ref().is_some_and(Draft::latency_only);
+                ui.label(if latency_only { "Apply latency reports and monitor policy? Audio remains running through a 10 ms alignment transition. Recording, warming histories and another transition refuse this change." } else { "Apply this draft to the current project? Cycles, invalid maps and stale project state reject the entire change. Stop playback before changing routes or delay reserve." });
+                let stopped = !self.snap.playing && !self.snap.recording && !self.snap.decks.iter().any(|deck| deck.playing || deck.touching);
+                let live = latency_only && !self.snap.recording && self.snap.latency.transition_frames == 0 && self.snap.latency.priming_frames == 0 && !self.engine.routing.recorder.busy();
+                if ui.add_enabled(stopped || live, egui::Button::new(tr!("Apply routing"))).clicked() { panel.confirm = false; panel.apply(&self.engine); }
                 if ui.button(tr!("Cancel routing change")).clicked() { panel.confirm = false; }
             });
         }

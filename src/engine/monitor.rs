@@ -258,6 +258,10 @@ impl Monitor {
         self.decks[deck]
     }
 
+    /// Replace a headphone source with its graph-aligned pre-fader sample.
+    /// Takes an exact deck and compensated stereo; preserves channel-fader, mix, level and monitoring ownership.
+    pub(crate) fn aligned_deck(&mut self,deck:usize,frame:[f32;2]) {self.decks[deck]=frame;}
+
     /// Render the separate headphone pair.
     /// Takes audience and selected cue samples plus sample rate; returns finite stereo monitoring or silence when its pair is unavailable.
     pub fn render(&mut self, master: [f32; 2], pfl: [f32; 2], rate: u32) -> [f32; 2] {

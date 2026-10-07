@@ -930,6 +930,7 @@ pub struct Snapshot {
     pub meter_master: bool,
     pub master_meters: [f32; 2],
     pub monitor: monitor::Status,
+    pub(crate) latency: audio::routing::latency::Status,
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
@@ -1009,6 +1010,7 @@ impl Default for Snapshot {
             meter_master: false,
             master_meters: [0.0; 2],
             monitor: monitor::Status::default(),
+            latency: audio::routing::latency::Status::default(),
             mic_aux: audio::routing::mic_aux::Status::default(),
             arrangement_enabled: false,
             arrangement_end: 0.0,
@@ -1392,9 +1394,11 @@ impl RtEngine {
             .map(|slot|fx::FxSlot::required_storage(slot.id(),sr as f32)).sum::<usize>();
         if effect_bytes>session::MAX_PROCESSOR_BYTES {return Err("Output rate would exceed the 256 MiB session effect-buffer limit; remove effects or choose a lower rate".into());}
         let sampler_banks = self.sampler_rate_banks(sr)?;
+        let routing = self.routing.as_ref().map(|graph| audio::routing::prepared::Prepared::at_rate(graph.model.clone(), &self.session, sr).map(Box::new)).transpose()?;
         self.timeline_anchor = self.timeline_seconds();
         self.timeline_frames = 0;
         self.sr = sr as f32;
+        self.routing = routing;
         self.mapped_clock = None;
         self.project.set_sample_rate(sr);
         self.mic_aux.set_sample_rate(self.sr);
@@ -1621,7 +1625,9 @@ impl RtEngine {
             if let Some(command) = self.command_batch.commands[index].take() { self.apply(command); }
         }
         self.project_tick();
-        self.routing_pipe.recorder.begin_delivery(self.sr as u32);
+        let latency = self.routing.as_ref().map_or(Default::default(), |graph| graph.latency_status());
+        self.routing_pipe.recorder.alignment_pending(latency.priming_frames.max(latency.transition_frames));
+        self.routing_pipe.recorder.begin_delivery_aligned(self.sr as u32, |alias| self.routing.as_ref().map_or(0, |graph| graph.output_delay(alias)), Some(self.timeline_seconds()));
         self.maintain_monitor(channels, !out.is_empty());
         self.quantized_deck_maintain();
         let spindle_now = Instant::now();
@@ -1830,6 +1836,8 @@ impl RtEngine {
             if self.load_profile.active { self.telemetry.profiler.publish(&self.load_profile); }
         }
         self.live_set_mix(out, channels);
+        let latency = self.routing.as_ref().map_or(Default::default(), |graph| graph.latency_status());
+        self.routing_pipe.recorder.alignment_pending(latency.priming_frames.max(latency.transition_frames));
         self.project.publish_timeline(self.timeline_seconds());
         self.load_profile.active = false;
         self.render_cpu_ns = cpu_start.and_then(|start| audio_metrics::thread_cpu_ns()?.checked_sub(start));
@@ -1881,6 +1889,12 @@ impl RtEngine {
     }
 
     fn render_track_cached(&mut self, ti: usize, any_solo: bool) -> (f32, f32, bool) {
+        self.render_track_aligned(ti,any_solo,|frame|frame)
+    }
+
+    /// Render generated and routed track sources on one compensated timeline.
+    /// Takes the exact track, solo policy and prepared native-source alignment; returns post-mixer stereo and the original cue flag.
+    fn render_track_aligned(&mut self, ti: usize, any_solo: bool, mut align: impl FnMut([f32;2])->[f32;2]) -> (f32, f32, bool) {
         let arrangement_enabled=self.arrangement.enabled();
         if !arrangement_enabled { self.clip_launch_tick(ti); }
         let (arrangement_audio,arrangement_sounding)=if arrangement_enabled{self.render_arrangement(ti)}else{self.render_midi_output(ti);([0.0;2],false)};
@@ -2043,7 +2057,7 @@ impl RtEngine {
         track.eq_right.low_g = track.eq.low_g;
         track.eq_right.mid_g = track.eq.mid_g;
         track.eq_right.high_g = track.eq.high_g;
-        let mut raw = [s + pad_l + fallback[0], s + pad_r + fallback[1]];
+        let mut raw = align([s + pad_l + fallback[0], s + pad_r + fallback[1]]);
         if let Some(input) = self.routing_track_input {
             raw[0] += input[0] * input_gain; raw[1] += input[1] * input_gain;
         }

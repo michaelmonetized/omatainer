@@ -815,6 +815,7 @@ impl super::RtEngine {
         self.configure_clock_input(super::midi::clock_input::Config::default());
         self.history_finish_take();
         self.routing_pipe.recorder.invalidate();
+        if let Some(graph) = &mut self.routing { graph.reset_latency(); }
         self.monitor.cancel_tone();
         self.finish_recording_all();
         self.playing = false;

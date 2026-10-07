@@ -307,7 +307,7 @@ fn state(
     }).collect();
     Ok(
         json!({"expected":Expected {namespace:Key(layout.namespace),generation:Count(layout.generation),revision:Count(s.project_revision)},
-        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,"monitor":s.monitor,
+        "playing":s.playing,"recording":s.recording,"beat":s.beat,"bpm":s.bpm,"master":s.master,"crossfader":s.xfader,"crossfader_contour":s.xfader_curve,"monitor":s.monitor,"latency":s.latency,
         "decks":s.decks.iter().take(2).map(|deck| json!({"title":ipc_transport::short_text(&deck.title,32),"playing":deck.playing,"position_seconds":deck.pos/f64::from(deck.source_sample_rate.max(1)),"duration":deck.duration,"keylock":deck.keylock,"keylock_mode":deck.keylock_mode,"pitch_range":deck.pitch_range,"controls":deck.controls,"loop_on":deck.loop_on,"hotcues":deck.hotcues,
             "media_key":Count(deck.media_key),"source_sample_rate":deck.source_sample_rate,
             "loop_region":(deck.loop_len>=64.0).then(||json!({"start_seconds":deck.loop_start/f64::from(deck.source_sample_rate.max(1)),"end_seconds":(deck.loop_start+deck.loop_len)/f64::from(deck.source_sample_rate.max(1)),"enabled":deck.loop_on}))})).collect::<Vec<_>>(),

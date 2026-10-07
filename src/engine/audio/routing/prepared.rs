@@ -33,13 +33,23 @@ pub struct Prepared {
     pub main: usize,
     pub monitor_channels_free: bool,
     pub monitor_output: Option<(u64, [usize; 2])>,
+    pub(super) latency: Option<super::latency::Runtime>,
 }
 
 impl Prepared {
-    /// Prepare all routing storage.
-    /// Takes a validated saved model and retained session; returns owned, indexed frames and maps.
+    /// Prepare a 48 kHz routing fixture without connected devices.
+    /// Takes a validated saved model and retained session; returns owned test frames and maps.
+    #[cfg(test)]
     pub fn new(model: Arc<Model>, layout: &Layout) -> Result<Self, String> {
+        Self::at_rate(model, layout, 48000)
+    }
+
+    /// Prepare routing and causal latency storage for the actual output clock.
+    /// Takes saved aliases, retained session and logical output rate; returns a bounded graph before renderer admission.
+    pub fn at_rate(model: Arc<Model>, layout: &Layout, rate: u32) -> Result<Self, String> {
         let order = model.order(layout)?;
+        let latency = super::latency::Plan::new(&model, layout, &order, rate)?
+            .map(|plan|super::latency::Runtime::new(plan,&order.iter().map(|group|model.width(*group,layout).unwrap()).collect::<Vec<_>>(),rate));
         let indices: BTreeMap<_, _> = order
             .iter()
             .enumerate()
@@ -96,12 +106,14 @@ impl Prepared {
             main,
             monitor_channels_free,
             monitor_output,
+            latency,
         })
     }
 
     /// Begin one sample frame.
     /// Takes mutable prepared state; clears only bounded destination channels without allocation.
     pub fn begin(&mut self) {
+        if let Some(latency)=&mut self.latency {latency.begin();}
         for node in &mut self.nodes {
             node.input[..node.width].fill(0.0);
             node.valid = true;
@@ -116,9 +128,11 @@ impl Prepared {
         for link in &self.incoming[index] {
             let source = &sources[link.source].taps[link.tap];
             for map in &link.map {
-                destination.input[usize::from(map.destination)] += source[usize::from(map.source)] * map.gain;
+                let(value,valid)=self.latency.as_ref().map_or((source[usize::from(map.source)],sources[link.source].valid),
+                    |latency|latency.routed(link.source,link.tap,index,usize::from(map.source)));
+                destination.input[usize::from(map.destination)] += value * map.gain;
                 if map.gain != 0.0 {
-                    destination.valid &= sources[link.source].valid;
+                    destination.valid &= valid;
                 }
             }
         }
@@ -131,6 +145,7 @@ impl Prepared {
         for (destination, source) in node.taps.iter_mut().zip(&taps) {
             destination[..node.width].copy_from_slice(&source[..node.width]);
         }
+        if let Some(latency)=&mut self.latency {latency.publish(index,&node.taps,node.valid);}
     }
 
     /// Publish native stereo taps directly.
@@ -141,6 +156,7 @@ impl Prepared {
         for (destination, source) in node.taps.iter_mut().zip(taps) {
             destination[..2].copy_from_slice(&source);
         }
+        if let Some(latency)=&mut self.latency {latency.publish(index,&node.taps,node.valid);}
     }
 
     /// Add one legacy stereo send.
@@ -149,6 +165,68 @@ impl Prepared {
         self.nodes[index].input[0] += frame[0];
         self.nodes[index].input[1] += frame[1];
         self.nodes[index].valid &= valid;
+    }
+
+    /// Align an implicit send through its published original source.
+    /// Takes source and destination indices plus fallback audio/continuity; reads the same prepared history used by explicit links.
+    pub(super) fn source_send(&mut self,source:usize,destination:usize,frame:[f32;2],valid:bool) {
+        if let Some(latency)=&self.latency {
+            for channel in 0..2 {
+                let(value,complete)=latency.routed(source,super::model::Tap::PostMixer.index(),destination,channel);
+                self.nodes[destination].input[channel]+=value;self.nodes[destination].valid&=complete;
+            }
+        }else{self.legacy_send(destination,frame,valid);}
+    }
+
+    /// Reuse compatible source histories before an applied graph replaces its predecessor.
+    /// Takes the active graph; preserves existing delay storage without callback allocation or deallocation.
+    pub(crate) fn inherit(&mut self,old:&mut Self) {
+        if !self.model.latency_edit_of(&old.model) { return; }
+        if let(Some(latency),Some(prior))=(&mut self.latency,&mut old.latency) {
+            latency.inherit(prior,&self.nodes,&old.nodes);
+        }
+    }
+
+    /// Read the active graph's scalar timing state.
+    /// Takes this graph; returns disabled timing when compensation is omitted.
+    pub(crate) fn latency_status(&self) -> super::latency::Status {
+        self.latency.as_ref().map_or(Default::default(), super::latency::Runtime::status)
+    }
+
+    /// Retire delayed samples after transport or safety ownership changes.
+    /// Takes this graph; resets only history counters without allocating or freeing audio storage.
+    pub(crate) fn reset_latency(&mut self) {
+        if let Some(latency) = &mut self.latency { latency.reset(); }
+    }
+
+    /// Locate a selected output's delay inside the software graph.
+    /// Takes a retained output alias; returns its causal render delay, excluding latency outside the output callback.
+    pub(crate) fn output_delay(&self, alias: u64) -> u32 {
+        self.latency.as_ref().and_then(|latency| self.nodes.iter().position(|node| matches!(node.group, Group::Output(id) | Group::Record(id) if id == alias)).map(|index| latency.plan.inputs[index])).unwrap_or(0)
+    }
+
+    /// Recreate an exact selected terminal mix at headphone time without advancing any source.
+    /// Takes its prepared terminal index; returns ordered channel maps and original continuity before voice addition, or no alternate mix when compensation is disabled.
+    pub(super) fn monitor_mix(&self, index: usize) -> Option<(Frame, bool)> {
+        let latency = self.latency.as_ref()?;
+        let mut frame = [0.0; MAX_PORT_CHANNELS];
+        let mut valid = true;
+        for link in &self.incoming[index] {
+            for map in &link.map {
+                let (value, complete) = latency.routed_monitor(link.source, link.tap, usize::from(map.source));
+                frame[usize::from(map.destination)] += value * map.gain;
+                if map.gain != 0.0 { valid &= complete; }
+            }
+        }
+        Some((frame, valid))
+    }
+
+    /// Estimate a stopped graph's changed-rate storage before allocating its replacement.
+    /// Takes retained session identity and prospective rate; returns complete charged graph bytes or a preparation refusal.
+    pub(crate) fn rate_bytes(&self, layout: &Layout, rate: u32) -> Result<usize, String> {
+        let order = self.model.order(layout)?;
+        let next = super::latency::Plan::new(&self.model, layout, &order, rate)?;
+        Ok(self.bytes().saturating_sub(self.latency_status().history_bytes) + next.map_or(0, |plan| plan.storage_bytes))
     }
 
     /// Assemble physical outputs.
@@ -172,6 +250,7 @@ impl Prepared {
     pub fn bytes(&self) -> usize {
         std::mem::size_of::<Self>()
             + self.model.bytes()
+            + self.latency.as_ref().map_or(0,super::latency::Runtime::bytes)
             + self.nodes.capacity() * std::mem::size_of::<Node>()
             + self.incoming.capacity() * std::mem::size_of::<Vec<Link>>()
             + self.outputs.capacity() * std::mem::size_of::<usize>()

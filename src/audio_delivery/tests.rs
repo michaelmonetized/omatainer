@@ -382,3 +382,35 @@ fn invalid_delivery_choices_refuse_before_file_work() {
         assert!(options.validate().is_err());
     }
 }
+
+#[test]
+fn compensated_exports_trim_the_actual_graph_delay_and_preserve_every_selected_source_frame() {
+    use crate::engine::audio::routing::{model::{Direction, Group, Model, Port, LatencyConfiguration, LatencyReport}, prepared::Prepared};
+    let files = Files::new();
+    for rate in [44100, 48000, 96000] {
+        let (engine, mut rt) = fixture(rate);
+        let mut model = Model::default();
+        model.next_id = 3;
+        model.ports.push(Port { id: 2, alias: "Reserved external source".into(), direction: Direction::Input, channels: vec![0] });
+        model.latency = Some(LatencyConfiguration { reports: vec![LatencyReport { group: Group::Input(2), external_micros: 7000, processing_micros: 0 }], ..Default::default() });
+        rt.routing = Some(Box::new(Prepared::at_rate(Arc::new(model), &rt.session, rate).unwrap()));
+        let captured = capture(&engine, &mut rt);
+        let request = Export { source: Source::Session, decks: true, output_alias: Some(1), start: 0.01, end: 0.04, tail: 0.0, options: Options { rate, ..Options::default() }, ..Export::default() };
+        let bounds = request.frames().unwrap();
+        let delay = u64::from(rt.routing.as_ref().unwrap().output_delay(1));
+        assert!(delay > 0);
+        rt.apply(Command::Play);
+        rt.apply(Command::DeckPlay { deck: 0 });
+        rt.apply(Command::DeckPlay { deck: 1 });
+        let mut actual = vec![0.0; ((bounds.0 + bounds.1 + delay) * 2) as usize];
+        rt.process(&mut actual);
+        let folder = files.0.join(format!("compensated-{rate}"));
+        let outcome = run(captured, &request, &folder, &engine.cmd.performance().optional_work().unwrap(), &crate::background::Reporter::default()).unwrap();
+        let decoded = crate::engine::decode::decode_audio(&folder.join("master.wav")).unwrap();
+        assert_eq!(outcome.frames, bounds.3);
+        assert_eq!(decoded.sample.frames() as u64, bounds.3);
+        assert_eq!(decoded.sample.data, actual[((bounds.0 + delay) * 2) as usize..], "{rate} Hz export differs from actual compensated rendering");
+        assert!(decoded.sample.data.iter().any(|value| value.abs() > 0.01));
+    }
+    println!("LATENCY_EXPORT {{\"sample_rates\":3,\"source_frames_trimmed_exactly\":true,\"maximum_sample_error\":0,\"physical_devices_opened\":false}}");
+}
