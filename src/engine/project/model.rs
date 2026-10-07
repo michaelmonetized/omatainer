@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 24;
+pub const STATE_VERSION: u32 = 25;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -14,6 +14,8 @@ pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) sync_leader: Option<deck_sync::Leader>,
     #[serde(default,skip_serializing_if="Option::is_none")]
     pub(crate) navigation: Option<song_navigation::Saved>,
     #[serde(default,skip_serializing_if="Option::is_none")]
@@ -61,6 +63,8 @@ pub struct State {
 struct StateWire {
     version: u32,
     #[serde(default)]
+    sync_leader: Option<deck_sync::Leader>,
+    #[serde(default)]
     navigation: Option<song_navigation::Saved>,
     #[serde(default)]
     arrangement: Option<Arc<arrangement::Model>>,
@@ -107,6 +111,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 25 && (raw.get("sync_leader").is_some() || raw.get("decks").and_then(serde_json::Value::as_array).is_some_and(|decks| decks.iter().any(|deck| deck.get("sync_phase").is_some()))) { return Err(serde::de::Error::custom("Sync leaders and phase modes require project state version 25")); }
         if version < 23 && (raw.get("scene_timing").is_some() || raw.get("session").is_some_and(|layout| ["tracks", "scenes"].into_iter().flat_map(|axis| layout.get(axis).and_then(serde_json::Value::as_array).into_iter().flatten()).any(|item| item.get("scene").is_some()))) { return Err(serde::de::Error::custom("Scene properties require project state version 23")); }
         if version < 22 && raw.get("navigation").is_some() { return Err(serde::de::Error::custom("Song sections require project state version 22")); }
         if version<21 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some_and(|p|p.get("launch").is_some())){return Err(serde::de::Error::custom("Clip launch policy requires project state version 21"));}
@@ -167,6 +172,7 @@ impl<'de> Deserialize<'de> for State {
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            sync_leader: wire.sync_leader,
             navigation: wire.navigation,
             arrangement: wire.arrangement,
             routing: wire.routing,
@@ -364,6 +370,8 @@ pub struct Deck {
     pub vinyl: bool,
     pub keylock: bool,
     pub sync: bool,
+    #[serde(default, skip_serializing_if = "deck_sync::Phase::is_none")]
+    pub(crate) sync_phase: deck_sync::Phase,
     pub gain: f32,
     pub eq: [f32; 3],
     #[serde(default, skip_serializing_if = "crate::track_gain::Policy::is_off")]
@@ -415,6 +423,7 @@ impl State {
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            sync_leader: None,
             navigation: None,
             scene_timing: None,
             arrangement: None,
@@ -478,6 +487,7 @@ impl State {
                 vinyl: true,
                 keylock: false,
                 sync: false,
+                sync_phase: deck_sync::Phase::None,
                 gain: 0.85,
                 source_gain: crate::track_gain::Policy::Off,
                 eq: [1.0; 3],
@@ -647,7 +657,9 @@ impl State {
         if self.builtin.iter().any(|i| !optional(*i)) {
             return fail("built-in sample reference");
         }
-        for deck in &self.decks {
+        for (index, deck) in self.decks.iter().enumerate() {
+            if self.sync_leader.and_then(deck_sync::Leader::deck) == Some(index) && !deck.sync_phase.is_none() { return Err("A sync leader cannot also follow phase".into()); }
+            if !deck.sync_phase.is_none() && (!deck.sync || self.sync_leader.is_none()) || self.version < 25 && (!deck.sync_phase.is_none() || self.sync_leader.is_some()) { return Err("Invalid sync intent or older project header".into()); }
             if !optional(deck.audio)
                 || !text_ok(&deck.title)
                 || !unit(deck.pitch)

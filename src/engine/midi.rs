@@ -78,6 +78,8 @@ pub enum Action {
     DeckCue,
     DeckCueHold,
     DeckSync,
+    DeckSyncMode,
+    DeckSyncLeader,
     DeckJog,
     DeckJogTouch,
     DeckPitch,
@@ -484,6 +486,12 @@ fn dispatch_value_key(
         }
         Action::DeckSync if pressed => {
             let _ = send(Command::DeckSync { deck });
+        }
+        Action::DeckSyncMode if pressed => {
+            if let Some(mode) = super::deck_sync::Mode::from_id(b.extra) { let _ = send(Command::DeckSyncMode { deck, mode }); }
+        }
+        Action::DeckSyncLeader if pressed => {
+            if let Some(leader) = super::deck_sync::Leader::from_id(b.extra) { let _ = send(Command::DeckSyncLeader(leader)); }
         }
         Action::DeckPad if pressed => {
             let _ = send(Command::DeckPadPress(super::deck_pads::Press { source, key: pad_key.unwrap_or_else(||super::deck_pads::wire_key(msg[0] & 15, msg[1])), deck, id: b.extra as u8 + 1, mode: None, pressure: f32::from(d2) / 127.0, shifted: shift.lock()[usize::from(deck)] }));

@@ -108,8 +108,12 @@ impl Gui {
             }
             assert!(
                 Instant::now() < deadline,
-                "{}",
-                self.app.arrangement.message
+                "{}; arrangement_busy={}, project_pending={}, library_active={}, library={}",
+                self.app.arrangement.message,
+                self.app.arrangement.busy(),
+                self.app.project_pending_for_test(),
+                self.app.library_metadata.active(),
+                self.app.library_metadata.label()
             );
             std::thread::sleep(Duration::from_millis(2));
         }

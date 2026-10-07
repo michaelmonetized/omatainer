@@ -32,6 +32,23 @@ fn note(action: Action, data: u8) -> Binding {
 }
 
 #[test]
+fn native_sync_assignment_choosers_use_fixed_mode_and_global_leader_ids() {
+    use crate::engine::deck_sync::{Leader, Mode};
+    let files = Files::new(); let mut gui = setup(&files);
+    gui.app.midi_learn.binding = Binding { deck: 1, extra: 0, ..note(Action::DeckSyncMode, 61) };
+    gui.frame(vec![]);
+    gui.click("MIDI sync mode"); gui.click(&format!("MIDI sync mode {}", Mode::Bar.label()));
+    assert_eq!(gui.app.midi_learn.binding.extra, 3);
+    assert_eq!(gui.app.midi_learn.binding.deck, 1);
+    gui.app.midi_learn.binding = Binding { deck: 1, extra: 0, ..note(Action::DeckSyncLeader, 62) };
+    gui.frame(vec![]);
+    gui.click("MIDI sync leader"); gui.click(&format!("MIDI sync leader {}", Leader::DeckB.label()));
+    assert_eq!(gui.app.midi_learn.binding.extra, 2);
+    assert_eq!(gui.app.midi_learn.binding.deck, 0);
+    assert!(learn::validate_binding(&gui.app.midi_learn.binding).is_ok());
+}
+
+#[test]
 fn native_capture_preview_conflict_replace_edit_remove_and_cancel_use_real_dispatch() {
     let files = Files::new();
     let mut gui = setup(&files);

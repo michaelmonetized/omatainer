@@ -503,6 +503,11 @@ fn handle_client_with_stop(
             "bar": s.bar,
             "beat": s.beat_in_bar,
             "xfader": s.xfader,
+            "sync_leader": s.sync_leader,
+            "sync_leader_ready": s.sync_leader_ready,
+            "sync_modes": std::array::from_fn::<_, 2, _>(|i| s.decks.get(i).map_or(crate::engine::deck_sync::Mode::Off, |deck| deck.sync_mode)),
+            "sync_aligned": std::array::from_fn::<_, 2, _>(|i| s.decks.get(i).is_some_and(|deck| deck.sync_aligned)),
+            "sync_target_bpm": std::array::from_fn::<_, 2, _>(|i| s.decks.get(i).map_or(0.0, |deck| deck.sync_target_bpm)),
             "monitor": s.monitor,
             "midi": s.midi.iter().take(8).map(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES)).collect::<Vec<_>>(),
             "state_truncated": scene_names_truncated || s.midi.len() > 8 || s.midi.iter().take(8).any(|name| ipc_transport::short_json_text(name, ipc_transport::STATUS_MIDI_NAME_BYTES).len() < name.len())

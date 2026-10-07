@@ -722,6 +722,7 @@ impl CommandPort {
         }
         if matches!(&command, Command::DeckControl { deck, control, .. } if usize::from(*deck) >= super::DECKS || !control.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::DeckPadParameter { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
+        if matches!(&command, Command::DeckSyncMode { deck, .. } if *deck >= 2) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::DeckPadPress(press) if !press.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::MidiAdjust(adjust) if !adjust.valid()) { return fail(SubmissionError::InvalidTarget); }
         if matches!(&command, Command::Surface(input) if !input.valid()) { return fail(SubmissionError::InvalidTarget); }

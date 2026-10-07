@@ -110,6 +110,7 @@ impl RtEngine {
     /// Apply one guarded fixed-slot transaction and publish its durable preparation.
     /// Takes deck, stable ID and action; preserves other decks, playback ownership and callback heap bounds.
     pub(super) fn saved_loop_action(&mut self, deck: usize, id: u8, action: Action) {
+        if matches!(action, Action::Recall { activate: true }) && self.decks[deck].controls.loops[usize::from(id - 1)].is_some() { self.deck_sync_manipulation(deck); }
         let d = &mut self.decks[deck];
         let before = (
             d.controls.loop_history(),

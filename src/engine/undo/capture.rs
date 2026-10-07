@@ -5,6 +5,7 @@ use super::*;
 #[derive(Clone, Copy)]
 enum Target {
     Global,
+    Sync,
     Sampler(usize),
     Track(u8),
     Gain(u8, u16),
@@ -24,6 +25,8 @@ impl Plan {
     fn get(rt: &RtEngine, c: &Command) -> Option<Self> {
         use Command::*;
         let (target, name, key) = match c {
+            DeckSyncMode { deck, .. } => (Target::Sync, Name::Deck, 405 + u64::from(*deck)),
+            DeckSyncLeader(_) => (Target::Sync, Name::Deck, 408),
             SetBpm(_) | NudgeBpm(_) | Tap(_) => (Target::Global, Name::Tempo, 1),
             Quant(_) | ToggleQuant => (Target::Global, Name::Quantization, 2),
             Metronome => (Target::Global, Name::Metronome, 3),
@@ -138,7 +141,7 @@ impl Plan {
             ),
             DeckMatch => {
                 let other = if rt.xfader <= 0.5 { 1 } else { 0 };
-                (Target::Seek(other), Name::DeckSeek, 410 + other as u64)
+                (Target::Seek(other), Name::DeckSeek, 480 + other as u64)
             }
             FxAdd(kind) => {
                 let rack = Rack::selected(rt)?;
@@ -363,6 +366,7 @@ impl RtEngine {
                 }
             }
             Target::Global => Patch::Global(Global::get(self)),
+            Target::Sync => Patch::Sync(deck_sync::Saved::get(self)),
             Target::Track(t) => Patch::Track(t, TrackControls::get(&self.tracks[t as usize])),
             Target::Gain(t, s) => Patch::ClipGain {
                 track: t,
@@ -374,6 +378,7 @@ impl RtEngine {
                 // Seeking updates cue/loop settings too. Both inverse values
                 // belong to the same validated transaction.
                 self.undo.begin(plan.name, plan.key, self.frames_done);
+                if matches!(&c, Command::DeckMatch) { self.undo.append(Patch::Sync(deck_sync::Saved::get(self))); }
                 self.undo
                     .append(Patch::Deck(d, DeckControls::get(&self.decks[d as usize])));
                 Patch::Position {

@@ -102,6 +102,7 @@ mod loop_editor;
 mod deck_quantization;
 mod cue_audition;
 mod deck_pads;
+mod deck_sync;
 mod command_palette;
 mod touch;
 mod workspace;
@@ -1268,6 +1269,7 @@ impl App {
             });
             self.deck_beat_jump(ui, d as u8, snap.controls.beat_jump_size);
             self.deck_quantization(ui, d as u8, &snap.controls, snap.grid.is_some());
+            self.deck_sync_controls(ui, d as u8, snap);
             self.deck_loop_editor(ui, d as u8, snap);
         });
     }

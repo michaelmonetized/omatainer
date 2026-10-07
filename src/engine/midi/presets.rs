@@ -5,7 +5,7 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 
-pub(crate) const VERSION: u32 = 5;
+pub(crate) const VERSION: u32 = 6;
 pub(crate) const MAX_PRESETS: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,7 +83,7 @@ impl Preset {
     /// Validate supported actions and distinct wire addresses.
     /// Takes this definition; returns an error without changing any active input.
     pub(crate) fn validate(&self) -> Result<(), String> {
-        if !matches!(self.version, 1 | 2 | 3 | 4 | VERSION) {
+        if !(1..=VERSION).contains(&self.version) {
             return Err("Unsupported MIDI preset version; current mappings retained".into());
         }
         visible(&self.name, 80)?;
@@ -95,6 +95,7 @@ impl Preset {
             return Err("Keep at most 256 assignments per preset".into());
         }
         for binding in &self.bindings {
+            if self.version < 6 && super::learn::sync_mode(binding.action) { return Err("Explicit sync modes require MIDI preset version 6".into()); }
             if self.version < 5 && super::learn::deck_pad(binding.action) { return Err("Deck pad modes require MIDI preset version 5".into()); }
             if self.version < 4 && super::learn::saved_loop(binding.action) { return Err("Saved loop assignments require MIDI preset version 4".into()); }
             if self.version < 3 && super::learn::navigation(binding.action) { return Err("Song navigation requires MIDI preset version 3".into()); }

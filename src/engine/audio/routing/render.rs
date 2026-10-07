@@ -25,6 +25,7 @@ impl Prepared {
             rt.xfader_gain.tick()
         };
         let mut cue = [0.0; 2];
+        let mut deck_pair = None;
         let record_alias = rt.routing_pipe.recorder.alias();
         for index in 0..self.nodes.len() {
             self.gather(index);
@@ -79,9 +80,8 @@ impl Prepared {
                 }
                 Group::Deck(deck) => {
                     let slot = usize::from(deck);
-                    let timer = rt.load_profile.start();
-                    let (left, right) = rt.render_deck(slot);
-                    rt.load_profile.deck(slot, timer);
+                    let pair = deck_pair.get_or_insert_with(|| rt.render_deck_pair());
+                    let [left, right] = pair.audio[slot];
                     let mixed = [left * gains[slot], right * gains[slot]];
                     if !self.model.decks_without_default_send[slot] {
                         self.legacy_send(self.main, mixed, self.nodes[index].valid);
@@ -90,7 +90,7 @@ impl Prepared {
                         cue[0] += rt.monitor.tap(slot)[0];
                         cue[1] += rt.monitor.tap(slot)[1];
                     }
-                    [rt.routing_deck_taps[0], [left, right], mixed]
+                    [pair.taps[slot][0], [left, right], mixed]
                 }
                 Group::Main => {
                     rt.mic_aux.music_gain();

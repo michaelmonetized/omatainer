@@ -2703,9 +2703,12 @@
       "dependencies": [
         134
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/tempo-phase-sync.md",
+        "docs/validation/tempo-phase-sync-receipt.json"
+      ]
     },
     {
       "issue": 194,

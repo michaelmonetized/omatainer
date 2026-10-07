@@ -157,7 +157,7 @@ fn real_native_container_reopens_all_slots_and_armed_region_stopped_and_legacy_h
     )
     .unwrap();
     std::fs::remove_file(&path).unwrap();
-    assert_eq!(disk.state.version, 24);
+    assert_eq!(disk.state.version, crate::engine::project::STATE_VERSION);
     assert_eq!(disk.state.decks[0].saved_loops, prepared.saved_loops);
     let reopened = Prepared::from_state(disk.state.clone(), disk.media.clone(), 44_100).unwrap();
     assert!(!reopened.rt.playing && !reopened.rt.decks[0].playing);
@@ -298,7 +298,7 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
     let preset =
         midi::presets::Preset::capture("Saved loops".into(), String::new(), &port, &config)
             .unwrap();
-    assert_eq!(preset.version, 5);
+    assert_eq!(preset.version, midi::presets::VERSION);
     let bytes = serde_json::to_vec(&preset).unwrap();
     assert_eq!(midi::presets::Preset::decode(&bytes).unwrap(), preset);
     let mut previous = serde_json::to_value(&preset).unwrap();
@@ -387,7 +387,7 @@ fn actual_input_worker_recalled_ids_survive_reorder_and_preset_profile_files_gua
     let (decoded, migrated) =
         crate::preferences::storage::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
     assert!(migrated);
-    assert_eq!(decoded.version, 23);
+    assert_eq!(decoded.version, crate::preferences::VERSION);
     for action in [
         midi::Action::DeckSavedLoopSave,
         midi::Action::DeckSavedLoopDelete,

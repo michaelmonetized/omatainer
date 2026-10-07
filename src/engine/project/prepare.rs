@@ -86,6 +86,7 @@ impl Prepared {
         rt.conductor = state.conductor.as_ref().map(|c| c.prepare()).transpose().map_err(Error::Invalid)?;
         rt.navigation.saved = state.navigation.clone();
         rt.scenes.timing = state.scene_timing;
+        rt.deck_sync.leader = state.sync_leader;
         rt.arrangement=arrangement::Playback::new(state.arrangement.as_ref().map(|model|arrangement::Plan::prepare(model.clone(),&media,&rt.session,&AtomicBool::new(false))).transpose().map_err(Error::Invalid)?,state.beat);
         rt.sync_midi_clock();
         rt.playing = false;
@@ -109,6 +110,7 @@ impl Prepared {
                 vinyl,
                 keylock,
                 sync,
+                sync_phase,
                 gain,
                 filter_morph,
                 filter_amt,

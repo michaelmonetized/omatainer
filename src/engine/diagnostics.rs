@@ -179,8 +179,8 @@ pub(super) struct Profiler {
     frame: AtomicU64,
     sr: AtomicU64,
     omitted: AtomicU64,
-    ns: [AtomicU64; POINTS],
-    kinds: [AtomicU64; POINTS],
+    ns: Box<[AtomicU64]>,
+    kinds: Box<[AtomicU64]>,
 }
 impl Default for Profiler {
     fn default() -> Self {
@@ -190,8 +190,8 @@ impl Default for Profiler {
             frame: AtomicU64::new(0),
             sr: AtomicU64::new(0),
             omitted: AtomicU64::new(0),
-            ns: std::array::from_fn(|_| AtomicU64::new(0)),
-            kinds: std::array::from_fn(|_| AtomicU64::new(255)),
+            ns: (0..POINTS).map(|_| AtomicU64::new(0)).collect(),
+            kinds: (0..POINTS).map(|_| AtomicU64::new(255)).collect(),
         }
     }
 }

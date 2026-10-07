@@ -1,0 +1,1190 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64; actual renderer PCM, native egui/AccessKit, synthetic production MIDI worker and real storage files",
+  "sourceFiles": {
+    "src/engine/audio/routing/render.rs": "219ff4f74f786ea5f8d984039e6c3b6cc4581234849e9e851fecc59eba15c7dc",
+    "src/engine/control.rs": "3492ea858f827a4f8073871db0eeb824e337f12df41bec35fe5daa31c0d2679f",
+    "src/engine/deck_controls.rs": "24f84458d05b90b84652f902351f49affc44cccf7c3c812fc67b1e2b023605f3",
+    "src/engine/deck_controls/saved.rs": "43a87d9fee7e06f60138bb5a99a082158cdb60dadea4e738be4b95709ad7ee7a",
+    "src/engine/deck_sync.rs": "541e872e4c007263b2e303094a0ba0876ec0de83121b4a0a3c766f4ececd2554",
+    "src/engine/deck_sync/tests.rs": "149a9f0aa6287df447c5f4e30517950c869e1e061037575b1069d519cf51fca9",
+    "src/engine/diagnostics.rs": "2ee5bb4ccac42af5b116df49f55f725c7dbefe5c29656b29e017edcda799471e",
+    "src/engine/midi.rs": "51e2e0376a8744b892af2be999435c812ef1214a7a17c88288b38da5558e54d5",
+    "src/engine/midi/handoff/tests.rs": "3be4bde3b5d060cc0940626ea785028ac3157b44266942b8ad05b07299266ab0",
+    "src/engine/midi/learn.rs": "fbf8c4a14026a4f6f4d8736f025d2d89f8050bf26cc2aa8b7d8bca6e919364b4",
+    "src/engine/midi/presets.rs": "6173eccf98766035f857fb0cdfe9d2663b4acaa239e2a369f50ce20850dc8c8a",
+    "src/engine/midi/profile.rs": "9a7cf13138b11cec57fd9e2d17207f1b5d70f93ce50921c944975d54c94539d8",
+    "src/engine/mod.rs": "5245b523b934f370f51841ce34a721b6c15e36f5467d7aa601cfbce5c39647a9",
+    "src/engine/performance.rs": "c8ea843a7caddd5340c14c714803db9e6340bb874e8f5a14703f7b6ec37db289",
+    "src/engine/project/capture.rs": "d1a32f9db2423fdf1ec36e4e771d154dab4beb910f04ade8048efbe65aa6713b",
+    "src/engine/project/model.rs": "91494a557c9d094040ac7c30f9c411502ab431b9537e194aa72aeed881f5beaf",
+    "src/engine/project/prepare.rs": "71298898311ba3308da253c1565d61f4926f833860c075cf2693d3c34bfd2e89",
+    "src/engine/saved_loops/tests.rs": "6abb5ae9d380062c3a9f04b5ac6108264b4f212f9dd8eba7e75b8c309f9ec4e8",
+    "src/engine/snapshot.rs": "20b4694ffc42f3c509df0f71443915c9ca84ce2da5050481aef2c601ccfa8a7c",
+    "src/engine/undo/capture.rs": "9ccc6edcc3682bca20e3ce9fe34f0ccabebbe3bf88fcac0dcda737c0d84e4d72",
+    "src/engine/undo/mod.rs": "035b66f6eadbab42d19658a819c441f9a9aba98d5af364b8bb67272bda8a308c",
+    "src/engine/undo/patch.rs": "a5030cba7439ae9b3bd1ab6e9dadcde4d0c30a36e1d3b329c853d4b2ca8cf01d",
+    "src/ipc_follow.rs": "a1cc44cb55dfc3f6c9798aaccc89685bbd2bd2036087f61c77b3ad5dc33f5ad2",
+    "src/ipc_follow_tests.rs": "81e67a30e0d933db896edb293f621bff80ea7bafe71b4ce5604f99f359969d6f",
+    "src/main.rs": "3a6f99004e4cb20bae59bf5b0e0321eadacf8c32c51427a814ade392c0ca75c3",
+    "src/preferences/mod.rs": "8086c99ffa1718042cc77637df822be1d5bf9023ce383499cd9a2189bea0f45f",
+    "src/preferences/storage.rs": "54c726f31f86405e8b18cd7e2dddd2554e85cffe79dc4d1cdf444d4700ec6c81",
+    "src/preferences/worker/midi_presets_tests.rs": "8215b09510f976b0abe7d08dc7e4e662e4c8af9d36809a6ac24eb510174b652a",
+    "src/ui.rs": "b5616e60910061e918b9431910d6c9f0fd92a73c03c46b1008574e7e8ca1d8d7",
+    "src/ui/arrangement/tests.rs": "169f1e0ad2ab20647104b36d27fc199a370900b0ff8b3dbd4877674bbb15dab8",
+    "src/ui/deck_sync.rs": "e424e140b9005501e91d5a3242e211bc804257a94ffd986a1d6291ef04c041b9",
+    "src/ui/deck_sync/tests.rs": "d8df71951b606cdf573f0da7a850a5d4973cf6b559936d5a89dcd111dd9201c5",
+    "src/ui/help/catalogue.rs": "f164b07cc416b50cf93c7e2d66f13c44620c42f8b6cdbec9eb1bd8345b843a57",
+    "src/ui/midi_learn.rs": "efda5d7cd359431182e96e5a5f6c43d98a1846b4d373d078ffef95ea2314c507",
+    "src/ui/midi_learn/tests.rs": "fb56ffc21b0b7f31ea65637b769bcd6704880560f33bad0274746843db010874"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-seventh",
+    "sha256": "5d656f9cc95371f0c4562da073bdf3c2a62801da87ef6cfdbb8fd61e2fb79b9b"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/tempo-phase-sync-seventh-compiled-source-inventory.json",
+    "sha256": "7b4b818f08881a3e95a9101011a3e64723bc500703799ff6b819c15ef1949dbc",
+    "baseRevision": "d3d6722479667e8c1106b2ea902813d2ba00165b",
+    "files": 757
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "d3d6722479667e8c1106b2ea902813d2ba00165b",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "48214fd20c9c907af1a4bcc858bd13b3d8a37851f5180140033e2c78cb8a9d3d",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "compose": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-compose-tests.log",
+      "sha256": "19495f6df37b4fff6cf9abb81cad149195523d2ce72c6b68fdfd57db02d200ee",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2013,
+      "seconds": 0.25
+    },
+    "core": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-core-tests.log",
+      "sha256": "367811bbeb642ad5237d1ff7da87222b6751723946b80d61bf64a995da4b518f",
+      "outcome": "ok",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2006,
+      "seconds": 12.06
+    },
+    "export": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-export-tests.log",
+      "sha256": "fe07e15c4db0b3b5bdf467ea366c480e54071694a0809088f7ace2ccb1c5fe0f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2014,
+      "seconds": 10.08
+    },
+    "diagnostics": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-diagnostics-tests.log",
+      "sha256": "7f4d11297e76f598ec299a4d89378e8ba4a6f31eefd53e6d0576428a4be5293a",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2011,
+      "seconds": 0.55
+    },
+    "native": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-native-tests.log",
+      "sha256": "624393f889a5db92a1a588aa1a8b7fc9c8473e20b6ba121842fd37c628893d7c",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2014,
+      "seconds": 0.27
+    },
+    "worker": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-worker-tests.log",
+      "sha256": "689817e5c943f2334a1526241566d9dc5216840725014aefeedf7351dfa6f70f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2014,
+      "seconds": 0.12
+    },
+    "preset": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-preset-tests.log",
+      "sha256": "4a28c30e3a8e9d1e3dd74245538f7b94a0411a010fa1cfa796e3293b3aab9c52",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2014,
+      "seconds": 0.01
+    },
+    "learn-ui": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-learn-ui-tests.log",
+      "sha256": "300b65dba9e4459a3c953c0d4ac4cc3a406dbce86ca0a9b153feff7580735d95",
+      "outcome": "ok",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2009,
+      "seconds": 1.52
+    },
+    "saved-loops": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-saved-loops-tests.log",
+      "sha256": "0263e89e960059ac44623bd96c4e93453386931c80f2bdb7211e577d5dbdf83a",
+      "outcome": "ok",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2010,
+      "seconds": 4.19
+    },
+    "pad": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pad-tests.log",
+      "sha256": "ed99dd4d159c7a56b21560d504e550daccf50fc4b8c3241a17ec3c3ab40edd6f",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2008,
+      "seconds": 0.84
+    },
+    "manual": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-manual-tests.log",
+      "sha256": "991fb4c80131a560c5075e7a50bef8b2b7f58e0fc1c67f6af34fb482e183922f",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2014,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-help-tests.log",
+      "sha256": "9616af286b78de61f9da129e18146f1f72b5dc32e9d234ff35211ed2097392f4",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2000,
+      "seconds": 2.83
+    },
+    "routing": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-routing-tests.log",
+      "sha256": "7306926567e70f5edf383421755be8452c4c73fc59c60df69a6eb057b9651dbc",
+      "outcome": "ok",
+      "passed": 30,
+      "failed": 0,
+      "ignored": 4,
+      "filtered": 1981,
+      "seconds": 13.05
+    },
+    "loop-controls": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-loop-controls-tests.log",
+      "sha256": "b8127a51f021fb7046d29a09011be989c302fc6f4e1ecf24e96af007ef57024d",
+      "outcome": "ok",
+      "passed": 26,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1989,
+      "seconds": 22.67
+    },
+    "keylock": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-keylock-tests.log",
+      "sha256": "36376e58f0447fa84ca54a8b40ab12d0d0acc945887d0adaad3940c606f307ef",
+      "outcome": "ok",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1992,
+      "seconds": 34.55
+    },
+    "beatgrid": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-beatgrid-tests.log",
+      "sha256": "585a4815a69f0b53818d96b0d0766f9267db2d676bbe43b2c03187f532cef1f9",
+      "outcome": "ok",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1999,
+      "seconds": 3.61
+    },
+    "undo": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-undo-tests.log",
+      "sha256": "29e4c7a9f86e010e4f3b101bddcf861f7880f0036e6b7e9d5541275e3f8813cb",
+      "outcome": "ok",
+      "passed": 36,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1978,
+      "seconds": 4.73
+    },
+    "project": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-project-tests.log",
+      "sha256": "c0259c4d9a12a2253b12c0d3cf551c1043fa510d244e0c83bc1267811dbe0eed",
+      "outcome": "ok",
+      "passed": 55,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1959,
+      "seconds": 12.58
+    },
+    "ipc": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-ipc-tests.log",
+      "sha256": "f4d59ab5a231fb220fc5f05e9debb9a16ec8b2493730c1044ba58c9c1f8185e3",
+      "outcome": "ok",
+      "passed": 44,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 1970,
+      "seconds": 18.64
+    },
+    "midi": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-midi-tests.log",
+      "sha256": "b8b55a2fcb2671c8a37b740571bfcf28fa5c8164fde4b75c0ab29bdf84bfe4d7",
+      "outcome": "ok",
+      "passed": 202,
+      "failed": 0,
+      "ignored": 2,
+      "filtered": 1811,
+      "seconds": 49.29
+    },
+    "preferences": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-preferences-tests.log",
+      "sha256": "2435313ce194ef152be6b9184a0548bdedfbfee7986553d4d46487cc02330354",
+      "outcome": "ok",
+      "passed": 53,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1962,
+      "seconds": 5.73
+    },
+    "full": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-full-tests.log",
+      "sha256": "985603ea407b708092d3ac099bff5178bb212962ce436648b283a3a3d2646b6c",
+      "outcome": "ok",
+      "passed": 1971,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 510.81
+    }
+  },
+  "node": {
+    "path": "target/app-backlog/tempo-phase-sync-seventh-node-tests.log",
+    "sha256": "194d31a7082371c861c591ca4ffc0172bdbbeb79bb9928fb88da9890bacef601",
+    "passed": 15,
+    "failed": 0
+  },
+  "clickMeasurements": {
+    "cases": [
+      {
+        "a_leader_clicks": 10,
+        "b_leader_clicks": 4,
+        "first_beat_error": 7.30793203729263e-12,
+        "first_max_callback_beat_error": 7.316813821489632e-12,
+        "first_max_click_error_frames": 0,
+        "heap_allocations_and_frees": 0,
+        "mode": "beat",
+        "resampled_click_error_bound_frames": 2,
+        "sample_rate": 8000,
+        "second_beat_error": 7.490896791750856e-12,
+        "second_max_callback_beat_error": 7.490896791750856e-12,
+        "second_max_click_error_frames": 2
+      },
+      {
+        "a_leader_clicks": 10,
+        "b_leader_clicks": 4,
+        "first_beat_error": 4.835243316847482e-12,
+        "first_max_callback_beat_error": 4.844125101044483e-12,
+        "first_max_click_error_frames": 0,
+        "heap_allocations_and_frees": 0,
+        "mode": "bar",
+        "resampled_click_error_bound_frames": 2,
+        "sample_rate": 8000,
+        "second_beat_error": 6.547651310029323e-12,
+        "second_max_callback_beat_error": 6.547651310029323e-12,
+        "second_max_click_error_frames": 2
+      },
+      {
+        "a_leader_clicks": 10,
+        "b_leader_clicks": 4,
+        "first_beat_error": 8.72333316692675e-11,
+        "first_max_callback_beat_error": 8.72333316692675e-11,
+        "first_max_click_error_frames": 5,
+        "heap_allocations_and_frees": 0,
+        "mode": "beat",
+        "resampled_click_error_bound_frames": 12,
+        "sample_rate": 44100,
+        "second_beat_error": 1.4956924587750109e-12,
+        "second_max_callback_beat_error": 2.0943247136528953e-12,
+        "second_max_click_error_frames": 8
+      },
+      {
+        "a_leader_clicks": 10,
+        "b_leader_clicks": 4,
+        "first_beat_error": 2.325606374142808e-11,
+        "first_max_callback_beat_error": 2.325606374142808e-11,
+        "first_max_click_error_frames": 5,
+        "heap_allocations_and_frees": 0,
+        "mode": "bar",
+        "resampled_click_error_bound_frames": 12,
+        "sample_rate": 44100,
+        "second_beat_error": 1.1830536550405668e-12,
+        "second_max_callback_beat_error": 2.0943247136528953e-12,
+        "second_max_click_error_frames": 8
+      },
+      {
+        "a_leader_clicks": 10,
+        "b_leader_clicks": 4,
+        "first_beat_error": 2.8244073746463982e-12,
+        "first_max_callback_beat_error": 1.6697754290362354e-11,
+        "first_max_click_error_frames": 5,
+        "heap_allocations_and_frees": 0,
+        "mode": "beat",
+        "resampled_click_error_bound_frames": 12,
+        "sample_rate": 48000,
+        "second_beat_error": 2.2243540342969936e-11,
+        "second_max_callback_beat_error": 2.2243540342969936e-11,
+        "second_max_click_error_frames": 9
+      },
+      {
+        "a_leader_clicks": 10,
+        "b_leader_clicks": 4,
+        "first_beat_error": 1.971756091734278e-12,
+        "first_max_callback_beat_error": 1.722533227166423e-11,
+        "first_max_click_error_frames": 5,
+        "heap_allocations_and_frees": 0,
+        "mode": "bar",
+        "resampled_click_error_bound_frames": 12,
+        "sample_rate": 48000,
+        "second_beat_error": 2.1255885940263397e-11,
+        "second_max_callback_beat_error": 2.1255885940263397e-11,
+        "second_max_click_error_frames": 9
+      }
+    ],
+    "paired_source_rates": [
+      8000,
+      44100
+    ],
+    "physical_devices_opened": false
+  },
+  "renderedPCM": [
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-44100-bar (4 beats)-a.wav",
+      "sha256": "be5979baca2a93aaf49c72d93d0e29099bade3a2b36e33b04043b9f6e445dd74",
+      "frames": 264600,
+      "sampleRate": 44100,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-44100-bar (4 beats)-b.wav",
+      "sha256": "632890bc76ce8832d4bee01ac4b3edc9d0d8b434ca519a8f4196c4374b0003c2",
+      "frames": 132300,
+      "sampleRate": 44100,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-44100-beat-a.wav",
+      "sha256": "000c40fc5ffad11d0909d1fe3a1fc9cce29b32e293833db652398bc557862c94",
+      "frames": 264600,
+      "sampleRate": 44100,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-44100-beat-b.wav",
+      "sha256": "8cad7ae12099264725ba742b3116a311b4eb4314de14e2a7be8222b7ae516c12",
+      "frames": 132300,
+      "sampleRate": 44100,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-48000-bar (4 beats)-a.wav",
+      "sha256": "ecc08a25a401a35abf83804473eb6313780ad3326ef09a4b4cbed5ba4970f546",
+      "frames": 288000,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-48000-bar (4 beats)-b.wav",
+      "sha256": "e2cc9c924c64c86170193545b84151ee766dd1757214fe88a88111b5d526ff71",
+      "frames": 144000,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-48000-beat-a.wav",
+      "sha256": "e169e9789e759a2539ab43f1bcac9068cdffa69df90c9fd4aa2f6a08eb36185e",
+      "frames": 288000,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-48000-beat-b.wav",
+      "sha256": "889e1fbcab2990d21e4371d76cdec101525e1bdb5aaa4849f2039f26f08c0867",
+      "frames": 144000,
+      "sampleRate": 48000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-8000-bar (4 beats)-a.wav",
+      "sha256": "d84e076fa486b2b50d9547a4cf0b0624b89693d21b3ef9a0c350f5494f8cc411",
+      "frames": 48000,
+      "sampleRate": 8000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-8000-bar (4 beats)-b.wav",
+      "sha256": "74fb47f3782405d39d6e9279a03ab9e31ed930aabf0058053bfd6f4bd57be776",
+      "frames": 24000,
+      "sampleRate": 8000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-8000-beat-a.wav",
+      "sha256": "6420abcf31c13d7ae9ec4c3eef9ed2ea98a9ae277bbcd4223782c46cdb46faeb",
+      "frames": 48000,
+      "sampleRate": 8000,
+      "channels": 2,
+      "format": "float32"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-pcm/paired-8000-beat-b.wav",
+      "sha256": "7a260d32ceb4407f703e073db7b00aeb4be08204897dbfcfa66398622e8d4338",
+      "frames": 24000,
+      "sampleRate": 8000,
+      "channels": 2,
+      "format": "float32"
+    }
+  ],
+  "clockLoadRegression": {
+    "regression": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-regression-output-timing.json",
+      "sha256": "1b65dc8ebfd6877d424d599fc0e122836cbec271cfc5922bd5884ea346c9ce41",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5081,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            104602,
+            91274,
+            91196,
+            50451,
+            86374,
+            94046,
+            91802,
+            25682,
+            130272,
+            5817,
+            16406,
+            2328,
+            123002,
+            2630,
+            24094,
+            61849,
+            52645,
+            4608,
+            141198,
+            75869,
+            136541,
+            92670,
+            111425,
+            3346
+          ],
+          "max_delay_ns": 141198
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            119102,
+            145266,
+            136387,
+            53925,
+            47130,
+            101169,
+            127749,
+            84454,
+            53450,
+            55864,
+            4443,
+            3315,
+            48937,
+            60058,
+            116972,
+            29634,
+            148341,
+            155713,
+            149251,
+            157705,
+            155535,
+            71572,
+            135278,
+            9565
+          ],
+          "max_delay_ns": 157705
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            113600,
+            108518,
+            155104,
+            29186,
+            63480,
+            18440,
+            115692,
+            110610,
+            106445,
+            145862,
+            114322,
+            120698,
+            129699,
+            132617,
+            129994,
+            99744,
+            65203,
+            12829,
+            80080,
+            19956,
+            35416,
+            152835,
+            11585,
+            77545
+          ],
+          "max_delay_ns": 155104
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            103391,
+            152987,
+            11997,
+            34384,
+            80979,
+            33824,
+            20169,
+            87473,
+            83068,
+            137955,
+            120592,
+            116395,
+            102407,
+            94502,
+            144889,
+            118609,
+            55953,
+            20006,
+            41560,
+            30655,
+            4833,
+            24511,
+            140524,
+            74035
+          ],
+          "max_delay_ns": 152987
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            119475,
+            86975,
+            2267,
+            38893,
+            150061,
+            25352,
+            59145,
+            5770,
+            29729,
+            94230,
+            142398,
+            124733,
+            30315,
+            148525,
+            7983,
+            147152,
+            22109,
+            75902,
+            113194,
+            42903,
+            130572,
+            38988,
+            156239,
+            112656
+          ],
+          "max_delay_ns": 156239
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            36182,
+            47058,
+            120517,
+            68184,
+            51518,
+            11518,
+            25101,
+            31811,
+            59645,
+            102479,
+            116230,
+            117688,
+            91980,
+            86773,
+            107606,
+            140607,
+            44482,
+            135275,
+            28190,
+            77609,
+            39525,
+            99901,
+            79860,
+            97652
+          ],
+          "max_delay_ns": 140607
+        }
+      ]
+    },
+    "full": {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-full-output-timing.json",
+      "sha256": "3ae8cfe7dad78838944119faffcd47cc27f76b4eabb921d4b5960995f7e915f5",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 5119,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            108980,
+            42400,
+            87155,
+            128952,
+            170040,
+            159836,
+            86590,
+            117845,
+            48098,
+            91436,
+            7690,
+            90987,
+            30449,
+            127830,
+            20208,
+            28129,
+            56466,
+            41470,
+            12099,
+            56312,
+            21315,
+            54778,
+            130991,
+            32619
+          ],
+          "max_delay_ns": 170040
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            32521,
+            151700,
+            145712,
+            78556,
+            24317,
+            146454,
+            120507,
+            99394,
+            120905,
+            121125,
+            55718,
+            145689,
+            81616,
+            149877,
+            93596,
+            123566,
+            68243,
+            120755,
+            113558,
+            14151,
+            68787,
+            128882,
+            131727,
+            11195
+          ],
+          "max_delay_ns": 151700
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            106479,
+            56897,
+            39398,
+            21565,
+            140401,
+            101278,
+            116112,
+            38154,
+            107281,
+            29739,
+            86616,
+            80743,
+            111119,
+            25411,
+            167956,
+            79330,
+            17165,
+            147042,
+            77084,
+            84502,
+            162129,
+            30295,
+            72630,
+            107798
+          ],
+          "max_delay_ns": 167956
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            142688,
+            87996,
+            11845,
+            24862,
+            75463,
+            36521,
+            139580,
+            119139,
+            151031,
+            136339,
+            61480,
+            40122,
+            54972,
+            15864,
+            7880,
+            57314,
+            124290,
+            148432,
+            64073,
+            129174,
+            50940,
+            3706,
+            153224,
+            84031
+          ],
+          "max_delay_ns": 153224
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            63021,
+            81702,
+            43092,
+            26065,
+            124204,
+            101219,
+            109900,
+            85373,
+            119179,
+            74651,
+            106750,
+            116848,
+            146780,
+            56251,
+            101850,
+            51613,
+            154171,
+            25184,
+            18240,
+            77755,
+            96979,
+            93160,
+            114257,
+            154856
+          ],
+          "max_delay_ns": 154856
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            57853,
+            56167,
+            93438,
+            50000,
+            18814,
+            124502,
+            85439,
+            5586,
+            35732,
+            12044,
+            139484,
+            189506,
+            88151,
+            117756,
+            94610,
+            119340,
+            125737,
+            69007,
+            126154,
+            63550,
+            33821,
+            5675,
+            138615,
+            116719
+          ],
+          "max_delay_ns": 189506
+        }
+      ]
+    }
+  },
+  "retainedPreliminaryChecks": [
+    {
+      "path": "target/app-backlog/tempo-phase-sync-first-check.log",
+      "sha256": "8294f8c87f12147c5903fa6954989ea951a1ae64fc30114f55b5be770f53ecf8"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-second-check.log",
+      "sha256": "d31ae86d253568b65b38a39086c07f99edde3e38e09968e70cc0d7340dd98826"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-third-check.log",
+      "sha256": "8d866bc7890bbb02cac078fda758db9098005aa070cd820b6d3149197a72598f"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-fourth-check.log",
+      "sha256": "52d286ac2afe4eaf23a8c8d42b297954de85d23d415f77bc3a927ff7637be16d"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-fifth-check.log",
+      "sha256": "e6a1f1953d86ebb96feedc50c18b9b1dcb0a161c40e332e47f38f55dc169c2f9"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-sixth-check.log",
+      "sha256": "68da69451f3a65a03b430638359efa638b3f80df465dec9813edb90af6b66bce"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-seventh-check.log",
+      "sha256": "933051726a1fd981e158c6809f587fefd06ab41166146486fe4be490e925132f"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-eighth-check.log",
+      "sha256": "e89b92be1e2e3b05770a80a3d198f65b32890629f08a4049a26d44eaded1d167"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-ninth-check.log",
+      "sha256": "4c30fddad38471adcd8b3bf99b9c5d8baeada52f5c97d39bc375c12a62c67854"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-tenth-check.log",
+      "sha256": "31bd626d0711d2b08a41ab1709e159f80baf179fa2bd9fd053d0f5ff599e2422"
+    },
+    {
+      "path": "target/app-backlog/tempo-phase-sync-eleventh-check.log",
+      "sha256": "eb99fbea700c119c50e21efda1a58cdf352b5a65eea920895ae011d16c67384c"
+    }
+  ],
+  "retainedPreliminaryResults": {
+    "sixthNestedPopupRegression": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-sixth",
+        "sha256": "642c4bdb34c14bc698f64a128dc8d2c8ff2104ec2c0793cbbf0fe3668459affc",
+        "compileLogSha256": "65dd1e2c2401c3451fb1d5a580bb6413afab3bc6b76d388f51895af74bef7e3b"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/tempo-phase-sync-sixth-compiled-source-inventory.json",
+        "sha256": "4d3e5ec8aa2921835589707e639e99a2c371d5371349ee84776890887754530d"
+      },
+      "compose": {
+        "path": "target/app-backlog/tempo-phase-sync-sixth-compose-tests.log",
+        "sha256": "d2f7fb04be1dcf91473397d91b940e172693f70ceb5db2892ef4dbfeda01cdfa",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2013,
+        "seconds": 0.28
+      },
+      "native": {
+        "path": "target/app-backlog/tempo-phase-sync-sixth-native-tests.log",
+        "sha256": "105ff315fe01bb951ff45b2f2c7d3093373b443ada2d0b8ca8b4319f5709012f",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2014,
+        "seconds": 0.15
+      },
+      "reason": "The pinned egui 0.32 implementation stores one popup per viewport, so opening a nested ComboBox replaces its settings popup. Sync settings now exposes direct selectable mode and leader choices with ordinary accessibility actions, preserving compact geometry without nested popups."
+    },
+    "fifthNativePopupRegression": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-fifth",
+        "sha256": "0be0acb58493795d835000ca0e19654e04acf3fb50f646e4f6f04a303ecaf6d8",
+        "compileLogSha256": "afd0378970c98d6775c463656358f39279642c68ffc8a37feecc5eb5ad4dc75f"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/tempo-phase-sync-fifth-compiled-source-inventory.json",
+        "sha256": "0cb40c0cbe4e088f02c49b4e55fced41178fcd9c211b582a68a94b8af0784299"
+      },
+      "compose": {
+        "path": "target/app-backlog/tempo-phase-sync-fifth-compose-tests.log",
+        "sha256": "1364787e8e275a20c45828b5026d8ae99289ff342480dfcf74f1290c8cfd6f97",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2013,
+        "seconds": 0.3
+      },
+      "native": {
+        "path": "target/app-backlog/tempo-phase-sync-fifth-native-tests.log",
+        "sha256": "87ef3360403ca31a674cba178586fdb8eea47dd3c22d4c28c4f7cae4e0a38d1f",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2014,
+        "seconds": 0.16
+      },
+      "reason": "The compact layout restored the actual Compose pointer fixture, but a default close-on-click menu closed while opening its nested chooser. Sync settings now use the existing deck-time popup pattern with CloseOnClickOutside so native mode and leader choosers remain interactive."
+    },
+    "fourthFullUiRegressions": {
+      "path": "target/app-backlog/tempo-phase-sync-fourth-full-tests.log",
+      "sha256": "8e7eb44661eee837622cb9494bd93892c1e4aeef558ef92bc30ee2201ca140b1",
+      "result": {
+        "path": "target/app-backlog/tempo-phase-sync-fourth-full-tests.log",
+        "sha256": "8e7eb44661eee837622cb9494bd93892c1e4aeef558ef92bc30ee2201ca140b1",
+        "outcome": "FAILED",
+        "passed": 1969,
+        "failed": 2,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 530.15
+      },
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-fourth",
+        "sha256": "1bbc322c46b2483912169b06f4bbc74152d53ef16eb9022aacb11939f6156cec",
+        "compileLogSha256": "8cb3a5ab4d0a19265fc530de1f8688c2a0d9cf534c0cb5fad35546e1b8670991"
+      },
+      "isolatedCompose": {
+        "path": "target/app-backlog/tempo-phase-sync-fourth-compose-isolated.log",
+        "sha256": "8123248c669ee115796c36c2580b535c0480c611a33e11ebcabb518df75c5d33"
+      },
+      "isolatedArrangement": {
+        "path": "target/app-backlog/tempo-phase-sync-fourth-arrangement-isolated.log",
+        "sha256": "e140cb4e10fb3127e943df359396f5d907af1aa9d19e3392748fe6cbcf62f83b",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2014,
+        "seconds": 0.31
+      },
+      "resolution": "The expanded inline sync controls moved a pointer fixture target outside the existing viewport. Sync settings now open in a bounded native menu, preserving the performance panel geometry and actual pointer route. The Arrangement worker fixture passed in isolation; its timeout now reports each pending subsystem for any recurrence."
+    },
+    "thirdFullStackOverflow": {
+      "firstDebuggerAttempt": {
+        "path": "target/app-backlog/tempo-phase-sync-third-backtrace.log",
+        "sha256": "10aa8c023337e40b5146294d22d9072deab5294b8added6a0101757ad3c819fe",
+        "exitCode": 134,
+        "reason": "GDB itself aborted while printing Rust arguments on a background thread; the focused no-argument crashing-thread trace completed successfully."
+      },
+      "path": "target/app-backlog/tempo-phase-sync-third-full-tests.log",
+      "sha256": "d9a15f9c1346f13d9bc02dae61ccabdc8edd1993b8b0746df6f96fb2f728c9c5",
+      "testBinary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-third",
+        "sha256": "69e5467ce4f0a3b9f8d44198707385337e4ca58270b1e568e09e7f339c287f01",
+        "compileLogSha256": "8cb21dc2a24424028cf7d4f84629f88a65fbf507457636ea1548ff69c02816b7"
+      },
+      "compiledInventory": {
+        "path": "target/app-backlog/tempo-phase-sync-third-compiled-source-inventory.json",
+        "sha256": "65597a6dc951789bd4ef076ad4275482cf542dbe5a5ec469d0b21bd50c08cbc4"
+      },
+      "diagnosis": {
+        "info": {
+          "path": "target/app-backlog/tempo-phase-sync-third-coredump-info.log",
+          "sha256": "3388e044669ee59074b1ddfa8602d458285ac274837011a2b5f42887ef52ddef"
+        },
+        "backtrace": {
+          "path": "target/app-backlog/tempo-phase-sync-third-backtrace-focused.log",
+          "sha256": "6f845711edc54f7466a0c5f3ecf9bbedf8453a773fa9c6fa3d9cd7ff677ac93f"
+        },
+        "reason": "The unfiltered suite overflowed the ordinary Rust test stack during disconnected telemetry construction inside offline Arrangement preparation. The symbolized crash frame initializes Telemetry/Profiler before source playback; no OOM event was found. Profiler atomic arrays now allocate directly into bounded heap slices during preparation. The extracted private core was deleted after inspection. The existing five-minute real-time/export parity fixture and profiler callback fixtures run explicitly before the final full suite; RUST_MIN_STACK remains unset."
+      }
+    },
+    "emptyKeylockSelector": {
+      "path": "target/app-backlog/tempo-phase-sync-third-keylock-empty-filter-tests.log",
+      "sha256": "748a5c488cc20f6cd75257765465a54242ab7cee4b86f32fac29ca340c779b33",
+      "reason": "The qualification guard refused a selector with zero fixtures. The corrected engine::keylock selector includes the actual renderer quality/boundary regression modules."
+    },
+    "reason": "Early checks found test-only private snapshot access, an out-of-module private binding helper and a missing fixture timestamp. The first compiled native assignment check selected an ambiguous Deck B label belonging to a deck tab. Explicit accessible menu names fixed the target, and the second focused pass passed every feature fixture. Review then added stopped-clock tempo seeding, legacy one-shot Match handoff/Undo, direct invalid-target refusal and saved-loop/hot-loop phase retirement before this final qualification.",
+    "rounds": [
+      {
+        "name": "first",
+        "binary": {
+          "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+          "privateBinary": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-first",
+          "sha256": "3473ea94c26977938af656b0891ec6b48de534a890502a6b65a33a6289736cf5",
+          "compileLogSha256": "0f49b5f8681893c51095b19a6c437142edae25cbad33556367973279faa5f933"
+        },
+        "compiledInventory": {
+          "path": "target/app-backlog/tempo-phase-sync-first-compiled-source-inventory.json",
+          "sha256": "3c21b30797e891089762a781cc936f649821da97e632f99448f6dc2b67dc4f63"
+        },
+        "tests": {
+          "core": {
+            "path": "target/app-backlog/tempo-phase-sync-first-core-tests.log",
+            "sha256": "4cd97aeb32eaecabf2b48f4a645c0ee96a4aca1d4a1f275496b75ed4d60bcabc",
+            "outcome": "ok",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2006,
+            "seconds": 11.83
+          },
+          "native": {
+            "path": "target/app-backlog/tempo-phase-sync-first-native-tests.log",
+            "sha256": "0376410787120285517dbfa3c05a5c7b823a6df3a053823235f947591e2a4828",
+            "outcome": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2013,
+            "seconds": 0.22
+          },
+          "worker": {
+            "path": "target/app-backlog/tempo-phase-sync-first-worker-tests.log",
+            "sha256": "9d81d61083634e095500acf7fbce60779b717bca9dcccae29e90d2e621c6afe5",
+            "outcome": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2013,
+            "seconds": 0.11
+          },
+          "preset": {
+            "path": "target/app-backlog/tempo-phase-sync-first-preset-tests.log",
+            "sha256": "ea6ea3feb8bd6d9d207174d2e3e118fee371f80979dc2c66c84354f450a211ca",
+            "outcome": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2013,
+            "seconds": 0.01
+          },
+          "learn-ui": {
+            "path": "target/app-backlog/tempo-phase-sync-first-learn-ui-tests.log",
+            "sha256": "bfd5ae3f44933fafce8eddb62abb73eed70750321ee334525a74f9e0bdc1bf65",
+            "outcome": "FAILED",
+            "passed": 5,
+            "failed": 1,
+            "ignored": 0,
+            "filtered": 2008,
+            "seconds": 1.45
+          }
+        }
+      },
+      {
+        "name": "second",
+        "binary": {
+          "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+          "privateBinary": "target/app-backlog/qualification-bin/tempo-phase-sync-tests-second",
+          "sha256": "f91cf7072729a6b7c54b2502bb4c002dddbf777018e9d6af417bdac4a3aef3a9",
+          "compileLogSha256": "0f49b5f8681893c51095b19a6c437142edae25cbad33556367973279faa5f933"
+        },
+        "compiledInventory": {
+          "path": "target/app-backlog/tempo-phase-sync-second-compiled-source-inventory.json",
+          "sha256": "d02f7bc1594e25b632b20b7ecc1aef21e59d9012ad849c28efa2e27ae6ee6ed9"
+        },
+        "tests": {
+          "core": {
+            "path": "target/app-backlog/tempo-phase-sync-second-core-tests.log",
+            "sha256": "3ad06aec15696409ed7fd50b386849464d72ac0b983469ebb6355f6e1a603058",
+            "outcome": "ok",
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2006,
+            "seconds": 11.79
+          },
+          "native": {
+            "path": "target/app-backlog/tempo-phase-sync-second-native-tests.log",
+            "sha256": "0376410787120285517dbfa3c05a5c7b823a6df3a053823235f947591e2a4828",
+            "outcome": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2013,
+            "seconds": 0.22
+          },
+          "worker": {
+            "path": "target/app-backlog/tempo-phase-sync-second-worker-tests.log",
+            "sha256": "35cd411528594c10e47e75794c1c10067f6bb0c97462efcde3801efe9b88594c",
+            "outcome": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2013,
+            "seconds": 0.12
+          },
+          "preset": {
+            "path": "target/app-backlog/tempo-phase-sync-second-preset-tests.log",
+            "sha256": "ea6ea3feb8bd6d9d207174d2e3e118fee371f80979dc2c66c84354f450a211ca",
+            "outcome": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2013,
+            "seconds": 0.01
+          },
+          "learn-ui": {
+            "path": "target/app-backlog/tempo-phase-sync-second-learn-ui-tests.log",
+            "sha256": "c461c9ec9428c6bba6708db5f220dfac0398b445ac48dd0185861b33a5c269d2",
+            "outcome": "ok",
+            "passed": 6,
+            "failed": 0,
+            "ignored": 0,
+            "filtered": 2008,
+            "seconds": 1.39
+          }
+        }
+      }
+    ]
+  },
+  "limits": "Linux ARM64 software qualification: explicit Off/Tempo/Beat/four-quarter-note Bar modes and deliberate Transport/Deck A/Deck B leaders; exact mapped source beat intervals, emitted paired click PCM at three output rates and unequal source rates through variable-tempo boundaries and both deck leaders; conductor ramps/pickup/quarter-note timing; default/routed output parity, compatible and incompatible loops; performed offset preservation and explicit re-arm; stopped arming without Play, leader stop/unload/replacement with retained choice and last tempo; invalid/foreign spindle message refusal; real native mode/leader and learned assignment choosers, production input workers, file reopening and strict old-header guards; fixed undo intent without playhead rewind; callback allocations/frees. Bar means four quarter notes; odd-meter bar alignment and global relative pitch are not claimed. Click PCM is measured with keylock disabled; existing keylock regression fixtures also pass. No physical device opened, no live capture or new GUI, no hardware acceptance claimed. Independent stage GUI/follower and session remain preserved."
+}

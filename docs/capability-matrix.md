@@ -446,6 +446,20 @@ Seven new source-bound engine, native and typed-IPC checks pass, with deck, auto
 
 Linux ARM64 software qualification: eight per-deck modes and fixed slot IDs, current labels/colors and mode parameters; original source/key/deck action release through mode, learned profile and manufacturer pad-address/deck-layer changes; unrelated deck, ordinary control and source owner preservation; bounded reservations through a full command queue, safety and explicit recovery; mouse/keyboard/assistive/touch ownership and fresh-press-only keyboard behavior; actual native mode chooser, parameters, pad holds, cue descriptions and named saved slots; synthetic production MIDI workers including learned SP1 overrides; actual preset export/import and preference file reopening with strict legacy action/header refusal. The existing sampler preserves active voice bank ownership and its selected playback mode: Hold ends on release, while finite one-shots retain their normal tails. Pad mode selection starts at Hot Cue on a fresh app, and held input is never persisted. No physical audio/MIDI device opened, no live controller capture and no new physical acceptance claimed. The independent stage GUI and follower remain unchanged.
 
+### Issue #193: implemented
+
+- explicit phase and clock ownership: [src/engine/deck_sync.rs](../src/engine/deck_sync.rs) — Typed modes/leader, emitted leader intervals, source-map advancement, one-time bounded phase arm, compatible loops and deliberate retirement policy
+- shared default and routed deck audio: [src/engine/audio/routing/render.rs](../src/engine/audio/routing/render.rs) — Both decks render once against the same leader frame with fixed outputs and taps
+- actual native mode/leader controls: [src/ui/deck_sync.rs](../src/ui/deck_sync.rs) — Direct mode/leader choices in a compact popup, explicit re-arm, target BPM and published aligned/armed/stopped state
+- native project persistence and Undo: [src/engine/project/model.rs](../src/engine/project/model.rs) — State 25 leader/phase intent, strict old-header refusal, stopped reopen and fixed scalar history without performed playhead rewind
+- portable learned sync controls: [src/ui/midi_learn.rs](../src/ui/midi_learn.rs) — Fixed mode/global-leader IDs, validated production dispatch, preset 6/preferences 24 and native assignment choosers
+- bounded read-only status projection: [src/ipc_follow.rs](../src/ipc_follow.rs) — Ordinary/follow leader readiness, modes, alignment and target BPM with exact cached projection
+- Acceptance fixtures: `engine::deck_sync::tests`, `ui::deck_sync::tests`, `engine::midi::handoff::tests::sync_modes_and_leaders_reach_the_renderer_through_the_real_learned_input_worker`, `preferences::worker::midi_presets_tests::sync_mode_presets_and_preferences_preserve_explicit_targets_and_refuse_older_headers`, `ui::midi_learn::tests::native_sync_assignment_choosers_use_fixed_mode_and_global_leader_ids`.
+- Evidence: [docs/validation/tempo-phase-sync.md](../docs/validation/tempo-phase-sync.md).
+- Evidence: [docs/validation/tempo-phase-sync-receipt.json](../docs/validation/tempo-phase-sync-receipt.json).
+
+Linux ARM64 software qualification: explicit Off/Tempo/Beat/four-quarter-note Bar modes and deliberate Transport/Deck A/Deck B leaders; exact mapped source beat intervals, emitted paired click PCM at three output rates and unequal source rates through variable-tempo boundaries and both deck leaders; conductor ramps/pickup/quarter-note timing; default/routed output parity, compatible and incompatible loops; performed offset preservation and explicit re-arm; stopped arming without Play, leader stop/unload/replacement with retained choice and last tempo; invalid/foreign spindle message refusal; real native mode/leader and learned assignment choosers, production input workers, file reopening and strict old-header guards; fixed undo intent without playhead rewind; callback allocations/frees. Bar means four quarter notes; odd-meter bar alignment and global relative pitch are not claimed. Click PCM is measured with keylock disabled; existing keylock regression fixtures also pass. No physical device opened, no live capture or new GUI, no hardware acceptance claimed. Independent stage GUI/follower and session remain preserved.
+
 ### Issue #195: implemented
 
 - portable format: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Strict named factory overlays and exact-port candidates without backend IDs
@@ -629,7 +643,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented |
 | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned |
 | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | implemented |
-| [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned |
+| [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | implemented |
 | [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned |
 | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented |
 | [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | implemented |

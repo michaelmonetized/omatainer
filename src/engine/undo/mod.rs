@@ -851,6 +851,8 @@ pub(crate) fn is_gesture_edit(command: &Command) -> bool {
             | Command::DeckEq { .. }
             | Command::DeckFilter { .. }
             | Command::DeckSync { .. }
+            | Command::DeckSyncMode { .. }
+            | Command::DeckSyncLeader(_)
             | Command::DeckPfl { .. }
             | Command::DeckHotCue { .. }
             | Command::DeckCueStyle { .. }

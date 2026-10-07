@@ -62,6 +62,8 @@ impl MidiMap {
                 Action::TrackFader | Action::TrackMute | Action::TrackSolo | Action::TrackArm | Action::TrackPan | Action::TrackSendA | Action::TrackSendB => binding.extra < crate::engine::session::MAX_TRACKS as u16,
                 Action::SamplerSlotStop => binding.extra < 16 && binding.kind == MsgKind::Note,
                 Action::DeckPad | Action::DeckPadMode => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < 8,
+                Action::DeckSyncMode => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < 4,
+                Action::DeckSyncLeader => binding.deck == 0 && binding.kind == MsgKind::Note && binding.extra < 3,
                 Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra == 0,
                 Action::DeckSavedLoopRecall | Action::DeckSavedLoopSave | Action::DeckSavedLoopDelete => binding.deck < 2 && binding.kind == MsgKind::Note && binding.extra < 8,
                 Action::DeckHotCue => usize::from(binding.extra) < crate::engine::HOTCUES,

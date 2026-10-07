@@ -104,6 +104,11 @@ fn cached_projection_is_exact_status_and_ignores_large_unrelated_state_without_a
         };
         2
     ];
+    snapshot.sync_leader = Some(crate::engine::deck_sync::Leader::DeckB);
+    snapshot.sync_leader_ready = true;
+    snapshot.decks[0].sync_mode = crate::engine::deck_sync::Mode::Bar;
+    snapshot.decks[0].sync_aligned = true;
+    snapshot.decks[0].sync_target_bpm = 123.5;
     let id = json!("\u{1}".repeat(128));
     let mut cache = Cache::default();
     let first: Value =

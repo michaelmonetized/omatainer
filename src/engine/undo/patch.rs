@@ -159,6 +159,7 @@ pub(super) struct DeckControls {
     source_gain: crate::track_gain::Resolved,
     pitch: f32,
     sync: bool,
+    sync_phase: deck_sync::Phase,
     sync_bpm: f32,
     gain: f32,
     eq: [f32; 3],
@@ -185,6 +186,7 @@ impl DeckControls {
             source_gain: deck.source_gain,
             pitch: deck.pitch,
             sync: deck.sync,
+            sync_phase: deck.sync_phase,
             sync_bpm: deck.sync_bpm,
             gain: deck.gain,
             eq: [deck.eq[0].low_g, deck.eq[0].mid_g, deck.eq[0].high_g],
@@ -214,6 +216,9 @@ impl DeckControls {
             || self.loop_len != deck.loop_len;
         deck.pitch = self.pitch;
         deck.sync = self.sync;
+        deck.sync_phase = self.sync_phase;
+        deck.sync_phase_locked = false;
+        deck.sync_step = None;
         deck.sync_bpm = self.sync_bpm;
         deck.gain = self.gain;
         deck.source_gain = self.source_gain;
@@ -275,6 +280,7 @@ pub(super) enum Patch {
     Arrangement {value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
     Global(Global),
+    Sync(deck_sync::Saved),
     Conductor { bpm: f32, value: Option<Arc<midi_data::Conductor>>, scene_timing: Option<scene::Timing>, reserved_bytes: usize },
     Sampler {
         index: usize,
@@ -364,7 +370,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::SongNavigation {..} | Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::SongNavigation {..} | Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Sync(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -434,6 +440,7 @@ impl Patch {
                 *selected = selection;
             }
             Self::Global(value) => value.swap(rt),
+            Self::Sync(value) => value.swap(rt),
             Self::Conductor { bpm, value, scene_timing, .. } => {
                 rt.scenes.cancel();
                 std::mem::swap(scene_timing, &mut rt.scenes.timing);

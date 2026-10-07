@@ -36,6 +36,8 @@ fn label(action: Action) -> &'static str {
         Action::DeckCue => "Deck set/return Cue",
         Action::DeckCueHold => "Deck hold Cue audition",
         Action::DeckSync => "Deck Sync",
+        Action::DeckSyncMode => "Deck sync mode",
+        Action::DeckSyncLeader => "Deck sync leader",
         Action::DeckJog => "Deck jog",
         Action::DeckJogTouch => "Deck platter touch",
         Action::DeckPitch => "Deck pitch",
@@ -101,6 +103,14 @@ fn label(action: Action) -> &'static str {
     }
 }
 fn description(mapping: &learn::Mapping) -> String {
+    if learn::sync_mode(mapping.binding.action) {
+        let target = if mapping.binding.action == Action::DeckSyncLeader {
+            crate::engine::deck_sync::Leader::from_id(mapping.binding.extra).map_or("Invalid leader".into(), |leader| format!("Shared leader {}", leader.label()))
+        } else {
+            crate::engine::deck_sync::Mode::from_id(mapping.binding.extra).map_or("Invalid sync mode".into(), |mode| format!("Deck {} sync {}", (b'A' + mapping.binding.deck) as char, mode.label()))
+        };
+        return format!("{} / {} · channel {} · {:?} {} → {target}", mapping.endpoint.name, mapping.endpoint.id, mapping.binding.ch + 1, mapping.binding.kind, mapping.binding.data);
+    }
     if learn::navigation(mapping.binding.action) {
         return format!("{} / {} · channel {} · {:?} {} → {}{}",mapping.endpoint.name,mapping.endpoint.id,mapping.binding.ch+1,mapping.binding.kind,mapping.binding.data,label(mapping.binding.action),if mapping.binding.action==Action::SongLocator {format!(" · locator ID {}",mapping.binding.extra)} else {String::new()});
     }
@@ -197,7 +207,7 @@ impl App {
                 });
             }
             let binding = &mut self.midi_learn.binding;
-            if binding.action != Action::SamplerSlotStop && !learn::navigation(binding.action) {
+            if binding.action != Action::SamplerSlotStop && binding.action != Action::DeckSyncLeader && !learn::navigation(binding.action) {
             let mut deck = f32::from(binding.deck) + 1.0;
             preferences::float_control(
                 ui,
@@ -215,6 +225,7 @@ impl App {
             );
             binding.deck = deck.round() as u8 - 1;
             }
+            if binding.action == Action::DeckSyncLeader { binding.deck = 0; }
             if binding.action == Action::SongLocator {
                 let mut id = f32::from(binding.extra);
                 preferences::float_control(ui, "MIDI target locator ID", &mut id, 1.0, 65535.0, 1.0, "", HelpControl::MidiLearn);
@@ -233,6 +244,29 @@ impl App {
                 let mode = crate::engine::deck_pads::Mode::from_index(binding.extra as u8).unwrap_or(crate::engine::deck_pads::Mode::HotCue);
                 egui::ComboBox::from_label("MIDI pad mode").selected_text(mode.label()).show_ui(ui, |ui| {
                     for mode in crate::engine::deck_pads::Mode::ALL { ui.selectable_value(&mut binding.extra, u16::from(mode.index()), mode.label()); }
+                });
+            }
+            if binding.action == Action::DeckSyncMode {
+                use crate::engine::deck_sync::Mode;
+                let mode = Mode::from_id(binding.extra).unwrap_or(Mode::Off);
+                egui::ComboBox::from_label("MIDI sync mode").selected_text(mode.label()).show_ui(ui, |ui| {
+                    for (id, mode) in Mode::ALL.into_iter().enumerate() {
+                        let choice = ui.selectable_value(&mut binding.extra, id as u16, mode.label());
+                        accessibility::button(ui, &choice, &format!("MIDI sync mode {}", mode.label()), None);
+                        if choice.clicked() { ui.close(); }
+                    }
+                });
+            }
+            if binding.action == Action::DeckSyncLeader {
+                use crate::engine::deck_sync::Leader;
+                let leader = Leader::from_id(binding.extra).unwrap_or(Leader::Transport);
+                egui::ComboBox::from_label("MIDI sync leader").selected_text(leader.label()).show_ui(ui, |ui| {
+                    for id in 0..3 {
+                        let leader = Leader::from_id(id).unwrap();
+                        let choice = ui.selectable_value(&mut binding.extra, id, leader.label());
+                        accessibility::button(ui, &choice, &format!("MIDI sync leader {}", leader.label()), None);
+                        if choice.clicked() { ui.close(); }
+                    }
                 });
             }
             if max > 1.0 {

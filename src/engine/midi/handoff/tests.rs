@@ -4,6 +4,34 @@ use crate::engine::{dsp::InputKey, Engine, RtEngine};
 use std::time::Instant;
 
 #[test]
+fn sync_modes_and_leaders_reach_the_renderer_through_the_real_learned_input_worker() {
+    use crate::engine::deck_sync::{Leader, Mode};
+    use crate::engine::midi::learn::{Config, Endpoint, Mapping};
+    let (engine, mut rt) = Engine::headless_for_test(48_000, 256);
+    let (mut sink, mut worker) = input(64, 1931, &engine.cmd);
+    let endpoint = Endpoint { name: "test device".into(), id: "test device".into() };
+    let mut bindings = Vec::new();
+    for mode in 0..4 { bindings.push(nbind(2, 60 + mode as u8, Action::DeckSyncMode, 1, mode)); }
+    for leader in 0..3 { bindings.push(nbind(2, 70 + leader as u8, Action::DeckSyncLeader, 0, leader)); }
+    engine.cmd.midi_learn().configure(Config { mappings: bindings.into_iter().map(|binding| Mapping { endpoint: endpoint.clone(), binding }).collect() }).unwrap();
+    drain(&mut worker); render(&mut rt);
+    sink.push(&[0x92, 71, 127]); drain(&mut worker); render(&mut rt);
+    assert_eq!(rt.deck_sync.leader, Some(Leader::DeckA));
+    for (id, mode) in Mode::ALL.into_iter().enumerate() {
+        sink.push(&[0x92, 60 + id as u8, 127]); drain(&mut worker);
+        assert_eq!(crate::engine::test_alloc::measure(|| render(&mut rt)), Default::default());
+        assert_eq!(rt.decks[1].sync_mode(), mode);
+        sink.push(&[0x92, 60, 0, 0x82, 60, 0]); drain(&mut worker); render(&mut rt);
+        assert_eq!(rt.decks[1].sync_mode(), mode);
+    }
+    sink.push(&[0x92, 72, 127]); drain(&mut worker); render(&mut rt);
+    assert_eq!(rt.decks[1].sync_mode(), Mode::Off);
+    assert_eq!(rt.deck_sync.leader, Some(Leader::DeckB));
+    assert!(!rt.decks[0].playing && !rt.decks[1].playing);
+    drop(worker); render(&mut rt);
+}
+
+#[test]
 fn deck_pad_learned_sp1_override_releases_the_original_deck_after_a_manufacturer_mode_and_layer_change() {
     use crate::engine::midi::learn::{Config,Endpoint,Mapping};
     let (engine,mut rt)=Engine::headless_for_test(48_000,256);

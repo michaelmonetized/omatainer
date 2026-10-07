@@ -496,6 +496,7 @@ impl RtEngine {
             return;
         }
         let index = usize::from(deck);
+        if matches!(control, Control::Hold { button: Button::Reverse | Button::Bleep | Button::BendDown | Button::BendUp | Button::Cue | Button::HotCue(_) | Button::Roll(_) | Button::Slice(_), on: true } | Control::Strip { .. } | Control::BeatJump { .. } | Control::TrackStart) { self.deck_sync_manipulation(index); }
         match control {
             Control::Quantize { enabled, division } => {
                 let state = &mut self.decks[index].controls;
@@ -717,6 +718,7 @@ impl RtEngine {
                 }
             }
             Control::HotLoop { pad, clear } => {
+                if !clear { self.deck_sync_manipulation(index); }
                 let d = &mut self.decks[index];
                 let slot = usize::from(pad);
                 if clear {
@@ -927,6 +929,7 @@ impl RtEngine {
                 self.project.edited();
             }
             Control::Reloop => {
+                if self.decks[index].loop_len > 1.0 { self.deck_sync_manipulation(index); }
                 let d = &mut self.decks[index];
                 if d.loop_len > 1.0 {
                     d.loop_on = true;

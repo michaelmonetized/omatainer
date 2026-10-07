@@ -562,6 +562,8 @@ fn destructive(command: &Command) -> bool {
         | Command::DeckPlay { .. }
         | Command::DeckCue { .. }
         | Command::DeckSync { .. }
+        | Command::DeckSyncMode { .. }
+        | Command::DeckSyncLeader(_)
         | Command::DeckJog { .. }
         | Command::DeckTouch { .. }
         | Command::MidiDeckTouch { .. }

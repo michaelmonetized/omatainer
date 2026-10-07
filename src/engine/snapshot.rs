@@ -224,6 +224,8 @@ impl Frame {
         }
 
         let target = &mut self.values;
+        target.sync_leader = rt.deck_sync.leader;
+        target.sync_leader_ready = rt.deck_sync_ready();
         target.session.as_mut().unwrap().copy_from_prepared(&rt.session);
         target.performance = rt.performance.status();
         let held = rt.note_recording.held_targets();
@@ -298,6 +300,9 @@ impl Frame {
             out.filter = deck.filter_amt;
             out.vinyl = deck.vinyl;
             out.sync = deck.sync;
+            out.sync_mode = deck.sync_mode();
+            out.sync_aligned = deck.sync && deck.sync_phase_locked && rt.deck_sync_ready() && deck.playing && !deck.touching;
+            out.sync_target_bpm = deck.sync_bpm;
             out.keylock = deck.keylock;
             out.controls = deck.controls.status();
             out.saved_loops = deck.audio.as_ref().map_or_else(Default::default, |audio| deck.controls.saved_loops(audio.sr));

@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 42 implemented · 6 partial · 173 planned · 0 accepted · 8 outside release
+127 existing stack · 43 implemented · 6 partial · 172 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -203,7 +203,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [x] | [#190](https://github.com/michaelmonetized/omatainer/issues/190) | Add precise loop boundary editing and beat-based loop movement | implemented | #134 | [receipt](../../docs/validation/loop-editing.md), [receipt](../../docs/validation/loop-editing-receipt.json) |
 | [ ] | [#191](https://github.com/michaelmonetized/omatainer/issues/191) | Add a dedicated track preparation and audition workflow | planned | #85, #130 |  |
 | [x] | [#192](https://github.com/michaelmonetized/omatainer/issues/192) | Add deck performance-pad modes with per-deck selection | implemented | #148, #98 | [receipt](../../docs/validation/deck-pad-modes.md), [receipt](../../docs/validation/deck-pad-modes-receipt.json) |
-| [ ] | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | planned | #134 |  |
+| [x] | [#193](https://github.com/michaelmonetized/omatainer/issues/193) | Separate tempo matching from beat and bar synchronization | implemented | #134 | [receipt](../../docs/validation/tempo-phase-sync.md), [receipt](../../docs/validation/tempo-phase-sync-receipt.json) |
 | [ ] | [#194](https://github.com/michaelmonetized/omatainer/issues/194) | Qualify sustained browsing and preparation on professional-size libraries | planned | #85, #139, #104, #81, #36, #44 |  |
 | [x] | [#195](https://github.com/michaelmonetized/omatainer/issues/195) | Persist, import and export MIDI mapping presets | implemented | #148 | [receipt](../../docs/validation/midi-mapping-presets.md) |
 | [x] | [#196](https://github.com/michaelmonetized/omatainer/issues/196) | Implement per-clip launch modes, launch quantization and legato switching | implemented | #152 | [receipt](../../docs/validation/session-launch.md), [receipt](../../docs/validation/session-launch-receipt.json) |

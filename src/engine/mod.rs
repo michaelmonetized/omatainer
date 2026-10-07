@@ -65,6 +65,7 @@ pub mod decode;
 pub mod dsp;
 pub(crate) mod waveform;
 pub(crate) mod deck_controls;
+pub(crate) mod deck_sync;
 #[cfg(test)]
 mod svf_tests;
 pub mod media_load;
@@ -375,6 +376,9 @@ pub struct DeckRt {
     pub vinyl: bool,
     pub keylock: bool,
     pub sync: bool,
+    pub(crate) sync_phase: deck_sync::Phase,
+    sync_phase_locked: bool,
+    sync_step: Option<(f64, f32)>,
     pub gain: f32,
     pub eq: [ThreeBand; 2],
     pub(crate) source_gain: crate::track_gain::Resolved,
@@ -457,6 +461,9 @@ impl DeckRt {
             vinyl: true,
             keylock: false,
             sync: false,
+            sync_phase: deck_sync::Phase::None,
+            sync_phase_locked: false,
+            sync_step: None,
             gain: 0.85,
             source_gain: crate::track_gain::Resolved::default(),
             eq: [ThreeBand::new(sr); 2],
@@ -661,6 +668,7 @@ pub struct RtEngine {
     pub(crate) navigation: song_navigation::Runtime,
     pub(crate) scenes: scene::State,
     pub decks: [DeckRt; DECKS],
+    deck_sync: deck_sync::State,
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
     history_measurement: Option<history_measurement::capture::Measurement>,
@@ -765,6 +773,9 @@ pub struct DeckSnap {
     pub filter: f32,
     pub vinyl: bool,
     pub sync: bool,
+    pub sync_mode: deck_sync::Mode,
+    pub sync_aligned: bool,
+    pub sync_target_bpm: f32,
     pub keylock: bool,
     pub controls: deck_controls::Status,
     pub keylock_mode: keylock::Mode,
@@ -838,6 +849,8 @@ impl MidiClockInput {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub sync_leader: Option<deck_sync::Leader>,
+    pub sync_leader_ready: bool,
     pub(crate) builtin_levels: [Option<crate::track_gain::Level>; 2],
     pub session: Option<session::Layout>,
     pub performance: performance::Status,
@@ -915,6 +928,8 @@ pub struct Snapshot {
 impl Default for Snapshot {
     fn default() -> Self {
         Self {
+            sync_leader: None,
+            sync_leader_ready: false,
             builtin_levels: [None, None],
             session: None,
             performance: performance::Status::default(),
@@ -1023,6 +1038,8 @@ pub enum Command {
     DeckPlay { deck: u8 },
     DeckCue { deck: u8 },
     DeckSync { deck: u8 },
+    DeckSyncMode { deck: u8, mode: deck_sync::Mode },
+    DeckSyncLeader(deck_sync::Leader),
     DeckJog { deck: u8, delta: f32 },
     DeckTouch { deck: u8, on: bool },
     MidiDeckTouch { source: u64, deck: u8, on: bool },
@@ -1232,6 +1249,7 @@ impl RtEngine {
             deck_pad_inputs: Box::default(),
             tracks,
             decks: [DeckRt::new(sr), DeckRt::new(sr)],
+            deck_sync: deck_sync::State::default(),
             master_fx: std::array::from_fn(|_| master_fx::MasterSlot::new(sr)),
             history_measurement: history_measurement::capture::Measurement::new(sr as u32).ok(),
             fx_kind: [FxKind::Echo, FxKind::Reverb, FxKind::Filter],
@@ -1684,12 +1702,9 @@ impl RtEngine {
                 r += sr;
             }
 
-            let timer = self.load_profile.start();
-            let (al, ar) = self.render_deck(0);
-            self.load_profile.deck(0, timer);
-            let timer = self.load_profile.start();
-            let (bl, br) = self.render_deck(1);
-            self.load_profile.deck(1, timer);
+            let deck_pair = self.render_deck_pair();
+            let [al, ar] = deck_pair.audio[0];
+            let [bl, br] = deck_pair.audio[1];
             let [ga, gb] = {
                 #[cfg(test)]
                 if self.legacy_gain_math {
@@ -2040,7 +2055,8 @@ impl RtEngine {
         {
             let d = &mut self.decks[di];
             let transport = d.controls.tick();
-            let mapped_sync = (d.sync && d.controls.multiplier() == 1.0 && transport == 1.0 && !d.controls.braking).then(|| d.mapped_sync_step(self.sr)).flatten();
+            let managed_sync = d.sync_step.take();
+            let mapped_sync = (d.sync && d.controls.multiplier() == 1.0 && transport == 1.0 && !d.controls.braking).then(|| managed_sync.or_else(|| d.mapped_sync_step(self.sr))).flatten();
             if let Some((_,rate)) = mapped_sync { d.target_rate = rate; }
             else if d.sync {
                 if d.audio.is_some() {
@@ -2086,6 +2102,13 @@ impl RtEngine {
                     let (seconds, rate) = d.spindle.as_mut().unwrap().next(self.sr);
                     d.rate = rate;
                     d.pos = seconds * d.audio.as_ref().map_or(sr, |audio| f64::from(audio.sr));
+                    if d.sync_phase_locked && !d.spindle.as_ref().unwrap().scratching() {
+                        if let Some((position, rate)) = managed_sync {
+                            d.pos = position;
+                            d.rate = rate;
+                            d.spindle.as_mut().unwrap().rebase(position / d.audio.as_ref().map_or(sr, |audio| f64::from(audio.sr)));
+                        }
+                    }
                 } else if let Some((position,_)) = mapped_sync.filter(|_| !d.touching) { d.pos = position; }
                 else { d.pos += d.rate as f64 * (d.audio.as_ref().map(|a| a.sr as f64).unwrap_or(sr) / sr); }
             }
@@ -2261,6 +2284,7 @@ impl RtEngine {
     }
 
     fn deck_touch(&mut self, source: u64, deck: u8, on: bool) {
+        if on { self.deck_sync_manipulation(usize::from(deck)); }
         let d = &mut self.decks[deck as usize % DECKS];
         if on { d.stop_preview(self.sr); }
         let existing = d.touch_sources.iter().position(|owner| *owner == Some(source));
@@ -2422,7 +2446,7 @@ impl RtEngine {
             }
             _=>{}
         }
-        if matches!(&c,Command::SetNotes {notes,..} if notes.iter().any(|note|!note.interchange_valid())) {
+        if matches!(&c,Command::SetNotes {notes,..} if notes.iter().any(|note|!note.interchange_valid())) || matches!(&c, Command::DeckSyncMode { deck, .. } if usize::from(*deck) >= DECKS) {
             self.undo.reject(undo::Failure::Invalid);
             self.undo.retire_command(c);
             return;
@@ -2580,6 +2604,7 @@ impl RtEngine {
                 d.transition_to(pos, self.sr, DeckTransition::Jump);
             }
             Command::DeckCue { deck } => {
+                if self.decks[deck as usize % DECKS].playing { self.deck_sync_manipulation(deck as usize % DECKS); }
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.controls.cancel_pending();
                 d.stop_preview(self.sr);
@@ -2603,10 +2628,15 @@ impl RtEngine {
             Command::DeckSync { deck } => {
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.sync = !d.sync;
+                d.sync_disengage_phase();
             }
+            Command::DeckSyncMode { deck, mode } => self.deck_sync_mode(deck, mode),
+            Command::DeckSyncLeader(leader) => self.deck_sync_leader(Some(leader)),
             Command::DeckJog { deck, delta } => {
+                self.deck_sync_manipulation(usize::from(deck));
+                let managed = self.deck_sync.leader.is_some();
                 let d = &mut self.decks[deck as usize % DECKS];
-                if d.touching || !d.playing {
+                if d.touching || !d.playing || managed && d.sync {
                     d.transition_to(d.pos + delta as f64 * 400.0, self.sr, DeckTransition::Jog);
                     d.scratch = delta * 18.0;
                 } else {
@@ -2622,8 +2652,10 @@ impl RtEngine {
             Command::DeckSpindle { source, deck, motion } => {
                 if usize::from(deck) >= DECKS { return; }
                 if self.controller_loop_edit(usize::from(deck), motion.ticks) { return; }
-                let Some(d) = self.decks.get_mut(usize::from(deck)) else { return; };
                 if !motion.rate.is_finite() || motion.rate.abs() > 16.0 || !motion.hold.is_finite() || !(0.0..=0.05).contains(&motion.hold) { return; }
+                if self.decks[usize::from(deck)].spindle.as_ref().is_some_and(|spindle| spindle.source != source) { return; }
+                if motion.rate.is_finite() && !(0.85..=1.10).contains(&motion.rate) { self.deck_sync_manipulation(usize::from(deck)); }
+                let Some(d) = self.decks.get_mut(usize::from(deck)) else { return; };
                 if let Some(spindle) = &mut d.spindle {
                     if spindle.source == source { spindle.update(motion); }
                 } else {
@@ -2673,6 +2705,7 @@ impl RtEngine {
                 d.pfl = !d.pfl;
             }
             Command::DeckHotCue { deck, pad, del } => {
+                if !del && self.decks[deck as usize % DECKS].hotcues[pad as usize % HOTCUES].set { self.deck_sync_manipulation(deck as usize % DECKS); }
                 let d = &mut self.decks[deck as usize % DECKS];
                 d.controls.cancel_pending();
                 let i = pad as usize % HOTCUES;
@@ -2692,6 +2725,7 @@ impl RtEngine {
             }
             command @ Command::DeckGrid { .. } => {
                 if let Command::DeckGrid { deck, grid, ack, .. } = &command {
+                    self.deck_sync_manipulation(usize::from(*deck));
                     let deck = &mut self.decks[*deck as usize];
                     deck.controls.cancel_pending();
                     deck.grid = *grid;
@@ -2834,6 +2868,7 @@ impl RtEngine {
                 d.transition_to(0.0, self.sr, DeckTransition::Jump);
             }
             Command::DeckSeek { deck, frac } => {
+                self.deck_sync_manipulation(usize::from(deck));
                 let d = &mut self.decks[deck as usize % DECKS];
                 let frames = d.audio.as_ref().map(|a| a.frames() as f64).unwrap_or(0.0);
                 d.transition_to((frac.clamp(0.0, 1.0) as f64 * frames).max(0.0), self.sr, DeckTransition::Jump);
@@ -3051,6 +3086,7 @@ impl RtEngine {
                 let fav = if self.xfader <= 0.5 { 0 } else { 1 };
                 let oth = 1 - fav;
                 if self.decks[fav].audio.is_none() { return; }
+                self.deck_sync_leader(None);
                 let target_bpm = if self.decks[fav].sync && self.decks[fav].grid.is_some_and(|grid| !grid.anchors().is_empty()) { self.decks[fav].sync_bpm }
                     else { self.decks[fav].musical_bpm().max(1.0) * self.decks[fav].pitch_rate() };
                 self.decks[oth].sync = true;

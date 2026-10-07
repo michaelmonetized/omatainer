@@ -2310,6 +2310,22 @@ Match the unfavored deck to the favored deck's file BPM times pitch rate. If bot
 
 Workflow: Prepare a DJ deck.
 
+### Deck sync mode
+
+Off; Tempo; Beat; Bar (4 beats)
+
+Tempo follows the selected leader without changing your beat offset. Beat aligns the nearest beat; Bar aligns the first beat of a four-beat DJ bar. A stopped deck stays armed without starting playback. Jog, scratch or seek keeps the new offset in Tempo mode; select Beat or Bar again to re-arm. Re-arm beat always requests beat alignment.
+
+Workflow: Prepare a DJ deck.
+
+### Sync leader
+
+Transport; Deck A; Deck B
+
+Choose the clock that sets the shared tempo. A deck leader follows its pitch control. The other deck follows only when its sync mode is enabled. Stopping, unloading or replacing the leader retains the last tempo and releases active phase alignment. No new leader is chosen automatically. Re-arm alignment explicitly after the leader returns.
+
+Workflow: Prepare a DJ deck.
+
 ### Arm compose target
 
 One track and scene cell

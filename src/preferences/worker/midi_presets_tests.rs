@@ -6,6 +6,46 @@ use crate::engine::midi::{
 use std::time::{Duration, Instant};
 
 #[test]
+fn sync_mode_presets_and_preferences_preserve_explicit_targets_and_refuse_older_headers() {
+    use crate::engine::midi::learn::{Config, Endpoint, Mapping};
+    let files = Files::new();
+    let endpoint = Endpoint { name: "Recorded sync controls".into(), id: "exact-sync-port".into() };
+    let mut bindings = Vec::new();
+    let binding = |data, action, deck, extra| Binding { kind: MsgKind::Note, ch: 2, data, action, deck, extra, relative: None, controls: None, pair_order: None };
+    for mode in 0..4 { bindings.push(binding(60 + mode as u8, Action::DeckSyncMode, 1, mode)); }
+    for leader in 0..3 { bindings.push(binding(70 + leader as u8, Action::DeckSyncLeader, 0, leader)); }
+    let config = Config { mappings: bindings.iter().map(|binding| Mapping { endpoint: endpoint.clone(), binding: *binding }).collect() };
+    let preset = Preset::capture("Explicit sync".into(), String::new(), &endpoint, &config).unwrap();
+    let path = files.0.join("sync-controls.json");
+    let mut worker = Worker::with_discovery(files.0.join("unused.json"), || Err("No discovery".into())).unwrap();
+    worker.request(Job::ExportMidiPreset { path: path.clone(), preset: preset.clone() }).unwrap();
+    assert!(matches!(wait(&mut worker), Event::MidiPresetExported(_)));
+    worker.request(Job::ImportMidiPreset { path: path.clone(), token: 193 }).unwrap();
+    assert!(matches!(wait(&mut worker), Event::MidiPresetImported { token: 193, preset: loaded } if loaded == preset));
+    let portable = serde_json::to_value(&preset).unwrap();
+    for version in 1..crate::engine::midi::presets::VERSION { let mut old = portable.clone(); old["version"] = version.into(); assert!(Preset::decode(&serde_json::to_vec(&old).unwrap()).is_err()); }
+    let mut preferences = super::super::Preferences::defaults(&files.0);
+    let profile = preferences.profiles.get_mut(&preferences.active).unwrap();
+    profile.midi_learn = config;
+    profile.midi_presets = vec![preset];
+    let path = files.0.join("actual-sync-preferences.json");
+    let cancelled = AtomicBool::new(false);
+    super::storage::save(&path, &preferences, super::storage::Overwrite::Exact(None), &cancelled).unwrap();
+    assert_eq!(super::storage::load(&path, &cancelled).unwrap().preferences, preferences);
+    let mut old = serde_json::to_value(&preferences).unwrap();
+    old["version"] = 23.into();
+    assert!(super::storage::decode(&serde_json::to_vec(&old).unwrap()).is_err());
+    let mut legacy = super::super::Preferences::defaults(&files.0);
+    legacy.version = 23;
+    let (migrated, changed) = super::storage::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+    assert!(changed); assert_eq!(migrated.version, super::super::VERSION);
+    for binding in bindings {
+        for invalid in [Binding { kind: MsgKind::Cc, ..binding }, Binding { extra: 4, ..binding }, Binding { deck: 2, ..binding }] { assert!(crate::engine::midi::learn::validate_binding(&invalid).is_err()); }
+        if binding.action == Action::DeckSyncLeader { assert!(crate::engine::midi::learn::validate_binding(&Binding { deck: 1, ..binding }).is_err()); }
+    }
+}
+
+#[test]
 fn deck_pad_presets_export_import_and_real_preferences_reopen_preserve_fixed_modes_and_strict_versions() {
     use crate::engine::midi::learn::{Config,Endpoint,Mapping};
     let files=Files::new();let endpoint=Endpoint{name:"Recorded pad controller".into(),id:"recorded-exact-port".into()};

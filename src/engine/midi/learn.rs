@@ -33,6 +33,8 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::DeckCue,
         Action::DeckCueHold,
         Action::DeckSync,
+        Action::DeckSyncMode,
+        Action::DeckSyncLeader,
         Action::DeckJog,
         Action::DeckJogTouch,
         Action::DeckPitch,
@@ -109,6 +111,10 @@ pub(crate) fn saved_loop(action: Action) -> bool { matches!(action, Action::Deck
 /// Identify the shared deck pad surface assignments.
 /// Takes an action; returns whether its persistence requires preset 5 and preference 23.
 pub(crate) fn deck_pad(action: Action) -> bool { matches!(action, Action::DeckPad | Action::DeckPadMode | Action::DeckPadParameterLeft | Action::DeckPadParameterRight | Action::DeckPadParameterShiftLeft | Action::DeckPadParameterShiftRight) }
+
+/// Identify explicit shared sync assignments.
+/// Takes an action; returns whether its persistence requires preset 6 and preferences 24.
+pub(crate) fn sync_mode(action: Action) -> bool { matches!(action, Action::DeckSyncMode | Action::DeckSyncLeader) }
 
 /// Choose the required MIDI message class for a performance action.
 /// Takes an action; returns Note, absolute CC, or explicitly decoded relative CC.
