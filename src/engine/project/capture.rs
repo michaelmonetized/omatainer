@@ -179,6 +179,7 @@ impl Frame {
             sampler_oct
         );
         target.conductor = rt.conductor.clone();
+        target.navigation = rt.navigation.saved.clone();
         target.routing = rt.routing.as_ref().map(|routing| routing.model.clone());
         target.mic_aux = rt.mic_aux.configuration();
         target.sampler_synth = synth(&rt.sampler_poly);

@@ -286,7 +286,7 @@ impl RtEngine {
             self.commit_clip_start(track, start);
         }
     }
-    fn clip_boundary(&self, grid: Grid) -> f64 {
+    pub(crate) fn clip_boundary(&self, grid: Grid) -> f64 {
         let now = self.precise_midi_beat();
         let quantum = grid.beats(self.quant);
         if quantum == 0.0 || !self.playing {

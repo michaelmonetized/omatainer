@@ -3581,9 +3581,12 @@
         226,
         114
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/song-navigation.md",
+        "docs/validation/song-navigation-receipt.json"
+      ]
     },
     {
       "issue": 256,

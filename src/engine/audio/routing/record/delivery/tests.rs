@@ -46,13 +46,21 @@ fn start(
     let p = path.to_owned();
     std::thread::spawn(move || r.write_delivery(&q, &p, &AtomicBool::new(false)))
 }
-fn activate(r: &Recorder, rate: u32) {
+fn activate(
+    r: &Recorder,
+    rate: u32,
+    job: std::thread::JoinHandle<Result<Outcome, String>>,
+) -> std::thread::JoinHandle<Result<Outcome, String>> {
     let end = Instant::now() + Duration::from_secs(15);
     while r.alias() == 0 {
+        if job.is_finished() {
+            panic!("recording writer exited before activation: {:?}", job.join());
+        }
         r.begin_delivery(rate);
         assert!(Instant::now() < end, "recording never activated");
         std::thread::sleep(Duration::from_millis(1));
     }
+    job
 }
 #[test]
 fn converted_output_records_exact_channel_order_integer_conversion_and_failure_prefixes() {
@@ -71,7 +79,7 @@ fn converted_output_records_exact_channel_order_integer_conversion_and_failure_p
     {
         let folder = files.0.join(format!("format-{n}"));
         let job = start(&r, request(&r, Some(vec![3, 1]), format, 48000, 1), &folder);
-        activate(&r, 48000);
+        let job = activate(&r, 48000, job);
         let input: Vec<i16> = (0..4096)
             .flat_map(|i| {
                 [
@@ -114,7 +122,7 @@ fn converted_output_records_exact_channel_order_integer_conversion_and_failure_p
             request(&r, Some(vec![0, 1]), Format::Float32, 48000, 1),
             &folder,
         );
-        activate(&r, 48000);
+        let job = activate(&r, 48000, job);
         r.converted(&[0.125_f32, -0.25].repeat(17), 2);
         match failure {
             1 => r.converted(&[0.0_f32], 1),
@@ -189,7 +197,7 @@ fn raw_sources_and_queue_overflow_preserve_exact_prefix_and_restart_cleanly() {
     let mut q = request(&r, None, Format::Float32, 48000, 1);
     q.alias = 7;
     let job = start(&r, q, &files.0.join("raw"));
-    activate(&r, 48000);
+    let job = activate(&r, 48000, job);
     assert!(r.monitoring_inputs());
     for _ in 0..31 {
         r.capture(7, [0.25; 32], true);
@@ -210,7 +218,7 @@ fn raw_sources_and_queue_overflow_preserve_exact_prefix_and_restart_cleanly() {
         request(&r, Some(vec![0]), Format::Float32, 48000, 2),
         &files.0.join("overflow"),
     );
-    activate(&r, 48000);
+    let job = activate(&r, 48000, job);
     let receiver = r.receiver.lock();
     for _ in 0..=super::super::CAPACITY {
         r.converted(&[0.125_f32], 1);
@@ -232,7 +240,7 @@ fn raw_sources_and_queue_overflow_preserve_exact_prefix_and_restart_cleanly() {
         request(&r, Some(vec![0]), Format::Float32, 48000, 1),
         &files.0.join("restarted"),
     );
-    activate(&r, 48000);
+    let job = activate(&r, 48000, job);
     r.converted(&[0.5_f32; 13], 1);
     r.stop();
     assert_eq!(job.join().unwrap().unwrap().frames, 13);
@@ -328,7 +336,7 @@ fn two_hour_software_stream_splits_without_missing_frames_or_growing_callback_me
         request(&r, Some(vec![0]), Format::Float32, 12000, 7200),
         &files.0.join("two-hours"),
     );
-    activate(&r, 12000);
+    let job = activate(&r, 12000, job);
     let frames = 12000_u64 * 7200;
     let block: Vec<f32> = (0..1024).map(|i| i as f32 / 2048. - 0.25).collect();
     let mut expected = Sha256::new();

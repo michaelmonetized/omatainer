@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 37 implemented · 6 partial · 178 planned · 0 accepted · 8 outside release
+127 existing stack · 38 implemented · 6 partial · 177 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -265,7 +265,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#252](https://github.com/michaelmonetized/omatainer/issues/252) | Publish hardware profiles backed by end-to-end compatibility evidence | planned | #224, #223, #225, #38, #40, #72 |  |
 | [ ] | [#253](https://github.com/michaelmonetized/omatainer/issues/253) | Add editable multitrack automation lanes and breakpoint curves | planned | #226, #83 |  |
 | [ ] | [#254](https://github.com/michaelmonetized/omatainer/issues/254) | Make device chains editable, inspectable and reusable with A/B states | planned | #82, #83, #130, #215 |  |
-| [ ] | [#255](https://github.com/michaelmonetized/omatainer/issues/255) | Add named arrangement locators, musical scrubbing and loop-region navigation | planned | #226, #114 |  |
+| [x] | [#255](https://github.com/michaelmonetized/omatainer/issues/255) | Add named arrangement locators, musical scrubbing and loop-region navigation | implemented | #226, #114 | [receipt](../../docs/validation/song-navigation.md), [receipt](../../docs/validation/song-navigation-receipt.json) |
 | [ ] | [#256](https://github.com/michaelmonetized/omatainer/issues/256) | Add count-in, punch recording and multi-pass recording workflows | planned | #130, #226, #82 |  |
 | [ ] | [#257](https://github.com/michaelmonetized/omatainer/issues/257) | Send and receive Link Audio streams with track-level routing and latency controls | planned | #161, #130, #228 |  |
 | [ ] | [#258](https://github.com/michaelmonetized/omatainer/issues/258) | Extract editable production stems from complete clips or selected time ranges | planned | #182, #226 |  |

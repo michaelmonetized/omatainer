@@ -125,6 +125,11 @@ pub enum Action {
     Shift,
     FxWet,
     FxSelect,
+    SongLocator,
+    SongPrevious,
+    SongNext,
+    SongLoop,
+    SongCancel,
 }
 
 #[derive(Clone, Debug)]
@@ -577,6 +582,11 @@ fn dispatch_value(
         Action::TrackArm if pressed => { let _ = send(Command::Arm { track: b.extra as u8 }); }
         Action::TrackPan => { let _ = send(Command::TrackPan { track: b.extra as u8, value: rel }); }
         Action::TrackSendA | Action::TrackSendB => { let _ = send(Command::Surface(super::surface_controls::Input::TrackSend { track: b.extra as u8, send: u8::from(b.action == Action::TrackSendB), value: rel })); }
+        Action::SongLocator if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Locator { id:b.extra, grid:super::clip_launch::Grid::Global })); }
+        Action::SongPrevious if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Previous(super::clip_launch::Grid::Global))); }
+        Action::SongNext if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Next(super::clip_launch::Grid::Global))); }
+        Action::SongLoop if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::ToggleLoop)); }
+        Action::SongCancel if pressed => { let _ = send(Command::SongNavigation(super::song_navigation::Action::Cancel)); }
         Action::Play if pressed => {
             let _ = send(Command::TogglePlay);
         }

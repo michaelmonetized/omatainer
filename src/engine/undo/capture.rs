@@ -199,6 +199,8 @@ impl RtEngine {
         }
         if let Command::SessionEdit(request) = c { self.history_session(request); return None; }
         if let Command::ClipManage(request) = c {self.history_clip_management(request);return None;}
+        if let Command::SongNavigationEdit(request) = c {self.history_song_navigation(request);return None;}
+        if matches!(&c,Command::SongNavigation(super::super::song_navigation::Action::ToggleLoop)){self.history_song_loop();return None;}
         if let Command::ArrangementEdit(request) = c {self.history_arrangement(request);return None;}
         if let Command::AudioClipEdit(request) = c { self.history_audio_clip(request); return None; }
         if let Command::MidiImport(request) = c {
@@ -455,6 +457,7 @@ impl RtEngine {
         self.undo.reject(reason);
         if let Command::MicAuxConfigure(request)=&c {request.ack.reject();}
         if let Command::AudioClipEdit(request)=&c {request.ack.reject();}
+        if let Command::SongNavigationEdit(request)=&c {request.ack.reject();}
         super::super::midi_edit::reject_retired(&c);
         let bytes = command_bytes(&c);
         self.undo.retire(Retired::Command(c), bytes);
@@ -467,6 +470,7 @@ pub(super) fn command_bytes(command: &Command) -> usize {
         Command::SessionEdit(request) => request.bytes(),
         Command::AudioClipEdit(request) => request.bytes(),
         Command::ArrangementEdit(request) => request.bytes(),
+        Command::SongNavigationEdit(request) => request.bytes(),
         Command::ClipManage(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),

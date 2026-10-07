@@ -745,6 +745,7 @@ impl CommandPort {
         if matches!(&command, Command::TimelineSeek(seconds) if !seconds.is_finite() || !(0.0..=86400.0).contains(seconds)) {
             return fail(SubmissionError::InvalidTarget);
         }
+        if matches!(&command,Command::SongNavigation(action) if !action.valid()){return fail(SubmissionError::InvalidTarget);}
         if matches!(&command,Command::SongSeek(beat) if !beat.is_finite()||!(0.0..=262144.0).contains(beat)){return fail(SubmissionError::InvalidTarget);}
         if matches!(&command, Command::XfaderCurve(value) if !value.is_finite() || !(0.0..=1.0).contains(value)) {
             return fail(SubmissionError::InvalidTarget);
@@ -913,6 +914,7 @@ fn owned_payload_bytes(command: &Command) -> usize {
         Command::SessionEdit(request) => request.bytes(),
         Command::AudioClipEdit(request) => request.bytes(),
         Command::ArrangementEdit(request) => request.bytes(),
+        Command::SongNavigationEdit(request) => request.bytes(),
         Command::ClipManage(request) => request.bytes(),
         Command::MidiEdit(request) => request.bytes(),
         Command::MidiImport(request) => request.bytes(),

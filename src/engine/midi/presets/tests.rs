@@ -15,7 +15,7 @@ fn binding(action: Action, data: u8) -> Binding {
         ch: 0,
         data,
         deck: 0,
-        extra: 0,
+        extra: u16::from(action == Action::SongLocator),
         relative: (kind == MsgKind::CcRel).then_some(RelativeSpec {
             encoding: RelativeEncoding::OffsetBinary,
             scale: 1.0,

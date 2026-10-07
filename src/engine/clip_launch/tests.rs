@@ -446,7 +446,13 @@ fn native_policy_and_presets_migrate_legacy_defaults_and_never_resume_held_modes
     );
     std::fs::remove_file(root).unwrap();
     let mut preset = serde_json::to_value(reopened.state).unwrap();
-    assert_eq!(preset["clip_schema"], 21);
+    assert_eq!(preset["clip_schema"], crate::engine::project::STATE_VERSION);
+    let mut previous = preset.clone();
+    previous["clip_schema"] = 21.into();
+    serde_json::from_value::<crate::engine::clip_management::preset::Preset>(previous)
+        .unwrap()
+        .validate(&[], &AtomicBool::new(false))
+        .unwrap();
     preset["clip_schema"] = 20.into();
     assert!(
         serde_json::from_value::<crate::engine::clip_management::preset::Preset>(preset.clone())

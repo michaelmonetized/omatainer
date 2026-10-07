@@ -50,6 +50,7 @@ mod piano_roll;
 mod midi_files;
 mod audio_clips;
 mod arrangement;
+mod song_navigation;
 mod clip_manager;
 mod clip_launch;
 mod timing;
@@ -204,6 +205,7 @@ pub struct App {
     midi_files: midi_files::Editor,
     audio_clips: Box<audio_clips::Editor>,
     arrangement:Box<arrangement::Editor>,
+    song_navigation:song_navigation::Panel,
     clip_manager:Box<clip_manager::Editor>,
     clip_launch_holds:clip_launch::Holds,
     timing: timing::Editor,
@@ -352,6 +354,7 @@ impl App {
             midi_files: midi_files::Editor::default(),
             audio_clips: Box::default(),
             arrangement:Box::default(),
+            song_navigation:Default::default(),
             clip_manager:Box::default(),
             clip_launch_holds:Default::default(),
             timing: timing::Editor::default(),

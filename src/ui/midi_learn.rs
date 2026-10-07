@@ -84,9 +84,17 @@ fn label(action: Action) -> &'static str {
         Action::Shift => "Controller Shift",
         Action::FxWet => "Master effect wet",
         Action::FxSelect => "Master effect select",
+        Action::SongLocator => "Song named section",
+        Action::SongPrevious => "Song previous section",
+        Action::SongNext => "Song next section",
+        Action::SongLoop => "Song loop toggle",
+        Action::SongCancel => "Song cancel queued jump",
     }
 }
 fn description(mapping: &learn::Mapping) -> String {
+    if learn::navigation(mapping.binding.action) {
+        return format!("{} / {} · channel {} · {:?} {} → {}{}",mapping.endpoint.name,mapping.endpoint.id,mapping.binding.ch+1,mapping.binding.kind,mapping.binding.data,label(mapping.binding.action),if mapping.binding.action==Action::SongLocator {format!(" · locator ID {}",mapping.binding.extra)} else {String::new()});
+    }
     format!(
         "{} / {} · channel {} · {:?} {} → {} · target {} / {}",
         mapping.endpoint.name,
@@ -157,7 +165,7 @@ impl App {
                 let binding = &mut self.midi_learn.binding;
                 binding.kind = learn::kind(binding.action);
                 binding.deck = 0;
-                binding.extra = 0;
+                binding.extra = u16::from(binding.action == Action::SongLocator);
                 binding.controls = None;
                 binding.pair_order = None;
                 binding.relative = (binding.kind == MsgKind::CcRel).then_some(RelativeSpec {
@@ -170,7 +178,7 @@ impl App {
                 });
             }
             let binding = &mut self.midi_learn.binding;
-            if binding.action != Action::SamplerSlotStop {
+            if binding.action != Action::SamplerSlotStop && !learn::navigation(binding.action) {
             let mut deck = f32::from(binding.deck) + 1.0;
             preferences::float_control(
                 ui,
@@ -187,6 +195,12 @@ impl App {
                 HelpControl::MidiLearn,
             );
             binding.deck = deck.round() as u8 - 1;
+            }
+            if binding.action == Action::SongLocator {
+                let mut id = f32::from(binding.extra);
+                preferences::float_control(ui, "MIDI target locator ID", &mut id, 1.0, 65535.0, 1.0, "", HelpControl::MidiLearn);
+                binding.extra = id.round() as u16;
+                ui.label("Use the stable ID shown in Arrangement sections. Moving or renaming a section preserves its mapping.");
             }
             let max = match binding.action {
                 Action::SamplerSlotStop => 16.0,

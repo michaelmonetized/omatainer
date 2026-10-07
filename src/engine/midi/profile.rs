@@ -55,6 +55,8 @@ impl MidiMap {
                 self.name
             );
             anyhow::ensure!(match binding.action {
+                Action::SongLocator => binding.kind == MsgKind::Note && binding.deck == 0 && binding.extra != 0,
+                Action::SongPrevious | Action::SongNext | Action::SongLoop | Action::SongCancel => binding.kind == MsgKind::Note && binding.deck == 0 && binding.extra == 0,
                 Action::Scene => binding.extra < crate::engine::session::MAX_SCENES as u16,
                 Action::Clip => usize::from(binding.deck) < crate::engine::session::MAX_TRACKS && binding.extra < crate::engine::session::MAX_SCENES as u16,
                 Action::TrackFader | Action::TrackMute | Action::TrackSolo | Action::TrackArm | Action::TrackPan | Action::TrackSendA | Action::TrackSendB => binding.extra < crate::engine::session::MAX_TRACKS as u16,

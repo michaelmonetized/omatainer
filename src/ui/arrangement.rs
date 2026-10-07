@@ -221,6 +221,7 @@ impl App {
     }
     pub(super) fn poll_arrangement(&mut self) {
         self.arrangement.poll(&self.engine);
+        self.song_navigation.poll();
     }
     pub(super) fn arrangement_ui(&mut self, ctx: &egui::Context) {
         if !self.arrangement.open {
@@ -235,6 +236,7 @@ impl App {
             .max_height(self.theme.window_height(ctx))
             .show(ctx, |ui| {
                 keyboard::block_for_dialog(ctx);
+                self.song_navigation_ui(ui,editor.start,editor.width);
                 ui.label(&editor.message);
                 if editor.busy() {
                     ui.spinner();
@@ -569,6 +571,7 @@ impl App {
             editor.cancel();
         }
         editor.open = open;
+        if !open { self.song_navigation.cancel(); }
         self.arrangement = editor;
     }
 }

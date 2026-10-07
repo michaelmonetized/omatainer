@@ -488,6 +488,21 @@ Software qualification exhausts 16,384 CC-pair/bend values and signed-bit byte v
 
 Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate.
 
+### Issue #255: implemented
+
+- native live section and loop editor: [src/ui/song_navigation.rs](../src/ui/song_navigation.rs) — Named creation/edit/move/delete, exact beat/time entry, quantized previous/next/ID jumps, loop braces and loop-to-next; keyboard/assistive handlers
+- bounded native metadata and stable MIDI identities: [src/engine/song_navigation/metadata.rs](../src/engine/song_navigation/metadata.rs) — 256 visible named locators; chronological resolution and loop braces; persistent allocation counter survives Undo without reusing IDs
+- sample-clock jumps and looping: [src/engine/song_navigation/playback.rs](../src/engine/song_navigation/playback.rs) — Meter/pickup-aware launch boundary, exact renderer sample movement, fractional loop overshoot, cancellation and destination range recheck
+- atomic live metadata admission and native Undo: [src/engine/undo/song_navigation.rs](../src/engine/undo/song_navigation.rs) — Worker-prepared namespace/epoch/exact-model guard; Ack/cancel/stale refusal; metadata editing during playback/recording with retained inverse ownership
+- native project persistence: [src/engine/project/model.rs](../src/engine/project/model.rs) — State schema 22; strict legacy injection refusal, saved braces/switch/high-water identity counter and no pending movement on reopen
+- learned controller navigation: [src/engine/midi.rs](../src/engine/midi.rs) — Stable ID, previous/next, loop toggle and cancel through production input dispatch; press edges and global timing
+- navigation binding persistence: [src/engine/midi/presets.rs](../src/engine/midi/presets.rs) — Preset 3 and preference 20; old action injection refusal, with actual schema-2/preference-19 encoder migration
+- Acceptance fixtures: `engine::song_navigation::tests`, `ui::song_navigation::tests::native_sections_edit_save_trigger_loop_and_keyboard_time_entry_use_real_handlers`, `engine::midi::routing::playback::tests::named_song_jump_clears_old_clip_owners_and_chases_destination_controllers_before_sustained_notes`.
+- Evidence: [docs/validation/song-navigation.md](../docs/validation/song-navigation.md).
+- Evidence: [docs/validation/song-navigation-receipt.json](../docs/validation/song-navigation-receipt.json).
+
+Linux ARM64 software qualification: live metadata edits during playback/recording, exact PCM destination samples and loop timing across tempo/meter changes at multiple rates, clip recording-take completion with held live input preservation, clear/chase MIDI ordering, production synthetic learned input, stable IDs through Undo branching/reopening, actual native editor/keyboard/assistive controls, .omat and MIDI preset/preferences files, strict version migration/refusal and measured zero renderer heap work. Editing follows existing Studio/performance-protection admission. Jumps/wraps finish the current clip recording take; pending movement is omitted from storage. No physical controller or audio device was opened. DJ deck transports remain separate.
+
 ## One remaining checklist
 
 Music source: FreeToUse public keyless API. Michael excludes other third-party provider integrations from this release. FreeToUse catalog/preview remains optional. Generic capability/error handling in #221 remains in scope. Exclusion is not issue completion.
@@ -620,7 +635,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#252](https://github.com/michaelmonetized/omatainer/issues/252) | Publish hardware profiles backed by end-to-end compatibility evidence | planned |
 | [#253](https://github.com/michaelmonetized/omatainer/issues/253) | Add editable multitrack automation lanes and breakpoint curves | planned |
 | [#254](https://github.com/michaelmonetized/omatainer/issues/254) | Make device chains editable, inspectable and reusable with A/B states | planned |
-| [#255](https://github.com/michaelmonetized/omatainer/issues/255) | Add named arrangement locators, musical scrubbing and loop-region navigation | planned |
+| [#255](https://github.com/michaelmonetized/omatainer/issues/255) | Add named arrangement locators, musical scrubbing and loop-region navigation | implemented |
 | [#256](https://github.com/michaelmonetized/omatainer/issues/256) | Add count-in, punch recording and multi-pass recording workflows | planned |
 | [#257](https://github.com/michaelmonetized/omatainer/issues/257) | Send and receive Link Audio streams with track-level routing and latency controls | planned |
 | [#258](https://github.com/michaelmonetized/omatainer/issues/258) | Extract editable production stems from complete clips or selected time ranges | planned |

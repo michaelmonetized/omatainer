@@ -5,6 +5,7 @@ mod capture;
 mod midi_import;
 mod audio_clip;
 mod arrangement;
+mod song_navigation;
 mod clip_management;
 mod patch;
 mod recording;
@@ -60,6 +61,7 @@ pub enum Name {
     ClipNotes,
     AudioClip,
     Arrangement,
+    SongNavigation,
     ClipManagement,
     RecordNotes,
     Deck,
@@ -92,6 +94,7 @@ impl Name {
             Self::ClipNotes => "Edit clip notes",
             Self::AudioClip => "Edit audio clip",
             Self::Arrangement => "Edit arrangement",
+            Self::SongNavigation => "Edit song sections and loop",
             Self::ClipManagement => "Manage clips",
             Self::RecordNotes => "Record notes",
             Self::Deck => "Edit deck",
@@ -878,6 +881,7 @@ impl Journal {
         if let Command::MicAuxConfigure(request)=&command {request.ack.reject();}
         if let Command::AudioClipEdit(request)=&command {request.ack.reject();}
         if let Command::ArrangementEdit(request)=&command {request.ack.reject();}
+        if let Command::SongNavigationEdit(request)=&command {request.ack.reject();}
         if let Command::Remote(request) = &command { request.ack.reject(); }
         super::midi_edit::reject_retired(&command);
         super::beatgrid::reject_retired(&command);
@@ -894,6 +898,7 @@ impl Journal {
                     | Command::Gesture { .. }
                     | Command::AudioClipEdit(_)
                     | Command::ArrangementEdit(_)
+                    | Command::SongNavigationEdit(_)
                     | Command::ClipManage(_)
                     | Command::MidiImport(_)
             | Command::MidiEdit(_)

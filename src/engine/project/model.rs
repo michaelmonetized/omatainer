@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 21;
+pub const STATE_VERSION: u32 = 22;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -14,6 +14,8 @@ pub const MAX_MEDIA_REFS: usize = session::MAX_TRACKS * (session::MAX_SCENES + 6
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub version: u32,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub(crate) navigation: Option<song_navigation::Saved>,
     #[serde(default,skip_serializing_if="Option::is_none")]
     pub(crate) arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -57,6 +59,8 @@ pub struct State {
 struct StateWire {
     version: u32,
     #[serde(default)]
+    navigation: Option<song_navigation::Saved>,
+    #[serde(default)]
     arrangement: Option<Arc<arrangement::Model>>,
     #[serde(default)]
     routing: Option<Arc<audio::routing::model::Model>>,
@@ -99,6 +103,7 @@ impl<'de> Deserialize<'de> for State {
         let raw = serde_json::Value::deserialize(deserializer)?;
         midi_edit::reject_legacy_fields(&raw).map_err(serde::de::Error::custom)?;
         let version = raw["version"].as_u64().unwrap_or(0);
+        if version < 22 && raw.get("navigation").is_some() { return Err(serde::de::Error::custom("Song sections require project state version 22")); }
         if version<21 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some_and(|p|p.get("launch").is_some())){return Err(serde::de::Error::custom("Clip launch policy requires project state version 21"));}
         if version<20 && raw.get("tracks").and_then(serde_json::Value::as_array).into_iter().flatten().flat_map(|track|track.get("clips").and_then(serde_json::Value::as_array).into_iter().flatten()).chain(raw.get("arrangement").and_then(|song|song.get("sources")).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|source|source.get("clip"))).any(|clip|clip.get("properties").is_some()){return Err(serde::de::Error::custom("Clip properties require project state version 20"));}
         if version<19 && raw.get("arrangement").is_some(){return Err(serde::de::Error::custom("Arrangement sources require project state version 19"));}
@@ -156,6 +161,7 @@ impl<'de> Deserialize<'de> for State {
         let wire: StateWire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
         Ok(Self {
             version: wire.version,
+            navigation: wire.navigation,
             arrangement: wire.arrangement,
             routing: wire.routing,
             mic_aux: wire.mic_aux,
@@ -400,6 +406,7 @@ impl State {
     pub(super) fn blank() -> Self {
         Self {
             version: STATE_VERSION,
+            navigation: None,
             arrangement: None,
             routing: None,
             mic_aux: None,
@@ -594,6 +601,7 @@ impl State {
             }
             for clip in &track.clips {let (notes,bytes)=clip.validate(self.version,media)?;note_count+=notes;midi_bytes+=bytes;}
         }
+        if let Some(navigation)=&self.navigation{if self.version<22{return fail("song sections in legacy state");}navigation.validate()?;}
         if let Some(arrangement)=&self.arrangement{if self.version<19{return fail("arrangement in legacy state");}arrangement.validate(media,self.session.as_ref().ok_or("Arrangement requires track identities")?)?;let (n,b)=arrangement.midi_storage();note_count+=n;midi_bytes+=b;}
         if midi_bytes > midi_data::MAX_LANE_BYTES { return fail("MIDI metadata exceeds 16 MiB"); }
         if note_count > MAX_TOTAL_NOTES {

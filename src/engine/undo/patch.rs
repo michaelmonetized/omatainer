@@ -266,6 +266,7 @@ impl Effect {
 }
 
 pub(super) enum Patch {
+    SongNavigation {saved:Option<song_navigation::Saved>,bytes:usize},
     ClipManagement(Box<clip_management::edit::Inverse>),
     Arrangement {value:Box<arrangement::Playback>,reserved:[Option<Arc<arrangement::Plan>>;2],bytes:usize},
     Session(Box<session::Inverse>),
@@ -359,7 +360,7 @@ impl Patch {
     pub fn target_label(&self) -> super::TargetLabel {
         use super::TargetLabel as T;
         match self {
-            Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
+            Self::SongNavigation {..} | Self::ClipManagement(_) | Self::Arrangement {..} | Self::Session(_) | Self::Global(_) | Self::Conductor { .. } | Self::Sampler { .. } => T::None,
             Self::Track(t, _) => T::Track(*t),
             Self::ClipGain { track, scene, .. } | Self::Clip { track, scene, .. } => {
                 T::Clip(*track, *scene)
@@ -379,6 +380,7 @@ impl Patch {
                 && (value.grid==deck.grid || !deck.load_receipt.as_ref().is_some_and(|receipt|receipt.grid_is_locked()))),
             Self::Session(value) => value.valid(rt),
             Self::ClipManagement(value) => value.valid(rt),
+            Self::SongNavigation {..} => true,
             Self::Arrangement {..} => !rt.playing&&!rt.recording&&rt.count_in.is_none()&&!rt.decks.iter().any(|d|d.playing||d.touching),
             Self::Conductor { .. } => rt.count_in.is_none(),
             Self::Global(value) => rt.count_in.is_none() && value.mic_aux.is_none_or(|cfg|cfg.validate(rt.routing.as_ref().map(|r|r.model.as_ref())).is_ok()),
@@ -412,6 +414,7 @@ impl Patch {
     }
     pub fn apply(&mut self, rt: &mut RtEngine) {
         match self {
+            Self::SongNavigation {saved,..} => {let floor=rt.navigation.saved.as_ref().map_or(1,|saved|saved.next_id);std::mem::swap(saved,&mut rt.navigation.saved);if let Some(current)=&mut rt.navigation.saved{current.next_id=current.next_id.max(floor);}rt.navigation.cancel();},
             Self::Arrangement {value,..} => {for (slot,track) in rt.tracks.iter_mut().enumerate(){track.release_clip_notes();rt.midi_routing.clear_clip(slot as u8);}std::mem::swap(value,&mut rt.arrangement);rt.arrangement.reset(rt.precise_midi_beat());},
             Self::Session(value) => value.swap(rt),
             Self::ClipManagement(value) => value.swap(rt),
@@ -517,6 +520,7 @@ impl Patch {
 
     pub fn heap_bytes(&self) -> usize {
         match self {
+            Self::SongNavigation {bytes,..} => *bytes,
             Self::Arrangement {bytes,..} => *bytes,
             Self::Session(value) => value.bytes(),
             Self::ClipManagement(value) => value.bytes(),

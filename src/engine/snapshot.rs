@@ -339,6 +339,9 @@ impl Frame {
         target.timeline_seconds = rt.timeline_seconds();
         target.arrangement_enabled=rt.arrangement.enabled();
         target.arrangement_end=rt.arrangement.plan.as_ref().map_or(0.0,|p|p.end);
+        target.navigation = rt.navigation.saved.clone();
+        target.navigation_pending = rt.navigation.pending.map(|p|[p.beat,p.when]);
+        target.navigation_error = rt.navigation.error;
         target.file_conductor = rt.conductor.is_some();
         target.count_in_remaining = rt.count_in.as_ref().map_or(0.0, |count| count.remaining());
         if let Some(conductor) = &rt.conductor {
@@ -446,6 +449,7 @@ impl Frame {
         // Ownership travels once to the snapshot worker. Audio receives a
         // cleared frame and cannot retire the last old timeline reference.
         next.timing = self.timing.take();
+        self.values.navigation = None;
         next.sampler_banks.truncate(self.bank_count);
         next.fx_slots.truncate(self.fx_count);
         for (deck, sample) in next.decks.iter_mut().zip(&mut self.samples) {

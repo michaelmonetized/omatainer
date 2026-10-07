@@ -505,3 +505,19 @@ fn publication_and_reset_refuse_old_renderer_packets_until_relaunch() {
     assert!(!rt.tracks[2].midi_output.refused);
     shared.alive.store(false, Release);
 }
+
+#[test]
+fn named_song_jump_clears_old_clip_owners_and_chases_destination_controllers_before_sustained_notes() {
+    use crate::engine::{arrangement::{Model,Source,Instance},song_navigation,clip_launch::Grid,Command,Engine};
+    use std::sync::{Arc,atomic::{AtomicBool,Ordering::Release}};
+    let(engine,rt)=Engine::headless_for_test(48000,256);let mut rt=Box::new(rt);rt.bpm=120.0;
+    let handle=engine.project.clone();let task=std::thread::spawn(move||handle.capture(&AtomicBool::new(false)).unwrap());while !task.is_finished(){rt.process(&mut []);std::thread::sleep(std::time::Duration::from_millis(1));}let captured=task.join().unwrap();
+    let clip=controller_clip(&[(0,&[0xc3,5]),(0,&[0xb3,74,20]),(1920,&[0xb3,74,88])]);let mut saved=captured.state.tracks[2].clips[7].clone();saved.kind=clip.kind;saved.name="navigation state chase".into();saved.bars=clip.bars;saved.region=clip.region;saved.notes=clip.notes;saved.lanes=clip.lanes;
+    let track=captured.state.session.as_ref().unwrap().reference(crate::engine::session::Axis::Track,2).unwrap();let song=Model{enabled:true,next_id:3,sources:vec![Source{id:1,clip:saved}],instances:vec![Instance{id:2,source:1,track,start:0.0,offset:0.0,duration:16.0,repeating:false,gain:1.0}]};let(request,_)=crate::engine::arrangement::edit::Request::prepare(captured,song,&AtomicBool::new(false)).unwrap();rt.apply(Command::ArrangementEdit(request));
+    let mut sections=song_navigation::Model::default();let id=sections.add("Destination".into(),5.0).unwrap();rt.navigation.saved=Some(song_navigation::Saved{next_id:sections.next_id,model:Arc::new(sections),looping:false});
+    let shared=engine.cmd.midi_routing();let events=shared.receiver.lock().take().unwrap();shared.bind_identity(&super::super::Routing{enabled:true,routes:vec![super::super::Route{track:2,inputs:vec![],output:None,output_channel:None,monitor:false,thru:false,filter:Default::default()}]});shared.mask.store(1<<2,Release);shared.alive.store(true,Release);
+    rt.apply(Command::Play);rt.process(&mut [0.0;2]);let first=events.try_iter().collect::<Vec<_>>();assert!(first.iter().any(|e|e.clear.is_none()&&e.packet.bytes()==[0x93,60,100]));
+    let mut packets=Vec::with_capacity(32);assert_eq!(test_alloc::measure(||{rt.apply(Command::SongNavigation(song_navigation::Action::Locator{id,grid:Grid::Immediate}));rt.process(&mut [0.0;2]);while let Ok(event)=events.try_recv(){packets.push(event);}}),Default::default());
+    assert!(packets.iter().any(|e|matches!(e.clear,Some(super::super::control::Clear::Clip))&&e.track==2));assert!(!packets.iter().any(|e|matches!(e.clear,Some(super::super::control::Clear::Track|super::super::control::Clear::Source(_)))));
+    assert_eq!(packets.iter().filter(|e|e.clear.is_none()).map(|e|e.packet.bytes()).collect::<Vec<_>>(),vec![&[0xc3,5][..],&[0xb3,74,88],&[0x93,60,100]]);assert!(matches!(packets.last().unwrap().owner,Owner::Clip{track:2,..}));shared.alive.store(false,Release);
+}

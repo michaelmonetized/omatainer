@@ -81,7 +81,17 @@ pub(crate) fn actions() -> &'static [Action] {
         Action::Shift,
         Action::FxWet,
         Action::FxSelect,
+        Action::SongLocator,
+        Action::SongPrevious,
+        Action::SongNext,
+        Action::SongLoop,
+        Action::SongCancel,
     ]
+}
+/// Identify bindings introduced with native song navigation.
+/// Takes an action; returns whether its persistence requires MIDI preset version 3 and preferences version 20.
+pub(crate) fn navigation(action: Action) -> bool {
+    matches!(action, Action::SongLocator | Action::SongPrevious | Action::SongNext | Action::SongLoop | Action::SongCancel)
 }
 /// Choose the required MIDI message class for a performance action.
 /// Takes an action; returns Note, absolute CC, or explicitly decoded relative CC.

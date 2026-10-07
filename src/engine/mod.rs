@@ -6,6 +6,7 @@ pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod audio_clip;
 pub(crate) mod arrangement;
+pub(crate) mod song_navigation;
 pub(crate) mod clip_management;
 pub(crate) mod midi_data;
 pub(crate) mod midi_interchange;
@@ -652,6 +653,7 @@ pub struct RtEngine {
     pub tracks: Vec<Box<TrackRt>>,
     pub session: session::Layout,
     pub(crate) arrangement: Box<arrangement::Playback>,
+    pub(crate) navigation: song_navigation::Runtime,
     pub decks: [DeckRt; DECKS],
     // Each control owns its selected processor and both channel histories.
     master_fx: [master_fx::MasterSlot; 3],
@@ -860,6 +862,9 @@ pub struct Snapshot {
     pub(crate) mic_aux: audio::routing::mic_aux::Status,
     pub(crate) arrangement_enabled: bool,
     pub(crate) arrangement_end: f64,
+    pub(crate) navigation: Option<song_navigation::Saved>,
+    pub(crate) navigation_pending: Option<[f64;2]>,
+    pub(crate) navigation_error: Option<song_navigation::Error>,
     pub surfaces: surface_controls::Status,
     pub view: u8,
     pub selected_track: usize,
@@ -931,6 +936,7 @@ impl Default for Snapshot {
             mic_aux: audio::routing::mic_aux::Status::default(),
             arrangement_enabled: false,
             arrangement_end: 0.0,
+            navigation: None, navigation_pending: None, navigation_error: None,
             surfaces: surface_controls::Status::default(),
             view: 0,
             selected_track: 0,
@@ -1071,6 +1077,8 @@ pub enum Command {
     LiveNoteOff { source: u64, ch: u8, note: u8 },
     AudioClipEdit(Box<audio_clip::edit::Request>),
     ArrangementEdit(Box<arrangement::edit::Request>),
+    SongNavigation(song_navigation::Action),
+    SongNavigationEdit(Box<song_navigation::Request>),
     ClipManage(Box<clip_management::edit::Request>),
     MidiEdit(midi_edit::Request),
     MidiImport(midi_interchange::Request),
@@ -1156,6 +1164,7 @@ impl RtEngine {
         let mut e = Self {
             session,
             arrangement: arrangement::Playback::new(None,0.0),
+            navigation: song_navigation::Runtime::default(),
             midi_routing:cmd_rx.midi_routing(),
             midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
@@ -1557,13 +1566,14 @@ impl RtEngine {
         let profiling = self.telemetry.profiler.enabled.load(std::sync::atomic::Ordering::Relaxed);
 
         for i in 0..frames {
+            #[cfg(test)]
+            { self.current_sample_frame = self.frames_done + i as u64; }
+            self.song_navigation_tick();
             self.routing_input_frame = self.routing_pipe.frame(self.sr as u32);
             self.remote_tick();
             if self.count_in.as_ref().is_some_and(|count| count.finished()) { self.count_in = None; }
             let counting_in = self.count_in.is_some();
             let count_click = self.count_in.as_mut().and_then(|count| count.tick(self.sr as u32));
-            #[cfg(test)]
-            { self.current_sample_frame = self.frames_done + i as u64; }
             self.load_profile.begin(profiling, self.frames_done + i as u64, self.sr);
             // Compose holds still have a musical duration with the transport
             // stopped. This clock integrates actual tempo and never loops.
@@ -2450,6 +2460,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
+                self.navigation.cancel();
                 self.transport_epoch = self.transport_epoch.wrapping_add(1);
                 self.history_finish_take();
                 self.finish_recording_all();
@@ -2465,8 +2476,9 @@ impl RtEngine {
                 }
                 for t in 0..self.tracks.len() {self.midi_routing.clear_clip(t as u8);}
             }
-            Command::TimelineSeek(seconds) => self.seek_timeline(seconds),
-            Command::SongSeek(beat)=>{if beat.is_finite()&&(0.0..=262144.0).contains(&beat){let seconds=self.conductor.as_ref().map_or(beat*60.0/f64::from(self.bpm),|c|c.seconds_at(beat));if seconds<=86400.0{self.seek_timeline(seconds);}else{self.undo.reject(undo::Failure::Invalid);}}},
+            Command::SongNavigation(action) => self.song_navigation(action),
+            Command::TimelineSeek(seconds) => {self.song_navigation_leave_loop();self.seek_timeline(seconds);},
+            Command::SongSeek(beat)=>{if beat.is_finite()&&(0.0..=262144.0).contains(&beat){let seconds=self.conductor.as_ref().map_or(beat*60.0/f64::from(self.bpm),|c|c.seconds_at(beat));if seconds<=86400.0{self.song_navigation_leave_loop();self.seek_timeline(seconds);}else{self.undo.reject(undo::Failure::Invalid);}}},
             Command::TogglePlay => {
                 if self.playing {
                     self.apply(Command::Stop);
@@ -2923,7 +2935,7 @@ impl RtEngine {
                 self.release_input(InputKey::Midi { source, ch: ch & 15, note });
             }
             Command::MidiEdit(request) => self.apply_midi_edit(request),
-            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) | Command::ArrangementEdit(_) | Command::ClipManage(_) => unreachable!("import is applied atomically in history admission"),
+            Command::Remote(_) | Command::SessionControl(_) | Command::SessionEdit(_) | Command::MidiImport(_) | Command::AudioClipEdit(_) | Command::ArrangementEdit(_) | Command::SongNavigationEdit(_) | Command::ClipManage(_) => unreachable!("import is applied atomically in history admission"),
             Command::MidiAudition { id, track, note, vel, on } => {
                 let input = InputKey::Preview(id);
                 self.release_input(input);

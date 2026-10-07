@@ -521,6 +521,7 @@ fn destructive(command: &Command) -> bool {
         | Command::SongSeek(_)
         | Command::AudioClipEdit(_)
             | Command::ArrangementEdit(_)
+        | Command::SongNavigationEdit(_)
                     | Command::ClipManage(_)
         | Command::MidiImport(_)
         | Command::MidiEdit(_)
@@ -568,6 +569,7 @@ fn destructive(command: &Command) -> bool {
         | Command::MidiSamplerPad { .. }
         | Command::DeckTrack { .. }
         | Command::MidiAdjust(_)
+        | Command::SongNavigation(_)
         | Command::DeckPitch { .. }
         | Command::DeckGain { .. }
         | Command::DeckEq { .. }
@@ -821,6 +823,7 @@ impl super::RtEngine {
             }
         }
         self.pad_targets.fill(None);
+        self.navigation.cancel();
         self.clip_launch_inputs.clear();
         self.release_surface_inputs();
         self.finish_sampler_audition();

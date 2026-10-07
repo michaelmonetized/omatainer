@@ -1469,6 +1469,56 @@
         "docs/validation/arrangement-receipt.json"
       ],
       "limits": "Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz references, exact realtime/export parity with a native tempo ramp, overlap/seek/source edits, native handlers/hour navigation, save/reopen/selective imports/templates, cancellation/stale/protected/active/budget refusals and zero renderer allocation/free. Sources are snapshots; later Session changes are independent. Capacity limits are explicit. Streaming, independent warping and physical/cross-platform acceptance remain separate."
+    },
+    "255": {
+      "status": "implemented",
+      "paths": [
+        {
+          "kind": "native live section and loop editor",
+          "file": "src/ui/song_navigation.rs",
+          "entry": "Named creation/edit/move/delete, exact beat/time entry, quantized previous/next/ID jumps, loop braces and loop-to-next; keyboard/assistive handlers"
+        },
+        {
+          "kind": "bounded native metadata and stable MIDI identities",
+          "file": "src/engine/song_navigation/metadata.rs",
+          "entry": "256 visible named locators; chronological resolution and loop braces; persistent allocation counter survives Undo without reusing IDs"
+        },
+        {
+          "kind": "sample-clock jumps and looping",
+          "file": "src/engine/song_navigation/playback.rs",
+          "entry": "Meter/pickup-aware launch boundary, exact renderer sample movement, fractional loop overshoot, cancellation and destination range recheck"
+        },
+        {
+          "kind": "atomic live metadata admission and native Undo",
+          "file": "src/engine/undo/song_navigation.rs",
+          "entry": "Worker-prepared namespace/epoch/exact-model guard; Ack/cancel/stale refusal; metadata editing during playback/recording with retained inverse ownership"
+        },
+        {
+          "kind": "native project persistence",
+          "file": "src/engine/project/model.rs",
+          "entry": "State schema 22; strict legacy injection refusal, saved braces/switch/high-water identity counter and no pending movement on reopen"
+        },
+        {
+          "kind": "learned controller navigation",
+          "file": "src/engine/midi.rs",
+          "entry": "Stable ID, previous/next, loop toggle and cancel through production input dispatch; press edges and global timing"
+        },
+        {
+          "kind": "navigation binding persistence",
+          "file": "src/engine/midi/presets.rs",
+          "entry": "Preset 3 and preference 20; old action injection refusal, with actual schema-2/preference-19 encoder migration"
+        }
+      ],
+      "fixtures": [
+        "engine::song_navigation::tests",
+        "ui::song_navigation::tests::native_sections_edit_save_trigger_loop_and_keyboard_time_entry_use_real_handlers",
+        "engine::midi::routing::playback::tests::named_song_jump_clears_old_clip_owners_and_chases_destination_controllers_before_sustained_notes"
+      ],
+      "evidence": [
+        "docs/validation/song-navigation.md",
+        "docs/validation/song-navigation-receipt.json"
+      ],
+      "limits": "Linux ARM64 software qualification: live metadata edits during playback/recording, exact PCM destination samples and loop timing across tempo/meter changes at multiple rates, clip recording-take completion with held live input preservation, clear/chase MIDI ordering, production synthetic learned input, stable IDs through Undo branching/reopening, actual native editor/keyboard/assistive controls, .omat and MIDI preset/preferences files, strict version migration/refusal and measured zero renderer heap work. Editing follows existing Studio/performance-protection admission. Jumps/wraps finish the current clip recording take; pending movement is omitted from storage. No physical controller or audio device was opened. DJ deck transports remain separate."
     }
   }
 }
