@@ -275,6 +275,10 @@ pub(super) fn show(ui: &mut Ui, theme: &Theme, draft: &mut Draft, timing: Option
         }
         note_response.on_hover_text(crate::localization::format("{label}. Drag body to move; drag right edge to resize. Shift-click extends selection.", &[format!("{}", label)]));
     }
+    if !ui.is_enabled() {
+        draft.drag = None;
+        return Ok(());
+    }
     if response.clicked() && !note_hit && pointer.is_some_and(|p| body.contains(p)) {
         let pos = pointer.unwrap();
         response.request_focus();

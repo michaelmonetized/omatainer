@@ -156,19 +156,79 @@ mod tests {
                 .count(),
             catalog.manifest.cargo.as_array().unwrap().len()
         );
-        let vendor: Vec<_> = catalog.manifest.package.iter().filter(|(source, _)|
-            source.starts_with("vendor/symphonia-format-riff/")).collect();
-        assert_eq!(vendor.len(), 13, "complete modified MPL source must be distributed");
-        let native:Vec<_>=catalog.manifest.package.iter().filter(|(source,_)|source.starts_with("vendor/egui-winit/")).collect();
-        assert_eq!(native.len(),11,"complete patched native adapter source must be distributed");
-        assert_eq!(catalog.manifest.package.len(), 6 + vendor.len() + native.len());
-        for (source,destination) in native {
+        let vendor: Vec<_> = catalog
+            .manifest
+            .package
+            .iter()
+            .filter(|(source, _)| source.starts_with("vendor/symphonia-format-riff/"))
+            .collect();
+        assert_eq!(
+            vendor.len(),
+            13,
+            "complete modified MPL source must be distributed"
+        );
+        let native: Vec<_> = catalog
+            .manifest
+            .package
+            .iter()
+            .filter(|(source, _)| source.starts_with("vendor/egui-winit/"))
+            .collect();
+        assert_eq!(
+            native.len(),
+            11,
+            "complete patched native adapter source must be distributed"
+        );
+        let plugin: Vec<_> = catalog
+            .manifest
+            .package
+            .iter()
+            .filter(|(source, _)| source.starts_with("vendor/vst3-host/"))
+            .collect();
+        assert_eq!(
+            plugin.len(),
+            43,
+            "complete patched native plugin host source must be distributed"
+        );
+        let plugin_license = catalog
+            .manifest
+            .entries
+            .iter()
+            .find(|entry| entry.id == "crate:vst3-host@0.9.0")
+            .unwrap();
+        assert_eq!(plugin_license.license, "MIT");
+        assert!(plugin_license
+            .notices
+            .iter()
+            .any(|notice| notice.location == "vendor/vst3-host/LICENSE"));
+        assert_eq!(
+            catalog.manifest.package.len(),
+            6 + vendor.len() + native.len() + plugin.len()
+        );
+        for (source, destination) in plugin {
+            let hash = &catalog.manifest.source_files[source];
+            assert_eq!(
+                destination,
+                &format!(".local/share/omatainer/source/{source}")
+            );
+            assert!(plugin_license
+                .sources
+                .iter()
+                .any(|record| &record.location == destination
+                    && record.sha256.as_ref() == Some(hash)));
+        }
+        for (source, destination) in native {
             assert!(catalog.manifest.source_files.contains_key(source));
-            assert_eq!(destination,&format!(".local/share/omatainer/source/{source}"));
+            assert_eq!(
+                destination,
+                &format!(".local/share/omatainer/source/{source}")
+            );
         }
         for (source, destination) in vendor {
             assert!(catalog.manifest.source_files.contains_key(source));
-            assert_eq!(destination, &format!(".local/share/omatainer/source/{source}"));
+            assert_eq!(
+                destination,
+                &format!(".local/share/omatainer/source/{source}")
+            );
         }
         assert!(!catalog.manifest.source_files.is_empty());
         assert_eq!(catalog.manifest.absent.len(), 3);

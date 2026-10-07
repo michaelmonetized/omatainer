@@ -42,6 +42,7 @@ impl Fixture {
         }
     }
 
+    #[track_caller]
     pub fn poll_loads(&mut self) {
         let loading: [bool; DECKS] = std::array::from_fn(|deck| self.app.loads[deck].as_ref()
             .is_some_and(|load| matches!(load.phase, load_status::Phase::Loading)));

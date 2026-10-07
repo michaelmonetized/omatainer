@@ -127,6 +127,7 @@ impl Gui {
         }
         result
     }
+    #[track_caller]
     fn wait(&mut self, mut done: impl FnMut(&Self) -> bool) {
         let deadline = Instant::now() + Duration::from_secs(8);
         loop {

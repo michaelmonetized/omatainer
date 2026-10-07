@@ -485,3 +485,117 @@ fn native_drawn_velocity_points_and_cyclic_preset_apply_only_velocities() {
     assert_eq!(gui.rt.tracks[2].clips[7].notes, original);
     println!("MIDI_TRANSFORM_DRAWN {{\"actual_pointer_curve\":true,\"native_numeric_points\":true,\"cyclic_preset\":true,\"velocity_only\":true,\"single_undo\":true,\"physical_devices_opened\":false}}");
 }
+
+#[test]
+fn disabled_preview_canvas_cancels_actual_pointer_drag_and_retains_notes_during_keyboard_input() {
+    let mut gui = Box::new(Gui::new());
+    open(&mut gui);
+    gui.number("Note pitch", 70.0);
+    gui.number("Note start", 0.12);
+    gui.number("Note length", 0.4);
+    gui.click("MIDI piano roll: Add note");
+    gui.apply();
+    let committed = gui.rt.tracks[2].clips[7].notes.clone();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let theme = Theme::default();
+    let mut time = 0.0;
+    let mut render = |draft: &mut Draft, enabled: bool, events: Vec<egui::Event>| {
+        time += 0.02;
+        ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, 640.0))),
+                time: Some(time),
+                events,
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.add_enabled_ui(enabled, |ui| {
+                        canvas::show(ui, &theme, draft, None).unwrap();
+                    });
+                });
+            },
+        )
+    };
+    let draft = gui.app.piano_roll.draft.as_mut().unwrap();
+    let mut output = render(draft, true, vec![]);
+    for _ in 0..3 {
+        output = render(draft, true, vec![]);
+    }
+    let bounds = output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .unwrap()
+        .nodes
+        .iter()
+        .find_map(|(_, n)| {
+            n.label()
+                .is_some_and(|label| label.contains(" · velocity "))
+                .then(|| n.bounds().unwrap())
+        })
+        .unwrap();
+    let start = Pos2::new(
+        ((bounds.x0 + bounds.x1) / 2.0) as f32,
+        ((bounds.y0 + bounds.y1) / 2.0) as f32,
+    );
+    render(
+        draft,
+        true,
+        vec![
+            egui::Event::PointerMoved(start),
+            egui::Event::PointerButton {
+                pos: start,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    );
+    render(
+        draft,
+        true,
+        vec![egui::Event::PointerMoved(start + Vec2::new(12.0, 0.0))],
+    );
+    assert!(draft.drag.is_some(), "Actual pointer gesture did not start");
+    let before = draft.notes.clone();
+    let selected = draft.selected.clone();
+    render(
+        draft,
+        false,
+        vec![
+            egui::Event::PointerMoved(start + Vec2::new(112.0, 36.0)),
+            egui::Event::Key {
+                key: Key::ArrowRight,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+            egui::Event::Key {
+                key: Key::Delete,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    );
+    assert_eq!(draft.notes, before);
+    assert_eq!(draft.selected, selected);
+    assert!(draft.drag.is_none());
+    render(
+        draft,
+        false,
+        vec![egui::Event::PointerButton {
+            pos: start + Vec2::new(112.0, 36.0),
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    assert_eq!(draft.notes, before);
+    assert_eq!(gui.rt.tracks[2].clips[7].notes, committed);
+    println!("MIDI_TRANSFORM_DISABLED {{\"actual_pointer_drag\":true,\"disabled_canvas_preserves_draft\":true,\"keyboard_cannot_edit_preview\":true,\"committed_clip_unchanged\":true,\"physical_devices_opened\":false}}");
+}

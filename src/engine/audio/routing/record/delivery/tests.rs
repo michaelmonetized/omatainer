@@ -162,9 +162,13 @@ fn final_callback_capture_is_bit_identical_to_the_audience_buffer_and_does_not_c
             path: String::new(),
         }),
     });
-    rt.apply(Command::DeckPlay { deck: 0 });
     let r = engine.routing.recorder.clone();
     let mut callback = OutputCallback::new(rt, 2);
+    let mut before_activation = [0_f32; 512];
+    for _ in 0..375 {
+        callback.render(&mut before_activation);
+    }
+    assert_eq!(r.alias(), 0);
     let folder = files.0.join("actual-callback");
     let job = start(
         &r,
@@ -174,12 +178,17 @@ fn final_callback_capture_is_bit_identical_to_the_audience_buffer_and_does_not_c
     let end = Instant::now() + Duration::from_secs(15);
     let mut buffer = [0_f32; 512];
     let mut expected = Vec::new();
+    let mut started = false;
     while expected.len() < 4096 * 2 {
         let was_active = r.alias() != 0;
         callback.render(&mut buffer);
         if was_active || r.alias() != 0 {
             expected.extend(buffer.chunks_exact(2).flat_map(|f| [f[1], f[0]]));
             assert!(!r.monitoring_inputs());
+            if !started {
+                engine.send(Command::DeckPlay { deck: 0 }).unwrap();
+                started = true;
+            }
         }
         assert!(Instant::now() < end);
         std::thread::sleep(Duration::from_millis(1));
