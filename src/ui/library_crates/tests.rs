@@ -361,3 +361,29 @@ fn large_named_crate_and_tree_reuse_view_indices_and_render_only_visible_rows() 
     gui.app.refresh_library_view();
     assert_eq!(gui.app.library_view.pending_offset, Some(2003.0), "catalog refresh jumped from the captured top member to the selection");
 }
+
+#[test]
+fn discovered_rekordbox_source_uses_native_review_hierarchy_and_repeated_snapshot_controls() {
+    let files=Files::new();let location=url::Url::from_file_path(files.0.join("One.flac")).unwrap();
+    let source=format!(r#"<DJ_PLAYLISTS Version="1.0.0"><COLLECTION Entries="1"><TRACK TrackID="1" Name="One" Location="{location}" AverageBpm="122" Album="Source-only album"/></COLLECTION><PLAYLISTS><NODE Type="0" Name="ROOT" Count="1"><NODE Type="0" Name="Tour" Count="1"><NODE Type="1" Name="Opening" KeyType="0" Entries="1"><TRACK Key="1"/></NODE></NODE></NODE></PLAYLISTS></DJ_PLAYLISTS>"#);
+    let path=files.0.join("source.export");std::fs::write(&path,&source).unwrap();
+    let scanned=crate::dj_library::scan(crate::dj_library::Request {roots:vec![files.0.clone()],all_mounts:false,cursor:None},&||true).unwrap();
+    assert_eq!(scanned.candidates.len(),1);
+    let mut gui=Gui::new(&files);gui.click("Import playlists…");
+    gui.app.library_playlist.discovery.candidates=scanned.candidates;
+    gui.click("Discovered DJ libraries");gui.click("Review source");
+    gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.click("Import reviewed playlists");gui.finish();
+    let imported=gui.app.library_metadata.catalog.imports.clone();
+    assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),2);
+    assert!(imported.iter().any(|p|p.references.iter().any(|r|r.details.warnings.iter().any(|w|w.contains("Source-only album")))));
+    gui.click("Review source");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.click("Import reviewed playlists");gui.finish();
+    assert_eq!(gui.app.library_metadata.catalog.imports,imported);
+    std::fs::write(&path,source.replace("Name=\"Opening\"","Name=\"Closing\"")).unwrap();
+    gui.click("Review source");gui.wait(|g|g.app.library_playlist.review.is_some() && g.app.library_crates.pending.is_none());
+    gui.click("Import reviewed playlists");gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),2);
+    gui.click("Import a changed source as a new snapshot, keeping its previous crates");
+    gui.click("Import reviewed playlists");gui.finish();assert_eq!(gui.app.library_metadata.catalog.crates.nodes().len(),4);
+    assert_eq!(std::fs::read_to_string(path).unwrap(),source.replace("Name=\"Opening\"","Name=\"Closing\""));
+}

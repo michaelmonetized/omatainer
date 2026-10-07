@@ -9,44 +9,151 @@ pub(super) struct Import {
     path: String,
     from: String,
     to: String,
-    pub review: Option<(u64,Arc<Review>)>,
+    pub review: Option<(u64, Arc<Review>)>,
     selected: BTreeSet<usize>,
     allow_excluded: bool,
+    new_snapshot: bool,
     generation: u64,
     pub message: String,
+    pub discovery: crate::dj_library::Discovery,
+    custom_root: String,
+    configured_only: bool,
 }
 impl Import {
-    pub fn accept_review(&mut self,revision:u64,review:Arc<Review>)->Result<(),String> {
-        self.review=None;
-        self.generation=self.generation.checked_add(1).ok_or("Playlist review identity exhausted; restart the app before importing")?;
-        self.selected=review.playlists.iter().enumerate().filter(|(_,p)|p.rows.iter().any(|&i|review.rows[i].ready())).map(|(i,_)|i).collect();
-        self.review=Some((revision,review));self.allow_excluded=false;Ok(())
+    pub fn accept_review(&mut self, revision: u64, review: Arc<Review>) -> Result<(), String> {
+        self.review = None;
+        self.generation = self
+            .generation
+            .checked_add(1)
+            .ok_or("Playlist review identity exhausted; restart the app before importing")?;
+        self.selected = review
+            .playlists
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| {
+                p.folder || p.rows.is_empty() || p.rows.iter().any(|&i| review.rows[i].ready())
+            })
+            .map(|(i, _)| i)
+            .collect();
+        self.review = Some((revision, review));
+        self.allow_excluded = false;
+        self.new_snapshot = false;
+        Ok(())
     }
 }
 impl App {
+    fn discover_dj_libraries(&mut self, continuation: bool) {
+        let mut roots = self.settings.profile().library_roots.clone();
+        if let Some(home) = std::env::var_os("HOME") {
+            let home = PathBuf::from(home);
+            if !roots.contains(&home) {
+                roots.insert(0, home);
+            }
+        }
+        if !self.library_playlist.custom_root.is_empty() {
+            roots.insert(0, PathBuf::from(&self.library_playlist.custom_root));
+        }
+        roots.dedup();
+        if let Err(error) = self.library_playlist.discovery.start(
+            roots,
+            !self.library_playlist.configured_only,
+            continuation,
+            self.engine.cmd.performance(),
+        ) {
+            self.library_playlist.discovery.message = error;
+        }
+    }
+    pub(super) fn poll_dj_libraries(&mut self) {
+        self.library_playlist.discovery.poll();
+        if self.engine.safe_mode()
+            || self.engine.output_info().is_none()
+            || self.engine.cmd.performance().protected()
+            || self.project.committing()
+        {
+            return;
+        }
+        let state = &self.library_playlist.discovery;
+        if !state.active() {
+            if !state.initialized || state.refresh {
+                self.discover_dj_libraries(false);
+            } else if !state.paused && state.cursor.is_some() {
+                self.discover_dj_libraries(true);
+            }
+        }
+    }
     fn review_playlist(&mut self) {
-        let state=&self.library_playlist;
-        if state.from.is_empty()!=state.to.is_empty() {self.library_playlist.message="Supply both path-mapping fields, or leave both empty.".into();return;}
-        let input=Input{path:PathBuf::from(&state.path),mapping:(!state.from.is_empty()).then(||Mapping{from:state.from.clone(),to:PathBuf::from(&state.to)})};
-        self.library_playlist.review=None;
-        self.submit_crate_edit(self.library_metadata.catalog.crates.revision(),CollectionAction::ReviewPlaylist(input));
-        self.library_playlist.message=self.library_crates.message.clone();
+        let state = &self.library_playlist;
+        if state.from.is_empty() != state.to.is_empty() {
+            self.library_playlist.message =
+                "Supply both path-mapping fields, or leave both empty.".into();
+            return;
+        }
+        let input = Input {
+            path: PathBuf::from(&state.path),
+            mapping: (!state.from.is_empty()).then(|| Mapping {
+                from: state.from.clone(),
+                to: PathBuf::from(&state.to),
+            }),
+        };
+        self.library_playlist.review = None;
+        self.submit_crate_edit(
+            self.library_metadata.catalog.crates.revision(),
+            CollectionAction::ReviewPlaylist(input),
+        );
+        self.library_playlist.message = self.library_crates.message.clone();
     }
     fn import_reviewed_playlists(&mut self) {
-        let state=&self.library_playlist;let Some((revision,review))=&state.review else{return};
-        let excluded=state.selected.iter().flat_map(|&i|review.playlists[i].rows.iter()).any(|&i|!review.rows[i].ready());
-        if excluded && !state.allow_excluded {self.library_playlist.message="Review the reported failures and explicitly allow their exclusion.".into();return;}
-        let action=CollectionAction::ImportPlaylist{review:review.clone(),selected:state.selected.iter().copied().collect()};
-        self.submit_crate_edit(*revision,action);self.library_playlist.message=self.library_crates.message.clone();
+        let state = &self.library_playlist;
+        let Some((revision, review)) = &state.review else {
+            return;
+        };
+        let excluded = state
+            .selected
+            .iter()
+            .flat_map(|&i| review.playlists[i].rows.iter())
+            .any(|&i| !review.rows[i].ready());
+        if excluded && !state.allow_excluded {
+            self.library_playlist.message =
+                "Review the reported failures and explicitly allow their exclusion.".into();
+            return;
+        }
+        let action = CollectionAction::ImportPlaylist {
+            review: review.clone(),
+            selected: state.selected.iter().copied().collect(),
+            new_snapshot: state.new_snapshot,
+        };
+        self.submit_crate_edit(*revision, action);
+        self.library_playlist.message = self.library_crates.message.clone();
     }
-    pub(super) fn playlist_import_ui(&mut self,ctx:&egui::Context) {
-        if !self.library_playlist.open {return;}
-        let mut open=true;
+    pub(super) fn playlist_import_ui(&mut self, ctx: &egui::Context) {
+        if !self.library_playlist.open {
+            return;
+        }
+        let mut open = true;
         egui::Window::new("Import playlists").id(egui::Id::new("playlist-import-window")).open(&mut open).default_size(Vec2::new(840.0,690.0)).show(ctx,|ui|{
             keyboard::block_for_dialog(ctx);
-            ui.label("Bring local M3U/M3U8 or Apple Music/iTunes XML playlists into named crates.");
+            ui.label("Import M3U, Apple XML, rekordbox XML, Traktor NML 19 or legacy Serato crates.");
             ui.label("Review local references first. This does not copy audio, unlock protected files or download provider tracks.");
             let available=self.library_crates.pending.is_none() && !self.project.committing() && self.project.dialog_is_closed() && !self.library_closing();
+            ui.collapsing("Discovered DJ libraries",|ui|{
+                ui.label(&self.library_playlist.discovery.message);
+                ui.horizontal(|ui|{let label=ui.label("Custom library directory");let response=ui.add(egui::TextEdit::singleline(&mut self.library_playlist.custom_root).char_limit(4096)).labelled_by(label.id);response.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::TextEdit,response.enabled(),"Custom library directory"));});
+                ui.checkbox(&mut self.library_playlist.configured_only,"Search home and configured directories only");
+                ui.horizontal(|ui|{
+                    if ui.add_enabled(!self.library_playlist.discovery.active(),egui::Button::new("Rescan libraries")).clicked() {self.discover_dj_libraries(false);}
+                    if ui.add_enabled(!self.library_playlist.discovery.active() && self.library_playlist.discovery.cursor.is_some(),egui::Button::new("Continue discovery")).clicked() {self.discover_dj_libraries(true);}
+                    if ui.add_enabled(self.library_playlist.discovery.active(),egui::Button::new("Cancel discovery")).clicked() {self.library_playlist.discovery.cancel();}
+                });
+                ui.label("Results are last discovered sources. Review checks the current mount and file before import. Virtual, runtime, build and cache trees are excluded; each page inspects at most 10000 entries.");
+                let mut chosen=None;
+                egui::ScrollArea::vertical().id_salt("discovered-dj-libraries").max_height(170.0).show_rows(ui,48.0,self.library_playlist.discovery.candidates.len(),|ui,range|{
+                    for index in range {let source=&self.library_playlist.discovery.candidates[index];ui.horizontal(|ui|{if ui.add_enabled(available && source.reviewable,egui::Button::new("Review source")).clicked() {chosen=Some(source.path.clone());}ui.label(&source.format);});ui.add(egui::Label::new(source.path.display().to_string()).truncate());}
+                });
+                for notice in &self.library_playlist.discovery.notices {ui.add(egui::Label::new(format!("{}: {}",notice.path.display(),notice.state)).truncate()).on_hover_text(&notice.state);}
+                if let Some(path)=chosen {self.library_playlist.path=path.display().to_string();self.review_playlist();}
+                let imported:std::collections::HashSet<_>=self.library_metadata.catalog.imports.iter().map(|r|&r.source).collect();
+                if !imported.is_empty() {ui.label(format!("{} imported source identities are retained in the saved library, including offline sources.",imported.len()));}
+            });
             ui.add_enabled_ui(available,|ui|{
                 let mut changed=false;
                 for (caption,value) in [("Playlist file",&mut self.library_playlist.path),("Replace path prefix (optional)",&mut self.library_playlist.from),("With local directory (optional)",&mut self.library_playlist.to)] {
@@ -62,23 +169,26 @@ impl App {
                     ui.add_enabled_ui(available,|ui|{
                         egui::ScrollArea::vertical().id_salt("playlist-selections").max_height(140.0).show(ui,|ui|{
                             for i in 0..review.playlists.len() {let playlist=&review.playlists[i];let ready=playlist.rows.iter().filter(|&&r|review.rows[r].ready()).count();let mut selected=self.library_playlist.selected.contains(&i);
-                                if ui.add_enabled(ready>0,egui::Checkbox::new(&mut selected,format!("{} — {ready}/{} resolved references",playlist.name,playlist.rows.len()))).help(ui,HelpControl::PlaylistImport).changed() {if selected {self.library_playlist.selected.insert(i);}else{self.library_playlist.selected.remove(&i);}}
+                                if ui.add_enabled(playlist.folder || playlist.rows.is_empty() || ready>0,egui::Checkbox::new(&mut selected,format!("{} — {ready}/{} resolved references",playlist.folders.iter().chain(std::iter::once(&playlist.name)).cloned().collect::<Vec<_>>().join(" / "),playlist.rows.len()))).help(ui,HelpControl::PlaylistImport).changed() {if selected {self.library_playlist.selected.insert(i);}else{self.library_playlist.selected.remove(&i);}}
                                 ui.add(egui::Label::new(egui::RichText::new(&playlist.note).small()).truncate());
+                                if playlist.destination!=playlist.name {ui.label(format!("Destination name: {}",playlist.destination));}
                             }
                         });
+                        ui.checkbox(&mut self.library_playlist.new_snapshot,"Import a changed source as a new snapshot, keeping its previous crates");
                         let excluded=self.library_playlist.selected.iter().flat_map(|&i|review.playlists[i].rows.iter()).filter(|&&r|!review.rows[r].ready()).count();
                         ui.scope(|ui|{if excluded>0 {ui.checkbox(&mut self.library_playlist.allow_excluded,format!("Import resolved entries and exclude {excluded} reported failures")).help(ui,HelpControl::PlaylistImport);}});
                         if ui.add_enabled(!self.library_playlist.selected.is_empty() && (excluded==0 || self.library_playlist.allow_excluded),egui::Button::new("Import reviewed playlists")).help(ui,HelpControl::PlaylistImport).clicked() {self.import_reviewed_playlists();}
                     });
                     ui.separator();
                     egui::ScrollArea::vertical().id_salt("playlist-reference-review").max_height(330.0).show_rows(ui,55.0,review.rows.len(),|ui,range|{
-                        for i in range {let row=&review.rows[i];ui.allocate_ui(Vec2::new(ui.available_width(),55.0),|ui|{ui.set_min_height(55.0);ui.add(egui::Label::new(format!("{}. {} — {}",i+1,row.title,row.status)).truncate());let location=row.resolved().map(|p|p.display().to_string()).unwrap_or_else(||row.reference.clone());ui.add(egui::Label::new(egui::RichText::new(&location).small()).truncate()).on_hover_text(location);});}
+                        for i in range {let row=&review.rows[i];ui.allocate_ui(Vec2::new(ui.available_width(),55.0),|ui|{ui.set_min_height(55.0);ui.add(egui::Label::new(format!("{}. {} — {}",i+1,row.title,row.status)).truncate()).on_hover_ui(|ui|{for warning in review.warnings(i) {ui.label(warning);}});let location=row.resolved().map(|p|p.display().to_string()).unwrap_or_else(||row.reference.clone());ui.add(egui::Label::new(egui::RichText::new(&location).small()).truncate()).on_hover_text(location);});}
                     });
                 });
             }
             if let Some((token,_))=&self.library_crates.pending {
                 if ui.button("Cancel playlist operation").help(ui,HelpControl::PlaylistImport).clicked() {self.library_playlist.message=if token.cancel(){"Cancellation requested; waiting for the catalog owner."}else{"Publication began; waiting for its actual receipt."}.into();}
             }
-        });self.library_playlist.open&=open;
+        });
+        self.library_playlist.open &= open;
     }
 }

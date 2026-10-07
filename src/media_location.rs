@@ -375,6 +375,17 @@ impl Snapshot {
     pub fn access(&self, path: &Path) -> Result<Access, Failure> {
         Ok(Access { namespace: self.namespace, mount: self.mount_at(path)?.clone() })
     }
+    /// List visible filesystem entry points for a background discovery process.
+    /// Takes this bounded mount snapshot; returns distinct mountpoints without traversing them or changing their access mode.
+    pub fn mountpoints(&self)->Vec<PathBuf> {let mut points=Vec::new();for mount in &self.mounts {if !points.contains(&mount.point) {points.push(mount.point.clone());}}points}
+    /// Resolve a source's fully visible filesystem root.
+    /// Takes an identified source; returns its mountpoint or refuses a partial bind/subvolume view that cannot resolve root-relative vendor paths.
+    pub fn volume_root(&self, location: &Location) -> Result<PathBuf, Failure> {
+        location.recheck_with(self)?;
+        let mount = self.mount_at(&location.path)?;
+        if mount.root != Path::new("/") { return Err(Failure::NotVisible); }
+        Ok(mount.point.clone())
+    }
     /// Explicit imports adopt canonical identity; internal files remain local paths.
     pub fn identify(&self, path: &Path) -> Result<Location, Failure> {
         let path = path.canonicalize().map_err(io)?;

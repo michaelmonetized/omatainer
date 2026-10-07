@@ -51,7 +51,7 @@ pub(super) fn observe(item: &mut LibItem, filename: Metadata, cancel: &AtomicBoo
         if let Some(value) = &fields.key {
             item.key.clone_from(&value.value);
         }
-        if !matches!(item.bpm.origin, super::super::bpm::Origin::User) {
+        if !matches!(item.bpm.origin, super::super::bpm::Origin::User | super::super::bpm::Origin::Imported) {
             if let Some(value) = fields
                 .bpm
                 .as_ref()

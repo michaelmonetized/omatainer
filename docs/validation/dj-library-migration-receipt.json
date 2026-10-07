@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-07T19:28:44.059Z",
+  "testedBaseRevision": "797c11d82ca52072e6bcec6f79eba8e93e236346",
+  "scope": "Software/native egui, private filesystem fixtures and the compiled isolated discovery worker; partial combined todo #511.",
+  "sourceFiles": {
+    "Cargo.lock": "239d244ddd933e4b9484e017985154e2c47b763940f00cfa934271740bc7d695",
+    "Cargo.toml": "aa734acca2d609c311d6b956a0ce8811392777e4f12b2ba14b1ec963f725a0bd",
+    "src/dj_library.rs": "5ef4d8c99836a22bb43983469057468988eca8be79b52d8b6f9d21ce3ac44c9e",
+    "src/interchange_xml.rs": "19c0c65a70dcc7b2b4343a31191316746cb5eac1176a451ffdf60a0bacd2af8a",
+    "src/library.rs": "b572f2652948590864b6b21c734cfa41fae801f882b6e097a85151ac3a171d20",
+    "src/library/imports.rs": "bd7ddcf5d6a4e6b97638ead77e8d1fbc723e5d7fa5a9cf8a7ad58f74ea2af0e8",
+    "src/library/tags.rs": "39e371348741e78cf8186de8224d43eac8d194547c0fb4b615f5aa1019b46249",
+    "src/library/tags/tests.rs": "06617e7e3cd31ef5bd0e4bfe2bb487b8abf2be4c1bdb2e8ecf27caf9fe08453a",
+    "src/main.rs": "0e3197ff654375a09aae1cbd73e658a02b0de8cdb6a4adb62e2824c82eec28ef",
+    "src/media_location.rs": "27e526b0e057e48387c80a67d5f6f14bfd55ac280465b36cae8681bda5f26f94",
+    "src/playlist_import.rs": "2c97f2d0eb69baa6f2356ac1255b14d417fe10152e04db2e84e66a8fd947df02",
+    "src/playlist_import/dj_tests.rs": "a441c0576bfd59bf76cdb93350707ef3b6eedad245689ebc73b0c17173a51ae8",
+    "src/playlist_import/djxml.rs": "67741c72a4d310998a52e795cde533f1e355aaa732003f2ca1dd252cb6a9de05",
+    "src/playlist_import/m3u.rs": "a95bb7a5deb4af26a72efa1c7e84c6e42eb6afd06aed56d289f73a1ba175b677",
+    "src/playlist_import/plist.rs": "3f3329805022bd851a1cb760e65648ea9056b16885e18eb50601f95e23e0c931",
+    "src/playlist_import/serato.rs": "5bbc071aef68a4624dcb8cba347329b998c4de4650d4d2277110884b2508fc9d",
+    "src/playlist_import/tests.rs": "9e09118cbc792c4a268473f79870adef9e9e4bc21469ea41744bdc9b3e807cae",
+    "src/ui.rs": "ed30144cc0dccb009ddb512600019b42b8c8fa27a33fbc21b7a100c197ed95b3",
+    "src/ui/bpm.rs": "3c8ad595c9ce5cbec342ad89a0e0c93dee79281cd8b77657d31378abb7a3a765",
+    "src/ui/help/catalogue.rs": "df0bd465ee77ed16113e829bf67080a1e4ea4c9fa65481751b91f83ea6c6d51e",
+    "src/ui/library_crates/tests.rs": "5a3eb7392c424927f154074472c1f4904393dd33d0891bc959d034cfb742e6b8",
+    "src/ui/library_metadata/collections.rs": "d709f1cc98dbeebbeec24dad683cef18026fc4feeb2c0e1350f082f0f5bc81b3",
+    "src/ui/library_metadata/collections/tests.rs": "1a8f66e40232b01b0511b2e2e5ebd8559cf43e59a85443175d37554ab69f08a9",
+    "src/ui/library_playlist.rs": "bf42d1895f9ae3827088cb0cf0b0d37a53d89e26183a6d13010457080780bf56",
+    "src/ui/library_scan/tags.rs": "f9a602f0fa80a66e450ad2c270ec6e69e1a7f6066c0e8adc48446b1b31f8010b"
+  },
+  "binaries": {
+    "test": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/debug/deps/omatainer-901aa01124a5a18f",
+      "sha256": "bb057bac9c239b67ca934890190bc10265dbbcdffdd369e90a028d460c17a5eb"
+    },
+    "nativeWorker": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/debug/omatainer",
+      "sha256": "41aaad118d9096e898b34ee534243fb2d2cad60064b655446ed070386f9a8726",
+      "archive": {
+        "path": "target/validation/combined-completion/dj-qualified-native.zst",
+        "sha256": "4dcc740cc792473ea80aab12ac643ee4cfa7a9d41c1884e44210fb329b61dffa",
+        "bytes": 83212612
+      }
+    }
+  },
+  "build": {
+    "rootOptimization": 0,
+    "rootDebugInfo": 0,
+    "incremental": false,
+    "testThreadStackBytes": 16777216,
+    "dependencyProfile": "Existing local cache; not an optimized release or performance qualification"
+  },
+  "logs": {
+    "target/validation/combined-completion/dj-qualified-build.log": "491e07d0b398413fe46a797de2ad4904dc41ae9f1c062507f61388292e189340",
+    "target/validation/combined-completion/dj-qualified-native-build.log": "9daa16e8e2f7ea08331fa2ee3e6f168810422ceb82d6910bc5a30c4d7323de35",
+    "target/validation/combined-completion/dj-library-model-tests-qualified.log": "9d47b10f1830c35894654699060ce426cf0465c14dd2a5c5b56c13b5d639c109",
+    "target/validation/combined-completion/dj-format-tests-qualified.log": "91639fb4681b294244e30813956752b91c20e95f15334b894ddbe86f4d73ccd9",
+    "target/validation/combined-completion/dj-native-ui-tests-qualified.log": "2caa94528c4add8375833eccd08949ba99fc95aebaca7bf5c2ecd9df7b7d17ee",
+    "target/validation/combined-completion/dj-catalog-owner-tests-qualified.log": "74481711183c10cb7f0ae88c7e1565e9fdb07afa5ab130df6ef10a7c183da7da",
+    "target/validation/combined-completion/dj-xml-tests-qualified.log": "8c2e538337b73b124929a68a9fe2264e4673b386951e88305b926d3bd9cdd75d",
+    "target/validation/combined-completion/dj-native-worker-tests-qualified.log": "13e3f74ce39ced33a079a45f7ed4cc061e3a3ba40999b1f4694b5ef33910b168",
+    "target/validation/combined-completion/dj-capability-tests-qualified.log": "9d109d01050361922a90027c61ad307d587682ef22d6f3332b1b796c7afcae07",
+    "target/validation/combined-completion/dj-discovery-benchmark.json": "82aac1e0c5ac4e06c34ee22f7090bef6f6bbd53b441eee38f136a38f14064d1b"
+  },
+  "tests": {
+    "dj-library-model-tests-qualified.log": {
+      "passed": 104,
+      "failed": 0,
+      "ignored": 1
+    },
+    "dj-format-tests-qualified.log": {
+      "passed": 13,
+      "failed": 0,
+      "ignored": 1
+    },
+    "dj-native-ui-tests-qualified.log": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    "dj-catalog-owner-tests-qualified.log": {
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    "dj-xml-tests-qualified.log": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    "dj-native-worker-tests-qualified.log": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    }
+  },
+  "uniqueRustChecks": 136,
+  "nodeChecks": 6,
+  "discoveryBenchmark": {
+    "schema": 1,
+    "scope": "Native compiled worker with an independently authored 10021-entry local fixture. No audio, MIDI or source-app qualification.",
+    "results": [
+      {
+        "visited": 10000,
+        "candidates": 0,
+        "complete": false,
+        "wallMs": 154,
+        "workerMs": 82,
+        "peakRssKb": 19184,
+        "peakFd": 5,
+        "cpuTicks": 7,
+        "wireBytes": 1276
+      },
+      {
+        "visited": 10021,
+        "candidates": 1,
+        "complete": true,
+        "wallMs": 14,
+        "workerMs": 12,
+        "peakRssKb": 18720,
+        "peakFd": 4,
+        "cpuTicks": 0,
+        "wireBytes": 568
+      }
+    ]
+  },
+  "sourceApplicationExports": {
+    "currentQualified": false,
+    "search": "Synchro index coverage incomplete; bounded existing-file searches found no owned DJ exports on accessible searched roots. This is not proof none exist.",
+    "recovery": "Unavailable FUSE views and an unreadable directory left unchanged; no repair or writable remount."
+  },
+  "limits": [
+    "Exact support matrix and remaining qualification in dj-library-migration.md",
+    "Not installed; existing powered-hub app/session preserved",
+    "No current source-application comparison, removable-media hot removal/remount or physical playback scan-impact proof",
+    "Root unoptimized test build needed a larger test-thread stack for an existing catalog test; no full-suite or release-binary claim",
+    "Core format/book/broker/UI behavior qualified; full combined producer/plugin/controller/audio acceptance remains incomplete"
+  ]
+}

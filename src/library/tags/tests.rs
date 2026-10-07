@@ -565,3 +565,24 @@ fn actual_tag_refresh_preview_matches_publication_and_leaves_locked_catalog_unch
     assert_eq!(serde_json::to_vec(&catalog).unwrap(),old);
     catalog.observe_tags(&review,&refreshed).unwrap();assert_eq!(version(&catalog,&review).metadata,before);
 }
+
+#[test]
+fn imported_tempo_survives_tags_analysis_and_rescan_but_yields_to_user_corrections() {
+    let (mut catalog, review) = fixture();
+    let imported=Bpm::new(131.25,Origin::Imported);
+    let mut values=metadata();values.bpm=imported;
+    catalog.upsert(review.source.clone(),Some(review.fingerprint),values.clone()).unwrap();
+    catalog.observe_tags(&review,&observation(review.fingerprint)).unwrap();
+    analysis(&mut catalog,&review,Some(142.0));
+    values.bpm=Bpm::new(98.0,Origin::EmbeddedTag);
+    catalog.upsert(review.source.clone(),Some(review.fingerprint),values.clone()).unwrap();
+    assert_eq!(version(&catalog,&review).metadata.bpm,imported);
+    assert!(version(&catalog,&review).analysis.is_some());
+    let serialized=serde_json::to_vec(&catalog).unwrap();
+    let mut reopened=super::super::catalog_from_bytes(&serialized,None).unwrap();
+    assert_eq!(version(&reopened,&review).metadata.bpm,imported);
+    values.bpm=Bpm::USER_CLEARED;
+    reopened.upsert(review.source.clone(),Some(review.fingerprint),values).unwrap();
+    reopened.observe_tags(&review,&observation(review.fingerprint)).unwrap();
+    assert_eq!(version(&reopened,&review).metadata.bpm,Bpm::USER_CLEARED);
+}

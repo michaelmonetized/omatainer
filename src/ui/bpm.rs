@@ -6,6 +6,7 @@ pub(crate) enum Origin {
     FilenameHint,
     Heuristic,
     EmbeddedTag,
+    Imported,
     User,
     Builtin,
 }
@@ -55,7 +56,7 @@ impl Bpm {
             Origin::FilenameHint => 1,
             Origin::Heuristic => 2,
             Origin::EmbeddedTag => 3,
-            Origin::Builtin => 4,
+            Origin::Builtin | Origin::Imported => 4,
             Origin::User => 5,
         };
         // An explicit failed/unknown analysis invalidates prior automatic
@@ -75,6 +76,7 @@ impl Bpm {
             Origin::FilenameHint => "filename hint · unverified",
             Origin::Heuristic => "heuristic estimate · unverified",
             Origin::EmbeddedTag => "embedded tag",
+            Origin::Imported => "imported library",
             Origin::User => "user correction",
             Origin::Builtin => "built-in tempo",
         }
@@ -92,6 +94,7 @@ impl Bpm {
             Origin::FilenameHint => "hint",
             Origin::Heuristic => "est",
             Origin::EmbeddedTag => "tag",
+            Origin::Imported => "imported",
             Origin::User => "user",
             Origin::Builtin => "built-in",
             Origin::Unknown => "unknown",

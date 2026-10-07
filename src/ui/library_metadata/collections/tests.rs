@@ -102,7 +102,7 @@ fn playlist_review_single_writer_save_reopen_preserves_order_versions_and_source
     let mut metadata=Metadata::new(Some(path.clone()));let mut rows=Arc::new(Vec::new());settle(&mut metadata,&mut rows);
     let before=std::fs::read(&path).unwrap();let receipt=submit(&mut metadata,&mut rows,Action::ReviewPlaylist(crate::playlist_import::Input{path:playlist.clone(),mapping:None}));assert_eq!(receipt.outcome,Outcome::Read);
     let review=receipt.review.unwrap();assert_eq!(review.rows.iter().filter(|r|r.ready()).count(),3);assert_eq!(std::fs::read(&path).unwrap(),before);
-    let id=created(submit(&mut metadata,&mut rows,Action::ImportPlaylist{review,selected:vec![0]}));
+    let id=created(submit(&mut metadata,&mut rows,Action::ImportPlaylist{review,selected:vec![0],new_snapshot:false}));
     drop(metadata);let mut reopened=None;wait(||{reopened=Store::open(path.clone()).ok();reopened.is_some()});let reopened=reopened.unwrap();let members=&reopened.catalog.crates.node(&id).unwrap().members;assert_eq!(members.len(),2);assert_eq!(members[0],existing.id);assert_eq!(reopened.catalog.track(&existing.source).unwrap().versions,existing.versions);
     assert!(rows.iter().any(|row|row.source==LibSource::File(new.clone())));assert_eq!(std::fs::read(playlist).unwrap(),bytes);assert_eq!(std::fs::read(new).unwrap(),include_bytes!("../../../../tests/fixtures/audio/tone.flac"));
 }
@@ -113,7 +113,7 @@ fn playlist_cancel_and_failed_save_do_not_publish_partial_tracks_or_crates() {
         let files=Files::new();let mut store=store(&files);let handle=Handle::default();
         std::fs::write(files.0.join("new.flac"),include_bytes!("../../../../tests/fixtures/audio/tone.flac")).unwrap();let path=files.0.join("Atomic.m3u");std::fs::write(&path,"source.wav\nnew.flac\n").unwrap();
         let reviewed=apply(&mut store,request(&handle,1,0,Action::ReviewPlaylist(crate::playlist_import::Input{path,mapping:None}))).review.unwrap();
-        let pending=request(&handle,2,0,Action::ImportPlaylist{review:reviewed,selected:vec![0]});let token=pending.token.clone();let before=std::fs::read(files.0.join("catalog.json")).unwrap();let tracks=store.catalog.tracks.clone();
+        let pending=request(&handle,2,0,Action::ImportPlaylist{review:reviewed,selected:vec![0],new_snapshot:false});let token=pending.token.clone();let before=std::fs::read(files.0.join("catalog.json")).unwrap();let tracks=store.catalog.tracks.clone();
         let result=apply_using(&mut store,pending,|phase|{if phase==0 && mode==0 {assert!(token.cancel());}},|store|if mode==1 {store.save_for_test(|phase|if phase==1 {Err("injected pre-replacement failure".into())}else{Ok(())})}else{store.save()});
         if mode<2 {assert!(matches!(result.outcome,Outcome::Rejected(_)));assert_eq!(store.catalog.tracks,tracks);assert!(store.catalog.crates.nodes().is_empty());assert_eq!(std::fs::read(files.0.join("catalog.json")).unwrap(),before);}
         else {assert!(matches!(result.outcome,Outcome::Durable{changed:true}));drop(store);assert_eq!(Store::open(files.0.join("catalog.json")).unwrap().catalog.crates.nodes().len(),1);}

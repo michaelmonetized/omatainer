@@ -68,7 +68,7 @@ impl<'a,C:Fn()->bool> Parser<'a,C> {
         }
     }
 }
-fn utf8(bytes:&[u8])->Result<String,String> {
+pub(super) fn utf8(bytes:&[u8])->Result<String,String> {
     if bytes.starts_with(&[0xff,0xfe]) || bytes.starts_with(&[0xfe,0xff]) {
         if (bytes.len()-2)%2!=0 {return Err("Truncated UTF-16 XML".into());}
         let little=bytes[0]==0xff;let words=bytes[2..].chunks_exact(2).map(|b|if little {u16::from_le_bytes([b[0],b[1]])}else{u16::from_be_bytes([b[0],b[1]])}).collect::<Vec<_>>();
@@ -103,21 +103,43 @@ pub(super) fn parse(bytes:&[u8],check:&impl Fn()->bool)->Result<Vec<RawPlaylist>
         let blocked=if boolean(dict,"Protected")? || kind.contains("protected") {Some("Protected Apple media; unprotected local audio is required")}
             else if kind.contains("apple music") || track_type.eq_ignore_ascii_case("remote") || track_type.eq_ignore_ascii_case("url") {Some("Provider-only Apple entry; local unprotected audio is required")}
             else if reference.is_empty() {Some("Unmapped Apple entry: no local Location in the export")}else{None};
-        tracks.insert(id,RawEntry{reference,title:label(text(dict,"Name")?)?,artist:label(text(dict,"Artist")?)?,blocked});
+        tracks.insert(id,RawEntry{reference,title:label(text(dict,"Name")?)?,artist:label(text(dict,"Artist")?)?,blocked,details:Default::default()});
     }
     let playlists=root.get("Playlists").ok_or("Apple export has no Playlists array; export a playlist or library as XML")?.array()?;
     let mut result=Vec::new();let mut count=0;
-    for playlist in playlists {
-        active(check)?;let dict=playlist.dict()?;if boolean(dict,"Folder")? {continue;}
-        if result.len()>=MAX_PLAYLISTS {return Err("Apple export exceeds 128 non-folder playlists".into());}
+    for (index,playlist) in playlists.iter().enumerate() {
+        active(check)?;let dict=playlist.dict()?;let folder=boolean(dict,"Folder")?;
+        if result.len()>=MAX_PLAYLISTS {return Err("Apple export exceeds 128 playlists and folders".into());}
         let mut entries=Vec::new();
         if let Some(items)=dict.get("Playlist Items") {for item in items.array()? {
             active(check)?;count+=1;if count>MAX_REFERENCES {return Err("Apple export exceeds 4096 playlist references; export a smaller selection".into());}
             let id=item.dict()?.get("Track ID").ok_or("Apple playlist item has no Track ID")?.number()?;
-            entries.push(tracks.get(&id).cloned().unwrap_or(RawEntry{reference:format!("Apple track ID {id}"),title:String::new(),artist:String::new(),blocked:Some("Unmapped Apple playlist item: Track ID is absent from Tracks")}));
+            entries.push(tracks.get(&id).cloned().unwrap_or(RawEntry{reference:format!("Apple track ID {id}"),title:String::new(),artist:String::new(),blocked:Some("Unmapped Apple playlist item: Track ID is absent from Tracks"),details:Default::default()}));
         }}
         let smart=dict.contains_key("Smart Info") || dict.contains_key("Smart Criteria");
-        result.push(RawPlaylist{name:name(text(dict,"Name")?)?,entries,note:if smart {"Smart playlist imported as a static snapshot of exported items"}else{"Apple playlist order retained; organizational folders are flattened"}.into()});
+        let persistent=text(dict,"Playlist Persistent ID")?;
+        let key=if !persistent.is_empty() {format!("apple:{persistent}")}else{format!("apple:index:{index}")};
+        let parent=text(dict,"Parent Persistent ID")?;let parent=(!parent.is_empty()).then(||format!("apple:{parent}"));
+        result.push(RawPlaylist{name:name(text(dict,"Name")?)?,entries,folders:Vec::new(),key,parent,folder,note:if smart {"Smart playlist imported as a static snapshot of exported items"}else{"Apple playlist order and organizational folders retained"}.into()});
     }
-    Ok(result)
+    hierarchy(result)
+}
+
+fn hierarchy(mut playlists: Vec<RawPlaylist>) -> Result<Vec<RawPlaylist>,String> {
+    let indices:HashMap<_,_>=playlists.iter().enumerate().map(|(i,p)|(p.key.clone(),i)).collect();
+    if indices.len()!=playlists.len() {return Err("Apple export repeats a playlist identity".into());}
+    let mut children=vec![Vec::new();playlists.len()+1];
+    for i in 0..playlists.len() {
+        let mut parent=playlists[i].parent.clone();let mut folders=Vec::new();let mut seen=HashSet::from([i]);
+        while let Some(key)=parent {
+            let index=*indices.get(&key).ok_or("Apple playlist parent is absent from the export")?;
+            if !playlists[index].folder || !seen.insert(index) || folders.len()>=31 {return Err("Apple playlist folders are cyclic, invalid or exceed 32 levels".into());}
+            folders.push(playlists[index].name.clone());parent=playlists[index].parent.clone();
+        }
+        folders.reverse();playlists[i].folders=folders;
+        let parent=playlists[i].parent.as_ref().map(|key|indices[key]).unwrap_or(playlists.len());children[parent].push(i);
+    }
+    fn visit(parent:usize,children:&[Vec<usize>],order:&mut Vec<usize>) {for &child in &children[parent] {order.push(child);visit(child,children,order);}}
+    let mut order=Vec::new();visit(playlists.len(),&children,&mut order);
+    let mut nodes:Vec<_>=playlists.into_iter().map(Some).collect();Ok(order.into_iter().map(|i|nodes[i].take().unwrap()).collect())
 }
