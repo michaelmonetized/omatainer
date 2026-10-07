@@ -363,9 +363,10 @@ fn report_only_edits_retain_running_transport_cancel_atomically_and_prepare_undo
     )
     .unwrap();
     assert!(!request.disruptive());
+    let command = crate::engine::Command::session_edit(request);
     assert_eq!(
         crate::engine::test_alloc::measure(
-            || rt.apply(crate::engine::Command::SessionEdit(request))
+            || rt.apply(command)
         ),
         Default::default()
     );
@@ -380,7 +381,7 @@ fn report_only_edits_retain_running_transport_cancel_atomically_and_prepare_undo
     )
     .unwrap();
     ack.cancel();
-    rt.apply(crate::engine::Command::SessionEdit(request));
+    rt.apply(crate::engine::Command::session_edit(request));
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Cancelled);
     assert_eq!(*rt.routing.as_ref().unwrap().model, next);
     rt.apply(crate::engine::Command::Stop);

@@ -1085,7 +1085,7 @@ fn key_shift_offsets_roundtrip_native_project_pcm_and_reject_older_headers_or_in
         let request={let snapshot=live.snap.lock();key_shift::Request::new(deck,&snapshot.decks[usize::from(deck)],offset,lock).unwrap()};
         live.apply(Command::DeckKeyShift(request));
     }
-    let saved=captured(&live);let audio=saved.media.clone();let wire=serde_json::to_value(&saved.state).unwrap();assert_eq!(wire["version"],28);assert_eq!(wire["decks"][0]["key_shift"],3);assert_eq!(wire["decks"][1]["key_shift"],-2);
+    let saved=captured(&live);let audio=saved.media.clone();let wire=serde_json::to_value(&saved.state).unwrap();assert_eq!(wire["version"],STATE_VERSION);assert_eq!(wire["decks"][0]["key_shift"],3);assert_eq!(wire["decks"][1]["key_shift"],-2);
     let path=std::env::temp_dir().join(format!("omatainer-key-shift-project-{}.omat",std::process::id()));
     struct Remove(std::path::PathBuf);impl Drop for Remove {fn drop(&mut self){let _=std::fs::remove_file(&self.0);}}let _remove=Remove(path.clone());
     let cancel=AtomicBool::new(false);let bundle=crate::project_file::Bundle {state:saved.state.clone(),media:saved.media.clone()};
@@ -1096,5 +1096,5 @@ fn key_shift_offsets_roundtrip_native_project_pcm_and_reject_older_headers_or_in
     let mut legacy=serde_json::to_value(State::blank()).unwrap();legacy["version"]=27.into();let legacy:State=serde_json::from_value(legacy).unwrap();assert!(legacy.decks.iter().all(|deck|deck.key_shift==0));
     for offset in [-7,7] {let mut invalid=saved.state.clone();invalid.decks[0].key_shift=offset;assert!(invalid.validate(&saved.media).is_err());}
     let mut invalid=saved.state;invalid.version=27;assert!(invalid.validate(&saved.media).is_err());
-    println!("KEY_SHIFT_PROJECT_RECEIPT {}",serde_json::json!({"project_state_version":28,"real_native_file_roundtrip":true,"embedded_pcm_preserved":true,"output_sample_rate":44100,"offsets":[3,-2],"reopen_starts_stopped":true,"legacy_zero_migrated":true,"legacy_field_injection_refused":true,"invalid_offsets_refused":true,"physical_devices_opened":false}));
+    println!("KEY_SHIFT_PROJECT_RECEIPT {}",serde_json::json!({"project_state_version":STATE_VERSION,"real_native_file_roundtrip":true,"embedded_pcm_preserved":true,"output_sample_rate":44100,"offsets":[3,-2],"reopen_starts_stopped":true,"legacy_zero_migrated":true,"legacy_field_injection_refused":true,"invalid_offsets_refused":true,"physical_devices_opened":false}));
 }

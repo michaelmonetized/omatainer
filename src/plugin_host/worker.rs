@@ -4,7 +4,7 @@ use std::{
     os::unix::{io::FromRawFd, net::UnixStream},
     sync::{Arc, Mutex},
 };
-use vst3_host::{BusAudioBuffers, MidiChannel, MidiEvent, Plugin, PluginWindow, Vst3Host};
+use vst3_host::{BusDirection, MediaType, BusAudioBuffers, MidiChannel, MidiEvent, Plugin, PluginWindow, Vst3Host};
 
 struct Instance {
     host: Vst3Host,
@@ -12,6 +12,7 @@ struct Instance {
     saved: Saved,
     buffers: BusAudioBuffers,
     editor: Option<PluginWindow>,
+    parameters: Vec<u32>,
 }
 fn class(plugin: &Plugin) -> Result<Class, String> {
     let result = Class {
@@ -106,12 +107,19 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
             if !saved.state.is_empty() {
                 plugin.load_state(&saved.state).map_err(|e| e.to_string())?;
             }
+            let layout = plugin.audio_bus_layout().map_err(|e|e.to_string())?;
+            layout_valid(&layout)?;
+            for (direction,buses) in [(BusDirection::Input,&layout.inputs),(BusDirection::Output,&layout.outputs)] {
+                for (index,bus) in buses.iter().enumerate() { if !bus.active { plugin.set_bus_active(MediaType::Audio,direction,index as i32,true).map_err(|e|format!("Declared plugin bus could not be enabled: {e}"))?; } }
+            }
+            if plugin.info().has_midi_input { plugin.set_bus_active(MediaType::Event,BusDirection::Input,0,true).map_err(|e|e.to_string())?; }
             let report = class(&plugin)?;
             let buffers = plugin
                 .create_bus_audio_buffers(BLOCK)
                 .map_err(|e| e.to_string())?;
             plugin.start_processing().map_err(|e| e.to_string())?;
             *instance = Some(Instance {
+                parameters: report.parameters.iter().filter(|p|!p.is_read_only).take(128).map(|p|p.id).collect(),
                 host,
                 plugin: Arc::new(Mutex::new(plugin)),
                 saved,
@@ -212,6 +220,8 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
                 latency: p.latency_samples(),
                 tail: p.tail_samples(),
                 restart,
+                editor_open: instance.editor.as_ref().is_some_and(|window|!window.closed_by_user()),
+                parameters: instance.parameters.iter().map(|id|p.get_parameter(*id).map(|value|(*id,value))).collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())?,
                 midi: p.take_output_midi(),
             };
             drop(p);
@@ -223,7 +233,8 @@ fn handle(request: Request, instance: &mut Option<Instance>) -> Result<Response,
             let mut saved = instance.saved.clone();
             saved.state = p.save_state().map_err(|e| e.to_string())?;
             saved.validate()?;
-            Ok(Response::State { saved })
+            let parameters = instance.parameters.iter().map(|id|p.get_parameter(*id).map(|value|(*id,value))).collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())?;
+            Ok(Response::State { saved, parameters })
         }
         Request::Editor { open } => {
             let instance = instance.as_mut().ok_or("No plugin is loaded")?;
@@ -296,6 +307,7 @@ pub(crate) fn run() -> Result<(), String> {
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
         }
         if let Some(instance) = instance.as_mut() {
+            instance.plugin.lock().map_err(|e| e.to_string())?.service_run_loop();
             if let Some(editor) = &mut instance.editor {
                 editor
                     .service_platform_events()
@@ -303,12 +315,6 @@ pub(crate) fn run() -> Result<(), String> {
                 if editor.closed_by_user() {
                     instance.editor = None;
                 }
-            } else {
-                instance
-                    .plugin
-                    .lock()
-                    .map_err(|e| e.to_string())?
-                    .service_run_loop();
             }
         }
     }

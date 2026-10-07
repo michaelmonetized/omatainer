@@ -320,12 +320,12 @@ fn perform(
                     return Event::Failed("Template result exceeds native project media limits; no changes were applied".into());
                 }
                 let target = use_template.target.and_then(|target| document.engine.session.as_ref().and_then(|layout| crate::project_template::Target::capture(layout, target)));
-                let prepared = match Prepared::from_state(document.engine, media, output_sr) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
+                let prepared = match Prepared::from_state_cancelled(document.engine, media, output_sr,&cancel) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
                 template_metadata = Some((metadata, target));
                 (prepared, document.view)
             } else if let Some(record) = version {
                 let bundle = match super::super::project_versions::worker::reviewed(&record, &cancel) { Ok(bundle) => bundle, Err(error) => return Event::Failed(error) };
-                let prepared = match Prepared::from_state(bundle.state.engine, bundle.media, output_sr) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
+                let prepared = match Prepared::from_state_cancelled(bundle.state.engine, bundle.media, output_sr,&cancel) { Ok(prepared) => prepared, Err(error) => return engine_error(error) };
                 (prepared, bundle.state.view)
             } else if let Some(candidate) = recovery {
                 let recovered = match crate::recovery::recover::<Document>(&candidate, &cancel) {
@@ -335,7 +335,7 @@ fn perform(
                 report = recovered.report;
                 let bundle = recovered.bundle;
                 if let Err(error) = bundle.state.validate() { return Event::Failed(error); }
-                let prepared = match Prepared::from_state(bundle.state.engine, bundle.media, output_sr) {
+                let prepared = match Prepared::from_state_cancelled(bundle.state.engine, bundle.media, output_sr,&cancel) {
                     Ok(prepared) => prepared,
                     Err(error) => return engine_error(error),
                 };
@@ -351,7 +351,7 @@ fn perform(
                     return Event::Failed(error);
                 }
                 let prepared =
-                    match Prepared::from_state(bundle.state.engine, bundle.media, output_sr) {
+                    match Prepared::from_state_cancelled(bundle.state.engine, bundle.media, output_sr,&cancel) {
                         Ok(prepared) => prepared,
                         Err(error) => return engine_error(error),
                     };

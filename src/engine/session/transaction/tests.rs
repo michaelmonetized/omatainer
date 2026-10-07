@@ -4,7 +4,7 @@ use crate::engine::{test_alloc, Engine};
 fn submit(engine: &Engine, rt: &RtEngine, action: Action) -> Ack {
     let (request, ack) =
         Request::metadata(&rt.session, rt.undo.checkpoint().epoch, action).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     ack
 }
 
@@ -129,7 +129,7 @@ fn rename_and_color_are_atomic_undoable_and_stale_or_cancelled_edits_do_not_muta
     assert_eq!(ack.state(), Outcome::Applied);
     assert_eq!(rt.tracks[1].name, "Bass melody");
     assert_eq!(rt.session.tracks[1].name, "Bass melody");
-    engine.send(Command::SessionEdit(stale)).unwrap();
+    engine.send(Command::session_edit(stale)).unwrap();
     rt.process(&mut []);
     assert_eq!(stale_ack.state(), Outcome::Rejected);
     assert_eq!(rt.session.tracks[1].color, None);
@@ -144,7 +144,7 @@ fn rename_and_color_are_atomic_undoable_and_stale_or_cancelled_edits_do_not_muta
     )
     .unwrap();
     assert!(ack.cancel());
-    engine.send(Command::SessionEdit(cancelled)).unwrap();
+    engine.send(Command::session_edit(cancelled)).unwrap();
     rt.process(&mut []);
     assert_eq!(ack.state(), Outcome::Cancelled);
     assert_eq!(rt.tracks[1].name, "Bass melody");
@@ -182,7 +182,7 @@ fn reordering_remains_available_during_protected_playback() {
         },
     )
     .unwrap();
-    assert!(engine.send(Command::SessionEdit(delete)).is_err());
+    assert!(engine.send(Command::session_edit(delete)).is_err());
     assert_eq!(ack.state(), Outcome::Rejected);
     assert!(rt.session.tracks[2].active);
 }

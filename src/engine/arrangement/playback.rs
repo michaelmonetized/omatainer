@@ -357,23 +357,10 @@ fn selected(segments: &[Segment], index: usize, beat: f64) -> &[u32] {
 }
 
 impl RtEngine {
-    pub(in crate::engine) fn render_arrangement(&mut self, slot: usize) -> ([f32; 2], bool) {
-        if !self.playing
-            || self.count_in.is_some()
-            || !self.arrangement.current(slot, &self.session)
-        {
-            return ([0.0; 2], false);
-        }
+    pub(in crate::engine) fn render_arrangement_output(&mut self, slot: usize) {
+        if !self.playing || self.count_in.is_some() || !self.arrangement.current(slot, &self.session) { return; }
         let end = self.precise_midi_beat();
-        if end <= self.arrangement.seek + super::super::midi_schedule::BEAT_EPSILON {
-            return ([0.0; 2], false);
-        }
-        let step = if self.conductor.is_some() {
-            self.last_midi_step
-        } else {
-            f64::from(self.bpm) / 60.0 / f64::from(self.sr)
-        };
-        if self.midi_output_mask & (1 << slot) != 0
+        if (self.midi_output_mask | self.plugin_midi.mask) & (1 << slot) != 0
             && !self.arrangement.cursors[slot].output_refused
         {
             while self.midi_output_budget > 0 {
@@ -381,7 +368,10 @@ impl RtEngine {
                     break;
                 };
                 self.midi_output_budget -= 1;
-                if !self.midi_routing.emit_weighted(
+                if self.plugin_midi.mask & (1 << slot) != 0 {
+                    let b=packet.bytes(); if b.len() <= 3 { let mut bytes=[0;3]; bytes[..b.len()].copy_from_slice(b); self.plugin_midi.clip(slot,bytes,1); }
+                }
+                if self.midi_output_mask & (1 << slot) != 0 && !self.midi_routing.emit_weighted(
                     slot as u8,
                     packet,
                     owner,
@@ -402,6 +392,24 @@ impl RtEngine {
                 self.midi_routing.reset_outputs();
             }
         }
+    }
+    pub(in crate::engine) fn render_arrangement(&mut self, slot: usize) -> ([f32; 2], bool) {
+        if !self.playing
+            || self.count_in.is_some()
+            || !self.arrangement.current(slot, &self.session)
+        {
+            return ([0.0; 2], false);
+        }
+        let end = self.precise_midi_beat();
+        if end <= self.arrangement.seek + super::super::midi_schedule::BEAT_EPSILON {
+            return ([0.0; 2], false);
+        }
+        let step = if self.conductor.is_some() {
+            self.last_midi_step
+        } else {
+            f64::from(self.bpm) / 60.0 / f64::from(self.sr)
+        };
+        self.render_arrangement_output(slot);
         let arp = self.tracks[slot]
             .fx
             .slots

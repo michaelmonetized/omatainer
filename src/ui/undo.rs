@@ -92,6 +92,7 @@ impl History {
                 | Command::FxWet { .. }
                 | Command::FxMix { .. }
                 | Command::FxParam { .. }
+                | Command::PluginParameter { .. }
         ) {
             Command::Gesture {
                 id,

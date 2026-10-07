@@ -169,7 +169,7 @@ fn native_plugin_audio_automation_state_and_instruments() {
         assert!(channel[128..].iter().all(|v| (*v - 0.25).abs() < 1e-6));
     }
     saved = match exchange(&mut p, &Request::State) {
-        Response::State { saved } => saved,
+        Response::State { saved, .. } => saved,
         _ => panic!("wrong state response"),
     };
     assert!(!saved.state.is_empty());

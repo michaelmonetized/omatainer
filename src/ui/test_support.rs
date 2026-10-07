@@ -90,7 +90,8 @@ pub(super) fn label_center(output: &egui::FullOutput, label: &str) -> Pos2 {
         .rev()
         .find_map(|shape| match &shape.shape {
             egui::epaint::Shape::Text(text) if text.galley.text() == label => {
-                Some(text.visual_bounding_rect().center())
+                let visible=text.visual_bounding_rect().intersect(shape.clip_rect);
+                visible.is_positive().then(||visible.center())
             }
             _ => None,
         })

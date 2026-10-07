@@ -12,6 +12,7 @@ impl Prepared {
         click: f32,
         channels: usize,
     ) -> [f32; MAX_PHYSICAL_CHANNELS] {
+        self.begin_plugins(rt);
         self.begin();
         rt.mic_aux.begin();
         let gains = {
@@ -33,6 +34,7 @@ impl Prepared {
             self.gather(index);
             let input = [self.nodes[index].input[0], self.nodes[index].input[1]];
             let group = self.nodes[index].group;
+            if matches!(group, Group::Plugin(_)) { self.render_plugin(index, rt); continue; }
             let taps = match group {
                 Group::Track(id) => {
                     if let Some(slot) = self.nodes[index].slot.filter(|slot| {
@@ -42,12 +44,15 @@ impl Prepared {
                             .is_some_and(|item| item.active && item.id == id)
                     }) {
                         let timer = rt.load_profile.start();
-                        rt.routing_track_input = Some([input[0], input[1]]);
+                        let generated = self.generated_input(index);
+                        rt.routing_track_input = Some([input[0] - generated[0], input[1] - generated[1]]);
+                        rt.routing_track_generated = generated;
                         let latency=&mut self.latency;
                         let (left, right, pfl) = rt.render_track_aligned(slot, any_solo,|frame|latency.as_mut().map_or(frame,|latency|latency.generated(index,frame)));
                         if pfl {cue_source=Some(rt.routing_track_taps[1]);}
-                        if !rt.tracks[slot].input_enabled(rt.recording || rt.routing_pipe.recorder.monitoring_inputs()) { self.nodes[index].valid = true; }
+                        if !self.nodes[index].generated && !rt.tracks[slot].input_enabled(rt.recording || rt.routing_pipe.recorder.monitoring_inputs()) { self.nodes[index].valid = true; }
                         rt.routing_track_input = None;
+                        rt.routing_track_generated = [0.;2];
                         rt.load_profile.track(slot, timer);
                         if !self.model.tracks_without_default_send.contains(&id) {
                             if let Some(scene) = self.scene_nodes[rt.tracks[slot].scene_bus] {
@@ -170,6 +175,7 @@ impl Prepared {
                     self.publish(index, taps);
                     continue;
                 }
+                Group::Plugin(_) => unreachable!(),
             };
             self.publish_stereo(index, taps);
             if let Some((destination,frame,valid))=send {self.source_send(index,destination,frame,valid);}
@@ -213,6 +219,7 @@ impl Prepared {
             };
         }
         rt.observe_master_meter([output[0], output[1]]);
+        rt.plugin_midi.next();
         output
     }
 }

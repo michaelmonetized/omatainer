@@ -127,7 +127,7 @@ mod tests {
             },
         )
         .unwrap();
-        rt.apply(Command::SessionEdit(request));
+        rt.apply(Command::session_edit(request));
         assert_eq!(
             test_alloc::measure(|| rt.process(&mut [])),
             test_alloc::Counts::default()

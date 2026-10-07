@@ -3,6 +3,7 @@ pub(crate) mod key_shift;
 #[cfg(test)]
 mod keylock_tests;
 pub(crate) mod project;
+mod plugin_midi;
 pub(crate) mod live_set;
 pub(crate) mod midi_edit;
 pub(crate) mod audio_clip;
@@ -668,6 +669,9 @@ pub struct RtEngine {
     pub(crate) clock_input: midi::clock_input::Runtime,
     midi_learning: Arc<midi::learn::Shared>,
     midi_output_mask:u128,
+    pub(crate) plugin_midi: Box<plugin_midi::Routing>,
+    pub(crate) routing_plugin_instruments: u128,
+    pub(crate) offline_plugin_cancel: Arc<std::sync::atomic::AtomicBool>,
     midi_output_budget:usize,
     undo: undo::Journal,
     pub project: project::Handle,
@@ -755,6 +759,7 @@ pub struct RtEngine {
     routing_track_taps: [[f32; 2]; 3],
     routing_deck_taps: [[f32; 2]; 2],
     pub(crate) routing_input_frame: [f32; audio::routing::model::MAX_PHYSICAL_CHANNELS],
+    pub(crate) routing_track_generated: [f32;2],
     pub(crate) routing_pipe: audio::routing::input::Pipe,
     routing_probe: audio::routing::probe::Probe,
     pub quantize: bool,
@@ -1074,7 +1079,9 @@ pub enum Command {
     DeckPadParameter { source: u64, deck: u8, up: bool, shifted: bool },
     Remote(remote::Request),
     ProviderPreview(provider_preview::Request),
-    SessionEdit(session::Request),
+    SessionEdit(Arc<session::Request>),
+    PluginParameter { namespace: [u64;2], id: u64, parameter: u32, value: f64 },
+    PluginEditor { namespace: [u64;2], id: u64, open: bool },
     SessionControl(session::Scoped),
     MidiAdjust(midi::controls::Adjust),
     MidiPitch(pitch_pickup::Input),
@@ -1220,6 +1227,10 @@ pub enum Command {
     FxParam { slot: usize, p: u8, value: f32 },
 }
 
+impl Command {
+    pub(crate) fn session_edit(request: impl Into<Arc<session::Request>>) -> Self { Self::SessionEdit(request.into()) }
+}
+
 impl RtEngine {
     #[cfg(test)]
     pub fn new(
@@ -1272,6 +1283,9 @@ impl RtEngine {
             clock_input:midi::clock_input::Runtime::new(cmd_rx.clock_input()),
             midi_learning:cmd_rx.midi_learning(),
             midi_output_mask:0,
+            plugin_midi: Box::new(plugin_midi::Routing::default()),
+            routing_plugin_instruments: 0,
+            offline_plugin_cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             midi_output_budget:256,
             undo: undo::Journal::default(),
             project: project::Handle::new(sr as u32, performance.clone()),
@@ -1354,6 +1368,7 @@ impl RtEngine {
             routing_track_taps: [[0.0; 2]; 3],
             routing_deck_taps: [[0.0; 2]; 2],
             routing_input_frame: [0.0; audio::routing::model::MAX_PHYSICAL_CHANNELS],
+            routing_track_generated: [0.;2],
             routing_pipe: audio::routing::input::Pipe::default(),
             routing_probe: audio::routing::probe::Probe::default(),
             quantize: true,
@@ -1405,12 +1420,13 @@ impl RtEngine {
         if effect_bytes>session::MAX_PROCESSOR_BYTES {return Err("Output rate would exceed the 256 MiB session effect-buffer limit; remove effects or choose a lower rate".into());}
         let sampler_banks = self.sampler_rate_banks(sr)?;
         let surface = self.surface.at_rate(sr as f32).map_err(|error|error.to_string())?;
-        let routing = self.routing.as_ref().map(|graph| audio::routing::prepared::Prepared::at_rate(graph.model.clone(), &self.session, sr).map(Box::new)).transpose()?;
+        let routing = self.routing.as_ref().map(|graph| audio::routing::prepared::Prepared::at_rate(graph.checkpoint(&std::sync::atomic::AtomicBool::new(false))?, &self.session, sr).map(Box::new)).transpose()?;
         self.timeline_anchor = self.timeline_seconds();
         self.timeline_frames = 0;
         self.sr = sr as f32;
         self.surface = Box::new(surface);
         self.routing = routing;
+        self.plugin_midi.reset(); self.routing_plugin_instruments = 0;
         self.mapped_clock = None;
         self.project.set_sample_rate(sr);
         self.mic_aux.set_sample_rate(self.sr);
@@ -2063,17 +2079,20 @@ impl RtEngine {
         // Mute/solo gates the output, never the musical clock or DSP history.
         // Drum one-shots, synth releases and effect tails advance naturally.
         fallback[0]+=arrangement_audio[0]*clip_gain_value;fallback[1]+=arrangement_audio[1]*clip_gain_value;
+        let plugin_instrument = self.routing_plugin_instruments & (1u128 << ti) != 0;
         let s = if self.tracks[ti].kind == 0 {
             self.tick_drums(ti)
         } else {
             self.tracks[ti].poly.tick(self.sr)
         };
+        let s = if plugin_instrument { 0. } else { s };
         let [pad_l, pad_r] = std::mem::take(&mut self.pad_output[ti]);
         let track = &mut self.tracks[ti];
         track.eq_right.low_g = track.eq.low_g;
         track.eq_right.mid_g = track.eq.mid_g;
         track.eq_right.high_g = track.eq.high_g;
         let mut raw = align([s + pad_l + fallback[0], s + pad_r + fallback[1]]);
+        raw[0] += self.routing_track_generated[0]; raw[1] += self.routing_track_generated[1];
         if let Some(input) = self.routing_track_input {
             raw[0] += input[0] * input_gain; raw[1] += input[1] * input_gain;
         }
@@ -2407,6 +2426,7 @@ impl RtEngine {
     fn live_note_on(&mut self, source:u64, ch:u8, note:u8, vel:u8, t:usize) {
                 let input = InputKey::Midi { source, ch: ch & 15, note };
                 self.release_input(input);
+                if self.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().any(|p| p.midi_track == Some(self.session.tracks[t].id))) { self.plugin_midi.on(input,t,ch & 15,note,vel); }
                 if vel == 0 {
                     return;
                 }
@@ -2428,6 +2448,7 @@ impl RtEngine {
     }
 
     fn release_input(&mut self, input: InputKey) {
+        self.plugin_midi.release(input);
         self.finish_recording_input(input);
         // Voice pools are bounded; their exact gate metadata is the routing
         // record even after selection changes or a voice is stolen.
@@ -2630,6 +2651,7 @@ impl RtEngine {
                 self.playing = true;
             }
             Command::Stop => {
+                for track in 0..self.tracks.len() { self.plugin_midi.clear_clip(track); }
                 self.scenes.cancel();
                 self.navigation.cancel();
                 self.transport_epoch = self.transport_epoch.wrapping_add(1);
@@ -2647,6 +2669,12 @@ impl RtEngine {
                 }
                 for t in 0..self.tracks.len() {self.midi_routing.clear_clip(t as u8);}
             }
+            Command::PluginParameter { namespace, id, parameter, value } => {
+                if namespace == self.session.namespace && self.routing.as_mut().is_some_and(|graph| graph.plugin_parameter(id,parameter,value)) { self.project.edited(); } else { self.undo.reject(undo::Failure::Invalid); }
+            },
+            Command::PluginEditor { namespace, id, open } => {
+                if namespace == self.session.namespace { if let Some(graph) = &mut self.routing { if let Some(slot) = graph.model.plugins.iter().position(|p| p.id == id) { if let Some(endpoint) = &graph.plugins[slot].endpoint { if endpoint.control.editor(open) { if open { self.project.edited(); } } else { self.undo.reject(undo::Failure::Invalid); } } } } }
+            },
             Command::SongNavigation(action) => self.song_navigation(action),
             Command::TimelineSeek(seconds) => {self.song_navigation_leave_loop();self.seek_timeline(seconds);},
             Command::SongSeek(beat)=>{if beat.is_finite()&&(0.0..=262144.0).contains(&beat){let seconds=self.conductor.as_ref().map_or(beat*60.0/f64::from(self.bpm),|c|c.seconds_at(beat));if seconds<=86400.0{self.song_navigation_leave_loop();self.seek_timeline(seconds);}else{self.undo.reject(undo::Failure::Invalid);}}},

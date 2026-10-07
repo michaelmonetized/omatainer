@@ -12,6 +12,11 @@ fn fixture() -> (
         latency: AtomicU32::new(0),
         missed: AtomicU64::new(0),
         submitted: AtomicU64::new(0),
+        editor: AtomicU8::new(0),
+        editor_open: AtomicBool::new(false),
+        editor_busy: AtomicBool::new(false),
+        values: vec![],
+        editor_error: Mutex::new(None),
     });
     let (requests, rx) = rtrb::RingBuffer::new(POOL);
     let (tx, responses) = rtrb::RingBuffer::new(POOL);
@@ -27,6 +32,10 @@ fn fixture() -> (
     }
     (
         Endpoint {
+            latency: BLOCK as u32 * BRIDGE_BLOCKS as u32,
+            prepared: false,
+            output_delay: None,
+            available: false,
             requests,
             responses,
             free,
@@ -37,6 +46,7 @@ fn fixture() -> (
             offset: 0,
             pending_midi: [Midi::default(); 512],
             pending_midi_count: 0,
+            held_notes: [[false;128];16],
             pending_parameters: [Parameter::default(); 512],
             pending_parameter_count: 0,
             control,

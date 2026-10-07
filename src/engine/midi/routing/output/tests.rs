@@ -457,14 +457,14 @@ fn last_track_clear_preserves_other_track_shared_pitch_and_sustain_owners() {
     let id = rt.session.tracks[127].id;
     let (request, ack) = crate::engine::session::Request::metadata(&rt.session, rt.undo.checkpoint().epoch,
         crate::engine::session::Action::Move {axis:crate::engine::session::Axis::Track,id,position:64}).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
     assert!(shared.emit_owned(127, super::super::packet::Packet::new(&[0xc0,9]).unwrap(), owner));
     until(|| fixture.trace.lock().iter().any(|packet| packet == &[0xc4,9]));
     let (request, ack) = crate::engine::session::Request::metadata(&rt.session, rt.undo.checkpoint().epoch,
         crate::engine::session::Action::Delete {axis:crate::engine::session::Axis::Track,id}).unwrap();
-    engine.send(Command::SessionEdit(request)).unwrap();
+    engine.send(Command::session_edit(request)).unwrap();
     assert_eq!(test_alloc::measure(|| rt.process(&mut [])), test_alloc::Counts::default());
     assert_eq!(ack.state(), crate::engine::midi_edit::Outcome::Applied);
     assert!(!shared.emit_owned(127, super::super::packet::Packet::new(&[0x90,62,100]).unwrap(), owner));

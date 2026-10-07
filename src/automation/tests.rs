@@ -540,6 +540,6 @@ fn track_input_api_retains_exact_targets_modes_arm_cue_and_saved_undo() {
     let response = service.query(json!({"op":"command","namespace":namespace,"action":{"op":"track_monitor","target":target,"mode":"off"}})); assert_eq!(response["ok"],true);
     let id = service.rt.session.tracks[2].id;
     let (remove, _) = session::Request::metadata(&service.rt.session, service.engine.undo.checkpoint().epoch, session::Action::Delete { axis: session::Axis::Track, id }).unwrap();
-    service.rt.apply(Command::SessionEdit(remove));
+    service.rt.apply(Command::session_edit(remove));
     assert_eq!(service.complete(&response["result"]["job"])["result"]["status"],"rejected"); assert_eq!(service.rt.tracks[2].input_monitor,Some(Mode::Auto)); assert!(!service.rt.session.tracks[2].active);
 }

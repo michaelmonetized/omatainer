@@ -5,6 +5,7 @@ use crossbeam_channel::{bounded, Receiver, Sender};
 
 pub(super) enum Job {
     Inspect(Arc<AtomicBool>),
+    Attach(crate::engine::audio::routing::plugins::Instance, crate::engine::session::Id, Arc<AtomicBool>),
     Apply(Draft, WorkPermit),
     PreviewInput(InputConfig, Arc<AtomicBool>),
     EnableInput(InputPreview, Arc<AtomicBool>),
@@ -37,17 +38,28 @@ impl Worker {
         std::thread::Builder::new().name("omatainer-routing-editor".into()).spawn(move || {
             while let Ok(job) = incoming.recv() {
                 let cancel = match &job {
-                    Job::Inspect(cancel) | Job::PreviewInput(_, cancel) | Job::EnableInput(_, cancel) | Job::DisableInput(_, cancel) => cancel.clone(),
+                    Job::Inspect(cancel) | Job::Attach(_,_,cancel) | Job::PreviewInput(_, cancel) | Job::EnableInput(_, cancel) | Job::DisableInput(_, cancel) => cancel.clone(),
                     Job::Apply(_, work) | Job::Record(_, _, _, _, work) => work.cancel(),
                 };
                 let event = match job {
                     Job::Inspect(cancel) => Event::Inspected((|| {
-                        let captured = project.capture(&cancel).map_err(|error| error.to_string())?;
+                        let (captured,controls) = project.capture_processors(&cancel).map_err(|error| error.to_string())?;
                         let layout = captured.state.session.ok_or("Session identity unavailable")?;
                         let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
                         let original = captured.state.routing;
                         let model = original.as_ref().map(|model| (**model).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
-                        Ok(Draft { namespace: layout.namespace, generation: layout.generation, revision: captured.revision, rate: project.sample_rate(), layout, enabled: original.is_some(), model, original })
+                        Ok(Draft { namespace: layout.namespace, generation: layout.generation, revision: captured.revision, rate: project.sample_rate(), layout, enabled: original.is_some(), model, original, controls })
+                    })()),
+                    Job::Attach(plugin, track, cancel) => Event::Inspected((|| {
+                        let (captured,controls) = project.capture_processors(&cancel).map_err(|error| error.to_string())?;
+                        let layout = captured.state.session.ok_or("Session identity unavailable")?;
+                        let channels = output.as_ref().and_then(|handle| handle.status().active.as_ref().map(|active| usize::from(active.plan.channels))).unwrap_or(2);
+                        let original = captured.state.routing;
+                        let model = original.as_ref().map(|m| (**m).clone()).unwrap_or_else(|| Model::for_output_channels(channels));
+                        let mut draft = Draft { namespace:layout.namespace,generation:layout.generation,revision:captured.revision,rate:project.sample_rate(),layout,enabled:true,model,original,controls };
+                        draft.attach(plugin,track)?;
+                        if cancel.load(Ordering::Acquire) { return Err("Plugin attachment cancelled".into()); }
+                        Ok(draft)
                     })()),
                     Job::Apply(draft, work) => Event::Applied((|| {
                         if work.cancelled() { return Err("Routing edit cancelled".into()); }
@@ -55,9 +67,9 @@ impl Worker {
                         let layout = captured.state.session.as_ref().ok_or("Session identity unavailable")?;
                         if captured.revision != draft.revision || layout.namespace != draft.namespace || layout.generation != draft.generation || project.sample_rate() != draft.rate { return Err("Project changed since routing inspection. Refresh routes before applying.".into()); }
                         let model = draft.enabled.then(|| Arc::new(draft.model));
-                        let (request, ack) = crate::engine::session::Request::routing(captured, draft.rate, model)?;
+                        let (request, ack) = crate::engine::session::Request::routing_cancelled(captured, draft.rate, model, &work.cancel())?;
                         if work.cancelled() { ack.cancel(); return Err("Routing edit cancelled".into()); }
-                        commands.send(Command::SessionEdit(request)).map_err(|error| error.to_string())?;
+                        commands.send(Command::session_edit(request)).map_err(|error| error.to_string())?;
                         Ok(ack)
                     })()),
                     Job::PreviewInput(saved, cancel) => Event::InputPreview((|| {

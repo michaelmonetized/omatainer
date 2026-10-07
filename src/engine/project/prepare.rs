@@ -8,10 +8,14 @@ pub struct Prepared {
 
 impl Prepared {
     pub fn from_state(
-        mut state: State,
+        state: State,
         media: Vec<Arc<Sample>>,
         output_sr: u32,
     ) -> Result<Self, Error> {
+        Self::from_state_cancelled(state,media,output_sr,&AtomicBool::new(false))
+    }
+    pub(crate) fn from_state_cancelled(mut state:State,media:Vec<Arc<Sample>>,output_sr:u32,cancel:&AtomicBool) -> Result<Self,Error> {
+        if cancel.load(Ordering::Acquire) { return Err(Error::Cancelled); }
         state.validate(&media).map_err(Error::Invalid)?;
         state.validate_processor_storage(output_sr).map_err(Error::Invalid)?;
         state.migrate_notes();
@@ -79,7 +83,7 @@ impl Prepared {
             layout
         };
         if state.version < 7 && rt.fx_view >= 100 { rt.fx_view += session::SCENE_FX_BASE - 100; }
-        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::at_rate(model, &rt.session,rt.sr as u32).map(Box::new)).transpose().map_err(Error::Invalid)?;
+        rt.routing = state.routing.take().map(|model| audio::routing::prepared::Prepared::with_cancel(model, &rt.session,rt.sr as u32,cancel).map(Box::new)).transpose().map_err(Error::Invalid)?;
         rt.mic_aux.set(state.mic_aux);
         rt.tracks.clear();
         rt.tracks.reserve(session::MAX_TRACKS);
@@ -208,7 +212,7 @@ impl Prepared {
 
     /// Give a preparing worker sole ownership of an offline graph.
     /// Takes this prepared graph; returns its renderer without device or GUI ownership.
-    pub(crate) fn into_offline(self) -> Box<RtEngine> { self.rt }
+    pub(crate) fn into_offline(mut self) -> Box<RtEngine> { if let Some(graph) = &mut self.rt.routing { graph.offline(); } self.rt }
 
     pub(in crate::engine) fn swap_into(&mut self, rt: &mut RtEngine) {
         rt.configure_clock_input(super::super::midi::clock_input::Config::default());
@@ -216,6 +220,7 @@ impl Prepared {
         for deck in 0..DECKS { rt.performance.deck_media_changed(deck); }
         rt.routing_pipe.recorder.invalidate();
         rt.transport_epoch = rt.transport_epoch.wrapping_add(1);
+        rt.plugin_midi.reset(); rt.routing_plugin_instruments = 0;
         rt.midi_routing.reset_outputs();
         if let Some(active) = &rt.sampler_audition { active.ended(); }
         // Supersede old identities, while keeping their receipt/media ownership

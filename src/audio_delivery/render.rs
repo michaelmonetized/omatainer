@@ -4,9 +4,12 @@ use crate::engine::audio::routing::model::{Direction, Group, MAX_PHYSICAL_CHANNE
 /// Prepare the reviewed native render source.
 /// Takes an owned coherent capture and export request; returns a stopped independent graph, exact ordered source channels and render width without opening devices.
 pub(super) fn prepare(
-    mut captured: Captured,
+    captured: Captured,
     request: &Export,
 ) -> Result<(Box<crate::engine::RtEngine>, Vec<usize>, usize), String> {
+    prepare_cancelled(captured,request,&AtomicBool::new(false))
+}
+fn prepare_cancelled(mut captured:Captured,request:&Export,cancel:&AtomicBool) -> Result<(Box<crate::engine::RtEngine>,Vec<usize>,usize),String> {
     let state = &mut captured.state;
     if request.source==Source::Arrangement&&state.arrangement.is_none(){return Err("This project has no Arrangement song".into());}
     if let Some(model)=&mut state.arrangement{std::sync::Arc::make_mut(model).enabled=request.source==Source::Arrangement;}
@@ -105,7 +108,7 @@ pub(super) fn prepare(
             t.launch = None;
         }
     }
-    let mut rt = Prepared::from_state(captured.state, captured.media, request.options.rate)
+    let mut rt = Prepared::from_state_cancelled(captured.state, captured.media, request.options.rate,cancel)
         .map_err(|e| e.to_string())?
         .into_offline();
     if request.source == Source::Scene {
@@ -130,10 +133,12 @@ pub(super) fn run(
     request: &Export,
     raw: &Path,
     bounds: (u64, u64, u64, u64),
-    cancel: &AtomicBool,
+    cancel: &std::sync::Arc<AtomicBool>,
     progress: &crate::background::Reporter,
 ) -> Result<(), String> {
-    let (mut rt, channels, width) = prepare(captured, request)?;
+    let (mut rt, channels, width) = prepare_cancelled(captured, request,cancel)?;
+    rt.offline_plugin_cancel = cancel.clone();
+    if rt.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().zip(&graph.plugins).any(|(saved,plugin)| !saved.bypass && plugin.endpoint.is_none())) { return Err("A native plugin is unavailable; relink its exact identity or explicitly bypass it before exporting".into()); }
     let mut output = create(raw)?;
     let mut rendered = [0_f32; 1024 * MAX_PHYSICAL_CHANNELS];
     let mut bytes = [0_u8; 1024 * 2 * 4];
@@ -151,6 +156,7 @@ pub(super) fn run(
         let boundary = [write_start, stop, end].into_iter().filter(|boundary| *boundary > position).min().unwrap_or(end);
         let n = (boundary - position).min(1024) as usize;
         rt.process_interleaved(&mut rendered[..n * width], width);
+        if rt.routing.as_ref().is_some_and(|graph| graph.model.plugins.iter().zip(&graph.plugins).any(|(saved,plugin)| !saved.bypass && (plugin.error.is_some() || plugin.endpoint.as_ref().is_some_and(|endpoint| endpoint.faulted())))) { return Err("An isolated plugin failed during export; no audio was published".into()); }
         if position >= write_start {
             for (frame, encoded) in rendered[..n * width]
                 .chunks_exact(width)

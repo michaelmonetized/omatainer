@@ -355,8 +355,9 @@ fn arrangement_native_container_and_selected_track_import_keep_shared_instances_
         44100,
     )
     .unwrap();
+    let command = Command::session_edit(request);
     assert_eq!(
-        test_alloc::measure(|| live.apply(Command::SessionEdit(request))),
+        test_alloc::measure(|| live.apply(command)),
         Default::default()
     );
     assert_eq!(ack.state(), Outcome::Applied);
