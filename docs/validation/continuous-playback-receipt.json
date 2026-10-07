@@ -660,5 +660,86 @@
       "reason": "The actual AccessKit tree showed two click-capable load-target buttons at visible bounds, both named literal Load target deck {}. The new localization fallback used an anonymous placeholder whereas the formatter requires an indexed {0} placeholder. The corrected fresh build retains unique-name, click-action and pending-selection assertions."
     }
   },
-  "limits": "Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed."
+  "limits": "Linux ARM64 software qualification through native egui/AccessKit, real readable/missing/corrupt source files, ordinary protected loader, actual renderer and independent exact other-deck PCM. Explicit independent manual-crate continuous mode with finite/repeat policy, captured stable order, next preview and bounded skip reports; no auto crossfader or beatmatch. Transient mode starts disabled in a new app and has no schema/profile persistence. Exact source/manual-transport/safety and immediate disable ownership qualify sub-block ends, duplicate requests, outer refusal, queued application and final-owner worker retirement without callback allocation or free. No physical device, live capture or new GUI is opened; independent stage processes/session remain preserved. Hardware acceptance and wall-clock live-stage continuity are not claimed.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-continuous-playback-qualified",
+      "manifestSha256": "bef846da9bdde0d7f605f66a28f4bc2012d5b1bc1c8391824605de619a865f4c",
+      "revision": "11f16d532618beddc2c62f011d5be36dc3643cc1",
+      "version": "0.1.0+11f16d532618",
+      "executableSha256": "a909c65735044ee6dd7bcc0a4dd99a033011fab0aba854633873e68f388f2e14"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "973e7d90ae1a80f7d8ce9f7c514f72fd635c72c7c95672e6cdaf6a34b61b32f0",
+      "after": "a909c65735044ee6dd7bcc0a4dd99a033011fab0aba854633873e68f388f2e14",
+      "installedAt": "2026-10-07T10:03:18.715Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
