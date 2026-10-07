@@ -1186,5 +1186,86 @@
       }
     ]
   },
-  "limits": "Linux ARM64 software qualification: explicit Off/Tempo/Beat/four-quarter-note Bar modes and deliberate Transport/Deck A/Deck B leaders; exact mapped source beat intervals, emitted paired click PCM at three output rates and unequal source rates through variable-tempo boundaries and both deck leaders; conductor ramps/pickup/quarter-note timing; default/routed output parity, compatible and incompatible loops; performed offset preservation and explicit re-arm; stopped arming without Play, leader stop/unload/replacement with retained choice and last tempo; invalid/foreign spindle message refusal; real native mode/leader and learned assignment choosers, production input workers, file reopening and strict old-header guards; fixed undo intent without playhead rewind; callback allocations/frees. Bar means four quarter notes; odd-meter bar alignment and global relative pitch are not claimed. Click PCM is measured with keylock disabled; existing keylock regression fixtures also pass. No physical device opened, no live capture or new GUI, no hardware acceptance claimed. Independent stage GUI/follower and session remain preserved."
+  "limits": "Linux ARM64 software qualification: explicit Off/Tempo/Beat/four-quarter-note Bar modes and deliberate Transport/Deck A/Deck B leaders; exact mapped source beat intervals, emitted paired click PCM at three output rates and unequal source rates through variable-tempo boundaries and both deck leaders; conductor ramps/pickup/quarter-note timing; default/routed output parity, compatible and incompatible loops; performed offset preservation and explicit re-arm; stopped arming without Play, leader stop/unload/replacement with retained choice and last tempo; invalid/foreign spindle message refusal; real native mode/leader and learned assignment choosers, production input workers, file reopening and strict old-header guards; fixed undo intent without playhead rewind; callback allocations/frees. Bar means four quarter notes; odd-meter bar alignment and global relative pitch are not claimed. Click PCM is measured with keylock disabled; existing keylock regression fixtures also pass. No physical device opened, no live capture or new GUI, no hardware acceptance claimed. Independent stage GUI/follower and session remain preserved.",
+  "releaseInstallation": {
+    "schema": 1,
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-tempo-phase-sync-qualified",
+      "manifestSha256": "e6172ab0ca7ae6879290377639de9129a67f4072e50b4ded9ffb1adee59e2d2a",
+      "revision": "89bc6c4e7fb3e5041a9d6cb49a2457ad11eb419d",
+      "version": "0.1.0+89bc6c4e7fb3",
+      "executableSha256": "8588a5949b44c589a693e6bb6b0c2ac42bed2dfae0dad10dfb536bf1f199aa65"
+    },
+    "installed": {
+      "schema": 1,
+      "before": "159c0d7e7c71ce67cf7c030bcc5c8921987ea01e3c6787f0dd4d7871ced70fd0",
+      "after": "8588a5949b44c589a693e6bb6b0c2ac42bed2dfae0dad10dfb536bf1f199aa65",
+      "installedAt": "2026-10-07T05:37:20.253Z"
+    },
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 1649895,
+        "executable": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+        "arguments": [
+          "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/pioneer-apc/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "646aa453a269d7c49feec0f5e88fcac94a030034f051468a82d2828ef05c4915"
+      },
+      {
+        "pid": 3973522,
+        "executable": "/home/michael/.local/bin/omatainer (deleted)",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "23f88a47125de6eb19a7921d64faef6dafed56d3c25debdb89ac04d060d9b2e4"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d",
+      "bytes": 162882871
+    },
+    "additionalProcessesAfterInstall": [],
+    "preinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "postinstallState": {
+      "master": 0.8188976645469666,
+      "playing": false,
+      "recording": false,
+      "decks": [
+        {
+          "title": "What More Can I Say",
+          "playing": false
+        },
+        {
+          "title": "Public Service Announcement",
+          "playing": false
+        }
+      ]
+    },
+    "scope": "Default executable installed for next launch. Previously active independent private GUI and follower processes retained; no hardware device opened or live playback restarted. An unavailable live state is recorded when no GUI was present."
+  }
 }
