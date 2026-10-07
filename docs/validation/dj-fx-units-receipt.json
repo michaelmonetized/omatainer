@@ -1361,5 +1361,53 @@
       }
     },
     "limits": "Linux ARM64 software qualification: two independent live DJ FX units with three serial Echo/Reverb/Filter slots; separate stereo histories for both decks, one explicitly chosen stable sampler destination per unit and Master. Beat-clock or manual echo timing, applied duration, wet/bypass, independent source assignments and defined fader placement are native controls sharing the existing controller banks. Bypass/unassignment fades new wet injection over 2 ms and drains original tails without callback allocation; sampler unassignment retains its original bus, stale/replaced project targets retire safely, source/placement edits require off/settled histories. Dry units use a fast path. Native graph and legacy mixer cut/pause tails, actual OutputCallback, six-rate raw impulses, native egui/AccessKit and recorded wire-shaped mapping dispatch passed. Echo storage supports up to two seconds, with the applied cap shown; after two seconds of silence below 1e-7, inactive histories retire. These are transient live controls like the existing surface banks; no new project version, dependency or manufacturer address. No physical audio/MIDI device, capture, new OS GUI, mapped physical paddle or listening acceptance."
+  },
+  "releaseDeployment": {
+    "schema": 1,
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-dj-fx-qualified",
+      "manifestSha256": "22143d6b75f846b017a84ad2c5c3a773b9810c2fad7fd5e14e3ef28e5c5365bd",
+      "revision": "9de15c394bf598c6ab0f6ecfd3fe8e7603a82215",
+      "version": "0.1.0+9de15c394bf5",
+      "executableSha256": "1fda35db672bd0ba0ce0db2448dcac418b790dd759d2994bc52d3a2e9f824b4b"
+    },
+    "installed": false,
+    "previousInstalledSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "installedExecutableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2045140,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. Replacement is deferred before changing any file; the verified package is ready for installation after the active app closes. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
   }
 }
