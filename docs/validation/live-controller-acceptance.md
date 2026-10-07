@@ -3,9 +3,11 @@
 The connected DDJ-SP1 passed the sixteen HOT CUE pads, six FX On buttons, and
 six full-range FX knob checks. The APC40 mkII passed all eight track faders,
 Pan knobs, Arm, Solo, Activator and Track Select inputs. Its Pan, Sends and User
-selector buttons remain unqualified: their presses produced no raw MIDI in
-either host mode or the isolated generic-mode check. Software selection
-changed native Sends/User modes and their physical lights correctly.
+selector buttons produced no raw MIDI in either host mode or the isolated
+generic-mode check during this earlier interval. Software selection changed
+native Sends/User modes and their physical lights correctly. The later
+[powered-hub check](powered-hub-controller-qualification.md) physically qualifies
+PAN/SENDS/USER, Scene Launch 1, Stop All, Master, Device On/Off and REC.
 
 The [receipt](live-controller-acceptance-receipt.json) belongs to installed code
 `7db2dc58faa4962f2eff824cde2a7374d2fbafea`, executable SHA-256
@@ -17,7 +19,8 @@ The later [grid row-order check](apc40-grid-order.md) independently qualifies
 all forty grid inputs and eight Clip Stop inputs, and the corrected scene-1,
 track-8 pad's physical yellow/green/yellow loaded, launched and stopped states.
 Its executable and test receipts have their own source identities. Scene
-Launch, Stop All and the missing selector inputs remain unresolved.
+Launch, Stop All and selector inputs were unresolved in that earlier check;
+the powered-hub receipt records the later recovered controls.
 
 ## Pioneer
 

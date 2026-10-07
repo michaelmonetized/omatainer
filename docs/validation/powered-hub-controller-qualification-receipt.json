@@ -1,0 +1,286 @@
+{
+  "schema": 1,
+  "qualifiedAt": "2026-10-07T16:15:31.892Z",
+  "host": "m1pro16",
+  "setup": "All four controllers connected through the user-supplied powered hub",
+  "release": {
+    "sourceRevision": "70526b724672121b3e2cd1407f531bbb92902e20",
+    "version": "0.1.0+70526b724672",
+    "executable": "/home/michael/.local/bin/omatainer",
+    "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "runningPid": 2045140,
+    "runningExecutableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+  },
+  "savedMidiPolicy": {
+    "path": "target/hardware/config/omatainer/preferences.json",
+    "profile": "Hardware",
+    "policy": {
+      "mode": "selected",
+      "names": [
+        "Numark NS7:Numark NS7 MIDI 24:0",
+        "APC40 mkII:APC40 mkII MIDI 1 28:0",
+        "Pioneer DDJ-SP1:Pioneer DDJ-SP1 MIDI 1 32:0",
+        "MPD232:MPD232 Port A 36:0"
+      ]
+    }
+  },
+  "audioOutput": {
+    "graph": {
+      "outputs": [],
+      "inputs": []
+    },
+    "backend": "ALSA",
+    "format": "i32",
+    "calibration": {
+      "device": null,
+      "channels": null,
+      "format": null,
+      "buffer_frames": null,
+      "channel": 0,
+      "output_channel": 0,
+      "level_db": -40
+    },
+    "device": "hw:CARD=NS7,DEV=0",
+    "sample_rate": 44100,
+    "channels": 4,
+    "buffer_frames": 512
+  },
+  "apc40MkII": {
+    "at": "2026-10-07T16:11:56.310Z",
+    "counts": {
+      "Track 1 REC ARM": {
+        "note": 48,
+        "on": 2,
+        "off": 2
+      },
+      "Device On/Off": {
+        "note": 62,
+        "on": 1,
+        "off": 1
+      },
+      "Master": {
+        "note": 80,
+        "on": 1,
+        "off": 1
+      },
+      "Stop All Clips": {
+        "note": 81,
+        "on": 1,
+        "off": 1
+      },
+      "Scene Launch 1": {
+        "note": 82,
+        "on": 1,
+        "off": 1
+      },
+      "Pan": {
+        "note": 87,
+        "on": 2,
+        "off": 2
+      },
+      "Sends": {
+        "note": 88,
+        "on": 2,
+        "off": 2
+      },
+      "User": {
+        "note": 89,
+        "on": 1,
+        "off": 1
+      }
+    },
+    "requestedSequenceMatches": true,
+    "physicalNoteMessages": 22,
+    "additionalGestures": "One SENDS press/release preceded the requested twenty-message sequence.",
+    "inputEvidence": "ALSA 28:0 input matched Omatainer input and dispatch deltas exactly; successful app state and physical lights confirmed by the user.",
+    "rawUsbInputCapture": false,
+    "usbCaptureLimit": "This capture was filtered to endpoint 1, which is APC OUT; APC IN is endpoint 2. No byte-for-byte raw USB input comparison is claimed.",
+    "usbOutCompletions": 73,
+    "usbOutBytes": 960,
+    "usbOutFailedCompletions": 0,
+    "appInputDelta": 22,
+    "appHandledDelta": 22,
+    "appMidiDrops": 0,
+    "feedbackMessagesDelta": 95,
+    "feedbackFailures": 0,
+    "finalSurface": {
+      "knobMode": 0,
+      "deviceMaster": true,
+      "deviceOn": false
+    },
+    "scene": {
+      "active": {
+        "id": 9,
+        "namespace": [
+          12983723621264249000,
+          33
+        ]
+      },
+      "active_properties": {
+        "empty": "Stop",
+        "grid": "Global",
+        "meter": null,
+        "tempo_micros": null
+      },
+      "error": null,
+      "pending": null,
+      "timing": null
+    },
+    "appTransport": true,
+    "decksPlaying": [
+      false,
+      false
+    ],
+    "masterFxWet": [
+      0,
+      0,
+      0
+    ],
+    "userPhysicalLightReport": "Done all worked, lit as expected.",
+    "userOtherDevicesReport": "I’m not aware of any issues on any other devices just apc 40, those seem fixed now.",
+    "audio": {
+      "backend_errors": 0,
+      "callbacks": 60196,
+      "deadline_overruns": 0,
+      "device_lost": 0,
+      "dropped_buffers": null,
+      "last_callback": {
+        "budget_ns": 5804988,
+        "channels": 4,
+        "elapsed_ns": 326544,
+        "frames": 256,
+        "output_latency_ns": 5192744,
+        "overrun_ns": 0,
+        "render_cpu_ns": 265419,
+        "sample_rate": 44100
+      },
+      "max_elapsed_ns": 2844063,
+      "max_overrun_ns": 0,
+      "realtime_denied": 0,
+      "xruns": 0
+    }
+  },
+  "otherDevices": {
+    "inputsConnected": [
+      "Numark NS7",
+      "Pioneer DDJ-SP1",
+      "MPD232 Port A"
+    ],
+    "feedbackConnections": 4,
+    "userReport": "I’m not aware of any issues on any other devices just apc 40, those seem fixed now.",
+    "newPhysicalPanelSweep": false
+  },
+  "savedSession": {
+    "before": "target/hardware/powered-hub-20261007/session-preserved.omat",
+    "after": "target/hardware/powered-hub-20261007/session-qualified.omat",
+    "master": 0.8188976645469666,
+    "crossfader": 0.4645669162273407,
+    "deckPositionsSeconds": [
+      1.313942391036405,
+      3.9060474438022594
+    ],
+    "note": "Saved through native project Save As; the pre-test project remains intact. User-driven scene transport remains running, both decks paused; no extra mute or transport action was sent."
+  },
+  "captureCleanup": {
+    "rootUsbUnit": "ActiveState=inactive\nSubState=dead\nMainPID=0\nKillMode=control-group",
+    "inputUnit": "ActiveState=inactive\nSubState=dead\nMainPID=0",
+    "usbmonOpenReaderCount": 0
+  },
+  "handbackAudio": {
+    "backend_errors": 0,
+    "callbacks": 95410,
+    "deadline_overruns": 13,
+    "device_lost": 0,
+    "dropped_buffers": null,
+    "last_callback": {
+      "budget_ns": 5804988,
+      "channels": 4,
+      "elapsed_ns": 272169,
+      "frames": 256,
+      "output_latency_ns": 5464853,
+      "overrun_ns": 0,
+      "render_cpu_ns": 246832,
+      "sample_rate": 44100
+    },
+    "max_elapsed_ns": 15347241,
+    "max_overrun_ns": 9542253,
+    "realtime_denied": 0,
+    "xruns": 14
+  },
+  "limits": [
+    "The hub path, controller initialization and application executable changed together; this test does not isolate the original fault to hardware, firmware, cable, adapter or software.",
+    "The requested APC sequence is physically qualified. Scene Launch 2–5 and the other controller panels were not re-swept in this interval. User reports no known remaining issues.",
+    "Raw APC input was captured through ALSA and matched app dispatch counts; USB endpoint 1 capture proves LED OUT transfers only. USB endpoint 2 IN payloads were not captured.",
+    "The focused controller check ended with zero audio errors, device loss, missed deadlines or xruns. Later handback counters contain 13 missed deadlines and 14 xruns; no extended-performance or audible-playback qualification is claimed."
+  ],
+  "evidence": [
+    {
+      "path": "target/hardware/powered-hub-20261007/before-state.json",
+      "sha256": "7d79d753cd8f998f629dd7cd29353c41fb753b907df7e2870c3c3cefb599be4d"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/preferences-before.json",
+      "sha256": "c82dea3b6a23d1e993b6c676b3d27ec664fa26a9b5f52d51f7f6e8c5e9be164e"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/hub-midi-selection.json",
+      "sha256": "871ba2df35d46d433bc2fb8030eb18530425b6f984ac779057e0fabd284ec72f"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/session-preserved.omat",
+      "sha256": "81ddf1fe3377d7df3037108cfc1dc345b5568fc1bc4934ce4bd69f239b5efbdf"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/session-qualified.omat",
+      "sha256": "59ecda88313a87e801bc6bcfb608e56a266ef38257e7276fd2098942956a2915"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/after-state.json",
+      "sha256": "0e44b10e571ff999aba7b52147598c16c96709166518db8e9658d4ae72d58ce0"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/after-status.json",
+      "sha256": "81efc73f65b0e5bb55b027cd21e4a65023e708f282b65677e07abee7785e7006"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/apc-button-analysis.json",
+      "sha256": "3c405d79c18f4b717cd1d2b0dbf18523ab3175d1048b82c34062584f7fb55f53"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/apc-button-input-evidence.log",
+      "sha256": "69289bc1882dc78fef6f406dba9380d9dffb69c261551cecb525b02331deda33"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/input.log",
+      "sha256": "807c02f0c2ef0df72a59cb228f5df945b6aa153400a865638cd17370180b7686"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/apc-usb.log",
+      "sha256": "425dd674ae79fca6851a4528f99264d773ebe58a061d7cbc77c847fe8d5abe6b"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/qualified-status.json",
+      "sha256": "b8b154a599771c0bd5ab309f46906d016eea967f963f10f9a14c66e7de2cbed2"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/qualified-state.json",
+      "sha256": "3100adb07f3ab176d976f9a105ddf23258d3b427c2afe1c9a1faa6398f9939cb"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/qualified-surfaces.json",
+      "sha256": "b1afa7bf0149cf37960819b7b231434ba8b118306ed284aa5476b1e9f1f6e741"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/qualified-subscriptions.txt",
+      "sha256": "2ef40d385c4081748664cfaa3d1aef472b77df5a3d4db42d02185e071c8e7abc"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/handback-status.json",
+      "sha256": "178735d26144bdc9829cce0e5977d6947cbd9663db4c750af95bfa30069dcd64"
+    },
+    {
+      "path": "target/hardware/powered-hub-20261007/qualified-saved-toolbar.png",
+      "sha256": "e3dbae4b2d8014df6356f182a181ab5fdf8ca32c702885096e723e39c5572516"
+    }
+  ]
+}
