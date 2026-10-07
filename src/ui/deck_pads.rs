@@ -181,13 +181,14 @@ impl App {
                         } else {
                             format!("{} pad {}: {}", mode.label(), pad + 1, name)
                         };
-                        let text = if mode == Mode::HotCue
+                        let mut text = if mode == Mode::HotCue
                             && snap.cue_styles[pad].name.as_str().is_empty()
                         {
                             (pad + 1).to_string()
                         } else {
                             format!("{}\n{}", pad + 1, cue_editor::short_name(&name, 8))
                         };
+                        if mode == Mode::HotCue { if let Some(id) = snap.saved_loops.cue_loops[pad] { text.push_str(&format!("\nL{id}")); } }
                         let response = sq_btn(ui, t, &text, on, color, cell);
                         accessibility::button(ui, &response, &label, Some(on));
                         let description = if mode == Mode::HotCue {
@@ -248,6 +249,7 @@ impl App {
             "Edit cue names and colors",
             "Press pad",
             "Release pad",
+            "Cue only",
         ];
         let pad_actions = ["Trigger pad", "Press pad", "Release pad"];
         let action = accessibility::actions(
@@ -275,6 +277,8 @@ impl App {
                 self.set_deck_pad_input(deck, pad, 3, true, 1.0, shifted, viewport);
             } else if action == Some(if mode == Mode::HotCue { 4 } else { 2 }) {
                 self.set_deck_pad_input(deck, pad, 3, false, 0.0, false, viewport);
+            } else if mode == Mode::HotCue && action == Some(5) {
+                self.send(Command::DeckControl { source: 0, deck, control: crate::engine::deck_controls::Control::CueOnly { media_key: self.snap.decks[usize::from(deck)].media_key, pad } });
             } else if action == Some(0) || click {
                 self.set_deck_pad_input(deck, pad, 3, true, 1.0, shifted, viewport);
                 self.set_deck_pad_input(deck, pad, 3, false, 0.0, false, viewport);

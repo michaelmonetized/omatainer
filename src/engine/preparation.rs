@@ -32,7 +32,7 @@ pub(crate) struct Loop {
 impl Preparation {
     pub fn valid(self) -> bool {
         let position = |v: f64| v.is_finite() && (0.0..=1.0e10).contains(&v);
-        self.saved_loops.valid() && self.source_gain.valid() && position(self.cue)
+        self.saved_loops.valid() && self.saved_loops.cue_loops.iter().enumerate().all(|(cue, id)| id.is_none_or(|id| self.hotcues[cue].is_some_and(|position| self.saved_loops.slots[usize::from(id - 1)].is_some_and(|slot| (position - slot.start).abs() <= 1e-6)))) && self.source_gain.valid() && position(self.cue)
             && self.hotcues.into_iter().flatten().all(position)
             && self
                 .loop_region
@@ -117,6 +117,7 @@ impl super::DeckRt {
             cue.set = saved.is_some_and(|p| p * sr <= frames);
             cue.pos = saved.unwrap_or(0.0) * sr;
         }
+        self.sync_cue_loop_positions();
         if let Some(region) = preparation
             .loop_region
             .filter(|r| (r.start + r.length) * sr <= frames)
@@ -165,6 +166,7 @@ mod tests {
             for i in 1..50_000 {
                 writing.record_preparation(Preparation {
                     saved_loops: super::super::saved_loops::Bank {
+                        cue_loops: [None; 8],
                         slots: std::array::from_fn(|slot| Some(super::super::saved_loops::Slot {
                             start: i as f64 + slot as f64,
                             length: i as f64,

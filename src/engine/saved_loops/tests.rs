@@ -588,3 +588,349 @@ fn saved_start_end_and_anchor_spanning_regions_match_independent_stereo_playback
         }
     }
 }
+#[test]
+fn cue_loop_links_preserve_markers_slots_codec_and_one_undo_through_reorder_resize_and_delete_without_heap(
+) {
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    fill(&mut rt);
+    let rate = f64::from(rt.decks[0].audio.as_ref().unwrap().sr);
+    rt.decks[0].hotcues[7] = crate::engine::HotCue {
+        set: true,
+        pos: rate * 0.123,
+    };
+    rt.decks[0].cue_styles[7] = Style {
+        name: Name::new("Linked drop / 東京").unwrap(),
+        color: Some([12, 34, 56]),
+    };
+    let before = rt.decks[0].preparation().unwrap();
+    let position = rt.decks[0].pos;
+    let other = rt.decks[1].preparation();
+    rt.clear_undo_for_test();
+    let link = command(&rt, 3, SavedLoopAction::Cue { pad: 7 });
+    assert_eq!(test_alloc::measure(|| rt.apply(link)), Default::default());
+    let linked = rt.decks[0].preparation().unwrap();
+    assert_eq!(linked.saved_loops.cue_loops[7], Some(3));
+    assert_eq!(
+        linked.hotcues[7],
+        Some(linked.saved_loops.slots[2].unwrap().start)
+    );
+    assert_eq!(linked.hotcue_styles[7], before.hotcue_styles[7]);
+    assert_eq!(rt.decks[0].pos, position);
+    assert!(!rt.decks[0].playing);
+    let words = linked.saved_loops.words();
+    assert_eq!(
+        test_alloc::measure(|| assert_eq!(Bank::from_words(words), Some(linked.saved_loops))),
+        Default::default()
+    );
+    let mut bad = words;
+    bad[2] |= 1 << 40;
+    assert!(Bank::from_words(bad).is_none());
+    bad = words;
+    bad[2] = 9;
+    assert!(Bank::from_words(bad).is_none());
+    assert_eq!(
+        test_alloc::measure(|| rt.apply(Command::Undo)),
+        Default::default()
+    );
+    assert_eq!(rt.decks[0].preparation().unwrap(), before);
+    rt.apply(Command::Redo);
+    assert_eq!(rt.decks[0].preparation().unwrap(), linked);
+    rt.apply(command(&rt, 3, SavedLoopAction::Move { position: 0 }));
+    assert_eq!(
+        rt.decks[0].preparation().unwrap().saved_loops.cue_loops[7],
+        Some(3)
+    );
+    rt.decks[0].loop_start = rate * 1.25;
+    rt.decks[0].loop_len = rate * 0.5;
+    rt.apply(command(&rt, 3, SavedLoopAction::Save));
+    assert_eq!(rt.decks[0].hotcues[7].pos, rate * 1.25);
+    rt.apply(command(&rt, 3, SavedLoopAction::Delete));
+    assert!(rt.decks[0].preparation().unwrap().saved_loops.cue_loops[7].is_none());
+    assert!(rt.decks[0].hotcues[7].set);
+    assert_eq!(rt.decks[1].preparation(), other);
+    assert!(engine.initial_playback[0]
+        .as_ref()
+        .unwrap()
+        .preparation()
+        .unwrap()
+        .1
+        .saved_loops
+        .cue_loops[7]
+        .is_none());
+}
+
+#[test]
+fn linked_cue_and_region_start_at_one_quantized_output_sample_through_tempo_anchors_and_cue_only_override(
+) {
+    use crate::engine::beatgrid::Grid;
+    use crate::engine::deck_controls::QuantizedAction;
+    for output_rate in [8000, 44100, 48000] {
+        for (initial, boundary) in [(0.125, 0.5), (2.25, 2.75), (5.25, 5.75)] {
+            let (_, rt) = Engine::headless_for_test(output_rate, 256);
+            let mut rt = Box::new(rt);
+            fill(&mut rt);
+            rt.apply(command(&rt, 3, SavedLoopAction::Cue { pad: 7 }));
+            let source_rate = f64::from(rt.decks[0].audio.as_ref().unwrap().sr);
+            rt.decks[0].grid = Some(
+                Grid::new(0.0, 120.0)
+                    .unwrap()
+                    .with_anchor(4.0, 2.0)
+                    .unwrap()
+                    .with_anchor(8.0, 5.0)
+                    .unwrap(),
+            );
+            rt.decks[0].loop_on = false;
+            rt.decks[0].pos = initial * source_rate;
+            rt.decks[0].playing = true;
+            rt.apply(Command::DeckControl {
+                source: 0,
+                deck: 0,
+                control: Control::Quantize {
+                    enabled: true,
+                    division: 3,
+                },
+            });
+            assert_eq!(
+                test_alloc::measure(|| rt.apply(Command::DeckHotCue {
+                    deck: 0,
+                    pad: 7,
+                    del: false
+                })),
+                Default::default()
+            );
+            let pending = rt.decks[0].controls.status().pending.unwrap();
+            assert_eq!(pending.action, QuantizedAction::CueLoop { pad: 7, id: 3 });
+            assert_eq!(pending.source_seconds, boundary);
+            assert_eq!(rt.decks[0].pos, initial * source_rate);
+            let frames = ((boundary - initial) * f64::from(output_rate)).ceil() as usize;
+            let mut buffer = vec![0.0; (frames - 1) * 2];
+            assert_eq!(
+                test_alloc::measure(|| rt.process(&mut buffer)),
+                Default::default()
+            );
+            assert!(rt.decks[0].controls.status().pending.is_some());
+            assert!(!rt.decks[0].loop_on);
+            assert_eq!(
+                test_alloc::measure(|| rt.process(&mut [0.0; 2])),
+                Default::default()
+            );
+            assert!(rt.decks[0].controls.status().pending.is_none());
+            assert!(rt.decks[0].loop_on);
+            assert_eq!(rt.decks[0].controls.status().loop_slot, 2);
+            assert!((rt.decks[0].pos / source_rate - 1.0).abs() < 1e-9);
+            assert!((rt.decks[0].loop_start / source_rate - 1.0).abs() < 1e-9);
+            assert!((rt.decks[0].loop_len / source_rate - 0.25).abs() < 1e-9);
+            rt.apply(Command::DeckControl {
+                source: 0,
+                deck: 0,
+                control: Control::Quantize {
+                    enabled: false,
+                    division: 3,
+                },
+            });
+            let media_key = rt.decks[0].history_key;
+            assert_eq!(
+                test_alloc::measure(|| rt.apply(Command::DeckControl {
+                    source: 0,
+                    deck: 0,
+                    control: Control::CueOnly { media_key, pad: 7 }
+                })),
+                Default::default()
+            );
+            assert!(!rt.decks[0].loop_on);
+            assert_eq!(
+                rt.decks[0].preparation().unwrap().saved_loops.cue_loops[7],
+                Some(3)
+            );
+            rt.apply(Command::DeckHotCue {
+                deck: 0,
+                pad: 7,
+                del: false,
+            });
+            assert!(rt.decks[0].loop_on);
+        }
+    }
+}
+
+#[test]
+fn cue_loop_reassignment_deletion_release_and_source_replacement_cancel_deferred_owners_without_mutating_the_new_deck(
+) {
+    use crate::engine::deck_controls::Button;
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    fill(&mut rt);
+    rt.apply(command(&rt, 3, SavedLoopAction::Cue { pad: 7 }));
+    let rate = f64::from(rt.decks[0].audio.as_ref().unwrap().sr);
+    rt.decks[0].loop_on = false;
+    rt.decks[0].pos = rate * 0.125;
+    rt.decks[0].playing = true;
+    rt.apply(Command::DeckControl {
+        source: 0,
+        deck: 0,
+        control: Control::Quantize {
+            enabled: true,
+            division: 3,
+        },
+    });
+    rt.apply(Command::DeckControl {
+        source: 900,
+        deck: 0,
+        control: Control::Hold {
+            button: Button::HotCue(7),
+            on: true,
+        },
+    });
+    assert!(rt.decks[0].controls.status().pending.is_some());
+    rt.apply(Command::DeckControl {
+        source: 900,
+        deck: 0,
+        control: Control::Hold {
+            button: Button::HotCue(7),
+            on: false,
+        },
+    });
+    assert!(rt.decks[0].controls.status().pending.is_none());
+    assert!(!rt.decks[0].loop_on);
+    rt.apply(Command::DeckHotCue {
+        deck: 0,
+        pad: 7,
+        del: false,
+    });
+    assert!(rt.decks[0].controls.status().pending.is_some());
+    rt.apply(command(&rt, 3, SavedLoopAction::UnlinkCue { pad: 7 }));
+    assert!(rt.decks[0].controls.status().pending.is_none());
+    rt.apply(command(&rt, 3, SavedLoopAction::Cue { pad: 7 }));
+    rt.apply(Command::DeckHotCue {
+        deck: 0,
+        pad: 7,
+        del: false,
+    });
+    rt.apply(Command::DeckHotCue {
+        deck: 0,
+        pad: 7,
+        del: true,
+    });
+    assert!(rt.decks[0].controls.status().pending.is_none());
+    assert!(rt.decks[0].preparation().unwrap().saved_loops.cue_loops[7].is_none());
+    assert!(rt.decks[0].preparation().unwrap().saved_loops.slots[2].is_some());
+    let stale = command(&rt, 3, SavedLoopAction::Cue { pad: 7 });
+    let old_key = rt.decks[0].history_key;
+    rt.decks[0].playing = false;
+    rt.apply(Command::DeckLoadRequested {
+        deck: 0,
+        media: Media::Builtin(1),
+        receipt: Receipt::new(),
+    });
+    let before = rt.decks[0].preparation();
+    let checkpoint = engine.undo.checkpoint();
+    rt.apply(stale);
+    rt.apply(Command::DeckControl {
+        source: 0,
+        deck: 0,
+        control: Control::CueOnly {
+            media_key: old_key,
+            pad: 7,
+        },
+    });
+    assert_eq!(rt.decks[0].preparation(), before);
+    assert_eq!(engine.undo.checkpoint(), checkpoint);
+    assert!(!rt.decks[0].playing);
+}
+
+#[test]
+fn cue_loop_native_project_reopens_exact_associations_stopped_and_refuses_legacy_or_dangling_links()
+{
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    fill(&mut rt);
+    for pad in 0..8 {
+        rt.apply(command(&rt, pad + 1, SavedLoopAction::Cue { pad }));
+    }
+    let preparation = rt.decks[0].preparation().unwrap();
+    let captured = capture(&engine, &mut rt);
+    let path = std::env::temp_dir().join(format!(
+        "omatainer-cue-loops-{}.omat",
+        crate::sampler_bank::BankId::new().unwrap()
+    ));
+    let limits = crate::project_file::Limits::default();
+    crate::project_file::save(
+        &path,
+        &crate::project_file::Bundle {
+            state: captured.state.clone(),
+            media: captured.media.clone(),
+        },
+        crate::project_file::Overwrite::Never,
+        &limits,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    let disk = crate::project_file::load::<crate::engine::project::State>(
+        &path,
+        &limits,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    std::fs::remove_file(path).unwrap();
+    assert_eq!(
+        disk.state.decks[0].saved_loops.cue_loops,
+        preparation.saved_loops.cue_loops
+    );
+    let mut reopened = Prepared::from_state(disk.state.clone(), disk.media.clone(), 44100).unwrap();
+    assert!(!reopened.rt.playing && !reopened.rt.decks[0].playing);
+    assert_eq!(reopened.rt.decks[0].preparation().unwrap(), preparation);
+    reopened.rt.apply(Command::DeckHotCue {
+        deck: 0,
+        pad: 4,
+        del: false,
+    });
+    assert!(reopened.rt.decks[0].playing && reopened.rt.decks[0].loop_on);
+    let mut legacy = serde_json::to_value(&disk.state).unwrap();
+    legacy["version"] = 26.into();
+    assert!(serde_json::from_value::<crate::engine::project::State>(legacy.clone()).is_err());
+    for deck in legacy["decks"].as_array_mut().unwrap() {
+        if let Some(bank) = deck.get_mut("saved_loops").and_then(|b| b.as_object_mut()) {
+            bank.remove("cue_loops");
+        }
+    }
+    serde_json::from_value::<crate::engine::project::State>(legacy.clone())
+        .unwrap()
+        .validate(&disk.media)
+        .unwrap();
+    for injection in [
+        serde_json::Value::Null,
+        serde_json::json!([null, null, null, null, null, null, null, null]),
+        serde_json::json!([1, 2, 3, 4, 5, 6, 7, 8]),
+    ] {
+        let mut old = legacy.clone();
+        old["decks"][0]["saved_loops"]["cue_loops"] = injection;
+        assert!(serde_json::from_value::<crate::engine::project::State>(old).is_err());
+    }
+    let mut bad = disk.state.clone();
+    bad.decks[0].hotcues[4] = None;
+    assert!(bad.validate(&disk.media).is_err());
+}
+
+#[test]
+fn quantized_cue_only_override_uses_the_exact_off_grid_marker_and_leaves_the_saved_region_linked() {
+    use crate::engine::deck_controls::QuantizedAction;
+    let (_, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    fill(&mut rt);
+    let rate = f64::from(rt.decks[0].audio.as_ref().unwrap().sr);
+    rt.decks[0].loop_start = rate * 0.333;
+    rt.decks[0].loop_len = rate * 0.2;
+    rt.apply(command(&rt, 3, SavedLoopAction::Save));
+    rt.apply(command(&rt, 3, SavedLoopAction::Cue { pad: 7 }));
+    rt.decks[0].grid = Some(crate::engine::beatgrid::Grid::new(0.0, 120.0).unwrap());
+    rt.decks[0].loop_on = false;rt.decks[0].pos = rate * 0.125;rt.decks[0].playing = true;
+    rt.apply(Command::DeckControl { source: 0, deck: 0, control: Control::Quantize { enabled: true, division: 3 } });
+    rt.apply(Command::DeckControl { source: 0, deck: 0, control: Control::CueOnly { media_key: rt.decks[0].history_key, pad: 7 } });
+    assert_eq!(rt.decks[0].controls.status().pending.unwrap().action, QuantizedAction::HotCueOnly { pad: 7 });
+    let mut block = vec![0.0; 18000 * 2];
+    assert_eq!(test_alloc::measure(|| rt.process(&mut block)), Default::default());
+    assert!(rt.decks[0].controls.status().pending.is_none());
+    assert!(!rt.decks[0].loop_on);
+    assert!((rt.decks[0].pos / rate - 0.333).abs() < 1e-9);
+    assert_eq!(rt.decks[0].preparation().unwrap().saved_loops.cue_loops[7], Some(3));
+}

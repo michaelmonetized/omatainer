@@ -35,7 +35,7 @@ pub(crate) fn hash_project_source(path: &Path, expected: FileFingerprint, active
     content::hash_file(path, expected, active)
 }
 
-const SCHEMA: u32 = 16;
+const SCHEMA: u32 = 17;
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TRACKS: usize = 100_000;
 const MAX_VERSIONS: usize = 1_000_000;
@@ -527,9 +527,10 @@ fn catalog_from_bytes(bytes: &[u8], expected_schema: Option<u32>) -> Result<Cata
         return Err("Musical-key analysis requires library schema 15; original file preserved".into());
     }
     if schema.is_some_and(|schema|schema < 16) && header.get("tracks").and_then(|v|v.as_array()).into_iter().flatten().flat_map(|track|track.get("preparation").into_iter().chain(track.get("versions").and_then(|v|v.as_array()).into_iter().flatten().filter_map(|version|version.get("preparation")))).any(|preparation|preparation.get("saved_loops").is_some()) { return Err("Saved loop banks require library schema 16; original file preserved".into()); }
+    if schema.is_some_and(|schema|schema < 17) && header.get("tracks").and_then(|v|v.as_array()).into_iter().flatten().flat_map(|track|track.get("preparation").into_iter().chain(track.get("versions").and_then(|v|v.as_array()).into_iter().flatten().filter_map(|version|version.get("preparation")))).any(|preparation|preparation.get("saved_loops").is_some_and(|bank|bank.get("cue_loops").is_some())) { return Err("Cue-loop associations require library schema 17; original file preserved".into()); }
     let mut catalog = match schema {
-        Some(16) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
-        Some(15) | Some(14) | Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
+        Some(17) => serde_json::from_slice(bytes).map_err(|e| e.to_string())?,
+        Some(16) | Some(15) | Some(14) | Some(13) | Some(12) | Some(11) | Some(10) | Some(9) => {
             let mut old: Catalog = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
             old.schema = SCHEMA;
             old

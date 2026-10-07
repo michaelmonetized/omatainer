@@ -10,6 +10,8 @@ pub(crate) const DIVISIONS: [f64; 6] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0];
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum QuantizedAction {
     HotCue { pad: u8 },
+    HotCueOnly { pad: u8 },
+    CueLoop { pad: u8, id: u8 },
     LoopIn,
     LoopOut,
     Reloop,
@@ -117,12 +119,24 @@ impl RtEngine {
     /// Queue one musical onset before capturing Undo history.
     /// Takes an ordinary controller command; returns true only when it replaces this deck's bounded pending action.
     pub(in crate::engine) fn defer_quantized_deck_command(&mut self, command: &Command) -> bool {
-        let (deck, action) = match command {
+        let (deck, mut action) = match command {
             Command::DeckHotCue {
                 deck,
                 pad,
                 del: false,
             } if *pad < 8 => (*deck, QuantizedAction::HotCue { pad: *pad }),
+            Command::DeckControl {
+                deck,
+                control: Control::CueOnly { media_key, pad },
+                ..
+            } if *pad < 8
+                && self
+                    .decks
+                    .get(usize::from(*deck))
+                    .is_some_and(|d| d.history_key == *media_key && *media_key != 0) =>
+            {
+                (*deck, QuantizedAction::HotCueOnly { pad: *pad })
+            }
             Command::DeckLoopIn { deck } => (*deck, QuantizedAction::LoopIn),
             Command::DeckLoopOut { deck } => (*deck, QuantizedAction::LoopOut),
             Command::DeckReloop { deck } => (*deck, QuantizedAction::NewLoop),
@@ -131,7 +145,22 @@ impl RtEngine {
                 control: Control::Reloop,
                 ..
             } => (*deck, QuantizedAction::Reloop),
-            Command::DeckControl { deck, control: control @ Control::SavedLoop { id, action: super::SavedLoopAction::Recall { activate: true }, .. }, .. } if self.decks.get(usize::from(*deck)).is_some_and(|deck| deck.saved_loop_current(*control)) => (*deck, QuantizedAction::SavedLoop { id: *id }),
+            Command::DeckControl {
+                deck,
+                control:
+                    control @ Control::SavedLoop {
+                        id,
+                        action: super::SavedLoopAction::Recall { activate: true },
+                        ..
+                    },
+                ..
+            } if self
+                .decks
+                .get(usize::from(*deck))
+                .is_some_and(|deck| deck.saved_loop_current(*control)) =>
+            {
+                (*deck, QuantizedAction::SavedLoop { id: *id })
+            }
             _ => return false,
         };
         let Some(d) = self.decks.get_mut(usize::from(deck)) else {
@@ -144,8 +173,17 @@ impl RtEngine {
         {
             return false;
         }
+        if let QuantizedAction::HotCue { pad } = action {
+            if d.controls.cue_only {
+                action = QuantizedAction::HotCueOnly { pad };
+            } else if let Some(id) = d.controls.cue_loops[usize::from(pad)] {
+                action = QuantizedAction::CueLoop { pad, id };
+            }
+        }
         let cue = match action {
-            QuantizedAction::HotCue { pad } => {
+            QuantizedAction::HotCue { pad }
+            | QuantizedAction::HotCueOnly { pad }
+            | QuantizedAction::CueLoop { pad, .. } => {
                 let cue = &d.hotcues[usize::from(pad)];
                 if !cue.set {
                     return false;
@@ -184,7 +222,12 @@ impl RtEngine {
             media_key: d.history_key,
             position,
             cue,
-            saved_loop: match action { QuantizedAction::SavedLoop { id } => d.controls.loops[usize::from(id - 1)], _ => None },
+            saved_loop: match action {
+                QuantizedAction::SavedLoop { id } | QuantizedAction::CueLoop { id, .. } => {
+                    d.controls.loops[usize::from(id - 1)]
+                }
+                _ => None,
+            },
             cancellation,
             routing: (generation, epoch),
         });
@@ -202,11 +245,19 @@ impl RtEngine {
             && self.midi_learning.cancellation_epoch() == pending.cancellation
             && pending.routing == (generation, epoch)
             && match pending.status.action {
-                QuantizedAction::HotCue { pad } => {
+                QuantizedAction::HotCue { pad } | QuantizedAction::HotCueOnly { pad } => {
                     d.hotcues[usize::from(pad)].set
                         && Some(d.hotcues[usize::from(pad)].pos) == pending.cue
                 }
-                QuantizedAction::SavedLoop { id } => d.controls.loops[usize::from(id - 1)] == pending.saved_loop,
+                QuantizedAction::CueLoop { pad, id } => {
+                    d.hotcues[usize::from(pad)].set
+                        && Some(d.hotcues[usize::from(pad)].pos) == pending.cue
+                        && d.controls.cue_loops[usize::from(pad)] == Some(id)
+                        && d.controls.loops[usize::from(id - 1)] == pending.saved_loop
+                }
+                QuantizedAction::SavedLoop { id } => {
+                    d.controls.loops[usize::from(id - 1)] == pending.saved_loop
+                }
                 _ => true,
             }
     }
@@ -246,12 +297,30 @@ impl RtEngine {
             return;
         }
         let command = match pending.status.action {
-            QuantizedAction::HotCue { pad } => Command::DeckHotCue {
+            QuantizedAction::HotCue { pad } | QuantizedAction::CueLoop { pad, .. } => {
+                Command::DeckHotCue {
+                    deck: deck as u8,
+                    pad,
+                    del: false,
+                }
+            }
+            QuantizedAction::HotCueOnly { pad } => Command::DeckControl {
+                source: 0,
                 deck: deck as u8,
-                pad,
-                del: false,
+                control: Control::CueOnly {
+                    media_key: pending.media_key,
+                    pad,
+                },
             },
-            QuantizedAction::SavedLoop { id } => Command::DeckControl { source: 0, deck: deck as u8, control: Control::SavedLoop { media_key: pending.media_key, id, action: super::SavedLoopAction::Recall { activate: true } } },
+            QuantizedAction::SavedLoop { id } => Command::DeckControl {
+                source: 0,
+                deck: deck as u8,
+                control: Control::SavedLoop {
+                    media_key: pending.media_key,
+                    id,
+                    action: super::SavedLoopAction::Recall { activate: true },
+                },
+            },
             QuantizedAction::LoopIn => Command::DeckLoopIn { deck: deck as u8 },
             QuantizedAction::LoopOut => Command::DeckLoopOut { deck: deck as u8 },
             QuantizedAction::NewLoop => Command::DeckReloop { deck: deck as u8 },
@@ -264,7 +333,12 @@ impl RtEngine {
         self.decks[deck].controls.quantize_dispatching = true;
         self.apply(command);
         self.decks[deck].controls.quantize_dispatching = false;
-        if !matches!(pending.status.action, QuantizedAction::HotCue { .. }) {
+        if !matches!(
+            pending.status.action,
+            QuantizedAction::HotCue { .. }
+                | QuantizedAction::HotCueOnly { .. }
+                | QuantizedAction::CueLoop { .. }
+        ) {
             self.remember_controller_loop(deck);
         }
     }

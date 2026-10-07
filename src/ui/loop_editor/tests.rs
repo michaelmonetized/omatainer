@@ -201,3 +201,28 @@ fn native_saved_loop_save_rename_reorder_recall_activate_delete_and_undo_use_the
     assert!(gui.fixture.rt.decks[0].loop_on);
     assert!(gui.fixture.app.engine.snapshot().decks[1].saved_loops.is_default());
 }
+
+#[test]
+fn native_cue_loop_partner_link_unlink_and_undo_use_real_saved_loop_controls_without_starting_playback() {
+    let mut gui = Gui::new();
+    gui.click("Deck A: Loop editor");
+    gui.click("Deck A: Set loop length");
+    gui.click("Deck A: Save saved loop 3");
+    let before = gui.fixture.app.engine.snapshot().decks[0].clone();
+    gui.click("Deck A: Cue for saved loop 3");
+    gui.click("Deck A saved loop 3: Cue 8");
+    gui.fixture.rt.clear_undo_for_test();
+    gui.click("Deck A: Link cue 8 to saved loop 3");
+    let linked = gui.fixture.app.engine.snapshot().decks[0].clone();
+    assert_eq!(linked.saved_loops.cue_loops[7], Some(3));
+    assert_eq!(linked.hotcue_positions[7], Some(linked.saved_loops.slots[2].unwrap().start * f64::from(linked.source_sample_rate)));
+    assert!(!gui.fixture.rt.decks[0].playing);
+    gui.fixture.app.send(Command::Undo);gui.frame(vec![]);gui.frame(vec![]);
+    let restored = gui.fixture.app.engine.snapshot().decks[0].clone();
+    assert_eq!((restored.saved_loops, restored.hotcues, restored.hotcue_positions, restored.cue_styles), (before.saved_loops, before.hotcues, before.hotcue_positions, before.cue_styles));
+    gui.fixture.app.send(Command::Redo);gui.frame(vec![]);gui.frame(vec![]);
+    assert_eq!(gui.fixture.app.engine.snapshot().decks[0].saved_loops.cue_loops[7], Some(3));
+    gui.click("Deck A: Unlink cue 8 from saved loop 3");
+    assert!(gui.fixture.app.engine.snapshot().decks[0].saved_loops.cue_loops[7].is_none());
+    assert!(gui.fixture.app.engine.snapshot().decks[1].saved_loops.cue_loops.iter().all(Option::is_none));
+}

@@ -652,3 +652,28 @@ fn surfaces_apc_and_mpd_stop_survive_callback_overflow() {
         assert!(!rt.playing && sink.shared.counters.snapshot().resets > 0);
     }
 }
+
+#[test]
+fn learned_hotcue_enters_its_saved_region_through_the_real_input_worker_without_a_new_profile_action() {
+    use crate::engine::{deck_controls::{Control, SavedLoopAction}, midi::learn::{Config, Endpoint, Mapping}};
+    let (engine, rt) = Engine::headless_for_test(48000, 256);
+    let mut rt = Box::new(rt);
+    let rate = f64::from(rt.decks[0].audio.as_ref().unwrap().sr);
+    rt.decks[0].loop_start = rate * 0.5;rt.decks[0].loop_len = rate * 0.25;
+    let media_key = rt.decks[0].history_key;
+    for action in [SavedLoopAction::Save, SavedLoopAction::Cue { pad: 7 }] {
+        rt.apply(Command::DeckControl { source: 0, deck: 0, control: Control::SavedLoop { media_key, id: 3, action } });
+    }
+    let (mut sink, mut worker) = input(64, 2631, &engine.cmd);
+    engine.cmd.midi_learn().configure(Config { mappings: vec![Mapping { endpoint: Endpoint { name: "test device".into(), id: "test device".into() }, binding: nbind(2, 60, Action::DeckHotCue, 0, 7) }] }).unwrap();
+    drain(&mut worker);render(&mut rt);
+    sink.push(&[0x92, 60, 100]);drain(&mut worker);
+    assert_eq!(crate::engine::test_alloc::measure(|| render(&mut rt)), Default::default());
+    assert!(rt.decks[0].playing && rt.decks[0].loop_on);
+    assert_eq!(rt.decks[0].controls.status().loop_slot, 2);
+    assert!((rt.decks[0].pos / rate - 0.5).abs() < 1e-9);
+    sink.push(&[0x82, 60, 0]);drain(&mut worker);render(&mut rt);
+    assert!(rt.decks[0].playing && rt.decks[0].loop_on);
+    assert!(rt.decks[1].preparation().unwrap().saved_loops.cue_loops.iter().all(Option::is_none));
+    drop(worker);render(&mut rt);
+}

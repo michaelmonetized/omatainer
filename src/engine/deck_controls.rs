@@ -5,6 +5,7 @@ mod beat_jump;
 mod loop_edit;
 mod quantization;
 mod saved;
+mod cue_loops;
 pub(crate) use saved::Action as SavedLoopAction;
 pub use quantization::{PendingStatus, QuantizedAction};
 pub(crate) use quantization::DIVISIONS as QUANTIZE_DIVISIONS;
@@ -63,6 +64,7 @@ pub enum Control {
     LoopToggle,
     SavedLoop { #[serde(with = "loop_edit::media_key")] media_key: u64, id: u8, action: SavedLoopAction },
     SavedPad { id: u8, action: SavedLoopAction },
+    CueOnly { #[serde(with = "loop_edit::media_key")] media_key: u64, pad: u8 },
     LoopSelect,
     Reloop,
     LoopScale { double: bool },
@@ -96,6 +98,7 @@ impl Control {
             }
             Self::SavedLoop { media_key, id, action } => media_key != 0 && (1..=8).contains(&id) && action.valid(),
             Self::SavedPad { id, action } => (1..=8).contains(&id) && matches!(action, SavedLoopAction::Save | SavedLoopAction::Recall { .. } | SavedLoopAction::Delete),
+            Self::CueOnly { media_key, pad } => media_key != 0 && pad < 8,
             Self::LoopButton { index } => index < 4,
             Self::LoopBounds { media_key, start_seconds, end_seconds } => media_key != 0
                 && start_seconds.is_finite() && end_seconds.is_finite()
@@ -156,6 +159,7 @@ pub(super) struct State {
     quantize_division: u8,
     pending: Option<quantization::Pending>,
     quantize_dispatching: bool,
+    cue_only: bool,
     quantize_owner_hint: Option<(u64, Option<u32>, Button)>,
     beat_jump_size: u8,
     owners: [Option<(u64, Option<u32>, Button)>; super::control::MAX_COMMANDS],
@@ -169,6 +173,7 @@ pub(super) struct State {
     loops: [Option<(f64, f64)>; 8],
     loop_styles: [super::cue_metadata::Style; 8],
     loop_order: [u8; 8],
+    cue_loops: [Option<u8>; 8],
     selected: usize,
     edit: u8,
     edit_ticks: Option<i64>,
@@ -195,6 +200,7 @@ pub(super) struct LoopHistory {
     loops: [Option<(f64, f64)>; 8],
     loop_styles: [super::cue_metadata::Style; 8],
     loop_order: [u8; 8],
+    cue_loops: [Option<u8>; 8],
     selected: usize,
     auto_button: Option<u8>,
 }
@@ -205,6 +211,7 @@ impl Default for State {
             quantize_division: 3,
             pending: None,
             quantize_dispatching: false,
+            cue_only: false,
             quantize_owner_hint: None,
             beat_jump_size: 5,
             owners: [None; super::control::MAX_COMMANDS],
@@ -218,6 +225,7 @@ impl Default for State {
             loops: [None; 8],
             loop_styles: [Default::default(); 8],
             loop_order: [1, 2, 3, 4, 5, 6, 7, 8],
+            cue_loops: [None; 8],
             selected: 0,
             edit: 0,
             edit_ticks: None,
@@ -249,6 +257,7 @@ impl State {
             loops: self.loops,
             loop_styles: self.loop_styles,
             loop_order: self.loop_order,
+            cue_loops: self.cue_loops,
             selected: self.selected,
             auto_button: self.auto_button,
         }
@@ -260,6 +269,7 @@ impl State {
         self.loops = history.loops;
         self.loop_styles = history.loop_styles;
         self.loop_order = history.loop_order;
+        self.cue_loops = history.cue_loops;
         self.selected = history.selected;
         self.auto_button = history.auto_button;
         self.edit = 0;
@@ -407,6 +417,8 @@ impl State {
         self.saved_loop = None;
         self.slip_forward = None;
         self.loops.fill(None);
+        self.cue_loops.fill(None);
+        self.cue_only = false;
         self.loop_styles.fill(Default::default());
         self.loop_order = [1, 2, 3, 4, 5, 6, 7, 8];
         self.auto_button = None;
@@ -723,6 +735,7 @@ impl RtEngine {
                 let slot = usize::from(pad);
                 if clear {
                     d.controls.loops[slot] = None;
+                    d.sync_cue_loop_positions();
                     d.controls.loop_styles[slot] = Default::default();
                     d.publish_preparation();
                     return;
@@ -746,6 +759,7 @@ impl RtEngine {
                     let len = len.min(d.audio.as_ref().map_or(0.0, |audio| audio.frames() as f64) - start);
                     if start < 0.0 || len < 64.0 { return; }
                     d.controls.loops[slot] = Some((start, len));
+                    d.sync_cue_loop_positions();
                     d.loop_on = true;
                     d.loop_start = start;
                     d.loop_len = len;
@@ -850,6 +864,7 @@ impl RtEngine {
                     if d.loop_on && d.controls.auto_button == Some(button) {
                         d.clear_loop();
                         d.controls.loops[d.controls.selected] = None;
+                        d.sync_cue_loop_positions();
                         d.controls.loop_styles[d.controls.selected] = Default::default();
                         d.controls.auto_button = None;
                     } else {
@@ -897,6 +912,13 @@ impl RtEngine {
             }
             Control::SavedLoop { id, action, .. } => self.saved_loop_action(index, id, action),
             Control::SavedPad { .. } => {},
+            Control::CueOnly { media_key, pad } => {
+                if self.decks[index].history_key != media_key || !self.decks[index].hotcues[usize::from(pad)].set || self.decks[index].controls.saved_loop.is_some() { return; }
+                self.decks[index].controls.cue_only = true;
+                self.decks[index].loop_on = false;
+                self.apply(Command::DeckHotCue { deck, pad, del: false });
+                self.decks[index].controls.cue_only = false;
+            },
             Control::LoopToggle => {
                 if self.decks[index].loop_len <= 1.0 {
                     self.apply(Command::DeckLoop { deck, beats: 4.0 });
@@ -979,6 +1001,7 @@ impl RtEngine {
             && d.audio.as_ref().is_some_and(|audio| d.loop_start + d.loop_len <= audio.frames() as f64) {
             d.controls.loops[d.controls.selected] = Some((d.loop_start, d.loop_len));
         }
+        d.sync_cue_loop_positions();
         d.publish_preparation();
     }
     /// Fine tune a selected loop edge using physical encoder movement.

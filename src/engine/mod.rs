@@ -2711,10 +2711,13 @@ impl RtEngine {
                 let i = pad as usize % HOTCUES;
                 if del {
                     d.hotcues[i].set = false;
+                    d.clear_cue_loop(i);
                     d.cue_styles[i] = cue_metadata::Style::default();
                 } else if d.hotcues[i].set {
-                    let position = d.cue_quantized_position(d.hotcues[i].pos, self.sr, self.bpm);
-                    d.transition_to(position, self.sr, DeckTransition::Jump);
+                    if !d.jump_cue_loop(i, self.sr) {
+                        let position = d.cue_trigger_position(i, self.sr, self.bpm);
+                        d.transition_to(position, self.sr, DeckTransition::Jump);
+                    }
                     d.playing = true;
                 } else {
                     d.hotcues[i] = HotCue {

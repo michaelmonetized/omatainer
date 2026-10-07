@@ -585,6 +585,19 @@ Linux ARM64 software qualification: explicit curved quarter-note fades and autom
 
 Linux ARM64 software qualification: live metadata edits during playback/recording, exact PCM destination samples and loop timing across tempo/meter changes at multiple rates, clip recording-take completion with held live input preservation, clear/chase MIDI ordering, production synthetic learned input, stable IDs through Undo branching/reopening, actual native editor/keyboard/assistive controls, .omat and MIDI preset/preferences files, strict version migration/refusal and measured zero renderer heap work. Editing follows existing Studio/performance-protection admission. Jumps/wraps finish the current clip recording take; pending movement is omitted from storage. No physical controller or audio device was opened. DJ deck transports remain separate.
 
+### Issue #263: implemented
+
+- fixed source-relative associations: [src/engine/saved_loops.rs](../src/engine/saved_loops.rs) — Eight cue-to-slot links, validated strict allocation-free preparation encoding, fixed IDs through reorder
+- atomic quantized cue and loop: [src/engine/deck_controls/cue_loops.rs](../src/engine/deck_controls/cue_loops.rs) — One exact-source transition, linked marker synchronization and cue-only override retaining the saved link
+- source and deferred ownership: [src/engine/deck_controls/quantization.rs](../src/engine/deck_controls/quantization.rs) — Captured cue, fixed slot and exact region with source/cancellation/routing/release refusal
+- actual native linking and cue override: [src/ui/loop_editor/saved.rs](../src/ui/loop_editor/saved.rs) — Choose cue, explicit move/link and unlink with one Undo; cue editor and pad show association and cue-only action
+- versioned preparation persistence: [src/engine/project/model.rs](../src/engine/project/model.rs) — State 27/library 17 exact associations, stopped reopen and strict old-header raw-field guards
+- Acceptance fixtures: `engine::saved_loops::tests`, `library::tests::cue_loop_associations_survive_real_catalog_backup_merge_reload_and_refuse_legacy_field_injection`, `ui::loop_editor::tests::native_cue_loop_partner_link_unlink_and_undo_use_real_saved_loop_controls_without_starting_playback`, `ui::cue_editor::tests::native_cue_editor_displays_saved_region_and_explicit_cue_only_override_preserves_its_link`, `engine::midi::handoff::tests::learned_hotcue_enters_its_saved_region_through_the_real_input_worker_without_a_new_profile_action`.
+- Evidence: [docs/validation/cue-loops.md](../docs/validation/cue-loops.md).
+- Evidence: [docs/validation/cue-loops-receipt.json](../docs/validation/cue-loops-receipt.json).
+
+Linux ARM64 software qualification: source-qualified cue-to-fixed-loop associations; exact cue/region atomic dispatch at existing musical output boundaries across source-tempo anchors and unequal rates; exact off-grid cue-only override that retires active looping and retains the association; bounded map codec and coherent preparation; slot reorder, resize/delete, held release and source/routing cancellation; complete native Undo/Redo; real native project and library save/backup/restore/merge/reload; state 27/library 17 strict old-header injection guards; actual native egui/AccessKit chooser/link/unlink/override and synthetic learned production MIDI worker. Reopen remains stopped and no preset/profile version changes are required. No physical device opened, new GUI or capture started, physical acceptance or current competitor comparison claimed; independent stage processes and session preserved.
+
 ## One remaining checklist
 
 Music source: FreeToUse public keyless API. Michael excludes other third-party provider integrations from this release. FreeToUse catalog/preview remains optional. Generic capability/error handling in #221 remains in scope. Exclusion is not issue completion.
@@ -725,7 +738,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#260](https://github.com/michaelmonetized/omatainer/issues/260) | Add controller layers, modifiers and takeover policies | planned |
 | [#261](https://github.com/michaelmonetized/omatainer/issues/261) | Implement a groove pool with audio/MIDI extraction and commitment | planned |
 | [#262](https://github.com/michaelmonetized/omatainer/issues/262) | Create reviewable collaboration packages with mix notes and references | planned |
-| [#263](https://github.com/michaelmonetized/omatainer/issues/263) | Trigger a saved loop from its associated cue marker | planned |
+| [#263](https://github.com/michaelmonetized/omatainer/issues/263) | Trigger a saved loop from its associated cue marker | implemented |
 | [#264](https://github.com/michaelmonetized/omatainer/issues/264) | Record and replay nondestructive cue and censor routines | planned |
 | [#265](https://github.com/michaelmonetized/omatainer/issues/265) | Add optional synchronized DJ video playback and external output | planned |
 | [#266](https://github.com/michaelmonetized/omatainer/issues/266) | Mix approved streaming providers concurrently as a preview-comparison feature | excluded from release |

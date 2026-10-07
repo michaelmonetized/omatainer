@@ -14,12 +14,14 @@ pub(crate) enum Action {
     Style { style: Style },
     Move { position: u8 },
     Delete,
+    Cue { pad: u8 },
+    UnlinkCue { pad: u8 },
 }
 impl Action {
     /// Validate a bounded display-order edit.
     /// Takes this slot action; returns whether every supplied index is supported.
     pub(crate) fn valid(self) -> bool {
-        !matches!(self, Self::Move { position } if position >= 8)
+        match self { Self::Move { position } => position < 8, Self::Cue { pad } | Self::UnlinkCue { pad } => pad < 8, _ => true }
     }
 }
 impl State {
@@ -37,12 +39,14 @@ impl State {
             }),
             order: self.loop_order,
             selected: self.selected as u8 + 1,
+            cue_loops: self.cue_loops,
         }
     }
     /// Restore prepared slots without starting transport or retaining old-source regions.
     /// Takes the complete bank, source rate and decoded extent; keeps only regions that fit this exact source.
     pub(in crate::engine) fn restore_saved_loops(&mut self, bank: Bank, rate: u32, frames: usize) {
         self.loops.fill(None);
+        self.cue_loops.fill(None);
         self.loop_styles.fill(Style::default());
         self.loop_order = [1, 2, 3, 4, 5, 6, 7, 8];
         self.selected = 0;
@@ -51,6 +55,7 @@ impl State {
         }
         self.loop_order = bank.order;
         self.selected = usize::from(bank.selected - 1);
+        self.cue_loops = bank.cue_loops;
         let rate = f64::from(rate);
         for (i, slot) in bank.slots.into_iter().enumerate() {
             if let Some(slot) = slot.filter(|slot| {
@@ -102,6 +107,7 @@ impl DeckRt {
                     && self.loop_start + self.loop_len <= audio.frames() as f64
             }
             Action::Move { .. } => true,
+            Action::UnlinkCue { pad } => self.controls.cue_loops[usize::from(pad)] == Some(id),
             _ => self.controls.loops[usize::from(id - 1)].is_some(),
         }
     }
@@ -158,6 +164,13 @@ impl RtEngine {
                     d.controls.loop_order[position..=old].rotate_right(1);
                 }
             }
+            Action::Cue { pad } => {
+                let Some((start, _)) = d.controls.loops[slot] else { return; };
+                let cue = usize::from(pad);
+                d.hotcues[cue] = crate::engine::HotCue { set: true, pos: start };
+                d.controls.cue_loops[cue] = Some(id);
+            },
+            Action::UnlinkCue { pad } => d.controls.cue_loops[usize::from(pad)] = None,
             Action::Delete => {
                 d.controls.loops[slot] = None;
                 d.controls.loop_styles[slot] = Style::default();
@@ -167,6 +180,7 @@ impl RtEngine {
                 }
             }
         }
+        d.sync_cue_loop_positions();
         if before
             != (
                 d.controls.loop_history(),

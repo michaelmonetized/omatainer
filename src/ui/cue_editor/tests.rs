@@ -725,3 +725,27 @@ fn protected_cue_edits_are_durable_while_hashing_and_relocation_wait_for_studio(
         "deferred qualification did not resume"
     );
 }
+
+#[test]
+fn native_cue_editor_displays_saved_region_and_explicit_cue_only_override_preserves_its_link() {
+    use crate::engine::deck_controls::{Control, SavedLoopAction};
+    let mut gui = Gui::new();
+    let rate = f64::from(gui.f.rt.decks[0].audio.as_ref().unwrap().sr);
+    gui.f.rt.decks[0].loop_start = rate * 0.5;
+    gui.f.rt.decks[0].loop_len = rate * 0.25;
+    let media_key = gui.f.app.engine.snapshot().decks[0].media_key;
+    for action in [SavedLoopAction::Save, SavedLoopAction::Cue { pad: 4 }] {
+        gui.f.rt.apply(Command::DeckControl { source: 0, deck: 0, control: Control::SavedLoop { media_key, id: 3, action } });
+    }
+    gui.f.rt.publish_for_test();gui.frame(vec![]);
+    gui.click("Deck A: Cue editor");
+    gui.click("Cue 5 only");
+    assert!(gui.f.rt.decks[0].playing);
+    assert!(!gui.f.rt.decks[0].loop_on);
+    assert_eq!(gui.f.app.engine.snapshot().decks[0].saved_loops.cue_loops[4], Some(3));
+    assert!((gui.f.rt.decks[0].pos / rate - 0.5).abs() < 0.01);
+    gui.click("Jump 5");
+    assert!(gui.f.rt.decks[0].loop_on);
+    let snap = gui.f.app.engine.snapshot().decks[0].clone();
+    assert!(super::description(&snap, 4).contains("saved loop 3"));
+}

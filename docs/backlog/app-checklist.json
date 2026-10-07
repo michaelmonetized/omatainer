@@ -3717,9 +3717,12 @@
         98,
         188
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/cue-loops.md",
+        "docs/validation/cue-loops-receipt.json"
+      ]
     },
     {
       "issue": 264,

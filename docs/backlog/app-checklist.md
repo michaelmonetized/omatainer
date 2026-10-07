@@ -6,7 +6,7 @@ Michael resumed physical checks on 2026-10-06. All MPD A/B/C controls were captu
 
 Each issue appears once, after its dependencies. The Code column checks off implemented code, including the existing stack, and does not claim complete acceptance. Accepted requires complete recorded acceptance. The eight provider integrations previously excluded by Michael stay outside this release. No open issue is automatically closed by this checklist.
 
-127 existing stack · 44 implemented · 6 partial · 171 planned · 0 accepted · 8 outside release
+127 existing stack · 45 implemented · 6 partial · 170 planned · 0 accepted · 8 outside release
 
 - [x] High-resolution stereo source peaks with measured rainbow frequency bands, native-rate validation, project reopen and pixel-scaled rendering. [Receipt](../validation/rainbow-waveforms.md)
 
@@ -273,7 +273,7 @@ Each issue appears once, after its dependencies. The Code column checks off impl
 | [ ] | [#260](https://github.com/michaelmonetized/omatainer/issues/260) | Add controller layers, modifiers and takeover policies | planned | #195, #219 |  |
 | [ ] | [#261](https://github.com/michaelmonetized/omatainer/issues/261) | Implement a groove pool with audio/MIDI extraction and commitment | planned | #110, #214 |  |
 | [ ] | [#262](https://github.com/michaelmonetized/omatainer/issues/262) | Create reviewable collaboration packages with mix notes and references | planned | #116, #229 |  |
-| [ ] | [#263](https://github.com/michaelmonetized/omatainer/issues/263) | Trigger a saved loop from its associated cue marker | planned | #220, #98, #188 |  |
+| [x] | [#263](https://github.com/michaelmonetized/omatainer/issues/263) | Trigger a saved loop from its associated cue marker | implemented | #220, #98, #188 | [receipt](../../docs/validation/cue-loops.md), [receipt](../../docs/validation/cue-loops-receipt.json) |
 | [ ] | [#264](https://github.com/michaelmonetized/omatainer/issues/264) | Record and replay nondestructive cue and censor routines | planned | #98, #237, #188, #85 |  |
 | [ ] | [#265](https://github.com/michaelmonetized/omatainer/issues/265) | Add optional synchronized DJ video playback and external output | planned | #81, #217 |  |
 | [ ] | [#266](https://github.com/michaelmonetized/omatainer/issues/266) | Mix approved streaming providers concurrently as a preview-comparison feature | outside release | #120, #221 |  |

@@ -2,7 +2,7 @@
 //! physical key ownership, worker handles and device connections.
 use super::super::*;
 
-pub const STATE_VERSION: u32 = 26;
+pub const STATE_VERSION: u32 = 27;
 pub const MAX_BANKS: usize = 16;
 pub const MAX_FX_PER_RACK: usize = 128;
 pub const MAX_NOTES_PER_CLIP: usize = 8192;
@@ -132,6 +132,7 @@ impl<'de> Deserialize<'de> for State {
             return Err(serde::de::Error::custom("Source gain requires project state version 14"));
         }
         if version < 7 && raw.get("session").is_some() { return Err(serde::de::Error::custom("Legacy projects cannot contain session identity metadata")); }
+        if version < 27 && raw.get("decks").and_then(|v|v.as_array()).is_some_and(|decks|decks.iter().any(|deck|deck.get("saved_loops").is_some_and(|bank|bank.get("cue_loops").is_some()))) { return Err(serde::de::Error::custom("Cue-loop associations require state version 27")); }
         if version < 24 && raw.get("decks").and_then(|v| v.as_array()).is_some_and(|decks| decks.iter().any(|deck| deck.get("saved_loops").is_some())) { return Err(serde::de::Error::custom("Saved loop banks require state version 24")); }
         if (7..=u64::from(STATE_VERSION)).contains(&version) && !raw.get("session").is_some_and(serde_json::Value::is_object) { return Err(serde::de::Error::custom("Supported versions 7 and newer require session identity metadata")); }
         if version < 8 && raw.get("conductor").and_then(serde_json::Value::as_object).is_some_and(|c| c.contains_key("native") || c.get("tempos").and_then(serde_json::Value::as_array).is_some_and(|points| points.iter().any(|p| p.get("ramp").is_some()))) {
@@ -684,6 +685,8 @@ impl State {
                 || !finite_range(deck.loop_start, -1.0e12, 1.0e12)
                 || !finite_range(deck.loop_len, 0.0, 1.0e12)
                 || !deck.saved_loops.valid()
+                || self.version < 27 && !saved_loops::Bank::cue_loops_empty(&deck.saved_loops.cue_loops)
+                || deck.saved_loops.cue_loops.iter().enumerate().any(|(cue, id)| id.is_some_and(|id| deck.hotcues[cue].is_none_or(|position| deck.audio.and_then(|index|media.get(index)).is_none_or(|audio| deck.saved_loops.slots[usize::from(id - 1)].is_none_or(|slot| (position - slot.start * f64::from(audio.sr)).abs() > 1e-6)))))
                 || self.version < 24 && !deck.saved_loops.is_default()
                 || deck.saved_loops.slots.iter().flatten().any(|slot| deck.audio.and_then(|index|media.get(index)).is_none_or(|audio| slot.length * f64::from(audio.sr) + 1e-6 < 64.0 || (slot.start + slot.length) * f64::from(audio.sr) > audio.frames() as f64 + 1e-6))
                 || deck

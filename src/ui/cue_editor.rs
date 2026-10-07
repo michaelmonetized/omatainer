@@ -87,8 +87,9 @@ pub(super) fn description(snap: &crate::engine::DeckSnap, slot: usize) -> String
         .color
         .map(|[r, g, b]| format!("#{r:02X}{g:02X}{b:02X}"))
         .unwrap_or_else(|| "theme color".into());
+    let linked = snap.saved_loops.cue_loops[slot].map_or_else(String::new, |id| format!(", saved loop {id}; cue-only override available"));
     format!(
-        "{}, {position}, {color}",
+        "{}, {position}, {color}{linked}",
         label(slot, snap.cue_styles[slot])
     )
 }
@@ -172,6 +173,14 @@ impl App {
                                 ui.painter().rect_stroke(rect, 2.0, st(1.0, self.theme.fg_dim), egui::StrokeKind::Inside);
                                 ui.label(description(&snap, i));
                             });
+                            if let Some(id) = snap.saved_loops.cue_loops[i] {
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("Cue {} triggers saved loop {id}", i + 1));
+                                    let response = ui.small_button(format!("Jump {} (cue only)", i + 1));
+                                    accessibility::button(ui, &response, &format!("Cue {} only", i + 1), None);
+                                    if response.clicked() { self.send(Command::DeckControl { source: 0, deck: editor.deck as u8, control: crate::engine::deck_controls::Control::CueOnly { media_key: snap.media_key, pad: i as u8 } }); }
+                                });
+                            }
                             ui.horizontal(|ui| {
                                 let set = snap.hotcues[i];
                                 let action = ui.button(if set { { let __omatainer_args = (&(i+1),); crate::localization::format("Jump {}", &[format!("{}", __omatainer_args.0)]) } } else { { let __omatainer_args = (&(i+1),); crate::localization::format("Set {}", &[format!("{}", __omatainer_args.0)]) } });

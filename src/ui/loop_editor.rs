@@ -6,6 +6,7 @@ pub(super) struct Settings {
     bank_key: u64,
     bank_styles: [crate::engine::cue_metadata::Style; 8],
     bank_names: [String; 8],
+    bank_cues: [u8; 8],
     length: u8,
     movement: u8,
 }
@@ -15,6 +16,7 @@ impl Default for Settings {
             bank_key: 0,
             bank_styles: [Default::default(); 8],
             bank_names: std::array::from_fn(|_| String::new()),
+            bank_cues: std::array::from_fn(|cue| cue as u8),
             length: 5,
             movement: 3,
         }

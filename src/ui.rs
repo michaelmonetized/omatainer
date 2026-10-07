@@ -1183,7 +1183,10 @@ impl App {
             ui.set_min_height(wave_h);
             self.deck_pad_grid(ui, t, d, snap, cell);
             ui.horizontal_wrapped(|ui| {
-                if ui.small_button(tr!("cues…")).help(ui, HelpControl::CueEditor).clicked() { self.open_cue_editor(d); }
+                let cues = ui.small_button(tr!("cues…"));
+                accessibility::button(ui, &cues, "Cue editor", None);
+                help::annotate(ui, &cues, HelpControl::CueEditor);
+                if cues.clicked() { self.open_cue_editor(d); }
                 let grid = ui.small_button(tr!("grid…"));
                 accessibility::button(ui, &grid, "Beatgrid editor", None);
                 help::annotate(ui, &grid, HelpControl::GridEditor);

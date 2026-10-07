@@ -18,6 +18,7 @@ impl App {
         let settings = &mut self.loop_settings[usize::from(deck)];
         if settings.bank_key != snap.media_key {
             settings.bank_key = snap.media_key;
+            settings.bank_cues = std::array::from_fn(|slot| snap.saved_loops.cue_loops.iter().position(|id| *id == Some(slot as u8 + 1)).unwrap_or(slot) as u8);
             settings.bank_styles = snap
                 .saved_loops
                 .slots
@@ -130,6 +131,32 @@ impl App {
                         }
                     }
                 });
+                if slot.is_some() {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label("Cue loop");
+                        let chooser = egui::ComboBox::from_id_salt(("cue-loop-target", deck, id))
+                            .selected_text(format!("Cue {}", settings.bank_cues[index] + 1))
+                            .show_ui(ui, |ui| {
+                                for cue in 0..8_u8 {
+                                    let choice = ui.selectable_value(&mut settings.bank_cues[index], cue, format!("Cue {}", cue + 1));
+                                    ui.ctx().accesskit_node_builder(choice.id, |node| node.set_label(format!("Deck {} saved loop {id}: Cue {}", (b'A' + deck) as char, cue + 1)));
+                                }
+                            });
+                        ui.ctx().accesskit_node_builder(chooser.response.id, |node| node.set_label(format!("Deck {}: Cue for saved loop {id}", (b'A' + deck) as char)));
+                        let response = ui.small_button("Move cue to loop start and link");
+                        accessibility::button(ui, &response, &format!("Link cue {} to saved loop {id}", settings.bank_cues[index] + 1), None);
+                        help::annotate(ui, &response, HelpControl::LoopEditor);
+                        if response.clicked() { edits.push((id, SavedLoopAction::Cue { pad: settings.bank_cues[index] })); }
+                        for (cue, linked) in snap.saved_loops.cue_loops.into_iter().enumerate() {
+                            if linked == Some(id) {
+                                ui.label(format!("Cue {} → loop {id}", cue + 1));
+                                let response = ui.small_button(format!("Unlink cue {}", cue + 1));
+                                accessibility::button(ui, &response, &format!("Unlink cue {} from saved loop {id}", cue + 1), None);
+                                if response.clicked() { edits.push((id, SavedLoopAction::UnlinkCue { pad: cue as u8 })); }
+                            }
+                        }
+                    });
+                }
             });
         }
         ui.label("Slot IDs stay fixed when reordered. Recall prepares a loop; Activate jumps to its start. Loading restores the selection and armed loop with playback stopped.");
