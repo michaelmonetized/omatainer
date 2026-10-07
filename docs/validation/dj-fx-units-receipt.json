@@ -11,307 +11,307 @@
     "src/engine/surface_controls.rs": "657bdc977b66dcb955d60705d64c1e4d67d5248a85c870015aacd146f8ec73c7",
     "src/engine/surface_controls/fx.rs": "12050b8c311414b533a1aae54891e1df2600445507cfa5286f52c9b5a1de7e2e",
     "src/engine/surface_controls/fx/tests.rs": "8aa1ef39bf3c68e1a9e3571a7ef64c7aca14cbfeca5adda16e97aefc8a36253f",
-    "src/ui.rs": "3f35ce1392479b628753a636394306ff63f13c9881a0c61afd28761ecd8f7a58",
+    "src/ui.rs": "fcd9677e1c786d5faa5289a923f154ad96af001d7da9a748798ce8cb5f85a9bf",
     "src/ui/dj_fx.rs": "edf657d5bf7b8222a87837118f7e1e0bcb4d1393af0d987ec9606dc8a2eaf3a3",
     "src/ui/dj_fx/tests.rs": "567a2d80629c58e808f49b07baab4dd0376ca0df193886dbd42f7a50b3d7e987",
-    "src/ui/help/catalogue.rs": "8ba6dc9e30b5facceebf5b61f0dd961da75ddadc134d511c6cc14781039c1c0e",
+    "src/ui/help/catalogue.rs": "8e528cc592db97df0ca07ff97609e4fb9a414a12b82c2d621ea010d758e3139c",
     "src/ui/project.rs": "df6d339d6f5ebc750414cc6f25f58ee4b5a32492085eb3578932832a8849a986"
   },
   "testBinary": {
-    "path": "target/app-backlog/qualification-bin/dj-fx-tests-fourth",
-    "sha256": "b340975aed8e0316ba303e7fb6344c00344eca23324a7ddcacd1be2e6d1ecce5"
+    "path": "target/app-backlog/qualification-bin/dj-fx-tests-fifth",
+    "sha256": "9c0d8cda3777162e285de409d33c5785b8a783c2d969dd0d1ab69c1ebe85bcfa"
   },
   "compiledInventory": {
-    "path": "target/app-backlog/dj-fx-fourth-source.json",
-    "sha256": "da8680cdca7d436b933275341ed89fb4fea3a9a360e477cded507bea86fae8bd",
-    "baseRevision": "3bef83f5d641b80031033f9a585c4cbde1aeb12a",
-    "files": 807
+    "path": "target/app-backlog/dj-fx-fifth-source.json",
+    "sha256": "a055b18aec1c107ff410a5d6584831ceac358fc8cf61c48bf6dacbd1ba9516dd",
+    "baseRevision": "191e4170e4e4498ad13ac53adc49719c1df558a2",
+    "files": 813
   },
   "embeddedInputs": {
     "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
-    "licenses/manifest.json": "6eff46a3561c35ce8aa48967caf3ba5909b5b99dca0c25fd2629f283da363514",
+    "licenses/manifest.json": "c8b56175ca068eb8147316b0149b4f824e98c133d030a7e76f08a58fa3bba11a",
     "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244",
     "licenses/assets.json": "a2891bdb3276c15d3ed84b4e1b8a19b24b38c6e3f125b97399a6a7a2fdd04229"
   },
   "compileLog": {
-    "path": "target/app-backlog/dj-fx-fourth-build.log",
-    "sha256": "d9eea692a4f3c4e0f79b760e53c250538de025d0efe3edc9eb3fa080b98819ed"
+    "path": "target/app-backlog/dj-fx-fifth-build.log",
+    "sha256": "e181557f3920b836bc7fdd5fd80e3385a368481366a4763caccd81ffafb574d3"
   },
   "productionCheck": {
-    "path": "target/app-backlog/dj-fx-fourth-production-check.log",
-    "sha256": "448b3825b2d58ba07742824f42c1b9c35b477961e91e31b473da57f64b0b8e2b",
+    "path": "target/app-backlog/dj-fx-fifth-production-check.log",
+    "sha256": "217b70c7b1ea7a771033e4f2ad73a9bf779b525e362553e5544a5376c12b4df8",
     "passed": true
   },
   "tests": {
     "core": {
-      "path": "target/app-backlog/dj-fx-fourth-core.log",
-      "sha256": "9ce3f49e56ca2733cf93ebf9614f750e9204791c0f0bd0cc0b6c1640dc3af5dc",
+      "path": "target/app-backlog/dj-fx-fifth-core.log",
+      "sha256": "04e67c407ef6f29e4f036473218efd3b5e1ad5d9162c55f2903cbbb5c340d0f8",
       "outcome": "ok",
       "passed": 6,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2154,
-      "seconds": 1.07
+      "filtered": 2170,
+      "seconds": 0.97
     },
     "native": {
-      "path": "target/app-backlog/dj-fx-fourth-native.log",
-      "sha256": "be2e0d03d4218defbbdc645345b4aca669e96c90d1566ab378332177d18ed8bf",
+      "path": "target/app-backlog/dj-fx-fifth-native.log",
+      "sha256": "80e7cc6790cf158eab410399355a092e03481dc3a0f96c8f67703dff8ac6e276",
       "outcome": "ok",
       "passed": 2,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2158,
-      "seconds": 0.51
+      "filtered": 2174,
+      "seconds": 0.55
     },
     "mapped": {
-      "path": "target/app-backlog/dj-fx-fourth-mapped.log",
-      "sha256": "2d94ef007ab54a791c0e05fd899b242f78286191681304304e9764eebda96e71",
+      "path": "target/app-backlog/dj-fx-fifth-mapped.log",
+      "sha256": "9d8c7369f416871f96132d37b0f6358836100097b68741d0ee7314bfe037dd0f",
       "outcome": "ok",
       "passed": 1,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2159,
-      "seconds": 0.14
+      "filtered": 2175,
+      "seconds": 0.12
     },
     "surface": {
-      "path": "target/app-backlog/dj-fx-fourth-surface.log",
-      "sha256": "6df98033f36e56f971950bdccdf5b3faa2a098c576927bcf94d0d1a2de19d319",
+      "path": "target/app-backlog/dj-fx-fifth-surface.log",
+      "sha256": "6e9ffe1c3499c593e18595c47aa585dd5213f44c4cf2789fe42c39e09845549b",
       "outcome": "ok",
       "passed": 22,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2138,
-      "seconds": 4.25
+      "filtered": 2154,
+      "seconds": 4.16
     },
     "master": {
-      "path": "target/app-backlog/dj-fx-fourth-master.log",
-      "sha256": "a244e5ccaa4ea9fd20d93996cdbf72371630ab297ecc9f3d4fd462a97717866d",
+      "path": "target/app-backlog/dj-fx-fifth-master.log",
+      "sha256": "6ae708ccd2e545d658b78fbb8e83c5836744a636594da0aeead7bde725f6869f",
       "outcome": "ok",
       "passed": 6,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2154,
-      "seconds": 3.99
+      "filtered": 2170,
+      "seconds": 4.03
     },
     "master-stereo": {
-      "path": "target/app-backlog/dj-fx-fourth-master-stereo.log",
-      "sha256": "3892f8ee8ffcb5e7be55fe08280b912b73abdf7092049680f35443dd3d5fc99c",
+      "path": "target/app-backlog/dj-fx-fifth-master-stereo.log",
+      "sha256": "8c1fe73086fdab5f49014eebd56462375524a77489a3cc6dceb3c950380cf602",
       "outcome": "ok",
       "passed": 4,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2156,
-      "seconds": 4.18
+      "filtered": 2172,
+      "seconds": 4.13
     },
     "routing": {
-      "path": "target/app-backlog/dj-fx-fourth-routing.log",
-      "sha256": "285ae73d833601b6b2ec04d4cf5a04b0ce4b585637d8a043d4fbf372945ec735",
+      "path": "target/app-backlog/dj-fx-fifth-routing.log",
+      "sha256": "e2d4a3da7752934a72a382d659c8223a13d7880f7dd69c4308fa01781cb25ef7",
       "outcome": "ok",
       "passed": 10,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2150,
-      "seconds": 0.69
+      "filtered": 2166,
+      "seconds": 0.86
     },
     "monitor": {
-      "path": "target/app-backlog/dj-fx-fourth-monitor.log",
-      "sha256": "5d657863011c47869b61860f55329d2f8cab705e746f9e99fd0b9d5fd9ab919e",
+      "path": "target/app-backlog/dj-fx-fifth-monitor.log",
+      "sha256": "bfb50dd576648fa0dc2ee435731c6dfd7a48c659d3b2f7a949cec468702c7c45",
       "outcome": "ok",
       "passed": 6,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2154,
-      "seconds": 0.75
+      "filtered": 2170,
+      "seconds": 0.78
     },
     "pad-routing": {
-      "path": "target/app-backlog/dj-fx-fourth-pad-routing.log",
-      "sha256": "02eb7edcbc18d54e06a5a8062f7048f57aed7ca11ab5f65e2e395ff5c4b74094",
+      "path": "target/app-backlog/dj-fx-fifth-pad-routing.log",
+      "sha256": "09f1b1062fb304a3b2f6dd2aaa50c24e5e6c71f6c2a0effff7991c12e93df782",
       "outcome": "ok",
       "passed": 9,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2151,
-      "seconds": 6.47
+      "filtered": 2167,
+      "seconds": 6.46
     },
     "audio-owner": {
-      "path": "target/app-backlog/dj-fx-fourth-audio-owner.log",
-      "sha256": "efc338fb39f194ea81ee09dd16aa6e70e4d16b785826d6ace5493ce9ff0e4262",
+      "path": "target/app-backlog/dj-fx-fifth-audio-owner.log",
+      "sha256": "6dc2275e75aaacc2f3aed36ad97385d307cd1a9510606a7803347ce26290c9aa",
       "outcome": "ok",
       "passed": 10,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2150,
-      "seconds": 3.5
+      "filtered": 2166,
+      "seconds": 3.36
     },
     "deck-transitions": {
-      "path": "target/app-backlog/dj-fx-fourth-deck-transitions.log",
-      "sha256": "dc360c5aa91cb0f012aa6eeeba6b7dc684c192fedecd7e0e61e129d26ebc9d6b",
+      "path": "target/app-backlog/dj-fx-fifth-deck-transitions.log",
+      "sha256": "90e2164dc38557a5c6842fa013a67bc12dbf4fb85579ed6fd5bf4d4708ad14b6",
       "outcome": "ok",
       "passed": 9,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2151,
-      "seconds": 2.07
+      "filtered": 2167,
+      "seconds": 2.08
     },
     "native-fx": {
-      "path": "target/app-backlog/dj-fx-fourth-native-fx.log",
-      "sha256": "15b3298d76abd3a189ff43fb086713239fbcaf9a0736b6f6d21e0def3b7cce9b",
+      "path": "target/app-backlog/dj-fx-fifth-native-fx.log",
+      "sha256": "669549c94c25dbb09e69c7503c9451f6685ed9c08dde462c258357bad0ab2620",
       "outcome": "ok",
       "passed": 2,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2158,
-      "seconds": 0.3
+      "filtered": 2174,
+      "seconds": 0.26
     },
     "workspace": {
-      "path": "target/app-backlog/dj-fx-fourth-workspace.log",
-      "sha256": "80baa3bb2c7423f1a795b34b44367c810228dbb8bef1185c5932c335e5c78d5d",
+      "path": "target/app-backlog/dj-fx-fifth-workspace.log",
+      "sha256": "9711ce8c496b78e07dcd05d14c7399c8129ec92a16091a06c77a652c677b3ccd",
       "outcome": "ok",
       "passed": 8,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2152,
-      "seconds": 0.98
+      "filtered": 2168,
+      "seconds": 0.95
     },
     "touch": {
-      "path": "target/app-backlog/dj-fx-fourth-touch.log",
-      "sha256": "5096f68bf7813659e3cd16062753a301d3bebd2dfb92dfbf4dc0db35423fa5ae",
+      "path": "target/app-backlog/dj-fx-fifth-touch.log",
+      "sha256": "840cfc32a9dca3f30e89b68df1782ac906b83d876df21e4a90ecd575f6997854",
       "outcome": "ok",
       "passed": 12,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2148,
-      "seconds": 1.49
+      "filtered": 2164,
+      "seconds": 1.44
     },
     "feedback": {
-      "path": "target/app-backlog/dj-fx-fourth-feedback.log",
-      "sha256": "b49aed1d23a3228a2b579e39329fb23bf1b5ab3cd4b6fb598f4637ce0b69b4ba",
+      "path": "target/app-backlog/dj-fx-fifth-feedback.log",
+      "sha256": "5b5afd49039a6b9b91972709eff15ba303ecda1f32692f9ae27e1bcdbb98db0b",
       "outcome": "ok",
       "passed": 9,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2151,
+      "filtered": 2167,
       "seconds": 0.12
     },
     "ipc-limits": {
-      "path": "target/app-backlog/dj-fx-fourth-ipc-limits.log",
-      "sha256": "a1b7039dc69090902218f0123f5e247bc89dba0275deaf4ad6ee2214b0c054b6",
+      "path": "target/app-backlog/dj-fx-fifth-ipc-limits.log",
+      "sha256": "65d203afe1bfd84c6bdf9e7fbd32e0bd399f9a783882a6fbd0dafd7506c9fb01",
       "outcome": "ok",
       "passed": 11,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2149,
+      "filtered": 2165,
       "seconds": 1
     },
     "ipc-follow": {
-      "path": "target/app-backlog/dj-fx-fourth-ipc-follow.log",
-      "sha256": "34bbb6234c4540dccafbe3aea8f723453e6a851abd31ec7cfc10b0e586e0e894",
+      "path": "target/app-backlog/dj-fx-fifth-ipc-follow.log",
+      "sha256": "c98db58cd3f9c285c3147ac767b467bca5235c507c672977924e75d45b85d0a0",
       "outcome": "ok",
       "passed": 1,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2159,
+      "filtered": 2175,
       "seconds": 0.01
     },
     "compose": {
-      "path": "target/app-backlog/dj-fx-fourth-compose.log",
-      "sha256": "52690a74477368f573bee28fad5d852568057c461f2f4fb528e2f6752b8fbd40",
+      "path": "target/app-backlog/dj-fx-fifth-compose.log",
+      "sha256": "a663ecc347b79133d02fb1cf355ef7f84ab6b0fa61be02c87b58b95e1ff776a6",
       "outcome": "ok",
       "passed": 2,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2158,
-      "seconds": 0.3
+      "filtered": 2174,
+      "seconds": 0.29
     },
     "waveform": {
-      "path": "target/app-backlog/dj-fx-fourth-waveform.log",
-      "sha256": "2c056ada6b615b7914cac3e71fd501cfd394a59c47db651157f36a81299b57a8",
+      "path": "target/app-backlog/dj-fx-fifth-waveform.log",
+      "sha256": "fb3d131e955e00f52a2e856e9111851048f049b28bcfbf2c783581e5ab50ac2f",
       "outcome": "ok",
       "passed": 5,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2155,
-      "seconds": 0.88
+      "filtered": 2171,
+      "seconds": 0.48
     },
     "song-navigation": {
-      "path": "target/app-backlog/dj-fx-fourth-song-navigation.log",
-      "sha256": "acf570ca5d0db1ef37346cec40c52d17a71b194060651f685fd5b46fa73452ea",
+      "path": "target/app-backlog/dj-fx-fifth-song-navigation.log",
+      "sha256": "00cf36cd1b36dad89b0e530c3de82a083a8c218a065120072ca4b89103f73794",
       "outcome": "ok",
       "passed": 11,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2149,
-      "seconds": 2.74
+      "filtered": 2165,
+      "seconds": 2.7
     },
     "project-timing": {
-      "path": "target/app-backlog/dj-fx-fourth-project-timing.log",
-      "sha256": "96fc95d9ea40aaf5c6362be4a6fb16914f4d11a291f738cba809c8e97ac834f3",
+      "path": "target/app-backlog/dj-fx-fifth-project-timing.log",
+      "sha256": "d8201ce268e36feb4409e55e6b2907603c1ccf6bdf39b28f5a28e5c0a087b004",
       "outcome": "ok",
       "passed": 6,
       "failed": 0,
       "ignored": 1,
-      "filtered": 2153,
+      "filtered": 2169,
       "seconds": 1.4
     },
     "metronome": {
-      "path": "target/app-backlog/dj-fx-fourth-metronome.log",
-      "sha256": "e334f605546deea736cb788f9ef407562a6729c104e88b8f3a99c4de0bb8d4a3",
+      "path": "target/app-backlog/dj-fx-fifth-metronome.log",
+      "sha256": "b7cb4b3c3760c36551c6ea88264ff92a9a8557de6108c1d5836fc93a56fa935e",
       "outcome": "ok",
       "passed": 6,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2154,
-      "seconds": 2.36
+      "filtered": 2170,
+      "seconds": 2.24
     },
     "recording": {
-      "path": "target/app-backlog/dj-fx-fourth-recording.log",
-      "sha256": "763874d0c995bc7a3c4e49f09e6a4e10da07acdfd4ff8d4c8ef6b8ac448b7a28",
+      "path": "target/app-backlog/dj-fx-fifth-recording.log",
+      "sha256": "dff28582c5968ec8c5a73c55de74e2a685873520fde4b99bbc6570d41b26ca14",
       "outcome": "ok",
       "passed": 12,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2148,
-      "seconds": 4.07
+      "filtered": 2164,
+      "seconds": 3.93
     },
     "audio": {
-      "path": "target/app-backlog/dj-fx-fourth-audio.log",
-      "sha256": "b916335f450e6afdc56890e1750ec3d954bc152fbe1cb1f7cf058d5ce51aa361",
+      "path": "target/app-backlog/dj-fx-fifth-audio.log",
+      "sha256": "c9f53ab934887833a23ce6043991c97df1939973fb590f1f8030803aeb96a6df",
       "outcome": "ok",
       "passed": 4,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2156,
-      "seconds": 0.46
+      "filtered": 2172,
+      "seconds": 0.4
     },
     "manual": {
-      "path": "target/app-backlog/dj-fx-fourth-manual.log",
-      "sha256": "3bb46e621e66b5a7f610222d195e5ad6da2c1c411a8bf06a9262776e45b73396",
+      "path": "target/app-backlog/dj-fx-fifth-manual.log",
+      "sha256": "67b8e1f09ad79b78265d494413c7e22651a5708dc85beff2001bc91fd4b838e8",
       "outcome": "ok",
       "passed": 1,
       "failed": 0,
       "ignored": 0,
-      "filtered": 2159,
+      "filtered": 2175,
       "seconds": 0
     },
     "help": {
-      "path": "target/app-backlog/dj-fx-fourth-help.log",
-      "sha256": "a75ed0c0b7db1020f41e9a5ce4f4f62116f8146b90d4703ecca1e8507faf860f",
+      "path": "target/app-backlog/dj-fx-fifth-help.log",
+      "sha256": "bf55949c77408196f4f27523ea6a2636d866888bb7bac0edf38f230f90f155f8",
       "outcome": "ok",
       "passed": 14,
       "failed": 0,
       "ignored": 1,
-      "filtered": 2145,
-      "seconds": 3.18
+      "filtered": 2161,
+      "seconds": 3.05
     },
     "full": {
-      "path": "target/app-backlog/dj-fx-fourth-full.log",
-      "sha256": "1731bfa2f68f44c29c3cdb10b7210df8e9f36f274a0218d6558124dae7f3d569",
+      "path": "target/app-backlog/dj-fx-fifth-full.log",
+      "sha256": "835978844e36de31fe6ec364dee68e4d67a39508959262fa2a0a9f03f53f0e8e",
       "outcome": "ok",
-      "passed": 2116,
+      "passed": 2131,
       "failed": 0,
-      "ignored": 44,
+      "ignored": 45,
       "filtered": 0,
-      "seconds": 705.71
+      "seconds": 712.51
     }
   },
   "tails": {
@@ -344,203 +344,203 @@
     "physical_devices_opened": false
   },
   "clockLoadRegression": {
-    "path": "target/app-backlog/dj-fx-fourth-full-output-timing.json",
-    "sha256": "e92f1cebe152aa1ec9bc7dfd9ea3b5ba54d97613b67993a77e0df6b671ea0c52",
+    "path": "target/app-backlog/dj-fx-fifth-full-output-timing.json",
+    "sha256": "99fd50b0661568880a5551c6ae8e7bd151a27ea17ec49c0521a22b9a35e23205",
     "physical_devices_opened": false,
-    "real_decode_egui_iterations": 4958,
+    "real_decode_egui_iterations": 4911,
     "schema": 1,
     "tempos": [
       {
         "bpm": 40,
         "clocks": 24,
         "delay_ns": [
-          147506,
-          30527,
-          309884,
-          13613,
-          143719,
-          56532,
-          124846,
-          113952,
-          128307,
-          71954,
-          97851,
-          21956,
-          143479,
-          139460,
-          142565,
-          43878,
-          39484,
-          399967,
-          5236,
-          128884,
-          58072,
-          8761,
-          149159,
-          14888
+          11453,
+          130623,
+          81792,
+          118503,
+          119756,
+          115676,
+          10345,
+          117723,
+          79018,
+          47021,
+          154691,
+          85694,
+          160780,
+          103784,
+          127704,
+          155207,
+          6210,
+          33338,
+          104841,
+          42594,
+          12139,
+          59809,
+          77063,
+          25607
         ],
-        "max_delay_ns": 399967
+        "max_delay_ns": 160780
       },
       {
         "bpm": 73,
         "clocks": 24,
         "delay_ns": [
-          20755,
-          130413,
-          34319,
-          40768,
-          421636,
-          130958,
-          23948,
-          126315,
-          28513,
-          134587,
-          101202,
-          15651,
-          98600,
-          67298,
-          78955,
-          60987,
-          84936,
-          104385,
-          109084,
-          143033,
-          35147,
-          196431,
-          291505,
-          306412
+          114828,
+          59236,
+          29227,
+          79760,
+          66876,
+          120575,
+          65441,
+          26099,
+          152383,
+          83790,
+          131115,
+          93273,
+          26138,
+          67296,
+          28579,
+          64611,
+          160936,
+          83594,
+          33376,
+          121784,
+          65817,
+          40141,
+          93174,
+          27915
         ],
-        "max_delay_ns": 421636
+        "max_delay_ns": 160936
       },
       {
         "bpm": 120,
         "clocks": 24,
         "delay_ns": [
-          43171,
-          114693,
-          128007,
-          72902,
-          51257,
-          159279,
-          38882,
-          100071,
-          54967,
-          4112,
-          95384,
-          22072,
-          28093,
-          81156,
-          108803,
-          43990,
-          105220,
-          102909,
-          67429,
-          36325,
-          94097,
-          158410,
-          107556,
-          75828
+          133912,
+          90483,
+          6428,
+          25165,
+          898156,
+          156682,
+          96919,
+          141824,
+          151936,
+          104006,
+          126286,
+          10231,
+          20051,
+          102081,
+          19944,
+          26014,
+          94627,
+          52573,
+          135685,
+          53755,
+          120827,
+          81188,
+          121843,
+          54372
         ],
-        "max_delay_ns": 159279
+        "max_delay_ns": 898156
       },
       {
         "bpm": 137,
         "clocks": 24,
         "delay_ns": [
-          60297,
-          17175,
-          97637,
-          45723,
-          32684,
-          39229,
-          145316,
-          107569,
-          85989,
-          16200,
-          142704,
-          396084,
-          55585,
-          138630,
-          23341,
-          142387,
-          121806,
-          101184,
-          24854,
-          55024,
-          120777,
-          46863,
-          116325,
-          136953
+          68578,
+          11724,
+          82036,
+          51139,
+          107410,
+          11596,
+          125450,
+          4762,
+          17657,
+          30219,
+          115823,
+          150969,
+          9114,
+          64801,
+          52446,
+          55175,
+          62404,
+          123966,
+          67736,
+          21173,
+          34068,
+          35380,
+          50234,
+          41879
         ],
-        "max_delay_ns": 396084
+        "max_delay_ns": 150969
       },
       {
         "bpm": 180,
         "clocks": 24,
         "delay_ns": [
-          12463,
-          51020,
-          7617,
-          155716,
-          40312,
-          35285,
-          107508,
-          156106,
-          14952,
-          119133,
-          72064,
-          76912,
-          19384,
-          123607,
-          101288,
-          139885,
-          128858,
-          88163,
-          51010,
-          35650,
-          40664,
-          60887,
-          118651,
-          29998
+          98496,
+          43711,
+          131258,
+          19597,
+          34060,
+          109566,
+          86822,
+          102578,
+          57332,
+          7504,
+          54427,
+          115558,
+          13689,
+          128860,
+          47866,
+          126455,
+          47169,
+          166633,
+          8930,
+          132436,
+          154150,
+          128072,
+          10868,
+          25916
         ],
-        "max_delay_ns": 156106
+        "max_delay_ns": 166633
       },
       {
         "bpm": 240,
         "clocks": 24,
         "delay_ns": [
-          146381,
-          96662,
-          136736,
-          51974,
-          31798,
-          153122,
-          24860,
-          108101,
-          123091,
-          24163,
-          69029,
-          25810,
-          18882,
-          127749,
-          137905,
-          18518,
-          78801,
-          80666,
-          116822,
-          139729,
-          150885,
-          130083,
-          16698,
-          28812
+          63745,
+          150074,
+          148234,
+          38977,
+          98971,
+          25464,
+          6624,
+          155036,
+          56071,
+          71314,
+          110767,
+          101677,
+          44087,
+          40373,
+          112783,
+          56693,
+          12063,
+          61140,
+          81716,
+          150003,
+          141746,
+          14864,
+          140526,
+          131102
         ],
-        "max_delay_ns": 153122
+        "max_delay_ns": 155036
       }
     ]
   },
   "node": {
-    "path": "target/app-backlog/dj-fx-fourth-node.log",
-    "sha256": "22f2dbfe21371a5f5ceae62f10fe75068e8ea70d0c45701f541e5335285babd3",
+    "path": "target/app-backlog/dj-fx-fifth-node.log",
+    "sha256": "c5f687662cc7ef8620ecf42156dd49ed92aa1687ec20b1500c06ea5644197f97",
     "passed": 15,
     "failed": 0
   },
@@ -667,5 +667,699 @@
       ]
     }
   },
-  "limits": "Linux ARM64 software qualification: two independent live DJ FX units with three serial Echo/Reverb/Filter slots; separate stereo histories for both decks, one explicitly chosen stable sampler destination per unit and Master. Beat-clock or manual echo timing, applied duration, wet/bypass, independent source assignments and defined fader placement are native controls sharing the existing controller banks. Bypass/unassignment fades new wet injection over 2 ms and drains original tails without callback allocation; sampler unassignment retains its original bus, stale/replaced project targets retire safely, source/placement edits require off/settled histories. Dry units use a fast path. Native graph and legacy mixer cut/pause tails, actual OutputCallback, six-rate raw impulses, native egui/AccessKit and recorded wire-shaped mapping dispatch passed. Echo storage supports up to two seconds, with the applied cap shown; after two seconds of silence below 1e-7, inactive histories retire. These are transient live controls like the existing surface banks; no new project version, dependency or manufacturer address. No physical audio/MIDI device, capture, new OS GUI, mapped physical paddle or listening acceptance."
+  "limits": "Linux ARM64 software qualification: two independent live DJ FX units with three serial Echo/Reverb/Filter slots; separate stereo histories for both decks, one explicitly chosen stable sampler destination per unit and Master. Beat-clock or manual echo timing, applied duration, wet/bypass, independent source assignments and defined fader placement are native controls sharing the existing controller banks. Bypass/unassignment fades new wet injection over 2 ms and drains original tails without callback allocation; sampler unassignment retains its original bus, stale/replaced project targets retire safely, source/placement edits require off/settled histories. Dry units use a fast path. Native graph and legacy mixer cut/pause tails, actual OutputCallback, six-rate raw impulses, native egui/AccessKit and recorded wire-shaped mapping dispatch passed. Echo storage supports up to two seconds, with the applied cap shown; after two seconds of silence below 1e-7, inactive histories retire. These are transient live controls like the existing surface banks; no new project version, dependency or manufacturer address. No physical audio/MIDI device, capture, new OS GUI, mapped physical paddle or listening acceptance.",
+  "concurrentLibraryIntegration": {
+    "revision": "7909c5811cbcd6b4c8a175897eaabfa621e66028",
+    "mergedAt": "191e4170e4e4498ad13ac53adc49719c1df558a2",
+    "newTests": [
+      "dj_library::tests::discovery_resumes_large_directories_and_refuses_changed_mount_or_directory_cursors",
+      "dj_library::tests::native_worker_ipc_cancellation_and_crash_keep_previous_sources",
+      "dj_library::tests::notice_limits_and_cancel_prevent_automatic_restart",
+      "dj_library::tests::request_bounds_and_virtual_roots_are_explicit",
+      "dj_library::tests::unusual_readonly_paths_content_and_unknown_databases_are_discovered_without_writes",
+      "interchange_xml::tests::hostile_or_incomplete_xml_is_refused_and_unicode_entities_decode",
+      "library::tags::tests::imported_tempo_survives_tags_analysis_and_rescan_but_yields_to_user_corrections",
+      "playlist_import::dj_tests::apple_persistent_folder_identity_orders_parents_and_refuses_cycles",
+      "playlist_import::dj_tests::dj_xml_refuses_unknown_versions_duplicate_identities_counts_and_corrupt_values",
+      "playlist_import::dj_tests::legacy_serato_content_versions_truncation_and_root_relative_paths",
+      "playlist_import::dj_tests::m3u_magic_works_with_an_unusual_filename_and_retains_original_titles",
+      "playlist_import::dj_tests::provenance_refuses_injected_identity_fields_and_oversized_serialization",
+      "playlist_import::dj_tests::rekordbox_folders_order_metadata_state_and_repeated_import_survive",
+      "playlist_import::dj_tests::repeated_sibling_names_and_source_only_metadata_are_visible_and_durable",
+      "playlist_import::dj_tests::traktor_nml_paths_hierarchy_cues_and_explicit_foreign_volume_mapping",
+      "ui::library_crates::tests::discovered_rekordbox_source_uses_native_review_hierarchy_and_repeated_snapshot_controls"
+    ],
+    "reason": "The other app work advanced the same remote tip before the FX push. Its DJ library changes were merged without overwriting either implementation; the only conflict was the generated source inventory. This forced-fresh combined build qualifies the integrated source on the ordinary test-thread stack."
+  },
+  "beforeConcurrentLibraryIntegration": {
+    "schema": 1,
+    "issue": 187,
+    "status": "implemented",
+    "platform": "Linux ARM64 software renderer/OutputCallback PCM and actual native egui/AccessKit",
+    "sourceFiles": {
+      "src/engine/audio/owner.rs": "4c94a04ee72369f6345f6fc3d9b6d5fd77b950b831b6d253a97624b43c05ac9a",
+      "src/engine/audio/routing/render.rs": "6d641298e500eb04020484475d3a15dc38b298ee83088d10b5c3050b06dec1e1",
+      "src/engine/midi/surface_tests.rs": "8ef158c71f48fab7c26ae6b1f59b7944fbda477a52159d578234f6103f695790",
+      "src/engine/mod.rs": "8c4831612b116ace7567efa3ab5baa06082112566976bba69b4d0922540696ca",
+      "src/engine/surface_controls.rs": "657bdc977b66dcb955d60705d64c1e4d67d5248a85c870015aacd146f8ec73c7",
+      "src/engine/surface_controls/fx.rs": "12050b8c311414b533a1aae54891e1df2600445507cfa5286f52c9b5a1de7e2e",
+      "src/engine/surface_controls/fx/tests.rs": "8aa1ef39bf3c68e1a9e3571a7ef64c7aca14cbfeca5adda16e97aefc8a36253f",
+      "src/ui.rs": "3f35ce1392479b628753a636394306ff63f13c9881a0c61afd28761ecd8f7a58",
+      "src/ui/dj_fx.rs": "edf657d5bf7b8222a87837118f7e1e0bcb4d1393af0d987ec9606dc8a2eaf3a3",
+      "src/ui/dj_fx/tests.rs": "567a2d80629c58e808f49b07baab4dd0376ca0df193886dbd42f7a50b3d7e987",
+      "src/ui/help/catalogue.rs": "8ba6dc9e30b5facceebf5b61f0dd961da75ddadc134d511c6cc14781039c1c0e",
+      "src/ui/project.rs": "df6d339d6f5ebc750414cc6f25f58ee4b5a32492085eb3578932832a8849a986"
+    },
+    "testBinary": {
+      "path": "target/app-backlog/qualification-bin/dj-fx-tests-fourth",
+      "sha256": "b340975aed8e0316ba303e7fb6344c00344eca23324a7ddcacd1be2e6d1ecce5"
+    },
+    "compiledInventory": {
+      "path": "target/app-backlog/dj-fx-fourth-source.json",
+      "sha256": "da8680cdca7d436b933275341ed89fb4fea3a9a360e477cded507bea86fae8bd",
+      "baseRevision": "3bef83f5d641b80031033f9a585c4cbde1aeb12a",
+      "files": 807
+    },
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "6eff46a3561c35ce8aa48967caf3ba5909b5b99dca0c25fd2629f283da363514",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244",
+      "licenses/assets.json": "a2891bdb3276c15d3ed84b4e1b8a19b24b38c6e3f125b97399a6a7a2fdd04229"
+    },
+    "compileLog": {
+      "path": "target/app-backlog/dj-fx-fourth-build.log",
+      "sha256": "d9eea692a4f3c4e0f79b760e53c250538de025d0efe3edc9eb3fa080b98819ed"
+    },
+    "productionCheck": {
+      "path": "target/app-backlog/dj-fx-fourth-production-check.log",
+      "sha256": "448b3825b2d58ba07742824f42c1b9c35b477961e91e31b473da57f64b0b8e2b",
+      "passed": true
+    },
+    "tests": {
+      "core": {
+        "path": "target/app-backlog/dj-fx-fourth-core.log",
+        "sha256": "9ce3f49e56ca2733cf93ebf9614f750e9204791c0f0bd0cc0b6c1640dc3af5dc",
+        "outcome": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2154,
+        "seconds": 1.07
+      },
+      "native": {
+        "path": "target/app-backlog/dj-fx-fourth-native.log",
+        "sha256": "be2e0d03d4218defbbdc645345b4aca669e96c90d1566ab378332177d18ed8bf",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2158,
+        "seconds": 0.51
+      },
+      "mapped": {
+        "path": "target/app-backlog/dj-fx-fourth-mapped.log",
+        "sha256": "2d94ef007ab54a791c0e05fd899b242f78286191681304304e9764eebda96e71",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2159,
+        "seconds": 0.14
+      },
+      "surface": {
+        "path": "target/app-backlog/dj-fx-fourth-surface.log",
+        "sha256": "6df98033f36e56f971950bdccdf5b3faa2a098c576927bcf94d0d1a2de19d319",
+        "outcome": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2138,
+        "seconds": 4.25
+      },
+      "master": {
+        "path": "target/app-backlog/dj-fx-fourth-master.log",
+        "sha256": "a244e5ccaa4ea9fd20d93996cdbf72371630ab297ecc9f3d4fd462a97717866d",
+        "outcome": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2154,
+        "seconds": 3.99
+      },
+      "master-stereo": {
+        "path": "target/app-backlog/dj-fx-fourth-master-stereo.log",
+        "sha256": "3892f8ee8ffcb5e7be55fe08280b912b73abdf7092049680f35443dd3d5fc99c",
+        "outcome": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2156,
+        "seconds": 4.18
+      },
+      "routing": {
+        "path": "target/app-backlog/dj-fx-fourth-routing.log",
+        "sha256": "285ae73d833601b6b2ec04d4cf5a04b0ce4b585637d8a043d4fbf372945ec735",
+        "outcome": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2150,
+        "seconds": 0.69
+      },
+      "monitor": {
+        "path": "target/app-backlog/dj-fx-fourth-monitor.log",
+        "sha256": "5d657863011c47869b61860f55329d2f8cab705e746f9e99fd0b9d5fd9ab919e",
+        "outcome": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2154,
+        "seconds": 0.75
+      },
+      "pad-routing": {
+        "path": "target/app-backlog/dj-fx-fourth-pad-routing.log",
+        "sha256": "02eb7edcbc18d54e06a5a8062f7048f57aed7ca11ab5f65e2e395ff5c4b74094",
+        "outcome": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2151,
+        "seconds": 6.47
+      },
+      "audio-owner": {
+        "path": "target/app-backlog/dj-fx-fourth-audio-owner.log",
+        "sha256": "efc338fb39f194ea81ee09dd16aa6e70e4d16b785826d6ace5493ce9ff0e4262",
+        "outcome": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2150,
+        "seconds": 3.5
+      },
+      "deck-transitions": {
+        "path": "target/app-backlog/dj-fx-fourth-deck-transitions.log",
+        "sha256": "dc360c5aa91cb0f012aa6eeeba6b7dc684c192fedecd7e0e61e129d26ebc9d6b",
+        "outcome": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2151,
+        "seconds": 2.07
+      },
+      "native-fx": {
+        "path": "target/app-backlog/dj-fx-fourth-native-fx.log",
+        "sha256": "15b3298d76abd3a189ff43fb086713239fbcaf9a0736b6f6d21e0def3b7cce9b",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2158,
+        "seconds": 0.3
+      },
+      "workspace": {
+        "path": "target/app-backlog/dj-fx-fourth-workspace.log",
+        "sha256": "80baa3bb2c7423f1a795b34b44367c810228dbb8bef1185c5932c335e5c78d5d",
+        "outcome": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2152,
+        "seconds": 0.98
+      },
+      "touch": {
+        "path": "target/app-backlog/dj-fx-fourth-touch.log",
+        "sha256": "5096f68bf7813659e3cd16062753a301d3bebd2dfb92dfbf4dc0db35423fa5ae",
+        "outcome": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2148,
+        "seconds": 1.49
+      },
+      "feedback": {
+        "path": "target/app-backlog/dj-fx-fourth-feedback.log",
+        "sha256": "b49aed1d23a3228a2b579e39329fb23bf1b5ab3cd4b6fb598f4637ce0b69b4ba",
+        "outcome": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2151,
+        "seconds": 0.12
+      },
+      "ipc-limits": {
+        "path": "target/app-backlog/dj-fx-fourth-ipc-limits.log",
+        "sha256": "a1b7039dc69090902218f0123f5e247bc89dba0275deaf4ad6ee2214b0c054b6",
+        "outcome": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2149,
+        "seconds": 1
+      },
+      "ipc-follow": {
+        "path": "target/app-backlog/dj-fx-fourth-ipc-follow.log",
+        "sha256": "34bbb6234c4540dccafbe3aea8f723453e6a851abd31ec7cfc10b0e586e0e894",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2159,
+        "seconds": 0.01
+      },
+      "compose": {
+        "path": "target/app-backlog/dj-fx-fourth-compose.log",
+        "sha256": "52690a74477368f573bee28fad5d852568057c461f2f4fb528e2f6752b8fbd40",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2158,
+        "seconds": 0.3
+      },
+      "waveform": {
+        "path": "target/app-backlog/dj-fx-fourth-waveform.log",
+        "sha256": "2c056ada6b615b7914cac3e71fd501cfd394a59c47db651157f36a81299b57a8",
+        "outcome": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2155,
+        "seconds": 0.88
+      },
+      "song-navigation": {
+        "path": "target/app-backlog/dj-fx-fourth-song-navigation.log",
+        "sha256": "acf570ca5d0db1ef37346cec40c52d17a71b194060651f685fd5b46fa73452ea",
+        "outcome": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2149,
+        "seconds": 2.74
+      },
+      "project-timing": {
+        "path": "target/app-backlog/dj-fx-fourth-project-timing.log",
+        "sha256": "96fc95d9ea40aaf5c6362be4a6fb16914f4d11a291f738cba809c8e97ac834f3",
+        "outcome": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 2153,
+        "seconds": 1.4
+      },
+      "metronome": {
+        "path": "target/app-backlog/dj-fx-fourth-metronome.log",
+        "sha256": "e334f605546deea736cb788f9ef407562a6729c104e88b8f3a99c4de0bb8d4a3",
+        "outcome": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2154,
+        "seconds": 2.36
+      },
+      "recording": {
+        "path": "target/app-backlog/dj-fx-fourth-recording.log",
+        "sha256": "763874d0c995bc7a3c4e49f09e6a4e10da07acdfd4ff8d4c8ef6b8ac448b7a28",
+        "outcome": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2148,
+        "seconds": 4.07
+      },
+      "audio": {
+        "path": "target/app-backlog/dj-fx-fourth-audio.log",
+        "sha256": "b916335f450e6afdc56890e1750ec3d954bc152fbe1cb1f7cf058d5ce51aa361",
+        "outcome": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2156,
+        "seconds": 0.46
+      },
+      "manual": {
+        "path": "target/app-backlog/dj-fx-fourth-manual.log",
+        "sha256": "3bb46e621e66b5a7f610222d195e5ad6da2c1c411a8bf06a9262776e45b73396",
+        "outcome": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2159,
+        "seconds": 0
+      },
+      "help": {
+        "path": "target/app-backlog/dj-fx-fourth-help.log",
+        "sha256": "a75ed0c0b7db1020f41e9a5ce4f4f62116f8146b90d4703ecca1e8507faf860f",
+        "outcome": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 1,
+        "filtered": 2145,
+        "seconds": 3.18
+      },
+      "full": {
+        "path": "target/app-backlog/dj-fx-fourth-full.log",
+        "sha256": "1731bfa2f68f44c29c3cdb10b7210df8e9f36f274a0218d6558124dae7f3d569",
+        "outcome": "ok",
+        "passed": 2116,
+        "failed": 0,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 705.71
+      }
+    },
+    "tails": {
+      "sample_rates": 6,
+      "compared_frames": 109226,
+      "maximum_sample_error": 0,
+      "callback_allocations": 0,
+      "physical_devices_opened": false
+    },
+    "renderer": {
+      "graph_cases": 2,
+      "cut_and_pause_tails": true,
+      "compared_frames": 52000,
+      "callback_allocations": 0,
+      "physical_devices_opened": false
+    },
+    "callback": {
+      "compared_frames": 10240,
+      "callback_allocations": 0,
+      "callback_frees": 0,
+      "other_deck_unchanged": true,
+      "physical_devices_opened": false
+    },
+    "native": {
+      "native_egui_accesskit": true,
+      "independent_units": true,
+      "applied_timing_wet_and_bypass": true,
+      "settled_placement": true,
+      "window_close_retains_live_controls": true,
+      "physical_devices_opened": false
+    },
+    "clockLoadRegression": {
+      "path": "target/app-backlog/dj-fx-fourth-full-output-timing.json",
+      "sha256": "e92f1cebe152aa1ec9bc7dfd9ea3b5ba54d97613b67993a77e0df6b671ea0c52",
+      "physical_devices_opened": false,
+      "real_decode_egui_iterations": 4958,
+      "schema": 1,
+      "tempos": [
+        {
+          "bpm": 40,
+          "clocks": 24,
+          "delay_ns": [
+            147506,
+            30527,
+            309884,
+            13613,
+            143719,
+            56532,
+            124846,
+            113952,
+            128307,
+            71954,
+            97851,
+            21956,
+            143479,
+            139460,
+            142565,
+            43878,
+            39484,
+            399967,
+            5236,
+            128884,
+            58072,
+            8761,
+            149159,
+            14888
+          ],
+          "max_delay_ns": 399967
+        },
+        {
+          "bpm": 73,
+          "clocks": 24,
+          "delay_ns": [
+            20755,
+            130413,
+            34319,
+            40768,
+            421636,
+            130958,
+            23948,
+            126315,
+            28513,
+            134587,
+            101202,
+            15651,
+            98600,
+            67298,
+            78955,
+            60987,
+            84936,
+            104385,
+            109084,
+            143033,
+            35147,
+            196431,
+            291505,
+            306412
+          ],
+          "max_delay_ns": 421636
+        },
+        {
+          "bpm": 120,
+          "clocks": 24,
+          "delay_ns": [
+            43171,
+            114693,
+            128007,
+            72902,
+            51257,
+            159279,
+            38882,
+            100071,
+            54967,
+            4112,
+            95384,
+            22072,
+            28093,
+            81156,
+            108803,
+            43990,
+            105220,
+            102909,
+            67429,
+            36325,
+            94097,
+            158410,
+            107556,
+            75828
+          ],
+          "max_delay_ns": 159279
+        },
+        {
+          "bpm": 137,
+          "clocks": 24,
+          "delay_ns": [
+            60297,
+            17175,
+            97637,
+            45723,
+            32684,
+            39229,
+            145316,
+            107569,
+            85989,
+            16200,
+            142704,
+            396084,
+            55585,
+            138630,
+            23341,
+            142387,
+            121806,
+            101184,
+            24854,
+            55024,
+            120777,
+            46863,
+            116325,
+            136953
+          ],
+          "max_delay_ns": 396084
+        },
+        {
+          "bpm": 180,
+          "clocks": 24,
+          "delay_ns": [
+            12463,
+            51020,
+            7617,
+            155716,
+            40312,
+            35285,
+            107508,
+            156106,
+            14952,
+            119133,
+            72064,
+            76912,
+            19384,
+            123607,
+            101288,
+            139885,
+            128858,
+            88163,
+            51010,
+            35650,
+            40664,
+            60887,
+            118651,
+            29998
+          ],
+          "max_delay_ns": 156106
+        },
+        {
+          "bpm": 240,
+          "clocks": 24,
+          "delay_ns": [
+            146381,
+            96662,
+            136736,
+            51974,
+            31798,
+            153122,
+            24860,
+            108101,
+            123091,
+            24163,
+            69029,
+            25810,
+            18882,
+            127749,
+            137905,
+            18518,
+            78801,
+            80666,
+            116822,
+            139729,
+            150885,
+            130083,
+            16698,
+            28812
+          ],
+          "max_delay_ns": 153122
+        }
+      ]
+    },
+    "node": {
+      "path": "target/app-backlog/dj-fx-fourth-node.log",
+      "sha256": "22f2dbfe21371a5f5ceae62f10fe75068e8ea70d0c45701f541e5335285babd3",
+      "passed": 15,
+      "failed": 0
+    },
+    "retainedPreliminaryResults": {
+      "first": {
+        "reason": "Production compilation refused twelve renderer calls to methods scoped only to the child surface module. Their actual production call sites now have minimal engine-only visibility; state fields remain private. This preliminary inventory had 806 inputs; the final frozen inventory also retains the unchanged embedded license-asset input.",
+        "binary": null,
+        "artifacts": [
+          {
+            "path": "target/app-backlog/dj-fx-first-production-check.log",
+            "sha256": "bdd998d73634b6c368a8b880151fb4129bcd90014ada3cd9dfc90322eb551b42"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-first-source.json",
+            "sha256": "29c4f68dfadaa0fc4fde4bafddb01767383a2e69763627cb31e1b59d67f75b58"
+          }
+        ]
+      },
+      "second": {
+        "reason": "Production check passed. Test compilation refused an allocator-module import, an untyped generic callback sample vector and an unavailable vec2 shorthand. Fixtures now use the actual engine allocator counter, explicit f32 samples and the existing Vec2 constructor.",
+        "binary": null,
+        "artifacts": [
+          {
+            "path": "target/app-backlog/dj-fx-second-build.log",
+            "sha256": "03724ff0f9204ad7e34cad64c5b813f37bff3b15b72575541a40768f6c3f6744"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-second-production-check.log",
+            "sha256": "fece917b28368ade26ab7499ef2c11218a3e1fdcb35a9ed98b8ba3bd2f7b5724"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-second-source.json",
+            "sha256": "30b3cf8857bda4a3322ae8cffb2d7b97c5e9a62bd1ad387e3245e9b0d91b2346"
+          }
+        ]
+      },
+      "third": {
+        "reason": "Four core checks, both native workflows, the mapped FX button regression and all neighboring groups passed. Two full-output stereo assertions assumed a linear 2:1 amplitude ratio after the existing tanh limiter. Final assertions undo that known curve and retain the same tolerance; raw stereo histories already match exactly at six rates. No production sound correction is claimed for that fixture assumption. Final source also skips inactive dry units before timing/processor work and uses plain native control descriptions.",
+        "binary": {
+          "path": "target/app-backlog/qualification-bin/dj-fx-tests-third",
+          "sha256": "b676f23bd4cd20e80374fb3a4004ccf0d9359fc819cab4e00bdcbd4edba6892d"
+        },
+        "artifacts": [
+          {
+            "path": "target/app-backlog/dj-fx-third-audio-owner.log",
+            "sha256": "527d319e8a9ce9f118c3451e1c702a7dc5086790152f3f1793ccb22f4ee3d2b4"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-build.log",
+            "sha256": "adf18cc0907c27dd3f6c241cb7d5e0347c28551584c9e211ffc68fe9517fc66d"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-core.log",
+            "sha256": "4596b675ef6acd1d534faa7741e716b3529adb2ef85f81ca9f61b6f2d337016e"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-deck-transitions.log",
+            "sha256": "71951206a1cb261c0671470179ba73beb8839edec28f56720dd1efca94ad4fe6"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-feedback.log",
+            "sha256": "b49aed1d23a3228a2b579e39329fb23bf1b5ab3cd4b6fb598f4637ce0b69b4ba"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-focused-output.log",
+            "sha256": "05cc51be08a8bfd6981da523282c18df03e440adb36e34bc96f294b5f64216e0"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-ipc-follow.log",
+            "sha256": "34bbb6234c4540dccafbe3aea8f723453e6a851abd31ec7cfc10b0e586e0e894"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-ipc-limits.log",
+            "sha256": "2a3b65af236b5db6af7f7063b26cf812b6f771550955ec882c95ac776b8d1f92"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-mapped.log",
+            "sha256": "1e8cd0269714e89d7ca358585a9ff84ada71461f13a44c3dc47e507e07b2ff3b"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-master-stereo.log",
+            "sha256": "74e3f0d095aabe10cdc0aec1d9a15f2f037b3d7d8a15eb07241265f751ffc5b2"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-master.log",
+            "sha256": "44aa7187d0323a452b203ffc4aaa58c031b113b4702976ce32f684b287d08535"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-monitor.log",
+            "sha256": "a56c35388ad73fcc95a699a73773abb15fe89fbe6b00f73e1c8b453b991708c9"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-native-fx.log",
+            "sha256": "15b3298d76abd3a189ff43fb086713239fbcaf9a0736b6f6d21e0def3b7cce9b"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-native.log",
+            "sha256": "67234e5c5f7c41abf1ce337bbecc61c7925f19b6d48c35d8e130fcd29f385bd0"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-pad-routing.log",
+            "sha256": "21f64fd503c5d8165555746e2597bb20085e56e3bf8c9963036f4a4e76c0f8bc"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-routing.log",
+            "sha256": "ca51f6712fe21a2ae4b61684ee3bcc9bb9ebd1da62cc859146a50af761ca7357"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-source.json",
+            "sha256": "0b9389cf72de947a3af689aa1c586b87cca45d708ee5d55ecba821e28ab0b679"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-surface.log",
+            "sha256": "c9ad1c1008f303e7eae8bbbbbe85c7ef3305fc5f4ccf438981dd2255993252fd"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-touch.log",
+            "sha256": "e48735492f177e3703404f3ec426436d6ecda1794186a364339cf597d1afa79d"
+          },
+          {
+            "path": "target/app-backlog/dj-fx-third-workspace.log",
+            "sha256": "cee718e02f75e754b75b5a27d1425e0d09c12fb1464352b7a3759e186bdec71f"
+          }
+        ]
+      }
+    },
+    "limits": "Linux ARM64 software qualification: two independent live DJ FX units with three serial Echo/Reverb/Filter slots; separate stereo histories for both decks, one explicitly chosen stable sampler destination per unit and Master. Beat-clock or manual echo timing, applied duration, wet/bypass, independent source assignments and defined fader placement are native controls sharing the existing controller banks. Bypass/unassignment fades new wet injection over 2 ms and drains original tails without callback allocation; sampler unassignment retains its original bus, stale/replaced project targets retire safely, source/placement edits require off/settled histories. Dry units use a fast path. Native graph and legacy mixer cut/pause tails, actual OutputCallback, six-rate raw impulses, native egui/AccessKit and recorded wire-shaped mapping dispatch passed. Echo storage supports up to two seconds, with the applied cap shown; after two seconds of silence below 1e-7, inactive histories retire. These are transient live controls like the existing surface banks; no new project version, dependency or manufacturer address. No physical audio/MIDI device, capture, new OS GUI, mapped physical paddle or listening acceptance."
+  }
 }
