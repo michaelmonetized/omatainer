@@ -1,3 +1,4 @@
+mod slicer;
 use super::*;
 use crate::engine::deck_pads::{Mode, Press, Release};
 
@@ -170,6 +171,8 @@ impl App {
                 }
                 ui.small(parameter(mode, snap, self.snap.sampler_bank));
             });
+            self.slicer_controls(ui,deck,snap,(cell+4.0)*4.0+9.0);
+            ui.push_id("fixed-deck-pad-grid",|ui| {
             for row in 0..2 {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing = Vec2::splat(3.0);
@@ -202,6 +205,7 @@ impl App {
                     }
                 });
             }
+            });
         });
     }
 
@@ -355,10 +359,10 @@ fn presentation(
                 },
             )
         }
-        Mode::Slice => (
-            format!("Slice {}", pad + 1),
-            snap.controls.slice == Some(pad as u8),
-        ),
+        Mode::Slice => {
+            if snap.controls.slicer.pending==Some(pad as u8) {color=Color32::from_rgb(255,160,40);}
+            (format!("Slice {}",pad+1),snap.controls.slicer.active==Some(pad as u8))
+        },
         Mode::Sampler | Mode::VelocitySampler => {
             let slot = deck * 8 + pad;
             let name = global

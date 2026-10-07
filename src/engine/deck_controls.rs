@@ -7,6 +7,8 @@ mod quantization;
 mod saved;
 mod cue_loops;
 mod slip;
+mod slicer;
+pub use slicer::Status as SlicerStatus;
 pub(crate) use saved::Action as SavedLoopAction;
 pub use quantization::{PendingStatus, QuantizedAction};
 pub(crate) use quantization::DIVISIONS as QUANTIZE_DIVISIONS;
@@ -82,6 +84,7 @@ pub enum Control {
     TrackStart,
     Slip,
     SlipSettings { enabled: bool, division: Option<u8> },
+    SlicerSettings { repeating: bool, domain: u8, repeat: u8, division: Option<u8> },
     PadMode { mode: u8 },
     Parameter { mode: u8, up: bool, shifted: bool },
     HotLoop { pad: u8, clear: bool },
@@ -94,6 +97,7 @@ impl Control {
     /// Takes this control; returns whether its indices and values are supported.
     pub fn valid(self) -> bool {
         match self {
+            Self::SlicerSettings {domain,repeat,division,..} => (1..=6).contains(&domain) && repeat<=3 && division.is_none_or(|index|usize::from(index)<QUANTIZE_DIVISIONS.len()),
             Self::SlipSettings {division,..} => division.is_none_or(|index|usize::from(index)<QUANTIZE_DIVISIONS.len()),
             Self::Quantize { division, .. } => usize::from(division) < QUANTIZE_DIVISIONS.len(),
             Self::Strip { value } | Self::StartTime { value } | Self::StopTime { value } => {
@@ -157,6 +161,7 @@ pub struct Status {
     pub roll_scale: i8,
     pub slice_domain: u8,
     pub slice_quant: u8,
+    pub slicer: SlicerStatus,
     pub hotloops: [bool; 8],
 }
 
@@ -204,6 +209,7 @@ pub(super) struct State {
     pub roll_scale: i8,
     slice_domain: u8,
     slice_quant: u8,
+    slicer: slicer::State,
     performance_forward: Option<f64>,
     saved_loop: Option<(bool, f64, f64)>,
     slip_forward: Option<f64>,
@@ -262,6 +268,7 @@ impl Default for State {
             roll_scale: 0,
             slice_domain: 3,
             slice_quant: 0,
+            slicer: Default::default(),
             performance_forward: None,
             saved_loop: None,
             slip_forward: None,
@@ -299,6 +306,9 @@ impl State {
     pub fn held(&self, button: Button) -> bool {
         self.counts[button.index()] > 0
     }
+    /// Recognize a selected or directly held slicer gesture.
+    /// Takes this state; returns whether slicer setting changes must retire source-owned performance work.
+    fn using_slicer(&self) -> bool {self.pad_mode==2||(0..8).any(|pad|self.held(Button::Slice(pad)))}
     /// Turn a held Cue preview into continued playback.
     /// Takes this state; returns whether a held Cue preview owned the transport.
     pub fn latch_preview(&mut self) -> bool {
@@ -384,6 +394,7 @@ impl State {
         self.performance_forward = None;
         self.saved_loop = None;
         self.interrupt_slip();
+        self.slicer.clear();
         self.preview = None;
         self.auto_button = None;
         self.delete = false;
@@ -426,6 +437,7 @@ impl State {
             roll_scale: self.roll_scale,
             slice_domain: self.slice_domain,
             slice_quant: self.slice_quant,
+            slicer: self.slicer.status(),
             hotloops: self.loops.map(|slot| slot.is_some()),
         }
     }
@@ -439,6 +451,7 @@ impl State {
         self.performance_forward = None;
         self.saved_loop = None;
         self.interrupt_slip();
+        self.slicer.clear();
         self.loops.fill(None);
         self.cue_loops.fill(None);
         self.cue_only = false;
@@ -460,6 +473,7 @@ impl super::DeckRt {
     /// Retire temporary pad loops before clearing their owners.
     /// Takes this deck; restores its prior loop and clears all held performance gestures.
     pub(super) fn release_performance_controls(&mut self) {
+        self.leave_slicer();
         if let Some((on, start, len)) = self.controls.saved_loop.take() {
             self.loop_on = on;
             self.loop_start = start;
@@ -483,16 +497,19 @@ impl RtEngine {
             .as_ref()
             .map_or(f64::from(self.sr), |audio| f64::from(audio.sr))
             / f64::from(self.sr);
-        if let Some(position) = &mut d.controls.performance_forward {
-            if d.playing {
-                *position += step;
-            }
-            if let Some((true, start, len)) = d.controls.saved_loop.filter(|(_, _, len)| *len > 1.0)
-            {
-                if *position >= start + len {
-                    *position = start + (*position - start).rem_euclid(len);
+        let position=d.controls.performance_forward.unwrap_or(d.pos);
+        let next=if d.sync {d.grid_position_at(d.grid_beat_at(position,self.sr,self.bpm)+f64::from(d.sync_bpm)/(60.0*f64::from(self.sr)),self.sr,self.bpm)} else {position+step};
+        let beat_step=d.grid_beats_between(position,next,self.sr,self.bpm).max(0.0);
+        d.tick_slicer(beat_step,self.sr,self.bpm);
+        if d.controls.performance_forward.is_some() && d.playing {
+            let mut next=next;
+            if let Some((true,start,len))=d.controls.saved_loop.filter(|(_,_,len)|*len>1.0) {
+                if next>=start+len {
+                    if d.sync {let first=d.grid_beat_at(start,self.sr,self.bpm);let last=d.grid_beat_at(start+len,self.sr,self.bpm);let excess=d.grid_beats_between(start+len,next,self.sr,self.bpm);next=if last>first {d.grid_position_at(first+excess.rem_euclid(last-first),self.sr,self.bpm)}else{start+(next-start).rem_euclid(len)};}
+                    else {next=start+(next-start).rem_euclid(len);}
                 }
             }
+            d.controls.performance_forward=Some(next);
         }
         d.tick_slip(step,self.sr,self.bpm);
     }
@@ -548,67 +565,7 @@ impl RtEngine {
                 }
                 if on && State::slip_button(button) && !d.controls.delete {d.begin_slip(self.sr,self.bpm);}
                 match button {
-                    Button::Roll(_) | Button::Slice(_) => {
-                        if on && d.controls.saved_loop.is_none() {
-                            d.controls.saved_loop = Some((d.loop_on, d.loop_start, d.loop_len));
-                            d.controls.performance_forward = Some(d.pos);
-                        }
-                        let active = if on {
-                            Some(button)
-                        } else {
-                            d.controls
-                                .owners
-                                .iter()
-                                .rev()
-                                .flatten()
-                                .map(|(_, _, button)| *button)
-                                .find(|button| matches!(button, Button::Roll(_) | Button::Slice(_)))
-                        };
-                        if let Some(button) = active {
-                            let (start, beats) = match button {
-                                Button::Roll(pad) => (
-                                    d.grid_snap(d.pos, self.sr, self.bpm),
-                                    2_f32.powi(
-                                        i32::from(pad) - 5 + i32::from(d.controls.roll_scale),
-                                    ),
-                                ),
-                                Button::Slice(pad) => {
-                                    let domain = 2_f64.powi(i32::from(d.controls.slice_domain));
-                                    let beat = d.grid_beats_between(
-                                        0.0,
-                                        d.controls.performance_forward.unwrap_or(d.pos),
-                                        self.sr,
-                                        self.bpm,
-                                    );
-                                    let start = (beat / domain).floor() * domain
-                                        + f64::from(pad) * domain / 8.0;
-                                    (
-                                        d.grid_span(0.0, start, self.sr, self.bpm),
-                                        (domain
-                                            / 8.0
-                                            / 2_f64.powi(i32::from(d.controls.slice_quant)))
-                                            as f32,
-                                    )
-                                }
-                                _ => unreachable!(),
-                            };
-                            d.loop_start = start;
-                            d.loop_len = d
-                                .grid_span(start, f64::from(beats), self.sr, self.bpm)
-                                .max(2.0);
-                            d.loop_on = true;
-                            d.transition_to(start, self.sr, DeckTransition::Jump);
-                        } else {
-                            if let Some((on, start, len)) = d.controls.saved_loop.take() {
-                                d.loop_on = on;
-                                d.loop_start = start;
-                                d.loop_len = len;
-                            }
-                            if let Some(position) = d.controls.performance_forward.take() {
-                                if d.controls.slip_forward.is_none() {d.transition_to(position, self.sr, DeckTransition::Jump);}
-                            }
-                        }
-                    }
+                    Button::Roll(_) | Button::Slice(_) => d.temporary_pad((source,key,button),on,self.sr,self.bpm),
                     Button::Bleep => {
                         if d.controls.held(Button::Bleep) {
                             if d.controls.forward.is_none() {
@@ -704,11 +661,22 @@ impl RtEngine {
             Control::SlipSettings {enabled,division} => {let state=&mut self.decks[index].controls;let was_enabled=state.slip;state.slip=enabled;state.slip_release=division;state.slip_due=None;state.slip_return=None;if !enabled {state.interrupt_slip();}else if !was_enabled {state.slip_interrupted=false;}},
             Control::PadMode { mode } => {
                 if self.decks[index].controls.pad_mode != mode {
+                    if self.decks[index].controls.pad_mode==2 {self.decks[index].controls.interrupt_slip();}
                     self.cancel_deck_pads(index);
+                    self.decks[index].leave_slicer();
                     self.decks[index].controls.pad_mode = mode;
+                    self.decks[index].controls.slicer.arm();
                 }
             },
+            Control::SlicerSettings {repeating,domain,repeat,division} => {
+                if self.decks[index].controls.using_slicer() {
+                    self.decks[index].controls.interrupt_slip();self.cancel_deck_pads(index);self.decks[index].leave_slicer();
+                }
+                let d=&mut self.decks[index];d.controls.slice_domain=domain;d.controls.slice_quant=repeat;
+                d.controls.slicer.configure(repeating,division);
+            },
             Control::Parameter { mode, up, shifted } => {
+                if mode==2 && self.decks[index].controls.using_slicer() {self.decks[index].controls.interrupt_slip();self.cancel_deck_pads(index);self.decks[index].leave_slicer();self.decks[index].controls.slicer.arm();}
                 let controls = &mut self.decks[index].controls;
                 let delta = if up { 1 } else { -1 };
                 match mode {
@@ -716,6 +684,7 @@ impl RtEngine {
                         controls.roll_scale = (controls.roll_scale + delta).clamp(-3, 3)
                     }
                     2 => {
+                        controls.slicer.invalidate_bounds();
                         if !shifted {
                             controls.slice_quant = (i16::from(controls.slice_quant)
                                 + i16::from(delta))

@@ -1,0 +1,743 @@
+{
+  "schema": 1,
+  "platform": "Linux ARM64 software renderer/OutputCallback PCM and actual native egui/AccessKit",
+  "sourceFiles": {
+    "src/engine/deck_controls.rs": "9c69112d7d5f7ac1e6a8af8ffb18de04099e4e742a4495e536128e0bf8944d0d",
+    "src/engine/deck_controls/slicer.rs": "94d5b5b3153c187b40bcb51042e5c1a92025ee14014e360d4ad85adb9a72811f",
+    "src/engine/deck_controls/slicer/tests.rs": "819bfe65e3f7a5353e7f729700b9a1162e003fbeb7df916a134cc0f007e2e86e",
+    "src/engine/mod.rs": "37250d9df4898606f685a2d8795d604910e358ac7fd033b6d7d796b27f627c33",
+    "src/ui/deck_pads.rs": "2959ef8748f8c3131fd8852977760d4c09c34eb04a424a5ad74ae6757c6ec725",
+    "src/ui/deck_pads/slicer.rs": "e7a6795dd207298521d53ab52eec66a0d6eac4e1487a5ff16458ad24af38793b",
+    "src/ui/deck_pads/slicer/tests.rs": "f46592b94e403d73ec8b5d0e451be151a92210460b2af303f66ad5bedff71413",
+    "src/ui/help/catalogue.rs": "a2a17f935804712d9d239db798c1212aa105bafc1c481b512d56256e891f8057",
+    "src/ui/touch/tests.rs": "0409159e20ee177d4ae2f7e8acc03fd1555fe6321fa31aa218b0f44d80185dc7"
+  },
+  "testBinary": {
+    "path": "target/app-backlog/qualification-bin/slicer-tests-ninth",
+    "sha256": "5d8174ca94dd44a62ae4d01afa5807d7b470cf06ae4db6e1e32205b716efe250"
+  },
+  "compiledInventory": {
+    "path": "target/app-backlog/slicer-ninth-compiled-source-inventory.json",
+    "sha256": "7717e3d4b895b1452fb01054babb3d7a5bb596247d3eab1726b7d357314feaa4",
+    "baseRevision": "3a6a78e121122e98df5506f72c95aaa165fd8b12",
+    "files": 786
+  },
+  "embeddedInputs": {
+    "schema": 1,
+    "baselineRevision": "3a6a78e121122e98df5506f72c95aaa165fd8b12",
+    "embeddedInputs": {
+      "README.md": "abab5cb8b9a15a180652402e983142ce2a3baf21f5272fe1c4e9079a5083143f",
+      "licenses/manifest.json": "05d613233fb22a52b5d3b448508a45d6c56404d9b30d4f1ee68cac0e986ef2ae",
+      "licenses/notices.json": "b15a146c83e362b540c860ae618b80f9ee0150cd9d8d41683a5d3d3fcb85c244"
+    }
+  },
+  "tests": {
+    "core": {
+      "path": "target/app-backlog/slicer-ninth-core.log",
+      "sha256": "3eed638e7c9776bc03af8ca0045a962c7a27350d9341beb2c0e82ad7226e9f41",
+      "outcome": "ok",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2087,
+      "seconds": 7.2
+    },
+    "native": {
+      "path": "target/app-backlog/slicer-ninth-native.log",
+      "sha256": "6b038f1d8b343bac6f52c49a36ad01f5ec76c80b9c151456b0ba2ed1ff7a486f",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2095,
+      "seconds": 0.34
+    },
+    "deck-controls": {
+      "path": "target/app-backlog/slicer-ninth-deck-controls.log",
+      "sha256": "3091a6954ad2f552ac42b993d85a776785f69466bda4314aa95ffd2c5ce75759",
+      "outcome": "ok",
+      "passed": 44,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2053,
+      "seconds": 40.18
+    },
+    "slip": {
+      "path": "target/app-backlog/slicer-ninth-slip.log",
+      "sha256": "3d51455c152ecda0e7476f93ec4e5557d2cc4cecbbd5d003f61381355fb27224",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2089,
+      "seconds": 9.93
+    },
+    "pads": {
+      "path": "target/app-backlog/slicer-ninth-pads.log",
+      "sha256": "449f03f3b6c2c016540b20ef9cb8bb17168dddcf0542cc7cab8d1b3bb235c29c",
+      "outcome": "ok",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2090,
+      "seconds": 0.88
+    },
+    "native-pads": {
+      "path": "target/app-backlog/slicer-ninth-native-pads.log",
+      "sha256": "7c61242b73bf0dcd76c1f31878ca8885561cae09da973ec6aac9f3ee134208bd",
+      "outcome": "ok",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2094,
+      "seconds": 0.48
+    },
+    "keylock": {
+      "path": "target/app-backlog/slicer-ninth-keylock.log",
+      "sha256": "d9619ae0b4b5042cc894ade697cb914df8b79c69d977e95c6d30e705b9293db8",
+      "outcome": "ok",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2080,
+      "seconds": 33.16
+    },
+    "beat-jump": {
+      "path": "target/app-backlog/slicer-ninth-beat-jump.log",
+      "sha256": "5cfb7fdf7b6449cd7f36bfeaddf81289b73f048036a7730f8fbdeb33a63d4986",
+      "outcome": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2095,
+      "seconds": 0.27
+    },
+    "touch": {
+      "path": "target/app-backlog/slicer-ninth-touch.log",
+      "sha256": "cf927ee59029ddad6c25eb9a7bdf94cbe881a4dee9029cea353fce2ba9bed7cf",
+      "outcome": "ok",
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2085,
+      "seconds": 1.37
+    },
+    "workspace": {
+      "path": "target/app-backlog/slicer-ninth-workspace.log",
+      "sha256": "305652d61084ec9a8219d5cad5e62021c8c6c55c16154f9b466f8eff3a491218",
+      "outcome": "ok",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2089,
+      "seconds": 0.96
+    },
+    "manual": {
+      "path": "target/app-backlog/slicer-ninth-manual.log",
+      "sha256": "7c7230745395458dc2975cc0487fcb7ef397e3f5cc351ee28162b197a46a73d4",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2096,
+      "seconds": 0
+    },
+    "help": {
+      "path": "target/app-backlog/slicer-ninth-help.log",
+      "sha256": "d8e3552d05b405d39167db13578a7043aec0723001d474f458e420bab7277132",
+      "outcome": "ok",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 2082,
+      "seconds": 2.94
+    },
+    "ipc": {
+      "path": "target/app-backlog/slicer-ninth-ipc.log",
+      "sha256": "b80159ff91e8da676c885caf4a099a1816b404532abaa288843e3389e2cdfacb",
+      "outcome": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 2096,
+      "seconds": 0.01
+    },
+    "full": {
+      "path": "target/app-backlog/slicer-ninth-full.log",
+      "sha256": "7052ae1e4d293d41a9b9072f52a3f34ac1a8315bfa31f35249be5a433407baaa",
+      "outcome": "ok",
+      "passed": 2053,
+      "failed": 0,
+      "ignored": 44,
+      "filtered": 0,
+      "seconds": 619.99
+    }
+  },
+  "domain": {
+    "cases": 576,
+    "domains_beats": [
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "max_source_frame_error": 0,
+    "numbered_stereo_transients": true,
+    "physical_devices_opened": false,
+    "repeat_divisors": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "source_rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "variable_grid": true
+  },
+  "trigger": {
+    "audible_loop_independent": true,
+    "cases": 18,
+    "max_wait_output_frames": 57192,
+    "output_rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "physical_devices_opened": false,
+    "source_rates": [
+      44100,
+      48000,
+      96000
+    ],
+    "tempo_change_during_hold": true
+  },
+  "wrap": {
+    "cases": 9,
+    "max_source_frame_error": 2.4567015088905464e-9,
+    "physical_devices_opened": false,
+    "synced_variable_grid_wrap": true
+  },
+  "callback": {
+    "callback_allocations": 0,
+    "callback_frees": 0,
+    "compared_other_deck_frames": 32768,
+    "energy": 18.393928950827295,
+    "other_deck_max_error": 0,
+    "physical_devices_opened": false
+  },
+  "input": {
+    "actual_private_midi_worker": true,
+    "physical_devices_opened": false,
+    "sources": 2,
+    "sp1_layer_release_identity": true
+  },
+  "native": {
+    "accessible_independent_settings": true,
+    "actual_pending_marker_painted": true,
+    "exact_eight_source_intervals": true,
+    "native_original_release_cancelled": true,
+    "physical_devices_opened": false
+  },
+  "slipBoundary": {
+    "background_preserved": true,
+    "cases": 9,
+    "original_loop_restored_before_new_domain": true,
+    "physical_devices_opened": false,
+    "retired_old_fixed_slip_root": true
+  },
+  "preparation": {
+    "cases": 6,
+    "physical_devices_opened": false,
+    "unrelated_held_roll_preserved": true,
+    "unrelated_slip_root_preserved": true
+  },
+  "clockLoadRegression": {
+    "path": "target/app-backlog/slicer-ninth-full-output-timing.json",
+    "sha256": "8ba9d7de7115076f5e50a2f388f7dde4a1de5b24b479d700043695cf87037cb6",
+    "physical_devices_opened": false,
+    "real_decode_egui_iterations": 5134,
+    "schema": 1,
+    "tempos": [
+      {
+        "bpm": 40,
+        "clocks": 24,
+        "delay_ns": [
+          111622,
+          76594,
+          124191,
+          87662,
+          36800,
+          3522,
+          110202,
+          3882,
+          52354,
+          4783,
+          178465,
+          73477,
+          110616,
+          149463,
+          94393,
+          59906,
+          141628,
+          2558,
+          7738,
+          97210,
+          117057,
+          59028,
+          110292,
+          70014
+        ],
+        "max_delay_ns": 178465
+      },
+      {
+        "bpm": 73,
+        "clocks": 24,
+        "delay_ns": [
+          145831,
+          11607,
+          102844,
+          152663,
+          70315,
+          23967,
+          128245,
+          26064,
+          103759,
+          14452,
+          145147,
+          85716,
+          31951,
+          78687,
+          17005,
+          126325,
+          96186,
+          39338,
+          78865,
+          32892,
+          76670,
+          23489,
+          11849,
+          151669
+        ],
+        "max_delay_ns": 152663
+      },
+      {
+        "bpm": 120,
+        "clocks": 24,
+        "delay_ns": [
+          92705,
+          58682,
+          138701,
+          99135,
+          49195,
+          121423,
+          113816,
+          91168,
+          81811,
+          116704,
+          57681,
+          82367,
+          81009,
+          6528,
+          119880,
+          139523,
+          140334,
+          23935,
+          90703,
+          130556,
+          13490,
+          37217,
+          65110,
+          6296
+        ],
+        "max_delay_ns": 140334
+      },
+      {
+        "bpm": 137,
+        "clocks": 24,
+        "delay_ns": [
+          123539,
+          110165,
+          43040,
+          73541,
+          87625,
+          62542,
+          50084,
+          164294,
+          20210,
+          90086,
+          146337,
+          25254,
+          118297,
+          4839,
+          100965,
+          66299,
+          131425,
+          111300,
+          101801,
+          94343,
+          123886,
+          122678,
+          131721,
+          150763
+        ],
+        "max_delay_ns": 164294
+      },
+      {
+        "bpm": 180,
+        "clocks": 24,
+        "delay_ns": [
+          60622,
+          98427,
+          128856,
+          126244,
+          43630,
+          86143,
+          124364,
+          127710,
+          30012,
+          72900,
+          12495,
+          34008,
+          107771,
+          107199,
+          162546,
+          75849,
+          127112,
+          165457,
+          105636,
+          5856,
+          92286,
+          67548,
+          20476,
+          51114
+        ],
+        "max_delay_ns": 165457
+      },
+      {
+        "bpm": 240,
+        "clocks": 24,
+        "delay_ns": [
+          40372,
+          89444,
+          123641,
+          99587,
+          153243,
+          27147,
+          114678,
+          135250,
+          70613,
+          60476,
+          110965,
+          8869,
+          83608,
+          88513,
+          151294,
+          19322,
+          140021,
+          108967,
+          50163,
+          130486,
+          128766,
+          140462,
+          48284,
+          87356
+        ],
+        "max_delay_ns": 153243
+      }
+    ]
+  },
+  "node": {
+    "path": "target/app-backlog/slicer-ninth-node.log",
+    "sha256": "d6b448e57515c26c2a4fb822eb1b8ea409f0fda80e65465111eae799e96ec9ba",
+    "passed": 15,
+    "failed": 0
+  },
+  "retainedPreliminaryResults": {
+    "first": {
+      "compiled": false,
+      "compileLog": {
+        "path": "target/app-backlog/slicer-first-compile.log",
+        "sha256": "d5b47bcdf04ef71e7af0a39a7fb3abd379762eff2dc5f4bcb05f1918fa561b29"
+      },
+      "inventorySha256": "3d6ff498c000df583ab563c4e33fd3d94c09dd56f1d3fb5f280503a34b37ff97",
+      "reason": "The first compile caught private runtime state accessed from the engine parent. Deck methods retain the private runtime boundary."
+    },
+    "second": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-second",
+        "sha256": "9e5b69c16b13773fff9db9c0afa32304f2d2c98e3c91f4831e3411337623782c",
+        "compileLogSha256": "829f69a32abe8a4f206dcd4078634e01539a7b45533004b6502cdc1cd0f54c24"
+      },
+      "core": {
+        "path": "target/app-backlog/slicer-second-core.log",
+        "sha256": "28565b87321fe0b7a41780620b0fdc3ffbe84461594aae69e5b5fbad45c055c9",
+        "outcome": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2087,
+        "seconds": 4.36
+      },
+      "native": {
+        "path": "target/app-backlog/slicer-second-native.log",
+        "sha256": "be8c6457722e4156c280851e8a51a8650eccf74b20b197ae4392e5b1e938187e",
+        "outcome": "FAILED",
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2092,
+        "seconds": 0.37
+      },
+      "reason": "Seven renderer checks passed, including 576 exact source intervals and eighteen trigger cases. The native pending fixture failed and was retained. Expanded original private MIDI parsing/worker and mapped sync-wrap qualification were added; the native correction is recorded in the third-round result."
+    },
+    "third": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-third",
+        "sha256": "c09c7d63d316854e8b447fc1ba2deb92d69cbc62e874e3e987b041ac470b7f3c",
+        "compileLogSha256": "2f9f7ca679ceb22e4319658f65809388d3cf2028f9e84921e498cbda4f957ef6"
+      },
+      "inventorySha256": "4220e2ed878cc89656b37159ac430e88fbe12f87204861b55e2a67fb10e3b3fe",
+      "core": {
+        "path": "target/app-backlog/slicer-third-core.log",
+        "sha256": "70a72bdab2b3d7d406b528602b292cdde2eb5ab510a878885b47635813d94de4",
+        "outcome": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2087,
+        "seconds": 5.56
+      },
+      "native": {
+        "path": "target/app-backlog/slicer-third-native.log",
+        "sha256": "6d5b4ac85752c6f8f80f8a582a760b6703a8ca69894641faa7b57b5ef55148f1",
+        "outcome": "FAILED",
+        "passed": 1,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2093,
+        "seconds": 0.33
+      },
+      "reason": "Eight renderer checks passed, including actual private MIDI worker parsing and nine source/output mapped-sync wrap cases. The expanded native diagnostic showed playback and configured division retained, but no native pad owner: the inline choice popup stayed open and the ordinary dialog input guard retired the press. Production choices explicitly close their popup; the shared pad grid has a stable identity while markers appear, and its highlight follows the actually active or pending slice. The native fixture requires the popup to close before the same accessible pad press/painted-marker/release assertions."
+    },
+    "fourth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-fourth",
+        "sha256": "3c9d91ec9b064c4f5b636e88fce6a92c309fcc1c2fd89d4fe21c8830938ba81f",
+        "compileLogSha256": "c0fbef0ff78c39615906a82ea30fb31024311053015e3666cda393a3e65c0fb6"
+      },
+      "inventorySha256": "a6d7341af174eb0bd8a49fb02526611038bbd5a670052e42fc0abe0707c65d07",
+      "focused": {
+        "core": {
+          "path": "target/app-backlog/slicer-fourth-core.log",
+          "sha256": "db7e9dbbd61b84dda48259ddeee970966c3966288c7e2b2b800a479392ff2bd3",
+          "outcome": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2087,
+          "seconds": 5.61
+        },
+        "native": {
+          "path": "target/app-backlog/slicer-fourth-native.log",
+          "sha256": "b8dc8be0ca30121d6d4b1863fdfad29567a7d5dae58588ddb0ab93b6b899b4b4",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2093,
+          "seconds": 0.38
+        },
+        "deck-controls": {
+          "path": "target/app-backlog/slicer-fourth-deck-controls.log",
+          "sha256": "68ea232cd36d5928908f27889d1e25a03d5eb92df15cbb0eb65c6bc3b940dc73",
+          "outcome": "ok",
+          "passed": 42,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2053,
+          "seconds": 38.33
+        },
+        "slip": {
+          "path": "target/app-backlog/slicer-fourth-slip.log",
+          "sha256": "d714a95ef9d9100f91a839b7dd36a4432936a00085b36f665b218b192ba16db9",
+          "outcome": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2087,
+          "seconds": 9.81
+        },
+        "pads": {
+          "path": "target/app-backlog/slicer-fourth-pads.log",
+          "sha256": "47590f85dc8e5ed77e3970ea4314f3e75131448004186599308b7d89dcad9eb8",
+          "outcome": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2088,
+          "seconds": 0.83
+        },
+        "native-pads": {
+          "path": "target/app-backlog/slicer-fourth-native-pads.log",
+          "sha256": "794bc1c599c9622a3dd6a0d4652d418bdb29a1916abb8ec7adf43c96bca0a0d8",
+          "outcome": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2092,
+          "seconds": 0.56
+        },
+        "keylock": {
+          "path": "target/app-backlog/slicer-fourth-keylock.log",
+          "sha256": "3e74f2221c7978c2e1952bd00cd499d166e8add697eda5efcaeb2822bc63da8e",
+          "outcome": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2078,
+          "seconds": 33.5
+        },
+        "beat-jump": {
+          "path": "target/app-backlog/slicer-fourth-beat-jump.log",
+          "sha256": "621ee1a4ba9afd21a96aca0b4b893f9b7cf4102d323565837e7ea1fa027bc06e",
+          "outcome": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 2093,
+          "seconds": 0.34
+        }
+      },
+      "retiredFullRun": {
+        "schema": 1,
+        "reason": "Code review found that mode/settings/parameter changes could restore the fixed phrase from the still-active Slip root. Retire this partial frozen run and require an added regression, corrected source and fresh qualification.",
+        "ownedProcessTree": [
+          1403297
+        ],
+        "fullLog": "target/app-backlog/slicer-fourth-full.log",
+        "fullQualificationCompleted": false,
+        "logSha256": "0cddab30e73df1d03e6e41a0d5f2add58b028ac7153a2adb2084f6b2bc985129"
+      },
+      "reason": "All focused renderer/native checks passed, including the closed-popup press and painted pending marker. Review during the partial full run identified mode/settings/parameter changes that could let a live Slip root restore its old fixed phrase. Only the owned full-suite process was retired; the partial log is retained and no full result is claimed. Production interrupts the old Slip root before releasing pad owners so the original loop/background restore first, then any new repeating domain can capture cleanly. A source-rate regression covers all three deliberate boundaries."
+    },
+    "fifth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-fifth",
+        "sha256": "574813eae9fbfbd3eedc856f914d86cbd17cf4ac82a0e075c4537ac8799e2145",
+        "compileLogSha256": "4a017c2ff77f24532418a3ba01c4694065c21a14c116b12b6b733b4b251e6c1e"
+      },
+      "inventorySha256": "acb5ca57773e8305f91c81a4b344478af8ecc366521873373b6620fecfdd9a1d",
+      "core": {
+        "path": "target/app-backlog/slicer-fifth-core.log",
+        "sha256": "24977f0f54ab70aa9e594e475ab46c8dd24aa0835344a117435abc9bc72d295a",
+        "outcome": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2087,
+        "seconds": 6.54
+      },
+      "native": {
+        "path": "target/app-backlog/slicer-fifth-native.log",
+        "sha256": "06982e00e6c74c427c8abc2e6e65d849354115c33e50b2c761843ad96f75a84c",
+        "outcome": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2094,
+        "seconds": 0.38
+      },
+      "reason": "Nine renderer and two native checks passed, including all three fixed-phrase/Slip deliberate-boundary regressions. Review then scoped preparatory slicer setting changes to actual selected/direct Slice work so they cannot cancel an unrelated held Roll/Slip performance. Cached bounds invalidate independently of unrelated owner clocks, with an additional mixed-source regression. This preliminary round did not run a full suite."
+    },
+    "sixth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-sixth",
+        "sha256": "46f883080a4cc24c5e383313cbf834aea8df464bd2a3987084146a531128c730",
+        "compileLogSha256": "408d54d40d54cb3850c271cbf613dac23ae73a4a3772652502805f85031f0fcb"
+      },
+      "inventorySha256": "8a444638bce34a1e5a3682c505d2fcae2e1ce0102a9ed35014ad03f7c8d59fad",
+      "full": {
+        "path": "target/app-backlog/slicer-sixth-full.log",
+        "sha256": "f5dcb15867941ba417a57d3b948d81ad2240f0411bee55f546dc92720416ae97",
+        "outcome": "FAILED",
+        "passed": 2052,
+        "failed": 1,
+        "ignored": 44,
+        "filtered": 0,
+        "seconds": 613.51
+      },
+      "touchReproduction": {
+        "path": "target/app-backlog/slicer-sixth-touch-reproduction.log",
+        "sha256": "bd33ff3239d40dc12cd3e291aba55f525f889c7c75661aa061d48005f2fcf03c",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2096,
+        "seconds": 0.14
+      },
+      "reason": "All focused checks passed, but the unfiltered suite found one reproducible native touch regression: conditional Slicer settings changed neighboring deck geometry and retired its independent held pad. Slicer preparation controls remain present in every mode and phrase status keeps a fixed footprint; the existing touch fixture now requires exact neighboring geometry through the mode change. The failed full and isolated reproduction remain retained; no sixth-round release was installed."
+    },
+    "seventh": {
+      "binary": {
+        "compiledBinary": "target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-seventh",
+        "sha256": "24327f30720137e76260d51dac824aef2b8b5b42214912cd3e17f668f5b84f84",
+        "compileLogSha256": "2a28f03235b1ada7fdabdfedcf1455efbd8a6ff43b51db9da05e91c68f025842"
+      },
+      "inventorySha256": "90b83f551356afe906d365916a8a2fb1524f47470438b428160184c24e235f16",
+      "touch": {
+        "path": "target/app-backlog/slicer-seventh-touch.log",
+        "sha256": "a5fc175b7693077d5860c08bd5a70094aeaace3c19dccb523a70b1a3e0c94c09",
+        "outcome": "FAILED",
+        "passed": 11,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2085,
+        "seconds": 1.39
+      },
+      "faderReproduction": {
+        "path": "target/app-backlog/slicer-seventh-fader-reproduction.log",
+        "sha256": "944938d182cd5482fda3b9bebe99a4d1c0b9056a62217304636f7878fc77132e",
+        "outcome": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2096,
+        "seconds": 0.29
+      },
+      "reason": "The original neighboring-touch mode-change regression passed, but the full touch group found a width-dependent missing right pitch fader: an available-width source bar and unconstrained choices could expand the left deck beyond its reviewed column. Slicer choices and the source bar are now bounded to the existing four-pad column width. This round stopped at focused touch qualification and installed no release."
+    },
+    "eighth": {
+      "binary": {
+        "compiledBinary": "/home/michael/Projects/omatainer-work/remaining-backlog/target/debug/deps/omatainer-700b0f43c8079203",
+        "privateBinary": "target/app-backlog/qualification-bin/slicer-tests-eighth",
+        "sha256": "d99bb645b316ae3cb325112787a2cffbb672216c25df917fff516c0573309487",
+        "compileLogSha256": "c84ccfb5c3e0f2e984c896f114ce88f10f35a605e20b271f37f0ad2b64ef41a2"
+      },
+      "inventorySha256": "ace816dd3d130e2123d71f23ddbd793ca5efdf380ab63e2e03a7186c3f6d79fd",
+      "touch": {
+        "path": "target/app-backlog/slicer-eighth-touch.log",
+        "sha256": "843b94129b688ec116c8bebeac4e6c51f23442b0e41f73a968cafe3728a6bd46",
+        "outcome": "FAILED",
+        "passed": 11,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 2085,
+        "seconds": 1.39
+      },
+      "reason": "The exact neighboring pad mode-change check passed and the right pitch target reappeared, but its full track remained clipped at wide window size. Egui treats ComboBox width as a minimum, not a maximum; the selected text inherited expanding horizontal layout. The two control rows now use independently sized columns and explicit selected-text truncation, while popup choices keep full accessible labels. This focused round installed no release."
+    }
+  },
+  "limits": "Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved."
+}

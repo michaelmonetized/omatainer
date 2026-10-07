@@ -3396,9 +3396,12 @@
         192,
         134
       ],
-      "state": "planned",
+      "state": "implemented",
       "prs": [],
-      "evidence": []
+      "evidence": [
+        "docs/validation/slicer.md",
+        "docs/validation/slicer-receipt.json"
+      ]
     },
     {
       "issue": 241,

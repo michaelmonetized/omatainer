@@ -2758,6 +2758,14 @@ Broaden the current query without changing the named crate. Returning restores t
 
 Workflow: Prepare a DJ deck.
 
+### Phrase slicer
+
+Moving or repeating source domain; independent trigger timing
+
+Select Slice pad mode on either deck. Choose a 2–64-beat phrase, Moving to follow the original background playhead or Repeating to retain that phrase. Eight pads address eight exact source ranges through every manual tempo anchor; the phrase bar shows their boundaries and active or waiting slice. Repeat length changes the held loop length; Trigger timing separately chooses Immediate or a 1/8–4-beat onset against the original background rather than the audible slice loop. Releasing a pending pad cancels its original request; the final release returns to the background and restores the prior loop. Leaving the mode, pausing, explicit seeking, source replacement and safety stop retire temporary work and restore the original loop. Settings are independent transient deck controls.
+
+Workflow: Prepare a DJ deck.
+
 ### Slip playback
 
 Independent deck; immediate or musical release

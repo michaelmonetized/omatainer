@@ -2663,6 +2663,7 @@ impl RtEngine {
                     return;
                 }
                 d.playing = !d.playing;
+                if d.playing {d.arm_slicer();}else{d.leave_slicer();}
                 d.controls.transport(d.playing, d.rate, self.sr);
                 let pos = if d.playing && d.pos < 1.0 { d.cue_pos } else { d.pos };
                 d.transition_to(pos, self.sr, DeckTransition::Jump);
@@ -2674,6 +2675,7 @@ impl RtEngine {
             Command::DeckCue { deck } => {
                 if self.decks[deck as usize % DECKS].playing { self.deck_sync_manipulation(deck as usize % DECKS); }
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.leave_slicer();
                 d.controls.cancel_pending();
                 d.controls.interrupt_slip();
                 d.stop_preview(self.sr);
@@ -2800,6 +2802,8 @@ impl RtEngine {
                 if let Command::DeckGrid { deck, grid, ack, .. } = &command {
                     self.deck_sync_manipulation(usize::from(*deck));
                     let deck = &mut self.decks[*deck as usize];
+                    deck.leave_slicer();
+                    deck.arm_slicer();
                     deck.controls.cancel_pending();
                     deck.grid = *grid;
                     deck.publish_preparation();
@@ -2953,6 +2957,7 @@ impl RtEngine {
             Command::DeckSeek { deck, frac } => {
                 self.deck_sync_manipulation(usize::from(deck));
                 let d = &mut self.decks[deck as usize % DECKS];
+                d.leave_slicer();
                 d.controls.interrupt_slip();
                 let frames = d.audio.as_ref().map(|a| a.frames() as f64).unwrap_or(0.0);
                 d.transition_to((frac.clamp(0.0, 1.0) as f64 * frames).max(0.0), self.sr, DeckTransition::Jump);

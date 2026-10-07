@@ -614,6 +614,17 @@ Software qualification: five-minute 12 kHz reference and 44.1/48/96 kHz referenc
 
 Software qualification: atomic whole-scene tempo/meter and clip switches at exact sample boundaries; independent timestamp/downbeat oracles at 8/44.1/48 kHz and clock oracles additionally at 96 kHz, callbacks 31/257, continuing tracks under Keep, exact Stop releases, disabled/additive/legato semantics, selected-track and held-input ownership, actual recording completion, native odd-meter count-in/rate change, full native meter inheritance including 255/128 and pickup, guarded metadata Undo/Redo/cancellation/stale identity, deletion/reuse/reorder, safety/seek/project replacement, native state 23 real-container reopen and old-header injection refusal, native egui/AccessKit editing/duplication/launch/cancel, bounded consistent socket/follow status and zero unchanged cache heap work. A selected scene tempo/meter replaces future conductor automation with the current flat clock; historical conductor mapping is not retained. Pending launches/active identities never resume on reopen. No physical controller display or new live hardware/audio qualification; independent stage application unchanged. No ticket acceptance or issue closure claimed.
 
+### Issue #240: implemented
+
+- moving/repeating slicer renderer: [src/engine/deck_controls/slicer.rs](../src/engine/deck_controls/slicer.rs) — Exact mapped/source-bounded phrase intervals, source-owned pending onset against independent background, original repeating loop restoration and stable input release ownership
+- native source intervals and settings: [src/ui/deck_pads/slicer.rs](../src/ui/deck_pads/slicer.rs) — Independent accessible domain/behavior/repeat/trigger controls and renderer-confirmed eight source ranges with active and pending markers
+- ordinary performance integration: [src/engine/deck_controls.rs](../src/engine/deck_controls.rs) — Shared temporary pad admission, mapped background clock, retained mode indexes, Slip and deliberate transport/source boundaries
+- Acceptance fixtures: `engine::deck_controls::slicer::tests`, `ui::deck_pads::slicer::tests`.
+- Evidence: [docs/validation/slicer.md](../docs/validation/slicer.md).
+- Evidence: [docs/validation/slicer-receipt.json](../docs/validation/slicer-receipt.json).
+
+Linux ARM64 software qualification: independent transient moving/repeating 2–64-beat slicer domains, eight exact original source intervals, repeat subdivisions and explicit immediate/musical onset. Actual producer/renderer, private MIDI worker, numbered stereo PCM, mixed clocks/manual variable grid, independent input owners, deliberate cancellation, shared Slip root and native egui/AccessKit painted ranges with fixed neighboring touch geometry and bounded pad-column width. No project/profile schema or controller address change. No physical audio/MIDI device, live capture, new OS GUI, hardware RGB inspection, human listening or stage continuity acceptance; existing independent stage processes/session remain preserved.
+
 ### Issue #249: implemented
 
 - coherent source and loop fades: [src/engine/audio_clip/fades.rs](../src/engine/audio_clip/fades.rs) — Validated curved quarter-note envelope and optional automatic 4 ms edges; shared playback/waveform gain
@@ -771,7 +782,7 @@ Music source: FreeToUse public keyless API. Michael excludes other third-party p
 | [#237](https://github.com/michaelmonetized/omatainer/issues/237) | Add reverse playback and momentary censor controls | planned |
 | [#238](https://github.com/michaelmonetized/omatainer/issues/238) | Add beat-synced sampler playback and output assignments | planned |
 | [#239](https://github.com/michaelmonetized/omatainer/issues/239) | Add scratch banks with instant return to the previous deck track | planned |
-| [#240](https://github.com/michaelmonetized/omatainer/issues/240) | Add moving and fixed-loop slicer pad modes | planned |
+| [#240](https://github.com/michaelmonetized/omatainer/issues/240) | Add moving and fixed-loop slicer pad modes | implemented |
 | [#241](https://github.com/michaelmonetized/omatainer/issues/241) | Link set recordings to performed-track and cue markers | planned |
 | [#242](https://github.com/michaelmonetized/omatainer/issues/242) | Convert recorded melodies, harmony and drums to editable MIDI | planned |
 | [#243](https://github.com/michaelmonetized/omatainer/issues/243) | Add probabilistic clip and scene follow actions | planned |
