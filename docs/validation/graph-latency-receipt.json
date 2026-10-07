@@ -907,5 +907,52 @@
     "Sidechain and send/return device workflows beyond existing explicit and implicit audio graph paths.",
     "Editable recording placement from retained alignment metadata; this checkpoint writes exact source-origin metadata but does not create an audio clip."
   ],
-  "limits": "Partial #178 foundation on Linux ARM64: retained measured offsets and declared processor delays, exact causal compensation through existing graph paths at 8–192 kHz, separately aligned program/headphone mixes, explicit immediate cue override, bounded prepared histories, click-limited report transitions, sample-rate/Undo reconstruction, exact render/export parity and raw/delivery recording source-origin metadata. Actual native egui/AccessKit edit/apply/cancel/reopen/Undo path qualified. Plugin reports are entered explicitly; existing causal native DSP has no invented lookahead. Automatic external-plugin reports, broad parameter/MIDI event alignment, sidechain workflows, compensated audible history and recording clip placement remain open. No physical device, capture, new OS GUI or listening acceptance."
+  "limits": "Partial #178 foundation on Linux ARM64: retained measured offsets and declared processor delays, exact causal compensation through existing graph paths at 8–192 kHz, separately aligned program/headphone mixes, explicit immediate cue override, bounded prepared histories, click-limited report transitions, sample-rate/Undo reconstruction, exact render/export parity and raw/delivery recording source-origin metadata. Actual native egui/AccessKit edit/apply/cancel/reopen/Undo path qualified. Plugin reports are entered explicitly; existing causal native DSP has no invented lookahead. Automatic external-plugin reports, broad parameter/MIDI event alignment, sidechain workflows, compensated audible history and recording clip placement remain open. No physical device, capture, new OS GUI or listening acceptance.",
+  "releaseDeployment": {
+    "schema": 1,
+    "status": "ready_installation_deferred_active_app",
+    "package": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/app-backlog/release-graph-latency-qualified",
+      "manifestSha256": "d35559a2bbe2a743ac582cd84e32c1dc24df6ec805b7cc7fa7744ee849407b33",
+      "revision": "f7f5c99116fdba96a126fe083aa5fdccdcc8741e",
+      "version": "0.1.0+f7f5c99116fd",
+      "executableSha256": "596451d03099335aa9b1b7f2e1839fe2d1ce21e8f5ee02383df0d8049959ae9a"
+    },
+    "installed": false,
+    "installedExecutableSha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d",
+    "buildInfo": {
+      "arch": "aarch64",
+      "debug_assertions": false,
+      "os": "linux",
+      "pkg_version": "0.1.0",
+      "schema": 1
+    },
+    "applicationProcessesPreserved": [
+      {
+        "pid": 2045140,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "--empty-once"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      },
+      {
+        "pid": 2273135,
+        "executable": "/home/michael/.local/bin/omatainer",
+        "arguments": [
+          "/home/michael/.local/bin/omatainer",
+          "ctl",
+          "follow"
+        ],
+        "sha256": "3217e4bfce388cac60e0ad7bea4caf83ec0d323f6eb620d4bf3a04d2c09ed69d"
+      }
+    ],
+    "protectedSessionPreserved": {
+      "path": "/home/michael/Projects/omatainer-work/hardware-resurrection/target/hardware/apc-restart-20261006/session.omat",
+      "bytes": 162882871,
+      "sha256": "96e0b2495cdbdc549c324ecf8337fdef5590bdcbfe8916e4f014eb05d1ee827d"
+    },
+    "reason": "The default GUI is active. The supported updater refused replacement before changing any file. The verified package is ready; installation awaits closure of the active app. No GUI, follower, capture, audio or MIDI connection was restarted or opened."
+  }
 }
